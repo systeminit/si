@@ -16,6 +16,7 @@ rust_binary(
     srcs = glob(["src/**/*.rs"]),
     resources = {
         "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
+        "dev.donkey.key": "//lib/dal:dev.donkey.key",
     },
 )
 

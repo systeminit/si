@@ -3,9 +3,10 @@ use std::{env, path::Path};
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
-use si_settings::{CanonicalFile, CanonicalFileError};
+use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -47,6 +48,8 @@ pub struct Config {
 
     #[builder(default = "false")]
     recreate_management_stream: bool,
+
+    symmetric_crypto_service: SymmetricCryptoServiceConfig,
 }
 
 impl StandardConfig for Config {
@@ -81,6 +84,11 @@ impl Config {
     pub fn recreate_management_stream(&self) -> bool {
         self.recreate_management_stream
     }
+
+    /// Gets a reference to the symmetric crypto service.
+    pub fn symmetric_crypto_service(&self) -> &SymmetricCryptoServiceConfig {
+        &self.symmetric_crypto_service
+    }
 }
 
 /// The configuration file for creating a [`Server`].
@@ -94,6 +102,8 @@ pub struct ConfigFile {
     cyclone_encryption_key_path: String,
     #[serde(default = "default_recreate_management_stream")]
     recreate_management_stream: bool,
+    #[serde(default = "default_symmetric_crypto_config")]
+    symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
 }
 
 impl Default for ConfigFile {
@@ -103,6 +113,7 @@ impl Default for ConfigFile {
             nats: Default::default(),
             cyclone_encryption_key_path: default_cyclone_encryption_key_path(),
             recreate_management_stream: false,
+            symmetric_crypto_service: default_symmetric_crypto_config(),
         }
     }
 }
@@ -122,6 +133,7 @@ impl TryFrom<ConfigFile> for Config {
         config.nats(value.nats);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.recreate_management_stream(value.recreate_management_stream);
+        config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.build().map_err(Into::into)
     }
 }
@@ -132,6 +144,13 @@ fn default_cyclone_encryption_key_path() -> String {
 
 fn default_recreate_management_stream() -> bool {
     false
+}
+
+fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
+    SymmetricCryptoServiceConfigFile {
+        active_key: "/run/rebaser/donkey.key".into(),
+        extra_keys: vec![],
+    }
 }
 
 /// This function is used to determine the development environment and update the [`ConfigFile`]
@@ -155,13 +174,23 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         .map_err(ConfigError::development)?
         .to_string_lossy()
         .to_string();
+    let symmetric_crypto_service_key = resources
+        .get_ends_with("dev.donkey.key")
+        .map_err(ConfigError::development)?
+        .to_string_lossy()
+        .to_string();
 
     warn!(
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         "detected development run",
     );
 
     config.cyclone_encryption_key_path = cyclone_encryption_key_path;
+    config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
+        active_key: symmetric_crypto_service_key,
+        extra_keys: vec![],
+    };
 
     Ok(())
 }
@@ -171,13 +200,22 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         .join("../../lib/cyclone-server/src/dev.encryption.key")
         .to_string_lossy()
         .to_string();
+    let symmetric_crypto_service_key = Path::new(&dir)
+        .join("../../lib/dal/dev.donkey.key")
+        .to_string_lossy()
+        .to_string();
 
     warn!(
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+        symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
         "detected development run",
     );
 
     config.cyclone_encryption_key_path = cyclone_encryption_key_path;
+    config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
+        active_key: symmetric_crypto_service_key,
+        extra_keys: vec![],
+    };
 
     Ok(())
 }

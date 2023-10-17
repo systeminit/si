@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use telemetry::prelude::*;
 
+use si_crypto::SymmetricCryptoService;
 use tokio::sync::watch;
 use ulid::Ulid;
 
@@ -20,6 +21,7 @@ pub(crate) async fn management_loop_infallible_wrapper(
     nats: NatsClient,
     veritech: veritech_client::Client,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    symmetric_crypto_service: SymmetricCryptoService,
     encryption_key: Arc<veritech_client::EncryptionKey>,
     shutdown_watch_rx: watch::Receiver<()>,
 ) {
@@ -29,6 +31,7 @@ pub(crate) async fn management_loop_infallible_wrapper(
         nats,
         veritech,
         job_processor,
+        symmetric_crypto_service,
         encryption_key,
         shutdown_watch_rx,
     )
@@ -44,6 +47,7 @@ async fn management_loop(
     nats: NatsClient,
     veritech: veritech_client::Client,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    symmetric_crypto_service: SymmetricCryptoService,
     encryption_key: Arc<veritech_client::EncryptionKey>,
     _shutdown_watch_rx: watch::Receiver<()>,
 ) -> ServerResult<()> {
@@ -55,6 +59,7 @@ async fn management_loop(
         encryption_key,
         None,
         None,
+        symmetric_crypto_service,
     );
     // let ctx_builder = DalContext::builder(services_context, false);
 

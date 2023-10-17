@@ -5,11 +5,11 @@ use dal::{
     NatsProcessor, TransactionsError,
 };
 use nats_subscriber::SubscriberError;
-
+use si_crypto::SymmetricCryptoServiceConfig;
+use si_crypto::{SymmetricCryptoError, SymmetricCryptoService};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use si_rabbitmq::RabbitError;
-
 use std::{io, path::Path, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -20,7 +20,6 @@ use tokio::{
         oneshot, watch,
     },
 };
-
 use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyError};
 
 use crate::Config;
@@ -58,6 +57,8 @@ pub enum ServerError {
     Signal(#[source] io::Error),
     #[error(transparent)]
     Subscriber(#[from] SubscriberError),
+    #[error("symmetric crypto error: {0}")]
+    SymmetricCrypto(#[from] SymmetricCryptoError),
     #[error(transparent)]
     Transactions(#[from] Box<TransactionsError>),
     #[error("workspace snapshot error: {0}")]
@@ -92,6 +93,7 @@ pub struct Server {
     pg_pool: PgPool,
     veritech: VeritechClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    symmetric_crypto_service: SymmetricCryptoService,
     /// An internal shutdown watch receiver handle which can be provided to internal tasks which
     /// want to be notified when a shutdown event is in progress.
     shutdown_watch_rx: watch::Receiver<()>,
@@ -118,6 +120,8 @@ impl Server {
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
         let job_processor = Self::create_job_processor(nats.clone());
+        let symmetric_crypto_service =
+            Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
 
         Self::from_services(
             encryption_key,
@@ -125,6 +129,7 @@ impl Server {
             pg_pool,
             veritech,
             job_processor,
+            symmetric_crypto_service,
             config.recreate_management_stream(),
         )
     }
@@ -137,6 +142,7 @@ impl Server {
         pg_pool: PgPool,
         veritech: VeritechClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+        symmetric_crypto_service: SymmetricCryptoService,
         recreate_management_stream: bool,
     ) -> ServerResult<Self> {
         // An mpsc channel which can be used to externally shut down the server.
@@ -158,6 +164,7 @@ impl Server {
             veritech,
             encryption_key,
             job_processor,
+            symmetric_crypto_service,
             shutdown_watch_rx,
             external_shutdown_tx,
             graceful_shutdown_rx,
@@ -173,6 +180,7 @@ impl Server {
             self.nats,
             self.veritech,
             self.job_processor,
+            self.symmetric_crypto_service,
             self.encryption_key,
             self.shutdown_watch_rx,
         )
@@ -219,6 +227,15 @@ impl Server {
     #[instrument(name = "rebaser.init.create_job_processor", skip_all)]
     fn create_job_processor(nats: NatsClient) -> Box<dyn JobQueueProcessor + Send + Sync> {
         Box::new(NatsProcessor::new(nats)) as Box<dyn JobQueueProcessor + Send + Sync>
+    }
+
+    #[instrument(name = "pinga.init.create_symmetric_crypto_service", skip_all)]
+    async fn create_symmetric_crypto_service(
+        config: &SymmetricCryptoServiceConfig,
+    ) -> ServerResult<SymmetricCryptoService> {
+        SymmetricCryptoService::from_config(config)
+            .await
+            .map_err(Into::into)
     }
 }
 
