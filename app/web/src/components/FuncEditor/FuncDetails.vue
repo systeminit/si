@@ -34,8 +34,12 @@
                 v-if="
                   featureFlagsStore.FUNC_TEST_PANEL &&
                   testPanelEnabled &&
-                  funcStore.selectedFuncDetails?.variant ===
-                    FuncVariant.Attribute
+                  funcStore.selectedFuncDetails &&
+                  [
+                    FuncVariant.Attribute,
+                    FuncVariant.CodeGeneration,
+                    FuncVariant.Qualification,
+                  ].includes(funcStore.selectedFuncDetails.variant)
                 "
                 class="--tone-action"
                 icon="save"
@@ -255,8 +259,13 @@
       <TabGroupItem
         v-if="
           featureFlagsStore.FUNC_TEST_PANEL &&
-          funcStore.selectedFuncDetails?.variant === FuncVariant.Attribute &&
-          testPanelEnabled
+          testPanelEnabled &&
+          funcStore.selectedFuncDetails &&
+          [
+            FuncVariant.Attribute,
+            FuncVariant.CodeGeneration,
+            FuncVariant.Qualification,
+          ].includes(funcStore.selectedFuncDetails.variant)
         "
         label="Test"
         slug="test"

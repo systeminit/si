@@ -239,13 +239,15 @@ const runningTest = ref(false);
 
 const dryRunConfig = computed(() => {
   // TODO(Wendy) - which function variants allow for a choice of dry run? which are always dry and which are always wet?
+  // Note(Paulo): We only support dry run when testing functions
   if (funcStore.selectedFuncDetails?.variant === FuncVariant.Attribute) {
     return "dry";
     // eslint-disable-next-line no-constant-condition
   } else if (false) {
     return "choose";
   } else {
-    return "wet";
+    // return "wet";
+    return "dry";
   }
 });
 
@@ -334,46 +336,86 @@ const prepareTest = async () => {
 
   const json = res.result.data.json;
   const selectedFunc = funcStore.selectedFuncDetails;
-  if (selectedFunc?.associations?.type !== "attribute") {
-    // TODO(Wendy) - handle a failure properly instead of just bailing!
-    return;
-  }
-  const prototypes = selectedFunc.associations.prototypes;
+  if (selectedFunc?.associations?.type === "attribute") {
+    const prototypes = selectedFunc.associations.prototypes;
 
-  const getJsonPath = () => {
-    for (const prototype of prototypes) {
-      for (const arg of prototype.prototypeArguments) {
-        const prop = funcStore.propForInternalProviderId(
-          arg.internalProviderId ?? "",
-        );
+    const getJsonPath = () => {
+      for (const prototype of prototypes) {
+        for (const arg of prototype.prototypeArguments) {
+          const prop = funcStore.propForInternalProviderId(
+            arg.internalProviderId ?? "",
+          );
 
-        if (prop) {
-          return `${prop.path}${prop.name}`;
+          if (prop) {
+            return `${prop.path}${prop.name}`;
+          }
         }
       }
+    };
+    const jsonPath = getJsonPath();
+    if (!jsonPath) {
+      // TODO(Wendy) - handle a failure properly instead of just bailing!
+      return;
     }
-  };
-  const jsonPath = getJsonPath();
-  if (!jsonPath) {
+    // We remove the first two strings because they will always be an empty string and "root"
+    const jsonPathArray = jsonPath.split("/").splice(2);
+    const props: Record<string, unknown> | null = json as Record<
+      string,
+      unknown
+    >;
+
+    let properties: Record<string, unknown> | null = {};
+    for (const key of jsonPathArray) {
+      if (!properties[key]) {
+        properties = null;
+        break;
+      }
+      properties = properties[key] as Record<string, unknown>;
+    }
+    if (jsonPathArray[jsonPathArray.length - 1]) {
+      const last = jsonPathArray[jsonPathArray.length - 1] as string;
+      properties = { [last]: properties };
+    }
+
+    testInputCode.value = JSON.stringify(properties, null, 2);
+    testInputProperties.value = properties;
+  } else if (
+    selectedFunc?.associations?.type === "codeGeneration" ||
+    selectedFunc?.associations?.type === "qualification"
+  ) {
+    const props: Record<string, unknown> | null = json as Record<
+      string,
+      unknown
+    >;
+
+    const toSnakeCase = (inputString: string) => {
+      return inputString
+        .split("")
+        .map((character) => {
+          if (character === character.toUpperCase()) {
+            return `_${character.toLowerCase()}`;
+          } else {
+            return character;
+          }
+        })
+        .join("");
+    };
+
+    const properties: Record<string, unknown> = {};
+    for (const input of selectedFunc.associations.inputs) {
+      if (!props) break;
+
+      const key = toSnakeCase(`${input}`);
+      properties[key] = props[key];
+    }
+
+    testInputCode.value = JSON.stringify(properties, null, 2);
+    testInputProperties.value = properties;
+  } else {
     // TODO(Wendy) - handle a failure properly instead of just bailing!
     return;
   }
-  // We remove the first two strings because they will always be an empty string and "root"
-  const jsonPathArray = jsonPath.split("/").splice(2);
-  let properties: Record<string, unknown> | null = json as Record<
-    string,
-    unknown
-  >;
-  for (const key of jsonPathArray) {
-    if (!properties[key]) {
-      properties = null;
-      break;
-    }
-    properties = properties[key] as Record<string, unknown>;
-  }
 
-  testInputCode.value = JSON.stringify(properties);
-  testInputProperties.value = properties;
   readyToTest.value = true;
 };
 
@@ -405,7 +447,7 @@ const startTest = async () => {
   funcTestTabsRef.value.selectTab("logs");
   const output = await funcStore.EXECUTE({
     id: funcStore.selectedFuncId,
-    args: { testInputProperties },
+    args: testInputProperties.value,
     executionKey,
   });
 
@@ -413,7 +455,7 @@ const startTest = async () => {
   readyToTest.value = true;
 
   if (output.result.success) {
-    testOutputCode.value = JSON.stringify(output.result.data.output);
+    testOutputCode.value = JSON.stringify(output.result.data.output, null, 2);
     rawTestLogs.value = output.result.data.logs;
   } else {
     testOutputCode.value = "ERROR: Test Failed To Run";
