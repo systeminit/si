@@ -6,6 +6,7 @@ load(
     _package_node_modules = "package_node_modules",
     _pnpm_lock = "pnpm_lock",
     _pnpm_workspace = "pnpm_workspace",
+    _prettier_check = "prettier_check",
     _typescript_check = "typescript_check",
     _typescript_dist = "typescript_dist",
     _typescript_runnable_dist = "typescript_runnable_dist",
@@ -32,7 +33,7 @@ def eslint(
         directories = directories,
         package_node_modules = package_node_modules,
         visibility = visibility,
-        **kwargs,
+        **kwargs
     )
 
 def node_pkg_bin(
@@ -53,7 +54,7 @@ def node_pkg_bin(
         dist = dist,
         package_node_modules = package_node_modules,
         visibility = visibility,
-        **kwargs,
+        **kwargs
     )
 
 def npm_bin(
@@ -63,7 +64,7 @@ def npm_bin(
     _npm_bin(
         node_modules = node_modules,
         visibility = visibility,
-        **kwargs,
+        **kwargs
     )
 
 def package_node_modules(
@@ -80,7 +81,7 @@ def pnpm_lock(
         name = name,
         src = src or name,
         visibility = visibility,
-        **kwargs,
+        **kwargs
     )
 
 def pnpm_workspace(
@@ -94,7 +95,27 @@ def pnpm_workspace(
         src = src or name,
         workspace_package = workspace_package,
         visibility = visibility,
-        **kwargs,
+        **kwargs
+    )
+
+def prettier_check(
+        prettier_bin = "prettier",
+        prettier = ":prettier",
+        package_node_modules = ":node_modules",
+        visibility = ["PUBLIC"],
+        **kwargs):
+    if not rule_exists(prettier_bin):
+        _npm_bin(
+            name = prettier_bin,
+            node_modules = package_node_modules,
+            visibility = visibility,
+        )
+
+    _prettier_check(
+        prettier = ":{}".format(prettier_bin),
+        package_node_modules = package_node_modules,
+        visibility = visibility,
+        **kwargs
     )
 
 def typescript_check(
@@ -114,7 +135,7 @@ def typescript_check(
         tsc = ":{}".format(tsc_bin),
         package_node_modules = package_node_modules,
         visibility = visibility,
-        **kwargs,
+        **kwargs
     )
 
 def typescript_dist(
@@ -126,7 +147,7 @@ def typescript_dist(
         tsc = tsc,
         package_node_modules = package_node_modules,
         visibility = visibility,
-        **kwargs,
+        **kwargs
     )
 
 def typescript_runnable_dist(
@@ -145,7 +166,7 @@ def typescript_runnable_dist(
         typescript_dist = typescript_dist,
         package_node_modules_prod = package_node_modules_prod,
         visibility = visibility,
-        **kwargs,
+        **kwargs
     )
 
 def typescript_runnable_dist_bin(
@@ -153,7 +174,7 @@ def typescript_runnable_dist_bin(
         **kwargs):
     _typescript_runnable_dist_bin(
         visibility = visibility,
-        **kwargs,
+        **kwargs
     )
 
 def vite_app(
@@ -172,7 +193,7 @@ def vite_app(
         vite = ":{}".format(vite_bin),
         package_node_modules = package_node_modules,
         visibility = visibility,
-        **kwargs,
+        **kwargs
     )
 
 def workspace_node_modules(

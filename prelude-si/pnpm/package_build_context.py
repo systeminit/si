@@ -19,10 +19,14 @@ if __name__ == "__main__":
         help="Path to package `node_modules`",
     )
     parser.add_argument(
+        "--editorconfig",
+        help="Path to an .editorconfig",
+    )
+    parser.add_argument(
         "--src",
         action="append",
         metavar="DST=SRC",
-        help="Add a source into the source tree"
+        help="Add a source into the source tree",
     )
     parser.add_argument(
         "out_path",
@@ -64,5 +68,12 @@ if __name__ == "__main__":
                     os.path.join(root_dir, dst),
                 )
 
+        # If an `.editorconfig` is provided, copy it into the root of the
+        # tempdir
+        if args.editorconfig:
+            shutil.copy(
+                args.editorconfig,
+                root_dir,
+            )
 
         shutil.move(root_dir, args.out_path)

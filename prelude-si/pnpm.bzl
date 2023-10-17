@@ -28,16 +28,15 @@ load(
 )
 
 TypescriptRunnableDistInfo = provider(fields = [
-    "runnable_dist", # [Artifact]
-    "bin", # [str]
+    "runnable_dist",  # [Artifact]
+    "bin",  # [str]
 ])
 
 def _npm_test_impl(
-    ctx: AnalysisContext,
-    program_run_info: RunInfo,
-    program_args: cmd_args,
-    test_info_type: str,
-) -> list[[
+        ctx: AnalysisContext,
+        program_run_info: RunInfo,
+        program_args: cmd_args,
+        test_info_type: str) -> list[[
     DefaultInfo,
     RunInfo,
     ExternalRunnerTestInfo,
@@ -273,6 +272,91 @@ typescript_check = rule(
     },
 )
 
+def prettier_check_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
+]]:
+    args = cmd_args()
+    args.add("--check")
+    args.add(ctx.attrs.args)
+    args.add(".")
+
+    return _npm_test_impl(
+        ctx,
+        ctx.attrs.prettier[RunInfo],
+        args,
+        "prettier",
+    )
+
+prettier_check = rule(
+    impl = prettier_check_impl,
+    attrs = {
+        "srcs": attrs.list(
+            attrs.source(),
+            default = [],
+            doc = """List of package source files to track.""",
+        ),
+        "prod_deps_srcs": attrs.dict(
+            attrs.string(),
+            attrs.source(allow_directory = True),
+            default = {},
+            doc = """Mapping of dependent prod package paths to source files to track.""",
+        ),
+        "dev_deps_srcs": attrs.dict(
+            attrs.string(),
+            attrs.source(allow_directory = True),
+            default = {},
+            doc = """Mapping of dependent dev package paths to source files from to track.""",
+        ),
+        "prettier": attrs.dep(
+            providers = [RunInfo],
+            doc = """prettier dependency.""",
+        ),
+        "args": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = """Extra arguments passed to prettier.""",
+        ),
+        "package_node_modules": attrs.source(
+            doc = """Target which builds package `node_modules`.""",
+        ),
+        "pnpm_exec_cmd_override": attrs.option(
+            attrs.string(),
+            default = None,
+            doc = """Invoke a command via 'pnpm exec' rather than npm_bin script.""",
+        ),
+        "env": attrs.dict(
+            key = attrs.string(),
+            value = attrs.arg(),
+            sorted = False,
+            default = {},
+            doc = """Set environment variables for this rule's invocation of prettier. The
+            environment variable values may include macros which are expanded.""",
+        ),
+        "labels": attrs.list(
+            attrs.string(),
+            default = [],
+        ),
+        "contacts": attrs.list(
+            attrs.string(),
+            default = [],
+        ),
+        "remote_execution": buck.re_opts_for_tests_arg(),
+        "_inject_test_env": attrs.default_only(
+            attrs.dep(default = "prelude//test/tools:inject_test_env"),
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_pnpm_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:pnpm",
+            providers = [PnpmToolchainInfo],
+        ),
+    },
+)
+
 def node_pkg_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     bin_name = ctx.attrs.bin_name or ctx.attrs.name
     out = ctx.actions.declare_output(bin_name)
@@ -324,7 +408,7 @@ node_pkg_bin = rule(
         "extra_srcs": attrs.list(
             attrs.source(),
             default = [],
-            doc = "Additional file(s) needed to produce the binary"
+            doc = "Additional file(s) needed to produce the binary",
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
@@ -422,7 +506,7 @@ package_node_modules = rule(
         ),
         "prod_only": attrs.bool(
             default = False,
-            doc = "Only install production dependencies"
+            doc = "Only install production dependencies",
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
@@ -552,7 +636,7 @@ typescript_dist = rule(
             default = "toolchains//:pnpm",
             providers = [PnpmToolchainInfo],
         ),
-    }
+    },
 )
 
 def typescript_runnable_dist_impl(ctx: AnalysisContext) -> list[[
@@ -577,7 +661,7 @@ def typescript_runnable_dist_impl(ctx: AnalysisContext) -> list[[
         TypescriptRunnableDistInfo(
             runnable_dist = out,
             bin = bin,
-        )
+        ),
     ]
 
 typescript_runnable_dist = rule(
@@ -597,7 +681,7 @@ typescript_runnable_dist = rule(
             default = "toolchains//:pnpm",
             providers = [PnpmToolchainInfo],
         ),
-    }
+    },
 )
 
 def typescript_runnable_dist_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
@@ -620,7 +704,6 @@ def typescript_runnable_dist_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo
     )
     cmd.hidden([base_path])
 
-
     ctx.actions.run(cmd, category = "pnpm", identifier = "typescript_runnable_dist_bin")
 
     return [
@@ -642,7 +725,7 @@ typescript_runnable_dist_bin = rule(
             default = "toolchains//:pnpm",
             providers = [PnpmToolchainInfo],
         ),
-    }
+    },
 )
 
 def vite_app_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
@@ -781,10 +864,9 @@ NodeModulesContext = record(
 )
 
 def node_modules_context(
-    ctx: AnalysisContext,
-    prod_only: bool = False,
-    out_dir: str = "root",
-) -> NodeModulesContext:
+        ctx: AnalysisContext,
+        prod_only: bool = False,
+        out_dir: str = "root") -> NodeModulesContext:
     out = ctx.actions.declare_output(out_dir, dir = True)
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
@@ -842,6 +924,9 @@ def package_build_context(ctx: AnalysisContext) -> PackageBuildContext:
     for (name, src) in ctx.attrs.dev_deps_srcs.items():
         cmd.add("--src")
         cmd.add(cmd_args(src, format = name + "={}"))
+    if pnpm_toolchain.editorconfig:
+        cmd.add("--editorconfig")
+        cmd.add(pnpm_toolchain.editorconfig)
     cmd.add(srcs_tree.as_output())
 
     ctx.actions.run(cmd, category = "package_build_context")
@@ -855,9 +940,8 @@ PackageDistContext = record(
 )
 
 def package_runnable_dist_context(
-    ctx: AnalysisContext,
-    dist_path: [Artifact, None] = None,
-) -> PackageDistContext:
+        ctx: AnalysisContext,
+        dist_path: [Artifact, None] = None) -> PackageDistContext:
     out = ctx.actions.declare_output("runnable_dist", dir = True)
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
@@ -901,14 +985,14 @@ pnpm run --report-summary "$npm_run_command"
 if [[ ! -z "$output_paths" ]]; then
   cp -vr "$output_paths" "$rootpath/$buck_out_directory/"
 fi
-""", is_executable = True);
+""", is_executable = True)
     out = ctx.actions.declare_output("out", dir = True)
     output_join = " ".join(ctx.attrs.outs)
     args = cmd_args([script, ctx.attrs.path, ctx.attrs.command, out.as_output(), output_join])
     args.hidden([ctx.attrs.srcs])
     args.hidden([ctx.attrs.deps])
     ctx.actions.run(args, category = "pnpm", identifier = "run_library", local_only = True)
-    return [DefaultInfo(default_outputs=[out])]
+    return [DefaultInfo(default_outputs = [out])]
 
 pnpm_task_library = rule(impl = pnpm_task_library_impl, attrs = {
     "command": attrs.string(default = "start", doc = """pnpm command to run"""),
@@ -929,7 +1013,7 @@ npm_run_command="$2"
 
 cd "$rootpath/$npm_package_path"
 pnpm run --report-summary "$npm_run_command"
-""", is_executable = True);
+""", is_executable = True)
     args = cmd_args([script, ctx.attrs.path, ctx.attrs.command])
     args.hidden([ctx.attrs.deps])
     args.hidden([ctx.attrs.srcs])
@@ -953,7 +1037,7 @@ npm_run_command="$2"
 
 cd "$rootpath/$npm_package_path"
 pnpm run --report-summary "$npm_run_command"
-""", is_executable = True);
+""", is_executable = True)
     args = cmd_args([script, ctx.attrs.path, ctx.attrs.command])
     args.hidden([ctx.attrs.deps])
     args.hidden([ctx.attrs.srcs])

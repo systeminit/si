@@ -51,6 +51,7 @@ git_toolchain(
 
 pnpm_toolchain(
     name = "pnpm",
+    editorconfig = "root//:.editorconfig",
     visibility = ["PUBLIC"],
 )
 

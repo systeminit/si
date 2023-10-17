@@ -3,6 +3,7 @@ load(
     "eslint",
     "export_file",
     "node_pkg_bin",
+    "prettier_check",
     "typescript_check",
     "typescript_dist",
     "typescript_runnable_dist",
@@ -61,6 +62,11 @@ eslint(
 typescript_check(
     name = "check-type",
     srcs = [":src"],
+)
+
+prettier_check(
+    name = "check-format",
+    srcs = [":src", ":test_src"] + glob([".prettier*"]),
 )
 
 #

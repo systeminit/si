@@ -32,6 +32,7 @@ load(
     _package_node_modules = "package_node_modules",
     _pnpm_lock = "pnpm_lock",
     _pnpm_workspace = "pnpm_workspace",
+    _prettier_check = "prettier_check",
     _typescript_check = "typescript_check",
     _typescript_dist = "typescript_dist",
     _typescript_runnable_dist = "typescript_runnable_dist",
@@ -45,6 +46,7 @@ npm_bin = _npm_bin
 package_node_modules = _package_node_modules
 pnpm_lock = _pnpm_lock
 pnpm_workspace = _pnpm_workspace
+prettier_check = _prettier_check
 typescript_check = _typescript_check
 typescript_dist = _typescript_dist
 typescript_runnable_dist = _typescript_runnable_dist
