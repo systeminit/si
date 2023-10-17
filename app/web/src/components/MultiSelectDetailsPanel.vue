@@ -2,14 +2,14 @@
   <div class="flex flex-col h-full w-full overflow-hidden">
     <div class="p-xs border-b dark:border-neutral-600 flex-none">
       <Inline alignY="center">
-        <Icon size="md" name="multiselect" class="shrink-0 mr-2xs" />
-        <div class="font-bold capsize">Multiple Components</div>
+        <Icon size="md" name="multiselect" class="shrink-0" />
+        <div class="font-bold capsize">Multiple Assets</div>
       </Inline>
     </div>
 
     <div class="overflow-y-auto">
       <div class="capsize p-xs mt-xs italic text-neutral-400 text-sm">
-        {{ selectedComponentIds.length }} components selected:
+        {{ selectedComponentIds.length }} assets selected:
       </div>
       <Stack spacing="xs" class="p-xs">
         <ComponentCard

@@ -1,11 +1,11 @@
 <template>
   <div v-if="selectedComponent" class="flex flex-col h-full">
-    <!-- <div class="p-xs border-b dark:border-neutral-600">
-      <Inline align-y="center">
-        <Icon size="md" name="plug" class="shrink-0 mr-2xs" />
-        <div class="font-bold capsize">Component Details</div>
+    <div class="p-xs border-b dark:border-neutral-600 flex-none">
+      <Inline alignY="center">
+        <Icon size="md" name="component" class="shrink-0" />
+        <div class="font-bold capsize">Asset Details</div>
       </Inline>
-    </div> -->
+    </div>
 
     <div v-if="DEV_MODE" class="px-xs pt-xs text-2xs italic opacity-30">
       COMPONENT ID =
@@ -126,6 +126,7 @@ import {
   Stack,
   TabGroup,
   TabGroupItem,
+  Inline,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { useStatusStore } from "@/store/status.store";

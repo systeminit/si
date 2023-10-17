@@ -1,5 +1,6 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
+  <!-- left panel - outline + asset palette -->
   <ResizablePanel
     rememberSizeKey="changeset-and-asset"
     side="left"
@@ -54,6 +55,7 @@
     <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
   </div>
 
+  <!-- Right panel (selection details) -->
   <ResizablePanel
     rememberSizeKey="details-panel"
     side="right"
@@ -61,173 +63,21 @@
     :minSize="300"
     :disableSubpanelResizing="!changesPanelRef?.isOpen"
   >
-    <template #subpanel1>
-      <Collapsible
-        ref="changesPanelRef"
-        contentClasses="grow relative"
-        :defaultOpen="openCollapsible"
-        class="flex flex-col h-full"
-      >
-        <template #label>
-          <span
-            class="flex flex-row items-center justify-center w-full text-neutral-400 gap-2"
-          >
-            <strong class="grow uppercase text-lg my-2">
-              <template v-if="changeSetStore.headSelected"
-                >Applied Changes</template
-              >
-              <template v-else>Changes</template>
-            </strong>
-            <template v-if="!changeSetStore.headSelected">
-              <ApplyChangeSetButton />
-              <strong
-                class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
-              >
-                {{
-                  1 +
-                  diffs.length +
-                  (changeSetStore.selectedChangeSet?.actions?.length ?? 0)
-                }}
-              </strong>
-            </template>
-          </span>
-        </template>
-
-        <!-- <ApplyHistory  /> -->
-        <TabGroup
-          rememberSelectedTabKey="proposed_right"
-          trackingSlug="actions_applied"
-        >
-          <TabGroupItem
-            v-if="!changeSetStore.headSelected"
-            label="Proposed"
-            slug="actions_proposed"
-          >
-            <div
-              :class="
-                clsx(
-                  'flex flex-row gap-xs items-center text-sm p-xs border-b',
-                  themeClasses('border-neutral-200', 'border-neutral-600'),
-                )
-              "
-            >
-              <Icon name="git-branch" />
-              <div class="flex flex-col">
-                <div class="">Created Change Set</div>
-                <div class="text-neutral-400 truncate">
-                  {{
-                    changeSetStore.headSelected
-                      ? "head"
-                      : changeSetStore.selectedChangeSet?.name
-                  }}
-                </div>
-              </div>
-            </div>
-
-            <div
-              v-for="diff in diffs"
-              :key="diff.componentId"
-              :class="
-                clsx(
-                  'flex flex-row gap-xs items-center text-sm p-xs border-b',
-                  themeClasses('border-neutral-200', 'border-neutral-600'),
-                )
-              "
-            >
-              <StatusIndicatorIcon
-                type="change"
-                :status="diff.status"
-                tone="shade"
-              />
-              <div class="flex flex-col">
-                <div class="">
-                  <span v-if="diff.status === 'added'">Added</span>
-                  <span v-if="diff.status === 'deleted'">Removed</span>
-                  <span v-if="diff.status === 'modified'">Modified</span>
-                  {{
-                    componentsStore.componentsById[diff.componentId]?.schemaName
-                  }}
-                </div>
-                <div class="text-neutral-400 truncate">
-                  {{
-                    componentsStore.componentsById[diff.componentId]
-                      ?.displayName
-                  }}
-                </div>
-              </div>
-            </div>
-
-            <div
-              v-for="action in actionsStore.proposedActions"
-              :key="action.actionInstanceId"
-              :class="
-                clsx(
-                  'border-b',
-                  themeClasses('border-neutral-200', 'border-neutral-600'),
-                )
-              "
-            >
-              <ActionSprite
-                :action="action"
-                @remove="actionsStore.REMOVE_ACTION(action.actionInstanceId)"
-              />
-            </div>
-            <div
-              v-if="!actionsStore.proposedActions?.length"
-              class="p-4 italic !delay-0 !duration-0 hidden first:block"
-            >
-              <div class="pb-sm">No actions were chosen at this time.</div>
-            </div>
-          </TabGroupItem>
-
-          <TabGroupItem label="Applied" slug="actions_applied">
-            <ApplyHistory />
-          </TabGroupItem>
-        </TabGroup>
-      </Collapsible>
-    </template>
-
-    <template #subpanel2>
-      <div class="flex flex-col h-full">
-        <SidebarSubpanelTitle>Selected Asset(s)</SidebarSubpanelTitle>
-
-        <div class="flex-1 overflow-hidden">
-          <template v-if="selectedEdge">
-            <EdgeDetailsPanel
-              @delete="triggerDeleteSelection"
-              @restore="triggerRestoreSelection"
-            />
-          </template>
-          <template v-else-if="selectedComponent">
-            <ComponentDetails
-              v-if="selectedComponent"
-              :key="selectedComponent.id"
-              @delete="triggerDeleteSelection"
-              @restore="triggerRestoreSelection"
-            />
-          </template>
-          <template v-else-if="selectedComponentIds.length">
-            <MultiSelectDetailsPanel />
-          </template>
-          <template v-else>
-            <div class="flex flex-col items-center text-neutral-400">
-              <EmptyStateIcon name="no-assets" class="mt-3" />
-              <span class="text-xl dark:text-neutral-300"
-                >No Assets Selected</span
-              >
-              <div class="capsize px-xs py-md italic text-sm text-center">
-                <template v-if="componentsStore.allComponents.length === 0">
-                  Your model is currently empty.
-                </template>
-                <template v-else
-                  >Click something on the diagram to select it.
-                </template>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-    </template>
+    <div class="h-full overflow-hidden relative">
+      <EdgeDetailsPanel
+        v-if="selectedEdge"
+        @delete="triggerDeleteSelection"
+        @restore="triggerRestoreSelection"
+      />
+      <ComponentDetails
+        v-else-if="selectedComponent"
+        :key="selectedComponent.id"
+        @delete="triggerDeleteSelection"
+        @restore="triggerRestoreSelection"
+      />
+      <MultiSelectDetailsPanel v-else-if="selectedComponentIds.length > 1" />
+      <NoSelectionDetailsPanel v-else />
+    </div>
   </ResizablePanel>
 
   <Modal ref="actionBlockedModalRef" :title="actionBlockedModalTitle">
@@ -291,16 +141,10 @@ import {
   VButton,
   Modal,
   Stack,
-  TabGroup,
-  TabGroupItem,
   DropdownMenu,
   DropdownMenuItemObjectDef,
   ResizablePanel,
-  themeClasses,
-  Icon,
 } from "@si/vue-lib/design-system";
-import clsx from "clsx";
-import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import {
   ComponentId,
@@ -309,12 +153,8 @@ import {
 } from "@/store/components.store";
 import { useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import ActionSprite from "@/components/ActionSprite.vue";
-import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import FixProgressOverlay from "@/components/FixProgressOverlay.vue";
-import { useActionsStore } from "@/store/actions.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
-import ApplyHistory from "../ApplyHistory.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
   InsertElementEvent,
@@ -335,41 +175,16 @@ import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
 import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
 import ComponentCard from "../ComponentCard.vue";
 import EdgeCard from "../EdgeCard.vue";
-import EmptyStateIcon from "../EmptyStateIcon.vue";
-import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
+import NoSelectionDetailsPanel from "../NoSelectionDetailsPanel.vue";
 
 const changeSetStore = useChangeSetsStore();
 const fixesStore = useFixesStore();
-const actionsStore = useActionsStore();
 
 const fixesAreRunning = computed(
   () =>
     fixesStore.fixesAreInProgress ||
     changeSetStore.getRequestStatus("APPLY_CHANGE_SET").value.isPending,
 );
-
-const diffs = computed(() => {
-  const arr = Object.values(componentsStore.componentsById)
-    .filter((c) => c.changeStatus !== "unmodified")
-    .map((c) => {
-      let updatedAt = c.updatedInfo.timestamp;
-      if (c.changeStatus === "added") {
-        updatedAt = c.createdInfo.timestamp;
-      } else if (c.changeStatus === "deleted" && c.deletedInfo) {
-        updatedAt = c.deletedInfo.timestamp;
-      }
-
-      return {
-        componentId: c.id,
-        status: c.changeStatus,
-        updatedAt,
-      };
-    });
-  arr.sort(
-    (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
-  );
-  return arr;
-});
 
 const openCollapsible = ref(true);
 

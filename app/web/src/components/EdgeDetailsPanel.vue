@@ -2,7 +2,7 @@
   <div v-if="selectedEdge" class="flex flex-col h-full w-full overflow-hidden">
     <div class="p-xs border-b dark:border-neutral-600 flex-none">
       <Inline alignY="center">
-        <Icon size="md" name="plug" class="shrink-0 mr-2xs" />
+        <Icon size="md" name="plug" class="shrink-0" />
         <div class="font-bold capsize">Connection Details</div>
       </Inline>
     </div>
