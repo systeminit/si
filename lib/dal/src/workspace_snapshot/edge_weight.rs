@@ -6,6 +6,9 @@ use thiserror::Error;
 
 use crate::change_set_pointer::ChangeSetPointer;
 use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError, VectorClockId};
+use crate::ActionKind;
+
+use strum::EnumDiscriminants;
 
 #[derive(Debug, Error)]
 pub enum EdgeWeightError {
@@ -16,8 +19,10 @@ pub enum EdgeWeightError {
 pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 
 #[remain::sorted]
-#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
 pub enum EdgeWeightKind {
+    /// A function used by a [`SchemaVariant`] to perform an action that affects its resource
+    ActionPrototype(ActionKind),
     /// An argument to a function defined by an [`AttributePrototype`][crate::AttributePrototype],
     /// including the name of the argument to the function.
     Argument(String),
@@ -25,13 +30,14 @@ pub enum EdgeWeightKind {
     /// array/map, or a field of an object. The optional [`String`] represents the key of the entry
     /// in a map.
     Contain(Option<String>),
-    /// Used when the target/destination of an edge is an [`InternalProvider`], or an
-    /// [`ExternalProvider`].
-    DataProvider,
     /// Used to record the order that the elements of a container should be presented in.
     Ordering,
+    /// Used to link an attribute value to the prop that it is for.
     Prop,
     Prototype,
+    /// Used when the target/destination of an edge is an [`InternalProvider`], or an
+    /// [`ExternalProvider`].
+    Provider,
     Proxy,
     /// Workspaces "use" functions, modules, schemas. Schemas "use" schema variants.
     /// Schema variants "use" props. Props "use" functions, and other props. Modules

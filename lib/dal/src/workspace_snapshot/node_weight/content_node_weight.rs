@@ -120,6 +120,7 @@ impl ContentNodeWeight {
 
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
         let new_address = match &self.content_address {
+            ContentAddress::ActionPrototype(_) => ContentAddress::ActionPrototype(content_hash),
             ContentAddress::AttributePrototype(_) => {
                 ContentAddress::AttributePrototype(content_hash)
             }
@@ -129,6 +130,7 @@ impl ContentNodeWeight {
             ContentAddress::FuncArg(_) => ContentAddress::FuncArg(content_hash),
             ContentAddress::Func(_) => ContentAddress::Func(content_hash),
             ContentAddress::InternalProvider(_) => ContentAddress::InternalProvider(content_hash),
+            ContentAddress::Node(_) => ContentAddress::Node(content_hash),
             ContentAddress::Prop(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "Prop".to_string(),
@@ -138,6 +140,10 @@ impl ContentNodeWeight {
             ContentAddress::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
             ContentAddress::Schema(_) => ContentAddress::Schema(content_hash),
             ContentAddress::SchemaVariant(_) => ContentAddress::SchemaVariant(content_hash),
+            ContentAddress::Socket(_) => ContentAddress::Socket(content_hash),
+            ContentAddress::ValidationPrototype(_) => {
+                ContentAddress::ValidationPrototype(content_hash)
+            }
         };
 
         self.content_address = new_address;

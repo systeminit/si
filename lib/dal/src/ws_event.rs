@@ -4,20 +4,9 @@ use si_data_pg::PgError;
 use thiserror::Error;
 
 use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
-use crate::component::ComponentCreatedPayload;
-use crate::pkg::{
-    ImportWorkspaceVotePayload, ModuleImportedPayload, WorkspaceActorPayload,
-    WorkspaceExportPayload, WorkspaceImportApprovalActorPayload, WorkspaceImportPayload,
-};
+use crate::user::{CursorPayload, OnlinePayload};
 use crate::{
-    component::{code::CodeGeneratedPayload, resource::ResourceRefreshedPayload},
-    fix::{batch::FixBatchReturn, FixReturn},
-    func::binding::LogLinePayload,
-    qualification::QualificationCheckPayload,
-    status::StatusMessage,
-    user::{CursorPayload, OnlinePayload},
-    AttributeValueId, ChangeSetPk, ComponentId, DalContext, PropId, SchemaPk, SocketId,
-    StandardModelError, TransactionsError, WorkspacePk,
+    ChangeSetPk, DalContext, PropId, SocketId, StandardModelError, TransactionsError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -54,23 +43,23 @@ pub enum WsPayload {
     ChangeSetCreated(ChangeSetPk),
     ChangeSetMergeVote(ChangeSetMergeVotePayload),
     ChangeSetWritten(ChangeSetPk),
-    CheckedQualifications(QualificationCheckPayload),
-    CodeGenerated(CodeGeneratedPayload),
-    ComponentCreated(ComponentCreatedPayload),
+    // CheckedQualifications(QualificationCheckPayload),
+    // CodeGenerated(CodeGeneratedPayload),
+    // ComponentCreated(ComponentCreatedPayload),
     Cursor(CursorPayload),
-    FixBatchReturn(FixBatchReturn),
-    FixReturn(FixReturn),
-    ImportWorkspaceVote(ImportWorkspaceVotePayload),
-    LogLine(LogLinePayload),
-    ModuleImported(ModuleImportedPayload),
+    // FixBatchReturn(FixBatchReturn),
+    // FixReturn(FixReturn),
+    // ImportWorkspaceVote(ImportWorkspaceVotePayload),
+    // LogLine(LogLinePayload),
+    // ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),
-    ResourceRefreshed(ResourceRefreshedPayload),
-    SchemaCreated(SchemaPk),
-    StatusUpdate(StatusMessage),
-    WorkspaceExported(WorkspaceExportPayload),
-    WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
-    WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),
-    WorkspaceImported(WorkspaceImportPayload),
+    // ResourceRefreshed(ResourceRefreshedPayload),
+    // SchemaCreated(SchemaPk),
+    // StatusUpdate(StatusMessage),
+    // WorkspaceExported(WorkspaceExportPayload),
+    // WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
+    // WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),
+    // WorkspaceImported(WorkspaceImportPayload),
 }
 
 #[remain::sorted]
@@ -85,27 +74,27 @@ pub enum StatusValueKind {
     Qualification,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, Eq, Hash, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct AttributeValueStatusUpdate {
-    value_id: AttributeValueId,
-    component_id: ComponentId,
-    value_kind: StatusValueKind,
-}
+// #[derive(Deserialize, Serialize, Debug, Clone, Copy, Eq, Hash, PartialEq)]
+// #[serde(rename_all = "camelCase")]
+// pub struct AttributeValueStatusUpdate {
+//     value_id: AttributeValueId,
+//     component_id: ComponentId,
+//     value_kind: StatusValueKind,
+// }
 
-impl AttributeValueStatusUpdate {
-    pub fn new(
-        value_id: AttributeValueId,
-        component_id: ComponentId,
-        value_kind: StatusValueKind,
-    ) -> Self {
-        Self {
-            value_id,
-            component_id,
-            value_kind,
-        }
-    }
-}
+// impl AttributeValueStatusUpdate {
+//     pub fn new(
+//         value_id: AttributeValueId,
+//         component_id: ComponentId,
+//         value_kind: StatusValueKind,
+//     ) -> Self {
+//         Self {
+//             value_id,
+//             component_id,
+//             value_kind,
+//         }
+//     }
+// }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 pub struct WsEvent {

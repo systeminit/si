@@ -1,16 +1,15 @@
 use super::ChangeSetResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
-use dal::{
-    history_event, ActionId, ActionKind, ActionPrototypeId, ActorView, ChangeSet, ChangeSetPk,
-    ChangeSetStatus, ComponentId, Func, StandardModel, Visibility,
-};
+use dal::{ActionPrototypeId, ChangeSet, ChangeSetPk, ChangeSetStatus, ComponentId};
 use serde::{Deserialize, Serialize};
+use ulid::Ulid;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ActionView {
-    pub id: ActionId,
+    // FIXME(nick,zack,jacob): drop ActionId since it does not exist yet for the graph switchover.
+    pub id: Ulid,
     pub action_prototype_id: ActionPrototypeId,
     pub name: String,
     pub component_id: ComponentId,
@@ -36,51 +35,10 @@ pub async fn list_open_change_sets(
     let list = ChangeSet::list_open(&ctx).await?;
     let mut view = Vec::with_capacity(list.len());
     for cs in list {
-        let ctx =
-            ctx.clone_with_new_visibility(Visibility::new(cs.pk, ctx.visibility().deleted_at));
-        let a = cs.actions(&ctx).await?;
-        let mut actions = Vec::with_capacity(a.len());
-        for action in a {
-            let mut display_name = None;
-            let prototype = action.prototype(&ctx).await?;
-            let func_details = Func::get_by_id(&ctx, &prototype.func_id()).await?;
-            if let Some(func) = func_details {
-                if func.display_name().is_some() {
-                    display_name = func.display_name().map(|dname| dname.to_string());
-                }
-            }
+        // let ctx =
+        //     ctx.clone_with_new_visibility(Visibility::new(cs.pk, ctx.visibility().deleted_at));
 
-            let mut actor_email: Option<String> = None;
-            {
-                if let Some(created_at_user) = action.creation_user_id() {
-                    let history_actor = history_event::HistoryActor::User(*created_at_user);
-                    let actor = ActorView::from_history_actor(&ctx, history_actor).await?;
-                    match actor {
-                        ActorView::System { label } => actor_email = Some(label),
-                        ActorView::User { label, email, .. } => {
-                            if let Some(em) = email {
-                                actor_email = Some(em)
-                            } else {
-                                actor_email = Some(label)
-                            }
-                        }
-                    };
-                }
-            }
-
-            actions.push(ActionView {
-                id: *action.id(),
-                action_prototype_id: *prototype.id(),
-                name: display_name.unwrap_or_else(|| match prototype.kind() {
-                    ActionKind::Create => "create".to_owned(),
-                    ActionKind::Delete => "delete".to_owned(),
-                    ActionKind::Other => "other".to_owned(),
-                    ActionKind::Refresh => "refresh".to_owned(),
-                }),
-                component_id: *action.component_id(),
-                actor: actor_email,
-            });
-        }
+        let mut actions = Vec::new();
 
         view.push(ChangeSetView {
             pk: cs.pk,

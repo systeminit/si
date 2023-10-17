@@ -23,6 +23,8 @@ enum ChangeSetLoopError {
     DestinationNotUpdatedWhenImportingSubgraph,
     #[error("missing change set message \"reply_to\" field")]
     MissingChangeSetMessageReplyTo,
+    #[error("missing change set pointer")]
+    MissingChangeSetPointer(ChangeSetPointerId),
     #[error("missing workspace snapshot for change set ({0}) (the change set likely isn't pointing at a workspace snapshot)")]
     MissingWorkspaceSnapshotForChangeSet(ChangeSetPointerId),
     #[error("rabbit error: {0}")]
@@ -120,7 +122,11 @@ async fn process_delivery(
 
     // Gather everything we need to detect conflicts and updates from the inbound message.
     let mut to_rebase_change_set =
-        ChangeSetPointer::find(ctx, message.to_rebase_change_set_id.into()).await?;
+        ChangeSetPointer::find(ctx, message.to_rebase_change_set_id.into())
+            .await?
+            .ok_or(ChangeSetLoopError::MissingChangeSetPointer(
+                message.to_rebase_change_set_id.into(),
+            ))?;
     let to_rebase_workspace_snapshot_id = to_rebase_change_set.workspace_snapshot_id.ok_or(
         ChangeSetLoopError::MissingWorkspaceSnapshotForChangeSet(to_rebase_change_set.id),
     )?;
@@ -209,7 +215,8 @@ async fn perform_updates_and_write_out_and_update_pointer(
                 to_rebase_workspace_snapshot.add_edge(source, edge_weight.clone(), destination)?;
             }
             Update::RemoveEdge(edge) => {
-                to_rebase_workspace_snapshot.remove_edge_for_update_stableish(*edge)?;
+                // TODO(nick): debug log or handle whether or not the edge was deleted.
+                let _ = to_rebase_workspace_snapshot.remove_edge(*edge)?;
             }
             Update::ReplaceSubgraph { onto, to_rebase } => {
                 let to_rebase = *updated.get(to_rebase).unwrap_or(to_rebase);

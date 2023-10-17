@@ -21,6 +21,7 @@
 //     clippy::missing_panics_doc
 // )]
 
+pub mod api;
 pub mod conflict;
 pub mod content_address;
 pub mod edge_weight;
@@ -31,7 +32,7 @@ pub mod update;
 pub mod vector_clock;
 
 use chrono::{DateTime, Utc};
-use content_store::ContentHash;
+use content_store::{ContentHash, StoreError};
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_cbor::CborError;
@@ -44,6 +45,7 @@ use ulid::Ulid;
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
 use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
@@ -52,6 +54,7 @@ use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
 };
+use crate::{AttributePrototypeId, AttributeValueId, PropId, PropKind};
 
 const FIND_FOR_CHANGE_SET: &str =
     include_str!("queries/workspace_snapshot/find_for_change_set.sql");
@@ -59,22 +62,48 @@ const FIND_FOR_CHANGE_SET: &str =
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
+    #[error("attribute prototype {0} is missing a function edge")]
+    AttributePrototypeMissingFunction(AttributePrototypeId),
+    #[error("attribute value {0} missing prop edge when one was expected")]
+    AttributeValueMissingPropEdge(AttributeValueId),
+    #[error("attribute value {0} missing prototype")]
+    AttributeValueMissingPrototype(AttributeValueId),
     #[error("cbor error: {0}")]
     Cbor(#[from] CborError),
     #[error("change set pointer error: {0}")]
     ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("cannot insert for prop kind: {0}")]
+    InsertionForInvalidPropKind(PropKind),
+    #[error("cannot find intrinsic func {0}")]
+    IntrinsicFuncNotFound(String),
+    #[error("missing content from store for id: {0}")]
+    MissingContentFromStore(Ulid),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("NodeWeight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("NodeWeight mismatch, expected {0:?} to be {1}")]
+    NodeWeightMismatch(NodeIndex, String),
     #[error("si_data_pg error: {0}")]
     Pg(#[from] PgError),
     #[error("poison error: {0}")]
     Poison(String),
+    #[error("Array or map prop missing element prop: {0}")]
+    PropMissingElementProp(PropId),
+    #[error("Array or map prop has more than one child prop: {0}")]
+    PropMoreThanOneChild(PropId),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("store error: {0}")]
+    Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("Type mismatch, expected prop kind {0} got {1}")]
+    TypeMismatch(PropKind, String),
+    #[error("unexpected graph layout: {0}")]
+    UnexpectedGraphLayout(&'static str),
     #[error("WorkspaceSnapshotGraph error: {0}")]
     WorkspaceSnapshotGraph(#[from] WorkspaceSnapshotGraphError),
     #[error("workspace snapshot graph missing")]
@@ -107,13 +136,49 @@ impl TryFrom<PgRow> for WorkspaceSnapshot {
     }
 }
 
+pub(crate) fn serde_value_to_string_type(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Array(_) => "array",
+        serde_json::Value::Bool(_) => "bool",
+        serde_json::Value::Null => "null",
+        serde_json::Value::Number(_) => "number",
+        serde_json::Value::Object(_) => "object",
+        serde_json::Value::String(_) => "string",
+    }
+    .into()
+}
+
 impl WorkspaceSnapshot {
     pub async fn initial(
         ctx: &DalContext,
         change_set: &ChangeSetPointer,
     ) -> WorkspaceSnapshotResult<Self> {
-        let snapshot = WorkspaceSnapshotGraph::new(change_set)?;
-        Self::new_inner(ctx, snapshot).await
+        let mut graph = WorkspaceSnapshotGraph::new(change_set)?;
+
+        // Create the category nodes under root.
+        let component_node_index =
+            graph.add_category_node(change_set, CategoryNodeKind::Component)?;
+        let func_node_index = graph.add_category_node(change_set, CategoryNodeKind::Func)?;
+        let schema_node_index = graph.add_category_node(change_set, CategoryNodeKind::Schema)?;
+
+        // Connect them to root.
+        graph.add_edge(
+            graph.root(),
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            component_node_index,
+        )?;
+        graph.add_edge(
+            graph.root(),
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            func_node_index,
+        )?;
+        graph.add_edge(
+            graph.root(),
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            schema_node_index,
+        )?;
+
+        Self::new_inner(ctx, graph).await
     }
 
     pub async fn write(
@@ -155,7 +220,7 @@ impl WorkspaceSnapshot {
                 &[&serialized_snapshot],
             )
             .await?;
-        Ok(Self::try_from(row)?)
+        Self::try_from(row)
     }
 
     pub fn id(&self) -> WorkspaceSnapshotId {
@@ -215,15 +280,6 @@ impl WorkspaceSnapshot {
             onto_workspace_snapshot.working_copy()?,
             onto_vector_clock_id,
         )?)
-    }
-
-    pub fn remove_edge_for_update_stableish(
-        &mut self,
-        edge_index: EdgeIndex,
-    ) -> WorkspaceSnapshotResult<()> {
-        Ok(self
-            .working_copy()?
-            .remove_edge_for_update_stableish(edge_index)?)
     }
 
     pub fn get_edge_by_index_stableish(

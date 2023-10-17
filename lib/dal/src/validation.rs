@@ -13,13 +13,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
-use crate::{
-    func::backend::validation::FuncBackendValidationArgs, DalContext, FuncId, PropId, SchemaId,
-    SchemaVariantId,
-};
+use crate::{FuncId};
 
 pub mod prototype;
-pub mod resolver;
+// pub mod resolver;
 
 /// Struct for creating a consumable error for the frontend when a "field" fails its validation
 /// check.
@@ -196,33 +193,33 @@ pub enum ValidationKind {
     Custom(FuncId),
 }
 
-pub async fn create_validation(
-    ctx: &DalContext,
-    validation_kind: ValidationKind,
-    builtin_func_id: FuncId,
-    prop_id: PropId,
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-) -> prototype::ValidationPrototypeResult<prototype::ValidationPrototype> {
-    let (validation_func_id, validation_args) = match validation_kind {
-        ValidationKind::Builtin(validation) => (
-            builtin_func_id,
-            serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
-        ),
+// pub async fn create_validation(
+//     ctx: &DalContext,
+//     validation_kind: ValidationKind,
+//     builtin_func_id: FuncId,
+//     prop_id: PropId,
+//     schema_id: SchemaId,
+//     schema_variant_id: SchemaVariantId,
+// ) -> prototype::ValidationPrototypeResult<prototype::ValidationPrototype> {
+//     let (validation_func_id, validation_args) = match validation_kind {
+//         ValidationKind::Builtin(validation) => (
+//             builtin_func_id,
+//             serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
+//         ),
 
-        ValidationKind::Custom(func_id) => (func_id, serde_json::json!(null)),
-    };
-    let mut builder = prototype::context::ValidationPrototypeContext::builder();
-    builder
-        .set_prop_id(prop_id)
-        .set_schema_id(schema_id)
-        .set_schema_variant_id(schema_variant_id);
+//         ValidationKind::Custom(func_id) => (func_id, serde_json::json!(null)),
+//     };
+//     let mut builder = prototype::context::ValidationPrototypeContext::builder();
+//     builder
+//         .set_prop_id(prop_id)
+//         .set_schema_id(schema_id)
+//         .set_schema_variant_id(schema_variant_id);
 
-    prototype::ValidationPrototype::new(
-        ctx,
-        validation_func_id,
-        validation_args,
-        builder.to_context(ctx).await?,
-    )
-    .await
-}
+//     prototype::ValidationPrototype::new(
+//         ctx,
+//         validation_func_id,
+//         validation_args,
+//         builder.to_context(ctx).await?,
+//     )
+//     .await
+// }

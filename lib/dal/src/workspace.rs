@@ -4,13 +4,14 @@ use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgRow};
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, standard_model_accessor_ro, DalContext, HistoryActor, HistoryEvent, HistoryEventError,
-    KeyPair, KeyPairError, StandardModelError, Tenancy, Timestamp, TransactionsError, User,
-    UserError, UserPk, WorkspaceSnapshot,
+    pk, standard_model, standard_model_accessor_ro, ChangeSetPk, DalContext, HistoryActor,
+    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, User, UserError, UserPk, Visibility, WorkspaceSnapshot,
 };
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
@@ -60,7 +61,7 @@ pub struct WorkspaceSignup {
 pub struct Workspace {
     pk: WorkspacePk,
     name: String,
-    base_change_set_id: ChangeSetPointerId,
+    default_change_set_id: ChangeSetPointerId,
     #[serde(flatten)]
     timestamp: Timestamp,
 }
@@ -74,7 +75,7 @@ impl TryFrom<PgRow> for Workspace {
         Ok(Self {
             pk: row.try_get("pk")?,
             name: row.try_get("name")?,
-            base_change_set_id: row.try_get("base_change_set_id")?,
+            default_change_set_id: row.try_get("default_change_set_id")?,
             timestamp: Timestamp::assemble(created_at, updated_at),
         })
     }
@@ -88,26 +89,31 @@ impl Workspace {
     /// Find or create the builtin [`Workspace`].
     #[instrument(skip_all)]
     pub async fn builtin(ctx: &DalContext) -> WorkspaceResult<Self> {
+        dbg!("create builtin workspace");
         // Check if the builtin already exists.
         if let Some(found_builtin) = Self::find_builtin(ctx).await? {
+            dbg!("already have builtin");
             return Ok(found_builtin);
         }
 
         // If not, create the builtin workspace with a corresponding base change set and initial
         // workspace snapshot.
-        let mut change_set = ChangeSetPointer::new(ctx, "HEAD").await?;
+        let name = "builtin";
+
+        dbg!("change set pointer new");
+        let mut change_set = ChangeSetPointer::new_head(ctx).await?;
         let workspace_snapshot = WorkspaceSnapshot::initial(ctx, &change_set).await?;
         change_set
             .update_pointer(ctx, workspace_snapshot.id())
             .await?;
         let head_pk = WorkspaceId::NONE;
-        let name = "builtin";
+
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "INSERT INTO workspaces (pk, name, base_change_set_id) VALUES ($1, $2, $3) RETURNING *",
+                "INSERT INTO workspaces (pk, name, default_change_set_id) VALUES ($1, $2, $3) RETURNING *",
                 &[&head_pk, &name, &change_set.id],
             )
             .await?;
@@ -163,13 +169,15 @@ impl Workspace {
         pk: WorkspacePk,
         name: impl AsRef<str>,
     ) -> WorkspaceResult<Self> {
-        // Get the snapshot that the builtin workspace's base change set is pointing at.
+        // Get the default change set from the builtin workspace.
         let builtin = Self::builtin(ctx).await?;
-        let workspace_snapshot =
-            WorkspaceSnapshot::find_for_change_set(ctx, builtin.base_change_set_id).await?;
 
-        // Create a new change set and point to the aforementioned snapshot.
-        let mut change_set = ChangeSetPointer::new(ctx, "HEAD").await?;
+        // Create a new change set whose base is the default change set of the workspace.
+        // Point to the snapshot that the builtin's default change set is pointing to.
+        let mut change_set =
+            ChangeSetPointer::new(ctx, "HEAD", Some(builtin.default_change_set_id)).await?;
+        let workspace_snapshot =
+            WorkspaceSnapshot::find_for_change_set(ctx, builtin.default_change_set_id).await?;
         change_set
             .update_pointer(ctx, workspace_snapshot.id())
             .await?;
@@ -180,13 +188,19 @@ impl Workspace {
             .await?
             .pg()
             .query_one(
-                "INSERT INTO workspaces (pk, name, base_change_set_id) VALUES ($1, $2, $3) RETURNING *",
+                "INSERT INTO workspaces (pk, name, default_change_set_id) VALUES ($1, $2, $3) RETURNING *",
                 &[&pk, &name, &change_set.id],
             )
             .await?;
         let new_workspace = Self::try_from(row)?;
 
         ctx.update_tenancy(Tenancy::new(new_workspace.pk));
+
+        // TODO(nick,zack,jacob): convert visibility (or get rid of it?) to use our the new change set id.
+        ctx.update_visibility(Visibility::new(
+            ChangeSetPk::from(Ulid::from(change_set.id)),
+            None,
+        ));
 
         let _history_event = HistoryEvent::new(
             ctx,
@@ -226,36 +240,6 @@ impl Workspace {
         ctx.import_builtins().await?;
 
         Ok(workspace)
-    }
-
-    pub async fn signup(
-        ctx: &mut DalContext,
-        workspace_name: impl AsRef<str>,
-        user_name: impl AsRef<str>,
-        user_email: impl AsRef<str>,
-    ) -> WorkspaceResult<WorkspaceSignup> {
-        let workspace = Workspace::new(ctx, WorkspacePk::generate(), workspace_name).await?;
-        let key_pair = KeyPair::new(ctx, "default").await?;
-
-        let user = User::new(
-            ctx,
-            UserPk::generate(),
-            &user_name,
-            &user_email,
-            None::<&str>,
-        )
-        .await?;
-        user.associate_workspace(ctx, *workspace.pk()).await?;
-
-        ctx.update_history_actor(HistoryActor::User(user.pk()));
-
-        ctx.import_builtins().await?;
-
-        Ok(WorkspaceSignup {
-            key_pair,
-            user,
-            workspace,
-        })
     }
 
     pub async fn find_by_name(ctx: &DalContext, name: &str) -> WorkspaceResult<Option<Workspace>> {

@@ -4,11 +4,9 @@ use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 
 use crate::attribute::value::AttributeValue;
-use crate::attribute::value::AttributeValueError;
-use crate::component::ComponentResult;
 use crate::{
-    AttributeReadContext, AttributeValueId, CodeLanguage, CodeView, ComponentError, ComponentId,
-    DalContext, StandardModel, WsEvent, WsPayload,
+    AttributeValueId, CodeLanguage, CodeView, ComponentId, DalContext, StandardModel, WsEvent,
+    WsPayload,
 };
 use crate::{Component, SchemaVariant};
 use crate::{RootPropChild, WsEventResult};

@@ -9,11 +9,11 @@ use thiserror::Error;
 
 use crate::standard_model::{object_option_from_row_option, objects_from_rows};
 use crate::{
-    pk, Action, ActionError, HistoryActor, HistoryEvent, HistoryEventError, LabelListError,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, User, UserError, UserPk, Visibility,
-    WsEvent, WsEventError, WsPayload,
+    pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy,
+    Timestamp, TransactionsError, User, UserError, UserPk, Visibility, WsEvent, WsEventError,
+    WsPayload,
 };
-use crate::{ComponentError, DalContext, WsEventResult};
+use crate::{DalContext, WsEventResult};
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("queries/change_set/open_list.sql");
 const CHANGE_SET_GET_BY_PK: &str = include_str!("queries/change_set/get_by_pk.sql");
@@ -26,10 +26,6 @@ const ABANDON_CHANGE_SET: &str = include_str!("queries/change_set/abandon_change
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
-    #[error(transparent)]
-    Action(#[from] ActionError),
-    #[error(transparent)]
-    Component(#[from] ComponentError),
     #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
     #[error("invalid user actor pk")]
@@ -236,53 +232,53 @@ impl ChangeSet {
         Ok(change_set)
     }
 
-    pub async fn sort_actions(&self, ctx: &DalContext) -> ChangeSetResult<()> {
-        let ctx =
-            ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
-        Ok(Action::sort_of_change_set(&ctx).await?)
-    }
+    // pub async fn sort_actions(&self, ctx: &DalContext) -> ChangeSetResult<()> {
+    //     let ctx =
+    //         ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
+    //     Ok(Action::sort_of_change_set(&ctx).await?)
+    // }
 
-    pub async fn actions(&self, ctx: &DalContext) -> ChangeSetResult<Vec<Action>> {
-        let ctx =
-            ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
-        Ok(Action::find_for_change_set(&ctx).await?)
-    }
+    // pub async fn actions(&self, ctx: &DalContext) -> ChangeSetResult<Vec<Action>> {
+    //     let ctx =
+    //         ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
+    //     Ok(Action::find_for_change_set(&ctx).await?)
+    // }
 
-    pub async fn actors(&self, ctx: &DalContext) -> ChangeSetResult<Vec<String>> {
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(GET_ACTORS, &[&ctx.tenancy().workspace_pk(), &self.pk])
-            .await?;
+    // pub async fn actors(&self, ctx: &DalContext) -> ChangeSetResult<Vec<String>> {
+    //     let rows = ctx
+    //         .txns()
+    //         .await?
+    //         .pg()
+    //         .query(GET_ACTORS, &[&ctx.tenancy().workspace_pk(), &self.pk])
+    //         .await?;
 
-        let mut result: Vec<String> = vec![];
-        for row in rows.into_iter() {
-            let email: String = row.try_get("email")?;
-            result.push(email);
-        }
+    //     let mut result: Vec<String> = vec![];
+    //     for row in rows.into_iter() {
+    //         let email: String = row.try_get("email")?;
+    //         result.push(email);
+    //     }
 
-        Ok(result)
-    }
+    //     Ok(result)
+    // }
 
-    pub async fn force_new(ctx: &mut DalContext) -> ChangeSetResult<Option<ChangeSetPk>> {
-        Ok(if ctx.visibility().is_head() {
-            let change_set = Self::new(ctx, Self::generate_name(), None).await?;
+    // pub async fn force_new(ctx: &mut DalContext) -> ChangeSetResult<Option<ChangeSetPk>> {
+    //     Ok(if ctx.visibility().is_head() {
+    //         let change_set = Self::new(ctx, Self::generate_name(), None).await?;
 
-            let new_visibility = Visibility::new(change_set.pk, ctx.visibility().deleted_at);
+    //         let new_visibility = Visibility::new(change_set.pk, ctx.visibility().deleted_at);
 
-            ctx.update_visibility(new_visibility);
+    //         ctx.update_visibility(new_visibility);
 
-            WsEvent::change_set_created(ctx, change_set.pk)
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
+    //         WsEvent::change_set_created(ctx, change_set.pk)
+    //             .await?
+    //             .publish_on_commit(ctx)
+    //             .await?;
 
-            Some(change_set.pk)
-        } else {
-            None
-        })
-    }
+    //         Some(change_set.pk)
+    //     } else {
+    //         None
+    //     })
+    // }
 }
 
 impl WsEvent {

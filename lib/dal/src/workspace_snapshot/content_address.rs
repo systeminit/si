@@ -1,11 +1,13 @@
 use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 
 #[remain::sorted]
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[derive(EnumDiscriminants, Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
 /// The type of the object, and the content-addressable-storage address (content hash)
 /// of the object itself.
 pub enum ContentAddress {
+    ActionPrototype(ContentHash),
     AttributePrototype(ContentHash),
     AttributeValue(ContentHash),
     Component(ContentHash),
@@ -13,26 +15,33 @@ pub enum ContentAddress {
     Func(ContentHash),
     FuncArg(ContentHash),
     InternalProvider(ContentHash),
+    Node(ContentHash),
     Prop(ContentHash),
     Root,
     Schema(ContentHash),
     SchemaVariant(ContentHash),
+    Socket(ContentHash),
+    ValidationPrototype(ContentHash),
 }
 
 impl ContentAddress {
     pub fn content_hash(&self) -> ContentHash {
         match self {
-            ContentAddress::AttributePrototype(id) => Some(*id),
-            ContentAddress::AttributeValue(id) => Some(*id),
-            ContentAddress::Component(id) => Some(*id),
-            ContentAddress::ExternalProvider(id) => Some(*id),
-            ContentAddress::FuncArg(id) => Some(*id),
-            ContentAddress::Func(id) => Some(*id),
-            ContentAddress::InternalProvider(id) => Some(*id),
-            ContentAddress::Prop(id) => Some(*id),
             ContentAddress::Root => None,
-            ContentAddress::Schema(id) => Some(*id),
-            ContentAddress::SchemaVariant(id) => Some(*id),
+            ContentAddress::ActionPrototype(id)
+            | ContentAddress::AttributePrototype(id)
+            | ContentAddress::AttributeValue(id)
+            | ContentAddress::Component(id)
+            | ContentAddress::ExternalProvider(id)
+            | ContentAddress::FuncArg(id)
+            | ContentAddress::Func(id)
+            | ContentAddress::InternalProvider(id)
+            | ContentAddress::Node(id)
+            | ContentAddress::Prop(id)
+            | ContentAddress::Schema(id)
+            | ContentAddress::SchemaVariant(id)
+            | ContentAddress::Socket(id)
+            | ContentAddress::ValidationPrototype(id) => Some(*id),
         }
         .unwrap_or_default()
     }

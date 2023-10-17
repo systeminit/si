@@ -9,10 +9,9 @@ use telemetry::prelude::*;
 
 use crate::authentication_prototype::AuthenticationPrototypeError::AuthAlreadySet;
 use crate::{
-    component::view::ComponentViewError, impl_standard_model, pk, standard_model,
-    standard_model_accessor, ComponentId, DalContext, FuncBindingError,
-    FuncBindingReturnValueError, FuncId, HistoryEventError, SchemaVariantId, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility, WsEventError,
+    impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, DalContext,
+    FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
+    Timestamp, TransactionsError, Visibility, WsEventError,
 };
 
 const FIND_FOR_CONTEXT: &str =
@@ -30,12 +29,6 @@ pub enum AuthenticationPrototypeError {
     Component(String),
     #[error("component not found: {0}")]
     ComponentNotFound(ComponentId),
-    #[error(transparent)]
-    ComponentView(#[from] ComponentViewError),
-    #[error(transparent)]
-    FuncBinding(#[from] FuncBindingError),
-    #[error(transparent)]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("action Func {0} not found for ActionPrototype {1}")]
     FuncNotFound(FuncId, AuthenticationPrototypeId),
     #[error("history event error: {0}")]

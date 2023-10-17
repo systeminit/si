@@ -22,7 +22,7 @@ pub(crate) async fn management_loop_infallible_wrapper(
     veritech: veritech_client::Client,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     symmetric_crypto_service: SymmetricCryptoService,
-    encryption_key: Arc<veritech_client::EncryptionKey>,
+    encryption_key: Arc<veritech_client::CycloneEncryptionKey>,
     shutdown_watch_rx: watch::Receiver<()>,
 ) {
     if let Err(err) = management_loop(
@@ -48,7 +48,7 @@ async fn management_loop(
     veritech: veritech_client::Client,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     symmetric_crypto_service: SymmetricCryptoService,
-    encryption_key: Arc<veritech_client::EncryptionKey>,
+    encryption_key: Arc<veritech_client::CycloneEncryptionKey>,
     _shutdown_watch_rx: watch::Receiver<()>,
 ) -> ServerResult<()> {
     let services_context = ServicesContext::new(

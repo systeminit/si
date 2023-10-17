@@ -185,9 +185,7 @@ impl FuncBinding {
         func_id: FuncId,
         before: Vec<BeforeFunction>,
     ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
-        let func = Func::get_by_id(ctx, &func_id)
-            .await?
-            .ok_or(FuncError::NotFound(func_id))?;
+        let func_id = func.id;
         let func_binding = Self::new(ctx, args, func_id, func.backend_kind).await?;
 
         let func_binding_return_value: FuncBindingReturnValue =

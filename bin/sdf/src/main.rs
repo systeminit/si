@@ -130,13 +130,13 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             )?;
             let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
-            Server::start_resource_refresh_scheduler(
-                services_context.clone(),
-                initial_shutdown_broadcast_rx,
-            )
-            .await;
+            // Server::start_resource_refresh_scheduler(
+            //     services_context.clone(),
+            //     initial_shutdown_broadcast_rx,
+            // )
+            // .await;
 
-            Server::start_status_updater(services_context, second_shutdown_broadcast_rx).await?;
+            // Server::start_status_updater(services_context, second_shutdown_broadcast_rx).await?;
 
             server.run().await?;
         }
@@ -150,13 +150,13 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             .await?;
             let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
-            Server::start_resource_refresh_scheduler(
-                services_context.clone(),
-                initial_shutdown_broadcast_rx,
-            )
-            .await;
+            // Server::start_resource_refresh_scheduler(
+            //     services_context.clone(),
+            //     initial_shutdown_broadcast_rx,
+            // )
+            // .await;
 
-            Server::start_status_updater(services_context, second_shutdown_broadcast_rx).await?;
+            // Server::start_status_updater(services_context, second_shutdown_broadcast_rx).await?;
 
             server.run().await?;
         }

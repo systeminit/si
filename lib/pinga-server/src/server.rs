@@ -3,11 +3,10 @@ use std::{io, path::Path, sync::Arc};
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
-        definition::{FixesJob, RefreshJob},
         producer::BlockingJobError,
     },
-    DalContext, DalContextBuilder, DependentValuesUpdate, InitializationError, JobFailure,
-    JobFailureError, JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
+    DalContext, DalContextBuilder, InitializationError, JobFailure, JobFailureError,
+    JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
 };
 use futures::{FutureExt, Stream, StreamExt};
 use nats_subscriber::{Request, SubscriberError};
@@ -477,27 +476,26 @@ async fn execute_job(
         tracing::Span::current().record("job_info.blocking", job_info.blocking);
     }
 
-    let job =
-        match job_info.kind.as_str() {
-            stringify!(DependentValuesUpdate) => {
-                Box::new(DependentValuesUpdate::try_from(job_info.clone())?)
-                    as Box<dyn JobConsumer + Send + Sync>
-            }
-            stringify!(FixesJob) => Box::new(FixesJob::try_from(job_info.clone())?)
-                as Box<dyn JobConsumer + Send + Sync>,
-            stringify!(RefreshJob) => Box::new(RefreshJob::try_from(job_info.clone())?)
-                as Box<dyn JobConsumer + Send + Sync>,
-            kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),
-        };
+    // let job = match job_info.kind.as_str() {
+    //     stringify!(DependentValuesUpdate) => {
+    //         Box::new(DependentValuesUpdate::try_from(job_info.clone())?)
+    //             as Box<dyn JobConsumer + Send + Sync>
+    //     }
+    //     stringify!(FixesJob) => Box::new(FixesJob::try_from(job_info.clone())?)
+    //         as Box<dyn JobConsumer + Send + Sync>,
+    //     stringify!(RefreshJob) => Box::new(RefreshJob::try_from(job_info.clone())?)
+    //         as Box<dyn JobConsumer + Send + Sync>,
+    //     kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),
+    // };
 
-    info!("Processing job");
+    // info!("Processing job");
 
-    if let Err(err) = job.run_job(ctx_builder.clone()).await {
-        // The missing part is this, should we execute subsequent jobs if the one they depend on fail or not?
-        record_job_failure(ctx_builder, job, err).await?;
-    }
+    // if let Err(err) = job.run_job(ctx_builder.clone()).await {
+    //     // The missing part is this, should we execute subsequent jobs if the one they depend on fail or not?
+    //     record_job_failure(ctx_builder, job, err).await?;
+    // }
 
-    info!("Finished processing job");
+    // info!("Finished processing job");
 
     Ok(())
 }

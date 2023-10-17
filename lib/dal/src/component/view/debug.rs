@@ -5,14 +5,12 @@ use thiserror::Error;
 
 use crate::{
     func::execution::{FuncExecution, FuncExecutionError},
-    socket::{SocketEdgeKind, SocketError},
-    AttributePrototype, AttributeReadContext, AttributeValue, AttributeValueError,
-    AttributeValueId, AttributeValuePayload, Component, ComponentError, ComponentId, DalContext,
-    ExternalProvider, ExternalProviderId, Func, FuncBinding, FuncBindingError,
-    FuncBindingReturnValue, FuncBindingReturnValueError, FuncError, InternalProvider,
-    InternalProviderError, InternalProviderId, Prop, PropError, PropId, PropKind,
-    SchemaVariantError, SchemaVariantId, SecretError, SecretId, Socket, SocketId, StandardModel,
-    StandardModelError,
+    socket::SocketEdgeKind,
+    AttributePrototype, AttributeValue, AttributeValueId, AttributeValuePayload, Component,
+    ComponentId, DalContext, ExternalProvider, ExternalProviderId, Func, FuncBinding,
+    FuncBindingError, FuncBindingReturnValue, FuncBindingReturnValueError, InternalProvider,
+    InternalProviderId, Prop, PropId, PropKind, SchemaVariantId, SecretError, SecretId, Socket,
+    SocketId, StandardModel, StandardModelError,
 };
 
 type ComponentDebugViewResult<T> = Result<T, ComponentDebugViewError>;

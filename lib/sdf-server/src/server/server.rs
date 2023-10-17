@@ -16,13 +16,11 @@ use tokio::{
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use ulid::Ulid;
 
-use dal::pkg::{import_pkg_from_pkg, ImportOptions, PkgError};
-use dal::tasks::{StatusReceiver, StatusReceiverError};
+use dal::ServicesContext;
 use dal::{
     builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
     Workspace, WorkspaceError,
 };
-use dal::{tasks::ResourceScheduler, ServicesContext};
 use module_index_client::types::BuiltinsDetailsResponse;
 use module_index_client::{IndexClient, ModuleDetailsResponse};
 use si_crypto::{
@@ -74,8 +72,6 @@ pub enum ServerError {
     Pg(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] Box<PgPoolError>),
-    #[error(transparent)]
-    Pkg(#[from] PkgError),
     #[error("failed to install package")]
     PkgInstall,
     #[error(transparent)]
@@ -84,8 +80,6 @@ pub enum ServerError {
     Signal(#[source] io::Error),
     #[error(transparent)]
     SiPkg(#[from] SiPkgError),
-    #[error(transparent)]
-    StatusReceiver(#[from] StatusReceiverError),
     #[error(transparent)]
     SymmetricCryptoService(#[from] SymmetricCryptoError),
     #[error("transactions error: {0}")]
@@ -230,23 +224,23 @@ impl Server<(), ()> {
         Ok(())
     }
 
-    /// Start the basic resource refresh scheduler
-    pub async fn start_resource_refresh_scheduler(
-        services_context: ServicesContext,
-        shutdown_broadcast_rx: broadcast::Receiver<()>,
-    ) {
-        ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
-    }
+    // /// Start the basic resource refresh scheduler
+    // pub async fn start_resource_refresh_scheduler(
+    //     services_context: ServicesContext,
+    //     shutdown_broadcast_rx: broadcast::Receiver<()>,
+    // ) {
+    //     ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
+    // }
 
-    pub async fn start_status_updater(
-        services_context: ServicesContext,
-        shutdown_broadcast_rx: broadcast::Receiver<()>,
-    ) -> Result<()> {
-        StatusReceiver::new(services_context)
-            .await?
-            .start(shutdown_broadcast_rx);
-        Ok(())
-    }
+    // pub async fn start_status_updater(
+    //     services_context: ServicesContext,
+    //     shutdown_broadcast_rx: broadcast::Receiver<()>,
+    // ) -> Result<()> {
+    //     StatusReceiver::new(services_context)
+    //         .await?
+    //         .start(shutdown_broadcast_rx);
+    //     Ok(())
+    // }
 
     #[instrument(name = "sdf.init.create_pg_pool", skip_all)]
     pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
@@ -318,8 +312,8 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
 
     info!("migrating intrinsic functions");
     builtins::func::migrate_intrinsics(&ctx).await?;
-    info!("migrating builtin functions");
-    builtins::func::migrate(&ctx).await?;
+    // info!("migrating builtin functions");
+    // builtins::func::migrate(&ctx).await?;
 
     let module_index_url = services_context
         .module_index_url()
@@ -376,10 +370,10 @@ async fn install_builtins(
         let (pkg_name, res) = res?;
         match res {
             Ok(pkg) => {
-                if let Err(err) = import_pkg_from_pkg(
+                if let Err(err) = dal::pkg::import_pkg_from_pkg(
                     &ctx,
                     &pkg,
-                    Some(ImportOptions {
+                    Some(dal::pkg::ImportOptions {
                         schemas: None,
                         skip_import_funcs: None,
                         no_record: false,
@@ -394,8 +388,8 @@ async fn install_builtins(
 
                     count += 1;
                     println!(
-                        "Pkg {pkg_name} Install finished successfully. {count} of {total} installed.",
-                    );
+                         "Pkg {pkg_name} Install finished successfully. {count} of {total} installed.",
+                     );
                 }
             }
             Err(err) => {

@@ -1,5 +1,7 @@
 use chrono::Utc;
 use content_store::{ContentHash, Store, StoreError};
+use petgraph::graph::Edge;
+use petgraph::stable_graph::Edges;
 use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -12,13 +14,18 @@ use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::{
     conflict::Conflict,
     content_address::ContentAddress,
-    edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind},
+    edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
     node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
     update::Update,
 };
+use crate::FuncId;
+
+use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
+use crate::workspace_snapshot::node_weight::CategoryNodeWeight;
 
 /// Ensure [`NodeIndex`] is usable by external crates.
 pub use petgraph::graph::NodeIndex;
+pub use petgraph::Direction;
 
 pub type LineageId = Ulid;
 
@@ -143,6 +150,64 @@ impl WorkspaceSnapshotGraph {
         Ok(new_node_index)
     }
 
+    pub fn add_category_node(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        kind: CategoryNodeKind,
+    ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        let inner_weight = CategoryNodeWeight::new(change_set, kind)?;
+        let new_node_index = self.add_node(NodeWeight::Category(inner_weight))?;
+        Ok(new_node_index)
+    }
+
+    pub fn get_category_child(
+        &mut self,
+        kind: CategoryNodeKind,
+    ) -> WorkspaceSnapshotGraphResult<(Ulid, NodeIndex)> {
+        for edgeref in self.graph.edges_directed(self.root(), Outgoing) {
+            let node_weight = self
+                .graph
+                .node_weight(edgeref.target())
+                .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
+            if let NodeWeight::Category(inner_weight) = node_weight {
+                if inner_weight.kind() == kind {
+                    return Ok((inner_weight.id(), edgeref.target()));
+                }
+            }
+        }
+        self.dot();
+        todo!("could not get category child")
+    }
+
+    pub fn edges_directed(
+        &self,
+        node_index: NodeIndex,
+        direction: Direction,
+    ) -> Edges<'_, EdgeWeight, Directed, u32> {
+        self.graph.edges_directed(node_index, direction)
+    }
+
+    pub fn func_find_by_name(
+        &self,
+        parent_node_index: NodeIndex,
+        name: impl AsRef<str>,
+    ) -> WorkspaceSnapshotGraphResult<Option<FuncId>> {
+        let name = name.as_ref();
+        for edgeref in self.graph.edges_directed(parent_node_index, Outgoing) {
+            let node_weight = self
+                .graph
+                .node_weight(edgeref.target())
+                .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
+            if let NodeWeight::Func(inner_weight) = node_weight {
+                if inner_weight.name() == name {
+                    return Ok(Some(inner_weight.id().into()));
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
     pub fn add_ordered_edge(
         &mut self,
         change_set: &ChangeSetPointer,
@@ -191,8 +256,7 @@ impl WorkspaceSnapshotGraph {
         Ok(new_edge_index)
     }
 
-    #[allow(dead_code)]
-    fn add_ordered_node(
+    pub fn add_ordered_node(
         &mut self,
         change_set: &ChangeSetPointer,
         node: NodeWeight,
@@ -320,8 +384,8 @@ impl WorkspaceSnapshotGraph {
                 // determine their sorting in oldest to most recent order.
                 let mut child_index_to_position = HashMap::new();
                 let mut child_indexes = Vec::new();
-                let mut outgoing_edges = self.graph.edges_directed(current_node_index, Outgoing);
-                while let Some(edge_ref) = outgoing_edges.next() {
+                let outgoing_edges = self.graph.edges_directed(current_node_index, Outgoing);
+                for edge_ref in outgoing_edges {
                     match edge_ref.weight().kind() {
                         EdgeWeightKind::Contain(Some(key)) => {
                             view_pointer
@@ -639,11 +703,11 @@ impl WorkspaceSnapshotGraph {
                     // There was at least one thing with a merkle tree hash difference, so we need
                     // to examine further down the tree to see where the difference(s) are, and
                     // where there are conflicts, if there are any.
-                    return Ok(petgraph::visit::Control::Continue);
+                    Ok(petgraph::visit::Control::Continue)
                 } else {
                     // Everything to be rebased is identical, so there's no need to examine the
                     // rest of the tree looking for differences & conflicts that won't be there.
-                    return Ok(petgraph::visit::Control::Prune);
+                    Ok(petgraph::visit::Control::Prune)
                 }
             }
             DfsEvent::TreeEdge(_, _)
@@ -652,7 +716,7 @@ impl WorkspaceSnapshotGraph {
             | DfsEvent::Finish(_, _) => {
                 // These events are all ignored, since we handle looking at edges as we encounter
                 // the node(s) the edges are coming from (Outgoing edges).
-                return Ok(petgraph::visit::Control::Continue);
+                Ok(petgraph::visit::Control::Continue)
             }
         }
     }
@@ -894,8 +958,8 @@ impl WorkspaceSnapshotGraph {
                                 });
                             }
                         }
-                    } else if let Some(onto_item_node_weight) =
-                        onto.get_node_weight(only_onto_item_index).ok()
+                    } else if let Ok(onto_item_node_weight) =
+                        onto.get_node_weight(only_onto_item_index)
                     {
                         if let Some(root_seen_as_of) = onto_root_seen_as_of {
                             if onto_item_node_weight
@@ -1172,7 +1236,7 @@ impl WorkspaceSnapshotGraph {
     ) -> WorkspaceSnapshotGraphResult<()> {
         let seen_at = Utc::now();
         for edge in self.graph.edge_weights_mut() {
-            edge.mark_seen_at(vector_clock_id, seen_at.clone());
+            edge.mark_seen_at(vector_clock_id, seen_at);
         }
         for node in self.graph.node_weights_mut() {
             node.mark_seen_at(vector_clock_id, seen_at);
@@ -1253,17 +1317,20 @@ impl WorkspaceSnapshotGraph {
         Ok(prop_node_indexes.get(0).copied())
     }
 
+    pub(crate) fn remove_edge_by_index(&mut self, edge_index: EdgeIndex) -> Option<EdgeWeight> {
+        self.graph.remove_edge(edge_index)
+    }
+
     /// [`StableGraph`] guarantees the stability of [`NodeIndex`] across removals, however there
     /// are **NO** guarantees around the stability of [`EdgeIndex`] across removals. If
     /// [`Self::cleanup()`] has been called, then any [`EdgeIndex`] found before
     /// [`Self::cleanup()`] has run should be considered invalid.
-    #[allow(dead_code)]
     pub(crate) fn remove_edge(
         &mut self,
         change_set: &ChangeSetPointer,
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
-        edge_kind: EdgeWeightKind,
+        edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let mut edges_to_remove = Vec::new();
         let new_source_node_index = self.copy_node_index(source_node_index)?;
@@ -1273,7 +1340,7 @@ impl WorkspaceSnapshotGraph {
             .graph
             .edges_connecting(new_source_node_index, target_node_index)
         {
-            if edgeref.weight().kind() == &edge_kind {
+            if edge_kind == edgeref.weight().kind().into() {
                 edges_to_remove.push(edgeref.id());
             }
         }
@@ -1321,17 +1388,6 @@ impl WorkspaceSnapshotGraph {
             self.get_node_index_by_id(self.get_node_weight(new_source_node_index)?.id())?,
         )?;
 
-        Ok(())
-    }
-
-    pub(crate) fn remove_edge_for_update_stableish(
-        &mut self,
-        edge_index: EdgeIndex,
-    ) -> WorkspaceSnapshotGraphResult<()> {
-        let _ = self
-            .graph
-            .remove_edge(edge_index)
-            .ok_or(WorkspaceSnapshotGraphError::EdgeDoesNotExist(edge_index))?;
         Ok(())
     }
 
@@ -1457,7 +1513,7 @@ impl WorkspaceSnapshotGraph {
         // order specified by the ordering graph node.
         let explicitly_ordered_children = self
             .ordered_children_for_node(node_index_to_update)?
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         // Need to make sure the unordered neighbors are added to the hash in a stable order to
         // ensure the merkle tree hash is identical for identical trees.
@@ -1509,11 +1565,15 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKind::Argument(arg_name) => hasher.update(arg_name.as_bytes()),
                     // This is the key for an entry in a map.
                     EdgeWeightKind::Contain(Some(key)) => hasher.update(key.as_bytes()),
+                    // This is the kind of the action.
+                    EdgeWeightKind::ActionPrototype(kind) => {
+                        hasher.update(kind.to_string().as_bytes())
+                    }
 
                     // Nothing to do, as these EdgeWeightKind do not encode extra information
                     // in the edge itself.
                     EdgeWeightKind::Contain(None)
-                    | EdgeWeightKind::DataProvider
+                    | EdgeWeightKind::Provider
                     | EdgeWeightKind::Ordering
                     | EdgeWeightKind::Prop
                     | EdgeWeightKind::Prototype
@@ -1541,13 +1601,13 @@ fn ordering_node_indexes_for_node_index(
         .graph
         .edges_directed(node_index, Outgoing)
         .filter_map(|edge_reference| {
-            if edge_reference.weight().kind() == &EdgeWeightKind::Ordering {
-                if matches!(
+            if edge_reference.weight().kind() == &EdgeWeightKind::Ordering
+                && matches!(
                     snapshot.get_node_weight(edge_reference.target()),
                     Ok(NodeWeight::Ordering(_))
-                ) {
-                    return Some(edge_reference.target());
-                }
+                )
+            {
+                return Some(edge_reference.target());
             }
 
             None
@@ -1563,13 +1623,13 @@ fn prop_node_indexes_for_node_index(
         .graph
         .edges_directed(node_index, Outgoing)
         .filter_map(|edge_reference| {
-            if edge_reference.weight().kind() == &EdgeWeightKind::Prop {
-                if matches!(
+            if edge_reference.weight().kind() == &EdgeWeightKind::Prop
+                && matches!(
                     snapshot.get_node_weight(edge_reference.target()),
                     Ok(NodeWeight::Prop(_))
-                ) {
-                    return Some(edge_reference.target());
-                }
+                )
+            {
+                return Some(edge_reference.target());
             }
             None
         })
@@ -2740,7 +2800,7 @@ mod test {
                 base_graph
                     .get_node_index_by_id(component_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeightKind::Use,
+                EdgeWeightKindDiscriminants::Use,
             )
             .expect("Unable to remove Component A");
 
@@ -3004,7 +3064,7 @@ mod test {
                 base_graph
                     .get_node_index_by_id(nginx_butane_component_id)
                     .expect("Unable to get NodeIndex"),
-                EdgeWeightKind::Use,
+                EdgeWeightKindDiscriminants::Use,
             )
             .expect("Unable to update the component");
         new_graph
@@ -3798,7 +3858,7 @@ mod test {
                     .get_node_index_by_id(prop_id)
                     .expect("Unable to get NodeIndex for prop"),
                 ordered_prop_2_index,
-                EdgeWeightKind::Use,
+                EdgeWeightKindDiscriminants::Use,
             )
             .expect("Unable to remove prop -> ordered_prop_2 edge");
 
@@ -4826,7 +4886,7 @@ mod test {
                     .get_node_index_by_id(container_prop_id)
                     .expect("Unable to get container NodeIndex"),
                 ordered_prop_2_index,
-                EdgeWeightKind::Use,
+                EdgeWeightKindDiscriminants::Use,
             )
             .expect("Unable to remove container prop -> prop 2 edge");
 

@@ -3,108 +3,107 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+
 use strum::{AsRefStr, Display, EnumString};
 
 use si_pkg::PropSpecWidgetKind;
 
-use crate::property_editor::{PropertyEditorError, PropertyEditorPropId, PropertyEditorResult};
-use crate::{DalContext, Prop, PropKind, SchemaVariant, SchemaVariantId, StandardModel};
+use crate::{PropKind, StandardModel};
 
-const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
-    include_str!("../queries/property_editor_schema_for_schema_variant.sql");
+// const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
+//     include_str!("../queries/property_editor_schema_for_schema_variant.sql");
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PropertyEditorSchema {
-    pub root_prop_id: PropertyEditorPropId,
-    pub props: HashMap<PropertyEditorPropId, PropertyEditorProp>,
-    pub child_props: HashMap<PropertyEditorPropId, Vec<PropertyEditorPropId>>,
-}
+// #[derive(Clone, Debug, Serialize, Deserialize)]
+// #[serde(rename_all = "camelCase")]
+// pub struct PropertyEditorSchema {
+//     pub root_prop_id: PropertyEditorPropId,
+//     pub props: HashMap<PropertyEditorPropId, PropertyEditorProp>,
+//     pub child_props: HashMap<PropertyEditorPropId, Vec<PropertyEditorPropId>>,
+// }
 
-impl PropertyEditorSchema {
-    pub async fn for_schema_variant(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) -> PropertyEditorResult<Self> {
-        let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
-            .await?
-            .ok_or(PropertyEditorError::SchemaVariantNotFound(
-                schema_variant_id,
-            ))?;
-        let mut props: HashMap<PropertyEditorPropId, PropertyEditorProp> = HashMap::new();
-        let mut child_props: HashMap<PropertyEditorPropId, Vec<PropertyEditorPropId>> =
-            HashMap::new();
+// impl PropertyEditorSchema {
+//     pub async fn for_schema_variant(
+//         ctx: &DalContext,
+//         schema_variant_id: SchemaVariantId,
+//     ) -> PropertyEditorResult<Self> {
+//         let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
+//             .await?
+//             .ok_or(PropertyEditorError::SchemaVariantNotFound(
+//                 schema_variant_id,
+//             ))?;
+//         let mut props: HashMap<PropertyEditorPropId, PropertyEditorProp> = HashMap::new();
+//         let mut child_props: HashMap<PropertyEditorPropId, Vec<PropertyEditorPropId>> =
+//             HashMap::new();
 
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT,
-                &[ctx.tenancy(), ctx.visibility(), &schema_variant.id()],
-            )
-            .await?;
+//         let rows = ctx
+//             .txns()
+//             .await?
+//             .pg()
+//             .query(
+//                 PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT,
+//                 &[ctx.tenancy(), ctx.visibility(), &schema_variant.id()],
+//             )
+//             .await?;
 
-        for row in rows {
-            let json: Value = row.try_get("object")?;
-            let prop: Prop = serde_json::from_value(json)?;
-            // Omit any secret definition props in the result
-            if prop
-                .json_pointer(ctx)
-                .await?
-                .starts_with("/root/secret_definition")
-            {
-                continue;
-            }
-            let property_editor_prop = PropertyEditorProp::new(prop);
+//         for row in rows {
+//             let json: Value = row.try_get("object")?;
+//             let prop: Prop = serde_json::from_value(json)?;
+//             // Omit any secret definition props in the result
+//             if prop
+//                 .json_pointer(ctx)
+//                 .await?
+//                 .starts_with("/root/secret_definition")
+//             {
+//                 continue;
+//             }
+//             let property_editor_prop = PropertyEditorProp::new(prop);
 
-            let maybe_child_prop_ids: Option<Vec<PropertyEditorPropId>> =
-                row.try_get("child_prop_ids")?;
-            if let Some(child_prop_ids) = maybe_child_prop_ids {
-                child_props.insert(property_editor_prop.id, child_prop_ids);
-            }
+//             let maybe_child_prop_ids: Option<Vec<PropertyEditorPropId>> =
+//                 row.try_get("child_prop_ids")?;
+//             if let Some(child_prop_ids) = maybe_child_prop_ids {
+//                 child_props.insert(property_editor_prop.id, child_prop_ids);
+//             }
 
-            props.insert(property_editor_prop.id, property_editor_prop);
-        }
+//             props.insert(property_editor_prop.id, property_editor_prop);
+//         }
 
-        let root_prop_id = schema_variant
-            .root_prop_id()
-            .ok_or(PropertyEditorError::RootPropNotFound)?;
-        Ok(PropertyEditorSchema {
-            root_prop_id: (*root_prop_id).into(),
-            props,
-            child_props,
-        })
-    }
-}
+//         let root_prop_id = schema_variant
+//             .root_prop_id()
+//             .ok_or(PropertyEditorError::RootPropNotFound)?;
+//         Ok(PropertyEditorSchema {
+//             root_prop_id: (*root_prop_id).into(),
+//             props,
+//             child_props,
+//         })
+//     }
+// }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PropertyEditorProp {
-    pub id: PropertyEditorPropId,
-    pub name: String,
-    pub kind: PropertyEditorPropKind,
-    pub widget_kind: PropertyEditorPropWidgetKind,
-    pub doc_link: Option<String>,
-    pub documentation: Option<String>,
-}
+// #[derive(Clone, Debug, Serialize, Deserialize)]
+// #[serde(rename_all = "camelCase")]
+// pub struct PropertyEditorProp {
+//     pub id: PropertyEditorPropId,
+//     pub name: String,
+//     pub kind: PropertyEditorPropKind,
+//     pub widget_kind: PropertyEditorPropWidgetKind,
+//     pub doc_link: Option<String>,
+//     pub documentation: Option<String>,
+// }
 
-impl PropertyEditorProp {
-    pub fn new(prop: Prop) -> PropertyEditorProp {
-        PropertyEditorProp {
-            id: (*prop.id()).into(),
-            name: prop.name().into(),
-            kind: prop.kind().into(),
-            widget_kind: PropertyEditorPropWidgetKind::new(
-                *prop.widget_kind(),
-                prop.widget_options().map(|v| v.to_owned()),
-            ),
-            doc_link: prop.doc_link().map(Into::into),
-            documentation: prop.documentation().map(Into::into),
-        }
-    }
-}
+// impl PropertyEditorProp {
+//     pub fn new(prop: Prop) -> PropertyEditorProp {
+//         PropertyEditorProp {
+//             id: (*prop.id()).into(),
+//             name: prop.name().into(),
+//             kind: prop.kind().into(),
+//             widget_kind: PropertyEditorPropWidgetKind::new(
+//                 *prop.widget_kind(),
+//                 prop.widget_options().map(|v| v.to_owned()),
+//             ),
+//             doc_link: prop.doc_link().map(Into::into),
+//             documentation: prop.documentation().map(Into::into),
+//         }
+//     }
+// }
 
 #[remain::sorted]
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]

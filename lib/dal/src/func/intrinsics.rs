@@ -3,7 +3,7 @@ use si_pkg::{
     FuncSpecData, PkgSpec,
 };
 
-use super::{FuncError, FuncResult};
+use crate::func::{FuncError, FuncResult};
 use chrono::DateTime;
 use strum::{AsRefStr, Display, EnumIter, EnumString, IntoEnumIterator};
 

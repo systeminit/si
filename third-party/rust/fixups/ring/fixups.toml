@@ -1,3 +1,6 @@
+# NOTE(nick,jacob): adding cargo env. Original vendored file continues below.
+cargo_env = true
+
 # vendored-date: 2023-05-03
 # project: https://github.com/facebook/buck2
 # commit-hash: f24bf491d4ee266e1ccb444919bce598ba88ad8a
