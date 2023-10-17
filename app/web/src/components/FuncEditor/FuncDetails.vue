@@ -39,6 +39,7 @@
                     FuncVariant.Attribute,
                     FuncVariant.CodeGeneration,
                     FuncVariant.Qualification,
+                    FuncVariant.Validation,
                   ].includes(funcStore.selectedFuncDetails.variant)
                 "
                 class="--tone-action"
@@ -265,6 +266,7 @@
             FuncVariant.Attribute,
             FuncVariant.CodeGeneration,
             FuncVariant.Qualification,
+            FuncVariant.Validation,
           ].includes(funcStore.selectedFuncDetails.variant)
         "
         label="Test"
