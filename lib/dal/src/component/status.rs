@@ -2,7 +2,6 @@ use chrono::DateTime;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::component::{ComponentResult, COMPONENT_STATUS_UPDATE_BY_PK};
 use crate::standard_model::TypeHint;
 use crate::{
     impl_standard_model, pk, standard_model, ComponentId, DalContext, HistoryActor,

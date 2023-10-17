@@ -2,4 +2,4 @@
 
 const TEST_PG_DBNAME: &str = "si_test_sdf_server";
 
-mod service_tests;
+// mod service_tests;

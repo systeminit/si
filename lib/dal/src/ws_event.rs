@@ -3,15 +3,9 @@ use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
 
-use crate::component::ComponentCreatedPayload;
 use crate::{
-    component::{code::CodeGeneratedPayload, resource::ResourceRefreshedPayload},
-    fix::{batch::FixBatchReturn, FixReturn},
-    func::binding::LogLinePayload,
-    qualification::QualificationCheckPayload,
-    status::StatusMessage,
-    AttributeValueId, ChangeSetPk, ComponentId, DalContext, PropId, SchemaPk, SocketId,
-    StandardModelError, TransactionsError, WorkspacePk,
+    ChangeSetPk, DalContext, PropId, SocketId, StandardModelError,
+    TransactionsError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -42,15 +36,15 @@ pub enum WsPayload {
     ChangeSetCanceled(ChangeSetPk),
     ChangeSetCreated(ChangeSetPk),
     ChangeSetWritten(ChangeSetPk),
-    CheckedQualifications(QualificationCheckPayload),
-    CodeGenerated(CodeGeneratedPayload),
-    ComponentCreated(ComponentCreatedPayload),
-    FixBatchReturn(FixBatchReturn),
-    FixReturn(FixReturn),
-    LogLine(LogLinePayload),
-    ResourceRefreshed(ResourceRefreshedPayload),
-    SchemaCreated(SchemaPk),
-    StatusUpdate(StatusMessage),
+    // CheckedQualifications(QualificationCheckPayload),
+    // CodeGenerated(CodeGeneratedPayload),
+    // ComponentCreated(ComponentCreatedPayload),
+    // FixBatchReturn(FixBatchReturn),
+    // FixReturn(FixReturn),
+    // LogLine(LogLinePayload),
+    // ResourceRefreshed(ResourceRefreshedPayload),
+    // SchemaCreated(SchemaPk),
+    // StatusUpdate(StatusMessage),
 }
 
 #[remain::sorted]
@@ -65,27 +59,27 @@ pub enum StatusValueKind {
     Qualification,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, Eq, Hash, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct AttributeValueStatusUpdate {
-    value_id: AttributeValueId,
-    component_id: ComponentId,
-    value_kind: StatusValueKind,
-}
+// #[derive(Deserialize, Serialize, Debug, Clone, Copy, Eq, Hash, PartialEq)]
+// #[serde(rename_all = "camelCase")]
+// pub struct AttributeValueStatusUpdate {
+//     value_id: AttributeValueId,
+//     component_id: ComponentId,
+//     value_kind: StatusValueKind,
+// }
 
-impl AttributeValueStatusUpdate {
-    pub fn new(
-        value_id: AttributeValueId,
-        component_id: ComponentId,
-        value_kind: StatusValueKind,
-    ) -> Self {
-        Self {
-            value_id,
-            component_id,
-            value_kind,
-        }
-    }
-}
+// impl AttributeValueStatusUpdate {
+//     pub fn new(
+//         value_id: AttributeValueId,
+//         component_id: ComponentId,
+//         value_kind: StatusValueKind,
+//     ) -> Self {
+//         Self {
+//             value_id,
+//             component_id,
+//             value_kind,
+//         }
+//     }
+// }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 pub struct WsEvent {

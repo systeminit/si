@@ -9,9 +9,11 @@ use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult,
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
+use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, EncryptionKey};
 
 use crate::{
+    change_set_pointer::ChangeSetPointerId,
     job::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
@@ -518,16 +520,22 @@ impl DalContext {
     /// Needed to remove universal tenancy while packages aren't a thing
     #[instrument(skip_all)]
     pub async fn import_builtins(&self) -> Result<(), TransactionsError> {
-        let source_workspace_pk = WorkspacePk::NONE;
-        self.txns()
-            .await?
-            .pg()
-            .execute(
-                "SELECT import_builtins_v1($1, $2)",
-                &[self.tenancy(), &source_workspace_pk],
-            )
-            .await?;
+        // TODO(nick,zack,jacob): restore the ability to "import builtins" via the graph work.
+        // let source_workspace_pk = WorkspacePk::NONE;
+        // self.txns()
+        //     .await?
+        //     .pg()
+        //     .execute(
+        //         "SELECT import_builtins_v1($1, $2)",
+        //         &[self.tenancy(), &source_workspace_pk],
+        //     )
+        //     .await?;
         Ok(())
+    }
+
+    // NOTE(nick,zack,jacob): likely a temporary func to get the change set id from the visibility.
+    pub fn change_set_id(&self) -> ChangeSetPointerId {
+        ChangeSetPointerId::from(Ulid::from(self.visibility.change_set_pk))
     }
 
     pub fn access_builder(&self) -> AccessBuilder {

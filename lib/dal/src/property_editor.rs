@@ -6,39 +6,27 @@ use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use thiserror::Error;
 
-use crate::{
-    pk, schema::variant::SchemaVariantError, AttributeValueError, AttributeValueId, ComponentError,
-    PropError, PropId, SchemaVariantId, StandardModelError, TransactionsError,
-    ValidationResolverError,
-};
+use crate::{pk, AttributeValueId, PropId, SchemaVariantId, StandardModelError, TransactionsError};
 
 pub mod schema;
-pub mod validations;
-pub mod values;
+// pub mod validations;
+// pub mod values;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PropertyEditorError {
-    #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
     #[error("invalid AttributeReadContext: {0}")]
     BadAttributeReadContext(String),
-    #[error("component error: {0}")]
-    Component(#[from] ComponentError),
     #[error("component not found")]
     ComponentNotFound,
     #[error("no value(s) found for property editor prop id: {0}")]
     NoValuesFoundForPropertyEditorProp(PropertyEditorPropId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("prop error: {0}")]
-    Prop(#[from] PropError),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
     #[error("root prop not found for schema variant")]
     RootPropNotFound,
-    #[error("schema variant: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found: {0}")]
     SchemaVariantNotFound(SchemaVariantId),
     #[error("error serializing/deserializing json: {0}")]
@@ -49,8 +37,6 @@ pub enum PropertyEditorError {
     TooManyValuesFoundForPropertyEditorProp(PropertyEditorPropId),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("validation resolver error: {0}")]
-    ValidationResolver(#[from] ValidationResolverError),
 }
 
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;

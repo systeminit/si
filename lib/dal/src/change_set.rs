@@ -9,10 +9,10 @@ use thiserror::Error;
 use crate::standard_model::{object_option_from_row_option, objects_from_rows};
 use crate::ws_event::{WsEvent, WsEventError, WsPayload};
 use crate::{
-    pk, Action, ActionError, HistoryEvent, HistoryEventError, LabelListError, StandardModelError,
-    Tenancy, Timestamp, TransactionsError, UserError, UserPk, Visibility,
+    pk, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, UserError, UserPk, Visibility,
 };
-use crate::{ComponentError, DalContext, WsEventResult};
+use crate::{DalContext, WsEventResult};
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("queries/change_set/open_list.sql");
 const CHANGE_SET_GET_BY_PK: &str = include_str!("queries/change_set/get_by_pk.sql");
@@ -20,10 +20,6 @@ const CHANGE_SET_GET_BY_PK: &str = include_str!("queries/change_set/get_by_pk.sq
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
-    #[error(transparent)]
-    Action(#[from] ActionError),
-    #[error(transparent)]
-    Component(#[from] ComponentError),
     #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
     #[error("invalid user actor pk")]
@@ -171,17 +167,17 @@ impl ChangeSet {
         Ok(change_set)
     }
 
-    pub async fn sort_actions(&self, ctx: &DalContext) -> ChangeSetResult<()> {
-        let ctx =
-            ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
-        Ok(Action::sort_of_change_set(&ctx).await?)
-    }
+    // pub async fn sort_actions(&self, ctx: &DalContext) -> ChangeSetResult<()> {
+    //     let ctx =
+    //         ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
+    //     Ok(Action::sort_of_change_set(&ctx).await?)
+    // }
 
-    pub async fn actions(&self, ctx: &DalContext) -> ChangeSetResult<Vec<Action>> {
-        let ctx =
-            ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
-        Ok(Action::find_for_change_set(&ctx).await?)
-    }
+    // pub async fn actions(&self, ctx: &DalContext) -> ChangeSetResult<Vec<Action>> {
+    //     let ctx =
+    //         ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
+    //     Ok(Action::find_for_change_set(&ctx).await?)
+    // }
 }
 
 impl WsEvent {

@@ -5,7 +5,7 @@ CREATE TABLE workspaces
     created_at            timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at            timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                  text                     NOT NULL,
-    base_change_set_id    ident                    NOT NULL
+    default_change_set_id ident                    NOT NULL
     -- TODO(nick): add "REFERENCES change_set_pointers (id)" to column type
 );
 CREATE UNIQUE INDEX ON workspaces (pk);

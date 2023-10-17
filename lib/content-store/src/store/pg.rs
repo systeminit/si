@@ -76,7 +76,7 @@ impl Store for PgStore {
         T: DeserializeOwned,
     {
         let object = match self.inner.get(key) {
-            Some(item) => serde_json::from_slice(&item.value)?,
+            Some(item) => si_cbor::decode(&item.value)?,
             None => match ContentPair::find(&self.pg_pool, key).await? {
                 Some(content_pair) => {
                     let encoded = content_pair.value();

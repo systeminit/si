@@ -9,17 +9,10 @@ use crate::change_status::{
     ChangeStatus, ChangeStatusError, ComponentChangeStatus, EdgeChangeStatus,
 };
 use crate::diagram::connection::{Connection, DiagramEdgeView};
-use crate::diagram::node::{DiagramComponentView, SocketDirection, SocketView};
 use crate::edge::EdgeKind;
-use crate::provider::external::ExternalProviderError;
-use crate::provider::internal::InternalProviderError;
-use crate::schema::variant::SchemaVariantError;
-use crate::socket::SocketError;
 use crate::{
-    ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
-    AttributeValueError, ChangeSetPk, ComponentError, ComponentId, DalContext, Edge, EdgeError,
-    Node, NodeError, NodeId, NodeKind, PropError, SchemaError, SocketId, StandardModel,
-    StandardModelError,
+    ChangeSetPk, ComponentId, DalContext, Edge, EdgeError, Node, NodeId, NodeKind, SocketId,
+    StandardModel, StandardModelError,
 };
 
 pub mod connection;
@@ -28,22 +21,12 @@ pub mod node;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum DiagramError {
-    #[error("action prototype: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
-    #[error("attribute context error: {0}")]
-    AttributeContextBuilder(#[from] AttributeContextBuilderError),
-    #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute prototype not found")]
     AttributePrototypeNotFound,
-    #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
     #[error("attribute value not found")]
     AttributeValueNotFound,
     #[error("change status error: {0}")]
     ChangeStatus(#[from] ChangeStatusError),
-    #[error("component error: {0}")]
-    Component(#[from] ComponentError),
     #[error("component not found")]
     ComponentNotFound,
     #[error("component status not found for component: {0}")]
@@ -54,16 +37,10 @@ pub enum DiagramError {
     Edge(#[from] EdgeError),
     #[error("edge not found")]
     EdgeNotFound,
-    #[error("external provider error: {0}")]
-    ExternalProvider(#[from] ExternalProviderError),
     #[error("external provider not found for socket id: {0}")]
     ExternalProviderNotFoundForSocket(SocketId),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
     #[error("internal provider not found for socket id: {0}")]
     InternalProviderNotFoundForSocket(SocketId),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
     #[error("node not found")]
     NodeNotFound,
     #[error("no node positions found for node ({0}) and kind ({1})")]
@@ -76,18 +53,10 @@ pub enum DiagramError {
     Pg(#[from] PgError),
     #[error("position not found")]
     PositionNotFound,
-    #[error("prop error: {0}")]
-    Prop(#[from] PropError),
-    #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
     #[error("schema not found")]
     SchemaNotFound,
-    #[error(transparent)]
-    SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found")]
     SchemaVariantNotFound,
-    #[error("socket error: {0}")]
-    Socket(#[from] SocketError),
     #[error("socket not found")]
     SocketNotFound,
     #[error("standard model error: {0}")]

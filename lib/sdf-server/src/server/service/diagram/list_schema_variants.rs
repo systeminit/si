@@ -1,8 +1,8 @@
 use axum::extract::{Json, Query};
 use dal::{
-    socket::{SocketEdgeKind, SocketId},
-    DiagramKind, ExternalProviderId, InternalProviderId, SchemaId, SchemaVariant, SchemaVariantId,
-    StandardModel, Visibility,
+    socket::{DiagramKind, SocketEdgeKind, SocketId},
+    ExternalProviderId, InternalProviderId, SchemaId, SchemaVariant, SchemaVariantId, Visibility,
+    Workspace, WorkspaceSnapshot,
 };
 use serde::{Deserialize, Serialize};
 
@@ -71,8 +71,14 @@ pub async fn list_schema_variants(
 ) -> DiagramResult<Json<ListSchemaVariantsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let variants = SchemaVariant::list(&ctx).await?;
+    let change_set_id = ctx.change_set_id();
+    let snapshot = WorkspaceSnapshot::find_for_change_set(&ctx, change_set_id).await?;
 
+    // let variants = SchemaVariant::list(&ctx).await?;
+
+    let variants_view: Vec<SchemaVariantView> = vec![];
+
+    /*
     let mut variants_view = Vec::with_capacity(variants.len());
     for variant in variants {
         if variant.ui_hidden() {
@@ -138,5 +144,6 @@ pub async fn list_schema_variants(
             output_sockets,
         });
     }
+    */
     Ok(Json(variants_view))
 }

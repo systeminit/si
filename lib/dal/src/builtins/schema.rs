@@ -12,8 +12,8 @@ use crate::{
         binding::{FuncBinding, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
     },
-    BuiltinsError, BuiltinsResult, DalContext, Func, FuncError, FuncId, SchemaError,
-    SelectedTestBuiltinSchemas, StandardModel,
+    BuiltinsError, BuiltinsResult, DalContext, Func, FuncId, SelectedTestBuiltinSchemas,
+    StandardModel,
 };
 
 mod test_exclusive_fallout;

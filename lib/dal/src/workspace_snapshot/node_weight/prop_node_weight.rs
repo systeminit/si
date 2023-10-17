@@ -49,6 +49,10 @@ impl PropNodeWeight {
         })
     }
 
+    pub fn kind(&self) -> PropKind {
+        self.kind
+    }
+
     pub fn content_address(&self) -> ContentAddress {
         self.content_address
     }
@@ -116,6 +120,12 @@ impl PropNodeWeight {
 
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
         let new_address = match &self.content_address {
+            ContentAddress::ActionPrototype(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "ActionPrototype".to_string(),
+                    "Prop".to_string(),
+                ));
+            }
             ContentAddress::AttributePrototype(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "AttributePrototype".to_string(),
@@ -158,6 +168,12 @@ impl PropNodeWeight {
                     "Prop".to_string(),
                 ));
             }
+            ContentAddress::Node(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "Node".to_string(),
+                    "Prop".to_string(),
+                ));
+            }
             ContentAddress::Prop(_) => ContentAddress::Prop(content_hash),
             ContentAddress::Root => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
@@ -174,6 +190,18 @@ impl PropNodeWeight {
             ContentAddress::SchemaVariant(_) => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
                     "SchemaVariant".to_string(),
+                    "Prop".to_string(),
+                ));
+            }
+            ContentAddress::Socket(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "Socket".to_string(),
+                    "Prop".to_string(),
+                ));
+            }
+            ContentAddress::ValidationPrototype(_) => {
+                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
+                    "ValidationPrototype".to_string(),
                     "Prop".to_string(),
                 ));
             }

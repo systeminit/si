@@ -8,9 +8,9 @@ use thiserror::Error;
 use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, AttributePrototypeArgument,
-    AttributePrototypeArgumentError, AttributePrototypeId, DalContext, FuncId, HistoryEventError,
-    PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
+    impl_standard_model, pk, standard_model, standard_model_accessor, AttributePrototypeId,
+    DalContext, FuncId, HistoryEventError, PropKind, StandardModel, StandardModelError, Tenancy,
+    Timestamp, TransactionsError, Visibility,
 };
 
 const LIST_FOR_FUNC: &str = include_str!("../queries/func_argument/list_for_func.sql");

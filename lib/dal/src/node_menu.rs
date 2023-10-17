@@ -10,7 +10,7 @@ use thiserror::Error;
 
 use crate::schema::SchemaUiMenu;
 use crate::DalContext;
-use crate::{SchemaError, SchemaId, StandardModel, StandardModelError};
+use crate::{SchemaId, StandardModel, StandardModelError};
 
 #[allow(clippy::large_enum_variant)]
 #[remain::sorted]

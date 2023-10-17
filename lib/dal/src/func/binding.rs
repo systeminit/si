@@ -180,11 +180,9 @@ impl FuncBinding {
     pub async fn create_and_execute(
         ctx: &DalContext,
         args: serde_json::Value,
-        func_id: FuncId,
+        func: Func,
     ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
-        let func = Func::get_by_id(ctx, &func_id)
-            .await?
-            .ok_or(FuncError::NotFound(func_id))?;
+        let func_id = func.id;
         let func_binding = Self::new(ctx, args, func_id, func.backend_kind).await?;
 
         let func_binding_return_value: FuncBindingReturnValue = func_binding.execute(ctx).await?;

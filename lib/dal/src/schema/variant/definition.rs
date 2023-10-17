@@ -8,12 +8,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use url::ParseError;
 
-use crate::pkg::{get_component_type, PkgError};
 use crate::prop::PropPath;
-use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
-    component::ComponentKind, impl_standard_model, pk, property_editor::schema::WidgetKind,
-    standard_model, standard_model_accessor, Component, ComponentError, ComponentType, DalContext,
+    impl_standard_model, pk, standard_model, standard_model_accessor, ComponentType, DalContext,
     FuncId, HistoryEventError, NatsError, PgError, PropId, PropKind, Schema, SchemaId,
     SchemaVariant, SchemaVariantId, SocketArity, StandardModel, StandardModelError, Tenancy,
     Timestamp, TransactionsError, Visibility,
@@ -27,8 +24,6 @@ use si_pkg::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaVariantDefinitionError {
-    #[error(transparent)]
-    Component(#[from] Box<ComponentError>),
     #[error("Could not check for default variant: {0}")]
     CouldNotCheckForDefaultVariant(String),
     #[error("Could not get ui menu for schema: {0}")]
