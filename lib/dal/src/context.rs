@@ -16,7 +16,7 @@ use crate::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
     },
-    HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
+    HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk,
 };
 
 /// A context type which contains handles to common core service dependencies.
@@ -518,10 +518,14 @@ impl DalContext {
     /// Needed to remove universal tenancy while packages aren't a thing
     #[instrument(skip_all)]
     pub async fn import_builtins(&self) -> Result<(), TransactionsError> {
+        let source_workspace_pk = WorkspacePk::NONE;
         self.txns()
             .await?
             .pg()
-            .execute("SELECT import_builtins_v1($1)", &[self.tenancy()])
+            .execute(
+                "SELECT import_builtins_v1($1, $2)",
+                &[self.tenancy(), &source_workspace_pk],
+            )
             .await?;
         Ok(())
     }
