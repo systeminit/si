@@ -34,13 +34,7 @@
                 v-if="
                   featureFlagsStore.FUNC_TEST_PANEL &&
                   testPanelEnabled &&
-                  funcStore.selectedFuncDetails &&
-                  [
-                    FuncVariant.Attribute,
-                    FuncVariant.CodeGeneration,
-                    FuncVariant.Qualification,
-                    FuncVariant.Validation,
-                  ].includes(funcStore.selectedFuncDetails.variant)
+                  funcStore.selectedFuncDetails
                 "
                 class="--tone-action"
                 icon="save"
@@ -261,13 +255,7 @@
         v-if="
           featureFlagsStore.FUNC_TEST_PANEL &&
           testPanelEnabled &&
-          funcStore.selectedFuncDetails &&
-          [
-            FuncVariant.Attribute,
-            FuncVariant.CodeGeneration,
-            FuncVariant.Qualification,
-            FuncVariant.Validation,
-          ].includes(funcStore.selectedFuncDetails.variant)
+          funcStore.selectedFuncDetails
         "
         label="Test"
         slug="test"
