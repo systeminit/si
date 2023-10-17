@@ -17,16 +17,16 @@ const KEY_HEIGHT_STR: &str = "height";
 pub struct PositionNode {
     pub x: String,
     pub y: String,
-    pub width: String,
-    pub height: String,
+    pub width: Option<String>,
+    pub height: Option<String>,
 }
 
 impl WriteBytes for PositionNode {
     fn write_bytes<W: Write>(&self, writer: &mut W) -> Result<(), GraphError> {
         write_key_value_line(writer, KEY_X_STR, &self.x)?;
         write_key_value_line(writer, KEY_Y_STR, &self.y)?;
-        write_key_value_line(writer, KEY_WIDTH_STR, &self.width)?;
-        write_key_value_line(writer, KEY_HEIGHT_STR, &self.height)?;
+        write_key_value_line(writer, KEY_WIDTH_STR, self.width.as_deref().unwrap_or(""))?;
+        write_key_value_line(writer, KEY_HEIGHT_STR, self.height.as_deref().unwrap_or(""))?;
 
         Ok(())
     }
@@ -39,8 +39,18 @@ impl ReadBytes for PositionNode {
     {
         let x = read_key_value_line(reader, KEY_X_STR)?;
         let y = read_key_value_line(reader, KEY_Y_STR)?;
-        let width = read_key_value_line(reader, KEY_WIDTH_STR)?;
-        let height = read_key_value_line(reader, KEY_HEIGHT_STR)?;
+        let width_str = read_key_value_line(reader, KEY_WIDTH_STR)?;
+        let width = if width_str.is_empty() {
+            None
+        } else {
+            Some(width_str)
+        };
+        let height_str = read_key_value_line(reader, KEY_HEIGHT_STR)?;
+        let height = if height_str.is_empty() {
+            None
+        } else {
+            Some(height_str)
+        };
 
         Ok(Some(Self {
             x,

@@ -9,8 +9,8 @@ use crate::{node::PkgNode, PositionSpec};
 pub struct SiPkgPosition<'a> {
     x: String,
     y: String,
-    height: String,
-    width: String,
+    height: Option<String>,
+    width: Option<String>,
 
     hash: Hash,
     source: Source<'a>,
@@ -51,12 +51,12 @@ impl<'a> SiPkgPosition<'a> {
         self.y.as_str()
     }
 
-    pub fn height(&self) -> &str {
-        self.height.as_str()
+    pub fn height(&self) -> Option<&str> {
+        self.height.as_deref()
     }
 
-    pub fn width(&self) -> &str {
-        self.width.as_str()
+    pub fn width(&self) -> Option<&str> {
+        self.width.as_deref()
     }
 
     pub fn hash(&self) -> Hash {
@@ -75,8 +75,8 @@ impl<'a> TryFrom<SiPkgPosition<'a>> for PositionSpec {
         Ok(PositionSpec::builder()
             .x(value.x())
             .y(value.y())
-            .height(value.height())
-            .width(value.width())
+            .height(value.height().map(Into::into))
+            .width(value.width().map(Into::into))
             .build()?)
     }
 }
