@@ -1,8 +1,5 @@
-use dal::{key_pair::PublicKey, DalContext, KeyPair, Tenancy};
-use dal_test::{
-    test,
-    test_harness::{create_key_pair, create_workspace},
-};
+use dal::{key_pair::PublicKey, DalContext, KeyPair, Tenancy, Workspace, WorkspacePk};
+use dal_test::{test, test_harness::create_key_pair};
 
 #[test]
 async fn new(ctx: &DalContext) {
@@ -13,7 +10,9 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn belongs_to(ctx: &mut DalContext) {
-    let workspace = create_workspace(ctx).await;
+    let workspace = Workspace::new(ctx, WorkspacePk::generate(), "new")
+        .await
+        .expect("cannot create workspace");
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
 
     let key_pair = create_key_pair(ctx).await;
@@ -26,7 +25,9 @@ async fn belongs_to(ctx: &mut DalContext) {
 
 #[test]
 async fn public_key_get_current(ctx: &mut DalContext) {
-    let workspace = create_workspace(ctx).await;
+    let workspace = Workspace::new(ctx, WorkspacePk::generate(), "new")
+        .await
+        .expect("cannot create workspace");
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
 
     let first_key_pair = create_key_pair(ctx).await;

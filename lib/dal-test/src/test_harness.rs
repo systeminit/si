@@ -7,7 +7,7 @@ use dal::{
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind, EncryptedSecret, Func,
     FuncBackendKind, FuncBackendResponseType, KeyPair, Node, Schema, SchemaId, SchemaVariantId,
-    Secret, StandardModel, User, UserPk, Visibility, Workspace, WorkspacePk,
+    Secret, StandardModel, User, UserPk, Visibility,
 };
 use names::{Generator, Name};
 
@@ -28,13 +28,6 @@ pub fn create_visibility_change_set(change_set: &ChangeSet) -> Visibility {
 
 pub fn create_visibility_head() -> Visibility {
     Visibility::new(ChangeSetPk::NONE, None)
-}
-
-pub async fn create_workspace(ctx: &mut DalContext) -> Workspace {
-    let name = generate_fake_name();
-    Workspace::new(ctx, WorkspacePk::generate(), &name)
-        .await
-        .expect("cannot create workspace")
 }
 
 pub async fn create_key_pair(ctx: &DalContext) -> KeyPair {
