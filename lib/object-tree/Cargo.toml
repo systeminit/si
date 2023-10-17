@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+si-hash = { path = "../../lib/si-hash" }
+
 petgraph = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
