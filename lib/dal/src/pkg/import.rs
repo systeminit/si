@@ -457,11 +457,14 @@ async fn import_component(
     if node.y() != position.y() {
         node.set_y(ctx, position.y()).await?;
     }
-    if node.height().unwrap_or("500") != position.height() {
-        node.set_height(ctx, Some(position.height())).await?;
+
+    if node.height() != position.height() {
+        node.set_height(ctx, position.height().map(ToOwned::to_owned))
+            .await?;
     }
-    if node.width().unwrap_or("500") != position.width() {
-        node.set_width(ctx, Some(position.width())).await?;
+    if node.width() != position.width() {
+        node.set_width(ctx, position.width().map(ToOwned::to_owned))
+            .await?;
     }
 
     let mut value_cache: HashMap<ValueCacheKey, AttributeValue> = HashMap::new();

@@ -12,9 +12,9 @@ pub struct PositionSpec {
     #[builder(setter(into))]
     pub y: String,
     #[builder(setter(into))]
-    pub width: String,
+    pub width: Option<String>,
     #[builder(setter(into))]
-    pub height: String,
+    pub height: Option<String>,
 }
 
 impl PositionSpec {

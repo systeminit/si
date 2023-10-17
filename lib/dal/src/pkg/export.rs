@@ -1350,8 +1350,8 @@ impl PkgExporter {
         let mut position_spec_builder = PositionSpec::builder();
         position_spec_builder.x(node.x());
         position_spec_builder.y(node.y());
-        position_spec_builder.height(node.height().unwrap_or("500"));
-        position_spec_builder.width(node.width().unwrap_or("500"));
+        position_spec_builder.height(node.height().map(Into::into));
+        position_spec_builder.width(node.width().map(Into::into));
         component_spec_builder.position(position_spec_builder.build()?);
 
         component_spec_builder.needs_destroy(component.needs_destroy());
