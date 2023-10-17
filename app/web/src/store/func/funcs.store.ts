@@ -455,6 +455,14 @@ export const useFuncStore = () => {
           args: unknown;
           executionKey: string;
         }) {
+          const func = this.funcById(executeRequest.id);
+          if (func) {
+            trackEvent("function_test_execute", {
+              id: func.id,
+              name: func.name,
+            });
+          }
+
           return new ApiRequest<{
             id: FuncId;
             args: unknown;
