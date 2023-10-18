@@ -1,12 +1,12 @@
 <template>
   <div
-    class="rounded text-left flex flex-col overflow-auto bg-neutral-800 border border-neutral-800 drop-shadow-md"
+    class="rounded text-left flex flex-col overflow-auto border border-neutral-600"
   >
-    <div class="flex py-2 mb-px px-3 capitalize bg-black">
+    <div class="flex p-xs capitalize border-b border-neutral-600">
       {{ qualification.title }}
     </div>
 
-    <div class="w-full flex flex-col px-3 py-3 gap-2 text-sm bg-black">
+    <div class="w-full flex flex-col p-xs gap-xs text-sm">
       <StatusMessageBox :status="qualificationStatus" class="break-all">
         <span
           v-if="qualificationStatus === 'failure'"
@@ -39,7 +39,7 @@
     </div>
 
     <Modal ref="detailsModalRef" size="2xl" :title="qualification.title">
-      <div class="my-2">
+      <div class="my-xs">
         <StatusMessageBox :status="qualificationStatus">
           <template v-if="qualificationStatus === 'failure'">
             Something went wrong!
@@ -70,7 +70,7 @@
 
       <div
         v-if="qualification.output?.length"
-        class="flex flex-col my-2 p-2 border border-warning-600 text-warning-500 rounded"
+        class="flex flex-col my-xs p-xs border border-warning-600 text-warning-500 rounded"
       >
         <b>Raw Output:</b>
         <p

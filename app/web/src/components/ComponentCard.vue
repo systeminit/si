@@ -29,21 +29,7 @@
 
       <!-- change status icon -->
       <div class="ml-auto">
-        <Icon
-          v-if="component.changeStatus === 'added'"
-          name="plus-circle"
-          class="text-success-500"
-        />
-        <Icon
-          v-if="component.changeStatus === 'deleted'"
-          name="x"
-          class="text-destructive-500"
-        />
-        <Icon
-          v-if="component.changeStatus === 'modified'"
-          name="tilde-circle"
-          class="text-warning-500"
-        />
+        <StatusIndicatorIcon type="change" :status="component.changeStatus" />
       </div>
     </div>
   </div>
@@ -59,6 +45,7 @@ import {
   FullComponent,
   useComponentsStore,
 } from "@/store/components.store";
+import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },

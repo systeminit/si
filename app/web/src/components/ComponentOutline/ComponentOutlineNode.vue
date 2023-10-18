@@ -91,39 +91,23 @@
           <!-- other status icons -->
           <div :class="clsx('flex items-center mr-xs')">
             <!-- change status -->
-            <StatusIndicatorIcon type="change" :status="hasChanges" size="md" />
+            <StatusIndicatorIcon type="change" :status="hasChanges" />
 
-            <!-- Component Status -->
-            <StatusIconWithPopover
-              type="qualification"
-              :status="isDestroyed ? 'notexists' : qualificationStatus"
-              size="lg"
-              :popoverPosition="popoverPosition"
-              @open="popoverResize"
-            >
-              <ComponentQualificationsFlyover
-                v-if="!isDestroyed"
-                :componentId="componentId"
-              />
-            </StatusIconWithPopover>
-
-            <!-- Resource Status -->
+            <!-- Qualification Status -->
+            <!-- TODO: make click open details panel -->
+            <Icon v-if="isDestroyed" name="none" />
             <StatusIndicatorIcon
-              type="resource"
-              :status="hasResource ? 'exists' : 'notexists'"
-              size="lg"
+              v-else
+              type="qualification"
+              :status="qualificationStatus || 'notexists'"
             />
 
-            <!-- Actions Menu -->
-            <StatusIconWithPopover
-              type="actions"
-              :status="'show'"
-              size="md"
-              :popoverPosition="popoverPosition"
-              @open="popoverResize"
-            >
-              <ComponentActionsFlyover :componentId="componentId" />
-            </StatusIconWithPopover>
+            <!-- Resource Status -->
+            <StatusIndicatorIcon v-if="hasResource" type="resource" />
+            <Icon v-else name="none" />
+
+            <!-- Actions Menu
+            <Icon name="chevron--right" /> -->
           </div>
         </div>
       </div>
@@ -147,15 +131,12 @@ import clsx from "clsx";
 import { themeClasses, Icon, VButton } from "@si/vue-lib/design-system";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
-import StatusIconWithPopover from "@/components/ComponentOutline/StatusIconWithPopover.vue";
 
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
 import { useComponentOutlineContext } from "./ComponentOutline.vue";
-import ComponentQualificationsFlyover from "./ComponentQualificationsFlyover.vue";
-import ComponentActionsFlyover from "./ComponentActionsFlyover.vue";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
@@ -238,20 +219,4 @@ const parentBreadcrumbsText = computed(() => {
     (parentId) => componentsStore.componentsById[parentId]?.displayName,
   ).join(" > ");
 });
-
-// POPOVER CODE
-// Since we anchor the popover on the parent, for now it makes sense to have the position calculated on the parent
-const popoverPosition = ref<{ x: number; y: number } | undefined>();
-const popoverResize = () => {
-  if (!nodeRef.value) {
-    popoverPosition.value = undefined;
-    return;
-  }
-
-  const nodeRect = nodeRef.value.getBoundingClientRect();
-  popoverPosition.value = {
-    x: Math.floor(nodeRect.right),
-    y: Math.floor(nodeRect.top),
-  };
-};
 </script>

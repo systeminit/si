@@ -49,12 +49,14 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import StatusBarTab from "@/components/StatusBar/StatusBarTab.vue";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
-import StatusBarTabPill from "@/components/StatusBar/StatusBarTabPill.vue";
 import { useQualificationsStore } from "@/store/qualifications.store";
+import StatusBarTabPill from "./StatusBarTabPill.vue";
+import StatusBarTab from "./StatusBarTab.vue";
 
-defineProps<{ selected: boolean }>();
+const props = defineProps({
+  selected: Boolean,
+});
 
 const qualificationStore = useQualificationsStore();
 const componentStats = computed(() => qualificationStore.componentStats);

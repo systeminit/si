@@ -65,7 +65,7 @@
   </div>
   <ResizablePanel rememberSizeKey="func-details" side="right" :minSize="200">
     <div v-if="FF_SECRETS" class="flex flex-col h-full items-center">
-      <SidebarSubpanelTitle>Secret Details</SidebarSubpanelTitle>
+      <SidebarSubpanelTitle label="Secret Details" />
       WIP
     </div>
   </ResizablePanel>

@@ -112,7 +112,7 @@
       <p>
         Items that exist on HEAD will be marked for deletion, and removed from
         the model when this change set is merged. Items that were created in
-        this changeset will be deleted immediately.
+        this change set will be deleted immediately.
       </p>
 
       <div class="flex space-x-sm justify-end">

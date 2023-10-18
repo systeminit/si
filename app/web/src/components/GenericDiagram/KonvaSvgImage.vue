@@ -62,7 +62,7 @@ watchEffect(() => {
   }
   // replace color with fill
   if (props.color) {
-    svgString = svgString.replace("currentColor", props.color);
+    svgString = svgString.replace(/currentColor/g, props.color);
   }
   const imgBase64Src = `data:image/svg+xml;base64, ${btoa(svgString)}`;
 

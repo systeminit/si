@@ -1,5 +1,37 @@
 <template>
-  <div class="h-full relative overflow-hidden flex flex-col">
+  <ScrollArea>
+    <template #top>
+      <SidebarSubpanelTitle
+        :label="
+          changeSetStore.headSelected ? 'Head Details' : 'Change Set Details'
+        "
+        :icon="changeSetStore.headSelected ? 'git-branch' : 'git-branch'"
+      />
+
+      <div
+        v-if="
+          !changeSetStore.headSelected && componentsStore.allComponents.length
+        "
+        :class="
+          clsx(
+            'flex flex-row items-center justify-center text-neutral-400 gap-2 p-xs border-b shrink-0',
+            themeClasses('border-neutral-200', 'border-neutral-600'),
+          )
+        "
+      >
+        <ApplyChangeSetButton class="grow" />
+        <strong
+          class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
+        >
+          {{
+            1 +
+            diffs.length +
+            (changeSetStore.selectedChangeSet?.actions?.length ?? 0)
+          }}
+        </strong>
+      </div>
+    </template>
+
     <template v-if="componentsStore.allComponents.length === 0">
       <div class="flex flex-col items-center text-neutral-400 pt-lg">
         <EmptyStateIcon name="no-assets" class="mt-3" />
@@ -11,35 +43,7 @@
     </template>
 
     <template v-else>
-      <div
-        :class="
-          clsx(
-            'flex flex-row items-center justify-center text-neutral-400 gap-2 p-xs border-b shrink-0',
-            themeClasses('border-neutral-200', 'border-neutral-600'),
-          )
-        "
-      >
-        <strong class="grow uppercase text-lg my-2">
-          <template v-if="changeSetStore.headSelected"
-            >Applied Changes</template
-          >
-          <template v-else>Changes</template>
-        </strong>
-        <template v-if="!changeSetStore.headSelected">
-          <ApplyChangeSetButton />
-          <strong
-            class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
-          >
-            {{
-              1 +
-              diffs.length +
-              (changeSetStore.selectedChangeSet?.actions?.length ?? 0)
-            }}
-          </strong>
-        </template>
-      </div>
-
-      <div class="relative grow">
+      <div class="absolute inset-0">
         <!-- <ApplyHistory  /> -->
         <TabGroup
           rememberSelectedTabKey="proposed_right"
@@ -47,7 +51,7 @@
         >
           <TabGroupItem
             v-if="!changeSetStore.headSelected"
-            label="Proposed"
+            label="Proposed Changes"
             slug="actions_proposed"
           >
             <div
@@ -58,7 +62,7 @@
                 )
               "
             >
-              <Icon name="git-branch" />
+              <Icon name="git-branch-plus" />
               <div class="flex flex-col">
                 <div class="">Created Change Set</div>
                 <div class="text-neutral-400 truncate">
@@ -127,24 +131,24 @@
             </div>
           </TabGroupItem>
 
-          <TabGroupItem label="Applied" slug="actions_applied">
+          <TabGroupItem label="Applied Changes" slug="actions_applied">
             <ApplyHistory />
           </TabGroupItem>
         </TabGroup>
       </div>
     </template>
-  </div>
+  </ScrollArea>
 </template>
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, onMounted, ref } from "vue";
+import { computed } from "vue";
 import {
-  Collapsible,
   TabGroup,
   TabGroupItem,
   themeClasses,
   Icon,
+  ScrollArea,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
@@ -157,6 +161,7 @@ import ApplyHistory from "./ApplyHistory.vue";
 
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import EmptyStateIcon from "./EmptyStateIcon.vue";
+import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 
 const changeSetStore = useChangeSetsStore();
 const actionsStore = useActionsStore();

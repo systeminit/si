@@ -62,7 +62,7 @@ import { useWorkspacesStore } from "@/store/workspaces.store";
 import { nilId } from "@/utils/nilId";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import Navbar from "@/components/layout/navbar/Navbar.vue";
-import StatusBar from "@/components/StatusBar.vue";
+import StatusBar from "@/components/StatusBar/StatusBar.vue";
 
 const props = defineProps({
   workspacePk: { type: String, required: true },

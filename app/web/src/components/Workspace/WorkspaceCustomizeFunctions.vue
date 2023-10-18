@@ -18,7 +18,7 @@
   </div>
   <ResizablePanel rememberSizeKey="func-details" side="right" :minSize="200">
     <div class="absolute w-full flex flex-col h-full">
-      <SidebarSubpanelTitle>Function Details</SidebarSubpanelTitle>
+      <SidebarSubpanelTitle label="Function Details" />
 
       <FuncDetails
         :key="funcStore.urlSelectedFuncId"

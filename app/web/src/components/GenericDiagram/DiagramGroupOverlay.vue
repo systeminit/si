@@ -40,7 +40,7 @@
 
     <DiagramIcon
       v-if="isDeleted"
-      :icon="deleteIcon"
+      icon="minus-square"
       :color="diagramConfig?.toneColors?.destructive"
       :size="deletedIconSize"
       :x="0"
@@ -54,7 +54,6 @@ import { computed, nextTick, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
-import { IconNames } from "@si/vue-lib/design-system";
 import {
   CORNER_RADIUS,
   GROUP_HEADER_BOTTOM_MARGIN,
@@ -76,8 +75,6 @@ const props = defineProps({
   },
   isHovered: Boolean,
   isSelected: Boolean,
-
-  deleteIcon: { type: String as PropType<IconNames>, default: "x" },
 });
 
 const diagramConfig = useDiagramConfig();
