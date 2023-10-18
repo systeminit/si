@@ -20,6 +20,25 @@
       <template v-else-if="importReqStatus.isSuccess">
         <p>Your workspace has been imported!</p>
         <p>To see your changes, please reload your browser</p>
+
+        <ErrorMessage
+          v-if="hasSkippedEdges"
+          tone="warning"
+          icon="alert-triangle"
+        >
+          Some edges could not be reconnected because the sockets they were
+          connected to no longer exist.
+        </ErrorMessage>
+
+        <ErrorMessage
+          v-if="hasSkippedAttributes"
+          tone="warning"
+          icon="alert-triangle"
+        >
+          Some property values of the imported components could not be restored
+          because the property they set no longer exists, or has changed type.
+        </ErrorMessage>
+
         <VButton icon="refresh" @click="refreshHandler">Reload</VButton>
       </template>
       <template v-else>
@@ -120,6 +139,9 @@ const exportsList = ref<RemoteModuleSummary[]>([]);
 const selectedExportId = ref<string>();
 const confirmedDataLoss = ref(false);
 
+const hasSkippedEdges = ref(false);
+const hasSkippedAttributes = ref(false);
+
 async function open() {
   selectedExportId.value = undefined;
   confirmedDataLoss.value = false;
@@ -131,13 +153,23 @@ async function open() {
       hashCreatedAt: workspace.latestHashCreatedAt,
     }));
   }
+
+  hasSkippedEdges.value = false;
+  hasSkippedAttributes.value = false;
+
   openModal();
 }
 
 async function continueHandler() {
   if (validationMethods.hasError()) return;
   if (selectedExportId.value) {
-    await moduleStore.INSTALL_REMOTE_MODULE(selectedExportId.value);
+    const result = await moduleStore.INSTALL_REMOTE_MODULE(
+      selectedExportId.value,
+    );
+    if (result.result.success) {
+      hasSkippedAttributes.value = result.result.data.skippedEdges;
+      hasSkippedEdges.value = result.result.data.skippedAttributes;
+    }
   }
 }
 
