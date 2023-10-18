@@ -188,7 +188,6 @@ pub async fn save_variant_def(
     asset_func
         .set_code_plaintext(ctx, Some(&request.code))
         .await?;
-    asset_func.set_handler(ctx, Some(&request.handler)).await?;
 
     if let Some(updated_name) = updated_func_name {
         asset_func.set_name(ctx, updated_name).await?;

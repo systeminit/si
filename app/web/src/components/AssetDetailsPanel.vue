@@ -85,15 +85,6 @@
           @blur="updateAsset"
         />
         <VormInput
-          id="handler"
-          v-model="editingAsset.handler"
-          type="text"
-          :disabled="disabled"
-          label="Entrypoint"
-          placeholder="(mandatory) Provide the function entrypoint to the asset"
-          @blur="updateAsset"
-        />
-        <VormInput
           id="category"
           v-model="editingAsset.category"
           type="text"

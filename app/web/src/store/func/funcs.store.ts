@@ -29,7 +29,6 @@ export type FuncId = string;
 
 export type FuncSummary = {
   id: string;
-  handler: string;
   variant: FuncVariant;
   name: string;
   displayName?: string;

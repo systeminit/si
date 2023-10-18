@@ -120,12 +120,25 @@ export const createTypescriptSource = async (
     const doc = view.state.doc;
     // We could be more efficient by updating only the changed spans
     const docString = doc.toString();
+
+    let diagnostics: Diagnostic[] = [];
+
+    // custom lint rule to ensure that we have a `main` function entrypoint
+    if (!docString.includes("function main(")) {
+      diagnostics = diagnostics.concat(
+        diagnosticsForMessage(
+          1,
+          1,
+          "Function should include a `main` function for code execution",
+        ),
+      );
+    }
+
     tsEnv.updateFile(
       defaultFilename,
       docString.trim().length === 0 ? fallbackCode : docString,
     );
 
-    let diagnostics: Diagnostic[] = [];
     for (const tsDiagnostic of tsEnv.languageService.getSyntacticDiagnostics(
       defaultFilename,
     )) {

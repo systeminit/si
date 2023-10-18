@@ -91,7 +91,6 @@ export interface VariantDef extends ListedVariantDef {
   link?: string;
   schemaVariantId?: string;
   code: string;
-  handler: string;
   types?: string;
   hasComponents: boolean;
   hasAttrFuncs: boolean;
@@ -239,7 +238,6 @@ export const useAssetStore = () => {
             id: nilId(),
             name: `new asset ${Math.floor(Math.random() * 10000)}`,
             code: "",
-            handler: "",
             color: this.generateMockColor(),
             description: "",
             category: "",
