@@ -36,7 +36,6 @@ pub struct GetFuncRequest {
 #[serde(rename_all = "camelCase")]
 pub struct GetFuncResponse {
     pub id: FuncId,
-    pub handler: Option<String>,
     pub variant: FuncVariant,
     pub name: String,
     pub display_name: Option<String>,

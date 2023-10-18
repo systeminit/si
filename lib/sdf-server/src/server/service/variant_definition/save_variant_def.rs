@@ -17,7 +17,6 @@ pub struct SaveVariantDefRequest {
     pub color: String,
     pub link: Option<String>,
     pub code: String,
-    pub handler: String,
     pub description: Option<String>,
     pub component_type: ComponentType,
     #[serde(default)]

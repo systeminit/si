@@ -26,7 +26,6 @@ use dal::{FuncBackendResponseType, PropKind, SchemaVariant, ValidationPrototype}
 #[serde(rename_all = "camelCase")]
 pub struct SaveFuncRequest {
     pub id: FuncId,
-    pub handler: Option<String>,
     pub display_name: Option<String>,
     pub name: String,
     pub description: Option<String>,
@@ -581,7 +580,6 @@ pub async fn do_save_func(
     func.set_display_name(ctx, request.display_name).await?;
     func.set_name(ctx, request.name).await?;
     func.set_description(ctx, request.description).await?;
-    func.set_handler(ctx, request.handler).await?;
     func.set_code_plaintext(ctx, request.code.as_deref())
         .await?;
 
@@ -732,7 +730,6 @@ pub async fn save_func<'a>(
         "save_func",
         serde_json::json!({
                     "func_id": func.id(),
-                    "func_handler": func.handler().map(|h| h.to_owned()),
                     "func_name": func.name(),
                     "func_variant": *func.backend_response_type(),
                     "func_is_builtin": func.builtin(),

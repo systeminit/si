@@ -142,13 +142,6 @@
                 @blur="updateFunc"
               />
               <VormInput
-                v-model="editingFunc.handler"
-                label="Entrypoint"
-                required
-                placeholder="The name of the function that will be executed..."
-                @blur="updateFunc"
-              />
-              <VormInput
                 v-model="editingFunc.description"
                 type="textarea"
                 placeholder="Provide a brief description of this function here..."

@@ -422,7 +422,6 @@ impl ScenarioHarness {
             link: Some("https://www.systeminit.com/".to_string()),
             code,
             component_type: ComponentType::Component,
-            handler: "createAsset".to_string(),
             description: None,
             auto_reattach_functions: true,
             visibility: *visibility,
@@ -452,7 +451,6 @@ impl ScenarioHarness {
             code,
             component_type: ComponentType::Component,
             auto_reattach_functions: true,
-            handler: "createAsset".to_string(),
             description: None,
             visibility: *visibility,
         };

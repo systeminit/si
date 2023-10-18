@@ -562,7 +562,6 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
 
     Ok(GetFuncResponse {
         id: func.id().to_owned(),
-        handler: func.handler().map(|h| h.to_owned()),
         variant: func.try_into()?,
         display_name: func.display_name().map(Into::into),
         name: func.name().to_owned(),
