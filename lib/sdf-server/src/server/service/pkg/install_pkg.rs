@@ -68,7 +68,7 @@ pub async fn install_pkg(
         .await?
         .publish_on_commit(&ctx)
         .await?;
-    ctx.commit().await?;
+    ctx.blocking_commit().await?;
 
     Ok(Json(InstallPkgResponse {
         success: true,

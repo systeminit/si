@@ -10,9 +10,9 @@ use super::{ComponentError, ComponentResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use dal::{
     component::view::{AttributeDebugView, ComponentDebugView},
-    AttributeContext, AttributePrototypeArgument, AttributePrototypeId, AttributeValueId,
-    Component, ComponentId, DalContext, FuncArgument, FuncId, InternalProvider, Prop, PropId,
-    PropKind, SchemaVariantId, StandardModel, Visibility,
+    AttributeContext, AttributePrototypeArgument, AttributePrototypeId, AttributeValueError,
+    AttributeValueId, Component, ComponentId, DalContext, Func, FuncArgument, FuncError, FuncId,
+    InternalProvider, Prop, PropId, PropKind, SchemaVariantId, StandardModel, Visibility,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -43,6 +43,12 @@ pub struct AttributeMetadataView {
     pub arg_sources: HashMap<String, Option<String>>,
     pub visibility: Visibility,
     pub value: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub implicit_value: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub implicit_value_context: Option<AttributeContext>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub implicit_func_name: Option<String>,
     pub prototype_id: AttributePrototypeId,
     pub prototype_context: AttributeContext,
     pub prototype_in_change_set: bool,
@@ -172,6 +178,29 @@ async fn get_attribute_metadata(
         arg_sources.insert(arg.name().into(), input_ip_name);
     }
 
+    let (implicit_value, implicit_value_context, implicit_func_name) =
+        match debug_view.implicit_attribute_value {
+            Some(implicit_attribute_value) => {
+                let prototype = implicit_attribute_value
+                    .attribute_prototype(ctx)
+                    .await?
+                    .ok_or(AttributeValueError::AttributePrototypeNotFound(
+                        *implicit_attribute_value.id(),
+                        ctx.visibility().to_owned(),
+                    ))?;
+                let func = Func::get_by_id(ctx, &prototype.func_id())
+                    .await?
+                    .ok_or(FuncError::NotFound(prototype.func_id()))?;
+
+                (
+                    implicit_attribute_value.get_value(ctx).await?,
+                    Some(implicit_attribute_value.context),
+                    Some(func.name().to_owned()),
+                )
+            }
+            None => (None, None, None),
+        };
+
     Ok(AttributeMetadataView {
         value_id: *debug_view.attribute_value.id(),
         func_name: debug_view.func.name().into(),
@@ -188,5 +217,8 @@ async fn get_attribute_metadata(
         kind: debug_view.prop.map(|prop| *prop.kind()),
         prototype_in_change_set: debug_view.prototype.visibility().in_change_set(),
         value_in_change_set: debug_view.attribute_value.visibility().in_change_set(),
+        implicit_value,
+        implicit_value_context,
+        implicit_func_name,
     })
 }

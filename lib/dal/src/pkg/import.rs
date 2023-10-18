@@ -21,7 +21,10 @@ use crate::{
     func::{
         self,
         argument::FuncArgumentKind,
-        backend::validation::FuncBackendValidationArgs,
+        backend::{
+            identity::FuncBackendIdentityArgs, js_action::ActionRunResult,
+            validation::FuncBackendValidationArgs,
+        },
         binding::FuncBinding,
         binding_return_value::FuncBindingReturnValue,
         execution::{FuncExecution, FuncExecutionPk},
@@ -44,10 +47,10 @@ use crate::{
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeId, AttributeReadContext,
     AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentId,
     DalContext, Edge, ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncBindingError,
-    FuncBindingReturnValueError, FuncError, FuncId, InternalProvider, InternalProviderId, LeafKind,
-    Node, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError,
-    SchemaVariantId, Socket, StandardModel, Tenancy, UserPk, ValidationPrototype,
-    ValidationPrototypeContext, Workspace, WorkspacePk,
+    FuncBindingReturnValueError, FuncError, FuncId, InternalProvider, InternalProviderError,
+    InternalProviderId, LeafKind, Node, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, Socket, StandardModel, Tenancy, UserPk,
+    ValidationPrototype, ValidationPrototypeContext, Workspace, WorkspacePk,
 };
 
 use super::{PkgError, PkgResult};
@@ -471,6 +474,7 @@ async fn import_component(
     let mut prop_cache: HashMap<String, Option<Prop>> = HashMap::new();
 
     let mut skips = vec![];
+    let mut resource_value = None;
 
     for attribute in component_spec.attributes()? {
         if let Some(skip) = import_component_attribute(
@@ -478,7 +482,7 @@ async fn import_component(
             change_set_pk,
             &component,
             &variant,
-            attribute,
+            &attribute,
             &mut value_cache,
             &mut prop_cache,
             thing_map,
@@ -487,14 +491,20 @@ async fn import_component(
         {
             skips.push(skip);
         }
+        if let AttributeValuePath::Prop { path, .. } = &attribute.path() {
+            if path == &PropPath::new(["root", "resource"]).to_string() {
+                resource_value = attribute.implicit_value().cloned();
+            }
+        }
     }
+
     for attribute in component_spec.input_sockets()? {
         if let Some(skip) = import_component_attribute(
             ctx,
             change_set_pk,
             &component,
             &variant,
-            attribute,
+            &attribute,
             &mut value_cache,
             &mut prop_cache,
             thing_map,
@@ -510,7 +520,7 @@ async fn import_component(
             change_set_pk,
             &component,
             &variant,
-            attribute,
+            &attribute,
             &mut value_cache,
             &mut prop_cache,
             thing_map,
@@ -523,6 +533,13 @@ async fn import_component(
 
     if component_spec.needs_destroy() {
         component.set_needs_destroy(ctx, true).await?;
+    }
+
+    if let Some(resource_value) = resource_value {
+        if change_set_pk.unwrap_or(ChangeSetPk::NONE) == ChangeSetPk::NONE {
+            let result: ActionRunResult = serde_json::from_value(resource_value)?;
+            component.set_resource(ctx, result).await?;
+        }
     }
 
     if component.visibility().is_deleted() && !component_spec.deleted() {
@@ -552,7 +569,7 @@ async fn import_component_attribute(
     change_set_pk: Option<ChangeSetPk>,
     component: &Component,
     variant: &SchemaVariant,
-    attribute: SiPkgAttributeValue<'_>,
+    attribute: &SiPkgAttributeValue<'_>,
     value_cache: &mut HashMap<ValueCacheKey, AttributeValue>,
     prop_cache: &mut HashMap<String, Option<Prop>>,
     thing_map: &mut ThingMap,
@@ -586,6 +603,16 @@ async fn import_component_attribute(
 
             match prop {
                 Some(prop) => {
+                    // Do not write attributes for the resource or props under the resource tree if
+                    // in a change set. Let them fall back to the head version
+                    if change_set_pk.unwrap_or(ChangeSetPk::NONE) != ChangeSetPk::NONE
+                        && prop
+                            .path()
+                            .is_descendant_of(&PropPath::new(["root", "resource"]))
+                    {
+                        return Ok(None);
+                    }
+
                     // Validate type if possible
                     let expected_prop_kind = get_prop_kind_for_value(attribute.value());
                     if let Some(expected_kind) = expected_prop_kind {
@@ -595,11 +622,15 @@ async fn import_component_attribute(
                                 other => *other,
                             }
                         {
-                            return Ok(Some(ImportAttributeSkip::KindMismatch {
-                                path: PropPath::from(path),
-                                expected_kind,
-                                variant_kind: *prop.kind(),
-                            }));
+                            // We have to special case the root/resource/payload prop because it is
+                            // typed as a string but we write arbitrary json to it
+                            if prop.path() != PropPath::new(["root", "resource", "payload"]) {
+                                return Ok(Some(ImportAttributeSkip::KindMismatch {
+                                    path: PropPath::from(path),
+                                    expected_kind,
+                                    variant_kind: *prop.kind(),
+                                }));
+                            }
                         }
                     }
 
@@ -812,7 +843,7 @@ async fn import_component_attribute(
                                             key,
                                             parent_data.attribute_value.as_ref(),
                                             default_av.as_ref(),
-                                            &attribute,
+                                            attribute,
                                             thing_map,
                                         )
                                         .await?;
@@ -829,7 +860,7 @@ async fn import_component_attribute(
                         change_set_pk,
                         *variant.id(),
                         *component.id(),
-                        &attribute,
+                        attribute,
                         &mut av_to_update,
                         parent_data.attribute_value.as_ref(),
                         default_av.as_ref(),
@@ -936,7 +967,7 @@ async fn import_component_attribute(
                         change_set_pk,
                         *variant.id(),
                         *component.id(),
-                        &attribute,
+                        attribute,
                         &mut existing_av,
                         None,
                         default_value.as_ref(),
@@ -953,7 +984,7 @@ async fn import_component_attribute(
                         &None,
                         None,
                         default_value.as_ref(),
-                        &attribute,
+                        attribute,
                         thing_map,
                     )
                     .await?;
@@ -1281,6 +1312,75 @@ async fn update_attribute_value(
         prototype.set_func_id(ctx, attribute_func.id()).await?;
     }
 
+    // Emit the implicit attribute value for this prop value
+    if value.context.prop_id().is_some() && value.key().is_none() {
+        if let Some(implicit_value) = attribute_spec.implicit_value() {
+            let internal_provider = InternalProvider::find_for_prop(ctx, value.context.prop_id())
+                .await?
+                .ok_or(InternalProviderError::NotFoundForProp(
+                    value.context.prop_id(),
+                ))?;
+
+            let implicit_value_context = AttributeContext::builder()
+                .set_internal_provider_id(*internal_provider.id())
+                .set_component_id(component_id)
+                .to_context_unchecked();
+
+            let unset_func = Func::find_by_name(ctx, "si:unset")
+                .await?
+                .ok_or(FuncError::NotFoundByName("si:unset".into()))?;
+
+            let identity_func = Func::find_by_name(ctx, "si:identity")
+                .await?
+                .ok_or(FuncError::NotFoundByName("si:identity".into()))?;
+
+            let (func_binding, func_binding_return_value) = FuncBinding::create_and_execute(
+                ctx,
+                serde_json::to_value(FuncBackendIdentityArgs {
+                    identity: Some(implicit_value.to_owned()),
+                })?,
+                *identity_func.id(),
+            )
+            .await?;
+
+            match AttributePrototype::find_for_context_and_key(ctx, implicit_value_context, &None)
+                .await?
+                .pop()
+            {
+                Some(existing_proto) => {
+                    if let Some(mut implicit_av) = existing_proto.attribute_values(ctx).await?.pop()
+                    {
+                        implicit_av
+                            .set_func_binding_id(ctx, *func_binding.id())
+                            .await?;
+                        implicit_av
+                            .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
+                            .await?;
+                    }
+                }
+                None => {
+                    let implicit_av = AttributeValue::new(
+                        ctx,
+                        *func_binding.id(),
+                        *func_binding_return_value.id(),
+                        implicit_value_context,
+                        None::<String>,
+                    )
+                    .await?;
+
+                    AttributePrototype::new_with_existing_value(
+                        ctx,
+                        *unset_func.id(),
+                        implicit_value_context,
+                        None,
+                        None,
+                        *implicit_av.id(),
+                    )
+                    .await?;
+                }
+            }
+        }
+    }
     let inputs = attribute_spec.inputs()?;
 
     let mut current_apas =

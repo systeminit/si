@@ -39,6 +39,22 @@
       <dd class="p-2 my-2 border-2 border-opacity-10">
         <pre>{{ data.prototypeContext }}</pre>
       </dd>
+      <dt class="uppercase text-xs italic opacity-80">
+        Implicit Attribute Value
+      </dt>
+      <dd class="p-2 my-2 border-2 border-opacity-10 overflow-x-scroll">
+        <pre>{{
+          typeof data.implicitValue === "undefined"
+            ? "none"
+            : data.implicitValue ?? "NULL"
+        }}</pre>
+      </dd>
+      <dt class="uppercase text-xs italic opacity-80">
+        Implicit Set By Function
+      </dt>
+      <dd class="p-2 my-2 border-2 border-opacity-10">
+        <pre>{{ data.implicitFuncName }} </pre>
+      </dd>
       <p class="text-2xs p-2 my-2 border-2 border-opacity-10">
         prototype in change set?
         {{ data.prototypeInChangeSet ? "y" : "n" }} value in change set?
