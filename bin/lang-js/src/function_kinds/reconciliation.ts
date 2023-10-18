@@ -1,20 +1,19 @@
 import Debug from "debug";
-import { base64ToJs } from "./base64";
-import { NodeVM } from "vm2";
+import {NodeVM} from "vm2";
 import _ from "lodash";
 import {
+  executor,
   failureExecution,
+  Func,
   FunctionKind,
-  RequestWithCode,
   ResultFailure,
   ResultSuccess,
-} from "./function";
-import { createSandbox } from "./sandbox";
-import { createNodeVm } from "./vm";
+} from "../function";
+import {RequestCtx} from "../index";
 
 const debug = Debug("langJs:reconciliation");
 
-export interface ReconciliationRequest extends RequestWithCode {
+export interface ReconciliationFunc extends Func {
   args: unknown;
 }
 
@@ -27,33 +26,21 @@ export interface ReconciliationResultSuccess extends ResultSuccess {
   actions: string[];
   message: string | undefined;
 }
+
 export type ReconciliationResultFailure = ResultFailure;
 
 export async function executeReconciliation(
-  request: ReconciliationRequest
+  func: ReconciliationFunc,
+  ctx: RequestCtx,
 ): Promise<void> {
-  let code = base64ToJs(request.codeBase64);
-
-  code = wrapCode(code, request.handler);
-  debug({ code });
-
-  const sandbox = createSandbox(
-    FunctionKind.Reconciliation,
-    request.executionId
-  );
-  const vm = createNodeVm(sandbox);
-
-  const result = await execute(vm, code, request.executionId, request.args);
-  debug({ result });
-
-  console.log(JSON.stringify(result));
+  await executor(ctx, func, FunctionKind.Reconciliation, debug, wrapCode, execute);
 }
 
 async function execute(
   vm: NodeVM,
+  {executionId}: RequestCtx,
+  {args}: ReconciliationFunc,
   code: string,
-  executionId: string,
-  args: unknown
 ): Promise<ReconciliationResult> {
   let reconciliationResult: Record<string, unknown>;
   try {
@@ -119,20 +106,19 @@ async function execute(
   }
 }
 
-function wrapCode(code: string, handle: string): string {
-  const wrapped = `module.exports = function(arg, callback) {
-    ${code}
-    const returnValue = ${handle}(arg, callback);
-    if (returnValue instanceof Promise) {
-      returnValue.then((data) => callback(data))
-          .catch((err) => callback({
-	    message: err.message,
-	    updates: {},
-	    actions: []
-	  }));
-    } else {
-      callback(returnValue);
-    }
-  };`;
-  return wrapped;
-}
+const wrapCode = (code: string, handle: string) => `
+module.exports = function(arg, callback) {
+  ${code}
+  const returnValue = ${handle}(arg, callback);
+  if (returnValue instanceof Promise) {
+    returnValue.then((data) => callback(data))
+        .catch((err) => callback({
+    message: err.message,
+    updates: {},
+    actions: []
+  }));
+  } else {
+    callback(returnValue);
+  }
+};`
+

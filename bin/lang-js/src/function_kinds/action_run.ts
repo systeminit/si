@@ -1,20 +1,19 @@
 import Debug from "debug";
-import { base64ToJs } from "./base64";
-import { NodeVM } from "vm2";
+import {NodeVM} from "vm2";
 import _ from "lodash";
 import {
+  executor,
   failureExecution,
+  Func,
   FunctionKind,
-  RequestWithCode,
   ResultFailure,
   ResultSuccess,
-} from "./function";
-import { createSandbox } from "./sandbox";
-import { createNodeVm } from "./vm";
+} from "../function";
+import {RequestCtx} from "../index";
 
 const debug = Debug("langJs:actionRun");
 
-export interface ActionRunRequest extends RequestWithCode {
+export interface ActionRunFunc extends Func {
   args: unknown;
 }
 
@@ -25,40 +24,40 @@ export interface ActionRunResultSuccess extends ResultSuccess {
   health: "ok" | "warning" | "error";
   message?: string;
 }
+
 export type ActionRunResultFailure = ResultFailure;
 
 export async function executeActionRun(
-  request: ActionRunRequest
+  func: ActionRunFunc,
+  ctx: RequestCtx,
 ): Promise<void> {
-  let code = base64ToJs(request.codeBase64);
 
-  code = wrapCode(code, request.handler);
-  debug({ code });
-
-  const sandbox = createSandbox(FunctionKind.ActionRun, request.executionId);
-  const vm = createNodeVm(sandbox);
-
-  const result = await execute(vm, code, request.executionId, request.args);
-  debug({ result });
-  console.log(
-    JSON.stringify({
-      protocol: "output",
-      executionId: request.executionId,
-      stream: "output",
-      level: "info",
-      group: "log",
-      message: `Output: ${JSON.stringify(result, null, 2)}`,
-    })
+  await executor(
+    ctx, func,
+    FunctionKind.SchemaVariantDefinition,
+    debug,
+    wrapCode,
+    execute,
+    (result) => {
+      console.log(
+        JSON.stringify({
+          protocol: "output",
+          executionId: ctx.executionId,
+          stream: "output",
+          level: "info",
+          group: "log",
+          message: `Output: ${JSON.stringify(result, null, 2)}`,
+        })
+      );
+    }
   );
-
-  console.log(JSON.stringify(result));
 }
 
 async function execute(
   vm: NodeVM,
+  {executionId}: RequestCtx,
+  {args}: ActionRunFunc,
   code: string,
-  executionId: string,
-  args: unknown
 ): Promise<ActionRunResult> {
   let actionRunResult: Record<string, unknown>;
   try {
@@ -145,22 +144,20 @@ async function execute(
   }
 }
 
-function wrapCode(code: string, handle: string): string {
-  const wrapped = `module.exports = function(arg, callback) {
-    ${code}
-    arg = Array.isArray(arg) ? arg : [arg];
-    const resource = arg[0]?.properties?.resource?.payload ?? null;
-    const returnValue = ${handle}(...arg, callback);
-    if (returnValue instanceof Promise) {
-      returnValue.then((data) => callback(data))
-          .catch((err) => callback({
-            status: "error",
-            payload: resource,
-      	    message: err.message,
-	  }));
-    } else {
-      callback(returnValue);
-    }
-  };`;
-  return wrapped;
-}
+const wrapCode = (code: string, handle: string) => `
+module.exports = function(arg, callback) {
+  ${code}
+  arg = Array.isArray(arg) ? arg : [arg];
+  const resource = arg[0]?.properties?.resource?.payload ?? null;
+  const returnValue = ${handle}(...arg, callback);
+  if (returnValue instanceof Promise) {
+    returnValue.then((data) => callback(data))
+        .catch((err) => callback({
+          status: "error",
+          payload: resource,
+          message: err.message,
+  }));
+  } else {
+    callback(returnValue);
+  }
+};`

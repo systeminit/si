@@ -1,29 +1,27 @@
+import _ from "lodash";
+import {Debugger} from "debug";
+import {NodeVM} from "vm2";
+import {base64ToJs} from "./base64";
+import {createNodeVm} from "./vm";
+import {createSandbox} from "./sandbox";
+import {RequestCtx} from "./index";
+
 export enum FunctionKind {
   ActionRun = "actionRun",
+  Before = "before",
   ResolverFunction = "resolverfunction",
-  WorkflowResolve = "workflowResolve",
   Validation = "validation",
   Reconciliation = "reconciliation",
   SchemaVariantDefinition = "schemaVariantDefinition",
 }
 
 export function functionKinds(): Array<string> {
-  return [
-    FunctionKind.ActionRun,
-    FunctionKind.Reconciliation,
-    FunctionKind.ResolverFunction,
-    FunctionKind.SchemaVariantDefinition,
-    FunctionKind.Validation,
-  ];
+  return _.values(FunctionKind)
 }
 
 export type Parameters = Record<string, unknown>;
 
-export interface Request {
-  executionId: string;
-}
-
-export interface RequestWithCode extends Request {
+export interface Func {
   handler: string;
   codeBase64: string;
 }
@@ -75,4 +73,30 @@ export interface OutputLine {
   level: "debug" | "info" | "warn" | "error";
   group?: string;
   message: string;
+}
+
+export async function executor<F extends Func, Result>(
+  ctx: RequestCtx,
+  func: F,
+  kind: FunctionKind,
+  debug: Debugger,
+  wrapCode: (code: string, handler: string) => string,
+  execute: (vm: NodeVM, ctx: RequestCtx, func: F, code: string) => Promise<Result>,
+  afterExecute?: (result: Result) => void,
+) {
+  const originalCode = base64ToJs(func.codeBase64);
+
+  const code = wrapCode(originalCode, func.handler);
+  debug({code});
+
+  const vm = createNodeVm(createSandbox(kind, ctx.executionId));
+
+  const result = await execute(vm, ctx, func, code);
+  debug({result});
+
+  if (afterExecute) {
+    afterExecute(result);
+  }
+
+  console.log(JSON.stringify(result));
 }
