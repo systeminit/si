@@ -7,10 +7,11 @@ import zlib from "zlib";
 import _ from "lodash";
 import yaml from "js-yaml";
 
-import { FunctionKind } from "./function";
-import { makeConsole } from "./sandbox/console";
-import { makeExec } from "./sandbox/exec";
+import {FunctionKind} from "./function";
+import {makeConsole} from "./sandbox/console";
+import {makeExec} from "./sandbox/exec";
 import * as assetBuilder from "./asset_builder";
+import {makeMainRequestStorage} from "./sandbox/requestStorage";
 
 export type Sandbox = Record<string, unknown>;
 
@@ -27,6 +28,7 @@ function commonSandbox(executionId: string): Sandbox {
     console: makeConsole(executionId),
     _,
     Buffer,
+    requestStorage: makeMainRequestStorage(),
     zlib,
   };
 }
@@ -34,7 +36,7 @@ function commonSandbox(executionId: string): Sandbox {
 function resolverFunctionSandbox(executionId: string): Sandbox {
   return {
     // Is there any risk leaking this function plainly here? It smells like a risk for RCE outside of the sandbox
-    YAML: { stringify: yaml.dump },
+    YAML: {stringify: yaml.dump},
     fetch,
     // definitely a risk
     // lol
@@ -72,7 +74,7 @@ function schemaVariantDefinitionSandbox(): Sandbox {
     MapKeyFuncBuilder: assetBuilder.MapKeyFuncBuilder,
     PropWidgetDefinitionBuilder: assetBuilder.PropWidgetDefinitionBuilder,
     SiPropValueFromDefinitionBuilder:
-      assetBuilder.SiPropValueFromDefinitionBuilder,
+    assetBuilder.SiPropValueFromDefinitionBuilder,
   };
 }
 
