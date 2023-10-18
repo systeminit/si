@@ -379,6 +379,14 @@ const prepareTest = async () => {
 
     testInputCode.value = JSON.stringify(properties, null, 2);
     testInputProperties.value = properties;
+  } else if (selectedFunc?.associations?.type === "action") {
+    const properties: Record<string, unknown> | null = json as Record<
+      string,
+      unknown
+    >;
+
+    testInputCode.value = JSON.stringify(properties, null, 2);
+    testInputProperties.value = properties;
   } else if (selectedFunc?.associations?.type === "validation") {
     const prototypes = selectedFunc.associations.prototypes;
 
@@ -483,6 +491,8 @@ const startTest = async () => {
   let args = testInputProperties.value;
   if (funcStore.selectedFuncDetails?.associations?.type === "validation") {
     args = { value: args };
+  } else if (funcStore.selectedFuncDetails?.associations?.type === "action") {
+    args = { kind: "standard", properties: args };
   }
 
   const output = await funcStore.EXECUTE({
