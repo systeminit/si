@@ -73,6 +73,16 @@ export type WsEventPayloadMap = {
     success: boolean;
   };
 
+  ModuleImported:
+    | {
+        kind: "workspaceBackup";
+        workspacePk?: string | null;
+      }
+    | {
+        kind: "module";
+        schemaVariantIds: string[];
+      };
+
   // Old fake status update
   // UpdateStatus: {
   //   global: GlobalUpdateStatus;

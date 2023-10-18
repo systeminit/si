@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use super::PkgResult;
 use crate::server::extract::RawAccessToken;
 use crate::server::tracking::track;
@@ -7,10 +9,12 @@ use crate::{
 };
 use axum::extract::OriginalUri;
 use axum::Json;
+use dal::pkg::ModuleImported;
+use dal::WorkspacePk;
 use dal::{pkg::import_pkg_from_pkg, Visibility, WsEvent};
 use module_index_client::IndexClient;
 use serde::{Deserialize, Serialize};
-use si_pkg::SiPkg;
+use si_pkg::{SiPkg, SiPkgKind};
 use ulid::Ulid;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -48,8 +52,8 @@ pub async fn install_pkg(
     let pkg_data = module_index_client.download_module(request.id).await?;
 
     let pkg = SiPkg::load_from_bytes(pkg_data)?;
-    let pkg_name = pkg.metadata()?.name().to_owned();
-    let (_, _, import_skips) = import_pkg_from_pkg(&ctx, &pkg, None).await?;
+    let metadata = pkg.metadata()?;
+    let (_, svs, import_skips) = import_pkg_from_pkg(&ctx, &pkg, None).await?;
 
     track(
         &posthog_client,
@@ -57,15 +61,31 @@ pub async fn install_pkg(
         &original_uri,
         "install_pkg",
         serde_json::json!({
-                    "pkg_name": pkg_name,
+                    "pkg_name": metadata.name().to_owned(),
         }),
     );
 
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
-    ctx.blocking_commit().await?;
+    WsEvent::module_imported(
+        &ctx,
+        match metadata.kind() {
+            SiPkgKind::Module => ModuleImported::Module {
+                schema_variant_ids: svs,
+            },
+            SiPkgKind::WorkspaceBackup => {
+                let workspace_pk = match metadata.workspace_pk() {
+                    Some(workspace_pk) => Some(WorkspacePk::from_str(workspace_pk)?),
+                    None => None,
+                };
+
+                ModuleImported::WorkspaceBackup { workspace_pk }
+            }
+        },
+    )
+    .await?
+    .publish_on_commit(&ctx)
+    .await?;
+
+    ctx.commit().await?;
 
     let skipped_edges = import_skips
         .as_ref()

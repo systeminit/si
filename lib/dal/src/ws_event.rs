@@ -4,6 +4,7 @@ use si_data_pg::PgError;
 use thiserror::Error;
 
 use crate::component::ComponentCreatedPayload;
+use crate::pkg::ModuleImported;
 use crate::{
     component::{code::CodeGeneratedPayload, resource::ResourceRefreshedPayload},
     fix::{batch::FixBatchReturn, FixReturn},
@@ -48,6 +49,7 @@ pub enum WsPayload {
     FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),
     LogLine(LogLinePayload),
+    ModuleImported(ModuleImported),
     ResourceRefreshed(ResourceRefreshedPayload),
     SchemaCreated(SchemaPk),
     StatusUpdate(StatusMessage),
