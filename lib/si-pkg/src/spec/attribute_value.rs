@@ -55,6 +55,8 @@ pub struct AttributeValueSpec {
     pub component_specific: bool,
     #[builder(setter(each = "input"), default)]
     pub inputs: Vec<AttrFuncInputSpec>,
+    #[builder(setter(into, strip_option), default)]
+    pub implicit_value: Option<serde_json::Value>,
 }
 
 impl AttributeValueSpec {

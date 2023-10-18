@@ -45,6 +45,7 @@ pub struct AttributeDebugView {
     pub external_provider: Option<ExternalProvider>,
     pub prototype: AttributePrototype,
     pub array_index: Option<i64>,
+    pub implicit_attribute_value: Option<AttributeValue>,
 }
 
 #[remain::sorted]
@@ -102,7 +103,10 @@ pub enum ComponentDebugViewError {
 
 pub enum AttributeDebugInput<'a> {
     ComponentSocket((Socket, ComponentId)),
-    AttributeValuePayload(&'a AttributeValuePayload),
+    AttributeValuePayload {
+        payload: &'a AttributeValuePayload,
+        implicit_attribute_value: Option<AttributeValue>,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -215,10 +219,40 @@ impl ComponentDebugView {
 
                         let current_index = index_map.get(payload.prop.id()).map(|index| index - 1);
 
+                        let implicit_attribute_value = if let Some(internal_provider) =
+                            InternalProvider::find_for_prop(ctx, *payload.prop.id()).await?
+                        {
+                            let implicit_attribute_value_context = AttributeReadContext {
+                                internal_provider_id: Some(*internal_provider.id()),
+                                component_id: Some(*component.id()),
+                                ..Default::default()
+                            };
+                            let implicit_attribute_value = AttributeValue::find_for_context(
+                                ctx,
+                                implicit_attribute_value_context,
+                            )
+                            .await?;
+
+                            if let Some(implicit_attribute_value) = implicit_attribute_value {
+                                if implicit_attribute_value.context.component_id().is_none() {
+                                    None
+                                } else {
+                                    Some(implicit_attribute_value)
+                                }
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+
                         attributes.push(
                             Self::get_attribute_debug_view(
                                 ctx,
-                                AttributeDebugInput::AttributeValuePayload(&payload),
+                                AttributeDebugInput::AttributeValuePayload {
+                                    payload: &payload,
+                                    implicit_attribute_value,
+                                },
                                 current_parent.to_owned(),
                                 Some(prop_full_path.to_owned()),
                                 current_index,
@@ -332,8 +366,12 @@ impl ComponentDebugView {
             external_provider,
             func_binding_return_value,
             path,
+            implicit_attribute_value,
         ) = match payload {
-            AttributeDebugInput::AttributeValuePayload(payload) => {
+            AttributeDebugInput::AttributeValuePayload {
+                payload,
+                implicit_attribute_value,
+            } => {
                 let func_binding_return_value = match &payload.func_binding_return_value {
                     Some(fbrv) => fbrv.to_owned(),
                     None => FuncBindingReturnValue::get_by_id(
@@ -355,6 +393,7 @@ impl ComponentDebugView {
                     None,
                     func_binding_return_value,
                     path,
+                    implicit_attribute_value,
                 )
             }
             AttributeDebugInput::ComponentSocket((socket, component_id)) => {
@@ -424,6 +463,7 @@ impl ComponentDebugView {
                     external_provider,
                     func_binding_return_value,
                     path,
+                    None,
                 )
             }
         };
@@ -461,6 +501,7 @@ impl ComponentDebugView {
             external_provider,
             prototype,
             array_index,
+            implicit_attribute_value,
         })
     }
 }

@@ -1501,6 +1501,11 @@ impl PkgExporter {
         if let Some(value) = view.func_binding_return_value.value() {
             builder.value(value.to_owned());
         }
+        if let Some(implicit_value) = view.implicit_attribute_value {
+            if let Some(value) = implicit_value.get_value(ctx).await? {
+                builder.implicit_value(value);
+            }
+        }
         if let Some(output_stream) = view.func_execution.output_stream() {
             builder.output_stream(serde_json::to_value(output_stream)?);
         }

@@ -24,6 +24,7 @@ pub struct SiPkgAttributeValue<'a> {
     is_proxy: bool,
     sealed_proxy: bool,
     component_specific: bool,
+    implicit_value: Option<serde_json::Value>,
 
     hash: Hash,
     source: Source<'a>,
@@ -91,6 +92,7 @@ impl<'a> SiPkgAttributeValue<'a> {
             is_proxy: node.is_proxy,
             sealed_proxy: node.sealed_proxy,
             component_specific: node.component_specific,
+            implicit_value: node.implicit_value,
 
             hash: hashed_node.hash(),
             source: Source::new(graph, node_idx),
@@ -151,6 +153,10 @@ impl<'a> SiPkgAttributeValue<'a> {
 
     pub fn component_specific(&self) -> bool {
         self.component_specific
+    }
+
+    pub fn implicit_value(&self) -> Option<&serde_json::Value> {
+        self.implicit_value.as_ref()
     }
 
     pub fn hash(&self) -> Hash {

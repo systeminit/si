@@ -157,6 +157,14 @@ export interface AttributeDebugData {
   kind: string;
   prototypeInChangeSet: boolean;
   valueInChangeSet: boolean;
+  implicitValue?: object | string | number | boolean | null;
+  implicitValueContext?: {
+    prop_id: string;
+    internal_provider_id: string;
+    external_provider_id: string;
+    component_id: string;
+  };
+  implicitFuncName?: string;
 }
 
 export interface AttributeDebugView {
