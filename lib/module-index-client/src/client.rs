@@ -31,11 +31,11 @@ impl IndexClient {
         module_id: Ulid,
         rejected_by_display_name: String,
     ) -> IndexClientResult<ModuleRejectionResponse> {
-        let reject_url = dbg!(self
+        let reject_url = self
             .base_url
             .join("modules/")?
             .join(&format!("{}/", module_id.to_string()))?
-            .join("reject"))?;
+            .join("reject")?;
 
         let upload_response = reqwest::Client::new()
             .post(reject_url)
@@ -55,11 +55,11 @@ impl IndexClient {
         module_id: Ulid,
         promoted_to_builtin_by_display_name: String,
     ) -> IndexClientResult<ModulePromotedResponse> {
-        let reject_url = dbg!(self
+        let reject_url = self
             .base_url
             .join("builtins/")?
             .join(&format!("{}/", module_id.to_string()))?
-            .join("promote"))?;
+            .join("promote")?;
 
         let promote_response = reqwest::Client::new()
             .post(reject_url)
@@ -97,20 +97,19 @@ impl IndexClient {
     }
 
     pub async fn download_module(&self, module_id: Ulid) -> IndexClientResult<Vec<u8>> {
-        let download_url = dbg!(self
+        let download_url = self
             .base_url
             .join("modules/")?
             .join(&format!("{}/", module_id.to_string()))?
-            .join("download"))?;
-        let response = dbg!(reqwest::Client::new()
+            .join("download")?;
+        let response = reqwest::Client::new()
             .get(download_url)
-            .bearer_auth(&self.auth_token))
-        .send()
-        .await?
-        .error_for_status()?;
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await?
+            .error_for_status()?;
 
         let bytes = response.bytes().await?;
-        dbg!(&bytes.len());
 
         Ok(bytes.to_vec())
     }
@@ -146,11 +145,11 @@ impl IndexClient {
     }
 
     pub async fn get_builtin(&self, module_id: Ulid) -> IndexClientResult<Vec<u8>> {
-        let download_url = dbg!(self
+        let download_url = self
             .base_url
             .join("modules/")?
             .join(&format!("{}/", module_id.to_string()))?
-            .join("download_builtin"))?;
+            .join("download_builtin")?;
         let mut response = reqwest::Client::new().get(download_url).send().await?;
 
         if response.status() == StatusCode::NOT_FOUND
