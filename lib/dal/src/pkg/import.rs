@@ -1445,9 +1445,9 @@ async fn update_attribute_value(
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportSkips {
-    change_set_pk: ChangeSetPk,
-    edge_skips: Vec<ImportEdgeSkip>,
-    attribute_skips: Vec<(String, Vec<ImportAttributeSkip>)>,
+    pub change_set_pk: ChangeSetPk,
+    pub edge_skips: Vec<ImportEdgeSkip>,
+    pub attribute_skips: Vec<(String, Vec<ImportAttributeSkip>)>,
 }
 
 #[remain::sorted]

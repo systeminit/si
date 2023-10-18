@@ -290,7 +290,11 @@ export const useModuleStore = () => {
         },
 
         async INSTALL_REMOTE_MODULE(moduleId: ModuleId) {
-          return new ApiRequest<{ success: true }>({
+          return new ApiRequest<{
+            success: true;
+            skippedEdges: boolean;
+            skippedAttributes: boolean;
+          }>({
             method: "post",
             url: "/pkg/install_pkg",
             params: { id: moduleId, ...visibility },
