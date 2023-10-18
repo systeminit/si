@@ -6,6 +6,7 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
+import { useRealtimeStore } from "./realtime/realtime.store";
 import { ModuleIndexApiRequest } from ".";
 
 export type ModuleId = string;
@@ -115,6 +116,7 @@ export const useModuleStore = () => {
         builtinsSearchResults: [] as RemoteModuleSummary[],
         remoteModuleDetailsById: {} as Record<ModuleId, RemoteModuleDetails>,
         remoteModuleSpecsById: {} as Record<ModuleId, ModuleSpec>,
+        installingModule: false as boolean,
       }),
       getters: {
         urlSelectedModuleSlug: () => {
@@ -290,6 +292,7 @@ export const useModuleStore = () => {
         },
 
         async INSTALL_REMOTE_MODULE(moduleId: ModuleId) {
+          this.installingModule = true;
           return new ApiRequest<{
             success: true;
             skippedEdges: boolean;
@@ -301,6 +304,9 @@ export const useModuleStore = () => {
             onSuccess: (_response) => {
               // response is just success, so we have to reload local modules
               this.LOAD_LOCAL_MODULES();
+            },
+            onFail: () => {
+              this.installingModule = false;
             },
           });
         },
@@ -348,6 +354,20 @@ export const useModuleStore = () => {
       onActivated() {
         this.LOAD_LOCAL_MODULES();
         this.LIST_BUILTINS();
+
+        const realTimeStore = useRealtimeStore();
+        realTimeStore.subscribe(this.$id, "workspaceBackupImports", {
+          eventType: "ModuleImported",
+          callback: (payload) => {
+            if (payload.kind === "workspaceBackup") {
+              if (!this.installingModule) {
+                window.location.reload();
+              } else {
+                this.installingModule = false;
+              }
+            }
+          },
+        });
       },
     }),
   )();

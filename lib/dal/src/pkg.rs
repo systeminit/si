@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 use url::ParseError;
@@ -26,11 +27,11 @@ use crate::{
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
     AttributeReadContext, AttributeValueError, ChangeSetError, ChangeSetPk, ComponentError,
-    ComponentId, EdgeError, ExternalProviderError, ExternalProviderId, FuncBackendKind,
+    ComponentId, DalContext, EdgeError, ExternalProviderError, ExternalProviderId, FuncBackendKind,
     FuncBackendResponseType, FuncBindingReturnValueError, FuncError, FuncId, InternalProviderError,
     InternalProviderId, NodeError, PropError, PropId, PropKind, SchemaError, SchemaId,
     SchemaVariantError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
-    WorkspaceError, WorkspacePk,
+    WorkspaceError, WorkspacePk, WsEvent, WsEventResult, WsPayload,
 };
 
 #[remain::sorted]
@@ -373,5 +374,22 @@ where
 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum ModuleImported {
+    WorkspaceBackup {
+        workspace_pk: Option<WorkspacePk>,
+    },
+    Module {
+        schema_variant_ids: Vec<SchemaVariantId>,
+    },
+}
+
+impl WsEvent {
+    pub async fn module_imported(ctx: &DalContext, payload: ModuleImported) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::ModuleImported(payload)).await
     }
 }

@@ -85,6 +85,8 @@ pub enum PkgError {
     StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
+    #[error(transparent)]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error("Unable to parse URL: {0}")]
     Url(#[from] url::ParseError),
     #[error("transparent")]
