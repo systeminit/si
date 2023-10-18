@@ -5,7 +5,7 @@ import { setTimeout } from "timers/promises";
 
 export interface WatchArgs {
   cmd: string;
-  args?: readonly string[];
+  args?: Array<string | number>;
   execaOptions?: Options<string>;
   retryMs?: number;
   maxRetryCount?: number;
@@ -29,7 +29,7 @@ export type SiExecResult = ExecaReturnValue<string>;
 export const makeExec = (executionId: string) => {
   async function waitUntilEnd(
     execaFile: string,
-    execaArgs?: readonly string[],
+    execaArgs?: Array<string | number>,
     execaOptions?: Options<string>
   ): Promise<SiExecResult> {
     debug(
@@ -105,7 +105,7 @@ export const makeExec = (executionId: string) => {
 //export async function siExecStream(
 //  ws: WebSocket,
 //  execaFile: string,
-//  execaArgs?: readonly string[],
+//  execaArgs?: Array<string | number>,
 //  execaOptions?: execa.Options<string>,
 //): Promise<SiExecResult> {
 //  console.log(`running command; cmd="${execaFile} ${execaArgs?.join(" ")}"`);

@@ -870,7 +870,7 @@ fn langjs_types() -> &'static str {
 
     interface WatchArgs {
         cmd: string,
-        args?: readonly string[],
+        args?: Array<string | number>,
         execaOptions?: Options<string>,
         retryMs?: number,
         maxRetryCount?: number,
@@ -884,7 +884,7 @@ fn langjs_types() -> &'static str {
 
     type SiExecResult = ExecaReturnValue<string>;
 
-    async function waitUntilEnd(execaFile: string, execaArgs?: string[], execaOptions?: any): Promise<any>;
+    async function waitUntilEnd(execaFile: string, execaArgs?: Array<string | number>, execaOptions?: any): Promise<any>;
     async function watch(options: WatchArgs, deadlineCount?: number): Promise<WatchResult>;
 }"
 }

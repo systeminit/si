@@ -32,7 +32,7 @@
             v-model="testAttribute"
             class="flex-grow"
             type="dropdown"
-            placeholder="no attribute selected"
+            placeholder="no component selected"
             noLabel
             :options="componentAttributeOptions"
             @update:model-value="loadInput"
@@ -61,7 +61,7 @@
           v-model="dryRun"
           class="flex-grow justify-center"
           type="checkbox"
-          placeholder="no attribute selected"
+          placeholder="no component selected"
           label="Dry Run"
           inlineLabel
           disabled
