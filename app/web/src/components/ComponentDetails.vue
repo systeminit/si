@@ -68,10 +68,10 @@
 
     <template v-else>
       <div class="absolute inset-0">
-        <TabGroup>
-          <TabGroupItem>
+        <TabGroup trackingSlug="asset_details">
+          <TabGroupItem slug="component">
             <template #label>
-              <Inline>
+              <Inline noWrap>
                 <span>Component</span>
                 <StatusIndicatorIcon
                   v-if="selectedComponentQualificationStatus"
@@ -80,16 +80,7 @@
                 />
               </Inline>
             </template>
-
-            <TabGroup
-              :startSelectedTabSlug="
-                changeSetStore.headSelected ? 'resource' : 'attributes'
-              "
-              :rememberSelectedTabKey="`component_details_${
-                changeSetStore.headSelected ? 'view' : 'model'
-              }`"
-              trackingSlug="component_details"
-            >
+            <TabGroup trackingSlug="asset_details/component" minimal>
               <TabGroupItem label="Attributes" slug="attributes">
                 <AttributeViewer
                   class="dark:text-neutral-50 text-neutral-900"
@@ -127,9 +118,9 @@
               </TabGroupItem>
             </TabGroup>
           </TabGroupItem>
-          <TabGroupItem>
+          <TabGroupItem slug="resources">
             <template #label>
-              <Inline>
+              <Inline noWrap>
                 <span>Resource</span>
                 <StatusIndicatorIcon
                   v-if="selectedComponent.resource.data"
@@ -140,9 +131,9 @@
             </template>
             <ComponentDetailsResource />
           </TabGroupItem>
-          <TabGroupItem>
+          <TabGroupItem slug="actions">
             <template #label>
-              <Inline>
+              <Inline noWrap>
                 <span>Actions</span>
                 <PillCounter :count="selectedComponentActionsCount" />
               </Inline>

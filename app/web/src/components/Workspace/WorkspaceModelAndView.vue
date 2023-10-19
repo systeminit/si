@@ -60,7 +60,7 @@
     rememberSizeKey="details-panel"
     side="right"
     :defaultSize="380"
-    :minSize="300"
+    :minSize="350"
     :disableSubpanelResizing="!changesPanelRef?.isOpen"
   >
     <div class="h-full overflow-hidden relative">

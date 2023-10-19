@@ -1,6 +1,6 @@
 <template>
   <div class="h-full relative">
-    <TabGroup>
+    <TabGroup minimal>
       <TabGroupItem label="Select" slug="action-selection">
         <div
           v-if="actions.length === 0"

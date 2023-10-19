@@ -41,15 +41,24 @@
             :class="
               clsx(
                 'focus:outline-none whitespace-nowrap',
-                'text-neutral-400 border-b border-neutral-300 dark:border-neutral-600 border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600',
-                'h-11 px-2 text-sm inline-flex items-center rounded-t group-hover:border-shade-100 dark:group-hover:border-shade-0',
-                tab.props.slug === selectedTabSlug
-                  ? 'border-b-white dark:border-b-neutral-800 border-b text-action-700 dark:text-action-300 font-bold'
-                  : themeClasses(
-                      'hover:text-neutral-400 font-medium hover:bg-neutral-100',
-                      'hover:text-neutral-300 font-medium hover:bg-neutral-900',
-                    ),
+                'h-11 px-2 text-sm inline-flex items-center',
                 growTabsToFillWidth && 'flex-grow justify-center',
+                minimal
+                  ? [
+                      'border-b ',
+                      tab.props.slug === selectedTabSlug
+                        ? 'border-current text-action-500 dark:text-action-300 font-bold'
+                        : 'border-neutral-300 dark:border-neutral-600 hover:border-shade-100 dark:hover:border-shade-0',
+                    ]
+                  : [
+                      'text-neutral-400 border-b border-neutral-300 dark:border-neutral-600 border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 rounded-t group-hover:border-shade-100 dark:group-hover:border-shade-0',
+                      tab.props.slug === selectedTabSlug
+                        ? 'border-b-white dark:border-b-neutral-800 border-b text-action-700 dark:text-action-300 font-bold'
+                        : themeClasses(
+                            'hover:text-neutral-400 font-medium hover:bg-neutral-100',
+                            'hover:text-neutral-300 font-medium hover:bg-neutral-900',
+                          ),
+                    ],
               )
             "
             @click.prevent="selectTab(tab.props.slug)"
@@ -184,6 +193,7 @@ const props = defineProps({
   },
   trackingSlug: String,
   growTabsToFillWidth: { type: Boolean },
+  minimal: { type: Boolean },
 });
 
 const emit = defineEmits<{
