@@ -3,7 +3,7 @@ use crate::key_management::{
     write_veritech_credentials,
 };
 use crate::{state::AppState, CliResult, SiCliError};
-use inquire::{Password, PasswordDisplayMode};
+use inquire::{Password, PasswordDisplayMode, Text};
 
 impl AppState {
     pub async fn configure(&self, reconfigure: bool) -> CliResult<()> {
@@ -66,6 +66,19 @@ async fn invoke(_is_preview: bool, reconfigure: bool) -> CliResult<()> {
             Err(_) => println!(
                 "An error happened when asking for your AWS Secret Access Key, try again later."
             ),
+        }
+    }
+
+    if prompt_everything {
+        let endpoint_url = Text::new("Set a Custom AWS Endpoint (e.g. Localstack)").prompt();
+
+        match endpoint_url {
+            Ok(url) => {
+                raw_creds.aws_endpoint_url = Some(url);
+                requires_rewrite = true;
+            }
+            Err(inquire::InquireError::OperationInterrupted) => return Err(SiCliError::CtrlC),
+            Err(_) => println!("Not setting a custom AWS Endpoint"),
         }
     }
 
