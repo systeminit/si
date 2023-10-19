@@ -36,14 +36,14 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Icon } from "@si/vue-lib/design-system";
-import StatusBarTab from "@/components/StatusBar/StatusBarTab.vue";
-import StatusBarTabPill from "@/components/StatusBar/StatusBarTabPill.vue";
 import { useComponentsStore } from "@/store/components.store";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
+import StatusBarTabPill from "./StatusBarTabPill.vue";
+import StatusBarTab from "./StatusBarTab.vue";
 
-const props = defineProps<{
-  selected: boolean;
-}>();
+const props = defineProps({
+  selected: Boolean,
+});
 
 const componentsStore = useComponentsStore();
 const stats = computed(() => componentsStore.changeStatsSummary);

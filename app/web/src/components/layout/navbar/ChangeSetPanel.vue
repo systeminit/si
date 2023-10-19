@@ -17,7 +17,7 @@
         <VButton
           tone="action"
           variant="ghost"
-          icon="git-branch"
+          icon="git-branch-plus"
           size="sm"
           :disabled="fixesStore.fixesAreInProgress"
           @click="openCreateModal"

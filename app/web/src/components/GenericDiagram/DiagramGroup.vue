@@ -230,19 +230,19 @@
     <v-group
       v-if="group.def.statusIcons?.length"
       :config="{
-        x: halfWidth - group.def.statusIcons.length * 22 - 2,
+        x: halfWidth - 2,
         y: 0,
       }"
     >
       <DiagramIcon
-        v-for="(statusIcon, i) in group.def.statusIcons"
+        v-for="(statusIcon, i) in _.reverse(_.slice(group.def.statusIcons))"
         :key="`status-icon-${i}`"
         :icon="statusIcon.icon"
         :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
-        :size="20"
-        :x="i * 22"
+        :size="24"
+        :x="i * -26"
         :y="nodeBodyHeight - 5"
-        origin="bottom-left"
+        origin="bottom-right"
       />
     </v-group>
 
@@ -279,14 +279,13 @@
     <!-- added/modified indicator -->
     <DiagramIcon
       v-if="isAdded || isModified"
-      :icon="isAdded ? 'plus' : 'tilde'"
-      :bgColor="
+      :icon="isAdded ? 'plus-square' : 'tilde-square'"
+      :color="
         isAdded
           ? diagramConfig?.toneColors?.success
           : diagramConfig?.toneColors?.warning
       "
-      circleBg
-      :color="theme === 'dark' ? '#000' : '#FFF'"
+      shadeBg
       :size="GROUP_HEADER_ICON_SIZE"
       :x="halfWidth - GROUP_HEADER_ICON_SIZE / 2"
       :y="

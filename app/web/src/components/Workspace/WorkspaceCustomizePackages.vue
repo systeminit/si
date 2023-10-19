@@ -17,10 +17,8 @@
     </div>
   </div>
   <ResizablePanel rememberSizeKey="func-details" side="right" :minSize="200">
-    <div class="flex flex-col h-full items-center">
-      <SidebarSubpanelTitle>Module Details</SidebarSubpanelTitle>
-      <ModuleDetailsPanel :key="moduleSlug" class="w-full" />
-    </div>
+    <SidebarSubpanelTitle label="Module Details" />
+    <ModuleDetailsPanel :key="moduleSlug" />
   </ResizablePanel>
 </template>
 

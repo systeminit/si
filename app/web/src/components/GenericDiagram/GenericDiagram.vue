@@ -71,7 +71,6 @@ overflow hidden */
           :drawEdgeState="drawEdgeState"
           :isHovered="elementIsHovered(node)"
           :isSelected="elementIsSelected(node)"
-          :deleteIcon="deleteIcon"
           @hover:start="(meta) => onElementHoverStart(node, meta)"
           @hover:end="(meta) => onElementHoverEnd(node)"
           @resize="onNodeLayoutOrLocationChange(node)"
@@ -93,7 +92,6 @@ overflow hidden */
           :group="group"
           :tempPosition="movedElementPositions[group.uniqueKey]"
           :tempSize="resizedElementSizes[group.uniqueKey]"
-          :deleteIcon="deleteIcon"
           @resize="onNodeLayoutOrLocationChange(group)"
         />
 
@@ -167,7 +165,6 @@ import * as _ from "lodash-es";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
-import { IconNames } from "@si/vue-lib/design-system";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/GenericDiagram/DiagramGroup.vue";
 import { useComponentsStore } from "@/store/components.store";
@@ -255,7 +252,6 @@ const props = defineProps({
   },
   // TODO: split this into controls for specific features rather than single toggle
   readOnly: { type: Boolean },
-  deleteIcon: { type: String as PropType<IconNames>, default: "x" },
 
   controlsDisabled: { type: Boolean },
 });

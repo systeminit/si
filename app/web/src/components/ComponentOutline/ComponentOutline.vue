@@ -2,19 +2,12 @@
   <div ref="outlineRef" class="flex flex-col">
     <ScrollArea>
       <template #top>
-        <SidebarSubpanelTitle class="border-t-0">
-          <template #default>
-            <div class="flex flex-row grow items-center">
-              <div class="mr-auto">Diagram Outline</div>
-            </div>
-          </template>
-          <template #icon>
-            <Icon
-              v-if="fetchComponentsReq.isPending || fixesAreRunning"
-              name="loader"
-              size="md"
-            />
-          </template>
+        <SidebarSubpanelTitle label="Diagram Outline">
+          <Icon
+            v-if="fetchComponentsReq.isPending || fixesAreRunning"
+            name="loader"
+            size="md"
+          />
         </SidebarSubpanelTitle>
 
         <!-- search bar - dont need to show if no components -->

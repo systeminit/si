@@ -11,9 +11,7 @@
 
       <ScrollArea class="">
         <template #top>
-          <SidebarSubpanelTitle class="border-t-0">
-            Assets
-          </SidebarSubpanelTitle>
+          <SidebarSubpanelTitle label="Assets" />
 
           <div
             ref="instructionsRef"

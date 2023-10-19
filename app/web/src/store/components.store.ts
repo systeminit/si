@@ -32,7 +32,7 @@ import {
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useStatusStore } from "./status.store";
-import { ActionPrototype, useActionsStore } from "./actions.store";
+import { ActionPrototype } from "./actions.store";
 
 export type ComponentId = string;
 export type ComponentNodeId = string;
@@ -49,7 +49,6 @@ type RawComponent = {
   createdInfo: ActorAndTimestamp;
   deletedInfo?: ActorAndTimestamp;
   displayName: string;
-  failingQualifications: number;
   id: ComponentId;
   nodeId: ComponentNodeId;
   nodeType: "component" | "configurationFrame" | "aggregationFrame";
@@ -118,21 +117,14 @@ type NodeAddMenu = {
 }[];
 
 const qualificationStatusToIconMap: Record<
-  QualificationStatus,
+  QualificationStatus | "notexists",
   DiagramStatusIcon
 > = {
-  success: { icon: "check-circle", tone: "success" },
-  warning: { icon: "exclamation-circle", tone: "warning" },
-  failure: { icon: "x-circle", tone: "error" },
+  success: { icon: "check-hex-outline", tone: "success" },
+  warning: { icon: "check-hex-outline", tone: "warning" },
+  failure: { icon: "x-hex-outline", tone: "error" },
   running: { icon: "loader", tone: "info" },
-};
-
-const confirmationStatusToIconMap: Record<
-  "success" | "failure",
-  DiagramStatusIcon
-> = {
-  success: { icon: "check-circle", tone: "success" },
-  failure: { icon: "tools", tone: "error" },
+  notexists: { icon: "none" },
 };
 
 export interface AttributeDebugData {
@@ -257,10 +249,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 Kubernetes: "logo-k8s",
               }[rc?.schemaCategory || ""] || "logo-si"; // fallback to SI logo
 
-            const qualificationsStore = useQualificationsStore();
-            const qualifications =
-              qualificationsStore.qualificationStatsByComponentId[rc.id];
-
             return {
               ...rc,
               // convert "node" ids back to component ids, so we can use that in a few places
@@ -273,7 +261,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ),
               icon: typeIcon,
               isGroup: rc.nodeType !== "component",
-              failingQualifications: qualifications?.failed || 0,
             } as FullComponent;
           });
         },
@@ -350,8 +337,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           const qualificationsStore = useQualificationsStore();
           const statusStore = useStatusStore();
 
-          const actionsStore = useActionsStore();
-
           // adding logo and qualification info into the nodes
           // TODO: probably want to include logo directly
           return _.map(this.allComponents, (component) => {
@@ -359,18 +344,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             const qualificationStatus =
               qualificationsStore.qualificationStatusByComponentId[componentId];
-            const confirmationStatus =
-              actionsStore.actionStatusByComponentId[componentId];
-            const qualifications =
-              qualificationsStore.qualificationStatsByComponentId[componentId];
             const statusIcons: DiagramStatusIcon[] = _.compact([
-              confirmationStatus
-                ? confirmationStatusToIconMap[confirmationStatus]
-                : {
-                    icon: "minus",
-                    tone: "neutral",
-                  },
-              qualificationStatusToIconMap[qualificationStatus ?? "failure"],
+              qualificationStatusToIconMap[qualificationStatus ?? "notexists"],
+              component.resource.data
+                ? { icon: "check-hex", tone: "success" }
+                : { icon: "none" },
             ]);
 
             return {
@@ -385,7 +363,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 !!statusStore.componentStatusById[componentId]?.isUpdating,
               typeIcon: component?.icon || "logo-si",
               statusIcons,
-              failingQualifications: qualifications?.failed || 0,
             };
           });
         },

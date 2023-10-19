@@ -180,6 +180,12 @@ export default Inline;
       }
     }
   });
+
+  > .inline__item {
+    &:empty {
+      display: none;
+    }
+  }
 }
 
 // TODO: add hacky good enough fix for no flex gap support :(

@@ -1,15 +1,12 @@
 <template>
   <div class="flex flex-col h-full w-full overflow-hidden">
-    <div class="p-xs border-b dark:border-neutral-600 flex-none">
-      <Inline alignY="center">
-        <Icon size="md" name="multiselect" class="shrink-0 mr-2xs" />
-        <div class="font-bold capsize">Multiple Components</div>
-      </Inline>
-    </div>
+    <ScrollArea>
+      <template #top>
+        <SidebarSubpanelTitle label="Multiple Assets" icon="multiselect" />
+      </template>
 
-    <div class="overflow-y-auto">
       <div class="capsize p-xs mt-xs italic text-neutral-400 text-sm">
-        {{ selectedComponentIds.length }} components selected:
+        {{ selectedComponentIds.length }} assets selected:
       </div>
       <Stack spacing="xs" class="p-xs">
         <ComponentCard
@@ -18,25 +15,17 @@
           :componentId="componentId"
         />
       </Stack>
-    </div>
-
-    <!-- <div class="p-xs">
-      <VButton
-        v-if="selectedEdge.changeStatus !== 'deleted'"
-        tone="destructive"
-        icon="trash"
-        label="Delete"
-      />
-    </div> -->
+    </ScrollArea>
   </div>
 </template>
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed } from "vue";
-import { Icon, Inline, Stack } from "@si/vue-lib/design-system";
+import { ScrollArea, Stack } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import ComponentCard from "./ComponentCard.vue";
+import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 
 const componentsStore = useComponentsStore();
 

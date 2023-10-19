@@ -1,29 +1,16 @@
 <template>
   <div class="flex flex-col w-full max-h-full overflow-hidden">
-    <div
-      class="flex flex-row items-center justify-between p-2 text-base align-middle"
-      :class="titleClasses"
-    >
-      <!-- NOTE(nick): add defaults for title if the need arises -->
-      <slot name="title"
-        ><div v-if="title" class="text-lg">{{ title }}</div>
-      </slot>
-
-      <div class="flex">
-        <SiButtonIcon
-          tooltipText="Copy code to clipboard"
-          ignoreTextColor
-          icon="clipboard-copy"
-          @click="copyCodeToClipboard"
-        />
-
-        <slot name="actionButtons"></slot>
-      </div>
-    </div>
+    <SiButtonIcon
+      tooltipText="Copy code to clipboard"
+      ignoreTextColor
+      icon="clipboard-copy"
+      class="absolute z-100 right-xs top-xs"
+      @click="copyCodeToClipboard"
+    />
     <div
       :class="
         clsx(
-          'w-full h-full overflow-auto mt-xs',
+          'w-full h-full overflow-auto',
           border && 'border',
           themeClasses('border-neutral-300', 'dark:border-neutral-600'),
         )
@@ -72,7 +59,7 @@ const props = defineProps({
 
   // // could add validation fns?
   // // Format: "0.0px"
-  fontSize: { type: String },
+  fontSize: { type: String, default: "13px" },
   // // Format: "0.0px" or "0%"
   height: { type: String },
   title: { type: String },

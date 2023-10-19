@@ -150,46 +150,18 @@
       <!-- status icons -->
       <v-group
         :config="{
-          x: halfWidth - 2 * 36 + 18,
-          y:
-            nodeHeaderHeight +
-            subtitleTextHeight +
-            SOCKET_MARGIN_TOP +
-            SOCKET_GAP * (leftSockets.length + rightSockets.length),
+          x: halfWidth - 2,
+          y: nodeHeight - 2,
         }"
       >
         <DiagramIcon
-          v-if="isModified"
-          :icon="'component-changes-small'"
-          :color="theme === 'dark' ? '#000' : '#FFF'"
-          :size="20"
-          :x="-25"
-          :y="10"
-          origin="center"
-        />
-
-        <DiagramIcon
-          :icon="
-            isQualified
-              ? 'component-qualified-large'
-              : 'component-not-qualified-small'
-          "
-          :color="theme === 'dark' ? '#000' : '#FFF'"
-          :size="25"
-          :bgcolor="'transparent'"
-          :x="5"
-          :y="10"
-          origin="center"
-        />
-
-        <DiagramIcon
-          :icon="hasResource ? 'resource-passed-small' : ''"
-          :color="theme === 'dark' ? '#000' : '#FFF'"
-          :size="25"
-          :bgcolor="'transparent'"
-          :x="35"
-          :y="10"
-          origin="center"
+          v-for="(statusIcon, i) in _.reverse(_.slice(node.def.statusIcons))"
+          :key="`status-icon-${i}`"
+          :icon="statusIcon.icon"
+          :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
+          :size="24"
+          :x="i * -26"
+          origin="bottom-right"
         />
       </v-group>
 
@@ -223,23 +195,26 @@
         />
       </v-group>
       <DiagramIcon
-        v-if="isAdded"
-        :icon="'plus'"
-        :bgColor="diagramConfig?.toneColors?.success"
-        circleBg
-        :color="theme === 'dark' ? '#000' : '#FFF'"
-        :size="20"
-        :x="halfWidth - 5 - 10"
+        v-if="isAdded || isModified"
+        :icon="isAdded ? 'plus-square' : 'tilde-square'"
+        :color="
+          isAdded
+            ? diagramConfig?.toneColors?.success
+            : diagramConfig?.toneColors?.warning
+        "
+        :size="24"
+        :x="halfWidth - 2 - 12"
         :y="nodeHeaderHeight / 2"
         origin="center"
       />
     </v-group>
 
     <!-- change status indicators -->
-    <!-- deleted X overlay (large centered) -->
+    <!-- deleted icon overlay (large centered) -->
     <DiagramIcon
       v-if="isDeleted"
-      :icon="deleteIcon"
+      icon="minus-square"
+      shadeBg
       :color="diagramConfig?.toneColors?.destructive"
       :size="DELETED_X_SIZE"
       :x="0"
@@ -256,8 +231,7 @@ import tinycolor from "tinycolor2";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
-import { IconNames, useTheme } from "@si/vue-lib/design-system";
-import { useComponentsStore } from "@/store/components.store";
+import { useTheme } from "@si/vue-lib/design-system";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
@@ -300,7 +274,6 @@ const props = defineProps({
   },
   isHovered: Boolean,
   isSelected: Boolean,
-  deleteIcon: { type: String as PropType<IconNames>, default: "x" },
 });
 
 const emit = defineEmits<{
@@ -316,25 +289,7 @@ const isDeleted = computed(() => props.node.def.changeStatus === "deleted");
 const isModified = computed(() => props.node.def.changeStatus === "modified");
 const isAdded = computed(() => props.node.def.changeStatus === "added");
 
-const hasResource = computed(() => {
-  if (!props.node) return false;
-  const component =
-    useComponentsStore().componentsById[props.node.def.componentId];
-  if (!component?.resource) return false;
-  return component?.resource.data !== null;
-});
-
-const isQualified = computed(() => {
-  if (!props.node) return false;
-  const component =
-    useComponentsStore().componentsById[props.node.def.componentId];
-  if (!component?.failingQualifications) {
-    return true;
-  }
-  return component?.failingQualifications === 0;
-});
-
-const DELETED_X_SIZE = 100;
+const DELETED_X_SIZE = 80;
 
 // template refs
 const titleTextRef = ref();
