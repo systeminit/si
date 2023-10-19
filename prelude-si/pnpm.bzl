@@ -188,6 +188,89 @@ eslint = rule(
     },
 )
 
+def jest_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    ExternalRunnerTestInfo,
+]]:
+    args = cmd_args()
+    args.add(ctx.attrs.args)
+
+    return _npm_test_impl(
+        ctx,
+        ctx.attrs.jest[RunInfo],
+        args,
+        "jest",
+    )
+
+jest = rule(
+    impl = jest_impl,
+    attrs = {
+        "srcs": attrs.list(
+            attrs.source(),
+            default = [],
+            doc = """List of package source files to track.""",
+        ),
+        "prod_deps_srcs": attrs.dict(
+            attrs.string(),
+            attrs.source(allow_directory = True),
+            default = {},
+            doc = """Mapping of dependent prod package paths to source files to track.""",
+        ),
+        "dev_deps_srcs": attrs.dict(
+            attrs.string(),
+            attrs.source(allow_directory = True),
+            default = {},
+            doc = """Mapping of dependent dev package paths to source files from to track.""",
+        ),
+        "jest": attrs.dep(
+            providers = [RunInfo],
+            doc = """jest dependency.""",
+        ),
+        "args": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = """Extra arguments passed to jest.""",
+        ),
+        "package_node_modules": attrs.source(
+            doc = """Target which builds package `node_modules`.""",
+        ),
+        "pnpm_exec_cmd_override": attrs.option(
+            attrs.string(),
+            default = None,
+            doc = """Invoke a command via 'pnpm exec' rather than npm_bin script.""",
+        ),
+        "env": attrs.dict(
+            key = attrs.string(),
+            value = attrs.arg(),
+            sorted = False,
+            default = {},
+            doc = """Set environment variables for this rule's invocation of jest. The environment
+            variable values may include macros which are expanded.""",
+        ),
+        "labels": attrs.list(
+            attrs.string(),
+            default = [],
+        ),
+        "contacts": attrs.list(
+            attrs.string(),
+            default = [],
+        ),
+        "remote_execution": buck.re_opts_for_tests_arg(),
+        "_inject_test_env": attrs.default_only(
+            attrs.dep(default = "prelude//test/tools:inject_test_env"),
+        ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
+        "_pnpm_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:pnpm",
+            providers = [PnpmToolchainInfo],
+        ),
+    },
+)
+
 def typescript_check_impl(ctx: AnalysisContext) -> list[[
     DefaultInfo,
     RunInfo,
