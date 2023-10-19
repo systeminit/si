@@ -19,6 +19,8 @@ tempfile = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+docker = "0.0.41"
+rand = "0.8.5"
 
 [dev-dependencies]
 buck2-resources = { path = "../buck2-resources" }
@@ -28,3 +30,8 @@ tokio-test = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
 veritech-server = { path = "../veritech-server" }
+
+[[test]]
+name = "local_docker_instance_test"
+path = "src/instance/cyclone/local_docker_instance_test.rs"
+harness = false
