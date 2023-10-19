@@ -2,6 +2,7 @@ import os from "os";
 import fs from "fs";
 import path from "path";
 import fetch from "node-fetch";
+import zlib from "zlib";
 
 import _ from "lodash";
 import yaml from "js-yaml";
@@ -26,6 +27,7 @@ function commonSandbox(executionId: string): Sandbox {
     console: makeConsole(executionId),
     _,
     Buffer,
+    zlib,
   };
 }
 
