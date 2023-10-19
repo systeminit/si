@@ -115,6 +115,23 @@ pub async fn exec_variant_def(
     let (_, return_value) =
         FuncBinding::create_and_execute(&ctx, serde_json::Value::Null, *asset_func.id()).await?;
 
+    if let Some(error) = return_value
+        .value()
+        .ok_or(SchemaVariantDefinitionError::FuncExecution(
+            *asset_func.id(),
+        ))?
+        .as_object()
+        .ok_or(SchemaVariantDefinitionError::FuncExecution(
+            *asset_func.id(),
+        ))?
+        .get("error")
+        .and_then(|e| e.as_str())
+    {
+        return Err(SchemaVariantDefinitionError::FuncExecutionFailure(
+            error.to_owned(),
+        ));
+    }
+
     let func_resp = return_value
         .value()
         .ok_or(SchemaVariantDefinitionError::FuncExecution(

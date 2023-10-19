@@ -61,6 +61,15 @@ impl FuncDispatch for FuncBackendJsReconciliation {
         let value = veritech
             .execute_reconciliation(output_tx.clone(), &self.request)
             .await?;
+        let value = match value {
+            FunctionResult::Failure(failure) => FunctionResult::Success(Self::Output {
+                execution_id: failure.execution_id,
+                updates: Default::default(),
+                actions: Default::default(),
+                message: Some(failure.error.message.clone()),
+            }),
+            FunctionResult::Success(value) => FunctionResult::Success(value),
+        };
 
         Ok(value)
     }

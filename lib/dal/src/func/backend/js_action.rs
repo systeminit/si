@@ -49,25 +49,52 @@ impl FuncDispatch for FuncBackendJsAction {
         let value = veritech
             .execute_action_run(output_tx.clone(), &self.request)
             .await?;
-        if let FunctionResult::Success(value) = &value {
-            if let Some(message) = &value.error {
+        let value = match value {
+            FunctionResult::Success(value) => {
+                if let Some(message) = &value.error {
+                    output_tx
+                        .send(OutputStream {
+                            execution_id: self.request.execution_id,
+                            stream: "return".to_owned(),
+                            level: "error".to_owned(),
+                            group: None,
+                            message: message.clone(),
+                            timestamp: std::cmp::max(Utc::now().timestamp(), 0) as u64,
+                        })
+                        .await
+                        .map_err(|_| FuncBackendError::SendError)?;
+                } else {
+                    trace!("no message found for ActionRunResultSuccess: skipping!")
+                }
+
+                FunctionResult::Success(value)
+            }
+            FunctionResult::Failure(failure) => {
                 output_tx
                     .send(OutputStream {
-                        execution_id: self.request.execution_id,
+                        execution_id: failure.execution_id.clone(),
                         stream: "return".to_owned(),
                         level: "error".to_owned(),
                         group: None,
-                        message: message.clone(),
+                        message: failure.error.message.clone(),
                         timestamp: std::cmp::max(Utc::now().timestamp(), 0) as u64,
                     })
                     .await
                     .map_err(|_| FuncBackendError::SendError)?;
-            } else {
-                trace!("no message found for ActionRunResultSuccess: skipping!")
+
+                FunctionResult::Success(Self::Output {
+                    execution_id: failure.execution_id,
+                    payload: self
+                        .request
+                        .args
+                        .pointer("/properties/resource/payload")
+                        .cloned(),
+                    status: ResourceStatus::Error,
+                    message: Some(failure.error.message.clone()),
+                    error: Some(serde_json::to_string(&failure.error)?),
+                })
             }
-        } else {
-            return Err(FuncBackendError::FunctionResultActionRun(value));
-        }
+        };
 
         Ok(value)
     }
