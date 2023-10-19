@@ -865,6 +865,11 @@ fn langjs_types() -> &'static str {
     "declare namespace YAML {
     function stringify(obj: unknown): string;
 }
+
+    declare namespace zlib {
+        function gzip(inputstr: string, callback: any);
+    }
+
     declare namespace siExec {
 
     interface WatchArgs {
