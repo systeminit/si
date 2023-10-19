@@ -38,6 +38,7 @@
           v-else-if="tab.type === 'func'"
           :key="tab.id"
           :funcId="tab.id"
+          @close="closeTab(tab.id)"
         />
       </TabGroupItem>
     </TabGroup>
@@ -118,6 +119,12 @@ const onTabChange = async (tabSlug: string | undefined) => {
 const onTabClose = (funcId: string) => {
   if (selectedAssetId.value && typeof selectedAssetId.value === "string") {
     assetStore.closeFunc(selectedAssetId.value, funcId);
+  }
+};
+
+const closeTab = (slug: string) => {
+  if (tabGroupRef.value) {
+    tabGroupRef.value.closeTabBySlug(slug);
   }
 };
 

@@ -65,6 +65,7 @@ const emit = defineEmits<{
   "update:modelValue": [v: string];
   change: [v: string];
   explicitSave: [];
+  close: [];
 }>();
 
 const editorMount = ref(); // div (template ref) where we will mount the editor
@@ -227,6 +228,8 @@ watch(vimEnabled, (useVim) => {
 });
 // Emit when the user writes (i.e. ":w") in vim mode.
 Vim.defineEx("write", "w", onLocalSave);
+// Emit when the user quits in vim mode.
+Vim.defineEx("quit", "q", onVimExit);
 
 // Code Tooltip /////////////////////////////////////////////////////////////////////////////////
 
@@ -336,6 +339,11 @@ function onLocalSave() {
   draftValue.value = autoformat(draftValue.value);
   emitUpdatedValue();
   emit("explicitSave");
+  return true; // codemirror needs this when used as a "command"
+}
+
+function onVimExit() {
+  emit("close");
   return true; // codemirror needs this when used as a "command"
 }
 </script>
