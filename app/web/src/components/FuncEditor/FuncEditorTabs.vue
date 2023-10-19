@@ -34,6 +34,7 @@
         v-if="funcStore.funcsById[openFuncId]"
         :key="openFuncId"
         :funcId="openFuncId"
+        @close="closeTab(openFuncId)"
       />
       <template v-else>
         <div
@@ -76,6 +77,12 @@ const onTabChange = (tabSlug: string | undefined) => {
   // tabSlugs are just func ids here
   if (funcStore.urlSelectedFuncId !== tabSlug) {
     routeToFunc(tabSlug);
+  }
+};
+
+const closeTab = (slug: string) => {
+  if (tabGroupRef.value) {
+    tabGroupRef.value.closeTabBySlug(slug);
   }
 };
 

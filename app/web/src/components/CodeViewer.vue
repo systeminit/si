@@ -1,10 +1,36 @@
 <template>
   <div class="flex flex-col w-full max-h-full overflow-hidden">
+    <div
+      v-if="showTitle"
+      class="flex flex-row items-center justify-between p-2 text-base align-middle"
+      :class="titleClasses"
+    >
+      <slot name="title"
+        ><div v-if="title" class="text-lg">{{ title }}</div>
+      </slot>
+
+      <div class="flex">
+        <SiButtonIcon
+          tooltipText="Copy code to clipboard"
+          ignoreTextColor
+          icon="clipboard-copy"
+          @click="copyCodeToClipboard"
+        />
+
+        <slot name="actionButtons"></slot>
+      </div>
+    </div>
     <SiButtonIcon
+      v-if="!showTitle"
       tooltipText="Copy code to clipboard"
       ignoreTextColor
       icon="clipboard-copy"
-      class="absolute z-100 right-xs top-xs"
+      :class="
+        clsx(
+          'absolute z-100 right-xs',
+          numberOfLinesInCode > 1 ? 'top-xs' : 'top-[2px]',
+        )
+      "
       @click="copyCodeToClipboard"
     />
     <div
@@ -62,9 +88,14 @@ const props = defineProps({
   fontSize: { type: String, default: "13px" },
   // // Format: "0.0px" or "0%"
   height: { type: String },
+  showTitle: { type: Boolean },
   title: { type: String },
   titleClasses: { type: String, default: "h-10" },
   border: { type: Boolean, default: false },
+});
+
+const numberOfLinesInCode = computed(() => {
+  return (String(props.code).match(/\n/g) || "").length + 1;
 });
 
 const { theme } = useTheme();

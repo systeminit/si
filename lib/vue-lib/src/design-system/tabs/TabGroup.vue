@@ -211,6 +211,16 @@ const closeTab = (tab: TabGroupItemDefinition) => {
   }
 };
 
+const closeTabBySlug = (slug: string) => {
+  const tab = orderedTabs.value.find((tab) => {
+    return tab.props.slug === slug;
+  });
+
+  if (tab) {
+    closeTab(tab);
+  }
+};
+
 function registerTab(slug: string, component: TabGroupItemDefinition) {
   tabs[slug] = component;
   orderedTabSlugs.value = [...orderedTabSlugs.value, slug];
@@ -417,5 +427,5 @@ const context = {
 };
 provide(TabGroupContextInjectionKey, context);
 
-defineExpose({ selectTab, tabExists });
+defineExpose({ selectTab, tabExists, closeTabBySlug });
 </script>
