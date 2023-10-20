@@ -9,7 +9,7 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import {RequestCtx} from "../index";
+import {RequestCtx} from "../request";
 
 const debug = Debug("langJs:validation");
 
@@ -41,8 +41,8 @@ export type ValidationResult =
 export async function executeValidation(
   func: ValidationFunc,
   ctx: RequestCtx,
-): Promise<void> {
-  await executor(ctx, func, FunctionKind.Validation, debug, wrapCode, execute);
+) {
+  return await executor(ctx, func, FunctionKind.Validation, debug, wrapCode, execute);
 }
 
 async function execute(

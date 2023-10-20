@@ -9,7 +9,7 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import {RequestCtx} from "../index";
+import {RequestCtx} from "../request";
 
 const debug = Debug("langJs:reconciliation");
 
@@ -32,8 +32,8 @@ export type ReconciliationResultFailure = ResultFailure;
 export async function executeReconciliation(
   func: ReconciliationFunc,
   ctx: RequestCtx,
-): Promise<void> {
-  await executor(ctx, func, FunctionKind.Reconciliation, debug, wrapCode, execute);
+) {
+  return await executor(ctx, func, FunctionKind.Reconciliation, debug, wrapCode, execute);
 }
 
 async function execute(
@@ -91,7 +91,7 @@ async function execute(
       };
     }
 
-    const result: ReconciliationResultSuccess = {
+    return {
       protocol: "result",
       status: "success",
       executionId,
@@ -100,7 +100,6 @@ async function execute(
       actions: reconciliationResult.actions as string[],
       message: reconciliationResult.message as string | undefined,
     };
-    return result;
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }

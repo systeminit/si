@@ -1,4 +1,6 @@
 import ts from "typescript";
+import * as tsvfs from "@typescript/vfs";
+import Debug from "debug";
 
 // Note(paulo, zack): big old ass hacky hack, packaging lang-js creates some weird syntax issues with
 // the @typescript/vfs library, whenever it tries to log to the console it crashes without a backtrace, with
@@ -10,19 +12,18 @@ import ts from "typescript";
 // but for now this gets us through, enabling ts as a language.
 const oldDebug = process.env["DEBUG"];
 delete process.env["DEBUG"];
-import * as tsvfs from "@typescript/vfs";
-process.env["DEBUG"] = oldDebug;
 
-import Debug from "debug";
+process.env["DEBUG"] = oldDebug;
 
 const debug = Debug("langJs:base64");
 
 export function base64Decode(encoded: string): string {
   return Buffer.from(encoded, "base64").toString("binary");
 }
+
 export function base64ToJs(encoded: string): string {
   const code = base64Decode(encoded);
-  debug({ code });
+  debug({code});
 
   const compilerOptions = {
     target: ts.ScriptTarget.ES2020,

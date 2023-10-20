@@ -3,43 +3,15 @@
 import fs from "fs";
 import {Command} from "commander";
 import Debug from "debug";
-import {failureExecution, FunctionKind, functionKinds,} from "./function";
+import {
+  executeFunction,
+  failureExecution,
+  FunctionKind,
+  functionKinds,
+} from "./function";
 import {makeConsole} from "./sandbox/console";
-import {ActionRunFunc, executeActionRun} from "./function_kinds/action_run";
-import {
-  executeReconciliation,
-  ReconciliationFunc,
-} from "./function_kinds/reconciliation";
-import {
-  executeResolverFunction,
-  ResolverFunc,
-} from "./function_kinds/resolver_function";
-import {
-  executeSchemaVariantDefinition,
-  SchemaVariantDefinitionFunc,
-} from "./function_kinds/schema_variant_definition";
-import {executeValidation, ValidationFunc,} from "./function_kinds/validation";
-import {BeforeFunc, executeBefore} from "./function_kinds/before";
+import {Request} from "./request";
 
-export type AnyFunction =
-  ActionRunFunc
-  & BeforeFunc
-  & ReconciliationFunc
-  & ResolverFunc
-  & SchemaVariantDefinitionFunc
-  & ValidationFunc;
-
-export interface Request extends AnyFunction, RequestCtx {
-  before?: BeforeFunc[];
-}
-
-export interface RequestCtx {
-  executionId: string;
-}
-
-const ctxFromRequest = ({executionId}: Request): RequestCtx => ({
-  executionId
-})
 
 const debug = Debug("langJs");
 const STDIN_FD = 0;
@@ -107,37 +79,6 @@ async function main() {
   }
 }
 
-export async function executeFunction(kind: string, request: Request) {
-  // Run Before Functions
-  const ctx = ctxFromRequest(request)
-
-  for (const beforeFunction of request.before || []) {
-    await executeBefore(beforeFunction, ctx)
-  }
-
-  // TODO Create Func types instead of casting request objs
-  switch (kind) {
-    case FunctionKind.ActionRun:
-      await executeActionRun(request as ActionRunFunc, ctx);
-      break;
-    case FunctionKind.Reconciliation:
-      await executeReconciliation(request as ReconciliationFunc, ctx);
-      break;
-    case FunctionKind.ResolverFunction:
-      await executeResolverFunction(request as ResolverFunc, ctx);
-      break;
-    case FunctionKind.Validation:
-      await executeValidation(request as ValidationFunc, ctx);
-      break;
-    case FunctionKind.SchemaVariantDefinition:
-      await executeSchemaVariantDefinition(request as SchemaVariantDefinitionFunc, ctx);
-      break;
-    default:
-      throw Error(`Unknown Kind variant: ${kind}`);
-  }
-
-}
-
 // interface Errorable {
 //   name: string;
 //   message: string;
@@ -176,5 +117,4 @@ export async function executeFunction(kind: string, request: Request) {
 //   console.log(JSON.stringify(failureExecution(err, executionId)));
 //   process.exit(1);
 // }
-
 main();

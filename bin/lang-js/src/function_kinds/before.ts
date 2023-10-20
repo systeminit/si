@@ -8,7 +8,7 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import {RequestCtx} from "../index";
+import {RequestCtx} from "../request";
 
 const debug = Debug("langJs:validation");
 

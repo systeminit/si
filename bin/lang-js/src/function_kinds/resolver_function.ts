@@ -10,7 +10,7 @@ import {
   ResultSuccess,
 } from "../function";
 import {Component} from "../component";
-import {RequestCtx} from "../index";
+import {RequestCtx} from "../request";
 
 const debug = Debug("langJs:resolverFunction");
 
@@ -188,9 +188,9 @@ const nullables: { [key in FuncBackendResponseType]?: boolean } = {
 export async function executeResolverFunction(
   func: ResolverFunc,
   ctx: RequestCtx,
-): Promise<void> {
+) {
 
-  await executor(
+  return await executor(
     ctx,
     func,
     FunctionKind.SchemaVariantDefinition,

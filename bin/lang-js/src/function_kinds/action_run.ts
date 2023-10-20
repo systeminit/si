@@ -9,7 +9,7 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import {RequestCtx} from "../index";
+import {RequestCtx} from "../request";
 
 const debug = Debug("langJs:actionRun");
 
@@ -129,7 +129,7 @@ async function execute(
       };
     }
 
-    const result: ActionRunResultSuccess = {
+    return {
       protocol: "result",
       status: "success",
       executionId,
@@ -138,7 +138,6 @@ async function execute(
       health: actionRunResult.status as "ok" | "warning" | "error",
       message: actionRunResult.message as string | undefined,
     };
-    return result;
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }

@@ -9,8 +9,7 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import {RequestCtx} from "../index";
-import {BeforeFunc} from "./before";
+import {RequestCtx} from "../request";
 
 const debug = Debug("langJs:validation");
 
@@ -29,8 +28,8 @@ export type SchemaVariantDefinitionResult =
 export async function executeSchemaVariantDefinition(
   func: SchemaVariantDefinitionFunc,
   ctx: RequestCtx,
-): Promise<void> {
-  await executor(
+) {
+  return await executor(
     ctx, func,
     FunctionKind.SchemaVariantDefinition,
     debug,
@@ -42,7 +41,7 @@ export async function executeSchemaVariantDefinition(
 async function execute(
   vm: NodeVM,
   {executionId}: RequestCtx,
-  _: BeforeFunc,
+  _: SchemaVariantDefinitionFunc,
   code: string,
 ): Promise<SchemaVariantDefinitionResult> {
   let result: Record<string, unknown>;

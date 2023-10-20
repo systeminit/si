@@ -4,7 +4,22 @@ import {NodeVM} from "vm2";
 import {base64ToJs} from "./base64";
 import {createNodeVm} from "./vm";
 import {createSandbox} from "./sandbox";
-import {RequestCtx} from "./index";
+import {ctxFromRequest, Request, RequestCtx} from "./request";
+import {executeBefore} from "./function_kinds/before";
+import {ActionRunFunc, executeActionRun} from "./function_kinds/action_run";
+import {
+  executeReconciliation,
+  ReconciliationFunc
+} from "./function_kinds/reconciliation";
+import {
+  executeResolverFunction,
+  ResolverFunc
+} from "./function_kinds/resolver_function";
+import {executeValidation, ValidationFunc} from "./function_kinds/validation";
+import {
+  executeSchemaVariantDefinition,
+  SchemaVariantDefinitionFunc
+} from "./function_kinds/schema_variant_definition";
 
 export enum FunctionKind {
   ActionRun = "actionRun",
@@ -75,6 +90,38 @@ export interface OutputLine {
   message: string;
 }
 
+export async function executeFunction(kind: FunctionKind, request: Request) {
+  // Run Before Functions
+  const ctx = ctxFromRequest(request)
+
+  for (const beforeFunction of request.before || []) {
+    await executeBefore(beforeFunction, ctx)
+  }
+
+  // TODO Create Func types instead of casting request objs
+  switch (kind) {
+    case FunctionKind.ActionRun:
+      await executeActionRun(request as ActionRunFunc, ctx);
+      break;
+    case FunctionKind.Reconciliation:
+      await executeReconciliation(request as ReconciliationFunc, ctx);
+      break;
+    case FunctionKind.ResolverFunction:
+      await executeResolverFunction(request as ResolverFunc, ctx);
+      break;
+    case FunctionKind.Validation:
+      await executeValidation(request as ValidationFunc, ctx);
+      break;
+    case FunctionKind.SchemaVariantDefinition:
+      await executeSchemaVariantDefinition(request as SchemaVariantDefinitionFunc, ctx);
+      break;
+    default:
+      throw Error(`Unknown Kind variant: ${kind}`);
+  }
+
+}
+
+
 export async function executor<F extends Func, Result>(
   ctx: RequestCtx,
   func: F,
@@ -87,6 +134,7 @@ export async function executor<F extends Func, Result>(
   const originalCode = base64ToJs(func.codeBase64);
 
   const code = wrapCode(originalCode, func.handler);
+
   debug({code});
 
   const vm = createNodeVm(createSandbox(kind, ctx.executionId));
