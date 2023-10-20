@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use veritech_client::{
     FunctionResult, ResolverFunctionComponent, ResolverFunctionRequest,
@@ -48,6 +49,46 @@ impl FuncDispatch for FuncBackendJsAttribute {
         let value = veritech
             .execute_resolver_function(output_tx, &self.request)
             .await?;
+        let value = match value {
+            FunctionResult::Failure(failure) => match &self.request.response_type {
+                ResolverFunctionResponseType::Action => FunctionResult::Failure(failure),
+                ResolverFunctionResponseType::Array => FunctionResult::Failure(failure),
+                ResolverFunctionResponseType::Boolean => FunctionResult::Failure(failure),
+                ResolverFunctionResponseType::Integer => FunctionResult::Failure(failure),
+                ResolverFunctionResponseType::Identity => FunctionResult::Failure(failure),
+                ResolverFunctionResponseType::Map => FunctionResult::Failure(failure),
+                ResolverFunctionResponseType::Object => FunctionResult::Failure(failure),
+                ResolverFunctionResponseType::String => FunctionResult::Failure(failure),
+                ResolverFunctionResponseType::Unset => FunctionResult::Failure(failure),
+                ResolverFunctionResponseType::Json => FunctionResult::Failure(failure),
+                ResolverFunctionResponseType::Qualification => {
+                    FunctionResult::Success(Self::Output {
+                        execution_id: failure.execution_id,
+                        data: serde_json::json!({
+                            "result": "failure",
+                            "message": format!("Function execution failed: {}", failure.error.message),
+                        }),
+                        unset: false,
+                        timestamp: u64::try_from(std::cmp::max(Utc::now().timestamp(), 0))
+                            .expect("timestamp not be negative"),
+                    })
+                }
+                ResolverFunctionResponseType::CodeGeneration => {
+                    FunctionResult::Success(Self::Output {
+                        execution_id: failure.execution_id,
+                        data: serde_json::json!({
+                            "format": "json",
+                            "code": "null",
+                            "message": format!("Function execution failed: {}", failure.error.message),
+                        }),
+                        unset: false,
+                        timestamp: u64::try_from(std::cmp::max(Utc::now().timestamp(), 0))
+                            .expect("timestamp not be negative"),
+                    })
+                }
+            },
+            FunctionResult::Success(value) => FunctionResult::Success(value),
+        };
         Ok(value)
     }
 }

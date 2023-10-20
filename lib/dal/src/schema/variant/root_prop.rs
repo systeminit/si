@@ -515,6 +515,17 @@ impl SchemaVariant {
         .await?;
         child_code_prop.set_hidden(ctx, true).await?;
 
+        let mut child_message_prop = Prop::new(
+            ctx,
+            "message",
+            PropKind::String,
+            None,
+            schema_variant_id,
+            Some(code_map_item_prop_id),
+        )
+        .await?;
+        child_message_prop.set_hidden(ctx, true).await?;
+
         let mut child_format_prop = Prop::new(
             ctx,
             "format",

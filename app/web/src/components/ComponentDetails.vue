@@ -97,6 +97,12 @@
                   v-else-if="codeReqStatus.isSuccess && selectedComponentCode"
                 >
                   <div class="absolute inset-xs">
+                    <ErrorMessage
+                      v-if="selectedComponentCode[0]?.message"
+                      class="mx-1 mb-2"
+                    >
+                      {{ selectedComponentCode[0]?.message }}
+                    </ErrorMessage>
                     <CodeViewer
                       :code="
                         selectedComponentCode[0]?.code ||

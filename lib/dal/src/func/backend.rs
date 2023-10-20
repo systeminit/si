@@ -139,18 +139,19 @@ impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
             ResolverFunctionResponseType::String => FuncBackendResponseType::String,
             ResolverFunctionResponseType::Unset => FuncBackendResponseType::Unset,
             ResolverFunctionResponseType::Json => FuncBackendResponseType::Json,
-            ResolverFunctionResponseType::Validation => FuncBackendResponseType::Validation,
-            ResolverFunctionResponseType::Reconciliation => FuncBackendResponseType::Reconciliation,
-            ResolverFunctionResponseType::SchemaVariantDefinition => {
-                FuncBackendResponseType::SchemaVariantDefinition
-            }
         }
     }
 }
 
-impl From<FuncBackendResponseType> for ResolverFunctionResponseType {
-    fn from(value: FuncBackendResponseType) -> Self {
-        match value {
+#[derive(Error, Debug)]
+#[error("invalid resolver function type: {0}")]
+pub struct InvalidResolverFunctionTypeError(FuncBackendResponseType);
+
+impl TryFrom<FuncBackendResponseType> for ResolverFunctionResponseType {
+    type Error = InvalidResolverFunctionTypeError;
+
+    fn try_from(value: FuncBackendResponseType) -> Result<Self, Self::Error> {
+        let value = match &value {
             FuncBackendResponseType::Action => ResolverFunctionResponseType::Action,
             FuncBackendResponseType::Array => ResolverFunctionResponseType::Array,
             FuncBackendResponseType::Boolean => ResolverFunctionResponseType::Boolean,
@@ -163,12 +164,17 @@ impl From<FuncBackendResponseType> for ResolverFunctionResponseType {
             FuncBackendResponseType::String => ResolverFunctionResponseType::String,
             FuncBackendResponseType::Unset => ResolverFunctionResponseType::Unset,
             FuncBackendResponseType::Json => ResolverFunctionResponseType::Json,
-            FuncBackendResponseType::Validation => ResolverFunctionResponseType::Validation,
-            FuncBackendResponseType::Reconciliation => ResolverFunctionResponseType::Reconciliation,
-            FuncBackendResponseType::SchemaVariantDefinition => {
-                ResolverFunctionResponseType::SchemaVariantDefinition
+            FuncBackendResponseType::Validation => {
+                return Err(InvalidResolverFunctionTypeError(value))
             }
-        }
+            FuncBackendResponseType::Reconciliation => {
+                return Err(InvalidResolverFunctionTypeError(value))
+            }
+            FuncBackendResponseType::SchemaVariantDefinition => {
+                return Err(InvalidResolverFunctionTypeError(value))
+            }
+        };
+        Ok(value)
     }
 }
 
