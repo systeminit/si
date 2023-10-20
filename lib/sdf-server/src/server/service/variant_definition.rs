@@ -78,6 +78,8 @@ pub enum SchemaVariantDefinitionError {
     FuncBinding(#[from] FuncBindingError),
     #[error("func execution error: {0}")]
     FuncExecution(FuncId),
+    #[error("func execution failure error: {0}")]
+    FuncExecutionFailure(String),
     #[error("func has no handler: {0}")]
     FuncHasNoHandler(FuncId),
     #[error("func is empty: {0}")]

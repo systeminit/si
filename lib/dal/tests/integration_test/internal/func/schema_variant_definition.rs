@@ -41,7 +41,6 @@ async fn execute_schema_variant_definition(ctx: &DalContext) {
     assert_eq!(
         return_value.value(),
         Some(&serde_json::json!({
-            "logs": [],
             "definition": {
                 "props": [
                     {
@@ -51,7 +50,8 @@ async fn execute_schema_variant_definition(ctx: &DalContext) {
                 ],
                 "inputSockets": [],
                 "outputSockets": [],
-            }
+            },
+            "error": serde_json::Value::Null
         }))
     );
 }
