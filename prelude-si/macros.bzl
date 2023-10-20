@@ -27,6 +27,7 @@ nix_flake_lock = _nix_flake_lock
 load(
     "@prelude-si//macros:pnpm.bzl",
     _eslint = "eslint",
+    _jest = "jest",
     _node_pkg_bin = "node_pkg_bin",
     _npm_bin = "npm_bin",
     _package_node_modules = "package_node_modules",
@@ -41,6 +42,7 @@ load(
     _workspace_node_modules = "workspace_node_modules",
 )
 eslint = _eslint
+jest = _jest
 node_pkg_bin = _node_pkg_bin
 npm_bin = _npm_bin
 package_node_modules = _package_node_modules
