@@ -16,6 +16,7 @@
       "
     >
       <CodeEditor
+        :id="selectedFuncDetails ? `func-${selectedFuncDetails.id}` : undefined"
         v-model="editingFunc"
         :typescript="selectedFuncDetails?.types"
         @change="updateFuncCode"

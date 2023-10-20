@@ -36,7 +36,7 @@ import {
   showTooltip,
   getTooltip,
 } from "@codemirror/view";
-import { indentWithTab } from "@codemirror/commands";
+import { indentWithTab, historyField } from "@codemirror/commands";
 import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { basicLight } from "cm6-theme-basic-light";
 import { javascript as CodemirrorJsLang } from "@codemirror/lang-javascript";
@@ -46,12 +46,14 @@ import { useTheme, VButton } from "@si/vue-lib/design-system";
 import { vim, Vim } from "@replit/codemirror-vim";
 import storage from "local-storage-fallback";
 import beautify from "js-beautify";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import {
   createTypescriptSource,
   GetTooltipFromPos,
 } from "@/utils/typescriptLinter";
 
 const props = defineProps({
+  id: String,
   modelValue: { type: String, required: true },
   disabled: { type: Boolean },
   json: Boolean,
@@ -67,6 +69,8 @@ const emit = defineEmits<{
   explicitSave: [];
   close: [];
 }>();
+
+const changeSetsStore = useChangeSetsStore();
 
 const editorMount = ref(); // div (template ref) where we will mount the editor
 let view: EditorView; // instance of the CodeMirror editor
@@ -117,12 +121,33 @@ watch(
   },
 );
 
+const localStorageHistoryBufferKey = computed(
+  () => `code-mirror-state-${changeSetsStore.selectedChangeSetId}-${props.id}`,
+);
+
 // when editor value changes, update our draft value
 function onEditorValueUpdated(update: ViewUpdate) {
   if (!update.docChanged) return;
   const newEditorValue = update.view.state.doc.toString();
   if (newEditorValue !== draftValue.value) {
     draftValue.value = newEditorValue;
+  }
+
+  const serializedState = update.view.state.toJSON({ history: historyField });
+  if (props.id && serializedState.history) {
+    serializedState.history.done.splice(
+      Math.max(serializedState.history.done.length - 50, 0),
+    );
+    serializedState.history.undone.splice(
+      Math.max(serializedState.history.undone.length - 50, 0),
+    );
+    window.localStorage.setItem(
+      localStorageHistoryBufferKey.value,
+      JSON.stringify({
+        history: serializedState.history,
+        timestamp: new Date(),
+      }),
+    );
   }
 }
 function emitUpdatedValue() {
@@ -293,7 +318,7 @@ const mountEditor = async () => {
     extensions.push(language.of(CodemirrorJsonLang()));
   }
 
-  const editorState = EditorState.create({
+  const config = {
     doc: draftValue.value,
     extensions: extensions.concat([
       themeCompartment.of(codeMirrorTheme.value),
@@ -311,7 +336,26 @@ const mountEditor = async () => {
       EditorView.updateListener.of(onEditorValueUpdated),
       EditorView.lineWrapping,
     ]),
-  });
+  };
+
+  let editorState;
+
+  const state = props.id
+    ? window.localStorage.getItem(localStorageHistoryBufferKey.value)
+    : null;
+  if (state) {
+    editorState = EditorState.fromJSON(
+      {
+        doc: config.doc,
+        selection: { ranges: [{ anchor: 0, head: 0 }], main: 0 },
+        history: JSON.parse(state).history,
+      },
+      config,
+      { history: historyField },
+    );
+  } else {
+    editorState = EditorState.create(config);
+  }
 
   view?.destroy();
   view = new EditorView({
@@ -322,6 +366,20 @@ const mountEditor = async () => {
   view.contentDOM.onblur = () => {
     draftValue.value = autoformat(draftValue.value);
   };
+
+  for (const key in window.localStorage) {
+    if (key.startsWith("code-mirror-state-")) {
+      const json = window.localStorage.getItem(key);
+      if (!json) continue;
+      const obj = JSON.parse(json);
+      const millisSince =
+        new Date().getTime() - new Date(obj.timestamp).getTime();
+      const weekInMillis = 7 * 24 * 60 * 1000;
+      if (millisSince > weekInMillis) {
+        window.localStorage.removeItem(key);
+      }
+    }
+  }
 };
 
 watch(
