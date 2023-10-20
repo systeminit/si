@@ -48,7 +48,7 @@ impl ComponentDiff {
         if curr_component_view.properties.is_null() {
             return Ok(Self {
                 component_id,
-                current: CodeView::new(CodeLanguage::Json, Some("{}".to_owned())),
+                current: CodeView::new(CodeLanguage::Json, Some("{}".to_owned()), None),
                 diffs: Vec::new(),
             });
         }
@@ -61,7 +61,7 @@ impl ComponentDiff {
         if ctx.visibility().is_head() {
             return Ok(Self {
                 component_id,
-                current: CodeView::new(CodeLanguage::Json, Some(curr_json)),
+                current: CodeView::new(CodeLanguage::Json, Some(curr_json), None),
                 diffs: Vec::new(),
             });
         }
@@ -75,7 +75,7 @@ impl ComponentDiff {
             if prev_component_view.properties.is_null() {
                 return Ok(Self {
                     component_id,
-                    current: CodeView::new(CodeLanguage::Json, Some(curr_json)),
+                    current: CodeView::new(CodeLanguage::Json, Some(curr_json), None),
                     diffs: Vec::new(),
                 });
             }
@@ -96,7 +96,7 @@ impl ComponentDiff {
             }
 
             // FIXME(nick): generate multiple code views if there are multiple code views.
-            let diff = CodeView::new(CodeLanguage::Diff, Some(lines.join(NEWLINE)));
+            let diff = CodeView::new(CodeLanguage::Diff, Some(lines.join(NEWLINE)), None);
             vec![diff]
         } else {
             vec![]
@@ -104,7 +104,7 @@ impl ComponentDiff {
 
         Ok(Self {
             component_id,
-            current: CodeView::new(CodeLanguage::Json, Some(curr_json)),
+            current: CodeView::new(CodeLanguage::Json, Some(curr_json), None),
             diffs,
         })
     }

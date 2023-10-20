@@ -1,6 +1,7 @@
 export interface CodeView {
   language: CodeLanguage;
-  code?: string;
+  code: string | null;
+  message: string | null;
 }
 
 // FIXME(nick): use this type in the CodeView interface once we want to dynamically check the code language type.

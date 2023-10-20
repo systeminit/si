@@ -21,7 +21,6 @@ export interface ResolverComponent {
 }
 
 export enum FuncBackendResponseType {
-  Action = "Action",
   Array = "Array",
   Boolean = "Boolean",
   Identity = "Identity",
@@ -33,7 +32,6 @@ export enum FuncBackendResponseType {
   String = "String",
   Unset = "Unset",
   Json = "Json",
-  Validation = "Validation",
 }
 
 export interface ResolverFunctionRequest extends RequestWithCode {

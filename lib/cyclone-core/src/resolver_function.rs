@@ -35,12 +35,9 @@ pub enum ResolverFunctionResponseType {
     Map,
     Object,
     Qualification,
-    Reconciliation,
-    SchemaVariantDefinition,
     String,
     #[default]
     Unset,
-    Validation,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
