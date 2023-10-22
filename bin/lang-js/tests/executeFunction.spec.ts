@@ -1,38 +1,25 @@
 import * as fs from "fs/promises";
 import {executeFunction, FunctionKind} from "../src/function";
 import {AnyFunction, RequestCtx} from "../src/request";
-import {BeforeFunc} from "../src/function_kinds/before";
 
 let lastLog = "";
 const consoleSpy = jest.spyOn(console, "log").mockImplementation((msg) => {
+  console.dir(msg)
   lastLog = msg
 })
 
 const FUNCS_FOLDER = './tests/functions/';
 
+type FuncOrFuncLocation = string | (() => unknown);
+
 interface FuncScenario {
   kind: FunctionKind,
   funcSpec: AnyFunction,
-  func: string | (() => unknown);
-  before?: BeforeFunc[];
+  func: FuncOrFuncLocation;
+  before?: { handler: string, func: FuncOrFuncLocation }[];
 }
 
 const scenarios: FuncScenario[] = [
-  {
-    kind: FunctionKind.Validation,
-    funcSpec: {
-      value: {},
-      handler: "func",
-      codeBase64: "" // We rewrite this later
-    },
-    func() {
-      console.log("help");
-      return {
-        valid: true,
-        message: "CIDR Blocks must be between /16 and /28 netmask",
-      };
-    }
-  },
   {
     kind: FunctionKind.Validation,
     funcSpec: {
@@ -41,6 +28,25 @@ const scenarios: FuncScenario[] = [
       codeBase64: "" // We rewrite this later
     },
     func: "validation.ts"
+  },
+  {
+    kind: FunctionKind.Validation,
+    funcSpec: {
+      value: {},
+      handler: "main",
+      codeBase64: "" // We rewrite this later
+    },
+    func: 'beforeFuncs.ts',
+    before: [
+      {
+        handler: "before1",
+        func: 'beforeFuncs.ts',
+      },
+      {
+        handler: "before2",
+        func: 'beforeFuncs.ts',
+      },
+    ]
   },
 
 ]
@@ -69,7 +75,7 @@ describe("executeFunction", () => {
 
         codeBase64 = Buffer.from(code).toString("base64");
       } else {
-        codeBase64 = (await fs.readFile(FUNCS_FOLDER + scenario.func)).toString('base64');
+        codeBase64 = await base64FromFile(FUNCS_FOLDER + scenario.func);
       }
 
       const ctx: RequestCtx = {
@@ -81,19 +87,38 @@ describe("executeFunction", () => {
         codeBase64,
       }
 
+
+      const before = [];
+
+      for (const b of scenario.before ?? []) {
+        before.push(
+          {
+            handler: b.handler,
+            codeBase64: await base64FromFile(FUNCS_FOLDER + b.func)
+          }
+        )
+      }
+
       await executeFunction(FunctionKind.Validation, {
         ...ctx,
         ...funcObj,
+        before
       })
 
-      const {protocol, status} = JSON.parse(lastLog);
+      const parsedLog = JSON.parse(lastLog);
 
       // If there's a test that necessitates an execution failure
       // we could bring status from the scenario
-      expect(protocol).toBe("result")
-      expect(status).toBe("success")
+      expect(parsedLog).toMatchObject({
+        protocol: "result",
+        status: "success"
+      })
     })
   })
 
 
 });
+
+async function base64FromFile(path: string) {
+  return (await fs.readFile(path)).toString('base64')
+}

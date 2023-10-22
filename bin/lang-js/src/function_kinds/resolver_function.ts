@@ -2,10 +2,8 @@ import Debug from "debug";
 import _ from "lodash";
 import {NodeVM} from "vm2";
 import {
-  executor,
   failureExecution,
   Func,
-  FunctionKind,
   ResultFailure,
   ResultSuccess,
 } from "../function";
@@ -185,33 +183,6 @@ const nullables: { [key in FuncBackendResponseType]?: boolean } = {
   [FuncBackendResponseType.Qualification]: false,
 };
 
-export async function executeResolverFunction(
-  func: ResolverFunc,
-  ctx: RequestCtx,
-) {
-
-  return await executor(
-    ctx,
-    func,
-    FunctionKind.SchemaVariantDefinition,
-    debug,
-    wrapCode,
-    execute,
-    (result) => {
-      console.log(
-        JSON.stringify({
-          protocol: "output",
-          executionId: ctx.executionId,
-          stream: "output",
-          level: "info",
-          group: "log",
-          message: `Output: ${JSON.stringify(result, null, 2)}`,
-        })
-      );
-    }
-  );
-}
-
 async function execute(
   vm: NodeVM,
   {executionId}: RequestCtx,
@@ -301,3 +272,9 @@ module.exports = function(component, callback) {
     callback(returnValue);
   }
 };`
+
+export default {
+  debug,
+  execute,
+  wrapCode
+}

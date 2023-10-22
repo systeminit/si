@@ -2,10 +2,8 @@ import Debug from "debug";
 import {NodeVM} from "vm2";
 import _ from "lodash";
 import {
-  executor,
   failureExecution,
   Func,
-  FunctionKind,
   ResultFailure,
   ResultSuccess,
 } from "../function";
@@ -28,13 +26,6 @@ export interface ReconciliationResultSuccess extends ResultSuccess {
 }
 
 export type ReconciliationResultFailure = ResultFailure;
-
-export async function executeReconciliation(
-  func: ReconciliationFunc,
-  ctx: RequestCtx,
-) {
-  return await executor(ctx, func, FunctionKind.Reconciliation, debug, wrapCode, execute);
-}
 
 async function execute(
   vm: NodeVM,
@@ -121,3 +112,8 @@ module.exports = function(arg, callback) {
   }
 };`
 
+export default {
+  debug,
+  execute,
+  wrapCode
+}

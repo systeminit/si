@@ -11,7 +11,10 @@ import {FunctionKind} from "./function";
 import {makeConsole} from "./sandbox/console";
 import {makeExec} from "./sandbox/exec";
 import * as assetBuilder from "./asset_builder";
-import {makeMainRequestStorage} from "./sandbox/requestStorage";
+import {
+  makeBeforeRequestStorage,
+  makeMainRequestStorage
+} from "./sandbox/requestStorage";
 
 export type Sandbox = Record<string, unknown>;
 
@@ -31,6 +34,12 @@ function commonSandbox(executionId: string): Sandbox {
     requestStorage: makeMainRequestStorage(),
     zlib,
   };
+}
+
+function beforeFunctionSandbox(executionId: string): Sandbox {
+  return {
+    requestStorage: makeBeforeRequestStorage(executionId)
+  }
 }
 
 function resolverFunctionSandbox(executionId: string): Sandbox {
@@ -107,6 +116,11 @@ export function createSandbox(
       return {
         ...commonSandbox(executionId),
         ...schemaVariantDefinitionSandbox(),
+      };
+    case FunctionKind.Before:
+      return {
+        ...commonSandbox(executionId),
+        ...beforeFunctionSandbox(executionId),
       };
     default:
       throw new UnknownSandboxKind(kind);

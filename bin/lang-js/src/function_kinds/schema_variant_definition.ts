@@ -2,10 +2,8 @@ import Debug from "debug";
 import {NodeVM} from "vm2";
 
 import {
-  executor,
   failureExecution,
   Func,
-  FunctionKind,
   ResultFailure,
   ResultSuccess,
 } from "../function";
@@ -24,19 +22,6 @@ export type SchemaVariantDefinitionResultFailure = ResultFailure;
 export type SchemaVariantDefinitionResult =
   | SchemaVariantDefinitionResultSuccess
   | SchemaVariantDefinitionResultFailure;
-
-export async function executeSchemaVariantDefinition(
-  func: SchemaVariantDefinitionFunc,
-  ctx: RequestCtx,
-) {
-  return await executor(
-    ctx, func,
-    FunctionKind.SchemaVariantDefinition,
-    debug,
-    wrapCode,
-    execute
-  );
-}
 
 async function execute(
   vm: NodeVM,
@@ -79,3 +64,9 @@ module.exports = function(callback) {
     callback(returnValue);
   }
 };`;
+
+export default {
+  debug,
+  execute,
+  wrapCode
+}

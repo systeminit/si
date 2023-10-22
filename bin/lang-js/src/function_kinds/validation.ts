@@ -2,10 +2,8 @@ import Debug from "debug";
 import {NodeVM} from "vm2";
 
 import {
-  executor,
   failureExecution,
   Func,
-  FunctionKind,
   ResultFailure,
   ResultSuccess,
 } from "../function";
@@ -36,14 +34,6 @@ export interface ValidationResultFailure extends ResultFailure {
 export type ValidationResult =
   | ValidationResultSuccess
   | ValidationResultFailure;
-
-
-export async function executeValidation(
-  func: ValidationFunc,
-  ctx: RequestCtx,
-) {
-  return await executor(ctx, func, FunctionKind.Validation, debug, wrapCode, execute);
-}
 
 async function execute(
   vm: NodeVM,
@@ -117,3 +107,9 @@ module.exports = function(value, callback) {
     callback(returnValue);
   }
 };`;
+
+export default {
+  debug,
+  execute,
+  wrapCode
+}

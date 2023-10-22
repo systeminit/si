@@ -2,10 +2,8 @@ import Debug from "debug";
 import {NodeVM} from "vm2";
 import _ from "lodash";
 import {
-  executor,
   failureExecution,
   Func,
-  FunctionKind,
   ResultFailure,
   ResultSuccess,
 } from "../function";
@@ -26,32 +24,6 @@ export interface ActionRunResultSuccess extends ResultSuccess {
 }
 
 export type ActionRunResultFailure = ResultFailure;
-
-export async function executeActionRun(
-  func: ActionRunFunc,
-  ctx: RequestCtx,
-): Promise<void> {
-
-  await executor(
-    ctx, func,
-    FunctionKind.SchemaVariantDefinition,
-    debug,
-    wrapCode,
-    execute,
-    (result) => {
-      console.log(
-        JSON.stringify({
-          protocol: "output",
-          executionId: ctx.executionId,
-          stream: "output",
-          level: "info",
-          group: "log",
-          message: `Output: ${JSON.stringify(result, null, 2)}`,
-        })
-      );
-    }
-  );
-}
 
 async function execute(
   vm: NodeVM,
@@ -160,3 +132,9 @@ module.exports = function(arg, callback) {
     callback(returnValue);
   }
 };`
+
+export default {
+  debug,
+  execute,
+  wrapCode
+}

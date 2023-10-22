@@ -2,9 +2,8 @@ import Debug from "debug";
 import {NodeVM} from "vm2";
 
 import {
-  executor,
+  failureExecution,
   Func,
-  FunctionKind,
   ResultFailure,
   ResultSuccess,
 } from "../function";
@@ -14,9 +13,7 @@ const debug = Debug("langJs:validation");
 
 export type BeforeFunc = Func;
 
-export interface BeforeResultSuccess extends ResultSuccess {
-  definition: object;
-}
+export type BeforeResultSuccess = ResultSuccess;
 
 export type BeforeResultFailure = ResultFailure;
 
@@ -24,42 +21,28 @@ export type BeforeResult =
   | BeforeResultSuccess
   | BeforeResultFailure;
 
-export async function executeBefore(
-  func: BeforeFunc,
-  ctx: RequestCtx,
-): Promise<void> {
-  await executor(
-    ctx, func,
-    FunctionKind.Before,
-    debug,
-    wrapCode,
-    execute
-  );
-}
-
 // TODO Implement execute and wrap code for Before funcs
 async function execute(
   vm: NodeVM,
   {executionId}: RequestCtx,
   _: BeforeFunc,
-  _code: string,
+  code: string,
 ): Promise<BeforeResult> {
-  // let result: Record<string, unknown>;
-  // try {
-  //   const runner = vm.run(code);
-  //   result = await new Promise((resolve) => {
-  //     runner((resolution: Record<string, unknown>) => resolve(resolution));
-  //   });
-  //   debug({result: JSON.stringify(result)});
-  // } catch (err) {
-  //   return failureExecution(err as Error, executionId);
-  // }
+  try {
+    const runner = vm.run(code);
+    await new Promise((resolve) => {
+      runner((resolution: Record<string, unknown>) => resolve(resolution));
+    });
+    debug({result: "<void>"});
+
+  } catch (err) {
+    return failureExecution(err as Error, executionId);
+  }
 
   return {
     protocol: "result",
     status: "success",
     executionId,
-    definition: {},
   };
 }
 
@@ -79,3 +62,9 @@ module.exports = function(callback) {
     callback(returnValue);
   }
 };`;
+
+export default {
+  debug,
+  execute,
+  wrapCode
+}
