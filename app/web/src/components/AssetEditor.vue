@@ -30,6 +30,7 @@
     </template>
 
     <CodeEditor
+      :id="`asset-${assetId}`"
       v-model="editingAsset"
       :typescript="selectedAsset?.types"
       :disabled="isReadOnly"
