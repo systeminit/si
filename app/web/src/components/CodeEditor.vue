@@ -63,6 +63,7 @@ const props = defineProps({
 
 const emit = defineEmits<{
   "update:modelValue": [v: string];
+  blur: [v: string];
   change: [v: string];
   explicitSave: [];
   close: [];
@@ -321,6 +322,7 @@ const mountEditor = async () => {
 
   view.contentDOM.onblur = () => {
     draftValue.value = autoformat(draftValue.value);
+    emit("blur", draftValue.value);
   };
 };
 

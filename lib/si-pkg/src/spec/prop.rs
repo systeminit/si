@@ -23,6 +23,7 @@ use super::{AttrFuncInputSpec, MapKeyFuncSpec, SpecError, ValidationSpec};
 pub enum PropSpecWidgetKind {
     Array,
     Checkbox,
+    CodeEditor,
     Color,
     ComboBox,
     Header,

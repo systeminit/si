@@ -198,7 +198,7 @@ declare class ValidationBuilder implements IValidationBuilder {
     setKind(kind: ValidationKind): this;
     setUpperBound(value: number): this;
 }
-type PropWidgetDefinitionKind = "array" | "checkbox" | "color" | "comboBox" | "header" | "map" | "secret" | "select" | "text" | "textArea";
+type PropWidgetDefinitionKind = "array" | "checkbox" | "color" | "comboBox" | "header" | "map" | "secret" | "select" | "text" | "textArea" | "codeEditor";
 interface Option {
     label: string;
     value: string;
@@ -226,7 +226,7 @@ declare class PropWidgetDefinitionBuilder implements IPropWidgetDefinitionBuilde
     /**
      * The type of widget
      *
-     * @param {string} kind [array | checkbox | color | comboBox | header | map | secret | select | text | textArea]
+     * @param {string} kind [array | checkbox | color | comboBox | header | map | secret | select | text | textArea | codeEditor]
      *
      * @returns this
      *
@@ -237,7 +237,7 @@ declare class PropWidgetDefinitionBuilder implements IPropWidgetDefinitionBuilde
     /**
      * Add an option when using a comboBox
      *
-     * @param {string} key - the value displayed in the comboBoxx
+     * @param {string} key - the value displayed in the comboBox
      * @param {string} value - the value the prop is set to
      *
      * @returns this

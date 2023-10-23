@@ -71,6 +71,21 @@
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
     />
+    <WidgetCodeEditor
+      v-else-if="schemaProp.widgetKind.kind === 'codeEditor'"
+      :name="schemaProp.name"
+      :path="path"
+      :collapsedPaths="collapsedPaths"
+      :value="propValue.value"
+      :propId="propValue.propId"
+      :valueId="propValue.id"
+      :propKind="schemaProp.kind"
+      :docLink="schemaProp.docLink"
+      :validation="validation"
+      :disabled="disabled"
+      :class="INPUT_CLASSES"
+      @updated-property="updatedProperty($event)"
+    />
     <WidgetCheckBox
       v-else-if="schemaProp.widgetKind.kind === 'checkbox'"
       :name="schemaProp.name"
@@ -182,6 +197,7 @@ import {
 import { SecretId } from "@/store/secrets.store";
 import WidgetHeader from "./WidgetHeader.vue";
 import WidgetTextBox from "./WidgetTextBox.vue";
+import WidgetCodeEditor from "./WidgetCodeEditor.vue";
 import WidgetCheckBox from "./WidgetCheckBox.vue";
 import WidgetSelectBox from "./WidgetSelectBox.vue";
 import WidgetArray from "./WidgetArray.vue";

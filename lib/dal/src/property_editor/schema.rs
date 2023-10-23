@@ -136,6 +136,7 @@ impl From<&PropKind> for PropertyEditorPropKind {
 pub enum PropertyEditorPropWidgetKind {
     Array,
     Checkbox,
+    CodeEditor,
     Color,
     ComboBox { options: Option<Value> },
     Header,
@@ -157,6 +158,7 @@ pub enum PropertyEditorPropWidgetKind {
 pub enum WidgetKind {
     Array,
     Checkbox,
+    CodeEditor,
     Color,
     /// Provides a text input with auto-completion for corresponding "primitive" (e.g. string, number, boolean)
     /// [`PropKinds`](crate::PropKind).
@@ -176,6 +178,7 @@ impl From<WidgetKind> for PropSpecWidgetKind {
         match value {
             WidgetKind::Array => Self::Array,
             WidgetKind::Checkbox => Self::Checkbox,
+            WidgetKind::CodeEditor => Self::CodeEditor,
             WidgetKind::Header => Self::Header,
             WidgetKind::Map => Self::Map,
             WidgetKind::Select => Self::Select,
@@ -193,6 +196,7 @@ impl From<&PropSpecWidgetKind> for WidgetKind {
         match value {
             PropSpecWidgetKind::Array => Self::Array,
             PropSpecWidgetKind::Checkbox => Self::Checkbox,
+            PropSpecWidgetKind::CodeEditor => Self::CodeEditor,
             PropSpecWidgetKind::Header => Self::Header,
             PropSpecWidgetKind::Map => Self::Map,
             PropSpecWidgetKind::Select => Self::Select,
@@ -210,6 +214,7 @@ impl PropertyEditorPropWidgetKind {
         match widget_kind {
             WidgetKind::Array => Self::Array,
             WidgetKind::Checkbox => Self::Checkbox,
+            WidgetKind::CodeEditor => Self::CodeEditor,
             WidgetKind::Header => Self::Header,
             WidgetKind::Map => Self::Map,
             WidgetKind::Select => Self::Select {
