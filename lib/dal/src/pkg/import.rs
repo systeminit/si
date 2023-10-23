@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     path::Path,
     str::FromStr,
 };
@@ -19,15 +19,8 @@ use crate::{
     component::ComponentKind,
     edge::EdgeKind,
     func::{
-        self,
-        argument::FuncArgumentKind,
-        backend::{
-            identity::FuncBackendIdentityArgs, js_action::ActionRunResult,
-            validation::FuncBackendValidationArgs,
-        },
-        binding::FuncBinding,
-        binding_return_value::FuncBindingReturnValue,
-        execution::{FuncExecution, FuncExecutionPk},
+        self, argument::FuncArgumentKind, backend::validation::FuncBackendValidationArgs,
+        binding::FuncBinding, binding_return_value::FuncBindingReturnValue,
     },
     installed_pkg::{
         InstalledPkg, InstalledPkgAsset, InstalledPkgAssetKind, InstalledPkgAssetTyped,
@@ -46,10 +39,9 @@ use crate::{
     ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContext, AttributeContextBuilder,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeId, AttributeReadContext,
     AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentId,
-    DalContext, Edge, ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncBindingError,
-    FuncBindingReturnValueError, FuncError, FuncId, InternalProvider, InternalProviderError,
-    InternalProviderId, LeafKind, Node, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, Socket, StandardModel, Tenancy, UserPk,
+    DalContext, Edge, ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncError, FuncId,
+    InternalProvider, InternalProviderId, LeafKind, Node, Prop, PropId, PropKind, Schema, SchemaId,
+    SchemaVariant, SchemaVariantError, SchemaVariantId, Socket, StandardModel, Tenancy, UserPk,
     ValidationPrototype, ValidationPrototypeContext, Workspace, WorkspacePk,
 };
 
@@ -236,17 +228,10 @@ async fn import_change_set(
 #[derive(Eq, PartialEq, Hash, Debug, Clone)]
 struct ValueCacheKey {
     context: AttributeContext,
-    key: Option<String>,
-    index: Option<i64>,
 }
 
 impl ValueCacheKey {
-    pub fn new(
-        component_id: ComponentId,
-        prop_id: PropId,
-        key: Option<String>,
-        index: Option<i64>,
-    ) -> Self {
+    pub fn new(component_id: ComponentId, prop_id: PropId) -> Self {
         let mut context_builder = AttributeContextBuilder::new();
         context_builder
             .set_prop_id(prop_id)
@@ -254,8 +239,6 @@ impl ValueCacheKey {
 
         Self {
             context: context_builder.to_context_unchecked(),
-            key,
-            index,
         }
     }
 }
@@ -474,29 +457,6 @@ async fn import_component(
     let mut prop_cache: HashMap<String, Option<Prop>> = HashMap::new();
 
     let mut skips = vec![];
-    let mut resource_value = None;
-
-    for attribute in component_spec.attributes()? {
-        if let Some(skip) = import_component_attribute(
-            ctx,
-            change_set_pk,
-            &component,
-            &variant,
-            &attribute,
-            &mut value_cache,
-            &mut prop_cache,
-            thing_map,
-        )
-        .await?
-        {
-            skips.push(skip);
-        }
-        if let AttributeValuePath::Prop { path, .. } = &attribute.path() {
-            if path == &PropPath::new(["root", "resource"]).to_string() {
-                resource_value = attribute.implicit_value().cloned();
-            }
-        }
-    }
 
     for attribute in component_spec.input_sockets()? {
         if let Some(skip) = import_component_attribute(
@@ -531,14 +491,39 @@ async fn import_component(
         }
     }
 
+    let mut resource_value = None;
+
+    for attribute in component_spec.attributes()? {
+        if let Some(skip) = import_component_attribute(
+            ctx,
+            change_set_pk,
+            &component,
+            &variant,
+            &attribute,
+            &mut value_cache,
+            &mut prop_cache,
+            thing_map,
+        )
+        .await?
+        {
+            skips.push(skip);
+        }
+        if let AttributeValuePath::Prop { path, .. } = &attribute.path() {
+            if path == &PropPath::new(["root", "resource"]).to_string() {
+                resource_value = attribute.implicit_value().cloned();
+            }
+        }
+    }
+
     if component_spec.needs_destroy() {
         component.set_needs_destroy(ctx, true).await?;
     }
 
     if let Some(resource_value) = resource_value {
         if change_set_pk.unwrap_or(ChangeSetPk::NONE) == ChangeSetPk::NONE {
-            let result: ActionRunResult = serde_json::from_value(resource_value)?;
-            component.set_resource(ctx, result).await?;
+            if let Ok(result) = serde_json::from_value(resource_value) {
+                component.set_resource(ctx, result).await?;
+            }
         }
     }
 
@@ -574,6 +559,7 @@ async fn import_component_attribute(
     prop_cache: &mut HashMap<String, Option<Prop>>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<Option<ImportAttributeSkip>> {
+    dbg!("start import_component_attribute");
     match attribute.path() {
         AttributeValuePath::Prop { path, key, index } => {
             if attribute.parent_path().is_none() && (key.is_some() || index.is_some()) {
@@ -595,10 +581,8 @@ async fn import_component_attribute(
                 }
             };
 
-            struct ParentData<'a> {
-                prop: Option<&'a Prop>,
+            struct ParentData {
                 attribute_value: Option<AttributeValue>,
-                default_attribute_value: Option<AttributeValue>,
             }
 
             match prop {
@@ -634,7 +618,11 @@ async fn import_component_attribute(
                         }
                     }
 
-                    let parent_data = if let Some(AttributeValuePath::Prop { path, key, index }) =
+                    if index.is_some() || key.is_some() {
+                        return Ok(None);
+                    }
+
+                    let parent_data = if let Some(AttributeValuePath::Prop { path, .. }) =
                         attribute.parent_path()
                     {
                         let parent_prop = prop_cache
@@ -642,118 +630,23 @@ async fn import_component_attribute(
                             .and_then(|p| p.as_ref())
                             .ok_or(PkgError::AttributeValueParentPropNotFound(path.to_owned()))?;
 
-                        let parent_value_cache_key = ValueCacheKey::new(
-                            *component.id(),
-                            *parent_prop.id(),
-                            key.to_owned(),
-                            index.to_owned(),
-                        );
+                        let parent_value_cache_key =
+                            ValueCacheKey::new(*component.id(), *parent_prop.id());
 
-                        let parent_av = value_cache.get(&parent_value_cache_key).ok_or(
-                            PkgError::AttributeValueParentValueNotFound(
-                                path.to_owned(),
-                                key.to_owned(),
-                                index.to_owned(),
-                            ),
-                        )?;
-
-                        let parent_default_value_cache_key = ValueCacheKey::new(
-                            ComponentId::NONE,
-                            *parent_prop.id(),
-                            key.to_owned(),
-                            index.to_owned(),
-                        );
-
-                        let parent_default_av =
-                            value_cache.get(&parent_default_value_cache_key).cloned();
+                        let parent_av = match value_cache.get(&parent_value_cache_key) {
+                            Some(parent_av) => parent_av.to_owned(),
+                            // If we don't have a parent in the cache it means we're under a map or
+                            // array and currently we don't support custom attribute functions at
+                            // that depth
+                            None => return Ok(None),
+                        };
 
                         ParentData {
-                            prop: Some(parent_prop),
                             attribute_value: Some(parent_av.to_owned()),
-                            default_attribute_value: parent_default_av,
                         }
                     } else {
                         ParentData {
-                            prop: None,
                             attribute_value: None,
-                            default_attribute_value: None,
-                        }
-                    };
-
-                    // If we're an array element, we might already exist in the index map
-                    let av_id_from_index_map = match index {
-                        Some(index) => match parent_data.attribute_value.as_ref() {
-                            Some(parent_av) => {
-                                match parent_av
-                                    .index_map()
-                                    .and_then(|index_map| index_map.order().get(*index as usize))
-                                {
-                                    None => {
-                                        let attribute_context = AttributeContext::builder()
-                                            .set_prop_id(*prop.id())
-                                            .set_component_id(*component.id())
-                                            .to_context_unchecked();
-
-                                        // This value will get updated by
-                                        // update_attribute_value
-                                        Some(
-                                            AttributeValue::insert_for_context(
-                                                ctx,
-                                                attribute_context,
-                                                *parent_av.id(),
-                                                None,
-                                                None,
-                                            )
-                                            .await?,
-                                        )
-                                    }
-                                    Some(av_id) => Some(*av_id),
-                                }
-                            }
-                            None => None,
-                        },
-                        None => None,
-                    };
-
-                    let default_value_cache_key = ValueCacheKey::new(
-                        ComponentId::NONE,
-                        *prop.id(),
-                        key.to_owned(),
-                        index.to_owned(),
-                    );
-
-                    let default_av = match value_cache.entry(default_value_cache_key) {
-                        Entry::Occupied(occupied) => Some(occupied.get().to_owned()),
-                        Entry::Vacant(vacant) => {
-                            if parent_data.default_attribute_value.is_none()
-                                && parent_data.prop.is_some()
-                            {
-                                None
-                            } else {
-                                let default_parent_av_id =
-                                    parent_data.default_attribute_value.map(|av| *av.id());
-
-                                let default_value_context = AttributeReadContext {
-                                    prop_id: Some(*prop.id()),
-                                    internal_provider_id: Some(InternalProviderId::NONE),
-                                    external_provider_id: Some(ExternalProviderId::NONE),
-                                    component_id: None,
-                                };
-
-                                let value = AttributeValue::find_with_parent_and_key_for_context(
-                                    ctx,
-                                    default_parent_av_id,
-                                    key.to_owned(),
-                                    default_value_context,
-                                )
-                                .await?;
-
-                                if let Some(value) = &value {
-                                    vacant.insert(value.to_owned());
-                                }
-
-                                value
-                            }
                         }
                     };
 
@@ -765,115 +658,70 @@ async fn import_component_attribute(
                     };
 
                     let parent_av_id = parent_data.attribute_value.as_ref().map(|av| *av.id());
-                    let maybe_av = match av_id_from_index_map {
-                        Some(av_id) => Some(AttributeValue::get_by_id(ctx, &av_id).await?.ok_or(
-                            AttributeValueError::NotFound(av_id, ctx.visibility().to_owned()),
-                        )?),
-                        None => {
-                            AttributeValue::find_with_parent_and_key_for_context(
-                                ctx,
-                                parent_av_id,
-                                key.to_owned(),
-                                context,
-                            )
-                            .await?
-                        }
-                    };
+                    let maybe_av = AttributeValue::find_with_parent_and_key_for_context(
+                        ctx,
+                        parent_av_id,
+                        key.to_owned(),
+                        context,
+                    )
+                    .await?;
 
-                    let mut av_to_update = match maybe_av {
-                        Some(av) => av,
-                        None => {
-                            if index.is_some() {
-                                dbg!(
-                                    "should always have an attribute value here for an indexed av"
-                                );
-                            }
-                            let context = AttributeReadContext {
-                                prop_id: Some(*prop.id()),
-                                internal_provider_id: None,
-                                external_provider_id: None,
-                                component_id: None,
-                            };
-                            let maybe_av = AttributeValue::find_with_parent_and_key_for_context(
-                                ctx,
-                                parent_av_id,
-                                key.to_owned(),
-                                context,
-                            )
-                            .await?;
+                    let mut updated_av = match maybe_av {
+                        Some(av) => {
+                            // Write the entire root implicit value, which will write all child
+                            // values and properly emit the remaining implicit values
+                            if prop.path().as_str() == "root" {
+                                let current_context = av.context;
+                                let context = AttributeContext::builder()
+                                    .set_prop_id(current_context.prop_id())
+                                    .set_internal_provider_id(
+                                        current_context.internal_provider_id(),
+                                    )
+                                    .set_external_provider_id(
+                                        current_context.external_provider_id(),
+                                    )
+                                    .set_component_id(*component.id())
+                                    .to_context_unchecked();
 
-                            match maybe_av {
-                                Some(av) => av,
-                                None => {
-                                    let parent_av_id = parent_av_id.ok_or(
-                                        PkgError::AttributeValueParentValueNotFound(
-                                            "in av search".into(),
-                                            key.to_owned(),
-                                            index.to_owned(),
-                                        ),
-                                    )?;
-
-                                    let attribute_context = AttributeContext::builder()
-                                        .set_prop_id(*prop.id())
-                                        .set_component_id(*component.id())
-                                        .to_context_unchecked();
-
-                                    if key.is_some() {
-                                        let av_id = AttributeValue::insert_for_context(
-                                            ctx,
-                                            attribute_context,
-                                            parent_av_id,
-                                            None,
-                                            key.to_owned(),
-                                        )
-                                        .await?;
-
-                                        AttributeValue::get_by_id(ctx, &av_id).await?.ok_or(
-                                            AttributeValueError::NotFound(
-                                                av_id,
-                                                ctx.visibility().to_owned(),
-                                            ),
-                                        )?
+                                let (_, new_av_id) = AttributeValue::update_for_context(
+                                    ctx,
+                                    *av.id(),
+                                    None,
+                                    context,
+                                    if attribute.implicit_value().is_some() {
+                                        attribute.implicit_value().cloned()
                                     } else {
-                                        let (_, value) = create_attribute_value(
-                                            ctx,
-                                            change_set_pk,
-                                            attribute_context,
-                                            *component.id(),
-                                            key,
-                                            parent_data.attribute_value.as_ref(),
-                                            default_av.as_ref(),
-                                            attribute,
-                                            thing_map,
-                                        )
-                                        .await?;
+                                        attribute.value().cloned()
+                                    },
+                                    None,
+                                )
+                                .await?;
 
-                                        value
-                                    }
-                                }
+                                AttributeValue::get_by_id(ctx, &new_av_id).await?.ok_or(
+                                    AttributeValueError::NotFound(
+                                        new_av_id,
+                                        ctx.visibility().to_owned(),
+                                    ),
+                                )?
+                            } else {
+                                av
                             }
                         }
+                        None => return Ok(None),
                     };
 
-                    let updated_av = update_attribute_value(
+                    // Ensure the prototype is not set to the intrinsic value
+                    update_prototype(
                         ctx,
                         change_set_pk,
                         *variant.id(),
-                        *component.id(),
                         attribute,
-                        &mut av_to_update,
-                        parent_data.attribute_value.as_ref(),
-                        default_av.as_ref(),
+                        &mut updated_av,
                         thing_map,
                     )
                     .await?;
 
-                    let this_cache_key = ValueCacheKey::new(
-                        *component.id(),
-                        *prop.id(),
-                        key.to_owned(),
-                        index.to_owned(),
-                    );
+                    let this_cache_key = ValueCacheKey::new(*component.id(), *prop.id());
 
                     value_cache.insert(this_cache_key, updated_av);
                 }
@@ -883,114 +731,9 @@ async fn import_component_attribute(
                 }
             }
         }
-        AttributeValuePath::InputSocket(socket_name)
-        | AttributeValuePath::OutputSocket(socket_name) => {
-            let (default_read_context, read_context, write_context) =
-                if matches!(attribute.path(), AttributeValuePath::InputSocket(_)) {
-                    let internal_provider =
-                        match InternalProvider::find_explicit_for_schema_variant_and_name(
-                            ctx,
-                            *variant.id(),
-                            socket_name.as_str(),
-                        )
-                        .await?
-                        {
-                            None => {
-                                return Ok(Some(ImportAttributeSkip::MissingInputSocket(
-                                    socket_name.to_owned(),
-                                )))
-                            }
-                            Some(ip) => ip,
-                        };
-
-                    let default_read_context = AttributeReadContext {
-                        prop_id: Some(PropId::NONE),
-                        internal_provider_id: Some(*internal_provider.id()),
-                        external_provider_id: Some(ExternalProviderId::NONE),
-                        component_id: None,
-                    };
-                    let read_context = AttributeReadContext {
-                        prop_id: Some(PropId::NONE),
-                        internal_provider_id: Some(*internal_provider.id()),
-                        external_provider_id: Some(ExternalProviderId::NONE),
-                        component_id: Some(*component.id()),
-                    };
-                    let write_context = AttributeContext::builder()
-                        .set_internal_provider_id(*internal_provider.id())
-                        .set_component_id(*component.id())
-                        .to_context_unchecked();
-
-                    (default_read_context, read_context, write_context)
-                } else {
-                    let external_provider =
-                        match ExternalProvider::find_for_schema_variant_and_name(
-                            ctx,
-                            *variant.id(),
-                            socket_name.as_str(),
-                        )
-                        .await?
-                        {
-                            None => {
-                                return Ok(Some(ImportAttributeSkip::MissingOutputSocket(
-                                    socket_name.to_owned(),
-                                )))
-                            }
-                            Some(ep) => ep,
-                        };
-
-                    let default_read_context = AttributeReadContext {
-                        prop_id: Some(PropId::NONE),
-                        internal_provider_id: Some(InternalProviderId::NONE),
-                        external_provider_id: Some(*external_provider.id()),
-                        component_id: None,
-                    };
-                    let read_context = AttributeReadContext {
-                        prop_id: Some(PropId::NONE),
-                        internal_provider_id: Some(InternalProviderId::NONE),
-                        external_provider_id: Some(*external_provider.id()),
-                        component_id: Some(*component.id()),
-                    };
-                    let write_context = AttributeContext::builder()
-                        .set_external_provider_id(*external_provider.id())
-                        .set_component_id(*component.id())
-                        .to_context_unchecked();
-
-                    (default_read_context, read_context, write_context)
-                };
-
-            let default_value = AttributeValue::find_for_context(ctx, default_read_context).await?;
-
-            match AttributeValue::find_for_context(ctx, read_context).await? {
-                Some(mut existing_av) => {
-                    update_attribute_value(
-                        ctx,
-                        change_set_pk,
-                        *variant.id(),
-                        *component.id(),
-                        attribute,
-                        &mut existing_av,
-                        None,
-                        default_value.as_ref(),
-                        thing_map,
-                    )
-                    .await?;
-                }
-                None => {
-                    create_attribute_value(
-                        ctx,
-                        change_set_pk,
-                        write_context,
-                        *component.id(),
-                        &None,
-                        None,
-                        default_value.as_ref(),
-                        attribute,
-                        thing_map,
-                    )
-                    .await?;
-                }
-            }
-        }
+        // We skip writing output socket values since they will be written in the dependent value
+        // update
+        AttributeValuePath::InputSocket(_) | AttributeValuePath::OutputSocket(_) => {}
     }
 
     Ok(None)
@@ -1041,346 +784,33 @@ async fn get_ip_for_input(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn create_attribute_value(
-    ctx: &DalContext,
-    change_set_pk: Option<ChangeSetPk>,
-    context: AttributeContext,
-    component_id: ComponentId,
-    real_key: &Option<String>,
-    parent_attribute_value: Option<&AttributeValue>,
-    default_attribute_value: Option<&AttributeValue>,
-    attribute_spec: &SiPkgAttributeValue<'_>,
-    thing_map: &mut ThingMap,
-) -> PkgResult<(AttributePrototype, AttributeValue)> {
-    let attribute_func =
-        match thing_map.get(change_set_pk, &attribute_spec.func_unique_id().to_owned()) {
-            Some(Thing::Func(func)) => func,
-            _ => {
-                return Err(PkgError::MissingFuncUniqueId(format!(
-                    "here, {}",
-                    attribute_spec.func_unique_id().to_owned()
-                )));
-            }
-        };
-
-    let new_context = AttributeContext::builder()
-        .set_prop_id(context.prop_id())
-        .set_internal_provider_id(context.internal_provider_id())
-        .set_external_provider_id(context.external_provider_id())
-        .set_component_id(component_id)
-        .to_context_unchecked();
-
-    let func_binding = FuncBinding::new(
-        ctx,
-        attribute_spec.func_binding_args().to_owned(),
-        *attribute_func.id(),
-        attribute_spec.backend_kind().into(),
-    )
-    .await?;
-
-    let mut func_binding_return_value = FuncBindingReturnValue::new(
-        ctx,
-        attribute_spec.unprocessed_value().cloned(),
-        attribute_spec.value().cloned(),
-        *attribute_func.id(),
-        *func_binding.id(),
-        FuncExecutionPk::NONE,
-    )
-    .await?;
-
-    let execution = FuncExecution::new(ctx, attribute_func, &func_binding).await?;
-    // TODO: add output stream?
-
-    func_binding_return_value
-        .set_func_execution_pk(ctx, execution.pk())
-        .await?;
-
-    let mut new_value = AttributeValue::new(
-        ctx,
-        *func_binding.id(),
-        *func_binding_return_value.id(),
-        new_context,
-        real_key.to_owned(),
-    )
-    .await?;
-
-    if let Some(parent_attribute_value) = parent_attribute_value.as_ref() {
-        new_value
-            .set_parent_attribute_value_unchecked(ctx, parent_attribute_value.id())
-            .await?;
-    }
-
-    if attribute_spec.is_proxy() {
-        let default_av =
-            default_attribute_value.ok_or(PkgError::AttributeValueSetToProxyButNoProxyFound)?;
-
-        new_value
-            .set_proxy_for_attribute_value_id(ctx, Some(*default_av.id()))
-            .await?;
-    }
-
-    let prototype_context = AttributeContext::builder()
-        .set_prop_id(new_context.prop_id())
-        .set_external_provider_id(new_context.external_provider_id())
-        .set_internal_provider_id(new_context.internal_provider_id())
-        .set_component_id(if attribute_spec.component_specific() {
-            new_context.component_id()
-        } else {
-            ComponentId::NONE
-        })
-        .to_context_unchecked();
-
-    let prototype =
-        match AttributePrototype::find_for_context_and_key(ctx, prototype_context, real_key)
-            .await?
-            .pop()
-        {
-            Some(existing_proto) => {
-                new_value
-                    .set_attribute_prototype(ctx, existing_proto.id())
-                    .await?;
-
-                existing_proto
-            }
-            None => {
-                AttributePrototype::new_with_existing_value(
-                    ctx,
-                    *attribute_func.id(),
-                    new_context,
-                    real_key.to_owned(),
-                    parent_attribute_value.map(|pav| *pav.id()),
-                    *new_value.id(),
-                )
-                .await?
-            }
-        };
-
-    Ok((prototype, new_value))
-}
-
-#[allow(clippy::too_many_arguments)]
-async fn update_attribute_value(
+async fn update_prototype(
     ctx: &DalContext,
     change_set_pk: Option<ChangeSetPk>,
     schema_variant_id: SchemaVariantId,
-    component_id: ComponentId,
     attribute_spec: &SiPkgAttributeValue<'_>,
     attribute_value: &mut AttributeValue,
-    parent_attribute_value: Option<&AttributeValue>,
-    default_attribute_value: Option<&AttributeValue>,
     thing_map: &mut ThingMap,
-) -> PkgResult<AttributeValue> {
-    let prototype = attribute_value
-        .attribute_prototype(ctx)
-        .await?
-        .ok_or(AttributeValueError::MissingAttributePrototype)?;
-
+) -> PkgResult<()> {
     let attribute_func =
         match thing_map.get(change_set_pk, &attribute_spec.func_unique_id().to_owned()) {
             Some(Thing::Func(func)) => func,
             _ => {
-                return Err(PkgError::MissingFuncUniqueId(format!(
-                    "here, {}",
-                    attribute_spec.func_unique_id().to_owned()
-                )));
+                return Err(PkgError::MissingFuncUniqueId(
+                    attribute_spec.func_unique_id().to_string(),
+                ));
             }
         };
 
-    let (mut prototype, value) = if prototype.context.component_id().is_none()
-        && attribute_spec.component_specific()
-    {
-        let current_context = attribute_value.context;
-        let new_context = AttributeContext::builder()
-            .set_prop_id(current_context.prop_id())
-            .set_internal_provider_id(current_context.internal_provider_id())
-            .set_external_provider_id(current_context.external_provider_id())
-            .set_component_id(component_id)
-            .to_context_unchecked();
-
-        let func_binding = FuncBinding::new(
-            ctx,
-            attribute_spec.func_binding_args().to_owned(),
-            *attribute_func.id(),
-            attribute_spec.backend_kind().into(),
-        )
-        .await?;
-
-        let mut func_binding_return_value = FuncBindingReturnValue::new(
-            ctx,
-            attribute_spec.unprocessed_value().cloned(),
-            attribute_spec.value().cloned(),
-            *attribute_func.id(),
-            *func_binding.id(),
-            FuncExecutionPk::NONE,
-        )
-        .await?;
-
-        let execution = FuncExecution::new(ctx, attribute_func, &func_binding).await?;
-        // TODO: add output stream?
-
-        func_binding_return_value
-            .set_func_execution_pk(ctx, execution.pk())
-            .await?;
-
-        let mut new_value = AttributeValue::new(
-            ctx,
-            *func_binding.id(),
-            *func_binding_return_value.id(),
-            new_context,
-            attribute_value.key(),
-        )
-        .await?;
-
-        if attribute_spec.is_proxy() {
-            let default_av =
-                default_attribute_value.ok_or(PkgError::AttributeValueSetToProxyButNoProxyFound)?;
-
-            new_value
-                .set_proxy_for_attribute_value_id(ctx, Some(*default_av.id()))
-                .await?;
-        }
-
-        (
-            AttributePrototype::new_with_existing_value(
-                ctx,
-                *attribute_func.id(),
-                new_context,
-                attribute_value.key().map(|k| k.to_owned()),
-                parent_attribute_value.map(|pav| *pav.id()),
-                *new_value.id(),
-            )
-            .await?,
-            new_value,
-        )
-    } else {
-        let current_fb = FuncBinding::get_by_id(ctx, &attribute_value.func_binding_id())
-            .await?
-            .ok_or(FuncBindingError::NotFound(
-                attribute_value.func_binding_id(),
-            ))?;
-
-        let current_fbrv =
-            FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
-                .await?
-                .ok_or(FuncBindingReturnValueError::NotFound(
-                    attribute_value.func_binding_return_value_id(),
-                ))?;
-
-        if current_fb.args() != attribute_spec.func_binding_args()
-            || current_fbrv.unprocessed_value() != attribute_spec.unprocessed_value()
-            || current_fbrv.func_id() != attribute_func.id()
-            || current_fb.code_sha256() != attribute_func.code_sha256()
-        {
-            let func_binding = FuncBinding::new(
-                ctx,
-                attribute_spec.func_binding_args().to_owned(),
-                *attribute_func.id(),
-                attribute_spec.backend_kind().into(),
-            )
-            .await?;
-
-            let mut func_binding_return_value = FuncBindingReturnValue::new(
-                ctx,
-                attribute_spec.unprocessed_value().cloned(),
-                attribute_spec.value().cloned(),
-                *attribute_func.id(),
-                *func_binding.id(),
-                FuncExecutionPk::NONE,
-            )
-            .await?;
-
-            let execution = FuncExecution::new(ctx, attribute_func, &func_binding).await?;
-            // TODO: add output stream?
-
-            func_binding_return_value
-                .set_func_execution_pk(ctx, execution.pk())
-                .await?;
-
-            attribute_value
-                .set_func_binding_id(ctx, *func_binding.id())
-                .await?;
-
-            attribute_value
-                .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
-                .await?;
-        }
-
-        (prototype, attribute_value.to_owned())
-    };
+    let mut prototype = attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(AttributeValueError::MissingAttributePrototype)?;
 
     if prototype.func_id() != *attribute_func.id() {
         prototype.set_func_id(ctx, attribute_func.id()).await?;
     }
 
-    // Emit the implicit attribute value for this prop value
-    if value.context.prop_id().is_some() && value.key().is_none() {
-        if let Some(implicit_value) = attribute_spec.implicit_value() {
-            let internal_provider = InternalProvider::find_for_prop(ctx, value.context.prop_id())
-                .await?
-                .ok_or(InternalProviderError::NotFoundForProp(
-                    value.context.prop_id(),
-                ))?;
-
-            let implicit_value_context = AttributeContext::builder()
-                .set_internal_provider_id(*internal_provider.id())
-                .set_component_id(component_id)
-                .to_context_unchecked();
-
-            let unset_func = Func::find_by_name(ctx, "si:unset")
-                .await?
-                .ok_or(FuncError::NotFoundByName("si:unset".into()))?;
-
-            let identity_func = Func::find_by_name(ctx, "si:identity")
-                .await?
-                .ok_or(FuncError::NotFoundByName("si:identity".into()))?;
-
-            let (func_binding, func_binding_return_value) = FuncBinding::create_and_execute(
-                ctx,
-                serde_json::to_value(FuncBackendIdentityArgs {
-                    identity: Some(implicit_value.to_owned()),
-                })?,
-                *identity_func.id(),
-            )
-            .await?;
-
-            match AttributePrototype::find_for_context_and_key(ctx, implicit_value_context, &None)
-                .await?
-                .pop()
-            {
-                Some(existing_proto) => {
-                    if let Some(mut implicit_av) = existing_proto.attribute_values(ctx).await?.pop()
-                    {
-                        implicit_av
-                            .set_func_binding_id(ctx, *func_binding.id())
-                            .await?;
-                        implicit_av
-                            .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
-                            .await?;
-                    }
-                }
-                None => {
-                    let implicit_av = AttributeValue::new(
-                        ctx,
-                        *func_binding.id(),
-                        *func_binding_return_value.id(),
-                        implicit_value_context,
-                        None::<String>,
-                    )
-                    .await?;
-
-                    AttributePrototype::new_with_existing_value(
-                        ctx,
-                        *unset_func.id(),
-                        implicit_value_context,
-                        None,
-                        None,
-                        *implicit_av.id(),
-                    )
-                    .await?;
-                }
-            }
-        }
-    }
     let inputs = attribute_spec.inputs()?;
 
     let mut current_apas =
@@ -1439,7 +869,7 @@ async fn update_attribute_value(
         }
     }
 
-    Ok(value)
+    Ok(())
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
