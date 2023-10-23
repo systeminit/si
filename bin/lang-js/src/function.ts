@@ -1,4 +1,4 @@
-import _ from "lodash";
+import * as _ from "lodash";
 import { Debugger } from "debug";
 import { NodeVM } from "vm2";
 import { base64ToJs } from "./base64";
@@ -59,7 +59,7 @@ export interface ResultFailure extends Result {
 
 export function failureExecution(
   err: Error,
-  executionId: string
+  executionId: string,
 ): ResultFailure {
   // `executionId` may not have been determined if the request JSON fails to
   // parse, message is malformed, etc. In this case an empty string can signal
@@ -100,13 +100,25 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
   switch (kind) {
     case FunctionKind.ActionRun:
       result = await executor(ctx, request as ActionRunFunc, kind, action_run);
+
+      console.log(
+        JSON.stringify({
+          protocol: "output",
+          executionId: ctx.executionId,
+          stream: "output",
+          level: "info",
+          group: "log",
+          message: `Output: ${JSON.stringify(result, null, 2)}`,
+        }),
+      );
+
       break;
     case FunctionKind.Reconciliation:
       result = await executor(
         ctx,
         request as ReconciliationFunc,
         kind,
-        reconciliation
+        reconciliation,
       );
       break;
     case FunctionKind.ResolverFunction:
@@ -114,7 +126,7 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
         ctx,
         request as ResolverFunc,
         kind,
-        resolver_function
+        resolver_function,
       );
 
       console.log(
@@ -125,7 +137,7 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
           level: "info",
           group: "log",
           message: `Output: ${JSON.stringify(result, null, 2)}`,
-        })
+        }),
       );
       break;
     case FunctionKind.Validation:
@@ -136,7 +148,7 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
         ctx,
         request as SchemaVariantDefinitionFunc,
         kind,
-        schema_variant_definition
+        schema_variant_definition,
       );
       break;
     default:
@@ -163,7 +175,7 @@ export async function executor<F extends Func, Result>(
       func: F,
       code: string
     ) => Promise<Result>;
-  }
+  },
 ) {
   const originalCode = base64ToJs(func.codeBase64);
 

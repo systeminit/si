@@ -21,6 +21,15 @@ interface FuncScenario {
 
 const scenarios: FuncScenario[] = [
   {
+    kind: FunctionKind.ActionRun,
+    funcSpec: {
+      value: {},
+      handler: "workit",
+      codeBase64: "", // We rewrite this later
+    },
+    func: "actionRun.ts",
+  },
+  {
     kind: FunctionKind.Validation,
     funcSpec: {
       value: {},
@@ -93,7 +102,7 @@ describe("executeFunction", () => {
         });
       }
 
-      await executeFunction(FunctionKind.Validation, {
+      await executeFunction(scenario.kind, {
         ...ctx,
         ...funcObj,
         before,

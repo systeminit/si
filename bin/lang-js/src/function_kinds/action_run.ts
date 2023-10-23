@@ -1,6 +1,6 @@
 import Debug from "debug";
 import { NodeVM } from "vm2";
-import _ from "lodash";
+import * as _ from "lodash";
 import {
   failureExecution,
   Func,
@@ -29,16 +29,14 @@ async function execute(
   vm: NodeVM,
   { executionId }: RequestCtx,
   { args }: ActionRunFunc,
-  code: string
+  code: string,
 ): Promise<ActionRunResult> {
   let actionRunResult: Record<string, unknown>;
   try {
     const actionRunRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
     actionRunResult = await new Promise((resolve) => {
-      actionRunRunner(args, (resolution: Record<string, unknown>) =>
-        resolve(resolution)
-      );
+      actionRunRunner(args, (resolution: Record<string, unknown>) => resolve(resolution));
     });
 
     if (_.isUndefined(actionRunResult) || _.isNull(actionRunResult)) {
@@ -54,8 +52,8 @@ async function execute(
     }
 
     if (
-      !_.isString(actionRunResult["status"]) ||
-      !["ok", "warning", "error"].includes(actionRunResult["status"])
+      !_.isString(actionRunResult.status)
+      || !["ok", "warning", "error"].includes(actionRunResult.status)
     ) {
       return {
         protocol: "result",
@@ -70,8 +68,8 @@ async function execute(
     }
 
     if (
-      actionRunResult["status"] === "ok" &&
-      !_.isUndefined(actionRunResult["message"])
+      actionRunResult.status === "ok"
+      && !_.isUndefined(actionRunResult.message)
     ) {
       return {
         protocol: "result",
@@ -86,8 +84,8 @@ async function execute(
     }
 
     if (
-      actionRunResult["status"] !== "ok" &&
-      !_.isString(actionRunResult["message"])
+      actionRunResult.status !== "ok"
+      && !_.isString(actionRunResult.message)
     ) {
       return {
         protocol: "result",

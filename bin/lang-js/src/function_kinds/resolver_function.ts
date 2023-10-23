@@ -1,5 +1,5 @@
 import Debug from "debug";
-import _ from "lodash";
+import * as _ from "lodash";
 import { NodeVM } from "vm2";
 import {
   failureExecution,
@@ -62,36 +62,31 @@ export interface TypeCheckSuccess {
 
 export type TypeCheckResult = TypeCheckFailure | TypeCheckSuccess;
 
-const isArray = (value: unknown): TypeCheckResult =>
-  _.isArray(value)
-    ? { valid: true }
-    : { valid: false, message: "Return type must be an array." };
+const isArray = (value: unknown): TypeCheckResult => (_.isArray(value)
+  ? { valid: true }
+  : { valid: false, message: "Return type must be an array." });
 
-const isBoolean = (value: unknown): TypeCheckResult =>
-  _.isBoolean(value)
-    ? { valid: true }
-    : { valid: false, message: "Return type must be a boolean." };
+const isBoolean = (value: unknown): TypeCheckResult => (_.isBoolean(value)
+  ? { valid: true }
+  : { valid: false, message: "Return type must be a boolean." });
 
-const isInteger = (value: unknown): TypeCheckResult =>
-  _.isInteger(value)
-    ? { valid: true }
-    : { valid: false, message: `Return type must be an integer.` };
+const isInteger = (value: unknown): TypeCheckResult => (_.isInteger(value)
+  ? { valid: true }
+  : { valid: false, message: `Return type must be an integer.` });
 
 // This check is not 100% valid because javascript does not distinguish
 // between objects, arrays, functions and null in typeof checks. This
 // could return true if the function returns another function.
-const isObject = (value: unknown): TypeCheckResult =>
-  typeof value === "object" &&
-  _.isObject(value) &&
-  !_.isArray(value) &&
-  !_.isNull(value)
-    ? { valid: true }
-    : { valid: false, message: "Return type must be an object." };
+const isObject = (value: unknown): TypeCheckResult => (typeof value === "object"
+&& _.isObject(value)
+&& !_.isArray(value)
+&& !_.isNull(value)
+  ? { valid: true }
+  : { valid: false, message: "Return type must be an object." });
 
-const isString = (value: unknown): TypeCheckResult =>
-  _.isString(value)
-    ? { valid: true }
-    : { valid: false, message: "Return type must be a string." };
+const isString = (value: unknown): TypeCheckResult => (_.isString(value)
+  ? { valid: true }
+  : { valid: false, message: "Return type must be a string." });
 
 const isCodeGeneration = (value: unknown): TypeCheckResult => {
   if (typeof value !== "object" || !value) {
@@ -141,8 +136,8 @@ const isQualification = (value: unknown): TypeCheckResult => {
   }
 
   if (
-    value.result !== "success" &&
-    (!("message" in value) || !_.isString(value.message))
+    value.result !== "success"
+    && (!("message" in value) || !_.isString(value.message))
   ) {
     return {
       valid: false,
@@ -187,23 +182,21 @@ async function execute(
   vm: NodeVM,
   { executionId }: RequestCtx,
   { component, responseType }: ResolverFunc,
-  code: string
+  code: string,
 ): Promise<ResolverFunctionResult> {
   let resolverFunctionResult: Record<string, unknown>;
   try {
     const runner = vm.run(code);
     resolverFunctionResult = await new Promise((resolve) => {
-      runner(component.data.properties, (resolution: Record<string, unknown>) =>
-        resolve(resolution)
-      );
+      runner(component.data.properties, (resolution: Record<string, unknown>) => resolve(resolution));
     });
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }
 
   if (
-    _.isUndefined(resolverFunctionResult) ||
-    _.isNull(resolverFunctionResult)
+    _.isUndefined(resolverFunctionResult)
+    || _.isNull(resolverFunctionResult)
   ) {
     vm.sandbox.console.debug("function returned undefined or null");
     if (nullables?.[responseType] === true) {

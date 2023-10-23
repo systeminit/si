@@ -518,6 +518,9 @@ importers:
       '@si/eslint-config':
         specifier: workspace:*
         version: link:../../lib/eslint-config
+      '@si/tsconfig':
+        specifier: workspace:*
+        version: link:../../lib/tsconfig
       '@types/debug':
         specifier: ^4.1.7
         version: 4.1.7

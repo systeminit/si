@@ -24,7 +24,7 @@ async function execute(
   vm: NodeVM,
   { executionId }: RequestCtx,
   _: BeforeFunc,
-  code: string
+  code: string,
 ): Promise<BeforeResult> {
   try {
     const runner = vm.run(code);

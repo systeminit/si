@@ -1,4 +1,4 @@
-import _ from "lodash";
+import * as _ from "lodash";
 import { makeConsole } from "./console";
 
 // Since a lang-js process only lasts for a single function request, this
@@ -9,7 +9,6 @@ const requestStorage: Record<string, unknown> = {};
 export const makeMainRequestStorage = () => {
   const getItem = (key: string) => requestStorage[key];
   const getKeys = () => _.keys(requestStorage);
-
   return { getItem, getKeys };
 };
 

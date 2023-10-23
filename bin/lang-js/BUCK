@@ -35,9 +35,19 @@ filegroup(
     ]),
 )
 
+prod_deps_srcs = {
+}
+
+dev_deps_srcs = {
+    "lib/eslint-config": "//lib/eslint-config:src",
+    "lib/tsconfig": "//lib/tsconfig:src",
+}
+
 typescript_dist(
     name = "dist",
     srcs = [":src"],
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )
 
 typescript_runnable_dist(
@@ -53,14 +63,20 @@ eslint(
     name = "check-lint",
     directories = ["src", "tests"],
     srcs = [":src", ":test_src"] + glob([".eslint*"]),
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )
 
 typescript_check(
     name = "check-type",
     srcs = [":src"],
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )
 
 jest(
     name = "test-unit",
     srcs = [":src", ":test_src"] + glob(["jest.config.js"]),
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )

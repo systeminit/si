@@ -1,6 +1,6 @@
 import Debug from "debug";
 import { NodeVM } from "vm2";
-import _ from "lodash";
+import * as _ from "lodash";
 import {
   failureExecution,
   Func,
@@ -31,16 +31,14 @@ async function execute(
   vm: NodeVM,
   { executionId }: RequestCtx,
   { args }: ReconciliationFunc,
-  code: string
+  code: string,
 ): Promise<ReconciliationResult> {
   let reconciliationResult: Record<string, unknown>;
   try {
     const reconciliationRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
     reconciliationResult = await new Promise((resolve) => {
-      reconciliationRunner(args, (resolution: Record<string, unknown>) =>
-        resolve(resolution)
-      );
+      reconciliationRunner(args, (resolution: Record<string, unknown>) => resolve(resolution));
     });
 
     if (_.isUndefined(reconciliationResult) || _.isNull(reconciliationResult)) {
@@ -55,7 +53,7 @@ async function execute(
       };
     }
 
-    if (!_.isObject(reconciliationResult["updates"])) {
+    if (!_.isObject(reconciliationResult.updates)) {
       return {
         protocol: "result",
         status: "failure",
@@ -68,8 +66,8 @@ async function execute(
     }
 
     if (
-      !_.isArray(reconciliationResult["actions"]) ||
-      reconciliationResult["actions"].some((v) => typeof v !== "string")
+      !_.isArray(reconciliationResult.actions)
+      || reconciliationResult.actions.some((v) => typeof v !== "string")
     ) {
       return {
         protocol: "result",

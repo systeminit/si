@@ -1,11 +1,11 @@
 import os from "os";
 import fs from "fs";
 import path from "path";
-import fetch from "node-fetch";
 import zlib from "zlib";
+import fetch from "node-fetch";
 
-import _ from "lodash";
-import yaml from "js-yaml";
+import * as _ from "lodash";
+import * as yaml from "js-yaml";
 
 import { FunctionKind } from "./function";
 import { makeConsole } from "./sandbox/console";
@@ -46,8 +46,7 @@ function schemaVariantDefinitionSandbox(): Sandbox {
     SocketDefinitionBuilder: assetBuilder.SocketDefinitionBuilder,
     MapKeyFuncBuilder: assetBuilder.MapKeyFuncBuilder,
     PropWidgetDefinitionBuilder: assetBuilder.PropWidgetDefinitionBuilder,
-    SiPropValueFromDefinitionBuilder:
-      assetBuilder.SiPropValueFromDefinitionBuilder,
+    SiPropValueFromDefinitionBuilder: assetBuilder.SiPropValueFromDefinitionBuilder,
   };
 }
 
@@ -59,7 +58,7 @@ function beforeFunctionSandbox(executionId: string): Sandbox {
 
 export function createSandbox(
   kind: FunctionKind,
-  executionId: string
+  executionId: string,
 ): Sandbox {
   let sandbox = commonSandbox(executionId);
 
@@ -75,6 +74,8 @@ export function createSandbox(
         ...sandbox,
         ...beforeFunctionSandbox(executionId),
       };
+      break;
+    default:
       break;
   }
 

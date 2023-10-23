@@ -43,6 +43,7 @@
   "license": "Proprietary",
   "devDependencies": {
     "@si/eslint-config": "workspace:*",
+    "@si/tsconfig": "workspace:*",
     "@types/debug": "^4.1.7",
     "@types/jest": "^27.4.1",
     "@types/js-yaml": "^4.0.5",

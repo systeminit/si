@@ -27,7 +27,7 @@ async function execute(
   vm: NodeVM,
   { executionId }: RequestCtx,
   _: SchemaVariantDefinitionFunc,
-  code: string
+  code: string,
 ): Promise<SchemaVariantDefinitionResult> {
   let result: Record<string, unknown>;
   try {

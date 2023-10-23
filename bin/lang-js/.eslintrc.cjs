@@ -6,6 +6,12 @@ module.exports = {
       rules: {
         "@typescript-eslint/no-unused-vars": "off"
       }
+    },
+    {
+      files: ["**/*.ts"],
+      rules: {
+        "no-console": "off",
+      }
     }
   ],
 };

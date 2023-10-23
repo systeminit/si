@@ -39,15 +39,13 @@ async function execute(
   vm: NodeVM,
   { executionId }: RequestCtx,
   { value }: ValidationFunc,
-  code: string
+  code: string,
 ): Promise<ValidationResult> {
   let result: Record<string, unknown>;
   try {
     const runner = vm.run(code);
     result = await new Promise((resolve) => {
-      runner(value, (resolution: Record<string, unknown>) =>
-        resolve(resolution)
-      );
+      runner(value, (resolution: Record<string, unknown>) => resolve(resolution));
     });
     debug({ result: JSON.stringify(result) });
   } catch (err) {
@@ -55,7 +53,7 @@ async function execute(
   }
 
   const invalidReturnType = "InvalidReturnType";
-  if (typeof result["valid"] !== "boolean") {
+  if (typeof result.valid !== "boolean") {
     return {
       protocol: "result",
       status: "failure",
@@ -68,8 +66,8 @@ async function execute(
   }
 
   if (
-    typeof result["message"] !== "string" &&
-    typeof result["message"] !== "undefined"
+    typeof result.message !== "string"
+    && typeof result.message !== "undefined"
   ) {
     return {
       protocol: "result",
@@ -86,8 +84,8 @@ async function execute(
     protocol: "result",
     status: "success",
     executionId,
-    valid: result["valid"],
-    message: result["message"],
+    valid: result.valid,
+    message: result.message,
   };
 }
 

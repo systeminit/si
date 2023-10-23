@@ -1,6 +1,6 @@
 #!/usr/bin/env tsc
 
-import fs from "fs";
+import * as fs from "fs";
 import { Command } from "commander";
 import Debug from "debug";
 import {
@@ -18,7 +18,7 @@ const STDIN_FD = 0;
 function onError(
   errorFn: (...args: unknown[]) => void,
   err: Error,
-  executionId: string
+  executionId: string,
 ) {
   debug(err);
   errorFn("StackTrace", err.stack);
@@ -34,7 +34,7 @@ async function main() {
     .version("0.0.1")
     .argument(
       "<kind>",
-      `kind of function to be executed [values: ${functionKinds().join(", ")}]`
+      `kind of function to be executed [values: ${functionKinds().join(", ")}]`,
     )
     .action((kind_arg) => {
       if (functionKinds().includes(kind_arg)) {
@@ -115,4 +115,4 @@ async function main() {
 //   console.log(JSON.stringify(failureExecution(err, executionId)));
 //   process.exit(1);
 // }
-main();
+main().catch(() => process.exit(1));

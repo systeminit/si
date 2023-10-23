@@ -1,5 +1,4 @@
-import ts from "typescript";
-import * as tsvfs from "@typescript/vfs";
+import * as ts from "typescript";
 import Debug from "debug";
 
 // Note(paulo, zack): big old ass hacky hack, packaging lang-js creates some weird syntax issues with
@@ -10,10 +9,12 @@ import Debug from "debug";
 // Turns out they were using the same DEBUG env var we use for our logs, so disabling on import works
 // We may want to rethink our env var to have it scoped, and we may need to fix the underlying issue
 // but for now this gets us through, enabling ts as a language.
-const oldDebug = process.env["DEBUG"];
-delete process.env["DEBUG"];
+const oldDebug = process.env.DEBUG;
+delete process.env.DEBUG;
+// eslint-disable-next-line import/first
+import * as tsvfs from "@typescript/vfs";
 
-process.env["DEBUG"] = oldDebug;
+process.env.DEBUG = oldDebug;
 
 const debug = Debug("langJs:base64");
 
@@ -40,7 +41,7 @@ export function base64ToJs(encoded: string): string {
     system,
     Array.from(fsMap.keys()),
     ts,
-    compilerOptions
+    compilerOptions,
   );
   return (
     tsEnv.languageService.getEmitOutput("index.ts", false, true).outputFiles[0]

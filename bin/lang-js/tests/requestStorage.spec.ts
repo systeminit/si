@@ -16,7 +16,7 @@ describe("requestStorage", () => {
   });
 
   test("Retrieve keys", () => {
-    const keys = makeBeforeRequestStorage(EXEC_ID).getItem(KEY);
+    const keys = makeBeforeRequestStorage(EXEC_ID).getKeys();
 
     expect(keys).toHaveLength(1);
     expect(keys).toContain(KEY);

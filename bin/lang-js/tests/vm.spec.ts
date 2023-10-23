@@ -1,6 +1,7 @@
+import { VM, VMScript } from "vm2";
 import { compileCode, createVm } from "../src/vm";
 import { createSandbox } from "../src/sandbox";
-import { VM, VMScript } from "vm2";
+
 import { FunctionKind } from "../src/function";
 
 describe("createVm", () => {
