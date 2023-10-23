@@ -60,11 +60,6 @@ typescript_check(
     srcs = [":src"],
 )
 
-prettier_check(
-    name = "check-format",
-    srcs = [":src", ":test_src"] + glob([".prettier*"]),
-)
-
 jest(
     name = "test-unit",
     srcs = [":src", ":test_src"] + glob(["jest.config.js"]),

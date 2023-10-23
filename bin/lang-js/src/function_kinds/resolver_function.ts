@@ -1,14 +1,14 @@
 import Debug from "debug";
 import _ from "lodash";
-import {NodeVM} from "vm2";
+import { NodeVM } from "vm2";
 import {
   failureExecution,
   Func,
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import {Component} from "../component";
-import {RequestCtx} from "../request";
+import { Component } from "../component";
+import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:resolverFunction");
 
@@ -64,18 +64,18 @@ export type TypeCheckResult = TypeCheckFailure | TypeCheckSuccess;
 
 const isArray = (value: unknown): TypeCheckResult =>
   _.isArray(value)
-    ? {valid: true}
-    : {valid: false, message: "Return type must be an array."};
+    ? { valid: true }
+    : { valid: false, message: "Return type must be an array." };
 
 const isBoolean = (value: unknown): TypeCheckResult =>
   _.isBoolean(value)
-    ? {valid: true}
-    : {valid: false, message: "Return type must be a boolean."};
+    ? { valid: true }
+    : { valid: false, message: "Return type must be a boolean." };
 
 const isInteger = (value: unknown): TypeCheckResult =>
   _.isInteger(value)
-    ? {valid: true}
-    : {valid: false, message: `Return type must be an integer.`};
+    ? { valid: true }
+    : { valid: false, message: `Return type must be an integer.` };
 
 // This check is not 100% valid because javascript does not distinguish
 // between objects, arrays, functions and null in typeof checks. This
@@ -85,13 +85,13 @@ const isObject = (value: unknown): TypeCheckResult =>
   _.isObject(value) &&
   !_.isArray(value) &&
   !_.isNull(value)
-    ? {valid: true}
-    : {valid: false, message: "Return type must be an object."};
+    ? { valid: true }
+    : { valid: false, message: "Return type must be an object." };
 
 const isString = (value: unknown): TypeCheckResult =>
   _.isString(value)
-    ? {valid: true}
-    : {valid: false, message: "Return type must be a string."};
+    ? { valid: true }
+    : { valid: false, message: "Return type must be a string." };
 
 const isCodeGeneration = (value: unknown): TypeCheckResult => {
   if (typeof value !== "object" || !value) {
@@ -116,13 +116,13 @@ const isCodeGeneration = (value: unknown): TypeCheckResult => {
     };
   }
 
-  return {valid: true};
+  return { valid: true };
 };
 
 const qualificationStatuses = ["warning", "failure", "success", "unknown"];
 const isQualification = (value: unknown): TypeCheckResult => {
   if (typeof value !== "object" || !value) {
-    return {valid: false, message: "A qualification must return an object."};
+    return { valid: false, message: "A qualification must return an object." };
   }
 
   if (!("result" in value) || !_.isString(value.result)) {
@@ -151,7 +151,7 @@ const isQualification = (value: unknown): TypeCheckResult => {
     };
   }
 
-  return {valid: true};
+  return { valid: true };
 };
 
 const typeChecks: {
@@ -185,11 +185,10 @@ const nullables: { [key in FuncBackendResponseType]?: boolean } = {
 
 async function execute(
   vm: NodeVM,
-  {executionId}: RequestCtx,
-  {component, responseType}: ResolverFunc,
-  code: string,
+  { executionId }: RequestCtx,
+  { component, responseType }: ResolverFunc,
+  code: string
 ): Promise<ResolverFunctionResult> {
-
   let resolverFunctionResult: Record<string, unknown>;
   try {
     const runner = vm.run(code);
@@ -271,10 +270,10 @@ module.exports = function(component, callback) {
   } else {
     callback(returnValue);
   }
-};`
+};`;
 
 export default {
   debug,
   execute,
-  wrapCode
-}
+  wrapCode,
+};

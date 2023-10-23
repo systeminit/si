@@ -1,22 +1,22 @@
 import * as fs from "fs/promises";
-import {executeFunction, FunctionKind} from "../src/function";
-import {AnyFunction, RequestCtx} from "../src/request";
+import { executeFunction, FunctionKind } from "../src/function";
+import { AnyFunction, RequestCtx } from "../src/request";
 
 let lastLog = "";
 const consoleSpy = jest.spyOn(console, "log").mockImplementation((msg) => {
-  console.dir(msg)
-  lastLog = msg
-})
+  console.dir(msg);
+  lastLog = msg;
+});
 
-const FUNCS_FOLDER = './tests/functions/';
+const FUNCS_FOLDER = "./tests/functions/";
 
 type FuncOrFuncLocation = string | (() => unknown);
 
 interface FuncScenario {
-  kind: FunctionKind,
-  funcSpec: AnyFunction,
+  kind: FunctionKind;
+  funcSpec: AnyFunction;
   func: FuncOrFuncLocation;
-  before?: { handler: string, func: FuncOrFuncLocation }[];
+  before?: { handler: string; func: FuncOrFuncLocation }[];
 }
 
 const scenarios: FuncScenario[] = [
@@ -25,37 +25,34 @@ const scenarios: FuncScenario[] = [
     funcSpec: {
       value: {},
       handler: "main",
-      codeBase64: "" // We rewrite this later
+      codeBase64: "", // We rewrite this later
     },
-    func: "validation.ts"
+    func: "validation.ts",
   },
   {
     kind: FunctionKind.Validation,
     funcSpec: {
       value: {},
       handler: "main",
-      codeBase64: "" // We rewrite this later
+      codeBase64: "", // We rewrite this later
     },
-    func: 'beforeFuncs.ts',
+    func: "beforeFuncs.ts",
     before: [
       {
         handler: "before1",
-        func: 'beforeFuncs.ts',
+        func: "beforeFuncs.ts",
       },
       {
         handler: "before2",
-        func: 'beforeFuncs.ts',
+        func: "beforeFuncs.ts",
       },
-    ]
+    ],
   },
-
-]
+];
 
 describe("executeFunction", () => {
-
   scenarios.forEach((scenario, i) => {
     test(`Scenario ${i}`, async () => {
-
       consoleSpy.mockClear();
       lastLog = "";
       let codeBase64: string;
@@ -68,9 +65,9 @@ describe("executeFunction", () => {
 
         let code: string;
         if (rawCode.startsWith("func()")) {
-          code = `function ${rawCode}`
+          code = `function ${rawCode}`;
         } else {
-          code = `const ${scenario.funcSpec.handler} = ${rawCode}`
+          code = `const ${scenario.funcSpec.handler} = ${rawCode}`;
         }
 
         codeBase64 = Buffer.from(code).toString("base64");
@@ -79,31 +76,28 @@ describe("executeFunction", () => {
       }
 
       const ctx: RequestCtx = {
-        executionId: ""
+        executionId: "",
       };
 
       const funcObj: AnyFunction = {
         ...scenario.funcSpec,
         codeBase64,
-      }
-
+      };
 
       const before = [];
 
       for (const b of scenario.before ?? []) {
-        before.push(
-          {
-            handler: b.handler,
-            codeBase64: await base64FromFile(FUNCS_FOLDER + b.func)
-          }
-        )
+        before.push({
+          handler: b.handler,
+          codeBase64: await base64FromFile(FUNCS_FOLDER + b.func),
+        });
       }
 
       await executeFunction(FunctionKind.Validation, {
         ...ctx,
         ...funcObj,
-        before
-      })
+        before,
+      });
 
       const parsedLog = JSON.parse(lastLog);
 
@@ -111,14 +105,12 @@ describe("executeFunction", () => {
       // we could bring status from the scenario
       expect(parsedLog).toMatchObject({
         protocol: "result",
-        status: "success"
-      })
-    })
-  })
-
-
+        status: "success",
+      });
+    });
+  });
 });
 
 async function base64FromFile(path: string) {
-  return (await fs.readFile(path)).toString('base64')
+  return (await fs.readFile(path)).toString("base64");
 }

@@ -23,7 +23,7 @@ export function base64Decode(encoded: string): string {
 
 export function base64ToJs(encoded: string): string {
   const code = base64Decode(encoded);
-  debug({code});
+  debug({ code });
 
   const compilerOptions = {
     target: ts.ScriptTarget.ES2020,

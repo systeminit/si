@@ -1,5 +1,5 @@
 import Debug from "debug";
-import {NodeVM} from "vm2";
+import { NodeVM } from "vm2";
 
 import {
   failureExecution,
@@ -7,7 +7,7 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import {RequestCtx} from "../request";
+import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:validation");
 
@@ -37,9 +37,9 @@ export type ValidationResult =
 
 async function execute(
   vm: NodeVM,
-  {executionId}: RequestCtx,
-  {value}: ValidationFunc,
-  code: string,
+  { executionId }: RequestCtx,
+  { value }: ValidationFunc,
+  code: string
 ): Promise<ValidationResult> {
   let result: Record<string, unknown>;
   try {
@@ -49,7 +49,7 @@ async function execute(
         resolve(resolution)
       );
     });
-    debug({result: JSON.stringify(result)});
+    debug({ result: JSON.stringify(result) });
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }
@@ -111,5 +111,5 @@ module.exports = function(value, callback) {
 export default {
   debug,
   execute,
-  wrapCode
-}
+  wrapCode,
+};

@@ -1,5 +1,5 @@
 import Debug from "debug";
-import {NodeVM} from "vm2";
+import { NodeVM } from "vm2";
 import _ from "lodash";
 import {
   failureExecution,
@@ -7,7 +7,7 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import {RequestCtx} from "../request";
+import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:actionRun");
 
@@ -27,9 +27,9 @@ export type ActionRunResultFailure = ResultFailure;
 
 async function execute(
   vm: NodeVM,
-  {executionId}: RequestCtx,
-  {args}: ActionRunFunc,
-  code: string,
+  { executionId }: RequestCtx,
+  { args }: ActionRunFunc,
+  code: string
 ): Promise<ActionRunResult> {
   let actionRunResult: Record<string, unknown>;
   try {
@@ -131,10 +131,10 @@ module.exports = function(arg, callback) {
   } else {
     callback(returnValue);
   }
-};`
+};`;
 
 export default {
   debug,
   execute,
-  wrapCode
-}
+  wrapCode,
+};

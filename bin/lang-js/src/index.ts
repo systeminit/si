@@ -1,7 +1,7 @@
 #!/usr/bin/env tsc
 
 import fs from "fs";
-import {Command} from "commander";
+import { Command } from "commander";
 import Debug from "debug";
 import {
   executeFunction,
@@ -9,9 +9,8 @@ import {
   FunctionKind,
   functionKinds,
 } from "./function";
-import {makeConsole} from "./sandbox/console";
-import {Request} from "./request";
-
+import { makeConsole } from "./sandbox/console";
+import { Request } from "./request";
 
 const debug = Debug("langJs");
 const STDIN_FD = 0;
@@ -53,7 +52,7 @@ async function main() {
 
   try {
     const requestJson = fs.readFileSync(STDIN_FD, "utf8");
-    debug({request: requestJson});
+    debug({ request: requestJson });
     const request: Request = JSON.parse(requestJson);
     if (request.executionId) {
       executionId = request.executionId;
@@ -73,7 +72,6 @@ async function main() {
     }
 
     await executeFunction(kind, request);
-
   } catch (err) {
     onError(errorFn, err as Error, executionId);
   }

@@ -1,5 +1,5 @@
 import Debug from "debug";
-import {NodeVM} from "vm2";
+import { NodeVM } from "vm2";
 
 import {
   failureExecution,
@@ -7,7 +7,7 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import {RequestCtx} from "../request";
+import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:validation");
 
@@ -25,9 +25,9 @@ export type SchemaVariantDefinitionResult =
 
 async function execute(
   vm: NodeVM,
-  {executionId}: RequestCtx,
+  { executionId }: RequestCtx,
   _: SchemaVariantDefinitionFunc,
-  code: string,
+  code: string
 ): Promise<SchemaVariantDefinitionResult> {
   let result: Record<string, unknown>;
   try {
@@ -35,7 +35,7 @@ async function execute(
     result = await new Promise((resolve) => {
       runner((resolution: Record<string, unknown>) => resolve(resolution));
     });
-    debug({result: JSON.stringify(result)});
+    debug({ result: JSON.stringify(result) });
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }
@@ -68,5 +68,5 @@ module.exports = function(callback) {
 export default {
   debug,
   execute,
-  wrapCode
-}
+  wrapCode,
+};

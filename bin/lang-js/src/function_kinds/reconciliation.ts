@@ -1,5 +1,5 @@
 import Debug from "debug";
-import {NodeVM} from "vm2";
+import { NodeVM } from "vm2";
 import _ from "lodash";
 import {
   failureExecution,
@@ -7,7 +7,7 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import {RequestCtx} from "../request";
+import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:reconciliation");
 
@@ -29,9 +29,9 @@ export type ReconciliationResultFailure = ResultFailure;
 
 async function execute(
   vm: NodeVM,
-  {executionId}: RequestCtx,
-  {args}: ReconciliationFunc,
-  code: string,
+  { executionId }: RequestCtx,
+  { args }: ReconciliationFunc,
+  code: string
 ): Promise<ReconciliationResult> {
   let reconciliationResult: Record<string, unknown>;
   try {
@@ -110,10 +110,10 @@ module.exports = function(arg, callback) {
   } else {
     callback(returnValue);
   }
-};`
+};`;
 
 export default {
   debug,
   execute,
-  wrapCode
-}
+  wrapCode,
+};

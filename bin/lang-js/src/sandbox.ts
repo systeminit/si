@@ -7,24 +7,16 @@ import zlib from "zlib";
 import _ from "lodash";
 import yaml from "js-yaml";
 
-import {FunctionKind} from "./function";
-import {makeConsole} from "./sandbox/console";
-import {makeExec} from "./sandbox/exec";
+import { FunctionKind } from "./function";
+import { makeConsole } from "./sandbox/console";
+import { makeExec } from "./sandbox/exec";
 import * as assetBuilder from "./asset_builder";
 import {
   makeBeforeRequestStorage,
-  makeMainRequestStorage
+  makeMainRequestStorage,
 } from "./sandbox/requestStorage";
 
 export type Sandbox = Record<string, unknown>;
-
-export class UnknownSandboxKind extends Error {
-  constructor(kind: string) {
-    const message = `Unknown sandbox kind: ${kind}; bug!`;
-    super(message);
-    this.name = "UnknownSandboxKind";
-  }
-}
 
 function commonSandbox(executionId: string): Sandbox {
   return {
@@ -33,41 +25,13 @@ function commonSandbox(executionId: string): Sandbox {
     Buffer,
     requestStorage: makeMainRequestStorage(),
     zlib,
-  };
-}
-
-function beforeFunctionSandbox(executionId: string): Sandbox {
-  return {
-    requestStorage: makeBeforeRequestStorage(executionId)
-  }
-}
-
-function resolverFunctionSandbox(executionId: string): Sandbox {
-  return {
-    // Is there any risk leaking this function plainly here? It smells like a risk for RCE outside of the sandbox
-    YAML: {stringify: yaml.dump},
     fetch,
-    // definitely a risk
-    // lol
     siExec: makeExec(executionId),
+    // Is there any risk leaking this function plainly here? It smells like a risk for RCE outside of the sandbox
+    YAML: { stringify: yaml.dump },
     os, // This certainly is bad
     fs, // This certainly is bad
     path, // This certainly is bad
-  };
-}
-
-const validationSandbox = {};
-
-function reconciliationSandbox(executionId: string): Sandbox {
-  return {
-    siExec: makeExec(executionId),
-  };
-}
-
-function commandRunSandbox(executionId: string): Sandbox {
-  return {
-    siExec: makeExec(executionId),
-    fetch,
   };
 }
 
@@ -83,7 +47,13 @@ function schemaVariantDefinitionSandbox(): Sandbox {
     MapKeyFuncBuilder: assetBuilder.MapKeyFuncBuilder,
     PropWidgetDefinitionBuilder: assetBuilder.PropWidgetDefinitionBuilder,
     SiPropValueFromDefinitionBuilder:
-    assetBuilder.SiPropValueFromDefinitionBuilder,
+      assetBuilder.SiPropValueFromDefinitionBuilder,
+  };
+}
+
+function beforeFunctionSandbox(executionId: string): Sandbox {
+  return {
+    requestStorage: makeBeforeRequestStorage(executionId),
   };
 }
 
@@ -91,38 +61,22 @@ export function createSandbox(
   kind: FunctionKind,
   executionId: string
 ): Sandbox {
+  let sandbox = commonSandbox(executionId);
+
   switch (kind) {
-    case FunctionKind.ResolverFunction:
-      return {
-        ...commonSandbox(executionId),
-        ...resolverFunctionSandbox(executionId),
-      };
-    case FunctionKind.ActionRun:
-      return {
-        ...commonSandbox(executionId),
-        ...commandRunSandbox(executionId),
-      };
-    case FunctionKind.Validation:
-      return {
-        ...commonSandbox(executionId),
-        ...validationSandbox,
-      };
-    case FunctionKind.Reconciliation:
-      return {
-        ...commonSandbox(executionId),
-        ...reconciliationSandbox,
-      };
     case FunctionKind.SchemaVariantDefinition:
-      return {
-        ...commonSandbox(executionId),
+      sandbox = {
+        ...sandbox,
         ...schemaVariantDefinitionSandbox(),
       };
+      break;
     case FunctionKind.Before:
-      return {
-        ...commonSandbox(executionId),
+      sandbox = {
+        ...sandbox,
         ...beforeFunctionSandbox(executionId),
       };
-    default:
-      throw new UnknownSandboxKind(kind);
+      break;
   }
+
+  return sandbox;
 }

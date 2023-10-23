@@ -1,5 +1,5 @@
 import Debug from "debug";
-import {NodeVM} from "vm2";
+import { NodeVM } from "vm2";
 
 import {
   failureExecution,
@@ -7,7 +7,7 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "../function";
-import {RequestCtx} from "../request";
+import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:validation");
 
@@ -17,24 +17,21 @@ export type BeforeResultSuccess = ResultSuccess;
 
 export type BeforeResultFailure = ResultFailure;
 
-export type BeforeResult =
-  | BeforeResultSuccess
-  | BeforeResultFailure;
+export type BeforeResult = BeforeResultSuccess | BeforeResultFailure;
 
 // TODO Implement execute and wrap code for Before funcs
 async function execute(
   vm: NodeVM,
-  {executionId}: RequestCtx,
+  { executionId }: RequestCtx,
   _: BeforeFunc,
-  code: string,
+  code: string
 ): Promise<BeforeResult> {
   try {
     const runner = vm.run(code);
     await new Promise((resolve) => {
       runner((resolution: Record<string, unknown>) => resolve(resolution));
     });
-    debug({result: "<void>"});
-
+    debug({ result: "<void>" });
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }
@@ -66,5 +63,5 @@ module.exports = function(callback) {
 export default {
   debug,
   execute,
-  wrapCode
-}
+  wrapCode,
+};
