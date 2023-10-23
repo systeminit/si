@@ -90,6 +90,8 @@ cxx_binary = prelude_rule(
         cxx_common.platform_linker_flags_arg() |
         cxx_common.precompiled_header_arg() |
         native_common.link_style() |
+        native_common.link_group_deps() |
+        native_common.link_group_public_deps_label() |
         buck.deps_query_arg() |
         cxx_common.raw_headers_arg() |
         cxx_common.include_directories_arg() |
@@ -507,6 +509,7 @@ cxx_library = prelude_rule(
         cxx_common.lang_platform_compiler_flags_arg() |
         cxx_common.linker_extra_outputs_arg() |
         cxx_common.linker_flags_arg() |
+        cxx_common.local_linker_flags_arg() |
         cxx_common.platform_linker_flags_arg() |
         cxx_common.exported_linker_flags_arg() |
         cxx_common.exported_post_linker_flags_arg() |
@@ -562,7 +565,7 @@ cxx_library = prelude_rule(
             "focused_list_target": attrs.option(attrs.dep(), default = None),
             "frameworks": attrs.list(attrs.string(), default = []),
             "headers_as_raw_headers_mode": attrs.option(attrs.enum(HeadersAsRawHeadersMode), default = None),
-            "include_in_android_merge_map_output": attrs.bool(default = False),
+            "include_in_android_merge_map_output": attrs.bool(default = True),
             "labels": attrs.list(attrs.string(), default = []),
             "libraries": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
@@ -804,6 +807,8 @@ cxx_test = prelude_rule(
         } |
         buck.run_test_separately_arg(run_test_separately_type = attrs.option(attrs.bool(), default = None)) |
         buck.test_rule_timeout_ms() |
+        native_common.link_group_deps() |
+        native_common.link_group_public_deps_label() |
         {
             "additional_coverage_targets": attrs.list(attrs.source(), default = []),
             "contacts": attrs.list(attrs.string(), default = []),
@@ -1057,6 +1062,7 @@ prebuilt_cxx_library = prelude_rule(
         cxx_common.exported_deps_arg() |
         cxx_common.exported_platform_deps_arg() |
         cxx_common.supports_merged_linking() |
+        cxx_common.local_linker_flags_arg() |
         {
             "can_be_asset": attrs.bool(default = False),
             "contacts": attrs.list(attrs.string(), default = []),
@@ -1069,7 +1075,7 @@ prebuilt_cxx_library = prelude_rule(
             "exported_post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "frameworks": attrs.list(attrs.string(), default = []),
             "import_lib": attrs.option(attrs.source(), default = None),
-            "include_in_android_merge_map_output": attrs.bool(default = False),
+            "include_in_android_merge_map_output": attrs.bool(default = True),
             "labels": attrs.list(attrs.string(), default = []),
             "libraries": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
@@ -1078,7 +1084,7 @@ prebuilt_cxx_library = prelude_rule(
             "platform_import_lib": attrs.option(attrs.list(attrs.tuple(attrs.regex(), attrs.source())), default = None),
             "provided": attrs.bool(default = False),
             "soname": attrs.option(attrs.string(), default = None),
-            "supports_shared_library_interface": attrs.bool(default = False),
+            "supports_shared_library_interface": attrs.bool(default = True),
             "versioned_exported_lang_platform_preprocessor_flags": attrs.versioned(attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg()))), sorted = False)),
             "versioned_exported_lang_preprocessor_flags": attrs.versioned(attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.arg()), sorted = False)),
             "versioned_exported_platform_preprocessor_flags": attrs.versioned(attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())))),
@@ -1192,10 +1198,11 @@ prebuilt_cxx_library_group = prelude_rule(
             "deps": attrs.list(attrs.dep(), default = []),
             "import_libs": attrs.dict(key = attrs.string(), value = attrs.source(), sorted = False, default = {}),
             "include_dirs": attrs.list(attrs.source(), default = []),
-            "include_in_android_merge_map_output": attrs.bool(default = False),
+            "include_in_android_merge_map_output": attrs.bool(default = True),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "supported_platforms_regex": attrs.option(attrs.regex(), default = None),
+            "supports_shared_library_interface": attrs.bool(default = True),
         }
     ),
 )

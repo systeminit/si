@@ -33,42 +33,61 @@ PackageStyle = enum(
     "inplace_lite",
 )
 
-PythonToolchainInfo = provider(fields = [
-    "build_standalone_binaries_locally",
-    "compile",
-    # The interpreter to use to compile bytecode.
-    "host_interpreter",
-    "interpreter",
-    "version",
-    "native_link_strategy",
-    "linker_flags",
-    "binary_linker_flags",
-    "generate_static_extension_info",
-    "parse_imports",
-    "traverse_dep_manifest",
-    "package_style",
-    "make_source_db",
-    "make_source_db_no_deps",
-    "make_py_package_inplace",
-    "make_py_package_standalone",
-    "make_py_package_manifest_module",
-    "make_py_package_modules",
-    "pex_executor",
-    "pex_extension",
-    "emit_omnibus_metadata",
-    "fail_with_message",
-    "emit_dependency_metadata",
-    "installer",
-])
+StripLibparStrategy = enum(
+    # Strip all binaries and libraries
+    "full",
+    # Extract debug symbols into separate files
+    "extract",
+    # Leave debug symbols intact
+    "none",
+)
+
+PythonToolchainInfo = provider(
+    # @unsorted-dict-items
+    fields = {
+        "build_standalone_binaries_locally": provider_field(typing.Any, default = None),
+        "compile": provider_field(typing.Any, default = None),
+        "default_sitecustomize": provider_field(typing.Any, default = None),
+        # The interpreter to use to compile bytecode.
+        "host_interpreter": provider_field(typing.Any, default = None),
+        "interpreter": provider_field(typing.Any, default = None),
+        "version": provider_field(typing.Any, default = None),
+        "native_link_strategy": provider_field(typing.Any, default = None),
+        "linker_flags": provider_field(typing.Any, default = None),
+        "binary_linker_flags": provider_field(typing.Any, default = None),
+        "generate_static_extension_info": provider_field(typing.Any, default = None),
+        "parse_imports": provider_field(typing.Any, default = None),
+        "traverse_dep_manifest": provider_field(typing.Any, default = None),
+        "package_style": provider_field(typing.Any, default = None),
+        "strip_libpar": provider_field(typing.Any, default = None),
+        "make_source_db": provider_field(typing.Any, default = None),
+        "make_source_db_no_deps": provider_field(typing.Any, default = None),
+        "make_py_package_inplace": provider_field(typing.Any, default = None),
+        "make_py_package_standalone": provider_field(typing.Any, default = None),
+        "make_py_package_manifest_module": provider_field(typing.Any, default = None),
+        "make_py_package_modules": provider_field(typing.Any, default = None),
+        "pex_executor": provider_field(typing.Any, default = None),
+        "pex_extension": provider_field(typing.Any, default = None),
+        "emit_omnibus_metadata": provider_field(typing.Any, default = None),
+        "fail_with_message": provider_field(typing.Any, default = None),
+        "emit_dependency_metadata": provider_field(typing.Any, default = None),
+        "installer": provider_field(typing.Any, default = None),
+        # A filegroup that gets added to all python executables
+        "runtime_library": provider_field(Dependency | None, default = None),
+        # The fully qualified name of a function that handles invoking the
+        # executable's entry point
+        "main_runner": provider_field(str, default = "__par__.bootstrap.run_as_main"),
+    },
+)
 
 # Stores "platform"/flavor name used to resolve *platform_* arguments
-PythonPlatformInfo = provider(fields = [
-    "name",
-])
+PythonPlatformInfo = provider(fields = {
+    "name": provider_field(typing.Any, default = None),
+})
 
 def get_platform_attr(
-        python_platform_info: PythonPlatformInfo.type,
-        cxx_platform_info: CxxPlatformInfo.type,
+        python_platform_info: PythonPlatformInfo,
+        cxx_platform_info: CxxPlatformInfo,
         xs: list[(str, typing.Any)]) -> list[typing.Any]:
     """
     Take a platform_* value, and the non-platform version, and concat into a list

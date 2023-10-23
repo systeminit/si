@@ -9,7 +9,7 @@ load(":build.bxl", "do_build")
 load(":merge.bxl", "do_merge")
 load(":query.bxl", "do_query")
 
-def _build_entry_point(ctx: "bxl_ctx") -> None:
+def _build_entry_point(ctx: bxl.Context) -> None:
     bxl_actions = ctx.bxl_actions(
         exec_deps = "prelude//python/tools/sourcedb_merger:merge",
         target_platform = "prelude//platforms:default",

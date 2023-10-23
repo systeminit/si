@@ -14,8 +14,8 @@ load("@prelude//utils:utils.bzl", "expect")
 def _build_js_bundle(
         ctx: AnalysisContext,
         bundle_name_out: str,
-        js_bundle_info: JsBundleInfo.type,
-        named_output: str) -> JsBundleInfo.type:
+        js_bundle_info: JsBundleInfo,
+        named_output: str) -> JsBundleInfo:
     env_vars = {
         "DEPENDENCIES": cmd_args(js_bundle_info.dependencies_file),
         "JS_BUNDLE_NAME": cmd_args(js_bundle_info.bundle_name),
@@ -75,8 +75,8 @@ def _build_js_bundle(
 def _get_extra_providers(
         ctx: AnalysisContext,
         skip_resources: bool,
-        initial_target: ["provider_collection", Dependency],
-        js_bundle_out: JsBundleInfo.type) -> list[Provider]:
+        initial_target: [ProviderCollection, Dependency],
+        js_bundle_out: JsBundleInfo) -> list[Provider]:
     providers = []
     android_resource_info = initial_target.get(AndroidResourceInfo)
     if android_resource_info:

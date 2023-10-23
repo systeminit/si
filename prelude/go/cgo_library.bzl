@@ -35,7 +35,7 @@ load(
     "LinkStyle",
     "Linkage",
     "MergedLinkInfo",
-    "merge_link_infos",
+    "create_merged_link_info_for_propagation",
 )
 load(
     "@prelude//linking:shared_libraries.bzl",
@@ -62,8 +62,8 @@ _LINKAGE_FOR_LINK_STYLE = {
 def _cgo(
         ctx: AnalysisContext,
         srcs: list[Artifact],
-        own_pre: list[CPreprocessor.type],
-        inherited_pre: list[CPreprocessorInfo.type]) -> (list[Artifact], list[Artifact], list[Artifact]):
+        own_pre: list[CPreprocessor],
+        inherited_pre: list[CPreprocessorInfo]) -> (list[Artifact], list[Artifact], list[Artifact]):
     """
     Run `cgo` on `.go` sources to generate Go, C, and C-Header sources.
     """
@@ -99,14 +99,33 @@ def _cgo(
     args = cmd_args()
     args.add(cmd_args(go_toolchain.cgo, format = "--cgo={}"))
 
+    c_compiler = cxx_toolchain.c_compiler_info
+    # linker = cxx_toolchain.linker_info
+
+    # Passing fbcode-platform ldflags may create S365277, so I would
+    # comment this change until we really need to do it.
+    # ldflags = cmd_args(
+    #     linker.linker_flags,
+    #     go_toolchain.external_linker_flags,
+    # )
+
+    args.add(
+        cmd_args(c_compiler.compiler, format = "--env-cc={}"),
+        # cmd_args(ldflags, format = "--env-ldflags={}"),
+    )
+
     # TODO(agallagher): cgo outputs a dir with generated sources, but I'm not
     # sure how to pass in an output dir *and* enumerate the sources we know will
     # generated w/o v2 complaining that the output dir conflicts with the nested
     # artifacts.
     args.add(cmd_args(go_srcs[0].as_output(), format = "--output={}/.."))
-    args.add(cmd_args(cxx_toolchain.c_compiler_info.preprocessor, format = "--cpp={}"))
     args.add(cmd_args(pre_args, format = "--cpp={}"))
     args.add(cmd_args(pre_include_dirs, format = "--cpp={}"))
+    args.add(cmd_args(c_compiler.preprocessor_flags, format = "--cpp={}"))
+    args.add(cmd_args(c_compiler.compiler_flags, format = "--cpp={}"))
+
+    # Passing the same value as go-build, because our -g flags break cgo in some buck modes
+    args.add(cmd_args(["-g"], format = "--cpp={}"))
     args.add(srcs)
 
     argsfile = ctx.actions.declare_output(paths.join(gen_dir, ".cgo.argsfile"))
@@ -222,7 +241,7 @@ def cgo_library_impl(ctx: AnalysisContext) -> list[Provider]:
             pkgs,
             get_inherited_link_pkgs(ctx.attrs.deps + ctx.attrs.exported_deps),
         ])),
-        merge_link_infos(ctx, filter(None, [d.get(MergedLinkInfo) for d in ctx.attrs.deps])),
+        create_merged_link_info_for_propagation(ctx, filter(None, [d.get(MergedLinkInfo) for d in ctx.attrs.deps])),
         merge_shared_libraries(
             ctx.actions,
             deps = filter(None, map_idx(SharedLibraryInfo, ctx.attrs.deps)),

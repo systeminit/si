@@ -8,14 +8,14 @@
 load(":context.bzl", "CompileContext")
 
 # Inputs to the fail filter
-RustFailureFilter = provider(fields = [
+RustFailureFilter = provider(fields = {
     # Build status json
-    "buildstatus",
+    "buildstatus": typing.Any,
     # Required files
-    "required",
+    "required": typing.Any,
     # stderr
-    "stderr",
-])
+    "stderr": typing.Any,
+})
 
 # This creates an action which takes a buildstatus json artifact as an input, and a list of other
 # artifacts. If all those artifacts are present in the buildstatus as successfully generated, then
@@ -23,10 +23,10 @@ RustFailureFilter = provider(fields = [
 # Either way it streams whatever stderr content there is to stream.
 def failure_filter(
         ctx: AnalysisContext,
-        compile_ctx: CompileContext.type,
+        compile_ctx: CompileContext,
         prefix: str,
         predecl_out: [Artifact, None],
-        failprov: "RustFailureFilter",
+        failprov: RustFailureFilter,
         short_cmd: str) -> Artifact:
     toolchain_info = compile_ctx.toolchain_info
     failure_filter_action = toolchain_info.failure_filter_action

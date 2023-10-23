@@ -30,7 +30,6 @@ load("@prelude//cxx:linker.bzl", "DUMPBIN_SUB_TARGET", "PDB_SUB_TARGET", "get_du
 load(
     "@prelude//cxx:omnibus.bzl",
     "create_linkable_root",
-    "explicit_roots_enabled",
     "get_roots",
 )
 load(
@@ -39,16 +38,15 @@ load(
 )
 load(
     "@prelude//linking:link_info.bzl",
+    "LibOutputStyle",
     "LinkInfo",
     "LinkInfos",
-    "LinkStyle",
     "Linkage",
     "create_merged_link_info",
     "wrap_link_infos",
 )
 load(
     "@prelude//linking:linkable_graph.bzl",
-    "AnnotatedLinkableRoot",
     "create_linkable_graph",
     "create_linkable_graph_node",
     "create_linkable_node",
@@ -64,7 +62,7 @@ load(
 )
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
 load("@prelude//python:toolchain.bzl", "PythonPlatformInfo", "get_platform_attr")
-load("@prelude//utils:utils.bzl", "expect", "flatten", "value_or")
+load("@prelude//utils:utils.bzl", "expect", "value_or")
 load(":manifest.bzl", "create_manifest_for_source_map")
 load(
     ":native_python_util.bzl",
@@ -120,20 +118,18 @@ def cxx_python_extension_impl(ctx: AnalysisContext) -> list[Provider]:
         use_soname = False,
         generate_providers = cxx_providers,
         generate_sub_targets = sub_targets,
-        is_omnibus_root = explicit_roots_enabled(ctx),
     )
 
     cxx_library_info = cxx_library_parameterized(ctx, impl_params)
     libraries = cxx_library_info.all_outputs
-    shared_output = libraries.outputs[LinkStyle("shared")]
+    shared_output = libraries.outputs[LibOutputStyle("shared_lib")]
 
-    shared_objects = libraries.solibs.values()
-    expect(len(shared_objects) == 1, "Expected exactly 1 so for cxx_python_extension: {}".format(ctx.label))
-    extension = shared_objects[0]
+    expect(libraries.solib != None, "Expected cxx_python_extension to produce a solib: {}".format(ctx.label))
+    extension = libraries.solib[1]
 
     sub_targets = cxx_library_info.sub_targets
     if extension.pdb:
-        sub_targets[PDB_SUB_TARGET] = get_pdb_providers(extension.pdb)
+        sub_targets[PDB_SUB_TARGET] = get_pdb_providers(pdb = extension.pdb, binary = extension.output)
 
     cxx_toolchain = get_cxx_toolchain_info(ctx)
     dumpbin_toolchain_path = cxx_toolchain.dumpbin_toolchain_path
@@ -152,24 +148,24 @@ def cxx_python_extension_impl(ctx: AnalysisContext) -> list[Provider]:
     python_module_names = {}
     unembeddable_extensions = {}
 
-    link_infos = libraries.libraries
+    link_infos = libraries.link_infos
 
     # For python_cxx_extensions we need to mangle the symbol names in order to avoid collisions
     # when linking into the main binary
-    embeddable = ctx.attrs.allow_embedding and libraries.outputs[LinkStyle("static")] != None
+    embeddable = ctx.attrs.allow_embedding and LibOutputStyle("archive") in libraries.outputs
     if embeddable:
         if not ctx.attrs.allow_suffixing:
             pyinit_symbol = "PyInit_{}".format(module_name)
         else:
             suffix = base_module.replace("/", "$") + module_name
-            static_output = libraries.outputs[LinkStyle("static")]
-            static_pic_output = libraries.outputs[LinkStyle("static_pic")]
+            static_output = libraries.outputs[LibOutputStyle("archive")]
+            static_pic_output = libraries.outputs[LibOutputStyle("pic_archive")]
             link_infos = rewrite_static_symbols(
                 ctx,
                 suffix,
                 pic_objects = static_pic_output.object_files,
                 non_pic_objects = static_output.object_files,
-                libraries = libraries.libraries,
+                libraries = link_infos,
                 cxx_toolchain = cxx_toolchain,
                 suffix_all = ctx.attrs.suffix_all,
             )
@@ -185,7 +181,7 @@ def cxx_python_extension_impl(ctx: AnalysisContext) -> list[Provider]:
     # Add a dummy shared link info to avoid marking this node as preferred
     # linkage being "static", which has a special meaning for various link
     # strategies
-    link_infos[LinkStyle("shared")] = LinkInfos(default = LinkInfo())
+    link_infos[LibOutputStyle("shared_lib")] = LinkInfos(default = LinkInfo())
 
     # Create linkable providers for the extension.
     link_deps = linkables(cxx_deps)
@@ -200,9 +196,10 @@ def cxx_python_extension_impl(ctx: AnalysisContext) -> list[Provider]:
                     deps = cxx_deps,
                     preferred_linkage = Linkage("any"),
                     link_infos = link_infos,
+                    default_soname = name,
                 ),
             ),
-            children = [d.linkable_graph for d in link_deps],
+            deps = [d.linkable_graph for d in link_deps],
         ),
         merged_link_info = create_merged_link_info(
             ctx = ctx,
@@ -216,15 +213,10 @@ def cxx_python_extension_impl(ctx: AnalysisContext) -> list[Provider]:
             deps = [d.shared_library_info for d in link_deps],
         ),
         linkable_root_info = create_linkable_root(
-            ctx = ctx,
             link_infos = wrap_link_infos(
-                link_infos[LinkStyle("static_pic")],
+                link_infos[LibOutputStyle("pic_archive")],
                 pre_flags = ctx.attrs.linker_flags,
                 post_flags = ctx.attrs.post_linker_flags,
-            ),
-            graph = create_linkable_graph(
-                ctx,
-                deps = cxx_deps,
             ),
             deps = cxx_deps,
         ),
@@ -260,9 +252,9 @@ def cxx_python_extension_impl(ctx: AnalysisContext) -> list[Provider]:
     # Export library info.
     python_platform = ctx.attrs._python_toolchain[PythonPlatformInfo]
     cxx_platform = ctx.attrs._cxx_toolchain[CxxPlatformInfo]
-    raw_deps = (
-        [ctx.attrs.deps] +
-        get_platform_attr(python_platform, cxx_platform, ctx.attrs.platform_deps)
+    raw_deps = ctx.attrs.deps
+    raw_deps.extend(
+        get_platform_attr(python_platform, cxx_platform, ctx.attrs.platform_deps),
     )
     deps, shared_deps = gather_dep_libraries(raw_deps)
     providers.append(create_python_library_info(
@@ -278,14 +270,13 @@ def cxx_python_extension_impl(ctx: AnalysisContext) -> list[Provider]:
 
     # Handle the case where C++ Python extensions depend on other C++ Python
     # extensions, which should also be treated as roots.
-    roots = get_roots(ctx.label, [
+    roots = get_roots([
         dep
-        for dep in flatten(raw_deps)
+        for dep in raw_deps
         # We only want to handle C++ Python extension deps, but not other native
         # linkable deps like C++ libraries.
         if PythonLibraryInfo in dep
     ])
-    roots[ctx.label] = AnnotatedLinkableRoot(root = cxx_library_info.linkable_root)
 
     linkable_graph = create_linkable_graph(
         ctx,
@@ -293,7 +284,7 @@ def cxx_python_extension_impl(ctx: AnalysisContext) -> list[Provider]:
             ctx,
             roots = roots,
         ),
-        deps = flatten(raw_deps),
+        deps = raw_deps,
     )
     providers.append(linkable_graph)
     return providers

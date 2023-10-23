@@ -6,7 +6,6 @@
 # of this source tree.
 
 load("@prelude//:paths.bzl", "paths")
-load("@prelude//:resources.bzl", "gather_resources")
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo")
 load("@prelude//utils:utils.bzl", "expect", "flatten_dict")
 load(
@@ -31,6 +30,7 @@ load(
     ":apple_resource_types.bzl",
     "AppleResourceDestination",
     "AppleResourceSpec",  # @unused Used as a type
+    "CxxResourceSpec",  # @unused Used as a type
 )
 load(":apple_resource_utility.bzl", "apple_bundle_destination_from_resource_destination")
 load(
@@ -48,24 +48,21 @@ load(
 
 AppleBundleResourcePartListOutput = record(
     # Resource parts to be copied into an Apple bundle, *excluding* binaries
-    resource_parts = field(list[AppleBundlePart.type]),
+    resource_parts = field(list[AppleBundlePart]),
     # Part that holds the info.plist
-    info_plist_part = field(AppleBundlePart.type),
+    info_plist_part = field(AppleBundlePart),
 )
 
-def get_apple_bundle_resource_part_list(ctx: AnalysisContext) -> AppleBundleResourcePartListOutput.type:
+def get_apple_bundle_resource_part_list(ctx: AnalysisContext) -> AppleBundleResourcePartListOutput:
     parts = []
 
     parts.extend(_create_pkg_info_if_needed(ctx))
 
-    (resource_specs, asset_catalog_specs, core_data_specs, scene_kit_assets_spec) = _select_resources(ctx)
+    (resource_specs, asset_catalog_specs, core_data_specs, scene_kit_assets_spec, cxx_resource_specs) = _select_resources(ctx)
 
     # If we've pulled in native/C++ resources from deps, inline them into the
     # bundle under the `CxxResources` namespace.
-    cxx_resources = flatten_dict(gather_resources(
-        label = ctx.label,
-        deps = ctx.attrs.deps,
-    ).values())
+    cxx_resources = flatten_dict([s.resources for s in cxx_resource_specs])
     if cxx_resources:
         cxx_res_dir = ctx.actions.copied_dir(
             "CxxResources",
@@ -123,14 +120,14 @@ def get_apple_bundle_resource_part_list(ctx: AnalysisContext) -> AppleBundleReso
     )
 
 # Same logic as in v1, see `buck_client/src/com/facebook/buck/apple/ApplePkgInfo.java`
-def _create_pkg_info_if_needed(ctx: AnalysisContext) -> list[AppleBundlePart.type]:
+def _create_pkg_info_if_needed(ctx: AnalysisContext) -> list[AppleBundlePart]:
     extension = get_extension_attr(ctx)
     if extension == "xpc" or extension == "qlgenerator":
         return []
     artifact = ctx.actions.write("PkgInfo", "APPLWRUN\n")
     return [AppleBundlePart(source = artifact, destination = AppleBundleDestination("metadata"))]
 
-def _select_resources(ctx: AnalysisContext) -> ((list[AppleResourceSpec.type], list[AppleAssetCatalogSpec.type], list[AppleCoreDataSpec.type], list[SceneKitAssetsSpec.type])):
+def _select_resources(ctx: AnalysisContext) -> ((list[AppleResourceSpec], list[AppleAssetCatalogSpec], list[AppleCoreDataSpec], list[SceneKitAssetsSpec], list[CxxResourceSpec])):
     resource_group_info = get_resource_group_info(ctx)
     if resource_group_info:
         resource_groups_deps = resource_group_info.implicit_deps
@@ -149,7 +146,7 @@ def _select_resources(ctx: AnalysisContext) -> ((list[AppleResourceSpec.type], l
     resource_graph_node_map_func = get_resource_graph_node_map_func(resource_graph)
     return get_filtered_resources(ctx.label, resource_graph_node_map_func, ctx.attrs.resource_group, resource_group_mappings)
 
-def _copy_resources(ctx: AnalysisContext, specs: list[AppleResourceSpec.type]) -> list[AppleBundlePart.type]:
+def _copy_resources(ctx: AnalysisContext, specs: list[AppleResourceSpec]) -> list[AppleBundlePart]:
     result = []
 
     for spec in specs:
@@ -181,11 +178,11 @@ def _extract_single_artifact(x: [Dependency, Artifact]) -> Artifact:
         )
         return info.default_outputs[0]
 
-def _copy_first_level_bundles(ctx: AnalysisContext) -> list[AppleBundlePart.type]:
+def _copy_first_level_bundles(ctx: AnalysisContext) -> list[AppleBundlePart]:
     first_level_bundle_infos = filter(None, [dep.get(AppleBundleInfo) for dep in ctx.attrs.deps])
     return filter(None, [_copied_bundle_spec(info) for info in first_level_bundle_infos])
 
-def _copied_bundle_spec(bundle_info: AppleBundleInfo.type) -> [None, AppleBundlePart.type]:
+def _copied_bundle_spec(bundle_info: AppleBundleInfo) -> [None, AppleBundlePart]:
     bundle = bundle_info.bundle
     bundle_extension = paths.split_extension(bundle.short_path)[1]
     if bundle_extension == ".framework":
@@ -200,10 +197,10 @@ def _copied_bundle_spec(bundle_info: AppleBundleInfo.type) -> [None, AppleBundle
         codesign_on_copy = False
     elif bundle_extension == ".qlgenerator":
         destination = AppleBundleDestination("quicklook")
-        codesign_on_copy = False
+        codesign_on_copy = True
     elif bundle_extension == ".xpc":
         destination = AppleBundleDestination("xpcservices")
-        codesign_on_copy = False
+        codesign_on_copy = True
     else:
         fail("Extension `{}` is not yet supported.".format(bundle_extension))
     return AppleBundlePart(
@@ -212,14 +209,14 @@ def _copied_bundle_spec(bundle_info: AppleBundleInfo.type) -> [None, AppleBundle
         codesign_on_copy = codesign_on_copy,
     )
 
-def _bundle_parts_for_dirs(generated_dirs: list[Artifact], destination: AppleBundleDestination.type, copy_contents_only: bool) -> list[AppleBundlePart.type]:
+def _bundle_parts_for_dirs(generated_dirs: list[Artifact], destination: AppleBundleDestination, copy_contents_only: bool) -> list[AppleBundlePart]:
     return [AppleBundlePart(
         source = generated_dir,
         destination = destination,
         new_name = "" if copy_contents_only else None,
     ) for generated_dir in generated_dirs]
 
-def _bundle_parts_for_variant_files(ctx: AnalysisContext, spec: AppleResourceSpec.type) -> list[AppleBundlePart.type]:
+def _bundle_parts_for_variant_files(ctx: AnalysisContext, spec: AppleResourceSpec) -> list[AppleBundlePart]:
     result = []
 
     # By definition, all variant files go into the resources destination
@@ -252,7 +249,7 @@ def _bundle_parts_for_variant_files(ctx: AnalysisContext, spec: AppleResourceSpe
 def _run_ibtool(
         ctx: AnalysisContext,
         raw_file: Artifact,
-        output: "output_artifact",
+        output: OutputArtifact,
         action_flags: list[str],
         target_device: [None, str],
         action_identifier: str,
@@ -300,7 +297,7 @@ def _run_ibtool(
 def _compile_ui_resource(
         ctx: AnalysisContext,
         raw_file: Artifact,
-        output: "output_artifact",
+        output: OutputArtifact,
         target_device: [None, str] = None,
         output_is_dir: bool = False) -> None:
     _run_ibtool(
@@ -316,7 +313,7 @@ def _compile_ui_resource(
 def _link_ui_resource(
         ctx: AnalysisContext,
         raw_file: Artifact,
-        output: "output_artifact",
+        output: OutputArtifact,
         target_device: [None, str] = None,
         output_is_dir: bool = False) -> None:
     _run_ibtool(
@@ -332,9 +329,9 @@ def _link_ui_resource(
 def _process_apple_resource_file_if_needed(
         ctx: AnalysisContext,
         file: Artifact,
-        destination: AppleBundleDestination.type,
+        destination: AppleBundleDestination,
         destination_relative_path: [str, None],
-        codesign_on_copy: bool = False) -> AppleBundlePart.type:
+        codesign_on_copy: bool = False) -> AppleBundlePart:
     output_dir = "_ProcessedResources"
     basename = paths.basename(file.short_path)
     output_is_contents_dir = False

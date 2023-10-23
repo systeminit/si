@@ -64,6 +64,7 @@ def _process_target_config(ctx, target, in_workspace):
     # Always generate the source folder. Let rust-project resolve whether or not to use it
     copy["source_folder"] = materialize(ctx, target)
     copy["label"] = target.label.raw_target()
+    copy["project_relative_buildfile"] = ctx.fs.project_rel_path(target.buildfile_path)
     copy["kind"] = target.rule_type
     copy["in_workspace"] = in_workspace
     return copy
@@ -121,8 +122,10 @@ def expand_targets(ctx, targets):
     # Map of potential workspaces to a list of the targets that name these as potential workspaces
     possible_workspaces = {}
     for label, t in expanded_targets.items():
-        for workspace in t.attrs_lazy().get("_workspaces").value():
-            possible_workspaces.setdefault(workspace.raw_target(), []).append(label)
+        workspaces = t.attrs_lazy().get("_workspaces")
+        if workspaces:
+            for workspace in workspaces.value():
+                possible_workspaces.setdefault(workspace.raw_target(), []).append(label)
 
     active_workspaces = {}
     for workspace, candidate_deps in possible_workspaces.items():

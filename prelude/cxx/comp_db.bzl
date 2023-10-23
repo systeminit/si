@@ -15,12 +15,12 @@ load(":cxx_context.bzl", "get_cxx_toolchain_info")
 
 # Provider that exposes the compilation database information
 CxxCompilationDbInfo = provider(fields = {
-    "info": "A map of the file (an \"artifact.type\") to its corresponding \"CxxSrcCompileCommand\"",
-    "platform": "platform for this compilation database",
-    "toolchain": "toolchain for this compilation database",
+    "info": provider_field(typing.Any, default = None),  # A map of the file (an `Artifact`) to its corresponding `CxxSrcCompileCommand`
+    "platform": provider_field(typing.Any, default = None),  # platform for this compilation database
+    "toolchain": provider_field(typing.Any, default = None),  # toolchain for this compilation database
 })
 
-def make_compilation_db_info(src_compile_cmds: list[CxxSrcCompileCommand.type], toolchainInfo: CxxToolchainInfo.type, platformInfo: CxxPlatformInfo.type) -> CxxCompilationDbInfo.type:
+def make_compilation_db_info(src_compile_cmds: list[CxxSrcCompileCommand], toolchainInfo: CxxToolchainInfo, platformInfo: CxxPlatformInfo) -> CxxCompilationDbInfo:
     info = {}
     for src_compile_cmd in src_compile_cmds:
         info.update({src_compile_cmd.src: src_compile_cmd})
@@ -29,8 +29,8 @@ def make_compilation_db_info(src_compile_cmds: list[CxxSrcCompileCommand.type], 
 
 def create_compilation_database(
         ctx: AnalysisContext,
-        src_compile_cmds: list[CxxSrcCompileCommand.type],
-        indentifier: str) -> DefaultInfo.type:
+        src_compile_cmds: list[CxxSrcCompileCommand],
+        indentifier: str) -> DefaultInfo:
     mk_comp_db = get_cxx_toolchain_info(ctx).mk_comp_db[RunInfo]
 
     # Generate the per-source compilation DB entries.
@@ -57,12 +57,20 @@ def create_compilation_database(
             other_outputs.append(cmd)
             entries[cdb_path] = entry
 
+    content = cmd_args()
+    for v in entries.values():
+        content.add(v)
+
+    argfile = ctx.actions.declare_output(paths.join(indentifier, "comp_db.argsfile"))
+    ctx.actions.write(argfile.as_output(), content)
+
     # Merge all entries into the actual compilation DB.
     db = ctx.actions.declare_output(paths.join(indentifier, "compile_commands.json"))
     cmd = cmd_args(mk_comp_db)
     cmd.add("merge")
     cmd.add(cmd_args(db.as_output(), format = "--output={}"))
-    cmd.add(entries.values())
+    cmd.add(cmd_args(argfile, format = "@{}"))
+    cmd.hidden(entries.values())
     ctx.actions.run(cmd, category = "cxx_compilation_database_merge", identifier = indentifier)
 
     return DefaultInfo(default_output = db, other_outputs = other_outputs)

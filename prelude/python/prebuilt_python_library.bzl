@@ -36,7 +36,7 @@ def prebuilt_python_library_impl(ctx: AnalysisContext) -> list[Provider]:
     # TODO(nmj): Make sure all attrs are used if necessary, esp compile
     extracted_src = ctx.actions.declare_output("{}_extracted".format(ctx.label.name), dir = True)
     ctx.actions.run([ctx.attrs._extract[RunInfo], ctx.attrs.binary_src, "--output", extracted_src.as_output()], category = "py_extract_prebuilt_library")
-    deps, shared_deps = gather_dep_libraries([ctx.attrs.deps])
+    deps, shared_deps = gather_dep_libraries(ctx.attrs.deps)
     src_manifest = create_manifest_for_source_dir(ctx, "binary_src", extracted_src, exclude = "\\.pyc$")
     bytecode = compile_manifests(ctx, [src_manifest])
     library_info = create_python_library_info(
@@ -55,7 +55,7 @@ def prebuilt_python_library_impl(ctx: AnalysisContext) -> list[Provider]:
         ctx,
         node = create_linkable_graph_node(
             ctx,
-            roots = get_roots(ctx.label, ctx.attrs.deps),
+            roots = get_roots(ctx.attrs.deps),
             excluded = get_excluded(deps = ctx.attrs.deps if ctx.attrs.exclude_deps_from_merged_linking else []),
         ),
         deps = ctx.attrs.deps,

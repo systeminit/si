@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# @starlark-rust: allow_string_literals_in_type_expr
+
 def _get_artifact(result: "bxl_build_result") -> Artifact:
     # NOTE: the first artifact is always the source db json
     # T124989384 will make this nicer
@@ -12,7 +14,7 @@ def _get_artifact(result: "bxl_build_result") -> Artifact:
         return artifact
     fail("Sourcedb rule must have at least one artifact")
 
-def _abort_on_build_failure(target_label: "target_label", result: "bxl_build_result") -> None:
+def _abort_on_build_failure(target_label: TargetLabel, result: "bxl_build_result") -> None:
     for failure in result.failures():
         error_message = "Target `{}` cannot be built by Buck\nreason: {}".format(target_label, failure)
         fail(error_message)
@@ -20,8 +22,8 @@ def _abort_on_build_failure(target_label: "target_label", result: "bxl_build_res
 # Build sourcedb for the given targets, and return a mapping from target names
 # to the corresponding sourcedb JSON file location.
 def do_build(
-        ctx: "bxl_ctx",
-        targets: list["configured_target_label"]) -> dict["target_label", Artifact]:
+        ctx: bxl.Context,
+        targets: list[ConfiguredTargetLabel]) -> dict[TargetLabel, Artifact]:
     # Build sourcedbs of all targets
     configured_sub_targets = [
         target.with_sub_target(["source-db-no-deps"])

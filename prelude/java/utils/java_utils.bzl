@@ -5,21 +5,25 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# @starlark-rust: allow_string_literals_in_type_expr
+
 load(
     "@prelude//java:class_to_srcs.bzl",
     "JavaClassToSourceMapInfo",  # @unused Used as a type
     "create_class_to_source_map_from_jar",
     "create_class_to_source_map_info",
+    "maybe_create_class_to_source_map_debuginfo",
 )
 load("@prelude//java:java_toolchain.bzl", "AbiGenerationMode", "JavaToolchainInfo")
+load("@prelude//os_lookup:defs.bzl", "OsLookup")
 load("@prelude//utils:utils.bzl", "expect")
 
-def get_path_separator() -> str:
-    # TODO: msemko : replace with system-dependent path-separator character
-    # On UNIX systems, this character is ':'; on Microsoft Windows systems it is ';'.
-    return ":"
+def get_path_separator_for_exec_os(ctx: AnalysisContext) -> str:
+    expect(hasattr(ctx.attrs, "_exec_os_type"), "Expect ctx.attrs._exec_os_type is defined.")
+    is_windows = ctx.attrs._exec_os_type[OsLookup].platform == "windows"
+    return ";" if is_windows else ":"
 
-def derive_javac(javac_attribute: [str, Dependency, Artifact]) -> [str, RunInfo.type, Artifact]:
+def derive_javac(javac_attribute: [str, Dependency, Artifact]) -> [str, RunInfo, Artifact]:
     javac_attr_type = type(javac_attribute)
     if isinstance(javac_attribute, Dependency):
         javac_run_info = javac_attribute.get(RunInfo)
@@ -82,10 +86,10 @@ def get_abi_generation_mode(abi_generation_mode):
 
 def get_default_info(
         actions: AnalysisActions,
-        java_toolchain: JavaToolchainInfo.type,
+        java_toolchain: JavaToolchainInfo,
         outputs: ["JavaCompileOutputs", None],
         packaging_info: "JavaPackagingInfo",
-        extra_sub_targets: dict = {}) -> DefaultInfo.type:
+        extra_sub_targets: dict = {}) -> DefaultInfo:
     sub_targets = get_classpath_subtarget(actions, packaging_info)
     default_info = DefaultInfo()
     if outputs:
@@ -116,23 +120,35 @@ def declare_prefixed_name(name: str, prefix: [str, None]) -> str:
 def get_class_to_source_map_info(
         ctx: AnalysisContext,
         outputs: ["JavaCompileOutputs", None],
-        deps: list[Dependency]) -> (JavaClassToSourceMapInfo.type, dict):
+        deps: list[Dependency]) -> (JavaClassToSourceMapInfo, dict):
     sub_targets = {}
     class_to_srcs = None
-    if not ctx.attrs._is_building_android_binary and outputs != None:
-        class_to_srcs = create_class_to_source_map_from_jar(
+    class_to_srcs_debuginfo = None
+    if outputs != None:
+        if not ctx.attrs._is_building_android_binary:
+            class_to_srcs = create_class_to_source_map_from_jar(
+                actions = ctx.actions,
+                java_toolchain = ctx.attrs._java_toolchain[JavaToolchainInfo],
+                name = ctx.attrs.name + ".class_to_srcs.json",
+                jar = outputs.classpath_entry.full_library,
+                srcs = ctx.attrs.srcs,
+            )
+        class_to_srcs_debuginfo = maybe_create_class_to_source_map_debuginfo(
             actions = ctx.actions,
             java_toolchain = ctx.attrs._java_toolchain[JavaToolchainInfo],
-            name = ctx.attrs.name + ".class_to_srcs.json",
-            jar = outputs.classpath_entry.full_library,
+            name = ctx.attrs.name + ".debuginfo.json",
             srcs = ctx.attrs.srcs,
         )
         sub_targets["class-to-srcs"] = [DefaultInfo(default_output = class_to_srcs)]
+
     class_to_src_map_info = create_class_to_source_map_info(
         ctx = ctx,
         mapping = class_to_srcs,
+        mapping_debuginfo = class_to_srcs_debuginfo,
         deps = deps,
     )
+    if outputs != None:
+        sub_targets["debuginfo"] = [DefaultInfo(default_output = class_to_src_map_info.debuginfo)]
     return (class_to_src_map_info, sub_targets)
 
 def get_classpath_subtarget(actions: AnalysisActions, packaging_info: "JavaPackagingInfo") -> dict[str, list[Provider]]:

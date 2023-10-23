@@ -193,6 +193,7 @@ android_binary = prelude_rule(
         {
             "aapt2_keep_raw_values": attrs.bool(default = False),
             "aapt2_locale_filtering": attrs.bool(default = False),
+            "aapt2_preferred_density": attrs.option(attrs.string(), default = None),
             "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),
             "additional_aapt_params": attrs.list(attrs.string(), default = []),
             "allow_r_dot_java_in_secondary_dex": attrs.bool(default = False),
@@ -422,6 +423,7 @@ android_bundle = prelude_rule(
         {
             "aapt2_keep_raw_values": attrs.bool(default = False),
             "aapt2_locale_filtering": attrs.bool(default = False),
+            "aapt2_preferred_density": attrs.option(attrs.string(), default = None),
             "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),
             "additional_aapt_params": attrs.list(attrs.string(), default = []),
             "allow_r_dot_java_in_secondary_dex": attrs.bool(default = False),
@@ -738,6 +740,7 @@ android_library = prelude_rule(
         jvm_common.abi_generation_mode() |
         jvm_common.source_only_abi_deps() |
         jvm_common.required_for_source_only_abi() |
+        jvm_common.k2() |
         {
             "remove_classes": attrs.list(attrs.regex(), default = [], doc = """
                 List of classes to remove from the output jar. It only removes classes from the target's own
@@ -1430,6 +1433,7 @@ robolectric_test = prelude_rule(
             "resource_union_package": attrs.option(attrs.string(), default = None),
             "resources": attrs.list(attrs.source(), default = []),
             "resources_root": attrs.option(attrs.source(), default = None),
+            "resource_stable_ids": attrs.option(attrs.source(), default = None),
             "robolectric_runtime_dependencies": attrs.list(attrs.dep(), default = []),
             "run_test_separately": attrs.bool(default = False),
             "runtime_deps": attrs.list(attrs.dep(), default = []),
@@ -1448,7 +1452,7 @@ robolectric_test = prelude_rule(
             "use_dependency_order_classpath": attrs.option(attrs.bool(), default = None),
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
             "vm_args": attrs.list(attrs.arg(), default = []),
-        }
+        } | jvm_common.k2()
     ),
 )
 

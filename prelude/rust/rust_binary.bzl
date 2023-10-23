@@ -79,10 +79,10 @@ _CompileOutputs = record(
 
 def _rust_binary_common(
         ctx: AnalysisContext,
-        compile_ctx: CompileContext.type,
+        compile_ctx: CompileContext,
         default_roots: list[str],
         extra_flags: list[str],
-        allow_cache_upload: bool) -> (list[[DefaultInfo.type, RunInfo.type]], cmd_args):
+        allow_cache_upload: bool) -> (list[[DefaultInfo, RunInfo]], cmd_args):
     toolchain_info = compile_ctx.toolchain_info
 
     simple_crate = attr_simple_crate_for_filenames(ctx)
@@ -105,6 +105,8 @@ def _rust_binary_common(
     ).values())
 
     for link_style in LinkStyle:
+        # Unlike for libraries, there's no possibility of different link styles
+        # resulting in the same build params, so no need to deduplicate.
         params = build_params(
             rule = RuleType("binary"),
             proc_macro = False,
@@ -131,7 +133,6 @@ def _rust_binary_common(
         if enable_link_groups(ctx, link_style, specified_link_style, is_binary = True):
             rust_cxx_link_group_info = inherited_non_rust_link_group_info(
                 ctx,
-                include_doc_deps = False,
                 link_style = link_style,
             )
             link_group_mappings = rust_cxx_link_group_info.link_group_info.mappings
@@ -232,7 +233,7 @@ def _rust_binary_common(
             },
         )]
 
-        if shared_libs_symlink_tree:
+        if isinstance(shared_libs_symlink_tree, Artifact):
             sub_targets_for_link_style["rpath-tree"] = [DefaultInfo(
                 default_output = shared_libs_symlink_tree,
                 other_outputs = [
@@ -313,7 +314,7 @@ def _rust_binary_common(
         ]
 
     if pdb:
-        sub_targets[PDB_SUB_TARGET] = get_pdb_providers(pdb)
+        sub_targets[PDB_SUB_TARGET] = get_pdb_providers(pdb = pdb, binary = compiled_outputs.link)
 
     dupmbin_toolchain = compile_ctx.cxx_toolchain_info.dumpbin_toolchain_path
     if dupmbin_toolchain:
@@ -328,7 +329,7 @@ def _rust_binary_common(
     ]
     return (providers, compiled_outputs.args)
 
-def rust_binary_impl(ctx: AnalysisContext) -> list[[DefaultInfo.type, RunInfo.type]]:
+def rust_binary_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     compile_ctx = compile_context(ctx)
 
     providers, args = _rust_binary_common(
@@ -341,7 +342,7 @@ def rust_binary_impl(ctx: AnalysisContext) -> list[[DefaultInfo.type, RunInfo.ty
 
     return providers + [RunInfo(args = args)]
 
-def rust_test_impl(ctx: AnalysisContext) -> list[[DefaultInfo.type, RunInfo.type, ExternalRunnerTestInfo.type]]:
+def rust_test_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, ExternalRunnerTestInfo]]:
     compile_ctx = compile_context(ctx)
     toolchain_info = compile_ctx.toolchain_info
 
@@ -358,7 +359,7 @@ def rust_test_impl(ctx: AnalysisContext) -> list[[DefaultInfo.type, RunInfo.type
     )
 
     # Setup a RE executor based on the `remote_execution` param.
-    re_executor = get_re_executor_from_props(ctx.attrs.remote_execution)
+    re_executor = get_re_executor_from_props(ctx)
 
     return inject_test_run_info(
         ctx,

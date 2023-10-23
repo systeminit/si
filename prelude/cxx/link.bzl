@@ -16,6 +16,7 @@ load(
     "bolt",
     "cxx_use_bolt",
 )
+load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
 load(
     "@prelude//cxx/dist_lto:dist_lto.bzl",
     "cxx_dist_link",
@@ -23,10 +24,11 @@ load(
 load("@prelude//linking:execution_preference.bzl", "LinkExecutionPreference", "LinkExecutionPreferenceInfo", "get_action_execution_attributes")
 load(
     "@prelude//linking:link_info.bzl",
+    "ArchiveLinkable",
     "LinkArgs",
     "LinkOrdering",
-    "LinkableType",
     "LinkedObject",
+    "ObjectsLinkable",
     "unpack_external_debug_info",
     "unpack_link_args",
 )
@@ -69,16 +71,16 @@ CxxLinkerMapData = record(
 
 CxxLinkResult = record(
     # The resulting artifact from the link
-    linked_object = LinkedObject.type,
-    linker_map_data = [CxxLinkerMapData.type, None],
-    link_execution_preference_info = LinkExecutionPreferenceInfo.type,
+    linked_object = LinkedObject,
+    linker_map_data = [CxxLinkerMapData, None],
+    link_execution_preference_info = LinkExecutionPreferenceInfo,
 )
 
 def link_external_debug_info(
         ctx: AnalysisContext,
-        links: list[LinkArgs.type],
+        links: list[LinkArgs],
         split_debug_output: [Artifact, None] = None,
-        pdb: [Artifact, None] = None) -> ArtifactTSet.type:
+        pdb: [Artifact, None] = None) -> ArtifactTSet:
     external_debug_artifacts = []
 
     # When using LTO+split-dwarf, the link step will generate externally
@@ -108,12 +110,12 @@ def cxx_link_into(
         ctx: AnalysisContext,
         # The destination for the link output.
         output: Artifact,
-        result_type: CxxLinkResultType.type,
-        opts: LinkOptions.type) -> CxxLinkResult.type:
-    cxx_toolchain_info = get_cxx_toolchain_info(ctx)
+        result_type: CxxLinkResultType,
+        opts: LinkOptions) -> CxxLinkResult:
+    cxx_toolchain_info = opts.cxx_toolchain or get_cxx_toolchain_info(ctx)
     linker_info = cxx_toolchain_info.linker_info
 
-    should_generate_dwp = dwp_available(ctx)
+    should_generate_dwp = dwp_available(cxx_toolchain_info)
     is_result_executable = result_type.value == "executable"
 
     if linker_info.generate_linker_maps:
@@ -148,26 +150,35 @@ def cxx_link_into(
         )
 
     if linker_info.generate_linker_maps:
-        links_with_linker_map = opts.links + [linker_map_args(ctx, linker_map.as_output())]
+        links_with_linker_map = opts.links + [linker_map_args(cxx_toolchain_info, linker_map.as_output())]
     else:
         links_with_linker_map = opts.links
 
-    linker, toolchain_linker_flags = cxx_link_cmd_parts(ctx)
+    linker, toolchain_linker_flags = cxx_link_cmd_parts(cxx_toolchain_info)
     all_link_args = cmd_args(toolchain_linker_flags)
     all_link_args.add(get_output_flags(linker_info.type, output))
 
     # Darwin LTO requires extra link outputs to preserve debug info
     split_debug_output = None
-    split_debug_lto_info = get_split_debug_lto_info(ctx, output.short_path)
+    split_debug_lto_info = get_split_debug_lto_info(ctx.actions, cxx_toolchain_info, output.short_path)
     if split_debug_lto_info != None:
         all_link_args.add(split_debug_lto_info.linker_flags)
         split_debug_output = split_debug_lto_info.output
-    expect(not generates_split_debug(ctx) or split_debug_output != None)
+    expect(not generates_split_debug(cxx_toolchain_info) or split_debug_output != None)
 
-    (link_args, hidden, pdb_artifact) = make_link_args(
-        ctx,
+    link_args_suffix = None
+    if opts.identifier:
+        link_args_suffix = opts.identifier
+    if opts.category_suffix:
+        if link_args_suffix:
+            link_args_suffix += "-" + opts.category_suffix
+        else:
+            link_args_suffix = opts.category_suffix
+    link_args_output = make_link_args(
+        ctx.actions,
+        cxx_toolchain_info,
         links_with_linker_map,
-        suffix = opts.identifier,
+        suffix = link_args_suffix,
         output_short_path = output.short_path,
         is_shared = result_type.value == "shared_library",
         link_ordering = value_or(
@@ -176,7 +187,7 @@ def cxx_link_into(
             map_val(LinkOrdering, linker_info.link_ordering),
         ),
     )
-    all_link_args.add(link_args)
+    all_link_args.add(link_args_output.link_args)
 
     bitcode_linkables = []
     for link_item in opts.links:
@@ -184,7 +195,7 @@ def cxx_link_into(
             continue
         for link_info in link_item.infos:
             for linkable in link_info.linkables:
-                if linkable._type == LinkableType("archive") or linkable._type == LinkableType("objects"):
+                if isinstance(linkable, ArchiveLinkable) or isinstance(linkable, ObjectsLinkable):
                     if linkable.bitcode_bundle != None:
                         bitcode_linkables.append(linkable.bitcode_bundle)
 
@@ -197,7 +208,7 @@ def cxx_link_into(
         ctx = ctx,
         links = opts.links,
         split_debug_output = split_debug_output,
-        pdb = pdb_artifact,
+        pdb = link_args_output.pdb_artifact,
     )
 
     if linker_info.type == "windows":
@@ -213,7 +224,7 @@ def cxx_link_into(
 
     command = cmd_args(linker)
     command.add(cmd_args(argfile, format = "@{}"))
-    command.hidden(hidden)
+    command.hidden(link_args_output.hidden)
     command.hidden(shell_quoted_args)
     category = "cxx_link"
     if opts.category_suffix != None:
@@ -265,6 +276,7 @@ def cxx_link_into(
 
         dwp_artifact = dwp(
             ctx,
+            cxx_toolchain_info,
             final_output,
             identifier = opts.identifier,
             category_suffix = opts.category_suffix,
@@ -283,8 +295,10 @@ def cxx_link_into(
         dwp = dwp_artifact,
         external_debug_info = external_debug_info,
         linker_argsfile = argfile,
+        linker_filelist = link_args_output.filelist,
+        linker_command = command,
         import_library = opts.import_library,
-        pdb = pdb_artifact,
+        pdb = link_args_output.pdb_artifact,
         split_debug_output = split_debug_output,
     )
 
@@ -294,9 +308,17 @@ def cxx_link_into(
         link_execution_preference_info = link_execution_preference_info,
     )
 
-_AnonLinkInfo = provider(fields = [
-    "result",  # CxxLinkResult.type
-])
+_AnonLinkInfo = provider(fields = {
+    "result": provider_field(typing.Any, default = None),  # CxxLinkResult
+})
+
+# dwp and split_debug_output are optional outputs, but promise artifacts require an actual artifact
+# when being resolved. Let's add some placeholders here so that we always generate an artifact when
+# applying the map functions.
+_AnonLinkInfoPlaceholder = provider(fields = {
+    "dwp": provider_field(typing.Any),
+    "split_debug_output": provider_field(typing.Any),
+})
 
 def _anon_link_impl(ctx):
     (output, result_type, opts) = deserialize_anon_attrs(ctx.actions, ctx.label, ctx.attrs)
@@ -308,19 +330,41 @@ def _anon_link_impl(ctx):
         opts = opts,
     )
 
-    return [DefaultInfo(), _AnonLinkInfo(result = link_result)]
+    dwp_placeholder = ctx.actions.write("placeholder_dwp", "")
+    split_debug_output_placeholder = ctx.actions.write("placeholder_split_debug_output", "")
 
-_anon_link_rule = rule(
+    return [
+        DefaultInfo(),
+        _AnonLinkInfo(result = link_result),
+        _AnonLinkInfoPlaceholder(dwp = dwp_placeholder, split_debug_output = split_debug_output_placeholder),
+    ]
+
+_anon_link_rule = anon_rule(
     impl = _anon_link_impl,
     attrs = ANON_ATTRS,
+    artifact_promise_mappings = {
+        "dwp": lambda p: _get_link_artifact(p, "dwp"),
+        "output": lambda p: p[_AnonLinkInfo].result.linked_object.output,
+        "split_debug_output": lambda p: _get_link_artifact(p, "split_debug_output"),
+    },
 )
+
+def _get_link_artifact(p: ProviderCollection, name: str) -> Artifact:
+    linked_object = p[_AnonLinkInfo].result.linked_object
+    if getattr(linked_object, name) != None:
+        return getattr(linked_object, name)
+    else:
+        return getattr(p[_AnonLinkInfoPlaceholder], name)
 
 def _anon_cxx_link(
         ctx: AnalysisContext,
         output: str,
-        result_type: CxxLinkResultType.type,
-        opts: LinkOptions.type) -> CxxLinkResult.type:
-    anon_providers = ctx.actions.anon_target(
+        result_type: CxxLinkResultType,
+        opts: LinkOptions) -> CxxLinkResult:
+    if opts.cxx_toolchain:
+        fail("anon link requires getting toolchain from ctx.attrs._cxx_toolchain")
+    cxx_toolchain = ctx.attrs._cxx_toolchain[CxxToolchainInfo]
+    anon_link_target = ctx.actions.anon_target(
         _anon_link_rule,
         dict(
             _cxx_toolchain = ctx.attrs._cxx_toolchain,
@@ -332,22 +376,16 @@ def _anon_cxx_link(
         ),
     )
 
-    output = ctx.actions.artifact_promise(
-        anon_providers.map(lambda p: p[_AnonLinkInfo].result.linked_object.output),
-        short_path = output,
-    )
-
     dwp = None
-    if dwp_available(ctx):
-        dwp = ctx.actions.artifact_promise(
-            anon_providers.map(lambda p: p[_AnonLinkInfo].result.linked_object.dwp),
-        )
+    if dwp_available(cxx_toolchain):
+        dwp = anon_link_target.artifact("dwp")
 
     split_debug_output = None
-    if generates_split_debug(ctx):
-        split_debug_output = ctx.actions.artifact_promise(
-            anon_providers.map(lambda p: p[_AnonLinkInfo].result.linked_object.split_debug_output),
-        )
+    if generates_split_debug(cxx_toolchain):
+        split_debug_output = anon_link_target.artifact("split_debug_output")
+
+    output = ctx.actions.assert_short_path(anon_link_target.artifact("output"), short_path = output)
+
     external_debug_info = link_external_debug_info(
         ctx = ctx,
         links = opts.links,
@@ -370,8 +408,8 @@ def _anon_cxx_link(
 def cxx_link(
         ctx: AnalysisContext,
         output: str,
-        result_type: CxxLinkResultType.type,
-        opts: LinkOptions.type,
+        result_type: CxxLinkResultType,
+        opts: LinkOptions,
         anonymous: bool = False):
     if anonymous:
         return _anon_cxx_link(
@@ -395,15 +433,16 @@ def cxx_link_shared_library(
         # Optional soname to link into shared library.
         name: [str, None] = None,
         # Overrides the default flags used to specify building shared libraries
-        shared_library_flags: [SharedLibraryFlagOverrides.type, None] = None,
-        anonymous: bool = False) -> CxxLinkResult.type:
-    # links: list[LinkArgs.type] = [],
-    # link_execution_preference: LinkExecutionPreference.type = LinkExecutionPreference("any"),
+        shared_library_flags: [SharedLibraryFlagOverrides, None] = None,
+        anonymous: bool = False) -> CxxLinkResult:
+    # links: list[LinkArgs] = [],
+    # link_execution_preference: LinkExecutionPreference = LinkExecutionPreference("any"),
 
     """
     Link a shared library into the supplied output.
     """
-    linker_info = get_cxx_toolchain_info(ctx).linker_info
+    cxx_toolchain = opts.cxx_toolchain or get_cxx_toolchain_info(ctx)
+    linker_info = cxx_toolchain.linker_info
     linker_type = linker_info.type
     extra_args = []
 

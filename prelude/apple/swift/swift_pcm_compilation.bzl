@@ -6,41 +6,30 @@
 # of this source tree.
 
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo")
-load("@prelude//apple:apple_utility.bzl", "get_explicit_modules_env_var", "get_module_name", "get_versioned_target_triple")
+load("@prelude//apple:apple_utility.bzl", "get_module_name")
 load("@prelude//cxx:preprocessor.bzl", "cxx_inherited_preprocessor_infos", "cxx_merge_cpreprocessors")
 load(
     ":apple_sdk_modules_utility.bzl",
-    "SDKDepTSet",  # @unused Used as a type
-    "get_compiled_sdk_deps_tset",
+    "get_compiled_sdk_clang_deps_tset",
     "get_uncompiled_sdk_deps",
 )
-load(":swift_pcm_compilation_types.bzl", "SwiftPCMCompiledInfo", "SwiftPCMUncompiledInfo", "WrappedSwiftPCMCompiledInfo")
+load(
+    ":swift_debug_info_utils.bzl",
+    "extract_and_merge_clang_debug_infos",
+)
+load(":swift_pcm_compilation_types.bzl", "SwiftPCMUncompiledInfo", "WrappedSwiftPCMCompiledInfo")
 load(":swift_sdk_pcm_compilation.bzl", "get_shared_pcm_compilation_args", "get_swift_sdk_pcm_anon_targets")
-load(":swift_sdk_swiftinterface_compilation.bzl", "get_swift_interface_anon_targets")
-load(":swift_toolchain_types.bzl", "WrappedSdkCompiledModuleInfo")
+load(":swift_toolchain_types.bzl", "SwiftCompiledModuleInfo", "SwiftCompiledModuleTset", "WrappedSdkCompiledModuleInfo")
 
 _REQUIRED_SDK_MODULES = ["Foundation"]
 
-def _project_as_clang_deps(value: SwiftPCMCompiledInfo.type):
-    return cmd_args([
-        "-Xcc",
-        cmd_args(["-fmodule-file=", value.name, "=", value.pcm_output], delimiter = ""),
-        "-Xcc",
-        cmd_args(["-fmodule-map-file=", value.exported_preprocessor.modulemap_path], delimiter = ""),
-        "-Xcc",
-    ] + value.exported_preprocessor.relative_args.args).hidden(value.exported_preprocessor.modular_args)
-
-PcmDepTSet = transitive_set(args_projections = {
-    "clang_deps": _project_as_clang_deps,
-})
-
-def get_compiled_pcm_deps_tset(ctx: AnalysisContext, pcm_deps_providers: list) -> PcmDepTSet.type:
+def get_compiled_pcm_deps_tset(ctx: AnalysisContext, pcm_deps_providers: list) -> SwiftCompiledModuleTset:
     pcm_deps = [
         pcm_deps_provider[WrappedSwiftPCMCompiledInfo].tset
         for pcm_deps_provider in pcm_deps_providers
         if WrappedSwiftPCMCompiledInfo in pcm_deps_provider
     ]
-    return ctx.actions.tset(PcmDepTSet, children = pcm_deps)
+    return ctx.actions.tset(SwiftCompiledModuleTset, children = pcm_deps)
 
 def get_swift_pcm_anon_targets(
         ctx: AnalysisContext,
@@ -49,9 +38,8 @@ def get_swift_pcm_anon_targets(
     deps = [
         {
             "dep": uncompiled_dep,
-            "pcm_name": uncompiled_dep[SwiftPCMUncompiledInfo].name,
+            "name": uncompiled_dep.label,
             "swift_cxx_args": swift_cxx_args,
-            "target_sdk_version": ctx.attrs.target_sdk_version,
             "_apple_toolchain": ctx.attrs._apple_toolchain,
         }
         for uncompiled_dep in uncompiled_deps
@@ -79,20 +67,58 @@ def _compile_with_argsfile(
 
     ctx.actions.run(
         cmd,
-        env = get_explicit_modules_env_var(True),
         category = category,
         identifier = module_name,
         # Swift compiler requires unique inodes for all input files.
         unique_input_inodes = True,
     )
 
-def _swift_pcm_compilation_impl(ctx: AnalysisContext) -> ["promise", list[Provider]]:
+def _compiled_module_info(
+        module_name: str,
+        pcm_output: Artifact,
+        pcm_info: SwiftPCMUncompiledInfo) -> SwiftCompiledModuleInfo:
+    clang_importer_args = cmd_args()
+    clang_importer_args.add("-Xcc")
+    clang_importer_args.add(
+        cmd_args(
+            [
+                "-fmodule-file=",
+                module_name,
+                "=",
+                pcm_output,
+            ],
+            delimiter = "",
+        ),
+    )
+    clang_importer_args.add("-Xcc")
+    clang_importer_args.add(
+        cmd_args(
+            [
+                "-fmodule-map-file=",
+                pcm_info.exported_preprocessor.modulemap_path,
+            ],
+            delimiter = "",
+        ),
+    )
+    clang_importer_args.add("-Xcc")
+    clang_importer_args.add(pcm_info.exported_preprocessor.relative_args.args)
+    clang_importer_args.hidden(pcm_info.exported_preprocessor.modular_args)
+
+    return SwiftCompiledModuleInfo(
+        clang_importer_args = clang_importer_args,
+        is_framework = False,
+        is_swiftmodule = False,
+        module_name = module_name,
+        output_artifact = pcm_output,
+    )
+
+def _swift_pcm_compilation_impl(ctx: AnalysisContext) -> [Promise, list[Provider]]:
     def k(compiled_pcm_deps_providers) -> list[Provider]:
         uncompiled_pcm_info = ctx.attrs.dep[SwiftPCMUncompiledInfo]
 
         # `compiled_pcm_deps_providers` will contain `WrappedSdkCompiledModuleInfo` providers
         # from direct SDK deps and transitive deps that export sdk deps.
-        sdk_deps_tset = get_compiled_sdk_deps_tset(ctx, compiled_pcm_deps_providers)
+        sdk_deps_tset = get_compiled_sdk_clang_deps_tset(ctx, compiled_pcm_deps_providers)
 
         # To compile a pcm we only use the exported_deps as those are the only
         # ones that should be transitively exported through public headers
@@ -105,14 +131,15 @@ def _swift_pcm_compilation_impl(ctx: AnalysisContext) -> ["promise", list[Provid
             return [
                 DefaultInfo(),
                 WrappedSwiftPCMCompiledInfo(
-                    tset = ctx.actions.tset(PcmDepTSet, children = [pcm_deps_tset]),
+                    tset = pcm_deps_tset,
                 ),
                 WrappedSdkCompiledModuleInfo(
-                    tset = sdk_deps_tset,
+                    clang_deps = sdk_deps_tset,
+                    clang_debug_info = extract_and_merge_clang_debug_infos(ctx, compiled_pcm_deps_providers),
                 ),
             ]
 
-        module_name = ctx.attrs.pcm_name
+        module_name = uncompiled_pcm_info.name
         cmd, additional_cmd, pcm_output = _get_base_pcm_flags(
             ctx,
             module_name,
@@ -141,26 +168,18 @@ def _swift_pcm_compilation_impl(ctx: AnalysisContext) -> ["promise", list[Provid
             cmd,
             additional_cmd,
         )
-
-        compiled_pcm = SwiftPCMCompiledInfo(
-            name = module_name,
-            pcm_output = pcm_output,
-            exported_preprocessor = uncompiled_pcm_info.exported_preprocessor,
-        )
+        pcm_info = _compiled_module_info(module_name, pcm_output, uncompiled_pcm_info)
 
         return [
             DefaultInfo(default_outputs = [pcm_output]),
             WrappedSwiftPCMCompiledInfo(
-                tset = ctx.actions.tset(PcmDepTSet, value = compiled_pcm, children = [pcm_deps_tset]),
+                tset = ctx.actions.tset(SwiftCompiledModuleTset, value = pcm_info, children = [pcm_deps_tset]),
             ),
             WrappedSdkCompiledModuleInfo(
-                tset = sdk_deps_tset,
+                clang_deps = sdk_deps_tset,
+                clang_debug_info = extract_and_merge_clang_debug_infos(ctx, compiled_pcm_deps_providers, [pcm_info.output_artifact]),
             ),
         ]
-
-    # Skip deps compilations if run not on SdkUncompiledModuleInfo
-    if SwiftPCMUncompiledInfo not in ctx.attrs.dep:
-        return []
 
     direct_uncompiled_sdk_deps = get_uncompiled_sdk_deps(
         ctx.attrs.dep[SwiftPCMUncompiledInfo].uncompiled_sdk_modules,
@@ -175,46 +194,34 @@ def _swift_pcm_compilation_impl(ctx: AnalysisContext) -> ["promise", list[Provid
         ctx.attrs.swift_cxx_args,
     )
 
-    # Recursively compiling SDK's Swift dependencies
-    # We need to match BUCK1 behavior, which can't distinguish between Swift and Clang SDK modules,
-    # so we pass more SDK deps than is strictly necessary. When BUCK1 is deprecated, we can try to avoid doing that,
-    # by passing Clang and Swift deps up separately.
-    swift_interface_anon_targets = get_swift_interface_anon_targets(
-        ctx,
-        direct_uncompiled_sdk_deps,
-        ctx.attrs.swift_cxx_args,
-    )
-
     # Recursively compile PCMs of transitevely visible exported_deps
     swift_pcm_anon_targets = get_swift_pcm_anon_targets(
         ctx,
         ctx.attrs.dep[SwiftPCMUncompiledInfo].exported_deps,
         ctx.attrs.swift_cxx_args,
     )
-    return ctx.actions.anon_targets(sdk_pcm_deps_anon_targets + swift_pcm_anon_targets + swift_interface_anon_targets).map(k)
+    return ctx.actions.anon_targets(sdk_pcm_deps_anon_targets + swift_pcm_anon_targets).promise.map(k)
 
 _swift_pcm_compilation = rule(
     impl = _swift_pcm_compilation_impl,
     attrs = {
         "dep": attrs.dep(),
-        "pcm_name": attrs.string(),
         "swift_cxx_args": attrs.list(attrs.string(), default = []),
-        "target_sdk_version": attrs.option(attrs.string(), default = None),
         "_apple_toolchain": attrs.dep(),
     },
 )
 
 def compile_underlying_pcm(
         ctx: AnalysisContext,
-        uncompiled_pcm_info: SwiftPCMUncompiledInfo.type,
+        uncompiled_pcm_info: SwiftPCMUncompiledInfo,
         compiled_pcm_deps_providers,
         swift_cxx_args: list[str],
-        framework_search_path_flags: cmd_args) -> SwiftPCMCompiledInfo.type:
+        framework_search_path_flags: cmd_args) -> SwiftCompiledModuleInfo:
     module_name = get_module_name(ctx)
 
     # `compiled_pcm_deps_providers` will contain `WrappedSdkCompiledModuleInfo` providers
     # from direct SDK deps and transitive deps that export sdk deps.
-    sdk_deps_tset = get_compiled_sdk_deps_tset(ctx, compiled_pcm_deps_providers)
+    sdk_deps_tset = get_compiled_sdk_clang_deps_tset(ctx, compiled_pcm_deps_providers)
 
     # To compile a pcm we only use the exported_deps as those are the only
     # ones that should be transitively exported through public headers
@@ -244,33 +251,21 @@ def compile_underlying_pcm(
         cmd,
         additional_cmd,
     )
-
-    return SwiftPCMCompiledInfo(
-        name = module_name,
-        pcm_output = pcm_output,
-        exported_preprocessor = uncompiled_pcm_info.exported_preprocessor,
-    )
+    return _compiled_module_info(module_name, pcm_output, uncompiled_pcm_info)
 
 def _get_base_pcm_flags(
         ctx: AnalysisContext,
         module_name: str,
-        uncompiled_pcm_info: SwiftPCMUncompiledInfo.type,
-        sdk_deps_tset: SDKDepTSet.type,
-        pcm_deps_tset: PcmDepTSet.type,
+        uncompiled_pcm_info: SwiftPCMUncompiledInfo,
+        sdk_deps_tset: SwiftCompiledModuleTset,
+        pcm_deps_tset: SwiftCompiledModuleTset,
         swift_cxx_args: list[str]) -> (cmd_args, cmd_args, Artifact):
     swift_toolchain = ctx.attrs._apple_toolchain[AppleToolchainInfo].swift_toolchain_info
 
     cmd = cmd_args()
-    cmd.add(get_shared_pcm_compilation_args(get_versioned_target_triple(ctx), module_name))
+    cmd.add(get_shared_pcm_compilation_args(module_name))
     cmd.add(["-sdk", swift_toolchain.sdk_path])
     cmd.add(swift_toolchain.compiler_flags)
-
-    # This allows us to avoid usage of absolute paths in generated PCM modules.
-    cmd.add([
-        "-working-directory=",
-        # We set a -debug-prefix-map in the swift execution wrapper, in order to
-        # capture the working directory in which the action is executed.
-    ])
 
     if swift_toolchain.resource_dir:
         cmd.add([

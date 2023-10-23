@@ -8,6 +8,7 @@
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
 load("@prelude//linking:lto.bzl", "LtoMode")
+load("@prelude//utils:set.bzl", "set")
 load(
     "@prelude//utils:utils.bzl",
     "flatten",
@@ -56,6 +57,19 @@ CxxExtension = enum(
     ".asmpp",
     ".h",
     ".hpp",
+    ".hh",
+    ".h++",
+    ".hxx",
+)
+
+# Header files included in compilation databases
+HeaderExtension = enum(
+    ".h",
+    ".hpp",
+    ".hh",
+    ".h++",
+    ".hxx",
+    ".cuh",
 )
 
 # File types for dep files
@@ -71,13 +85,13 @@ _HeadersDepFiles = record(
     # files into the format that Buck2 recognizes (i.e. one artifact per line).
     processor = field(cmd_args),
     # The tag that was added to headers.
-    tag = field("artifact_tag"),
+    tag = field(ArtifactTag),
     # A function that produces new cmd_args to append to the compile command to
     # get it to emit the dep file. This will receive the output dep file as an
     # input.
     mk_flags = field(typing.Callable),
     # Dependency tracking mode to know how to generate dep file
-    dep_tracking_mode = field(DepTrackingMode.type),
+    dep_tracking_mode = field(DepTrackingMode),
 )
 
 # Information about how to compile a source file of particular extension.
@@ -85,9 +99,11 @@ _CxxCompileCommand = record(
     # The compiler and any args which are independent of the rule.
     base_compile_cmd = field(cmd_args),
     # The argsfile of arguments from the rule and it's dependencies.
-    argsfile = field(CompileArgsfile.type),
-    headers_dep_files = field([_HeadersDepFiles.type, None]),
+    argsfile = field(CompileArgsfile),
+    headers_dep_files = field([_HeadersDepFiles, None]),
     compiler_type = field(str),
+    # The action category
+    category = field(str),
 )
 
 # Information about how to compile a source file.
@@ -98,7 +114,7 @@ CxxSrcCompileCommand = record(
     # specify an index so we can differentiate them. Otherwise, use None.
     index = field([int, None], None),
     # The CxxCompileCommand to use to compile this file.
-    cxx_compile_cmd = field(_CxxCompileCommand.type),
+    cxx_compile_cmd = field(_CxxCompileCommand),
     # Arguments specific to the source file.
     args = field(list[typing.Any]),
 )
@@ -106,18 +122,18 @@ CxxSrcCompileCommand = record(
 # Output of creating compile commands for Cxx source files.
 CxxCompileCommandOutput = record(
     # List of compile commands for each source file.
-    src_compile_cmds = field(list[CxxSrcCompileCommand.type], default = []),
+    src_compile_cmds = field(list[CxxSrcCompileCommand], default = []),
     # Argsfiles generated for compiling these source files.
-    argsfiles = field(CompileArgsfiles.type, default = CompileArgsfiles()),
+    argsfiles = field(CompileArgsfiles, default = CompileArgsfiles()),
     # List of compile commands for use in compilation database generation.
-    comp_db_compile_cmds = field(list[CxxSrcCompileCommand.type], default = []),
+    comp_db_compile_cmds = field(list[CxxSrcCompileCommand], default = []),
 )
 
 # An input to cxx compilation, consisting of a file to compile and optional
 # file specific flags to compile with.
 CxxSrcWithFlags = record(
     file = field(Artifact),
-    flags = field(list["resolved_macro"], []),
+    flags = field(list[ResolvedStringWithMacros], []),
     # If we have multiple source entries with same files but different flags,
     # specify an index so we can differentiate them. Otherwise, use None.
     index = field([int, None], None),
@@ -126,7 +142,7 @@ CxxSrcWithFlags = record(
 CxxCompileOutput = record(
     # The compiled `.o` file.
     object = field(Artifact),
-    object_format = field(CxxObjectFormat.type, CxxObjectFormat("native")),
+    object_format = field(CxxObjectFormat, CxxObjectFormat("native")),
     object_has_external_debug_info = field(bool, False),
     # Externally referenced debug info, which doesn't get linked with the
     # object (e.g. the above `.o` when using `-gsplit-dwarf=single` or the
@@ -136,37 +152,122 @@ CxxCompileOutput = record(
     clang_trace = field([Artifact, None], None),
 )
 
+_ABSOLUTE_ARGSFILE_SUBSTITUTIONS = [
+    (regex("-filter-error=.+"), "-fcolor-diagnostics"),
+    (regex("-filter-ignore=.+"), "-fcolor-diagnostics"),
+]
+
+def get_extension_for_header(header_extension: str) -> str | None:
+    """
+    Which source file extension to use to get compiler flags for the header.
+    """
+    if header_extension in (".hpp", ".hh", ".h++", ".hxx"):
+        return ".cpp"
+    elif header_extension == ".cuh":
+        return ".cu"
+    elif header_extension not in HeaderExtension.values():
+        return header_extension  # a file in `headers` has a source extension
+    else:
+        return None
+
+def get_extension_for_plain_headers(srcs: list[CxxSrcWithFlags]) -> str | None:
+    """
+    For a given list source files determine which source file extension
+    to use to get compiler flags for plain .h headers.
+    """
+    duplicates = {
+        ".c++": ".cpp",
+        ".cc": ".cpp",
+        ".cxx": ".cpp",
+    }
+
+    extensions = set([duplicates.get(src.file.extension, src.file.extension) for src in srcs])
+
+    # Assembly doesn't need any special handling as included files tend to have .asm extension themselves.
+    # And the presence of assembly in the target doesn't tell us anything about the language of .h files.
+    for asm_ext in [".s", ".S", ".asm", ".asmpp"]:
+        extensions.remove(asm_ext)
+
+    if extensions.size() == 0:
+        return None
+    if extensions.size() == 1:
+        return extensions.list()[0]
+    if extensions.contains(".hip"):
+        return ".hip"
+    if extensions.contains(".cu"):
+        return ".cu"
+    if extensions.contains(".mm"):
+        return ".mm"
+    if extensions.contains(".cpp") and extensions.contains(".m"):
+        return ".mm"
+    if extensions.contains(".cpp"):
+        return ".cpp"
+    if extensions.contains(".m"):
+        return ".m"
+    return ".c"
+
+def get_default_extension_for_plain_header(rule_type: str) -> str:
+    """
+    Returns default source file extension to use to get get compiler flags for plain .h headers.
+    """
+
+    # Default to (Objective-)C++ instead of plain (Objective-)C as it is more likely to be compatible with both.
+    return ".mm" if rule_type.startswith("apple_") else ".cpp"
+
+def get_header_language_mode(source_extension: str) -> str | None:
+    """
+    Returns the header mode to use for plain .h headers based on the
+    source file extension used to obtain the compiler flags for them.
+    """
+
+    # Note: CUDA doesn't have its own header language mode, but the headers have distinct .cuh extension.
+    modes = {
+        ".cpp": "c++-header",
+        ".m": "objective-c-header",
+        ".mm": "objective-c++-header",
+    }
+    return modes.get(source_extension)
+
 def create_compile_cmds(
         ctx: AnalysisContext,
-        impl_params: "CxxRuleConstructorParams",
-        own_preprocessors: list[CPreprocessor.type],
-        inherited_preprocessor_infos: list[CPreprocessorInfo.type]) -> CxxCompileCommandOutput.type:
+        # TODO(nga): this is `CxxRuleConstructorParams`,
+        #    but there's dependency cycle between `compile.bzl` (this file)
+        #   and `cxx_types.bzl` (where `CxxRuleConstructorParams` is defined).
+        impl_params: typing.Any,
+        own_preprocessors: list[CPreprocessor],
+        inherited_preprocessor_infos: list[CPreprocessorInfo]) -> CxxCompileCommandOutput:
     """
     Forms the CxxSrcCompileCommand to use for each source file based on it's extension
     and optional source file flags. Returns CxxCompileCommandOutput containing an array
     of the generated compile commands and argsfile output.
     """
 
+    # Effective type: [(CxxSrcWithFlags, bool)]
+    # But cannot be annotated as buildifier doesn't support local variable type annotations.
+    # See P857174176 for the buildifier error and how this can be expressed as a record().
+    #
+    # In order to produce compile commands for all files in one go, contains CxxSrcWithFlags()
+    # for both sources and headers, and a boolean indicating whether it is a header.
     srcs_with_flags = []
+
     for src in impl_params.srcs:
-        srcs_with_flags.append(src)
-    header_only = False
-    if len(srcs_with_flags) == 0 and len(impl_params.additional.srcs) == 0:
-        all_headers = flatten([x.headers for x in own_preprocessors])
-        if len(all_headers) == 0:
-            all_raw_headers = flatten([x.raw_headers for x in own_preprocessors])
-            if len(all_raw_headers) != 0:
-                header_only = True
-                for header in all_raw_headers:
-                    if header.extension in [".h", ".hpp"]:
-                        srcs_with_flags.append(CxxSrcWithFlags(file = header))
-            else:
-                return CxxCompileCommandOutput()
-        else:
-            header_only = True
-            for header in all_headers:
-                if header.artifact.extension in [".h", ".hpp", ".cpp"]:
-                    srcs_with_flags.append(CxxSrcWithFlags(file = header.artifact))
+        srcs_with_flags.append((src, False))
+
+    # Some targets have .cpp files in their `headers` lists, see D46195628
+    # todo: should this be prohibited or expanded to allow all source extensions?
+    artifact_extensions = HeaderExtension.values() + [".cpp"]
+    all_headers = flatten([x.headers for x in own_preprocessors])
+    for header in all_headers:
+        if header.artifact.extension in artifact_extensions:
+            srcs_with_flags.append((CxxSrcWithFlags(file = header.artifact), True))
+
+    all_raw_headers = flatten([x.raw_headers for x in own_preprocessors])
+    for header in all_raw_headers:
+        if header.extension in HeaderExtension.values():
+            srcs_with_flags.append((CxxSrcWithFlags(file = header), True))
+
+    if len(srcs_with_flags) == 0:
+        return CxxCompileCommandOutput()
 
     # TODO(T110378129): Buck v1 validates *all* headers used by a compilation
     # at compile time, but that doing that here/eagerly might be expensive (but
@@ -184,14 +285,17 @@ def create_compile_cmds(
     abs_headers_tag = ctx.actions.artifact_tag()  # This headers tag is just for convenience use in _mk_argsfile and is otherwise unused.
 
     src_compile_cmds = []
+    hdr_compile_cmds = []
     cxx_compile_cmd_by_ext = {}
     argsfile_by_ext = {}
     abs_argsfile_by_ext = {}
 
-    for src in srcs_with_flags:
-        # If we have a header_only library we'll send the header files through this path,
-        # and want them to appear as though they are C++ files.
-        ext = CxxExtension(".cpp" if header_only else src.file.extension)
+    extension_for_plain_headers = get_extension_for_plain_headers(impl_params.srcs)
+    extension_for_plain_headers = extension_for_plain_headers or get_default_extension_for_plain_header(impl_params.rule_type)
+    for src, is_header in srcs_with_flags:
+        # We want headers to appear as though they are source files.
+        extension_for_header = get_extension_for_header(src.file.extension) or extension_for_plain_headers
+        ext = CxxExtension(extension_for_header if is_header else src.file.extension)
 
         # Deduplicate shared arguments to save memory. If we compile multiple files
         # of the same extension they will have some of the same flags. Save on
@@ -200,6 +304,7 @@ def create_compile_cmds(
             toolchain = get_cxx_toolchain_info(ctx)
             compiler_info = _get_compiler_info(toolchain, ext)
             base_compile_cmd = _get_compile_base(compiler_info)
+            category = _get_category(ext)
 
             headers_dep_files = None
             dep_file_file_type_hint = _dep_file_type(ext)
@@ -222,36 +327,40 @@ def create_compile_cmds(
                 argsfile = argsfile_by_ext[ext.value],
                 headers_dep_files = headers_dep_files,
                 compiler_type = compiler_info.compiler_type,
+                category = category,
             )
 
         cxx_compile_cmd = cxx_compile_cmd_by_ext[ext]
 
         src_args = []
         src_args.extend(src.flags)
+        if is_header:
+            language_mode = get_header_language_mode(extension_for_header)
+            src_args.extend(["-x", language_mode] if language_mode else [])
         src_args.extend(["-c", src.file])
 
         src_compile_command = CxxSrcCompileCommand(src = src.file, cxx_compile_cmd = cxx_compile_cmd, args = src_args, index = src.index)
-        src_compile_cmds.append(src_compile_command)
+        if is_header:
+            hdr_compile_cmds.append(src_compile_command)
+        else:
+            src_compile_cmds.append(src_compile_command)
 
     argsfile_by_ext.update(impl_params.additional.argsfiles.relative)
     abs_argsfile_by_ext.update(impl_params.additional.argsfiles.absolute)
 
-    if header_only:
-        return CxxCompileCommandOutput(comp_db_compile_cmds = src_compile_cmds)
-    else:
-        return CxxCompileCommandOutput(
-            src_compile_cmds = src_compile_cmds,
-            argsfiles = CompileArgsfiles(
-                relative = argsfile_by_ext,
-                absolute = abs_argsfile_by_ext,
-            ),
-            comp_db_compile_cmds = src_compile_cmds,
-        )
+    return CxxCompileCommandOutput(
+        src_compile_cmds = src_compile_cmds,
+        argsfiles = CompileArgsfiles(
+            relative = argsfile_by_ext,
+            absolute = abs_argsfile_by_ext,
+        ),
+        comp_db_compile_cmds = src_compile_cmds + hdr_compile_cmds,
+    )
 
 def compile_cxx(
         ctx: AnalysisContext,
-        src_compile_cmds: list[CxxSrcCompileCommand.type],
-        pic: bool = False) -> list[CxxCompileOutput.type]:
+        src_compile_cmds: list[CxxSrcCompileCommand],
+        pic: bool = False) -> list[CxxCompileOutput]:
     """
     For a given list of src_compile_cmds, generate output artifacts.
     """
@@ -347,15 +456,21 @@ def compile_cxx(
             )
             cmd.hidden(clang_trace.as_output())
 
-        ctx.actions.run(cmd, category = "cxx_compile", identifier = identifier, dep_files = action_dep_files)
+        ctx.actions.run(
+            cmd,
+            category = src_compile_cmd.cxx_compile_cmd.category,
+            identifier = identifier,
+            dep_files = action_dep_files,
+        )
 
         # If we're building with split debugging, where the debug info is in the
-        # original object, then add the object as external debug info, *unless*
-        # we're doing LTO, which generates debug info at link time (*except* for
-        # fat LTO, which still generates native code and, therefore, debug info).
+        # original object, then add the object as external debug info
+        # FIXME: ThinLTO generates debug info in a separate dwo dir, but we still
+        # need to track object files if the object file is not compiled to bitcode.
+        # We should track whether ThinLTO is used on a per-object basis rather than
+        # globally on a toolchain level.
         object_has_external_debug_info = (
-            toolchain.split_debug_mode == SplitDebugMode("single") and
-            linker_info.lto_mode in (LtoMode("none"), LtoMode("fat"))
+            toolchain.split_debug_mode == SplitDebugMode("single")
         )
 
         # .S extension is native assembly code (machine level, processor specific)
@@ -377,7 +492,7 @@ def compile_cxx(
 
     return objects
 
-def _validate_target_headers(ctx: AnalysisContext, preprocessor: list[CPreprocessor.type]):
+def _validate_target_headers(ctx: AnalysisContext, preprocessor: list[CPreprocessor]):
     path_to_artifact = {}
     all_headers = flatten([x.headers for x in preprocessor])
     for header in all_headers:
@@ -389,9 +504,9 @@ def _validate_target_headers(ctx: AnalysisContext, preprocessor: list[CPreproces
         else:
             path_to_artifact[header_path] = header.artifact
 
-def _get_compiler_info(toolchain: CxxToolchainInfo.type, ext: CxxExtension.type) -> typing.Any:
+def _get_compiler_info(toolchain: CxxToolchainInfo, ext: CxxExtension) -> typing.Any:
     compiler_info = None
-    if ext.value in (".cpp", ".cc", ".mm", ".cxx", ".c++", ".h", ".hpp"):
+    if ext.value in (".cpp", ".cc", ".mm", ".cxx", ".c++", ".h", ".hpp", ".hh", ".h++", ".hxx"):
         compiler_info = toolchain.cxx_compiler_info
     elif ext.value in (".c", ".m"):
         compiler_info = toolchain.c_compiler_info
@@ -412,6 +527,25 @@ def _get_compiler_info(toolchain: CxxToolchainInfo.type, ext: CxxExtension.type)
 
     return compiler_info
 
+def _get_category(ext: CxxExtension) -> str:
+    if ext.value in (".cpp", ".cc", ".cxx", ".c++", ".h", ".hpp", ".hh", ".h++", ".hxx"):
+        return "cxx_compile"
+    if ext.value == ".c":
+        return "c_compile"
+    if ext.value == ".m":
+        return "objc_compile"
+    if ext.value == ".mm":
+        return "objcxx_compile"
+    elif ext.value in (".s", ".S", ".asm", ".asmpp"):
+        return "asm_compile"
+    elif ext.value == ".cu":
+        return "cuda_compile"
+    elif ext.value == ".hip":
+        return "hip_compile"
+    else:
+        # This should be unreachable as long as we handle all enum values
+        fail("Unknown extension: " + ext.value)
+
 def _get_compile_base(compiler_info: typing.Any) -> cmd_args:
     """
     Given a compiler info returned by _get_compiler_info, form the base compile args.
@@ -421,7 +555,7 @@ def _get_compile_base(compiler_info: typing.Any) -> cmd_args:
 
     return cmd
 
-def _dep_file_type(ext: CxxExtension.type) -> [DepFileType.type, None]:
+def _dep_file_type(ext: CxxExtension) -> [DepFileType, None]:
     # Raw assembly doesn't make sense to capture dep files for.
     if ext.value in (".s", ".S", ".asm"):
         return None
@@ -431,7 +565,7 @@ def _dep_file_type(ext: CxxExtension.type) -> [DepFileType.type, None]:
         return None
 
     # Return the file type aswell
-    if ext.value in (".cpp", ".cc", ".mm", ".cxx", ".c++", ".h", ".hpp"):
+    if ext.value in (".cpp", ".cc", ".mm", ".cxx", ".c++", ".h", ".hpp", ".hh", ".h++", ".hxx"):
         return DepFileType("cpp")
     elif ext.value in (".c", ".m"):
         return DepFileType("c")
@@ -443,7 +577,7 @@ def _dep_file_type(ext: CxxExtension.type) -> [DepFileType.type, None]:
         # This should be unreachable as long as we handle all enum values
         fail("Unknown C++ extension: " + ext.value)
 
-def _add_compiler_info_flags(ctx: AnalysisContext, compiler_info: typing.Any, ext: CxxExtension.type, cmd: cmd_args):
+def _add_compiler_info_flags(ctx: AnalysisContext, compiler_info: typing.Any, ext: CxxExtension, cmd: cmd_args):
     cmd.add(compiler_info.preprocessor_flags or [])
     cmd.add(compiler_info.compiler_flags or [])
     cmd.add(get_flags_for_reproducible_build(ctx, compiler_info.compiler_type))
@@ -455,10 +589,10 @@ def _add_compiler_info_flags(ctx: AnalysisContext, compiler_info: typing.Any, ex
 def _mk_argsfile(
         ctx: AnalysisContext,
         compiler_info: typing.Any,
-        preprocessor: CPreprocessorInfo.type,
-        ext: CxxExtension.type,
-        headers_tag: "artifact_tag",
-        use_absolute_paths: bool) -> CompileArgsfile.type:
+        preprocessor: CPreprocessorInfo,
+        ext: CxxExtension,
+        headers_tag: ArtifactTag,
+        use_absolute_paths: bool) -> CompileArgsfile:
     """
     Generate and return an {ext}.argsfile artifact and command args that utilize the argsfile.
     """
@@ -495,8 +629,13 @@ def _mk_argsfile(
     # to avoid "argument too long" errors
     if use_absolute_paths:
         args.add(cmd_args(preprocessor.set.project_as_args("abs_file_prefix_args")))
+
+        # HACK: Replace Xcode clang incompatible flags with compatible ones.
+        # TODO: Refactor this to be a true Xcode argsfile generating flow.
+        for re, sub in _ABSOLUTE_ARGSFILE_SUBSTITUTIONS:
+            args.replace_regex(re, sub)
     else:
-        args.add(cmd_args(preprocessor.set.project_as_args("file_prefix_args")))
+        args.add(headers_tag.tag_artifacts(cmd_args(preprocessor.set.project_as_args("file_prefix_args"))))
 
     shell_quoted_args = cmd_args(args, quote = "shell")
 
@@ -525,7 +664,7 @@ def _attr_compiler_flags(ctx: AnalysisContext, ext: str) -> list[typing.Any]:
         ctx.attrs.compiler_flags
     )
 
-def _get_dep_tracking_mode(toolchain: Provider, file_type: DepFileType.type) -> DepTrackingMode.type:
+def _get_dep_tracking_mode(toolchain: Provider, file_type: DepFileType) -> DepTrackingMode:
     if file_type == DepFileType("cpp") or file_type == DepFileType("c"):
         return toolchain.cpp_dep_tracking_mode
     elif file_type == DepFileType("cuda"):
