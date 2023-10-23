@@ -15,6 +15,9 @@ load("@prelude//apple:apple_rules_impl.bzl", _apple_extra_attributes = "extra_at
 # Configuration
 load("@prelude//configurations:rules.bzl", _config_extra_attributes = "extra_attributes", _config_implemented_rules = "implemented_rules")
 
+# C#
+load("@prelude//csharp:csharp.bzl", "csharp_library_impl", "prebuilt_dotnet_library_impl")
+
 # C++ - LLVM
 load("@prelude//cxx:bitcode.bzl", "llvm_link_bitcode_impl")
 load("@prelude//cxx:cxx.bzl", "cxx_binary_impl", "cxx_library_impl", "cxx_precompiled_header_impl", "cxx_test_impl", "prebuilt_cxx_library_impl")
@@ -23,7 +26,6 @@ load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxPlatformInfo", "CxxToolchainIn
 
 # C++
 load("@prelude//cxx:headers.bzl", "CPrecompiledHeaderInfo", "HeaderMode")
-load("@prelude//cxx:omnibus.bzl", "omnibus_environment_attr")
 load("@prelude//cxx:prebuilt_cxx_library_group.bzl", "prebuilt_cxx_library_group_impl")
 load("@prelude//cxx/user:link_group_map.bzl", "link_group_map_attr")
 
@@ -109,6 +111,7 @@ load("@prelude//decls/kotlin_rules.bzl", "kotlin_rules")
 load("@prelude//decls/lua_rules.bzl", "lua_rules")
 load("@prelude//decls/ocaml_rules.bzl", "ocaml_rules")
 load("@prelude//decls/python_rules.bzl", "python_rules")
+load("@prelude//decls/re_test_common.bzl", "re_test_common")
 load("@prelude//decls/rust_rules.bzl", "rust_rules")
 load("@prelude//decls/scala_rules.bzl", "scala_rules")
 load("@prelude//decls/shell_rules.bzl", "shell_rules")
@@ -182,6 +185,10 @@ extra_implemented_rules = struct(
     test_suite = test_suite_impl,
     versioned_alias = versioned_alias_impl,
     worker_tool = worker_tool,
+
+    #c#
+    csharp_library = csharp_library_impl,
+    prebuilt_dotnet_library = prebuilt_dotnet_library_impl,
 
     #c++
     cxx_binary = cxx_binary_impl,
@@ -273,7 +280,6 @@ def _cxx_python_extension_attrs():
         "support_shlib_interfaces": attrs.bool(default = True),
         "_cxx_hacks": attrs.default_only(attrs.dep(default = "prelude//cxx/tools:cxx_hacks")),
         "_cxx_toolchain": toolchains_common.cxx(),
-        "_omnibus_environment": omnibus_environment_attr(),
         # Copied from python_library.
         "_python_toolchain": toolchains_common.python(),
         "_target_os_type": buck.target_os_type_arg(),
@@ -297,6 +303,8 @@ def _python_executable_attrs():
     updated_attrs.update({
         "anonymous_link_groups": attrs.bool(default = False),
         "binary_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
+        "bolt_flags": attrs.list(attrs.arg(), default = []),
+        "bolt_profile": attrs.option(attrs.source(), default = None),
         "compiler_flags": attrs.list(attrs.arg(), default = []),
         "constraint_overrides": attrs.list(attrs.string(), default = []),
         "cxx_main": attrs.source(default = "prelude//python/tools:embedded_main.cpp"),
@@ -312,28 +320,37 @@ def _python_executable_attrs():
             attrs.string(),
             default = None,
             doc = """
-            Fully qualified name of a Python function that will serve as the main entry point of the binary.
-
-            This should usually be a function defined within one of the
-            dependencies of this target. This attribute should be preferred over
-            `main_module` or `main`, and it is an error to specify more than one of these.
+            Name of a Python function that will serve as the main entry point of
+            the binary. The name is either a fully qualified name like
+            `foo.bar.baz` or it starts with a `.` like `.bar.baz`, in which case
+            it is relative to the package containing the target. This should
+            usually be a function defined within one of the dependencies of this
+            target. This attribute should be preferred over `main_module` or
+            `main`, and it is an error to specify more than one of these.
         """,
         ),
         "make_py_package": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
         # entries for the generated __manifest__ python module
-        "manifest_module_entries": attrs.option(attrs.dict(key = attrs.string(), value = attrs.dict(key = attrs.string(), value = attrs.any())), default = None),
+        "manifest_module_entries": attrs.option(attrs.dict(
+            key = attrs.string(),
+            value = attrs.one_of(
+                attrs.dict(key = attrs.string(), value = attrs.option(attrs.any())),
+                attrs.list(attrs.string()),
+            ),
+        ), default = None),
         "native_link_strategy": attrs.option(attrs.enum(NativeLinkStrategy), default = None),
         "package_split_dwarf_dwp": attrs.bool(default = False),
         "par_style": attrs.option(attrs.string(), default = None),
         "resources": attrs.named_set(attrs.one_of(attrs.dep(), attrs.source(allow_directory = True)), sorted = True, default = []),
+        "runtime_env": attrs.option(attrs.dict(key = attrs.string(), value = attrs.string()), default = None),
         "standalone_build_args": attrs.list(attrs.arg(), default = []),
         "static_extension_finder": attrs.source(default = "prelude//python/tools:static_extension_finder.py"),
         "static_extension_utils": attrs.source(default = "prelude//python/tools:static_extension_utils.cpp"),
+        "strip_libpar": attrs.enum(StripLibparStrategy, default = "none"),
         "_create_manifest_for_source_dir": _create_manifest_for_source_dir(),
         "_cxx_hacks": attrs.default_only(attrs.dep(default = "prelude//cxx/tools:cxx_hacks")),
         "_cxx_toolchain": toolchains_common.cxx(),
         "_exec_os_type": buck.exec_os_type_arg(),
-        "_omnibus_environment": omnibus_environment_attr(),
         "_python_toolchain": toolchains_common.python(),
         "_target_os_type": buck.target_os_type_arg(),
     })
@@ -342,10 +359,8 @@ def _python_executable_attrs():
 
 def _python_test_attrs():
     test_attrs = _python_executable_attrs()
-    test_attrs.update({
-        "remote_execution": buck.re_opts_for_tests_arg(),
-        "_test_main": attrs.source(default = "prelude//python/tools:__test_main__.py"),
-    })
+    test_attrs["_test_main"] = attrs.source(default = "prelude//python/tools:__test_main__.py")
+    test_attrs.update(re_test_common.test_args())
     return test_attrs
 
 def _cxx_binary_and_test_attrs():
@@ -357,7 +372,6 @@ def _cxx_binary_and_test_attrs():
         # top-level binary context.
         "binary_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
         "bolt_flags": attrs.list(attrs.arg(), default = []),
-        "bolt_gdb_index": attrs.option(attrs.source(), default = None),
         "bolt_profile": attrs.option(attrs.source(), default = None),
         "enable_distributed_thinlto": attrs.bool(default = False),
         "link_execution_preference": link_execution_preference_attr(),
@@ -372,6 +386,7 @@ def _cxx_binary_and_test_attrs():
     }
 
 NativeLinkStrategy = ["separate", "native", "merged"]
+StripLibparStrategy = ["full", "extract", "none"]
 
 def _package_python_binary_remotely():
     return select({
@@ -399,6 +414,10 @@ inlined_extra_attributes = {
         "_cxx_toolchain": toolchains_common.cxx(),
         "_go_toolchain": toolchains_common.go(),
     },
+    # csharp
+    "csharp_library": {
+        "_csharp_toolchain": toolchains_common.csharp(),
+    },
     "cxx_binary": _cxx_binary_and_test_attrs(),
 
     #c++
@@ -410,7 +429,6 @@ inlined_extra_attributes = {
         "auto_link_groups": attrs.bool(default = False),
         "deps_query": attrs.option(attrs.query(), default = None),
         "extra_xcode_sources": attrs.list(attrs.source(allow_directory = True), default = []),
-        "force_emit_omnibus_shared_root": attrs.bool(default = False),
         "header_mode": attrs.option(attrs.enum(HeaderMode.values()), default = None),
         "link_deps_query_whole": attrs.bool(default = False),
         "link_execution_preference": link_execution_preference_attr(),
@@ -426,13 +444,9 @@ inlined_extra_attributes = {
         "_cxx_hacks": attrs.default_only(attrs.dep(default = "prelude//cxx/tools:cxx_hacks")),
         "_cxx_toolchain": toolchains_common.cxx(),
         "_is_building_android_binary": is_building_android_binary_attr(),
-        "_omnibus_environment": omnibus_environment_attr(),
     },
     "cxx_python_extension": _cxx_python_extension_attrs(),
-    "cxx_test": dict(
-        remote_execution = buck.re_opts_for_tests_arg(),
-        **_cxx_binary_and_test_attrs()
-    ),
+    "cxx_test": re_test_common.test_args() | _cxx_binary_and_test_attrs(),
     "cxx_toolchain": cxx_toolchain_extra_attributes(is_toolchain_rule = False),
 
     # Generic rule to build from a command
@@ -442,10 +456,12 @@ inlined_extra_attributes = {
     "go_binary": {
         "embedcfg": attrs.option(attrs.source(allow_directory = False), default = None),
         "resources": attrs.list(attrs.one_of(attrs.dep(), attrs.source(allow_directory = True)), default = []),
+        "_exec_os_type": buck.exec_os_type_arg(),
         "_go_toolchain": toolchains_common.go(),
     },
     "go_exported_library": {
         "embedcfg": attrs.option(attrs.source(allow_directory = False), default = None),
+        "_exec_os_type": buck.exec_os_type_arg(),
         "_go_toolchain": toolchains_common.go(),
     },
     "go_library": {
@@ -456,6 +472,7 @@ inlined_extra_attributes = {
         "coverage_mode": attrs.option(attrs.enum(GoCoverageMode.values()), default = None),
         "embedcfg": attrs.option(attrs.source(allow_directory = False), default = None),
         "resources": attrs.list(attrs.source(allow_directory = True), default = []),
+        "_exec_os_type": buck.exec_os_type_arg(),
         "_go_toolchain": toolchains_common.go(),
         "_testmaingen": attrs.default_only(attrs.exec_dep(default = "prelude//go/tools:testmaingen")),
     },
@@ -468,6 +485,8 @@ inlined_extra_attributes = {
         "resources_root": attrs.option(attrs.string(), default = None),
     },
     "haskell_binary": {
+        "auto_link_groups": attrs.bool(default = False),
+        "link_group_map": link_group_map_attr(),
         "template_deps": attrs.list(attrs.exec_dep(providers = [HaskellLibraryProvider]), default = []),
         "_cxx_toolchain": toolchains_common.cxx(),
         "_haskell_toolchain": toolchains_common.haskell(),
@@ -505,7 +524,6 @@ inlined_extra_attributes = {
         "supports_python_dlopen": attrs.bool(default = True),
         "versioned_header_dirs": attrs.option(attrs.versioned(attrs.list(attrs.source(allow_directory = True))), default = None),
         "_cxx_toolchain": toolchains_common.cxx(),
-        "_omnibus_environment": omnibus_environment_attr(),
         "_target_os_type": buck.target_os_type_arg(),
     },
     "prebuilt_cxx_library_group": {
@@ -544,14 +562,14 @@ inlined_extra_attributes = {
         "_cxx_toolchain": toolchains_common.cxx(),
         "_python_toolchain": toolchains_common.python(),
     },
-    "python_needed_coverage_test": {
-        "contacts": attrs.list(attrs.string(), default = []),
-        "env": attrs.dict(key = attrs.string(), value = attrs.arg(), sorted = False, default = {}),
-        "labels": attrs.list(attrs.string(), default = []),
-        "needed_coverage": attrs.list(attrs.tuple(attrs.int(), attrs.dep(), attrs.option(attrs.string())), default = []),
-        "remote_execution": buck.re_opts_for_tests_arg(),
-        "test": attrs.dep(providers = [ExternalRunnerTestInfo]),
-    },
+    "python_needed_coverage_test": dict(
+        contacts = attrs.list(attrs.string(), default = []),
+        env = attrs.dict(key = attrs.string(), value = attrs.arg(), sorted = False, default = {}),
+        labels = attrs.list(attrs.string(), default = []),
+        needed_coverage = attrs.list(attrs.tuple(attrs.int(), attrs.dep(), attrs.option(attrs.string())), default = []),
+        test = attrs.dep(providers = [ExternalRunnerTestInfo]),
+        **re_test_common.test_args()
+    ),
     "python_test": _python_test_attrs(),
     "remote_file": {
         "sha1": attrs.option(attrs.string(), default = None),

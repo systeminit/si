@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# @starlark-rust: allow_string_literals_in_type_expr
+
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//android:android_providers.bzl", "merge_android_packageable_info")
 load(
@@ -24,7 +26,8 @@ load("@prelude//java:java_toolchain.bzl", "AbiGenerationMode", "JavaToolchainInf
 load("@prelude//java:javacd_jar_creator.bzl", "create_jar_artifact_javacd")
 load("@prelude//java/plugins:java_annotation_processor.bzl", "AnnotationProcessorProperties", "create_annotation_processor_properties")
 load("@prelude//java/plugins:java_plugin.bzl", "create_plugin_params")
-load("@prelude//java/utils:java_utils.bzl", "declare_prefixed_name", "derive_javac", "get_abi_generation_mode", "get_class_to_source_map_info", "get_default_info", "get_java_version_attributes", "get_path_separator", "to_java_version")
+load("@prelude//java/utils:java_utils.bzl", "declare_prefixed_name", "derive_javac", "get_abi_generation_mode", "get_class_to_source_map_info", "get_default_info", "get_java_version_attributes", "get_path_separator_for_exec_os", "to_java_version")
+load("@prelude//jvm:nullsafe.bzl", "get_nullsafe_info")
 load("@prelude//linking:shared_libraries.bzl", "SharedLibraryInfo")
 load("@prelude//utils:utils.bzl", "expect")
 
@@ -50,13 +53,13 @@ def _process_classpath(
     # add classpath args file to cmd
     cmd.add(option_name, classpath_args_file)
 
-def classpath_args(args):
-    return cmd_args(args, delimiter = get_path_separator())
+def classpath_args(ctx: AnalysisContext, args):
+    return cmd_args(args, delimiter = get_path_separator_for_exec_os(ctx))
 
 def _process_plugins(
-        actions: AnalysisActions,
+        ctx: AnalysisContext,
         actions_identifier: [str, None],
-        annotation_processor_properties: "AnnotationProcessorProperties",
+        annotation_processor_properties: AnnotationProcessorProperties,
         plugin_params: ["PluginParams", None],
         javac_args: cmd_args,
         cmd: cmd_args):
@@ -95,16 +98,16 @@ def _process_plugins(
             processors_classpath_tsets.append(plugin_params.deps)
 
     if len(processors_classpath_tsets) > 1:
-        processors_classpath_tset = actions.tset(JavaPackagingDepTSet, children = processors_classpath_tsets)
+        processors_classpath_tset = ctx.actions.tset(JavaPackagingDepTSet, children = processors_classpath_tsets)
     elif len(processors_classpath_tsets) == 1:
         processors_classpath_tset = processors_classpath_tsets[0]
     else:
         processors_classpath_tset = None
 
     if processors_classpath_tset:
-        processors_classpath = classpath_args(processors_classpath_tset.project_as_args("full_jar_args"))
+        processors_classpath = classpath_args(ctx, processors_classpath_tset.project_as_args("full_jar_args"))
         _process_classpath(
-            actions,
+            ctx.actions,
             processors_classpath,
             cmd,
             declare_prefixed_name("plugin_cp_args", actions_identifier),
@@ -123,7 +126,7 @@ def _build_classpath(actions: AnalysisActions, deps: list[Dependency], additiona
 
     return None
 
-def _build_bootclasspath(bootclasspath_entries: list[Artifact], source_level: int, java_toolchain: JavaToolchainInfo.type) -> list[Artifact]:
+def _build_bootclasspath(bootclasspath_entries: list[Artifact], source_level: int, java_toolchain: JavaToolchainInfo) -> list[Artifact]:
     bootclasspath_list = []
     if source_level in [7, 8]:
         if bootclasspath_entries:
@@ -135,12 +138,12 @@ def _build_bootclasspath(bootclasspath_entries: list[Artifact], source_level: in
     return bootclasspath_list
 
 def _append_javac_params(
-        actions: AnalysisActions,
+        ctx: AnalysisContext,
         actions_identifier: [str, None],
-        java_toolchain: JavaToolchainInfo.type,
+        java_toolchain: JavaToolchainInfo,
         srcs: list[Artifact],
         remove_classes: list[str],
-        annotation_processor_properties: "AnnotationProcessorProperties",
+        annotation_processor_properties: AnnotationProcessorProperties,
         javac_plugin_params: ["PluginParams", None],
         source_level: int,
         target_level: int,
@@ -159,11 +162,11 @@ def _append_javac_params(
     )
     javac_args.add(extra_arguments)
 
-    compiling_classpath = _build_classpath(actions, deps, additional_classpath_entries, "args_for_compiling")
+    compiling_classpath = _build_classpath(ctx.actions, deps, additional_classpath_entries, "args_for_compiling")
     if compiling_classpath:
         _process_classpath(
-            actions,
-            classpath_args(compiling_classpath),
+            ctx.actions,
+            classpath_args(ctx, compiling_classpath),
             cmd,
             declare_prefixed_name("classpath_args", actions_identifier),
             "--javac_classpath_file",
@@ -179,15 +182,15 @@ def _append_javac_params(
     bootclasspath_list = _build_bootclasspath(bootclasspath_entries, source_level, java_toolchain)
     if bootclasspath_list:
         _process_classpath(
-            actions,
-            classpath_args(bootclasspath_list),
+            ctx.actions,
+            classpath_args(ctx, bootclasspath_list),
             cmd,
             declare_prefixed_name("bootclasspath_args", actions_identifier),
             "--javac_bootclasspath_file",
         )
 
     _process_plugins(
-        actions,
+        ctx,
         actions_identifier,
         annotation_processor_properties,
         javac_plugin_params,
@@ -200,7 +203,7 @@ def _append_javac_params(
     zipped_sources, plain_sources = split_on_archives_and_plain_files(srcs, _JAVA_FILE_EXTENSION)
 
     javac_args.add(*plain_sources)
-    args_file, _ = actions.write(
+    args_file, _ = ctx.actions.write(
         declare_prefixed_name("javac_args", actions_identifier),
         javac_args,
         allow_args = True,
@@ -213,11 +216,11 @@ def _append_javac_params(
     cmd.add("--javac_args_file", args_file)
 
     if zipped_sources:
-        cmd.add("--zipped_sources_file", actions.write(declare_prefixed_name("zipped_source_args", actions_identifier), zipped_sources))
+        cmd.add("--zipped_sources_file", ctx.actions.write(declare_prefixed_name("zipped_source_args", actions_identifier), zipped_sources))
         cmd.hidden(zipped_sources)
 
     if remove_classes:
-        cmd.add("--remove_classes", actions.write(declare_prefixed_name("remove_classes_args", actions_identifier), remove_classes))
+        cmd.add("--remove_classes", ctx.actions.write(declare_prefixed_name("remove_classes_args", actions_identifier), remove_classes))
 
 def split_on_archives_and_plain_files(
         srcs: list[Artifact],
@@ -245,7 +248,7 @@ def _is_supported_archive(src: Artifact) -> bool:
 def _copy_resources(
         actions: AnalysisActions,
         actions_identifier: [str, None],
-        java_toolchain: JavaToolchainInfo.type,
+        java_toolchain: JavaToolchainInfo,
         package: str,
         resources: list[Artifact],
         resources_root: [str, None]) -> Artifact:
@@ -255,7 +258,7 @@ def _copy_resources(
 
 def _jar_creator(
         javac_tool: [typing.Any, None],
-        java_toolchain: JavaToolchainInfo.type) -> typing.Callable:
+        java_toolchain: JavaToolchainInfo) -> typing.Callable:
     if javac_tool or java_toolchain.javac_protocol == "classic":
         return _create_jar_artifact
     elif java_toolchain.javac_protocol == "javacd":
@@ -267,7 +270,7 @@ def compile_to_jar(
         ctx: AnalysisContext,
         srcs: list[Artifact],
         *,
-        abi_generation_mode: ["AbiGenerationMode", None] = None,
+        abi_generation_mode: [AbiGenerationMode, None] = None,
         output: [Artifact, None] = None,
         actions_identifier: [str, None] = None,
         javac_tool: [typing.Any, None] = None,
@@ -275,7 +278,7 @@ def compile_to_jar(
         resources_root: [str, None] = None,
         remove_classes: [list[str], None] = None,
         manifest_file: [Artifact, None] = None,
-        annotation_processor_properties: ["AnnotationProcessorProperties", None] = None,
+        annotation_processor_properties: [AnnotationProcessorProperties, None] = None,
         plugin_params: ["PluginParams", None] = None,
         source_level: [int, None] = None,
         target_level: [int, None] = None,
@@ -315,7 +318,7 @@ def compile_to_jar(
     is_building_android_binary = ctx.attrs._is_building_android_binary
 
     return _jar_creator(javac_tool, java_toolchain)(
-        ctx.actions,
+        ctx,
         actions_identifier,
         abi_generation_mode,
         java_toolchain,
@@ -343,10 +346,10 @@ def compile_to_jar(
     )
 
 def _create_jar_artifact(
-        actions: AnalysisActions,
+        ctx: AnalysisContext,
         actions_identifier: [str, None],
-        abi_generation_mode: ["AbiGenerationMode", None],
-        java_toolchain: JavaToolchainInfo.type,
+        abi_generation_mode: [AbiGenerationMode, None],
+        java_toolchain: JavaToolchainInfo,
         label: Label,
         output: [Artifact, None],
         javac_tool: [typing.Any, None],
@@ -355,7 +358,7 @@ def _create_jar_artifact(
         resources: list[Artifact],
         resources_root: [str, None],
         manifest_file: [Artifact, None],
-        annotation_processor_properties: "AnnotationProcessorProperties",
+        annotation_processor_properties: AnnotationProcessorProperties,
         plugin_params: ["PluginParams", None],
         source_level: int,
         target_level: int,
@@ -374,7 +377,7 @@ def _create_jar_artifact(
     Returns a single artifacts that represents jar output file
     """
     javac_tool = javac_tool or derive_javac(java_toolchain.javac)
-    jar_out = output or actions.declare_output(paths.join(actions_identifier or "jar", "{}.jar".format(label.name)))
+    jar_out = output or ctx.actions.declare_output(paths.join(actions_identifier or "jar", "{}.jar".format(label.name)))
 
     args = [
         java_toolchain.compile_and_package[RunInfo],
@@ -391,7 +394,7 @@ def _create_jar_artifact(
         args += ["--javac_tool", javac_tool]
 
     if resources:
-        resource_dir = _copy_resources(actions, actions_identifier, java_toolchain, label.package, resources, resources_root)
+        resource_dir = _copy_resources(ctx.actions, actions_identifier, java_toolchain, label.package, resources, resources_root)
         args += ["--resources_dir", resource_dir]
 
     if manifest_file:
@@ -404,9 +407,9 @@ def _create_jar_artifact(
 
     generated_sources_dir = None
     if not skip_javac:
-        generated_sources_dir = actions.declare_output(declare_prefixed_name("generated_sources", actions_identifier), dir = True)
+        generated_sources_dir = ctx.actions.declare_output(declare_prefixed_name("generated_sources", actions_identifier), dir = True)
         _append_javac_params(
-            actions,
+            ctx,
             actions_identifier,
             java_toolchain,
             srcs,
@@ -423,9 +426,9 @@ def _create_jar_artifact(
             generated_sources_dir,
         )
 
-    actions.run(compile_and_package_cmd, category = "javac_and_jar", identifier = actions_identifier)
+    ctx.actions.run(compile_and_package_cmd, category = "javac_and_jar", identifier = actions_identifier)
 
-    abi = None if (not srcs and not additional_compiled_srcs) or abi_generation_mode == AbiGenerationMode("none") or java_toolchain.is_bootstrap_toolchain else create_abi(actions, java_toolchain.class_abi_generator, jar_out)
+    abi = None if (not srcs and not additional_compiled_srcs) or abi_generation_mode == AbiGenerationMode("none") or java_toolchain.is_bootstrap_toolchain else create_abi(ctx.actions, java_toolchain.class_abi_generator, jar_out)
 
     return make_compile_outputs(
         full_library = jar_out,
@@ -472,10 +475,11 @@ def java_library_impl(ctx: AnalysisContext) -> list[Provider]:
     # TODO(T107163344) this shouldn't be in java_library itself, use overlays to remove it.
     android_packageable_info = merge_android_packageable_info(ctx.label, ctx.actions, packaging_deps)
     if ctx.attrs._build_only_native_code:
-        shared_library_info, cxx_resource_info = create_native_providers(ctx.actions, ctx.label, packaging_deps)
+        shared_library_info, cxx_resource_info, linkable_graph = create_native_providers(ctx, ctx.label, packaging_deps)
         return [
             shared_library_info,
             cxx_resource_info,
+            linkable_graph,
             # Add an unused default output in case this target is used an an attr.source() anywhere.
             DefaultInfo(default_output = ctx.actions.write("{}/unused.jar".format(ctx.label.name), [])),
             TemplatePlaceholderInfo(keyed_variables = {
@@ -503,8 +507,8 @@ def build_java_library(
         bootclasspath_entries: list[Artifact] = [],
         additional_compiled_srcs: [Artifact, None] = None,
         generated_sources: list[Artifact] = [],
-        override_abi_generation_mode: ["AbiGenerationMode", None] = None,
-        extra_sub_targets: dict = {}) -> JavaProviders.type:
+        override_abi_generation_mode: [AbiGenerationMode, None] = None,
+        extra_sub_targets: dict = {}) -> JavaProviders:
     expect(
         not getattr(ctx.attrs, "_build_only_native_code", False),
         "Shouldn't call build_java_library if we're only building native code!",
@@ -538,13 +542,11 @@ def build_java_library(
         ctx.attrs.annotation_processor_deps,
     ) if run_annotation_processors else None
     plugin_params = create_plugin_params(ctx, ctx.attrs.plugins) if run_annotation_processors else None
-    extra_arguments = cmd_args(ctx.attrs.extra_arguments)
     manifest_file = ctx.attrs.manifest_file
     source_level, target_level = get_java_version_attributes(ctx)
 
     outputs = None
     common_compile_kwargs = None
-    sub_targets = {}
     has_srcs = bool(srcs) or bool(additional_compiled_srcs)
     if has_srcs or resources or manifest_file:
         abi_generation_mode = override_abi_generation_mode or get_abi_generation_mode(ctx.attrs.abi_generation_mode)
@@ -571,7 +573,7 @@ def build_java_library(
         outputs = compile_to_jar(
             ctx,
             plugin_params = plugin_params,
-            extra_arguments = extra_arguments,
+            extra_arguments = cmd_args(ctx.attrs.extra_arguments),
             **common_compile_kwargs
         )
 
@@ -582,41 +584,20 @@ def build_java_library(
         not java_toolchain.is_bootstrap_toolchain and
         not ctx.attrs._is_building_android_binary
     ):
-        nullsafe_plugin = java_toolchain.nullsafe
-        nullsafe_signatures = java_toolchain.nullsafe_signatures
-        nullsafe_extra_args = java_toolchain.nullsafe_extra_args
-        if nullsafe_plugin:
-            nullsafe_output = ctx.actions.declare_output("reports", dir = True)
-            nullsafe_plugin_params = create_plugin_params(ctx, [nullsafe_plugin])
-
-            nullsafe_args = cmd_args(
-                "-XDcompilePolicy=simple",
-                "-Anullsafe.reportToJava=false",
-            )
-            nullsafe_args.add(cmd_args(
-                nullsafe_output.as_output(),
-                format = "-Anullsafe.writeJsonReportToDir={}",
-            ))
-            if nullsafe_signatures:
-                nullsafe_args.add(cmd_args(
-                    nullsafe_signatures,
-                    format = "-Anullsafe.signatures={}",
-                ))
-            if nullsafe_extra_args:
-                nullsafe_args.add(nullsafe_extra_args)
-
-            extra_arguments.add(nullsafe_args)
-
+        nullsafe_info = get_nullsafe_info(ctx)
+        if nullsafe_info:
             compile_to_jar(
                 ctx,
                 actions_identifier = "nullsafe",
-                plugin_params = nullsafe_plugin_params,
-                extra_arguments = extra_arguments,
+                plugin_params = nullsafe_info.plugin_params,
+                extra_arguments = nullsafe_info.extra_arguments,
                 is_creating_subtarget = True,
                 **common_compile_kwargs
             )
 
-            sub_targets["nullsafex-json"] = [DefaultInfo(default_output = nullsafe_output)]
+            extra_sub_targets = extra_sub_targets | {"nullsafex-json": [
+                DefaultInfo(default_output = nullsafe_info.output),
+            ]}
 
     all_generated_sources = list(generated_sources)
     if outputs and outputs.annotation_processor_output:
@@ -627,7 +608,7 @@ def build_java_library(
             DefaultInfo(default_output = all_generated_sources[0]),
         ]}
 
-    java_library_info, java_packaging_info, shared_library_info, cxx_resource_info, template_placeholder_info, intellij_info = create_java_library_providers(
+    java_library_info, java_packaging_info, shared_library_info, cxx_resource_info, linkable_graph, template_placeholder_info, intellij_info = create_java_library_providers(
         ctx,
         library_output = outputs.classpath_entry if outputs else None,
         declared_deps = ctx.attrs.deps + deps_query,
@@ -652,7 +633,7 @@ def build_java_library(
         java_toolchain,
         outputs,
         java_packaging_info,
-        sub_targets | extra_sub_targets,
+        extra_sub_targets,
     )
     return JavaProviders(
         java_library_info = java_library_info,
@@ -660,6 +641,7 @@ def build_java_library(
         java_packaging_info = java_packaging_info,
         shared_library_info = shared_library_info,
         cxx_resource_info = cxx_resource_info,
+        linkable_graph = linkable_graph,
         template_placeholder_info = template_placeholder_info,
         default_info = default_info,
         class_to_src_map = class_to_src_map,

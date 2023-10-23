@@ -29,12 +29,17 @@ load(
     "@prelude//utils:dicts.bzl",
     "flatten_x",
 )
+load(
+    "@prelude//utils:utils.bzl",
+    "expect",
+)
 load(":apple_bundle.bzl", "AppleBundlePartListConstructorParams", "get_apple_bundle_part_list")
-load(":apple_bundle_destination.bzl", "AppleBundleDestination")
+load(":apple_bundle_destination.bzl", "AppleBundleDestination", "bundle_relative_path_for_destination")
 load(":apple_bundle_part.bzl", "AppleBundlePart", "SwiftStdlibArguments", "assemble_bundle", "bundle_output", "get_apple_bundle_part_relative_destination_path", "get_bundle_dir_name")
 load(":apple_bundle_types.bzl", "AppleBundleInfo")
 load(":apple_bundle_utility.bzl", "get_product_name")
 load(":apple_dsym.bzl", "DSYM_SUBTARGET", "DWARF_AND_DSYM_SUBTARGET", "get_apple_dsym")
+load(":apple_entitlements.bzl", "entitlements_link_flags")
 load(":apple_sdk.bzl", "get_apple_sdk_name")
 load(
     ":apple_sdk_metadata.bzl",
@@ -42,8 +47,9 @@ load(
 )
 load(":debug.bzl", "DEBUGINFO_SUBTARGET")
 load(":xcode.bzl", "apple_populate_xcode_attributes")
+load(":xctest_swift_support.bzl", "XCTestSwiftSupportInfo")
 
-def apple_test_impl(ctx: AnalysisContext) -> [list[Provider], "promise"]:
+def apple_test_impl(ctx: AnalysisContext) -> [list[Provider], Promise]:
     def get_apple_test_providers(deps_providers) -> list[Provider]:
         xctest_bundle = bundle_output(ctx)
 
@@ -57,6 +63,16 @@ def apple_test_impl(ctx: AnalysisContext) -> [list[Provider], "promise"]:
             cmd_args(ctx.attrs.bridging_header),
         ] if ctx.attrs.bridging_header else []
 
+        shared_library_flags = ["-bundle"]
+
+        # Embedding entitlements (if present) means that we can skip adhoc codesigning
+        # any xctests altogether, provided the test dylib is adhoc signed
+        shared_library_flags += entitlements_link_flags(ctx)
+
+        # The linker will incluide adhoc signature for ARM64 by default, lets
+        # ensure we always have an adhoc signature regardless of arch/linker logic.
+        shared_library_flags += ["-Wl,-adhoc_codesign"]
+
         constructor_params = apple_library_rule_constructor_params_and_swift_providers(
             ctx,
             AppleLibraryAdditionalParams(
@@ -68,7 +84,7 @@ def apple_test_impl(ctx: AnalysisContext) -> [list[Provider], "promise"]:
                     shared_library_name_linker_flags_format = [],
                     # When building Apple tests, we want to link with `-bundle` instead of `-shared` to allow
                     # linking against the bundle loader.
-                    shared_library_flags = ["-bundle"],
+                    shared_library_flags = shared_library_flags,
                 ),
                 generate_sub_targets = CxxRuleSubTargetParams(
                     compilation_database = True,
@@ -94,6 +110,7 @@ def apple_test_impl(ctx: AnalysisContext) -> [list[Provider], "promise"]:
                 force_link_group_linking = True,
             ),
             deps_providers,
+            is_test_target = True,
         )
 
         cxx_library_output = cxx_library_parameterized(ctx, constructor_params)
@@ -105,7 +122,14 @@ def apple_test_impl(ctx: AnalysisContext) -> [list[Provider], "promise"]:
         binary_part = AppleBundlePart(source = test_binary, destination = AppleBundleDestination("executables"), new_name = ctx.attrs.name)
         part_list_output = get_apple_bundle_part_list(ctx, AppleBundlePartListConstructorParams(binaries = [binary_part]))
 
-        bundle_parts = part_list_output.parts + _get_xctest_framework(ctx)
+        xctest_swift_support_needed = None
+        for p in cxx_library_output.providers:
+            if isinstance(p, XCTestSwiftSupportInfo):
+                xctest_swift_support_needed = p.support_needed
+                break
+        expect(xctest_swift_support_needed != None, "Expected `XCTestSwiftSupportInfo` provider to be present")
+
+        bundle_parts = part_list_output.parts + _get_xctest_framework(ctx, xctest_swift_support_needed)
 
         primary_binary_rel_path = get_apple_bundle_part_relative_destination_path(ctx, binary_part)
         swift_stdlib_args = SwiftStdlibArguments(primary_binary_rel_path = primary_binary_rel_path)
@@ -212,10 +236,15 @@ def _get_test_host_app_bundle(ctx: AnalysisContext) -> [Artifact, None]:
 
 def _get_test_host_app_binary(ctx: AnalysisContext, test_host_app_bundle: [Artifact, None]) -> [cmd_args, None]:
     """ Reference to the binary with the test host app bundle, if one exists for this test. Captures the bundle as an artifact in the cmd_args. """
-    if ctx.attrs.test_host_app:
-        return cmd_args([test_host_app_bundle, ctx.attrs.test_host_app[AppleBundleInfo].binary_name], delimiter = "/")
+    if ctx.attrs.test_host_app == None:
+        return None
 
-    return None
+    parts = [test_host_app_bundle]
+    rel_path = bundle_relative_path_for_destination(AppleBundleDestination("executables"), get_apple_sdk_name(ctx), ctx.attrs.extension)
+    if len(rel_path) > 0:
+        parts.append(rel_path)
+    parts.append(ctx.attrs.test_host_app[AppleBundleInfo].binary_name)
+    return cmd_args(parts, delimiter = "/")
 
 def _get_bundle_loader_flags(binary: [cmd_args, None]) -> list[typing.Any]:
     if binary:
@@ -227,8 +256,8 @@ def _get_bundle_loader_flags(binary: [cmd_args, None]) -> list[typing.Any]:
 
 def _xcode_populate_attributes(
         ctx: AnalysisContext,
-        srcs: list[CxxSrcWithFlags.type],
-        argsfiles: dict[str, CompileArgsfile.type],
+        srcs: list[CxxSrcWithFlags],
+        argsfiles: dict[str, CompileArgsfile],
         xctest_bundle: Artifact,
         test_host_app_binary: [cmd_args, None],
         **_kwargs) -> dict[str, typing.Any]:
@@ -262,14 +291,27 @@ def _get_xctest_framework_linker_flags(ctx: AnalysisContext) -> list[[cmd_args, 
         xctest_framework_search_path,
     ]
 
-def _get_xctest_framework(ctx: AnalysisContext) -> list[AppleBundlePart.type]:
+def _get_xctest_framework(ctx: AnalysisContext, swift_support_needed: bool) -> list[AppleBundlePart]:
+    swift_support = [
+        _get_object_from_platform_path(ctx, "Developer/usr/lib/libXCTestSwiftSupport.dylib"),
+    ] if swift_support_needed else []
+    return [
+        _get_object_from_platform_path(ctx, "Developer/Library/Frameworks/XCTest.framework"),
+        _get_object_from_platform_path(ctx, "Developer/Library/PrivateFrameworks/XCTAutomationSupport.framework"),
+        _get_object_from_platform_path(ctx, "Developer/Library/PrivateFrameworks/XCTestCore.framework"),
+        _get_object_from_platform_path(ctx, "Developer/Library/PrivateFrameworks/XCTestSupport.framework"),
+        _get_object_from_platform_path(ctx, "Developer/Library/PrivateFrameworks/XCUIAutomation.framework"),
+        _get_object_from_platform_path(ctx, "Developer/Library/PrivateFrameworks/XCUnit.framework"),
+        _get_object_from_platform_path(ctx, "Developer/usr/lib/libXCTestBundleInject.dylib"),
+    ] + swift_support
+
+def _get_object_from_platform_path(ctx: AnalysisContext, platform_relative_path: str) -> AppleBundlePart:
     toolchain = ctx.attrs._apple_toolchain[AppleToolchainInfo]
-    xctest_framework_platform_relative_path = "Developer/Library/Frameworks/XCTest.framework"
-    copied_xctest_framework = ctx.actions.declare_output(paths.basename(xctest_framework_platform_relative_path))
+    copied_framework = ctx.actions.declare_output(paths.basename(platform_relative_path))
 
     # We have to copy because:
     # 1) Platform path might be a string (e.g. for Xcode toolchains)
     # 2) It's not possible to project artifact which is not produced by different target (and platform path is a separate target for distributed toolchains).
-    ctx.actions.run(["cp", "-PR", cmd_args(toolchain.platform_path, xctest_framework_platform_relative_path, delimiter = "/"), copied_xctest_framework.as_output()], category = "extract_xctest_framework")
+    ctx.actions.run(["cp", "-PR", cmd_args(toolchain.platform_path, platform_relative_path, delimiter = "/"), copied_framework.as_output()], category = "extract_framework", identifier = platform_relative_path)
 
-    return [AppleBundlePart(source = copied_xctest_framework, destination = AppleBundleDestination("frameworks"), codesign_on_copy = True)]
+    return AppleBundlePart(source = copied_framework, destination = AppleBundleDestination("frameworks"), codesign_on_copy = True)

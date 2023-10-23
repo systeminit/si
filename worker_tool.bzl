@@ -8,9 +8,9 @@
 load("@prelude//utils:utils.bzl", "expect")
 
 WorkerToolInfo = provider(
-    fields = [
-        "command",  # cmd_args
-    ],
+    fields = {
+        "command": provider_field(typing.Any, default = None),  # cmd_args
+    },
 )
 
 def worker_tool(ctx: AnalysisContext) -> list[Provider]:
@@ -61,9 +61,9 @@ def worker_tool(ctx: AnalysisContext) -> list[Provider]:
 
     return [
         DefaultInfo(),
-        TemplatePlaceholderInfo(keyed_variables = {
-            "worker": worker_tool_cmd,
-        }),
+        RunInfo(
+            args = worker_tool_cmd,
+        ),
         WorkerToolInfo(
             command = worker_tool_cmd,
         ),

@@ -12,7 +12,9 @@ load("@prelude//android:android_providers.bzl", "AndroidApkInfo", "AndroidApkUnd
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//android:configuration.bzl", "get_deps_by_platform")
 load("@prelude//android:dex_rules.bzl", "get_multi_dex", "get_single_primary_dex", "get_split_dex_merge_config", "merge_to_single_dex", "merge_to_split_dex")
+load("@prelude//android:util.bzl", "create_enhancement_context")
 load("@prelude//java:java_providers.bzl", "create_java_packaging_dep", "get_all_java_packaging_deps")
+load("@prelude//java/utils:java_utils.bzl", "get_class_to_source_map_info")
 load("@prelude//utils:utils.bzl", "expect")
 
 def android_instrumentation_apk_impl(ctx: AnalysisContext):
@@ -49,7 +51,7 @@ def android_instrumentation_apk_impl(ctx: AnalysisContext):
         referenced_resources_lists = [],
         manifest_entries = apk_under_test_info.manifest_entries,
         resource_infos_to_exclude = apk_under_test_info.resource_infos,
-        r_dot_java_packages_to_exclude = apk_under_test_info.r_dot_java_packages,
+        r_dot_java_packages_to_exclude = apk_under_test_info.r_dot_java_packages.list(),
     )
     android_toolchain = ctx.attrs._android_toolchain[AndroidToolchainInfo]
     java_packaging_deps += [
@@ -89,8 +91,9 @@ def android_instrumentation_apk_impl(ctx: AnalysisContext):
                 jars_to_owners.keys(),
             )
 
+    enhance_ctx = create_enhancement_context(ctx)
     native_library_info = get_android_binary_native_library_info(
-        ctx,
+        enhance_ctx,
         android_packageable_info,
         filtered_deps_by_platform,
         prebuilt_native_library_dirs_to_exclude = apk_under_test_info.prebuilt_native_library_dirs,
@@ -107,10 +110,17 @@ def android_instrumentation_apk_impl(ctx: AnalysisContext):
         resources_info = resources_info,
     )
 
+    class_to_srcs, _ = get_class_to_source_map_info(
+        ctx,
+        outputs = None,
+        deps = deps,
+    )
+
     return [
         AndroidApkInfo(apk = output_apk, manifest = resources_info.manifest),
         AndroidInstrumentationApkInfo(apk_under_test = ctx.attrs.apk[AndroidApkInfo].apk),
-        DefaultInfo(default_output = output_apk),
+        DefaultInfo(default_output = output_apk, sub_targets = enhance_ctx.get_sub_targets()),
+        class_to_srcs,
     ]
 
 def _verify_params(ctx: AnalysisContext):

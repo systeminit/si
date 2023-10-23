@@ -15,7 +15,14 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, IO, NamedTuple
+from typing import Any, Dict, IO, NamedTuple
+
+
+IS_WINDOWS: bool = os.name == "nt"
+
+
+def eprint(*args: Any, **kwargs: Any) -> None:
+    print(*args, end="\n", file=sys.stderr, flush=True, **kwargs)
 
 
 def cfg_env(rustc_cfg: Path) -> Dict[str, str]:
@@ -98,14 +105,66 @@ def create_cwd(path: Path, manifest_dir: Path) -> Path:
     return path
 
 
-def run_buildscript(buildscript: str, env: Dict[str, str], cwd: str) -> str:
+# In some environments, invoking the rustc binary may actually invoke another
+# tool that fetches the binary from a remote location. This fetch may encounter
+# network errors. Ideally, build scripts that invoke rustc would reliably fail
+# when such a thing happens, but in practice they don't. To mitigate, we
+# manually invoke `rustc --version` and make sure that succeeds.
+def ensure_rustc_available(
+    env: Dict[str, str],
+    cwd: Path,
+) -> None:
+    rustc, target = env.get("RUSTC"), env.get("TARGET")
+    assert rustc is not None, "RUSTC env is missing"
+    assert target is not None, "TARGET env is missing"
+
+    # NOTE: `HOST` is optional.
+    host = env.get("HOST")
+
     try:
-        proc = subprocess.run(
+        # Run through cmd.exe on Windows so if rustc is a batch script
+        # (like the command_alias trampoline is), it is found relative to
+        # cwd.
+        #
+        # Executing `os.path.join(cwd, rustc)` would also work, but because
+        # of `../` in the path, it's possible to hit path length limits.
+        # Resolving it would remove the `..` but then sometimes things
+        # fail with exit code `3221225725` ("out of stack memory").
+        # I suspect it's some infinite loop brought about by the trampoline
+        # and symlinks.
+        subprocess.check_output(  # noqa: P204
+            [rustc, "--version"],
+            cwd=cwd,
+            shell=IS_WINDOWS,
+        )
+        # A multiplexed sysroot may involve another fetch,
+        # so pass `--target` to check that too.
+        if host != target:
+            subprocess.check_output(  # noqa: P204
+                [rustc, f"--target={target}", "--version"],
+                cwd=cwd,
+                shell=IS_WINDOWS,
+            )
+    except OSError as ex:
+        eprint(f"Failed to run {rustc} because {ex}")
+        sys.exit(1)
+    except subprocess.CalledProcessError as ex:
+        eprint(f"Command failed with exit code {ex.returncode}")
+        eprint(f"Command: {ex.cmd}")
+        if ex.stdout:
+            eprint(f"Stdout: {ex.stdout}")
+        sys.exit(1)
+
+
+def run_buildscript(
+    buildscript: str,
+    env: Dict[str, str],
+    cwd: Path,
+) -> str:
+    try:
+        return subprocess.check_output(
             os.path.abspath(buildscript),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
             encoding="utf-8",
-            check=True,
             env=env,
             cwd=cwd,
         )
@@ -113,9 +172,7 @@ def run_buildscript(buildscript: str, env: Dict[str, str], cwd: str) -> str:
         print(f"Failed to run {buildscript} because {ex}", file=sys.stderr)
         sys.exit(1)
     except subprocess.CalledProcessError as ex:
-        print(ex.stderr, file=sys.stderr)
         sys.exit(ex.returncode)
-    return proc.stdout
 
 
 class Args(NamedTuple):
@@ -143,6 +200,7 @@ def main() -> None:  # noqa: C901
     env = cfg_env(args.rustc_cfg)
 
     out_dir = os.getenv("OUT_DIR")
+    assert out_dir is not None, "OUT_DIR env is missing"
     os.makedirs(out_dir, exist_ok=True)
     env["OUT_DIR"] = os.path.abspath(out_dir)
 
@@ -150,6 +208,9 @@ def main() -> None:  # noqa: C901
     env["CARGO_MANIFEST_DIR"] = os.path.abspath(cwd)
 
     env = dict(os.environ, **env)
+
+    ensure_rustc_available(env=env, cwd=cwd)
+
     script_output = run_buildscript(args.buildscript, env=env, cwd=cwd)
 
     cargo_rustc_cfg_pattern = re.compile("^cargo:rustc-cfg=(.*)")
@@ -159,7 +220,7 @@ def main() -> None:  # noqa: C901
         if cargo_rustc_cfg_match:
             flags += "--cfg={}\n".format(cargo_rustc_cfg_match.group(1))
         else:
-            print(line)
+            print(line, end="\n")
     args.outfile.write(flags)
 
 

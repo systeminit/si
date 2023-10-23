@@ -6,14 +6,18 @@
 # of this source tree.
 
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
+load(
+    "@prelude//java:java_providers.bzl",
+    "JavaPackagingDep",  # @unused Used as type
+)
 load("@prelude//java:java_toolchain.bzl", "JavaToolchainInfo")
-load("@prelude//java/utils:java_utils.bzl", "get_path_separator")
+load("@prelude//java/utils:java_utils.bzl", "get_path_separator_for_exec_os")
 load("@prelude//utils:utils.bzl", "expect")
 
 _UNSCRUBBED_JARS_DIR = "unscrubbed"
 
 ProguardOutput = record(
-    jars_to_owners = dict[Artifact, "target_label"],
+    jars_to_owners = dict[Artifact, TargetLabel],
     proguard_configuration_output_file = [Artifact, None],
     proguard_mapping_output_file = Artifact,
     proguard_artifacts = list[Artifact],
@@ -29,7 +33,7 @@ def _get_proguard_command_line_args(
         configuration: [Artifact, None],
         seeds: [Artifact, None],
         usage: [Artifact, None],
-        android_toolchain: AndroidToolchainInfo.type) -> (cmd_args, list[Artifact]):
+        android_toolchain: AndroidToolchainInfo) -> (cmd_args, list[Artifact]):
     cmd = cmd_args()
     hidden = []
     cmd.add("-basedirectory", "<user.dir>")
@@ -55,7 +59,7 @@ def _get_proguard_command_line_args(
 
     library_jars = android_toolchain.android_bootclasspath + additional_library_jars
     cmd.add("-libraryjars")
-    cmd.add(cmd_args(library_jars, delimiter = get_path_separator()))
+    cmd.add(cmd_args(library_jars, delimiter = get_path_separator_for_exec_os(ctx)))
     hidden.extend(library_jars)
 
     cmd.add("-printmapping", mapping.as_output())
@@ -70,8 +74,8 @@ def _get_proguard_command_line_args(
 
 def run_proguard(
         ctx: AnalysisContext,
-        android_toolchain: AndroidToolchainInfo.type,
-        java_toolchain: JavaToolchainInfo.type,
+        android_toolchain: AndroidToolchainInfo,
+        java_toolchain: JavaToolchainInfo,
         command_line_args_file: Artifact,
         command_line_args: cmd_args,
         mapping_file: Artifact,
@@ -106,10 +110,10 @@ def run_proguard(
 # e.g. Redex might want to consume it) but we don't actually run the proguard command.
 def get_proguard_output(
         ctx: AnalysisContext,
-        input_jars: dict[Artifact, "target_label"],
-        java_packaging_deps: list["JavaPackagingDep"],
+        input_jars: dict[Artifact, TargetLabel],
+        java_packaging_deps: list[JavaPackagingDep],
         aapt_generated_proguard_config: [Artifact, None],
-        additional_library_jars: list[Artifact]) -> ProguardOutput.type:
+        additional_library_jars: list[Artifact]) -> ProguardOutput:
     proguard_configs = [packaging_dep.proguard_config for packaging_dep in java_packaging_deps if packaging_dep.proguard_config]
     if ctx.attrs.proguard_config:
         proguard_configs.append(ctx.attrs.proguard_config)

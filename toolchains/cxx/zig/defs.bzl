@@ -123,15 +123,18 @@ load(
 
 DEFAULT_MAKE_COMP_DB = "prelude//cxx/tools:make_comp_db"
 
-ZigReleaseInfo = provider(fields = [
-    "version",
-    "url",
-    "sha256",
-])
+ZigReleaseInfo = provider(
+    # @unsorted-dict-items
+    fields = {
+        "version": provider_field(typing.Any, default = None),
+        "url": provider_field(typing.Any, default = None),
+        "sha256": provider_field(typing.Any, default = None),
+    },
+)
 
 def _get_zig_release(
         version: str,
-        platform: str) -> ZigReleaseInfo.type:
+        platform: str) -> ZigReleaseInfo:
     if not version in releases:
         fail("Unknown zig release version '{}'. Available versions: {}".format(
             version,
@@ -150,11 +153,14 @@ def _get_zig_release(
         sha256 = zig_platform["shasum"],
     )
 
-ZigDistributionInfo = provider(fields = [
-    "version",
-    "arch",
-    "os",
-])
+ZigDistributionInfo = provider(
+    # @unsorted-dict-items
+    fields = {
+        "version": provider_field(typing.Any, default = None),
+        "arch": provider_field(typing.Any, default = None),
+        "os": provider_field(typing.Any, default = None),
+    },
+)
 
 def _zig_distribution_impl(ctx: AnalysisContext) -> list[Provider]:
     dst = ctx.actions.declare_output("zig")
@@ -339,8 +345,9 @@ def _cxx_zig_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
             produce_interface_from_stub_shared_library = True,
             shlib_interfaces = ShlibInterfacesMode("disabled"),
             shared_dep_runtime_ld_flags = ctx.attrs.shared_dep_runtime_ld_flags,
-            shared_library_name_format = "lib{}.so",
-            shared_library_versioned_name_format = "lib{}.so.{}",
+            shared_library_name_default_prefix = "lib",
+            shared_library_name_format = "{}.so",
+            shared_library_versioned_name_format = "{}.so.{}",
             static_dep_runtime_ld_flags = ctx.attrs.static_dep_runtime_ld_flags,
             static_library_extension = "a",
             static_pic_dep_runtime_ld_flags = ctx.attrs.static_pic_dep_runtime_ld_flags,
@@ -376,7 +383,7 @@ def _cxx_zig_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
             strip_non_global_flags = ctx.attrs.strip_non_global_flags,
             strip_all_flags = ctx.attrs.strip_all_flags,
         ),
-        #dist_lto_tools_info: [DistLtoToolsInfo.type, None] = None,
+        #dist_lto_tools_info: [DistLtoToolsInfo, None] = None,
         #split_debug_mode = SplitDebugMode("none"),
         #bolt_enabled = False,
     )

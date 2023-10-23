@@ -5,11 +5,17 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load(
+    "@prelude//apple:apple_genrule_deps.bzl",
+    "APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_NAME",
+    "APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_TYPE",
+    "APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_NAME",
+    "APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_TYPE",
+)
 load("@prelude//apple/swift:swift_toolchain.bzl", "swift_toolchain_impl")
 load("@prelude//apple/swift:swift_toolchain_types.bzl", "SwiftObjectFormat")
 load("@prelude//apple/user:cpu_split_transition.bzl", "cpu_split_transition")
 load("@prelude//cxx:headers.bzl", "CPrecompiledHeaderInfo")
-load("@prelude//cxx:omnibus.bzl", "omnibus_environment_attr")
 load("@prelude//cxx/user:link_group_map.bzl", "link_group_map_attr")
 load("@prelude//linking:execution_preference.bzl", "link_execution_preference_attr")
 load("@prelude//linking:link_info.bzl", "LinkOrdering")
@@ -28,6 +34,7 @@ load(
     "APPLE_ARCHIVE_OBJECTS_LOCALLY_OVERRIDE_ATTR_NAME",
     "apple_bundle_extra_attrs",
     "apple_test_extra_attrs",
+    "get_apple_bundle_toolchain_attr",
     "get_apple_toolchain_attr",
     "get_apple_xctoolchain_attr",
     "get_apple_xctoolchain_bundle_id_attr",
@@ -61,6 +68,13 @@ implemented_rules = {
 
 _APPLE_TOOLCHAIN_ATTR = get_apple_toolchain_attr()
 
+ApplePackageExtension = enum(
+    "ipa",
+    "pkg",
+    "dmg",
+    "zip",
+)
+
 extra_attributes = {
     "apple_asset_catalog": {
         "dirs": attrs.list(attrs.source(allow_directory = True), default = []),
@@ -81,8 +95,9 @@ extra_attributes = {
         "_apple_tools": attrs.exec_dep(default = "fbsource//xplat/buck2/platform/apple:apple-tools", providers = [AppleToolsInfo]),
         "_apple_xctoolchain": get_apple_xctoolchain_attr(),
         "_apple_xctoolchain_bundle_id": get_apple_xctoolchain_bundle_id_attr(),
-        "_omnibus_environment": omnibus_environment_attr(),
         "_stripped_default": attrs.bool(default = False),
+        APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_NAME: APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_TYPE,
+        APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_NAME: APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_TYPE,
     },
     "apple_bundle": apple_bundle_extra_attrs(),
     "apple_library": {
@@ -102,13 +117,18 @@ extra_attributes = {
         "_apple_tools": attrs.exec_dep(default = "fbsource//xplat/buck2/platform/apple:apple-tools", providers = [AppleToolsInfo]),
         "_apple_xctoolchain": get_apple_xctoolchain_attr(),
         "_apple_xctoolchain_bundle_id": get_apple_xctoolchain_bundle_id_attr(),
-        "_omnibus_environment": omnibus_environment_attr(),
         "_stripped_default": attrs.bool(default = False),
         APPLE_ARCHIVE_OBJECTS_LOCALLY_OVERRIDE_ATTR_NAME: attrs.option(attrs.bool(), default = None),
+        APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_NAME: APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_TYPE,
+        APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_NAME: APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_TYPE,
     },
     "apple_package": {
         "bundle": attrs.dep(providers = [AppleBundleInfo]),
-        "_apple_toolchain": _APPLE_TOOLCHAIN_ATTR,
+        "ext": attrs.enum(ApplePackageExtension.values(), default = "ipa"),
+        "packager": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "packager_args": attrs.list(attrs.arg(), default = []),
+        "validator": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "_apple_toolchain": get_apple_bundle_toolchain_attr(),
         # FIXME: prelude// should be standalone (not refer to fbsource//)
         "_apple_tools": attrs.exec_dep(default = "fbsource//xplat/buck2/platform/apple:apple-tools", providers = [AppleToolsInfo]),
         "_ipa_compression_level": attrs.enum(IpaCompressionLevel.values()),
@@ -179,7 +199,6 @@ extra_attributes = {
         "framework": attrs.option(attrs.source(allow_directory = True), default = None),
         "preferred_linkage": attrs.enum(Linkage, default = "any"),
         "_apple_toolchain": _APPLE_TOOLCHAIN_ATTR,
-        "_omnibus_environment": omnibus_environment_attr(),
     },
     "scene_kit_assets": {
         "path": attrs.source(allow_directory = True),
@@ -189,6 +208,7 @@ extra_attributes = {
     },
     "swift_toolchain": {
         "architecture": attrs.option(attrs.string(), default = None),  # TODO(T115173356): Make field non-optional
+        "make_swift_comp_db": attrs.default_only(attrs.dep(providers = [RunInfo], default = "prelude//apple/tools:make_swift_comp_db")),
         "object_format": attrs.enum(SwiftObjectFormat.values(), default = "object"),
         # A placeholder tool that can be used to set up toolchain constraints.
         # Useful when fat and thin toolchahins share the same underlying tools via `command_alias()`,

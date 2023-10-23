@@ -34,7 +34,7 @@ def _write_test_modules_list(
     contents += "]\n"
     return name, ctx.actions.write(name, contents)
 
-def python_test_executable(ctx: AnalysisContext) -> PexProviders.type:
+def python_test_executable(ctx: AnalysisContext) -> PexProviders:
     main_module = value_or(ctx.attrs.main_module, "__test_main__")
 
     srcs = qualify_srcs(ctx.label, ctx.attrs.base_module, from_named_set(ctx.attrs.srcs))
@@ -62,7 +62,7 @@ def python_test_impl(ctx: AnalysisContext) -> list[Provider]:
     test_cmd = pex.run_cmd
 
     # Setup a RE executor based on the `remote_execution` param.
-    re_executor = get_re_executor_from_props(ctx.attrs.remote_execution)
+    re_executor = get_re_executor_from_props(ctx)
 
     return inject_test_run_info(
         ctx,

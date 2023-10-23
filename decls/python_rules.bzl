@@ -7,6 +7,7 @@
 
 load(":common.bzl", "CxxRuntimeType", "CxxSourceType", "HeadersAsRawHeadersMode", "LinkableDepType", "buck", "prelude_rule")
 load(":cxx_common.bzl", "cxx_common")
+load(":native_common.bzl", "native_common")
 load(":python_common.bzl", "python_common")
 
 NativeLinkStrategy = ["separate", "merged"]
@@ -78,6 +79,7 @@ cxx_python_extension = prelude_rule(
         } |
         cxx_common.linker_extra_outputs_arg() |
         cxx_common.linker_flags_arg() |
+        cxx_common.local_linker_flags_arg() |
         cxx_common.platform_linker_flags_arg() |
         {
             "contacts": attrs.list(attrs.string(), default = []),
@@ -249,6 +251,8 @@ python_binary = prelude_rule(
         python_common.package_style_arg() |
         python_common.linker_flags_arg() |
         python_common.deduplicate_merged_link_roots() |
+        native_common.link_group_deps() |
+        native_common.link_group_public_deps_label() |
         {
             "build_args": attrs.list(attrs.arg(), default = []),
             "compile": attrs.option(attrs.bool(), default = None),
@@ -421,6 +425,8 @@ python_test = prelude_rule(
         python_common.preload_deps_arg() |
         python_common.linker_flags_arg() |
         python_common.deduplicate_merged_link_roots() |
+        native_common.link_group_deps() |
+        native_common.link_group_public_deps_label() |
         {
             "additional_coverage_targets": attrs.list(attrs.dep(), default = []),
             "build_args": attrs.list(attrs.arg(), default = []),

@@ -27,17 +27,14 @@ def get_product_name(ctx: AnalysisContext) -> str:
 def get_extension_attr(ctx: AnalysisContext) -> typing.Any:
     return ctx.attrs.extension
 
-def get_default_binary_dep(ctx: AnalysisContext) -> [Dependency, None]:
-    if ctx.attrs.binary == None:
-        return None
+def get_default_binary_dep(binary_deps: dict[str, Dependency]) -> [Dependency, None]:
+    if len(binary_deps.items()) == 1:
+        return binary_deps.values()[0]
 
-    if len(ctx.attrs.binary.items()) == 1:
-        return ctx.attrs.binary.values()[0]
+    return binary_deps["arm64"] if "arm64" in binary_deps else binary_deps["x86_64"]
 
-    return ctx.attrs.binary["arm64"] if "arm64" in ctx.attrs.binary else ctx.attrs.binary["x86_64"]
-
-def get_flattened_binary_deps(ctx: AnalysisContext) -> list[Dependency]:
-    return [] if ctx.attrs.binary == None else ctx.attrs.binary.values()
+def get_flattened_binary_deps(binary_deps: dict[str, Dependency]) -> list[Dependency]:
+    return binary_deps.values()
 
 # Derives the effective deployment target for the bundle. It's
 # usually the deployment target of the binary if present,
@@ -70,11 +67,11 @@ def get_bundle_min_target_version(ctx: AnalysisContext, binary: [Dependency, Non
     # TODO(T110378109): support default value from SDK `Info.plist`
     fail("Could not determine min target sdk version for bundle: {}".format(ctx.label))
 
-def get_bundle_resource_processing_options(ctx: AnalysisContext) -> AppleResourceProcessingOptions.type:
+def get_bundle_resource_processing_options(ctx: AnalysisContext) -> AppleResourceProcessingOptions:
     compile_resources_locally = value_or(ctx.attrs._compile_resources_locally_override, ctx.attrs._apple_toolchain[AppleToolchainInfo].compile_resources_locally)
     return AppleResourceProcessingOptions(prefer_local = compile_resources_locally, allow_cache_upload = compile_resources_locally)
 
-def get_bundle_infos_from_graph(graph: ResourceGraphInfo.type) -> list[AppleBundleLinkerMapInfo.type]:
+def get_bundle_infos_from_graph(graph: ResourceGraphInfo) -> list[AppleBundleLinkerMapInfo]:
     bundle_infos = []
     for node in graph.nodes.traverse():
         if not node.resource_spec:
@@ -91,7 +88,7 @@ def get_bundle_infos_from_graph(graph: ResourceGraphInfo.type) -> list[AppleBund
 
     return bundle_infos
 
-def merge_bundle_linker_maps_info(infos: list[AppleBundleLinkerMapInfo.type]) -> AppleBundleLinkerMapInfo.type:
+def merge_bundle_linker_maps_info(infos: list[AppleBundleLinkerMapInfo]) -> AppleBundleLinkerMapInfo:
     return AppleBundleLinkerMapInfo(
         linker_maps = flatten([info.linker_maps for info in infos]),
     )

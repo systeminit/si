@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# @starlark-rust: allow_string_literals_in_type_expr
+
 load(
     "@prelude//java:java_providers.bzl",
     "make_compile_outputs",
@@ -42,10 +44,10 @@ base_command_params = struct(
 )
 
 def create_jar_artifact_javacd(
-        actions: AnalysisActions,
+        ctx: AnalysisContext,
         actions_identifier: [str, None],
-        abi_generation_mode: [AbiGenerationMode.type, None],
-        java_toolchain: JavaToolchainInfo.type,
+        abi_generation_mode: [AbiGenerationMode, None],
+        java_toolchain: JavaToolchainInfo,
         label,
         output: [Artifact, None],
         javac_tool: [typing.Any, None],
@@ -71,6 +73,7 @@ def create_jar_artifact_javacd(
         # TODO(cjhopman): We can probably handle this better. I think we should be able to just use the non-javacd path.
         fail("cannot set explicit javac on library when using javacd")
 
+    actions = ctx.actions
     resources_map = get_resources_map(java_toolchain, label.package, resources, resources_root)
 
     # TODO(cjhopman): Handle manifest file.
@@ -79,7 +82,11 @@ def create_jar_artifact_javacd(
     bootclasspath_entries = add_java_7_8_bootclasspath(target_level, bootclasspath_entries, java_toolchain)
     abi_generation_mode = get_abi_generation_mode(abi_generation_mode, java_toolchain, srcs, annotation_processor_properties)
 
-    should_create_class_abi = not is_creating_subtarget and (abi_generation_mode == AbiGenerationMode("class") or not is_building_android_binary)
+    should_create_class_abi = (
+        not additional_compiled_srcs and
+        not is_creating_subtarget and
+        (abi_generation_mode == AbiGenerationMode("class") or not is_building_android_binary)
+    )
     if should_create_class_abi:
         class_abi_jar = declare_prefixed_output(actions, actions_identifier, "class-abi.jar")
         class_abi_output_dir = declare_prefixed_output(actions, actions_identifier, "class_abi_dir", dir = True)
@@ -96,9 +103,9 @@ def create_jar_artifact_javacd(
     track_class_usage = javac_tool == None
 
     def encode_library_command(
-            output_paths: OutputPaths.type,
+            output_paths: OutputPaths,
             path_to_class_hashes: Artifact,
-            classpath_jars_tag: "artifact_tag") -> struct.type:
+            classpath_jars_tag: ArtifactTag) -> struct:
         target_type = TargetType("library")
 
         base_jar_command = encode_base_jar_command(
@@ -136,10 +143,10 @@ def create_jar_artifact_javacd(
         )
 
     def encode_abi_command(
-            output_paths: OutputPaths.type,
-            target_type: TargetType.type,
-            classpath_jars_tag: "artifact_tag",
-            source_only_abi_compiling_deps: list["JavaClasspathEntry"] = []) -> struct.type:
+            output_paths: OutputPaths,
+            target_type: TargetType,
+            classpath_jars_tag: ArtifactTag,
+            source_only_abi_compiling_deps: list["JavaClasspathEntry"] = []) -> struct:
         base_jar_command = encode_base_jar_command(
             javac_tool,
             target_type,
@@ -176,12 +183,12 @@ def create_jar_artifact_javacd(
     def define_javacd_action(
             category_prefix: str,
             actions_identifier: [str, None],
-            encoded_command: struct.type,
+            encoded_command: struct,
             qualified_name: str,
-            output_paths: OutputPaths.type,
-            classpath_jars_tag: "artifact_tag",
+            output_paths: OutputPaths,
+            classpath_jars_tag: ArtifactTag,
             abi_dir: [Artifact, None],
-            target_type: TargetType.type,
+            target_type: TargetType,
             path_to_class_hashes: [Artifact, None],
             is_creating_subtarget: bool = False,
             source_only_abi_compiling_deps: list["JavaClasspathEntry"] = []):

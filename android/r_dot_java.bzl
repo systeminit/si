@@ -21,9 +21,9 @@ RDotJavaSourceCode = record(
 
 def get_dummy_r_dot_java(
         ctx: AnalysisContext,
-        merge_android_resources_tool: RunInfo.type,
-        android_resources: list[AndroidResourceInfo.type],
-        union_package: [str, None]) -> JavaLibraryInfo.type:
+        merge_android_resources_tool: RunInfo,
+        android_resources: list[AndroidResourceInfo],
+        union_package: [str, None]) -> JavaLibraryInfo:
     r_dot_java_source_code = _generate_r_dot_java_source_code(ctx, merge_android_resources_tool, android_resources, "dummy_r_dot_java", union_package = union_package)
     library_output = _generate_and_compile_r_dot_java(
         ctx,
@@ -38,8 +38,8 @@ def get_dummy_r_dot_java(
 
 def generate_r_dot_javas(
         ctx: AnalysisContext,
-        merge_android_resources_tool: RunInfo.type,
-        android_resources: list[AndroidResourceInfo.type],
+        merge_android_resources_tool: RunInfo,
+        android_resources: list[AndroidResourceInfo],
         banned_duplicate_resource_types: list[str],
         uber_r_dot_txt_files: list[Artifact],
         override_symbols_paths: list[Artifact],
@@ -47,7 +47,7 @@ def generate_r_dot_javas(
         union_package: [str, None],
         referenced_resources_lists: list[Artifact],
         generate_strings_and_ids_separately: [bool, None] = True,
-        remove_classes: [list[str], None] = []) -> list[JavaLibraryInfo.type]:
+        remove_classes: list[str] = []) -> list[JavaLibraryInfo]:
     r_dot_java_source_code = _generate_r_dot_java_source_code(
         ctx,
         merge_android_resources_tool,
@@ -94,8 +94,8 @@ def generate_r_dot_javas(
 
 def _generate_r_dot_java_source_code(
         ctx: AnalysisContext,
-        merge_android_resources_tool: RunInfo.type,
-        android_resources: list[AndroidResourceInfo.type],
+        merge_android_resources_tool: RunInfo,
+        android_resources: list[AndroidResourceInfo],
         identifier: str,
         force_final_resources_ids = False,
         generate_strings_and_ids_separately = False,
@@ -104,13 +104,13 @@ def _generate_r_dot_java_source_code(
         override_symbols_paths: list[Artifact] = [],
         duplicate_resources_allowlist: [Artifact, None] = None,
         union_package: [str, None] = None,
-        referenced_resources_lists: list[Artifact] = []) -> RDotJavaSourceCode.type:
+        referenced_resources_lists: list[Artifact] = []) -> RDotJavaSourceCode:
     merge_resources_cmd = cmd_args(merge_android_resources_tool)
 
     r_dot_txt_info = cmd_args()
-    deduped_android_resources = set([(android_resource.text_symbols, android_resource.r_dot_java_package) for android_resource in android_resources])
-    for (text_symbols, r_dot_java_package) in deduped_android_resources.list():
-        r_dot_txt_info.add(cmd_args([text_symbols, r_dot_java_package, "_"], delimiter = " "))  # pass target name
+    deduped_android_resources = set([(android_resource.text_symbols, android_resource.r_dot_java_package, android_resource.raw_target) for android_resource in android_resources])
+    for (text_symbols, r_dot_java_package, raw_target) in deduped_android_resources.list():
+        r_dot_txt_info.add(cmd_args([text_symbols, r_dot_java_package, raw_target], delimiter = " "))
 
     r_dot_txt_info_file = ctx.actions.write("r_dot_txt_info_file_for_{}.txt".format(identifier), r_dot_txt_info)
     merge_resources_cmd.add(["--symbol-file-info", r_dot_txt_info_file])
@@ -180,7 +180,7 @@ def _generate_and_compile_r_dot_java(
         ctx: AnalysisContext,
         r_dot_java_source_code_zipped: Artifact,
         identifier: str,
-        remove_classes: list[str] = []) -> JavaClasspathEntry.type:
+        remove_classes: list[str] = []) -> JavaClasspathEntry:
     r_dot_java_out = ctx.actions.declare_output("{}.jar".format(identifier))
 
     compile_to_jar(

@@ -20,7 +20,7 @@ load(
 )
 load(":apple_toolchain_types.bzl", "AppleToolchainInfo", "AppleToolsInfo")
 
-def process_info_plist(ctx: AnalysisContext, override_input: [Artifact, None]) -> AppleBundlePart.type:
+def process_info_plist(ctx: AnalysisContext, override_input: [Artifact, None]) -> AppleBundlePart:
     input = _preprocess_info_plist(ctx)
     output = ctx.actions.declare_output("Info.plist")
     additional_keys = _additional_keys_as_json_file(ctx)
@@ -72,7 +72,7 @@ def _plist_substitutions_as_json_file(ctx: AnalysisContext) -> [Artifact, None]:
     substitutions_json = ctx.actions.write_json("plist_substitutions.json", info_plist_substitutions)
     return substitutions_json
 
-def process_plist(ctx: AnalysisContext, input: Artifact, output: "output_artifact", override_input: [Artifact, None] = None, additional_keys: [Artifact, None] = None, override_keys: [Artifact, None] = None, action_id: [str, None] = None):
+def process_plist(ctx: AnalysisContext, input: Artifact, output: OutputArtifact, override_input: [Artifact, None] = None, additional_keys: [Artifact, None] = None, override_keys: [Artifact, None] = None, action_id: [str, None] = None):
     apple_tools = ctx.attrs._apple_tools[AppleToolsInfo]
     processor = apple_tools.info_plist_processor
     override_input_arguments = ["--override-input", override_input] if override_input != None else []
@@ -123,7 +123,7 @@ def _info_plist_additional_keys(ctx: AnalysisContext) -> dict[str, typing.Any]:
 
     return result
 
-def _extra_mac_info_plist_keys(sdk_metadata: AppleSdkMetadata.type, extension: str) -> dict[str, typing.Any]:
+def _extra_mac_info_plist_keys(sdk_metadata: AppleSdkMetadata, extension: str) -> dict[str, typing.Any]:
     if sdk_metadata.name == MacOSXSdkMetadata.name and extension == "xpc":
         return {
             "NSHighResolutionCapable": True,

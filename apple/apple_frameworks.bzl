@@ -5,7 +5,6 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//:artifact_tset.bzl", "make_artifact_tset")
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//apple/swift:swift_compilation.bzl", "extract_swiftmodule_linkables", "get_swiftmodule_linker_flags")
 load("@prelude//apple/swift:swift_runtime.bzl", "extract_swift_runtime_linkables", "get_swift_runtime_linker_flags")
@@ -13,17 +12,15 @@ load(
     "@prelude//linking:link_info.bzl",
     "FrameworksLinkable",
     "LinkArgs",
-    "LinkArgsTSet",
     "LinkInfo",
-    "LinkInfos",
-    "LinkInfosTSet",
-    "LinkableType",
+    "LinkStrategy",  # @unused Used as a type
     "MergedLinkInfo",
     "SwiftRuntimeLinkable",  # @unused Used as a type
     "SwiftmoduleLinkable",  # @unused Used as a type
-    "get_link_args",
+    "get_link_args_for_strategy",
     "merge_framework_linkables",
     "merge_swift_runtime_linkables",
+    "merge_swiftmodule_linkables",
 )
 load("@prelude//utils:utils.bzl", "expect")
 load(":apple_framework_versions.bzl", "get_framework_linker_args")
@@ -34,7 +31,7 @@ _IMPLICIT_SDKROOT_FRAMEWORK_SEARCH_PATHS = [
     "$SDKROOT/System/Library/Frameworks",
 ]
 
-def apple_create_frameworks_linkable(ctx: AnalysisContext) -> [FrameworksLinkable.type, None]:
+def apple_create_frameworks_linkable(ctx: AnalysisContext) -> [FrameworksLinkable, None]:
     if not ctx.attrs.libraries and not ctx.attrs.frameworks:
         return None
 
@@ -44,7 +41,7 @@ def apple_create_frameworks_linkable(ctx: AnalysisContext) -> [FrameworksLinkabl
         framework_names = [to_framework_name(x) for x in ctx.attrs.frameworks],
     )
 
-def _get_apple_frameworks_linker_flags(ctx: AnalysisContext, linkable: [FrameworksLinkable.type, None]) -> cmd_args:
+def _get_apple_frameworks_linker_flags(ctx: AnalysisContext, linkable: [FrameworksLinkable, None]) -> cmd_args:
     if not linkable:
         return cmd_args()
 
@@ -127,38 +124,37 @@ def _non_sdk_unresolved_framework_directory(framework_path: str) -> [str, None]:
 
 def apple_build_link_args_with_deduped_flags(
         ctx: AnalysisContext,
-        merged: MergedLinkInfo.type,
-        frameworks_linkable: [FrameworksLinkable.type, None],
-        link_style: "LinkStyle",
+        deps_merged_link_infos: list[MergedLinkInfo],
+        frameworks_linkable: [FrameworksLinkable, None],
+        link_strategy: LinkStrategy,
+        swiftmodule_linkable: [SwiftmoduleLinkable, None] = None,
         prefer_stripped: bool = False,
-        swiftmodule_linkable: [SwiftmoduleLinkable.type, None] = None,
-        swift_runtime_linkable: [SwiftRuntimeLinkable.type, None] = None) -> LinkArgs.type:
-    link_info = _link_info_from_linkables(ctx, [merged.frameworks[link_style], frameworks_linkable], [swiftmodule_linkable], [merged.swift_runtime[link_style], swift_runtime_linkable])
-    if not link_info:
-        return get_link_args(merged, link_style, prefer_stripped)
+        swift_runtime_linkable: [SwiftRuntimeLinkable, None] = None) -> LinkArgs:
+    frameworks_linkables = [x.frameworks[link_strategy] for x in deps_merged_link_infos] + [frameworks_linkable]
+    swift_runtime_linkables = [x.swift_runtime[link_strategy] for x in deps_merged_link_infos] + [swift_runtime_linkable]
+    swiftmodule_linkables = [x.swiftmodules[link_strategy] for x in deps_merged_link_infos] + [swiftmodule_linkable]
 
-    return LinkArgs(
-        tset = LinkArgsTSet(
-            infos = ctx.actions.tset(
-                LinkInfosTSet,
-                value = LinkInfos(default = link_info, stripped = link_info),
-                children = [merged._infos[link_style]],
-            ),
-            external_debug_info = make_artifact_tset(
-                actions = ctx.actions,
-                label = ctx.label,
-                children = [link_info.external_debug_info, merged._external_debug_info[link_style]],
-            ),
-            prefer_stripped = prefer_stripped,
-        ),
+    link_info = _apple_link_info_from_linkables(
+        ctx,
+        frameworks_linkables,
+        swiftmodule_linkables,
+        swift_runtime_linkables,
+    )
+
+    return get_link_args_for_strategy(
+        ctx,
+        deps_merged_link_infos,
+        link_strategy,
+        prefer_stripped,
+        additional_link_info = link_info,
     )
 
 def apple_get_link_info_by_deduping_link_infos(
         ctx: AnalysisContext,
-        infos: list[[LinkInfo.type, None]],
-        framework_linkable: [FrameworksLinkable.type, None] = None,
-        swiftmodule_linkable: [SwiftmoduleLinkable.type, None] = None,
-        swift_runtime_linkable: [SwiftRuntimeLinkable.type, None] = None) -> [LinkInfo.type, None]:
+        infos: list[[LinkInfo, None]],
+        framework_linkable: [FrameworksLinkable, None] = None,
+        swiftmodule_linkable: [SwiftmoduleLinkable, None] = None,
+        swift_runtime_linkable: [SwiftRuntimeLinkable, None] = None) -> [LinkInfo, None]:
     # When building a framework or executable, all frameworks used by the statically-linked
     # deps in the subtree need to be linked.
     #
@@ -168,33 +164,35 @@ def apple_get_link_info_by_deduping_link_infos(
     if framework_linkable:
         framework_linkables.append(framework_linkable)
 
-    swiftmodule_linkables = extract_swiftmodule_linkables(infos)
-    swiftmodule_linkables.append(swiftmodule_linkable)
-
     swift_runtime_linkables = extract_swift_runtime_linkables(infos)
     swift_runtime_linkables.append(swift_runtime_linkable)
 
-    return _link_info_from_linkables(ctx, framework_linkables, swiftmodule_linkables, swift_runtime_linkables)
+    swiftmodule_linkables = extract_swiftmodule_linkables(infos)
+    swiftmodule_linkables.append(swiftmodule_linkable)
 
-def _extract_framework_linkables(link_infos: [list[LinkInfo.type], None]) -> list[FrameworksLinkable.type]:
-    frameworks_type = LinkableType("frameworks")
+    return _apple_link_info_from_linkables(ctx, framework_linkables, swiftmodule_linkables, swift_runtime_linkables)
 
+def _extract_framework_linkables(link_infos: [list[LinkInfo], None]) -> list[FrameworksLinkable]:
     linkables = []
     for merged in link_infos:
         for linkable in merged.linkables:
-            if linkable._type == frameworks_type:
+            if isinstance(linkable, FrameworksLinkable):
                 linkables.append(linkable)
 
     return linkables
 
-def _link_info_from_linkables(
+def _apple_link_info_from_linkables(
         ctx: AnalysisContext,
-        framework_linkables: list[[FrameworksLinkable.type, None]],
-        swiftmodule_linkables: list[[SwiftmoduleLinkable.type, None]] = [],
-        swift_runtime_linkables: list[[SwiftRuntimeLinkable.type, None]] = []) -> [LinkInfo.type, None]:
+        framework_linkables: list[[FrameworksLinkable, None]],
+        swiftmodule_linkables: list[[SwiftmoduleLinkable, None]] = [],
+        swift_runtime_linkables: list[[SwiftRuntimeLinkable, None]] = []) -> [LinkInfo, None]:
+    """
+    Returns a LinkInfo for the frameworks, swiftmodules, and swiftruntimes or None if there's none of those.
+    """
     framework_link_args = _get_apple_frameworks_linker_flags(ctx, merge_framework_linkables(framework_linkables))
-    swift_module_link_args = get_swiftmodule_linker_flags(swiftmodule_linkables)
     swift_runtime_link_args = get_swift_runtime_linker_flags(ctx, merge_swift_runtime_linkables(swift_runtime_linkables))
+    sdk_swift_module_link_args = get_swiftmodule_linker_flags(ctx, merge_swiftmodule_linkables(ctx, swiftmodule_linkables))
+
     return LinkInfo(
-        pre_flags = [framework_link_args, swift_module_link_args, swift_runtime_link_args],
-    ) if (framework_link_args or swift_module_link_args or swift_runtime_link_args) else None
+        pre_flags = [framework_link_args, swift_runtime_link_args, sdk_swift_module_link_args],
+    ) if (framework_link_args or swift_runtime_link_args or sdk_swift_module_link_args) else None

@@ -7,7 +7,7 @@
 
 load(
     "@prelude//:artifact_tset.bzl",
-    "ArtifactProjection",
+    "ArtifactTSet",
     "make_artifact_tset",
     "project_artifacts",
 )
@@ -15,18 +15,21 @@ load(
 DEBUGINFO_SUBTARGET = "debuginfo"
 DEBUGINFO_DB_SUBTARGET = "debuginfo-db"
 
-AppleDebugInfo = ArtifactProjection
+AppleDebugInfo = TransitiveSetArgsProjection
 
 # Represents Apple debug info from both executables and bundles.
-AppleDebuggableInfo = provider(fields = [
-    "dsyms",  # ["artifact"]
-    # Tset containing ArtifactInfos with either
-    # a. the owning library target to artifacts, or
-    # b. the owning bundle target to filtered artifacts
-    "debug_info_tset",  # ArtifactTSet.type
-    # In the case of b above, contians the map of library target to artifacts, else None
-    "filtered_map",  # [{"label": ["artifact"]}, None]
-])
+AppleDebuggableInfo = provider(
+    # @unsorted-dict-items
+    fields = {
+        "dsyms": provider_field(list[Artifact]),
+        # Tset containing ArtifactInfos with either
+        # a. the owning library target to artifacts, or
+        # b. the owning bundle target to filtered artifacts
+        "debug_info_tset": provider_field(ArtifactTSet),
+        # In the case of b above, contians the map of library target to artifacts, else None
+        "filtered_map": provider_field([dict[Label, list[Artifact]], None], default = None),
+    },
+)
 
 _AppleDebugInfo = record(
     debug_info_tset = "ArtifactTSet",
@@ -34,12 +37,12 @@ _AppleDebugInfo = record(
 )
 
 AggregatedAppleDebugInfo = record(
-    debug_info = field(_AppleDebugInfo.type),
-    # debug_info_tset = field(ArtifactTSet.type),
-    sub_targets = field(dict[str, list[DefaultInfo.type]]),
+    debug_info = field(_AppleDebugInfo),
+    # debug_info_tset = field(ArtifactTSet),
+    sub_targets = field(dict[str, list[DefaultInfo]]),
 )
 
-def get_aggregated_debug_info(ctx: AnalysisContext, debug_infos: list[AppleDebuggableInfo.type]) -> AggregatedAppleDebugInfo.type:
+def get_aggregated_debug_info(ctx: AnalysisContext, debug_infos: list[AppleDebuggableInfo]) -> AggregatedAppleDebugInfo:
     all_debug_info_tsets = []
     full_debug_info_tsets = []
     debug_info_map = {}
@@ -63,12 +66,14 @@ def get_aggregated_debug_info(ctx: AnalysisContext, debug_infos: list[AppleDebug
     )
     sub_targets = {}
     sub_targets[DEBUGINFO_SUBTARGET] = [
-        DefaultInfo(
-            other_outputs = project_artifacts(
+        DefaultInfo(default_output = ctx.actions.write(
+            "debuginfo.artifacts",
+            project_artifacts(
                 actions = ctx.actions,
                 tsets = [debug_info_tset],
             ),
-        ),
+            with_inputs = True,
+        )),
     ]
 
     full_debug_info_tset = make_artifact_tset(

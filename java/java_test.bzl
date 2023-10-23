@@ -13,7 +13,7 @@ load(
 load("@prelude//java:java_library.bzl", "build_java_library")
 load("@prelude//java:java_providers.bzl", "JavaLibraryInfo", "JavaPackagingInfo", "get_all_java_packaging_deps_tset")
 load("@prelude//java:java_toolchain.bzl", "JavaTestToolchainInfo", "JavaToolchainInfo")
-load("@prelude//java/utils:java_utils.bzl", "get_path_separator")
+load("@prelude//java/utils:java_utils.bzl", "get_path_separator_for_exec_os")
 load("@prelude//linking:shared_libraries.bzl", "SharedLibraryInfo", "merge_shared_libraries", "traverse_shared_library_info")
 load("@prelude//utils:utils.bzl", "expect")
 load("@prelude//test/inject_test_run_info.bzl", "inject_test_run_info")
@@ -31,15 +31,16 @@ def java_test_impl(ctx: AnalysisContext) -> list[Provider]:
         java_providers.java_packaging_info,
         java_providers.template_placeholder_info,
         java_providers.default_info,
+        java_providers.class_to_src_map,
     ]
 
 def build_junit_test(
         ctx: AnalysisContext,
-        tests_java_library_info: JavaLibraryInfo.type,
-        tests_java_packaging_info: JavaPackagingInfo.type,
-        tests_class_to_source_info: [JavaClassToSourceMapInfo.type, None] = None,
+        tests_java_library_info: JavaLibraryInfo,
+        tests_java_packaging_info: JavaPackagingInfo,
+        tests_class_to_source_info: [JavaClassToSourceMapInfo, None] = None,
         extra_cmds: list = [],
-        extra_classpath_entries: list[Artifact] = []) -> ExternalRunnerTestInfo.type:
+        extra_classpath_entries: list[Artifact] = []) -> ExternalRunnerTestInfo:
     java_test_toolchain = ctx.attrs._java_test_toolchain[JavaTestToolchainInfo]
 
     java = ctx.attrs.java[RunInfo] if ctx.attrs.java else ctx.attrs._java_toolchain[JavaToolchainInfo].java_for_tests
@@ -86,7 +87,7 @@ def build_junit_test(
         # Java 9+ supports argfiles, so just write the classpath to an argsfile. "FileClassPathRunner" will delegate
         # immediately to the junit test runner.
         classpath_args.add("-classpath")
-        classpath_args.add(cmd_args(classpath, delimiter = get_path_separator()))
+        classpath_args.add(cmd_args(classpath, delimiter = get_path_separator_for_exec_os(ctx)))
         classpath_args_file = ctx.actions.write("classpath_args_file", classpath_args)
         cmd.append(cmd_args(classpath_args_file, format = "@{}").hidden(classpath_args))
 

@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# @starlark-rust: allow_string_literals_in_type_expr
+
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolsInfo")
 load(
     "@prelude//linking:execution_preference.bzl",
@@ -25,16 +27,19 @@ load(
 )
 
 _SelectionCriteria = record(
-    include_build_target_patterns = field(list[BuildTargetPattern.type], []),
-    include_regular_expressions = field(list["regex"], []),
-    exclude_build_target_patterns = field(list[BuildTargetPattern.type], []),
-    exclude_regular_expressions = field(list["regex"], []),
+    include_build_target_patterns = field(list[BuildTargetPattern], []),
+    include_regular_expressions = field(list[regex], []),
+    exclude_build_target_patterns = field(list[BuildTargetPattern], []),
+    exclude_regular_expressions = field(list[regex], []),
 )
 
-AppleSelectiveDebuggingInfo = provider(fields = [
-    "scrub_binary",  # function
-    "filter",  # function
-])
+AppleSelectiveDebuggingInfo = provider(
+    # @unsorted-dict-items
+    fields = {
+        "scrub_binary": provider_field(typing.Callable),
+        "filter": provider_field(typing.Callable),
+    },
+)
 
 AppleSelectiveDebuggingFilteredDebugInfo = record(
     map = field(dict[Label, list[Artifact]]),
@@ -58,9 +63,17 @@ def _impl(ctx: AnalysisContext) -> list[Provider]:
 
     # process inputs and provide them up the graph with typing
     include_build_target_patterns = [parse_build_target_pattern(pattern) for pattern in ctx.attrs.include_build_target_patterns]
-    include_regular_expressions = [experimental_regex(expression) for expression in ctx.attrs.include_regular_expressions]
+    include_regular_expressions = [
+        # TODO(nga): fancy is probably not needed here.
+        regex(expression, fancy = True)
+        for expression in ctx.attrs.include_regular_expressions
+    ]
     exclude_build_target_patterns = [parse_build_target_pattern(pattern) for pattern in ctx.attrs.exclude_build_target_patterns]
-    exclude_regular_expressions = [experimental_regex(expression) for expression in ctx.attrs.exclude_regular_expressions]
+    exclude_regular_expressions = [
+        # TODO(nga): fancy is probably not needed here.
+        regex(expression, fancy = True)
+        for expression in ctx.attrs.exclude_regular_expressions
+    ]
 
     scrubber = ctx.attrs._apple_tools[AppleToolsInfo].selective_debugging_scrubber
 
@@ -90,7 +103,7 @@ def _impl(ctx: AnalysisContext) -> list[Provider]:
         exclude_regular_expressions = exclude_regular_expressions,
     )
 
-    def scrub_binary(inner_ctx, executable: Artifact, executable_link_execution_preference: LinkExecutionPreference.type, adhoc_codesign_tool: [RunInfo.type, None]) -> Artifact:
+    def scrub_binary(inner_ctx, executable: Artifact, executable_link_execution_preference: LinkExecutionPreference, adhoc_codesign_tool: [RunInfo, None]) -> Artifact:
         inner_cmd = cmd_args(cmd)
         output = inner_ctx.actions.declare_output("debug_scrubbed/{}".format(executable.short_path))
 
@@ -113,7 +126,7 @@ def _impl(ctx: AnalysisContext) -> list[Provider]:
         )
         return output
 
-    def filter_debug_info(debug_info: "transitive_set_iterator") -> AppleSelectiveDebuggingFilteredDebugInfo.type:
+    def filter_debug_info(debug_info: TransitiveSetIterator) -> AppleSelectiveDebuggingFilteredDebugInfo:
         map = {}
         for infos in debug_info:
             for info in infos:
@@ -122,7 +135,7 @@ def _impl(ctx: AnalysisContext) -> list[Provider]:
 
         return AppleSelectiveDebuggingFilteredDebugInfo(map = map)
 
-    def preference_for_links(links: list[Label], deps_preferences: list[LinkExecutionPreferenceInfo.type]) -> LinkExecutionPreference.type:
+    def preference_for_links(links: list[Label], deps_preferences: list[LinkExecutionPreferenceInfo]) -> LinkExecutionPreference:
         # If any dependent links were run locally, prefer that the current link is also performed locally,
         # to avoid needing to upload the previous link.
         dep_prefered_local = is_any(lambda info: info.preference == LinkExecutionPreference("local"), deps_preferences)
@@ -165,7 +178,7 @@ registration_spec = RuleRegistrationSpec(
     },
 )
 
-def _is_label_included(label: Label, selection_criteria: _SelectionCriteria.type) -> bool:
+def _is_label_included(label: Label, selection_criteria: _SelectionCriteria) -> bool:
     # If no include criteria are provided, we then include everything, as long as it is not excluded.
     if selection_criteria.include_build_target_patterns or selection_criteria.include_regular_expressions:
         if not _check_if_label_matches_patterns_or_expressions(label, selection_criteria.include_build_target_patterns, selection_criteria.include_regular_expressions):
@@ -174,7 +187,7 @@ def _is_label_included(label: Label, selection_criteria: _SelectionCriteria.type
     # If included (above snippet), ensure that this target is not excluded.
     return not _check_if_label_matches_patterns_or_expressions(label, selection_criteria.exclude_build_target_patterns, selection_criteria.exclude_regular_expressions)
 
-def _check_if_label_matches_patterns_or_expressions(label: Label, patterns: list["BuildTargetPattern"], expressions: list["regex"]) -> bool:
+def _check_if_label_matches_patterns_or_expressions(label: Label, patterns: list[BuildTargetPattern], expressions: list[regex]) -> bool:
     for pattern in patterns:
         if pattern.matches(label):
             return True

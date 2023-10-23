@@ -15,23 +15,55 @@ load(":apple_swift_stdlib.bzl", "should_copy_swift_stdlib")
 load(":apple_toolchain_types.bzl", "AppleToolchainInfo", "AppleToolsInfo")
 
 def apple_package_impl(ctx: AnalysisContext) -> list[Provider]:
-    apple_tools = ctx.attrs._apple_tools[AppleToolsInfo]
     unprocessed_ipa_contents = _get_ipa_contents(ctx)
-    package = ctx.actions.declare_output("{}.ipa".format(ctx.attrs.bundle.label.name))
-    compression_level = _compression_level_arg(IpaCompressionLevel(ctx.attrs._ipa_compression_level))
+    package = ctx.actions.declare_output("{}.{}".format(ctx.attrs.bundle.label.name, ctx.attrs.ext))
 
+    if ctx.attrs.packager:
+        process_ipa_cmd = cmd_args([
+            ctx.attrs.packager[RunInfo],
+            "--contents-dir",
+            unprocessed_ipa_contents,
+            "--output-path",
+            package.as_output(),
+            ctx.attrs.packager_args,
+        ])
+        category = "apple_package_make_custom"
+
+        if ctx.attrs.validator:
+            fail(
+                "{} doesn't support a setting `packager` and `validator` at the same time.".format(ctx.attrs.name),
+            )
+
+    else:
+        process_ipa_cmd = _get_default_package_cmd(
+            ctx,
+            unprocessed_ipa_contents,
+            package.as_output(),
+        )
+        category = "apple_package_make"
+
+    ctx.actions.run(process_ipa_cmd, category = category)
+
+    return [DefaultInfo(default_output = package)]
+
+def _get_default_package_cmd(ctx: AnalysisContext, unprocessed_ipa_contents: Artifact, output: OutputArtifact) -> cmd_args:
+    apple_tools = ctx.attrs._apple_tools[AppleToolsInfo]
     process_ipa_cmd = cmd_args([
         apple_tools.ipa_package_maker,
         "--ipa-contents-dir",
         unprocessed_ipa_contents,
         "--ipa-output-path",
-        package.as_output(),
+        output,
         "--compression-level",
-        compression_level,
+        _compression_level_arg(IpaCompressionLevel(ctx.attrs._ipa_compression_level)),
     ])
-    ctx.actions.run(process_ipa_cmd, category = "apple_package_make")
+    if ctx.attrs.validator != None:
+        process_ipa_cmd.add([
+            "--validator",
+            ctx.attrs.validator[RunInfo],
+        ])
 
-    return [DefaultInfo(default_output = package)]
+    return process_ipa_cmd
 
 def _get_ipa_contents(ctx) -> Artifact:
     bundle = ctx.attrs.bundle
@@ -43,7 +75,8 @@ def _get_ipa_contents(ctx) -> Artifact:
 
     apple_bundle_info = bundle[AppleBundleInfo]
     if (not apple_bundle_info.skip_copying_swift_stdlib) and should_copy_swift_stdlib(app.extension):
-        contents["SwiftSupport"] = _get_swift_support_dir(ctx, app, apple_bundle_info)
+        swift_support_path = paths.join("SwiftSupport", get_apple_sdk_name(ctx))
+        contents[swift_support_path] = _get_swift_support_dir(ctx, app, apple_bundle_info)
 
     if apple_bundle_info.contains_watchapp:
         contents["Symbols"] = _build_symbols_dir(ctx)
@@ -62,7 +95,7 @@ def _build_symbols_dir(ctx) -> Artifact:
 
     return symbols_dir
 
-def _get_swift_support_dir(ctx, bundle_output: Artifact, bundle_info: AppleBundleInfo.type) -> Artifact:
+def _get_swift_support_dir(ctx, bundle_output: Artifact, bundle_info: AppleBundleInfo) -> Artifact:
     stdlib_tool = ctx.attrs._apple_toolchain[AppleToolchainInfo].swift_toolchain_info.swift_stdlib_tool
     sdk_name = get_apple_sdk_name(ctx)
 
@@ -107,7 +140,7 @@ def _get_swift_support_dir(ctx, bundle_output: Artifact, bundle_info: AppleBundl
 
     return swift_support_dir
 
-def _get_scan_folder_args(dest: AppleBundleDestination.type, bundle_output: Artifact, sdk_name, extension) -> ArgLike:
+def _get_scan_folder_args(dest: AppleBundleDestination, bundle_output: Artifact, sdk_name, extension) -> ArgLike:
     return cmd_args(
         [
             "--scan-folder",
@@ -121,7 +154,7 @@ def _get_scan_folder_args(dest: AppleBundleDestination.type, bundle_output: Arti
         ],
     )
 
-def _compression_level_arg(compression_level: IpaCompressionLevel.type) -> str:
+def _compression_level_arg(compression_level: IpaCompressionLevel) -> str:
     if compression_level.value == "none":
         return "0"
     elif compression_level.value == "default":

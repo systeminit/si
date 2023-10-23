@@ -5,6 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+# @starlark-rust: allow_string_literals_in_type_expr
+
 load("@prelude//python:python.bzl", "PythonLibraryManifestsTSet")
 load("@prelude//python:source_db.bzl", "PythonSourceDBInfo")
 
@@ -49,7 +51,7 @@ def _filter_root_targets(
     return filtered_targets
 
 def _get_python_library_manifests_from_analysis_result(
-        analysis_result: "analysis_result") -> [PythonLibraryManifestsTSet.type, None]:
+        analysis_result: "analysis_result") -> [PythonLibraryManifestsTSet, None]:
     sub_target = analysis_result.providers()[DefaultInfo].sub_targets.get("source-db-no-deps")
     if sub_target == None:
         return None
@@ -59,35 +61,35 @@ def _get_python_library_manifests_from_analysis_result(
     return python_source_db_info.manifests
 
 def _get_python_library_manifests_from_targets(
-        ctx: "bxl_ctx",
-        targets: "target_set") -> list[PythonLibraryManifestsTSet.type]:
+        ctx: bxl.Context,
+        targets: "target_set") -> list[PythonLibraryManifestsTSet]:
     return filter(None, [
         _get_python_library_manifests_from_analysis_result(analysis_result)
         for analysis_result in ctx.analysis(targets).values()
     ])
 
 def get_python_library_manifests_tset_from_targets(
-        ctx: "bxl_ctx",
+        ctx: bxl.Context,
         actions: AnalysisActions,
-        root_targets: "target_set") -> PythonLibraryManifestsTSet.type:
+        root_targets: "target_set") -> PythonLibraryManifestsTSet:
     return actions.tset(
         PythonLibraryManifestsTSet,
         children = _get_python_library_manifests_from_targets(ctx, root_targets),
     )
 
 def get_python_library_manifests_tset_from_target_patterns(
-        ctx: "bxl_ctx",
+        ctx: bxl.Context,
         query: "cqueryctx",
         actions: AnalysisActions,
-        target_patterns: typing.Any) -> PythonLibraryManifestsTSet.type:
+        target_patterns: typing.Any) -> PythonLibraryManifestsTSet:
     root_targets = _filter_root_targets(query, target_patterns)
     return get_python_library_manifests_tset_from_targets(ctx, actions, root_targets)
 
 def do_query(
-        ctx: "bxl_ctx",
+        ctx: bxl.Context,
         query: "cqueryctx",
         actions: AnalysisActions,
-        target_patterns: typing.Any) -> list["configured_target_label"]:
+        target_patterns: typing.Any) -> list[ConfiguredTargetLabel]:
     manifests_of_transitive_dependencies = get_python_library_manifests_tset_from_target_patterns(
         ctx,
         query,
@@ -100,7 +102,7 @@ def do_query(
         if manifest.src_types != None
     ]
 
-def _do_query_entry_point(ctx: "bxl_ctx") -> None:
+def _do_query_entry_point(ctx: bxl.Context) -> None:
     query = ctx.cquery()
     actions = ctx.bxl_actions().actions
     targets = do_query(ctx, query, actions, [query.eval(target) for target in ctx.cli_args.target])

@@ -8,16 +8,16 @@
 XCODE_DATA_SUB_TARGET = "xcode-data"
 _XCODE_DATA_FILE_NAME = "xcode_data.json"
 
-XcodeDataInfo = provider(fields = [
-    "data",  # {str: _a}
-])
+XcodeDataInfo = provider(fields = {
+    "data": provider_field(typing.Any, default = None),  # {str: _a}
+})
 
 def generate_xcode_data(
         ctx: AnalysisContext,
         rule_type: str,
         output: [Artifact, None],
         populate_rule_specific_attributes_func: [typing.Callable, None] = None,
-        **kwargs) -> (list[DefaultInfo.type], XcodeDataInfo.type):
+        **kwargs) -> (list[DefaultInfo], XcodeDataInfo):
     data = {
         "rule_type": rule_type,
         "target": ctx.label,

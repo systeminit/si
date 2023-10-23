@@ -17,7 +17,7 @@ load(
     "ErlangToolchainInfo",
 )
 
-Tool = "cmd_args"
+Tool = cmd_args
 
 ToolsBinaries = record(
     erl = field(Artifact),
@@ -30,7 +30,7 @@ Tools = record(
     erl = field(Tool),
     erlc = field(Tool),
     escript = field(Tool),
-    _tools_binaries = field("ToolsBinaries"),
+    _tools_binaries = field(ToolsBinaries),
 )
 
 Toolchain = record(
@@ -41,7 +41,7 @@ Toolchain = record(
     dependency_analyzer = field(Artifact),
     erlc_trampoline = field(Artifact),
     escript_builder = field(Artifact),
-    otp_binaries = field("Tools"),
+    otp_binaries = field(Tools),
     release_variables_builder = field(Artifact),
     include_erts = field(Artifact),
     core_parse_transforms = field(dict[str, (Artifact, Artifact)]),
@@ -54,31 +54,32 @@ Toolchain = record(
 )
 
 ToolchainUtillInfo = provider(
-    fields = [
-        "app_src_script",
-        "boot_script_builder",
-        "core_parse_transforms",
-        "dependency_analyzer",
-        "edoc",
-        "erlc_trampoline",
-        "escript_builder",
-        "release_variables_builder",
-        "include_erts",
-        "utility_modules",
-    ],
+    # @unsorted-dict-items
+    fields = {
+        "app_src_script": provider_field(typing.Any, default = None),
+        "boot_script_builder": provider_field(typing.Any, default = None),
+        "core_parse_transforms": provider_field(typing.Any, default = None),
+        "dependency_analyzer": provider_field(typing.Any, default = None),
+        "edoc": provider_field(typing.Any, default = None),
+        "erlc_trampoline": provider_field(typing.Any, default = None),
+        "escript_builder": provider_field(typing.Any, default = None),
+        "release_variables_builder": provider_field(typing.Any, default = None),
+        "include_erts": provider_field(typing.Any, default = None),
+        "utility_modules": provider_field(typing.Any, default = None),
+    },
 )
 
-def select_toolchains(ctx: AnalysisContext) -> dict[str, "Toolchain"]:
+def select_toolchains(ctx: AnalysisContext) -> dict[str, Toolchain]:
     """helper returning toolchains"""
     return ctx.attrs._toolchain[ErlangMultiVersionToolchainInfo].toolchains
 
 def get_primary(ctx: AnalysisContext) -> str:
     return ctx.attrs._toolchain[ErlangMultiVersionToolchainInfo].primary
 
-def get_primary_tools(ctx: AnalysisContext) -> "Tools":
+def get_primary_tools(ctx: AnalysisContext) -> Tools:
     return (get_primary_toolchain(ctx)).otp_binaries
 
-def get_primary_toolchain(ctx: AnalysisContext) -> "Toolchain":
+def get_primary_toolchain(ctx: AnalysisContext) -> Toolchain:
     return (select_toolchains(ctx)[get_primary(ctx)])
 
 def _multi_version_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:

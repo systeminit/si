@@ -78,6 +78,8 @@ def erlang_tests_macro(
     default_config_files = read_root_config("erlang", "erlang_tests_default_config", None) if use_default_configs else None
     trampoline = read_root_config("erlang", "erlang_tests_trampoline", None) if use_default_configs else None
     providers = read_root_config("erlang", "erlang_test_providers", "") if use_default_configs else ""
+    defaultAnnotationMFA = "artifact_annotations:default_annotation/1"
+    annotationsMFA = read_root_config("erlang", "test_artifacts_annotation_mfa", defaultAnnotationMFA) if use_default_configs else defaultAnnotationMFA
 
     if default_config_files:
         config_files += default_config_files.split()
@@ -125,6 +127,7 @@ def erlang_tests_macro(
             property_tests = property_tests,
             _trampoline = trampoline,
             _providers = providers,
+            _artifact_annotation_mfa = annotationsMFA,
             **common_attributes
         )
 
@@ -245,6 +248,8 @@ def erlang_test_impl(ctx: AnalysisContext) -> list[Provider]:
         additional_args = additional_args,
     )
 
+    re_executor = get_re_executor_from_props(ctx)
+
     return [
         default_info,
         run_info,
@@ -255,6 +260,8 @@ def erlang_test_impl(ctx: AnalysisContext) -> list[Provider]:
             labels = ["tpx-fb-test-type=16"] + ctx.attrs.labels,
             contacts = ctx.attrs.contacts,
             run_from_project_root = True,
+            use_project_relative_paths = True,
+            default_executor = re_executor,
         ),
         ErlangTestInfo(
             name = suite_name,
@@ -284,6 +291,7 @@ def _write_test_info_file(
         config_files: list[Artifact],
         erl_cmd: [cmd_args, Artifact]) -> Artifact:
     tests_info = {
+        "artifact_annotation_mfa": ctx.attrs._artifact_annotation_mfa,
         "config_files": config_files,
         "ct_opts": ctx.attrs._ct_opts,
         "dependencies": _list_code_paths(dependencies),
@@ -336,7 +344,7 @@ def _build_resource_dir(ctx, resources: list, target_dir: str) -> Artifact:
 def link_output(
         ctx: AnalysisContext,
         test_suite: str,
-        build_environment: "BuildEnvironment",
+        build_environment: BuildEnvironment,
         data_dir: Artifact,
         property_dir: Artifact) -> Artifact:
     """Link the data_dirs and the test_suite beam in a single output folder."""
@@ -362,3 +370,30 @@ def generate_file_map_target(suite: str, dir_name: str) -> str:
         )
         return ":{}-{}".format(dir_name, suite_name)
     return ""
+
+def get_re_executor_from_props(ctx: AnalysisContext) -> [CommandExecutorConfig, None]:
+    """
+    Convert the `remote_execution` properties param into a `CommandExecutorConfig`
+    to use with test providers.
+    """
+
+    re_props = ctx.attrs.remote_execution
+    if re_props == None:
+        return None
+
+    re_props_copy = dict(re_props)
+    capabilities = re_props_copy.pop("capabilities")
+    use_case = re_props_copy.pop("use_case")
+    remote_cache_enabled = re_props_copy.pop("remote_cache_enabled", None)
+    if re_props_copy:
+        unexpected_props = ", ".join(re_props_copy.keys())
+        fail("found unexpected re props: " + unexpected_props)
+
+    return CommandExecutorConfig(
+        local_enabled = False,
+        remote_enabled = True,
+        remote_execution_properties = capabilities,
+        remote_execution_use_case = use_case or "tpx-default",
+        remote_cache_enabled = remote_cache_enabled,
+        remote_execution_action_key = None,
+    )

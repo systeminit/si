@@ -9,9 +9,9 @@ load("@prelude//:paths.bzl", "paths")
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
 load(
     "@prelude//linking:link_info.bzl",
+    "LibOutputStyle",
     "LinkInfo",
     "LinkInfos",
-    "LinkStyle",
     "MergedLinkInfo",
     "ObjectsLinkable",
 )
@@ -31,26 +31,27 @@ LinkableProvidersTSet = transitive_set()
 
 # Info required to link cxx_python_extensions into native python binaries
 CxxExtensionLinkInfo = provider(
-    fields = [
-        "linkable_providers",  # LinkableProvidersTSet.type
-        "artifacts",  # {str: "_a"}
-        "python_module_names",  # {str: str}
-        "dlopen_deps",  # {"label": LinkableProviders.type}
+    # @unsorted-dict-items
+    fields = {
+        "linkable_providers": provider_field(typing.Any, default = None),  # LinkableProvidersTSet
+        "artifacts": provider_field(typing.Any, default = None),  # dict[str, typing.Any]
+        "python_module_names": provider_field(typing.Any, default = None),  # dict[str, str]
+        "dlopen_deps": provider_field(typing.Any, default = None),  # dict[ConfiguredProvidersLabel, LinkableProviders]
         # Native python extensions that can't be linked into the main executable.
-        "unembeddable_extensions",  # {str: LinkableProviders.type}
+        "unembeddable_extensions": provider_field(typing.Any, default = None),  # dict[str, LinkableProviders]
         # Native libraries that are only available as shared libs.
-        "shared_only_libs",  # {Label: LinkableProviders.type}
-    ],
+        "shared_only_libs": provider_field(typing.Any, default = None),  # dict[ConfiguredProvidersLabel, LinkableProviders]
+    },
 )
 
 def merge_cxx_extension_info(
         actions: AnalysisActions,
         deps: list[Dependency],
-        linkable_providers: [LinkableProviders.type, None] = None,
+        linkable_providers: [LinkableProviders, None] = None,
         artifacts: dict[str, typing.Any] = {},
         python_module_names: dict[str, str] = {},
-        unembeddable_extensions: dict[str, LinkableProviders.type] = {},
-        shared_deps: list[Dependency] = []) -> CxxExtensionLinkInfo.type:
+        unembeddable_extensions: dict[str, LinkableProviders] = {},
+        shared_deps: list[Dependency] = []) -> CxxExtensionLinkInfo:
     linkable_provider_children = []
     artifacts = dict(artifacts)
     python_module_names = dict(python_module_names)
@@ -100,9 +101,9 @@ def rewrite_static_symbols(
         suffix: str,
         pic_objects: list[Artifact],
         non_pic_objects: list[Artifact],
-        libraries: dict[LinkStyle.type, LinkInfos.type],
-        cxx_toolchain: CxxToolchainInfo.type,
-        suffix_all: bool = False) -> dict[LinkStyle.type, LinkInfos.type]:
+        libraries: dict[LibOutputStyle, LinkInfos],
+        cxx_toolchain: CxxToolchainInfo,
+        suffix_all: bool = False) -> dict[LibOutputStyle, LinkInfos]:
     symbols_file = _write_syms_file(
         ctx = ctx,
         name = ctx.label.name + "_rename_syms",
@@ -123,7 +124,7 @@ def rewrite_static_symbols(
     )
     static_pic_objects, stripped_static_pic_objects = suffix_symbols(ctx, suffix, pic_objects, symbols_file_pic, cxx_toolchain)
 
-    static_info = libraries[LinkStyle("static")].default
+    static_info = libraries[LibOutputStyle("archive")].default
     updated_static_info = LinkInfo(
         name = static_info.name,
         pre_flags = static_info.pre_flags,
@@ -132,7 +133,7 @@ def rewrite_static_symbols(
         external_debug_info = static_info.external_debug_info,
     )
     updated_stripped_static_info = None
-    static_info = libraries[LinkStyle("static")].stripped
+    static_info = libraries[LibOutputStyle("archive")].stripped
     if static_info != None:
         updated_stripped_static_info = LinkInfo(
             name = static_info.name,
@@ -141,7 +142,7 @@ def rewrite_static_symbols(
             linkables = [stripped_static_objects],
         )
 
-    static_pic_info = libraries[LinkStyle("static_pic")].default
+    static_pic_info = libraries[LibOutputStyle("pic_archive")].default
     updated_static_pic_info = LinkInfo(
         name = static_pic_info.name,
         pre_flags = static_pic_info.pre_flags,
@@ -150,7 +151,7 @@ def rewrite_static_symbols(
         external_debug_info = static_pic_info.external_debug_info,
     )
     updated_stripped_static_pic_info = None
-    static_pic_info = libraries[LinkStyle("static_pic")].stripped
+    static_pic_info = libraries[LibOutputStyle("pic_archive")].stripped
     if static_pic_info != None:
         updated_stripped_static_pic_info = LinkInfo(
             name = static_pic_info.name,
@@ -159,8 +160,8 @@ def rewrite_static_symbols(
             linkables = [stripped_static_pic_objects],
         )
     updated_libraries = {
-        LinkStyle("static"): LinkInfos(default = updated_static_info, stripped = updated_stripped_static_info),
-        LinkStyle("static_pic"): LinkInfos(default = updated_static_pic_info, stripped = updated_stripped_static_pic_info),
+        LibOutputStyle("archive"): LinkInfos(default = updated_static_info, stripped = updated_stripped_static_info),
+        LibOutputStyle("pic_archive"): LinkInfos(default = updated_static_pic_info, stripped = updated_stripped_static_pic_info),
     }
     return updated_libraries
 
@@ -169,7 +170,7 @@ def _write_syms_file(
         name: str,
         objects: list[Artifact],
         suffix: str,
-        cxx_toolchain: CxxToolchainInfo.type,
+        cxx_toolchain: CxxToolchainInfo,
         suffix_all: bool = False) -> Artifact:
     """
     Take a list of objects and append a suffix to all  defined symbols.
@@ -205,8 +206,11 @@ def _write_syms_file(
 
     # Don't suffix asan symbols, as they shouldn't conflict, and suffixing
     # prevents deduplicating all the module constructors, which can be really
-    # expensive to run.
-    script += ' | grep -v "^\\(__\\)\\?\\(a\\|t\\)san"'
+    # expensive to run.  We need to keep ODR guards but remove all sanitizer
+    # globals. This removes:
+    # __asan_*, ___asan_*, __tsan_*, ___tsan_*, __sanitizer_*, ___sanitizer_*,
+    # asan.module_ctor, asan.module_dtor, tsan.module_ctor, tsan.module_dtor
+    script += " | grep -v \"\\(\\(^_\\?__\\(\\(a\\|t\\)san\\|\\(sanitizer\\)\\)_\\)\\|\\(^\\(a\\|t\\)san.module_\\(c\\|d\\)tor\\)\\)\""
 
     script += (
         ' | awk \'{{print $1" "$1"_{suffix}"}}\' | sort -u > '.format(suffix = suffix) +
@@ -232,7 +236,7 @@ def suffix_symbols(
         suffix: str,
         objects: list[Artifact],
         symbols_file: Artifact,
-        cxx_toolchain: CxxToolchainInfo.type) -> (ObjectsLinkable.type, ObjectsLinkable.type):
+        cxx_toolchain: CxxToolchainInfo) -> (ObjectsLinkable, ObjectsLinkable):
     """
     Take a list of objects and append a suffix to all  defined symbols.
     """

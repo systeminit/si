@@ -178,6 +178,9 @@ _GENRULE_LOCAL_LABELS = {label: True for label in [
     # use local jar
     "uses_jar",
 
+    # uses local java
+    "uses_java",
+
     #use locally installed svnyum
     "uses_svnyum",
 
@@ -189,6 +192,12 @@ _GENRULE_LOCAL_LABELS = {label: True for label in [
     # dereferenced anyway (e.g. because it violates security policies or simply
     # points to something that does not exist).
     "dangling_output_symlink",
+
+    # Uses xcrun which is not in RE (e.g. compile metalshaders)
+    "uses_xcrun",
+
+    # speech translation uses genrule to get models from manifold, high priority project
+    "speech_translation_high_priority",
 ]}
 
 def genrule_labels_require_local(labels):

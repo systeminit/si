@@ -15,17 +15,23 @@ load(
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//android:r_dot_java.bzl", "get_dummy_r_dot_java")
 load("@prelude//java:java_library.bzl", "build_java_library")
-load("@prelude//java:java_providers.bzl", "create_native_providers", "to_list")
+load(
+    "@prelude//java:java_providers.bzl",
+    "JavaProviders",  # @unused Used as type
+    "create_native_providers",
+    "to_list",
+)
 load("@prelude//kotlin:kotlin_library.bzl", "build_kotlin_library")
 
 def android_library_impl(ctx: AnalysisContext) -> list[Provider]:
     packaging_deps = ctx.attrs.deps + (ctx.attrs.deps_query or []) + ctx.attrs.exported_deps + ctx.attrs.runtime_deps
     if ctx.attrs._build_only_native_code:
-        shared_library_info, cxx_resource_info = create_native_providers(ctx.actions, ctx.label, packaging_deps)
+        shared_library_info, cxx_resource_info, linkable_graph = create_native_providers(ctx, ctx.label, packaging_deps)
         return [
             merge_android_packageable_info(ctx.label, ctx.actions, packaging_deps),
             shared_library_info,
             cxx_resource_info,
+            linkable_graph,
             # Add an unused default output in case this target is used as an attr.source() anywhere.
             DefaultInfo(default_output = ctx.actions.write("{}/unused.jar".format(ctx.label.name), [])),
         ]
@@ -45,7 +51,7 @@ def android_library_impl(ctx: AnalysisContext) -> list[Provider]:
 
 def build_android_library(
         ctx: AnalysisContext,
-        r_dot_java: [Artifact, None] = None) -> ("JavaProviders", [AndroidLibraryIntellijInfo.type, None]):
+        r_dot_java: [Artifact, None] = None) -> (JavaProviders, [AndroidLibraryIntellijInfo, None]):
     bootclasspath_entries = [] + ctx.attrs._android_toolchain[AndroidToolchainInfo].android_bootclasspath
     additional_classpath_entries = []
 
@@ -75,7 +81,7 @@ def build_android_library(
         ), android_library_intellij_info
 
 def _get_dummy_r_dot_java(
-        ctx: AnalysisContext) -> ([Artifact, None], [AndroidLibraryIntellijInfo.type, None]):
+        ctx: AnalysisContext) -> ([Artifact, None], [AndroidLibraryIntellijInfo, None]):
     android_resources = dedupe([resource for resource in filter(None, [
         x.get(AndroidResourceInfo)
         for x in ctx.attrs.deps + (ctx.attrs.deps_query or []) + ctx.attrs.provided_deps + (getattr(ctx.attrs, "provided_deps_query", []) or [])

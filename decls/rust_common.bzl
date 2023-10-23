@@ -5,14 +5,25 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//rust:link_info.bzl", "RustProcMacroPlugin")
 load(":toolchains_common.bzl", "toolchains_common")
 
-def _deps_arg():
+def rust_target_dep(is_binary: bool) -> Attr:
+    return attrs.dep(
+        pulls_and_pushes_plugins = [] if is_binary else [RustProcMacroPlugin],
+        pulls_plugins = [RustProcMacroPlugin] if is_binary else [],
+    )
+
+def _deps_arg(is_binary: bool):
     return {
-        "deps": attrs.list(attrs.dep(), default = [], doc = """
+        "deps": attrs.list(
+            rust_target_dep(is_binary),
+            default = [],
+            doc = """
     The set of dependencies of this rule. Currently, this supports rust\\_library
      and prebuilt\\_rust\\_library rules.
-"""),
+""",
+        ),
     }
 
 def _srcs_arg():
@@ -54,7 +65,7 @@ def _rustc_flags_arg():
 
 def _linker_flags_arg():
     return {
-        "linker_flags": attrs.list(attrs.arg(), default = [], doc = """
+        "linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = [], doc = """
     The set of additional flags to pass to the linker.
 """),
     }
@@ -93,9 +104,9 @@ def _mapped_srcs_arg():
 """),
     }
 
-def _named_deps_arg():
+def _named_deps_arg(is_binary: bool):
     return {
-        "named_deps": attrs.dict(key = attrs.string(), value = attrs.dep(), sorted = False, default = {}, doc = """
+        "named_deps": attrs.dict(key = attrs.string(), value = rust_target_dep(is_binary), sorted = False, default = {}, doc = """
     Add crate dependencies and define a local name by which to use that dependency by. This
      allows a crate to have multiple dependencies with the same crate name. For example:
      `named_deps = {"local_name", ":some_rust_crate" }`.
@@ -104,10 +115,14 @@ def _named_deps_arg():
 """),
     }
 
-def _toolchains_args():
+def _rust_toolchain_arg():
+    return {
+        "_rust_toolchain": toolchains_common.rust(),
+    }
+
+def _cxx_toolchain_arg():
     return {
         "_cxx_toolchain": toolchains_common.cxx(),
-        "_rust_toolchain": toolchains_common.rust(),
     }
 
 def _workspaces_arg():
@@ -130,6 +145,7 @@ rust_common = struct(
     env_arg = _env_arg,
     mapped_srcs_arg = _mapped_srcs_arg,
     named_deps_arg = _named_deps_arg,
-    toolchains_args = _toolchains_args,
+    rust_toolchain_arg = _rust_toolchain_arg,
+    cxx_toolchain_arg = _cxx_toolchain_arg,
     workspaces_arg = _workspaces_arg,
 )
