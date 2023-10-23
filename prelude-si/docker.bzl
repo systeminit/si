@@ -2,11 +2,11 @@ load("@prelude//python:toolchain.bzl", "PythonToolchainInfo")
 load("//docker:toolchain.bzl", "DockerToolchainInfo")
 load("//git:toolchain.bzl", "GitToolchainInfo")
 
-DockerImageInfo = provider(fields = [
-    "tar_archive", # [Artifact]
-    "metadata", # [Artifact]
-    "tags", # [Artifact]
-])
+DockerImageInfo = provider(fields = {
+    "tar_archive": provider_field(typing.Any, default = None),  # [Artifact]
+    "metadata": provider_field(typing.Any, default = None),  # [Artifact]
+    "tags": provider_field(typing.Any, default = None),  # [Artifact]
+})
 
 def docker_image_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, DockerImageInfo]]:
     docker_build_ctx = docker_build_context(ctx)
