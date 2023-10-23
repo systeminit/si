@@ -1,16 +1,18 @@
 <template>
   <div
     v-if="featureFlagsStore.SECRETS"
-    class="flex flex-col items-center pt-sm pl-lg pr-sm"
+    class="flex flex-col items-center pt-sm pl-lg pr-sm overflow-hidden"
   >
-    <div class="text-sm font-medium w-full pb-xs">Secret: {{ name }}</div>
+    <div class="text-sm font-medium w-full pb-xs break-words">
+      Secret: {{ name }}
+    </div>
     <div class="flex flex-row items-center w-full">
-      <div class="flex flex-col grow">
+      <div class="flex flex-col grow overflow-hidden">
         <div
           v-if="secret"
           :class="
             clsx(
-              'sm:text-sm font-bold grow p-xs block',
+              'sm:text-sm font-bold grow p-xs truncate overflow-hidden',
               'border rounded-sm shadow-sm focus:outline-none',
               'bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-900 border-neutral-600 cursor-pointer',
               'hover:border-action-500 hover:outline-action-500 hover:outline -outline-offset-1',
@@ -26,7 +28,7 @@
           @click="(e) => popoverRef.open(e)"
         />
         <Popover ref="popoverRef" anchorDirectionX="left" anchorAlignY="bottom">
-          <SecretsList :definitionId="definitionId" @select="setField" />
+          <SecretsPopover :definitionId="definitionId" @select="setField" />
         </Popover>
       </div>
       <div v-if="value" class="pl-xs">
@@ -52,7 +54,7 @@ import { computed, ref, toRefs } from "vue";
 import { VButton } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import Popover from "@/components/Popover.vue";
-import SecretsList from "@/components/SecretsList.vue";
+import SecretsPopover from "@/components/SecretsPopover.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import {
   PropertyEditorValidation,

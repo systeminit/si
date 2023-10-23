@@ -12,20 +12,20 @@
     <div
       :class="
         clsx(
-          'p-xs shrink-0 flex flex-row justify-between',
+          'p-xs shrink-0 flex flex-row gap-xs justify-between items-center',
           // 'bg-shade-0 dark:bg-shade-100 text-shade-100 dark:text-shade-0', // dark/light mode classes
           'bg-shade-100 text-shade-0', // force dark mode classes
         )
       "
     >
-      <div class="flex flex-col">
-        <div class="uppercase font-bold text-md pb-xs">
+      <div class="flex flex-col overflow-hidden">
+        <div class="uppercase font-bold text-md line-clamp-3 break-words">
           Secret: {{ definitionId }}
         </div>
         <div
           :class="
             clsx(
-              'text-xs italic',
+              'text-xs italic pt-xs',
               // 'text-neutral-600 dark:text-neutral-500', // dark/light mode classes
               'text-neutral-500', // force dark mode class
             )
@@ -44,6 +44,7 @@
         label="Add"
         icon="plus"
         tone="action"
+        class="flex-none"
         @click="showAddSecretForm"
       />
       <!-- <VButton
@@ -57,6 +58,7 @@
     <AddSecretForm
       v-if="addingSecret"
       :definitionId="definitionId"
+      forceDark
       @save="selectSecret"
       @cancel="cancelAddSecretForm"
     />
