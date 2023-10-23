@@ -127,10 +127,12 @@ import CheckHexOutline from "./custom-icons/check-hex-outline.svg?raw";
 import CheckHex from "./custom-icons/check-hex.svg?raw";
 
 import PlusHex from "./custom-icons/plus-hex.svg?raw";
+import PlusHexOutline from "./custom-icons/plus-hex-outline.svg?raw";
 import MinusHex from "./custom-icons/minus-hex.svg?raw";
+import MinusHexOutline from "./custom-icons/minus-hex-outline.svg?raw";
 
-import RefreshHex from "./custom-icons/refresh-hex.svg?raw";
-import QuestionHex from "./custom-icons/question-hex.svg?raw";
+import RefreshHexOutline from "./custom-icons/refresh-hex-outline.svg?raw";
+import QuestionHexOutline from "./custom-icons/question-hex-outline.svg?raw";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -188,6 +190,7 @@ export const ICONS = Object.freeze({
   minus: Minus,
   "minus-circle": MinusCircle,
   "minus-hex": MinusHex,
+  "minus-hex-outline": MinusHexOutline,
   "minus-square": MinusSquare,
   moon: Moon,
   multiselect: Boxes,
@@ -198,15 +201,16 @@ export const ICONS = Object.freeze({
   plus: Plus,
   "plus-circle": PlusCircle,
   "plus-hex": PlusHex,
+  "plus-hex-outline": PlusHexOutline,
   "plus-square": PlusSquare,
   "read-only": PencilOff,
   refresh: Refresh,
   "refresh-active": Refresh,
   resize: Resize,
-  "resource-create": PlusHex,
-  "resource-delete": MinusHex,
-  "resource-question": QuestionHex,
-  "resource-refresh": RefreshHex,
+  "resource-create": PlusHexOutline,
+  "resource-delete": MinusHexOutline,
+  "resource-question": QuestionHexOutline,
+  "resource-refresh": RefreshHexOutline,
   save: Save,
   search: Search,
   selector: Selector,
