@@ -1,10 +1,10 @@
 ShellToolchainInfo = provider(
-    fields = [
-        "build_context",
-        "editorconfig",
-        "shellcheck",
-        "shfmt_check",
-    ],
+    fields = {
+        "build_context": typing.Any,
+        "editorconfig": provider_field(typing.Any, default = None),
+        "shellcheck": typing.Any,
+        "shfmt_check": typing.Any,
+    },
 )
 
 def shell_toolchain_impl(ctx) -> list[[DefaultInfo, ShellToolchainInfo]]:
@@ -23,7 +23,7 @@ def shell_toolchain_impl(ctx) -> list[[DefaultInfo, ShellToolchainInfo]]:
             editorconfig = editorconfig,
             shellcheck = ctx.attrs._shellcheck,
             shfmt_check = ctx.attrs._shfmt_check,
-        )
+        ),
     ]
 
 shell_toolchain = rule(

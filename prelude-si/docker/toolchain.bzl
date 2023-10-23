@@ -1,12 +1,12 @@
-DockerToolchainInfo = provider(fields = [
-    "capture_stdout",
-    "docker_build_context",
-    "docker_build_context_srcs_from_deps",
-    "docker_container_run",
-    "docker_image_build",
-    "docker_image_push",
-    "docker_image_promote",
-])
+DockerToolchainInfo = provider(fields = {
+    "capture_stdout": typing.Any,
+    "docker_build_context": typing.Any,
+    "docker_build_context_srcs_from_deps": typing.Any,
+    "docker_container_run": typing.Any,
+    "docker_image_build": typing.Any,
+    "docker_image_push": typing.Any,
+    "docker_image_promote": typing.Any,
+})
 
 def docker_toolchain_impl(ctx) -> list[[DefaultInfo, DockerToolchainInfo]]:
     """
