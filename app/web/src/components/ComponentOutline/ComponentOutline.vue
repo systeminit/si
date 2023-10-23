@@ -2,7 +2,7 @@
   <div ref="outlineRef" class="flex flex-col">
     <ScrollArea>
       <template #top>
-        <SidebarSubpanelTitle label="Diagram Outline">
+        <SidebarSubpanelTitle label="Diagram Outline" icon="bullet-list">
           <Icon
             v-if="fetchComponentsReq.isPending || fixesAreRunning"
             name="loader"
@@ -105,6 +105,8 @@ import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
 import ComponentOutlineNode from "./ComponentOutlineNode.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
+import StatusBarQualificationSummary from "../StatusBar/StatusBarQualificationSummary.vue";
+import StatusBarDiffSummary from "../StatusBar/StatusBarDiffSummary.vue";
 
 defineProps<{ fixesAreRunning: boolean }>();
 

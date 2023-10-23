@@ -62,6 +62,7 @@ import Refresh from "~icons/heroicons-solid/refresh";
 import Pencil from "~icons/heroicons-outline/pencil";
 import PencilOff from "~icons/material-symbols/edit-off-outline";
 import Cube from "~icons/heroicons-outline/cube";
+import CubePlus from "./custom-icons/cube-plus.svg?raw";
 import Clock from "~icons/heroicons-solid/clock";
 import ExclamationCircle from "~icons/heroicons-solid/exclamation-circle";
 import CreditCard from "~icons/heroicons-solid/credit-card";
@@ -79,6 +80,7 @@ import Logout from "~icons/material-symbols/logout";
 import Cat from "~icons/fa6-solid/cat";
 import Filter from "~icons/heroicons/funnel-20-solid";
 import Menu from "~icons/heroicons-solid/menu-alt-1";
+import BulletList from "~icons/fluent/text-bullet-list-tree-16-regular";
 import UserCircle from "~icons/heroicons/user-circle-solid";
 import Plug from "~icons/ph/plugs-fill";
 import Boxes from "~icons/bi/boxes";
@@ -140,6 +142,7 @@ export const ICONS = Object.freeze({
   beaker: Beaker,
   bell: Bell,
   bolt: Bolt,
+  "bullet-list": BulletList,
   cat: Cat,
   celebrate: Celebrate,
   check: Check,
@@ -154,6 +157,7 @@ export const ICONS = Object.freeze({
   "cloud-download": CloudDownload,
   "cloud-upload": CloudUpload,
   component: Cube,
+  "component-plus": CubePlus,
   create: Create,
   "credit-card": CreditCard,
   diagram: Diagram,

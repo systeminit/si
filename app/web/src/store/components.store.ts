@@ -222,6 +222,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         selectedInsertSchemaId: null as SchemaId | null,
 
         refreshingStatus: {} as Record<ComponentId, boolean>,
+
+        debugDataByComponentId: {} as Record<ComponentId, ComponentDebugView>,
       }),
       getters: {
         // transforming the diagram-y data back into more generic looking data
@@ -474,12 +476,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
 
-        async FETCH_COMPONENT_DEBUG_VIEW(componentId: string) {
+        async FETCH_COMPONENT_DEBUG_VIEW(componentId: ComponentId) {
           return new ApiRequest<ComponentDebugView>({
             url: "component/debug",
+            keyRequestStatusBy: componentId,
             params: {
               componentId,
               ...visibilityParams,
+            },
+            onSuccess: (debugData) => {
+              this.debugDataByComponentId[componentId] = debugData;
             },
           });
         },

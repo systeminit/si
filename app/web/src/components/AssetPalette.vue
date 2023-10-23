@@ -11,7 +11,7 @@
 
       <ScrollArea class="">
         <template #top>
-          <SidebarSubpanelTitle label="Assets" />
+          <SidebarSubpanelTitle label="Assets" icon="component-plus" />
 
           <div
             ref="instructionsRef"
