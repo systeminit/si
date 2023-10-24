@@ -4,10 +4,7 @@
       <SidebarSubpanelTitle label="Asset Details" icon="component" />
 
       <div v-if="DEV_MODE" class="px-xs pt-xs text-2xs italic opacity-30">
-        COMPONENT ID =
-        <span @click="openDebugModal(selectedComponent?.id)">{{
-          selectedComponent?.id
-        }}</span>
+        COMPONENT ID = {{ selectedComponent?.id }}
         <br />
         NODE ID = {{ selectedComponent.nodeId }}
       </div>
@@ -122,7 +119,19 @@
               <TabGroupItem label="Diff" slug="diff">
                 <AssetDiffDetails :componentId="selectedComponentId" />
               </TabGroupItem>
+              <TabGroupItem label="Debug" slug="debug">
+                <ComponentDebugDetails :componentId="selectedComponentId" />
+              </TabGroupItem>
             </TabGroup>
+          </TabGroupItem>
+          <TabGroupItem slug="actions">
+            <template #label>
+              <Inline noWrap>
+                <span>Actions</span>
+                <PillCounter :count="selectedComponentActionsCount" />
+              </Inline>
+            </template>
+            <AssetActionsDetails :componentId="selectedComponentId" />
           </TabGroupItem>
           <TabGroupItem slug="resources">
             <template #label>
@@ -137,25 +146,15 @@
             </template>
             <ComponentDetailsResource />
           </TabGroupItem>
-          <TabGroupItem slug="actions">
-            <template #label>
-              <Inline noWrap>
-                <span>Actions</span>
-                <PillCounter :count="selectedComponentActionsCount" />
-              </Inline>
-            </template>
-            <AssetActionsDetails :componentId="selectedComponentId" />
-          </TabGroupItem>
         </TabGroup>
       </div>
     </template>
-    <ComponentDebugModal ref="debugModalRef" />
   </ScrollArea>
 </template>
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, onBeforeMount, ref } from "vue";
+import { computed, onBeforeMount } from "vue";
 import {
   Icon,
   ErrorMessage,
@@ -177,7 +176,7 @@ import { useActionsStore } from "@/store/actions.store";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import ComponentDetailsResource from "./ComponentDetailsResource.vue";
-import ComponentDebugModal from "./ComponentDebugModal.vue";
+import ComponentDebugDetails from "./ComponentDebugDetails.vue";
 import AssetQualificationsDetails from "./AssetQualificationsDetails.vue";
 import AssetActionsDetails from "./AssetActionsDetails.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
@@ -187,13 +186,6 @@ import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 const emit = defineEmits(["delete", "restore"]);
 
 const DEV_MODE = import.meta.env.DEV;
-
-const debugModalRef = ref<InstanceType<typeof ComponentDebugModal>>();
-const openDebugModal = (componentId?: string) => {
-  if (debugModalRef.value && componentId) {
-    debugModalRef.value?.open(componentId);
-  }
-};
 
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();

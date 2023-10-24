@@ -3,7 +3,9 @@
     <template #top>
       <SidebarSubpanelTitle
         :label="
-          changeSetStore.headSelected ? 'Head Details' : 'Change Set Details'
+          changeSetStore.headSelected
+            ? 'Workspace Activity'
+            : 'Change Set Details'
         "
         :icon="changeSetStore.headSelected ? 'git-branch' : 'git-branch'"
       />

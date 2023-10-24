@@ -2,7 +2,7 @@
   <div ref="outlineRef" class="flex flex-col">
     <ScrollArea>
       <template #top>
-        <SidebarSubpanelTitle label="Diagram Outline">
+        <SidebarSubpanelTitle label="Diagram Outline" icon="bullet-list">
           <Icon
             v-if="fetchComponentsReq.isPending || fixesAreRunning"
             name="loader"

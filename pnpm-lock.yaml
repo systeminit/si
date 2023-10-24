@@ -253,8 +253,8 @@ importers:
         version: 0.1.2(vue@3.3.4)
     devDependencies:
       '@iconify/json':
-        specifier: ^2.1.142
-        version: 2.1.146
+        specifier: ^2.2.131
+        version: 2.2.131
       '@si/eslint-config':
         specifier: workspace:*
         version: link:../../lib/eslint-config
@@ -696,8 +696,8 @@ importers:
         version: 0.1.2(vue@3.3.4)
     devDependencies:
       '@iconify/json':
-        specifier: ^2.1.142
-        version: 2.1.146
+        specifier: ^2.2.131
+        version: 2.2.131
       '@si/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
@@ -1888,11 +1888,11 @@ packages:
     resolution: {integrity: sha512-ZnQMnLV4e7hDlUvw8H+U8ASL02SS2Gn6+9Ac3wGGLIe7+je2AeAOxPY+izIPJDfFDb7eDjev0Us8MO1iFRN8hA==}
     dev: true
 
-  /@iconify/json@2.1.146:
-    resolution: {integrity: sha512-wIGCtWvxNjWbHPOuJK1e7VaRn0EVrcpzTyC1TaSDRJFsBoGki9Z2NEPEPOS4VaEukh8MLHzLor1IMGgiLhfohg==}
+  /@iconify/json@2.2.131:
+    resolution: {integrity: sha512-KpGOd7EkL+TvCsvlKln0HBvwl/KQyo2jZyLwUaU5mbGCPnIToO8Stxjl4QgYwg3SI1q3Pba0AAqmPxs1nD+g9w==}
     dependencies:
       '@iconify/types': 2.0.0
-      pathe: 0.3.9
+      pathe: 1.1.1
     dev: true
 
   /@iconify/types@2.0.0:
@@ -13024,8 +13024,8 @@ packages:
     engines: {node: '>=12'}
     dev: true
 
-  /pathe@0.3.9:
-    resolution: {integrity: sha512-6Y6s0vT112P3jD8dGfuS6r+lpa0qqNrLyHPOwvXMnyNTQaYiwgau2DP3aNDsR13xqtGj7rrPo+jFUATpU6/s+g==}
+  /pathe@1.1.1:
+    resolution: {integrity: sha512-d+RQGp0MAYTIaDBIMmOfMwz3E+LOZnxx1HZd5R18mmCZY0QBlK0LDZfPc8FW8Ed2DlvsuE6PRjroDY+wg4+j/Q==}
     dev: true
 
   /pathval@1.1.1:

@@ -1,7 +1,7 @@
 <template>
   <StatusBarTab :selected="props.selected">
     <template #icon>
-      <Icon class="text-white" name="clock" />
+      <Icon class="text-white" name="tilde-square" />
     </template>
     <template #name>Diff</template>
     <template #summary>

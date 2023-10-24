@@ -2,13 +2,17 @@
   <div
     :class="
       clsx(
-        'flex justify-end h-12',
+        'flex justify-end',
         'bg-neutral-900 text-white relative border-t border-shade-100 shadow-[0_4px_4px_0_rgba(0,0,0,0.15)] z-90',
       )
     "
   >
-    <StatusBarDiffSummary v-if="!changeSetStore.headSelected" />
-    <StatusBarQualificationSummary />
+    <div class="border-l border-shade-100">
+      <StatusBarDiffSummary v-if="!changeSetStore.headSelected" />
+    </div>
+    <div class="border-l border-shade-100">
+      <StatusBarQualificationSummary />
+    </div>
   </div>
   <!--  -->
 </template>

@@ -62,7 +62,7 @@
     "vue-safe-teleport": "^0.1.2"
   },
   "devDependencies": {
-    "@iconify/json": "^2.1.142",
+    "@iconify/json": "^2.2.131",
     "@si/eslint-config": "workspace:*",
     "@si/tsconfig": "workspace:*",
     "@types/lodash-es": "^4.17.7",
