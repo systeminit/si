@@ -4,8 +4,8 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
 use super::{
-    ActionFuncSpec, LeafFunctionSpec, PropSpec, PropSpecData, PropSpecWidgetKind, SiPropFuncSpec,
-    SocketSpec, SpecError,
+    ActionFuncSpec, LeafFunctionSpec, PropSpec, PropSpecData, PropSpecWidgetKind, RootPropFuncSpec,
+    SiPropFuncSpec, SocketSpec, SpecError,
 };
 
 #[remain::sorted]
@@ -144,6 +144,10 @@ pub struct SchemaVariantSpec {
 
     #[builder(private, default = "Self::default_resource_value()")]
     pub resource_value: PropSpec,
+
+    #[builder(setter(each(name = "root_prop_func"), into), default)]
+    #[serde(default)]
+    pub root_prop_funcs: Vec<RootPropFuncSpec>,
 }
 
 impl SchemaVariantSpec {

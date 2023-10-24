@@ -6,7 +6,9 @@ use object_tree::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{ActionFuncSpec, LeafFunctionSpec, PropSpec, SiPropFuncSpec, SocketSpec};
+use crate::{
+    ActionFuncSpec, LeafFunctionSpec, PropSpec, RootPropFuncSpec, SiPropFuncSpec, SocketSpec,
+};
 
 use super::PkgNode;
 
@@ -18,6 +20,7 @@ const VARIANT_CHILD_TYPE_SI_PROP_FUNCS: &str = "si_prop_funcs";
 const VARIANT_CHILD_TYPE_SOCKETS: &str = "sockets";
 const VARIANT_CHILD_TYPE_SECRET_DEFINITION: &str = "secret_definition";
 const VARIANT_CHILD_TYPE_SECRETS: &str = "secrets";
+const VARIANT_CHILD_TYPE_ROOT_PROP_FUNCS: &str = "root_prop_funcs";
 
 const KEY_KIND_STR: &str = "kind";
 
@@ -29,6 +32,7 @@ pub enum SchemaVariantChild {
     Domain(PropSpec),
     LeafFunctions(Vec<LeafFunctionSpec>),
     ResourceValue(PropSpec),
+    RootPropFuncs(Vec<RootPropFuncSpec>),
     SecretDefinition(PropSpec),
     Secrets(PropSpec),
     SiPropFuncs(Vec<SiPropFuncSpec>),
@@ -42,6 +46,7 @@ pub enum SchemaVariantChildNode {
     Domain,
     LeafFunctions,
     ResourceValue,
+    RootPropFuncs,
     SecretDefinition,
     Secrets,
     SiPropFuncs,
@@ -55,6 +60,7 @@ impl SchemaVariantChildNode {
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
             Self::ResourceValue => VARIANT_CHILD_TYPE_RESOURCE_VALUE,
+            Self::RootPropFuncs => VARIANT_CHILD_TYPE_ROOT_PROP_FUNCS,
             Self::SecretDefinition => VARIANT_CHILD_TYPE_SECRET_DEFINITION,
             Self::Secrets => VARIANT_CHILD_TYPE_SECRETS,
             Self::SiPropFuncs => VARIANT_CHILD_TYPE_SI_PROP_FUNCS,
@@ -70,6 +76,7 @@ impl NameStr for SchemaVariantChildNode {
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
             Self::ResourceValue => VARIANT_CHILD_TYPE_RESOURCE_VALUE,
+            Self::RootPropFuncs => VARIANT_CHILD_TYPE_ROOT_PROP_FUNCS,
             Self::SecretDefinition => VARIANT_CHILD_TYPE_SECRET_DEFINITION,
             Self::Secrets => VARIANT_CHILD_TYPE_SECRETS,
             Self::SiPropFuncs => VARIANT_CHILD_TYPE_SI_PROP_FUNCS,
@@ -98,6 +105,7 @@ impl ReadBytes for SchemaVariantChildNode {
             VARIANT_CHILD_TYPE_LEAF_FUNCTIONS => Self::LeafFunctions,
             VARIANT_CHILD_TYPE_RESOURCE_VALUE => Self::ResourceValue,
             VARIANT_CHILD_TYPE_SI_PROP_FUNCS => Self::SiPropFuncs,
+            VARIANT_CHILD_TYPE_ROOT_PROP_FUNCS => Self::RootPropFuncs,
             VARIANT_CHILD_TYPE_SOCKETS => Self::Sockets,
             VARIANT_CHILD_TYPE_SECRETS => Self::Secrets,
             VARIANT_CHILD_TYPE_SECRET_DEFINITION => Self::SecretDefinition,
@@ -195,6 +203,16 @@ impl NodeChild for SchemaVariantChild {
                     .map(|si_prop_func| {
                         Box::new(si_prop_func.clone())
                             as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
+            Self::RootPropFuncs(root_prop_funcs) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::RootPropFuncs),
+                root_prop_funcs
+                    .iter()
+                    .map(|prop_func| {
+                        Box::new(prop_func.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
                     })
                     .collect(),
             ),

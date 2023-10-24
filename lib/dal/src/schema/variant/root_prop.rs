@@ -8,12 +8,10 @@ use crate::func::backend::validation::FuncBackendValidationArgs;
 use crate::property_editor::schema::WidgetKind;
 use crate::validation::Validation;
 use crate::{
-    builtins::schema::MigrationDriver,
     schema::variant::{leaves::LeafKind, SchemaVariantResult},
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    BuiltinsError, DalContext, Func, FuncError, InternalProvider, Prop, PropId, PropKind,
-    ReconciliationPrototype, ReconciliationPrototypeContext, SchemaId, SchemaVariant,
-    SchemaVariantId, StandardModel, ValidationPrototype, ValidationPrototypeContext,
+    DalContext, Func, FuncError, Prop, PropId, PropKind, ReconciliationPrototype,
+    ReconciliationPrototypeContext, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
+    ValidationPrototype, ValidationPrototypeContext,
 };
 
 pub mod component_type;
@@ -348,59 +346,6 @@ impl SchemaVariant {
 
         SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id()).await?;
         SchemaVariant::create_implicit_internal_providers(ctx, *schema_variant.id()).await?;
-
-        {
-            // Translation func
-            let (func_id, func_argument_id) =
-                MigrationDriver::find_func_and_single_argument_by_names_raw(
-                    ctx,
-                    "si:resourcePayloadToValue",
-                    "payload",
-                )
-                .await
-                .map_err(Box::new)?;
-
-            let source = {
-                let prop = SchemaVariant::find_prop_in_tree(
-                    ctx,
-                    schema_variant_id,
-                    &["root", "resource", "payload"],
-                )
-                .await?;
-
-                InternalProvider::find_for_prop(ctx, *prop.id())
-                    .await?
-                    .ok_or_else(|| {
-                        Box::new(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
-                            *prop.id(),
-                        ))
-                    })?
-            };
-
-            let target = {
-                let mut prototype = AttributeValue::find_for_context(
-                    ctx,
-                    AttributeReadContext::default_with_prop(*resource_value_prop.id()),
-                )
-                .await?
-                .ok_or(AttributeValueError::Missing)?
-                .attribute_prototype(ctx)
-                .await?
-                .ok_or(AttributeValueError::MissingAttributePrototype)?;
-
-                prototype.set_func_id(ctx, func_id).await?;
-
-                prototype
-            };
-
-            AttributePrototypeArgument::new_for_intra_component(
-                ctx,
-                *target.id(),
-                func_argument_id,
-                *source.id(),
-            )
-            .await?;
-        }
 
         Ok(*resource_value_prop.id())
     }

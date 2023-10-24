@@ -134,6 +134,9 @@ impl NodeChild for SchemaVariantSpec {
                 as Box<dyn NodeChild<NodeType = Self::NodeType>>,
             Box::new(SchemaVariantChild::Secrets(self.secrets.clone()))
                 as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+            Box::new(SchemaVariantChild::RootPropFuncs(
+                self.root_prop_funcs.clone(),
+            )) as Box<dyn NodeChild<NodeType = Self::NodeType>>,
         ];
 
         if let Some(secret_definition) = self.secret_definition.clone() {
