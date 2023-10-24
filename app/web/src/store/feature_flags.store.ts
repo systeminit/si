@@ -6,6 +6,7 @@ import { posthog } from "@/utils/posthog";
 // translation from store key to posthog feature flag name
 const FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
+  INVITE_USER: "invite_user",
   MODULES_TAB: "modules_tab",
   CONTRIBUTE_BUTTON: "contribute_button",
   SECRETS: "secrets",

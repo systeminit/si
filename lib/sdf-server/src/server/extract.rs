@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, fmt, str::FromStr};
 
 use axum::{
     async_trait,
@@ -8,7 +8,7 @@ use axum::{
 };
 use dal::{
     context::{self, DalContextBuilder},
-    User, UserClaim,
+    User, UserClaim, WorkspacePk,
 };
 use hyper::StatusCode;
 
@@ -132,9 +132,17 @@ impl FromRequestParts<AppState> for Authorization {
         let authorization = authorization_header_value
             .to_str()
             .map_err(internal_error)?;
-        let claim = UserClaim::from_bearer_token(jwt_public_signing_key, authorization)
-            .await
-            .map_err(|_| unauthorized_error())?;
+        let workspace_pk_header_value = headers
+            .get("WorkspacePk")
+            .and_then(|w| w.to_str().ok())
+            .and_then(|id| WorkspacePk::from_str(id).ok());
+        let claim = UserClaim::from_bearer_token(
+            workspace_pk_header_value,
+            jwt_public_signing_key,
+            authorization,
+        )
+        .await
+        .map_err(|_| unauthorized_error())?;
         ctx.update_tenancy(dal::Tenancy::new(claim.workspace_pk));
 
         User::authorize(&ctx, &claim.user_pk)
@@ -164,7 +172,7 @@ impl FromRequestParts<AppState> for WsAuthorization {
             .map_err(|_| unauthorized_error())?;
         let authorization = query.get("token").ok_or_else(unauthorized_error)?;
 
-        let claim = UserClaim::from_bearer_token(jwt_public_signing_key, authorization)
+        let claim = UserClaim::from_bearer_token(None, jwt_public_signing_key, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
         ctx.update_tenancy(dal::Tenancy::new(claim.workspace_pk));
