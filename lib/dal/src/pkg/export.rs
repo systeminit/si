@@ -6,8 +6,8 @@ use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, AttributeValuePath,
     AttributeValueSpec, ChangeSetSpec, ComponentSpec, ComponentSpecVariant, EdgeSpec, EdgeSpecKind,
     FuncArgumentSpec, FuncSpec, FuncSpecData, LeafFunctionSpec, MapKeyFuncSpec, PkgSpec,
-    PositionSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecData,
-    SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
+    PositionSpec, PropSpec, PropSpecBuilder, PropSpecKind, RootPropFuncSpec, SchemaSpec,
+    SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
     SchemaVariantSpecData, SchemaVariantSpecPropRoot, SiPkg, SiPkgKind, SiPropFuncSpec,
     SiPropFuncSpecKind, SocketSpec, SocketSpecData, SocketSpecKind, SpecError, ValidationSpec,
     ValidationSpecKind,
@@ -20,6 +20,7 @@ use crate::{
         argument::FuncArgument, backend::validation::FuncBackendValidationArgs,
         intrinsics::IntrinsicFunc,
     },
+    prop::PropPath,
     prop_tree::{PropTree, PropTreeNode},
     schema::variant::definition::SchemaVariantDefinition,
     socket::SocketKind,
@@ -321,9 +322,68 @@ impl PkgExporter {
                 variant_spec_builder.si_prop_func(si_prop_func_spec);
             });
 
+        self.export_root_prop_funcs(ctx, change_set_pk, variant)
+            .await?
+            .drain(..)
+            .for_each(|root_prop_func_spec| {
+                variant_spec_builder.root_prop_func(root_prop_func_spec);
+            });
+
         let variant_spec = variant_spec_builder.build()?;
 
         Ok(variant_spec)
+    }
+
+    async fn export_root_prop_funcs(
+        &self,
+        ctx: &DalContext,
+        change_set_pk: Option<ChangeSetPk>,
+        variant: &SchemaVariant,
+    ) -> PkgResult<Vec<RootPropFuncSpec>> {
+        let mut specs = vec![];
+
+        for root_prop in SchemaVariantSpecPropRoot::iter() {
+            if let Some(prop) = Prop::find_prop_by_path_opt(
+                ctx,
+                *variant.id(),
+                &PropPath::new(root_prop.path_parts()),
+            )
+            .await?
+            {
+                let context = AttributeContextBuilder::new()
+                    .set_prop_id(*prop.id())
+                    .to_context()?;
+
+                if let Some(prototype) =
+                    AttributePrototype::find_for_context_and_key(ctx, context, &None)
+                        .await?
+                        .pop()
+                {
+                    if let Some((func_unique_id, mut inputs)) = self
+                        .export_input_func_and_arguments(ctx, change_set_pk, &prototype)
+                        .await?
+                    {
+                        let mut builder = RootPropFuncSpec::builder();
+                        builder
+                            .deleted(prototype.visibility().is_deleted())
+                            .func_unique_id(func_unique_id)
+                            .prop(root_prop);
+
+                        if self.is_workspace_export {
+                            builder.unique_id(prototype.id().to_string());
+                        }
+
+                        inputs.drain(..).for_each(|input| {
+                            builder.input(input);
+                        });
+
+                        specs.push(builder.build()?);
+                    }
+                }
+            }
+        }
+
+        Ok(specs)
     }
 
     async fn export_si_prop_funcs(

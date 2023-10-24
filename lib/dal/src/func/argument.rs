@@ -26,6 +26,8 @@ pub enum FuncArgumentError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("func argument not found with name {0} for Func {1}")]
+    NotFoundByNameForFunc(String, FuncId),
     #[error("pg error: {0}")]
     Pg(#[from] si_data_pg::PgError),
     #[error("error serializing/deserializing json: {0}")]
