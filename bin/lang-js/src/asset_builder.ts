@@ -346,6 +346,7 @@ export class ValidationBuilder implements IValidationBuilder {
 export type PropWidgetDefinitionKind =
   | "array"
   | "checkbox"
+  | "codeEditor"
   | "color"
   | "comboBox"
   | "header"
@@ -395,7 +396,7 @@ export class PropWidgetDefinitionBuilder
   /**
    * The type of widget
    *
-   * @param {string} kind [array | checkbox | color | comboBox | header | map | secret | select | text | textArea]
+   * @param {string} kind [array | checkbox | color | comboBox | header | map | secret | select | text | textArea | codeEditor]
    *
    * @returns this
    *
@@ -410,7 +411,7 @@ export class PropWidgetDefinitionBuilder
   /**
    * Add an option when using a comboBox
    *
-   * @param {string} key - the value displayed in the comboBoxx
+   * @param {string} key - the value displayed in the comboBox
    * @param {string} value - the value the prop is set to
    *
    * @returns this
