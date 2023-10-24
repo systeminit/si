@@ -164,8 +164,6 @@ import ApplyHistory from "./ApplyHistory.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import EmptyStateIcon from "./EmptyStateIcon.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
-import StatusBarQualificationSummary from "./StatusBar/StatusBarQualificationSummary.vue";
-import StatusBarDiffSummary from "./StatusBar/StatusBarDiffSummary.vue";
 
 const changeSetStore = useChangeSetsStore();
 const actionsStore = useActionsStore();

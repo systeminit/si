@@ -63,10 +63,9 @@ watchEffect(() => {
   // replace color with fill
   if (props.color) {
     svgString = svgString.replace(
-      /(fill|stroke)="(#[A-F0-9]{3,6}|currentColor)"/gi,
+      /(fill|stroke)="(#[A-F0-9]{3,6}|currentColor|black)"/gi,
       `$1="${props.color}"`,
     );
-    console.log(svgString);
   }
   const imgBase64Src = `data:image/svg+xml;base64, ${btoa(svgString)}`;
 

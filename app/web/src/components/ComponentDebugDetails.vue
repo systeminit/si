@@ -80,10 +80,8 @@
 
 <script setup lang="ts">
 import {
-  Stack,
   Collapsible,
   ErrorMessage,
-  VormInput,
   LoadingMessage,
 } from "@si/vue-lib/design-system";
 import { PropType, computed, onMounted } from "vue";
