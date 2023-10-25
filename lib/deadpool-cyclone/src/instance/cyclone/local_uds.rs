@@ -103,17 +103,10 @@ impl Instance for LocalUdsInstance {
     type Error = LocalUdsInstanceError;
 
     async fn terminate(mut self) -> result::Result<(), Self::Error> {
-        match self.runtime.runtime_strategy {
-            LocalUdsRuntimeStrategy::LocalProcess => {
-                if !self.watch_shutdown_tx.is_closed() && self.watch_shutdown_tx.send(()).is_err() {
-                    debug!("sent watch shutdown but receiver was already closed");
-                }
-                return self.runtime.terminate().await;
-            }
-            LocalUdsRuntimeStrategy::LocalDocker => {
-                return self.runtime.terminate().await;
-            }
+        if !self.watch_shutdown_tx.is_closed() && self.watch_shutdown_tx.send(()).is_err() {
+            debug!("sent watch shutdown but receiver was already closed");
         }
+        self.runtime.terminate().await
     }
 
     async fn ensure_healthy(&mut self) -> result::Result<(), Self::Error> {
@@ -336,7 +329,7 @@ impl Spec for LocalUdsInstanceSpec {
         let mut runtime =
             LocalInstanceRuntime::build(&self.runtime_strategy, &socket, self.clone()).await?;
 
-        let _ = runtime.spawn().await;
+        runtime.spawn().await?;
         let mut client = Client::uds(socket)?;
 
         // Establish the client watch session. As the process may be booting, we will retry for a
@@ -593,12 +586,12 @@ impl LocalInstanceRuntime {
                 let socket_dir = sock
                     .parent()
                     .expect("socket path not available")
-                    .display()
-                    .to_string();
+                    .to_str()
+                    .expect("unable to unpack path");
                 let mounts = vec![
                     Mount {
-                        source: Some(socket_dir.clone()),
-                        target: Some(socket_dir.clone()),
+                        source: Some(String::from(socket_dir.clone())),
+                        target: Some(String::from(socket_dir.clone())),
                         typ: Some(MountTypeEnum::BIND),
                         ..Default::default()
                     },
@@ -612,7 +605,8 @@ impl LocalInstanceRuntime {
                         source: Some(
                             spec.lang_server_cmd_path
                                 .as_path()
-                                .to_string_lossy()
+                                .to_str()
+                                .expect("unable to unpack path")
                                 .to_string(),
                         ),
                         target: Some(String::from("/tmp/langserver")),
@@ -697,9 +691,8 @@ impl LocalInstanceRuntime {
                     .as_mut()
                     .expect("docker socket should be bound")
                     .remove_container(
-                        &self
-                            .container_id
-                            .clone()
+                        self.container_id
+                            .as_mut()
                             .expect("container id should be available"),
                         Some(RemoveContainerOptions {
                             force: true,
