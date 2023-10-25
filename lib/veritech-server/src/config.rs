@@ -9,7 +9,7 @@ use buck2_resources::Buck2Resources;
 use deadpool_cyclone::{
     instance::cyclone::{
         LocalHttpInstance, LocalHttpInstanceSpec, LocalHttpSocketStrategy, LocalUdsInstance,
-        LocalUdsInstanceSpec, LocalUdsSocketStrategy,
+        LocalUdsInstanceSpec, LocalUdsSocketStrategy, LocalUdsRuntimeStrategy
     },
     Instance,
 };
@@ -187,6 +187,8 @@ pub enum CycloneConfig {
         #[serde(default)]
         socket_strategy: LocalUdsSocketStrategy,
         #[serde(default)]
+        runtime_strategy: LocalUdsRuntimeStrategy,
+        #[serde(default)]
         watch_timeout: Option<Duration>,
         #[serde(default = "default_limit_requests")]
         limit_requets: Option<u32>,
@@ -220,6 +222,7 @@ impl CycloneConfig {
             cyclone_decryption_key_path: default_cyclone_decryption_key_path(),
             lang_server_cmd_path: default_lang_server_cmd_path(),
             socket_strategy: Default::default(),
+            runtime_strategy: Default::default(),
             watch_timeout: Default::default(),
             limit_requets: default_limit_requests(),
             ping: default_enable_endpoint(),
@@ -347,6 +350,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 cyclone_decryption_key_path,
                 lang_server_cmd_path,
                 socket_strategy,
+                runtime_strategy,
                 watch_timeout,
                 limit_requets,
                 ping,
@@ -362,6 +366,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                     .try_lang_server_cmd_path(lang_server_cmd_path)
                     .map_err(ConfigError::cyclone_spec_build)?;
                 builder.socket_strategy(socket_strategy);
+                builder.runtime_strategy(runtime_strategy);
                 if let Some(watch_timeout) = watch_timeout {
                     builder.watch_timeout(watch_timeout);
                 }
