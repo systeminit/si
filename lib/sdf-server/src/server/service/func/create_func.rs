@@ -40,6 +40,8 @@ pub enum CreateFuncOptions {
         output_location: AttributeOutputLocation,
     },
     #[serde(rename_all = "camelCase")]
+    AuthenticationOptions { schema_variant_id: SchemaVariantId },
+    #[serde(rename_all = "camelCase")]
     CodeGenerationOptions { schema_variant_id: SchemaVariantId },
     #[serde(rename_all = "camelCase")]
     QualificationOptions { schema_variant_id: SchemaVariantId },
@@ -76,6 +78,7 @@ pub static DEFAULT_CODE_GENERATION_CODE: &str = include_str!("./defaults/code_ge
 pub static DEFAULT_QUALIFICATION_CODE: &str = include_str!("./defaults/qualification.ts");
 pub static DEFAULT_ACTION_CODE: &str = include_str!("./defaults/action.ts");
 pub static DEFAULT_VALIDATION_CODE: &str = include_str!("./defaults/validation.ts");
+pub static DEFAULT_AUTHENTICATION_CODE: &str = include_str!("./defaults/authentication.ts");
 
 async fn create_func_stub(
     ctx: &DalContext,
@@ -303,6 +306,26 @@ async fn create_attribute_func(
     Ok(func)
 }
 
+async fn create_authentication_func(
+    ctx: &DalContext,
+    name: Option<String>,
+    _options: Option<CreateFuncOptions>,
+) -> FuncResult<Func> {
+    let func = create_func_stub(
+        ctx,
+        name,
+        FuncVariant::Authentication,
+        FuncBackendResponseType::Unset,
+        DEFAULT_AUTHENTICATION_CODE,
+        DEFAULT_CODE_HANDLER,
+    )
+    .await?;
+
+    // TODO We'll need to create a prototype here when we get to executing auth funcs directly
+
+    Ok(func)
+}
+
 pub async fn create_func(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -363,7 +386,10 @@ pub async fn create_func(
             )
             .await?
         }
-        _ => unimplemented!(),
+        FuncVariant::Authentication => {
+            create_authentication_func(&ctx, request.name, request.options).await?
+        }
+        FuncVariant::Reconciliation => unimplemented!(),
     };
 
     let func_variant = (&func).try_into()?;

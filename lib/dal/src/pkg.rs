@@ -253,6 +253,7 @@ impl From<FuncBackendKind> for FuncSpecBackendKind {
             FuncBackendKind::String => Self::String,
             FuncBackendKind::Unset => Self::Unset,
             FuncBackendKind::Validation => Self::Validation,
+            FuncBackendKind::JsAuthentication => Self::JsAuthentication,
         }
     }
 }
@@ -275,6 +276,7 @@ impl From<FuncSpecBackendKind> for FuncBackendKind {
             FuncSpecBackendKind::String => Self::String,
             FuncSpecBackendKind::Unset => Self::Unset,
             FuncSpecBackendKind::Validation => Self::Validation,
+            FuncSpecBackendKind::JsAuthentication => Self::JsAuthentication,
         }
     }
 }

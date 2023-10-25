@@ -81,6 +81,7 @@ pub enum FuncBackendKind {
     Integer,
     JsAction,
     JsAttribute,
+    JsAuthentication,
     JsReconciliation,
     JsSchemaVariantDefinition,
     JsValidation,

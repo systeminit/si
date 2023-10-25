@@ -278,6 +278,7 @@ impl FuncBinding {
             FuncBackendKind::Validation => {
                 FuncBackendValidation::create_and_execute(&self.args).await
             }
+            FuncBackendKind::JsAuthentication => todo!("JsAuthentication binding"),
         };
 
         match execution_result {
@@ -360,7 +361,8 @@ impl FuncBinding {
             | FuncBackendKind::JsAttribute
             | FuncBackendKind::JsReconciliation
             | FuncBackendKind::JsSchemaVariantDefinition
-            | FuncBackendKind::JsValidation => {
+            | FuncBackendKind::JsValidation
+            | FuncBackendKind::JsAuthentication => {
                 execution
                     .set_state(ctx, super::execution::FuncExecutionState::Dispatch)
                     .await?;

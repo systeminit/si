@@ -198,6 +198,7 @@ impl_default_error_into_response!(FuncError);
 pub enum FuncVariant {
     Action,
     Attribute,
+    Authentication,
     CodeGeneration,
     Qualification,
     Reconciliation,
@@ -213,6 +214,7 @@ impl From<FuncVariant> for FuncBackendKind {
             FuncVariant::Attribute | FuncVariant::CodeGeneration | FuncVariant::Qualification => {
                 FuncBackendKind::JsAttribute
             }
+            FuncVariant::Authentication => FuncBackendKind::JsAuthentication,
         }
     }
 }
@@ -230,7 +232,20 @@ impl TryFrom<&Func> for FuncVariant {
             (FuncBackendKind::JsReconciliation, _) => Ok(FuncVariant::Reconciliation),
             (FuncBackendKind::JsAction, _) => Ok(FuncVariant::Action),
             (FuncBackendKind::JsValidation, _) => Ok(FuncVariant::Validation),
-            _ => Err(FuncError::FuncCannotBeTurnedIntoVariant(*func.id())),
+            (FuncBackendKind::JsAuthentication, _) => Ok(FuncVariant::Authentication),
+            (FuncBackendKind::Array, _)
+            | (FuncBackendKind::Boolean, _)
+            | (FuncBackendKind::Diff, _)
+            | (FuncBackendKind::Identity, _)
+            | (FuncBackendKind::Integer, _)
+            | (FuncBackendKind::JsSchemaVariantDefinition, _)
+            | (FuncBackendKind::Map, _)
+            | (FuncBackendKind::Object, _)
+            | (FuncBackendKind::String, _)
+            | (FuncBackendKind::Unset, _)
+            | (FuncBackendKind::Validation, _) => {
+                Err(FuncError::FuncCannotBeTurnedIntoVariant(*func.id()))
+            }
         }
     }
 }

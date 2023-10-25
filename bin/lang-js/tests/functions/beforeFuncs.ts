@@ -14,14 +14,16 @@ function main() {
   };
 }
 
-function before1() {
+function before1(arg) {
   console.log("Running Before 1");
+  console.log(`My arg is ${arg}`);
   requestStorage.setItem("b1", true);
   requestStorage.setItem("b2", true);
 }
 
-function before2() {
+function before2(arg) {
   console.log("Running Before 2");
+  console.log(`My arg is ${arg}`);
   requestStorage.deleteItem("b2");
   requestStorage.setItem("b3", "I'm a string");
 }

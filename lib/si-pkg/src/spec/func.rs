@@ -67,6 +67,7 @@ pub enum FuncSpecBackendKind {
     Integer,
     JsAction,
     JsAttribute,
+    JsAuthentication,
     JsReconciliation,
     JsSchemaVariantDefinition,
     JsValidation,

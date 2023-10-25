@@ -11,7 +11,9 @@ import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:validation");
 
-export type BeforeFunc = Func;
+export interface BeforeFunc extends Func {
+  arg: unknown
+}
 
 export type BeforeResultSuccess = ResultSuccess;
 
@@ -23,13 +25,13 @@ export type BeforeResult = BeforeResultSuccess | BeforeResultFailure;
 async function execute(
   vm: NodeVM,
   { executionId }: RequestCtx,
-  _: BeforeFunc,
+  { arg }: BeforeFunc,
   code: string,
 ): Promise<BeforeResult> {
   try {
     const runner = vm.run(code);
     await new Promise((resolve) => {
-      runner((resolution: Record<string, unknown>) => resolve(resolution));
+      runner(arg, (resolution: Record<string, unknown>) => resolve(resolution));
     });
     debug({ result: "<void>" });
   } catch (err) {
@@ -44,9 +46,9 @@ async function execute(
 }
 
 const wrapCode = (code: string, handler: string) => `
-module.exports = function(callback) {
+module.exports = function(arg, callback) {
   ${code}
-  const returnValue = ${handler}();
+  const returnValue = ${handler}(arg);
   if (returnValue instanceof Promise) {
     returnValue.then((data) => callback(data))
       .catch((err) => {

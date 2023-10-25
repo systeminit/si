@@ -143,8 +143,7 @@ async fn run_actions(ctx: &DalContext, func: &Func) -> FuncResult<()> {
     if protos.is_empty() {
         return Err(FuncError::FuncExecutionFailedNoPrototypes);
     }
-
-    for proto in ActionPrototype::find_for_func(ctx, *func.id()).await? {
+    for proto in protos {
         let schema_variant_id = proto.context().schema_variant_id();
         if schema_variant_id.is_none() {
             continue;
