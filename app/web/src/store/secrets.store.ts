@@ -88,6 +88,11 @@ export interface SecretDefinition {
 }
 
 export type SecretsHashMap = Record<SecretDefinitionId, Secret[]>;
+export type SecretsOrderedArray = {
+  id: SecretDefinitionId;
+  latestChange: string | undefined;
+  secrets: Secret[];
+}[];
 export type SecretsDefinitionHashMap = Record<
   SecretDefinitionId,
   {
@@ -129,6 +134,49 @@ export function useSecretsStore() {
               acc[key] = value.secrets;
             },
           );
+        },
+        secretsByLastCreated(state): SecretsOrderedArray {
+          const out = [] as SecretsOrderedArray;
+
+          for (const [key, value] of Object.entries(
+            state.secretDefinitionByDefinitionId,
+          )) {
+            let change: string | undefined;
+            value.secrets.forEach((secret) => {
+              if (!change) change = secret.createdInfo.timestamp;
+              if (new Date(secret.createdInfo.timestamp) > new Date(change)) {
+                change = secret.createdInfo.timestamp;
+              }
+              if (
+                secret.updatedInfo &&
+                new Date(secret.updatedInfo.timestamp) > new Date(change)
+              ) {
+                change = secret.updatedInfo.timestamp;
+              }
+            });
+
+            out.push({
+              id: key,
+              latestChange: change,
+              secrets: value.secrets,
+            });
+          }
+
+          out.sort((a, b) => {
+            if (!a.latestChange && !b.latestChange) return 0;
+            else if (!a.latestChange && b.latestChange) return 1;
+            else if (a.latestChange && !b.latestChange) return -1;
+            else if (a.latestChange && b.latestChange) {
+              if (new Date(a.latestChange) > new Date(b.latestChange)) {
+                return -1;
+              } else if (new Date(a.latestChange) < new Date(b.latestChange)) {
+                return 1;
+              }
+            }
+            return 0;
+          });
+
+          return out;
         },
         secrets(): Secret[] {
           return _.flatMap(this.secretsByDefinitionId);
