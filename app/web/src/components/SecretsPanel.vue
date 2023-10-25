@@ -9,12 +9,17 @@
       <div class="text-lg font-bold text-center">
         {{ editingSecret ? "Editing Secret" : "New Secret" }}
       </div>
-      <div class="text-center text-sm italic text-neutral-400">
+      <div
+        ref="addingSecretNameRef"
+        v-tooltip="addingSecretTooltip"
+        class="text-center text-sm italic text-neutral-400 break-words line-clamp-3"
+      >
         Defintion: "{{ addingSecretId }}"
       </div>
     </div>
     <AddSecretForm
       :definitionId="addingSecretId"
+      :editingSecret="editingSecret"
       @save="closeAddSecretForm"
       @cancel="closeAddSecretForm"
     />
@@ -40,27 +45,26 @@
       :key="definition.id"
       buttonClasses="bg-neutral-100 dark:bg-neutral-900"
       :defaultOpen="false"
+      useDifferentLabelWhenOpen
     >
       <template #label>
-        <div class="flex-grow truncate text-lg font-bold">
+        <div class="flex-grow text-md font-bold truncate">
+          {{ definition.id }}
+        </div>
+      </template>
+      <template #openLabel>
+        <div class="flex-grow text-md font-bold break-words overflow-hidden">
           {{ definition.id }}
         </div>
       </template>
       <template #right>
-        <div class="flex flex-row items-center gap-xs">
-          <div
-            :class="
-              clsx(
-                'text-md rounded-2xl px-xs border',
-                themeClasses(
-                  'border-neutral-600 text-neutral-600 bg-neutral-200',
-                  'border-neutral-300 text-neutral-300 bg-neutral-700',
-                ),
-              )
-            "
-          >
-            {{ secretsStore.secretsByDefinitionId[definition.id]?.length }}
-          </div>
+        <div class="flex flex-row flex-none items-center gap-xs pl-xs">
+          <PillCounter
+            :count="secretsStore.secretsByDefinitionId[definition.id]?.length"
+            showIfZero
+            size="md"
+            class="min-w-[27.1px] text-center"
+          />
           <VButton
             icon="plus"
             tone="action"
@@ -83,6 +87,7 @@
           :key="secret.id"
           :secret="secret"
           detailedListItem
+          @edit="openAddSecretForm(definition.id, secret)"
         />
       </template>
     </Collapsible>
@@ -92,13 +97,14 @@
 <script lang="ts" setup>
 import {
   Collapsible,
+  PillCounter,
   ScrollArea,
   VButton,
   themeClasses,
 } from "@si/vue-lib/design-system";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import clsx from "clsx";
-import { SecretId, useSecretsStore } from "@/store/secrets.store";
+import { Secret, SecretId, useSecretsStore } from "@/store/secrets.store";
 import SecretCard from "./SecretCard.vue";
 import AddSecretForm from "./AddSecretForm.vue";
 
@@ -107,11 +113,28 @@ const secretsStore = useSecretsStore();
 const addingSecretId = ref();
 const editingSecret = ref();
 
-const openAddSecretForm = (secretId: SecretId) => {
+const openAddSecretForm = (secretId: SecretId, edit?: Secret) => {
+  editingSecret.value = edit;
   addingSecretId.value = secretId;
 };
 
 const closeAddSecretForm = () => {
   addingSecretId.value = undefined;
 };
+
+const addingSecretNameRef = ref();
+const addingSecretTooltip = computed(() => {
+  if (
+    addingSecretNameRef.value &&
+    addingSecretNameRef.value.scrollHeight >
+      addingSecretNameRef.value.offsetHeight
+  ) {
+    return {
+      content: addingSecretId,
+      delay: { show: 700, hide: 10 },
+    };
+  } else {
+    return {};
+  }
+});
 </script>

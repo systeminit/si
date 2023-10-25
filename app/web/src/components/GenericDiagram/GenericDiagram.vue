@@ -525,6 +525,9 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   const e = ke.evt;
   // we only care here about left click - might change this later...
   if (e.button !== 0) return;
+  // if the user is holding the control key their mouse click will be processed as a right click
+  if (e.ctrlKey) return;
+
   mouseIsDown.value = true;
   dragThresholdBroken.value = false;
   lastMouseDownContainerPointerPos.value = containerPointerPos.value;

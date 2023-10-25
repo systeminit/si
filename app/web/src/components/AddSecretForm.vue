@@ -54,25 +54,6 @@
               </div>
             </template>
           </VormInput>
-        </div>
-        <div
-          :class="
-            clsx(
-              'border-t w-full p-sm flex flex-col gap-sm',
-              themeClasses('border-neutral-200', 'border-neutral-600'),
-            )
-          "
-        >
-          <div
-            :class="
-              clsx(
-                'text-sm italic',
-                themeClasses('text-neutral-700', 'text-neutral-400'),
-              )
-            "
-          >
-            Fields in this section will be encrypted.
-          </div>
           <!--VormInput
           v-model="secretFormData.expiration"
           type="date"
@@ -89,14 +70,51 @@
             </div>
           </template>
         </VormInput-->
-          <VormInput
-            v-for="(field, index) in fields"
-            :key="index"
-            v-model="secretFormData.value[field.name]"
-            type="text"
-            :label="field.name"
-            required
-          />
+        </div>
+        <div class="relative">
+          <template v-if="editingSecret && !replacingSecret">
+            <div
+              class="absolute w-full h-full z-50 bg-caution-lines opacity-80"
+            ></div>
+            <div
+              class="absolute w-full h-full z-60 flex flex-col items-center justify-center gap-sm"
+            >
+              <div
+                class="mx-sm p-xs text-center font-bold bg-shade-100 rounded"
+              >
+                You cannot edit the encrypted data stored in this secret, but
+                you can replace it with new data.
+              </div>
+              <VButton label="Replace Secret" @click="enableReplacing" />
+            </div>
+          </template>
+          <div
+            :class="
+              clsx(
+                'border-t w-full flex flex-col gap-sm p-sm',
+                themeClasses('border-neutral-200', 'border-neutral-600'),
+              )
+            "
+          >
+            <div
+              :class="
+                clsx(
+                  'text-sm italic',
+                  themeClasses('text-neutral-700', 'text-neutral-400'),
+                )
+              "
+            >
+              Fields in this section will be encrypted.
+            </div>
+            <VormInput
+              v-for="(field, index) in fields"
+              :key="index"
+              v-model="secretFormData.value[field.name]"
+              type="text"
+              :label="field.name"
+              :required="!editingSecret || replacingSecret"
+            />
+          </div>
         </div>
       </div>
       <ErrorMessage :requestStatus="addSecretReqStatus" />
@@ -111,6 +129,18 @@
         "
       >
         <VButton
+          v-if="editingSecret"
+          class="grow"
+          tone="action"
+          loadingText="Updating Secret..."
+          successText="Secret Updated!"
+          label="Update Secret"
+          :requestStatus="editSecretReqStatus"
+          :disabled="validationState.isError"
+          @click="updateSecret"
+        />
+        <VButton
+          v-else
           class="grow"
           tone="action"
           loadingText="Storing Secret..."
@@ -193,6 +223,7 @@ const fields = computed(
 );
 
 const addSecretReqStatus = secretsStore.getRequestStatus("SAVE_SECRET");
+const editSecretReqStatus = secretsStore.getRequestStatus("UPDATE_SECRET");
 
 const secretFormEmpty = {
   name: "",
@@ -200,7 +231,15 @@ const secretFormEmpty = {
   value: {} as Record<string, string>,
 };
 
-const secretFormData = ref(_.cloneDeep(secretFormEmpty));
+const secretFormData = ref(
+  props.editingSecret
+    ? {
+        name: props.editingSecret.name,
+        description: props.editingSecret.description,
+        value: {} as Record<string, string>,
+      }
+    : _.cloneDeep(secretFormEmpty),
+);
 
 const saveSecret = async () => {
   if (validationMethods.hasError()) return;
@@ -226,8 +265,52 @@ const saveSecret = async () => {
   }
 };
 
+const replacingSecret = ref(false);
+const enableReplacing = () => {
+  replacingSecret.value = true;
+};
+const updateSecret = async () => {
+  if (validationMethods.hasError() || !props.editingSecret) return;
+
+  const secret = _.cloneDeep(props.editingSecret);
+  secret.name = secretFormData.value.name;
+  secret.description = secretFormData.value.description;
+
+  const res = await secretsStore.UPDATE_SECRET(
+    secret,
+    _.isEmpty(secretFormData.value.value)
+      ? undefined
+      : secretFormData.value.value,
+  );
+
+  if (res.result.success) {
+    const secret = res.result.data;
+    setTimeout(() => {
+      secretsStore.clearRequestStatus("SAVE_SECRET");
+
+      secretFormData.value = _.cloneDeep(secretFormEmpty);
+
+      validationMethods.resetAll();
+
+      emit("save", secret);
+    }, 2000);
+  }
+};
+
 const emit = defineEmits<{
   (e: "cancel"): void;
   (e: "save", v: Secret): void;
 }>();
 </script>
+
+<style lang="less">
+.bg-caution-lines {
+  background: repeating-linear-gradient(
+    -45deg,
+    #000,
+    #000 10px,
+    #333 10px,
+    #333 20px
+  );
+}
+</style>

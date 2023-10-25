@@ -101,5 +101,7 @@ const realtimeStore = useRealtimeStore();
 .v-popper__inner {
   border-radius: 0px !important;
   border-color: #5a5a5a !important;
+  max-width: 80vw;
+  overflow-wrap: break-word;
 }
 </style>

@@ -106,6 +106,7 @@
             ),
           )
         "
+        @click="emit('edit')"
       >
         <Icon name="settings" size="lg" />
       </div>
@@ -141,4 +142,8 @@ defineProps({
   secret: { type: Object as PropType<Secret>, required: true },
   detailedListItem: { type: Boolean },
 });
+
+const emit = defineEmits<{
+  (e: "edit"): void;
+}>();
 </script>
