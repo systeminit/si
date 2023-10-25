@@ -9,6 +9,7 @@ const FLAG_MAPPING = {
   INVITE_USER: "invite_user",
   MODULES_TAB: "modules_tab",
   SECRETS: "secrets",
+  SECRETS_MANAGEMENT: "secrets_management",
   WORKSPACE_BACKUPS: "workspaceBackups",
   FUNC_TEST_PANEL: "func_test_panel",
   AUTO_REATTACH_FUNCTIONS: "auto_reattach_functions",
