@@ -228,19 +228,21 @@ export function useSecretsStore() {
           const { id, name, definition, description, createdInfo } = secret;
           const params = {
             ...visibilityParams,
+            id,
             name,
-            definition,
             description,
+            newSecretData: null,
           } as {
             visibility_change_set_pk: string | null;
             workspaceId: string | null;
             name: string;
-            definition: string;
             description: string;
-            crypted?: number[];
-            keyPairPk?: string;
-            version?: SecretVersion;
-            algorithm?: SecretAlgorithm;
+            newSecretData: {
+              crypted: number[];
+              keyPairPk: string;
+              version: SecretVersion;
+              algorithm: SecretAlgorithm;
+            } | null;
           };
 
           if (value) {
@@ -256,10 +258,12 @@ export function useSecretsStore() {
 
             const crypted = await encryptMessage(value, this.publicKey);
 
-            params.algorithm = algorithm;
-            params.version = version;
-            params.keyPairPk = keyPairPk;
-            params.crypted = crypted;
+            params.newSecretData = {
+              algorithm,
+              version,
+              keyPairPk,
+              crypted,
+            };
           }
 
           return new ApiRequest<Secret>({

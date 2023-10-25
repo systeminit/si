@@ -1,7 +1,7 @@
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{get, patch, post},
     Json, Router,
 };
 use dal::{
@@ -15,6 +15,7 @@ use crate::server::state::AppState;
 pub mod create_secret;
 pub mod get_public_key;
 pub mod list_secrets;
+pub mod update_secret;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -67,4 +68,5 @@ pub fn routes() -> Router<AppState> {
         .route("/get_public_key", get(get_public_key::get_public_key))
         .route("/", post(create_secret::create_secret))
         .route("/", get(list_secrets::list_secrets))
+        .route("/", patch(update_secret::update_secret))
 }
