@@ -12,6 +12,7 @@ use crate::{
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
 const WORKSPACE_FIND_BY_NAME: &str = include_str!("queries/workspace/find_by_name.sql");
+const WORKSPACE_LIST_FOR_USER: &str = include_str!("queries/workspace/list_for_user.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -22,6 +23,8 @@ pub enum WorkspaceError {
     KeyPair(#[from] KeyPairError),
     #[error(transparent)]
     Nats(#[from] NatsError),
+    #[error("no user in context")]
+    NoUserInContext,
     #[error(transparent)]
     Pg(#[from] PgError),
     #[error(transparent)]
@@ -72,6 +75,21 @@ impl Workspace {
 
         let object = standard_model::object_from_row(row)?;
         Ok(object)
+    }
+
+    pub async fn list_for_user(ctx: &DalContext) -> WorkspaceResult<Vec<Self>> {
+        let user_pk = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => *user_pk,
+            _ => return Err(WorkspaceError::NoUserInContext),
+        };
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(WORKSPACE_LIST_FOR_USER, &[&user_pk])
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 
     pub async fn find_first_user_workspace(ctx: &DalContext) -> WorkspaceResult<Option<Self>> {
@@ -163,6 +181,8 @@ impl Workspace {
             None::<&str>,
         )
         .await?;
+        user.associate_workspace(ctx, *workspace.pk()).await?;
+
         ctx.update_history_actor(HistoryActor::User(user.pk()));
 
         ctx.import_builtins().await?;
