@@ -104,8 +104,6 @@ import AddSecretForm from "./AddSecretForm.vue";
 
 const secretsStore = useSecretsStore();
 
-const test = secretsStore.secretsByLastCreated;
-
 const addingSecretId = ref();
 const editingSecret = ref();
 
