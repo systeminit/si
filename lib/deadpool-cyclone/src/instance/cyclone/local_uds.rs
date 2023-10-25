@@ -489,7 +489,7 @@ impl LocalUdsRuntimeStrategy {
 
     /// Creates a local docker runtime strategy.
     pub fn local_docker() -> Self {
-        Self::LocalProcess
+        Self::LocalDocker
     }
 }
 impl Default for LocalUdsRuntimeStrategy {
@@ -555,7 +555,7 @@ impl LocalInstanceRuntime {
                     String::from("--decryption-key"),
                     String::from("/tmp/key"),
                     String::from("--lang-server"),
-                    String::from("/tmp/langserver"),
+                    String::from("/usr/local/bin/lang-js"),
                     String::from("--enable-watch"),
                 ];
                 if let Some(limit_requests) = spec.limit_requests {
@@ -598,18 +598,6 @@ impl LocalInstanceRuntime {
                     Mount {
                         source: Some(spec.cyclone_decryption_key_path),
                         target: Some(String::from("/tmp/key")),
-                        typ: Some(MountTypeEnum::BIND),
-                        ..Default::default()
-                    },
-                    Mount {
-                        source: Some(
-                            spec.lang_server_cmd_path
-                                .as_path()
-                                .to_str()
-                                .expect("unable to unpack path")
-                                .to_string(),
-                        ),
-                        target: Some(String::from("/tmp/langserver")),
                         typ: Some(MountTypeEnum::BIND),
                         ..Default::default()
                     },
