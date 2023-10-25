@@ -1,17 +1,14 @@
 import Debug from "debug";
-import _ from "lodash";
-import { VM } from "vm2";
-import { base64ToJs } from "./base64";
+import * as _ from "lodash";
+import { NodeVM } from "vm2";
 import {
   failureExecution,
-  FunctionKind,
-  RequestWithCode,
+  Func,
   ResultFailure,
   ResultSuccess,
-} from "./function";
-import { createSandbox } from "./sandbox";
-import { createNodeVm } from "./vm";
-import { Component } from "./component";
+} from "../function";
+import { Component } from "../component";
+import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:resolverFunction");
 
@@ -34,7 +31,7 @@ export enum FuncBackendResponseType {
   Json = "Json",
 }
 
-export interface ResolverFunctionRequest extends RequestWithCode {
+export interface ResolverFunc extends Func {
   // Should this be optional?
   component: ResolverComponent;
   responseType: FuncBackendResponseType;
@@ -65,36 +62,31 @@ export interface TypeCheckSuccess {
 
 export type TypeCheckResult = TypeCheckFailure | TypeCheckSuccess;
 
-const isArray = (value: unknown): TypeCheckResult =>
-  _.isArray(value)
-    ? { valid: true }
-    : { valid: false, message: "Return type must be an array." };
+const isArray = (value: unknown): TypeCheckResult => (_.isArray(value)
+  ? { valid: true }
+  : { valid: false, message: "Return type must be an array." });
 
-const isBoolean = (value: unknown): TypeCheckResult =>
-  _.isBoolean(value)
-    ? { valid: true }
-    : { valid: false, message: "Return type must be a boolean." };
+const isBoolean = (value: unknown): TypeCheckResult => (_.isBoolean(value)
+  ? { valid: true }
+  : { valid: false, message: "Return type must be a boolean." });
 
-const isInteger = (value: unknown): TypeCheckResult =>
-  _.isInteger(value)
-    ? { valid: true }
-    : { valid: false, message: `Return type must be an integer.` };
+const isInteger = (value: unknown): TypeCheckResult => (_.isInteger(value)
+  ? { valid: true }
+  : { valid: false, message: `Return type must be an integer.` });
 
 // This check is not 100% valid because javascript does not distinguish
 // between objects, arrays, functions and null in typeof checks. This
 // could return true if the function returns another function.
-const isObject = (value: unknown): TypeCheckResult =>
-  typeof value === "object" &&
-  _.isObject(value) &&
-  !_.isArray(value) &&
-  !_.isNull(value)
-    ? { valid: true }
-    : { valid: false, message: "Return type must be an object." };
+const isObject = (value: unknown): TypeCheckResult => (typeof value === "object"
+&& _.isObject(value)
+&& !_.isArray(value)
+&& !_.isNull(value)
+  ? { valid: true }
+  : { valid: false, message: "Return type must be an object." });
 
-const isString = (value: unknown): TypeCheckResult =>
-  _.isString(value)
-    ? { valid: true }
-    : { valid: false, message: "Return type must be a string." };
+const isString = (value: unknown): TypeCheckResult => (_.isString(value)
+  ? { valid: true }
+  : { valid: false, message: "Return type must be a string." });
 
 const isCodeGeneration = (value: unknown): TypeCheckResult => {
   if (typeof value !== "object" || !value) {
@@ -144,8 +136,8 @@ const isQualification = (value: unknown): TypeCheckResult => {
   }
 
   if (
-    value.result !== "success" &&
-    (!("message" in value) || !_.isString(value.message))
+    value.result !== "success"
+    && (!("message" in value) || !_.isString(value.message))
   ) {
     return {
       valid: false,
@@ -186,58 +178,25 @@ const nullables: { [key in FuncBackendResponseType]?: boolean } = {
   [FuncBackendResponseType.Qualification]: false,
 };
 
-export async function executeResolverFunction(
-  request: ResolverFunctionRequest
-): Promise<void> {
-  let code = base64ToJs(request.codeBase64);
-
-  code = wrapCode(code, request.handler);
-  debug({ code });
-
-  const sandbox = createSandbox(
-    FunctionKind.ResolverFunction,
-    request.executionId
-  );
-  const vm = createNodeVm(sandbox);
-
-  const result = await execute(vm, code, request);
-  debug({ result });
-  console.log(
-    JSON.stringify({
-      protocol: "output",
-      executionId: request.executionId,
-      stream: "output",
-      level: "info",
-      group: "log",
-      message: `Output: ${JSON.stringify(result, null, 2)}`,
-    })
-  );
-
-  console.log(JSON.stringify(result));
-}
-
 async function execute(
-  vm: VM,
+  vm: NodeVM,
+  { executionId }: RequestCtx,
+  { component, responseType }: ResolverFunc,
   code: string,
-  request: ResolverFunctionRequest
 ): Promise<ResolverFunctionResult> {
-  const { executionId, component, responseType } = request;
-
   let resolverFunctionResult: Record<string, unknown>;
   try {
     const runner = vm.run(code);
     resolverFunctionResult = await new Promise((resolve) => {
-      runner(component.data.properties, (resolution: Record<string, unknown>) =>
-        resolve(resolution)
-      );
+      runner(component.data.properties, (resolution: Record<string, unknown>) => resolve(resolution));
     });
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }
 
   if (
-    _.isUndefined(resolverFunctionResult) ||
-    _.isNull(resolverFunctionResult)
+    _.isUndefined(resolverFunctionResult)
+    || _.isNull(resolverFunctionResult)
   ) {
     vm.sandbox.console.debug("function returned undefined or null");
     if (nullables?.[responseType] === true) {
@@ -264,7 +223,7 @@ async function execute(
   const validationFunc = typeChecks?.[responseType] ?? undefined;
   if (validationFunc) {
     const validationResult = validationFunc(resolverFunctionResult);
-    if (validationResult.valid === true) {
+    if (validationResult.valid) {
       return {
         protocol: "result",
         status: "success",
@@ -295,15 +254,19 @@ async function execute(
 }
 
 // TODO(nick,paulo): re-add the catch branch.
-function wrapCode(code: string, handle: string): string {
-  const wrapped = `module.exports = function(component, callback) {
-    ${code}
-    const returnValue = ${handle}(component);
-    if (returnValue instanceof Promise) {
-      returnValue.then((data) => callback(data))
-    } else {
-      callback(returnValue);
-    }
-  };`;
-  return wrapped;
-}
+const wrapCode = (code: string, handle: string) => `
+module.exports = function(component, callback) {
+  ${code}
+  const returnValue = ${handle}(component);
+  if (returnValue instanceof Promise) {
+    returnValue.then((data) => callback(data))
+  } else {
+    callback(returnValue);
+  }
+};`;
+
+export default {
+  debug,
+  execute,
+  wrapCode,
+};

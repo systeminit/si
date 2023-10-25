@@ -1,15 +1,16 @@
 #!/usr/bin/env tsc
 
-import fs from "fs";
+import * as fs from "fs";
 import { Command } from "commander";
 import Debug from "debug";
-import { failureExecution, FunctionKind, functionKinds } from "./function";
+import {
+  executeFunction,
+  failureExecution,
+  FunctionKind,
+  functionKinds,
+} from "./function";
 import { makeConsole } from "./sandbox/console";
-import { executeActionRun } from "./action_run";
-import { executeReconciliation } from "./reconciliation";
-import { executeResolverFunction } from "./resolver_function";
-import { executeSchemaVariantDefinition } from "./schema_variant_definition";
-import { executeValidation } from "./validation";
+import { Request } from "./request";
 
 const debug = Debug("langJs");
 const STDIN_FD = 0;
@@ -17,7 +18,7 @@ const STDIN_FD = 0;
 function onError(
   errorFn: (...args: unknown[]) => void,
   err: Error,
-  executionId: string
+  executionId: string,
 ) {
   debug(err);
   errorFn("StackTrace", err.stack);
@@ -26,17 +27,17 @@ function onError(
 }
 
 async function main() {
-  let kind;
+  let kind: FunctionKind | undefined;
 
   const program = new Command();
   program
     .version("0.0.1")
     .argument(
       "<kind>",
-      `kind of function to be executed [values: ${functionKinds().join(", ")}]`
+      `kind of function to be executed [values: ${functionKinds().join(", ")}]`,
     )
     .action((kind_arg) => {
-      if (Object.values(FunctionKind).includes(kind_arg)) {
+      if (functionKinds().includes(kind_arg)) {
         kind = kind_arg;
       } else {
         console.error(`Unsupported function kind: '${kind_arg}'`);
@@ -52,7 +53,7 @@ async function main() {
   try {
     const requestJson = fs.readFileSync(STDIN_FD, "utf8");
     debug({ request: requestJson });
-    const request = JSON.parse(requestJson);
+    const request: Request = JSON.parse(requestJson);
     if (request.executionId) {
       executionId = request.executionId;
     } else {
@@ -61,34 +62,16 @@ async function main() {
     // Now we have the executionId, so update our console.error() impl
     errorFn = makeConsole(executionId).error;
 
-    // Async errors inside of VM2 have to be caught here, they escape the try/catch wrapping the vm.run call
+    // Async errors inside VM2 have to be caught here, they escape the try/catch wrapping the vm.run call
     process.on("uncaughtException", (err) => {
       onError(errorFn, err, executionId);
     });
 
-    if (!kind) {
-      throw Error(`Unknown Kind variant: ${kind}`);
+    if (kind === undefined) {
+      throw Error(`Kind is undefined`);
     }
 
-    switch (kind) {
-      case FunctionKind.ActionRun:
-        await executeActionRun(request);
-        break;
-      case FunctionKind.Reconciliation:
-        await executeReconciliation(request);
-        break;
-      case FunctionKind.ResolverFunction:
-        await executeResolverFunction(request);
-        break;
-      case FunctionKind.Validation:
-        await executeValidation(request);
-        break;
-      case FunctionKind.SchemaVariantDefinition:
-        await executeSchemaVariantDefinition(request);
-        break;
-      default:
-        throw Error(`Unknown Kind variant: ${kind}`);
-    }
+    await executeFunction(kind, request);
   } catch (err) {
     onError(errorFn, err as Error, executionId);
   }
@@ -132,5 +115,4 @@ async function main() {
 //   console.log(JSON.stringify(failureExecution(err, executionId)));
 //   process.exit(1);
 // }
-
-main();
+main().catch(() => process.exit(1));

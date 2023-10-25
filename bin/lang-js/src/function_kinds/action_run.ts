@@ -1,20 +1,17 @@
 import Debug from "debug";
-import { base64ToJs } from "./base64";
 import { NodeVM } from "vm2";
-import _ from "lodash";
+import * as _ from "lodash";
 import {
   failureExecution,
-  FunctionKind,
-  RequestWithCode,
+  Func,
   ResultFailure,
   ResultSuccess,
-} from "./function";
-import { createSandbox } from "./sandbox";
-import { createNodeVm } from "./vm";
+} from "../function";
+import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:actionRun");
 
-export interface ActionRunRequest extends RequestWithCode {
+export interface ActionRunFunc extends Func {
   args: unknown;
 }
 
@@ -25,49 +22,21 @@ export interface ActionRunResultSuccess extends ResultSuccess {
   health: "ok" | "warning" | "error";
   message?: string;
 }
+
 export type ActionRunResultFailure = ResultFailure;
-
-export async function executeActionRun(
-  request: ActionRunRequest
-): Promise<void> {
-  let code = base64ToJs(request.codeBase64);
-
-  code = wrapCode(code, request.handler);
-  debug({ code });
-
-  const sandbox = createSandbox(FunctionKind.ActionRun, request.executionId);
-  const vm = createNodeVm(sandbox);
-
-  const result = await execute(vm, code, request.executionId, request.args);
-  debug({ result });
-  console.log(
-    JSON.stringify({
-      protocol: "output",
-      executionId: request.executionId,
-      stream: "output",
-      level: "info",
-      group: "log",
-      message: `Output: ${JSON.stringify(result, null, 2)}`,
-    })
-  );
-
-  console.log(JSON.stringify(result));
-}
 
 async function execute(
   vm: NodeVM,
+  { executionId }: RequestCtx,
+  { args }: ActionRunFunc,
   code: string,
-  executionId: string,
-  args: unknown
 ): Promise<ActionRunResult> {
   let actionRunResult: Record<string, unknown>;
   try {
     const actionRunRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
     actionRunResult = await new Promise((resolve) => {
-      actionRunRunner(args, (resolution: Record<string, unknown>) =>
-        resolve(resolution)
-      );
+      actionRunRunner(args, (resolution: Record<string, unknown>) => resolve(resolution));
     });
 
     if (_.isUndefined(actionRunResult) || _.isNull(actionRunResult)) {
@@ -83,8 +52,8 @@ async function execute(
     }
 
     if (
-      !_.isString(actionRunResult["status"]) ||
-      !["ok", "warning", "error"].includes(actionRunResult["status"])
+      !_.isString(actionRunResult.status)
+      || !["ok", "warning", "error"].includes(actionRunResult.status)
     ) {
       return {
         protocol: "result",
@@ -99,8 +68,8 @@ async function execute(
     }
 
     if (
-      actionRunResult["status"] === "ok" &&
-      !_.isUndefined(actionRunResult["message"])
+      actionRunResult.status === "ok"
+      && !_.isUndefined(actionRunResult.message)
     ) {
       return {
         protocol: "result",
@@ -115,8 +84,8 @@ async function execute(
     }
 
     if (
-      actionRunResult["status"] !== "ok" &&
-      !_.isString(actionRunResult["message"])
+      actionRunResult.status !== "ok"
+      && !_.isString(actionRunResult.message)
     ) {
       return {
         protocol: "result",
@@ -130,7 +99,7 @@ async function execute(
       };
     }
 
-    const result: ActionRunResultSuccess = {
+    return {
       protocol: "result",
       status: "success",
       executionId,
@@ -139,28 +108,31 @@ async function execute(
       health: actionRunResult.status as "ok" | "warning" | "error",
       message: actionRunResult.message as string | undefined,
     };
-    return result;
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }
 }
 
-function wrapCode(code: string, handle: string): string {
-  const wrapped = `module.exports = function(arg, callback) {
-    ${code}
-    arg = Array.isArray(arg) ? arg : [arg];
-    const resource = arg[0]?.properties?.resource?.payload ?? null;
-    const returnValue = ${handle}(...arg, callback);
-    if (returnValue instanceof Promise) {
-      returnValue.then((data) => callback(data))
-          .catch((err) => callback({
-            status: "error",
-            payload: resource,
-      	    message: err.message,
-	  }));
-    } else {
-      callback(returnValue);
-    }
-  };`;
-  return wrapped;
-}
+const wrapCode = (code: string, handle: string) => `
+module.exports = function(arg, callback) {
+  ${code}
+  arg = Array.isArray(arg) ? arg : [arg];
+  const resource = arg[0]?.properties?.resource?.payload ?? null;
+  const returnValue = ${handle}(...arg, callback);
+  if (returnValue instanceof Promise) {
+    returnValue.then((data) => callback(data))
+        .catch((err) => callback({
+          status: "error",
+          payload: resource,
+          message: err.message,
+  }));
+  } else {
+    callback(returnValue);
+  }
+};`;
+
+export default {
+  debug,
+  execute,
+  wrapCode,
+};

@@ -1,21 +1,17 @@
-import Debug, { Debugger } from "debug";
+import Debug from "debug";
 import { NodeVM } from "vm2";
-import { base64ToJs } from "./base64";
 
 import {
   failureExecution,
-  FunctionKind,
-  RequestWithCode,
+  Func,
   ResultFailure,
   ResultSuccess,
-} from "./function";
-
-import { createSandbox } from "./sandbox";
-import { createNodeVm } from "./vm";
+} from "../function";
+import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:validation");
 
-export type SchemaVariantDefinitionRequest = RequestWithCode;
+export type SchemaVariantDefinitionFunc = Func;
 
 export interface SchemaVariantDefinitionResultSuccess extends ResultSuccess {
   definition: object;
@@ -27,46 +23,12 @@ export type SchemaVariantDefinitionResult =
   | SchemaVariantDefinitionResultSuccess
   | SchemaVariantDefinitionResultFailure;
 
-// Could this function be used generically for all the request types?
-// Seems like we could also maybe reduce wrapCode duplication a lot
-export async function executor<Req extends RequestWithCode, Result>(
-  request: Req,
-  kind: FunctionKind,
-  debug: Debugger,
-  wrapCode: (code: string, handler: string) => string,
-  execute: (vm: NodeVM, code: string, request: Req) => Promise<Result>
-) {
-  const originalCode = base64ToJs(request.codeBase64);
-
-  const code = wrapCode(originalCode, request.handler);
-  debug({ code });
-
-  const vm = createNodeVm(createSandbox(kind, request.executionId));
-
-  const result = await execute(vm, code, request);
-  debug({ result });
-
-  console.log(JSON.stringify(result));
-}
-
-export async function executeSchemaVariantDefinition(
-  request: SchemaVariantDefinitionRequest
-): Promise<void> {
-  await executor(
-    request,
-    FunctionKind.SchemaVariantDefinition,
-    debug,
-    wrapCode,
-    execute
-  );
-}
-
 async function execute(
   vm: NodeVM,
+  { executionId }: RequestCtx,
+  _: SchemaVariantDefinitionFunc,
   code: string,
-  request: SchemaVariantDefinitionRequest
 ): Promise<SchemaVariantDefinitionResult> {
-  const { executionId } = request;
   let result: Record<string, unknown>;
   try {
     const runner = vm.run(code);
@@ -102,3 +64,9 @@ module.exports = function(callback) {
     callback(returnValue);
   }
 };`;
+
+export default {
+  debug,
+  execute,
+  wrapCode,
+};

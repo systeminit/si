@@ -1,20 +1,17 @@
 import Debug from "debug";
-import { base64ToJs } from "./base64";
 import { NodeVM } from "vm2";
-import _ from "lodash";
+import * as _ from "lodash";
 import {
   failureExecution,
-  FunctionKind,
-  RequestWithCode,
+  Func,
   ResultFailure,
   ResultSuccess,
-} from "./function";
-import { createSandbox } from "./sandbox";
-import { createNodeVm } from "./vm";
+} from "../function";
+import { RequestCtx } from "../request";
 
 const debug = Debug("langJs:reconciliation");
 
-export interface ReconciliationRequest extends RequestWithCode {
+export interface ReconciliationFunc extends Func {
   args: unknown;
 }
 
@@ -27,42 +24,21 @@ export interface ReconciliationResultSuccess extends ResultSuccess {
   actions: string[];
   message: string | undefined;
 }
+
 export type ReconciliationResultFailure = ResultFailure;
-
-export async function executeReconciliation(
-  request: ReconciliationRequest
-): Promise<void> {
-  let code = base64ToJs(request.codeBase64);
-
-  code = wrapCode(code, request.handler);
-  debug({ code });
-
-  const sandbox = createSandbox(
-    FunctionKind.Reconciliation,
-    request.executionId
-  );
-  const vm = createNodeVm(sandbox);
-
-  const result = await execute(vm, code, request.executionId, request.args);
-  debug({ result });
-
-  console.log(JSON.stringify(result));
-}
 
 async function execute(
   vm: NodeVM,
+  { executionId }: RequestCtx,
+  { args }: ReconciliationFunc,
   code: string,
-  executionId: string,
-  args: unknown
 ): Promise<ReconciliationResult> {
   let reconciliationResult: Record<string, unknown>;
   try {
     const reconciliationRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
     reconciliationResult = await new Promise((resolve) => {
-      reconciliationRunner(args, (resolution: Record<string, unknown>) =>
-        resolve(resolution)
-      );
+      reconciliationRunner(args, (resolution: Record<string, unknown>) => resolve(resolution));
     });
 
     if (_.isUndefined(reconciliationResult) || _.isNull(reconciliationResult)) {
@@ -77,7 +53,7 @@ async function execute(
       };
     }
 
-    if (!_.isObject(reconciliationResult["updates"])) {
+    if (!_.isObject(reconciliationResult.updates)) {
       return {
         protocol: "result",
         status: "failure",
@@ -90,8 +66,8 @@ async function execute(
     }
 
     if (
-      !_.isArray(reconciliationResult["actions"]) ||
-      reconciliationResult["actions"].some((v) => typeof v !== "string")
+      !_.isArray(reconciliationResult.actions)
+      || reconciliationResult.actions.some((v) => typeof v !== "string")
     ) {
       return {
         protocol: "result",
@@ -104,7 +80,7 @@ async function execute(
       };
     }
 
-    const result: ReconciliationResultSuccess = {
+    return {
       protocol: "result",
       status: "success",
       executionId,
@@ -113,26 +89,29 @@ async function execute(
       actions: reconciliationResult.actions as string[],
       message: reconciliationResult.message as string | undefined,
     };
-    return result;
   } catch (err) {
     return failureExecution(err as Error, executionId);
   }
 }
 
-function wrapCode(code: string, handle: string): string {
-  const wrapped = `module.exports = function(arg, callback) {
-    ${code}
-    const returnValue = ${handle}(arg, callback);
-    if (returnValue instanceof Promise) {
-      returnValue.then((data) => callback(data))
-          .catch((err) => callback({
-	    message: err.message,
-	    updates: {},
-	    actions: []
-	  }));
-    } else {
-      callback(returnValue);
-    }
-  };`;
-  return wrapped;
-}
+const wrapCode = (code: string, handle: string) => `
+module.exports = function(arg, callback) {
+  ${code}
+  const returnValue = ${handle}(arg, callback);
+  if (returnValue instanceof Promise) {
+    returnValue.then((data) => callback(data))
+        .catch((err) => callback({
+    message: err.message,
+    updates: {},
+    actions: []
+  }));
+  } else {
+    callback(returnValue);
+  }
+};`;
+
+export default {
+  debug,
+  execute,
+  wrapCode,
+};

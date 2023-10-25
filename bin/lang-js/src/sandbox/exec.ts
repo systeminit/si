@@ -1,7 +1,7 @@
-import execa from "execa";
+import { setTimeout } from "timers/promises";
+import * as execa from "execa";
 import { ExecaReturnValue, Options } from "execa";
 import Debug from "debug";
-import { setTimeout } from "timers/promises";
 
 export interface WatchArgs {
   cmd: string;
@@ -19,8 +19,8 @@ export interface WatchResult {
 
 const debug = Debug("langJs:siExec");
 
-//import readline from "readline";
-//import WebSocket from "ws";
+// import readline from "readline";
+// import WebSocket from "ws";
 
 export type SiExecResult = ExecaReturnValue<string>;
 
@@ -30,12 +30,12 @@ export const makeExec = (executionId: string) => {
   async function waitUntilEnd(
     execaFile: string,
     execaArgs?: readonly string[],
-    execaOptions?: Options<string>
+    execaOptions?: Options<string>,
   ): Promise<SiExecResult> {
     debug(
       `running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs
         ?.map((a) => `'${a}'`)
-        ?.join(" ")}"`
+        ?.join(" ")}"`,
     );
     console.log(
       JSON.stringify({
@@ -47,7 +47,7 @@ export const makeExec = (executionId: string) => {
         message: `Running CLI command: "${execaFile} ${execaArgs
           ?.map((a) => `'${a}'`)
           ?.join(" ")}"`,
-      })
+      }),
     );
 
     const child = await execa(execaFile, execaArgs, {
@@ -61,7 +61,7 @@ export const makeExec = (executionId: string) => {
 
   async function watch(
     options: WatchArgs,
-    deadlineCount?: number
+    deadlineCount?: number,
   ): Promise<WatchResult> {
     if (!options.retryMs) {
       options.retryMs = 2000;
@@ -75,7 +75,7 @@ export const makeExec = (executionId: string) => {
     const c = await waitUntilEnd(
       options.cmd,
       options.args,
-      options.execaOptions
+      options.execaOptions,
     );
     // Update the count of how many attempts we have made
     deadlineCount += 1;
@@ -102,12 +102,12 @@ export const makeExec = (executionId: string) => {
   return { waitUntilEnd, watch };
 };
 
-//export async function siExecStream(
+// export async function siExecStream(
 //  ws: WebSocket,
 //  execaFile: string,
 //  execaArgs?: readonly string[],
 //  execaOptions?: execa.Options<string>,
-//): Promise<SiExecResult> {
+// ): Promise<SiExecResult> {
 //  console.log(`running command; cmd="${execaFile} ${execaArgs?.join(" ")}"`);
 //  ws.send(
 //    JSON.stringify({
@@ -183,4 +183,4 @@ export const makeExec = (executionId: string) => {
 //  r.stderr = stderr;
 //  r.all = all;
 //  return r;
-//}
+// }

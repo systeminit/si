@@ -1109,7 +1109,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
+                Some(Err(err)) => panic!("failed to receive Output: err={err:?}"),
                 None => panic!("output stream ended early"),
             };
         }

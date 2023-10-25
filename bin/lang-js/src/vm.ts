@@ -1,4 +1,4 @@
-import { VM, NodeVM, VMScript } from "vm2";
+import { NodeVM, VM, VMScript } from "vm2";
 
 import { Sandbox } from "./sandbox";
 
