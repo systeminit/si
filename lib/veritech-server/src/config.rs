@@ -9,7 +9,7 @@ use buck2_resources::Buck2Resources;
 use deadpool_cyclone::{
     instance::cyclone::{
         LocalHttpInstance, LocalHttpInstanceSpec, LocalHttpSocketStrategy, LocalUdsInstance,
-        LocalUdsInstanceSpec, LocalUdsSocketStrategy, LocalUdsRuntimeStrategy
+        LocalUdsInstanceSpec, LocalUdsRuntimeStrategy, LocalUdsSocketStrategy,
     },
     Instance,
 };
