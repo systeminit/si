@@ -6,7 +6,7 @@ pub use local_http::{
 };
 pub use local_uds::{
     LocalUdsInstance, LocalUdsInstanceError, LocalUdsInstanceSpec, LocalUdsInstanceSpecBuilder,
-    LocalUdsSocketStrategy,
+    LocalUdsRuntimeStrategy, LocalUdsSocketStrategy,
 };
 
 mod local_http;
