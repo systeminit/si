@@ -41,25 +41,17 @@ export const useWorkspacesStore = addStoreHooks(
     actions: {
       async FETCH_USER_WORKSPACES() {
         return new ApiRequest<{
-          workspaces: Workspace[];
+          workspace: Workspace;
         }>({
           // TODO: probably should fetch list of all workspaces here...
           // something like `/users/USER_PK/workspaces`, `/my/workspaces`, etc
-          url: "/session/load_workspaces",
+          url: "/session/load_workspace",
           onSuccess: (response) => {
-            this.workspacesByPk = _.keyBy(response.workspaces, "pk");
+            // this.workspacesByPk = _.keyBy(response.workspaces, "pk");
+            this.workspacesByPk = _.keyBy([response.workspace], "pk");
 
             // NOTE - we could cache this stuff in localstorage too to avoid showing loading state
             // but this is a small optimization to make later...
-          },
-        });
-      },
-      async INVITE_USER(email: string) {
-        return new ApiRequest<void>({
-          method: "post",
-          url: "workspace/invite",
-          params: {
-            email,
           },
         });
       },

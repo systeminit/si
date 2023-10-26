@@ -11,7 +11,6 @@ pub mod secret;
 pub mod session;
 pub mod status;
 pub mod variant_definition;
-pub mod workspace;
 pub mod ws;
 
 /// A module containing dev routes for local development only.
