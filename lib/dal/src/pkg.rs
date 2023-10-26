@@ -8,8 +8,8 @@ mod import;
 
 pub use export::{get_component_type, PkgExporter};
 pub use import::{
-    attach_resource_payload_to_value, import_pkg, import_pkg_from_pkg, ImportAttributeSkip,
-    ImportEdgeSkip, ImportOptions, ImportSkips,
+    import_pkg, import_pkg_from_pkg, ImportAttributeSkip, ImportEdgeSkip, ImportOptions,
+    ImportSkips,
 };
 
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};

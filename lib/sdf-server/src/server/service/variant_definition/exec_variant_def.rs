@@ -14,7 +14,7 @@ use chrono::Utc;
 use convert_case::{Case, Casing};
 use dal::{
     func::intrinsics::IntrinsicFunc,
-    pkg::{attach_resource_payload_to_value, import_pkg_from_pkg},
+    pkg::import_pkg_from_pkg,
     schema::variant::definition::{
         SchemaVariantDefinition, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
     },
@@ -212,67 +212,62 @@ pub async fn exec_variant_def(
         .ok_or(SchemaVariantDefinitionError::NoAssetCreated)?;
 
     let (detached_attribute_prototypes, detached_validation_prototypes) =
-        match maybe_previous_variant_id {
-            Some(previous_schema_variant_id) => {
-                migrate_leaf_functions_to_new_schema_variant(
-                    &ctx,
-                    leaf_funcs_to_migrate,
-                    schema_variant_id,
-                )
-                .await?;
-                migrate_actions_to_new_schema_variant(
-                    &ctx,
-                    previous_schema_variant_id,
-                    schema_variant_id,
-                )
-                .await?;
+        if let Some(previous_schema_variant_id) = maybe_previous_variant_id {
+            migrate_leaf_functions_to_new_schema_variant(
+                &ctx,
+                leaf_funcs_to_migrate,
+                schema_variant_id,
+            )
+            .await?;
+            migrate_actions_to_new_schema_variant(
+                &ctx,
+                previous_schema_variant_id,
+                schema_variant_id,
+            )
+            .await?;
 
-                let schema_variant = SchemaVariant::get_by_id(&ctx, &schema_variant_id)
+            let schema_variant = SchemaVariant::get_by_id(&ctx, &schema_variant_id)
+                .await?
+                .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
+
+            let attribute_prototypes = migrate_attribute_functions_to_new_schema_variant(
+                &ctx,
+                attribute_prototypes,
+                &schema_variant,
+            )
+            .await?;
+            let mut detached_attribute_prototypes = Vec::with_capacity(attribute_prototypes.len());
+
+            for attribute_prototype in attribute_prototypes {
+                let func = Func::get_by_id(&ctx, &attribute_prototype.func_id)
                     .await?
-                    .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
+                    .ok_or_else(|| {
+                        SchemaVariantDefinitionError::FuncNotFound(attribute_prototype.func_id)
+                    })?;
+                detached_attribute_prototypes.push(AttributePrototypeView {
+                    id: attribute_prototype.id,
+                    func_id: attribute_prototype.func_id,
+                    func_name: func.name().to_owned(),
+                    variant: (&func).try_into().ok(),
+                    key: attribute_prototype.key,
+                    context: attribute_prototype.context,
+                });
+            }
 
-                let attribute_prototypes = migrate_attribute_functions_to_new_schema_variant(
+            let detached_validation_prototypes =
+                migrate_validation_functions_to_new_schema_variant(
                     &ctx,
-                    attribute_prototypes,
-                    &schema_variant,
+                    validation_prototypes,
+                    schema_variant_id,
                 )
                 .await?;
-                let mut detached_attribute_prototypes =
-                    Vec::with_capacity(attribute_prototypes.len());
 
-                for attribute_prototype in attribute_prototypes {
-                    let func = Func::get_by_id(&ctx, &attribute_prototype.func_id)
-                        .await?
-                        .ok_or_else(|| {
-                            SchemaVariantDefinitionError::FuncNotFound(attribute_prototype.func_id)
-                        })?;
-                    detached_attribute_prototypes.push(AttributePrototypeView {
-                        id: attribute_prototype.id,
-                        func_id: attribute_prototype.func_id,
-                        func_name: func.name().to_owned(),
-                        variant: (&func).try_into().ok(),
-                        key: attribute_prototype.key,
-                        context: attribute_prototype.context,
-                    });
-                }
-
-                let detached_validation_prototypes =
-                    migrate_validation_functions_to_new_schema_variant(
-                        &ctx,
-                        validation_prototypes,
-                        schema_variant_id,
-                    )
-                    .await?;
-
-                (
-                    detached_attribute_prototypes,
-                    detached_validation_prototypes,
-                )
-            }
-            None => {
-                attach_resource_payload_to_value(&ctx, schema_variant_id).await?;
-                (vec![], vec![])
-            }
+            (
+                detached_attribute_prototypes,
+                detached_validation_prototypes,
+            )
+        } else {
+            (Vec::new(), Vec::new())
         };
 
     track(

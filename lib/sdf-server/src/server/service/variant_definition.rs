@@ -11,7 +11,7 @@ use thiserror::Error;
 
 use dal::{
     attribute::prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
-    func::argument::{FuncArgumentError, FuncArgumentId},
+    func::argument::FuncArgumentId,
     installed_pkg::InstalledPkgError,
     pkg::PkgError,
     schema::variant::definition::SchemaVariantDefinition,
@@ -72,8 +72,6 @@ pub enum SchemaVariantDefinitionError {
     ExternalProviderNotFoundForSocket(SocketId),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
-    #[error(transparent)]
-    FuncArgument(#[from] FuncArgumentError),
     #[error("func argument not found: {0}")]
     FuncArgumentNotFound(FuncArgumentId),
     #[error(transparent)]

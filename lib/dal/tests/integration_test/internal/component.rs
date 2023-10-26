@@ -445,9 +445,10 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
             },
             "resource": {
                 "logs": [],
-                "status": "ok",
                 "payload": { "quantum": true },
+                "status": "ok",
             },
+            "resource_value": {}
         }], // expected
         ekwb_component_view.properties // actual
     );
@@ -495,6 +496,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                 "payload": { "quantum": true },
                 "status": "ok",
             },
+            "resource_value": {}
         }], // expected
         ekwb_component_view.properties // actual
     );

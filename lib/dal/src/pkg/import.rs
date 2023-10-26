@@ -19,11 +19,8 @@ use crate::{
     component::ComponentKind,
     edge::EdgeKind,
     func::{
-        self,
-        argument::{FuncArgumentError, FuncArgumentKind},
-        backend::validation::FuncBackendValidationArgs,
-        binding::FuncBinding,
-        binding_return_value::FuncBindingReturnValue,
+        self, argument::FuncArgumentKind, backend::validation::FuncBackendValidationArgs,
+        binding::FuncBinding, binding_return_value::FuncBindingReturnValue,
     },
     installed_pkg::{
         InstalledPkg, InstalledPkgAsset, InstalledPkgAssetKind, InstalledPkgAssetTyped,
@@ -43,10 +40,9 @@ use crate::{
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeId, AttributeReadContext,
     AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentId,
     DalContext, Edge, ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncError, FuncId,
-    InternalProvider, InternalProviderError, InternalProviderId, LeafKind, Node, Prop, PropId,
-    PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket,
-    StandardModel, Tenancy, UserPk, ValidationPrototype, ValidationPrototypeContext, Workspace,
-    WorkspacePk,
+    InternalProvider, InternalProviderId, LeafKind, Node, Prop, PropId, PropKind, Schema, SchemaId,
+    SchemaVariant, SchemaVariantError, SchemaVariantId, Socket, StandardModel, Tenancy, UserPk,
+    ValidationPrototype, ValidationPrototypeContext, Workspace, WorkspacePk,
 };
 
 use super::{PkgError, PkgResult};
@@ -563,6 +559,7 @@ async fn import_component_attribute(
     prop_cache: &mut HashMap<String, Option<Prop>>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<Option<ImportAttributeSkip>> {
+    dbg!("start import_component_attribute");
     match attribute.path() {
         AttributeValuePath::Prop { path, key, index } => {
             if attribute.parent_path().is_none() && (key.is_some() || index.is_some()) {
@@ -2321,37 +2318,6 @@ async fn import_schema_variant(
             .await?;
         }
 
-        let mut has_resource_value_func = false;
-        for root_prop_func in variant_spec.root_prop_funcs()? {
-            if root_prop_func.prop() == SchemaVariantSpecPropRoot::ResourceValue {
-                has_resource_value_func = true;
-            }
-
-            let prop = schema_variant
-                .find_prop(ctx, root_prop_func.prop().path_parts())
-                .await?;
-            import_attr_func_for_prop(
-                ctx,
-                change_set_pk,
-                *schema_variant.id(),
-                AttrFuncInfo {
-                    func_unique_id: root_prop_func.func_unique_id().to_owned(),
-                    prop_id: *prop.id(),
-                    inputs: root_prop_func
-                        .inputs()?
-                        .iter()
-                        .map(|input| input.to_owned().into())
-                        .collect(),
-                },
-                None,
-                thing_map,
-            )
-            .await?;
-        }
-        if !has_resource_value_func {
-            attach_resource_payload_to_value(ctx, *schema_variant.id()).await?;
-        }
-
         for attr_func in side_effects.attr_funcs {
             import_attr_func_for_prop(
                 ctx,
@@ -2391,69 +2357,6 @@ async fn import_schema_variant(
     }
 
     Ok(schema_variant)
-}
-
-pub async fn attach_resource_payload_to_value(
-    ctx: &DalContext,
-    schema_variant_id: SchemaVariantId,
-) -> PkgResult<()> {
-    let func_id = *Func::find_by_name(ctx, "si:resourcePayloadToValue")
-        .await?
-        .ok_or(FuncError::NotFoundByName(
-            "si:resourcePayloadToValue".into(),
-        ))?
-        .id();
-
-    let func_argument_id = *FuncArgument::find_by_name_for_func(ctx, "payload", func_id)
-        .await?
-        .ok_or(FuncArgumentError::NotFoundByNameForFunc(
-            "payload".into(),
-            func_id,
-        ))?
-        .id();
-
-    let source = {
-        let prop = SchemaVariant::find_prop_in_tree(
-            ctx,
-            schema_variant_id,
-            &["root", "resource", "payload"],
-        )
-        .await?;
-
-        InternalProvider::find_for_prop(ctx, *prop.id())
-            .await?
-            .ok_or(InternalProviderError::NotFoundForProp(*prop.id()))?
-    };
-
-    let target = {
-        let resource_value_prop =
-            SchemaVariant::find_prop_in_tree(ctx, schema_variant_id, &["root", "resource_value"])
-                .await?;
-
-        let mut prototype = AttributeValue::find_for_context(
-            ctx,
-            AttributeReadContext::default_with_prop(*resource_value_prop.id()),
-        )
-        .await?
-        .ok_or(AttributeValueError::Missing)?
-        .attribute_prototype(ctx)
-        .await?
-        .ok_or(AttributeValueError::MissingAttributePrototype)?;
-
-        prototype.set_func_id(ctx, func_id).await?;
-
-        prototype
-    };
-
-    AttributePrototypeArgument::new_for_intra_component(
-        ctx,
-        *target.id(),
-        func_argument_id,
-        *source.id(),
-    )
-    .await?;
-
-    Ok(())
 }
 
 async fn set_default_value(

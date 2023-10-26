@@ -26,7 +26,6 @@ mod package;
 mod position;
 mod prop;
 mod prop_child;
-mod root_prop_func;
 mod schema;
 mod schema_variant;
 mod schema_variant_child;
@@ -53,7 +52,6 @@ pub(crate) use self::{
     position::PositionNode,
     prop::{PropNode, PropNodeData},
     prop_child::PropChildNode,
-    root_prop_func::RootPropFuncNode,
     schema::SchemaNode,
     schema_variant::SchemaVariantNode,
     schema_variant_child::{SchemaVariantChild, SchemaVariantChildNode},
@@ -80,7 +78,6 @@ const NODE_KIND_PACKAGE: &str = "package";
 const NODE_KIND_POSITION: &str = "position";
 const NODE_KIND_PROP: &str = "prop";
 const NODE_KIND_PROP_CHILD: &str = "prop_child";
-const NODE_KIND_ROOT_PROP_FUNC: &str = "root_prop_func";
 const NODE_KIND_SCHEMA: &str = "schema";
 const NODE_KIND_SCHEMA_VARIANT: &str = "schema_variant";
 const NODE_KIND_SCHEMA_VARIANT_CHILD: &str = "schema_variant_child";
@@ -152,7 +149,6 @@ pub enum PkgNode {
     Position(PositionNode),
     Prop(PropNode),
     PropChild(PropChildNode),
-    RootPropFunc(RootPropFuncNode),
     Schema(SchemaNode),
     SchemaVariant(SchemaVariantNode),
     SchemaVariantChild(SchemaVariantChildNode),
@@ -180,7 +176,6 @@ impl PkgNode {
     pub const POSTITION_KIND_STR: &str = NODE_KIND_POSITION;
     pub const PROP_KIND_STR: &str = NODE_KIND_PROP;
     pub const PROP_CHILD_KIND_STR: &str = NODE_KIND_PROP_CHILD;
-    pub const ROOT_PROP_FUNC_KIND_STR: &str = NODE_KIND_ROOT_PROP_FUNC;
     pub const SCHEMA_KIND_STR: &str = NODE_KIND_SCHEMA;
     pub const SCHEMA_VARIANT_KIND_STR: &str = NODE_KIND_SCHEMA_VARIANT;
     pub const SCHEMA_VARIANT_KIND_CHILD_STR: &str = NODE_KIND_SCHEMA_VARIANT_CHILD;
@@ -208,7 +203,6 @@ impl PkgNode {
             Self::Position(_) => NODE_KIND_POSITION,
             Self::Prop(_) => NODE_KIND_PROP,
             Self::PropChild(_) => NODE_KIND_PROP_CHILD,
-            Self::RootPropFunc(_) => NODE_KIND_ROOT_PROP_FUNC,
             Self::Schema(_) => NODE_KIND_SCHEMA,
             Self::SchemaVariant(_) => NODE_KIND_SCHEMA_VARIANT,
             Self::SchemaVariantChild(_) => NODE_KIND_SCHEMA_VARIANT_CHILD,
@@ -240,7 +234,6 @@ impl NameStr for PkgNode {
             Self::Position(_) => NODE_KIND_POSITION,
             Self::Prop(node) => node.name(),
             Self::PropChild(node) => node.name(),
-            Self::RootPropFunc(_) => NODE_KIND_ROOT_PROP_FUNC,
             Self::Schema(node) => node.name(),
             Self::SchemaVariant(node) => node.name(),
             Self::SchemaVariantChild(node) => node.name(),
@@ -274,7 +267,6 @@ impl WriteBytes for PkgNode {
             Self::Position(node) => node.write_bytes(writer)?,
             Self::Prop(node) => node.write_bytes(writer)?,
             Self::PropChild(node) => node.write_bytes(writer)?,
-            Self::RootPropFunc(node) => node.write_bytes(writer)?,
             Self::Schema(node) => node.write_bytes(writer)?,
             Self::SchemaVariant(node) => node.write_bytes(writer)?,
             Self::SchemaVariantChild(node) => node.write_bytes(writer)?,
@@ -327,9 +319,6 @@ impl ReadBytes for PkgNode {
             NODE_KIND_POSITION => PositionNode::read_bytes(reader)?.map(Self::Position),
             NODE_KIND_PROP => PropNode::read_bytes(reader)?.map(Self::Prop),
             NODE_KIND_PROP_CHILD => PropChildNode::read_bytes(reader)?.map(Self::PropChild),
-            NODE_KIND_ROOT_PROP_FUNC => {
-                RootPropFuncNode::read_bytes(reader)?.map(Self::RootPropFunc)
-            }
             NODE_KIND_SCHEMA => SchemaNode::read_bytes(reader)?.map(Self::Schema),
             NODE_KIND_SCHEMA_VARIANT => {
                 SchemaVariantNode::read_bytes(reader)?.map(Self::SchemaVariant)
