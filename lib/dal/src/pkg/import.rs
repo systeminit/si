@@ -2445,14 +2445,27 @@ pub async fn attach_resource_payload_to_value(
         prototype
     };
 
-    AttributePrototypeArgument::new_for_intra_component(
-        ctx,
-        *target.id(),
-        func_argument_id,
-        *source.id(),
-    )
-    .await?;
-
+    match AttributePrototypeArgument::list_for_attribute_prototype(ctx, *target.id())
+        .await?
+        .iter()
+        .find(|apa| apa.func_argument_id() == func_argument_id)
+    {
+        Some(apa) => {
+            if apa.internal_provider_id() != *source.id() {
+                let mut apa = apa.to_owned();
+                apa.set_internal_provider_id(ctx, *source.id()).await?;
+            }
+        }
+        None => {
+            AttributePrototypeArgument::new_for_intra_component(
+                ctx,
+                *target.id(),
+                func_argument_id,
+                *source.id(),
+            )
+            .await?;
+        }
+    }
     Ok(())
 }
 
