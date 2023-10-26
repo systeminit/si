@@ -29,6 +29,11 @@ alias(
 )
 
 alias(
+    name = "si",
+    actual = "//bin/si:si",
+)
+
+alias(
     name = "veritech",
     actual = "//bin/veritech:veritech",
 )
