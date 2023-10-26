@@ -34,8 +34,8 @@ function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
   // automatically set selected workspace pk header
   // we will probably want to do something similar with change-set
   // also need to remove workspace pk from body params in many places
-  if (workspacesStore.urlSelectedWorkspaceId) {
-    config.headers.WorkspacePk = workspacesStore.urlSelectedWorkspaceId;
+  if (workspacesStore.selectedWorkspacePk) {
+    config.headers.WorkspacePk = workspacesStore.selectedWorkspacePk;
   }
   return config;
 }

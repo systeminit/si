@@ -39,7 +39,6 @@ const workspacesReqStatus = workspacesStore.getRequestStatus(
 );
 
 function autoSelectWorkspace() {
-  if (workspacesStore.selectedWorkspace) return;
   if (workspaces.value.length !== 1) return;
 
   const workspacePk = workspaces.value[0]?.pk;

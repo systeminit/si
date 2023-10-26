@@ -2,7 +2,7 @@ use axum::{http::Method, Router};
 use dal::WorkspaceSignup;
 use dal_test::{sdf_test, AuthTokenRef, DalContextHead};
 use sdf_server::service::session::{
-    load_workspaces::LoadWorkspaceResponse, restore_authentication::RestoreAuthenticationResponse,
+    load_workspace::LoadWorkspaceResponse, restore_authentication::RestoreAuthenticationResponse,
 };
 
 use crate::service_tests::api_request_auth_empty;
@@ -49,6 +49,6 @@ async fn load_workspace(
     ctx.commit().await.expect("failed to commit");
 
     let response: LoadWorkspaceResponse =
-        api_request_auth_empty(app, Method::GET, "/api/session/load_workspaces", auth_token).await;
-    assert_eq!(nw.workspace, response.workspaces[0]);
+        api_request_auth_empty(app, Method::GET, "/api/session/load_workspace", auth_token).await;
+    assert_eq!(nw.workspace, response.workspace);
 }

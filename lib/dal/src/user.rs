@@ -11,7 +11,6 @@ use crate::{
 };
 
 const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
-const USER_GET_BY_EMAIL_RAW: &str = include_str!("queries/user/get_by_email_raw.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -91,8 +90,6 @@ impl User {
         let json: serde_json::Value = row.try_get("object")?;
         let object: Self = serde_json::from_value(json)?;
 
-        object.associate_workspace_invites(ctx).await?;
-
         // HistoryEvent won't be accessible by any tenancy (null tenancy_workspace_pk)
         let _history_event = HistoryEvent::new(
             ctx,
@@ -103,21 +100,6 @@ impl User {
         .await?;
 
         Ok(object)
-    }
-
-    pub async fn get_by_email_raw(ctx: &DalContext, email: &str) -> UserResult<Option<Self>> {
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_opt(USER_GET_BY_EMAIL_RAW, &[&email])
-            .await?;
-        if let Some(row) = row {
-            let json: serde_json::Value = row.try_get("object")?;
-            Ok(serde_json::from_value(json)?)
-        } else {
-            Ok(None)
-        }
     }
 
     pub async fn get_by_pk(ctx: &DalContext, pk: UserPk) -> UserResult<Option<Self>> {
@@ -155,41 +137,6 @@ impl User {
             .await?;
         Ok(())
     }
-
-    pub async fn invite_to_workspace(
-        ctx: &DalContext,
-        email: &str,
-        workspace_pk: WorkspacePk,
-    ) -> UserResult<()> {
-        if let Some(user) = User::get_by_email_raw(ctx, email).await? {
-            user.associate_workspace(ctx, workspace_pk).await?;
-            return Ok(());
-        }
-
-        // Race condition here, if the user signs-up while we are inviting them the invite will be
-        // lost forever
-        ctx.txns()
-            .await?
-            .pg()
-            .execute(
-                "SELECT user_invite_to_workspace_v1($1, $2)",
-                &[&email, &workspace_pk],
-            )
-            .await?;
-        Ok(())
-    }
-
-    pub async fn associate_workspace_invites(&self, ctx: &DalContext) -> UserResult<()> {
-        ctx.txns()
-            .await?
-            .pg()
-            .execute(
-                "SELECT user_associate_workspace_invites_v1($1, $2)",
-                &[&self.pk, &self.email],
-            )
-            .await?;
-        Ok(())
-    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
@@ -207,15 +154,10 @@ impl UserClaim {
     }
 
     pub async fn from_bearer_token(
-        workspace_pk: Option<WorkspacePk>,
         public_key: JwtPublicSigningKey,
         token: impl AsRef<str>,
     ) -> UserResult<UserClaim> {
         let claims = crate::jwt_key::validate_bearer_token(public_key, &token).await?;
-        let mut custom = claims.custom;
-        if let Some(workspace_pk) = workspace_pk {
-            custom.workspace_pk = workspace_pk;
-        }
-        Ok(custom)
+        Ok(claims.custom)
     }
 }
