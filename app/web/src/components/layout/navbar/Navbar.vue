@@ -12,12 +12,13 @@
             <div class="text-xs font-medium capsize">WORKSPACE:</div>
 
             <VormInput
+              v-model="selectedWorkspacePk"
               class="flex-grow font-bold"
               size="sm"
               type="dropdown"
               noLabel
-              :modelValue="workspacesStore.selectedWorkspacePk"
               :options="workspaceDropdownOptions"
+              @change="updateRoute"
             />
           </div>
 
@@ -37,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref, watch, computed } from "vue";
 import { Icon, VormInput } from "@si/vue-lib/design-system";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import * as _ from "lodash-es";
@@ -47,6 +48,28 @@ import NavbarPanelCenter from "./NavbarPanelCenter.vue";
 import NavbarPanelRight from "./NavbarPanelRight.vue";
 
 const workspacesStore = useWorkspacesStore();
+
+const selectedWorkspacePk = ref<string | null>(null);
+watch(
+  () => workspacesStore.selectedWorkspacePk,
+  () => {
+    selectedWorkspacePk.value = workspacesStore.selectedWorkspacePk;
+  },
+  { immediate: true },
+);
+
+const updateRoute = () => {
+  // TODO: there is some reactivity issue with stores and pages when changing workspace pk
+  window.location.pathname = `/w/${selectedWorkspacePk.value}`;
+  /*
+  router.push({
+    name: "workspace-single",
+    params: {
+      workspacePk: selectedWorkspacePk.value,
+    },
+  });
+  */
+};
 
 const workspaceDropdownOptions = computed(() =>
   _.map(workspacesStore.allWorkspaces ?? [], (w) => ({
