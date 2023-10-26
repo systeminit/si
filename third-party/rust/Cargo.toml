@@ -42,7 +42,7 @@ derive_builder = "0.12.0"
 derive_more = "0.99.17"
 diff = "0.1.13"
 directories = "5.0.1"
-docker-api = "0.14"
+docker-api = { "git" = "https://github.com/vv9k/docker-api-rs.git", rev = "b1f1891d1d17cb522cc20212452c8c039c5e0810" }
 dyn-clone = "1.0.11"
 flate2 = "1.0.26"
 futures = "0.3.28"

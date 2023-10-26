@@ -24,6 +24,13 @@ git_fetch(
     visibility = [],
 )
 
+git_fetch(
+    name = "vv9k/docker-api-rs.git",
+    repo = "https://github.com/vv9k/docker-api-rs.git",
+    rev = "b1f1891d1d17cb522cc20212452c8c039c5e0810",
+    visibility = [],
+)
+
 http_archive(
     name = "Inflector-0.11.4.crate",
     sha256 = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3",
@@ -3556,19 +3563,11 @@ alias(
     visibility = ["PUBLIC"],
 )
 
-http_archive(
-    name = "docker-api-0.14.0.crate",
-    sha256 = "4576e993f4ef4805931a835b7afe71dec6cbd096e9b08bbd8e8f03e1940b2745",
-    strip_prefix = "docker-api-0.14.0",
-    urls = ["https://crates.io/api/v1/crates/docker-api/0.14.0/download"],
-    visibility = [],
-)
-
 cargo.rust_library(
     name = "docker-api-0.14.0",
-    srcs = [":docker-api-0.14.0.crate"],
+    srcs = [":vv9k/docker-api-rs.git"],
     crate = "docker_api",
-    crate_root = "docker-api-0.14.0.crate/src/lib.rs",
+    crate_root = "vv9k/docker-api-rs/src/lib.rs",
     edition = "2021",
     features = [
         "chrono",
@@ -3582,7 +3581,7 @@ cargo.rust_library(
         ":bytes-1.4.0",
         ":chrono-0.4.26",
         ":containers-api-0.9.0",
-        ":docker-api-stubs-0.5.0",
+        ":docker-api-stubs-0.6.0",
         ":futures-util-0.3.28",
         ":http-0.2.9",
         ":hyper-0.14.26",
@@ -3596,19 +3595,11 @@ cargo.rust_library(
     ],
 )
 
-http_archive(
-    name = "docker-api-stubs-0.5.0.crate",
-    sha256 = "6198e6d77eb486d04c9b3997aec536428a7cbba833e84cdfda49e144c8df1734",
-    strip_prefix = "docker-api-stubs-0.5.0",
-    urls = ["https://crates.io/api/v1/crates/docker-api-stubs/0.5.0/download"],
-    visibility = [],
-)
-
 cargo.rust_library(
-    name = "docker-api-stubs-0.5.0",
-    srcs = [":docker-api-stubs-0.5.0.crate"],
+    name = "docker-api-stubs-0.6.0",
+    srcs = [":vv9k/docker-api-rs.git"],
     crate = "docker_api_stubs",
-    crate_root = "docker-api-stubs-0.5.0.crate/src/lib.rs",
+    crate_root = "vv9k/docker-api-rs/docker-api-stubs/lib/src/lib.rs",
     edition = "2021",
     visibility = [],
     deps = [
