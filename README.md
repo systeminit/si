@@ -69,7 +69,7 @@ you can use `nix` itself (e.g. `nix profile install nixpkgs#direnv`).
 
 All commands need to be run from the `nix` environment.
 Since `direnv` is installed _and_ hooked into your shell, you can `cd` into
-the repository and `nix` will boostrap the environment for you using the flake.
+the repository and `nix` will bootstrap the environment for you using the flake.
 
 _Please note: you may notice a large download of dependencies when entering the repository for the first time._
 
