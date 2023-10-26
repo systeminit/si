@@ -10,6 +10,7 @@ import { FuncVariant } from "@/api/sdf/dal/func";
 import { nilId } from "@/utils/nilId";
 import { trackEvent } from "@/utils/tracking";
 import keyedDebouncer from "@/utils/keyedDebouncer";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -90,10 +91,13 @@ export const useFuncStore = () => {
     visibility_change_set_pk: selectedChangeSetId ?? nilId(),
   };
 
+  const workspacesStore = useWorkspacesStore();
+  const workspaceId = workspacesStore.selectedWorkspacePk;
+
   let funcSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
   return addStoreHooks(
-    defineStore(`cs${selectedChangeSetId}/funcs`, {
+    defineStore(`ws${workspaceId || "NONE"}/cs${selectedChangeSetId}/funcs`, {
       state: () => ({
         funcsById: {} as Record<FuncId, FuncSummary>,
         funcDetailsById: {} as Record<FuncId, FuncWithDetails>,
