@@ -4,6 +4,7 @@ import { Router } from "vue-router";
 import { nextTick } from "vue";
 import posthog from "posthog-js";
 import storage from "local-storage-fallback";
+import WorkspaceDetailsPage from "@/pages/WorkspaceDetailsPage.vue";
 import LoginPage from "./pages/LoginPage.vue";
 import LogoutPage from "./pages/LogoutPage.vue";
 import LogoutSuccessPage from "./pages/LogoutSuccessPage.vue";
@@ -49,6 +50,12 @@ export const routerOptions: RouterOptions = {
       component: () => import("./pages/tutorial/TutorialPage.vue"),
     },
     { path: "/dashboard", name: "dashboard", component: DashboardPage },
+    {
+      path: "/workspace/:workspaceId",
+      name: "workspace-settings",
+      component: WorkspaceDetailsPage,
+      props: true,
+    },
     { path: "/download", name: "download", component: DownloadPage },
 
     // auth api redirects to this route - gives us some flexibility with what to do with user

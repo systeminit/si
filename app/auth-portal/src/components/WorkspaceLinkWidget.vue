@@ -1,7 +1,11 @@
 <template>
   <div class="flex flex-row items-stretch">
-    <div
+    <RouterLink
       v-if="!compact && featureFlagsStore.EDIT_WORKSPACES"
+      :to="{
+        name: 'workspace-settings',
+        params: { workspaceId: workspace.id },
+      }"
       :class="
         clsx(
           'flex-none flex flex-row items-center rounded-tl-md rounded-bl-md z-10 cursor-pointer text-shade-0',
@@ -11,10 +15,9 @@
             : 'bg-neutral-400 dark:bg-neutral-600 hover:bg-neutral-500 dark:hover:bg-neutral-500 hover:p-sm hover:pr-md p-xs pr-sm',
         )
       "
-      @click="emit('edit')"
     >
       <Icon name="settings" size="lg" />
-    </div>
+    </RouterLink>
     <a
       v-if="workspace"
       :href="`${API_HTTP_URL}/workspaces/${workspace.id}/go`"
