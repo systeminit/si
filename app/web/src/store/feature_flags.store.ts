@@ -8,6 +8,7 @@ const FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
   MODULES_TAB: "modules_tab",
   SECRETS: "secrets",
+  SECRETS_MANAGEMENT: "secrets_management",
   WORKSPACE_BACKUPS: "workspaceBackups",
   FUNC_TEST_PANEL: "func_test_panel",
   AUTO_REATTACH_FUNCTIONS: "auto_reattach_functions",

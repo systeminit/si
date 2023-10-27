@@ -46,6 +46,8 @@ pub enum SecretError {
     KeyPairNotFound,
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("secret not found: {0}")]
+    SecretNotFound(SecretId),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
     #[error("symmetric crypto error: {0}")]
@@ -189,6 +191,24 @@ impl SecretView {
     }
 }
 
+impl From<EncryptedSecret> for Secret {
+    fn from(value: EncryptedSecret) -> Self {
+        Self {
+            pk: value.pk,
+            id: value.id,
+            name: value.name,
+            key_pair_pk: value.key_pair_pk,
+            definition: value.definition,
+            description: value.description,
+            tenancy: value.tenancy,
+            timestamp: value.timestamp,
+            created_by: value.created_by,
+            updated_by: value.updated_by,
+            visibility: value.visibility,
+        }
+    }
+}
+
 /// A database-persisted encrypted secret.
 ///
 /// This type contains the raw encrypted payload as well as the necessary encryption metadata and
@@ -298,12 +318,57 @@ impl EncryptedSecret {
     }
 
     standard_model_accessor!(name, String, SecretResult);
-    standard_model_accessor_ro!(description, Option<String>);
+    standard_model_accessor!(description, Option<String>, SecretResult);
+    standard_model_accessor!(version, Enum(SecretVersion), SecretResult);
+    standard_model_accessor!(algorithm, Enum(SecretAlgorithm), SecretResult);
+    standard_model_accessor!(updated_by, Option<Pk(UserPk)>, SecretResult);
+    standard_model_accessor!(key_pair_pk, Pk(KeyPairPk), SecretResult);
 
-    // Once created, these object fields are to be considered immutable
+    // Once created, this object field is immutable
     standard_model_accessor_ro!(definition, String);
-    standard_model_accessor_ro!(version, SecretVersion);
-    standard_model_accessor_ro!(algorithm, SecretAlgorithm);
+
+    pub async fn set_crypted(&mut self, ctx: &DalContext, value: Vec<u8>) -> SecretResult<()> {
+        let (double_crypted, nonce, key_hash) = ctx.symmetric_crypto_service().encrypt(&value);
+        let updated_at = standard_model::update(
+            ctx,
+            "encrypted_secrets",
+            "crypted",
+            self.id(),
+            &base64_encode_bytes(double_crypted.as_slice()),
+            TypeHint::Text,
+        )
+        .await?;
+        standard_model::update(
+            ctx,
+            "encrypted_secrets",
+            "nonce",
+            self.id(),
+            &base64_encode_bytes(nonce.as_ref()),
+            TypeHint::Text,
+        )
+        .await?;
+        standard_model::update(
+            ctx,
+            "encrypted_secrets",
+            "key_hash",
+            self.id(),
+            &key_hash.to_string(),
+            TypeHint::Text,
+        )
+        .await?;
+
+        let _history_event = HistoryEvent::new(
+            ctx,
+            Self::history_event_label(vec!["updated"]),
+            Self::history_event_message("updated"),
+            &serde_json::json!({"pk": self.pk, "field": "crypted", "value": "encrypted"}),
+        )
+        .await?;
+        self.timestamp.updated_at = updated_at;
+        self.crypted = value;
+
+        Ok(())
+    }
 
     /// Decrypts the encrypted secret with its associated [`KeyPair`] and returns a
     /// [`DecryptedSecret`].
