@@ -38,6 +38,9 @@
         <div class="text-sm opacity-70 capsize">
           {{ workspace.instanceUrl }}
         </div>
+        <div v-if="workspace.role !== 'OWNER'">
+          {{ workspace.role }}
+        </div>
         <div class="flex items-center text-xs gap-md pt-xs">
           <div class="flex items-center gap-xs">
             <div

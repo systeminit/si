@@ -139,16 +139,11 @@ const props = defineProps({
 const { validationState, validationMethods } = useValidatedInputGroup();
 
 const members = computed(() => workspacesStore.selectedWorkspaceMembers);
-const blankWorkspace: Workspace = {
-  id: "",
-  instanceType: "local",
+const blankWorkspace = {
   instanceUrl: "",
   displayName: "",
-  createdByUserId: authStore.user?.id ?? "",
-  slug: "",
-  createdAt: "",
 };
-const draftWorkspace = reactive<Workspace>(_.cloneDeep(blankWorkspace));
+const draftWorkspace = reactive(_.cloneDeep(blankWorkspace));
 const newMember = reactive({ email: "", role: "collaborator" });
 useHead({ title: "Dashboard" });
 
