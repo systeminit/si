@@ -54,15 +54,6 @@ export const useWorkspacesStore = addStoreHooks(
           },
         });
       },
-      async INVITE_USER(email: string) {
-        return new ApiRequest<void>({
-          method: "post",
-          url: "workspace/invite",
-          params: {
-            email,
-          },
-        });
-      },
     },
 
     onActivated() {
