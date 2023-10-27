@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { watch } from "vue";
 import { useRouter } from "vue-router";
 import { ErrorMessage, Icon } from "@si/vue-lib/design-system";
 import { useWorkspacesStore } from "@/store/workspaces.store";
@@ -32,7 +32,6 @@ import AppLayout from "@/components/layout/AppLayout.vue";
 const router = useRouter();
 
 const workspacesStore = useWorkspacesStore();
-const workspaces = computed(() => workspacesStore.allWorkspaces);
 
 const workspacesReqStatus = workspacesStore.getRequestStatus(
   "FETCH_USER_WORKSPACES",
@@ -40,12 +39,10 @@ const workspacesReqStatus = workspacesStore.getRequestStatus(
 
 function autoSelectWorkspace() {
   if (workspacesStore.selectedWorkspace) return;
-  if (workspaces.value.length !== 1) return;
 
-  const workspacePk = workspaces.value[0]?.pk;
-  if (!workspacePk) {
-    return;
-  }
+  let workspacePk = workspacesStore.getLastSelectedWorkspacePk();
+  if (!workspacePk) workspacePk = workspacesStore.allWorkspaces[0]?.pk;
+  if (!workspacePk) return;
 
   router.push({
     name: "workspace-single",

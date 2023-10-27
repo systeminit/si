@@ -1,3 +1,4 @@
+import _ from "lodash";
 import {
   InstanceEnvType, PrismaClient, User, RoleType,
 } from '@prisma/client';
@@ -60,10 +61,39 @@ export async function patchWorkspace(id: WorkspaceId, instanceUrl: string, displ
 export async function getUserWorkspaces(userId: UserId) {
   const workspaces = await prisma.workspace.findMany({
     where: {
-      creatorUserId: userId,
+      UserMemberships: {
+        some: {
+          userId,
+        },
+      },
+    },
+    include: {
+      UserMemberships: {
+        select: {
+          roleType: true,
+        },
+        where: {
+          userId,
+        },
+      },
     },
   });
-  return workspaces;
+
+  return _.map(workspaces, (w) => ({
+    ..._.omit(w, "UserMemberships"),
+    role: w.UserMemberships[0].roleType,
+  }));
+}
+
+export async function userRoleForWorkspace(userId: UserId, workspaceId: WorkspaceId) {
+  const member = await prisma.workspaceMembers.findFirst({
+    where: {
+      userId,
+      workspaceId,
+    },
+  });
+
+  return member?.roleType;
 }
 
 export async function getWorkspaceMembers(id: WorkspaceId) {
@@ -79,7 +109,7 @@ export async function getWorkspaceMembers(id: WorkspaceId) {
   return workspaceMembers;
 }
 
-export async function inviteCollaborator(email: string, id: WorkspaceId) {
+export async function inviteMember(email: string, id: WorkspaceId) {
   let user = await getUserByEmail(email);
   if (!user) {
     user = await createInvitedUser(email);
@@ -90,7 +120,7 @@ export async function inviteCollaborator(email: string, id: WorkspaceId) {
       id: ulid(),
       workspaceId: id,
       userId: user.id,
-      roleType: RoleType.COLLABORATOR,
+      roleType: RoleType.EDITOR,
     },
   });
 }

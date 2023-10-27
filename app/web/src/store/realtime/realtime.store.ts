@@ -40,10 +40,13 @@ type RealtimeEventMetadata = {
 export const useRealtimeStore = defineStore("realtime", () => {
   const authStore = useAuthStore();
 
+  // TODO: need to think about how websockets multiple workspaces
+
   // ReconnectingWebsocket is a small wrapper around the native Websocket that should
   // handle basic reconnection logic
   const socket = new ReconnectingWebSocket(
-    () => `${API_WS_URL}/workspace_updates?token=Bearer+${authStore.token}`,
+    () =>
+      `${API_WS_URL}/workspace_updates?token=Bearer+${authStore.selectedWorkspaceToken}`,
     [],
     {
       // see options https://www.npmjs.com/package/reconnecting-websocket#available-options
@@ -55,7 +58,9 @@ export const useRealtimeStore = defineStore("realtime", () => {
   // boolean tracking whether we are expecting connection to be active
   // currently only logic is if user is logged in
   const connectionShouldBeEnabled = computed(
-    () => authStore.userIsLoggedInAndInitialized,
+    () =>
+      authStore.userIsLoggedInAndInitialized &&
+      authStore.selectedWorkspaceToken,
   );
 
   // trigger connect / close as necessary

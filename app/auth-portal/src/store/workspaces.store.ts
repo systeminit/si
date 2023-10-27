@@ -15,6 +15,7 @@ export type Workspace = {
   slug: string;
   createdByUserId: UserId;
   createdAt: ISODateString;
+  role: string;
 };
 
 export type WorkspaceMember = {

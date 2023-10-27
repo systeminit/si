@@ -14,6 +14,15 @@
       </div>
     </template>
 
+    <template v-else-if="workspacePk && !selectedWorkspace">
+      <div class="flex-grow p-lg flex flex-col items-center">
+        <ErrorMessage
+          >Bad workspace id - please select a workspace from the
+          dropdown</ErrorMessage
+        >
+      </div>
+    </template>
+
     <!-- by this point we know we have a valid workspace selected and loaded -->
     <template v-else>
       <template
@@ -127,21 +136,4 @@ function handleUrlChange() {
     });
   }
 }
-
-watch(
-  [selectedWorkspace, workspacesReqStatus],
-  () => {
-    if (
-      workspacesReqStatus.value.isSuccess &&
-      selectedWorkspace.value === null
-    ) {
-      router.replace({
-        name: "home",
-      });
-    }
-  },
-  {
-    immediate: true,
-  },
-);
 </script>

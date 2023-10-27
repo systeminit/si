@@ -5,7 +5,7 @@ import { getCache, setCache } from "../lib/cache";
 import { getUserById } from "../services/users.service";
 import {
   createWorkspace,
-  getUserWorkspaces, getWorkspaceById, getWorkspaceMembers, inviteCollaborator, patchWorkspace,
+  getUserWorkspaces, getWorkspaceById, getWorkspaceMembers, inviteMember, patchWorkspace, userRoleForWorkspace,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
@@ -38,8 +38,8 @@ async function handleWorkspaceIdParam(ctx: CustomRouteContext) {
     throw new ApiError('NotFound', 'Workspace not found');
   }
 
-  // TODO(Wendy) - here is where we can change which users are allowed to access which workspaces!
-  if (workspace.creatorUserId !== ctx.state.authUser.id) {
+  const memberRole = await userRoleForWorkspace(ctx.state.authUser.id, workspace.id);
+  if (!memberRole) {
     throw new ApiError('Forbidden', 'You do not have access to that workspace');
   }
 
@@ -131,7 +131,7 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
     email: z.string(),
   }));
 
-  await inviteCollaborator(reqBody.email, workspace.id);
+  await inviteMember(reqBody.email, workspace.id);
 
   const members: Member[] = [];
   const workspaceMembers = await getWorkspaceMembers(workspace.id);

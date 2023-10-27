@@ -114,5 +114,5 @@ enum InstanceEnvType {
 
 enum RoleType {
   OWNER
-  COLLABORATOR
+  EDITOR
 }

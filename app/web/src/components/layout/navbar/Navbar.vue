@@ -18,6 +18,7 @@
               type="dropdown"
               noLabel
               :options="workspaceDropdownOptions"
+              placeholder="-- select a workspace --"
               @change="updateRoute"
             />
           </div>
@@ -59,22 +60,15 @@ watch(
 );
 
 const updateRoute = () => {
-  // TODO: there is some reactivity issue with stores and pages when changing workspace pk
-  window.location.pathname = `/w/${selectedWorkspacePk.value}`;
-  /*
-  router.push({
-    name: "workspace-single",
-    params: {
-      workspacePk: selectedWorkspacePk.value,
-    },
-  });
-  */
+  window.location.href = `${import.meta.env.VITE_AUTH_API_URL}/workspaces/${
+    selectedWorkspacePk.value
+  }/go`;
 };
 
 const workspaceDropdownOptions = computed(() =>
   _.map(workspacesStore.allWorkspaces ?? [], (w) => ({
     value: w.pk,
-    label: w.name,
+    label: w.displayName,
   })),
 );
 </script>

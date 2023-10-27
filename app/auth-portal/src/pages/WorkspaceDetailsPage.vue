@@ -27,6 +27,7 @@
           label="Display Name"
           placeholder="A display name for this workspace"
           required
+          :disabled="!canInviteUsers"
         />
         <VormInput
           v-model="draftWorkspace.instanceUrl"
@@ -34,11 +35,12 @@
           autocomplete="url"
           placeholder="The instance url for this workspace"
           required
+          :disabled="!canInviteUsers"
         />
 
         <VButton
           iconRight="chevron--right"
-          :disabled="validationState.isError"
+          :disabled="validationState.isError || !canInviteUsers"
           :requestStatus="
             createMode ? createWorkspaceReqStatus : editWorkspaceReqStatus
           "
@@ -60,22 +62,55 @@
         <template v-else-if="loadWorkspaceMembersReqStatus.isSuccess">
           <Stack>
             <div class="text-lg font-bold">Members of this workspace:</div>
-            <div
-              v-for="memUser in members"
-              :key="memUser.userId"
-              class="rounded p-sm grid grid-cols-2 items-center gap-sm bg-neutral-400 dark:bg-neutral-600 p-xs pr-sm"
+            <table
+              class="min-w-full divide-y divide-gray-200 dark:divide-gray-700"
             >
-              <div class="font-bold">Email:</div>
-              <div>{{ memUser.email }}</div>
-              <div class="font-bold">Role:</div>
-              <div>{{ memUser.role }}</div>
-              <div class="font-bold">Has Accepted Invite:</div>
-              <div>{{ memUser.signupAt ? "Yes" : "No" }}</div>
-            </div>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase"
+                  >
+                    Email
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase"
+                  >
+                    Role
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase"
+                  >
+                    INVITE ACCEPTED?
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                <tr v-for="memUser in members" :key="memUser.userId">
+                  <td
+                    class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200"
+                  >
+                    {{ memUser.email }}
+                  </td>
+                  <td
+                    class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200 normal-case"
+                  >
+                    {{ memUser.role }}
+                  </td>
+                  <td
+                    class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200 normal-case"
+                  >
+                    {{ memUser.signupAt ? "Yes" : "No" }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </Stack>
         </template>
       </div>
-      <div v-if="featureFlagsStore.INVITE_USER" class="pt-4">
+      <div v-if="featureFlagsStore.INVITE_USER && canInviteUsers" class="pt-4">
         <template v-if="inviteUserReqStatus.isPending">
           <Icon name="loader" />
         </template>
@@ -120,11 +155,7 @@ import {
 import { useHead } from "@vueuse/head";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/store/auth.store";
-import {
-  Workspace,
-  useWorkspacesStore,
-  WorkspaceId,
-} from "@/store/workspaces.store";
+import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const authStore = useAuthStore();
@@ -139,17 +170,12 @@ const props = defineProps({
 const { validationState, validationMethods } = useValidatedInputGroup();
 
 const members = computed(() => workspacesStore.selectedWorkspaceMembers);
-const blankWorkspace: Workspace = {
-  id: "",
-  instanceType: "local",
+const blankWorkspace = {
   instanceUrl: "",
   displayName: "",
-  createdByUserId: authStore.user?.id ?? "",
-  slug: "",
-  createdAt: "",
 };
-const draftWorkspace = reactive<Workspace>(_.cloneDeep(blankWorkspace));
-const newMember = reactive({ email: "", role: "collaborator" });
+const draftWorkspace = reactive(_.cloneDeep(blankWorkspace));
+const newMember = reactive({ email: "", role: "editor" });
 useHead({ title: "Dashboard" });
 
 const createWorkspaceReqStatus =
@@ -165,6 +191,9 @@ const inviteUserReqStatus = workspacesStore.getRequestStatus(
 );
 
 const createMode = computed(() => props.workspaceId === "new");
+const canInviteUsers = computed(
+  () => workspacesStore.workspacesById[props.workspaceId].role === "OWNER",
+);
 
 const loadWorkspacesReqStatus =
   workspacesStore.getRequestStatus("LOAD_WORKSPACES");
@@ -221,6 +250,7 @@ const editWorkspace = async () => {
 };
 
 const inviteButtonHandler = async () => {
+  if (newMember.email === "") return;
   const res = await workspacesStore.INVITE_USER(newMember, props.workspaceId);
 
   if (res.result.success) {
