@@ -62,18 +62,51 @@
         <template v-else-if="loadWorkspaceMembersReqStatus.isSuccess">
           <Stack>
             <div class="text-lg font-bold">Members of this workspace:</div>
-            <div
-              v-for="memUser in members"
-              :key="memUser.userId"
-              class="rounded p-sm grid grid-cols-2 items-center gap-sm bg-neutral-400 dark:bg-neutral-600 p-xs pr-sm"
+            <table
+              class="min-w-full divide-y divide-gray-200 dark:divide-gray-700"
             >
-              <div class="font-bold">Email:</div>
-              <div>{{ memUser.email }}</div>
-              <div class="font-bold">Role:</div>
-              <div>{{ memUser.role }}</div>
-              <div class="font-bold">Has Accepted Invite:</div>
-              <div>{{ memUser.signupAt ? "Yes" : "No" }}</div>
-            </div>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase"
+                  >
+                    Email
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase"
+                  >
+                    Role
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase"
+                  >
+                    INVITE ACCEPTED?
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                <tr v-for="memUser in members" :key="memUser.userId">
+                  <td
+                    class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200"
+                  >
+                    {{ memUser.email }}
+                  </td>
+                  <td
+                    class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200 normal-case"
+                  >
+                    {{ memUser.role }}
+                  </td>
+                  <td
+                    class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200 normal-case"
+                  >
+                    {{ memUser.signupAt ? "Yes" : "No" }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </Stack>
         </template>
       </div>
@@ -142,7 +175,7 @@ const blankWorkspace = {
   displayName: "",
 };
 const draftWorkspace = reactive(_.cloneDeep(blankWorkspace));
-const newMember = reactive({ email: "", role: "collaborator" });
+const newMember = reactive({ email: "", role: "member" });
 useHead({ title: "Dashboard" });
 
 const createWorkspaceReqStatus =
@@ -217,6 +250,7 @@ const editWorkspace = async () => {
 };
 
 const inviteButtonHandler = async () => {
+  if (newMember.email === "") return;
   const res = await workspacesStore.INVITE_USER(newMember, props.workspaceId);
 
   if (res.result.success) {

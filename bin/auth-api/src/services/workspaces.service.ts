@@ -109,7 +109,7 @@ export async function getWorkspaceMembers(id: WorkspaceId) {
   return workspaceMembers;
 }
 
-export async function inviteCollaborator(email: string, id: WorkspaceId) {
+export async function inviteMember(email: string, id: WorkspaceId) {
   let user = await getUserByEmail(email);
   if (!user) {
     user = await createInvitedUser(email);
@@ -120,7 +120,7 @@ export async function inviteCollaborator(email: string, id: WorkspaceId) {
       id: ulid(),
       workspaceId: id,
       userId: user.id,
-      roleType: RoleType.COLLABORATOR,
+      roleType: RoleType.MEMBER,
     },
   });
 }

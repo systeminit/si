@@ -5,7 +5,7 @@ import { getCache, setCache } from "../lib/cache";
 import { getUserById } from "../services/users.service";
 import {
   createWorkspace,
-  getUserWorkspaces, getWorkspaceById, getWorkspaceMembers, inviteCollaborator, patchWorkspace, userRoleForWorkspace,
+  getUserWorkspaces, getWorkspaceById, getWorkspaceMembers, inviteMember, patchWorkspace, userRoleForWorkspace,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
@@ -131,7 +131,7 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
     email: z.string(),
   }));
 
-  await inviteCollaborator(reqBody.email, workspace.id);
+  await inviteMember(reqBody.email, workspace.id);
 
   const members: Member[] = [];
   const workspaceMembers = await getWorkspaceMembers(workspace.id);
