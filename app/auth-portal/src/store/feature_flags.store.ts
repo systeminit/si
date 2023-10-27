@@ -18,7 +18,7 @@ export const useFeatureFlagsStore = () => {
           this.INSTALL_PAGE = flags.includes("install_page");
           this.OSS_RELEASE = flags.includes("featureOssRelease");
           this.CREATE_WORKSPACES = flags.includes("create_workspaces");
-          this.INVITE_USER = flags.includes("inite_user");
+          this.INVITE_USER = flags.includes("invite_user");
           // If you can create workspaces, editing workspaces will also be enabled.
           this.EDIT_WORKSPACES =
             flags.includes("edit_workspaces") || this.CREATE_WORKSPACES;
