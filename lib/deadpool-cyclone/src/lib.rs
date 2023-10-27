@@ -131,7 +131,6 @@ mod tests {
         let mut instance = managed::Manager::create(&manager)
             .await
             .expect("failed to create instance");
-        dbg!(&instance);
 
         let status = instance
             .liveness()
@@ -182,7 +181,6 @@ mod tests {
         let mut instance = managed::Manager::create(&manager)
             .await
             .expect("failed to create instance");
-        dbg!(&instance);
 
         let status = instance
             .liveness()

@@ -53,7 +53,7 @@ pub struct Config {
 }
 
 #[remain::sorted]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum CycloneSpec {
     LocalHttp(LocalHttpInstanceSpec),
     LocalUds(LocalUdsInstanceSpec),

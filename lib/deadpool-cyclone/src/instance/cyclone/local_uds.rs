@@ -1,3 +1,4 @@
+use ::std::path::Path;
 use rand::distributions::Alphanumeric;
 use rand::thread_rng;
 use rand::Rng;
@@ -58,9 +59,12 @@ pub enum LocalUdsInstanceError {
     /// Failed to run a container.
     #[error("failed to spawn cyclone container")]
     ContainerRun(#[source] Error),
-    /// Error when shuttind down a container.
+    /// Error when shutting down a container.
     #[error(transparent)]
     ContainerShutdown(#[from] Error),
+    /// Docker api not found
+    #[error("no docker api")]
+    DockerAPINotFound,
     /// Instance has exhausted its predefined request count.
     #[error("no remaining requests, cyclone server is considered unhealthy")]
     NoRemainingRequests,
@@ -85,7 +89,6 @@ type Result<T> = result::Result<T, LocalUdsInstanceError>;
 
 /// A local Cyclone [`Instance`], managed as a spawned child process, communicating over a Unix
 /// domain socket ("Uds").
-#[derive(Debug)]
 pub struct LocalUdsInstance {
     // The `TempPath` type is kept around as an [RAII
     // guard](https://rust-unofficial.github.io/patterns/patterns/behavioural/RAII.html), that is,
@@ -93,7 +96,7 @@ pub struct LocalUdsInstance {
     _temp_path: Option<TempPath>,
     client: UdsClient,
     limit_requests: Option<u32>,
-    runtime: LocalInstanceRuntime,
+    runtime: Box<dyn LocalInstanceRuntime>,
     watch_shutdown_tx: oneshot::Sender<()>,
 }
 
@@ -276,7 +279,7 @@ impl LocalUdsInstance {
 }
 
 /// The [`Spec`] for [`LocalUdsInstance`]
-#[derive(Builder, Clone, Debug, Eq, PartialEq)]
+#[derive(Builder, Clone, Debug)]
 pub struct LocalUdsInstanceSpec {
     /// Canonical path to the `cyclone` program.
     #[builder(try_setter, setter(into))]
@@ -326,8 +329,7 @@ impl Spec for LocalUdsInstanceSpec {
 
     async fn spawn(&self) -> result::Result<Self::Instance, Self::Error> {
         let (temp_path, socket) = temp_path_and_socket_from(&self.socket_strategy)?;
-        let mut runtime =
-            LocalInstanceRuntime::build(&self.runtime_strategy, &socket, self.clone()).await?;
+        let mut runtime = runtime_instance_from(&self.runtime_strategy, &socket, self).await?;
 
         runtime.spawn().await?;
         let mut client = Client::uds(socket)?;
@@ -469,10 +471,9 @@ fn temp_path_and_socket_from(
     }
 }
 
-/// Runtime strategy when spawning [`Instance`]s.
 #[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(untagged)]
+/// Runtime strategy when spawning [`Instance`]s.
+#[derive(Clone, Debug, Copy, Serialize, Deserialize)]
 pub enum LocalUdsRuntimeStrategy {
     /// Run Docker containers on the local machine
     LocalDocker,
@@ -480,216 +481,208 @@ pub enum LocalUdsRuntimeStrategy {
     LocalProcess,
 }
 
-impl LocalUdsRuntimeStrategy {
-    /// Creates a local process runtime strategy.
-    #[must_use]
-    pub fn local_process() -> Self {
-        Self::LocalProcess
-    }
-
-    /// Creates a local docker runtime strategy.
-    pub fn local_docker() -> Self {
-        Self::LocalDocker
-    }
-}
 impl Default for LocalUdsRuntimeStrategy {
     fn default() -> Self {
         Self::LocalProcess
     }
 }
 
-#[derive(Debug)]
-pub struct LocalInstanceRuntime {
-    runtime_strategy: LocalUdsRuntimeStrategy,
-    command: Option<Command>,
-    child: Option<Child>,
-    container_id: Option<String>,
-    docker_api: Option<Docker>,
+#[async_trait]
+pub trait LocalInstanceRuntime: Send + Sync {
+    async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError>;
+    async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError>;
 }
 
-impl LocalInstanceRuntime {
+#[derive(Debug)]
+struct LocalProcessRuntime {
+    cmd: Command,
+    child: Option<Child>,
+}
+
+impl LocalProcessRuntime {
     async fn build(
-        runtime_strategy: &LocalUdsRuntimeStrategy,
-        sock: &PathBuf,
+        socket: &PathBuf,
         spec: LocalUdsInstanceSpec,
-    ) -> Result<LocalInstanceRuntime> {
-        match runtime_strategy {
-            LocalUdsRuntimeStrategy::LocalProcess => {
-                let mut cmd = Command::new(&spec.cyclone_cmd_path);
-                cmd.arg("--bind-uds")
-                    .arg(sock)
-                    .arg("--decryption-key")
-                    .arg(&spec.cyclone_decryption_key_path)
-                    .arg("--lang-server")
-                    .arg(&spec.lang_server_cmd_path)
-                    .arg("--enable-watch");
-                if let Some(limit_requests) = spec.limit_requests {
-                    cmd.arg("--limit-requests").arg(limit_requests.to_string());
-                }
-                if let Some(timeout) = spec.watch_timeout {
-                    cmd.arg("--watch-timeout")
-                        .arg(timeout.as_secs().to_string());
-                }
-                if spec.ping {
-                    cmd.arg("--enable-ping");
-                }
-                if spec.resolver {
-                    cmd.arg("--enable-resolver");
-                }
-                if spec.action {
-                    cmd.arg("--enable-action-run");
-                }
+    ) -> Result<Box<dyn LocalInstanceRuntime>> {
+        let mut cmd = Command::new(&spec.cyclone_cmd_path);
+        cmd.arg("--bind-uds")
+            .arg(socket)
+            .arg("--decryption-key")
+            .arg(&spec.cyclone_decryption_key_path)
+            .arg("--lang-server")
+            .arg(&spec.lang_server_cmd_path)
+            .arg("--enable-watch");
+        if let Some(limit_requests) = spec.limit_requests {
+            cmd.arg("--limit-requests").arg(limit_requests.to_string());
+        }
+        if let Some(timeout) = spec.watch_timeout {
+            cmd.arg("--watch-timeout")
+                .arg(timeout.as_secs().to_string());
+        }
+        if spec.ping {
+            cmd.arg("--enable-ping");
+        }
+        if spec.resolver {
+            cmd.arg("--enable-resolver");
+        }
+        if spec.action {
+            cmd.arg("--enable-action-run");
+        }
 
-                Ok(LocalInstanceRuntime {
-                    runtime_strategy: LocalUdsRuntimeStrategy::LocalProcess,
-                    command: Some(cmd),
-                    child: None,
-                    container_id: None,
-                    docker_api: None,
-                })
+        Ok(Box::new(LocalProcessRuntime { cmd, child: None }))
+    }
+}
+
+#[async_trait]
+impl LocalInstanceRuntime for LocalProcessRuntime {
+    async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        self.child = Some(
+            self.cmd
+                .spawn()
+                .map_err(LocalUdsInstanceError::ChildSpawn)?,
+        );
+        Ok(())
+    }
+    async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        match self.child.as_mut() {
+            Some(c) => {
+                process::child_shutdown(c, Some(process::Signal::SIGTERM), None).await?;
+                Ok(())
             }
-            LocalUdsRuntimeStrategy::LocalDocker => {
-                let mut cmd = vec![
-                    String::from("--bind-uds"),
-                    sock.to_string_lossy().to_string(),
-                    String::from("--decryption-key"),
-                    String::from("/tmp/key"),
-                    String::from("--lang-server"),
-                    String::from("/usr/local/bin/lang-js"),
-                    String::from("--enable-watch"),
-                ];
-                if let Some(limit_requests) = spec.limit_requests {
-                    cmd.push(String::from("--limit-requests"));
-                    cmd.push(limit_requests.to_string())
-                }
-                if let Some(timeout) = spec.watch_timeout {
-                    cmd.push(String::from("--watch-timeout"));
-                    cmd.push(timeout.as_secs().to_string());
-                }
-                if spec.ping {
-                    cmd.push(String::from("--enable-ping"));
-                }
-                if spec.resolver {
-                    cmd.push(String::from("--enable-resolver"));
-                }
-                if spec.action {
-                    cmd.push(String::from("--enable-action-run"));
-                }
-
-                let docker = Docker::connect_with_local_defaults()?;
-                let rand_string: String = thread_rng()
-                    .sample_iter(&Alphanumeric)
-                    .take(10)
-                    .map(char::from)
-                    .collect();
-
-                let socket_dir = sock
-                    .parent()
-                    .expect("socket path not available")
-                    .to_str()
-                    .expect("unable to unpack path");
-                let mounts = vec![
-                    Mount {
-                        source: Some(String::from(socket_dir.clone())),
-                        target: Some(String::from(socket_dir.clone())),
-                        typ: Some(MountTypeEnum::BIND),
-                        ..Default::default()
-                    },
-                    Mount {
-                        source: Some(spec.cyclone_decryption_key_path),
-                        target: Some(String::from("/tmp/key")),
-                        typ: Some(MountTypeEnum::BIND),
-                        ..Default::default()
-                    },
-                ];
-
-                let container_id = docker
-                    .create_container(
-                        Some(CreateContainerOptions {
-                            name: format!("cyclone-container-{rand_string}"),
-                            platform: Some(String::from("linux/amd64")),
-                        }),
-                        Config {
-                            image: Some(String::from("systeminit/cyclone")),
-                            cmd: Some(cmd),
-                            host_config: Some(HostConfig {
-                                mounts: Some(mounts),
-                                ..Default::default()
-                            }),
-                            ..Default::default()
-                        },
-                    )
-                    .await?
-                    .id;
-                Ok(LocalInstanceRuntime {
-                    runtime_strategy: LocalUdsRuntimeStrategy::LocalDocker,
-                    command: None,
-                    child: None,
-                    container_id: Some(container_id),
-                    docker_api: Some(docker),
-                })
-            }
+            None => Ok(()),
         }
     }
+}
 
-    async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-        match &self.runtime_strategy {
-            LocalUdsRuntimeStrategy::LocalProcess => {
-                self.child = Some(
-                    self.command
-                        .as_mut()
-                        .expect("command should be available")
-                        .spawn()
-                        .map_err(LocalUdsInstanceError::ChildSpawn)?,
-                );
-                Ok(())
-            }
-            LocalUdsRuntimeStrategy::LocalDocker => {
-                self.docker_api
-                    .as_ref()
-                    .expect("docker socket should be available")
-                    .start_container(
-                        &self
-                            .container_id
-                            .clone()
-                            .expect("container id should be available"),
-                        None::<StartContainerOptions<String>>,
-                    )
-                    .await?;
-                Ok(())
-            }
+#[derive(Debug)]
+struct LocalDockerRuntime {
+    container_id: String,
+    docker: Docker,
+}
+
+impl LocalDockerRuntime {
+    async fn build(
+        socket: &Path,
+        spec: LocalUdsInstanceSpec,
+    ) -> Result<Box<dyn LocalInstanceRuntime>> {
+        let mut cmd = vec![
+            String::from("--bind-uds"),
+            socket.to_string_lossy().to_string(),
+            String::from("--decryption-key"),
+            String::from("/tmp/key"),
+            String::from("--lang-server"),
+            String::from("/usr/local/bin/lang-js"),
+            String::from("--enable-watch"),
+        ];
+        if let Some(limit_requests) = spec.limit_requests {
+            cmd.push(String::from("--limit-requests"));
+            cmd.push(limit_requests.to_string())
         }
+        if let Some(timeout) = spec.watch_timeout {
+            cmd.push(String::from("--watch-timeout"));
+            cmd.push(timeout.as_secs().to_string());
+        }
+        if spec.ping {
+            cmd.push(String::from("--enable-ping"));
+        }
+        if spec.resolver {
+            cmd.push(String::from("--enable-resolver"));
+        }
+        if spec.action {
+            cmd.push(String::from("--enable-action-run"));
+        }
+
+        let docker = Docker::connect_with_local_defaults()?;
+
+        let rand_string: String = thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(10)
+            .map(char::from)
+            .collect();
+
+        let socket_dir = socket
+            .parent()
+            .expect("socket path not available")
+            .to_str()
+            .expect("unable to unpack path");
+        let mounts = vec![
+            Mount {
+                source: Some(String::from(socket_dir.clone())),
+                target: Some(String::from(socket_dir.clone())),
+                typ: Some(MountTypeEnum::BIND),
+                ..Default::default()
+            },
+            Mount {
+                source: Some(spec.cyclone_decryption_key_path),
+                target: Some(String::from("/tmp/key")),
+                typ: Some(MountTypeEnum::BIND),
+                ..Default::default()
+            },
+        ];
+
+        let container_id = docker
+            .create_container(
+                Some(CreateContainerOptions {
+                    name: format!("cyclone-container-{rand_string}"),
+                    platform: Some(String::from("linux/amd64")),
+                }),
+                Config {
+                    image: Some(String::from("systeminit/cyclone")),
+                    cmd: Some(cmd),
+                    host_config: Some(HostConfig {
+                        mounts: Some(mounts),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .id;
+
+        Ok(Box::new(LocalDockerRuntime {
+            container_id,
+            docker,
+        }))
+    }
+}
+
+#[async_trait]
+impl LocalInstanceRuntime for LocalDockerRuntime {
+    async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        self.docker
+            .start_container(
+                &self.container_id.clone(),
+                None::<StartContainerOptions<String>>,
+            )
+            .await?;
+        Ok(())
     }
 
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-        match &self.runtime_strategy {
-            LocalUdsRuntimeStrategy::LocalProcess => {
-                process::child_shutdown(
-                    self.child
-                        .as_mut()
-                        .expect("child process should be available"),
-                    Some(process::Signal::SIGTERM),
-                    None,
-                )
-                .await?;
-                Ok(())
-            }
-            LocalUdsRuntimeStrategy::LocalDocker => {
-                self.docker_api
-                    .as_mut()
-                    .expect("docker socket should be bound")
-                    .remove_container(
-                        self.container_id
-                            .as_mut()
-                            .expect("container id should be available"),
-                        Some(RemoveContainerOptions {
-                            force: true,
-                            ..Default::default()
-                        }),
-                    )
-                    .await?;
-                Ok(())
-            }
+        self.docker
+            .remove_container(
+                &self.container_id,
+                Some(RemoveContainerOptions {
+                    force: true,
+                    ..Default::default()
+                }),
+            )
+            .await?;
+        Ok(())
+    }
+}
+
+async fn runtime_instance_from(
+    runtime_strategy: &LocalUdsRuntimeStrategy,
+    socket: &PathBuf,
+    spec: &LocalUdsInstanceSpec,
+) -> Result<Box<dyn LocalInstanceRuntime>> {
+    match runtime_strategy {
+        LocalUdsRuntimeStrategy::LocalProcess => {
+            LocalProcessRuntime::build(socket, spec.clone()).await
+        }
+        LocalUdsRuntimeStrategy::LocalDocker => {
+            LocalDockerRuntime::build(socket, spec.clone()).await
         }
     }
 }
