@@ -120,7 +120,7 @@ export async function inviteMember(email: string, id: WorkspaceId) {
       id: ulid(),
       workspaceId: id,
       userId: user.id,
-      roleType: RoleType.MEMBER,
+      roleType: RoleType.EDITOR,
     },
   });
 }

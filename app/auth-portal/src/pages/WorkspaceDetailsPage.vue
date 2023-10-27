@@ -175,7 +175,7 @@ const blankWorkspace = {
   displayName: "",
 };
 const draftWorkspace = reactive(_.cloneDeep(blankWorkspace));
-const newMember = reactive({ email: "", role: "member" });
+const newMember = reactive({ email: "", role: "editor" });
 useHead({ title: "Dashboard" });
 
 const createWorkspaceReqStatus =

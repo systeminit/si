@@ -170,15 +170,10 @@ impl UserClaim {
     }
 
     pub async fn from_bearer_token(
-        workspace_pk: Option<WorkspacePk>,
         public_key: JwtPublicSigningKey,
         token: impl AsRef<str>,
     ) -> UserResult<UserClaim> {
         let claims = crate::jwt_key::validate_bearer_token(public_key, &token).await?;
-        let mut custom = claims.custom;
-        if let Some(workspace_pk) = workspace_pk {
-            custom.workspace_pk = workspace_pk;
-        }
-        Ok(custom)
+        Ok(claims.custom)
     }
 }

@@ -6,7 +6,7 @@
 */
 -- AlterEnum
 BEGIN;
-CREATE TYPE "RoleType_new" AS ENUM ('OWNER', 'MEMBER');
+CREATE TYPE "RoleType_new" AS ENUM ('OWNER', 'EDITOR');
 ALTER TABLE "WorkspaceMembers" ALTER COLUMN "role_type" TYPE "RoleType_new" USING ("role_type"::text::"RoleType_new");
 ALTER TYPE "RoleType" RENAME TO "RoleType_old";
 ALTER TYPE "RoleType_new" RENAME TO "RoleType";
