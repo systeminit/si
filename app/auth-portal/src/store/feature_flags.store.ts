@@ -7,7 +7,6 @@ export const useFeatureFlagsStore = () => {
   return addStoreHooks(
     defineStore("feature-flags", {
       state: () => ({
-        INSTALL_PAGE: false,
         OSS_RELEASE: false,
         CREATE_WORKSPACES: false,
         EDIT_WORKSPACES: false,
@@ -15,7 +14,6 @@ export const useFeatureFlagsStore = () => {
       }),
       onActivated() {
         posthog.onFeatureFlags((flags) => {
-          this.INSTALL_PAGE = flags.includes("install_page");
           this.OSS_RELEASE = flags.includes("featureOssRelease");
           this.CREATE_WORKSPACES = flags.includes("create_workspaces");
           this.INVITE_USER = flags.includes("inite_user");
