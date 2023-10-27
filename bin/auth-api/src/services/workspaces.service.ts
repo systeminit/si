@@ -83,8 +83,6 @@ export async function getUserWorkspaces(userId: UserId) {
     ..._.omit(w, "UserMemberships"),
     role: w.UserMemberships[0].roleType,
   }));
-
-  return workspaces;
 }
 
 export async function userRoleForWorkspace(userId: UserId, workspaceId: WorkspaceId) {

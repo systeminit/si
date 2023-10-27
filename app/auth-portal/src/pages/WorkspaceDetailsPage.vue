@@ -75,7 +75,7 @@
           </Stack>
         </template>
       </div>
-      <div v-if="featureFlagsStore.INVITE_USER" class="pt-4">
+      <div v-if="featureFlagsStore.INVITE_USER && canInviteUsers" class="pt-4">
         <template v-if="inviteUserReqStatus.isPending">
           <Icon name="loader" />
         </template>
@@ -120,11 +120,7 @@ import {
 import { useHead } from "@vueuse/head";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/store/auth.store";
-import {
-  Workspace,
-  useWorkspacesStore,
-  WorkspaceId,
-} from "@/store/workspaces.store";
+import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const authStore = useAuthStore();
@@ -160,6 +156,9 @@ const inviteUserReqStatus = workspacesStore.getRequestStatus(
 );
 
 const createMode = computed(() => props.workspaceId === "new");
+const canInviteUsers = computed(
+  () => workspacesStore.workspacesById[props.workspaceId].role === "OWNER",
+);
 
 const loadWorkspacesReqStatus =
   workspacesStore.getRequestStatus("LOAD_WORKSPACES");
