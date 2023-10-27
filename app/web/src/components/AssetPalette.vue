@@ -7,9 +7,12 @@
       </div>
     </template>
     <template v-else-if="schemasReqStatus.isSuccess">
-      <!-- <SiSearch /> -->
-
       <ScrollArea class="">
+        <SiSearch
+          autoSearch
+          placeholder="search assets"
+          @search="onSearchUpdated"
+        />
         <template #top>
           <SidebarSubpanelTitle label="Assets" icon="component-plus" />
 
@@ -33,7 +36,7 @@
 
         <ul class="overflow-y-auto">
           <Collapsible
-            v-for="(category, categoryIndex) in addMenuData"
+            v-for="(category, categoryIndex) in filteredComponents"
             :key="categoryIndex"
             :label="category.displayName"
             as="li"
@@ -91,6 +94,7 @@ import SiNodeSprite from "@/components/SiNodeSprite.vue";
 import { useComponentsStore, MenuSchema } from "@/store/components.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+import SiSearch from "@/components/SiSearch.vue";
 
 defineProps<{ fixesAreRunning: boolean }>();
 
@@ -114,7 +118,28 @@ const addMenuReqStatus = componentsStore.getRequestStatus(
   "FETCH_NODE_ADD_MENU",
 );
 
+const filterString = ref("");
+const filterStringCleaned = computed(() =>
+  filterString.value.trim().toLowerCase(),
+);
+const filterModeActive = computed(() => !!filterStringCleaned.value);
+
+const filteredComponents = computed(() => {
+  if (!filterModeActive.value) return componentsStore.nodeAddMenu;
+  return _.filter(componentsStore.nodeAddMenu, (c) => {
+    if (c.displayName.toLowerCase().includes(filterStringCleaned.value))
+      return true;
+    return c.schemas.some((s) =>
+      s.displayName.toLowerCase().includes(filterStringCleaned.value),
+    );
+  });
+});
+
+function onSearchUpdated(newFilterString: string) {
+  filterString.value = newFilterString;
+}
 const addMenuData = computed(() => componentsStore.nodeAddMenu);
+
 const schemasById = computed(() => {
   return addMenuData.value.reduce((p, c) => {
     c.schemas.forEach((schema) => {
