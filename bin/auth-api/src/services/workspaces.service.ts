@@ -1,7 +1,9 @@
-import { InstanceEnvType, PrismaClient, User } from '@prisma/client';
+import {
+  InstanceEnvType, PrismaClient, User, RoleType,
+} from '@prisma/client';
 import { ulid } from 'ulidx';
 import { tracker } from '../lib/tracker';
-import { UserId } from "./users.service";
+import { createInvitedUser, getUserByEmail, UserId } from "./users.service";
 
 export type WorkspaceId = string;
 
@@ -39,6 +41,15 @@ export async function createWorkspace(creatorUser: User, instanceUrl = 'http://l
     // TODO: track env type and other data when it becomes useful
   });
 
+  await prisma.workspaceMembers.create({
+    data: {
+      id: ulid(),
+      workspaceId: newWorkspace.id,
+      userId: creatorUser.id,
+      roleType: RoleType.OWNER,
+    },
+  });
+
   return newWorkspace;
 }
 
@@ -53,4 +64,33 @@ export async function getUserWorkspaces(userId: UserId) {
     },
   });
   return workspaces;
+}
+
+export async function getWorkspaceMembers(id: WorkspaceId) {
+  const workspaceMembers = await prisma.workspaceMembers.findMany({
+    where: {
+      workspaceId: id,
+    },
+    include: {
+      user: true,
+    },
+  });
+
+  return workspaceMembers;
+}
+
+export async function inviteCollaborator(email: string, id: WorkspaceId) {
+  let user = await getUserByEmail(email);
+  if (!user) {
+    user = await createInvitedUser(email);
+  }
+
+  return await prisma.workspaceMembers.create({
+    data: {
+      id: ulid(),
+      workspaceId: id,
+      userId: user.id,
+      roleType: RoleType.COLLABORATOR,
+    },
+  });
 }

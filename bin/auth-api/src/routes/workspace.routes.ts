@@ -5,7 +5,7 @@ import { getCache, setCache } from "../lib/cache";
 import { getUserById } from "../services/users.service";
 import {
   createWorkspace,
-  getUserWorkspaces, getWorkspaceById, patchWorkspace,
+  getUserWorkspaces, getWorkspaceById, getWorkspaceMembers, inviteCollaborator, patchWorkspace,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
@@ -62,9 +62,12 @@ router.post("/workspaces/new", async (ctx) => {
     displayName: z.string(),
   }));
 
-  await createWorkspace(ctx.state.authUser, reqBody.instanceUrl, reqBody.displayName);
+  const workspaceDetails = await createWorkspace(ctx.state.authUser, reqBody.instanceUrl, reqBody.displayName);
 
-  ctx.body = await getUserWorkspaces(ctx.state.authUser.id);
+  ctx.body = {
+    workspaces: await getUserWorkspaces(ctx.state.authUser.id),
+    newWorkspaceId: workspaceDetails.id,
+  };
 });
 
 router.patch("/workspaces/:workspaceId", async (ctx) => {
@@ -83,6 +86,67 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
   await patchWorkspace(workspace.id, reqBody.instanceUrl, reqBody.displayName);
 
   ctx.body = await getUserWorkspaces(ctx.state.authUser.id);
+});
+
+export type Member = {
+  userId: string,
+  email: string,
+  nickname: string,
+  role: string,
+  signupAt: Date | null,
+};
+router.get("/workspace/:workspaceId/members", async (ctx) => {
+  // user must be logged in
+  if (!ctx.state.authUser) {
+    throw new ApiError('Unauthorized', "You are not logged in");
+  }
+
+  const workspace = await handleWorkspaceIdParam(ctx);
+
+  const members: Member[] = [];
+  const workspaceMembers = await getWorkspaceMembers(workspace.id);
+
+  workspaceMembers.forEach((wm) => {
+    members.push({
+      userId: wm.userId,
+      email: wm.user.email,
+      nickname: wm.user.nickname || "",
+      role: wm.roleType,
+      signupAt: wm.user.signupAt,
+    });
+  });
+
+  ctx.body = members;
+});
+
+router.post("/workspace/:workspaceId/members", async (ctx) => {
+  // user must be logged in
+  if (!ctx.state.authUser) {
+    throw new ApiError('Unauthorized', "You are not logged in");
+  }
+
+  const workspace = await handleWorkspaceIdParam(ctx);
+
+  const reqBody = validate(ctx.request.body, z.object({
+    email: z.string(),
+  }));
+
+  await inviteCollaborator(reqBody.email, workspace.id);
+
+  const members: Member[] = [];
+  const workspaceMembers = await getWorkspaceMembers(workspace.id);
+
+  workspaceMembers.forEach((wm) => {
+    members.push({
+      userId: wm.userId,
+      email: wm.user.email,
+      nickname: wm.user.nickname || "",
+      role: wm.roleType,
+      signupAt: wm.user.signupAt,
+    });
+  });
+
+  ctx.body = members;
 });
 
 router.get("/workspaces/:workspaceId/go", async (ctx) => {

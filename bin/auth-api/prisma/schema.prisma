@@ -14,11 +14,11 @@ model User {
   /// SI's id for the user (ULID)
   id            String  @id @db.Char(26)
   /// Auth0's id
-  auth0Id       String  @unique @map("auth0_id")
+  auth0Id       String?  @unique @map("auth0_id")
   /// raw json blob of Auth0 data
-  auth0Details  Json    @map("auth0_details")
+  auth0Details  Json?    @map("auth0_details")
   /// single name string we can use as label for the user
-  nickname      String
+  nickname      String?
   /// user's email
   email         String
   /// whether email has been verified
@@ -38,8 +38,13 @@ model User {
   /// data about where user is in onboarding
   onboardingDetails Json? @map("onboarding_details")
 
+  // When a user signed up
+  signupAt DateTime? @map("signup_at")
+
   /// array of workspaces the user created
   CreatedWorkspaces Workspace[]
+  /// array of the workspaces that the user has access to
+  WorkspaceMembers WorkspaceMembers[]
   TosAgreement      TosAgreement[]
 
   @@index(fields: [email])
@@ -61,8 +66,28 @@ model Workspace {
   /// user who created workspace
   creatorUser   User   @relation(fields: [creatorUserId], references: [id])
 
+  // The list of users that have access to this workspace
+  UserMemberships WorkspaceMembers[]
+
   @@index(fields: [creatorUserId])
   @@map("workspaces")
+}
+
+model WorkspaceMembers {
+    id String   @id @db.Char(26)
+
+    // id of the User
+    userId String @map("user_id")
+    user User @relation(fields: [userId], references: [id])
+
+    // id of the Workspace
+    workspaceId String @map("workspace_id")
+    workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+    // Role of the user
+    roleType RoleType @map("role_type")
+
+    @@unique([userId, workspaceId])
 }
 
 model TosAgreement {
@@ -85,4 +110,9 @@ enum InstanceEnvType {
   LOCAL
   PRIVATE
   SI
+}
+
+enum RoleType {
+  OWNER
+  COLLABORATOR
 }

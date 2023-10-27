@@ -43,6 +43,19 @@ export async function getUserByAuth0Id(auth0Id: string) {
   return prisma.user.findUnique({ where: { auth0Id } });
 }
 
+export async function getUserByEmail(email: string) {
+  return prisma.user.findFirst({ where: { email } });
+}
+
+export async function createInvitedUser(email: string) {
+  return await prisma.user.create({
+    data: {
+      id: ulid(),
+      email,
+    },
+  });
+}
+
 export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.UserData) {
   // auth0 docs showing user_id, but looks like "sub" contains the identifier
   // TODO: check data when logging in with other providers
@@ -68,6 +81,9 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
   };
 
   if (existingUser) {
+    if (!existingUser.signupAt) {
+      existingUser.signupAt = new Date();
+    }
     _.assign(existingUser, userData);
     await prisma.user.update({
       where: { id: existingUser.id },
@@ -80,6 +96,7 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
     const newUser = await prisma.user.create({
       data: {
         id: ulid(),
+        signupAt: new Date(),
         auth0Id,
         ...userData,
       },
