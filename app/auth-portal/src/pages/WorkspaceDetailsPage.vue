@@ -27,6 +27,7 @@
           label="Display Name"
           placeholder="A display name for this workspace"
           required
+          :disabled="!canInviteUsers"
         />
         <VormInput
           v-model="draftWorkspace.instanceUrl"
@@ -34,11 +35,12 @@
           autocomplete="url"
           placeholder="The instance url for this workspace"
           required
+          :disabled="!canInviteUsers"
         />
 
         <VButton
           iconRight="chevron--right"
-          :disabled="validationState.isError"
+          :disabled="validationState.isError || !canInviteUsers"
           :requestStatus="
             createMode ? createWorkspaceReqStatus : editWorkspaceReqStatus
           "
