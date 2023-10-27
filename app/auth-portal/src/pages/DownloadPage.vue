@@ -1,5 +1,5 @@
 <template>
-  <div v-if="featureFlagsStore.INSTALL_PAGE" class="overflow-hidden">
+  <div class="overflow-hidden">
     <div class="flex flex-row items-center mb-sm">
       <div class="w-xl mr-md flex-none"><SiLogo /></div>
       <div class="flex flex-col grow">
@@ -198,9 +198,7 @@ import { computed, onBeforeMount, ref } from "vue";
 import { Icon, VormInput, RichText } from "@si/vue-lib/design-system";
 import { useGithubStore } from "@/store/github.store";
 import { tracker } from "@/lib/posthog";
-import { useFeatureFlagsStore } from "../store/feature_flags.store";
 
-const featureFlagsStore = useFeatureFlagsStore();
 const githubStore = useGithubStore();
 
 useHead({ title: "Download" });

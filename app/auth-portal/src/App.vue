@@ -68,11 +68,7 @@
                   )
                 "
               >
-                <RouterLink
-                  v-if="featureFlagsStore.INSTALL_PAGE"
-                  :to="{ name: 'download' }"
-                  class="underline-link"
-                >
+                <RouterLink :to="{ name: 'download' }" class="underline-link">
                   Install
                 </RouterLink>
                 <RouterLink :to="{ name: 'tutorial' }" class="underline-link">
@@ -202,10 +198,7 @@ import clsx from "clsx";
 import storage from "local-storage-fallback";
 import { useAuthStore } from "./store/auth.store";
 import { BROWSER_IS_MOBILE } from "./lib/browser";
-import { useFeatureFlagsStore } from "./store/feature_flags.store";
 import DeployNotification from "./components/DeployNotification.vue";
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 // provides the root theme value to all children, and returns that root theme to use below
 const { theme: rootTheme } = useThemeContainer();
