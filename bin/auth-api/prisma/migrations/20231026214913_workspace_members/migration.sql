@@ -8,8 +8,8 @@ ALTER COLUMN "auth0_details" DROP NOT NULL,
 ALTER COLUMN "nickname" DROP NOT NULL;
 
 -- Set All Users To Already Be Signedup
-UPDATE TABLE "users"
-SET "signup_at" = NOW();
+UPDATE "users"
+SET "signup_at" = NOW() where "signup_at" IS NULL;
 
 -- CreateTable
 CREATE TABLE "WorkspaceMembers" (
