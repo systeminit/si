@@ -38,8 +38,8 @@
         <div class="text-sm opacity-70 capsize">
           {{ workspace.instanceUrl }}
         </div>
-        <div v-if="workspace.role !== 'OWNER'">
-          {{ workspace.role }}
+        <div class="font-bold capsize">
+          Role: {{ toSentenceCase(workspace.role) }}
         </div>
         <div class="flex items-center text-xs gap-md pt-xs">
           <div class="flex items-center gap-xs">
@@ -143,6 +143,10 @@ const props = defineProps({
 });
 
 const onboardingStore = useOnboardingStore();
+
+function toSentenceCase(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
 
 const workspacesStore = useWorkspacesStore();
 const workspace = computed(() =>
