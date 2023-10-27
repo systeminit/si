@@ -10,7 +10,6 @@
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
         <VButton
-          v-if="featureFlagsStore.CONTRIBUTE_BUTTON"
           label="Contribute"
           tone="action"
           icon="cloud-upload"
@@ -84,12 +83,10 @@ import {
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import { AssetListEntry, useAssetStore } from "@/store/asset.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AssetListItem from "./AssetListItem.vue";
 import ModuleExportModal from "./modules/ModuleExportModal.vue";
 
 const assetStore = useAssetStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const { assetList } = storeToRefs(assetStore);
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 const contributeAssetModalRef = ref<InstanceType<typeof ModuleExportModal>>();
