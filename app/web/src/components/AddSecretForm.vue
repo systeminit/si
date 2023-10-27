@@ -5,7 +5,7 @@
     "
   >
     <div
-      v-if="addSecretReqStatus.isSuccess"
+      v-if="addSecretReqStatus.isSuccess || editSecretReqStatus.isSuccess"
       class="grow flex flex-row items-center"
     >
       <div class="w-full text-center text-2xl font-bold">
@@ -286,7 +286,7 @@ const updateSecret = async () => {
   if (res.result.success) {
     const secret = res.result.data;
     setTimeout(() => {
-      secretsStore.clearRequestStatus("SAVE_SECRET");
+      secretsStore.clearRequestStatus("UPDATE_SECRET");
 
       secretFormData.value = _.cloneDeep(secretFormEmpty);
 

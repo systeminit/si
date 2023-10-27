@@ -321,22 +321,42 @@ impl EncryptedSecret {
     standard_model_accessor!(description, Option<String>, SecretResult);
     standard_model_accessor!(version, Enum(SecretVersion), SecretResult);
     standard_model_accessor!(algorithm, Enum(SecretAlgorithm), SecretResult);
-    standard_model_accessor!(updated_by, Option<UserPk>, SecretResult);
+    standard_model_accessor!(updated_by, Option<Pk(UserPk)>, SecretResult);
     standard_model_accessor!(key_pair_pk, Pk(KeyPairPk), SecretResult);
 
     // Once created, this object field is immutable
     standard_model_accessor_ro!(definition, String);
 
     pub async fn set_crypted(&mut self, ctx: &DalContext, value: Vec<u8>) -> SecretResult<()> {
+        let (double_crypted, nonce, key_hash) = ctx.symmetric_crypto_service().encrypt(&value);
         let updated_at = standard_model::update(
             ctx,
             "encrypted_secrets",
             "crypted",
             self.id(),
-            &value,
+            &base64_encode_bytes(double_crypted.as_slice()),
             TypeHint::Text,
         )
         .await?;
+        standard_model::update(
+            ctx,
+            "encrypted_secrets",
+            "nonce",
+            self.id(),
+            &base64_encode_bytes(nonce.as_ref()),
+            TypeHint::Text,
+        )
+        .await?;
+        standard_model::update(
+            ctx,
+            "encrypted_secrets",
+            "key_hash",
+            self.id(),
+            &key_hash.to_string(),
+            TypeHint::Text,
+        )
+        .await?;
+
         let _history_event = HistoryEvent::new(
             ctx,
             Self::history_event_label(vec!["updated"]),

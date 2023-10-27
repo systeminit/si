@@ -32,7 +32,7 @@
           )
         "
       >
-        > Updated:
+        Updated:
         <Timestamp
           :date="new Date(secret.updatedInfo.timestamp)"
           :relative="!detailedListItem"

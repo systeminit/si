@@ -3,24 +3,15 @@
     v-if="addingSecretId"
     class="w-full h-full flex flex-col overflow-hidden"
   >
-    <div
-      class="p-xs flex-none flex flex-col border-b border-neutral-200 dark:border-neutral-600"
-    >
-      <div class="text-lg font-bold text-center">
-        {{ editingSecret ? "Editing Secret" : "New Secret" }}
-      </div>
-      <div
-        ref="addingSecretNameRef"
-        v-tooltip="addingSecretTooltip"
-        class="text-center text-sm italic text-neutral-400 break-words line-clamp-3"
-      >
-        Defintion: "{{ addingSecretId }}"
-      </div>
-    </div>
+    <SecretsPanelTitle
+      :title="editingSecret ? 'Editing Secret' : 'New Secret'"
+      :subtitle="`Defintion: ${addingSecretId}`"
+      :subtitleTooltip="addingSecretTooltip"
+    />
     <AddSecretForm
       :definitionId="addingSecretId"
       :editingSecret="editingSecret"
-      @save="closeAddSecretForm"
+      @save="completeAddSecretForm"
       @cancel="closeAddSecretForm"
     />
   </div>
@@ -34,17 +25,13 @@
     "
   >
     <template #top>
-      <div
-        class="p-xs text-lg font-bold text-center border-b border-neutral-200 dark:border-neutral-600"
-      >
-        Secret Defintions
-      </div>
+      <SecretsPanelTitle title="Secret Definitions" />
     </template>
     <Collapsible
       v-for="definition in secretsStore.secretsByLastCreated"
       :key="definition.id"
       buttonClasses="bg-neutral-100 dark:bg-neutral-900"
-      :defaultOpen="false"
+      :defaultOpen="definition.id === openDefinitionOnLoad"
       useDifferentLabelWhenOpen
     >
       <template #label>
@@ -100,18 +87,19 @@ import {
   PillCounter,
   ScrollArea,
   VButton,
-  themeClasses,
 } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import clsx from "clsx";
 import { Secret, SecretId, useSecretsStore } from "@/store/secrets.store";
 import SecretCard from "./SecretCard.vue";
 import AddSecretForm from "./AddSecretForm.vue";
+import SecretsPanelTitle from "./SecretsPanelTitle.vue";
 
 const secretsStore = useSecretsStore();
 
 const addingSecretId = ref();
 const editingSecret = ref();
+const openDefinitionOnLoad = ref();
 
 const openAddSecretForm = (secretId: SecretId, edit?: Secret) => {
   editingSecret.value = edit;
@@ -120,6 +108,11 @@ const openAddSecretForm = (secretId: SecretId, edit?: Secret) => {
 
 const closeAddSecretForm = () => {
   addingSecretId.value = undefined;
+};
+
+const completeAddSecretForm = () => {
+  openDefinitionOnLoad.value = addingSecretId.value;
+  closeAddSecretForm();
 };
 
 const addingSecretNameRef = ref();

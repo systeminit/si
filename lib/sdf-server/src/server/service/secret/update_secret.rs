@@ -49,7 +49,9 @@ pub async fn update_secret(
     match ctx.history_actor() {
         HistoryActor::SystemInit => {}
         HistoryActor::User(id) => {
+            println!("before - {id}");
             secret.set_updated_by(&ctx, Some(*id)).await?;
+            println!("done - {id}");
         }
     }
 
