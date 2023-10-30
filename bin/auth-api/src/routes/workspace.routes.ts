@@ -5,7 +5,13 @@ import { getCache, setCache } from "../lib/cache";
 import { getUserById } from "../services/users.service";
 import {
   createWorkspace,
-  getUserWorkspaces, getWorkspaceById, getWorkspaceMembers, inviteMember, patchWorkspace, userRoleForWorkspace,
+  getUserWorkspaces,
+  getWorkspaceById,
+  getWorkspaceMembers,
+  inviteMember,
+  patchWorkspace,
+  removeUser,
+  userRoleForWorkspace,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
@@ -136,6 +142,35 @@ router.post("/workspace/:workspaceId/members", async (ctx) => {
   const members: Member[] = [];
   const workspaceMembers = await getWorkspaceMembers(workspace.id);
 
+  workspaceMembers.forEach((wm) => {
+    members.push({
+      userId: wm.userId,
+      email: wm.user.email,
+      nickname: wm.user.nickname || "",
+      role: wm.roleType,
+      signupAt: wm.user.signupAt,
+    });
+  });
+
+  ctx.body = members;
+});
+
+router.delete("/workspace/:workspaceId/members", async (ctx) => {
+  // user must be logged in
+  if (!ctx.state.authUser) {
+    throw new ApiError('Unauthorized', "You are not logged in");
+  }
+
+  const workspace = await handleWorkspaceIdParam(ctx);
+
+  const reqBody = validate(ctx.request.body, z.object({
+    email: z.string(),
+  }));
+
+  await removeUser(reqBody.email, workspace.id);
+
+  const members: Member[] = [];
+  const workspaceMembers = await getWorkspaceMembers(workspace.id);
   workspaceMembers.forEach((wm) => {
     members.push({
       userId: wm.userId,

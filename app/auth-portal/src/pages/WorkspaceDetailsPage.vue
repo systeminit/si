@@ -1,6 +1,6 @@
 <template>
   <div class="overflow-hidden">
-    <template v-if="loadWorkspacesReqStatus.isSuccess">
+    <template v-if="loadWorkspacesReqStatus.isSuccess || createMode">
       <div
         class="pb-md flex flex-row gap-sm align-middle items-center justify-between"
       >
@@ -27,7 +27,7 @@
           label="Display Name"
           placeholder="A display name for this workspace"
           required
-          :disabled="!canInviteUsers"
+          :disabled="!canInviteUsers && !createMode"
         />
         <VormInput
           v-model="draftWorkspace.instanceUrl"
@@ -35,12 +35,14 @@
           autocomplete="url"
           placeholder="The instance url for this workspace"
           required
-          :disabled="!canInviteUsers"
+          :disabled="!canInviteUsers && !createMode"
         />
 
         <VButton
           iconRight="chevron--right"
-          :disabled="validationState.isError || !canInviteUsers"
+          :disabled="
+            validationState.isError || (!canInviteUsers && !createMode)
+          "
           :requestStatus="
             createMode ? createWorkspaceReqStatus : editWorkspaceReqStatus
           "
@@ -85,6 +87,10 @@
                   >
                     INVITE ACCEPTED?
                   </th>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase"
+                  />
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -103,6 +109,17 @@
                     class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200 normal-case"
                   >
                     {{ memUser.signupAt ? "Yes" : "No" }}
+                  </td>
+                  <td
+                    class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200 normal-case"
+                  >
+                    <ErrorMessage :requestStatus="deleteUserHandlerReq" />
+                    <div
+                      v-if="memUser.role !== 'OWNER'"
+                      @click="deleteUserHandler(memUser.email)"
+                    >
+                      <Icon name="trash" />
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -247,6 +264,12 @@ const editWorkspace = async () => {
   if (res.result.success) {
     return;
   }
+};
+
+const deleteUserHandlerReq = workspacesStore.getRequestStatus("REMOVE_USER");
+const deleteUserHandler = async (email: string) => {
+  if (email === "") return;
+  return await workspacesStore.REMOVE_USER(email, props.workspaceId);
 };
 
 const inviteButtonHandler = async () => {
