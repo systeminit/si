@@ -1,4 +1,30 @@
-load("@prelude-si//:macros.bzl", "rust_binary")
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "export_file",
+    "rust_binary",
+    "shellcheck",
+    "shfmt_check",
+    "test_suite",
+)
+
+test_suite(
+    name = "check-lint",
+    tests = [
+        ":check-lint-rust-bin",
+        ":check-lint-rust-unit",
+        ":check-lint-shell",
+    ],
+)
+
+test_suite(
+    name = "check-format",
+    tests = [
+        ":check-format-rust",
+        ":check-format-shell",
+    ],
+)
+
 
 rust_binary(
     name = "cyclone",
@@ -10,4 +36,29 @@ rust_binary(
         "//third-party/rust:tokio",
     ],
     srcs = glob(["src/**/*.rs"]),
+)
+
+export_file(
+    name = "docker-entrypoint.sh",
+)
+
+shfmt_check(
+    name = "check-format-shell",
+    srcs = [":docker-entrypoint.sh"],
+)
+
+shellcheck(
+    name = "check-lint-shell",
+    srcs = [":docker-entrypoint.sh"],
+)
+
+docker_image(
+    name = "image",
+    image_name = "cyclone",
+    flake_lock = "//:flake.lock",
+    build_deps = [
+        "//bin/cyclone:docker-entrypoint.sh",
+        "//bin/cyclone:cyclone",
+        "//bin/lang-js:bin",
+    ]
 )
