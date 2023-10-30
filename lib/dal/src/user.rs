@@ -5,8 +5,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 
+use crate::ws_event::{WsEvent, WsEventResult, WsPayload};
 use crate::{
-    jwt_key::JwtKeyError, pk, standard_model_accessor_ro, DalContext, HistoryEvent,
+    jwt_key::JwtKeyError, pk, standard_model_accessor_ro, ChangeSetPk, DalContext, HistoryEvent,
     HistoryEventError, JwtPublicSigningKey, Tenancy, Timestamp, TransactionsError, WorkspacePk,
 };
 
@@ -175,5 +176,40 @@ impl UserClaim {
     ) -> UserResult<UserClaim> {
         let claims = crate::jwt_key::validate_bearer_token(public_key, &token).await?;
         Ok(claims.custom)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CursorPayload {
+    x: String,
+    y: String,
+    container: Option<String>,
+    user_pk: UserPk,
+    user_name: String,
+}
+
+impl WsEvent {
+    pub async fn cursor(
+        workspace_pk: WorkspacePk,
+        change_set_pk: ChangeSetPk,
+        user_pk: UserPk,
+        user_name: String,
+        x: String,
+        y: String,
+        container: Option<String>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new_raw(
+            workspace_pk,
+            change_set_pk,
+            WsPayload::Cursor(CursorPayload {
+                x,
+                y,
+                container,
+                user_pk,
+                user_name,
+            }),
+        )
+        .await
     }
 }

@@ -21,7 +21,11 @@
     </template>
   </ResizablePanel>
 
-  <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
+  <div
+    class="grow h-full relative bg-neutral-50 dark:bg-neutral-900"
+    @mouseover="mouseOverDiagram"
+    @mouseout="mouseOutDiagram"
+  >
     <!--div
       v-if="!statusStore.globalStatus.isUpdating && isViewMode"
       :class="
@@ -41,6 +45,7 @@
       :customConfig="diagramCustomConfig"
       :nodes="diagramNodes"
       :edges="diagramEdges"
+      :cursors="cursors"
       @insert-element="onDiagramInsertElement"
       @hover-element="onDiagramHoverElement"
       @move-element="onDiagramMoveElement"
@@ -48,6 +53,7 @@
       @group-elements="onGroupElements"
       @draw-edge="onDrawEdge"
       @delete-elements="onDiagramDelete"
+      @update:pointer="updatePointer"
       @update:selection="onDiagramUpdateSelection"
       @right-click-element="onRightClickElement"
     />
@@ -134,7 +140,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, onMounted, ref, watch } from "vue";
+import { onBeforeUnmount, computed, onMounted, ref, watch } from "vue";
 import plur from "plur";
 import {
   Collapsible,
@@ -153,7 +159,9 @@ import {
 } from "@/store/components.store";
 import { useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FixProgressOverlay from "@/components/FixProgressOverlay.vue";
+import { useAuthStore } from "@/store/auth.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
@@ -169,6 +177,8 @@ import {
   ResizeElementEvent,
   DiagramEdgeData,
   HoverElementEvent,
+  MovePointerEvent,
+  DiagramCursorDef,
 } from "../GenericDiagram/diagram_types";
 import ComponentOutline from "../ComponentOutline/ComponentOutline.vue";
 import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
@@ -177,8 +187,108 @@ import ComponentCard from "../ComponentCard.vue";
 import EdgeCard from "../EdgeCard.vue";
 import NoSelectionDetailsPanel from "../NoSelectionDetailsPanel.vue";
 
+const realtimeStore = useRealtimeStore();
 const changeSetStore = useChangeSetsStore();
 const fixesStore = useFixesStore();
+const authStore = useAuthStore();
+
+const MOUSE_REFRESH_RATE = 20;
+const mouse = ref<{
+  x: number | null;
+  y: number | null;
+  container: "diagram" | null;
+}>({ x: null, y: null, container: null });
+const mouseOverDiagram = () => {
+  if (mouse.value.container === "diagram") return;
+  cursors.value = {};
+  mouse.value = { container: "diagram", x: null, y: null };
+};
+const mouseOutDiagram = () => {
+  if (mouse.value.container === null) return;
+  cursors.value = {};
+  mouse.value = { container: null, x: 0, y: 0 };
+};
+const cursors = ref<Record<string, DiagramCursorDef>>({});
+const streamCursor = _.debounce(() => {
+  const toDelete = [];
+  for (const key in cursors.value) {
+    const cursor = cursors.value[key];
+    if (!cursor) return;
+
+    if (new Date().getTime() - cursor.timestamp.getTime() > 5000) {
+      toDelete.push(key);
+    }
+  }
+  for (const key of toDelete) {
+    delete cursors.value[key];
+  }
+
+  if (mouse.value.x === null || mouse.value.y === null) return;
+
+  const changeSetPk = changeSetStore.selectedChangeSetId;
+  if (mouse.value.container === "diagram") {
+    realtimeStore.sendCursor({
+      changeSetPk,
+      container: mouse.value.container,
+      x: `${mouse.value.x}`,
+      y: `${mouse.value.y}`,
+    });
+  } else {
+    // Avoids sending the cursor twice if outside of the diagram for now
+    mouse.value.x = null;
+    mouse.value.y = null;
+
+    realtimeStore.sendCursor({
+      changeSetPk,
+      container: null,
+      x: "0",
+      y: "0",
+    });
+  }
+}, MOUSE_REFRESH_RATE);
+const interval = setInterval(streamCursor, 4500);
+const updatePointer = (pos: MovePointerEvent) => {
+  if (mouse.value.container === "diagram") {
+    mouse.value.x = pos.x;
+    mouse.value.y = pos.y;
+  }
+  streamCursor();
+};
+watch(
+  () => changeSetStore.selectedChangeSetId,
+  (changeSetId) => {
+    realtimeStore.unsubscribe("workspace-model-and-view");
+    realtimeStore.subscribe(
+      "workspace-model-and-view",
+      `changeset/${changeSetId}`,
+      {
+        eventType: "Cursor",
+        callback: (payload) => {
+          if (payload.userPk === authStore.user?.pk) return;
+          if (payload.container !== "diagram") {
+            delete cursors.value[payload.userPk];
+          } else {
+            /* eslint-disable no-empty */
+            try {
+              cursors.value[payload.userPk] = {
+                x: parseInt(payload.x),
+                y: parseInt(payload.y),
+                userPk: payload.userPk,
+                userName: payload.userName,
+                timestamp: new Date(),
+              };
+            } catch {}
+          }
+        },
+      },
+    );
+  },
+  { immediate: true },
+);
+onBeforeUnmount(() => {
+  realtimeStore.unsubscribe("workspace-model-and-view");
+  clearInterval(interval);
+});
 
 const fixesAreRunning = computed(
   () =>
@@ -189,6 +299,7 @@ const fixesAreRunning = computed(
 const openCollapsible = ref(true);
 
 onMounted(() => {
+  cursors.value = {};
   if (changeSetStore.headSelected) {
     openCollapsible.value = !!window.localStorage.getItem("applied-changes");
     window.localStorage.removeItem("applied-changes");
