@@ -5,7 +5,7 @@
 [![Main status](https://img.shields.io/buildkite/ecdbcb0ae243a74976f62a95826ec1fce62707e6fe07e4b973?style=for-the-badge&logo=buildkite&label=main)](https://buildkite.com/system-initiative/si-merge-main)
 [![Nightly status](https://img.shields.io/buildkite/311961055d5366e6b7d0bfb95cc01a513a103e8b39c8a42d33?style=for-the-badge&logo=buildkite&label=nightly)](https://buildkite.com/system-initiative/si-nightly)
 
-This is a monolithic repository containing the System Initiative software.
+This is a monolithic repository that contains the System Initiative software.
 
 ## About
 
@@ -75,7 +75,7 @@ _Please note: you may notice a large download of dependencies when entering the 
 
 ### (4) Configure Providers
 
-Configuring providers is optional for using the System Initiative software, but may be required depending on the types of assets used.
+Configuring providers is optional for using the System Initiative software but may be required depending on the types of assets used.
 
 If you are using AWS assets, authentication with the `aws` CLI is required to deploy and manage your infrastructure.
 
@@ -153,7 +153,7 @@ For more information on how to use and develop the System Initiative software, t
 ## How Can I Contribute?
 
 To start, we recommend reading the [Open Source](#open-source) and [Contributing](#contributing) sources below.
-They provide information on licensing, contributor rights, and more.
+They provide information on licensing, contributor rights and more.
 
 Afterwards, navigate to the [contributing guide](CONTRIBUTING.md) to get started.
 
@@ -165,7 +165,7 @@ System Initiative is a product produced from this open source software, exclusiv
 
 Others are allowed to make their own distribution of the software, but they cannot use any of the System Initiative trademarks, cloud services, etc.
 
-We explicitly grant permission for you to make a build that includes our trademarks while developing the System Initiative software itself. You may not publish or share the build, and you may not use that build to run System Initiative software for any other purpose.
+We explicitly grant permission for you to make a build that includes our trademarks while developing the System Initiative software itself. You may not publish or share the build and you may not use that build to run System Initiative software for any other purpose.
 
 You can [learn more about the System Initiative software and Open Source in our FAQ](https://systeminit.com/open-source).
 
