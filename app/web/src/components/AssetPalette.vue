@@ -124,21 +124,25 @@ const filterStringCleaned = computed(() =>
 );
 const filterModeActive = computed(() => !!filterStringCleaned.value);
 
-const filteredComponents = computed(() => {
-  if (!filterModeActive.value) return componentsStore.nodeAddMenu;
-  return _.filter(componentsStore.nodeAddMenu, (c) => {
-    if (c.displayName.toLowerCase().includes(filterStringCleaned.value))
-      return true;
-    return c.schemas.some((s) =>
-      s.displayName.toLowerCase().includes(filterStringCleaned.value),
-    );
-  });
-});
-
 function onSearchUpdated(newFilterString: string) {
   filterString.value = newFilterString;
 }
 const addMenuData = computed(() => componentsStore.nodeAddMenu);
+
+const filteredComponents = computed(() => {
+  if (!filterModeActive.value) return addMenuData.value;
+  // need a deep clone because of the complex object
+  return _.filter(_.cloneDeep(addMenuData.value), (c) => {
+    // if the string matches the group, return the whole thing
+    if (c.displayName.toLowerCase().includes(filterStringCleaned.value))
+      return true;
+    // otherwise, filter out the individual assets that don't match
+    c.schemas = _.filter(c.schemas, (s) =>
+      s.displayName.toLowerCase().includes(filterStringCleaned.value),
+    );
+    return c.schemas.length > 0;
+  });
+});
 
 const schemasById = computed(() => {
   return addMenuData.value.reduce((p, c) => {
