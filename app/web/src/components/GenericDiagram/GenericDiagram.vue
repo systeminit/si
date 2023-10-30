@@ -62,6 +62,17 @@ overflow hidden */
           @hover:end="onElementHoverEnd(group)"
           @resize="onNodeLayoutOrLocationChange(group)"
         />
+        <DiagramEdge
+          v-for="edge in edges"
+          :key="edge.uniqueKey"
+          :edge="edge"
+          :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
+          :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
+          :isHovered="elementIsHovered(edge)"
+          :isSelected="elementIsSelected(edge)"
+          @hover:start="onElementHoverStart(edge)"
+          @hover:end="onElementHoverEnd(edge)"
+        />
         <DiagramNode
           v-for="node in nodes"
           :key="node.uniqueKey"

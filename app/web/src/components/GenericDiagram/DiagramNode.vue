@@ -25,6 +25,29 @@
     />
 
     <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
+      <v-rect
+        :config="{
+          width: nodeWidth,
+          height: nodeHeaderHeight,
+          x: -halfWidth,
+          y: 0,
+          fill: colors.bodyBg,
+          opacity: 0.9,
+        }"
+      />
+      <v-rect
+        :config="{
+          width: nodeWidth,
+          height: nodeHeight - nodeHeaderHeight,
+          x: -halfWidth,
+          y: nodeHeaderHeight,
+          cornerRadius: CORNER_RADIUS,
+          fill: colors.bodyBg,
+          fillAfterStrokeEnabled: true,
+          opacity: 0.7,
+        }"
+      />
+
       <!-- box background - also used by layout manager to figure out nodes location and size -->
       <v-rect
         :config="{
@@ -34,8 +57,8 @@
           x: -halfWidth,
           y: 0,
           cornerRadius: CORNER_RADIUS,
-          fill: colors.bodyBg,
-          fillAfterStrokeEnabled: true,
+          // fill: colors.bodyBg,
+          // fillAfterStrokeEnabled: true,
           stroke: colors.border,
           strokeWidth: 4,
           shadowColor: 'black',
@@ -100,7 +123,7 @@
           stroke: colors.border,
           strokeWidth: 1,
           listening: false,
-          opacity: 0.7,
+          opacity: 1,
         }"
       />
 
