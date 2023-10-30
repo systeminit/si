@@ -100,5 +100,21 @@ export const useWorkspacesStore = defineStore("workspaces", {
         },
       });
     },
+
+    async REMOVE_USER(email: string, workspaceId: WorkspaceId) {
+      return new ApiRequest<WorkspaceMember[]>({
+        method: "delete",
+        url: `/workspace/${workspaceId}/members`,
+        params: {
+          email,
+        },
+        onSuccess: (response) => {
+          this.selectedWorkspaceMembersById = _.keyBy(
+            response,
+            (u) => u.userId,
+          );
+        },
+      });
+    },
   },
 });

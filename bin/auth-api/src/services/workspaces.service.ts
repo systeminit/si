@@ -124,3 +124,26 @@ export async function inviteMember(email: string, id: WorkspaceId) {
     },
   });
 }
+
+export async function removeUser(email: string, workspaceId: WorkspaceId) {
+  const user = await getUserByEmail(email);
+  if (!user) {
+    return;
+  }
+
+  const memberShip = await prisma.workspaceMembers.findFirst({
+    where: {
+      userId: user.id,
+      workspaceId,
+    },
+  });
+  if (!memberShip) {
+    return;
+  }
+
+  return await prisma.workspaceMembers.delete({
+    where: {
+      id: memberShip.id,
+    },
+  });
+}
