@@ -186,5 +186,14 @@ export const useAuthStore = defineStore("auth", {
         email: loginResponse.user.email,
       });
     },
+    async FORCE_REFRESH_MEMBERS(workspaceId: string) {
+      return new ApiRequest({
+        method: "post",
+        url: "/session/refresh_workspace_members",
+        params: {
+          workspaceId,
+        },
+      });
+    },
   },
 });

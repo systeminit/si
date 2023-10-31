@@ -269,7 +269,12 @@ const editWorkspace = async () => {
 const deleteUserHandlerReq = workspacesStore.getRequestStatus("REMOVE_USER");
 const deleteUserHandler = async (email: string) => {
   if (email === "") return;
-  return await workspacesStore.REMOVE_USER(email, props.workspaceId);
+  const res = await workspacesStore.REMOVE_USER(email, props.workspaceId);
+  if (res.result.success) {
+    if (!draftWorkspace.instanceUrl.includes("localhost")) {
+      window.location.href = ` ${draftWorkspace.instanceUrl}/refresh-auth?workspaceId=${props.workspaceId}`;
+    }
+  }
 };
 
 const inviteButtonHandler = async () => {
