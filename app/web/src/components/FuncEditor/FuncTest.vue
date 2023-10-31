@@ -134,7 +134,7 @@
               class="relative flex-shrink overflow-auto basis-full"
             >
               <CodeViewer
-                :code="_.repeat(testLogs.stdout, 1000)"
+                :code="testLogs.stdout"
                 :title="`stdout: ${testComponentDisplayName}`"
                 showTitle
               />
