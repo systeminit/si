@@ -13,6 +13,7 @@ t.teardown(testSuiteAfter);
 t.test('Workspace routes', async () => {
   const { user, workspace } = await createDummyUser();
   const { user: anotherUser } = await createDummyUser();
+  const { user: invitedUser } = await createDummyUser();
 
   t.test('GET /workspaces - load user workspaces', async (t) => {
     t.test('fails if user is not logged in', async () => {
@@ -51,6 +52,75 @@ t.test('Workspace routes', async () => {
         .set('spoof-auth', user.id)
         .expectOk()
         .expectBody(workspace);
+    });
+  });
+
+  t.test('GET /workspace/:workspaceId/members - access workspace members route', async (t) => {
+    t.test('fails if user is not logged in', async () => {
+      await request.get(`/workspace/${workspace.id}/members`)
+        .expectError('Unauthorized');
+    });
+
+    t.test("fails if accessing another user's workspaces", async () => {
+      await request.get(`/workspace/${workspace.id}/members`)
+        .set('spoof-auth', anotherUser.id)
+        .expectError('Forbidden');
+    });
+  });
+
+  t.test('GET /workspace/:workspaceId/members - CRUD workspace members', async (t) => {
+    t.test('Initial list gives us the workspace owner only', async () => {
+      await request.get(`/workspace/${workspace.id}/members`)
+        .set('spoof-auth', user.id)
+        .expectOk()
+        .expect((res) => {
+          expect(res.body).to.have.length(1);
+          expect(res.body).to.containSubset([{
+            userId: user.id,
+            role: "OWNER",
+            email: user.email,
+            nickname: user.nickname,
+            signupAt: user.signupAt,
+          }]);
+        });
+    });
+
+    t.test('inviting a user to the workspace gives us 2 members', async () => {
+      await request.post(`/workspace/${workspace.id}/members`)
+        .set('spoof-auth', user.id)
+        .send({
+          email: invitedUser.email,
+        })
+        .expectOk()
+        .expect((res) => {
+          expect(res.body).to.have.length(2);
+          expect(res.body).to.containSubset([{
+            userId: invitedUser.id,
+            role: "EDITOR",
+            email: invitedUser.email,
+            nickname: invitedUser.nickname,
+            signupAt: invitedUser.signupAt,
+          }]);
+        });
+    });
+
+    t.test('removing a user to the workspace gives us 1 members', async () => {
+      await request.delete(`/workspace/${workspace.id}/members`)
+        .set('spoof-auth', user.id)
+        .send({
+          email: invitedUser.email,
+        })
+        .expectOk()
+        .expect((res) => {
+          expect(res.body).to.have.length(1);
+          expect(res.body).to.containSubset([{
+            userId: user.id,
+            role: "OWNER",
+            email: user.email,
+            nickname: user.nickname,
+            signupAt: user.signupAt,
+          }]);
+        });
     });
   });
 
