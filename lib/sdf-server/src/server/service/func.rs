@@ -564,6 +564,9 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             });
             (associations, input_type)
         }
+        FuncBackendKind::JsAuthentication => {
+            todo!("Associations for JsAuth")
+        }
         _ => (None, String::new()),
     };
 

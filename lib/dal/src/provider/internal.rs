@@ -68,9 +68,10 @@
 //! than directly observing the real time values frequently.
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
 use si_data_pg::PgError;
 use telemetry::prelude::*;
-use thiserror::Error;
 
 use crate::attribute::context::AttributeContextBuilder;
 use crate::func::backend::identity::FuncBackendIdentityArgs;
@@ -455,12 +456,17 @@ impl InternalProvider {
             Some(*source_attribute_value.id()),
         )
         .await?;
+
+        // TODO Load Before
+        let before = vec![];
+
         let (func_binding, func_binding_return_value) = FuncBinding::create_and_execute(
             ctx,
             serde_json::to_value(FuncBackendIdentityArgs {
                 identity: Some(found_attribute_view.value().clone()),
             })?,
             *func.id(),
+            before,
         )
         .await?;
 

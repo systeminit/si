@@ -373,10 +373,15 @@ impl ActionPrototype {
         component_id: ComponentId,
     ) -> ActionPrototypeResult<Option<ActionRunResult>> {
         let component_view = ComponentView::new(ctx, component_id).await?;
+
+        // TODO Load Before
+        let before = vec![];
+
         let (_, return_value) = FuncBinding::create_and_execute(
             ctx,
             serde_json::to_value(component_view)?,
             self.func_id(),
+            before,
         )
         .await?;
 

@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use veritech_client::{
-    FunctionResult, ResolverFunctionComponent, ResolverFunctionRequest,
+    BeforeFunctionRequest, FunctionResult, ResolverFunctionComponent, ResolverFunctionRequest,
     ResolverFunctionResponseType, ResolverFunctionResultSuccess,
 };
 
@@ -30,15 +30,17 @@ impl FuncDispatch for FuncBackendJsAttribute {
         code_base64: &str,
         handler: &str,
         args: Self::Args,
+        before: Vec<BeforeFunctionRequest>,
     ) -> Box<Self> {
         let request = ResolverFunctionRequest {
             // Once we start tracking the state of these executions, then this id will be useful,
-            // but for now it's passed along and back, and is opaue
+            // but for now it's passed along and back, and is opaque
             execution_id: "tomcruise".to_string(),
             handler: handler.into(),
             component: args.component,
             response_type: args.response_type,
             code_base64: code_base64.into(),
+            before,
         };
 
         Box::new(Self { context, request })
@@ -51,16 +53,16 @@ impl FuncDispatch for FuncBackendJsAttribute {
             .await?;
         let value = match value {
             FunctionResult::Failure(failure) => match &self.request.response_type {
-                ResolverFunctionResponseType::Action => FunctionResult::Failure(failure),
-                ResolverFunctionResponseType::Array => FunctionResult::Failure(failure),
-                ResolverFunctionResponseType::Boolean => FunctionResult::Failure(failure),
-                ResolverFunctionResponseType::Integer => FunctionResult::Failure(failure),
-                ResolverFunctionResponseType::Identity => FunctionResult::Failure(failure),
-                ResolverFunctionResponseType::Map => FunctionResult::Failure(failure),
-                ResolverFunctionResponseType::Object => FunctionResult::Failure(failure),
-                ResolverFunctionResponseType::String => FunctionResult::Failure(failure),
-                ResolverFunctionResponseType::Unset => FunctionResult::Failure(failure),
-                ResolverFunctionResponseType::Json => FunctionResult::Failure(failure),
+                ResolverFunctionResponseType::Action
+                | ResolverFunctionResponseType::Array
+                | ResolverFunctionResponseType::Boolean
+                | ResolverFunctionResponseType::Integer
+                | ResolverFunctionResponseType::Identity
+                | ResolverFunctionResponseType::Map
+                | ResolverFunctionResponseType::Object
+                | ResolverFunctionResponseType::String
+                | ResolverFunctionResponseType::Unset
+                | ResolverFunctionResponseType::Json => FunctionResult::Failure(failure),
                 ResolverFunctionResponseType::Qualification => {
                     FunctionResult::Success(Self::Output {
                         execution_id: failure.execution_id,

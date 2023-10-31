@@ -1,3 +1,5 @@
+use strum::IntoEnumIterator;
+
 use dal::{
     func::{
         argument::{FuncArgument, FuncArgumentKind},
@@ -13,7 +15,6 @@ use dal_test::{
     test,
     test_harness::{create_func, create_func_binding},
 };
-use strum::IntoEnumIterator;
 
 mod reconciliation;
 mod schema_variant_definition;
@@ -67,18 +68,23 @@ async fn func_binding_return_value_new(ctx: &DalContext) {
 #[test]
 async fn func_binding_execute(ctx: &DalContext) {
     let func = create_func(ctx).await;
-    let args = serde_json::to_value(FuncBackendStringArgs::new("funky".to_string()))
-        .expect("cannot serialize args to json");
 
-    let func_binding = create_func_binding(ctx, args, *func.id(), *func.backend_kind()).await;
+    let (_, func_binding_return_value) = FuncBinding::create_and_execute(
+        ctx,
+        serde_json::to_value(FuncBackendStringArgs::new("funky".to_string()))
+            .expect("cannot serialize args to json"),
+        *func.id(),
+        vec![],
+    )
+    .await
+    .expect("failed to execute func binding");
 
-    let return_value = func_binding
-        .execute(ctx)
-        .await
-        .expect("failed to execute func binding");
-    assert_eq!(return_value.value(), Some(&serde_json::json!["funky"]));
     assert_eq!(
-        return_value.unprocessed_value(),
+        func_binding_return_value.value(),
+        Some(&serde_json::json!["funky"])
+    );
+    assert_eq!(
+        func_binding_return_value.unprocessed_value(),
         Some(&serde_json::json!["funky"])
     );
 }
@@ -94,14 +100,12 @@ async fn func_binding_execute_unset(ctx: &DalContext) {
     )
     .await
     .expect("cannot create func");
-    let args = serde_json::json!({});
 
-    let func_binding = create_func_binding(ctx, args, *func.id(), *func.backend_kind()).await;
+    let (_, return_value) =
+        FuncBinding::create_and_execute(ctx, serde_json::json!({}), *func.id(), vec![])
+            .await
+            .expect("failed to execute func binding");
 
-    let return_value = func_binding
-        .execute(ctx)
-        .await
-        .expect("failed to execute func binding");
     assert_eq!(return_value.value(), None);
     assert_eq!(return_value.unprocessed_value(), None,);
 }

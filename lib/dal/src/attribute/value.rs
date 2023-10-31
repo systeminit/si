@@ -1108,10 +1108,14 @@ impl AttributeValue {
         }
 
         let func_id = attribute_prototype.func_id();
+        // TODO Load Before
+        let before = vec![];
+
         let (func_binding, mut func_binding_return_value) = match FuncBinding::create_and_execute(
             ctx,
             serde_json::to_value(func_binding_args.clone())?,
             attribute_prototype.func_id(),
+            before,
         )
         .instrument(debug_span!(
             "Func execution",

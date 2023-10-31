@@ -3,9 +3,11 @@
 //! arguments.
 
 use serde::{Deserialize, Serialize};
+use std::backtrace::Backtrace;
+use thiserror::Error;
+
 use si_data_pg::PgError;
 use telemetry::prelude::*;
-use thiserror::Error;
 
 use crate::{
     func::argument::FuncArgumentId, impl_standard_model, pk,

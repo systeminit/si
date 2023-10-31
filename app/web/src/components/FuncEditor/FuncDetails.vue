@@ -98,8 +98,8 @@
               icon="alert-triangle"
               tone="warning"
               >Executing will run on all attached components, so may have
-              effects on your real world resources!</ErrorMessage
-            >
+              effects on your real world resources!
+            </ErrorMessage>
             <ErrorMessage
               v-if="isConnectedToOtherAssetTypes"
               icon="alert-triangle"
@@ -150,15 +150,18 @@
               />
             </Stack>
           </Collapsible>
+          {{ editingFunc }}
           <ActionDetails
-            v-if="
-              editingFunc.associations &&
-              editingFunc.associations.type === 'action'
-            "
+            v-if="editingFunc.associations?.type === 'action'"
             ref="detachRef"
             v-model="editingFunc.associations"
             :requestStatus="updateFuncReqStatus"
             :schemaVariantId="schemaVariantId"
+            @change="updateFunc"
+          />
+          <AuthenticationDetails
+            v-if="editingFunc.associations?.type === 'authentication'"
+            v-model="editingFunc.associations"
             @change="updateFunc"
           />
           <CodeGenerationDetails
@@ -271,19 +274,20 @@ import { computed, provide, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import {
   Collapsible,
-  VButton,
+  ErrorMessage,
+  LoadingMessage,
+  ScrollArea,
+  Stack,
   TabGroup,
   TabGroupItem,
-  LoadingMessage,
+  VButton,
   VormInput,
-  Stack,
-  ErrorMessage,
-  ScrollArea,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
-import { useFuncStore, FuncId } from "@/store/func/funcs.store";
+import { FuncArgument, FuncVariant } from "@/api/sdf/dal/func";
+import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
 import ActionDetails from "./ActionDetails.vue";
 import AttributeBindings from "./AttributeBindings.vue";

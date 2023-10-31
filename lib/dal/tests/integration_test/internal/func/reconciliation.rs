@@ -59,7 +59,8 @@ async fn run(ctx: &DalContext) {
     .await
     .expect("unable to set func code plaintext");
     let (region_ulid, value_ulid) = (Ulid::new(), Ulid::new());
-    let func_binding = FuncBinding::new(
+
+    let (_, func_binding_return_value) = FuncBinding::create_and_execute(
         ctx,
         serde_json::json!({
             "/root/domain/region": {
@@ -74,14 +75,11 @@ async fn run(ctx: &DalContext) {
             },
         }),
         *func.id(),
-        *func.backend_kind(),
+        vec![],
     )
     .await
-    .expect("unable to create func binding");
-    let func_binding_return_value = func_binding
-        .execute(ctx)
-        .await
-        .expect("unable to execute func binding");
+    .expect("failed to execute func binding");
+
     assert_eq!(
         func_binding_return_value.value(),
         Some(&serde_json::json!({

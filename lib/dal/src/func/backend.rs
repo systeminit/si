@@ -5,8 +5,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_client::{
-    ActionRunResultSuccess, Client as VeritechClient, FunctionResult, OutputStream,
-    ResolverFunctionResponseType,
+    ActionRunResultSuccess, BeforeFunctionRequest, Client as VeritechClient, FunctionResult,
+    OutputStream, ResolverFunctionResponseType,
 };
 
 use crate::{label_list::ToLabelList, DalContext, Func, FuncId, PropKind, StandardModel};
@@ -213,11 +213,12 @@ pub trait FuncDispatch: std::fmt::Debug {
         context: FuncDispatchContext,
         func: &Func,
         args: &serde_json::Value,
+        before: Vec<BeforeFunctionRequest>,
     ) -> FuncBackendResult<(Option<serde_json::Value>, Option<serde_json::Value>)>
     where
         <Self::Output as ExtractPayload>::Payload: Serialize,
     {
-        let executor = Self::create(context, func, args)?;
+        let executor = Self::create(context, func, args, before)?;
         Ok(executor.execute().await?)
     }
 
@@ -227,6 +228,7 @@ pub trait FuncDispatch: std::fmt::Debug {
         context: FuncDispatchContext,
         func: &Func,
         args: &serde_json::Value,
+        before: Vec<BeforeFunctionRequest>,
     ) -> FuncBackendResult<Box<Self>> {
         let args = Self::Args::deserialize(args)?;
         let code_base64 = func
@@ -235,7 +237,7 @@ pub trait FuncDispatch: std::fmt::Debug {
         let handler = func
             .handler()
             .ok_or_else(|| FuncBackendError::DispatchMissingHandler(*func.id()))?;
-        let value = Self::new(context, code_base64, handler, args);
+        let value = Self::new(context, code_base64, handler, args, before);
         Ok(value)
     }
 
@@ -291,6 +293,7 @@ pub trait FuncDispatch: std::fmt::Debug {
         code_base64: &str,
         handler: &str,
         args: Self::Args,
+        before: Vec<BeforeFunctionRequest>,
     ) -> Box<Self>;
     async fn dispatch(self: Box<Self>) -> FuncBackendResult<FunctionResult<Self::Output>>;
 }

@@ -40,6 +40,7 @@ async fn cyclone_crypto_e2e(ctx: &DalContext) {
         },
         response_type: ResolverFunctionResponseType::Boolean,
         code_base64: general_purpose::STANDARD_NO_PAD.encode(&code),
+        before: vec![],
     };
     let result = ctx
         .veritech()

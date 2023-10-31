@@ -1,3 +1,4 @@
+use crate::BeforeFunctionRequest;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -7,6 +8,7 @@ pub struct ValidationRequest {
     pub handler: String,
     pub value: serde_json::Value,
     pub code_base64: String,
+    pub before: Vec<BeforeFunctionRequest>,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

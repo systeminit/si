@@ -788,6 +788,7 @@ mod tests {
                     return v;
                 }"#,
             ),
+            before: vec![],
         };
 
         // Start the protocol
@@ -889,6 +890,7 @@ mod tests {
                     return v;
                 }"#,
             ),
+            before: vec![],
         };
 
         // Start the protocol

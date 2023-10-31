@@ -115,29 +115,29 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import {
-  Modal,
-  useModal,
-  VormInput,
-  VButton,
-  RequestStatusMessage,
   ErrorMessage,
+  Modal,
+  RequestStatusMessage,
+  useModal,
+  VButton,
+  VormInput,
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
 import clsx from "clsx";
 import uniqBy from "lodash-es/uniqBy";
 import { ActionKind } from "@/store/fixes.store";
 import SiCheckBox from "@/components/SiCheckBox.vue";
-import { FuncVariant, CUSTOMIZABLE_FUNC_TYPES } from "@/api/sdf/dal/func";
+import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import { useAssetStore } from "@/store/asset.store";
 import {
-  CreateFuncOutputLocation,
+  AttributeAssociations,
   CreateFuncOptions,
+  CreateFuncOutputLocation,
   FuncAssociations,
   ValidationAssociations,
-  AttributeAssociations,
 } from "@/store/func/types";
 import { nilId } from "@/utils/nilId";
 import CodeEditor from "./CodeEditor.vue";
@@ -300,13 +300,18 @@ const open = (existing?: boolean, variant?: FuncVariant, funcId?: FuncId) => {
 const newFuncOptions = (
   funcVariant: FuncVariant,
   schemaVariantId: string,
-): CreateFuncOptions | undefined => {
+): CreateFuncOptions => {
   const baseOptions = {
     schemaVariantId,
   };
 
   let kind = ActionKind.Other;
   switch (funcVariant) {
+    case FuncVariant.Authentication:
+      return {
+        type: "authenticationOptions",
+        ...baseOptions,
+      };
     case FuncVariant.Action:
       if (isCreate.value) kind = ActionKind.Create;
       if (isDelete.value) kind = ActionKind.Delete;
@@ -325,7 +330,10 @@ const newFuncOptions = (
           ...baseOptions,
         };
       }
-      break;
+      throw new Error(
+        `attributeOutputLocationParsed not defined for Attribute`,
+      );
+
     case FuncVariant.CodeGeneration:
       return {
         type: "codeGenerationOptions",
@@ -344,9 +352,9 @@ const newFuncOptions = (
           ...baseOptions,
         };
       }
-      break;
+      throw new Error(`attrToValidate not defined for validation`);
     default:
-      return;
+      throw new Error(`newFuncOptions not defined for ${funcVariant}`);
   }
 };
 
@@ -462,15 +470,13 @@ const attachExistingFunc = async () => {
 const attachNewFunc = async () => {
   if (props.schemaVariantId) {
     const options = newFuncOptions(funcVariant.value, props.schemaVariantId);
-    if (options) {
-      const result = await funcStore.CREATE_FUNC({
-        variant: funcVariant.value,
-        name: name.value,
-        options,
-      });
-      if (result.result.success && props.assetId) {
-        await reloadAssetAndRoute(props.assetId, result.result.data.id);
-      }
+    const result = await funcStore.CREATE_FUNC({
+      variant: funcVariant.value,
+      name: name.value,
+      options,
+    });
+    if (result.result.success && props.assetId) {
+      await reloadAssetAndRoute(props.assetId, result.result.data.id);
     }
   }
 };

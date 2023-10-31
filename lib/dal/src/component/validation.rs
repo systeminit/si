@@ -82,9 +82,12 @@ impl Component {
             }
         };
 
+        // TODO Load Before
+        let before = vec![];
+
         // Now, we can load in the mutated args!
         let (func_binding, _) =
-            FuncBinding::create_and_execute(ctx, mutated_args, *func.id()).await?;
+            FuncBinding::create_and_execute(ctx, mutated_args, *func.id(), before).await?;
 
         let attribute_value_id = *attribute_value.id();
 

@@ -5,7 +5,7 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use veritech_client::{OutputStream, ResolverFunctionComponent};
+use veritech_client::{BeforeFunctionRequest, OutputStream, ResolverFunctionComponent};
 
 use crate::func::execution::FuncExecutionPk;
 use crate::FuncError;
@@ -183,13 +183,15 @@ impl FuncBinding {
         ctx: &DalContext,
         args: serde_json::Value,
         func_id: FuncId,
+        before: Vec<BeforeFunctionRequest>,
     ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
         let func = Func::get_by_id(ctx, &func_id)
             .await?
             .ok_or(FuncError::NotFound(func_id))?;
         let func_binding = Self::new(ctx, args, func_id, func.backend_kind).await?;
 
-        let func_binding_return_value: FuncBindingReturnValue = func_binding.execute(ctx).await?;
+        let func_binding_return_value: FuncBindingReturnValue =
+            func_binding.execute(ctx, before).await?;
 
         Ok((func_binding, func_binding_return_value))
     }
@@ -209,9 +211,15 @@ impl FuncBinding {
     );
 
     // For a given [`FuncBinding`](Self), execute using veritech.
-    pub async fn execute(&self, ctx: &DalContext) -> FuncBindingResult<FuncBindingReturnValue> {
+    async fn execute(
+        &self,
+        ctx: &DalContext,
+        before: Vec<BeforeFunctionRequest>,
+    ) -> FuncBindingResult<FuncBindingReturnValue> {
         let (func, execution, context, mut rx) = self.prepare_execution(ctx).await?;
-        let value = self.execute_critical_section(func.clone(), context).await?;
+        let value = self
+            .execute_critical_section(func.clone(), context, before)
+            .await?;
 
         let mut output = Vec::new();
         while let Some(output_stream) = rx.recv().await {
@@ -228,17 +236,20 @@ impl FuncBinding {
         &self,
         func: Func,
         context: FuncDispatchContext,
+        before: Vec<BeforeFunctionRequest>,
     ) -> FuncBindingResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
         // TODO: encrypt components
         let execution_result = match self.backend_kind() {
             FuncBackendKind::JsValidation => {
-                FuncBackendJsValidation::create_and_execute(context, &func, &self.args).await
+                FuncBackendJsValidation::create_and_execute(context, &func, &self.args, before)
+                    .await
             }
             FuncBackendKind::JsAction => {
-                FuncBackendJsAction::create_and_execute(context, &func, &self.args).await
+                FuncBackendJsAction::create_and_execute(context, &func, &self.args, before).await
             }
             FuncBackendKind::JsReconciliation => {
-                FuncBackendJsReconciliation::create_and_execute(context, &func, &self.args).await
+                FuncBackendJsReconciliation::create_and_execute(context, &func, &self.args, before)
+                    .await
             }
             FuncBackendKind::JsAttribute => {
                 let args = FuncBackendJsAttributeArgs {
@@ -255,6 +266,7 @@ impl FuncBinding {
                     context,
                     &func,
                     &serde_json::to_value(args)?,
+                    before,
                 )
                 .await
             }
@@ -263,6 +275,7 @@ impl FuncBinding {
                     context,
                     &func,
                     &serde_json::Value::Null,
+                    before,
                 )
                 .await
             }

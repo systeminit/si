@@ -22,6 +22,7 @@ impl Func {
             ctx,
             serde_json::json![{ "identity": null }],
             *func.id(),
+            vec![],
         )
         .await
         .map_err(|e| FuncError::FuncBinding(e.to_string()))?;

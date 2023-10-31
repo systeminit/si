@@ -12,12 +12,12 @@ use veritech_core::{
 };
 
 pub use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, ComponentKind, ComponentView, EncryptionKey,
-    EncryptionKeyError, FunctionResult, FunctionResultFailure, OutputStream, ReconciliationRequest,
-    ReconciliationResultSuccess, ResolverFunctionComponent, ResolverFunctionRequest,
-    ResolverFunctionResponseType, ResolverFunctionResultSuccess, ResourceStatus,
-    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveContainer,
-    ValidationRequest, ValidationResultSuccess,
+    ActionRunRequest, ActionRunResultSuccess, BeforeFunctionRequest, ComponentKind, ComponentView,
+    EncryptionKey, EncryptionKeyError, FunctionResult, FunctionResultFailure, OutputStream,
+    ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionComponent,
+    ResolverFunctionRequest, ResolverFunctionResponseType, ResolverFunctionResultSuccess,
+    ResourceStatus, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
+    SensitiveContainer, ValidationRequest, ValidationResultSuccess,
 };
 use si_data_nats::NatsClient;
 
