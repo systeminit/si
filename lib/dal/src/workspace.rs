@@ -9,8 +9,8 @@ use ulid::Ulid;
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, standard_model_accessor_ro, ChangeSetPk, DalContext, HistoryActor, HistoryEvent,
-    HistoryEventError, KeyPair, KeyPairError, StandardModelError, Tenancy, Timestamp,
+    pk, standard_model, standard_model_accessor_ro, ChangeSetPk, DalContext, HistoryActor,
+    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, StandardModelError, Tenancy, Timestamp,
     TransactionsError, User, UserError, UserPk, Visibility, WorkspaceSnapshot,
 };
 

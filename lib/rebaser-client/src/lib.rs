@@ -25,6 +25,7 @@
 mod client;
 
 pub use client::Client;
+pub use si_rabbitmq::Config;
 
 use si_rabbitmq::{Delivery, RabbitError};
 use telemetry::prelude::error;

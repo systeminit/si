@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use rand::Rng;
+use rebaser_client::Config as RebaserClientConfig;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::SymmetricCryptoService;
 use si_data_nats::{NatsClient, NatsError};
@@ -205,6 +206,7 @@ pub async fn migrate_builtins(
     pkgs_path: PathBuf,
     module_index_url: String,
     symmetric_crypto_service: &SymmetricCryptoService,
+    rebaser_config: RebaserClientConfig,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         pg.clone(),
@@ -215,6 +217,7 @@ pub async fn migrate_builtins(
         Some(pkgs_path),
         Some(module_index_url),
         symmetric_crypto_service.clone(),
+        rebaser_config,
     );
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;

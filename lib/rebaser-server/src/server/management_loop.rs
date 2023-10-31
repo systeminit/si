@@ -3,7 +3,10 @@ use dal::{DalContext, JobQueueProcessor, ServicesContext};
 use rebaser_core::{ManagementMessage, ManagementMessageAction, StreamNameGenerator};
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
-use si_rabbitmq::{Consumer, ConsumerHandle, ConsumerOffsetSpecification, Environment, Producer};
+use si_rabbitmq::{
+    Config as SiRabbitMqConfig, Consumer, ConsumerHandle, ConsumerOffsetSpecification, Environment,
+    Producer,
+};
 use std::collections::HashMap;
 
 use std::sync::Arc;
@@ -24,6 +27,7 @@ pub(crate) async fn management_loop_infallible_wrapper(
     symmetric_crypto_service: SymmetricCryptoService,
     encryption_key: Arc<veritech_client::EncryptionKey>,
     shutdown_watch_rx: watch::Receiver<()>,
+    rabbitmq_config: SiRabbitMqConfig,
 ) {
     if let Err(err) = management_loop(
         recreate_management_stream,
@@ -33,6 +37,7 @@ pub(crate) async fn management_loop_infallible_wrapper(
         job_processor,
         symmetric_crypto_service,
         encryption_key,
+        rabbitmq_config,
         shutdown_watch_rx,
     )
     .await
@@ -49,6 +54,7 @@ async fn management_loop(
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     symmetric_crypto_service: SymmetricCryptoService,
     encryption_key: Arc<veritech_client::EncryptionKey>,
+    rabbitmq_config: SiRabbitMqConfig,
     _shutdown_watch_rx: watch::Receiver<()>,
 ) -> ServerResult<()> {
     let services_context = ServicesContext::new(
@@ -60,6 +66,7 @@ async fn management_loop(
         None,
         None,
         symmetric_crypto_service,
+        rabbitmq_config.clone(),
     );
     // let ctx_builder = DalContext::builder(services_context, false);
 
@@ -78,7 +85,7 @@ async fn management_loop(
 
     // Prepare the environment and management stream.
     let management_stream = StreamNameGenerator::management();
-    let environment = Environment::new().await?;
+    let environment = Environment::new(&rabbitmq_config).await?;
     if recreate_management_stream {
         environment.delete_stream(management_stream).await?;
     }
@@ -132,9 +139,11 @@ async fn management_loop(
                     rebaser_handles.insert(mm.change_set_id, (new_stream.clone(), handle));
 
                     let ctx_builder = DalContext::builder(services_context.clone(), false);
+                    let rabbitmq_config = rabbitmq_config.clone();
                     tokio::spawn(change_set_loop::change_set_loop_infallible_wrapper(
                         ctx_builder,
                         consumer,
+                        rabbitmq_config,
                     ));
                 }
 

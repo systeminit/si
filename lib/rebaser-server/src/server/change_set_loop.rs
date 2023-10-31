@@ -8,7 +8,9 @@ use dal::{
     WorkspaceSnapshot,
 };
 use rebaser_core::{ChangeSetMessage, ChangeSetReplyMessage};
-use si_rabbitmq::{Consumer, Delivery, Environment, Producer, RabbitError};
+use si_rabbitmq::{
+    Config as SiRabbitMqConfig, Consumer, Delivery, Environment, Producer, RabbitError,
+};
 use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -23,6 +25,8 @@ enum ChangeSetLoopError {
     DestinationNotUpdatedWhenImportingSubgraph,
     #[error("missing change set message \"reply_to\" field")]
     MissingChangeSetMessageReplyTo,
+    #[error("missing change set pointer")]
+    MissingChangeSetPointer(ChangeSetPointerId),
     #[error("missing workspace snapshot for change set ({0}) (the change set likely isn't pointing at a workspace snapshot)")]
     MissingWorkspaceSnapshotForChangeSet(ChangeSetPointerId),
     #[error("rabbit error: {0}")]
@@ -40,8 +44,9 @@ type ChangeSetLoopResult<T> = Result<T, ChangeSetLoopError>;
 pub(crate) async fn change_set_loop_infallible_wrapper(
     ctx_builder: DalContextBuilder,
     consumer: Consumer,
+    rabbitmq_config: SiRabbitMqConfig,
 ) {
-    if let Err(err) = change_set_loop(ctx_builder, consumer).await {
+    if let Err(err) = change_set_loop(ctx_builder, consumer, &rabbitmq_config).await {
         error!(error = ?err, "change set loop failed");
     }
 }
@@ -49,9 +54,10 @@ pub(crate) async fn change_set_loop_infallible_wrapper(
 async fn change_set_loop(
     ctx_builder: DalContextBuilder,
     mut consumer: Consumer,
+    rabbitmq_config: &SiRabbitMqConfig,
 ) -> ChangeSetLoopResult<Option<(String, String)>> {
     // Create an environment for reply streams.
-    let environment = Environment::new().await?;
+    let environment = Environment::new(rabbitmq_config).await?;
     while let Some(delivery) = consumer.next().await? {
         let mut ctx = ctx_builder.build_default().await?;
         ctx.update_visibility(Visibility::new_head(false));
@@ -120,7 +126,11 @@ async fn process_delivery(
 
     // Gather everything we need to detect conflicts and updates from the inbound message.
     let mut to_rebase_change_set =
-        ChangeSetPointer::find(ctx, message.to_rebase_change_set_id.into()).await?;
+        ChangeSetPointer::find(ctx, message.to_rebase_change_set_id.into())
+            .await?
+            .ok_or(ChangeSetLoopError::MissingChangeSetPointer(
+                message.to_rebase_change_set_id.into(),
+            ))?;
     let to_rebase_workspace_snapshot_id = to_rebase_change_set.workspace_snapshot_id.ok_or(
         ChangeSetLoopError::MissingWorkspaceSnapshotForChangeSet(to_rebase_change_set.id),
     )?;

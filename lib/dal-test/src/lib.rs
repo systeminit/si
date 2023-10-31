@@ -19,6 +19,7 @@ use dal::{
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
 use lazy_static::lazy_static;
+use rebaser_client::Config as RebaserClientConfig;
 use si_crypto::{
     SymmetricCryptoService, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile,
 };
@@ -94,6 +95,7 @@ pub struct Config {
     #[builder(default)]
     pkgs_path: Option<PathBuf>,
     symmetric_crypto_service_config: SymmetricCryptoServiceConfig,
+    rebaser_config: RebaserClientConfig,
 }
 
 impl Config {
@@ -176,6 +178,9 @@ pub struct TestContext {
     /// This should be configurable in the future, but for now, the only kind of store used is the
     /// [`PgStore`](content_store::PgStore).
     content_store: PgStore,
+
+    /// The configuration for the rebaser client used in tests
+    rebaser_config: RebaserClientConfig,
 }
 
 impl TestContext {
@@ -250,6 +255,7 @@ impl TestContext {
             self.config.pkgs_path.to_owned(),
             None,
             self.symmetric_crypto_service.clone(),
+            self.rebaser_config.clone(),
         )
     }
 
@@ -330,6 +336,8 @@ impl TestContextBuilder {
             SymmetricCryptoService::from_config(&self.config.symmetric_crypto_service_config)
                 .await?;
 
+        let rebaser_config = RebaserClientConfig::default();
+
         Ok(TestContext {
             config,
             pg_pool,
@@ -338,6 +346,7 @@ impl TestContextBuilder {
             encryption_key: self.encryption_key.clone(),
             symmetric_crypto_service,
             content_store,
+            rebaser_config,
         })
     }
 
@@ -483,6 +492,7 @@ pub fn rebaser_server(services_context: &ServicesContext) -> Result<rebaser_serv
         services_context.job_processor(),
         services_context.symmetric_crypto_service().clone(),
         false,
+        services_context.rebaser_config().clone(),
     )
     .wrap_err("failed to create Rebaser server")?;
 
@@ -621,6 +631,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
             .expect("no pkgs path configured"),
         test_context.config.module_index_url.clone(),
         services_ctx.symmetric_crypto_service(),
+        services_ctx.rebaser_config().clone(),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;

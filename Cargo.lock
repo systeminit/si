@@ -1283,6 +1283,7 @@ dependencies = [
  "module-index-client",
  "names",
  "pinga-server",
+ "rebaser-client",
  "rebaser-server",
  "remain",
  "serde",
@@ -3486,6 +3487,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "nats-subscriber",
+ "rebaser-client",
  "remain",
  "serde",
  "serde_json",
@@ -4444,6 +4446,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "color-eyre",
+ "rebaser-client",
  "sdf-server",
  "telemetry-application",
  "tokio",

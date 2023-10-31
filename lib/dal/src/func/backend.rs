@@ -1,12 +1,10 @@
+use thiserror::Error;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 
-
-use veritech_client::{
-    ResolverFunctionResponseType,
-};
+use veritech_client::ResolverFunctionResponseType;
 
 use crate::{label_list::ToLabelList, StandardModel};
 

@@ -4,7 +4,8 @@ use si_data_pg::PgError;
 use thiserror::Error;
 
 use crate::{
-    ChangeSetPk, DalContext, PropId, SocketId, StandardModelError, TransactionsError, WorkspacePk,
+    pkg::ModuleImported, user::CursorPayload, ChangeSetPk, DalContext, PropId, SocketId,
+    StandardModelError, TransactionsError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -40,10 +41,11 @@ pub enum WsPayload {
     // CheckedQualifications(QualificationCheckPayload),
     // CodeGenerated(CodeGeneratedPayload),
     // ComponentCreated(ComponentCreatedPayload),
+    Cursor(CursorPayload),
     // FixBatchReturn(FixBatchReturn),
     // FixReturn(FixReturn),
     // LogLine(LogLinePayload),
-    // ModuleImported(ModuleImported),
+    ModuleImported(ModuleImported),
     // ResourceRefreshed(ResourceRefreshedPayload),
     // SchemaCreated(SchemaPk),
     // StatusUpdate(StatusMessage),

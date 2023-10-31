@@ -188,7 +188,7 @@ impl WorkspaceSnapshotGraph {
     }
 
     pub fn func_find_by_name(
-        &self,
+        &mut self,
         parent_node_index: NodeIndex,
         name: impl AsRef<str>,
     ) -> WorkspaceSnapshotGraphResult<Option<FuncId>> {

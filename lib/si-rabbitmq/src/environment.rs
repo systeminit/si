@@ -2,7 +2,7 @@ use rabbitmq_stream_client::error::{StreamCreateError, StreamDeleteError};
 use rabbitmq_stream_client::types::{ByteCapacity, ResponseCode};
 use rabbitmq_stream_client::Environment as UpstreamEnvironment;
 
-use crate::error::RabbitResult;
+use crate::{config::Config, error::RabbitResult};
 
 const STREAM_LENGTH_CAPACTIY_IN_MEGABYTES: u64 = 10;
 
@@ -14,12 +14,12 @@ pub struct Environment {
 
 impl Environment {
     /// Creates a new [`Environment`], which contains a connection to a RabbitMQ node.
-    pub async fn new() -> RabbitResult<Self> {
+    pub async fn new(config: &Config) -> RabbitResult<Self> {
         let inner = UpstreamEnvironment::builder()
-            .host("localhost")
-            .username("guest")
-            .password("guest")
-            .port(5552)
+            .host(config.host())
+            .username(config.username())
+            .password(config.password())
+            .port(config.port())
             .build()
             .await?;
         Ok(Self { inner })

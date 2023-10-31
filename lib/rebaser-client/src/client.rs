@@ -5,7 +5,7 @@ use rebaser_core::{
     ChangeSetMessage, ChangeSetReplyMessage, ManagementMessage, ManagementMessageAction,
     StreamNameGenerator,
 };
-use si_rabbitmq::{Consumer, ConsumerOffsetSpecification, Environment, Producer};
+use si_rabbitmq::{Config, Consumer, ConsumerOffsetSpecification, Environment, Producer};
 use std::collections::HashMap;
 use std::time::Duration;
 use telemetry::prelude::*;
@@ -22,6 +22,7 @@ pub struct Client {
     management_stream: Stream,
     streams: HashMap<Ulid, Stream>,
     reply_timeout: Duration,
+    config: Config,
 }
 
 #[allow(missing_debug_implementations)]
@@ -34,8 +35,8 @@ struct Stream {
 impl Client {
     /// Creates a new [`Client`] to communicate with a running rebaser
     /// [`Server`](rebaser_server::Server).
-    pub async fn new() -> ClientResult<Self> {
-        let environment = Environment::new().await?;
+    pub async fn new(config: Config) -> ClientResult<Self> {
+        let environment = Environment::new(&config).await?;
 
         let id = Ulid::new();
         let management_stream = StreamNameGenerator::management();
@@ -62,6 +63,7 @@ impl Client {
             },
             streams: HashMap::new(),
             reply_timeout: Duration::from_secs(REPLY_TIMEOUT_SECONDS),
+            config,
         })
     }
 
@@ -154,7 +156,7 @@ impl Client {
         let change_set_stream: String = serde_json::from_value(contents)?;
 
         // TODO(nick): move stream generation to a common crate.
-        let environment = Environment::new().await?;
+        let environment = Environment::new(&self.config).await?;
         let reply_stream = StreamNameGenerator::change_set_reply(change_set_id, self.id);
         environment.create_stream(&reply_stream).await?;
 
@@ -200,7 +202,7 @@ impl Client {
                 if let Err(e) = handle.close().await {
                     error!("{e}");
                 }
-                let environment = Environment::new().await?;
+                let environment = Environment::new(&self.config).await?;
                 environment.delete_stream(stream.reply_stream).await?;
             }
             None => {
@@ -234,7 +236,7 @@ impl Client {
         }
 
         // Finally, delete the reply stream.
-        match Environment::new().await {
+        match Environment::new(&self.config).await {
             Ok(environment) => {
                 if let Err(e) = environment
                     .delete_stream(self.management_stream.reply_stream)

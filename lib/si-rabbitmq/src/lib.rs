@@ -22,12 +22,14 @@
     clippy::missing_panics_doc
 )]
 
+mod config;
 mod consumer;
 mod delivery;
 mod environment;
 mod error;
 mod producer;
 
+pub use config::Config;
 pub use consumer::Consumer;
 pub use consumer::ConsumerHandle;
 pub use consumer::ConsumerOffsetSpecification;

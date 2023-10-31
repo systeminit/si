@@ -10,6 +10,7 @@ use dal::{
 };
 use futures::{FutureExt, Stream, StreamExt};
 use nats_subscriber::{Request, SubscriberError};
+use rebaser_client::Config as RebaserClientConfig;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
@@ -106,6 +107,7 @@ impl Server {
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
+        let rebaser_config = RebaserClientConfig::default();
 
         let services_context = ServicesContext::new(
             pg_pool,
@@ -116,6 +118,7 @@ impl Server {
             None,
             None,
             symmetric_crypto_service,
+            rebaser_config,
         );
 
         Self::from_services(

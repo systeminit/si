@@ -2,6 +2,7 @@ use std::{mem, path::PathBuf, sync::Arc};
 
 use content_store::{PgStore, StoreError};
 use futures::Future;
+use rebaser_client::Config as RebaserClientConfig;
 use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
@@ -18,7 +19,8 @@ use crate::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
     },
-    HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk,
+    workspace_snapshot::WorkspaceSnapshotError,
+    HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk, WorkspaceSnapshot,
 };
 
 /// A context type which contains handles to common core service dependencies.
@@ -43,6 +45,8 @@ pub struct ServicesContext {
     module_index_url: Option<String>,
     /// A service that can encrypt and decrypt values with a set of symmetric keys
     symmetric_crypto_service: SymmetricCryptoService,
+    /// Config for the the rebaser service
+    rebaser_config: RebaserClientConfig,
 }
 
 impl ServicesContext {
@@ -57,6 +61,7 @@ impl ServicesContext {
         pkgs_path: Option<PathBuf>,
         module_index_url: Option<String>,
         symmetric_crypto_service: SymmetricCryptoService,
+        rebaser_config: RebaserClientConfig,
     ) -> Self {
         Self {
             pg_pool,
@@ -67,6 +72,7 @@ impl ServicesContext {
             pkgs_path,
             module_index_url,
             symmetric_crypto_service,
+            rebaser_config,
         }
     }
 
@@ -114,12 +120,23 @@ impl ServicesContext {
         &self.symmetric_crypto_service
     }
 
+    pub fn rebaser_config(&self) -> &RebaserClientConfig {
+        &self.rebaser_config
+    }
+
     /// Builds and returns a new [`Connections`].
     pub async fn connections(&self) -> PgPoolResult<Connections> {
         let pg_conn = self.pg_pool.get().await?;
         let nats_conn = self.nats_conn.clone();
         let job_processor = self.job_processor.clone();
-        Ok(Connections::new(pg_conn, nats_conn, job_processor))
+        let rebaser_config = self.rebaser_config.clone();
+
+        Ok(Connections::new(
+            pg_conn,
+            nats_conn,
+            job_processor,
+            rebaser_config,
+        ))
     }
 }
 
@@ -231,6 +248,8 @@ pub struct DalContext {
     /// This should be configurable in the future, but for now, the only kind of store used is the
     /// [`PgStore`](content_store::PgStore).
     content_store: Arc<Mutex<PgStore>>,
+    /// The workspace snapshot for this context
+    workspace_snapshot: Option<Arc<Mutex<WorkspaceSnapshot>>>,
 }
 
 impl DalContext {
@@ -255,6 +274,23 @@ impl DalContext {
         }
 
         Ok(())
+    }
+
+    pub async fn workspace_snapshot(
+        &mut self,
+    ) -> Result<Arc<Mutex<WorkspaceSnapshot>>, WorkspaceSnapshotError> {
+        Ok(match &self.workspace_snapshot {
+            None => {
+                let change_set_pointer_id = self.change_set_id();
+                let workspace_snapshot = Arc::new(Mutex::new(
+                    WorkspaceSnapshot::find_for_change_set(self, change_set_pointer_id).await?,
+                ));
+                self.workspace_snapshot = Some(workspace_snapshot.clone());
+
+                workspace_snapshot
+            }
+            Some(workspace_snapshot) => workspace_snapshot.clone(),
+        })
     }
 
     pub fn blocking(&self) -> bool {
@@ -786,6 +822,7 @@ pub enum TransactionsError {
 pub struct Connections {
     pg_conn: InstrumentedClient,
     nats_conn: NatsClient,
+    rebaser_config: RebaserClientConfig,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
 }
 
@@ -796,10 +833,12 @@ impl Connections {
         pg_conn: InstrumentedClient,
         nats_conn: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+        rebaser_config: RebaserClientConfig,
     ) -> Self {
         Self {
             pg_conn,
             nats_conn,
+            rebaser_config,
             job_processor,
         }
     }
@@ -809,8 +848,14 @@ impl Connections {
         let pg_txn = PgTxn::create(self.pg_conn).await?;
         let nats_txn = self.nats_conn.transaction();
         let job_processor = self.job_processor;
+        let rebaser_config = self.rebaser_config;
 
-        Ok(Transactions::new(pg_txn, nats_txn, job_processor))
+        Ok(Transactions::new(
+            pg_txn,
+            nats_txn,
+            job_processor,
+            rebaser_config,
+        ))
     }
 
     /// Gets a reference to a PostgreSQL connection.
@@ -834,6 +879,8 @@ pub struct Transactions {
     pg_txn: PgTxn,
     /// A NATS transaction.
     nats_txn: NatsTxn,
+    /// Rebaser client
+    rebaser_config: RebaserClientConfig,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
 }
 
@@ -843,10 +890,12 @@ impl Transactions {
         pg_txn: PgTxn,
         nats_txn: NatsTxn,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+        rebaser_config: RebaserClientConfig,
     ) -> Self {
         Self {
             pg_txn,
             nats_txn,
+            rebaser_config,
             job_processor,
         }
     }
@@ -867,7 +916,7 @@ impl Transactions {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
         self.job_processor.process_queue().await?;
-        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
 
         Ok(conns)
     }
@@ -878,7 +927,7 @@ impl Transactions {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
         self.job_processor.blocking_process_queue().await?;
-        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
 
         Ok(conns)
     }
@@ -891,7 +940,7 @@ impl Transactions {
     pub async fn rollback_into_conns(self) -> Result<Connections, TransactionsError> {
         let pg_conn = self.pg_txn.rollback_into_conn().await?;
         let nats_conn = self.nats_txn.rollback_into_conn().await?;
-        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
 
         Ok(conns)
     }

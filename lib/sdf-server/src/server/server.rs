@@ -382,8 +382,6 @@ async fn install_builtins(
                 {
                     println!("Pkg {pkg_name} Install failed, {err}");
                 } else {
-                    ctx.commit().await?;
-
                     count += 1;
                     println!(
                          "Pkg {pkg_name} Install finished successfully. {count} of {total} installed.",

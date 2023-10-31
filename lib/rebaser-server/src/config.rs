@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
+use si_rabbitmq::Config as SiRabbitMqConfig;
 use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -50,6 +51,8 @@ pub struct Config {
     recreate_management_stream: bool,
 
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
+
+    rabbitmq_config: SiRabbitMqConfig,
 }
 
 impl StandardConfig for Config {
@@ -89,6 +92,10 @@ impl Config {
     pub fn symmetric_crypto_service(&self) -> &SymmetricCryptoServiceConfig {
         &self.symmetric_crypto_service
     }
+
+    pub fn rabbitmq_config(&self) -> &SiRabbitMqConfig {
+        &self.rabbitmq_config
+    }
 }
 
 /// The configuration file for creating a [`Server`].
@@ -104,6 +111,8 @@ pub struct ConfigFile {
     recreate_management_stream: bool,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
+    #[serde(default)]
+    rabbitmq_config: SiRabbitMqConfig,
 }
 
 impl Default for ConfigFile {
@@ -114,6 +123,7 @@ impl Default for ConfigFile {
             cyclone_encryption_key_path: default_cyclone_encryption_key_path(),
             recreate_management_stream: false,
             symmetric_crypto_service: default_symmetric_crypto_config(),
+            rabbitmq_config: Default::default(),
         }
     }
 }

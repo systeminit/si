@@ -142,13 +142,9 @@ impl WorkspaceSnapshot {
     {
         let (_, inner) = dbg!(self.func_get_content(ctx, id).await)?;
 
-        dbg!("got content", &inner);
-
         let mut func = Func::assemble(id, &inner);
         lambda(&mut func)?;
         let updated = FuncContentV1::from(func);
-
-        dbg!("updated content", &updated);
 
         let hash = ctx
             .content_store()
@@ -156,12 +152,8 @@ impl WorkspaceSnapshot {
             .await
             .add(&FuncContent::V1(updated.clone()))?;
 
-        dbg!("added content");
-
         self.working_copy()?
             .update_content(change_set, id.into(), hash)?;
-
-        dbg!("update content");
 
         Ok(Func::assemble(id, &updated))
     }

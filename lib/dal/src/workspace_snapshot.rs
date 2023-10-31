@@ -114,7 +114,7 @@ pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
 
 pk!(WorkspaceSnapshotId);
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WorkspaceSnapshot {
     id: WorkspaceSnapshotId,
     created_at: DateTime<Utc>,
