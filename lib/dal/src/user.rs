@@ -13,6 +13,7 @@ use crate::{
 
 const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
 const USER_GET_BY_EMAIL_RAW: &str = include_str!("queries/user/get_by_email_raw.sql");
+const USER_LIST_FOR_WORKSPACE: &str = include_str!("queries/user/list_members_for_workspace.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -153,6 +154,43 @@ impl User {
             )
             .await?;
         Ok(())
+    }
+
+    pub async fn delete_user_from_workspace(
+        ctx: &DalContext,
+        user_pk: UserPk,
+        workspace_pkg: String,
+    ) -> UserResult<()> {
+        ctx.txns()
+            .await?
+            .pg()
+            .execute(
+                "DELETE from user_belongs_to_workspaces WHERE user_pk = $1 AND workspace_pk = $2",
+                &[&user_pk, &workspace_pkg],
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn list_members_for_workspace(
+        ctx: &DalContext,
+        workspace_pk: String,
+    ) -> UserResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(USER_LIST_FOR_WORKSPACE, &[&workspace_pk])
+            .await?;
+
+        let mut users: Vec<User> = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let object = serde_json::from_value(json)?;
+            users.push(object);
+        }
+
+        Ok(users)
     }
 }
 

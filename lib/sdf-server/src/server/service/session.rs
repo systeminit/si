@@ -7,12 +7,14 @@ use dal::{
     KeyPairError, StandardModelError, TransactionsError, UserError, UserPk, WorkspaceError,
     WorkspacePk,
 };
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::server::state::AppState;
 
 pub mod auth_connect;
 pub mod load_workspaces;
+mod refresh_workspace_members;
 pub mod restore_authentication;
 
 #[remain::sorted]
@@ -44,6 +46,12 @@ pub enum SessionError {
     User(#[from] UserError),
     #[error(transparent)]
     Workspace(#[from] WorkspaceError),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct AuthApiErrBody {
+    pub kind: String,
+    pub message: String,
 }
 
 pub type SessionResult<T> = std::result::Result<T, SessionError>;
@@ -81,4 +89,8 @@ pub fn routes() -> Router<AppState> {
             get(restore_authentication::restore_authentication),
         )
         .route("/load_workspaces", get(load_workspaces::load_workspaces))
+        .route(
+            "/refresh_workspace_members",
+            post(refresh_workspace_members::refresh_workspace_members),
+        )
 }

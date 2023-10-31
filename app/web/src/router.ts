@@ -114,6 +114,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/pages/auth/AuthConnectPage.vue"),
   },
   {
+    path: "/refresh-auth",
+    name: "refresh-auth",
+    meta: { public: true },
+    component: () => import("@/pages/auth/RefreshAuthPage.vue"),
+  },
+  {
     path: "/login",
     name: "login",
     meta: { public: true },

@@ -1,5 +1,6 @@
 use super::{SessionError, SessionResult};
 use crate::server::extract::{HandlerContext, RawAccessToken};
+use crate::service::session::AuthApiErrBody;
 use axum::Json;
 use dal::{DalContext, HistoryActor, KeyPair, Tenancy, User, UserPk, Workspace, WorkspacePk};
 use serde::{Deserialize, Serialize};
@@ -24,12 +25,6 @@ pub struct AuthConnectResponse {
 pub struct AuthReconnectResponse {
     pub user: User,
     pub workspace: Workspace,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct AuthApiErrBody {
-    pub kind: String,
-    pub message: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
