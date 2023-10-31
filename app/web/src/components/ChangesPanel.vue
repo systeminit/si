@@ -51,6 +51,7 @@
           <div class="text-neutral-400 truncate">
             {{ componentsStore.componentsById[diff.componentId]?.displayName }}
           </div>
+          <div class="text-neutral-400 truncate">By: {{ diff.actor }}</div>
         </div>
       </div>
 
@@ -108,16 +109,20 @@ const diffs = computed(() => {
     .filter((c) => c.changeStatus !== "unmodified")
     .map((c) => {
       let updatedAt = c.updatedInfo.timestamp;
+      let actor = c.updatedInfo.actor.email || c.updatedInfo.actor.label;
       if (c.changeStatus === "added") {
         updatedAt = c.createdInfo.timestamp;
+        actor = c.createdInfo.actor.email || c.createdInfo.actor.label;
       } else if (c.changeStatus === "deleted" && c.deletedInfo) {
         updatedAt = c.deletedInfo.timestamp;
+        actor = c.deletedInfo.actor.email || c.deletedInfo.actor.label;
       }
 
       return {
         componentId: c.id,
         status: c.changeStatus,
         updatedAt,
+        actor,
       };
     });
   arr.sort(
