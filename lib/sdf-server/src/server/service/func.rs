@@ -1,10 +1,15 @@
-use crate::server::{impl_default_error_into_response, state::AppState};
-use crate::service::func::get_func::GetFuncResponse;
+use std::collections::HashMap;
+
 use axum::{
     response::Response,
     routing::{get, post},
     Json, Router,
 };
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use tokio::task::JoinError;
+
+use dal::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeError};
 use dal::func::execution::FuncExecutionError;
 use dal::{
     attribute::context::{AttributeContextBuilder, AttributeContextBuilderError},
@@ -24,10 +29,9 @@ use dal::{
     PrototypeListForFuncError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
     TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError, WsEventError,
 };
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use thiserror::Error;
-use tokio::task::JoinError;
+
+use crate::server::{impl_default_error_into_response, state::AppState};
+use crate::service::func::get_func::GetFuncResponse;
 
 pub mod create_func;
 pub mod delete_func;
@@ -76,6 +80,8 @@ pub enum FuncError {
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value missing")]
     AttributeValueMissing,
+    #[error("authentication prototype error: {0}")]
+    AuthenticationPrototypeError(#[from] AuthenticationPrototypeError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
@@ -306,6 +312,10 @@ pub enum FuncAssociations {
     Attribute {
         prototypes: Vec<AttributePrototypeView>,
         arguments: Vec<FuncArgumentView>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Authentication {
+        schema_variant_ids: Vec<SchemaVariantId>,
     },
     #[serde(rename_all = "camelCase")]
     CodeGeneration {
@@ -565,7 +575,16 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             (associations, input_type)
         }
         FuncBackendKind::JsAuthentication => {
-            todo!("Associations for JsAuth")
+            let schema_variant_ids = AuthenticationPrototype::find_for_func(ctx, *func.id())
+                .await?
+                .iter()
+                .map(|p| p.schema_variant_id())
+                .collect();
+
+            (
+                Some(FuncAssociations::Authentication { schema_variant_ids }),
+                "type Input = Record<string, unknown>;".to_owned(),
+            )
         }
         _ => (None, String::new()),
     };

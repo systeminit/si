@@ -51,6 +51,8 @@ const FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER: &str =
     include_str!("../queries/schema_variant/find_root_child_implicit_internal_provider.sql");
 const LIST_ROOT_SI_CHILD_PROPS: &str =
     include_str!("../queries/schema_variant/list_root_si_child_props.sql");
+const SECRET_DEFINING_SCHEMA_VARIANTS: &str =
+    include_str!("../queries/schema_variant/secret_defining_schema_variants.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -537,6 +539,23 @@ impl SchemaVariant {
             .await?;
         Ok(objects_from_rows(rows)?)
     }
+
+    #[instrument(skip_all)]
+    pub async fn list_secret_defining(
+        ctx: &DalContext,
+    ) -> SchemaVariantResult<Vec<SchemaVariant>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                SECRET_DEFINING_SCHEMA_VARIANTS,
+                &[ctx.tenancy(), ctx.visibility()],
+            )
+            .await?;
+        Ok(objects_from_rows(rows)?)
+    }
+
 
     /// Find all [`Func`](crate::Func) objects connected to this schema variant in any way. Only
     /// finds funcs connected at the schema variant context, ignoring any funcs connected to

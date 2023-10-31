@@ -126,6 +126,7 @@ pub mod action;
 pub mod action_prototype;
 pub mod actor_view;
 pub mod attribute;
+pub mod authentication_prototype;
 pub mod builtins;
 pub mod change_set;
 pub mod change_status;

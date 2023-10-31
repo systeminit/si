@@ -2,8 +2,8 @@
   <div class="p-3 flex flex-col gap-2">
     <template v-if="!schemaVariantId">
       <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
-        Run this code generation function on the selected components and
-        component types below.
+        Run this authentication function on components that use the secret kind
+        defined by the component types below.
       </h1>
       <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
         Run on Schema Variant:

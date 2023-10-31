@@ -150,7 +150,6 @@
               />
             </Stack>
           </Collapsible>
-          {{ editingFunc }}
           <ActionDetails
             v-if="editingFunc.associations?.type === 'action'"
             ref="detachRef"

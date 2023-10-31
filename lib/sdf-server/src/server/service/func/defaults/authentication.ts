@@ -1,3 +1,3 @@
-async function main(secret: Record<string, unknown>) {
+async function main(secret: Input): Promise<Output> {
   throw new Error("unimplemented!");
 }
