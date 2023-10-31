@@ -46,6 +46,7 @@ export type FixBatch = {
   id: FixBatchId;
   status?: FixStatus;
   author: string;
+  actors?: string[];
   fixes: Fix[];
   startedAt?: string;
   finishedAt?: string;

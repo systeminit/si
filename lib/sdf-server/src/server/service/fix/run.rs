@@ -48,7 +48,7 @@ pub async fn run(
 
         HistoryActor::SystemInit => return Err(FixError::InvalidUserSystemInit),
     };
-    let batch = FixBatch::new(&ctx, user.email()).await?;
+    let batch = FixBatch::new(&ctx, user.email(), "").await?;
     let mut fixes = Vec::with_capacity(request.list.len());
 
     for fix_run_request in request.list {

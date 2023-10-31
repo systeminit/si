@@ -10,7 +10,7 @@
               fixBatch.fixes.filter((f) => f.status === 'success').length ===
                 fixBatch.fixes.length
             "
-            class="pl-xs whitespace-nowrap"
+            class="pl-xs text-lg whitespace-nowrap"
           >
             All actions applied
           </div>
@@ -51,13 +51,25 @@
         >
           <!-- <Timestamp v-if="fixBatch.finishedAt" :date="fixBatch.finishedAt" size="extended" /> -->
         </div>
-        <div>By: {{ fixBatch.author }}</div>
+        <div><span class="font-bold">By:</span> {{ fixBatch.author }}</div>
+        <div v-if="hasCollaborators">
+          <span class="font-bold">Contributors:</span>
+          <ul class="list-disc">
+            <li
+              v-for="(author, index) in fixBatch.actors"
+              :key="index"
+              class="pl-sm list-inside"
+            >
+              {{ author }}
+            </li>
+          </ul>
+        </div>
         <div v-if="fixBatch.startedAt" class="italic">
-          Started At:
+          <span class="font-bold">Started At: </span>
           <Timestamp size="long" :date="new Date(fixBatch.startedAt)" />
         </div>
         <div v-if="fixBatch.finishedAt" class="italic">
-          Finished At:
+          <span class="font-bold">Finished At: </span>
           <Timestamp size="long" :date="new Date(fixBatch.finishedAt)" />
         </div>
       </div>
@@ -104,7 +116,7 @@
                   </div>
                 </template>
               </CodeViewer>
-              <template v-else-if="fix.resource.message">
+              <div v-else-if="fix.resource.message" class="text-sm pl-xs">
                 {{ fix.resource.message }}
                 <FixDetails
                   v-if="fix.resource.logs && fix.resource.logs.length > 0"
@@ -117,8 +129,8 @@
                   "
                   :details="fix.resource.logs"
                 />
-              </template>
-              <template v-else>
+              </div>
+              <div v-else class="text-sm pl-xs">
                 {{
                   fix.resource.status === "ok"
                     ? "Completed successfully"
@@ -135,7 +147,7 @@
                   "
                   :details="fix.resource.logs"
                 />
-              </template>
+              </div>
             </div>
           </template>
         </Collapsible>
@@ -152,12 +164,17 @@ import {
   Timestamp,
   Collapsible,
 } from "@si/vue-lib/design-system";
+import { computed } from "vue";
 import { FixBatch } from "@/store/fixes.store";
 import CodeViewer from "./CodeViewer.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import FixDetails from "./FixDetails.vue";
 
 const props = defineProps<{ fixBatch: FixBatch }>();
+
+const hasCollaborators = computed(
+  () => props.fixBatch.actors && props.fixBatch.actors.length > 0,
+);
 
 const formatTitle = (title: string) => {
   return title

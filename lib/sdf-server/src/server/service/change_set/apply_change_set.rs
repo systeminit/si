@@ -34,6 +34,8 @@ pub async fn apply_change_set(
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
     let actions = change_set.actions(&ctx).await?;
+    let actors = change_set.actors(&ctx).await?;
+    dbg!(&actors);
     change_set.apply(&mut ctx).await?;
 
     track(
@@ -57,7 +59,8 @@ pub async fn apply_change_set(
     };
 
     if !actions.is_empty() {
-        let batch = FixBatch::new(&ctx, user.email()).await?;
+        let actors_delimited_string = actors.join(",");
+        let batch = FixBatch::new(&ctx, user.email(), &actors_delimited_string).await?;
         let mut fixes = Vec::with_capacity(actions.len());
 
         for action in actions {

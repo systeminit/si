@@ -16,6 +16,7 @@ use crate::{ComponentError, DalContext, WsEventResult};
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("queries/change_set/open_list.sql");
 const CHANGE_SET_GET_BY_PK: &str = include_str!("queries/change_set/get_by_pk.sql");
+const GET_ACTORS: &str = include_str!("queries/change_set/get_actors.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -181,6 +182,23 @@ impl ChangeSet {
         let ctx =
             ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
         Ok(Action::find_for_change_set(&ctx).await?)
+    }
+
+    pub async fn actors(&self, ctx: &DalContext) -> ChangeSetResult<Vec<String>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(GET_ACTORS, &[&ctx.tenancy().workspace_pk(), &self.pk])
+            .await?;
+
+        let mut result: Vec<String> = vec![];
+        for row in rows.into_iter() {
+            let email: String = row.try_get("email")?;
+            result.push(email);
+        }
+
+        Ok(result)
     }
 }
 

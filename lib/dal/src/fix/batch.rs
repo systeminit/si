@@ -31,6 +31,9 @@ pub struct FixBatch {
     // TODO(nick): automate with the logged in user.
     author: String,
 
+    // This is a comma separated list of people involved in the ChangeSet
+    actors: Option<String>,
+
     // TODO(nick): convert to Option<DateTime<Utc>> once standard model accessor can accommodate both
     // Option<T<U>> and can handle "timestamp with time zone <--> DateTime<Utc>".
     /// Indicates when the [`FixBatch`] started execution when populated.
@@ -54,15 +57,15 @@ impl_standard_model! {
 
 impl FixBatch {
     #[instrument(skip_all)]
-    pub async fn new(ctx: &DalContext, author: impl AsRef<str>) -> FixResult<Self> {
+    pub async fn new(ctx: &DalContext, author: impl AsRef<str>, actors: &str) -> FixResult<Self> {
         let author = author.as_ref();
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM fix_batch_create_v1($1, $2, $3)",
-                &[ctx.tenancy(), ctx.visibility(), &author],
+                "SELECT object FROM fix_batch_create_v1($1, $2, $3, $4)",
+                &[ctx.tenancy(), ctx.visibility(), &author, &actors],
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
@@ -137,6 +140,10 @@ impl FixBatch {
 
     pub fn author(&self) -> String {
         self.author.clone()
+    }
+
+    pub fn actors(&self) -> Option<String> {
+        self.actors.clone()
     }
 }
 
