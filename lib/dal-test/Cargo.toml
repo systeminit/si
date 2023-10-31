@@ -13,6 +13,7 @@ council-server = { path = "../../lib/council-server" }
 dal = { path = "../../lib/dal" }
 module-index-client = { path = "../../lib/module-index-client" }
 pinga-server = { path = "../../lib/pinga-server" }
+rebaser-client = { path = "../../lib/rebaser-client"}
 rebaser-server = { path = "../../lib/rebaser-server" }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }

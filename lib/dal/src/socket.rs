@@ -4,13 +4,10 @@ use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
 use telemetry::prelude::*;
 
-
 use si_pkg::SocketSpecArity;
 
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{
-    label_list::ToLabelList, pk, StandardModel, Timestamp,
-};
+use crate::{label_list::ToLabelList, pk, StandardModel, Timestamp};
 
 // const FIND_BY_NAME_FOR_EDGE_KIND_AND_NODE: &str =
 //     include_str!("queries/socket/find_by_name_for_edge_kind_and_node.sql");

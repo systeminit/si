@@ -45,7 +45,7 @@ impl WorkspaceSnapshot {
         // Root --> Component Category --> Component (this)
         let component_category_index = self
             .working_copy()?
-            .get_category_child(CategoryNodeKind::Component)?;
+            .get_category(CategoryNodeKind::Component)?;
         self.working_copy()?.add_edge(
             component_category_index,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,

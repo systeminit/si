@@ -13,6 +13,8 @@ use telemetry_application::{
     TelemetryClient, TelemetryConfig,
 };
 
+use rebaser_client::Config as RebaserClientConfig;
+
 mod args;
 
 type JobProcessor = sdf_server::NatsProcessor;
@@ -92,6 +94,10 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let module_index_url = config.module_index_url().to_string();
 
+    // TODO: accept command line arguments and or environment variables to configure the rebaser
+    // client
+    let rebaser_config = RebaserClientConfig::default();
+
     let services_context = ServicesContext::new(
         pg_pool,
         nats_conn,
@@ -101,6 +107,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         Some(pkgs_path),
         Some(module_index_url),
         symmetric_crypto_service,
+        rebaser_config,
     );
 
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {

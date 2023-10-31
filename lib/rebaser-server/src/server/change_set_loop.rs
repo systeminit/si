@@ -8,7 +8,9 @@ use dal::{
     WorkspaceSnapshot,
 };
 use rebaser_core::{ChangeSetMessage, ChangeSetReplyMessage};
-use si_rabbitmq::{Consumer, Delivery, Environment, Producer, RabbitError};
+use si_rabbitmq::{
+    Config as SiRabbitMqConfig, Consumer, Delivery, Environment, Producer, RabbitError,
+};
 use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -42,8 +44,9 @@ type ChangeSetLoopResult<T> = Result<T, ChangeSetLoopError>;
 pub(crate) async fn change_set_loop_infallible_wrapper(
     ctx_builder: DalContextBuilder,
     consumer: Consumer,
+    rabbitmq_config: SiRabbitMqConfig,
 ) {
-    if let Err(err) = change_set_loop(ctx_builder, consumer).await {
+    if let Err(err) = change_set_loop(ctx_builder, consumer, &rabbitmq_config).await {
         error!(error = ?err, "change set loop failed");
     }
 }
@@ -51,9 +54,10 @@ pub(crate) async fn change_set_loop_infallible_wrapper(
 async fn change_set_loop(
     ctx_builder: DalContextBuilder,
     mut consumer: Consumer,
+    rabbitmq_config: &SiRabbitMqConfig,
 ) -> ChangeSetLoopResult<Option<(String, String)>> {
     // Create an environment for reply streams.
-    let environment = Environment::new().await?;
+    let environment = Environment::new(rabbitmq_config).await?;
     while let Some(delivery) = consumer.next().await? {
         let mut ctx = ctx_builder.build_default().await?;
         ctx.update_visibility(Visibility::new_head(false));
@@ -144,7 +148,7 @@ async fn process_delivery(
             onto_vector_clock_id,
         )
         .await?;
-    debug!("conflicts and updates detected: {conflicts:?} {updates:?}");
+    info!("conflicts and updates detected: {conflicts:?} {updates:?}");
 
     // If there are conflicts, immediately assemble a reply message that conflicts were found.
     // Otherwise, we can perform updates and assemble a "success" reply message.
@@ -174,7 +178,7 @@ async fn process_delivery(
     // Send reply to the "reply to stream" for the specific client.
     let inbound_stream = inbound_stream.as_ref();
     let reply_to_stream = reply_to_stream.as_ref();
-    debug!(
+    info!(
         "processed delivery from \"{inbound_stream}\", committed transaction and sending reply to \"{reply_to_stream}\"",
     );
     let mut producer = Producer::new(&environment, reply_to_stream).await?;
@@ -184,7 +188,7 @@ async fn process_delivery(
 
     // Close the producer _after_ logging, but do not make it an infallible close. We do that
     // because the function managing the change set loop is infallible and will log the error.
-    debug!("sent reply to \"{reply_to_stream}\"");
+    info!("sent reply to \"{reply_to_stream}\"");
     producer.close().await?;
 
     Ok(())
@@ -205,28 +209,48 @@ async fn perform_updates_and_write_out_and_update_pointer(
                 destination,
                 edge_weight,
             } => {
-                let source = *updated.get(source).unwrap_or(source);
+                let updated_source = *updated.get(source).unwrap_or(source);
                 let destination = find_in_to_rebase_or_create_using_onto(
                     *destination,
                     &mut updated,
                     onto_workspace_snapshot,
                     to_rebase_workspace_snapshot,
                 )?;
-                to_rebase_workspace_snapshot.add_edge(source, edge_weight.clone(), destination)?;
+                let new_edge_index = to_rebase_workspace_snapshot.add_edge(
+                    updated_source,
+                    edge_weight.clone(),
+                    destination,
+                )?;
+                let (new_source, _) =
+                    to_rebase_workspace_snapshot.edge_endpoints(new_edge_index)?;
+                updated.insert(*source, new_source);
             }
-            Update::RemoveEdge(edge) => {
-                // TODO(nick): debug log or handle whether or not the edge was deleted.
-                let _ = to_rebase_workspace_snapshot.remove_edge(*edge)?;
+            Update::RemoveEdge {
+                source,
+                destination,
+                edge_kind,
+            } => {
+                let updated_source = *updated.get(source).unwrap_or(source);
+                let destination = *updated.get(destination).unwrap_or(destination);
+                updated.extend(to_rebase_workspace_snapshot.remove_edge(
+                    to_rebase_change_set,
+                    updated_source,
+                    destination,
+                    *edge_kind,
+                )?);
             }
             Update::ReplaceSubgraph { onto, to_rebase } => {
-                let to_rebase = *updated.get(to_rebase).unwrap_or(to_rebase);
+                let updated_to_rebase = *updated.get(to_rebase).unwrap_or(to_rebase);
                 let new_subgraph_root = find_in_to_rebase_or_create_using_onto(
                     *onto,
                     &mut updated,
                     onto_workspace_snapshot,
                     to_rebase_workspace_snapshot,
                 )?;
-                to_rebase_workspace_snapshot.replace_references(to_rebase, new_subgraph_root)?;
+                updated.extend(
+                    to_rebase_workspace_snapshot
+                        .replace_references(updated_to_rebase, new_subgraph_root)?,
+                );
             }
         }
     }
@@ -239,6 +263,7 @@ async fn perform_updates_and_write_out_and_update_pointer(
     to_rebase_change_set
         .update_pointer(ctx, to_rebase_workspace_snapshot.id())
         .await?;
+    //   dbg!(to_rebase_workspace_snapshot.id());
 
     Ok(())
 }

@@ -6,14 +6,10 @@ use crate::change_set_pointer::ChangeSetPointer;
 use crate::prop::{PropContent, PropContentV1, PropGraphNode};
 use crate::property_editor::schema::WidgetKind;
 
-
-
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::{WorkspaceSnapshotError, WorkspaceSnapshotResult};
-use crate::{
-    DalContext, Prop, PropId, PropKind, SchemaVariantId, Timestamp, WorkspaceSnapshot,
-};
+use crate::{DalContext, Prop, PropId, PropKind, SchemaVariantId, Timestamp, WorkspaceSnapshot};
 
 pub enum PropParent {
     OrderedProp(PropId),

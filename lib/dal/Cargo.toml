@@ -32,6 +32,7 @@ paste = { workspace = true }
 petgraph = { workspace = true }
 postgres-types = { workspace = true }
 rand = { workspace = true }
+rebaser-client = { path = "../../lib/rebaser-client" }
 refinery = { workspace = true }
 regex = { workspace = true }
 remain = { workspace = true }
@@ -61,7 +62,6 @@ content-store-test = { path = "../../lib/content-store-test" }
 dal-test = { path = "../../lib/dal-test" }
 itertools = { workspace = true }
 pretty_assertions_sorted = { workspace = true }
-rebaser-client = { path = "../../lib/rebaser-client" }
 rebaser-core = { path = "../../lib/rebaser-core" }
 rebaser-server = { path = "../../lib/rebaser-server" }
 tempfile = { workspace = true }

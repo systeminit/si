@@ -1,6 +1,6 @@
 use petgraph::prelude::*;
 
-use super::edge_weight::EdgeWeight;
+use super::edge_weight::{EdgeWeight, EdgeWeightKindDiscriminants};
 use serde::{Deserialize, Serialize};
 
 #[remain::sorted]
@@ -14,7 +14,11 @@ pub enum Update {
         destination: NodeIndex,
         edge_weight: EdgeWeight,
     },
-    RemoveEdge(EdgeIndex),
+    RemoveEdge {
+        source: NodeIndex,
+        destination: NodeIndex,
+        edge_kind: EdgeWeightKindDiscriminants,
+    },
     ReplaceSubgraph {
         onto: NodeIndex,
         // Check if already exists in "onto". Grab node weight from "to_rebase" and see if there is

@@ -5,7 +5,9 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerId};
 use serde_aux::field_attributes::deserialize_number_from_string;
+use ulid::Ulid;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -46,6 +48,14 @@ impl Visibility {
             false => None,
         };
         Visibility::new(ChangeSetPk::NONE, deleted_at)
+    }
+
+    // TODO(nick,zack,jacob): remove this once the old change set dies.
+    pub fn new_for_change_set_pointer(change_set_pointer_id: ChangeSetPointerId) -> Self {
+        Visibility {
+            change_set_pk: ChangeSetPk::from(Ulid::from(change_set_pointer_id)),
+            deleted_at: None,
+        }
     }
 
     pub fn to_deleted(&self) -> Self {

@@ -78,13 +78,20 @@ impl ChangeSetPointer {
         })
     }
 
+    pub fn editing_changeset(&self) -> ChangeSetPointerResult<Self> {
+        let mut new_local = Self::new_local()?;
+        new_local.base_change_set_id = self.base_change_set_id;
+        new_local.workspace_snapshot_id = self.workspace_snapshot_id;
+        new_local.name = self.name.to_owned();
+        Ok(new_local)
+    }
+
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
         base_change_set_id: Option<ChangeSetPointerId>,
     ) -> ChangeSetPointerResult<Self> {
         let name = name.as_ref();
-        dbg!(name, &base_change_set_id);
         let row = ctx
             .txns()
             .await?

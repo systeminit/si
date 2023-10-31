@@ -4,6 +4,7 @@ use si_data_pg::PgError;
 use thiserror::Error;
 
 use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
+use crate::pkg::ModuleImportedPayload;
 use crate::user::{CursorPayload, OnlinePayload};
 use crate::{
     ChangeSetPk, DalContext, PropId, SocketId, StandardModelError, TransactionsError, WorkspacePk,
@@ -51,7 +52,7 @@ pub enum WsPayload {
     // FixReturn(FixReturn),
     // ImportWorkspaceVote(ImportWorkspaceVotePayload),
     // LogLine(LogLinePayload),
-    // ModuleImported(ModuleImportedPayload),
+    ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),
     // ResourceRefreshed(ResourceRefreshedPayload),
     // SchemaCreated(SchemaPk),

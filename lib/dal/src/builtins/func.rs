@@ -58,9 +58,8 @@ pub async fn migrate_intrinsics(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .is_none()
     {
-        dbg!("intrinsics pkg not found, importing");
         import_pkg_from_pkg(ctx, &intrinsics_pkg, None).await?;
-        ctx.blocking_commit().await?;
+        //        ctx.blocking_commit().await?;
     }
 
     Ok(())

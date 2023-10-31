@@ -70,6 +70,7 @@
 use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
+use telemetry::prelude::*;
 
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::{pk, StandardModel, Timestamp};

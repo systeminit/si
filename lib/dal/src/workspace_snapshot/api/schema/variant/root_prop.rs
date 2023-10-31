@@ -1,6 +1,3 @@
-
-
-
 use crate::change_set_pointer::ChangeSetPointer;
 
 use crate::property_editor::schema::WidgetKind;

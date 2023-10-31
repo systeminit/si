@@ -1,9 +1,16 @@
-use futures::StreamExt;
+use futures::{Stream, StreamExt, TryStreamExt};
+use rabbitmq_stream_client::error::ConsumerDeliveryError as UpstreamConsumerDeliveryError;
+use rabbitmq_stream_client::types::Delivery as UpstreamDelivery;
 use rabbitmq_stream_client::types::OffsetSpecification;
 use rabbitmq_stream_client::{
     Consumer as UpstreamConsumer, ConsumerHandle as UpstreamConsumerHandle,
 };
+use std::future::Future;
+use std::iter::Map;
+use std::pin::Pin;
 use telemetry::prelude::*;
+use tokio::sync::watch;
+use tokio::sync::watch::error::RecvError;
 use tokio::task;
 
 use crate::Delivery;
@@ -49,6 +56,14 @@ impl Consumer {
         Ok(None)
     }
 
+    /// Converts the inner [`Consumer`] into a [`Stream`].
+    pub async fn into_stream(
+        self,
+    ) -> RabbitResult<impl Stream<Item = Result<UpstreamDelivery, UpstreamConsumerDeliveryError>>>
+    {
+        Ok(self.inner.into_stream())
+    }
+
     /// Provides a [`ConsumerHandle`].
     pub fn handle(&self) -> ConsumerHandle {
         self.inner.handle()
@@ -60,15 +75,15 @@ impl Consumer {
     }
 }
 
-impl Drop for Consumer {
-    fn drop(&mut self) {
-        let handle = self.handle();
-
-        // Close the consumer associated to the handle provided.
-        task::spawn(async {
-            if let Err(e) = handle.close().await {
-                warn!("error when closing consumer on drop: {e}");
-            }
-        });
-    }
-}
+// impl Drop for Consumer {
+//     fn drop(&mut self) {
+//         let handle = self.handle();
+//
+//         // Close the consumer associated to the handle provided.
+//         task::spawn(async {
+//             if let Err(e) = handle.close().await {
+//                 warn!("error when closing consumer on drop: {e}");
+//             }
+//         });
+//     }
+// }

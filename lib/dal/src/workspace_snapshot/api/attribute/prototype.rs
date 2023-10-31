@@ -1,15 +1,8 @@
-use content_store::{Store};
+use content_store::Store;
 use petgraph::prelude::*;
 
-
-use crate::attribute::prototype::{
-    AttributePrototypeContent, AttributePrototypeContentV1,
-};
+use crate::attribute::prototype::{AttributePrototypeContent, AttributePrototypeContentV1};
 use crate::change_set_pointer::ChangeSetPointer;
-
-
-
-
 
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::{
@@ -18,8 +11,7 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::{WorkspaceSnapshotError, WorkspaceSnapshotResult};
 use crate::{
-    AttributePrototype, AttributePrototypeId, DalContext, FuncId, Timestamp,
-    WorkspaceSnapshot,
+    AttributePrototype, AttributePrototypeId, DalContext, FuncId, Timestamp, WorkspaceSnapshot,
 };
 
 impl WorkspaceSnapshot {

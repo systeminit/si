@@ -116,8 +116,6 @@ pub struct ImportOptions {
 async fn import_change_set(
     ctx: &DalContext,
     change_set_pk: Option<ChangeSetPk>,
-    workspace_snapshot: &mut WorkspaceSnapshot,
-    change_set_pointer: &ChangeSetPointer,
     metadata: &SiPkgMetadata,
     funcs: &[SiPkgFunc<'_>],
     schemas: &[SiPkgSchema<'_>],
@@ -131,6 +129,8 @@ async fn import_change_set(
     Vec<(String, Vec<bool /*ImportAttributeSkip*/>)>,
     Vec<bool /*ImportEdgeSkip*/>,
 )> {
+    let mut workspace_snapshot = ctx.workspace_snapshot()?.lock().await;
+
     for func_spec in funcs {
         let unique_id = func_spec.unique_id().to_string();
 
@@ -142,8 +142,6 @@ async fn import_change_set(
             || special_case_funcs.contains(&func_spec.name())
             || func_spec.is_from_builtin().unwrap_or(false)
         {
-            dbg!(func_spec.name());
-
             if let Some(func_id) = workspace_snapshot.func_find_by_name(func_spec.name())? {
                 let func = workspace_snapshot.func_get_by_id(ctx, func_id).await?;
 
@@ -154,8 +152,7 @@ async fn import_change_set(
                 );
             } else if let Some(_func) = import_func(
                 ctx,
-                workspace_snapshot,
-                change_set_pointer,
+                &mut workspace_snapshot,
                 None,
                 func_spec,
                 installed_pkg_id,
@@ -199,8 +196,7 @@ async fn import_change_set(
             } else {
                 import_func(
                     ctx,
-                    workspace_snapshot,
-                    change_set_pointer,
+                    &mut workspace_snapshot,
                     change_set_pk,
                     func_spec,
                     installed_pkg_id,
@@ -264,6 +260,10 @@ async fn import_change_set(
     //         edge_skips.push(skip);
     //     }
     // }
+    //
+
+    //    workspace_snapshot.cleanup();
+    //    workspace_snapshot.dot();
 
     Ok((
         installed_schema_variant_ids,
@@ -1449,19 +1449,9 @@ pub async fn import_pkg_from_pkg(
 
     match metadata.kind() {
         SiPkgKind::Module => {
-            dbg!("installing module", metadata.name(), ctx.change_set_id());
-            let change_set_pointer_id: ChangeSetPointerId = ctx.change_set_id();
-            let change_set_pointer = ChangeSetPointer::find(ctx, change_set_pointer_id)
-                .await?
-                .expect("head should exist");
-            let mut workspace_snapshot =
-                WorkspaceSnapshot::find_for_change_set(ctx, change_set_pointer_id).await?;
-
             let (installed_schema_variant_ids, _, _) = import_change_set(
                 ctx,
                 None,
-                &mut workspace_snapshot,
-                &change_set_pointer,
                 &metadata,
                 &pkg.funcs()?,
                 &[], // &pkg.schemas()?,
@@ -1472,6 +1462,15 @@ pub async fn import_pkg_from_pkg(
                 &options,
             )
             .await?;
+
+            dbg!(ctx
+                .workspace_snapshot()?
+                .lock()
+                .await
+                .list_funcs(ctx)
+                .await
+                .expect("should get list funcs")
+                .len());
 
             Ok((installed_pkg_id, installed_schema_variant_ids, None))
         }
@@ -1571,10 +1570,8 @@ pub async fn import_pkg(ctx: &DalContext, pkg_file_path: impl AsRef<Path>) -> Pk
 async fn create_func(
     ctx: &DalContext,
     workspace_snapshot: &mut WorkspaceSnapshot,
-    change_set_pointer: &ChangeSetPointer,
     func_spec: &SiPkgFunc<'_>,
 ) -> PkgResult<Func> {
-    dbg!("create func");
     let name = func_spec.name();
 
     let func_spec_data = func_spec
@@ -1585,17 +1582,14 @@ async fn create_func(
     let func = workspace_snapshot
         .func_create(
             ctx,
-            change_set_pointer,
             name,
             func_spec_data.backend_kind().into(),
             func_spec_data.response_type().into(),
         )
         .await?;
 
-    dbg!("created func");
-
     let func = workspace_snapshot
-        .func_modify_by_id(ctx, change_set_pointer, func.id, |func| {
+        .func_modify_by_id(ctx, func.id, |func| {
             func.display_name = func_spec_data
                 .display_name()
                 .map(|display_name| display_name.to_owned());
@@ -1608,7 +1602,6 @@ async fn create_func(
             Ok(())
         })
         .await?;
-    dbg!("func modified");
 
     Ok(func)
 }
@@ -1616,12 +1609,11 @@ async fn create_func(
 async fn update_func(
     ctx: &DalContext,
     workspace_snapshot: &mut WorkspaceSnapshot,
-    change_set_pointer: &ChangeSetPointer,
     func: &Func,
     func_spec_data: &SiPkgFuncData,
 ) -> PkgResult<()> {
     workspace_snapshot
-        .func_modify_by_id(ctx, change_set_pointer, func.id, |func| {
+        .func_modify_by_id(ctx, func.id, |func| {
             func.name = func_spec_data.name().to_owned();
             func.backend_kind = func_spec_data.backend_kind().into();
             func.backend_response_type = func_spec_data.response_type().into();
@@ -1644,7 +1636,6 @@ async fn update_func(
 async fn import_func(
     ctx: &DalContext,
     workspace_snapshot: &mut WorkspaceSnapshot,
-    change_set_pointer: &ChangeSetPointer,
     change_set_pk: Option<ChangeSetPk>,
     func_spec: &SiPkgFunc<'_>,
     installed_pkg_id: Option<InstalledPkgId>,
@@ -1653,7 +1644,6 @@ async fn import_func(
 ) -> PkgResult<Option<Func>> {
     let func = match change_set_pk {
         None => {
-            dbg!("importing", func_spec.name());
             let hash = func_spec.hash().to_string();
             let existing_func =
                 InstalledPkgAsset::list_for_kind_and_hash(ctx, InstalledPkgAssetKind::Func, &hash)
@@ -1666,10 +1656,7 @@ async fn import_func(
                         (workspace_snapshot.func_get_by_id(ctx, id).await?, false)
                     }
                 },
-                None => (
-                    create_func(ctx, workspace_snapshot, change_set_pointer, func_spec).await?,
-                    true,
-                ),
+                None => (create_func(ctx, workspace_snapshot, func_spec).await?, true),
             };
 
             if is_builtin {

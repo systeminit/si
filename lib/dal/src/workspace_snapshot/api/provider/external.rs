@@ -1,10 +1,9 @@
-use content_store::{Store};
+use content_store::Store;
 
 use crate::change_set_pointer::ChangeSetPointer;
 use crate::provider::external::{
     ExternalProviderContent, ExternalProviderContentV1, ExternalProviderGraphNode,
 };
-
 
 use crate::socket::{DiagramKind, SocketEdgeKind, SocketKind};
 
@@ -13,10 +12,7 @@ use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::WorkspaceSnapshotResult;
-use crate::{
-    DalContext, FuncId, SchemaVariantId, SocketArity, Timestamp,
-    WorkspaceSnapshot,
-};
+use crate::{DalContext, FuncId, SchemaVariantId, SocketArity, Timestamp, WorkspaceSnapshot};
 
 impl WorkspaceSnapshot {
     pub async fn external_provider_create_with_socket(

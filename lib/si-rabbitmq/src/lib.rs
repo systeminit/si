@@ -22,12 +22,14 @@
     clippy::missing_panics_doc
 )]
 
+mod config;
 mod consumer;
 mod delivery;
 mod environment;
 mod error;
 mod producer;
 
+pub use config::Config;
 pub use consumer::Consumer;
 pub use consumer::ConsumerHandle;
 pub use consumer::ConsumerOffsetSpecification;
@@ -45,7 +47,7 @@ mod tests {
 
     #[test]
     async fn round_trip() {
-        let environment = Environment::new()
+        let environment = Environment::new(&Config::default())
             .await
             .expect("could not create environment");
 

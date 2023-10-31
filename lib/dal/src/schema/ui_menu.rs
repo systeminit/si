@@ -1,11 +1,7 @@
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
-use crate::{
-    impl_standard_model, pk, StandardModel, Tenancy, Timestamp, Visibility,
-};
-
-
+use crate::{impl_standard_model, pk, StandardModel, Tenancy, Timestamp, Visibility};
 
 const FIND_FOR_SCHEMA: &str = include_str!("../queries/ui_menus_find_for_schema.sql");
 

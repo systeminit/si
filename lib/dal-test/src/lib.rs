@@ -19,6 +19,7 @@ use dal::{
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
 use lazy_static::lazy_static;
+use rebaser_client::Config as RebaserClientConfig;
 use si_crypto::{
     SymmetricCryptoService, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile,
 };
@@ -39,7 +40,8 @@ pub use si_test_macros::{dal_test as test, sdf_test};
 pub use telemetry;
 pub use tracing_subscriber;
 
-// pub mod helpers;
+pub mod helpers;
+mod signup;
 // pub mod test_harness;
 
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
@@ -94,6 +96,8 @@ pub struct Config {
     #[builder(default)]
     pkgs_path: Option<PathBuf>,
     symmetric_crypto_service_config: SymmetricCryptoServiceConfig,
+    #[builder(default)]
+    rebaser_config: RebaserClientConfig,
 }
 
 impl Config {
@@ -176,6 +180,9 @@ pub struct TestContext {
     /// This should be configurable in the future, but for now, the only kind of store used is the
     /// [`PgStore`](content_store::PgStore).
     content_store: PgStore,
+
+    /// The configuration for the rebaser client used in tests
+    rebaser_config: RebaserClientConfig,
 }
 
 impl TestContext {
@@ -250,6 +257,7 @@ impl TestContext {
             self.config.pkgs_path.to_owned(),
             None,
             self.symmetric_crypto_service.clone(),
+            self.rebaser_config.clone(),
         )
     }
 
@@ -312,13 +320,14 @@ impl TestContextBuilder {
     }
 
     async fn build_inner(&self, pg_pool: PgPool, content_store: PgStore) -> Result<TestContext> {
+        let universal_prefix = random_identifier_string();
+
         // Need to make a new NatsConfig so that we can add the test-specific subject prefix
         // without leaking it to other tests.
         let mut nats_config = self.config.nats.clone();
-        let nats_subject_prefix = random_identifier_string();
-        nats_config.subject_prefix = Some(nats_subject_prefix.clone());
+        nats_config.subject_prefix = Some(universal_prefix.clone());
         let mut config = self.config.clone();
-        config.nats.subject_prefix = Some(nats_subject_prefix);
+        config.nats.subject_prefix = Some(universal_prefix.clone());
 
         let nats_conn = NatsClient::new(&nats_config)
             .await
@@ -330,6 +339,9 @@ impl TestContextBuilder {
             SymmetricCryptoService::from_config(&self.config.symmetric_crypto_service_config)
                 .await?;
 
+        let mut rebaser_config = RebaserClientConfig::default();
+        rebaser_config.set_stream_prefix(universal_prefix);
+
         Ok(TestContext {
             config,
             pg_pool,
@@ -338,6 +350,7 @@ impl TestContextBuilder {
             encryption_key: self.encryption_key.clone(),
             symmetric_crypto_service,
             content_store,
+            rebaser_config,
         })
     }
 
@@ -483,6 +496,7 @@ pub fn rebaser_server(services_context: &ServicesContext) -> Result<rebaser_serv
         services_context.job_processor(),
         services_context.symmetric_crypto_service().clone(),
         false,
+        services_context.rebaser_config().clone(),
     )
     .wrap_err("failed to create Rebaser server")?;
 
@@ -541,8 +555,11 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     let pinga_server_handle = pinga_server.shutdown_handle();
     tokio::spawn(pinga_server.run());
 
-    // Do not start up the Rebaser server since we do not need it for initial migrations.
-    debug!("skipping Rebaser server startup and shutdown for initial migrations");
+    // Start up a Rebaser server for migrations
+    info!("starting Rebaser server for initial migrations");
+    let rebaser_server = rebaser_server(&services_ctx)?;
+    let rebaser_server_handle = rebaser_server.shutdown_handle();
+    tokio::spawn(rebaser_server.run());
 
     // Start up a Veritech server as a task exclusively to allow the migrations to run
     info!("starting Veritech server for initial migrations");
@@ -607,6 +624,9 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     info!("creating builtins");
     // TODO: @stack72 - remove this code path and install these from the module-index??
+    let content_store_pg_store = content_store_pg_test_migration_client
+        .global_store()
+        .await?;
     dal::migrate_builtins(
         services_ctx.pg_pool(),
         services_ctx.nats_conn(),
@@ -621,6 +641,8 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
             .expect("no pkgs path configured"),
         test_context.config.module_index_url.clone(),
         services_ctx.symmetric_crypto_service(),
+        services_ctx.rebaser_config().clone(),
+        &content_store_pg_store,
     )
     .await
     .wrap_err("failed to run builtin migrations")?;
@@ -629,6 +651,11 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     // unique subject prefix)
     info!("shutting down initial migrations Pinga server");
     pinga_server_handle.shutdown().await;
+
+    // Shutdown the Rebaser server (each test gets their own server instance with an exclusively
+    // unique subject prefix)
+    info!("shutting down initial migrations Rebaser server");
+    rebaser_server_handle.shutdown().await;
 
     // Shutdown the Veritech server (each test gets their own server instance with an exclusively
     // unique subject prefix)

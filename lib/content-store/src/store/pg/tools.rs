@@ -8,7 +8,7 @@ mod embedded {
 }
 
 const DBNAME: &str = "si_content_store";
-const APPLICATION_NAME: &str = "si_test_content_store";
+const APPLICATION_NAME: &str = "si-content-store";
 
 /// A unit struct that provides helpers for performing [`PgStore`] migrations.
 #[allow(missing_debug_implementations)]

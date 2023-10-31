@@ -2,7 +2,7 @@ use chrono::Utc;
 use content_store::{ContentHash, Store, StoreError};
 use petgraph::graph::Edge;
 use petgraph::stable_graph::Edges;
-use petgraph::{algo, prelude::*, visit::DfsEvent};
+use petgraph::{algo, prelude::*, visit::DfsEvent, EdgeDirection};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use telemetry::prelude::*;
@@ -129,7 +129,7 @@ impl WorkspaceSnapshotGraph {
         // Because outgoing edges are part of a node's identity, we create a new "from" node
         // as we are effectively writing to that node (we'll need to update the merkle tree
         // hash), and everything in the graph should be treated as copy-on-write.
-        let new_from_node_index = self.copy_node_index(from_node_index)?;
+        let new_from_node_index = self.copy_node_by_index(from_node_index)?;
 
         // Add the new edge to the new version of the "from" node.
         let new_edge_index =
@@ -160,8 +160,8 @@ impl WorkspaceSnapshotGraph {
         Ok(new_node_index)
     }
 
-    pub fn get_category_child(
-        &mut self,
+    pub fn get_category(
+        &self,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotGraphResult<(Ulid, NodeIndex)> {
         for edgeref in self.graph.edges_directed(self.root(), Outgoing) {
@@ -188,7 +188,7 @@ impl WorkspaceSnapshotGraph {
     }
 
     pub fn func_find_by_name(
-        &self,
+        &mut self,
         parent_node_index: NodeIndex,
         name: impl AsRef<str>,
     ) -> WorkspaceSnapshotGraphResult<Option<FuncId>> {
@@ -472,7 +472,7 @@ impl WorkspaceSnapshotGraph {
         Ok(None)
     }
 
-    fn copy_node_index(
+    fn copy_node_by_index(
         &mut self,
         node_index_to_copy: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
@@ -526,34 +526,50 @@ impl WorkspaceSnapshotGraph {
                     );
                     event
                 })?;
+
                 let mut to_rebase_node_indexes = Vec::new();
-                if let NodeWeight::Content(onto_content_weight) = onto_node_weight {
-                    if onto_content_weight.content_address() == ContentAddress::Root {
-                        // There can only be one (valid/current) `ContentAddress::Root` at any
-                        // given moment, and the `lineage_id` isn't really relevant as it's not
-                        // globally stable (even though it is locally stable). This matters as we
-                        // may be dealing with a `WorkspaceSnapshotGraph` that is coming to us
-                        // externally from a module that we're attempting to import. The external
-                        // `WorkspaceSnapshotGraph` will be `self`, and the "local" one will be
-                        // `onto`.
-                        to_rebase_node_indexes.push(self.root_index);
-                    } else {
-                        // Only retain node indexes... or indices... if they are part of the current
-                        // graph. There may still be garbage from previous updates to the graph
-                        // laying around.
-                        let mut potential_to_rebase_node_indexes = self
-                            .get_node_index_by_lineage(onto_node_weight.lineage_id())
-                            .map_err(|err| {
+                if onto_node_index == onto.root() {
+                    // There can only be one (valid/current) `ContentAddress::Root` at any
+                    // given moment, and the `lineage_id` isn't really relevant as it's not
+                    // globally stable (even though it is locally stable). This matters as we
+                    // may be dealing with a `WorkspaceSnapshotGraph` that is coming to us
+                    // externally from a module that we're attempting to import. The external
+                    // `WorkspaceSnapshotGraph` will be `self`, and the "local" one will be
+                    // `onto`.
+                    to_rebase_node_indexes.push(self.root_index);
+                } else {
+                    // Only retain node indexes... or indices... if they are part of the current
+                    // graph. There may still be garbage from previous updates to the graph
+                    // laying around.
+                    let mut potential_to_rebase_node_indexes: Vec<NodeIndex> = self
+                        .get_node_index_by_lineage(onto_node_weight.lineage_id())
+                        .map_err(|err| {
+                            error!(
+                                "Unable to find NodeIndex(es) for lineage_id {}: {}",
+                                onto_node_weight.lineage_id(),
+                                err,
+                            );
+                            event
+                        })?;
+                    potential_to_rebase_node_indexes
+                        .retain(|node_index| self.has_path_to_root(*node_index));
+                    to_rebase_node_indexes.extend(potential_to_rebase_node_indexes);
+
+                    // Since category nodes may be created from scratch from a different workspace,
+                    // they may have different lineage ids. We still want to consider the same
+                    // category kind as an equivalent node, even though it might have a different
+                    // lineage id.
+                    if let NodeWeight::Category(onto_category_node_weight) = onto_node_weight {
+                        let category_node_kind = onto_category_node_weight.kind();
+                        let (_, to_rebase_category_node_index) =
+                            self.get_category(category_node_kind).map_err(|err| {
                                 error!(
-                                    "Unable to find NodeIndex(es) for lineage_id {}: {}",
-                                    onto_node_weight.lineage_id(),
-                                    err,
+                                    "Unable to get to rebase Category node for kind {:?} from onto {:?}: {}",
+                                    onto_category_node_weight.kind(), onto, err,
                                 );
                                 event
                             })?;
-                        potential_to_rebase_node_indexes
-                            .retain(|node_index| self.has_path_to_root(*node_index));
-                        to_rebase_node_indexes.extend(potential_to_rebase_node_indexes);
+                        to_rebase_node_indexes.push(to_rebase_category_node_index);
                     }
                 }
 
@@ -581,6 +597,11 @@ impl WorkspaceSnapshotGraph {
                     {
                         // If the merkle tree hashes are the same, then the entire sub-graph is
                         // identical, and we don't need to check any further.
+                        debug!(
+                            "onto {} and to rebase {} merkle tree hashes are the same",
+                            onto_node_weight.id(),
+                            to_rebase_node_weight.id()
+                        );
                         continue;
                     }
                     any_content_with_lineage_has_changed = true;
@@ -639,11 +660,11 @@ impl WorkspaceSnapshotGraph {
                             // Eventually, this will only happen on the root node itself, since
                             // Objects, Maps, and Arrays should all have an ordering, for at
                             // least display purposes.
-                            warn!(
+                            debug!(
                                 "Found what appears to be two unordered containers: onto {:?}, to_rebase {:?}",
                                 onto_node_index, to_rebase_node_index,
                             );
-                            println!(
+                            debug!(
                                 "Comparing unordered containers: {:?}, {:?}",
                                 onto_node_index, to_rebase_node_index
                             );
@@ -675,7 +696,7 @@ impl WorkspaceSnapshotGraph {
                             return Err(event);
                         }
                         (Some(to_rebase_ordering_node_index), Some(onto_ordering_node_index)) => {
-                            println!(
+                            debug!(
                                 "Comparing ordered containers: {:?}, {:?}",
                                 onto_node_index, to_rebase_node_index
                             );
@@ -810,11 +831,15 @@ impl WorkspaceSnapshotGraph {
                 let to_rebase_container_item_weight =
                     self.get_node_weight(to_rebase_container_item_index)?;
                 if removed_items.contains(&to_rebase_container_item_weight.id()) {
-                    for edge in self
+                    for edgeref in self
                         .graph
                         .edges_connecting(to_rebase_container_index, to_rebase_container_item_index)
                     {
-                        updates.push(Update::RemoveEdge(edge.id()));
+                        updates.push(Update::RemoveEdge {
+                            source: edgeref.source(),
+                            destination: edgeref.target(),
+                            edge_kind: edgeref.weight().kind().into(),
+                        });
                     }
                 }
             }
@@ -912,7 +937,11 @@ impl WorkspaceSnapshotGraph {
                     } else {
                         // Entry was deleted in `onto`, and has not been modified in `to_rebase`:
                         // Remove the edge.
-                        updates.push(Update::RemoveEdge(to_rebase_edgeref.id()));
+                        updates.push(Update::RemoveEdge {
+                            source: to_rebase_edgeref.source(),
+                            destination: to_rebase_edgeref.target(),
+                            edge_kind: to_rebase_edgeref.weight().kind().into(),
+                        });
                     }
                 }
             }
@@ -1000,7 +1029,9 @@ impl WorkspaceSnapshotGraph {
 
         #[derive(Debug, Copy, Clone)]
         struct EdgeInfo {
+            pub source_node_index: NodeIndex,
             pub target_node_index: NodeIndex,
+            pub edge_kind: EdgeWeightKindDiscriminants,
             pub edge_index: EdgeIndex,
         }
 
@@ -1019,7 +1050,9 @@ impl WorkspaceSnapshotGraph {
                     target_lineage: target_node_weight.lineage_id(),
                 },
                 EdgeInfo {
+                    source_node_index: edgeref.source(),
                     target_node_index: edgeref.target(),
+                    edge_kind: edgeref.weight().kind().into(),
                     edge_index: edgeref.id(),
                 },
             );
@@ -1034,7 +1067,9 @@ impl WorkspaceSnapshotGraph {
                     target_lineage: target_node_weight.lineage_id(),
                 },
                 EdgeInfo {
+                    source_node_index: edgeref.source(),
                     target_node_index: edgeref.target(),
+                    edge_kind: edgeref.weight().kind().into(),
                     edge_index: edgeref.id(),
                 },
             );
@@ -1086,7 +1121,11 @@ impl WorkspaceSnapshotGraph {
                     ))
                 } else {
                     // Item not modified & removed by `onto`: No conflict; Update::RemoveEdge
-                    updates.push(Update::RemoveEdge(only_to_rebase_edge_info.edge_index));
+                    updates.push(Update::RemoveEdge {
+                        source: only_to_rebase_edge_info.source_node_index,
+                        destination: only_to_rebase_edge_info.target_node_index,
+                        edge_kind: only_to_rebase_edge_info.edge_kind,
+                    });
                 }
             }
         }
@@ -1162,13 +1201,11 @@ impl WorkspaceSnapshotGraph {
     ) -> WorkspaceSnapshotGraphResult<Vec<NodeIndex>> {
         let mut results = Vec::new();
         for node_index in self.graph.node_indices() {
-            if let NodeWeight::Content(node_weight) = self.get_node_weight(node_index)? {
-                if node_weight.lineage_id() == lineage_id {
-                    results.push(node_index);
-                }
+            let node_weight = self.get_node_weight(node_index)?;
+            if node_weight.lineage_id() == lineage_id {
+                results.push(node_index);
             }
         }
-
         Ok(results)
     }
 
@@ -1317,10 +1354,6 @@ impl WorkspaceSnapshotGraph {
         Ok(prop_node_indexes.get(0).copied())
     }
 
-    pub(crate) fn remove_edge_by_index(&mut self, edge_index: EdgeIndex) -> Option<EdgeWeight> {
-        self.graph.remove_edge(edge_index)
-    }
-
     /// [`StableGraph`] guarantees the stability of [`NodeIndex`] across removals, however there
     /// are **NO** guarantees around the stability of [`EdgeIndex`] across removals. If
     /// [`Self::cleanup()`] has been called, then any [`EdgeIndex`] found before
@@ -1331,10 +1364,12 @@ impl WorkspaceSnapshotGraph {
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotGraphResult<()> {
+    ) -> WorkspaceSnapshotGraphResult<HashMap<NodeIndex, NodeIndex>> {
+        let mut updated = HashMap::new();
+
         let mut edges_to_remove = Vec::new();
-        let new_source_node_index = self.copy_node_index(source_node_index)?;
-        self.replace_references(source_node_index, new_source_node_index)?;
+        let new_source_node_index = self.copy_node_by_index(source_node_index)?;
+        updated.extend(self.replace_references(source_node_index, new_source_node_index)?);
 
         for edgeref in self
             .graph
@@ -1373,10 +1408,10 @@ impl WorkspaceSnapshotGraph {
 
                     let new_container_ordering_node_index =
                         self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
-                    self.replace_references(
+                    updated.extend(self.replace_references(
                         previous_container_ordering_node_index,
                         new_container_ordering_node_index,
-                    )?;
+                    )?);
                 }
             }
         }
@@ -1388,7 +1423,7 @@ impl WorkspaceSnapshotGraph {
             self.get_node_index_by_id(self.get_node_weight(new_source_node_index)?.id())?,
         )?;
 
-        Ok(())
+        Ok(updated)
     }
 
     pub(crate) fn get_edge_by_index_stableish(
@@ -1401,11 +1436,22 @@ impl WorkspaceSnapshotGraph {
             .ok_or(WorkspaceSnapshotGraphError::EdgeDoesNotExist(edge_index))
     }
 
+    pub fn edge_endpoints(
+        &self,
+        edge_index: EdgeIndex,
+    ) -> WorkspaceSnapshotGraphResult<(NodeIndex, NodeIndex)> {
+        let (source, destination) = self
+            .graph
+            .edge_endpoints(edge_index)
+            .ok_or(WorkspaceSnapshotGraphError::EdgeDoesNotExist(edge_index))?;
+        Ok((source, destination))
+    }
+
     pub fn replace_references(
         &mut self,
         original_node_index: NodeIndex,
         new_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<()> {
+    ) -> WorkspaceSnapshotGraphResult<HashMap<NodeIndex, NodeIndex>> {
         let mut old_to_new_node_indices: HashMap<NodeIndex, NodeIndex> = HashMap::new();
         old_to_new_node_indices.insert(original_node_index, new_node_index);
 
@@ -1420,7 +1466,7 @@ impl WorkspaceSnapshotGraph {
                 let new_node_index = match old_to_new_node_indices.get(&old_node_index) {
                     Some(found_new_node_index) => *found_new_node_index,
                     None => {
-                        let new_node_index = self.copy_node_index(old_node_index)?;
+                        let new_node_index = self.copy_node_by_index(old_node_index)?;
                         old_to_new_node_indices.insert(old_node_index, new_node_index);
                         new_node_index
                     }
@@ -1463,7 +1509,11 @@ impl WorkspaceSnapshotGraph {
             self.root_index = *new_root_node_index;
         }
 
-        Ok(())
+        // Before returning, remove the root from the map because we should always "ask" what the
+        // root is rather than relying on a potentially stale reference.
+        old_to_new_node_indices.remove(&self.root_index);
+
+        Ok(old_to_new_node_indices)
     }
 
     pub fn update_content(
@@ -1473,12 +1523,13 @@ impl WorkspaceSnapshotGraph {
         new_content_hash: ContentHash,
     ) -> WorkspaceSnapshotGraphResult<()> {
         let original_node_index = self.get_node_index_by_id(id)?;
-        let new_node_index = self.copy_node_index(original_node_index)?;
+        let new_node_index = self.copy_node_by_index(original_node_index)?;
         let node_weight = self.get_node_weight_mut(new_node_index)?;
         node_weight.increment_vector_clock(change_set)?;
         node_weight.new_content_hash(new_content_hash)?;
 
-        self.replace_references(original_node_index, new_node_index)
+        self.replace_references(original_node_index, new_node_index)?;
+        Ok(())
     }
 
     pub fn update_order(
@@ -1490,11 +1541,12 @@ impl WorkspaceSnapshotGraph {
         let original_node_index = self
             .ordering_node_index_for_container(self.get_node_index_by_id(container_id)?)?
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
-        let new_node_index = self.copy_node_index(original_node_index)?;
+        let new_node_index = self.copy_node_by_index(original_node_index)?;
         let node_weight = self.get_node_weight_mut(new_node_index)?;
         node_weight.set_order(change_set, new_order)?;
 
-        self.replace_references(original_node_index, new_node_index)
+        self.replace_references(original_node_index, new_node_index)?;
+        Ok(())
     }
 
     fn update_merkle_tree_hash(

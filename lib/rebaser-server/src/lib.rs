@@ -27,6 +27,7 @@ pub use config::ConfigBuilder;
 pub use config::ConfigError;
 pub use config::ConfigFile;
 pub use server::Server;
+pub use si_rabbitmq::Config as SiRabbitMqConfig;
 pub use si_settings::StandardConfig;
 pub use si_settings::StandardConfigFile;
 

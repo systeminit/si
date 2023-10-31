@@ -9,7 +9,7 @@ use si_crypto::SymmetricCryptoServiceConfig;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
-use si_rabbitmq::RabbitError;
+use si_rabbitmq::{Config as SiRabbitMqConfig, RabbitError};
 use std::{io, path::Path, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -107,6 +107,8 @@ pub struct Server {
     /// If enabled, re-create the RabbitMQ Stream. If disabled, create the Stream if it does not
     /// exist.
     recreate_management_stream: bool,
+    /// The configuration for the si-rabbitmq library
+    rabbitmq_config: SiRabbitMqConfig,
 }
 
 impl Server {
@@ -123,6 +125,7 @@ impl Server {
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
+        let rabbitmq_config = config.rabbitmq_config();
 
         Self::from_services(
             encryption_key,
@@ -132,6 +135,7 @@ impl Server {
             job_processor,
             symmetric_crypto_service,
             config.recreate_management_stream(),
+            rabbitmq_config.to_owned(),
         )
     }
 
@@ -145,6 +149,7 @@ impl Server {
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         symmetric_crypto_service: SymmetricCryptoService,
         recreate_management_stream: bool,
+        rabbitmq_config: SiRabbitMqConfig,
     ) -> ServerResult<Self> {
         // An mpsc channel which can be used to externally shut down the server.
         let (external_shutdown_tx, external_shutdown_rx) = mpsc::channel(4);
@@ -169,6 +174,7 @@ impl Server {
             shutdown_watch_rx,
             external_shutdown_tx,
             graceful_shutdown_rx,
+            rabbitmq_config,
         })
     }
 
@@ -184,6 +190,7 @@ impl Server {
             self.symmetric_crypto_service,
             self.encryption_key,
             self.shutdown_watch_rx,
+            self.rabbitmq_config,
         )
         .await;
 
@@ -217,6 +224,7 @@ impl Server {
 
     #[instrument(name = "rebaser.init.create_pg_pool", skip_all)]
     async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> ServerResult<PgPool> {
+        dbg!(&pg_pool_config);
         let pool = PgPool::new(pg_pool_config).await?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
         Ok(pool)

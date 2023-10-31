@@ -4,7 +4,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use content_store::PgStore;
 use rand::Rng;
+use rebaser_client::Config as RebaserClientConfig;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_crypto::SymmetricCryptoService;
 use si_data_nats::{NatsClient, NatsError};
@@ -109,7 +111,7 @@ pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserPk, UserResult};
 pub use visibility::{Visibility, VisibilityError};
-pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, WorkspaceSignup};
+pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult};
 pub use workspace_snapshot::graph::WorkspaceSnapshotGraph;
 pub use workspace_snapshot::WorkspaceSnapshot;
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
@@ -195,7 +197,7 @@ pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
 #[allow(clippy::too_many_arguments)]
 #[instrument(skip_all)]
 pub async fn migrate_builtins(
-    pg: &PgPool,
+    dal_pg: &PgPool,
     nats: &NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech_client::Client,
@@ -204,9 +206,11 @@ pub async fn migrate_builtins(
     pkgs_path: PathBuf,
     module_index_url: String,
     symmetric_crypto_service: &SymmetricCryptoService,
+    rebaser_config: RebaserClientConfig,
+    content_store_pg: &PgStore,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
-        pg.clone(),
+        dal_pg.clone(),
         nats.clone(),
         job_processor,
         veritech,
@@ -214,13 +218,17 @@ pub async fn migrate_builtins(
         Some(pkgs_path),
         Some(module_index_url),
         symmetric_crypto_service.clone(),
+        rebaser_config,
     );
     let dal_context = services_context.into_builder(true);
-    let mut ctx = dal_context.build_default().await?;
+    let mut ctx = dal_context
+        .build_default_with_content_store(content_store_pg.to_owned())
+        .await?;
 
-    let workspace = Workspace::builtin(&ctx).await?;
+    let workspace = Workspace::builtin(&mut ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
-    ctx.blocking_commit().await?;
+    ctx.update_to_head();
+    ctx.update_snapshot_to_visibility().await?;
 
     builtins::migrate(&ctx, selected_test_builtin_schemas).await?;
 

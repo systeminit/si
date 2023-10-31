@@ -7,9 +7,9 @@ use crate::{
     change_set_pointer::ChangeSetPointerError, installed_pkg::InstalledPkgError, ChangeSetPk,
     FuncBackendKind, FuncBackendResponseType, FuncId,
 };
+use crate::{workspace_snapshot::WorkspaceSnapshotError, SchemaVariantId};
 
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
+pub use import::ImportOptions;
 
 // mod export;
 mod import;
@@ -36,6 +36,8 @@ pub enum PkgError {
     #[error(transparent)]
     WorkspaceSnaphot(#[from] WorkspaceSnapshotError),
 }
+
+pub use import::{import_pkg, import_pkg_from_pkg};
 
 impl PkgError {
     // fn prop_tree_invalid(message: impl Into<String>) -> Self {
@@ -195,12 +197,12 @@ where
     }
 }
 
-// #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase", tag = "kind")]
-// pub struct ModuleImportedPayload {
-//     schema_variant_ids: Vec<SchemaVariantId>,
-// }
-//
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub struct ModuleImportedPayload {
+    schema_variant_ids: Vec<SchemaVariantId>,
+}
+
 // #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 // #[serde(rename_all = "camelCase")]
 // pub struct WorkspaceImportPayload {

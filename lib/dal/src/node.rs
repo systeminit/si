@@ -3,18 +3,11 @@ use rand::prelude::SliceRandom;
 
 use serde::{Deserialize, Serialize};
 
-
-
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 
-
-
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{
-    pk, StandardModel, Timestamp,
-};
-
+use crate::{pk, StandardModel, Timestamp};
 
 // const LIST_FOR_KIND: &str = include_str!("queries/node/list_for_kind.sql");
 // const LIST_LIVE: &str = include_str!("queries/node/list_live.sql");

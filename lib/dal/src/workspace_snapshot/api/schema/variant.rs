@@ -269,7 +269,7 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
     ) -> WorkspaceSnapshotResult<Vec<SchemaVariant>> {
         /*
-        let schema_category_index = self.get_category_child(CategoryNodeKind::Schema)?;
+        let schema_category_index = self.get_category(CategoryNodeKind::Schema)?;
         let schema_indices = self.outgoing_targets_for_edge_weight_kind_by_index(
             schema_category_index,
             EdgeWeightKindDiscriminants::Use,
