@@ -27,8 +27,8 @@
 import * as _ from "lodash-es";
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import { Icon, VormInput } from "@si/vue-lib/design-system";
-import { useWorkspacesStore } from "@/store/workspaces.store";
 import { computed, ref, watch } from "vue";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import ChangeSetPanel from "./ChangeSetPanel.vue";
 
 const workspacesStore = useWorkspacesStore();

@@ -41,9 +41,9 @@
 
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { useAuthStore } from "@/store/auth.store";
 import { Icon } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { useAuthStore } from "@/store/auth.store";
 
 const authStore = useAuthStore();
 
