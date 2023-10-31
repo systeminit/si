@@ -1,9 +1,14 @@
-use std::{
-    io,
-    path::{Path, PathBuf},
-    result,
-    time::Duration,
+use ::std::path::Path;
+use rand::distributions::Alphanumeric;
+use rand::thread_rng;
+use rand::Rng;
+use std::{io, path::PathBuf, result, time::Duration};
+
+use bollard::container::{
+    Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions,
 };
+use bollard::models::{HostConfig, Mount, MountTypeEnum};
+use bollard::{errors::Error, Docker};
 
 use async_trait::async_trait;
 use cyclone_client::{
@@ -48,6 +53,18 @@ pub enum LocalUdsInstanceError {
     /// Cyclone client error.
     #[error(transparent)]
     Client(#[from] ClientError),
+    /// Failed to build a container.
+    #[error("failed to build a cyclone container")]
+    ContainerBuild(#[source] Error),
+    /// Failed to run a container.
+    #[error("failed to spawn cyclone container")]
+    ContainerRun(#[source] Error),
+    /// Error when shutting down a container.
+    #[error(transparent)]
+    ContainerShutdown(#[from] Error),
+    /// Docker api not found
+    #[error("no docker api")]
+    DockerAPINotFound,
     /// Instance has exhausted its predefined request count.
     #[error("no remaining requests, cyclone server is considered unhealthy")]
     NoRemainingRequests,
@@ -72,7 +89,6 @@ type Result<T> = result::Result<T, LocalUdsInstanceError>;
 
 /// A local Cyclone [`Instance`], managed as a spawned child process, communicating over a Unix
 /// domain socket ("Uds").
-#[derive(Debug)]
 pub struct LocalUdsInstance {
     // The `TempPath` type is kept around as an [RAII
     // guard](https://rust-unofficial.github.io/patterns/patterns/behavioural/RAII.html), that is,
@@ -80,7 +96,7 @@ pub struct LocalUdsInstance {
     _temp_path: Option<TempPath>,
     client: UdsClient,
     limit_requests: Option<u32>,
-    child: Child,
+    runtime: Box<dyn LocalInstanceRuntime>,
     watch_shutdown_tx: oneshot::Sender<()>,
 }
 
@@ -93,9 +109,7 @@ impl Instance for LocalUdsInstance {
         if !self.watch_shutdown_tx.is_closed() && self.watch_shutdown_tx.send(()).is_err() {
             debug!("sent watch shutdown but receiver was already closed");
         }
-        process::child_shutdown(&mut self.child, Some(process::Signal::SIGTERM), None).await?;
-
-        Ok(())
+        self.runtime.terminate().await
     }
 
     async fn ensure_healthy(&mut self) -> result::Result<(), Self::Error> {
@@ -265,7 +279,7 @@ impl LocalUdsInstance {
 }
 
 /// The [`Spec`] for [`LocalUdsInstance`]
-#[derive(Builder, Clone, Debug, Eq, PartialEq)]
+#[derive(Builder, Clone, Debug)]
 pub struct LocalUdsInstanceSpec {
     /// Canonical path to the `cyclone` program.
     #[builder(try_setter, setter(into))]
@@ -282,6 +296,10 @@ pub struct LocalUdsInstanceSpec {
     /// Socket strategy for a spawned Cyclone server.
     #[builder(default)]
     socket_strategy: LocalUdsSocketStrategy,
+
+    /// Runtime strategy for a spawned Cyclone server.
+    #[builder(default)]
+    runtime_strategy: LocalUdsRuntimeStrategy,
 
     /// Sets the watch timeout value for a spawned Cyclone server.
     #[builder(setter(into, strip_option), default)]
@@ -311,11 +329,9 @@ impl Spec for LocalUdsInstanceSpec {
 
     async fn spawn(&self) -> result::Result<Self::Instance, Self::Error> {
         let (temp_path, socket) = temp_path_and_socket_from(&self.socket_strategy)?;
-        let mut cmd = self.build_command(&socket);
+        let mut runtime = runtime_instance_from_spec(&self, &socket).await?;
 
-        debug!("spawning child process; cmd={:?}", &cmd);
-        let child = cmd.spawn().map_err(Self::Error::ChildSpawn)?;
-
+        runtime.spawn().await?;
         let mut client = Client::uds(socket)?;
 
         // Establish the client watch session. As the process may be booting, we will retry for a
@@ -352,40 +368,9 @@ impl Spec for LocalUdsInstanceSpec {
             _temp_path: temp_path,
             client,
             limit_requests: self.limit_requests,
-            child,
+            runtime,
             watch_shutdown_tx,
         })
-    }
-}
-
-impl LocalUdsInstanceSpec {
-    fn build_command(&self, socket: &Path) -> Command {
-        let mut cmd = Command::new(&self.cyclone_cmd_path);
-        cmd.arg("--bind-uds")
-            .arg(socket)
-            .arg("--decryption-key")
-            .arg(&self.cyclone_decryption_key_path)
-            .arg("--lang-server")
-            .arg(&self.lang_server_cmd_path)
-            .arg("--enable-watch");
-        if let Some(limit_requests) = self.limit_requests {
-            cmd.arg("--limit-requests").arg(limit_requests.to_string());
-        }
-        if let Some(timeout) = self.watch_timeout {
-            cmd.arg("--watch-timeout")
-                .arg(timeout.as_secs().to_string());
-        }
-        if self.ping {
-            cmd.arg("--enable-ping");
-        }
-        if self.resolver {
-            cmd.arg("--enable-resolver");
-        }
-        if self.action {
-            cmd.arg("--enable-action-run");
-        }
-
-        cmd
     }
 }
 
@@ -483,6 +468,221 @@ fn temp_path_and_socket_from(
             Ok((Some(temp_path), socket))
         }
         LocalUdsSocketStrategy::Custom(socket) => Ok((None, socket.clone())),
+    }
+}
+
+#[remain::sorted]
+/// Runtime strategy when spawning [`Instance`]s.
+#[derive(Clone, Debug, Copy, Serialize, Deserialize)]
+pub enum LocalUdsRuntimeStrategy {
+    /// Run Docker containers on the local machine
+    LocalDocker,
+    /// Run processes on the local machine
+    LocalProcess,
+}
+
+impl Default for LocalUdsRuntimeStrategy {
+    fn default() -> Self {
+        Self::LocalProcess
+    }
+}
+
+#[async_trait]
+pub trait LocalInstanceRuntime: Send + Sync {
+    async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError>;
+    async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError>;
+}
+
+#[derive(Debug)]
+struct LocalProcessRuntime {
+    cmd: Command,
+    child: Option<Child>,
+}
+
+impl LocalProcessRuntime {
+    async fn build(
+        socket: &PathBuf,
+        spec: LocalUdsInstanceSpec,
+    ) -> Result<Box<dyn LocalInstanceRuntime>> {
+        let mut cmd = Command::new(&spec.cyclone_cmd_path);
+        cmd.arg("--bind-uds")
+            .arg(socket)
+            .arg("--decryption-key")
+            .arg(&spec.cyclone_decryption_key_path)
+            .arg("--lang-server")
+            .arg(&spec.lang_server_cmd_path)
+            .arg("--enable-watch");
+        if let Some(limit_requests) = spec.limit_requests {
+            cmd.arg("--limit-requests").arg(limit_requests.to_string());
+        }
+        if let Some(timeout) = spec.watch_timeout {
+            cmd.arg("--watch-timeout")
+                .arg(timeout.as_secs().to_string());
+        }
+        if spec.ping {
+            cmd.arg("--enable-ping");
+        }
+        if spec.resolver {
+            cmd.arg("--enable-resolver");
+        }
+        if spec.action {
+            cmd.arg("--enable-action-run");
+        }
+
+        Ok(Box::new(LocalProcessRuntime { cmd, child: None }))
+    }
+}
+
+#[async_trait]
+impl LocalInstanceRuntime for LocalProcessRuntime {
+    async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        self.child = Some(
+            self.cmd
+                .spawn()
+                .map_err(LocalUdsInstanceError::ChildSpawn)?,
+        );
+        Ok(())
+    }
+    async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        match self.child.as_mut() {
+            Some(c) => {
+                process::child_shutdown(c, Some(process::Signal::SIGTERM), None).await?;
+                Ok(())
+            }
+            None => Ok(()),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct LocalDockerRuntime {
+    container_id: String,
+    docker: Docker,
+}
+
+impl LocalDockerRuntime {
+    async fn build(
+        socket: &Path,
+        spec: LocalUdsInstanceSpec,
+    ) -> Result<Box<dyn LocalInstanceRuntime>> {
+        let mut cmd = vec![
+            String::from("--bind-uds"),
+            socket.to_string_lossy().to_string(),
+            String::from("--decryption-key"),
+            String::from("/tmp/key"),
+            String::from("--lang-server"),
+            String::from("/usr/local/bin/lang-js"),
+            String::from("--enable-watch"),
+        ];
+        if let Some(limit_requests) = spec.limit_requests {
+            cmd.push(String::from("--limit-requests"));
+            cmd.push(limit_requests.to_string())
+        }
+        if let Some(timeout) = spec.watch_timeout {
+            cmd.push(String::from("--watch-timeout"));
+            cmd.push(timeout.as_secs().to_string());
+        }
+        if spec.ping {
+            cmd.push(String::from("--enable-ping"));
+        }
+        if spec.resolver {
+            cmd.push(String::from("--enable-resolver"));
+        }
+        if spec.action {
+            cmd.push(String::from("--enable-action-run"));
+        }
+
+        let docker = Docker::connect_with_local_defaults()?;
+
+        let rand_string: String = thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(10)
+            .map(char::from)
+            .collect();
+
+        let socket_dir = socket
+            .parent()
+            .expect("socket path not available")
+            .to_str()
+            .expect("unable to unpack path");
+        let mounts = vec![
+            Mount {
+                source: Some(String::from(socket_dir.clone())),
+                target: Some(String::from(socket_dir.clone())),
+                typ: Some(MountTypeEnum::BIND),
+                ..Default::default()
+            },
+            Mount {
+                source: Some(spec.cyclone_decryption_key_path),
+                target: Some(String::from("/tmp/key")),
+                typ: Some(MountTypeEnum::BIND),
+                ..Default::default()
+            },
+        ];
+
+        let container_id = docker
+            .create_container(
+                Some(CreateContainerOptions {
+                    name: format!("cyclone-container-{rand_string}"),
+                    platform: Some(String::from("linux/amd64")),
+                }),
+                Config {
+                    image: Some(String::from("systeminit/cyclone:stable")),
+                    cmd: Some(cmd),
+                    host_config: Some(HostConfig {
+                        mounts: Some(mounts),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .id;
+
+        Ok(Box::new(LocalDockerRuntime {
+            container_id,
+            docker,
+        }))
+    }
+}
+
+#[async_trait]
+impl LocalInstanceRuntime for LocalDockerRuntime {
+    async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        self.docker
+            .start_container(
+                &self.container_id.clone(),
+                None::<StartContainerOptions<String>>,
+            )
+            .await?;
+        Ok(())
+    }
+
+    async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        self.docker
+            .remove_container(
+                &self.container_id,
+                Some(RemoveContainerOptions {
+                    force: true,
+                    ..Default::default()
+                }),
+            )
+            .await?;
+        Ok(())
+    }
+}
+
+async fn runtime_instance_from_spec(
+    spec: &LocalUdsInstanceSpec,
+    socket: &PathBuf,
+) -> Result<Box<dyn LocalInstanceRuntime>> {
+    match spec.runtime_strategy {
+        LocalUdsRuntimeStrategy::LocalProcess => {
+            LocalProcessRuntime::build(socket, spec.clone()).await
+        }
+        LocalUdsRuntimeStrategy::LocalDocker => {
+            LocalDockerRuntime::build(socket, spec.clone()).await
+        }
     }
 }
 
