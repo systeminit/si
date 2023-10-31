@@ -77,7 +77,7 @@ mod workspace_updates {
     use std::error::Error;
 
     use axum::extract::ws::{self, WebSocket};
-    use dal::{ChangeSetPk, UserPk, WorkspacePk, WsEvent, WsEventError};
+    use dal::{user::CursorPayload, ChangeSetPk, UserPk, WorkspacePk, WsEvent, WsEventError};
     use futures::StreamExt;
     use serde::{Deserialize, Serialize};
     use si_data_nats::{NatsClient, NatsError, Subscriber};
@@ -95,6 +95,7 @@ mod workspace_updates {
             user_name: String,
             change_set_pk: Option<ChangeSetPk>,
             container: Option<String>,
+            container_key: Option<String>,
             x: String,
             y: String,
         },
@@ -172,9 +173,16 @@ mod workspace_updates {
                                     }
                                 };
                                 match event {
-                                    WebsocketEventRequest::Cursor { user_pk, user_name, change_set_pk, container, x, y } => {
+                                    WebsocketEventRequest::Cursor { user_pk, user_name, change_set_pk, container, container_key, x, y } => {
                                         let subject = format!("si.workspace_pk.{}.event", self.workspace_pk);
-                                        let event = WsEvent::cursor(self.workspace_pk, change_set_pk.unwrap_or(ChangeSetPk::NONE), user_pk, user_name, x, y, container).await?;
+                                        let event = WsEvent::cursor(self.workspace_pk, change_set_pk.unwrap_or(ChangeSetPk::NONE), CursorPayload {
+                                            user_pk,
+                                            user_name,
+                                            x,
+                                            y,
+                                            container,
+                                            container_key
+                                        }).await?;
                                         self.nats.publish(subject, serde_json::to_vec(&event)?).await?;
                                     }
                                 }

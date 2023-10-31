@@ -220,34 +220,20 @@ impl UserClaim {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct CursorPayload {
-    x: String,
-    y: String,
-    container: Option<String>,
-    user_pk: UserPk,
-    user_name: String,
+    pub x: String,
+    pub y: String,
+    pub container: Option<String>,
+    pub container_key: Option<String>,
+    pub user_pk: UserPk,
+    pub user_name: String,
 }
 
 impl WsEvent {
     pub async fn cursor(
         workspace_pk: WorkspacePk,
         change_set_pk: ChangeSetPk,
-        user_pk: UserPk,
-        user_name: String,
-        x: String,
-        y: String,
-        container: Option<String>,
+        cursor: CursorPayload,
     ) -> WsEventResult<Self> {
-        WsEvent::new_raw(
-            workspace_pk,
-            change_set_pk,
-            WsPayload::Cursor(CursorPayload {
-                x,
-                y,
-                container,
-                user_pk,
-                user_name,
-            }),
-        )
-        .await
+        WsEvent::new_raw(workspace_pk, change_set_pk, WsPayload::Cursor(cursor)).await
     }
 }
