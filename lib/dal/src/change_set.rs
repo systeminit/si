@@ -214,6 +214,25 @@ impl ChangeSet {
 
         Ok(result)
     }
+
+    pub async fn force_new(ctx: &mut DalContext) -> ChangeSetResult<Option<ChangeSetPk>> {
+        Ok(if ctx.visibility().is_head() {
+            let change_set = Self::new(ctx, Self::generate_name(), None).await?;
+
+            let new_visibility = Visibility::new(change_set.pk, ctx.visibility().deleted_at);
+
+            ctx.update_visibility(new_visibility);
+
+            WsEvent::change_set_created(&ctx, change_set.pk)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+
+            Some(change_set.pk)
+        } else {
+            None
+        })
+    }
 }
 
 impl WsEvent {

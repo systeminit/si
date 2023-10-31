@@ -1,15 +1,10 @@
+use std::collections::HashSet;
+
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 
-use super::ValidationPrototypeView;
-use super::{
-    AttributePrototypeArgumentView, AttributePrototypeView, FuncArgumentView, FuncAssociations,
-    FuncError, FuncResult,
-};
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
-use crate::server::tracking::track;
+use dal::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeContext};
 use dal::{
     attribute::context::AttributeContextBuilder,
     func::argument::FuncArgument,
@@ -21,6 +16,15 @@ use dal::{
     SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use dal::{FuncBackendResponseType, PropKind, SchemaVariant, ValidationPrototype};
+
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
+
+use super::ValidationPrototypeView;
+use super::{
+    AttributePrototypeArgumentView, AttributePrototypeView, FuncArgumentView, FuncAssociations,
+    FuncError, FuncResult,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -656,7 +660,51 @@ pub async fn do_save_func(
                 }
             }
         },
-        _ => {}
+        FuncBackendKind::JsAuthentication => {
+            if let Some(FuncAssociations::Authentication { schema_variant_ids }) =
+                request.associations
+            {
+                let mut id_set = HashSet::new();
+
+                for schema_variant_id in schema_variant_ids {
+                    let proto_context = AuthenticationPrototypeContext { schema_variant_id };
+
+                    let proto = match AuthenticationPrototype::find_for_context_and_func(
+                        &ctx,
+                        &proto_context,
+                        *func.id(),
+                    )
+                    .await?
+                    .pop()
+                    {
+                        None => {
+                            AuthenticationPrototype::new(ctx, *func.id(), proto_context).await?
+                        }
+                        Some(existing_proto) => existing_proto,
+                    };
+
+                    id_set.insert(*proto.id());
+                }
+
+                for mut proto in AuthenticationPrototype::find_for_func(ctx, *func.id()).await? {
+                    if !id_set.contains(proto.id()) {
+                        proto.delete_by_id(ctx).await?;
+                    }
+                }
+            }
+        }
+        FuncBackendKind::Array
+        | FuncBackendKind::Boolean
+        | FuncBackendKind::Diff
+        | FuncBackendKind::Identity
+        | FuncBackendKind::Integer
+        | FuncBackendKind::JsReconciliation
+        | FuncBackendKind::JsSchemaVariantDefinition
+        | FuncBackendKind::Map
+        | FuncBackendKind::Object
+        | FuncBackendKind::String
+        | FuncBackendKind::Unset
+        | FuncBackendKind::Validation => return Err(FuncError::NotWritable),
     }
 
     let is_revertible = super::is_func_revertible(ctx, &func).await?;
@@ -684,59 +732,54 @@ pub async fn save_func<'a>(
 ) -> FuncResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut force_changeset_pk = None;
-    if ctx.visibility().is_head() {
-        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
-
-        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
-
-        ctx.update_visibility(new_visibility);
-
-        force_changeset_pk = Some(change_set.pk);
-
-        WsEvent::change_set_created(&ctx, change_set.pk)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
-    };
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     let request_id = request.id;
     let request_associations = request.associations.clone();
     let (save_response, _) = do_save_func(&ctx, request).await?;
 
-    let func = Func::get_by_id(&ctx, &request_id)
-        .await?
-        .ok_or(FuncError::FuncNotFound)?;
+    {
+        let func = Func::get_by_id(&ctx, &request_id)
+            .await?
+            .ok_or(FuncError::FuncNotFound)?;
 
-    // //let (comp_associations, schema_associations) =
-    let (component_ids, schema_variant_ids) = match request_associations {
-        Some(FuncAssociations::Qualification {
-            component_ids,
-            schema_variant_ids,
-            ..
-        })
-        | Some(FuncAssociations::CodeGeneration {
-            component_ids,
-            schema_variant_ids,
-            ..
-        }) => (component_ids, schema_variant_ids),
-        _ => (vec![], vec![]),
-    };
+        let (component_ids, schema_variant_ids) = match request_associations {
+            Some(FuncAssociations::Qualification {
+                component_ids,
+                schema_variant_ids,
+                ..
+            })
+            | Some(FuncAssociations::CodeGeneration {
+                component_ids,
+                schema_variant_ids,
+                ..
+            }) => (component_ids, schema_variant_ids),
+            Some(FuncAssociations::Authentication {
+                schema_variant_ids, ..
+            }) => (vec![], schema_variant_ids),
 
-    track(
-        &posthog_client,
-        &ctx,
-        &original_uri,
-        "save_func",
-        serde_json::json!({
-                    "func_id": func.id(),
-                    "func_name": func.name(),
-                    "func_variant": *func.backend_response_type(),
-                    "func_is_builtin": func.builtin(),
-                    "func_associated_with_schema_variant_ids": schema_variant_ids,
-                    "func_associated_with_component_ids": component_ids,
-        }),
-    );
+            None
+            | Some(FuncAssociations::Action { .. })
+            | Some(FuncAssociations::Attribute { .. })
+            | Some(FuncAssociations::SchemaVariantDefinitions { .. })
+            | Some(FuncAssociations::Validation { .. }) => (vec![], vec![]),
+        };
+
+        track(
+            &posthog_client,
+            &ctx,
+            &original_uri,
+            "save_func",
+            serde_json::json!({
+                        "func_id": func.id(),
+                        "func_name": func.name(),
+                        "func_variant": *func.backend_response_type(),
+                        "func_is_builtin": func.builtin(),
+                        "func_associated_with_schema_variant_ids": schema_variant_ids,
+                        "func_associated_with_component_ids": component_ids,
+            }),
+        );
+    }
 
     WsEvent::change_set_written(&ctx)
         .await?

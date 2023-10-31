@@ -180,7 +180,7 @@ impl AuthenticationPrototype {
 
     pub async fn find_for_context_and_func(
         ctx: &DalContext,
-        context: AuthenticationPrototypeContext,
+        context: &AuthenticationPrototypeContext,
         func_id: FuncId,
     ) -> AuthenticationPrototypeResult<Vec<Self>> {
         let rows = ctx
