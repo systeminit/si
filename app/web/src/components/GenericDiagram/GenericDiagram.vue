@@ -75,6 +75,11 @@ overflow hidden */
           @hover:end="(meta) => onElementHoverEnd(node)"
           @resize="onNodeLayoutOrLocationChange(node)"
         />
+        <DiagramCursor
+          v-for="mouseCursor in props.cursors"
+          :key="mouseCursor.userPk"
+          :cursor="mouseCursor"
+        />
         <DiagramEdge
           v-for="edge in edges"
           :key="edge.uniqueKey"
@@ -196,8 +201,11 @@ import {
   HoverElementEvent,
   SideAndCornerIdentifiers,
   ElementHoverMeta,
+  MovePointerEvent,
+  DiagramCursorDef,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
+import DiagramCursor from "./DiagramCursor.vue";
 import DiagramEdge from "./DiagramEdge.vue";
 import {
   useDiagramConfigProvider,
@@ -238,6 +246,10 @@ const ZOOM_SCROLL_FACTOR = 0.001; // scroll delta multiplied by this while zoomi
 const ZOOM_PAN_FACTOR = 0.5;
 
 const props = defineProps({
+  cursors: {
+    type: Object as PropType<Record<string, DiagramCursorDef>>,
+    default: () => ({}),
+  },
   customConfig: {
     type: Object as PropType<DiagramConfig>,
     default: () => ({}),
@@ -258,6 +270,7 @@ const props = defineProps({
 
 const emit = defineEmits<{
   (e: "update:zoom", newZoom: number): void;
+  (e: "update:pointer", newPointer: MovePointerEvent): void;
   (e: "update:selection", newSelection: SelectElementEvent): void;
   (e: "move-element", nodeMoveInfo: MoveElementEvent): void;
   (e: "hover-element", hoverInfo: HoverElementEvent): void;
@@ -334,6 +347,10 @@ const gridPointerPos = computed(() => {
   converted.x = Math.round(converted.x);
   converted.y = Math.round(converted.y);
   return converted;
+});
+watch(gridPointerPos, (pos) => {
+  if (!pos) return;
+  emit("update:pointer", { x: pos.x, y: pos.y });
 });
 const pointerIsWithinGrid = computed(() => {
   if (!gridPointerPos.value) return false;

@@ -11,6 +11,7 @@ use crate::{
     func::binding::LogLinePayload,
     qualification::QualificationCheckPayload,
     status::StatusMessage,
+    user::CursorPayload,
     AttributeValueId, ChangeSetPk, ComponentId, DalContext, PropId, SchemaPk, SocketId,
     StandardModelError, TransactionsError, WorkspacePk,
 };
@@ -20,6 +21,8 @@ use crate::{
 pub enum WsEventError {
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
+    #[error("no user in context")]
+    NoUserInContext,
     #[error("no workspace in tenancy")]
     NoWorkspaceInTenancy,
     #[error(transparent)]
@@ -46,6 +49,7 @@ pub enum WsPayload {
     CheckedQualifications(QualificationCheckPayload),
     CodeGenerated(CodeGeneratedPayload),
     ComponentCreated(ComponentCreatedPayload),
+    Cursor(CursorPayload),
     FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),
     LogLine(LogLinePayload),
@@ -98,6 +102,18 @@ pub struct WsEvent {
 }
 
 impl WsEvent {
+    pub async fn new_raw(
+        workspace_pk: WorkspacePk,
+        change_set_pk: ChangeSetPk,
+        payload: WsPayload,
+    ) -> WsEventResult<Self> {
+        Ok(WsEvent {
+            version: 1,
+            workspace_pk,
+            change_set_pk,
+            payload,
+        })
+    }
     pub async fn new(ctx: &DalContext, payload: WsPayload) -> WsEventResult<Self> {
         let workspace_pk = match ctx.tenancy().workspace_pk() {
             Some(pk) => pk,
@@ -106,13 +122,7 @@ impl WsEvent {
             }
         };
         let change_set_pk = ctx.visibility().change_set_pk;
-
-        Ok(WsEvent {
-            version: 1,
-            workspace_pk,
-            change_set_pk,
-            payload,
-        })
+        Self::new_raw(workspace_pk, change_set_pk, payload).await
     }
 
     pub fn workspace_pk(&self) -> WorkspacePk {

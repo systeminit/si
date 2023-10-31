@@ -183,6 +183,28 @@ export const useRealtimeStore = defineStore("realtime", () => {
     });
   }
 
+  const sendCursor = (req: {
+    changeSetPk: string | null;
+    container: "diagram" | null;
+    x: string;
+    y: string;
+  }) => {
+    if (!authStore.user) return;
+    /* eslint-disable no-empty */
+    try {
+      socket.send(
+        JSON.stringify({
+          kind: "Cursor",
+          data: {
+            userName: authStore.user.name,
+            userPk: authStore.user.pk,
+            ...req,
+          },
+        }),
+      );
+    } catch {}
+  };
+
   socket.addEventListener("message", (messageEvent) => {
     const messageEventData = JSON.parse(messageEvent.data);
     handleEvent(
@@ -198,6 +220,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
 
   return {
     connectionStatus,
+    sendCursor,
     // subscriptions, // can expose here to show in devtools
     subscribe,
     unsubscribe,

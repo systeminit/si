@@ -11,6 +11,7 @@ import CheckCircle from "~icons/heroicons/check-circle-20-solid";
 import CheckSquare from "./custom-icons/check-square.svg?raw";
 import CloudUpload from "~icons/mdi/cloud-upload";
 import CloudDownload from "~icons/mdi/cloud-download";
+import CursorArrayRays from "~icons/heroicons/cursor-arrow-rays";
 
 import EmptySquare from "./custom-icons/empty-square.svg?raw";
 
@@ -162,6 +163,7 @@ export const ICONS = Object.freeze({
   "component-plus": CubePlus,
   create: Create,
   "credit-card": CreditCard,
+  "cursor-array-rays": CursorArrayRays,
   diagram: Diagram,
   "dots-horizontal": DotsHorizontal,
   "dots-vertical": DotsVertical,

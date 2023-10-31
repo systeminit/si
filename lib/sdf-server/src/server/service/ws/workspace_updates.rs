@@ -77,12 +77,28 @@ mod workspace_updates {
     use std::error::Error;
 
     use axum::extract::ws::{self, WebSocket};
-    use dal::WorkspacePk;
+    use dal::{ChangeSetPk, UserPk, WorkspacePk, WsEvent, WsEventError};
     use futures::StreamExt;
+    use serde::{Deserialize, Serialize};
     use si_data_nats::{NatsClient, NatsError, Subscriber};
     use telemetry::prelude::*;
     use thiserror::Error;
     use tokio_tungstenite::tungstenite;
+
+    #[remain::sorted]
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+    #[serde(tag = "kind", content = "data")]
+    pub enum WebsocketEventRequest {
+        #[serde(rename_all = "camelCase")]
+        Cursor {
+            user_pk: UserPk,
+            user_name: String,
+            change_set_pk: Option<ChangeSetPk>,
+            container: Option<String>,
+            x: String,
+            y: String,
+        },
+    }
 
     pub fn run(nats: NatsClient, workspace_pk: WorkspacePk) -> WorkspaceUpdates {
         WorkspaceUpdates { nats, workspace_pk }
@@ -93,10 +109,16 @@ mod workspace_updates {
     pub enum WorkspaceUpdatesError {
         #[error("axum error: {0}")]
         Axum(#[from] axum::Error),
+        #[error("nats error: {0}")]
+        Nats(#[from] si_data_nats::Error),
+        #[error("serde json error: {0}")]
+        Serde(#[from] serde_json::Error),
         #[error("failed to subscribe to subject {1}")]
         Subscribe(#[source] NatsError, String),
         #[error("error when closing websocket")]
         WsClose(#[source] axum::Error),
+        #[error("wsevent error: {0}")]
+        WsEvent(#[from] WsEventError),
         #[error("error when sending websocket message")]
         WsSendIo(#[source] axum::Error),
     }
@@ -118,12 +140,18 @@ mod workspace_updates {
                 .await
                 .map_err(|err| WorkspaceUpdatesError::Subscribe(err, subject))?;
 
-            Ok(WorkspaceUpdatesStarted { subscriber })
+            Ok(WorkspaceUpdatesStarted {
+                nats: self.nats.clone(),
+                workspace_pk: self.workspace_pk,
+                subscriber,
+            })
         }
     }
 
     #[derive(Debug)]
     pub struct WorkspaceUpdatesStarted {
+        workspace_pk: WorkspacePk,
+        nats: NatsClient,
         subscriber: Subscriber,
     }
 
@@ -135,7 +163,22 @@ mod workspace_updates {
                 tokio::select! {
                     msg = ws.recv() => {
                         match msg {
-                            Some(Ok(_)) => {},
+                            Some(Ok(message)) => if let ws::Message::Text(msg) = message {
+                                let event: WebsocketEventRequest = match serde_json::from_str(&msg) {
+                                    Ok(event) => event,
+                                    Err(err) => {
+                                        error!("Unable to deserialize websocket message: {err}");
+                                        continue;
+                                    }
+                                };
+                                match event {
+                                    WebsocketEventRequest::Cursor { user_pk, user_name, change_set_pk, container, x, y } => {
+                                        let subject = format!("si.workspace_pk.{}.event", self.workspace_pk);
+                                        let event = WsEvent::cursor(self.workspace_pk, change_set_pk.unwrap_or(ChangeSetPk::NONE), user_pk, user_name, x, y, container).await?;
+                                        self.nats.publish(subject, serde_json::to_vec(&event)?).await?;
+                                    }
+                                }
+                            },
                             Some(Err(err)) => return Err(err.into()),
                             None => return Ok(WorkspaceUpdatesClosing { ws_is_closed: true }),
                         }
