@@ -88,6 +88,11 @@ export interface SecretDefinition {
 }
 
 export type SecretsHashMap = Record<SecretDefinitionId, Secret[]>;
+export type SecretsOrderedArray = {
+  id: SecretDefinitionId;
+  latestChange: string | undefined;
+  secrets: Secret[];
+}[];
 export type SecretsDefinitionHashMap = Record<
   SecretDefinitionId,
   {
@@ -130,6 +135,49 @@ export function useSecretsStore() {
             },
           );
         },
+        secretsByLastCreated(state): SecretsOrderedArray {
+          const out = [] as SecretsOrderedArray;
+
+          for (const [key, value] of Object.entries(
+            state.secretDefinitionByDefinitionId,
+          )) {
+            let change: string | undefined;
+            value.secrets.forEach((secret) => {
+              if (!change) change = secret.createdInfo.timestamp;
+              if (new Date(secret.createdInfo.timestamp) > new Date(change)) {
+                change = secret.createdInfo.timestamp;
+              }
+              if (
+                secret.updatedInfo &&
+                new Date(secret.updatedInfo.timestamp) > new Date(change)
+              ) {
+                change = secret.updatedInfo.timestamp;
+              }
+            });
+
+            out.push({
+              id: key,
+              latestChange: change,
+              secrets: value.secrets,
+            });
+          }
+
+          out.sort((a, b) => {
+            if (!a.latestChange && !b.latestChange) return 0;
+            else if (!a.latestChange && b.latestChange) return 1;
+            else if (a.latestChange && !b.latestChange) return -1;
+            else if (a.latestChange && b.latestChange) {
+              if (new Date(a.latestChange) > new Date(b.latestChange)) {
+                return -1;
+              } else if (new Date(a.latestChange) < new Date(b.latestChange)) {
+                return 1;
+              }
+            }
+            return 0;
+          });
+
+          return out;
+        },
         secrets(): Secret[] {
           return _.flatMap(this.secretsByDefinitionId);
         },
@@ -157,6 +205,114 @@ export function useSecretsStore() {
             },
             onSuccess: (response) => {
               this.secretDefinitionByDefinitionId = response;
+            },
+          });
+        },
+        async UPDATE_SECRET(secret: Secret, value?: Record<string, string>) {
+          if (_.isEmpty(secret.name)) {
+            throw new Error("All secrets must have a name.");
+          }
+
+          if (this.secretsByDefinitionId[secret.definition] === undefined) {
+            throw new Error(
+              "All secrets must be created based on a definition.",
+            );
+          }
+
+          const user = useAuthStore().user;
+
+          if (_.isNil(user)) {
+            throw new Error("All secrets must be created by a specific user.");
+          }
+
+          const { id, name, definition, description, createdInfo } = secret;
+          const params = {
+            ...visibilityParams,
+            id,
+            name,
+            description,
+            newSecretData: null,
+          } as {
+            visibility_change_set_pk: string | null;
+            workspaceId: string | null;
+            name: string;
+            description: string;
+            newSecretData: {
+              crypted: number[];
+              keyPairPk: string;
+              version: SecretVersion;
+              algorithm: SecretAlgorithm;
+            } | null;
+          };
+
+          if (value) {
+            // Encrypt Value
+            if (_.isNil(this.publicKey)) {
+              throw new Error("Couldn't fetch publicKey.");
+            }
+
+            const algorithm = SecretAlgorithm.Sealedbox;
+            const version = SecretVersion.V1;
+
+            const keyPairPk = this.publicKey.pk;
+
+            const crypted = await encryptMessage(value, this.publicKey);
+
+            params.newSecretData = {
+              algorithm,
+              version,
+              keyPairPk,
+              crypted,
+            };
+          }
+
+          return new ApiRequest<Secret>({
+            method: "patch",
+            url: "secret",
+            params,
+            optimistic: () => {
+              const { pk: userId, name: userName } = user;
+
+              this.secretDefinitionByDefinitionId[
+                secret.definition
+              ]?.secrets?.filter((s) => {
+                return s.id !== secret.id;
+              });
+              this.secretDefinitionByDefinitionId[
+                secret.definition
+              ]?.secrets?.push({
+                id,
+                name,
+                definition,
+                description,
+                createdInfo,
+                updatedInfo: {
+                  actor: { kind: "user", label: userName, id: userId },
+                  timestamp: Date(),
+                },
+              });
+              this.secretIsTransitioning[id] = true;
+
+              return () => {
+                const definition = this.secretDefinitionByDefinitionId[id];
+
+                if (definition === undefined) return;
+
+                definition.secrets = definition.secrets.filter(
+                  (s) => s.id !== id,
+                );
+                this.secretIsTransitioning[id] = false;
+              };
+            },
+            onSuccess: (response) => {
+              const definition = this.secretDefinitionByDefinitionId[id];
+
+              if (definition === undefined) return;
+
+              definition.secrets = definition.secrets.map((s) =>
+                s.id === id ? response : s,
+              );
+              this.secretIsTransitioning[id] = false;
             },
           });
         },

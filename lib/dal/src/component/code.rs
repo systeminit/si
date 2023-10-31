@@ -15,6 +15,8 @@ use crate::{RootPropChild, WsEventResult};
 struct CodeGenerationEntry {
     pub code: Option<String>,
     pub format: Option<String>,
+    #[serde(default)]
+    pub message: Option<String>,
 }
 
 impl Component {
@@ -86,7 +88,9 @@ impl Component {
                     Some(code.clone())
                 };
 
-                code_views.push(CodeView::new(language, code));
+                let message = entry.message.clone();
+
+                code_views.push(CodeView::new(language, code, message));
             }
         }
         Ok(code_views)

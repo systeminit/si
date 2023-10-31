@@ -13,4 +13,7 @@ pub struct SchemaVariantDefinitionRequest {
 pub struct SchemaVariantDefinitionResultSuccess {
     pub execution_id: String,
     pub definition: serde_json::Value,
+    // Collects the error if the function throws
+    #[serde(default)]
+    pub error: Option<String>,
 }

@@ -8,7 +8,13 @@
         )
       "
     >
-      <Icon name="plus-circle" size="xs" class="shrink-0" />
+      <StatusIndicatorIcon
+        type="change"
+        status="added"
+        size="xs"
+        class="shrink-0"
+        tone="inherit"
+      />
       <div class="grow truncate">
         {{ formatters.timeAgo(created.timestamp) }} by
         {{ created.actor.label }}
@@ -27,7 +33,13 @@
         )
       "
     >
-      <Icon name="tilde-circle" size="xs" />
+      <StatusIndicatorIcon
+        type="change"
+        status="modified"
+        size="xs"
+        class="shrink-0"
+        tone="inherit"
+      />
       <div class="grow truncate">
         {{ formatters.timeAgo(modified?.timestamp) }} by
         {{ modified?.actor.label }}
@@ -37,7 +49,13 @@
       v-if="changeStatus === 'deleted'"
       class="flex flex-row gap-2xs items-center text-destructive-500"
     >
-      <Icon name="minus-circle" size="xs" />
+      <StatusIndicatorIcon
+        type="change"
+        status="deleted"
+        size="xs"
+        class="shrink-0"
+        tone="inherit"
+      />
       <div class="grow truncate">
         {{ formatters.timeAgo(deleted?.timestamp) }} by
         {{ deleted?.actor.label }}
@@ -50,9 +68,9 @@
 import { PropType } from "vue";
 import clsx from "clsx";
 import { formatters } from "@si/vue-lib";
-import { Icon } from "@si/vue-lib/design-system";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp } from "@/store/components.store";
+import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 const props = defineProps({
   changeStatus: { type: String as PropType<ChangeStatus> },

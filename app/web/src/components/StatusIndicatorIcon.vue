@@ -1,27 +1,25 @@
 <template>
-  <Icon :name="iconName" :tone="iconTone" :size="size" />
+  <Icon
+    :name="iconName"
+    :tone="tone !== 'inherit' ? iconTone : undefined"
+    :size="size"
+  />
 </template>
 
 <script lang="ts">
 const CONFIG = {
   change: {
-    added: { iconName: "plus-circle", tone: "success" },
-    deleted: { iconName: "x", tone: "destructive" },
-    modified: { iconName: "component-changes-large", tone: "warning" },
-    unmodified: { iconName: "empty-square", tone: "empty" },
-  },
-  confirmation: {
-    success: { iconName: "component-qualified-large", tone: "success" },
-    failure: { iconName: "component-not-qualified-large", tone: "destructive" },
-    running: { iconName: "loader", tone: "action" },
-    _default: { iconName: "check-circle", tone: "success" },
+    added: { iconName: "plus-square", tone: "success" },
+    deleted: { iconName: "minus-square", tone: "destructive" },
+    modified: { iconName: "tilde-square", tone: "warning" },
+    unmodified: { iconName: "empty", tone: "empty" },
   },
   qualification: {
-    success: { iconName: "component-qualified-large", tone: "success" },
-    warning: { iconName: "component-not-qualified-large", tone: "warning" },
-    failure: { iconName: "component-not-qualified-large", tone: "destructive" },
+    success: { iconName: "check-hex-outline", tone: "success" },
+    warning: { iconName: "x-hex-outline", tone: "warning" },
+    failure: { iconName: "x-hex-outline", tone: "destructive" },
     running: { iconName: "loader", tone: "action" },
-    notexists: { iconName: "empty-square", tone: "empty" },
+    notexists: { iconName: "empty", tone: "empty" },
   },
   fix: {
     success: { iconName: "check2", tone: "success" },
@@ -30,8 +28,8 @@ const CONFIG = {
     running: { iconName: "loader", tone: "action" },
   },
   resource: {
-    exists: { iconName: "resource-passed-large", tone: "success" },
-    notexists: { iconName: "empty-square", tone: "empty" },
+    exists: { iconName: "check-hex", tone: "success" },
+    notexists: { iconName: "x-hex", tone: "destructive" },
   },
   action: {
     create: { iconName: "resource-create", tone: "success" },
@@ -84,7 +82,7 @@ const props = defineProps({
   status: { type: String },
   size: { type: String as PropType<IconSizes> },
   tone: {
-    type: String as PropType<Tones>,
+    type: String as PropType<Tones | "inherit">,
     required: false,
   },
 });

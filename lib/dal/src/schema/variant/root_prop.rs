@@ -4,14 +4,7 @@
 use strum::{AsRefStr, Display as EnumDisplay, EnumIter, EnumString};
 use telemetry::prelude::*;
 
-
-
-
-
-
-use crate::{
-    PropId, StandardModel,
-};
+use crate::{PropId, StandardModel};
 
 pub mod component_type;
 

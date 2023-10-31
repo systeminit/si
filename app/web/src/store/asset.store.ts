@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import { FuncVariant } from "@/api/sdf/dal/func";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
@@ -91,7 +92,6 @@ export interface VariantDef extends ListedVariantDef {
   link?: string;
   schemaVariantId?: string;
   code: string;
-  handler: string;
   types?: string;
   hasComponents: boolean;
   hasAttrFuncs: boolean;
@@ -128,13 +128,16 @@ export const useAssetStore = () => {
     visibility_change_set_pk: changeSetId || "XXX",
   };
 
+  const workspacesStore = useWorkspacesStore();
+  const workspaceId = workspacesStore.selectedWorkspacePk;
+
   const funcsStore = useFuncStore();
   const featureFlagsStore = useFeatureFlagsStore();
 
   let assetSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
   return addStoreHooks(
-    defineStore(`cs${changeSetId || "NONE"}/asset`, {
+    defineStore(`ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/asset`, {
       state: () => ({
         assetList: [] as AssetListEntry[],
         assetsById: {} as Record<AssetId, Asset>,
@@ -239,7 +242,6 @@ export const useAssetStore = () => {
             id: nilId(),
             name: `new asset ${Math.floor(Math.random() * 10000)}`,
             code: "",
-            handler: "",
             color: this.generateMockColor(),
             description: "",
             category: "",

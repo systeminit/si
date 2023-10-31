@@ -1,10 +1,10 @@
 <template>
   <div class="flex flex-col w-full max-h-full overflow-hidden">
     <div
+      v-if="showTitle"
       class="flex flex-row items-center justify-between p-2 text-base align-middle"
       :class="titleClasses"
     >
-      <!-- NOTE(nick): add defaults for title if the need arises -->
       <slot name="title"
         ><div v-if="title" class="text-lg">{{ title }}</div>
       </slot>
@@ -20,10 +20,23 @@
         <slot name="actionButtons"></slot>
       </div>
     </div>
+    <SiButtonIcon
+      v-if="!showTitle"
+      tooltipText="Copy code to clipboard"
+      ignoreTextColor
+      icon="clipboard-copy"
+      :class="
+        clsx(
+          'absolute z-100 right-xs',
+          numberOfLinesInCode > 1 ? 'top-xs' : 'top-[2px]',
+        )
+      "
+      @click="copyCodeToClipboard"
+    />
     <div
       :class="
         clsx(
-          'w-full h-full overflow-auto mt-xs',
+          'w-full h-full overflow-auto',
           border && 'border',
           themeClasses('border-neutral-300', 'dark:border-neutral-600'),
         )
@@ -72,12 +85,17 @@ const props = defineProps({
 
   // // could add validation fns?
   // // Format: "0.0px"
-  fontSize: { type: String },
+  fontSize: { type: String, default: "13px" },
   // // Format: "0.0px" or "0%"
   height: { type: String },
+  showTitle: { type: Boolean },
   title: { type: String },
   titleClasses: { type: String, default: "h-10" },
   border: { type: Boolean, default: false },
+});
+
+const numberOfLinesInCode = computed(() => {
+  return (String(props.code).match(/\n/g) || "").length + 1;
 });
 
 const { theme } = useTheme();

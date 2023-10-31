@@ -32,7 +32,6 @@ pub struct GetVariantDefResponse {
     pub link: Option<String>,
     pub description: Option<String>,
     pub code: String,
-    pub handler: String,
     pub schema_variant_id: Option<SchemaVariantId>,
     pub component_type: ComponentType,
     pub funcs: Vec<ListedFuncView>,
@@ -58,7 +57,6 @@ impl From<SchemaVariantDefinition> for GetVariantDefResponse {
             funcs: vec![],
             schema_variant_id: None,
             component_type: *def.component_type(),
-            handler: "".to_string(), //TODO @stack72
             types: "".to_string(),
             has_components: false,
             has_attr_funcs: false,
@@ -99,12 +97,6 @@ pub async fn get_variant_def(
             .ok_or(SchemaVariantDefinitionError::FuncIsEmpty(
                 variant_def.func_id(),
             ))?;
-    response.handler = asset_func
-        .handler()
-        .ok_or(SchemaVariantDefinitionError::FuncHasNoHandler(
-            variant_def.func_id(),
-        ))?
-        .into();
 
     if let Some(variant_id) = variant_id {
         response.funcs = SchemaVariant::all_funcs(&ctx, variant_id)

@@ -164,6 +164,10 @@ impl PropPath {
         &self.0
     }
 
+    pub fn as_parts(&self) -> Vec<&str> {
+        self.0.split(PROP_PATH_SEPARATOR).collect()
+    }
+
     pub fn as_owned_parts(&self) -> Vec<String> {
         self.0.split(PROP_PATH_SEPARATOR).map(Into::into).collect()
     }
@@ -174,6 +178,20 @@ impl PropPath {
 
     pub fn with_replaced_sep(&self, sep: &str) -> String {
         self.0.to_owned().replace(PROP_PATH_SEPARATOR, sep)
+    }
+
+    /// Returns true if this PropPath is a descendant (at any depth) of `maybe_parent`
+    pub fn is_descendant_of(&self, maybe_parent: &PropPath) -> bool {
+        let this_parts = self.as_parts();
+        let maybe_parent_parts = maybe_parent.as_parts();
+
+        for (idx, parent_part) in maybe_parent_parts.iter().enumerate() {
+            if Some(parent_part) != this_parts.get(idx) {
+                return false;
+            }
+        }
+
+        true
     }
 }
 

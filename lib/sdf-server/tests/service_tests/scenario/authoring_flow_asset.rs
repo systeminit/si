@@ -30,7 +30,7 @@ async fn authoring_flow_asset(
 
     // Update the asset with the schema
     // harness.update_asset(&ctx, )
-    let asset_definition = r#"function createAsset() {
+    let asset_definition = r#"function main() {
         const imageProp = new PropBuilder()
             .setKind("string")
             .setName("image")

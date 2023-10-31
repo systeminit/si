@@ -17,6 +17,13 @@ import {
 // once things are working again, we should do a big review of all the realtime events coming from the backend...
 
 export type WsEventPayloadMap = {
+  Cursor: {
+    x: string;
+    y: string;
+    container: string;
+    userPk: string;
+    userName: string;
+  };
   ChangeSetCreated: string;
   ChangeSetApplied: string;
   ChangeSetWritten: string;
@@ -72,6 +79,16 @@ export type WsEventPayloadMap = {
   ComponentCreated: {
     success: boolean;
   };
+
+  ModuleImported:
+    | {
+        kind: "workspaceBackup";
+        workspacePk?: string | null;
+      }
+    | {
+        kind: "module";
+        schemaVariantIds: string[];
+      };
 
   // Old fake status update
   // UpdateStatus: {

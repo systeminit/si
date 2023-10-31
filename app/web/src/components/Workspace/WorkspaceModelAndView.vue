@@ -1,5 +1,6 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
+  <!-- left panel - outline + asset palette -->
   <ResizablePanel
     rememberSizeKey="changeset-and-asset"
     side="left"
@@ -20,7 +21,11 @@
     </template>
   </ResizablePanel>
 
-  <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
+  <div
+    class="grow h-full relative bg-neutral-50 dark:bg-neutral-900"
+    @mouseover="mouseOverDiagram"
+    @mouseout="mouseOutDiagram"
+  >
     <!--div
       v-if="!statusStore.globalStatus.isUpdating && isViewMode"
       :class="
@@ -40,6 +45,7 @@
       :customConfig="diagramCustomConfig"
       :nodes="diagramNodes"
       :edges="diagramEdges"
+      :cursors="cursors"
       @insert-element="onDiagramInsertElement"
       @hover-element="onDiagramHoverElement"
       @move-element="onDiagramMoveElement"
@@ -47,6 +53,7 @@
       @group-elements="onGroupElements"
       @draw-edge="onDrawEdge"
       @delete-elements="onDiagramDelete"
+      @update:pointer="updatePointer"
       @update:selection="onDiagramUpdateSelection"
       @right-click-element="onRightClickElement"
     />
@@ -54,180 +61,29 @@
     <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
   </div>
 
+  <!-- Right panel (selection details) -->
   <ResizablePanel
     rememberSizeKey="details-panel"
     side="right"
     :defaultSize="380"
-    :minSize="300"
+    :minSize="350"
     :disableSubpanelResizing="!changesPanelRef?.isOpen"
   >
-    <template #subpanel1>
-      <Collapsible
-        ref="changesPanelRef"
-        contentClasses="grow relative"
-        :defaultOpen="openCollapsible"
-        class="flex flex-col h-full"
-      >
-        <template #label>
-          <span
-            class="flex flex-row items-center justify-center w-full text-neutral-400 gap-2"
-          >
-            <strong class="grow uppercase text-lg my-2">
-              <template v-if="changeSetStore.headSelected"
-                >Applied Changes</template
-              >
-              <template v-else>Changes</template>
-            </strong>
-            <template v-if="!changeSetStore.headSelected">
-              <ApplyChangeSetButton />
-              <strong
-                class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
-              >
-                {{
-                  1 +
-                  diffs.length +
-                  (changeSetStore.selectedChangeSet?.actions?.length ?? 0)
-                }}
-              </strong>
-            </template>
-          </span>
-        </template>
-
-        <!-- <ApplyHistory  /> -->
-        <TabGroup
-          rememberSelectedTabKey="proposed_right"
-          trackingSlug="actions_applied"
-        >
-          <TabGroupItem
-            v-if="!changeSetStore.headSelected"
-            label="Proposed"
-            slug="actions_proposed"
-          >
-            <div
-              :class="
-                clsx(
-                  'flex flex-row gap-xs items-center text-sm p-xs border-b',
-                  themeClasses('border-neutral-200', 'border-neutral-600'),
-                )
-              "
-            >
-              <Icon name="git-branch" />
-              <div class="flex flex-col">
-                <div class="">Created Change Set</div>
-                <div class="text-neutral-400 truncate">
-                  {{
-                    changeSetStore.headSelected
-                      ? "head"
-                      : changeSetStore.selectedChangeSet?.name
-                  }}
-                </div>
-              </div>
-            </div>
-
-            <div
-              v-for="diff in diffs"
-              :key="diff.componentId"
-              :class="
-                clsx(
-                  'flex flex-row gap-xs items-center text-sm p-xs border-b',
-                  themeClasses('border-neutral-200', 'border-neutral-600'),
-                )
-              "
-            >
-              <StatusIndicatorIcon
-                type="change"
-                :status="diff.status"
-                tone="shade"
-              />
-              <div class="flex flex-col">
-                <div class="">
-                  <span v-if="diff.status === 'added'">Added</span>
-                  <span v-if="diff.status === 'deleted'">Removed</span>
-                  <span v-if="diff.status === 'modified'">Modified</span>
-                  {{
-                    componentsStore.componentsById[diff.componentId]?.schemaName
-                  }}
-                </div>
-                <div class="text-neutral-400 truncate">
-                  {{
-                    componentsStore.componentsById[diff.componentId]
-                      ?.displayName
-                  }}
-                </div>
-              </div>
-            </div>
-
-            <div
-              v-for="action in actionsStore.proposedActions"
-              :key="action.actionInstanceId"
-              :class="
-                clsx(
-                  'border-b',
-                  themeClasses('border-neutral-200', 'border-neutral-600'),
-                )
-              "
-            >
-              <ActionSprite
-                :action="action"
-                @remove="actionsStore.REMOVE_ACTION(action.actionInstanceId)"
-              />
-            </div>
-            <div
-              v-if="!actionsStore.proposedActions?.length"
-              class="p-4 italic !delay-0 !duration-0 hidden first:block"
-            >
-              <div class="pb-sm">No actions were chosen at this time.</div>
-            </div>
-          </TabGroupItem>
-
-          <TabGroupItem label="Applied" slug="actions_applied">
-            <ApplyHistory />
-          </TabGroupItem>
-        </TabGroup>
-      </Collapsible>
-    </template>
-
-    <template #subpanel2>
-      <div class="flex flex-col h-full">
-        <SidebarSubpanelTitle>Selected Asset(s)</SidebarSubpanelTitle>
-
-        <div class="flex-1 overflow-hidden">
-          <template v-if="selectedEdge">
-            <EdgeDetailsPanel
-              @delete="triggerDeleteSelection"
-              @restore="triggerRestoreSelection"
-            />
-          </template>
-          <template v-else-if="selectedComponent">
-            <ComponentDetails
-              v-if="selectedComponent"
-              :key="selectedComponent.id"
-              @delete="triggerDeleteSelection"
-              @restore="triggerRestoreSelection"
-            />
-          </template>
-          <template v-else-if="selectedComponentIds.length">
-            <MultiSelectDetailsPanel />
-          </template>
-          <template v-else>
-            <div class="flex flex-col items-center text-neutral-400">
-              <EmptyStateIcon name="no-assets" class="mt-3" />
-              <span class="text-xl dark:text-neutral-300"
-                >No Assets Selected</span
-              >
-              <div class="capsize px-xs py-md italic text-sm text-center">
-                <template v-if="componentsStore.allComponents.length === 0">
-                  Your model is currently empty.
-                </template>
-                <template v-else
-                  >Click something on the diagram to select it.
-                </template>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-    </template>
+    <div class="h-full overflow-hidden relative">
+      <EdgeDetailsPanel
+        v-if="selectedEdge"
+        @delete="triggerDeleteSelection"
+        @restore="triggerRestoreSelection"
+      />
+      <ComponentDetails
+        v-else-if="selectedComponent"
+        :key="selectedComponent.id"
+        @delete="triggerDeleteSelection"
+        @restore="triggerRestoreSelection"
+      />
+      <MultiSelectDetailsPanel v-else-if="selectedComponentIds.length > 1" />
+      <NoSelectionDetailsPanel v-else />
+    </div>
   </ResizablePanel>
 
   <Modal ref="actionBlockedModalRef" :title="actionBlockedModalTitle">
@@ -262,7 +118,7 @@
       <p>
         Items that exist on HEAD will be marked for deletion, and removed from
         the model when this change set is merged. Items that were created in
-        this changeset will be deleted immediately.
+        this change set will be deleted immediately.
       </p>
 
       <div class="flex space-x-sm justify-end">
@@ -284,23 +140,17 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, onMounted, ref, watch } from "vue";
+import { onBeforeUnmount, computed, onMounted, ref, watch } from "vue";
 import plur from "plur";
 import {
   Collapsible,
   VButton,
   Modal,
   Stack,
-  TabGroup,
-  TabGroupItem,
   DropdownMenu,
   DropdownMenuItemObjectDef,
   ResizablePanel,
-  themeClasses,
-  Icon,
 } from "@si/vue-lib/design-system";
-import clsx from "clsx";
-import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import {
   ComponentId,
@@ -309,12 +159,10 @@ import {
 } from "@/store/components.store";
 import { useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import ActionSprite from "@/components/ActionSprite.vue";
-import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FixProgressOverlay from "@/components/FixProgressOverlay.vue";
-import { useActionsStore } from "@/store/actions.store";
+import { useAuthStore } from "@/store/auth.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
-import ApplyHistory from "../ApplyHistory.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
   InsertElementEvent,
@@ -329,18 +177,118 @@ import {
   ResizeElementEvent,
   DiagramEdgeData,
   HoverElementEvent,
+  MovePointerEvent,
+  DiagramCursorDef,
 } from "../GenericDiagram/diagram_types";
 import ComponentOutline from "../ComponentOutline/ComponentOutline.vue";
 import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
 import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
 import ComponentCard from "../ComponentCard.vue";
 import EdgeCard from "../EdgeCard.vue";
-import EmptyStateIcon from "../EmptyStateIcon.vue";
-import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
+import NoSelectionDetailsPanel from "../NoSelectionDetailsPanel.vue";
 
+const realtimeStore = useRealtimeStore();
 const changeSetStore = useChangeSetsStore();
 const fixesStore = useFixesStore();
-const actionsStore = useActionsStore();
+const authStore = useAuthStore();
+
+const MOUSE_REFRESH_RATE = 20;
+const mouse = ref<{
+  x: number | null;
+  y: number | null;
+  container: "diagram" | null;
+}>({ x: null, y: null, container: null });
+const mouseOverDiagram = () => {
+  if (mouse.value.container === "diagram") return;
+  cursors.value = {};
+  mouse.value = { container: "diagram", x: null, y: null };
+};
+const mouseOutDiagram = () => {
+  if (mouse.value.container === null) return;
+  cursors.value = {};
+  mouse.value = { container: null, x: 0, y: 0 };
+};
+const cursors = ref<Record<string, DiagramCursorDef>>({});
+const streamCursor = _.debounce(() => {
+  const toDelete = [];
+  for (const key in cursors.value) {
+    const cursor = cursors.value[key];
+    if (!cursor) return;
+
+    if (new Date().getTime() - cursor.timestamp.getTime() > 5000) {
+      toDelete.push(key);
+    }
+  }
+  for (const key of toDelete) {
+    delete cursors.value[key];
+  }
+
+  if (mouse.value.x === null || mouse.value.y === null) return;
+
+  const changeSetPk = changeSetStore.selectedChangeSetId;
+  if (mouse.value.container === "diagram") {
+    realtimeStore.sendCursor({
+      changeSetPk,
+      container: mouse.value.container,
+      x: `${mouse.value.x}`,
+      y: `${mouse.value.y}`,
+    });
+  } else {
+    // Avoids sending the cursor twice if outside of the diagram for now
+    mouse.value.x = null;
+    mouse.value.y = null;
+
+    realtimeStore.sendCursor({
+      changeSetPk,
+      container: null,
+      x: "0",
+      y: "0",
+    });
+  }
+}, MOUSE_REFRESH_RATE);
+const interval = setInterval(streamCursor, 4500);
+const updatePointer = (pos: MovePointerEvent) => {
+  if (mouse.value.container === "diagram") {
+    mouse.value.x = pos.x;
+    mouse.value.y = pos.y;
+  }
+  streamCursor();
+};
+watch(
+  () => changeSetStore.selectedChangeSetId,
+  (changeSetId) => {
+    realtimeStore.unsubscribe("workspace-model-and-view");
+    realtimeStore.subscribe(
+      "workspace-model-and-view",
+      `changeset/${changeSetId}`,
+      {
+        eventType: "Cursor",
+        callback: (payload) => {
+          if (payload.userPk === authStore.user?.pk) return;
+          if (payload.container !== "diagram") {
+            delete cursors.value[payload.userPk];
+          } else {
+            /* eslint-disable no-empty */
+            try {
+              cursors.value[payload.userPk] = {
+                x: parseInt(payload.x),
+                y: parseInt(payload.y),
+                userPk: payload.userPk,
+                userName: payload.userName,
+                timestamp: new Date(),
+              };
+            } catch {}
+          }
+        },
+      },
+    );
+  },
+  { immediate: true },
+);
+onBeforeUnmount(() => {
+  realtimeStore.unsubscribe("workspace-model-and-view");
+  clearInterval(interval);
+});
 
 const fixesAreRunning = computed(
   () =>
@@ -348,32 +296,10 @@ const fixesAreRunning = computed(
     changeSetStore.getRequestStatus("APPLY_CHANGE_SET").value.isPending,
 );
 
-const diffs = computed(() => {
-  const arr = Object.values(componentsStore.componentsById)
-    .filter((c) => c.changeStatus !== "unmodified")
-    .map((c) => {
-      let updatedAt = c.updatedInfo.timestamp;
-      if (c.changeStatus === "added") {
-        updatedAt = c.createdInfo.timestamp;
-      } else if (c.changeStatus === "deleted" && c.deletedInfo) {
-        updatedAt = c.deletedInfo.timestamp;
-      }
-
-      return {
-        componentId: c.id,
-        status: c.changeStatus,
-        updatedAt,
-      };
-    });
-  arr.sort(
-    (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
-  );
-  return arr;
-});
-
 const openCollapsible = ref(true);
 
 onMounted(() => {
+  cursors.value = {};
   if (changeSetStore.headSelected) {
     openCollapsible.value = !!window.localStorage.getItem("applied-changes");
     window.localStorage.removeItem("applied-changes");

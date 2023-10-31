@@ -16,13 +16,6 @@
     >
       <slot v-if="tabContentSlug === 'packages'" />
     </TabGroupItem>
-    <TabGroupItem
-      v-if="featureFlagsStore.SECRETS"
-      slug="secrets"
-      label="SECRETS"
-    >
-      <slot v-if="tabContentSlug === 'secrets'" />
-    </TabGroupItem>
   </TabGroup>
 </template>
 
@@ -38,7 +31,7 @@ const featureFlagsStore = useFeatureFlagsStore();
 
 defineProps({
   tabContentSlug: {
-    type: String as PropType<"assets" | "functions" | "packages" | "secrets">,
+    type: String as PropType<"assets" | "functions" | "packages">,
     required: true,
   },
 });

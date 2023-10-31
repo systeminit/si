@@ -35,6 +35,14 @@ impl FuncDispatch for FuncBackendJsSchemaVariantDefinition {
         let value = veritech
             .execute_schema_variant_definition(output_tx.clone(), &self.request)
             .await?;
+        let value = match value {
+            FunctionResult::Failure(failure) => FunctionResult::Success(Self::Output {
+                execution_id: failure.execution_id,
+                definition: serde_json::Value::Null,
+                error: Some(failure.error.message.clone()),
+            }),
+            FunctionResult::Success(value) => FunctionResult::Success(value),
+        };
 
         Ok(value)
     }
@@ -43,8 +51,7 @@ impl FuncDispatch for FuncBackendJsSchemaVariantDefinition {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct SchemaVariantDefinitionRunResult {
     pub definition: serde_json::Value,
-    #[serde(default)]
-    pub logs: Vec<String>,
+    pub error: Option<String>,
 }
 
 impl ExtractPayload for SchemaVariantDefinitionResultSuccess {
@@ -53,7 +60,7 @@ impl ExtractPayload for SchemaVariantDefinitionResultSuccess {
     fn extract(self) -> FuncBackendResult<Self::Payload> {
         Ok(SchemaVariantDefinitionRunResult {
             definition: self.definition,
-            logs: Default::default(),
+            error: self.error,
         })
     }
 }

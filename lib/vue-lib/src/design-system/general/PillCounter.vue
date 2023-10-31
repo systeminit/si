@@ -1,6 +1,12 @@
 <template>
   <div
-    class="inline-block rounded-2xl px-2.5 border border-success-500 ui-selected:bg-success-500 ui-selected:text-neutral-900 text-success-500"
+    v-if="count !== 0 || showIfZero"
+    :class="
+      clsx(
+        'inline-block rounded-2xl px-xs border border-current dark:text-neutral-300 text-neutral-600',
+        size && `text-${size}`,
+      )
+    "
   >
     {{ count }}
   </div>
@@ -8,11 +14,16 @@
 
 <script setup lang="ts">
 import { PropType } from "vue";
+import clsx from "clsx";
 import { Tones } from "../utils/color_utils";
 
 const props = defineProps({
   count: Number,
   // TODO: implement color/tone options
   tone: { type: String as PropType<Tones>, default: "success" },
+  size: {
+    type: String as PropType<"xs" | "sm" | "md" | "base" | "lg" | "xl" | "2xl">,
+  },
+  showIfZero: { type: Boolean },
 });
 </script>

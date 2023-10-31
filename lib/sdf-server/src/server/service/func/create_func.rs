@@ -70,15 +70,11 @@ pub struct CreateFuncResponse {
     pub code: Option<String>,
 }
 
-pub static DEFAULT_ATTRIBUTE_CODE_HANDLER: &str = "setAttribute";
+pub static DEFAULT_CODE_HANDLER: &str = "main";
 pub static DEFAULT_ATTRIBUTE_CODE: &str = include_str!("./defaults/attribute.ts");
-pub static DEFAULT_CODE_GENERATION_HANDLER: &str = "generateCode";
 pub static DEFAULT_CODE_GENERATION_CODE: &str = include_str!("./defaults/code_generation.ts");
-pub static DEFAULT_QUALIFICATION_HANDLER: &str = "qualification";
 pub static DEFAULT_QUALIFICATION_CODE: &str = include_str!("./defaults/qualification.ts");
-pub static DEFAULT_ACTION_HANDLER: &str = "action";
 pub static DEFAULT_ACTION_CODE: &str = include_str!("./defaults/action.ts");
-pub static DEFAULT_VALIDATION_HANDLER: &str = "validate";
 pub static DEFAULT_VALIDATION_CODE: &str = include_str!("./defaults/validation.ts");
 
 async fn create_func_stub(
@@ -113,7 +109,7 @@ async fn create_validation_func(
         FuncVariant::Validation,
         FuncBackendResponseType::Validation,
         DEFAULT_VALIDATION_CODE,
-        DEFAULT_VALIDATION_HANDLER,
+        DEFAULT_CODE_HANDLER,
     )
     .await?;
 
@@ -165,7 +161,7 @@ async fn create_action_func(
         FuncVariant::Action,
         FuncBackendResponseType::Action,
         DEFAULT_ACTION_CODE,
-        DEFAULT_ACTION_HANDLER,
+        DEFAULT_CODE_HANDLER,
     )
     .await?;
 
@@ -225,17 +221,17 @@ async fn create_attribute_func(
     let (code, handler, response_type) = match variant {
         FuncVariant::Attribute => (
             DEFAULT_ATTRIBUTE_CODE,
-            DEFAULT_ATTRIBUTE_CODE_HANDLER,
+            DEFAULT_CODE_HANDLER,
             FuncBackendResponseType::Unset,
         ),
         FuncVariant::CodeGeneration => (
             DEFAULT_CODE_GENERATION_CODE,
-            DEFAULT_CODE_GENERATION_HANDLER,
+            DEFAULT_CODE_HANDLER,
             FuncBackendResponseType::CodeGeneration,
         ),
         FuncVariant::Qualification => (
             DEFAULT_QUALIFICATION_CODE,
-            DEFAULT_QUALIFICATION_HANDLER,
+            DEFAULT_CODE_HANDLER,
             FuncBackendResponseType::Qualification,
         ),
         _ => {

@@ -1,7 +1,10 @@
-import { InstanceEnvType, PrismaClient, User } from '@prisma/client';
+import _ from "lodash";
+import {
+  InstanceEnvType, PrismaClient, User, RoleType,
+} from '@prisma/client';
 import { ulid } from 'ulidx';
 import { tracker } from '../lib/tracker';
-import { UserId } from "./users.service";
+import { createInvitedUser, getUserByEmail, UserId } from "./users.service";
 
 export type WorkspaceId = string;
 
@@ -39,6 +42,15 @@ export async function createWorkspace(creatorUser: User, instanceUrl = 'http://l
     // TODO: track env type and other data when it becomes useful
   });
 
+  await prisma.workspaceMembers.create({
+    data: {
+      id: ulid(),
+      workspaceId: newWorkspace.id,
+      userId: creatorUser.id,
+      roleType: RoleType.OWNER,
+    },
+  });
+
   return newWorkspace;
 }
 
@@ -49,8 +61,89 @@ export async function patchWorkspace(id: WorkspaceId, instanceUrl: string, displ
 export async function getUserWorkspaces(userId: UserId) {
   const workspaces = await prisma.workspace.findMany({
     where: {
-      creatorUserId: userId,
+      UserMemberships: {
+        some: {
+          userId,
+        },
+      },
+    },
+    include: {
+      UserMemberships: {
+        select: {
+          roleType: true,
+        },
+        where: {
+          userId,
+        },
+      },
     },
   });
-  return workspaces;
+
+  return _.map(workspaces, (w) => ({
+    ..._.omit(w, "UserMemberships"),
+    role: w.UserMemberships[0].roleType,
+  }));
+}
+
+export async function userRoleForWorkspace(userId: UserId, workspaceId: WorkspaceId) {
+  const member = await prisma.workspaceMembers.findFirst({
+    where: {
+      userId,
+      workspaceId,
+    },
+  });
+
+  return member?.roleType;
+}
+
+export async function getWorkspaceMembers(id: WorkspaceId) {
+  const workspaceMembers = await prisma.workspaceMembers.findMany({
+    where: {
+      workspaceId: id,
+    },
+    include: {
+      user: true,
+    },
+  });
+
+  return workspaceMembers;
+}
+
+export async function inviteMember(email: string, id: WorkspaceId) {
+  let user = await getUserByEmail(email);
+  if (!user) {
+    user = await createInvitedUser(email);
+  }
+
+  return await prisma.workspaceMembers.create({
+    data: {
+      id: ulid(),
+      workspaceId: id,
+      userId: user.id,
+      roleType: RoleType.EDITOR,
+    },
+  });
+}
+
+export async function removeUser(email: string, workspaceId: WorkspaceId) {
+  const user = await getUserByEmail(email);
+  if (!user) {
+    return;
+  }
+
+  const memberShip = await prisma.workspaceMembers.findFirst({
+    where: {
+      userId: user.id,
+      workspaceId,
+    },
+  });
+  if (!memberShip) {
+    return;
+  }
+
+  return await prisma.workspaceMembers.delete({
+    where: {
+      id: memberShip.id,
+    },
+  });
 }

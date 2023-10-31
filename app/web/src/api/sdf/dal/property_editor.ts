@@ -15,6 +15,10 @@ export enum PropertyEditorPropKind {
   Map = "map",
 }
 
+export interface PropertyEditorPropWidgetKindCodeEditor {
+  kind: "codeEditor";
+}
+
 export interface PropertyEditorPropWidgetKindArray {
   kind: "array";
 }
@@ -70,6 +74,7 @@ export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindInteger
   | PropertyEditorPropWidgetKindHeader
   | PropertyEditorPropWidgetKindArray
+  | PropertyEditorPropWidgetKindCodeEditor
   | PropertyEditorPropWidgetKindComboBox
   | PropertyEditorPropWidgetKindSelect
   | PropertyEditorPropWidgetKindSecret

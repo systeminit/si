@@ -1317,8 +1317,7 @@ checksum = "0688c2a7f92e427f44895cd63841bff7b29f8d7a1648b9e7e07a4a365b2e1257"
 [[package]]
 name = "docker-api"
 version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4576e993f4ef4805931a835b7afe71dec6cbd096e9b08bbd8e8f03e1940b2745"
+source = "git+https://github.com/vv9k/docker-api-rs.git?rev=b1f1891d1d17cb522cc20212452c8c039c5e0810#b1f1891d1d17cb522cc20212452c8c039c5e0810"
 dependencies = [
  "asynchronous-codec",
  "base64 0.13.1",
@@ -1341,9 +1340,8 @@ dependencies = [
 
 [[package]]
 name = "docker-api-stubs"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6198e6d77eb486d04c9b3997aec536428a7cbba833e84cdfda49e144c8df1734"
+version = "0.6.0"
+source = "git+https://github.com/vv9k/docker-api-rs.git?rev=b1f1891d1d17cb522cc20212452c8c039c5e0810#b1f1891d1d17cb522cc20212452c8c039c5e0810"
 dependencies = [
  "chrono",
  "serde",

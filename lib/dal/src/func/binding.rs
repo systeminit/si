@@ -25,7 +25,7 @@ use crate::{
         object::FuncBackendObject,
         string::FuncBackendString,
         validation::FuncBackendValidation,
-        FuncBackend, FuncDispatch, FuncDispatchContext,
+        FuncBackend, FuncDispatch, FuncDispatchContext, InvalidResolverFunctionTypeError,
     },
     TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
@@ -65,6 +65,8 @@ pub enum FuncBindingError {
     FuncNotFound(FuncBindingPk),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("func backend response type error: {0}")]
+    InvalidResolverFunctionType(#[from] InvalidResolverFunctionTypeError),
     #[error("unable to retrieve func for func binding: {0:?}")]
     JsFuncNotFound(FuncBindingPk),
     #[error("nats txn error: {0}")]
@@ -245,7 +247,7 @@ impl FuncBinding {
                         },
                         parents: Vec::new(),
                     },
-                    response_type: (*func.backend_response_type()).into(),
+                    response_type: (*func.backend_response_type()).try_into()?,
                 };
                 FuncBackendJsAttribute::create_and_execute(
                     context,

@@ -58,7 +58,13 @@ const props = defineProps({
   allowPointerEvents: { type: Boolean },
 });
 
-const iconSvgRaw = computed(() => getIconByName(props.name));
+const iconSvgRaw = computed(() => {
+  const raw = getIconByName(props.name);
+  return raw?.replace(
+    /(fill|stroke)="(#[A-F0-9]{3,6}|currentColor|black)"/gi,
+    `$1="currentColor"`,
+  );
+});
 
 const toneColorClass = computed(() => {
   return props.tone ? getToneTextColorClass(props.tone) : undefined;

@@ -1,6 +1,6 @@
+import * as _ from "lodash-es";
 import Axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/store/auth.store";
-import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { trackEvent } from "@/utils/tracking";
 
@@ -25,17 +25,11 @@ export const sdfApiInstance = Axios.create({
 function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
   // inject auth token from the store as a custom header
   const authStore = useAuthStore();
-  const workspacesStore = useWorkspacesStore();
-
   config.headers = config.headers || {};
-  if (authStore.token) {
-    config.headers.authorization = `Bearer ${authStore.token}`;
-  }
-  // automatically set selected workspace pk header
-  // we will probably want to do something similar with change-set
-  // also need to remove workspace pk from body params in many places
-  if (workspacesStore.selectedWorkspacePk) {
-    config.headers.WorkspacePk = workspacesStore.selectedWorkspacePk;
+
+  const token = authStore.selectedOrDefaultAuthToken;
+  if (token) {
+    config.headers.authorization = `Bearer ${token}`;
   }
   return config;
 }
@@ -79,6 +73,7 @@ export const authApiInstance = Axios.create({
   baseURL: import.meta.env.VITE_AUTH_API_URL,
   withCredentials: true, // needed to attach the cookie
 });
+authApiInstance.interceptors.request.use(injectBearerTokenAuth);
 
 export const moduleIndexApiInstance = Axios.create({
   headers: {

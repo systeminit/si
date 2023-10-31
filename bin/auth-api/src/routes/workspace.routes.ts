@@ -5,7 +5,13 @@ import { getCache, setCache } from "../lib/cache";
 import { getUserById } from "../services/users.service";
 import {
   createWorkspace,
-  getUserWorkspaces, getWorkspaceById, patchWorkspace,
+  getUserWorkspaces,
+  getWorkspaceById,
+  getWorkspaceMembers,
+  inviteMember,
+  patchWorkspace,
+  removeUser,
+  userRoleForWorkspace,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
@@ -38,8 +44,8 @@ async function handleWorkspaceIdParam(ctx: CustomRouteContext) {
     throw new ApiError('NotFound', 'Workspace not found');
   }
 
-  // TODO(Wendy) - here is where we can change which users are allowed to access which workspaces!
-  if (workspace.creatorUserId !== ctx.state.authUser.id) {
+  const memberRole = await userRoleForWorkspace(ctx.state.authUser.id, workspace.id);
+  if (!memberRole) {
     throw new ApiError('Forbidden', 'You do not have access to that workspace');
   }
 
@@ -62,9 +68,12 @@ router.post("/workspaces/new", async (ctx) => {
     displayName: z.string(),
   }));
 
-  await createWorkspace(ctx.state.authUser, reqBody.instanceUrl, reqBody.displayName);
+  const workspaceDetails = await createWorkspace(ctx.state.authUser, reqBody.instanceUrl, reqBody.displayName);
 
-  ctx.body = await getUserWorkspaces(ctx.state.authUser.id);
+  ctx.body = {
+    workspaces: await getUserWorkspaces(ctx.state.authUser.id),
+    newWorkspaceId: workspaceDetails.id,
+  };
 });
 
 router.patch("/workspaces/:workspaceId", async (ctx) => {
@@ -83,6 +92,96 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
   await patchWorkspace(workspace.id, reqBody.instanceUrl, reqBody.displayName);
 
   ctx.body = await getUserWorkspaces(ctx.state.authUser.id);
+});
+
+export type Member = {
+  userId: string,
+  email: string,
+  nickname: string,
+  role: string,
+  signupAt: Date | null,
+};
+router.get("/workspace/:workspaceId/members", async (ctx) => {
+  // user must be logged in
+  if (!ctx.state.authUser) {
+    throw new ApiError('Unauthorized', "You are not logged in");
+  }
+
+  const workspace = await handleWorkspaceIdParam(ctx);
+
+  const members: Member[] = [];
+  const workspaceMembers = await getWorkspaceMembers(workspace.id);
+
+  workspaceMembers.forEach((wm) => {
+    members.push({
+      userId: wm.userId,
+      email: wm.user.email,
+      nickname: wm.user.nickname || "",
+      role: wm.roleType,
+      signupAt: wm.user.signupAt,
+    });
+  });
+
+  ctx.body = members;
+});
+
+router.post("/workspace/:workspaceId/members", async (ctx) => {
+  // user must be logged in
+  if (!ctx.state.authUser) {
+    throw new ApiError('Unauthorized', "You are not logged in");
+  }
+
+  const workspace = await handleWorkspaceIdParam(ctx);
+
+  const reqBody = validate(ctx.request.body, z.object({
+    email: z.string(),
+  }));
+
+  await inviteMember(reqBody.email, workspace.id);
+
+  const members: Member[] = [];
+  const workspaceMembers = await getWorkspaceMembers(workspace.id);
+
+  workspaceMembers.forEach((wm) => {
+    members.push({
+      userId: wm.userId,
+      email: wm.user.email,
+      nickname: wm.user.nickname || "",
+      role: wm.roleType,
+      signupAt: wm.user.signupAt,
+    });
+  });
+
+  ctx.body = members;
+});
+
+router.delete("/workspace/:workspaceId/members", async (ctx) => {
+  // user must be logged in
+  if (!ctx.state.authUser) {
+    throw new ApiError('Unauthorized', "You are not logged in");
+  }
+
+  const workspace = await handleWorkspaceIdParam(ctx);
+
+  const reqBody = validate(ctx.request.body, z.object({
+    email: z.string(),
+  }));
+
+  await removeUser(reqBody.email, workspace.id);
+
+  const members: Member[] = [];
+  const workspaceMembers = await getWorkspaceMembers(workspace.id);
+  workspaceMembers.forEach((wm) => {
+    members.push({
+      userId: wm.userId,
+      email: wm.user.email,
+      nickname: wm.user.nickname || "",
+      role: wm.roleType,
+      signupAt: wm.user.signupAt,
+    });
+  });
+
+  ctx.body = members;
 });
 
 router.get("/workspaces/:workspaceId/go", async (ctx) => {

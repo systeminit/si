@@ -5,12 +5,15 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 
+use crate::ws_event::{WsEvent, WsEventResult, WsPayload};
 use crate::{
-    jwt_key::JwtKeyError, pk, standard_model_accessor_ro, DalContext, HistoryEvent,
+    jwt_key::JwtKeyError, pk, standard_model_accessor_ro, ChangeSetPk, DalContext, HistoryEvent,
     HistoryEventError, JwtPublicSigningKey, Tenancy, Timestamp, TransactionsError, WorkspacePk,
 };
 
 const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
+const USER_GET_BY_EMAIL_RAW: &str = include_str!("queries/user/get_by_email_raw.sql");
+const USER_LIST_FOR_WORKSPACE: &str = include_str!("queries/user/list_members_for_workspace.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -102,6 +105,21 @@ impl User {
         Ok(object)
     }
 
+    pub async fn get_by_email_raw(ctx: &DalContext, email: &str) -> UserResult<Option<Self>> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(USER_GET_BY_EMAIL_RAW, &[&email])
+            .await?;
+        if let Some(row) = row {
+            let json: serde_json::Value = row.try_get("object")?;
+            Ok(serde_json::from_value(json)?)
+        } else {
+            Ok(None)
+        }
+    }
+
     pub async fn get_by_pk(ctx: &DalContext, pk: UserPk) -> UserResult<Option<Self>> {
         let row = ctx
             .txns()
@@ -137,6 +155,43 @@ impl User {
             .await?;
         Ok(())
     }
+
+    pub async fn delete_user_from_workspace(
+        ctx: &DalContext,
+        user_pk: UserPk,
+        workspace_pkg: String,
+    ) -> UserResult<()> {
+        ctx.txns()
+            .await?
+            .pg()
+            .execute(
+                "DELETE from user_belongs_to_workspaces WHERE user_pk = $1 AND workspace_pk = $2",
+                &[&user_pk, &workspace_pkg],
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn list_members_for_workspace(
+        ctx: &DalContext,
+        workspace_pk: String,
+    ) -> UserResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(USER_LIST_FOR_WORKSPACE, &[&workspace_pk])
+            .await?;
+
+        let mut users: Vec<User> = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let object = serde_json::from_value(json)?;
+            users.push(object);
+        }
+
+        Ok(users)
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
@@ -159,5 +214,40 @@ impl UserClaim {
     ) -> UserResult<UserClaim> {
         let claims = crate::jwt_key::validate_bearer_token(public_key, &token).await?;
         Ok(claims.custom)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CursorPayload {
+    x: String,
+    y: String,
+    container: Option<String>,
+    user_pk: UserPk,
+    user_name: String,
+}
+
+impl WsEvent {
+    pub async fn cursor(
+        workspace_pk: WorkspacePk,
+        change_set_pk: ChangeSetPk,
+        user_pk: UserPk,
+        user_name: String,
+        x: String,
+        y: String,
+        container: Option<String>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new_raw(
+            workspace_pk,
+            change_set_pk,
+            WsPayload::Cursor(CursorPayload {
+                x,
+                y,
+                container,
+                user_pk,
+                user_name,
+            }),
+        )
+        .await
     }
 }

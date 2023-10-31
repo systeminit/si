@@ -1,6 +1,0 @@
-<svg fill="currentColor" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <path d="M28,22C28,22.507 27.72,22.947 27.293,23.173L16.76,29.093C16.547,29.253 16.28,29.333 16,29.333C15.72,29.333 15.453,29.253 15.24,29.093L4.707,23.173C4.272,22.945 3.999,22.491 4,22L4,10C4,9.493 4.28,9.053 4.707,8.827L15.24,2.907C15.453,2.747 15.72,2.667 16,2.667C16.28,2.667 16.547,2.747 16.76,2.907L27.293,8.827C27.72,9.053 28,9.493 28,10L28,22ZM16,4.533L5.775,10.289L5.775,21.711L16,27.467L26.225,21.711L26.225,10.289L16,4.533Z" style="fill-rule:nonzero;"/>
-    <g id="minus" transform="matrix(6.12323e-17,1,-1.625,9.95026e-17,38.75,-1)">
-        <rect x="15" y="10" width="3" height="8"/>
-    </g>
-</svg>

@@ -1,6 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
     "eslint",
+    "jest",
     "export_file",
     "node_pkg_bin",
     "prettier_check",
@@ -9,11 +10,6 @@ load(
     "typescript_runnable_dist",
     "typescript_runnable_dist_bin",
     "package_node_modules",
-)
-load(
-    "@prelude-si//:pnpm.bzl",
-    "pnpm_task_binary",
-    "pnpm_task_test",
 )
 
 export_file(
@@ -39,9 +35,19 @@ filegroup(
     ]),
 )
 
+prod_deps_srcs = {
+}
+
+dev_deps_srcs = {
+    "lib/eslint-config": "//lib/eslint-config:src",
+    "lib/tsconfig": "//lib/tsconfig:src",
+}
+
 typescript_dist(
     name = "dist",
     srcs = [":src"],
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )
 
 typescript_runnable_dist(
@@ -57,43 +63,20 @@ eslint(
     name = "check-lint",
     directories = ["src", "tests"],
     srcs = [":src", ":test_src"] + glob([".eslint*"]),
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )
 
 typescript_check(
     name = "check-type",
     srcs = [":src"],
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )
 
-prettier_check(
-    name = "check-format",
-    srcs = [":src", ":test_src"] + glob([".prettier*"]),
-)
-
-#
-#
-#
-# TODO(fnichol): DEAL
-#
-#
-#
-
-pnpm_task_test(
-    name = "zzz-test",
-    command = "test",
-    deps = [
-        ":dist",
-    ],
-    path = "bin/lang-js",
-    visibility = ["PUBLIC"],
-)
-
-pnpm_task_binary(
-    name = "generate",
-    command = "generate",
-    srcs = glob(["*"]),
-    path = "bin/lang-js",
-    deps = [
-        "//:node_modules",
-    ],
-    visibility = ["PUBLIC"],
+jest(
+    name = "test-unit",
+    srcs = [":src", ":test_src"] + glob(["jest.config.js"]),
+    prod_deps_srcs = prod_deps_srcs,
+    dev_deps_srcs = dev_deps_srcs,
 )

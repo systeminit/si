@@ -11,6 +11,7 @@ import CheckCircle from "~icons/heroicons/check-circle-20-solid";
 import CheckSquare from "./custom-icons/check-square.svg?raw";
 import CloudUpload from "~icons/mdi/cloud-upload";
 import CloudDownload from "~icons/mdi/cloud-download";
+import CursorArrayRays from "~icons/heroicons/cursor-arrow-rays";
 
 import EmptySquare from "./custom-icons/empty-square.svg?raw";
 
@@ -25,12 +26,15 @@ import XSquare from "./custom-icons/x-square.svg?raw";
 
 import Minus from "~icons/heroicons/minus-20-solid";
 import MinusCircle from "~icons/heroicons/minus-circle-20-solid";
+import MinusSquare from "./custom-icons/minus-square.svg?raw";
 
 import Plus from "~icons/heroicons/plus-20-solid";
 import PlusCircle from "~icons/heroicons/plus-circle-20-solid";
+import PlusSquare from "./custom-icons/plus-square.svg?raw";
 
 import Tilde from "./custom-icons/tilde.svg?raw";
 import TildeCircle from "./custom-icons/tilde-circle.svg?raw";
+import TildeSquare from "./custom-icons/tilde-square.svg?raw";
 
 import QuestionMarkCircle from "~icons/heroicons-solid/question-mark-circle";
 import Play from "~icons/ion/play-sharp";
@@ -59,6 +63,7 @@ import Refresh from "~icons/heroicons-solid/refresh";
 import Pencil from "~icons/heroicons-outline/pencil";
 import PencilOff from "~icons/material-symbols/edit-off-outline";
 import Cube from "~icons/heroicons-outline/cube";
+import CubePlus from "./custom-icons/cube-plus.svg?raw";
 import Clock from "~icons/heroicons-solid/clock";
 import ExclamationCircle from "~icons/heroicons-solid/exclamation-circle";
 import CreditCard from "~icons/heroicons-solid/credit-card";
@@ -76,6 +81,7 @@ import Logout from "~icons/material-symbols/logout";
 import Cat from "~icons/fa6-solid/cat";
 import Filter from "~icons/heroicons/funnel-20-solid";
 import Menu from "~icons/heroicons-solid/menu-alt-1";
+import BulletList from "~icons/fluent/text-bullet-list-tree-16-regular";
 import UserCircle from "~icons/heroicons/user-circle-solid";
 import Plug from "~icons/ph/plugs-fill";
 import Boxes from "~icons/bi/boxes";
@@ -84,7 +90,8 @@ import TreeParents from "~icons/fluent-mdl2/breadcrumb";
 
 import EmptyIcon from "./custom-icons/empty-icon.svg?raw";
 
-import GitBranch from "~icons/mdi/source-branch-plus";
+import GitBranch from "~icons/mdi/source-branch";
+import GitBranchPlus from "~icons/mdi/source-branch-plus";
 
 // octicons (from github) available as no suffix, -16, -24
 import GitCommit from "~icons/octicon/git-commit-24";
@@ -113,24 +120,20 @@ import Create from "~icons/carbon/intent-request-create";
 import Laptop from "~icons/material-symbols/laptop-mac-outline";
 import Celebrate from "~icons/game-icons/party-popper";
 
-import HexPlus from "./custom-icons/hex-plus.svg?raw";
-import HexMinus from "./custom-icons/hex-minus.svg?raw";
-import HexRefresh from "./custom-icons/hex-refresh.svg?raw";
-import HexQuestion from "./custom-icons/hex-question.svg?raw";
+import XHex from "./custom-icons/x-hex.svg?raw";
+import XHexOutline from "./custom-icons/x-hex-outline.svg?raw";
 
-// Hex overlords!
-import HexResourcePassedSmall from "./custom-icons/hex-resource-passed-small.svg?raw";
-import HexResourcePassedLarge from "./custom-icons/hex-resource-passed-large.svg?raw";
-import HexResourceFailedSmall from "./custom-icons/hex-resource-failed-small.svg?raw";
-import HexResourceFailedLarge from "./custom-icons/hex-resource-failed-large.svg?raw";
+import CheckHexOutline from "./custom-icons/check-hex-outline.svg?raw";
 
-import HexCompPassedSmall from "./custom-icons/hex-comp-passed-small.svg?raw";
-import HexCompPassedLarge from "./custom-icons/hex-comp-passed-large.svg?raw";
-import HexCompFailedSmall from "./custom-icons/hex-comp-failed-small.svg?raw";
-import HexCompFailedLarge from "./custom-icons/hex-comp-failed-large.svg?raw";
+import CheckHex from "./custom-icons/check-hex.svg?raw";
 
-import CompChangesLarge from "./custom-icons/comp-changes-large.svg?raw";
-import CompChangesSmall from "./custom-icons/comp-changes-small.svg?raw";
+import PlusHex from "./custom-icons/plus-hex.svg?raw";
+import PlusHexOutline from "./custom-icons/plus-hex-outline.svg?raw";
+import MinusHex from "./custom-icons/minus-hex.svg?raw";
+import MinusHexOutline from "./custom-icons/minus-hex-outline.svg?raw";
+
+import RefreshHexOutline from "./custom-icons/refresh-hex-outline.svg?raw";
+import QuestionHexOutline from "./custom-icons/question-hex-outline.svg?raw";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -142,11 +145,14 @@ export const ICONS = Object.freeze({
   beaker: Beaker,
   bell: Bell,
   bolt: Bolt,
+  "bullet-list": BulletList,
   cat: Cat,
   celebrate: Celebrate,
   check: Check,
   "check-badge": CheckBadge,
   "check-circle": CheckCircle,
+  "check-hex": CheckHex,
+  "check-hex-outline": CheckHexOutline,
   "check-square": CheckSquare,
   check2: Check2,
   "clipboard-copy": ClipboardCopy,
@@ -154,14 +160,10 @@ export const ICONS = Object.freeze({
   "cloud-download": CloudDownload,
   "cloud-upload": CloudUpload,
   component: Cube,
-  "component-changes-large": CompChangesLarge,
-  "component-changes-small": CompChangesSmall,
-  "component-not-qualified-large": HexCompFailedLarge,
-  "component-not-qualified-small": HexCompFailedSmall,
-  "component-qualified-large": HexCompPassedLarge,
-  "component-qualified-small": HexCompPassedSmall,
+  "component-plus": CubePlus,
   create: Create,
   "credit-card": CreditCard,
+  "cursor-array-rays": CursorArrayRays,
   diagram: Diagram,
   "dots-horizontal": DotsHorizontal,
   "dots-vertical": DotsVertical,
@@ -173,6 +175,7 @@ export const ICONS = Object.freeze({
   eye: Eye,
   filter: Filter,
   "git-branch": GitBranch,
+  "git-branch-plus": GitBranchPlus,
   "git-commit": GitCommit,
   "git-merge": GitMerge,
   globe: Globe,
@@ -188,6 +191,9 @@ export const ICONS = Object.freeze({
   menu: Menu,
   minus: Minus,
   "minus-circle": MinusCircle,
+  "minus-hex": MinusHex,
+  "minus-hex-outline": MinusHexOutline,
+  "minus-square": MinusSquare,
   moon: Moon,
   multiselect: Boxes,
   none: EmptyIcon,
@@ -196,18 +202,17 @@ export const ICONS = Object.freeze({
   plug: Plug,
   plus: Plus,
   "plus-circle": PlusCircle,
+  "plus-hex": PlusHex,
+  "plus-hex-outline": PlusHexOutline,
+  "plus-square": PlusSquare,
   "read-only": PencilOff,
   refresh: Refresh,
   "refresh-active": Refresh,
   resize: Resize,
-  "resource-create": HexPlus,
-  "resource-delete": HexMinus,
-  "resource-failed-large": HexResourceFailedLarge,
-  "resource-failed-small": HexResourceFailedSmall,
-  "resource-passed-large": HexResourcePassedLarge,
-  "resource-passed-small": HexResourcePassedSmall,
-  "resource-question": HexQuestion,
-  "resource-refresh": HexRefresh,
+  "resource-create": PlusHexOutline,
+  "resource-delete": MinusHexOutline,
+  "resource-question": QuestionHexOutline,
+  "resource-refresh": RefreshHexOutline,
   save: Save,
   search: Search,
   selector: Selector,
@@ -219,6 +224,7 @@ export const ICONS = Object.freeze({
   "thumbs-up": ThumbsUp,
   tilde: Tilde,
   "tilde-circle": TildeCircle,
+  "tilde-square": TildeSquare,
   tools: Tools,
   trash: Trash,
   "trash-restore": TrashRestore,
@@ -226,6 +232,8 @@ export const ICONS = Object.freeze({
   "user-circle": UserCircle,
   x: X,
   "x-circle": XCircle,
+  "x-hex": XHex,
+  "x-hex-outline": XHexOutline,
   "x-square": XSquare,
 });
 /* eslint-disable sort-keys */

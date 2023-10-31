@@ -32,7 +32,7 @@
             v-model="testAttribute"
             class="flex-grow"
             type="dropdown"
-            placeholder="no attribute selected"
+            placeholder="no component selected"
             noLabel
             :options="componentAttributeOptions"
             @update:model-value="loadInput"
@@ -94,11 +94,11 @@
         />
       </TabGroupItem>
       <TabGroupItem label="Execution Logs" slug="logs">
-        <ScrollArea>
+        <div class="w-full h-full overflow-hidden flex flex-col absolute">
           <template v-if="rawTestLogs.length > 0">
             <!-- TODO(WENDY) - a chip here to show output info -->
             <div
-              class="border dark:border-neutral-600 dark:bg-shade-100 bg-neutral-100 rounded-xl m-xs p-xs flex flex-row items-center gap-xs"
+              class="border dark:border-neutral-600 dark:bg-shade-100 bg-neutral-100 rounded-xl m-xs p-xs flex flex-row items-center gap-xs flex-none"
             >
               <StatusIndicatorIcon
                 :status="testLogs.status"
@@ -119,22 +119,48 @@
                   ref="additionalOutputInfoModalRef"
                   :title="`Output Information For Test On ${testComponentDisplayName}`"
                 >
-                  <CodeViewer
-                    :code="testLogs.output"
-                    :title="`Output Info: ${testComponentDisplayName}`"
-                  />
+                  <div class="w-full max-h-[50vh] relative overflow-auto">
+                    <CodeViewer
+                      :code="testLogs.output"
+                      :title="`Output Info: ${testComponentDisplayName}`"
+                    />
+                  </div>
                 </Modal>
               </div>
             </div>
 
-            <CodeViewer
-              :code="testLogs.stdout"
-              :title="`stdout: ${testComponentDisplayName}`"
-            />
-            <CodeViewer
-              :code="testLogs.stderr"
-              :title="`stderr: ${testComponentDisplayName}`"
-            />
+            <div
+              v-if="testLogs.stdout"
+              class="relative flex-shrink overflow-auto basis-full"
+            >
+              <CodeViewer
+                :code="_.repeat(testLogs.stdout, 1000)"
+                :title="`stdout: ${testComponentDisplayName}`"
+                showTitle
+              />
+            </div>
+            <div
+              v-else
+              class="border dark:border-neutral-600 rounded p-xs m-sm text-center text-neutral-500 dark:text-neutral-400 italic"
+            >
+              No stdout logs to show.
+            </div>
+            <div
+              v-if="testLogs.stderr"
+              class="relative flex-shrink overflow-auto basis-full"
+            >
+              <CodeViewer
+                :code="testLogs.stderr"
+                :title="`stderr: ${testComponentDisplayName}`"
+                showTitle
+              />
+            </div>
+            <div
+              v-else
+              class="border dark:border-neutral-600 rounded p-xs m-sm text-center text-neutral-500 dark:text-neutral-400 italic"
+            >
+              No stderr logs to show.
+            </div>
           </template>
           <div
             v-else-if="runningTest"
@@ -159,7 +185,7 @@
           >
             Run a test to see the execution logs.
           </div>
-        </ScrollArea>
+        </div>
       </TabGroupItem>
       <TabGroupItem label="Output" slug="output">
         <CodeViewer
@@ -379,6 +405,14 @@ const prepareTest = async () => {
 
     testInputCode.value = JSON.stringify(properties, null, 2);
     testInputProperties.value = properties;
+  } else if (selectedFunc?.associations?.type === "action") {
+    const properties: Record<string, unknown> | null = json as Record<
+      string,
+      unknown
+    >;
+
+    testInputCode.value = JSON.stringify(properties, null, 2);
+    testInputProperties.value = properties;
   } else if (selectedFunc?.associations?.type === "validation") {
     const prototypes = selectedFunc.associations.prototypes;
 
@@ -483,6 +517,8 @@ const startTest = async () => {
   let args = testInputProperties.value;
   if (funcStore.selectedFuncDetails?.associations?.type === "validation") {
     args = { value: args };
+  } else if (funcStore.selectedFuncDetails?.associations?.type === "action") {
+    args = { kind: "standard", properties: args };
   }
 
   const output = await funcStore.EXECUTE({

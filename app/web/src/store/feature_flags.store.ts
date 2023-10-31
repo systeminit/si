@@ -7,8 +7,8 @@ import { posthog } from "@/utils/posthog";
 const FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
   MODULES_TAB: "modules_tab",
-  CONTRIBUTE_BUTTON: "contribute_button",
   SECRETS: "secrets",
+  SECRETS_MANAGEMENT: "secrets_management",
   WORKSPACE_BACKUPS: "workspaceBackups",
   FUNC_TEST_PANEL: "func_test_panel",
   AUTO_REATTACH_FUNCTIONS: "auto_reattach_functions",

@@ -7,13 +7,14 @@
       </div>
     </template>
     <template v-else-if="schemasReqStatus.isSuccess">
-      <!-- <SiSearch /> -->
-
       <ScrollArea class="">
+        <SiSearch
+          autoSearch
+          placeholder="search assets"
+          @search="onSearchUpdated"
+        />
         <template #top>
-          <SidebarSubpanelTitle class="border-t-0">
-            Assets
-          </SidebarSubpanelTitle>
+          <SidebarSubpanelTitle label="Assets" icon="component-plus" />
 
           <div
             ref="instructionsRef"
@@ -35,7 +36,7 @@
 
         <ul class="overflow-y-auto">
           <Collapsible
-            v-for="(category, categoryIndex) in addMenuData"
+            v-for="(category, categoryIndex) in filteredComponents"
             :key="categoryIndex"
             :label="category.displayName"
             as="li"
@@ -93,6 +94,7 @@ import SiNodeSprite from "@/components/SiNodeSprite.vue";
 import { useComponentsStore, MenuSchema } from "@/store/components.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+import SiSearch from "@/components/SiSearch.vue";
 
 defineProps<{ fixesAreRunning: boolean }>();
 
@@ -116,7 +118,32 @@ const addMenuReqStatus = componentsStore.getRequestStatus(
   "FETCH_NODE_ADD_MENU",
 );
 
+const filterString = ref("");
+const filterStringCleaned = computed(() =>
+  filterString.value.trim().toLowerCase(),
+);
+const filterModeActive = computed(() => !!filterStringCleaned.value);
+
+function onSearchUpdated(newFilterString: string) {
+  filterString.value = newFilterString;
+}
 const addMenuData = computed(() => componentsStore.nodeAddMenu);
+
+const filteredComponents = computed(() => {
+  if (!filterModeActive.value) return addMenuData.value;
+  // need a deep clone because of the complex object
+  return _.filter(_.cloneDeep(addMenuData.value), (c) => {
+    // if the string matches the group, return the whole thing
+    if (c.displayName.toLowerCase().includes(filterStringCleaned.value))
+      return true;
+    // otherwise, filter out the individual assets that don't match
+    c.schemas = _.filter(c.schemas, (s) =>
+      s.displayName.toLowerCase().includes(filterStringCleaned.value),
+    );
+    return c.schemas.length > 0;
+  });
+});
+
 const schemasById = computed(() => {
   return addMenuData.value.reduce((p, c) => {
     c.schemas.forEach((schema) => {

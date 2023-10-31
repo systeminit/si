@@ -24,7 +24,7 @@ async fn test_execution_endpoint_qualification_function(
     func.set_code_plaintext(
         &ctx,
         Some(
-            "async function qualification(component: Input): Promise < Output > {
+            "async function main(component: Input): Promise < Output > {
 
         return {
             result: 'success',
@@ -35,7 +35,7 @@ async fn test_execution_endpoint_qualification_function(
     )
     .await
     .expect("unable to set code plaintext");
-    func.set_handler(&ctx, Some("qualification".to_string()))
+    func.set_handler(&ctx, Some("main".to_string()))
         .await
         .expect("unable to set entrypoint");
 

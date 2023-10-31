@@ -57,7 +57,7 @@ we can see that we will want to have the following properties:
 
 #### Authoring in System Initiative
 
-Let's launch System Initiative, go to the `Customize Screen`, and create a new changeset to work in.
+Let's launch System Initiative, go to the `Customize Screen`, and create a new change set to work in.
 
 ![customize-screen.png](/tutorial-img/08-asset-authoring/customize-screen.png)
 

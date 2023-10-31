@@ -6,16 +6,13 @@
     />
     <ScrollArea>
       <template #top>
-        <SidebarSubpanelTitle class="border-t-0">
-          <div class="flex flex-row items-center justify-between">
-            <span class="pt-1">Asset Functions</span>
-            <AssetFuncAttachDropdown
-              v-if="assetStore.selectedAssetId"
-              :disabled="!assetStore.selectedAsset?.schemaVariantId"
-              label="Attach Function"
-              @selected-attach-type="openAttachFuncModal"
-            />
-          </div>
+        <SidebarSubpanelTitle label="Asset Functions">
+          <AssetFuncAttachDropdown
+            v-if="assetStore.selectedAssetId"
+            :disabled="!assetStore.selectedAsset?.schemaVariantId"
+            label="Attach Function"
+            @selected-attach-type="openAttachFuncModal"
+          />
         </SidebarSubpanelTitle>
         <div
           v-if="!assetStore.selectedAssetId"

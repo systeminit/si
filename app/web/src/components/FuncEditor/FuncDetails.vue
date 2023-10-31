@@ -34,13 +34,7 @@
                 v-if="
                   featureFlagsStore.FUNC_TEST_PANEL &&
                   testPanelEnabled &&
-                  funcStore.selectedFuncDetails &&
-                  [
-                    FuncVariant.Attribute,
-                    FuncVariant.CodeGeneration,
-                    FuncVariant.Qualification,
-                    FuncVariant.Validation,
-                  ].includes(funcStore.selectedFuncDetails.variant)
+                  funcStore.selectedFuncDetails
                 "
                 class="--tone-action"
                 icon="save"
@@ -145,13 +139,6 @@
                 label="Display Name"
                 required
                 placeholder="Type the display name of this function here..."
-                @blur="updateFunc"
-              />
-              <VormInput
-                v-model="editingFunc.handler"
-                label="Entrypoint"
-                required
-                placeholder="The name of the function that will be executed..."
                 @blur="updateFunc"
               />
               <VormInput
@@ -261,13 +248,7 @@
         v-if="
           featureFlagsStore.FUNC_TEST_PANEL &&
           testPanelEnabled &&
-          funcStore.selectedFuncDetails &&
-          [
-            FuncVariant.Attribute,
-            FuncVariant.CodeGeneration,
-            FuncVariant.Qualification,
-            FuncVariant.Validation,
-          ].includes(funcStore.selectedFuncDetails.variant)
+          funcStore.selectedFuncDetails
         "
         label="Test"
         slug="test"

@@ -4,8 +4,8 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, write_key_value_line, GraphError, NodeChild, NodeKind, NodeWithChildren,
-    ReadBytes, WriteBytes,
+    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
+    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
 };
 
 use super::{attribute_value_child::AttributeValueChild, PkgNode};
@@ -27,6 +27,7 @@ const KEY_SEALED_PROXY_STR: &str = "sealed_proxy";
 const KEY_UNPROCESSED_VALUE_STR: &str = "unprocessed_value";
 const KEY_VALUE_STR: &str = "value";
 const KEY_COMPONENT_SPECIFIC_STR: &str = "component_specific";
+const KEY_IMPLICIT_VALUE_STR: &str = "implicit_value";
 
 #[derive(Clone, Debug)]
 pub struct AttributeValueNode {
@@ -44,6 +45,7 @@ pub struct AttributeValueNode {
     pub component_specific: bool,
     pub unprocessed_value: Option<serde_json::Value>,
     pub value: Option<serde_json::Value>,
+    pub implicit_value: Option<serde_json::Value>,
 }
 
 impl WriteBytes for AttributeValueNode {
@@ -105,6 +107,12 @@ impl WriteBytes for AttributeValueNode {
             "".into()
         };
         write_key_value_line(writer, KEY_VALUE_STR, value_str)?;
+
+        let implicit_value = match self.implicit_value.as_ref() {
+            Some(value) => Some(serde_json::to_string(value).map_err(GraphError::parse)?),
+            None => None,
+        };
+        write_key_value_line_opt(writer, KEY_IMPLICIT_VALUE_STR, implicit_value)?;
 
         Ok(())
     }
@@ -182,6 +190,13 @@ impl ReadBytes for AttributeValueNode {
             Some(serde_json::from_str(&value_str).map_err(GraphError::parse)?)
         };
 
+        let implicit_value = match read_key_value_line_opt(reader, KEY_IMPLICIT_VALUE_STR)? {
+            Some(implicit_value_str) => {
+                Some(serde_json::from_str(&implicit_value_str).map_err(GraphError::parse)?)
+            }
+            None => None,
+        };
+
         Ok(Some(Self {
             backend_kind,
             code_base64,
@@ -197,6 +212,7 @@ impl ReadBytes for AttributeValueNode {
             component_specific,
             unprocessed_value,
             value,
+            implicit_value,
         }))
     }
 }
@@ -222,6 +238,7 @@ impl NodeChild for AttributeValueSpec {
                 component_specific: self.component_specific,
                 unprocessed_value: self.unprocessed_value.to_owned(),
                 value: self.value.to_owned(),
+                implicit_value: self.implicit_value.to_owned(),
             }),
             vec![
                 Box::new(AttributeValueChild::AttrFuncInputs(self.inputs.to_owned()))

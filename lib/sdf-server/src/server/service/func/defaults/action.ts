@@ -1,3 +1,3 @@
-async function action() {
+async function main() {
   throw new Error("unimplemented!");
 }

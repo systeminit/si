@@ -1,17 +1,19 @@
 import { defineStore } from "pinia";
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
+import * as _ from "lodash-es";
 import jwtDecode from "jwt-decode";
 import { ApiRequest } from "@si/vue-lib/pinia";
 import { posthog } from "@/utils/posthog";
 
 import { User } from "@/api/sdf/dal/user";
 import { Workspace } from "@/api/sdf/dal/workspace";
+import { useWorkspacesStore } from "./workspaces.store";
 
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 
 // keys we use to store auth tokens in local storage
 const AUTH_LOCAL_STORAGE_KEYS = {
-  USER_TOKEN: "si-auth",
+  USER_TOKENS: "si-auth",
 };
 
 type TokenData = {
@@ -28,20 +30,28 @@ interface LoginResponse {
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
-    token: null as string | null,
-    workspacePk: null as string | null,
+    tokens: {} as Record<string, string>,
     userPk: null as string | null,
 
     // TODO: these maybe should live in another module related to the user/org/groups/etc
     user: null as User | null,
-    workspace: null as Workspace | null,
   }),
   getters: {
     // previously we checked only for the token existing
     // but when the DB is reset, the token is still set but the backend DB is empty
     // so we must wait for the backend to be re-initialized
-    userIsLoggedIn: (state) => !!state.token,
-    userIsLoggedInAndInitialized: (state) => !!state.token && state.user?.pk,
+    userIsLoggedIn: (state) => !_.isEmpty(state.tokens),
+    userIsLoggedInAndInitialized: (state) =>
+      !_.isEmpty(state.tokens) && state.user?.pk,
+    selectedWorkspaceToken: (state) => {
+      const workspacesStore = useWorkspacesStore();
+      if (workspacesStore.selectedWorkspacePk) {
+        return state.tokens[workspacesStore.selectedWorkspacePk];
+      }
+    },
+    selectedOrDefaultAuthToken(): string | undefined {
+      return this.selectedWorkspaceToken || _.values(this.tokens)[0];
+    },
   },
   actions: {
     // fetches user + workspace info from SDF - called on page refresh
@@ -50,7 +60,6 @@ export const useAuthStore = defineStore("auth", {
         url: "/session/restore_authentication",
         onSuccess: (response) => {
           this.user = response.user;
-          this.workspace = response.workspace;
         },
         onFail(e) {
           /* eslint-disable-next-line no-console */
@@ -80,7 +89,6 @@ export const useAuthStore = defineStore("auth", {
         url: "/session/reconnect",
         onSuccess: (response) => {
           this.user = response.user;
-          this.workspace = response.workspace;
         },
         onFail(e) {
           /* eslint-disable-next-line no-console */
@@ -93,16 +101,26 @@ export const useAuthStore = defineStore("auth", {
     // OTHER ACTIONS ///////////////////////////////////////////////////////////////////
     async initFromStorage() {
       // check regular user token (we will likely have a different token for admin auth later)
-      const token = storage.getItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKEN);
-      if (!token) return;
+      let tokensByWorkspacePk: Record<string, string> = {};
+      try {
+        const parsed = JSON.parse(
+          storage.getItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKENS) || "{}",
+        );
+        tokensByWorkspacePk = parsed;
+      } catch {
+        /* empty */
+      }
+
+      const tokens = _.values(tokensByWorkspacePk);
+      if (!tokens.length) return;
 
       // token contains user pk and biling account pk
-      const { user_pk: userPk, workspace_pk: workspacePk } =
-        jwtDecode<TokenData>(token);
+      const { user_pk: userPk } =
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        jwtDecode<TokenData>(tokens[0]!);
       this.$patch({
-        token,
+        tokens: tokensByWorkspacePk,
         userPk,
-        workspacePk,
       });
 
       // this endpoint re-fetches the user and workspace
@@ -135,11 +153,10 @@ export const useAuthStore = defineStore("auth", {
       }
     },
     localLogout(logoutAuthPortal = true) {
-      storage.removeItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKEN);
+      storage.removeItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKENS);
       this.$patch({
-        token: null,
+        tokens: {},
         userPk: null,
-        workspacePk: null,
       });
       posthog.reset();
 
@@ -153,16 +170,29 @@ export const useAuthStore = defineStore("auth", {
       const decodedJwt = jwtDecode<TokenData>(loginResponse.token);
       this.$patch({
         userPk: decodedJwt.user_pk,
-        workspacePk: decodedJwt.workspace_pk,
-        token: loginResponse.token,
+        tokens: {
+          ...this.tokens,
+          [decodedJwt.workspace_pk]: loginResponse.token,
+        },
         user: loginResponse.user,
-        workspace: loginResponse.workspace,
       });
-      // store the token in localstorage
-      storage.setItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKEN, loginResponse.token);
+      // store the tokens in localstorage
+      storage.setItem(
+        AUTH_LOCAL_STORAGE_KEYS.USER_TOKENS,
+        JSON.stringify(this.tokens),
+      );
       // identify the user in posthog
       posthog.identify(loginResponse.user.pk, {
         email: loginResponse.user.email,
+      });
+    },
+    async FORCE_REFRESH_MEMBERS(workspaceId: string) {
+      return new ApiRequest({
+        method: "post",
+        url: "/session/refresh_workspace_members",
+        params: {
+          workspaceId,
+        },
       });
     },
   },

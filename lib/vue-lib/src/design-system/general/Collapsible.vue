@@ -26,7 +26,18 @@
         class="mr-1.5 dark:text-white flex-shrink-0 block"
       />
 
-      <slot name="label" />
+      <span
+        v-if="
+          (!$slots.openLabel || showLabelAndSlot) &&
+          isOpen &&
+          useDifferentLabelWhenOpen
+        "
+        class="whitespace-nowrap overflow-hidden overflow-ellipsis"
+      >
+        {{ label }}
+      </span>
+      <slot v-if="isOpen && useDifferentLabelWhenOpen" name="openLabel" />
+      <slot v-else name="label" />
       <span
         v-if="!$slots.label || showLabelAndSlot"
         class="whitespace-nowrap overflow-hidden overflow-ellipsis"
@@ -64,6 +75,8 @@ const props = defineProps({
   },
   hideBottomBorderWhenOpen: { type: Boolean, default: false },
   hideBottomBorder: { type: Boolean, default: false },
+  useDifferentLabelWhenOpen: { type: Boolean },
+  openLabel: { type: String },
 });
 
 const isOpen = ref(props.defaultOpen);

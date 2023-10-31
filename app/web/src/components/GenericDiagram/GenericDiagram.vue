@@ -71,10 +71,14 @@ overflow hidden */
           :drawEdgeState="drawEdgeState"
           :isHovered="elementIsHovered(node)"
           :isSelected="elementIsSelected(node)"
-          :deleteIcon="deleteIcon"
           @hover:start="(meta) => onElementHoverStart(node, meta)"
           @hover:end="(meta) => onElementHoverEnd(node)"
           @resize="onNodeLayoutOrLocationChange(node)"
+        />
+        <DiagramCursor
+          v-for="mouseCursor in props.cursors"
+          :key="mouseCursor.userPk"
+          :cursor="mouseCursor"
         />
         <DiagramEdge
           v-for="edge in edges"
@@ -93,7 +97,6 @@ overflow hidden */
           :group="group"
           :tempPosition="movedElementPositions[group.uniqueKey]"
           :tempSize="resizedElementSizes[group.uniqueKey]"
-          :deleteIcon="deleteIcon"
           @resize="onNodeLayoutOrLocationChange(group)"
         />
 
@@ -167,7 +170,6 @@ import * as _ from "lodash-es";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
-import { IconNames } from "@si/vue-lib/design-system";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/GenericDiagram/DiagramGroup.vue";
 import { useComponentsStore } from "@/store/components.store";
@@ -199,8 +201,11 @@ import {
   HoverElementEvent,
   SideAndCornerIdentifiers,
   ElementHoverMeta,
+  MovePointerEvent,
+  DiagramCursorDef,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
+import DiagramCursor from "./DiagramCursor.vue";
 import DiagramEdge from "./DiagramEdge.vue";
 import {
   useDiagramConfigProvider,
@@ -241,6 +246,10 @@ const ZOOM_SCROLL_FACTOR = 0.001; // scroll delta multiplied by this while zoomi
 const ZOOM_PAN_FACTOR = 0.5;
 
 const props = defineProps({
+  cursors: {
+    type: Object as PropType<Record<string, DiagramCursorDef>>,
+    default: () => ({}),
+  },
   customConfig: {
     type: Object as PropType<DiagramConfig>,
     default: () => ({}),
@@ -255,13 +264,13 @@ const props = defineProps({
   },
   // TODO: split this into controls for specific features rather than single toggle
   readOnly: { type: Boolean },
-  deleteIcon: { type: String as PropType<IconNames>, default: "x" },
 
   controlsDisabled: { type: Boolean },
 });
 
 const emit = defineEmits<{
   (e: "update:zoom", newZoom: number): void;
+  (e: "update:pointer", newPointer: MovePointerEvent): void;
   (e: "update:selection", newSelection: SelectElementEvent): void;
   (e: "move-element", nodeMoveInfo: MoveElementEvent): void;
   (e: "hover-element", hoverInfo: HoverElementEvent): void;
@@ -338,6 +347,10 @@ const gridPointerPos = computed(() => {
   converted.x = Math.round(converted.x);
   converted.y = Math.round(converted.y);
   return converted;
+});
+watch(gridPointerPos, (pos) => {
+  if (!pos) return;
+  emit("update:pointer", { x: pos.x, y: pos.y });
 });
 const pointerIsWithinGrid = computed(() => {
   if (!gridPointerPos.value) return false;
@@ -529,6 +542,9 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   const e = ke.evt;
   // we only care here about left click - might change this later...
   if (e.button !== 0) return;
+  // if the user is holding the control key their mouse click will be processed as a right click
+  if (e.ctrlKey) return;
+
   mouseIsDown.value = true;
   dragThresholdBroken.value = false;
   lastMouseDownContainerPointerPos.value = containerPointerPos.value;

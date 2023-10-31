@@ -51,20 +51,18 @@
     >
       <template v-if="isAdded">
         <DiagramIcon
-          icon="plus"
-          :color="
-            theme === 'dark' ? COLOR_PALETTE.shade[100] : COLOR_PALETTE.shade[0]
-          "
-          circleBg
-          :bgColor="diagramConfig?.toneColors?.success"
+          icon="plus-square"
+          :color="diagramConfig?.toneColors?.success"
           :size="20"
+          shadeBg
         />
       </template>
       <template v-else>
         <DiagramIcon
-          icon="x"
+          icon="minus-square"
+          shadeBg
           :color="diagramConfig?.toneColors?.destructive"
-          :size="26"
+          :size="20"
         />
       </template>
     </v-group>

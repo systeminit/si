@@ -31,11 +31,11 @@
     :minSize="200"
   >
     <div class="absolute w-full flex flex-col h-full">
-      <SidebarSubpanelTitle>
-        {{
-          assetStore.selectedFuncId ? "Asset Function Details" : "Asset Details"
-        }}
-      </SidebarSubpanelTitle>
+      <SidebarSubpanelTitle
+        :label="
+          assetStore.selectedFuncId ? 'Asset Function Details' : 'Asset Details'
+        "
+      />
       <template v-if="assetStore.selectedAssetId">
         <FuncDetails
           v-if="assetStore.selectedFuncId"

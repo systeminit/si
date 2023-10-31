@@ -13,6 +13,18 @@ it from the diagram config's registry of icons */
         offsetY: -height / 2,
       }"
     />
+    <!-- solid black/white bg hidden behind so that a cut out icon (like a check) wont show through  -->
+    <v-rect
+      v-if="shadeBg"
+      :config="{
+        width: size * 0.6,
+        height: size * 0.6,
+        x: size * 0.2,
+        y: size * 0.2,
+        fill:
+          theme === 'dark' ? COLOR_PALETTE.shade[100] : COLOR_PALETTE.shade[0],
+      }"
+    />
     <KonvaSvgImage
       :rawSvg="rawSvg"
       :color="color"
@@ -25,7 +37,11 @@ it from the diagram config's registry of icons */
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, PropType } from "vue";
-import { getIconByName } from "@si/vue-lib/design-system";
+import {
+  getIconByName,
+  COLOR_PALETTE,
+  useTheme,
+} from "@si/vue-lib/design-system";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 import KonvaSvgImage from "./KonvaSvgImage.vue";
 
@@ -39,6 +55,7 @@ const props = defineProps({
   color: { type: String, default: "#000000" },
   spin: { type: Boolean },
   bgColor: { type: String },
+  shadeBg: { type: Boolean },
   circleBg: { type: Boolean },
   config: { type: Object },
   origin: {
@@ -48,6 +65,8 @@ const props = defineProps({
     default: "center",
   },
 });
+
+const { theme } = useTheme();
 
 const width = computed(() => props.size);
 const height = computed(() => props.size);

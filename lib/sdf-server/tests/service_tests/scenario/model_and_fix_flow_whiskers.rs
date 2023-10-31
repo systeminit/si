@@ -332,12 +332,6 @@ async fn model_and_fix_flow_whiskers(
                 "color": "#FF9900",
                 "protected": false,
             },
-            "code": {
-                "si:generateAwsIngressJSON": {
-                    "code": format!("{{\n\t\"IpPermissions\": [\n\t\t{{\n\t\t\t\"FromPort\": 80,\n\t\t\t\"ToPort\": 80,\n\t\t\t\"IpProtocol\": \"tcp\",\n\t\t\t\"IpRanges\": [\n\t\t\t\t{{\n\t\t\t\t\t\"CidrIp\": \"0.0.0.0/0\"\n\t\t\t\t}}\n\t\t\t]\n\t\t}}\n\t],\n\t\"TagSpecifications\": [\n\t\t{{\n\t\t\t\"ResourceType\": \"security-group-rule\",\n\t\t\t\"Tags\": [\n\t\t\t\t{{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"{random_name}-ingress\"\n\t\t\t\t}}\n\t\t\t]\n\t\t}}\n\t]\n}}"),
-                    "format": "json",
-                },
-            },
             "domain": {
                 "tags": {
                     "Name": format!("{random_name}-ingress"),
@@ -353,9 +347,15 @@ async fn model_and_fix_flow_whiskers(
                 ],
                 "awsResourceType": "security-group-rule",
             },
+            "code": {
+                "si:generateAwsIngressJSON": {
+                    "code": format!("{{\n\t\"IpPermissions\": [\n\t\t{{\n\t\t\t\"FromPort\": 80,\n\t\t\t\"ToPort\": 80,\n\t\t\t\"IpProtocol\": \"tcp\",\n\t\t\t\"IpRanges\": [\n\t\t\t\t{{\n\t\t\t\t\t\"CidrIp\": \"0.0.0.0/0\"\n\t\t\t\t}}\n\t\t\t]\n\t\t}}\n\t],\n\t\"TagSpecifications\": [\n\t\t{{\n\t\t\t\"ResourceType\": \"security-group-rule\",\n\t\t\t\"Tags\": [\n\t\t\t\t{{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"{random_name}-ingress\"\n\t\t\t\t}}\n\t\t\t]\n\t\t}}\n\t]\n}}"),
+                    "format": "json",
+                },
+            },
             "qualification": {
                 "si:qualificationIngressCanCreate": {
-                    "result": "warning",
+                    "result": "success",
                     "message": "GroupId must be set. If a Security Group is connected to this component the id will be automatically set when the fix flow creates the security group after merging this change-set",
                 },
             },

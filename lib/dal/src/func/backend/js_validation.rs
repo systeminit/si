@@ -51,8 +51,26 @@ impl FuncDispatch for FuncBackendJsValidation {
         let value = veritech
             .execute_validation(output_tx.clone(), &self.request)
             .await?;
-        match &value {
-            FunctionResult::Failure(_) => {}
+        let value = match value {
+            FunctionResult::Failure(failure) => {
+                output_tx
+                    .send(OutputStream {
+                        execution_id: failure.execution_id.clone(),
+                        stream: "return".to_owned(),
+                        level: "info".to_owned(),
+                        group: None,
+                        message: failure.error.message.clone(),
+                        timestamp: std::cmp::max(Utc::now().timestamp(), 0) as u64,
+                    })
+                    .await
+                    .map_err(|_| FuncBackendError::SendError)?;
+
+                FunctionResult::Success(Self::Output {
+                    execution_id: failure.execution_id,
+                    valid: false,
+                    message: Some(failure.error.message.clone()),
+                })
+            }
             FunctionResult::Success(value) => {
                 if let Some(message) = &value.message {
                     output_tx
@@ -67,8 +85,9 @@ impl FuncDispatch for FuncBackendJsValidation {
                         .await
                         .map_err(|_| FuncBackendError::SendError)?;
                 }
+                FunctionResult::Success(value)
             }
-        }
+        };
 
         Ok(value)
     }

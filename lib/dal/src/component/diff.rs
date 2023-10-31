@@ -40,7 +40,7 @@ impl ComponentDiff {
         // live any longer (that is, it's garbage collected at a reasonable time)
         let head_ctx = ctx.clone_with_head();
 
-        if ctx.visibility().is_head() || ctx.visibility().deleted_at.is_some() {
+        if ctx.visibility().deleted_at.is_some() {
             return Err(ComponentError::InvalidContextForDiff);
         }
 
@@ -48,7 +48,7 @@ impl ComponentDiff {
         if curr_component_view.properties.is_null() {
             return Ok(Self {
                 component_id,
-                current: CodeView::new(CodeLanguage::Json, Some("{}".to_owned())),
+                current: CodeView::new(CodeLanguage::Json, Some("{}".to_owned()), None),
                 diffs: Vec::new(),
             });
         }
@@ -57,6 +57,14 @@ impl ComponentDiff {
         curr_component_view.drop_private();
 
         let curr_json = serde_json::to_string_pretty(&curr_component_view)?;
+
+        if ctx.visibility().is_head() {
+            return Ok(Self {
+                component_id,
+                current: CodeView::new(CodeLanguage::Json, Some(curr_json), None),
+                diffs: Vec::new(),
+            });
+        }
 
         // Find the "diffs" given the head dal context only if the component exists on head.
         let diffs: Vec<CodeView> = if Component::get_by_id(&head_ctx, &component_id)
@@ -67,7 +75,7 @@ impl ComponentDiff {
             if prev_component_view.properties.is_null() {
                 return Ok(Self {
                     component_id,
-                    current: CodeView::new(CodeLanguage::Json, Some(curr_json)),
+                    current: CodeView::new(CodeLanguage::Json, Some(curr_json), None),
                     diffs: Vec::new(),
                 });
             }
@@ -88,7 +96,7 @@ impl ComponentDiff {
             }
 
             // FIXME(nick): generate multiple code views if there are multiple code views.
-            let diff = CodeView::new(CodeLanguage::Diff, Some(lines.join(NEWLINE)));
+            let diff = CodeView::new(CodeLanguage::Diff, Some(lines.join(NEWLINE)), None);
             vec![diff]
         } else {
             vec![]
@@ -96,7 +104,7 @@ impl ComponentDiff {
 
         Ok(Self {
             component_id,
-            current: CodeView::new(CodeLanguage::Json, Some(curr_json)),
+            current: CodeView::new(CodeLanguage::Json, Some(curr_json), None),
             diffs,
         })
     }

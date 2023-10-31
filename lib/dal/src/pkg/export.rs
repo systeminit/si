@@ -1,18 +1,18 @@
 // use std::collections::{hash_map::Entry, HashMap, HashSet};
 // use strum::IntoEnumIterator;
 // use telemetry::prelude::*;
-
+//
 // use si_pkg::{
 //     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, AttributeValuePath,
 //     AttributeValueSpec, ChangeSetSpec, ComponentSpec, ComponentSpecVariant, EdgeSpec, EdgeSpecKind,
 //     FuncArgumentSpec, FuncSpec, FuncSpecData, LeafFunctionSpec, MapKeyFuncSpec, PkgSpec,
-//     PositionSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecData,
-//     SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
+//     PositionSpec, PropSpec, PropSpecBuilder, PropSpecKind, RootPropFuncSpec, SchemaSpec,
+//     SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
 //     SchemaVariantSpecData, SchemaVariantSpecPropRoot, SiPkg, SiPkgKind, SiPropFuncSpec,
 //     SiPropFuncSpecKind, SocketSpec, SocketSpecData, SocketSpecKind, SpecError, ValidationSpec,
 //     ValidationSpecKind,
 // };
-
+//
 // use crate::{
 //     component::view::{AttributeDebugView, ComponentDebugView},
 //     edge::EdgeKind,
@@ -20,23 +20,26 @@
 //         argument::FuncArgument, backend::validation::FuncBackendValidationArgs,
 //         intrinsics::IntrinsicFunc,
 //     },
+//     prop::PropPath,
 //     prop_tree::{PropTree, PropTreeNode},
 //     schema::variant::definition::SchemaVariantDefinition,
 //     socket::SocketKind,
 //     validation::Validation,
-//     ActionPrototype, ActionPrototypeContext, AttributePrototype, AttributeValue, ChangeSet,
-//     ChangeSetPk, Component, ComponentId, ComponentType, DalContext, Edge, EdgeError,
-//     ExternalProvider, ExternalProviderId, Func, FuncId, InternalProvider, InternalProviderId,
-//     LeafInputLocation, LeafKind, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
-//     SchemaVariantId, Socket, StandardModel, ValidationPrototype, Workspace,
+//     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
+//     AttributePrototypeArgument, AttributeReadContext, AttributeValue, ChangeSet, ChangeSetPk,
+//     Component, ComponentError, ComponentId, ComponentType, DalContext, Edge, EdgeError,
+//     ExternalProvider, ExternalProviderId, Func, FuncError, FuncId, InternalProvider,
+//     InternalProviderId, LeafInputLocation, LeafKind, NodeError, Prop, PropError, PropId, PropKind,
+//     Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket, StandardModel,
+//     ValidationPrototype, Workspace,
 // };
-
+//
 // use super::{PkgError, PkgResult};
-
+//
 // type FuncSpecMap = super::ChangeSetThingMap<FuncId, FuncSpec>;
 // type VariantSpecMap = super::ChangeSetThingMap<SchemaVariantId, SchemaVariantSpec>;
 // type ComponentMap = super::ChangeSetThingMap<ComponentId, ComponentSpec>;
-
+//
 // pub struct PkgExporter {
 //     name: String,
 //     version: String,
@@ -50,7 +53,7 @@
 //     is_workspace_export: bool,
 //     include_components: bool,
 // }
-
+//
 // fn std_model_change_set_matches<StdModel: StandardModel>(
 //     change_set_pk: Option<ChangeSetPk>,
 //     standard_model_thing: &StdModel,
@@ -60,7 +63,7 @@
 //         Some(change_set_pk) => standard_model_thing.visibility().change_set_pk == change_set_pk,
 //     }
 // }
-
+//
 // fn change_set_matches(
 //     current_change_set_pk: Option<ChangeSetPk>,
 //     object_change_set_pk: ChangeSetPk,
@@ -70,7 +73,7 @@
 //         Some(current_change_set_pk) => object_change_set_pk == current_change_set_pk,
 //     }
 // }
-
+//
 // impl PkgExporter {
 //     pub fn new_module_exporter(
 //         name: impl Into<String>,
@@ -93,7 +96,7 @@
 //             include_components: false,
 //         }
 //     }
-
+//
 //     pub fn new_workspace_exporter(
 //         name: impl Into<String>,
 //         created_by: impl Into<String>,
@@ -114,20 +117,20 @@
 //             include_components: true,
 //         }
 //     }
-
+//
 //     pub async fn export_as_bytes(&mut self, ctx: &DalContext) -> PkgResult<Vec<u8>> {
 //         match self.kind {
 //             SiPkgKind::Module => info!("Building module package"),
 //             SiPkgKind::WorkspaceBackup => info!("Building workspace backup package"),
 //         }
-
+//
 //         let pkg = self.export(ctx).await?;
-
+//
 //         info!("Exporting as bytes");
-
+//
 //         Ok(pkg.write_to_bytes()?)
 //     }
-
+//
 //     async fn export_schema(
 //         &mut self,
 //         ctx: &DalContext,
@@ -137,22 +140,22 @@
 //         let variants = schema.variants(ctx).await?;
 //         let mut funcs = vec![];
 //         let mut head_funcs = vec![];
-
+//
 //         let mut schema_spec_builder = SchemaSpec::builder();
 //         schema_spec_builder.name(schema.name());
 //         if self.is_workspace_export {
 //             schema_spec_builder.unique_id(schema.id().to_string());
 //         }
-
+//
 //         let in_change_set = std_model_change_set_matches(change_set_pk, schema);
 //         let is_deleted = schema.visibility().is_deleted();
-
+//
 //         let default_variant_id = schema.default_schema_variant_id().copied();
 //         let mut default_variant_unique_id = None;
-
+//
 //         for variant in &variants {
 //             let related_funcs = SchemaVariant::all_funcs(ctx, *variant.id()).await?;
-
+//
 //             for func in &related_funcs {
 //                 if change_set_pk.is_some()
 //                     && change_set_pk.as_ref().expect("some is ensured") != &ChangeSetPk::NONE
@@ -171,13 +174,13 @@
 //                     let (func_spec, include) = self.export_func(ctx, change_set_pk, func).await?;
 //                     self.func_map
 //                         .insert(change_set_pk, *func.id(), func_spec.to_owned());
-
+//
 //                     if include {
 //                         funcs.push(func_spec);
 //                     }
 //                 }
 //             }
-
+//
 //             if !is_deleted {
 //                 let variant_spec = self.export_variant(ctx, change_set_pk, variant).await?;
 //                 self.variant_map
@@ -192,7 +195,7 @@
 //                 schema_spec_builder.variant(variant_spec);
 //             }
 //         }
-
+//
 //         if in_change_set && is_deleted {
 //             schema_spec_builder.deleted(true);
 //         } else if in_change_set {
@@ -213,12 +216,12 @@
 //             }
 //             schema_spec_builder.data(data_builder.build()?);
 //         }
-
+//
 //         let schema_spec = schema_spec_builder.build()?;
-
+//
 //         Ok((schema_spec, funcs, head_funcs))
 //     }
-
+//
 //     async fn export_variant(
 //         &self,
 //         ctx: &DalContext,
@@ -227,16 +230,16 @@
 //     ) -> PkgResult<SchemaVariantSpec> {
 //         let mut variant_spec_builder = SchemaVariantSpec::builder();
 //         variant_spec_builder.name(variant.name());
-
+//
 //         let schema_variant_definition =
 //             SchemaVariantDefinition::get_by_schema_variant_id(ctx, variant.id())
 //                 .await?
 //                 .ok_or(PkgError::MissingSchemaVariantDefinition(*variant.id()))?;
-
+//
 //         if self.is_workspace_export {
 //             variant_spec_builder.unique_id(variant.id().to_string());
 //         }
-
+//
 //         if std_model_change_set_matches(change_set_pk, variant)
 //             || std_model_change_set_matches(change_set_pk, &schema_variant_definition)
 //         {
@@ -245,20 +248,20 @@
 //             {
 //                 variant_spec_builder.deleted(true);
 //             }
-
+//
 //             let mut data_builder = SchemaVariantSpecData::builder();
-
+//
 //             data_builder.name(variant.name());
-
+//
 //             if let Some(color_str) = variant.color(ctx).await? {
 //                 data_builder.color(color_str);
 //             };
 //             if let Some(link) = variant.link() {
 //                 data_builder.try_link(link)?;
 //             }
-
+//
 //             data_builder.component_type(get_component_type(ctx, variant).await?);
-
+//
 //             let asset_func_unique_id = self
 //                 .func_map
 //                 .get(change_set_pk, &schema_variant_definition.func_id())
@@ -267,12 +270,12 @@
 //                 ))?
 //                 .unique_id
 //                 .to_owned();
-
+//
 //             data_builder.func_unique_id(asset_func_unique_id);
-
+//
 //             variant_spec_builder.data(data_builder.build()?);
 //         }
-
+//
 //         self.export_prop_tree(
 //             ctx,
 //             change_set_pk,
@@ -281,7 +284,7 @@
 //             SchemaVariantSpecPropRoot::Domain,
 //         )
 //         .await?;
-
+//
 //         self.export_prop_tree(
 //             ctx,
 //             change_set_pk,
@@ -290,40 +293,99 @@
 //             SchemaVariantSpecPropRoot::ResourceValue,
 //         )
 //         .await?;
-
+//
 //         self.export_leaf_funcs(ctx, change_set_pk, *variant.id())
 //             .await?
 //             .drain(..)
 //             .for_each(|leaf_func_spec| {
 //                 variant_spec_builder.leaf_function(leaf_func_spec);
 //             });
-
+//
 //         self.export_sockets(ctx, change_set_pk, *variant.id())
 //             .await?
 //             .drain(..)
 //             .for_each(|socket_spec| {
 //                 variant_spec_builder.socket(socket_spec);
 //             });
-
+//
 //         self.export_action_funcs(ctx, change_set_pk, *variant.id())
 //             .await?
 //             .drain(..)
 //             .for_each(|action_func_spec| {
 //                 variant_spec_builder.action_func(action_func_spec);
 //             });
-
+//
 //         self.export_si_prop_funcs(ctx, change_set_pk, variant)
 //             .await?
 //             .drain(..)
 //             .for_each(|si_prop_func_spec| {
 //                 variant_spec_builder.si_prop_func(si_prop_func_spec);
 //             });
-
+//
+//         self.export_root_prop_funcs(ctx, change_set_pk, variant)
+//             .await?
+//             .drain(..)
+//             .for_each(|root_prop_func_spec| {
+//                 variant_spec_builder.root_prop_func(root_prop_func_spec);
+//             });
+//
 //         let variant_spec = variant_spec_builder.build()?;
-
+//
 //         Ok(variant_spec)
 //     }
-
+//
+//     async fn export_root_prop_funcs(
+//         &self,
+//         ctx: &DalContext,
+//         change_set_pk: Option<ChangeSetPk>,
+//         variant: &SchemaVariant,
+//     ) -> PkgResult<Vec<RootPropFuncSpec>> {
+//         let mut specs = vec![];
+//
+//         for root_prop in SchemaVariantSpecPropRoot::iter() {
+//             if let Some(prop) = Prop::find_prop_by_path_opt(
+//                 ctx,
+//                 *variant.id(),
+//                 &PropPath::new(root_prop.path_parts()),
+//             )
+//             .await?
+//             {
+//                 let context = AttributeContextBuilder::new()
+//                     .set_prop_id(*prop.id())
+//                     .to_context()?;
+//
+//                 if let Some(prototype) =
+//                     AttributePrototype::find_for_context_and_key(ctx, context, &None)
+//                         .await?
+//                         .pop()
+//                 {
+//                     if let Some((func_unique_id, mut inputs)) = self
+//                         .export_input_func_and_arguments(ctx, change_set_pk, &prototype)
+//                         .await?
+//                     {
+//                         let mut builder = RootPropFuncSpec::builder();
+//                         builder
+//                             .deleted(prototype.visibility().is_deleted())
+//                             .func_unique_id(func_unique_id)
+//                             .prop(root_prop);
+//
+//                         if self.is_workspace_export {
+//                             builder.unique_id(prototype.id().to_string());
+//                         }
+//
+//                         inputs.drain(..).for_each(|input| {
+//                             builder.input(input);
+//                         });
+//
+//                         specs.push(builder.build()?);
+//                     }
+//                 }
+//             }
+//         }
+//
+//         Ok(specs)
+//     }
+//
 //     async fn export_si_prop_funcs(
 //         &self,
 //         ctx: &DalContext,
@@ -331,14 +393,14 @@
 //         variant: &SchemaVariant,
 //     ) -> PkgResult<Vec<SiPropFuncSpec>> {
 //         let mut specs = vec![];
-
+//
 //         for kind in SiPropFuncSpecKind::iter() {
 //             let prop = variant.find_prop(ctx, &kind.prop_path()).await?;
-
+//
 //             let context = AttributeContextBuilder::new()
 //                 .set_prop_id(*prop.id())
 //                 .to_context()?;
-
+//
 //             if let Some(prototype) =
 //                 AttributePrototype::find_for_context_and_key(ctx, context, &None)
 //                     .await?
@@ -353,23 +415,23 @@
 //                         .deleted(prototype.visibility().is_deleted())
 //                         .func_unique_id(func_unique_id)
 //                         .kind(kind);
-
+//
 //                     if self.is_workspace_export {
 //                         builder.unique_id(prototype.id().to_string());
 //                     }
-
+//
 //                     inputs.drain(..).for_each(|input| {
 //                         builder.input(input);
 //                     });
-
+//
 //                     specs.push(builder.build()?);
 //                 }
 //             }
 //         }
-
+//
 //         Ok(specs)
 //     }
-
+//
 //     async fn export_leaf_funcs(
 //         &self,
 //         ctx: &DalContext,
@@ -377,7 +439,7 @@
 //         variant_id: SchemaVariantId,
 //     ) -> PkgResult<Vec<LeafFunctionSpec>> {
 //         let mut specs = vec![];
-
+//
 //         for leaf_kind in LeafKind::iter() {
 //             for (prototype, leaf_func) in
 //                 SchemaVariant::find_leaf_item_functions(ctx, variant_id, leaf_kind).await?
@@ -385,18 +447,18 @@
 //                 if !std_model_change_set_matches(change_set_pk, &prototype) {
 //                     continue;
 //                 }
-
+//
 //                 let func_spec = self
 //                     .func_map
 //                     .get(change_set_pk, leaf_func.id())
 //                     .ok_or(PkgError::MissingExportedFunc(*leaf_func.id()))?;
-
+//
 //                 let mut inputs = vec![];
 //                 for arg in FuncArgument::list_for_func(ctx, *leaf_func.id()).await? {
 //                     if arg.visibility().is_deleted() {
 //                         continue;
 //                     }
-
+//
 //                     inputs.push(
 //                         LeafInputLocation::maybe_from_arg_name(arg.name())
 //                             .ok_or(SpecError::LeafInputLocationConversionError(
@@ -405,12 +467,12 @@
 //                             .into(),
 //                     );
 //                 }
-
+//
 //                 let mut builder = LeafFunctionSpec::builder();
 //                 if self.is_workspace_export {
 //                     builder.unique_id(prototype.id().to_string());
 //                 }
-
+//
 //                 specs.push(
 //                     builder
 //                         .func_unique_id(&func_spec.unique_id)
@@ -421,10 +483,10 @@
 //                 );
 //             }
 //         }
-
+//
 //         Ok(specs)
 //     }
-
+//
 //     async fn export_sockets(
 //         &self,
 //         ctx: &DalContext,
@@ -432,7 +494,7 @@
 //         variant_id: SchemaVariantId,
 //     ) -> PkgResult<Vec<SocketSpec>> {
 //         let mut specs = vec![];
-
+//
 //         for input_socket_ip in
 //             InternalProvider::list_explicit_for_schema_variant(ctx, variant_id).await?
 //         {
@@ -442,26 +504,26 @@
 //                 .ok_or(PkgError::ExplicitInternalProviderMissingSocket(
 //                     *input_socket_ip.id(),
 //                 ))?;
-
+//
 //             if let SocketKind::Frame = socket.kind() {
 //                 continue;
 //             }
-
+//
 //             let mut socket_spec_builder = SocketSpec::builder();
 //             socket_spec_builder.name(input_socket_ip.name());
-
+//
 //             if self.is_workspace_export {
 //                 socket_spec_builder.unique_id(input_socket_ip.id().to_string());
 //             }
-
+//
 //             let mut data_builder = SocketSpecData::builder();
-
+//
 //             data_builder
 //                 .name(input_socket_ip.name())
 //                 .kind(SocketSpecKind::Input)
 //                 .arity(socket.arity())
 //                 .ui_hidden(socket.ui_hidden());
-
+//
 //             let mut has_custom_func = false;
 //             if let Some(attr_proto_id) = input_socket_ip.attribute_prototype_id() {
 //                 let proto = AttributePrototype::get_by_id(ctx, attr_proto_id)
@@ -470,7 +532,7 @@
 //                         *attr_proto_id,
 //                         *input_socket_ip.id(),
 //                     ))?;
-
+//
 //                 if let Some((func_unique_id, mut inputs)) = self
 //                     .export_input_func_and_arguments(ctx, change_set_pk, &proto)
 //                     .await?
@@ -482,14 +544,14 @@
 //                     });
 //                 }
 //             }
-
+//
 //             if std_model_change_set_matches(change_set_pk, &socket) || has_custom_func {
 //                 socket_spec_builder.data(data_builder.build()?);
 //             }
-
+//
 //             specs.push(socket_spec_builder.build()?);
 //         }
-
+//
 //         for output_socket_ep in ExternalProvider::list_for_schema_variant(ctx, variant_id).await? {
 //             let socket = Socket::find_for_external_provider(ctx, *output_socket_ep.id())
 //                 .await?
@@ -497,25 +559,25 @@
 //                 .ok_or(PkgError::ExternalProviderMissingSocket(
 //                     *output_socket_ep.id(),
 //                 ))?;
-
+//
 //             if let SocketKind::Frame = socket.kind() {
 //                 continue;
 //             }
-
+//
 //             let mut socket_spec_builder = SocketSpec::builder();
 //             socket_spec_builder.name(output_socket_ep.name());
-
+//
 //             if self.is_workspace_export {
 //                 socket_spec_builder.unique_id(output_socket_ep.id().to_string());
 //             }
-
+//
 //             let mut data_builder = SocketSpecData::builder();
 //             data_builder
 //                 .name(output_socket_ep.name())
 //                 .kind(SocketSpecKind::Output)
 //                 .arity(socket.arity())
 //                 .ui_hidden(socket.ui_hidden());
-
+//
 //             let mut has_custom_func = false;
 //             if let Some(attr_proto_id) = output_socket_ep.attribute_prototype_id() {
 //                 let proto = AttributePrototype::get_by_id(ctx, attr_proto_id)
@@ -524,7 +586,7 @@
 //                         *attr_proto_id,
 //                         *output_socket_ep.id(),
 //                     ))?;
-
+//
 //                 if let Some((func_unique_id, mut inputs)) = self
 //                     .export_input_func_and_arguments(ctx, change_set_pk, &proto)
 //                     .await?
@@ -536,17 +598,17 @@
 //                     });
 //                 }
 //             }
-
+//
 //             if std_model_change_set_matches(change_set_pk, &socket) || has_custom_func {
 //                 socket_spec_builder.data(data_builder.build()?);
 //             }
-
+//
 //             specs.push(socket_spec_builder.build()?);
 //         }
-
+//
 //         Ok(specs)
 //     }
-
+//
 //     async fn export_action_funcs(
 //         &self,
 //         ctx: &DalContext,
@@ -554,7 +616,7 @@
 //         variant_id: SchemaVariantId,
 //     ) -> PkgResult<Vec<ActionFuncSpec>> {
 //         let mut specs = vec![];
-
+//
 //         let action_prototypes = ActionPrototype::find_for_context(
 //             ctx,
 //             ActionPrototypeContext {
@@ -562,23 +624,23 @@
 //             },
 //         )
 //         .await?;
-
+//
 //         for action_proto in action_prototypes {
 //             if !std_model_change_set_matches(change_set_pk, &action_proto) {
 //                 continue;
 //             }
-
+//
 //             let func_spec = self
 //                 .func_map
 //                 .get(change_set_pk, &action_proto.func_id())
 //                 .ok_or(PkgError::MissingExportedFunc(action_proto.func_id()))?;
-
+//
 //             let mut builder = ActionFuncSpec::builder();
-
+//
 //             if self.is_workspace_export {
 //                 builder.unique_id(action_proto.id().to_string());
 //             }
-
+//
 //             specs.push(
 //                 builder
 //                     .kind(action_proto.kind())
@@ -587,10 +649,10 @@
 //                     .build()?,
 //             )
 //         }
-
+//
 //         Ok(specs)
 //     }
-
+//
 //     async fn export_prop_tree(
 //         &self,
 //         ctx: &DalContext,
@@ -635,7 +697,7 @@
 //                 }
 //             }
 //         };
-
+//
 //         #[derive(Debug)]
 //         struct TraversalStackEntry {
 //             builder: PropSpecBuilder,
@@ -643,26 +705,26 @@
 //             parent_prop_id: Option<PropId>,
 //             inside_map_or_array: bool,
 //         }
-
+//
 //         let mut stack: Vec<(PropTreeNode, Option<PropId>, bool)> = Vec::new();
 //         for child_tree_node in prop_root_tree_node.children {
 //             stack.push((child_tree_node, None, false));
 //         }
-
+//
 //         let mut traversal_stack: Vec<TraversalStackEntry> = Vec::new();
-
+//
 //         while let Some((tree_node, parent_prop_id, inside_map_or_array)) = stack.pop() {
 //             let prop_id = tree_node.prop_id;
 //             let mut builder = PropSpec::builder();
-
+//
 //             if !change_set_matches(change_set_pk, tree_node.visibility_change_set_pk) {
 //                 builder.has_data(false);
 //             }
-
+//
 //             if self.is_workspace_export {
 //                 builder.unique_id(prop_id);
 //             }
-
+//
 //             builder
 //                 .name(tree_node.name)
 //                 .kind(match tree_node.kind {
@@ -676,18 +738,18 @@
 //                 .hidden(tree_node.hidden)
 //                 .widget_kind(tree_node.widget_kind)
 //                 .widget_options(tree_node.widget_options);
-
+//
 //             if let Some(doc_link) = tree_node.doc_link {
 //                 builder.try_doc_link(doc_link.as_str())?;
 //             }
-
+//
 //             traversal_stack.push(TraversalStackEntry {
 //                 builder,
 //                 prop_id,
 //                 parent_prop_id,
 //                 inside_map_or_array,
 //             });
-
+//
 //             for child_tree_node in tree_node.children {
 //                 stack.push((
 //                     child_tree_node,
@@ -697,12 +759,12 @@
 //                 ));
 //             }
 //         }
-
+//
 //         let mut prop_children_map: HashMap<PropId, Vec<(PropSpec, PropId)>> = HashMap::new();
-
+//
 //         while let Some(mut entry) = traversal_stack.pop() {
 //             let mut maybe_type_prop_id: Option<PropId> = None;
-
+//
 //             if let Some(mut prop_children) = prop_children_map.remove(&entry.prop_id) {
 //                 match entry.builder.get_kind() {
 //                     Some(kind) => match kind {
@@ -743,13 +805,13 @@
 //                     }
 //                 };
 //             }
-
+//
 //             if matches!(entry.builder.get_kind(), Some(PropSpecKind::Map)) {
 //                 if let Some(type_prop_id) = maybe_type_prop_id {
 //                     let context = AttributeContextBuilder::new()
 //                         .set_prop_id(type_prop_id)
 //                         .to_context()?;
-
+//
 //                     for proto in AttributePrototype::list_for_context(ctx, context).await? {
 //                         if let Some(key) = proto.key() {
 //                             if let Some((func_unique_id, mut inputs)) = self
@@ -768,13 +830,13 @@
 //                     }
 //                 }
 //             }
-
+//
 //             // TODO: if we get funcs here but we also got map_key_funcs above, that's a sign of a
 //             // TODO: misconfigured set of attribute prototypes. check and error
 //             let context = AttributeContextBuilder::new()
 //                 .set_prop_id(entry.prop_id)
 //                 .to_context()?;
-
+//
 //             if let Some(prototype) =
 //                 AttributePrototype::find_for_context_and_key(ctx, context, &None)
 //                     .await?
@@ -783,20 +845,20 @@
 //                 if std_model_change_set_matches(change_set_pk, &prototype) {
 //                     entry.builder.has_data(true);
 //                 }
-
+//
 //                 if let Some((func_unique_id, mut inputs)) = self
 //                     .export_input_func_and_arguments(ctx, change_set_pk, &prototype)
 //                     .await?
 //                 {
 //                     entry.builder.has_data(true);
-
+//
 //                     entry.builder.func_unique_id(func_unique_id);
 //                     inputs.drain(..).for_each(|input| {
 //                         entry.builder.input(input);
 //                     });
 //                 }
 //             }
-
+//
 //             // TODO: handle default values for complex types. We also cannot set default values for
 //             // children of arrays and maps, at any depth (currently), since that requires tracking the
 //             // key or index
@@ -814,16 +876,16 @@
 //                     }
 //                 }
 //             }
-
+//
 //             for validation in self
 //                 .export_validations_for_prop(ctx, change_set_pk, entry.prop_id)
 //                 .await?
 //             {
 //                 entry.builder.validation(validation);
 //             }
-
+//
 //             let prop_spec = entry.builder.build()?;
-
+//
 //             match entry.parent_prop_id {
 //                 None => {
 //                     variant_spec.prop(prop_root, prop_spec);
@@ -840,10 +902,10 @@
 //                 }
 //             };
 //         }
-
+//
 //         Ok(())
 //     }
-
+//
 //     async fn export_input_func_and_arguments(
 //         &self,
 //         ctx: &DalContext,
@@ -853,22 +915,22 @@
 //         let proto_func = Func::get_by_id(ctx, &proto.func_id()).await?.ok_or(
 //             PkgError::MissingAttributePrototypeFunc(*proto.id(), proto.func_id()),
 //         )?;
-
+//
 //         let apas: Vec<AttributePrototypeArgument> =
 //             AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id())
 //                 .await?
 //                 .into_iter()
 //                 .filter(|apa| std_model_change_set_matches(change_set_pk, apa))
 //                 .collect();
-
+//
 //         // If the prototype func is intrinsic and has no arguments, it's one that is created by default
 //         // and we don't have to track it in the package
 //         if apas.is_empty() && proto_func.is_intrinsic() {
 //             return Ok(None);
 //         }
-
+//
 //         let mut inputs = vec![];
-
+//
 //         for apa in &apas {
 //             let func_arg = FuncArgument::get_by_id(ctx, &apa.func_argument_id())
 //                 .await?
@@ -877,7 +939,7 @@
 //                     apa.func_argument_id(),
 //                 ))?;
 //             let arg_name = func_arg.name();
-
+//
 //             let mut builder = AttrFuncInputSpec::builder();
 //             if self.is_workspace_export {
 //                 builder.unique_id(apa.id().to_string());
@@ -885,7 +947,7 @@
 //             builder
 //                 .name(arg_name)
 //                 .deleted(apa.visibility().is_deleted());
-
+//
 //             if apa.internal_provider_id() != InternalProviderId::NONE {
 //                 let ip = InternalProvider::get_by_id(ctx, &apa.internal_provider_id())
 //                     .await?
@@ -893,7 +955,7 @@
 //                         *apa.id(),
 //                         apa.internal_provider_id(),
 //                     ))?;
-
+//
 //                 match *ip.prop_id() {
 //                     PropId::NONE => {
 //                         inputs.push(
@@ -908,7 +970,7 @@
 //                         let prop = Prop::get_by_id(ctx, &prop_id)
 //                             .await?
 //                             .ok_or(PkgError::InternalProviderMissingProp(*ip.id(), prop_id))?;
-
+//
 //                         inputs.push(
 //                             builder
 //                                 .kind(AttrFuncInputSpecKind::Prop)
@@ -927,7 +989,7 @@
 //                         None => "__si-dummy-output-socket__".to_owned(),
 //                         Some(ep) => ep.name().to_owned(),
 //                     };
-
+//
 //                 inputs.push(
 //                     builder
 //                         .kind(AttrFuncInputSpecKind::OutputSocket)
@@ -936,17 +998,17 @@
 //                 );
 //             }
 //         }
-
+//
 //         let func_spec = self
 //             .func_map
 //             .get(change_set_pk, proto_func.id())
 //             .ok_or(PkgError::MissingExportedFunc(*proto_func.id()))?;
-
+//
 //         let func_unique_id = func_spec.unique_id.to_owned();
-
+//
 //         Ok(Some((func_unique_id, inputs)))
 //     }
-
+//
 //     async fn export_validations_for_prop(
 //         &self,
 //         ctx: &DalContext,
@@ -954,27 +1016,27 @@
 //         prop_id: PropId,
 //     ) -> PkgResult<Vec<ValidationSpec>> {
 //         let mut validation_specs = vec![];
-
+//
 //         let validation_prototypes = ValidationPrototype::list_for_prop(ctx, prop_id).await?;
-
+//
 //         for prototype in &validation_prototypes {
 //             if !std_model_change_set_matches(change_set_pk, prototype) {
 //                 continue;
 //             }
-
+//
 //             let mut spec_builder = ValidationSpec::builder();
-
+//
 //             if self.is_workspace_export {
 //                 spec_builder.unique_id(prototype.id().to_string());
 //             }
-
+//
 //             if prototype.visibility().is_deleted() {
 //                 spec_builder.deleted(true);
 //             }
-
+//
 //             let args: Option<FuncBackendValidationArgs> =
 //                 serde_json::from_value(prototype.args().clone())?;
-
+//
 //             match args {
 //                 Some(validation) => match validation.validation {
 //                     Validation::IntegerIsBetweenTwoIntegers {
@@ -1021,18 +1083,18 @@
 //                         .func_map
 //                         .get(change_set_pk, &prototype.func_id())
 //                         .ok_or(PkgError::MissingExportedFunc(prototype.func_id()))?;
-
+//
 //                     spec_builder.kind(ValidationSpecKind::CustomValidation);
 //                     spec_builder.func_unique_id(&func_spec.unique_id);
 //                 }
 //             }
-
+//
 //             validation_specs.push(spec_builder.build()?);
 //         }
-
+//
 //         Ok(validation_specs)
 //     }
-
+//
 //     async fn export_func(
 //         &self,
 //         ctx: &DalContext,
@@ -1044,13 +1106,13 @@
 //                 return Ok((intrinsic.to_spec()?, true));
 //             }
 //         }
-
+//
 //         let mut func_spec_builder = FuncSpec::builder();
-
+//
 //         func_spec_builder.name(func.name());
-
+//
 //         let in_change_set = std_model_change_set_matches(change_set_pk, func);
-
+//
 //         if in_change_set && func.visibility().is_deleted() {
 //             func_spec_builder.deleted(true);
 //             if self.is_workspace_export {
@@ -1061,35 +1123,35 @@
 //             }
 //             return Ok((func_spec_builder.build()?, true));
 //         }
-
+//
 //         if in_change_set {
 //             let mut data_builder = FuncSpecData::builder();
-
+//
 //             data_builder.name(func.name());
-
+//
 //             if let Some(display_name) = func.display_name() {
 //                 data_builder.display_name(display_name);
 //             }
-
+//
 //             if let Some(description) = func.description() {
 //                 data_builder.description(description);
 //             }
-
+//
 //             if let Some(link) = func.link() {
 //                 data_builder.try_link(link)?;
 //             }
 //             // Should we package an empty func?
 //             data_builder.handler(func.handler().unwrap_or(""));
 //             data_builder.code_base64(func.code_base64().unwrap_or(""));
-
+//
 //             data_builder.response_type(*func.backend_response_type());
 //             data_builder.backend_kind(*func.backend_kind());
-
+//
 //             data_builder.hidden(func.hidden());
-
+//
 //             func_spec_builder.data(data_builder.build()?);
 //         }
-
+//
 //         if self.is_workspace_export {
 //             func_spec_builder.unique_id(func.id().to_string());
 //             func_spec_builder.is_from_builtin(Some(func.is_builtin(ctx).await?));
@@ -1097,20 +1159,20 @@
 //             // These ids will be stable so long as the function is unchanged
 //             func_spec_builder.unique_id(func_spec_builder.gen_unique_id()?);
 //         }
-
+//
 //         let args: Vec<FuncArgument> = FuncArgument::list_for_func(ctx, *func.id())
 //             .await?
 //             .into_iter()
 //             .filter(|f| std_model_change_set_matches(change_set_pk, f))
 //             .collect();
-
+//
 //         for arg in &args {
 //             let mut arg_builder = FuncArgumentSpec::builder();
-
+//
 //             if self.is_workspace_export {
 //                 arg_builder.unique_id(arg.id().to_string());
 //             }
-
+//
 //             func_spec_builder.argument(
 //                 arg_builder
 //                     .name(arg.name())
@@ -1120,14 +1182,14 @@
 //                     .build()?,
 //             );
 //         }
-
+//
 //         let func_spec = func_spec_builder.build()?;
 //         // If we have data, or change set specific arguments, we're valid for this changeset
 //         let include_in_export = func_spec.data.is_some() || !args.is_empty();
-
+//
 //         Ok((func_spec, include_in_export))
 //     }
-
+//
 //     /// If change_set_pk is None, we export everything in the changeset without checking for
 //     /// differences from HEAD. Otherwise we attempt to only export the data specific to the
 //     /// requested change_set
@@ -1147,7 +1209,7 @@
 //         let mut schema_specs = vec![];
 //         let mut component_specs = vec![];
 //         let mut edge_specs = vec![];
-
+//
 //         let new_ctx = match change_set_pk {
 //             None => ctx.clone(),
 //             Some(change_set_pk) => {
@@ -1155,7 +1217,7 @@
 //             }
 //         };
 //         let ctx = &new_ctx;
-
+//
 //         // Intrinsic funcs should be immutable. They're not, but we don't provide any interfaces to
 //         // modify them via a the standard model. We only add them to the func map if the func map
 //         // is HEAD (or if we're doing a module export)
@@ -1167,15 +1229,15 @@
 //                 let intrinsic_func = Func::find_by_name(ctx, intrinsic_name)
 //                     .await?
 //                     .ok_or(PkgError::MissingIntrinsicFunc(intrinsic_name.to_string()))?;
-
+//
 //                 let intrinsic_spec = intrinsic.to_spec()?;
 //                 self.func_map
 //                     .insert(change_set_pk, *intrinsic_func.id(), intrinsic_spec.clone());
-
+//
 //                 func_specs.push(intrinsic_spec);
 //             }
 //         }
-
+//
 //         // XXX: make this SQL query
 //         let mut schemas = vec![];
 //         for schema in Schema::list(ctx).await? {
@@ -1186,21 +1248,21 @@
 //             } else {
 //                 true
 //             };
-
+//
 //             if add_schema {
 //                 schemas.push(schema);
 //             }
 //         }
-
+//
 //         for schema in &schemas {
 //             let (schema_spec, funcs, referenced_head_funcs) =
 //                 self.export_schema(ctx, change_set_pk, schema).await?;
-
+//
 //             head_funcs.extend_from_slice(&referenced_head_funcs);
 //             func_specs.extend_from_slice(&funcs);
 //             schema_specs.push(schema_spec);
 //         }
-
+//
 //         if self.is_workspace_export && self.include_components {
 //             for component in Component::list(ctx).await? {
 //                 if let Some((component_spec, component_funcs, component_head_funcs)) = self
@@ -1212,18 +1274,18 @@
 //                         *component.id(),
 //                         component_spec.to_owned(),
 //                     );
-
+//
 //                     component_specs.push(component_spec);
 //                     func_specs.extend_from_slice(&component_funcs);
 //                     head_funcs.extend_from_slice(&component_head_funcs);
 //                 }
 //             }
-
+//
 //             for edge in Edge::list(ctx).await? {
 //                 edge_specs.push(self.export_edge(ctx, change_set_pk, &edge).await?);
 //             }
 //         }
-
+//
 //         Ok((
 //             func_specs,
 //             head_funcs,
@@ -1232,7 +1294,7 @@
 //             edge_specs,
 //         ))
 //     }
-
+//
 //     pub async fn export_edge(
 //         &mut self,
 //         ctx: &DalContext,
@@ -1248,7 +1310,7 @@
 //             .await
 //             .map_err(|err| EdgeError::Component(err.to_string()))?
 //             .ok_or(NodeError::ComponentIsNone)?;
-
+//
 //         let head_explicit_internal_provider =
 //             InternalProvider::find_explicit_for_socket(ctx, edge.head_socket_id())
 //                 .await?
@@ -1260,23 +1322,23 @@
 //             .ok_or(EdgeError::ExternalProviderNotFoundForSocket(
 //                 edge.tail_socket_id(),
 //             ))?;
-
+//
 //         let mut edge_builder = EdgeSpec::builder();
-
+//
 //         let to_component_spec = self
 //             .component_map
 //             .get(change_set_pk, head_component.id())
 //             .ok_or(PkgError::EdgeRefersToMissingComponent(*head_component.id()))?;
-
+//
 //         let to_socket_name = head_explicit_internal_provider.name().to_owned();
-
+//
 //         let from_component_spec = self
 //             .component_map
 //             .get(change_set_pk, tail_component.id())
 //             .ok_or(PkgError::EdgeRefersToMissingComponent(*tail_component.id()))?;
-
+//
 //         let from_socket_name = tail_external_provider.name().to_owned();
-
+//
 //         edge_builder
 //             .edge_kind(match edge.kind() {
 //                 EdgeKind::Configuration => EdgeSpecKind::Configuration,
@@ -1291,10 +1353,10 @@
 //             .deletion_user_pk(edge.deletion_user_pk().map(|pk| pk.to_string()))
 //             .deleted_implicitly(edge.deleted_implicitly())
 //             .unique_id(*edge.id());
-
+//
 //         Ok(edge_builder.build()?)
 //     }
-
+//
 //     pub async fn export_component(
 //         &mut self,
 //         ctx: &DalContext,
@@ -1307,22 +1369,22 @@
 //             .unique_id(*component.id());
 //         let mut funcs = vec![];
 //         let mut head_funcs = vec![];
-
+//
 //         let variant = component
 //             .schema_variant(ctx)
 //             .await?
 //             .ok_or(ComponentError::NoSchemaVariant(*component.id()))?;
-
+//
 //         if variant.visibility().is_deleted() && component.visibility().is_deleted() {
 //             return Ok(None);
 //         }
-
+//
 //         let node = component
 //             .node(ctx)
 //             .await?
 //             .pop()
 //             .ok_or(PkgError::ComponentMissingNode(*component.id()))?;
-
+//
 //         let component_variant = match self.variant_map.get(change_set_pk, variant.id()) {
 //             Some(variant_spec) => ComponentSpecVariant::WorkspaceVariant {
 //                 variant_unique_id: variant_spec
@@ -1336,7 +1398,7 @@
 //                     .schema(ctx)
 //                     .await?
 //                     .ok_or(ComponentError::NoSchema(*component.id()))?;
-
+//
 //                 ComponentSpecVariant::BuiltinVariant {
 //                     schema_name: schema.name().to_owned(),
 //                     variant_name: variant.name().to_owned(),
@@ -1344,25 +1406,25 @@
 //             }
 //         };
 //         component_spec_builder.variant(component_variant);
-
+//
 //         let mut position_spec_builder = PositionSpec::builder();
 //         position_spec_builder.x(node.x());
 //         position_spec_builder.y(node.y());
 //         position_spec_builder.height(node.height().map(Into::into));
 //         position_spec_builder.width(node.width().map(Into::into));
 //         component_spec_builder.position(position_spec_builder.build()?);
-
+//
 //         component_spec_builder.needs_destroy(component.needs_destroy());
-
+//
 //         if let Some(deletion_user_pk) = component.deletion_user_pk() {
 //             component_spec_builder.deletion_user_pk(deletion_user_pk.to_string());
 //         }
-
+//
 //         component_spec_builder.deleted(component.visibility().is_deleted());
-
+//
 //         // ensure we are not in a deleted visibility here
 //         let new_ctx = ctx.clone_without_deleted_visibility();
-
+//
 //         let debug_view = ComponentDebugView::new(&new_ctx, component).await?;
 //         for attribute in debug_view.attributes {
 //             let (attr_spec, attr_funcs, attr_head_funcs) = self
@@ -1372,7 +1434,7 @@
 //             head_funcs.extend_from_slice(&attr_head_funcs);
 //             component_spec_builder.attribute(attr_spec);
 //         }
-
+//
 //         for attribute in debug_view.input_sockets {
 //             let (attr_spec, attr_funcs, attr_head_funcs) = self
 //                 .export_attribute_value(ctx, change_set_pk, attribute)
@@ -1381,7 +1443,7 @@
 //             head_funcs.extend_from_slice(&attr_head_funcs);
 //             component_spec_builder.attribute(attr_spec);
 //         }
-
+//
 //         for attribute in debug_view.output_sockets {
 //             let (attr_spec, attr_funcs, attr_head_funcs) = self
 //                 .export_attribute_value(ctx, change_set_pk, attribute)
@@ -1390,10 +1452,10 @@
 //             funcs.extend_from_slice(&attr_funcs);
 //             head_funcs.extend_from_slice(&attr_head_funcs);
 //         }
-
+//
 //         Ok(Some((component_spec_builder.build()?, funcs, head_funcs)))
 //     }
-
+//
 //     pub async fn export_attribute_value(
 //         &mut self,
 //         ctx: &DalContext,
@@ -1403,7 +1465,7 @@
 //         let mut builder = AttributeValueSpec::builder();
 //         let mut funcs = vec![];
 //         let mut head_funcs = vec![];
-
+//
 //         if let Some(parent_info) = view.parent_info {
 //             let parent_av = parent_info.value;
 //             let prop_id = parent_av.context.prop_id();
@@ -1411,7 +1473,7 @@
 //                 let parent_prop = Prop::get_by_id(ctx, &prop_id)
 //                     .await?
 //                     .ok_or(PropError::NotFound(prop_id, *ctx.visibility()))?;
-
+//
 //                 builder.parent_path(AttributeValuePath::Prop {
 //                     path: parent_prop.path().to_string(),
 //                     key: parent_info.key,
@@ -1419,13 +1481,13 @@
 //                 });
 //             }
 //         }
-
+//
 //         if let Some(prop) = &view.prop {
 //             let (key, index) = match &view.array_index {
 //                 Some(index) => (None, Some(*index)),
 //                 None => (view.attribute_value.key.to_owned(), None),
 //             };
-
+//
 //             builder.path(AttributeValuePath::Prop {
 //                 path: prop.path().to_string(),
 //                 key,
@@ -1436,28 +1498,28 @@
 //         } else if let Some(ep) = &view.external_provider {
 //             builder.path(AttributeValuePath::OutputSocket(ep.name().into()));
 //         }
-
+//
 //         let func_id = *view.func.id();
-
+//
 //         let func_unique_id = match self.func_map.get(change_set_pk, &func_id) {
 //             Some(func_spec) => {
 //                 let func = Func::get_by_id(ctx, &func_id)
 //                     .await?
 //                     .ok_or(FuncError::NotFound(func_id))?;
-
+//
 //                 if func.visibility().change_set_pk == ChangeSetPk::NONE {
 //                     head_funcs.push(func_spec.to_owned());
 //                 } else {
 //                     funcs.push(func_spec.to_owned());
 //                 }
-
+//
 //                 func_spec.unique_id.to_owned()
 //             }
 //             None => {
 //                 let func = Func::get_by_id(ctx, &func_id)
 //                     .await?
 //                     .ok_or(FuncError::NotFound(func_id))?;
-
+//
 //                 if func.visibility().change_set_pk == ChangeSetPk::NONE {
 //                     let (func_spec, _) = self
 //                         .export_func(ctx, Some(ChangeSetPk::NONE), &func)
@@ -1466,7 +1528,7 @@
 //                     self.func_map
 //                         .insert(Some(ChangeSetPk::NONE), func_id, func_spec.to_owned());
 //                     head_funcs.push(func_spec);
-
+//
 //                     unique_id
 //                 } else {
 //                     let (func_spec, _) = self.export_func(ctx, change_set_pk, &func).await?;
@@ -1474,30 +1536,35 @@
 //                     self.func_map
 //                         .insert(change_set_pk, func_id, func_spec.to_owned());
 //                     funcs.push(func_spec);
-
+//
 //                     unique_id
 //                 }
 //             }
 //         };
 //         builder.func_unique_id(func_unique_id);
 //         builder.func_binding_args(view.func_execution.func_binding_args().to_owned());
-
+//
 //         if let Some(handler) = view.func_execution.handler().as_deref() {
 //             builder.handler(handler);
 //         }
-
+//
 //         builder.backend_kind(*view.func_execution.backend_kind());
 //         builder.response_type(*view.func_execution.backend_response_type());
-
+//
 //         if let Some(code) = view.func_execution.code_base64().as_deref() {
 //             builder.code_base64(code);
 //         }
-
+//
 //         if let Some(unprocessed_value) = view.func_binding_return_value.unprocessed_value() {
 //             builder.unprocessed_value(unprocessed_value.to_owned());
 //         }
 //         if let Some(value) = view.func_binding_return_value.value() {
 //             builder.value(value.to_owned());
+//         }
+//         if let Some(implicit_value) = view.implicit_attribute_value {
+//             if let Some(value) = implicit_value.get_value(ctx).await? {
+//                 builder.implicit_value(value);
+//             }
 //         }
 //         if let Some(output_stream) = view.func_execution.output_stream() {
 //             builder.output_stream(serde_json::to_value(output_stream)?);
@@ -1508,22 +1575,22 @@
 //                 .is_some(),
 //         );
 //         builder.sealed_proxy(view.attribute_value.sealed_proxy());
-
+//
 //         if view.prototype.context.component_id().is_some() {
 //             builder.component_specific(true);
 //         }
-
+//
 //         let inputs = self
 //             .export_input_func_and_arguments(ctx, None, &view.prototype)
 //             .await?;
-
+//
 //         if let Some((_, inputs)) = inputs {
 //             builder.inputs(inputs);
 //         }
-
+//
 //         Ok((builder.build()?, funcs, head_funcs))
 //     }
-
+//
 //     pub async fn export(&mut self, ctx: &DalContext) -> PkgResult<SiPkg> {
 //         let mut pkg_spec_builder = PkgSpec::builder();
 //         pkg_spec_builder
@@ -1531,7 +1598,7 @@
 //             .kind(self.kind)
 //             .version(&self.version)
 //             .created_by(&self.created_by);
-
+//
 //         if let Some(workspace_pk) = ctx.tenancy().workspace_pk() {
 //             pkg_spec_builder.workspace_pk(workspace_pk.to_string());
 //             let workspace = Workspace::get_by_pk(ctx, &workspace_pk)
@@ -1539,11 +1606,11 @@
 //                 .ok_or(PkgError::WorkspaceNotFound(workspace_pk))?;
 //             pkg_spec_builder.workspace_name(workspace.name());
 //         }
-
+//
 //         if let Some(description) = &self.description {
 //             pkg_spec_builder.description(description);
 //         }
-
+//
 //         match self.kind {
 //             SiPkgKind::Module => {
 //                 let (funcs, _, schemas, _, _) = self.export_change_set(ctx, None).await?;
@@ -1553,23 +1620,23 @@
 //             SiPkgKind::WorkspaceBackup => {
 //                 let (mut head_funcs, funcs, schemas, components, edges) =
 //                     self.export_change_set(ctx, Some(ChangeSetPk::NONE)).await?;
-
+//
 //                 head_funcs.extend_from_slice(&funcs);
-
+//
 //                 let mut head_builder = ChangeSetSpec::builder();
 //                 head_builder
 //                     .name("head")
 //                     .schemas(schemas)
 //                     .components(components)
 //                     .edges(edges);
-
+//
 //                 pkg_spec_builder.default_change_set("head");
-
+//
 //                 for change_set in ChangeSet::list_open(ctx).await? {
 //                     let (funcs, referenced_head_funcs, schemas, components, edges) =
 //                         self.export_change_set(ctx, Some(change_set.pk)).await?;
 //                     head_funcs.extend_from_slice(&referenced_head_funcs);
-
+//
 //                     pkg_spec_builder.change_set(
 //                         ChangeSetSpec::builder()
 //                             .name(&change_set.name)
@@ -1581,7 +1648,7 @@
 //                             .build()?,
 //                     );
 //                 }
-
+//
 //                 pkg_spec_builder.change_set(
 //                     head_builder
 //                         .funcs(remove_duplicate_func_specs(&head_funcs))
@@ -1589,17 +1656,17 @@
 //                 );
 //             }
 //         }
-
+//
 //         let spec = pkg_spec_builder.build()?;
 //         let pkg = SiPkg::load_from_spec(spec)?;
-
+//
 //         Ok(pkg)
 //     }
 // }
-
+//
 // fn remove_duplicate_func_specs(func_specs: &[FuncSpec]) -> Vec<FuncSpec> {
 //     let mut unique_id_set = HashSet::new();
-
+//
 //     func_specs
 //         .iter()
 //         .filter_map(|spec| {
@@ -1612,7 +1679,7 @@
 //         })
 //         .collect()
 // }
-
+//
 // pub async fn get_component_type(
 //     ctx: &DalContext,
 //     variant: &SchemaVariant,
@@ -1622,13 +1689,13 @@
 //         prop_id: Some(*type_prop.id()),
 //         ..Default::default()
 //     };
-
+//
 //     let type_av = AttributeValue::find_for_context(ctx, type_context)
 //         .await?
 //         .ok_or(SchemaVariantError::AttributeValueNotFoundForContext(
 //             type_context,
 //         ))?;
-
+//
 //     Ok(match type_av.get_value(ctx).await? {
 //         Some(type_value) => {
 //             let component_type: ComponentType = serde_json::from_value(type_value)?;

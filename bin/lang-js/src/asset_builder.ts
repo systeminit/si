@@ -59,8 +59,8 @@ export class ValueFromBuilder implements IValueFromBuilder {
    */
   setSocketName(name: string): this {
     if (
-      this.valueFrom.kind !== "inputSocket" &&
-      this.valueFrom.kind !== "outputSocket"
+      this.valueFrom.kind !== "inputSocket"
+      && this.valueFrom.kind !== "outputSocket"
     ) {
       return this;
     }
@@ -296,9 +296,9 @@ export class ValidationBuilder implements IValidationBuilder {
 
   addExpected(expected: string): this {
     if (
-      this.validation.kind !== "stringEquals" &&
-      this.validation.kind !== "stringHasPrefix" &&
-      this.validation.kind !== "stringInStringArray"
+      this.validation.kind !== "stringEquals"
+      && this.validation.kind !== "stringHasPrefix"
+      && this.validation.kind !== "stringInStringArray"
     ) {
       return this;
     }
@@ -346,6 +346,7 @@ export class ValidationBuilder implements IValidationBuilder {
 export type PropWidgetDefinitionKind =
   | "array"
   | "checkbox"
+  | "codeEditor"
   | "color"
   | "comboBox"
   | "header"
@@ -384,8 +385,7 @@ export interface IPropWidgetDefinitionBuilder {
  *  .build()
  */
 export class PropWidgetDefinitionBuilder
-  implements IPropWidgetDefinitionBuilder
-{
+implements IPropWidgetDefinitionBuilder {
   propWidget = <PropWidgetDefinition>{};
 
   constructor() {
@@ -395,7 +395,7 @@ export class PropWidgetDefinitionBuilder
   /**
    * The type of widget
    *
-   * @param {string} kind [array | checkbox | color | comboBox | header | map | secret | select | text | textArea]
+   * @param {string} kind [array | checkbox | color | comboBox | header | map | secret | select | text | textArea | codeEditor]
    *
    * @returns this
    *
@@ -410,7 +410,7 @@ export class PropWidgetDefinitionBuilder
   /**
    * Add an option when using a comboBox
    *
-   * @param {string} key - the value displayed in the comboBoxx
+   * @param {string} key - the value displayed in the comboBox
    * @param {string} value - the value the prop is set to
    *
    * @returns this
@@ -426,7 +426,7 @@ export class PropWidgetDefinitionBuilder
 
     this.propWidget.options.push(<Option>{
       label: key,
-      value: value,
+      value,
     });
     return this;
   }
@@ -533,8 +533,7 @@ export interface ISiPropValueFromDefinitionBuilder {
 }
 
 export class SiPropValueFromDefinitionBuilder
-  implements ISiPropValueFromDefinitionBuilder
-{
+implements ISiPropValueFromDefinitionBuilder {
   definition = <SiPropValueFromDefinition>{};
 
   constructor() {
@@ -676,7 +675,7 @@ export class PropBuilder implements IPropBuilder {
   setEntry(entry: PropDefinition): this {
     if (this.prop.kind !== "array" && this.prop.kind !== "map") {
       throw new Error(
-        "setEntry can only be called on prop that are arrays or maps"
+        "setEntry can only be called on prop that are arrays or maps",
       );
     }
 
@@ -848,7 +847,7 @@ export class PropBuilder implements IPropBuilder {
   setWidget(widget: PropWidgetDefinition): this {
     if (widget.kind === "secret") {
       throw new Error(
-        "Cannot create prop with secret widget. Use addSecretProp() to create those."
+        "Cannot create prop with secret widget. Use addSecretProp() to create those.",
       );
     }
     this.prop.widget = widget;
@@ -925,7 +924,7 @@ export class SecretPropBuilder implements ISecretPropBuilder {
   build(): SecretPropDefinition {
     if (
       this.prop.widget?.options?.find(
-        (option) => option.label === "secretKind"
+        (option) => option.label === "secretKind",
       ) === undefined
     ) {
       throw new Error("must call setSecretKind() before build()");
@@ -1033,7 +1032,7 @@ export class AssetBuilder implements IAssetBuilder {
 
     if (prop.hasInputSocket) {
       const secretKind = prop.widget?.options?.find(
-        (option) => option.label === "secretKind"
+        (option) => option.label === "secretKind",
       )?.value;
 
       if (secretKind === undefined) {
@@ -1044,7 +1043,7 @@ export class AssetBuilder implements IAssetBuilder {
         new SocketDefinitionBuilder()
           .setArity("one")
           .setName(secretKind)
-          .build()
+          .build(),
       );
 
       prop.valueFrom = new ValueFromBuilder()
@@ -1065,7 +1064,7 @@ export class AssetBuilder implements IAssetBuilder {
         .setName(definition.name)
         .setSecretKind(definition.name)
         .skipInputSocket()
-        .build()
+        .build(),
     );
 
     this.addOutputSocket(
@@ -1076,9 +1075,9 @@ export class AssetBuilder implements IAssetBuilder {
           new ValueFromBuilder()
             .setKind("prop")
             .setPropPath(["root", "secrets", definition.name])
-            .build()
+            .build(),
         )
-        .build()
+        .build(),
     );
 
     return this;
@@ -1127,7 +1126,7 @@ export class AssetBuilder implements IAssetBuilder {
   build() {
     if (this.asset.secretDefinition && this.asset.secretProps?.length !== 1) {
       throw new Error(
-        "Secret defining schema shouldn't define any extra secret props"
+        "Secret defining schema shouldn't define any extra secret props",
       );
     }
 

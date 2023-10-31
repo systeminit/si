@@ -57,7 +57,10 @@ async fn encrypted_secret_get_by_id(ctx: &DalContext, nw: &WorkspaceSignup) {
     assert_eq!(secret.id(), encrypted_secret.id());
     assert_eq!(secret.pk(), encrypted_secret.pk());
     assert_eq!(secret.name(), encrypted_secret.name());
-    assert_eq!(secret.description(), encrypted_secret.description());
+    assert_eq!(
+        secret.description().as_deref(),
+        encrypted_secret.description()
+    );
     assert_eq!(secret.definition(), encrypted_secret.definition());
 }
 

@@ -10,9 +10,8 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_ASSET_CODE: &str = r#"function createAsset() {
-  const asset = new AssetBuilder();
-  return asset.build()
+const DEFAULT_ASSET_CODE: &str = r#"function main() {
+  return new AssetBuilder().build()
 }"#;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -67,7 +66,7 @@ pub async fn create_variant_def(
         FuncBackendResponseType::SchemaVariantDefinition,
     )
     .await?;
-    asset_func.set_handler(&ctx, Some("createAsset")).await?;
+    asset_func.set_handler(&ctx, Some("main")).await?;
     asset_func
         .set_code_plaintext(&ctx, Some(DEFAULT_ASSET_CODE))
         .await?;

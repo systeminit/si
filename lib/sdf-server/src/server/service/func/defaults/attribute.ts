@@ -1,3 +1,3 @@
-async function setAttribute(input: Input): Promise<Output> {
+async function main(input: Input): Promise<Output> {
   return null;
 }

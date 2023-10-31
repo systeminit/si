@@ -92,12 +92,6 @@ const routes: RouteRecordRaw[] = [
             component: () =>
               import("@/components/Workspace/WorkspaceCustomizePackages.vue"),
           },
-          {
-            path: "s/:secretKind?",
-            name: "workspace-lab-secrets",
-            component: () =>
-              import("@/components/Workspace/WorkspaceCustomizeSecrets.vue"),
-          },
         ],
       },
       ...(isDevMode
@@ -118,6 +112,12 @@ const routes: RouteRecordRaw[] = [
     name: "auth-connect",
     meta: { public: true },
     component: () => import("@/pages/auth/AuthConnectPage.vue"),
+  },
+  {
+    path: "/refresh-auth",
+    name: "refresh-auth",
+    meta: { public: true },
+    component: () => import("@/pages/auth/RefreshAuthPage.vue"),
   },
   {
     path: "/login",

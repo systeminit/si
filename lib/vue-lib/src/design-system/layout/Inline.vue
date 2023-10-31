@@ -30,6 +30,7 @@ const propsDefinition = {
     type: Boolean,
     default: false,
   },
+  noWrap: Boolean,
 } as const;
 
 function flipAlignIfReversed(
@@ -87,6 +88,8 @@ const Inline = (
     ...(props.collapseBelow && {
       [`--collapse-below-${props.collapseBelow}`]: true,
     }),
+
+    "--no-wrap": props.noWrap,
   };
 
   const wrappedChildren = [] as VNode[];
@@ -130,6 +133,10 @@ export default Inline;
 
   &.--reverse {
     flex-direction: row-reverse;
+  }
+
+  &.--no-wrap {
+    flex-wrap: nowrap;
   }
 
   each(@spacing-rem, .(@size-px, @size-name){
@@ -180,6 +187,12 @@ export default Inline;
       }
     }
   });
+
+  > .inline__item {
+    &:empty {
+      display: none;
+    }
+  }
 }
 
 // TODO: add hacky good enough fix for no flex gap support :(

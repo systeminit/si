@@ -11,7 +11,7 @@ use thiserror::Error;
 
 use dal::{
     attribute::prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
-    func::argument::FuncArgumentId,
+    func::argument::{FuncArgumentError, FuncArgumentId},
     installed_pkg::InstalledPkgError,
     pkg::PkgError,
     schema::variant::definition::SchemaVariantDefinition,
@@ -72,12 +72,16 @@ pub enum SchemaVariantDefinitionError {
     ExternalProviderNotFoundForSocket(SocketId),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error(transparent)]
+    FuncArgument(#[from] FuncArgumentError),
     #[error("func argument not found: {0}")]
     FuncArgumentNotFound(FuncArgumentId),
     #[error(transparent)]
     FuncBinding(#[from] FuncBindingError),
     #[error("func execution error: {0}")]
     FuncExecution(FuncId),
+    #[error("func execution failure error: {0}")]
+    FuncExecutionFailure(String),
     #[error("func has no handler: {0}")]
     FuncHasNoHandler(FuncId),
     #[error("func is empty: {0}")]
@@ -188,7 +192,6 @@ pub async fn save_variant_def(
     asset_func
         .set_code_plaintext(ctx, Some(&request.code))
         .await?;
-    asset_func.set_handler(ctx, Some(&request.handler)).await?;
 
     if let Some(updated_name) = updated_func_name {
         asset_func.set_name(ctx, updated_name).await?;

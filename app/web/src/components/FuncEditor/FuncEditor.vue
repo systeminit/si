@@ -16,10 +16,12 @@
       "
     >
       <CodeEditor
+        :id="selectedFuncDetails ? `func-${selectedFuncDetails.id}` : undefined"
         v-model="editingFunc"
         :typescript="selectedFuncDetails?.types"
         @change="updateFuncCode"
         @explicitSave="execFunc"
+        @close="emit('close')"
       />
     </template>
     <ErrorMessage
@@ -78,4 +80,8 @@ const updateFuncCode = (code: string) => {
 const execFunc = () => {
   funcStore.SAVE_AND_EXEC_FUNC(props.funcId);
 };
+
+const emit = defineEmits<{
+  (e: "close"): void;
+}>();
 </script>

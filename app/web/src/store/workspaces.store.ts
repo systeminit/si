@@ -1,10 +1,11 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { watch } from "vue";
-import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
-import { Workspace } from "@/api/sdf/dal/workspace";
+import { addStoreHooks } from "@si/vue-lib/pinia";
+import storage from "local-storage-fallback";
 import { useAuthStore } from "./auth.store";
 import { useRouterStore } from "./router.store";
+import { AuthApiRequest } from ".";
 
 type WorkspacePk = string;
 
@@ -14,22 +15,36 @@ type WorkspaceExportSummary = {
   createdAt: IsoDateString;
 };
 
+type AuthApiWorkspace = {
+  creatorUserId: string;
+  displayName: string;
+  id: WorkspacePk;
+  pk: WorkspacePk; // not actually in the response, but we backfill
+  // instanceEnvType: "LOCAL" // not used yet...
+  instanceUrl: string;
+  role: "OWNER" | "EDITOR";
+};
+
+const LOCAL_STORAGE_LAST_WORKSPACE_PK = "si-last-workspace-pk";
+
 export const useWorkspacesStore = addStoreHooks(
   defineStore("workspaces", {
     state: () => ({
-      workspacesByPk: {} as Record<WorkspacePk, Workspace>,
+      workspacesByPk: {} as Record<WorkspacePk, AuthApiWorkspace>,
       workspaceExports: [] as WorkspaceExportSummary[],
     }),
     getters: {
       allWorkspaces: (state) => _.values(state.workspacesByPk),
       selectedWorkspacePk(): WorkspacePk | null {
-        return this.selectedWorkspace?.pk || null;
+        const pk = this.selectedWorkspace?.pk || null;
+        if (pk) storage.setItem(LOCAL_STORAGE_LAST_WORKSPACE_PK, pk);
+        return pk;
       },
       urlSelectedWorkspaceId: () => {
         const route = useRouterStore().currentRoute;
         return route?.params?.workspacePk as WorkspacePk | undefined;
       },
-      selectedWorkspace(): Workspace | null {
+      selectedWorkspace(): AuthApiWorkspace | null {
         return _.get(
           this.workspacesByPk,
           this.urlSelectedWorkspaceId || "",
@@ -39,19 +54,31 @@ export const useWorkspacesStore = addStoreHooks(
     },
 
     actions: {
+      getLastSelectedWorkspacePk() {
+        return storage.getItem(LOCAL_STORAGE_LAST_WORKSPACE_PK) || undefined;
+      },
+
       async FETCH_USER_WORKSPACES() {
-        return new ApiRequest<{
-          workspace: Workspace;
-        }>({
-          // TODO: probably should fetch list of all workspaces here...
-          // something like `/users/USER_PK/workspaces`, `/my/workspaces`, etc
-          url: "/session/load_workspace",
+        return new AuthApiRequest<AuthApiWorkspace[]>({
+          url: "/workspaces",
           onSuccess: (response) => {
-            // this.workspacesByPk = _.keyBy(response.workspaces, "pk");
-            this.workspacesByPk = _.keyBy([response.workspace], "pk");
+            const renameIdList = _.map(response, (w) => ({
+              ...w,
+              pk: w.id,
+            }));
+            this.workspacesByPk = _.keyBy(renameIdList, "pk");
 
             // NOTE - we could cache this stuff in localstorage too to avoid showing loading state
             // but this is a small optimization to make later...
+          },
+        });
+      },
+      async INVITE_USER(email: string) {
+        return new AuthApiRequest<void>({
+          method: "post",
+          url: "workspace/invite",
+          params: {
+            email,
           },
         });
       },
