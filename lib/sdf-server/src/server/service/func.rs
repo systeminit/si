@@ -133,6 +133,8 @@ pub enum FuncError {
     FuncNotFound,
     #[error("func is not revertible")]
     FuncNotRevertible,
+    #[error("Function not runnable")]
+    FuncNotRunnable,
     #[error("Cannot create that type of function")]
     FuncNotSupported,
     #[error("Function options are incompatible with variant")]

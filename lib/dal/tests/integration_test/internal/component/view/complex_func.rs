@@ -502,9 +502,14 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
     .await
     .expect("could not create func argument");
     let (canoe_from_second_func_binding, canoe_from_second_func_binding_return_value) =
-        FuncBinding::create_and_execute(ctx, serde_json::json!({}), canoe_from_second_func_id)
-            .await
-            .expect("could not perform find or create and execute");
+        FuncBinding::create_and_execute(
+            ctx,
+            serde_json::json!({}),
+            canoe_from_second_func_id,
+            vec![],
+        )
+        .await
+        .expect("could not perform find or create and execute");
     let (external_provider, _) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),

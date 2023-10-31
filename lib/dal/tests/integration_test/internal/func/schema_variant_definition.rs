@@ -34,7 +34,7 @@ async fn execute_schema_variant_definition(ctx: &DalContext) {
         .expect("able to set function code");
 
     let (_, return_value) =
-        FuncBinding::create_and_execute(ctx, serde_json::Value::Null, *func.id())
+        FuncBinding::create_and_execute(ctx, serde_json::Value::Null, *func.id(), vec![])
             .await
             .expect("able to execute");
 
