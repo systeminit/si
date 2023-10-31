@@ -19,7 +19,16 @@ app.use(router);
 app.use(store);
 
 // we attach to the #app-layout div (in AppLayout.vue) to stay within an overflow hidden div and not mess with page scrollbars
-app.use(FloatingVue, { container: "#app-layout" });
+app.use(FloatingVue, {
+  container: "#app-layout",
+  themes: {
+    "user-info": {
+      $extend: "tooltip",
+      delay: { show: 10, hide: 100 },
+      instantMove: true,
+    },
+  },
+});
 
 // unfortunately, vue-konva only works as a global plugin, so we must register it here
 // TODO: fork the lib and set it up so we can import individual components

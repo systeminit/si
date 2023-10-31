@@ -125,7 +125,11 @@
         <form v-else class="grow my-md px-md">
           <Stack>
             <ErrorMessage :requestStatus="updateUserReqStatus" />
-            <VormInput label="Profile Image" type="container">
+            <VormInput
+              v-if="draftUser.pictureUrl || storeUser?.pictureUrl"
+              label="Profile Image"
+              type="container"
+            >
               <div
                 v-if="draftUser.pictureUrl"
                 class="flex flex-row items-center gap-sm"

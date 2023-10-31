@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-shrink-0">
+  <div>
     <div class="flex flex-col gap-1">
       <div class="text-xs font-medium capsize">CHANGE SET:</div>
 

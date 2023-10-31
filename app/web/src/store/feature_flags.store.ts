@@ -12,6 +12,7 @@ const FLAG_MAPPING = {
   WORKSPACE_BACKUPS: "workspaceBackups",
   FUNC_TEST_PANEL: "func_test_panel",
   AUTO_REATTACH_FUNCTIONS: "auto_reattach_functions",
+  COLLABORATORS: "collaborators",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

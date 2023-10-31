@@ -25,7 +25,7 @@
       :class="
         clsx(
           'group',
-          'p-sm flex items-center gap-sm rounded-md flex-grow',
+          'p-sm flex items-center gap-sm rounded-md flex-grow min-w-0 overflow-hidden',
           'bg-action-600 hover:bg-action-500 text-white',
           'cursor-pointer z-20',
         )
@@ -33,8 +33,14 @@
       @mousedown="tracker.trackEvent('workspace_launcher_widget_click')"
     >
       <Icon v-if="!compact" name="laptop" size="lg" />
-      <Stack spacing="xs">
-        <div class="font-bold capsize">{{ workspace.displayName }}</div>
+      <Stack spacing="xs" class="overflow-hidden">
+        <div
+          ref="workspaceNameRef"
+          v-tooltip="workspaceNameTooltip"
+          class="font-bold capsize line-clamp-3 break-words"
+        >
+          {{ workspace.displayName }}
+        </div>
         <div class="text-sm opacity-70 capsize">
           {{ workspace.instanceUrl }}
         </div>
@@ -123,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType } from "vue";
+import { computed, PropType, ref } from "vue";
 
 import { Icon, Stack } from "@si/vue-lib/design-system";
 import clsx from "clsx";
@@ -154,6 +160,21 @@ const workspace = computed(() =>
     ? workspacesStore.workspacesById[props.workspaceId]
     : workspacesStore.defaultWorkspace,
 );
+
+const workspaceNameRef = ref();
+const workspaceNameTooltip = computed(() => {
+  if (
+    workspaceNameRef.value &&
+    workspaceNameRef.value.scrollHeight > workspaceNameRef.value.offsetHeight
+  ) {
+    return {
+      content: workspaceNameRef.value.textContent,
+      delay: { show: 700, hide: 10 },
+    };
+  } else {
+    return {};
+  }
+});
 
 const emit = defineEmits<{
   (e: "edit"): void;

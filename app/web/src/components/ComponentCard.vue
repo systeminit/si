@@ -18,7 +18,7 @@
         <div
           ref="componentNameRef"
           v-tooltip="componentNameTooltip"
-          class="font-bold break-all line-clamp-4"
+          class="font-bold break-all line-clamp-4 pb-[2px]"
         >
           {{ component.displayName }}
         </div>

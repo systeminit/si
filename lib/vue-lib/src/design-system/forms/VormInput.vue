@@ -284,12 +284,14 @@ const props = defineProps({
   // for password only
   allowShowPassword: Boolean,
   checkPasswordStrength: Boolean,
+
+  submitFormOnEnter: Boolean,
 });
 
 const wrapperRef = ref<HTMLDivElement>(); // template ref
 const inputRef = ref<HTMLInputElement>(); // template ref
 
-const emit = defineEmits(["update:modelValue", "focus", "blur"]);
+const emit = defineEmits(["update:modelValue", "focus", "blur", "submit"]);
 
 // const originalValue = ref(props.modelValue); // store the original value
 const { modelValue: currentValue, disabled } = toRefs(props);
@@ -523,6 +525,9 @@ function onKeyboardEvent(event: KeyboardEvent) {
   const key = event.key;
   if (key === "Enter") {
     onBlur();
+    if (props.submitFormOnEnter) {
+      emit("submit");
+    }
   }
 
   if (NUMERIC_TYPES.includes(props.type)) {

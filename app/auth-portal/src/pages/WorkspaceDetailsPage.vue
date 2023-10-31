@@ -2,18 +2,29 @@
   <div class="overflow-hidden">
     <template v-if="loadWorkspacesReqStatus.isSuccess || createMode">
       <div
-        class="pb-md flex flex-row gap-sm align-middle items-center justify-between"
+        class="flex flex-row gap-sm align-middle items-center justify-between"
       >
-        <div>
-          <div class="text-lg font-bold pb-sm">
-            {{ draftWorkspace.displayName || "Workspace Details" }}
-          </div>
-          <div v-if="featureFlagsStore.INVITE_USER">
-            From here you can manage this workspace and invite users to be part
-            of it.
-          </div>
-          <div v-else>From here you can manage this workspace</div>
+        <div
+          ref="workspaceNameRef"
+          v-tooltip="workspaceNameTooltip"
+          class="text-lg font-bold line-clamp-3 break-words"
+        >
+          {{ draftWorkspace.displayName || "Workspace Details" }}
         </div>
+        <RouterLink
+          :to="{
+            name: 'dashboard',
+          }"
+        >
+          <VButton label="Return To Dashboard" tone="neutral" />
+        </RouterLink>
+      </div>
+      <div class="mt-sm pb-md">
+        <div v-if="featureFlagsStore.INVITE_USER">
+          From here you can manage this workspace and invite users to be part of
+          it.
+        </div>
+        <div v-else>From here you can manage this workspace</div>
       </div>
 
       <Stack>
@@ -28,6 +39,7 @@
           placeholder="A display name for this workspace"
           required
           :disabled="!canInviteUsers && !createMode"
+          :maxLength="500"
         />
         <VormInput
           v-model="draftWorkspace.instanceUrl"
@@ -54,7 +66,7 @@
           {{ createMode ? "Create Workspace" : "Save" }}
         </VButton>
       </Stack>
-      <div v-if="!createMode && featureFlagsStore.INVITE_USER">
+      <div v-if="!createMode && featureFlagsStore.INVITE_USER" class="mt-sm">
         <template v-if="loadWorkspaceMembersReqStatus.isPending">
           <Icon name="loader" />
         </template>
@@ -64,58 +76,43 @@
         <template v-else-if="loadWorkspaceMembersReqStatus.isSuccess">
           <Stack>
             <div class="text-lg font-bold">Members of this workspace:</div>
+
             <table
-              class="min-w-full divide-y divide-gray-200 dark:divide-gray-700"
+              class="w-full divide-y divide-neutral-400 dark:divide-neutral-600 border-b border-neutral-400 dark:border-neutral-600"
             >
               <thead>
-                <tr>
-                  <th
-                    scope="col"
-                    class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase"
-                  >
-                    Email
-                  </th>
-                  <th
-                    scope="col"
-                    class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase"
-                  >
-                    Role
-                  </th>
-                  <th
-                    scope="col"
-                    class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase"
-                  >
-                    INVITE ACCEPTED?
-                  </th>
-                  <th
-                    scope="col"
-                    class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase"
-                  />
+                <tr
+                  class="children:pb-xs children:px-md children:font-bold text-left text-xs uppercase"
+                >
+                  <th scope="col">Email</th>
+                  <th scope="col">Role</th>
+                  <!-- <th scope="col">Invite Accepted?</th> -->
+                  <th scope="col" />
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                <tr v-for="memUser in members" :key="memUser.userId">
-                  <td
-                    class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200"
-                  >
-                    {{ memUser.email }}
+              <tbody
+                class="divide-y divide-neutral-300 dark:divide-neutral-700"
+              >
+                <tr
+                  v-for="memUser in members"
+                  :key="memUser.userId"
+                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-gray-800 dark:text-gray-200"
+                >
+                  <td class="">
+                    <div
+                      class="xl:max-w-[800px] lg:max-w-[60vw] md:max-w-[50vw] sm:max-w-[40vw] max-w-[150px] truncate"
+                    >
+                      {{ memUser.email }}
+                    </div>
                   </td>
-                  <td
-                    class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200 normal-case"
-                  >
+                  <td class="normal-case">
                     {{ memUser.role }}
                   </td>
-                  <td
-                    class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200 normal-case"
-                  >
-                    {{ memUser.signupAt ? "Yes" : "No" }}
-                  </td>
-                  <td
-                    class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200 normal-case"
-                  >
+                  <td class="normal-case">
                     <ErrorMessage :requestStatus="deleteUserHandlerReq" />
                     <div
                       v-if="memUser.role !== 'OWNER'"
+                      class="cursor-pointer hover:text-destructive-500"
                       @click="deleteUserHandler(memUser.email)"
                     >
                       <Icon name="trash" />
@@ -127,7 +124,7 @@
           </Stack>
         </template>
       </div>
-      <div v-if="featureFlagsStore.INVITE_USER && canInviteUsers" class="pt-4">
+      <div v-if="featureFlagsStore.INVITE_USER && canInviteUsers" class="pt-md">
         <template v-if="inviteUserReqStatus.isPending">
           <Icon name="loader" />
         </template>
@@ -140,7 +137,9 @@
               <VormInput
                 v-model="newMember.email"
                 type="email"
-                label="User Email to Invite"
+                label="User Email to Grant Workspace Access"
+                submitFormOnEnter
+                @submit="inviteButtonHandler"
               />
               <VButton
                 class="flex-none"
@@ -148,7 +147,7 @@
                 variant="solid"
                 :requestStatus="inviteUserReqStatus"
                 @click="inviteButtonHandler"
-                >Invite User</VButton
+                >Add User To Workspace</VButton
               >
             </Stack>
           </Stack>
@@ -160,7 +159,7 @@
 
 <script setup lang="ts">
 import * as _ from "lodash-es";
-import { computed, PropType, reactive, watch } from "vue";
+import { computed, PropType, reactive, ref, watch } from "vue";
 import {
   Icon,
   VormInput,
@@ -262,6 +261,12 @@ const editWorkspace = async () => {
   const res = await workspacesStore.EDIT_WORKSPACE(draftWorkspace);
 
   if (res.result.success) {
+    // TODO(Wendy) - do we want to send users back to the dashboard when they save their edits?
+    // setTimeout(async () => {
+    //   await router.push({
+    //     name: "dashboard",
+    //   });
+    // }, 500);
     return;
   }
 };
@@ -285,4 +290,25 @@ const inviteButtonHandler = async () => {
     newMember.email = "";
   }
 };
+
+const workspaceNameRef = ref();
+const workspaceNameTooltip = computed(() => {
+  if (
+    workspaceNameRef.value &&
+    workspaceNameRef.value.scrollHeight > workspaceNameRef.value.offsetHeight
+  ) {
+    return {
+      content: draftWorkspace.displayName,
+      delay: { show: 700, hide: 10 },
+    };
+  } else {
+    return {};
+  }
+});
 </script>
+
+<style scoped>
+.long-email-handler {
+  max-width: 700px;
+}
+</style>
