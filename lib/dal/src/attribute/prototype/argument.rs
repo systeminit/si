@@ -3,7 +3,6 @@
 //! arguments.
 
 use serde::{Deserialize, Serialize};
-use std::backtrace::Backtrace;
 use thiserror::Error;
 
 use si_data_pg::PgError;

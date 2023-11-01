@@ -9,6 +9,7 @@ use si_data_pg::PgError;
 use si_pkg::ActionFuncSpecKind;
 use telemetry::prelude::*;
 
+use crate::func::before::before_funcs_for_component;
 use crate::{
     component::view::ComponentViewError, func::backend::js_action::ActionRunResult,
     impl_standard_model, pk, standard_model, standard_model_accessor, Component, ComponentId,
@@ -374,8 +375,7 @@ impl ActionPrototype {
     ) -> ActionPrototypeResult<Option<ActionRunResult>> {
         let component_view = ComponentView::new(ctx, component_id).await?;
 
-        // TODO Load Before
-        let before = vec![];
+        let before = before_funcs_for_component(ctx, &component_id).await?;
 
         let (_, return_value) = FuncBinding::create_and_execute(
             ctx,

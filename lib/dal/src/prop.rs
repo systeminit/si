@@ -545,14 +545,11 @@ impl Prop {
         let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
         let func = funcs.pop().ok_or(PropError::MissingFunc(func_name))?;
 
-        // TODO Load Before
-        let before = vec![];
-
         // No matter what, we need a FuncBindingReturnValueId to create a new attribute prototype.
         // If the func binding was created, we execute on it to generate our value id. Otherwise,
         // we try to find a value by id and then fallback to executing anyway if one was not found.
         let (func_binding, func_binding_return_value) =
-            FuncBinding::create_and_execute(ctx, serde_json::json![null], *func.id(), before)
+            FuncBinding::create_and_execute(ctx, serde_json::json![null], *func.id(), vec![])
                 .await?;
 
         while let Some(WorkItem { maybe_parent, prop }) = work_queue.pop_front() {

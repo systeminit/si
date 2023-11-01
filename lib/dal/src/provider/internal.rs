@@ -457,16 +457,13 @@ impl InternalProvider {
         )
         .await?;
 
-        // TODO Load Before
-        let before = vec![];
-
         let (func_binding, func_binding_return_value) = FuncBinding::create_and_execute(
             ctx,
             serde_json::to_value(FuncBackendIdentityArgs {
                 identity: Some(found_attribute_view.value().clone()),
             })?,
             *func.id(),
-            before,
+            vec![],
         )
         .await?;
 

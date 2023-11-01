@@ -10,6 +10,7 @@ use crate::component::ComponentResult;
 use crate::func::backend::{
     js_validation::FuncBackendJsValidationArgs, validation::FuncBackendValidationArgs,
 };
+use crate::func::before::before_funcs_for_component;
 use crate::func::binding::FuncBinding;
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::ComponentError;
@@ -82,8 +83,7 @@ impl Component {
             }
         };
 
-        // TODO Load Before
-        let before = vec![];
+        let before = before_funcs_for_component(ctx, self.id()).await?;
 
         // Now, we can load in the mutated args!
         let (func_binding, _) =

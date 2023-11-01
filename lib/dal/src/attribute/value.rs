@@ -44,6 +44,7 @@ use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::func::before::before_funcs_for_component;
 use crate::{
     attribute::{
         context::{
@@ -1108,8 +1109,8 @@ impl AttributeValue {
         }
 
         let func_id = attribute_prototype.func_id();
-        // TODO Load Before
-        let before = vec![];
+        let before =
+            before_funcs_for_component(ctx, &attribute_prototype.context.component_id()).await?;
 
         let (func_binding, mut func_binding_return_value) = match FuncBinding::create_and_execute(
             ctx,

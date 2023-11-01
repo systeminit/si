@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use dal::func::backend::js_reconciliation::{
     ReconciliationDiff, ReconciliationDiffDomain, ReconciliationResult,
 };
+use dal::func::before::before_funcs_for_component;
 use dal::{
     AttributeReadContext, AttributeValue, AttributeView, Component, ComponentId,
     ExternalProviderId, FuncBinding, InternalProviderId, Prop, ReconciliationPrototype,
@@ -110,9 +111,6 @@ pub async fn get_diff(
 
             if let Some(func_id) = prop.diff_func_id() {
                 let diff_value = {
-                    // TODO Load Before
-                    let before = vec![];
-
                     let (_, func_binding_return_value) = FuncBinding::create_and_execute(
                         ctx,
                         serde_json::json!({
@@ -120,7 +118,7 @@ pub async fn get_diff(
                             "second": resource_prop_view.value(),
                         }),
                         *func_id,
-                        before,
+                        vec![],
                     )
                     .await?;
 
@@ -160,8 +158,7 @@ pub async fn get_diff(
         {
             let func = reconciliation_prototype.func(ctx).await?;
 
-            // TODO Load Before
-            let before = vec![];
+            let before = before_funcs_for_component(ctx, component.id()).await?;
 
             let (_, func_binding_return_value) = FuncBinding::create_and_execute(
                 ctx,
