@@ -137,9 +137,13 @@ impl FromRequestParts<AppState> for Authorization {
             .map_err(|_| unauthorized_error())?;
         ctx.update_tenancy(dal::Tenancy::new(claim.workspace_pk));
 
-        User::authorize(&ctx, &claim.user_pk)
+        let is_authorized = User::authorize(&ctx, &claim.user_pk, &claim.workspace_pk)
             .await
             .map_err(|_| unauthorized_error())?;
+
+        if !is_authorized {
+            return Err(unauthorized_error());
+        }
 
         Ok(Self(claim))
     }
@@ -169,9 +173,13 @@ impl FromRequestParts<AppState> for WsAuthorization {
             .map_err(|_| unauthorized_error())?;
         ctx.update_tenancy(dal::Tenancy::new(claim.workspace_pk));
 
-        User::authorize(&ctx, &claim.user_pk)
+        let is_authorized = User::authorize(&ctx, &claim.user_pk, &claim.workspace_pk)
             .await
             .map_err(|_| unauthorized_error())?;
+
+        if !is_authorized {
+            return Err(unauthorized_error());
+        }
 
         Ok(Self(claim))
     }
