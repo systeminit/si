@@ -410,4 +410,14 @@ const profileMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   max-width: 80vw;
   overflow-wrap: break-word;
 }
+
+.bg-caution-lines {
+  background: repeating-linear-gradient(
+    -45deg,
+    #000,
+    #000 10px,
+    #333 10px,
+    #333 20px
+  );
+}
 </style>
