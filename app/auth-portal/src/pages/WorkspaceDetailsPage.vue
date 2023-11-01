@@ -173,6 +173,7 @@ import { useRouter } from "vue-router";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { tracker } from "@/lib/posthog";
 
 const authStore = useAuthStore();
 const workspacesStore = useWorkspacesStore();
@@ -287,6 +288,12 @@ const inviteButtonHandler = async () => {
   const res = await workspacesStore.INVITE_USER(newMember, props.workspaceId);
 
   if (res.result.success) {
+    tracker.trackEvent("workspace_invitation", {
+      inviteeEmail: newMember.email,
+      workspaceId: props.workspaceId,
+      inviterName: authStore.invitersName,
+      workspaceName: draftWorkspace.displayName,
+    });
     newMember.email = "";
   }
 };

@@ -50,6 +50,10 @@ export const useAuthStore = defineStore("auth", {
         "user"
       );
     },
+    invitersName: (state) => {
+      if (!state.user) return "user";
+      return `${state.user.firstName} ${state.user.lastName}`;
+    },
     // useful to keep this logic in one place
     needsProfileUpdate: () => false, // if we need to force a profile update, change the logic here
   },
