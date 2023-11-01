@@ -26,13 +26,13 @@ pub fn routes(state: AppState) -> Router {
             "/api/change_set",
             crate::server::service::change_set::routes(),
         )
-        .nest("/api/session", crate::server::service::session::routes());
-    // .nest(
-    //     "/api/component",
-    //     crate::server::service::component::routes(),
-    // )
-    // .nest("/api/fix", crate::server::service::fix::routes())
-    // .nest("/api/func", crate::server::service::func::routes())
+        .nest("/api/session", crate::server::service::session::routes())
+        // .nest(
+        //     "/api/component",
+        //     crate::server::service::component::routes(),
+        // )
+        // .nest("/api/fix", crate::server::service::fix::routes())
+        .nest("/api/func", crate::server::service::func::routes());
     // .nest("/api/pkg", crate::server::service::pkg::routes())
     // .nest("/api/provider", crate::server::service::provider::routes())
     // .nest(

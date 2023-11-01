@@ -95,6 +95,7 @@ async fn find_or_create_user_and_workspace(
     let workspace = match maybe_workspace {
         Some(workspace) => {
             ctx.update_tenancy(Tenancy::new(*workspace.pk()));
+            dbg!(ctx.workspace_snapshot());
             workspace
         }
         None => {

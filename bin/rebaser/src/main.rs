@@ -47,6 +47,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     }
 
     let config = Config::try_from(args)?;
+    dbg!(&config);
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 

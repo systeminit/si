@@ -7,7 +7,7 @@ load(
 rust_binary(
     name = "sdf",
     deps = [
-        "//lib/rebase-client:rebaser-client",
+        "//lib/rebaser-client:rebaser-client",
         "//lib/sdf-server:sdf-server",
         "//lib/telemetry-application-rs:telemetry-application",
         "//third-party/rust:clap",

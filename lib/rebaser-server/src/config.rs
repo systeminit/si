@@ -52,6 +52,7 @@ pub struct Config {
 
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
 
+    #[builder(default)]
     rabbitmq_config: SiRabbitMqConfig,
 }
 
@@ -93,6 +94,7 @@ impl Config {
         &self.symmetric_crypto_service
     }
 
+    /// Gets a reference to the config for the SiRabbitMqConfig
     pub fn rabbitmq_config(&self) -> &SiRabbitMqConfig {
         &self.rabbitmq_config
     }

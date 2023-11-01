@@ -35,29 +35,33 @@ pub async fn list_funcs(
 ) -> FuncResult<Json<ListFuncsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let try_func_views: Vec<Result<ListedFuncView, FuncError>> = Func::find_by_attr_in(
-        &ctx,
-        "backend_kind",
-        &[
-            &FuncBackendKind::JsAction.as_ref().to_string(),
-            &FuncBackendKind::JsAttribute.as_ref().to_string(),
-            &FuncBackendKind::JsValidation.as_ref().to_string(),
-        ],
-    )
-    .await?
-    .iter()
-    .filter(|f| !f.hidden())
-    .map(|func| {
-        Ok(ListedFuncView {
-            id: func.id().to_owned(),
-            handler: func.handler().map(|handler| handler.to_owned()),
-            variant: func.try_into()?,
-            name: func.name().into(),
-            display_name: func.display_name().map(Into::into),
-            is_builtin: func.builtin(),
+    ctx.workspace_snapshot()?.lock().await.dot();
+
+    let funcs = ctx
+        .workspace_snapshot()?
+        .lock()
+        .await
+        .list_funcs(&ctx)
+        .await?;
+
+    dbg!(&funcs);
+
+    let try_func_views: Vec<FuncResult<ListedFuncView>> = funcs
+        .iter()
+        .filter(|f| !f.hidden)
+        .map(|func| {
+            Ok(ListedFuncView {
+                id: func.id,
+                handler: func.handler.to_owned().map(|handler| handler.to_owned()),
+                variant: func.try_into()?,
+                name: func.name.to_owned(),
+                display_name: func.display_name.to_owned().map(Into::into),
+                is_builtin: func.builtin,
+            })
         })
-    })
-    .collect();
+        .collect();
+
+    dbg!(&try_func_views);
 
     let mut funcs = vec![];
     for func_view in try_func_views {

@@ -2,6 +2,8 @@ use std::{mem, path::PathBuf, sync::Arc};
 
 use content_store::{PgStore, StoreError};
 use futures::Future;
+use rebaser_client::ChangeSetReplyMessage;
+use rebaser_client::ClientError as RebaserClientError;
 use rebaser_client::Config as RebaserClientConfig;
 use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
@@ -13,8 +15,10 @@ use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, EncryptionKey};
 
+use crate::workspace_snapshot::vector_clock::VectorClockId;
+use crate::workspace_snapshot::WorkspaceSnapshotId;
 use crate::{
-    change_set_pointer::ChangeSetPointerId,
+    change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId},
     job::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
@@ -180,28 +184,34 @@ impl ConnectionState {
         }
     }
 
-    async fn commit(self) -> Result<Self, TransactionsError> {
+    async fn commit(
+        self,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<Self, TransactionsError> {
         match self {
             Self::Connections(_) => {
                 trace!("no active transactions present when commit was called, taking no action");
                 Ok(self)
             }
             Self::Transactions(txns) => {
-                let conns = txns.commit_into_conns().await?;
+                let conns = txns.commit_into_conns(rebase_request).await?;
                 Ok(Self::Connections(conns))
             }
             Self::Invalid => Err(TransactionsError::TxnCommit),
         }
     }
 
-    async fn blocking_commit(self) -> Result<Self, TransactionsError> {
+    async fn blocking_commit(
+        self,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<Self, TransactionsError> {
         match self {
             Self::Connections(_) => {
                 trace!("no active transactions present when commit was called, taking no action");
                 Ok(self)
             }
             Self::Transactions(txns) => {
-                let conns = txns.blocking_commit_into_conns().await?;
+                let conns = txns.blocking_commit_into_conns(rebase_request).await?;
                 Ok(Self::Connections(conns))
             }
             Self::Invalid => Err(TransactionsError::TxnCommit),
@@ -222,6 +232,8 @@ impl ConnectionState {
         }
     }
 }
+
+pub enum DalContextError {}
 
 /// A context type which holds references to underlying services, transactions, and context for DAL objects.
 #[derive(Clone, Debug)]
@@ -250,6 +262,8 @@ pub struct DalContext {
     content_store: Arc<Mutex<PgStore>>,
     /// The workspace snapshot for this context
     workspace_snapshot: Option<Arc<Mutex<WorkspaceSnapshot>>>,
+    /// The change set pointer for this context
+    change_set_pointer: Option<ChangeSetPointer>,
 }
 
 impl DalContext {
@@ -264,33 +278,92 @@ impl DalContext {
         }
     }
 
+    pub async fn write_snapshot(&self) -> Result<Option<WorkspaceSnapshotId>, TransactionsError> {
+        if let Some(snapshot) = &self.workspace_snapshot {
+            let vector_clock_id = self.change_set_pointer()?.vector_clock_id();
+            Ok(Some(
+                snapshot
+                    .lock()
+                    .await
+                    .write(self, vector_clock_id)
+                    .await
+                    .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?,
+            ))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn get_rebase_request(
+        &self,
+        onto_workspace_snapshot_id: WorkspaceSnapshotId,
+    ) -> Result<RebaseRequest, TransactionsError> {
+        let change_set_pointer = self.change_set_pointer()?;
+        Ok(RebaseRequest {
+            onto_workspace_snapshot_id,
+            to_rebase_change_set_id: self.change_set_id().into(),
+            onto_vector_clock_id: change_set_pointer.vector_clock_id(),
+        })
+    }
+
     /// Consumes all inner transactions and committing all changes made within them.
     pub async fn commit(&self) -> Result<(), TransactionsError> {
         if self.blocking {
             self.blocking_commit().await?;
         } else {
+            let rebase_request = match self.write_snapshot().await? {
+                Some(workspace_snapshot_id) => {
+                    Some(self.get_rebase_request(workspace_snapshot_id)?)
+                }
+                None => None,
+            };
+
             let mut guard = self.conns_state.lock().await;
-            *guard = guard.take().commit().await?;
+            *guard = guard.take().commit(rebase_request).await?;
         }
 
         Ok(())
     }
 
-    pub async fn workspace_snapshot(
-        &mut self,
-    ) -> Result<Arc<Mutex<WorkspaceSnapshot>>, WorkspaceSnapshotError> {
-        Ok(match &self.workspace_snapshot {
-            None => {
-                let change_set_pointer_id = self.change_set_id();
-                let workspace_snapshot = Arc::new(Mutex::new(
-                    WorkspaceSnapshot::find_for_change_set(self, change_set_pointer_id).await?,
-                ));
-                self.workspace_snapshot = Some(workspace_snapshot.clone());
+    pub fn change_set_pointer(&self) -> Result<&ChangeSetPointer, TransactionsError> {
+        match self.change_set_pointer.as_ref() {
+            Some(csp_ref) => Ok(csp_ref),
+            None => Err(TransactionsError::ChangeSetPointerNotSet),
+        }
+    }
 
-                workspace_snapshot
-            }
-            Some(workspace_snapshot) => workspace_snapshot.clone(),
-        })
+    /// Fetch the change set pointer for the current change set visibility
+    /// Should only be called by DalContextBuilder or by ourselves if changing visibility or
+    /// refetching after a commit
+    pub fn set_change_set_pointer(
+        &mut self,
+        change_set_pointer: ChangeSetPointer,
+    ) -> Result<&ChangeSetPointer, TransactionsError> {
+        // "fork" a new change set pointer for this dal context "edit session". This gives us a new
+        // Ulid generator and new vector clock id so that concurrent editing conflicts can be
+        // resolved by the rebaser. This change set pointer is not persisted to the database (the
+        // rebaser will persist a new one if it can)
+        self.change_set_pointer = Some(
+            change_set_pointer
+                .editing_changeset()
+                .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?,
+        );
+
+        Ok(self.change_set_pointer()?)
+    }
+
+    pub fn set_workspace_snapshot(&mut self, workspace_snapshot: WorkspaceSnapshot) {
+        self.workspace_snapshot = Some(Arc::new(Mutex::new(workspace_snapshot)));
+    }
+
+    /// Fetch the workspace snapshot for the current visibility
+    pub fn workspace_snapshot(
+        &self,
+    ) -> Result<&Arc<Mutex<WorkspaceSnapshot>>, WorkspaceSnapshotError> {
+        match &self.workspace_snapshot {
+            Some(workspace_snapshot) => Ok(&workspace_snapshot),
+            None => Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched),
+        }
     }
 
     pub fn blocking(&self) -> bool {
@@ -312,9 +385,13 @@ impl DalContext {
     /// Consumes all inner transactions, committing all changes made within them, and
     /// blocks until all queued jobs have reported as finishing.
     pub async fn blocking_commit(&self) -> Result<(), TransactionsError> {
+        let rebase_request = match self.write_snapshot().await? {
+            Some(workspace_snapshot_id) => Some(self.get_rebase_request(workspace_snapshot_id)?),
+            None => None,
+        };
         let mut guard = self.conns_state.lock().await;
 
-        *guard = guard.take().blocking_commit().await?;
+        *guard = guard.take().blocking_commit(rebase_request).await?;
 
         Ok(())
     }
@@ -684,6 +761,8 @@ impl DalContextBuilder {
             history_actor: HistoryActor::SystemInit,
             content_store: Arc::new(Mutex::new(raw_content_store)),
             no_dependent_values: self.no_dependent_values,
+            workspace_snapshot: None,
+            change_set_pointer: None,
         })
     }
 
@@ -703,6 +782,8 @@ impl DalContextBuilder {
             history_actor: HistoryActor::SystemInit,
             no_dependent_values: self.no_dependent_values,
             content_store: Arc::new(Mutex::new(content_store)),
+            workspace_snapshot: None,
+            change_set_pointer: None,
         })
     }
 
@@ -726,6 +807,8 @@ impl DalContextBuilder {
             visibility: Visibility::new_head(false),
             no_dependent_values: self.no_dependent_values,
             content_store: Arc::new(Mutex::new(raw_content_store)),
+            workspace_snapshot: None,
+            change_set_pointer: None,
         })
     }
 
@@ -740,7 +823,7 @@ impl DalContextBuilder {
             None => PgStore::new_production().await?,
         };
 
-        Ok(DalContext {
+        let mut ctx = DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
@@ -749,7 +832,28 @@ impl DalContextBuilder {
             history_actor: request_context.history_actor,
             no_dependent_values: self.no_dependent_values,
             content_store: Arc::new(Mutex::new(raw_content_store)),
-        })
+            workspace_snapshot: None,
+            change_set_pointer: None,
+        };
+
+        let change_set_pointer = ChangeSetPointer::find(&ctx, ctx.change_set_id())
+            .await
+            .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
+            .ok_or(TransactionsError::ChangeSetPointerNotFound(
+                ctx.change_set_id(),
+            ))?;
+
+        let workspace_snapshot =
+            WorkspaceSnapshot::find_for_change_set(&ctx, change_set_pointer.id)
+                .await
+                .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
+
+        dbg!(workspace_snapshot.id());
+
+        ctx.set_change_set_pointer(change_set_pointer)?;
+        ctx.set_workspace_snapshot(workspace_snapshot);
+
+        Ok(ctx)
     }
 
     /// Gets a reference to the PostgreSQL connection pool.
@@ -795,6 +899,12 @@ impl DalContextBuilder {
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum TransactionsError {
+    #[error("change set error: {0}")]
+    ChangeSet(String),
+    #[error("change set pointer not found for change set id: {0}")]
+    ChangeSetPointerNotFound(ChangeSetPointerId),
+    #[error("Change set pointer not set on DalContext")]
+    ChangeSetPointerNotSet,
     #[error(transparent)]
     JobQueueProcessor(#[from] JobQueueProcessorError),
     #[error(transparent)]
@@ -803,6 +913,10 @@ pub enum TransactionsError {
     Pg(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
+    #[error("rebase of snapshot {0} change set id {1} failed {2}")]
+    RebaseFailed(WorkspaceSnapshotId, ChangeSetPointerId, String),
+    #[error(transparent)]
+    RebaserClient(#[from] RebaserClientError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error("store error: {0}")]
@@ -815,6 +929,8 @@ pub enum TransactionsError {
     TxnRollback,
     #[error("cannot start transactions without connections; state={0}")]
     TxnStart(&'static str),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(String),
 }
 
 /// A type which holds ownership over connections that can be used to start transactions.
@@ -884,6 +1000,46 @@ pub struct Transactions {
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
 }
 
+#[derive(Clone, Debug)]
+pub struct RebaseRequest {
+    to_rebase_change_set_id: ChangeSetPointerId,
+    onto_workspace_snapshot_id: WorkspaceSnapshotId,
+    onto_vector_clock_id: VectorClockId,
+}
+
+async fn rebase(
+    rebaser_config: RebaserClientConfig,
+    rebase_request: RebaseRequest,
+) -> Result<(), TransactionsError> {
+    let mut rebaser_client = rebaser_client::Client::new(rebaser_config).await?;
+
+    dbg!(&rebase_request);
+
+    rebaser_client
+        .open_stream_for_change_set(rebase_request.to_rebase_change_set_id.into())
+        .await?;
+
+    let response = rebaser_client
+        .request_rebase(
+            rebase_request.to_rebase_change_set_id.into(),
+            rebase_request.onto_workspace_snapshot_id.into(),
+            rebase_request.onto_vector_clock_id.into(),
+        )
+        .await?;
+
+    match response {
+        ChangeSetReplyMessage::Success { .. } => Ok(()),
+        ChangeSetReplyMessage::Error { message } => Err(TransactionsError::RebaseFailed(
+            rebase_request.onto_workspace_snapshot_id,
+            rebase_request.to_rebase_change_set_id,
+            message,
+        )),
+        ChangeSetReplyMessage::ConflictsFound { .. } => {
+            todo!("conflicts ???");
+        }
+    }
+}
+
 impl Transactions {
     /// Creates and returns a new `Transactions` instance.
     fn new(
@@ -912,9 +1068,17 @@ impl Transactions {
 
     /// Consumes all inner transactions, committing all changes made within them, and returns
     /// underlying connections.
-    pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
+    pub async fn commit_into_conns(
+        self,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<Connections, TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
+
+        if let Some(rebase_request) = rebase_request {
+            rebase(self.rebaser_config.clone(), rebase_request).await?;
+        }
+
         self.job_processor.process_queue().await?;
         let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
 
@@ -923,9 +1087,17 @@ impl Transactions {
 
     /// Consumes all inner transactions, committing all changes made within them, and returns
     /// underlying connections. Blocking until all queued jobs have reported as finishing.
-    pub async fn blocking_commit_into_conns(self) -> Result<Connections, TransactionsError> {
+    pub async fn blocking_commit_into_conns(
+        self,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<Connections, TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
+
+        if let Some(rebase_request) = rebase_request {
+            rebase(self.rebaser_config.clone(), rebase_request).await?;
+        }
+
         self.job_processor.blocking_process_queue().await?;
         let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
 

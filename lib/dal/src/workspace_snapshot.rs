@@ -108,6 +108,8 @@ pub enum WorkspaceSnapshotError {
     WorkspaceSnapshotGraph(#[from] WorkspaceSnapshotGraphError),
     #[error("workspace snapshot graph missing")]
     WorkspaceSnapshotGraphMissing,
+    #[error("no workspace snapshot was fetched for this dal context")]
+    WorkspaceSnapshotNotFetched,
 }
 
 pub type WorkspaceSnapshotResult<T> = Result<T, WorkspaceSnapshotError>;
@@ -185,7 +187,7 @@ impl WorkspaceSnapshot {
         &mut self,
         ctx: &DalContext,
         vector_clock_id: VectorClockId,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> WorkspaceSnapshotResult<WorkspaceSnapshotId> {
         // Pull out the working copy and clean it up.
         let working_copy = self.working_copy()?;
         working_copy.cleanup();
@@ -201,7 +203,8 @@ impl WorkspaceSnapshot {
         self.created_at = object.created_at;
         self.snapshot = object.snapshot;
         self.working_copy = None;
-        Ok(())
+
+        Ok(self.id)
     }
 
     /// This _private_ method crates a new, immutable [`WorkspaceSnapshot`] from a
@@ -210,6 +213,7 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
         graph: WorkspaceSnapshotGraph,
     ) -> WorkspaceSnapshotResult<Self> {
+        dbg!("writing new one");
         let serialized_snapshot = si_cbor::encode(&graph)?;
         let row = ctx
             .txns()
@@ -325,6 +329,10 @@ impl WorkspaceSnapshot {
         lineage_id: Ulid,
     ) -> WorkspaceSnapshotResult<Option<NodeIndex>> {
         Ok(self.working_copy()?.find_equivalent_node(id, lineage_id)?)
+    }
+
+    pub fn cleanup(&mut self) {
+        self.working_copy().expect("oh no").cleanup();
     }
 
     pub fn dot(&mut self) {

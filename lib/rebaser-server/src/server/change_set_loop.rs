@@ -235,6 +235,8 @@ async fn perform_updates_and_write_out_and_update_pointer(
         }
     }
 
+    to_rebase_workspace_snapshot.dot();
+
     // Once all updates have been performed, we can write out, mark everything as recently seen
     // and update the pointer.
     to_rebase_workspace_snapshot

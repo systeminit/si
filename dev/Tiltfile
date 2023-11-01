@@ -71,7 +71,7 @@ compose_services = ["jaeger", "nats", "otelcol", "postgres", "rabbitmq"]
 for service in compose_services:
     dc_resource(service, labels = ["platform"])
 
-# Locally build and run `module-index`
+# Locally build and run `rebaser-server`
 rebaser_target = "//bin/rebaser:rebaser"
 local_resource(
     "rebaser",
@@ -79,7 +79,6 @@ local_resource(
     cmd = "buck2 build {}".format(rebaser_target),
     serve_cmd = "buck2 run {}".format(rebaser_target),
     allow_parallel = True,
-    auto_init = False,
     resource_deps = [
         "otelcol",
         "postgres",
@@ -171,6 +170,7 @@ local_resource(
         "postgres",
         "veritech",
         "rabbitmq",
+        "rebaser",
     ],
     deps = _buck2_dep_inputs(sdf_target),
     trigger_mode = trigger_mode,

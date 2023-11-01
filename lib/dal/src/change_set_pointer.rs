@@ -78,6 +78,21 @@ impl ChangeSetPointer {
         })
     }
 
+    pub fn editing_changeset(&self) -> ChangeSetPointerResult<Self> {
+        let mut generator = Generator::new();
+        let id = generator.generate()?;
+
+        Ok(Self {
+            id: id.into(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            generator: Arc::new(Mutex::new(generator)),
+            base_change_set_id: self.base_change_set_id,
+            workspace_snapshot_id: self.workspace_snapshot_id,
+            name: self.name.to_owned(),
+        })
+    }
+
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,

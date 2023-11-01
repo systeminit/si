@@ -304,7 +304,7 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
     dal_context.set_no_dependent_values();
     let mut ctx = dal_context.build_default().await?;
 
-    let workspace = Workspace::builtin(&ctx).await?;
+    let workspace = Workspace::builtin(&mut ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
     ctx.blocking_commit().await?;
 

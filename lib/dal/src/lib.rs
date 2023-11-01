@@ -222,7 +222,7 @@ pub async fn migrate_builtins(
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;
 
-    let workspace = Workspace::builtin(&ctx).await?;
+    let workspace = Workspace::builtin(&mut ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
     ctx.blocking_commit().await?;
 
