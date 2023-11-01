@@ -35,7 +35,6 @@ pub async fn apply_change_set(
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
     let actions = change_set.actions(&ctx).await?;
     let actors = change_set.actors(&ctx).await?;
-    dbg!(&actors);
     change_set.apply(&mut ctx).await?;
 
     track(
