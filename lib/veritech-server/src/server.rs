@@ -356,7 +356,6 @@ async fn resolver_function_request(
     }
 
     let function_result = progress.finish().await?;
-
     Ok(function_result)
 }
 

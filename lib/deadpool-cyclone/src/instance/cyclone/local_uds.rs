@@ -114,9 +114,7 @@ impl Instance for LocalUdsInstance {
 
     async fn ensure_healthy(&mut self) -> result::Result<(), Self::Error> {
         self.ensure_healthy_client().await?;
-        match self.client.readiness().await? {
-            ReadinessStatus::Ready => {}
-        }
+        self.client.execute_ping().await?;
 
         Ok(())
     }
@@ -128,7 +126,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-
         self.client.watch().await
     }
 
@@ -136,7 +133,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-
         self.client.liveness().await
     }
 
@@ -144,7 +140,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-
         self.client.readiness().await
     }
 
@@ -152,7 +147,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-
         let result = self.client.execute_ping().await;
         self.count_request();
 
@@ -169,10 +163,8 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-
         let result = self.client.execute_resolver(request).await;
         self.count_request();
-
         result
     }
 
@@ -186,7 +178,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-
         let result = self.client.execute_validation(request).await;
         self.count_request();
 
@@ -203,7 +194,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-
         // Use the websocket client for cyclone to execute command run.
         let result = self.client.execute_action_run(request).await;
         self.count_request();
@@ -221,7 +211,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-
         // Use the websocket client for cyclone to execute reconciliation.
         let result = self.client.execute_reconciliation(request).await;
         self.count_request();
@@ -239,7 +228,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-
         // Use the websocket client for cyclone to execute reconciliation.
         let result = self.client.execute_schema_variant_definition(request).await;
         self.count_request();
@@ -332,7 +320,7 @@ impl Spec for LocalUdsInstanceSpec {
         let mut runtime = runtime_instance_from_spec(self, &socket).await?;
 
         runtime.spawn().await?;
-        let mut client = Client::uds(socket)?;
+        let mut client = Client::uds(runtime.socket())?;
 
         // Establish the client watch session. As the process may be booting, we will retry for a
         // period before giving up and assuming that the server instance has failed.
@@ -340,10 +328,14 @@ impl Spec for LocalUdsInstanceSpec {
             let mut retries = 30;
             loop {
                 trace!("calling client.watch()");
-                if let Ok(watch) = client.watch().await {
-                    trace!("client watch session established");
-                    break watch;
-                }
+
+                match client.watch().await {
+                    Ok(watch) => {
+                        trace!("client watch session established");
+                        break watch;
+                    }
+                    Err(err) => err,
+                };
                 if retries < 1 {
                     return Err(Self::Error::WatchInitTimeout);
                 }
@@ -353,6 +345,7 @@ impl Spec for LocalUdsInstanceSpec {
         };
 
         let mut watch_progress = watch.start().await?;
+
         // Establish that we have received our first watch ping, which should happen immediately
         // after establishing a watch session
         watch_progress
@@ -477,18 +470,22 @@ fn temp_path_and_socket_from(
 pub enum LocalUdsRuntimeStrategy {
     /// Run Docker containers on the local machine
     LocalDocker,
+    /// Run processes on firecracker
+    LocalFirecracker,
     /// Run processes on the local machine
     LocalProcess,
 }
 
 impl Default for LocalUdsRuntimeStrategy {
     fn default() -> Self {
+        // firecracker-setup: change LocalProcess to LocalFirecracker
         Self::LocalProcess
     }
 }
 
 #[async_trait]
 pub trait LocalInstanceRuntime: Send + Sync {
+    fn socket(&mut self) -> PathBuf;
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError>;
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError>;
 }
@@ -497,6 +494,7 @@ pub trait LocalInstanceRuntime: Send + Sync {
 struct LocalProcessRuntime {
     cmd: Command,
     child: Option<Child>,
+    socket: PathBuf,
 }
 
 impl LocalProcessRuntime {
@@ -529,12 +527,20 @@ impl LocalProcessRuntime {
             cmd.arg("--enable-action-run");
         }
 
-        Ok(Box::new(LocalProcessRuntime { cmd, child: None }))
+        Ok(Box::new(LocalProcessRuntime {
+            cmd,
+            child: None,
+            socket: socket.to_path_buf(),
+        }))
     }
 }
 
 #[async_trait]
 impl LocalInstanceRuntime for LocalProcessRuntime {
+    fn socket(&mut self) -> PathBuf {
+        self.socket.to_path_buf()
+    }
+
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
         self.child = Some(
             self.cmd
@@ -558,6 +564,7 @@ impl LocalInstanceRuntime for LocalProcessRuntime {
 struct LocalDockerRuntime {
     container_id: String,
     docker: Docker,
+    socket: PathBuf,
 }
 
 impl LocalDockerRuntime {
@@ -642,12 +649,17 @@ impl LocalDockerRuntime {
         Ok(Box::new(LocalDockerRuntime {
             container_id,
             docker,
+            socket: socket.to_path_buf(),
         }))
     }
 }
 
 #[async_trait]
 impl LocalInstanceRuntime for LocalDockerRuntime {
+    fn socket(&mut self) -> PathBuf {
+        self.socket.to_path_buf()
+    }
+
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
         self.docker
             .start_container(
@@ -672,6 +684,63 @@ impl LocalInstanceRuntime for LocalDockerRuntime {
     }
 }
 
+#[derive(Debug)]
+struct LocalFirecrackerRuntime {
+    vm_id: String,
+    socket: PathBuf,
+}
+
+impl LocalFirecrackerRuntime {
+    async fn build() -> Result<Box<dyn LocalInstanceRuntime>> {
+        // TODO(johnwatson): Run some checks against the ID to see if it's been used before
+        // Calculate it instead of random? Or have an incrementing pool 1..5000 that we loop
+        // over, ensuring that we do cleanup along the way
+        // Obviously this has the potential to clash, but overall the risk here is fairly low
+        // assuming that cleanup works as expected ;)
+        let vm_id: String = thread_rng().gen_range(0..5000).to_string();
+        let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", vm_id));
+
+        Ok(Box::new(LocalFirecrackerRuntime {
+            vm_id,
+            socket: sock,
+        }))
+    }
+}
+
+#[async_trait]
+impl LocalInstanceRuntime for LocalFirecrackerRuntime {
+    fn socket(&mut self) -> PathBuf {
+        self.socket.to_path_buf()
+    }
+
+    async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        let command = "/firecracker-data/start.sh ".to_owned() + &self.vm_id;
+
+        // Spawn the shell process
+        let _status = Command::new("sudo")
+            .arg("bash")
+            .arg("-c")
+            .arg(command)
+            .status()
+            .await;
+
+        Ok(())
+    }
+
+    async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        let command = "/firecracker-data/stop.sh ".to_owned() + &self.vm_id;
+
+        // Spawn the shell process
+        let _status = Command::new("sudo")
+            .arg("bash")
+            .arg("-c")
+            .arg(command)
+            .status()
+            .await;
+        Ok(())
+    }
+}
+
 async fn runtime_instance_from_spec(
     spec: &LocalUdsInstanceSpec,
     socket: &PathBuf,
@@ -683,6 +752,7 @@ async fn runtime_instance_from_spec(
         LocalUdsRuntimeStrategy::LocalDocker => {
             LocalDockerRuntime::build(socket, spec.clone()).await
         }
+        LocalUdsRuntimeStrategy::LocalFirecracker => LocalFirecrackerRuntime::build().await,
     }
 }
 

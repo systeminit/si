@@ -1187,7 +1187,7 @@ name = "cyclone-core"
 version = "0.1.0"
 dependencies = [
  "base64 0.21.2",
- "nix",
+ "nix 0.26.2",
  "remain",
  "serde",
  "serde_json",
@@ -1225,6 +1225,7 @@ dependencies = [
  "tokio",
  "tokio-serde",
  "tokio-util",
+ "tokio-vsock",
  "tower",
  "tower-http",
 ]
@@ -1443,7 +1444,7 @@ dependencies = [
  "deadpool",
  "derive_builder",
  "futures",
- "nix",
+ "nix 0.26.2",
  "rand 0.8.5",
  "remain",
  "serde",
@@ -2745,6 +2746,15 @@ dependencies = [
 
 [[package]]
 name = "memoffset"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
+name = "memoffset"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5de893c32cde5f383baa4c04c5d6dbdd735cfd4a794b0debdb2bb1b421da5ff4"
@@ -2920,6 +2930,18 @@ dependencies = [
 
 [[package]]
 name = "nix"
+version = "0.24.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa52e972a9a719cecb6864fb88568781eb706bac2cd1d4f04a648542dbf78069"
+dependencies = [
+ "bitflags 1.3.2",
+ "cfg-if",
+ "libc",
+ "memoffset 0.6.5",
+]
+
+[[package]]
+name = "nix"
 version = "0.26.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfdda3d196821d6af13126e40375cdf7da646a96114af134d5f417a9a1dc8e1a"
@@ -2927,7 +2949,7 @@ dependencies = [
  "bitflags 1.3.2",
  "cfg-if",
  "libc",
- "memoffset",
+ "memoffset 0.7.1",
  "pin-utils",
  "static_assertions",
 ]
@@ -4398,7 +4420,7 @@ dependencies = [
  "hyper",
  "module-index-client",
  "names",
- "nix",
+ "nix 0.26.2",
  "once_cell",
  "pathdiff",
  "pretty_assertions_sorted",
@@ -5718,6 +5740,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-vsock"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52a15c15b1bc91f90902347eff163b5b682643aff0c8e972912cca79bd9208dd"
+dependencies = [
+ "bytes 1.4.0",
+ "futures",
+ "libc",
+ "tokio",
+ "vsock",
+]
+
+[[package]]
 name = "toml"
 version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6208,6 +6243,16 @@ dependencies = [
  "stable_deref_trait",
  "tar-parser2",
  "vfs",
+]
+
+[[package]]
+name = "vsock"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c8e1df0bf1e1b28095c24564d1b90acae64ca69b097ed73896e342fa6649c57"
+dependencies = [
+ "libc",
+ "nix 0.24.3",
 ]
 
 [[package]]
