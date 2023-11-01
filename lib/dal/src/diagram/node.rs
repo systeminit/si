@@ -311,8 +311,8 @@ impl DiagramComponentView {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryEventMetadata {
-    pub(crate) actor: ActorView,
-    pub(crate) timestamp: DateTime<Utc>,
+    pub actor: ActorView,
+    pub timestamp: DateTime<Utc>,
 }
 
 impl HistoryEventMetadata {

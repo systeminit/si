@@ -8,8 +8,9 @@ use telemetry::prelude::*;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, ChangeSetPk, Component,
-    ComponentError, ComponentId, DalContext, HistoryEventError, Node, NodeError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility, WsEvent, WsEventError,
+    ComponentError, ComponentId, DalContext, HistoryActor, HistoryEventError, Node, NodeError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, Visibility,
+    WsEvent, WsEventError,
 };
 
 const FIND_FOR_CHANGE_SET: &str = include_str!("./queries/action/find_for_change_set.sql");
@@ -56,6 +57,7 @@ pub struct Action {
     // change set pk is lost on apply
     change_set_pk: ChangeSetPk,
     component_id: ComponentId,
+    creation_user_id: Option<UserPk>,
     index: i16,
     #[serde(flatten)]
     tenancy: Tenancy,
@@ -86,17 +88,23 @@ impl Action {
             return Err(ActionError::InHead);
         }
 
+        let actor_user_pk = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => Some(*user_pk),
+            _ => None,
+        };
+
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM action_create_v1($1, $2, $3, $4)",
+                "SELECT object FROM action_create_v1($1, $2, $3, $4, $5)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &prototype_id,
                     &component_id,
+                    &actor_user_pk,
                 ],
             )
             .await?;
@@ -241,4 +249,5 @@ impl Action {
     standard_model_accessor_ro!(action_prototype_id, ActionPrototypeId);
     standard_model_accessor_ro!(change_set_pk, ChangeSetPk);
     standard_model_accessor_ro!(component_id, ComponentId);
+    standard_model_accessor_ro!(creation_user_id, Option<UserPk>);
 }

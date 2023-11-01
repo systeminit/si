@@ -26,6 +26,8 @@ pub enum ActorView {
         pk: UserPk,
         /// A display label
         label: String,
+        /// An email for user display purposes
+        email: Option<String>,
     },
 }
 
@@ -52,6 +54,7 @@ impl ActorView {
                 Ok(Self::User {
                     pk: user.pk(),
                     label: user.name().to_string(),
+                    email: Some(user.email().to_string()),
                 })
             }
             HistoryActor::SystemInit => Ok(Self::System {

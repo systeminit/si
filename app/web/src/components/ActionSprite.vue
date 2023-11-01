@@ -10,6 +10,9 @@
         <!-- TODO(wendy) - sometimes the component name doesn't load properly? not sure why -->
         {{ component?.displayName ?? "unknown" }}
       </div>
+      <div v-if="hasActor" class="text-neutral-400 truncate">
+        By: {{ action.actor }}
+      </div>
     </div>
     <VButton
       v-if="props.action.actionInstanceId"
@@ -44,6 +47,8 @@ const actionName = computed(() => {
   const name = (props.action.displayName || props.action.name).trim();
   return name.length ? name.slice(0, 1).toUpperCase() + name.slice(1) : "";
 });
+
+const hasActor = computed(() => props.action.actor);
 
 const component = computed(
   () => componentStore.componentsById[props.action.componentId],

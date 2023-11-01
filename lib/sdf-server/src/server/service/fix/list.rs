@@ -21,6 +21,7 @@ pub struct BatchHistoryView {
     pub id: FixBatchId,
     pub status: Option<FixCompletionStatus>,
     author: String,
+    actors: Option<Vec<String>>,
     fixes: Vec<FixHistoryView>,
     started_at: Option<String>,
     finished_at: Option<String>,
@@ -58,11 +59,23 @@ pub async fn list(
             }
         }
 
+        let author = batch.author();
+        let mut fix_actors: Option<Vec<String>> = None;
+        {
+            if let Some(actors) = batch.actors() {
+                let mut full_actors: Vec<String> =
+                    actors.split(',').map(|s| s.trim().to_string()).collect();
+                full_actors.retain(|a| *a != author);
+                fix_actors = Some(full_actors);
+            }
+        }
+
         batch_views.push(BatchHistoryView {
             id: *batch.id(),
             status: completion_status,
             fixes: fix_views,
-            author: batch.author(),
+            author,
+            actors: fix_actors,
             started_at: batch.started_at().map(|s| s.to_string()),
             finished_at: batch.finished_at().map(|s| s.to_string()),
         })

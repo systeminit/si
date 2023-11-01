@@ -2,8 +2,8 @@ use super::ChangeSetResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    ActionId, ActionKind, ActionPrototypeId, ChangeSet, ChangeSetPk, ChangeSetStatus, ComponentId,
-    Func, StandardModel, Visibility,
+    history_event, ActionId, ActionKind, ActionPrototypeId, ActorView, ChangeSet, ChangeSetPk,
+    ChangeSetStatus, ComponentId, Func, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +14,7 @@ pub struct ActionView {
     pub action_prototype_id: ActionPrototypeId,
     pub name: String,
     pub component_id: ComponentId,
+    pub actor: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -48,6 +49,25 @@ pub async fn list_open_change_sets(
                     display_name = func.display_name().map(|dname| dname.to_string());
                 }
             }
+
+            let mut actor_email: Option<String> = None;
+            {
+                if let Some(created_at_user) = action.creation_user_id() {
+                    let history_actor = history_event::HistoryActor::User(*created_at_user);
+                    let actor = ActorView::from_history_actor(&ctx, history_actor).await?;
+                    match actor {
+                        ActorView::System { label } => actor_email = Some(label),
+                        ActorView::User { label, email, .. } => {
+                            if let Some(em) = email {
+                                actor_email = Some(em)
+                            } else {
+                                actor_email = Some(label)
+                            }
+                        }
+                    };
+                }
+            }
+
             actions.push(ActionView {
                 id: *action.id(),
                 action_prototype_id: *prototype.id(),
@@ -58,6 +78,7 @@ pub async fn list_open_change_sets(
                     ActionKind::Refresh => "refresh".to_owned(),
                 }),
                 component_id: *action.component_id(),
+                actor: actor_email,
             });
         }
 

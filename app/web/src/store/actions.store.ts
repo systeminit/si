@@ -31,12 +31,14 @@ export interface ActionInstance {
   actionPrototypeId: ActionPrototypeId;
   name: string;
   componentId: ComponentId;
+  actor?: string;
 }
 
 export type FullAction = {
   actionPrototypeId: ActionPrototypeId;
   actionInstanceId?: ActionId;
   componentId?: ComponentId;
+  actor?: string;
 } & Omit<ActionPrototype, "id">;
 
 export type ProposedAction = FullAction & {
@@ -87,6 +89,7 @@ export const useActionsStore = () => {
                       actionPrototypeId: actionPrototype.id,
                       actionInstanceId: actionInstance?.id,
                       componentId: actionInstance?.componentId,
+                      actor: actionInstance?.actor,
                       ..._.omit(actionPrototype, "id"),
                     };
                   }),
