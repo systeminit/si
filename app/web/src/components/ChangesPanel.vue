@@ -18,7 +18,7 @@
         "
       >
         <Icon name="git-branch-plus" />
-        <div class="flex flex-col">
+        <div class="flex flex-col overflow-hidden">
           <div class="">Created Change Set</div>
           <div class="text-neutral-400 truncate">
             {{
@@ -41,7 +41,7 @@
         "
       >
         <StatusIndicatorIcon type="change" :status="diff.status" tone="shade" />
-        <div class="flex flex-col">
+        <div class="flex flex-col overflow-hidden">
           <div class="">
             <span v-if="diff.status === 'added'">Added</span>
             <span v-if="diff.status === 'deleted'">Removed</span>

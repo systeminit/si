@@ -4,7 +4,7 @@
     @click="addAction"
   >
     <StatusIndicatorIcon type="action" :status="action.name" tone="shade" />
-    <div class="flex flex-col">
+    <div class="flex flex-col overflow-hidden">
       <div class="">{{ actionName }}</div>
       <div class="text-neutral-400 truncate">
         <!-- TODO(wendy) - sometimes the component name doesn't load properly? not sure why -->

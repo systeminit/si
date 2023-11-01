@@ -1,4 +1,5 @@
 import { ViteSSG } from "vite-ssg";
+import FloatingVue from "floating-vue";
 
 import "@si/vue-lib/tailwind/main.css";
 import "@si/vue-lib/tailwind/tailwind.css";
@@ -24,6 +25,7 @@ export const createApp = ViteSSG(
   }) => {
     // install plugins etc.
     app.use(store);
+    app.use(FloatingVue);
 
     if (isClient) initRouterGuards(router);
   },

@@ -25,6 +25,9 @@ importers:
       clsx:
         specifier: ^1.2.1
         version: 1.2.1
+      floating-vue:
+        specifier: 2.0.0-beta.20
+        version: 2.0.0-beta.20(vue@3.3.4)
       highlight.js:
         specifier: ^11.7.0
         version: 11.7.0
@@ -6438,6 +6441,7 @@ packages:
 
   /debug@3.2.7:
     resolution: {integrity: sha512-CFjzYYAi4ThfiQvizrFQevTTXHtnCqWfe7x1AhgEscTz6ZbLbfoLRLPugTQyBth6f8ZERVUSyWHFD/7Wu4t1XQ==}
+    requiresBuild: true
     peerDependencies:
       supports-color: '*'
     peerDependenciesMeta:

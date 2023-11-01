@@ -104,4 +104,16 @@ const realtimeStore = useRealtimeStore();
   max-width: 80vw;
   overflow-wrap: break-word;
 }
+
+.v-popper--theme-user-info {
+  margin-top: 12px;
+  font-size: 1.25rem;
+  font-style: italic;
+  font-weight: bold;
+  border-radius: 1rem;
+}
+
+.v-popper--theme-user-info > .v-popper__wrapper > .v-popper__inner {
+  border-radius: 0.5rem !important;
+}
 </style>

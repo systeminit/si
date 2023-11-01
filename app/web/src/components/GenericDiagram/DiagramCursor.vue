@@ -20,6 +20,8 @@
         x: 10,
         y: 10,
         text: props.cursor.userName,
+        fill: colorPrefix,
+        fontStyle: 'bold',
       }"
     >
     </v-text>

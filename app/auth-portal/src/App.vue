@@ -145,7 +145,7 @@
         <div class="">
           <div class="m-auto max-w-[1200px] min-w-[520px]">
             <div
-              class="m-lg mb-xl p-lg dark:bg-neutral-800 bg-neutral-200 rounded-md"
+              class="m-lg p-lg dark:bg-neutral-800 bg-neutral-200 rounded-md"
             >
               <RouterView />
             </div>
@@ -187,6 +187,7 @@ import {
   DropdownMenu,
   DropdownMenuItem,
 } from "@si/vue-lib/design-system";
+import "floating-vue/dist/style.css";
 
 import SiLogo from "@si/vue-lib/brand-assets/si-logo-symbol.svg?component";
 import SiLogoUrlLight from "@si/vue-lib/brand-assets/si-logo-symbol-white-bg.svg?url";
@@ -397,5 +398,16 @@ const profileMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   100% {
     background-position: 0% 100%;
   }
+}
+
+.v-popper__arrow-container {
+  display: none;
+}
+
+.v-popper__inner {
+  border-radius: 0px !important;
+  border-color: #5a5a5a !important;
+  max-width: 80vw;
+  overflow-wrap: break-word;
 }
 </style>
