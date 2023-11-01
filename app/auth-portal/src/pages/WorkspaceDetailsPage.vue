@@ -66,7 +66,7 @@
           {{ createMode ? "Create Workspace" : "Save" }}
         </VButton>
       </Stack>
-      <div v-if="!createMode && featureFlagsStore.INVITE_USER" class="mt-sm">
+      <div v-if="!createMode" class="mt-sm">
         <template v-if="loadWorkspaceMembersReqStatus.isPending">
           <Icon name="loader" />
         </template>
@@ -74,54 +74,74 @@
           <ErrorMessage :requestStatus="loadWorkspaceMembersReqStatus" />
         </template>
         <template v-else-if="loadWorkspaceMembersReqStatus.isSuccess">
-          <Stack>
-            <div class="text-lg font-bold">Members of this workspace:</div>
+          <div class="relative">
+            <Stack v-if="canInviteUsers">
+              <div class="text-lg font-bold">Members of this workspace:</div>
 
-            <table
-              class="w-full divide-y divide-neutral-400 dark:divide-neutral-600 border-b border-neutral-400 dark:border-neutral-600"
-            >
-              <thead>
-                <tr
-                  class="children:pb-xs children:px-md children:font-bold text-left text-xs uppercase"
-                >
-                  <th scope="col">Email</th>
-                  <th scope="col">Role</th>
-                  <!-- <th scope="col">Invite Accepted?</th> -->
-                  <th scope="col" />
-                </tr>
-              </thead>
-              <tbody
-                class="divide-y divide-neutral-300 dark:divide-neutral-700"
+              <table
+                class="w-full divide-y divide-neutral-400 dark:divide-neutral-600 border-b border-neutral-400 dark:border-neutral-600"
               >
-                <tr
-                  v-for="memUser in members"
-                  :key="memUser.userId"
-                  class="children:px-md children:py-sm children:truncate text-sm font-medium text-gray-800 dark:text-gray-200"
+                <thead>
+                  <tr
+                    class="children:pb-xs children:px-md children:font-bold text-left text-xs uppercase"
+                  >
+                    <th scope="col">Email</th>
+                    <th scope="col">Role</th>
+                    <!-- <th scope="col">Invite Accepted?</th> -->
+                    <th scope="col" />
+                  </tr>
+                </thead>
+                <tbody
+                  class="divide-y divide-neutral-300 dark:divide-neutral-700"
                 >
-                  <td class="">
-                    <div
-                      class="xl:max-w-[800px] lg:max-w-[60vw] md:max-w-[50vw] sm:max-w-[40vw] max-w-[150px] truncate"
-                    >
-                      {{ memUser.email }}
-                    </div>
-                  </td>
-                  <td class="normal-case">
-                    {{ memUser.role }}
-                  </td>
-                  <td class="normal-case">
-                    <ErrorMessage :requestStatus="deleteUserHandlerReq" />
-                    <div
-                      v-if="memUser.role !== 'OWNER'"
-                      class="cursor-pointer hover:text-destructive-500"
-                      @click="deleteUserHandler(memUser.email)"
-                    >
-                      <Icon name="trash" />
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </Stack>
+                  <tr
+                    v-for="memUser in members"
+                    :key="memUser.userId"
+                    class="children:px-md children:py-sm children:truncate text-sm font-medium text-gray-800 dark:text-gray-200"
+                  >
+                    <td class="">
+                      <div
+                        class="xl:max-w-[800px] lg:max-w-[60vw] md:max-w-[50vw] sm:max-w-[40vw] max-w-[150px] truncate"
+                      >
+                        {{ memUser.email }}
+                      </div>
+                    </td>
+                    <td class="normal-case">
+                      {{ memUser.role }}
+                    </td>
+                    <td class="normal-case">
+                      <ErrorMessage :requestStatus="deleteUserHandlerReq" />
+                      <div
+                        v-if="
+                          memUser.role !== 'OWNER' &&
+                          featureFlagsStore.INVITE_USER
+                        "
+                        class="cursor-pointer hover:text-destructive-500"
+                        @click="deleteUserHandler(memUser.email)"
+                      >
+                        <Icon name="trash" />
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Stack>
+            <div v-else class="relative h-64 w-full rounded-xl">
+              <div
+                class="absolute w-full h-full z-50 bg-caution-lines opacity-50 rounded-xl"
+              ></div>
+              <div
+                class="absolute w-full h-full z-60 flex flex-col items-center justify-center gap-sm"
+              >
+                <div
+                  class="mx-sm p-xs text-center font-bold bg-shade-100 rounded"
+                >
+                  You do not have permissions to manage the users for this
+                  workspace, please contact the workspace owner.
+                </div>
+              </div>
+            </div>
+          </div>
         </template>
       </div>
       <div v-if="featureFlagsStore.INVITE_USER && canInviteUsers" class="pt-md">
