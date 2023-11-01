@@ -135,9 +135,16 @@ impl User {
         }
     }
 
-    pub async fn authorize(_ctx: &DalContext, _user_pk: &UserPk) -> UserResult<bool> {
-        // TODO(paulo,theo): implement capabilities through auth0
-        Ok(true)
+    pub async fn authorize(
+        ctx: &DalContext,
+        user_pk: &UserPk,
+        workspace_pk: &WorkspacePk,
+    ) -> UserResult<bool> {
+        let workspace_members =
+            User::list_members_for_workspace(ctx, workspace_pk.to_string()).await?;
+
+        let is_member = workspace_members.into_iter().any(|m| m.pk == *user_pk);
+        Ok(is_member)
     }
 
     pub async fn associate_workspace(
