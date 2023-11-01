@@ -4,6 +4,7 @@ import ReconnectingWebSocket from "reconnecting-websocket";
 import { computed, reactive, ref, watch } from "vue";
 import { API_WS_URL } from "@/store/apis";
 import { useAuthStore } from "../auth.store";
+import { UserId, CursorContainerKind } from "../cursor.store";
 import { WsEventPayloadMap } from "./realtime_events";
 
 type RawConnectionStatus = "open" | "closed";
@@ -11,6 +12,22 @@ type RawConnectionStatus = "open" | "closed";
 type SubscriptionId = string;
 type SubscriberId = string;
 type SubscriptionTopic = string;
+
+interface CursorRequest {
+  kind: "Cursor";
+  data: {
+    userName: string;
+    userPk: UserId;
+    changeSetPk: string | null;
+    container: CursorContainerKind;
+    containerKey: string | null;
+    x: string;
+    y: string;
+  };
+}
+
+// Should append types here
+type WebsocketRequest = CursorRequest;
 
 // some fairly magic TS wizardry happening here...
 // just reshuffling the WsEventPayloadMap into a format usable in our subscribe call
@@ -183,25 +200,10 @@ export const useRealtimeStore = defineStore("realtime", () => {
     });
   }
 
-  const sendCursor = (req: {
-    changeSetPk: string | null;
-    container: "diagram" | null;
-    x: string;
-    y: string;
-  }) => {
-    if (!authStore.user) return;
+  const sendMessage = (req: WebsocketRequest) => {
     /* eslint-disable no-empty */
     try {
-      socket.send(
-        JSON.stringify({
-          kind: "Cursor",
-          data: {
-            userName: authStore.user.name,
-            userPk: authStore.user.pk,
-            ...req,
-          },
-        }),
-      );
+      socket.send(JSON.stringify(req));
     } catch {}
   };
 
@@ -220,7 +222,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
 
   return {
     connectionStatus,
-    sendCursor,
+    sendMessage,
     // subscriptions, // can expose here to show in devtools
     subscribe,
     unsubscribe,

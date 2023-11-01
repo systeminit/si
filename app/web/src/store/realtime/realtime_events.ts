@@ -20,7 +20,8 @@ export type WsEventPayloadMap = {
   Cursor: {
     x: string;
     y: string;
-    container: string;
+    container: string | null;
+    containerKey: string | null;
     userPk: string;
     userName: string;
   };

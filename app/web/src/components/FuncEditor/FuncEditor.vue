@@ -20,7 +20,6 @@
         v-model="editingFunc"
         :typescript="selectedFuncDetails?.types"
         @change="updateFuncCode"
-        @explicitSave="execFunc"
         @close="emit('close')"
       />
     </template>
@@ -75,10 +74,6 @@ watch(
 
 const updateFuncCode = (code: string) => {
   funcStore.updateFuncCode(props.funcId, code);
-};
-
-const execFunc = () => {
-  funcStore.SAVE_AND_EXEC_FUNC(props.funcId);
 };
 
 const emit = defineEmits<{

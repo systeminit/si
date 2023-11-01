@@ -27,7 +27,12 @@
 import { computed, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { basicSetup, EditorView } from "codemirror";
-import { Compartment, EditorState, StateEffect } from "@codemirror/state";
+import {
+  Compartment,
+  EditorState,
+  StateEffect,
+  EditorSelection,
+} from "@codemirror/state";
 import {
   ViewUpdate,
   keymap,
@@ -46,6 +51,7 @@ import { useTheme, VButton } from "@si/vue-lib/design-system";
 import { vim, Vim } from "@replit/codemirror-vim";
 import storage from "local-storage-fallback";
 import beautify from "js-beautify";
+import { UserId, useCursorStore } from "@/store/cursor.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import {
   createTypescriptSource,
@@ -67,11 +73,29 @@ const emit = defineEmits<{
   "update:modelValue": [v: string];
   blur: [v: string];
   change: [v: string];
-  explicitSave: [];
   close: [];
 }>();
 
 const changeSetsStore = useChangeSetsStore();
+const cursorStore = useCursorStore();
+
+const cursorEntersDiagram = () => {
+  cursorStore.setContainer("code-editor", props.id ?? null);
+  setTimeout(() => {
+    const selection = view.state.selection.asSingle();
+    updatePointer({ x: selection.main.head, y: selection.main.head });
+  }, 200);
+};
+const cursorLeavesDiagram = () => cursorStore.setContainer(null, null);
+
+const updatePointer = (pos: { x: number; y: number }) => {
+  if (
+    cursorStore.container !== "code-editor" ||
+    cursorStore.containerKey !== props.id
+  )
+    return;
+  cursorStore.updateCursor(pos.x, pos.y);
+};
 
 const editorMount = ref(); // div (template ref) where we will mount the editor
 let view: EditorView; // instance of the CodeMirror editor
@@ -366,8 +390,16 @@ const mountEditor = async () => {
 
   view.contentDOM.onblur = () => {
     draftValue.value = autoformat(draftValue.value);
+    cursorLeavesDiagram();
     emit("blur", draftValue.value);
   };
+  view.contentDOM.onfocus = () => cursorEntersDiagram();
+  view.contentDOM.onkeydown = () => {
+    const selection = view.state.selection.asSingle();
+    updatePointer({ x: selection.main.head, y: selection.main.head });
+    manageSelections();
+  };
+  manageSelections();
 
   for (const key in window.localStorage) {
     if (key.startsWith("code-mirror-state-")) {
@@ -384,6 +416,32 @@ const mountEditor = async () => {
   }
 };
 
+const cursorsSelection = ref<Record<UserId, number>>({});
+const manageSelections = () => {
+  if (!view) return;
+  let selection = view.state.selection.asSingle();
+  if (selection.ranges.length === 0) {
+    selection = selection.addRange(EditorSelection.cursor(0), true);
+  }
+
+  for (const cursor of Object.values(cursorStore.cursors)) {
+    const range = EditorSelection.cursor(cursor.x);
+    const head = cursorsSelection.value[cursor.userPk];
+    const index = selection.ranges.findIndex(
+      (range) => range.head === head && range.anchor === head,
+    );
+    if (index !== -1) {
+      selection = selection.replaceRange(range, index);
+    } else {
+      selection = selection.addRange(range, false);
+    }
+    cursorsSelection.value[cursor.userPk] = cursor.x;
+  }
+
+  view.dispatch({ selection });
+};
+watch(() => cursorStore.cursors, manageSelections, { immediate: true });
+
 watch(
   [
     () => props.typescript,
@@ -398,7 +456,7 @@ watch(
 function onLocalSave() {
   draftValue.value = autoformat(draftValue.value);
   emitUpdatedValue();
-  emit("explicitSave");
+  emit("blur", draftValue.value);
   return true; // codemirror needs this when used as a "command"
 }
 
