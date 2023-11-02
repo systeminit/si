@@ -13,15 +13,12 @@
     <NavbarButton tooltipText="Profile" class="flex-none">
       <template #default="{ open, hovered }">
         <div class="flex-row flex text-white items-center">
-          <div class="h-8 w-8 border-2 border-black rounded-full">
-            <img
-              v-if="authStore.user?.picture_url"
-              class="rounded-full bg-white"
-              :src="authStore.user?.picture_url"
-              referrerpolicy="no-referrer"
-            />
-            <Icon v-else name="user-circle" size="full" />
-          </div>
+          <UserIcon
+            :user="{
+              name: authStore.user?.name || '',
+              pictureUrl: authStore.user?.picture_url,
+            }"
+          />
           <SiArrow :nudge="open || hovered" class="ml-1" />
         </div>
       </template>
@@ -52,6 +49,7 @@ import SiThemeSwitcher from "./NavbarThemeSwitcher.vue";
 import NavbarButton from "./NavbarButton.vue";
 import Collaborators from "./Collaborators.vue";
 import WorkspaceSettingsMenu from "./WorkspaceSettingsMenu.vue";
+import UserIcon from "./UserIcon.vue";
 
 const featureFlagsStore = useFeatureFlagsStore();
 

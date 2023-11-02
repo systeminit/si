@@ -26,6 +26,7 @@ app.use(FloatingVue, {
       $extend: "tooltip",
       delay: { show: 10, hide: 100 },
       instantMove: true,
+      html: true,
     },
   },
 });

@@ -1,6 +1,10 @@
 <template>
   <Teleport v-if="isOpen" to="body">
-    <div ref="internalRef" :style="computedStyle" class="absolute z-50 ml-sm">
+    <div
+      ref="internalRef"
+      :style="computedStyle"
+      :class="clsx('absolute ml-sm', onTopOfEverything ? 'z-100' : 'z-50')"
+    >
       <slot />
     </div>
   </Teleport>
@@ -16,6 +20,7 @@ import {
   onUnmounted,
 } from "vue";
 import * as _ from "lodash-es";
+import clsx from "clsx";
 
 const props = defineProps({
   anchorTo: { type: Object },
@@ -31,6 +36,12 @@ const props = defineProps({
   },
   // override the default positioning logic and give the popover a fixed position
   fixedPosition: { type: Object as PropType<{ x: number; y: number }> },
+
+  // override the default position logic and pop out below the anchorTo element
+  popDown: { type: Boolean },
+
+  // go on top of all elements, including the navbar and statusbar
+  onTopOfEverything: { type: Boolean },
 });
 
 const internalRef = ref<HTMLElement>();
@@ -73,7 +84,11 @@ function open(e?: MouseEvent, anchorToMouse?: boolean) {
 
   if (props.anchorTo) {
     // can anchor to a specific element via props
-    anchorEl.value = props.anchorTo.$el;
+    if (props.anchorTo instanceof HTMLElement) {
+      anchorEl.value = props.anchorTo;
+    } else {
+      anchorEl.value = props.anchorTo.$el;
+    }
   } else if (e && (anchorToMouse || !clickTargetIsElement)) {
     // or can anchor to mouse position if anchorToMouse is true (or event has not target)
     anchorEl.value = undefined;
@@ -121,6 +136,12 @@ function readjustPosition() {
   }
   const popoverRect = internalRef.value.getBoundingClientRect();
   anchorPos.value = { x: 0, y: 0 };
+
+  if (props.popDown) {
+    anchorPos.value.x = anchorRect.left - internalRef.value.clientWidth / 2;
+    anchorPos.value.y = anchorRect.bottom + 8;
+    return;
+  }
 
   const windowWidth = document.documentElement.clientWidth;
   if (props.anchorDirectionX === "left") {

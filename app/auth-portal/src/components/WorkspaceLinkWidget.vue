@@ -37,16 +37,14 @@
         <div
           ref="workspaceNameRef"
           v-tooltip="workspaceNameTooltip"
-          class="font-bold capsize line-clamp-3 break-words"
+          class="font-bold line-clamp-3 break-words pb-[2px]"
         >
           {{ workspace.displayName }}
         </div>
         <div class="text-sm opacity-70 capsize">
-          {{ workspace.instanceUrl }}
+          <div class="truncate w-full">{{ workspace.instanceUrl }}</div>
         </div>
-        <div class="font-bold capsize">
-          Role: {{ toSentenceCase(workspace.role) }}
-        </div>
+        <div class="font-bold">Role: {{ toSentenceCase(workspace.role) }}</div>
         <div class="flex items-center text-xs gap-md pt-xs">
           <div class="flex items-center gap-xs">
             <div
