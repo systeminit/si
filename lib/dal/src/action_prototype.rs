@@ -14,8 +14,8 @@ use crate::{
     component::view::ComponentViewError, func::backend::js_action::ActionRunResult,
     impl_standard_model, pk, standard_model, standard_model_accessor, Component, ComponentId,
     ComponentView, DalContext, Func, FuncBinding, FuncBindingError, FuncBindingReturnValueError,
-    FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, TransactionsError, Visibility, WsEvent, WsEventError,
+    FuncError, FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError,
+    Tenancy, Timestamp, TransactionsError, Visibility, WsEvent, WsEventError,
 };
 
 const FIND_FOR_CONTEXT: &str = include_str!("./queries/action_prototype/find_for_context.sql");
@@ -68,6 +68,8 @@ pub enum ActionPrototypeError {
     ComponentNotFound(ComponentId),
     #[error(transparent)]
     ComponentView(#[from] ComponentViewError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error(transparent)]
     FuncBinding(#[from] FuncBindingError),
     #[error(transparent)]

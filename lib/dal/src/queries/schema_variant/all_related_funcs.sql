@@ -77,5 +77,5 @@ UNION ALL
  FROM authentication_prototypes_v1($1, $2) prototypes
           JOIN funcs_v1($1, $2) funcs
                ON funcs.id = prototypes.func_id
- WHERE prototypes.schema_variant_id like '%'
+ WHERE prototypes.schema_variant_id = $3
    AND funcs.code_sha256 != '0')
