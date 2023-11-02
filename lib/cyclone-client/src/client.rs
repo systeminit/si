@@ -973,6 +973,7 @@ mod tests {
                     }
                 }",
             ),
+            before: vec![],
         };
         let mut progress = client
             .execute_validation(req)
@@ -1070,6 +1071,7 @@ mod tests {
                     return { status: 'ok' };
                 }"#,
             ),
+            before: vec![],
         };
 
         // Start the protocol
@@ -1156,6 +1158,7 @@ mod tests {
                     return { status: 'ok' };
                 }"#,
             ),
+            before: vec![],
         };
 
         // Start the protocol
@@ -1242,6 +1245,7 @@ mod tests {
                     return { updates: { "myid": true }, actions: ["run"] };
                 }"#,
             ),
+            before: vec![],
         };
 
         // Start the protocol
@@ -1318,6 +1322,7 @@ mod tests {
                     return { updates: { "myid": true }, actions: ["run"] };
                 }"#,
             ),
+            before: vec![],
         };
 
         // Start the protocol
