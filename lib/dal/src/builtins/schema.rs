@@ -3,7 +3,7 @@ use si_pkg::SiPkg;
 use std::collections::{HashMap, HashSet};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
-use veritech_client::BeforeFunctionRequest;
+use veritech_client::BeforeFunction;
 
 use crate::func::argument::{FuncArgument, FuncArgumentId};
 use crate::installed_pkg::InstalledPkg;
@@ -215,7 +215,7 @@ impl MigrationDriver {
         func_name: String,
         func_binding_args: Value,
         func_argument_name: String,
-        before: Vec<BeforeFunctionRequest>,
+        before: Vec<BeforeFunction>,
     ) -> BuiltinsResult<()> {
         let func: Func = Func::find_by_attr(ctx, "name", &func_name)
             .await?

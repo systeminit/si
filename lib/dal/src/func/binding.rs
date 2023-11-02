@@ -5,7 +5,7 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use veritech_client::{BeforeFunctionRequest, OutputStream, ResolverFunctionComponent};
+use veritech_client::{BeforeFunction, OutputStream, ResolverFunctionComponent};
 
 use crate::func::execution::FuncExecutionPk;
 use crate::FuncError;
@@ -183,7 +183,7 @@ impl FuncBinding {
         ctx: &DalContext,
         args: serde_json::Value,
         func_id: FuncId,
-        before: Vec<BeforeFunctionRequest>,
+        before: Vec<BeforeFunction>,
     ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
         let func = Func::get_by_id(ctx, &func_id)
             .await?
@@ -214,7 +214,7 @@ impl FuncBinding {
     async fn execute(
         &self,
         ctx: &DalContext,
-        before: Vec<BeforeFunctionRequest>,
+        before: Vec<BeforeFunction>,
     ) -> FuncBindingResult<FuncBindingReturnValue> {
         let (func, execution, context, mut rx) = self.prepare_execution(ctx).await?;
         let value = self
@@ -236,7 +236,7 @@ impl FuncBinding {
         &self,
         func: Func,
         context: FuncDispatchContext,
-        before: Vec<BeforeFunctionRequest>,
+        before: Vec<BeforeFunction>,
     ) -> FuncBindingResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
         // TODO: encrypt components
         let execution_result = match self.backend_kind() {

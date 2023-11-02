@@ -2,7 +2,7 @@ use crate::func::backend::{ExtractPayload, FuncBackendResult, FuncDispatch, Func
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use veritech_client::{
-    BeforeFunctionRequest, FunctionResult, SchemaVariantDefinitionRequest,
+    BeforeFunction, FunctionResult, SchemaVariantDefinitionRequest,
     SchemaVariantDefinitionResultSuccess,
 };
 #[derive(Debug, Clone)]
@@ -21,7 +21,7 @@ impl FuncDispatch for FuncBackendJsSchemaVariantDefinition {
         code_base64: &str,
         handler: &str,
         _args: Self::Args,
-        _before: Vec<BeforeFunctionRequest>,
+        _before: Vec<BeforeFunction>,
     ) -> Box<Self> {
         let request = SchemaVariantDefinitionRequest {
             execution_id: "villanelle".to_string(),

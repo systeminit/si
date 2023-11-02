@@ -7,7 +7,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use veritech_client::{
-    BeforeFunctionRequest, FunctionResult, OutputStream, ValidationRequest, ValidationResultSuccess,
+    BeforeFunction, FunctionResult, OutputStream, ValidationRequest, ValidationResultSuccess,
 };
 
 #[derive(Debug, Clone)]
@@ -37,7 +37,7 @@ impl FuncDispatch for FuncBackendJsValidation {
         code_base64: &str,
         handler: &str,
         args: Self::Args,
-        before: Vec<BeforeFunctionRequest>,
+        before: Vec<BeforeFunction>,
     ) -> Box<Self> {
         let request = ValidationRequest {
             execution_id: "johnwick".to_string(),

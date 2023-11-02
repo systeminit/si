@@ -12,7 +12,7 @@ use veritech_core::{
 };
 
 pub use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, BeforeFunctionRequest, ComponentKind, ComponentView,
+    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentKind, ComponentView,
     EncryptionKey, EncryptionKeyError, FunctionResult, FunctionResultFailure, OutputStream,
     ReconciliationRequest, ReconciliationResultSuccess, ResolverFunctionComponent,
     ResolverFunctionRequest, ResolverFunctionResponseType, ResolverFunctionResultSuccess,

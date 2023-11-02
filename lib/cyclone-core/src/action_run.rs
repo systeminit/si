@@ -1,4 +1,4 @@
-use crate::BeforeFunctionRequest;
+use crate::BeforeFunction;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -8,7 +8,7 @@ pub struct ActionRunRequest {
     pub handler: String,
     pub code_base64: String,
     pub args: serde_json::Value,
-    pub before: Vec<BeforeFunctionRequest>,
+    pub before: Vec<BeforeFunction>,
 }
 
 #[remain::sorted]

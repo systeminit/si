@@ -5,8 +5,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_client::{
-    ActionRunResultSuccess, BeforeFunctionRequest, Client as VeritechClient, FunctionResult,
-    OutputStream, ResolverFunctionResponseType,
+    ActionRunResultSuccess, BeforeFunction, Client as VeritechClient, FunctionResult, OutputStream,
+    ResolverFunctionResponseType,
 };
 
 use crate::{label_list::ToLabelList, DalContext, Func, FuncId, PropKind, StandardModel};
@@ -213,7 +213,7 @@ pub trait FuncDispatch: std::fmt::Debug {
         context: FuncDispatchContext,
         func: &Func,
         args: &serde_json::Value,
-        before: Vec<BeforeFunctionRequest>,
+        before: Vec<BeforeFunction>,
     ) -> FuncBackendResult<(Option<serde_json::Value>, Option<serde_json::Value>)>
     where
         <Self::Output as ExtractPayload>::Payload: Serialize,
@@ -228,7 +228,7 @@ pub trait FuncDispatch: std::fmt::Debug {
         context: FuncDispatchContext,
         func: &Func,
         args: &serde_json::Value,
-        before: Vec<BeforeFunctionRequest>,
+        before: Vec<BeforeFunction>,
     ) -> FuncBackendResult<Box<Self>> {
         let args = Self::Args::deserialize(args)?;
         let code_base64 = func
@@ -293,7 +293,7 @@ pub trait FuncDispatch: std::fmt::Debug {
         code_base64: &str,
         handler: &str,
         args: Self::Args,
-        before: Vec<BeforeFunctionRequest>,
+        before: Vec<BeforeFunction>,
     ) -> Box<Self>;
     async fn dispatch(self: Box<Self>) -> FuncBackendResult<FunctionResult<Self::Output>>;
 }

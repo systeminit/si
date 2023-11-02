@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
 use veritech_client::{
-    BeforeFunctionRequest, FunctionResult, ReconciliationRequest, ReconciliationResultSuccess,
+    BeforeFunction, FunctionResult, ReconciliationRequest, ReconciliationResultSuccess,
 };
 
 use crate::func::backend::{ExtractPayload, FuncBackendResult, FuncDispatch, FuncDispatchContext};
@@ -43,7 +43,7 @@ impl FuncDispatch for FuncBackendJsReconciliation {
         code_base64: &str,
         handler: &str,
         args: Self::Args,
-        before: Vec<BeforeFunctionRequest>,
+        before: Vec<BeforeFunction>,
     ) -> Box<Self> {
         let request = ReconciliationRequest {
             // Once we start tracking the state of these executions, then this id will be useful,

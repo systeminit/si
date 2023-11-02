@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use veritech_client::{
-    BeforeFunctionRequest, FunctionResult, ResolverFunctionComponent, ResolverFunctionRequest,
+    BeforeFunction, FunctionResult, ResolverFunctionComponent, ResolverFunctionRequest,
     ResolverFunctionResponseType, ResolverFunctionResultSuccess,
 };
 
@@ -30,7 +30,7 @@ impl FuncDispatch for FuncBackendJsAttribute {
         code_base64: &str,
         handler: &str,
         args: Self::Args,
-        before: Vec<BeforeFunctionRequest>,
+        before: Vec<BeforeFunction>,
     ) -> Box<Self> {
         let request = ResolverFunctionRequest {
             // Once we start tracking the state of these executions, then this id will be useful,

@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use veritech_client::BeforeFunctionRequest;
+use veritech_client::BeforeFunction;
 
 use crate::{
     standard_model, ComponentId, DalContext, EncryptedSecret, Func, FuncError, FuncResult,
@@ -17,7 +17,7 @@ struct EncryptedSecretAndFunc {
 pub async fn before_funcs_for_component(
     ctx: &DalContext,
     component_id: &ComponentId,
-) -> FuncResult<Vec<BeforeFunctionRequest>> {
+) -> FuncResult<Vec<BeforeFunction>> {
     println!("before_funcs_for_component");
 
     let rows = ctx
@@ -37,8 +37,7 @@ pub async fn before_funcs_for_component(
         func,
     } in standard_model::objects_from_rows::<EncryptedSecretAndFunc>(rows)?
     {
-        results.push(BeforeFunctionRequest {
-            execution_id: "rick_allen".to_string(),
+        results.push(BeforeFunction {
             handler: func
                 .handler
                 .ok_or_else(|| FuncError::MissingHandler(func.id))?,

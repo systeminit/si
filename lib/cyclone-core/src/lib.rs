@@ -27,7 +27,7 @@ mod sensitive_container;
 mod validation;
 
 pub use action_run::{ActionRunRequest, ActionRunResultSuccess, ResourceStatus};
-pub use before::BeforeFunctionRequest;
+pub use before::BeforeFunction;
 pub use canonical_command::{CanonicalCommand, CanonicalCommandError};
 pub use component_view::{ComponentKind, ComponentView};
 pub use encryption_key::{EncryptionKey, EncryptionKeyError};
