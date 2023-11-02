@@ -78,6 +78,12 @@
         />
       </template>
     </Collapsible>
+    <div
+      v-if="secretsStore.secretsByLastCreated.length === 0"
+      class="w-full text-center p-sm text-neutral-500 dark:text-neutral-400 italic"
+    >
+      No secret definitions found.
+    </div>
   </ScrollArea>
 </template>
 

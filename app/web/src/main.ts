@@ -3,6 +3,8 @@ import FloatingVue from "floating-vue";
 import VueKonva from "vue-konva";
 import { createHead } from "@vueuse/head";
 import VueSafeTeleport from "vue-safe-teleport";
+import Toast, { PluginOptions } from "vue-toastification";
+import "vue-toastification/dist/index.css";
 
 import "@si/vue-lib/tailwind/main.css";
 import "@si/vue-lib/tailwind/tailwind.css";
@@ -30,6 +32,12 @@ app.use(FloatingVue, {
     },
   },
 });
+
+const toastOptions: PluginOptions = {
+  // TODO(Wendy) - any options we want to configure for vue-toastification go here
+};
+
+app.use(Toast, toastOptions);
 
 // unfortunately, vue-konva only works as a global plugin, so we must register it here
 // TODO: fork the lib and set it up so we can import individual components

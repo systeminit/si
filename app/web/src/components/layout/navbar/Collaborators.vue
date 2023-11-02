@@ -4,11 +4,12 @@
       clsx(
         'flex flex-row justify-evenly items-center overflow-hidden m-xs',
         width,
+        moreUsersPopoverRef?.isOpen && 'pointer-events-none',
       )
     "
   >
     <template v-if="!(showOneIcon && displayUsers.length > 1)">
-      <div v-for="(user, index) in displayUsers" :key="index" class="h-8">
+      <div v-for="(user, index) in displayUsers" :key="index" class="h-8 w-0">
         <UserIcon
           :tooltip="userTooltips[index]"
           :user="user"
@@ -19,7 +20,7 @@
 
     <div
       v-if="sortedUsers.length !== 1 && (showOneIcon || sortedUsers.length > 6)"
-      class="h-8"
+      class="h-8 w-0"
     >
       <div
         ref="moreUsersButtonRef"
@@ -55,30 +56,26 @@
       <div
         class="flex flex-col rounded bg-shade-0 dark:bg-shade-100 border dark:border-neutral-500"
       >
+        <div
+          class="w-full text-center text-xs italic p-xs text-neutral-500 dark:text-neutral-400"
+        >
+          {{ sortedUsers.length }} Users Online
+        </div>
         <SiSearch
+          class="pt-0"
           placeholder="search users"
           autoSearch
           @search="onSearchUpdated"
         />
+
         <div
           class="flex flex-col max-w-[250px] max-h-[60vh] overflow-x-hidden overflow-y-auto"
         >
-          <div
+          <UserCard
             v-for="(user, index) in filteredUsers"
             :key="index"
-            class="flex flex-row items-center gap-xs p-xs cursor-pointer overflow-hidden hover:bg-action-200 dark:hover:bg-action-500 flex-none"
-          >
-            <UserIcon :user="user" />
-
-            <div class="flex flex-col min-w-0">
-              <div class="w-full truncate leading-tight">
-                {{ user.name }}
-              </div>
-              <div class="text-xs italic">
-                {{ user.status }}
-              </div>
-            </div>
-          </div>
+            :user="user"
+          />
         </div>
       </div>
     </Popover>
@@ -92,6 +89,7 @@ import clsx from "clsx";
 import Popover from "@/components/Popover.vue";
 import SiSearch from "@/components/SiSearch.vue";
 import UserIcon from "./UserIcon.vue";
+import UserCard from "./UserCard.vue";
 
 export type UserInfo = {
   name: string;
@@ -169,7 +167,7 @@ const userTooltips = computed(() => {
 
   displayUsers.value.forEach((user) => {
     tooltips.push({
-      content: `<div class='flex flex-col items-center'><div class='font-bold'>${user.name}</div><div class='text-xs'>${user.status}</div></div>`,
+      content: `<div class='flex flex-col items-center max-w-lg'><div class='text-center font-bold w-full break-words line-clamp-3 pb-[2px] px-sm min-w-0'>${user.name}</div><div class='text-xs w-full text-center line-clamp-3 px-sm'>${user.status}</div></div>`,
       theme: "user-info",
     });
   });
@@ -181,9 +179,9 @@ const moreUsersTooltip = computed(() => {
   let content;
 
   if (showOneIcon.value) {
-    content = `${moreUsersNumber.value} Editors Online`;
+    content = `<div class="px-xs font-bold">${moreUsersNumber.value} Editors Online</div>`;
   } else {
-    content = `${moreUsersNumber.value} More Online`;
+    content = `<div class="px-xs font-bold">${moreUsersNumber.value} More Online</div>`;
   }
 
   return {

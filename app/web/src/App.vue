@@ -114,6 +114,8 @@ const realtimeStore = useRealtimeStore();
 
 .v-popper--theme-user-info > .v-popper__wrapper > .v-popper__inner {
   border-radius: 0.5rem !important;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .bg-caution-lines {
