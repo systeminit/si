@@ -238,7 +238,6 @@ impl FuncBinding {
         context: FuncDispatchContext,
         before: Vec<BeforeFunction>,
     ) -> FuncBindingResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
-        // TODO: encrypt components
         let execution_result = match self.backend_kind() {
             FuncBackendKind::JsValidation => {
                 FuncBackendJsValidation::create_and_execute(context, &func, &self.args, before)
@@ -291,7 +290,9 @@ impl FuncBinding {
             FuncBackendKind::Validation => {
                 FuncBackendValidation::create_and_execute(&self.args).await
             }
-            FuncBackendKind::JsAuthentication => todo!("JsAuthentication binding"),
+            FuncBackendKind::JsAuthentication => unimplemented!(
+                "direct JsAuthentication function execution is not currently supported"
+            ),
         };
 
         match execution_result {
