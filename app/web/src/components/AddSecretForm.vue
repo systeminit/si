@@ -302,15 +302,3 @@ const emit = defineEmits<{
   (e: "save", v: Secret): void;
 }>();
 </script>
-
-<style lang="less">
-.bg-caution-lines {
-  background: repeating-linear-gradient(
-    -45deg,
-    #000,
-    #000 10px,
-    #333 10px,
-    #333 20px
-  );
-}
-</style>

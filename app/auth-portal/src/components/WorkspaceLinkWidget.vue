@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-row items-stretch">
     <RouterLink
-      v-if="!compact && featureFlagsStore.EDIT_WORKSPACES"
+      v-if="!compact && !hideEditButton && featureFlagsStore.EDIT_WORKSPACES"
       :to="{
         name: 'workspace-settings',
         params: { workspaceId: workspace.id },
@@ -10,9 +10,7 @@
         clsx(
           'flex-none flex flex-row items-center rounded-tl-md rounded-bl-md z-10 cursor-pointer text-shade-0',
           'mr-[-0.5rem] transition-all',
-          editing
-            ? 'bg-neutral-500 p-sm pr-md'
-            : 'bg-neutral-400 dark:bg-neutral-600 hover:bg-neutral-500 dark:hover:bg-neutral-500 hover:p-sm hover:pr-md p-xs pr-sm',
+          'bg-neutral-400 dark:bg-neutral-600 hover:bg-neutral-500 dark:hover:bg-neutral-500 hover:p-sm hover:pr-md p-xs pr-sm',
         )
       "
     >
@@ -37,16 +35,14 @@
         <div
           ref="workspaceNameRef"
           v-tooltip="workspaceNameTooltip"
-          class="font-bold capsize line-clamp-3 break-words"
+          class="font-bold line-clamp-3 break-words pb-[2px]"
         >
           {{ workspace.displayName }}
         </div>
         <div class="text-sm opacity-70 capsize">
-          {{ workspace.instanceUrl }}
+          <div class="truncate w-full">{{ workspace.instanceUrl }}</div>
         </div>
-        <div class="font-bold capsize">
-          Role: {{ toSentenceCase(workspace.role) }}
-        </div>
+        <div class="font-bold">Role: {{ toSentenceCase(workspace.role) }}</div>
         <div class="flex items-center text-xs gap-md pt-xs">
           <div class="flex items-center gap-xs">
             <div
@@ -134,18 +130,18 @@ import { computed, PropType, ref } from "vue";
 import { Icon, Stack } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useOnboardingStore } from "@/store/onboarding.store";
 
 import { API_HTTP_URL } from "@/store/api";
 import { tracker } from "@/lib/posthog";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const featureFlagsStore = useFeatureFlagsStore();
 
 const props = defineProps({
   workspaceId: { type: String as PropType<WorkspaceId> },
   compact: Boolean,
-  editing: Boolean,
+  hideEditButton: Boolean,
 });
 
 const onboardingStore = useOnboardingStore();

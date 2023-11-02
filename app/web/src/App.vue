@@ -109,11 +109,22 @@ const realtimeStore = useRealtimeStore();
   margin-top: 12px;
   font-size: 1.25rem;
   font-style: italic;
-  font-weight: bold;
   border-radius: 1rem;
 }
 
 .v-popper--theme-user-info > .v-popper__wrapper > .v-popper__inner {
   border-radius: 0.5rem !important;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.bg-caution-lines {
+  background: repeating-linear-gradient(
+    -45deg,
+    #000,
+    #000 10px,
+    #333 10px,
+    #333 20px
+  );
 }
 </style>
