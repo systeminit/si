@@ -541,9 +541,7 @@ impl SchemaVariant {
     }
 
     #[instrument(skip_all)]
-    pub async fn list_secret_defining(
-        ctx: &DalContext,
-    ) -> SchemaVariantResult<Vec<SchemaVariant>> {
+    pub async fn list_secret_defining(ctx: &DalContext) -> SchemaVariantResult<Vec<SchemaVariant>> {
         let rows = ctx
             .txns()
             .await?
@@ -555,7 +553,6 @@ impl SchemaVariant {
             .await?;
         Ok(objects_from_rows(rows)?)
     }
-
 
     /// Find all [`Func`](crate::Func) objects connected to this schema variant in any way. Only
     /// finds funcs connected at the schema variant context, ignoring any funcs connected to
