@@ -48,6 +48,7 @@ export async function createWorkspace(creatorUser: User, instanceUrl = 'http://l
       workspaceId: newWorkspace.id,
       userId: creatorUser.id,
       roleType: RoleType.OWNER,
+      invitedAt: new Date(),
     },
   });
 
@@ -71,9 +72,16 @@ export async function getUserWorkspaces(userId: UserId) {
       UserMemberships: {
         select: {
           roleType: true,
+          invitedAt: true,
         },
         where: {
           userId,
+        },
+      },
+      creatorUser: {
+        select: {
+          firstName: true,
+          lastName: true,
         },
       },
     },
@@ -82,6 +90,7 @@ export async function getUserWorkspaces(userId: UserId) {
   return _.map(workspaces, (w) => ({
     ..._.omit(w, "UserMemberships"),
     role: w.UserMemberships[0].roleType,
+    invitedAt: w.UserMemberships[0].invitedAt,
   }));
 }
 
@@ -121,6 +130,7 @@ export async function inviteMember(email: string, id: WorkspaceId) {
       workspaceId: id,
       userId: user.id,
       roleType: RoleType.EDITOR,
+      invitedAt: new Date(),
     },
   });
 }

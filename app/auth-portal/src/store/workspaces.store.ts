@@ -14,8 +14,13 @@ export type Workspace = {
   displayName: string;
   slug: string;
   createdByUserId: UserId;
+  creatorUser: {
+    firstName?: string;
+    lastName?: string;
+  };
   createdAt: ISODateString;
   role: string;
+  invitedAt: Date;
 };
 
 export type WorkspaceMember = {

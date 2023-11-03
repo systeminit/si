@@ -42,6 +42,16 @@
         <div class="text-sm opacity-70 capsize">
           <div class="truncate w-full">{{ workspace.instanceUrl }}</div>
         </div>
+        <div
+          v-if="workspace.role !== 'OWNER'"
+          class="font-bold text-sm capsize"
+        >
+          Owner: {{ workspace.creatorUser.firstName }}
+          {{ workspace.creatorUser.lastName }}
+        </div>
+        <div v-if="workspace.role !== 'OWNER'" class="text-xs">
+          Invited: {{ formatters.timeAgo(workspace.invitedAt) }}
+        </div>
         <div class="font-bold">Role: {{ toSentenceCase(workspace.role) }}</div>
         <div class="flex items-center text-xs gap-md pt-xs">
           <div class="flex items-center gap-xs">
@@ -126,7 +136,7 @@
 
 <script setup lang="ts">
 import { computed, PropType, ref } from "vue";
-
+import { formatters } from "@si/vue-lib";
 import { Icon, Stack } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
