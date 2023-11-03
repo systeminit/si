@@ -33,6 +33,7 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext) {
         None,
         *schema_variant.id(),
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -43,6 +44,7 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext) {
         None,
         *schema_variant.id(),
         Some(*object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");

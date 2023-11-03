@@ -259,6 +259,8 @@ pub struct Prop {
     widget_options: Option<Value>,
     /// A link to external documentation for working with this specific [`Prop`].
     doc_link: Option<String>,
+    /// Embedded documentation for working with this specific [`Prop`].
+    documentation: Option<String>,
     /// A toggle for whether or not the [`Prop`] should be visually hidden.
     hidden: bool,
     /// The "path" for a given [`Prop`]. It is a concatenation of [`Prop`] names based on lineage
@@ -297,6 +299,7 @@ impl Prop {
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         schema_variant_id: SchemaVariantId,
         parent_prop_id: Option<PropId>,
+        documentation: Option<String>,
     ) -> PropResult<Self> {
         let name = name.as_ref();
         let (widget_kind, widget_options) = match widget_kind_and_options {
@@ -309,7 +312,7 @@ impl Prop {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM prop_create_v2($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM prop_create_v2($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -319,6 +322,7 @@ impl Prop {
                     &widget_options.as_ref(),
                     &schema_variant_id,
                     &parent_prop_id,
+                    &documentation,
                 ],
             )
             .await?;
@@ -330,6 +334,7 @@ impl Prop {
     standard_model_accessor!(widget_kind, Enum(WidgetKind), PropResult);
     standard_model_accessor!(widget_options, Option<Value>, PropResult);
     standard_model_accessor!(doc_link, Option<String>, PropResult);
+    standard_model_accessor!(documentation, Option<String>, PropResult);
     standard_model_accessor!(hidden, bool, PropResult);
     standard_model_accessor!(refers_to_prop_id, Option<Pk(PropId)>, PropResult);
     standard_model_accessor!(diff_func_id, Option<Pk(FuncId)>, PropResult);

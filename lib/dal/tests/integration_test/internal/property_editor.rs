@@ -25,6 +25,7 @@ async fn property_editor_schema(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -35,6 +36,7 @@ async fn property_editor_schema(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -45,6 +47,7 @@ async fn property_editor_schema(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*exposed_ports_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");

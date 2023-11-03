@@ -29,6 +29,7 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");

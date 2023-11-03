@@ -265,7 +265,7 @@ async fn import_edge(
                             head_component_unique_id,
                             edge_spec.from_socket_name().to_owned(),
                             edge_spec.to_socket_name().to_owned(),
-                        ))
+                        ));
                     }
                 };
 
@@ -277,7 +277,7 @@ async fn import_edge(
                             tail_component_unique_id,
                             edge_spec.from_socket_name().to_owned(),
                             edge_spec.to_socket_name().to_owned(),
-                        ))
+                        ));
                     }
                 };
 
@@ -293,7 +293,7 @@ async fn import_edge(
                     None => {
                         return Ok(Some(ImportEdgeSkip::MissingInputSocket(
                             edge_spec.to_socket_name().to_owned(),
-                        )))
+                        )));
                     }
                 };
 
@@ -309,7 +309,7 @@ async fn import_edge(
                     None => {
                         return Ok(Some(ImportEdgeSkip::MissingOutputSocket(
                             edge_spec.from_socket_name().to_owned(),
-                        )))
+                        )));
                     }
                 };
 
@@ -408,7 +408,7 @@ async fn import_component(
                     return Err(PkgError::ComponentMissingSchemaVariant(
                         variant_unique_id.to_owned(),
                         component_spec.name().into(),
-                    ))
+                    ));
                 }
             }
         }
@@ -2190,6 +2190,7 @@ async fn import_schema_variant(
                 None,
                 *schema_variant.id(),
                 Some(*schema_variant.find_prop(ctx, &["root"]).await?.id()),
+                None,
             )
             .await?
             .id();
@@ -3066,6 +3067,7 @@ async fn create_dal_prop(
         Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
         schema_variant_id,
         parent_prop_id,
+        data.documentation.to_owned(),
     )
     .await
     .map_err(SiPkgError::visit_prop)?;

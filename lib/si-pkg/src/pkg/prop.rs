@@ -18,6 +18,7 @@ pub struct SiPkgPropData {
     pub widget_options: Option<serde_json::Value>,
     pub doc_link: Option<Url>,
     pub hidden: bool,
+    pub documentation: Option<String>,
 }
 
 #[remain::sorted]
@@ -121,7 +122,7 @@ impl<'a> SiPkgProp<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::PROP_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 
@@ -169,6 +170,7 @@ impl<'a> SiPkgProp<'a> {
                          widget_options,
                          hidden,
                          doc_link,
+                         documentation,
                      }| SiPkgPropData {
                         name,
                         default_value,
@@ -177,6 +179,7 @@ impl<'a> SiPkgProp<'a> {
                         widget_options,
                         hidden,
                         doc_link,
+                        documentation,
                     },
                 ),
                 unique_id.to_owned(),

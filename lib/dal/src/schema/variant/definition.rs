@@ -573,6 +573,9 @@ pub struct PropDefinition {
     /// An optional documentation link for the [`Prop`](crate::Prop) to be created.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub doc_link: Option<String>,
+    /// An optional set of inline documentation for the [`Prop`](crate::Prop) to be created.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub documentation: Option<String>,
     /// If our [`kind`](crate::PropKind) is [`Object`](crate::PropKind::Object), specify the
     /// child definition(s).
     #[serde(default)]
@@ -611,6 +614,9 @@ impl PropDefinition {
         builder.has_data(true);
         if let Some(doc_url) = &self.doc_link {
             builder.try_doc_link(doc_url.as_str())?;
+        }
+        if let Some(docs) = &self.documentation {
+            builder.documentation(docs);
         }
         if let Some(default_value) = &self.default_value {
             builder.default_value(default_value.to_owned());

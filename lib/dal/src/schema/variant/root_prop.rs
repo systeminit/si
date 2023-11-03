@@ -111,7 +111,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaVariantResult<RootProp> {
-        let root_prop = Prop::new(ctx, "root", PropKind::Object, None, self.id, None).await?;
+        let root_prop = Prop::new(ctx, "root", PropKind::Object, None, self.id, None, None).await?;
         let root_prop_id = *root_prop.id();
         self.set_root_prop_id(ctx, Some(root_prop_id)).await?;
 
@@ -127,6 +127,7 @@ impl SchemaVariant {
             None,
             self.id,
             Some(root_prop_id),
+            None,
         )
         .await?;
 
@@ -137,6 +138,7 @@ impl SchemaVariant {
             None,
             self.id,
             Some(root_prop_id),
+            None,
         )
         .await?
         .id();
@@ -179,6 +181,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(root_prop_id),
+            None,
         )
         .await?;
         leaf_prop.set_hidden(ctx, true).await?;
@@ -190,6 +193,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(*leaf_prop.id()),
+            None,
         )
         .await?;
         leaf_item_prop.set_hidden(ctx, true).await?;
@@ -237,6 +241,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(root_prop_id),
+            None,
         )
         .await?;
         let si_prop_id = *si_prop.id();
@@ -247,6 +252,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(si_prop_id),
+            None,
         )
         .await?;
 
@@ -258,6 +264,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(si_prop_id),
+            None,
         )
         .await?;
 
@@ -287,6 +294,7 @@ impl SchemaVariant {
             )),
             schema_variant_id,
             Some(si_prop_id),
+            None,
         )
         .await?;
 
@@ -298,6 +306,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(si_prop_id),
+            None,
         )
         .await?;
         color_prop.set_widget_kind(ctx, WidgetKind::Color).await?;
@@ -326,6 +335,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(root_prop_id),
+            None,
         )
         .await?;
         resource_value_prop.set_hidden(ctx, true).await?;
@@ -362,6 +372,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(root_prop_id),
+            None,
         )
         .await?;
         resource_prop.set_hidden(ctx, true).await?;
@@ -374,6 +385,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(resource_prop_id),
+            None,
         )
         .await?;
         resource_status_prop.set_hidden(ctx, true).await?;
@@ -385,6 +397,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(resource_prop_id),
+            None,
         )
         .await?;
         resource_message_prop.set_hidden(ctx, true).await?;
@@ -396,6 +409,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(resource_prop_id),
+            None,
         )
         .await?;
         resource_logs_prop.set_hidden(ctx, true).await?;
@@ -407,6 +421,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(*resource_logs_prop.id()),
+            None,
         )
         .await?;
         resource_logs_log_prop.set_hidden(ctx, true).await?;
@@ -418,6 +433,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(resource_prop_id),
+            None,
         )
         .await?;
         resource_payload_prop.set_hidden(ctx, true).await?;
@@ -429,6 +445,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(resource_prop_id),
+            None,
         )
         .await?;
         resource_last_synced_prop.set_hidden(ctx, true).await?;
@@ -456,6 +473,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(code_map_item_prop_id),
+            None,
         )
         .await?;
         child_code_prop.set_hidden(ctx, true).await?;
@@ -467,6 +485,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(code_map_item_prop_id),
+            None,
         )
         .await?;
         child_message_prop.set_hidden(ctx, true).await?;
@@ -478,6 +497,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(code_map_item_prop_id),
+            None,
         )
         .await?;
         child_format_prop.set_hidden(ctx, true).await?;
@@ -505,6 +525,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(qualification_map_item_prop_id),
+            None,
         )
         .await?;
         child_qualified_prop.set_hidden(ctx, true).await?;
@@ -516,6 +537,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(qualification_map_item_prop_id),
+            None,
         )
         .await?;
         child_message_prop.set_hidden(ctx, true).await?;
@@ -536,6 +558,7 @@ impl SchemaVariant {
             None,
             schema_variant_id,
             Some(root_prop_id),
+            None,
         )
         .await?;
         deleted_at.set_hidden(ctx, true).await?;

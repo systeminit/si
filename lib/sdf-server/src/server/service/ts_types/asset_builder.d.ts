@@ -198,7 +198,7 @@ declare class ValidationBuilder implements IValidationBuilder {
     setKind(kind: ValidationKind): this;
     setUpperBound(value: number): this;
 }
-type PropWidgetDefinitionKind = "array" | "checkbox" | "color" | "comboBox" | "header" | "map" | "secret" | "select" | "text" | "textArea" | "codeEditor";
+type PropWidgetDefinitionKind = "array" | "checkbox" | "codeEditor" | "color" | "comboBox" | "header" | "map" | "secret" | "select" | "text" | "textArea";
 interface Option {
     label: string;
     value: string;
@@ -226,7 +226,7 @@ declare class PropWidgetDefinitionBuilder implements IPropWidgetDefinitionBuilde
     /**
      * The type of widget
      *
-     * @param {string} kind [array | checkbox | color | comboBox | header | map | secret | select | text | textArea]
+     * @param {string} kind [array | checkbox | color | comboBox | header | map | secret | select | text | textArea | codeEditor]
      *
      * @returns this
      *
@@ -237,7 +237,7 @@ declare class PropWidgetDefinitionBuilder implements IPropWidgetDefinitionBuilde
     /**
      * Add an option when using a comboBox
      *
-     * @param {string} key - the value displayed in the comboBoxx
+     * @param {string} key - the value displayed in the comboBox
      * @param {string} value - the value the prop is set to
      *
      * @returns this
@@ -336,6 +336,7 @@ interface PropDefinition {
     kind: PropDefinitionKind;
     docLinkRef?: string;
     docLink?: string;
+    documentation?: string;
     children?: PropDefinition[];
     entry?: PropDefinition;
     widget?: PropWidgetDefinition;
@@ -349,6 +350,7 @@ interface IPropBuilder {
     setName(name: string): this;
     setKind(kind: PropDefinitionKind): this;
     setDocLinkRef(ref: string): this;
+    setDocumentation(ref: string): this;
     setDocLink(link: string): this;
     addChild(child: PropDefinition): this;
     setEntry(entry: PropDefinition): this;
@@ -367,6 +369,7 @@ interface IPropBuilder {
  *  const propName = new PropBuilder()
  *   .setName("name")
  *   .setKind("string")
+ *   .setDocumentation("This is the documentation for the prop")
  *   .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
  *  .build();
  */
@@ -458,6 +461,17 @@ declare class PropBuilder implements IPropBuilder {
      *  .setDocLink("https://www.systeminit.com/")
      */
     setDocLink(link: string): this;
+    /**
+     * Sets inline documentation for the prop
+     *
+     * @param {string} docs
+     *
+     * @returns this
+     *
+     * @example
+     *  .setDocumentation("This is documentation for the prop")
+     */
+    setDocumentation(docs: string): this;
     setDocLinkRef(ref: string): this;
     /**
      * Whether the prop should be displayed in th UI or not

@@ -574,6 +574,7 @@ export interface PropDefinition {
   kind: PropDefinitionKind;
   docLinkRef?: string;
   docLink?: string;
+  documentation?: string;
   children?: PropDefinition[];
   entry?: PropDefinition;
   widget?: PropWidgetDefinition;
@@ -591,6 +592,8 @@ export interface IPropBuilder {
   setKind(kind: PropDefinitionKind): this;
 
   setDocLinkRef(ref: string): this;
+
+  setDocumentation(ref: string): this;
 
   setDocLink(link: string): this;
 
@@ -621,6 +624,7 @@ export interface IPropBuilder {
  *  const propName = new PropBuilder()
  *   .setName("name")
  *   .setKind("string")
+ *   .setDocumentation("This is the documentation for the prop")
  *   .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
  *  .build();
  */
@@ -761,6 +765,21 @@ export class PropBuilder implements IPropBuilder {
    */
   setDocLink(link: string): this {
     this.prop.docLink = link;
+    return this;
+  }
+
+  /**
+   * Sets inline documentation for the prop
+   *
+   * @param {string} docs
+   *
+   * @returns this
+   *
+   * @example
+   *  .setDocumentation("This is documentation for the prop")
+   */
+  setDocumentation(docs: string): this {
+    this.prop.documentation = docs;
     return this;
   }
 

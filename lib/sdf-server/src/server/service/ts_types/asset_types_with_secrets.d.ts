@@ -336,6 +336,7 @@ interface PropDefinition {
     kind: PropDefinitionKind;
     docLinkRef?: string;
     docLink?: string;
+    documentation? string;
     children?: PropDefinition[];
     entry?: PropDefinition;
     widget?: PropWidgetDefinition;
@@ -350,6 +351,7 @@ interface IPropBuilder {
     setKind(kind: PropDefinitionKind): this;
     setDocLinkRef(ref: string): this;
     setDocLink(link: string): this;
+    setDocumentation(ref: string): this;
     addChild(child: PropDefinition): this;
     setEntry(entry: PropDefinition): this;
     setWidget(widget: PropWidgetDefinition): this;
@@ -384,6 +386,7 @@ declare class PropBuilder implements IPropBuilder {
      *   .addChild(new PropBuilder()
      *     .setKind("string")
      *     .setName("sweetChildProp")
+     *     .setDocumentation("This is the documentation for the prop")
      *     .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
      *     .build())
      */
@@ -458,6 +461,17 @@ declare class PropBuilder implements IPropBuilder {
      *  .setDocLink("https://www.systeminit.com/")
      */
     setDocLink(link: string): this;
+    /**
+     * Sets inline documentation for the prop
+     *
+     * @param {string} docs
+     *
+     * @returns this
+     *
+     * @example
+     *  .setDocumentation("This is documentation for the prop")
+     */
+    setDocumentation(docs: string): this;
     setDocLinkRef(ref: string): this;
     /**
      * Whether the prop should be displayed in th UI or not

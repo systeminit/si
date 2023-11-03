@@ -21,6 +21,7 @@ async fn new(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*domain_prop.id()),
+        None,
     )
     .await
     .expect("cannot create prop");
@@ -47,6 +48,7 @@ async fn parent_props(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*domain_prop.id()),
+        None,
     )
     .await
     .expect("cannot create prop");
@@ -57,6 +59,7 @@ async fn parent_props(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*parent_prop.id()),
+        None,
     )
     .await
     .expect("cannot create prop");
@@ -94,6 +97,7 @@ async fn parent_props_wrong_prop_kinds(ctx: &DalContext) {
         None,
         *schema_variant.id(),
         Some(*root_prop_id),
+        None,
     )
     .await
     .expect("cannot create prop");
@@ -104,6 +108,7 @@ async fn parent_props_wrong_prop_kinds(ctx: &DalContext) {
         None,
         *schema_variant.id(),
         Some(*parent_prop.id()),
+        None,
     )
     .await;
     result.expect_err("should have errored, and it did not");

@@ -6,8 +6,8 @@ use std::{
 use url::Url;
 
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, GraphError, NameStr,
-    NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
+    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
 };
 
 use crate::{spec::PropSpecData, PropSpec, PropSpecWidgetKind};
@@ -22,6 +22,7 @@ const KEY_WIDGET_KIND_STR: &str = "widget_kind";
 const KEY_WIDGET_OPTIONS_STR: &str = "widget_options";
 const KEY_HIDDEN_STR: &str = "hidden";
 const KEY_DOC_LINK_STR: &str = "doc_link";
+const KEY_DOCUMENTATION_STR: &str = "documentation";
 const KEY_UNIQUE_ID_STR: &str = "unique_id";
 
 const PROP_TY_STRING: &str = "string";
@@ -40,6 +41,7 @@ pub struct PropNodeData {
     pub widget_options: Option<serde_json::Value>,
     pub doc_link: Option<Url>,
     pub hidden: bool,
+    pub documentation: Option<String>,
 }
 
 #[remain::sorted]
@@ -152,6 +154,8 @@ impl WriteBytes for PropNode {
                 KEY_DOC_LINK_STR,
                 data.doc_link.as_ref().map(|l| l.as_str()).unwrap_or(""),
             )?;
+
+            write_key_value_line_opt(writer, KEY_DOCUMENTATION_STR, data.documentation.as_ref())?;
         }
 
         if let Some(unique_id) = match &self {
@@ -213,6 +217,8 @@ impl ReadBytes for PropNode {
                     Some(Url::parse(&doc_link_str).map_err(GraphError::parse)?)
                 };
 
+                let documentation = read_key_value_line_opt(reader, KEY_DOCUMENTATION_STR)?;
+
                 Some(PropNodeData {
                     name: name.to_owned(),
                     func_unique_id,
@@ -221,6 +227,7 @@ impl ReadBytes for PropNode {
                     widget_options,
                     doc_link,
                     hidden,
+                    documentation,
                 })
             }
         };
@@ -261,7 +268,7 @@ impl ReadBytes for PropNode {
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
                     "invalid prop node kind: {invalid_kind}"
-                )))
+                )));
             }
         };
 
@@ -317,6 +324,7 @@ impl NodeChild for PropSpec {
                          widget_options,
                          hidden,
                          doc_link,
+                         documentation,
                          ..
                      }| PropNodeData {
                         name,
@@ -326,6 +334,7 @@ impl NodeChild for PropSpec {
                         widget_options,
                         hidden: hidden.unwrap_or(false),
                         doc_link,
+                        documentation,
                     },
                 ),
                 unique_id.to_owned(),
