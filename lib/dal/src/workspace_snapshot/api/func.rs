@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use content_store::{ContentHash, Store};
 
 use ulid::Ulid;
@@ -118,6 +120,7 @@ impl WorkspaceSnapshot {
     }
 
     pub async fn list_funcs(&mut self, ctx: &DalContext) -> WorkspaceSnapshotResult<Vec<Func>> {
+        let start = Instant::now();
         let mut funcs = vec![];
         let (_, func_category_index) = self
             .working_copy()?
@@ -127,10 +130,6 @@ impl WorkspaceSnapshot {
             func_category_index,
             EdgeWeightKindDiscriminants::Use,
         )?;
-
-        self.dot();
-
-        dbg!(&func_node_indexes);
 
         for index in func_node_indexes {
             if let NodeWeight::Func(func_inner) = self.get_node_weight(index)? {
@@ -142,6 +141,7 @@ impl WorkspaceSnapshot {
                 dbg!("not a func node weight???");
             }
         }
+        dbg!(start.elapsed());
 
         Ok(funcs)
     }

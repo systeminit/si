@@ -306,7 +306,8 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
 
     let workspace = Workspace::builtin(&mut ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
-    ctx.blocking_commit().await?;
+    ctx.update_to_head();
+    ctx.update_snapshot_to_visibility().await?;
 
     info!("migrating intrinsic functions");
     builtins::func::migrate_intrinsics(&ctx).await?;
@@ -394,7 +395,22 @@ async fn install_builtins(
         }
     }
 
-    dal.commit().await?;
+    // XXX: the rebaser is hanging on the second attempt here if all builtins were already installed...
+    if count > 0 {
+        dal.commit().await?;
+    }
+
+    let mut ctx = ctx.clone();
+    ctx.update_snapshot_to_visibility().await?;
+    dbg!(ctx
+        .workspace_snapshot()
+        .expect("wsnapshot")
+        .lock()
+        .await
+        .list_funcs(&ctx)
+        .await
+        .expect("list funcs")
+        .len());
 
     Ok(())
 }

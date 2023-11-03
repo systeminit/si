@@ -86,6 +86,10 @@ impl Workspace {
         &self.pk
     }
 
+    pub fn default_change_set_id(&self) -> ChangeSetPointerId {
+        self.default_change_set_id
+    }
+
     /// Find or create the builtin [`Workspace`].
     #[instrument(skip_all)]
     pub async fn builtin(ctx: &mut DalContext) -> WorkspaceResult<Self> {
@@ -105,9 +109,6 @@ impl Workspace {
             .await?;
         let change_set_id = change_set.id;
         let head_pk = WorkspaceId::NONE;
-
-        ctx.set_change_set_pointer(change_set)?;
-        ctx.set_workspace_snapshot(workspace_snapshot);
 
         let row = ctx
             .txns()
@@ -204,8 +205,7 @@ impl Workspace {
             ChangeSetPk::from(Ulid::from(change_set_id)),
             None,
         ));
-        ctx.set_change_set_pointer(change_set)?;
-        ctx.set_workspace_snapshot(workspace_snapshot);
+        ctx.update_snapshot_to_visibility().await?;
 
         let _history_event = HistoryEvent::new(
             ctx,

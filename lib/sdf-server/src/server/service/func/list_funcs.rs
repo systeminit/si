@@ -35,7 +35,7 @@ pub async fn list_funcs(
 ) -> FuncResult<Json<ListFuncsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    ctx.workspace_snapshot()?.lock().await.dot();
+    //ctx.workspace_snapshot()?.lock().await.dot();
 
     let funcs = ctx
         .workspace_snapshot()?

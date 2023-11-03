@@ -17,6 +17,7 @@ use veritech_client::{Client as VeritechClient, EncryptionKey};
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
+use crate::Workspace;
 use crate::{
     change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId},
     job::{
@@ -278,9 +279,57 @@ impl DalContext {
         }
     }
 
+    pub async fn get_workspace_default_change_set_id(
+        &self,
+    ) -> Result<ChangeSetPointerId, TransactionsError> {
+        let workspace = Workspace::get_by_pk(
+            self,
+            &self.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE),
+        )
+        .await
+        // use a proper error
+        .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?;
+
+        let cs_id = workspace
+            .map(|workspace| workspace.default_change_set_id())
+            .unwrap_or(ChangeSetPointerId::NONE);
+
+        Ok(cs_id)
+    }
+
+    pub async fn update_snapshot_to_visibility(&mut self) -> Result<(), TransactionsError> {
+        let change_set_id = match self.change_set_id() {
+            ChangeSetPointerId::NONE => self.get_workspace_default_change_set_id().await?,
+            other => other,
+        };
+
+        let change_set_pointer = ChangeSetPointer::find(self, change_set_id)
+            .await
+            .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
+            .ok_or(TransactionsError::ChangeSetPointerNotFound(
+                self.change_set_id(),
+            ))?;
+
+        let workspace_snapshot =
+            WorkspaceSnapshot::find_for_change_set(self, change_set_pointer.id)
+                .await
+                .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
+
+        dbg!(
+            "update snapshot to visibility got workspace snapshot: ",
+            workspace_snapshot.id()
+        );
+
+        self.set_change_set_pointer(change_set_pointer)?;
+        self.set_workspace_snapshot(workspace_snapshot);
+
+        Ok(())
+    }
+
     pub async fn write_snapshot(&self) -> Result<Option<WorkspaceSnapshotId>, TransactionsError> {
         if let Some(snapshot) = &self.workspace_snapshot {
             let vector_clock_id = self.change_set_pointer()?.vector_clock_id();
+
             Ok(Some(
                 snapshot
                     .lock()
@@ -298,11 +347,11 @@ impl DalContext {
         &self,
         onto_workspace_snapshot_id: WorkspaceSnapshotId,
     ) -> Result<RebaseRequest, TransactionsError> {
-        let change_set_pointer = self.change_set_pointer()?;
+        let vector_clock_id = self.change_set_pointer()?.vector_clock_id();
         Ok(RebaseRequest {
             onto_workspace_snapshot_id,
             to_rebase_change_set_id: self.change_set_id().into(),
-            onto_vector_clock_id: change_set_pointer.vector_clock_id(),
+            onto_vector_clock_id: vector_clock_id,
         })
     }
 
@@ -385,6 +434,7 @@ impl DalContext {
     /// Consumes all inner transactions, committing all changes made within them, and
     /// blocks until all queued jobs have reported as finishing.
     pub async fn blocking_commit(&self) -> Result<(), TransactionsError> {
+        dbg!("blocking commit");
         let rebase_request = match self.write_snapshot().await? {
             Some(workspace_snapshot_id) => Some(self.get_rebase_request(workspace_snapshot_id)?),
             None => None,
@@ -836,22 +886,7 @@ impl DalContextBuilder {
             change_set_pointer: None,
         };
 
-        let change_set_pointer = ChangeSetPointer::find(&ctx, ctx.change_set_id())
-            .await
-            .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
-            .ok_or(TransactionsError::ChangeSetPointerNotFound(
-                ctx.change_set_id(),
-            ))?;
-
-        let workspace_snapshot =
-            WorkspaceSnapshot::find_for_change_set(&ctx, change_set_pointer.id)
-                .await
-                .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
-
-        dbg!(workspace_snapshot.id());
-
-        ctx.set_change_set_pointer(change_set_pointer)?;
-        ctx.set_workspace_snapshot(workspace_snapshot);
+        ctx.update_snapshot_to_visibility().await?;
 
         Ok(ctx)
     }

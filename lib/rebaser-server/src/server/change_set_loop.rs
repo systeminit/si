@@ -148,7 +148,7 @@ async fn process_delivery(
             onto_vector_clock_id,
         )
         .await?;
-    debug!("conflicts and updates detected: {conflicts:?} {updates:?}");
+    info!("conflicts and updates detected: {conflicts:?} {updates:?}");
 
     // If there are conflicts, immediately assemble a reply message that conflicts were found.
     // Otherwise, we can perform updates and assemble a "success" reply message.
@@ -201,6 +201,10 @@ async fn perform_updates_and_write_out_and_update_pointer(
     onto_workspace_snapshot: &mut WorkspaceSnapshot,
     updates: &Vec<Update>,
 ) -> ChangeSetLoopResult<()> {
+    dbg!("before updates", to_rebase_workspace_snapshot.id());
+    to_rebase_workspace_snapshot.dot();
+    dbg!("onto workspace snapshot", onto_workspace_snapshot.id());
+    onto_workspace_snapshot.dot();
     let mut updated = HashMap::new();
     for update in updates {
         match update {
@@ -235,6 +239,7 @@ async fn perform_updates_and_write_out_and_update_pointer(
         }
     }
 
+    dbg!("after updates");
     to_rebase_workspace_snapshot.dot();
 
     // Once all updates have been performed, we can write out, mark everything as recently seen

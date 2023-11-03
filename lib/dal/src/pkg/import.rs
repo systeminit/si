@@ -258,8 +258,8 @@ async fn import_change_set(
     // }
     //
 
-    workspace_snapshot.cleanup();
-    workspace_snapshot.dot();
+    //    workspace_snapshot.cleanup();
+    //    workspace_snapshot.dot();
 
     Ok((
         installed_schema_variant_ids,
