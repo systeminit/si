@@ -88,56 +88,37 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import clsx from "clsx";
 import Popover from "@/components/Popover.vue";
 import SiSearch from "@/components/SiSearch.vue";
+import { useCursorStore } from "@/store/cursor.store";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
 
+const cursorStore = useCursorStore();
+
 export type UserInfo = {
   name: string;
-  color?: string;
-  status?: string;
-  pictureUrl?: string;
+  color?: string | null;
+  status?: string | null;
+  pictureUrl: string | null;
 };
 
 const moreUsersPopoverRef = ref();
 const moreUsersButtonRef = ref();
 
-const users: UserInfo[] = [
-  { name: "wandy", color: "#00f", status: "active" },
-  { name: "wendi", color: "#f00", status: "idle" },
-  { name: "wundee", color: "#ff0", status: "active" },
-  { name: "window", color: "#0f0", status: "active" },
-  { name: "wahndie", color: "#0ff", status: "idle" },
-  { name: "whatever", color: "#f0f", status: "idle" },
-  { name: "user7777777", color: "#f90", status: "idle" },
-  { name: "user8", color: "#f90", status: "idle" },
-  { name: "user9", color: "#f90", status: "active" },
-  { name: "user10", color: "#f90", status: "idle" },
-  { name: "user11", color: "#f90", status: "idle" },
-  { name: "user12", color: "#f90", status: "idle" },
-  { name: "user8", color: "#f90", status: "idle" },
-  { name: "user9", color: "#f90", status: "active" },
-  { name: "user10", color: "#f90", status: "idle" },
-  { name: "user11", color: "#f90", status: "idle" },
-  { name: "user12", color: "#f90", status: "idle" },
-  { name: "user8", color: "#f90", status: "idle" },
-  { name: "user9", color: "#f90", status: "active" },
-  { name: "user10", color: "#f90", status: "idle" },
-  { name: "user11", color: "#f90", status: "idle" },
-  { name: "user12", color: "#f90", status: "idle" },
-  { name: "user8", color: "#f90", status: "idle" },
-  { name: "user9", color: "#f90", status: "active" },
-  { name: "user10", color: "#f90", status: "idle" },
-  { name: "user11", color: "#f90", status: "idle" },
-  { name: "user12", color: "#f90", status: "idle" },
-  {
-    name: "thisuserhasareallylongnameomgsolongthisuserhasareallylongnameomgsolongthisuserhasareallylongnameomgsolongthisuserhasareallylongnameomgsolong",
-    color: "#f90",
-    status: "idle",
-  },
-];
+const users = computed<UserInfo[]>(() => {
+  const list = [];
+  for (const user of _.values(cursorStore.users)) {
+    list.push({
+      name: user.name,
+      color: null,
+      status: "active",
+      pictureUrl: user.pictureUrl,
+    });
+  }
+  return list;
+});
 
 const sortedUsers = computed(() => {
-  const usersCopy = _.clone(users);
+  const usersCopy = _.clone(users.value);
   return usersCopy.sort((a, b) => {
     if (a.status === "idle" && b.status !== "idle") return 1;
     if (a.status !== "idle" && b.status === "idle") return -1;

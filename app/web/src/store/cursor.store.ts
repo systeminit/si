@@ -12,8 +12,15 @@ export type UserId = string;
 
 const MOUSE_REFRESH_RATE = 20;
 const MOUSE_EXPIRATION = 5000;
+const ONLINE_EXPIRATION = 5000;
 
 export type CursorContainerKind = "diagram" | "code-editor" | null;
+
+export interface OnlineUser {
+  pk: string;
+  name: string;
+  pictureUrl: string | null;
+}
 
 export const useCursorStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
@@ -42,6 +49,7 @@ export const useCursorStore = (forceChangeSetId?: ChangeSetId) => {
           container: null as CursorContainerKind,
           containerKey: null as string | null,
           cursors: {} as Record<UserId, DiagramCursorDef>,
+          users: {} as Record<UserId, OnlineUser & { timestamp: Date }>,
         }),
         actions: {
           updateCursor(x: number, y: number) {
@@ -58,6 +66,22 @@ export const useCursorStore = (forceChangeSetId?: ChangeSetId) => {
             this.cursors = {};
             this.send();
           },
+          cleanupOnline() {
+            const toDelete = [];
+            for (const key in this.users) {
+              const user = this.users[key];
+              if (
+                user &&
+                new Date().getTime() - user.timestamp.getTime() >
+                  ONLINE_EXPIRATION
+              ) {
+                toDelete.push(key);
+              }
+            }
+            for (const key of toDelete) {
+              delete this.users[key];
+            }
+          },
           cleanupCursor() {
             const toDelete = [];
             for (const key in this.cursors) {
@@ -73,6 +97,17 @@ export const useCursorStore = (forceChangeSetId?: ChangeSetId) => {
             for (const key of toDelete) {
               delete this.cursors[key];
             }
+          },
+          websocketSendOnline() {
+            if (!authStore.user) return;
+            realtimeStore.sendMessage({
+              kind: "Online",
+              data: {
+                pk: authStore.user.pk,
+                name: authStore.user.name,
+                pictureUrl: authStore.user.picture_url ?? null,
+              },
+            });
           },
           websocketSendCursor: _.debounce(
             (
@@ -117,7 +152,12 @@ export const useCursorStore = (forceChangeSetId?: ChangeSetId) => {
           },
         },
         onActivated() {
-          const interval = setInterval(this.send, MOUSE_EXPIRATION - 500);
+          const interval = setInterval(() => {
+            this.send();
+
+            this.cleanupOnline();
+            this.websocketSendOnline();
+          }, MOUSE_EXPIRATION - 500);
 
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
@@ -147,9 +187,26 @@ export const useCursorStore = (forceChangeSetId?: ChangeSetId) => {
               },
             },
           ]);
+          realtimeStore.subscribe(`${this.$id}-online`, `online`, [
+            {
+              eventType: "Online",
+              callback: (payload) => {
+                if (payload.pk === authStore.user?.pk) return;
+                this.users[payload.pk] = {
+                  pk: payload.pk,
+                  name: payload.name,
+                  pictureUrl: payload.pictureUrl,
+                  timestamp: new Date(),
+                };
+                // Triggers watchers of users
+                this.users = { ...this.users };
+              },
+            },
+          ]);
 
           return () => {
             realtimeStore.unsubscribe(this.$id);
+            realtimeStore.unsubscribe(`${this.$id}-online`);
             clearInterval(interval);
           };
         },

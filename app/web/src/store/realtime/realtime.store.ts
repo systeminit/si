@@ -26,8 +26,16 @@ interface CursorRequest {
   };
 }
 
-// Should append types here
-type WebsocketRequest = CursorRequest;
+interface OnlineRequest {
+  kind: "Online";
+  data: {
+    pk: UserId;
+    name: string;
+    pictureUrl: string | null;
+  };
+}
+
+type WebsocketRequest = CursorRequest | OnlineRequest;
 
 // some fairly magic TS wizardry happening here...
 // just reshuffling the WsEventPayloadMap into a format usable in our subscribe call
