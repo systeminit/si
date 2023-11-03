@@ -87,6 +87,9 @@ model WorkspaceMembers {
     // Role of the user
     roleType RoleType @map("role_type")
 
+    // Invitation to workspace date
+    invitedAt DateTime? @map("invited_at")
+
     @@unique([userId, workspaceId])
 }
 
