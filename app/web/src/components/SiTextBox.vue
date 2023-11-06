@@ -110,6 +110,7 @@ const props = defineProps({
   textArea: Boolean,
   disabled: Boolean,
   loginMode: Boolean,
+  renderAsPassword: { type: Boolean, default: false },
 });
 
 const { alwaysValidate } = toRefs(props);
@@ -173,10 +174,11 @@ const titleClasses = computed((): Record<string, boolean> => {
 });
 
 const type = computed((): string => {
-  if (props.password) {
+  if (props.password || props.renderAsPassword) {
     return "password";
+  } else {
+    return "text";
   }
-  return "text";
 });
 
 const valueChanged = (event: Event) => {

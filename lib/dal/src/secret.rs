@@ -21,6 +21,7 @@ use crate::{
     impl_standard_model,
     key_pair::KeyPairPk,
     pk,
+    property_editor::schema::PropertyEditorPropWidgetKind,
     serde_impls::{base64_bytes_serde, nonce_serde},
     standard_model::{self, objects_from_rows, TypeHint},
     standard_model_accessor, standard_model_accessor_ro, ActorView, DalContext, HistoryActor,
@@ -496,8 +497,7 @@ impl Default for SecretAlgorithm {
 pub struct SecretFormDataView {
     name: String,
     kind: String,
-    widget_kind: String,
-    widget_options: Option<String>,
+    widget_kind: PropertyEditorPropWidgetKind,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

@@ -198,7 +198,7 @@ declare class ValidationBuilder implements IValidationBuilder {
     setKind(kind: ValidationKind): this;
     setUpperBound(value: number): this;
 }
-type PropWidgetDefinitionKind = "array" | "checkbox" | "codeEditor" | "color" | "comboBox" | "header" | "map" | "secret" | "select" | "text" | "textArea";
+type PropWidgetDefinitionKind = "array" | "checkbox" | "codeEditor" | "color" | "comboBox" | "header" | "map" | "password" | "secret" | "select" | "text" | "textArea";
 interface Option {
     label: string;
     value: string;
