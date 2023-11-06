@@ -6,6 +6,8 @@ import { request } from './helpers/supertest-agents';
 import { testSuiteAfter, testSuiteBefore } from './helpers/test-suite-hooks';
 import { mockAuth0TokenExchange } from './helpers/auth0-mocks';
 import { decodeAuthToken, createSdfAuthToken } from '../src/services/auth.service';
+import { createWorkspace } from "../src/services/workspaces.service";
+import { createInvitedUser, getUserById } from "../src/services/users.service";
 
 t.before(testSuiteBefore);
 t.teardown(testSuiteAfter);
@@ -83,7 +85,12 @@ t.test('Auth routes', async () => {
 
     t.test('verify sdf auth token succeeds for whoami', async () => {
       const authData = await decodeAuthToken(validToken);
-      const sdfToken = createSdfAuthToken(authData.userId, 'foo');
+      const user = await getUserById(authData.userId);
+      if (!user) {
+        t.bailout("User Fetch has failed");
+      }
+      const workspace = await createWorkspace(user!);
+      const sdfToken = createSdfAuthToken(authData.userId, workspace.id);
       await request.get('/whoami')
         .set('cookie', `si-auth=${sdfToken}`)
         .expectOk()
@@ -189,6 +196,17 @@ t.test('Auth routes', async () => {
         expectUserData: { id: originalUserId, email: EMAIL_2 },
       });
     });
+
+    t.test('logging in with a partially signed up user will not create a new account, but will update other data', async () => {
+      const user = await createInvitedUser("partially+signedup@systeminit.com");
+      const { userId } = await runAuthTest({
+        mockOptions: {
+          profileOverrides: { sub: AUTH0_ID, email: user.email },
+        },
+        expectUserData: { id: originalUserId, email: "partially+signedup@systeminit.com" },
+      });
+      originalUserId = userId;
+    });
   });
 
   t.test('GET /auth/logout - begin logout flow', async (t) => {
@@ -213,7 +231,7 @@ t.test('Auth routes', async () => {
         .expect(302)
         .expect((res) => {
           const redirectUrl = res.headers.location;
-          expect(redirectUrl).to.eq(`${process.env.AUTH_PORTAL_URL}/login`);
+          expect(redirectUrl).to.eq(`${process.env.AUTH_PORTAL_URL}/logout-success`);
         });
     });
   });
