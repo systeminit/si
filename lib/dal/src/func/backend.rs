@@ -241,13 +241,6 @@ pub trait FuncDispatch: std::fmt::Debug {
         Ok(value)
     }
 
-    // TODO: re-enable encryption
-    //{
-    //    for view in value.extract()? {
-    //        ComponentView::reencrypt_secrets(ctx, view).await?;
-    //    }
-    //}
-
     #[instrument(
     name = "funcdispatch.execute",
     skip_all,

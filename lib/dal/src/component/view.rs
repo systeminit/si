@@ -1,13 +1,12 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::str::FromStr;
 use thiserror::Error;
 
 use crate::{
     component::ComponentKind, func::binding_return_value::FuncBindingReturnValueId,
     AttributeReadContext, AttributeValue, AttributeValueError, Component, ComponentId, DalContext,
-    EncryptedSecret, FuncBindingReturnValue, InternalProvider, InternalProviderError, PropError,
-    PropId, SchemaVariantId, SecretError, SecretId, StandardModel, StandardModelError,
+    FuncBindingReturnValue, InternalProvider, InternalProviderError, PropError, PropId,
+    SchemaVariantId, SecretError, SecretId, StandardModel, StandardModelError,
 };
 
 pub mod debug;
@@ -118,58 +117,6 @@ impl ComponentView {
             kind: *component.kind(),
             properties: properties.clone(),
         })
-    }
-
-    pub async fn reencrypt_secrets(
-        ctx: &DalContext,
-        component: &mut veritech_client::ComponentView,
-    ) -> Result<(), ComponentViewError> {
-        if component.kind != veritech_client::ComponentKind::Credential {
-            return Ok(());
-        }
-
-        // If it's a credential it's already unencrypted
-        if let Some(object) = component
-            .properties
-            .as_object_mut()
-            .and_then(|obj| obj.get_mut("root").and_then(|obj| obj.as_object_mut()))
-        {
-            // TODO(Wendy) - This code needs to change A LOT!
-            // Note: we can't know which fields are WidgetKind::SecretSelect as we lose information by being so low on the stack
-            // So for now we will try to decrypt every integer root field, which kinda suck
-            //
-            // TODO: traverse tree and decrypt leafs
-            for (_key, value) in object {
-                if let Some(raw_id) = value.as_str() {
-                    let id = SecretId::from_str(raw_id)?;
-                    let decrypted_secret = EncryptedSecret::get_by_id(ctx, &id)
-                        .await?
-                        .ok_or(ComponentViewError::SecretNotFound(id))?
-                        .decrypt(ctx)
-                        .await?;
-                    let encoded = ctx
-                        .encryption_key()
-                        .encrypt_and_encode(serde_json::to_string(&decrypted_secret.message())?);
-
-                    *value = serde_json::to_value(&decrypted_secret)?;
-                    match value.pointer_mut("/message") {
-                        Some(v) => {
-                            *v = serde_json::json!({
-                                "cycloneEncryptedDataMarker": true,
-                                "encryptedSecret": encoded
-                            })
-                        }
-                        None => {
-                            return Err(ComponentViewError::JSONPointerNotFound(
-                                value.clone(),
-                                "/message".to_owned(),
-                            ));
-                        }
-                    }
-                }
-            }
-        }
-        Ok(())
     }
 }
 
