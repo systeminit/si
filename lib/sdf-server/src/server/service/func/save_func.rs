@@ -670,7 +670,7 @@ pub async fn do_save_func(
                     let proto_context = AuthenticationPrototypeContext { schema_variant_id };
 
                     let proto = match AuthenticationPrototype::find_for_context_and_func(
-                        &ctx,
+                        ctx,
                         &proto_context,
                         *func.id(),
                     )

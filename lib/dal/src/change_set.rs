@@ -223,9 +223,9 @@ impl ChangeSet {
 
             ctx.update_visibility(new_visibility);
 
-            WsEvent::change_set_created(&ctx, change_set.pk)
+            WsEvent::change_set_created(ctx, change_set.pk)
                 .await?
-                .publish_on_commit(&ctx)
+                .publish_on_commit(ctx)
                 .await?;
 
             Some(change_set.pk)
