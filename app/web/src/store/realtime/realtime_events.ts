@@ -11,6 +11,7 @@ import {
   AttributeValueStatus,
   StatusUpdatePk,
 } from "../status.store";
+import { OnlineUser } from "../cursor.store";
 
 // TODO: a few of these use the same id objects (ex: componentId)
 // but in a few cases the changeset ID may have been accidentally left out?
@@ -49,6 +50,9 @@ export type WsEventPayloadMap = {
     funcId: FuncId;
     executionKey: string;
   };
+
+  Online: OnlineUser;
+
   // NOT CURRENTLY USED - but leaving here so we remember these events exist
   // SecretCreated: number;
   ResourceRefreshed: {

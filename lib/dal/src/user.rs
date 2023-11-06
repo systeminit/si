@@ -235,6 +235,14 @@ pub struct CursorPayload {
     pub user_name: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct OnlinePayload {
+    pub pk: UserPk,
+    pub name: String,
+    pub picture_url: Option<String>,
+}
+
 impl WsEvent {
     pub async fn cursor(
         workspace_pk: WorkspacePk,
@@ -242,5 +250,9 @@ impl WsEvent {
         cursor: CursorPayload,
     ) -> WsEventResult<Self> {
         WsEvent::new_raw(workspace_pk, change_set_pk, WsPayload::Cursor(cursor)).await
+    }
+
+    pub async fn online(workspace_pk: WorkspacePk, online: OnlinePayload) -> WsEventResult<Self> {
+        WsEvent::new_raw(workspace_pk, ChangeSetPk::NONE, WsPayload::Online(online)).await
     }
 }

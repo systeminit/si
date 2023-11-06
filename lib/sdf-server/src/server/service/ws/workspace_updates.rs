@@ -77,7 +77,10 @@ mod workspace_updates {
     use std::error::Error;
 
     use axum::extract::ws::{self, WebSocket};
-    use dal::{user::CursorPayload, ChangeSetPk, UserPk, WorkspacePk, WsEvent, WsEventError};
+    use dal::{
+        user::CursorPayload, user::OnlinePayload, ChangeSetPk, UserPk, WorkspacePk, WsEvent,
+        WsEventError,
+    };
     use futures::StreamExt;
     use serde::{Deserialize, Serialize};
     use si_data_nats::{NatsClient, NatsError, Subscriber};
@@ -98,6 +101,12 @@ mod workspace_updates {
             container_key: Option<String>,
             x: String,
             y: String,
+        },
+        #[serde(rename_all = "camelCase")]
+        Online {
+            pk: UserPk,
+            name: String,
+            picture_url: Option<String>,
         },
     }
 
@@ -182,6 +191,15 @@ mod workspace_updates {
                                             y,
                                             container,
                                             container_key
+                                        }).await?;
+                                        self.nats.publish(subject, serde_json::to_vec(&event)?).await?;
+                                    }
+                                    WebsocketEventRequest::Online { pk, name, picture_url } => {
+                                        let subject = format!("si.workspace_pk.{}.event", self.workspace_pk);
+                                        let event = WsEvent::online(self.workspace_pk, OnlinePayload {
+                                            pk,
+                                            name,
+                                            picture_url
                                         }).await?;
                                         self.nats.publish(subject, serde_json::to_vec(&event)?).await?;
                                     }

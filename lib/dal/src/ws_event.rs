@@ -11,7 +11,7 @@ use crate::{
     func::binding::LogLinePayload,
     qualification::QualificationCheckPayload,
     status::StatusMessage,
-    user::CursorPayload,
+    user::{CursorPayload, OnlinePayload},
     AttributeValueId, ChangeSetPk, ComponentId, DalContext, PropId, SchemaPk, SocketId,
     StandardModelError, TransactionsError, WorkspacePk,
 };
@@ -54,6 +54,7 @@ pub enum WsPayload {
     FixReturn(FixReturn),
     LogLine(LogLinePayload),
     ModuleImported(ModuleImported),
+    Online(OnlinePayload),
     ResourceRefreshed(ResourceRefreshedPayload),
     SchemaCreated(SchemaPk),
     StatusUpdate(StatusMessage),

@@ -15,8 +15,8 @@
         <div class="flex-row flex text-white items-center">
           <UserIcon
             :user="{
-              name: authStore.user?.name || '',
-              pictureUrl: authStore.user?.picture_url,
+              name: authStore.user?.name ?? '',
+              pictureUrl: authStore.user?.picture_url ?? null,
             }"
           />
           <SiArrow :nudge="open || hovered" class="ml-1" />
