@@ -201,6 +201,7 @@ async fn perform_updates_and_write_out_and_update_pointer(
     onto_workspace_snapshot: &mut WorkspaceSnapshot,
     updates: &Vec<Update>,
 ) -> ChangeSetLoopResult<()> {
+    dbg!("updates", &updates);
     dbg!("before updates", to_rebase_workspace_snapshot.id());
     to_rebase_workspace_snapshot.dot();
     dbg!("onto workspace snapshot", onto_workspace_snapshot.id());

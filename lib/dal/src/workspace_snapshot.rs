@@ -155,7 +155,7 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
         change_set: &ChangeSetPointer,
     ) -> WorkspaceSnapshotResult<Self> {
-        let mut graph = WorkspaceSnapshotGraph::new(change_set)?;
+        let mut graph: WorkspaceSnapshotGraph = WorkspaceSnapshotGraph::new(change_set)?;
 
         // Create the category nodes under root.
         let component_node_index =
@@ -180,7 +180,17 @@ impl WorkspaceSnapshot {
             schema_node_index,
         )?;
 
-        Self::new_inner(ctx, graph).await
+        // We do not care about any field other than "working_copy" because "write" will populate
+        // them using the assigned working copy.
+        let mut initial = Self {
+            id: WorkspaceSnapshotId::NONE,
+            created_at: Utc::now(),
+            snapshot: vec![],
+            working_copy: Some(graph),
+        };
+        initial.write(ctx, change_set.vector_clock_id()).await?;
+
+        Ok(initial)
     }
 
     pub async fn write(
@@ -196,25 +206,7 @@ impl WorkspaceSnapshot {
         working_copy.mark_graph_seen(vector_clock_id)?;
 
         // Stamp the new workspace snapshot.
-        let object = Self::new_inner(ctx, working_copy.clone()).await?;
-
-        // Reset relevant fields on self.
-        self.id = object.id;
-        self.created_at = object.created_at;
-        self.snapshot = object.snapshot;
-        self.working_copy = None;
-
-        Ok(self.id)
-    }
-
-    /// This _private_ method crates a new, immutable [`WorkspaceSnapshot`] from a
-    /// [`WorkspaceSnapshotGraph`].
-    async fn new_inner(
-        ctx: &DalContext,
-        graph: WorkspaceSnapshotGraph,
-    ) -> WorkspaceSnapshotResult<Self> {
-        dbg!("writing new one");
-        let serialized_snapshot = si_cbor::encode(&graph)?;
+        let serialized_snapshot = si_cbor::encode(&working_copy)?;
         let row = ctx
             .txns()
             .await?
@@ -224,7 +216,15 @@ impl WorkspaceSnapshot {
                 &[&serialized_snapshot],
             )
             .await?;
-        Self::try_from(row)
+        let object = Self::try_from(row)?;
+
+        // Reset relevant fields on self.
+        self.id = object.id;
+        self.created_at = object.created_at;
+        self.snapshot = object.snapshot;
+        self.working_copy = None;
+
+        Ok(self.id)
     }
 
     pub fn id(&self) -> WorkspaceSnapshotId {

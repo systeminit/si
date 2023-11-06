@@ -581,6 +581,11 @@ impl WorkspaceSnapshotGraph {
                     {
                         // If the merkle tree hashes are the same, then the entire sub-graph is
                         // identical, and we don't need to check any further.
+                        info!(
+                            "onto {} and to rebase {} merkle tree hashes are the same",
+                            onto_node_weight.id(),
+                            to_rebase_node_weight.id()
+                        );
                         continue;
                     }
                     any_content_with_lineage_has_changed = true;
@@ -1006,6 +1011,8 @@ impl WorkspaceSnapshotGraph {
 
         let mut updates = Vec::new();
         let mut conflicts = Vec::new();
+
+        dbg!("TODO(nick,jacob): start here");
 
         let mut to_rebase_edges = HashMap::<UniqueEdgeInfo, EdgeInfo>::new();
         for edgeref in self
