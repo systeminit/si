@@ -341,7 +341,6 @@ export const useFuncStore = () => {
             },
             keyRequestStatusBy: funcId,
             onSuccess: (response) => {
-              console.log(response.types);
               this.funcDetailsById[response.id] = response;
             },
           });
