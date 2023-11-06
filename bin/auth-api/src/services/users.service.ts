@@ -99,10 +99,16 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
     if (!existingUser.signupAt) {
       existingUser.signupAt = new Date();
     }
+    if (!existingUser.auth0Id) {
+      existingUser.auth0Id = auth0Id;
+    }
     _.assign(existingUser, userData);
     await prisma.user.update({
       where: { id: existingUser.id },
-      data: _.omit(existingUser, 'id', 'auth0Id', 'auth0Details', 'onboardingDetails'),
+      data: {
+        ..._.omit(existingUser, 'id', 'onboardingDetails'),
+        auth0Details: auth0UserData as Prisma.JsonObject,
+      },
     });
 
     tracker.identifyUser(existingUser);
