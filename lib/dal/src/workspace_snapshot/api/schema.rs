@@ -43,7 +43,7 @@ impl WorkspaceSnapshot {
 
         let schema_category_index = self
             .working_copy()?
-            .get_category_child(CategoryNodeKind::Schema)?;
+            .get_category(CategoryNodeKind::Schema)?;
         /*self.working_copy()?.add_edge(
         schema_category_index,
         EdgeWeight::new(change_set, EdgeWeightKind::Use)?,

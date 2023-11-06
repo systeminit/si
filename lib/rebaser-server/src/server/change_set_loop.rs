@@ -251,6 +251,7 @@ async fn perform_updates_and_write_out_and_update_pointer(
     to_rebase_change_set
         .update_pointer(ctx, to_rebase_workspace_snapshot.id())
         .await?;
+    dbg!(to_rebase_workspace_snapshot.id());
 
     Ok(())
 }

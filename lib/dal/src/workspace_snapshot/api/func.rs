@@ -61,9 +61,7 @@ impl WorkspaceSnapshot {
         let node_weight = NodeWeight::new_func(change_set, id, name.clone(), hash)?;
         let node_index = self.working_copy()?.add_node(node_weight)?;
 
-        let (_, func_category_index) = self
-            .working_copy()?
-            .get_category_child(CategoryNodeKind::Func)?;
+        let (_, func_category_index) = self.working_copy()?.get_category(CategoryNodeKind::Func)?;
         self.working_copy()?.add_edge(
             func_category_index,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
@@ -122,9 +120,7 @@ impl WorkspaceSnapshot {
     pub async fn list_funcs(&mut self, ctx: &DalContext) -> WorkspaceSnapshotResult<Vec<Func>> {
         let start = Instant::now();
         let mut funcs = vec![];
-        let (_, func_category_index) = self
-            .working_copy()?
-            .get_category_child(CategoryNodeKind::Func)?;
+        let (_, func_category_index) = self.working_copy()?.get_category(CategoryNodeKind::Func)?;
 
         let func_node_indexes = self.outgoing_targets_for_edge_weight_kind_by_index(
             func_category_index,
@@ -150,9 +146,7 @@ impl WorkspaceSnapshot {
         &mut self,
         name: impl AsRef<str>,
     ) -> WorkspaceSnapshotResult<Option<FuncId>> {
-        let (_, func_category_index) = self
-            .working_copy()?
-            .get_category_child(CategoryNodeKind::Func)?;
+        let (_, func_category_index) = self.working_copy()?.get_category(CategoryNodeKind::Func)?;
 
         let func_id = self
             .working_copy()?

@@ -172,14 +172,22 @@ impl Workspace {
         name: impl AsRef<str>,
     ) -> WorkspaceResult<Self> {
         // Get the default change set from the builtin workspace.
-        let builtin = Self::builtin(ctx).await?;
+        let builtin = match Self::find_builtin(ctx).await? {
+            Some(found_builtin) => found_builtin,
+            None => {
+                // TODO(nick,jacob): replace this with an error.
+                todo!("this should not happen")
+            }
+        };
 
         // Create a new change set whose base is the default change set of the workspace.
         // Point to the snapshot that the builtin's default change set is pointing to.
         let mut change_set =
             ChangeSetPointer::new(ctx, "HEAD", Some(builtin.default_change_set_id)).await?;
-        let workspace_snapshot =
+        let mut workspace_snapshot =
             WorkspaceSnapshot::find_for_change_set(ctx, builtin.default_change_set_id).await?;
+        dbg!("poop");
+        workspace_snapshot.dot();
         change_set
             .update_pointer(ctx, workspace_snapshot.id())
             .await?;

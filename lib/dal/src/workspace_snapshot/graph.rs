@@ -160,8 +160,8 @@ impl WorkspaceSnapshotGraph {
         Ok(new_node_index)
     }
 
-    pub fn get_category_child(
-        &mut self,
+    pub fn get_category(
+        &self,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotGraphResult<(Ulid, NodeIndex)> {
         for edgeref in self.graph.edges_directed(self.root(), Outgoing) {
@@ -490,6 +490,7 @@ impl WorkspaceSnapshotGraph {
     ) -> WorkspaceSnapshotGraphResult<(Vec<Conflict>, Vec<Update>)> {
         let mut conflicts: Vec<Conflict> = Vec::new();
         let mut updates: Vec<Update> = Vec::new();
+        dbg!(onto.graph.node_count(), onto.graph.edge_count());
         if let Err(traversal_error) =
             petgraph::visit::depth_first_search(&onto.graph, Some(onto.root_index), |event| {
                 self.detect_conflicts_and_updates_process_dfs_event(
@@ -526,34 +527,50 @@ impl WorkspaceSnapshotGraph {
                     );
                     event
                 })?;
+
                 let mut to_rebase_node_indexes = Vec::new();
-                if let NodeWeight::Content(onto_content_weight) = onto_node_weight {
-                    if onto_content_weight.content_address() == ContentAddress::Root {
-                        // There can only be one (valid/current) `ContentAddress::Root` at any
-                        // given moment, and the `lineage_id` isn't really relevant as it's not
-                        // globally stable (even though it is locally stable). This matters as we
-                        // may be dealing with a `WorkspaceSnapshotGraph` that is coming to us
-                        // externally from a module that we're attempting to import. The external
-                        // `WorkspaceSnapshotGraph` will be `self`, and the "local" one will be
-                        // `onto`.
-                        to_rebase_node_indexes.push(self.root_index);
-                    } else {
-                        // Only retain node indexes... or indices... if they are part of the current
-                        // graph. There may still be garbage from previous updates to the graph
-                        // laying around.
-                        let mut potential_to_rebase_node_indexes = self
-                            .get_node_index_by_lineage(onto_node_weight.lineage_id())
-                            .map_err(|err| {
+                if onto_node_index == onto.root() {
+                    // There can only be one (valid/current) `ContentAddress::Root` at any
+                    // given moment, and the `lineage_id` isn't really relevant as it's not
+                    // globally stable (even though it is locally stable). This matters as we
+                    // may be dealing with a `WorkspaceSnapshotGraph` that is coming to us
+                    // externally from a module that we're attempting to import. The external
+                    // `WorkspaceSnapshotGraph` will be `self`, and the "local" one will be
+                    // `onto`.
+                    to_rebase_node_indexes.push(self.root_index);
+                } else {
+                    // Only retain node indexes... or indices... if they are part of the current
+                    // graph. There may still be garbage from previous updates to the graph
+                    // laying around.
+                    let mut potential_to_rebase_node_indexes: Vec<NodeIndex> = self
+                        .get_node_index_by_lineage(onto_node_weight.lineage_id())
+                        .map_err(|err| {
+                            error!(
+                                "Unable to find NodeIndex(es) for lineage_id {}: {}",
+                                onto_node_weight.lineage_id(),
+                                err,
+                            );
+                            event
+                        })?;
+                    potential_to_rebase_node_indexes
+                        .retain(|node_index| self.has_path_to_root(*node_index));
+                    to_rebase_node_indexes.extend(potential_to_rebase_node_indexes);
+
+                    // Since category nodes may be created from scratch from a different workspace,
+                    // they may have different lineage ids. We still want to consider the same
+                    // category kind as an equivalent node, even though it might have a different
+                    // lineage id.
+                    if let NodeWeight::Category(onto_category_node_weight) = onto_node_weight {
+                        let category_node_kind = onto_category_node_weight.kind();
+                        let (_, to_rebase_category_node_index) =
+                            self.get_category(category_node_kind).map_err(|err| {
                                 error!(
-                                    "Unable to find NodeIndex(es) for lineage_id {}: {}",
-                                    onto_node_weight.lineage_id(),
-                                    err,
+                                    "Unable to get to rebase Category node for kind {:?} from onto {:?}: {}",
+                                    onto_category_node_weight.kind(), onto, err,
                                 );
                                 event
                             })?;
-                        potential_to_rebase_node_indexes
-                            .retain(|node_index| self.has_path_to_root(*node_index));
-                        to_rebase_node_indexes.extend(potential_to_rebase_node_indexes);
+                        to_rebase_node_indexes.push(to_rebase_category_node_index);
                     }
                 }
 
@@ -704,7 +721,8 @@ impl WorkspaceSnapshotGraph {
                     }
                 }
 
-                if any_content_with_lineage_has_changed {
+                dbg!("END", onto_node_weight.id().to_string());
+                if dbg!(any_content_with_lineage_has_changed) {
                     // There was at least one thing with a merkle tree hash difference, so we need
                     // to examine further down the tree to see where the difference(s) are, and
                     // where there are conflicts, if there are any.
@@ -1012,8 +1030,6 @@ impl WorkspaceSnapshotGraph {
         let mut updates = Vec::new();
         let mut conflicts = Vec::new();
 
-        dbg!("TODO(nick,jacob): start here");
-
         let mut to_rebase_edges = HashMap::<UniqueEdgeInfo, EdgeInfo>::new();
         for edgeref in self
             .graph
@@ -1055,12 +1071,16 @@ impl WorkspaceSnapshotGraph {
             unique_edges
         };
         let only_onto_edges = {
+            dbg!(&onto_edges);
             let mut unique_edges = onto_edges.clone();
             for key in to_rebase_edges.keys() {
                 unique_edges.remove(key);
             }
             unique_edges
         };
+
+        dbg!(&only_to_rebase_edges);
+        dbg!(&only_onto_edges);
 
         let root_seen_as_of_onto = self
             .get_node_weight(self.root_index)?
@@ -1169,13 +1189,11 @@ impl WorkspaceSnapshotGraph {
     ) -> WorkspaceSnapshotGraphResult<Vec<NodeIndex>> {
         let mut results = Vec::new();
         for node_index in self.graph.node_indices() {
-            if let NodeWeight::Content(node_weight) = self.get_node_weight(node_index)? {
-                if node_weight.lineage_id() == lineage_id {
-                    results.push(node_index);
-                }
+            let node_weight = self.get_node_weight(node_index)?;
+            if node_weight.lineage_id() == lineage_id {
+                results.push(node_index);
             }
         }
-
         Ok(results)
     }
 

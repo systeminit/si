@@ -24,10 +24,11 @@ pub mod socket;
 pub mod validation;
 
 impl WorkspaceSnapshot {
-    pub fn get_category_child(&mut self, kind: CategoryNodeKind) -> WorkspaceSnapshotResult<()> {
-        //Ok(self.working_copy()?.get_category_child(kind)?)
-
-        Ok(())
+    pub fn get_category(
+        &mut self,
+        kind: CategoryNodeKind,
+    ) -> WorkspaceSnapshotResult<(Ulid, NodeIndex)> {
+        Ok(self.working_copy()?.get_category(kind)?)
     }
 
     pub fn edges_directed(

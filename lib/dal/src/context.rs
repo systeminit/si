@@ -799,7 +799,7 @@ impl DalContextBuilder {
         let conns = self.connections().await?;
         let raw_content_store = match &self.content_store {
             Some(found_content_store) => found_content_store.clone(),
-            None => PgStore::new_production().await?,
+            None => PgStore::new_production_with_migration().await?,
         };
 
         Ok(DalContext {
@@ -845,7 +845,7 @@ impl DalContextBuilder {
         let conns = self.connections().await?;
         let raw_content_store = match &self.content_store {
             Some(found_content_store) => found_content_store.clone(),
-            None => PgStore::new_production().await?,
+            None => PgStore::new_production_with_migration().await?,
         };
 
         Ok(DalContext {
@@ -870,7 +870,7 @@ impl DalContextBuilder {
         let conns = self.connections().await?;
         let raw_content_store = match &self.content_store {
             Some(found_content_store) => found_content_store.clone(),
-            None => PgStore::new_production().await?,
+            None => PgStore::new_production_with_migration().await?,
         };
 
         let mut ctx = DalContext {
