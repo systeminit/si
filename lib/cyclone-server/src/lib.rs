@@ -1,5 +1,4 @@
 mod config;
-mod decryption_key;
 mod execution;
 mod extract;
 mod handlers;
@@ -15,7 +14,6 @@ mod watch;
 
 pub use axum::extract::ws::Message as WebSocketMessage;
 pub use config::{Config, ConfigBuilder, ConfigError, IncomingStream};
-pub use decryption_key::{DecryptionKey, DecryptionKeyError};
 pub use server::{Server, ShutdownSource};
 pub use timestamp::timestamp;
 pub use uds::{UdsIncomingStream, UdsIncomingStreamError};

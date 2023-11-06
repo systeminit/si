@@ -22,7 +22,7 @@ use thiserror::Error;
 pub use self::instance::{Instance, Spec};
 
 pub use cyclone_client::{
-    ClientError, CycloneClient, EncryptionKey, EncryptionKeyError, ExecutionError,
+    ClientError, CycloneClient, CycloneEncryptionKey, CycloneEncryptionKeyError, ExecutionError,
 };
 pub use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, ComponentView, FunctionResult, FunctionResultFailure,

@@ -7,6 +7,7 @@ use si_data_pg::PgError;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech_client::CycloneValueEncryptError;
 
 use crate::func::argument::FuncArgumentError;
 use crate::{
@@ -34,6 +35,8 @@ pub fn is_intrinsic(name: &str) -> bool {
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncError {
+    #[error("cyclone value encrypt error: {0}")]
+    CycloneValueEncrypt(#[from] CycloneValueEncryptError),
     #[error("error decoding code_base64: {0}")]
     Decode(#[from] base64::DecodeError),
     #[error("utf8 encoding error: {0}")]

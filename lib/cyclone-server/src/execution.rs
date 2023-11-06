@@ -3,6 +3,7 @@ use std::{
     marker::{PhantomData, Unpin},
     path::PathBuf,
     process::Stdio,
+    string::FromUtf8Error,
     sync::Arc,
     time::Duration,
 };
@@ -11,8 +12,9 @@ use axum::extract::ws::WebSocket;
 use bytes_lines_codec::BytesLinesCodec;
 use cyclone_core::{
     process::{self, ShutdownError},
-    FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
-    SensitiveString,
+    CycloneDecryptionKey, CycloneDecryptionKeyError, CycloneSensitiveStrings,
+    CycloneValueDecryptError, FunctionResult, FunctionResultFailure, FunctionResultFailureError,
+    Message, OutputStream,
 };
 use futures::{SinkExt, StreamExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -26,17 +28,14 @@ use tokio::{
 use tokio_serde::{formats::SymmetricalJson, Deserializer, Framed, SymmetricallyFramed};
 use tokio_util::codec::{Decoder, FramedRead, FramedWrite};
 
-use crate::{
-    request::{DecryptRequest, ListSecrets},
-    DecryptionKey, DecryptionKeyError, WebSocketMessage,
-};
+use crate::{request::DecryptRequest, WebSocketMessage};
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(5);
 
 pub fn new<Request, LangServerSuccess, Success>(
     lang_server_path: impl Into<PathBuf>,
     lang_server_debugging: bool,
-    key: Arc<DecryptionKey>,
+    key: Arc<CycloneDecryptionKey>,
     command: String,
 ) -> Execution<Request, LangServerSuccess, Success> {
     Execution {
@@ -63,12 +62,16 @@ pub enum ExecutionError {
     ChildShutdown(#[from] ShutdownError),
     #[error("failed to spawn child process; program={0}")]
     ChildSpawn(#[source] io::Error, PathBuf),
+    #[error("failed to decrypt request")]
+    CycloneValueDecrypt(#[from] CycloneValueDecryptError),
+    #[error("failed to decode string as utf8")]
+    FromUtf8(#[from] FromUtf8Error),
     #[error("failed to deserialize json message")]
     JSONDeserialize(#[source] serde_json::Error),
     #[error("failed to serialize json message")]
     JSONSerialize(#[source] serde_json::Error),
     #[error("key pair error: {0}")]
-    KeyPair(#[from] DecryptionKeyError),
+    KeyPair(#[from] CycloneDecryptionKeyError),
     #[error("send timeout")]
     SendTimeout(#[source] tokio::time::error::Elapsed),
     #[error("unexpected websocket message type: {0:?}")]
@@ -89,7 +92,7 @@ type Result<T> = std::result::Result<T, ExecutionError>;
 pub struct Execution<Request, LangServerSuccess, Success> {
     lang_server_path: PathBuf,
     lang_server_debugging: bool,
-    key: Arc<DecryptionKey>,
+    key: Arc<CycloneDecryptionKey>,
     command: String,
     request_marker: PhantomData<Request>,
     lang_server_success_marker: PhantomData<LangServerSuccess>,
@@ -98,7 +101,7 @@ pub struct Execution<Request, LangServerSuccess, Success> {
 
 impl<Request, LangServerSuccess, Success> Execution<Request, LangServerSuccess, Success>
 where
-    Request: DecryptRequest + ListSecrets + Serialize + DeserializeOwned + Unpin + core::fmt::Debug,
+    Request: DecryptRequest + Serialize + DeserializeOwned + Unpin + core::fmt::Debug,
     LangServerSuccess: DeserializeOwned,
     Success: Serialize,
 {
@@ -108,9 +111,14 @@ where
     ) -> Result<ExecutionStarted<LangServerSuccess, Success>> {
         // Send start is the initial communication before we read the request.
         Self::ws_send_start(ws).await?;
-        // Now that the server said to start, I am going to read my message!
-        let request = Self::read_request(ws).await?;
-        let credentials: Vec<SensitiveString> = request.list_secrets(&self.key)?;
+        let mut sensitive_strings = CycloneSensitiveStrings::default();
+        // Read the request message from the web socket
+        let mut request = Self::read_request(ws).await?;
+        // Decrypt the relevant contents of the request and track any resulting sensitive strings
+        // to be redacted
+        request.decrypt(&mut sensitive_strings, &self.key)?;
+
+        // Spawn lang server as a child process with handles on all i/o descriptors
         let mut command = Command::new(&self.lang_server_path);
         command
             .arg(&self.command)
@@ -126,7 +134,7 @@ where
             .map_err(|err| ExecutionError::ChildSpawn(err, self.lang_server_path.clone()))?;
 
         let stdin = child.stdin.take().ok_or(ExecutionError::ChildIO("stdin"))?;
-        Self::child_send_function_request(stdin, request, &self.key).await?;
+        Self::child_send_function_request(stdin, request).await?;
 
         let stderr = {
             let stderr = child
@@ -149,7 +157,7 @@ where
             child,
             stdout,
             stderr,
-            credentials,
+            sensitive_strings: Arc::new(sensitive_strings),
             success_marker: self.success_marker,
         })
     }
@@ -178,12 +186,8 @@ where
         Ok(())
     }
 
-    async fn child_send_function_request(
-        stdin: ChildStdin,
-        request: Request,
-        key: &DecryptionKey,
-    ) -> Result<()> {
-        let value = request.decrypt_request(key)?;
+    async fn child_send_function_request(stdin: ChildStdin, request: Request) -> Result<()> {
+        let value = serde_json::to_value(&request).map_err(ExecutionError::JSONSerialize)?;
 
         let codec = FramedWrite::new(stdin, BytesLinesCodec::new());
         let mut stdin = SymmetricallyFramed::new(codec, SymmetricalJson::default());
@@ -211,35 +215,29 @@ pub struct ExecutionStarted<LangServerSuccess, Success> {
     child: Child,
     stdout: SiFramed<SiMessage<LangServerSuccess>>,
     stderr: FramedRead<ChildStderr, BytesLinesCodec>,
-    credentials: Vec<SensitiveString>,
+    sensitive_strings: Arc<CycloneSensitiveStrings>,
     success_marker: PhantomData<Success>,
 }
 
 // TODO: implement shutdown oneshot
 async fn handle_stderr(
     stderr: FramedRead<ChildStderr, BytesLinesCodec>,
-    credentials: Vec<SensitiveString>,
+    sensitive_strings: Arc<CycloneSensitiveStrings>,
 ) {
     async fn handle_stderr_fallible(
         mut stderr: FramedRead<ChildStderr, BytesLinesCodec>,
-        credentials: Vec<SensitiveString>,
+        sensitive_strings: Arc<CycloneSensitiveStrings>,
     ) -> Result<()> {
         while let Some(line) = stderr.next().await {
             let line = line.map_err(ExecutionError::ChildRecvIO)?;
-            let mut line = String::from_utf8_lossy(line.as_ref());
-            for credential in &credentials {
-                // Note: This brings a possibility of random substrings being matched out of
-                // context, exposing that we have a secret by censoring it But trying to infer word
-                // boundary might leak the plaintext credential which is arguably worse
-                if line.contains(credential.as_str()) {
-                    line = line.replace(credential.as_str(), "[redacted]").into();
-                }
-            }
+            let line = String::from_utf8(line.to_vec())?;
+            let line = sensitive_strings.redact(line.as_ref());
+
             eprintln!("{line}");
         }
         Ok(())
     }
-    if let Err(error) = handle_stderr_fallible(stderr, credentials).await {
+    if let Err(error) = handle_stderr_fallible(stderr, sensitive_strings).await {
         error!("Unable to collect stderr: {}", error);
     }
 }
@@ -252,18 +250,18 @@ where
     SiDecoderError: From<SiJsonError<LangServerSuccess>>,
 {
     pub async fn process(self, ws: &mut WebSocket) -> Result<ExecutionClosing<Success>> {
-        tokio::spawn(handle_stderr(self.stderr, self.credentials.clone()));
+        tokio::spawn(handle_stderr(self.stderr, self.sensitive_strings.clone()));
 
         let mut stream = self
             .stdout
             .map(|ls_result| match ls_result {
                 Ok(ls_msg) => match ls_msg {
                     LangServerMessage::Output(mut output) => {
-                        Self::filter_output(&mut output, &self.credentials)?;
+                        Self::filter_output(&mut output, &self.sensitive_strings)?;
                         Ok(Message::OutputStream(output.into()))
                     }
                     LangServerMessage::Result(mut result) => {
-                        Self::filter_result(&mut result, &self.credentials)?;
+                        Self::filter_result(&mut result, &self.sensitive_strings)?;
                         Ok(Message::Result(result.into()))
                     }
                 },
@@ -290,14 +288,12 @@ where
         })
     }
 
-    fn filter_output(output: &mut LangServerOutput, credentials: &[SensitiveString]) -> Result<()> {
-        // Note: This brings a possibility of random substrings being matched out of context,
-        // exposing that we have a secret by censoring it But trying to infer word boundary might
-        // leak the plaintext credential which is arguably worse
-        for credential in credentials {
-            if output.message.contains(credential.as_str()) {
-                output.message = output.message.replace(credential.as_str(), "[redacted]");
-            }
+    fn filter_output(
+        output: &mut LangServerOutput,
+        sensitive_strings: &CycloneSensitiveStrings,
+    ) -> Result<()> {
+        if sensitive_strings.has_sensitive(&output.message) {
+            output.message = sensitive_strings.redact(&output.message);
         }
 
         Ok(())
@@ -305,29 +301,22 @@ where
 
     fn filter_result(
         result: &mut LangServerResult<LangServerSuccess>,
-        credentials: &[SensitiveString],
+        sensitive_strings: &CycloneSensitiveStrings,
     ) -> Result<()> {
         let mut value = serde_json::to_value(&result).map_err(ExecutionError::JSONSerialize)?;
-        // Note: This brings a possibility of random substrings being matched out of context,
-        // exposing that we have a secret by censoring it But trying to infer word boundary might
-        // leak the plaintext credential which is arguably worse
-        for credential in credentials {
-            let mut work_queue = vec![&mut value];
-            while let Some(work) = work_queue.pop() {
-                match work {
-                    Value::Array(values) => work_queue.extend(values),
-                    Value::Object(object) => object.values_mut().for_each(|v| work_queue.push(v)),
-                    Value::String(v) if v.contains(credential.as_str()) => {
-                        *v = v.replace(credential.as_str(), "[redacted]");
-                    }
-                    Value::String(_) => {}
-                    // For now credentials can only be strings, although we should reconsider it
-                    Value::Null => {}
-                    Value::Number(_) => {}
-                    Value::Bool(_) => {}
+
+        let mut work_queue = vec![&mut value];
+        while let Some(work) = work_queue.pop() {
+            match work {
+                Value::Array(values) => work_queue.extend(values),
+                Value::Object(object) => object.values_mut().for_each(|v| work_queue.push(v)),
+                Value::String(string) if sensitive_strings.has_sensitive(string) => {
+                    *string = sensitive_strings.redact(string);
                 }
+                Value::String(_) | Value::Null | Value::Number(_) | Value::Bool(_) => {}
             }
         }
+
         let mut filtered_result: LangServerResult<LangServerSuccess> =
             serde_json::from_value(value).map_err(ExecutionError::JSONDeserialize)?;
         std::mem::swap(result, &mut filtered_result);

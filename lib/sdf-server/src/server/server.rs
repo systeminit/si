@@ -22,17 +22,19 @@ use dal::{
     builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
     Workspace, WorkspaceError,
 };
-use dal::{cyclone_key_pair::CycloneKeyPairError, tasks::ResourceScheduler, ServicesContext};
+use dal::{tasks::ResourceScheduler, ServicesContext};
 use module_index_client::types::BuiltinsDetailsResponse;
 use module_index_client::{IndexClient, ModuleDetailsResponse};
-use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig};
+use si_crypto::{
+    CycloneKeyPairError, SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig,
+};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
 use si_pkg::{SiPkg, SiPkgError};
 use si_posthog::{PosthogClient, PosthogConfig};
 use si_std::SensitiveString;
 use telemetry::prelude::*;
-use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyError};
+use veritech_client::{Client as VeritechClient, CycloneEncryptionKey, CycloneEncryptionKeyError};
 
 use crate::server::config::CycloneKeyPair;
 
@@ -50,8 +52,8 @@ pub enum ServerError {
     CyclonePublicKeyErr(#[from] CycloneKeyPairError),
     #[error(transparent)]
     DalInitialization(#[from] dal::InitializationError),
-    #[error("error when loading encryption key: {0}")]
-    EncryptionKey(#[from] EncryptionKeyError),
+    #[error("error when loading cyclone encryption key: {0}")]
+    EncryptionKey(#[from] CycloneEncryptionKeyError),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
     #[error("error initializing the server")]
@@ -204,7 +206,7 @@ impl Server<(), ()> {
         secret_key_path: impl AsRef<Path>,
         public_key_path: impl AsRef<Path>,
     ) -> Result<()> {
-        CycloneKeyPair::create(secret_key_path, public_key_path)
+        CycloneKeyPair::create_and_write_files(secret_key_path, public_key_path)
             .await
             .map_err(Into::into)
     }
@@ -217,8 +219,8 @@ impl Server<(), ()> {
     }
 
     #[instrument(name = "sdf.init.load_encryption_key", skip_all)]
-    pub async fn load_encryption_key(path: impl AsRef<Path>) -> Result<EncryptionKey> {
-        Ok(EncryptionKey::load(path).await?)
+    pub async fn load_encryption_key(path: impl AsRef<Path>) -> Result<CycloneEncryptionKey> {
+        Ok(CycloneEncryptionKey::load(path).await?)
     }
 
     #[instrument(name = "sdf.init.migrate_database", skip_all)]

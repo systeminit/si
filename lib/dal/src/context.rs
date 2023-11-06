@@ -8,7 +8,7 @@ use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult,
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
-use veritech_client::{Client as VeritechClient, EncryptionKey};
+use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
 use crate::{
     job::{
@@ -33,7 +33,7 @@ pub struct ServicesContext {
     /// A Veritech client, connected via a NATS connection.
     veritech: VeritechClient,
     /// A key for re-recrypting messages to the function execution system.
-    encryption_key: Arc<EncryptionKey>,
+    encryption_key: Arc<CycloneEncryptionKey>,
     /// The path where available packages can be found
     pkgs_path: Option<PathBuf>,
     /// The URL of the module index
@@ -50,7 +50,7 @@ impl ServicesContext {
         nats_conn: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: VeritechClient,
-        encryption_key: Arc<EncryptionKey>,
+        encryption_key: Arc<CycloneEncryptionKey>,
         pkgs_path: Option<PathBuf>,
         module_index_url: Option<String>,
         symmetric_crypto_service: SymmetricCryptoService,
@@ -96,7 +96,7 @@ impl ServicesContext {
     }
 
     /// Gets a reference to the encryption key.
-    pub fn encryption_key(&self) -> Arc<EncryptionKey> {
+    pub fn encryption_key(&self) -> Arc<CycloneEncryptionKey> {
         self.encryption_key.clone()
     }
 
@@ -458,7 +458,7 @@ impl DalContext {
     }
 
     /// Gets a reference to the DAL context's encryption key.
-    pub fn encryption_key(&self) -> &EncryptionKey {
+    pub fn encryption_key(&self) -> &CycloneEncryptionKey {
         &self.services_context.encryption_key
     }
 

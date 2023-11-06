@@ -47,7 +47,6 @@ pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
     Transactions, TransactionsError,
 };
-pub use cyclone_key_pair::CycloneKeyPair;
 pub use diagram::{
     connection::Connection, connection::DiagramEdgeView, Diagram, DiagramError, DiagramKind,
 };
@@ -115,7 +114,7 @@ pub use validation::prototype::{
 pub use validation::resolver::{
     ValidationResolver, ValidationResolverError, ValidationResolverId, ValidationStatus,
 };
-use veritech_client::EncryptionKey;
+use veritech_client::CycloneEncryptionKey;
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, WorkspaceSignup};
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
@@ -133,7 +132,6 @@ pub mod change_status;
 pub mod code_view;
 pub mod component;
 pub mod context;
-pub mod cyclone_key_pair;
 pub mod diagram;
 pub mod edge;
 pub mod fix;
@@ -259,7 +257,7 @@ pub async fn migrate_builtins(
     nats: &NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech_client::Client,
-    encryption_key: &EncryptionKey,
+    encryption_key: &CycloneEncryptionKey,
     selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
     pkgs_path: PathBuf,
     module_index_url: String,

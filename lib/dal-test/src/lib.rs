@@ -26,7 +26,7 @@ use si_std::ResultExt;
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
 use uuid::Uuid;
-use veritech_client::EncryptionKey;
+use veritech_client::CycloneEncryptionKey;
 use veritech_server::StandardConfig;
 
 pub use color_eyre::{
@@ -166,7 +166,7 @@ pub struct TestContext {
     /// A [`JobQueueProcessor`] impl
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A key for re-recrypting messages to the function execution system.
-    encryption_key: Arc<EncryptionKey>,
+    encryption_key: Arc<CycloneEncryptionKey>,
     /// A service that can encrypt values based on the loaded donkeys
     symmetric_crypto_service: SymmetricCryptoService,
 }
@@ -263,14 +263,14 @@ struct TestContextBuilder {
     /// The test context configuration used to build this instance.
     config: Config,
     /// A key for re-recrypting messages to the function execution system.
-    encryption_key: Arc<EncryptionKey>,
+    encryption_key: Arc<CycloneEncryptionKey>,
 }
 
 impl TestContextBuilder {
     /// Creates a new builder.
     async fn create(config: Config) -> Result<Self> {
         let encryption_key = Arc::new(
-            EncryptionKey::load(&config.cyclone_encryption_key_path)
+            CycloneEncryptionKey::load(&config.cyclone_encryption_key_path)
                 .await
                 .wrap_err("failed to load EncryptionKey")?,
         );

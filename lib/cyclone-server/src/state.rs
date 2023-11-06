@@ -18,7 +18,7 @@ pub struct AppState {
 impl AppState {
     pub fn new(
         lang_server_path: impl Into<PathBuf>,
-        decryption_key: crate::DecryptionKey,
+        decryption_key: cyclone_core::CycloneDecryptionKey,
         telemetry_level: Box<dyn telemetry::TelemetryLevel>,
     ) -> Self {
         Self {
@@ -39,17 +39,17 @@ impl LangServerPath {
 }
 
 #[derive(Clone, Debug, FromRef)]
-pub struct DecryptionKey(Arc<crate::DecryptionKey>);
+pub struct DecryptionKey(Arc<cyclone_core::CycloneDecryptionKey>);
 
 impl Deref for DecryptionKey {
-    type Target = crate::DecryptionKey;
+    type Target = cyclone_core::CycloneDecryptionKey;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl From<DecryptionKey> for Arc<crate::DecryptionKey> {
+impl From<DecryptionKey> for Arc<cyclone_core::CycloneDecryptionKey> {
     fn from(value: DecryptionKey) -> Self {
         value.0
     }

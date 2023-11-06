@@ -9,7 +9,6 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 
 mod complex_func;
-mod cyclone_crypto;
 mod properties;
 
 /// Create a schema that looks like this:

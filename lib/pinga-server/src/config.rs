@@ -10,7 +10,7 @@ use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-pub use dal::CycloneKeyPair;
+pub use si_crypto::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 use ulid::Ulid;
 

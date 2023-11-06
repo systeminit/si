@@ -5,24 +5,33 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{fs::File, io::AsyncWriteExt};
 
+use crate::{CycloneDecryptionKey, CycloneEncryptionKey};
+
+/// An error that can be returned when working with a [`CycloneKeyPair`].
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum CycloneKeyPairError {
-    #[error("io error: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("failed to load encryption key from bytes")]
-    KeyParse,
+    /// When an error is return while creating and writing key files
+    #[error("write io error: {0}")]
+    WriteIo(#[from] std::io::Error),
 }
 
-pub type CycloneKeyPairResult<T> = Result<T, CycloneKeyPairError>;
-
+/// A Cyclone encryption/decryption key pair generator.
 pub struct CycloneKeyPair;
 
 impl CycloneKeyPair {
-    pub async fn create(
+    /// Generates and writes a new pair of keys to the given file paths.
+    ///
+    /// # Errors
+    ///
+    /// Return `Err` if:
+    ///
+    /// - A key file path cannot be created or is not writable (i.e. incorrect permission and/or
+    ///   ownership)
+    pub async fn create_and_write_files(
         secret_key_path: impl AsRef<Path>,
         public_key_path: impl AsRef<Path>,
-    ) -> CycloneKeyPairResult<()> {
+    ) -> Result<(), CycloneKeyPairError> {
         let (public_key, secret_key) = box_::gen_keypair();
 
         let mut file = File::create(&secret_key_path).await?;
@@ -32,6 +41,13 @@ impl CycloneKeyPair {
         file.write_all(&public_key.0).await?;
 
         Ok(())
+    }
+
+    /// Generates a new pair of keys.
+    pub fn create() -> (CycloneEncryptionKey, CycloneDecryptionKey) {
+        let (public_key, secret_key) = box_::gen_keypair();
+
+        (public_key.into(), secret_key.into())
     }
 }
 
@@ -43,7 +59,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn create() {
+    async fn create_and_write_files() {
         sodiumoxide::init().expect("failed to init sodiumoxide");
 
         let secret_key_path = NamedTempFile::new()
@@ -53,7 +69,7 @@ mod tests {
             .expect("failed to create named tempfile")
             .into_temp_path();
 
-        CycloneKeyPair::create(&secret_key_path, &public_key_path)
+        CycloneKeyPair::create_and_write_files(&secret_key_path, &public_key_path)
             .await
             .expect("unable to create key pair");
 

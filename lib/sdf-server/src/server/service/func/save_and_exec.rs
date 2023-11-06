@@ -8,7 +8,7 @@ use dal::{
     job::definition::DependentValuesUpdate, ActionPrototype, AttributePrototype, AttributeValue,
     AttributeValueError, AttributeValueId, ChangeSet, Component, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, PropId, RootPropChild, SchemaVariant, StandardModel,
-    ValidationPrototype, Visibility, WsEvent,
+    ValidationPrototype, WsEvent,
 };
 use serde_json::Value;
 use std::collections::HashMap;
