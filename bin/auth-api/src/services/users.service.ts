@@ -60,8 +60,23 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
   // auth0 docs showing user_id, but looks like "sub" contains the identifier
   // TODO: check data when logging in with other providers
   const auth0Id = auth0UserData.user_id || (auth0UserData as any).sub;
+  const email = auth0UserData.email;
 
-  const existingUser = await getUserByAuth0Id(auth0Id);
+  // We want to ensure we track that we need to create a workspace for a partially
+  // signed up (i.e. invited) user.
+  let requiresWorkspace = false;
+
+  let existingUser = await getUserByAuth0Id(auth0Id);
+  if (!existingUser) {
+    // We should check that we have a user that is potentially partially signed up
+    // a partially signed up user is a user that we have a record for but that record
+    // only has an email and not anything else
+    const potentialUser = await getUserByEmail(email!);
+    if (potentialUser && !potentialUser.signupAt) {
+      existingUser = potentialUser;
+      requiresWorkspace = true;
+    }
+  }
 
   const userData = {
     // TODO: figure out json fields...
@@ -91,6 +106,10 @@ export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.Us
     });
 
     tracker.identifyUser(existingUser);
+
+    if (requiresWorkspace) {
+      await createWorkspace(existingUser);
+    }
     return existingUser;
   } else {
     const newUser = await prisma.user.create({
