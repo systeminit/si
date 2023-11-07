@@ -25,6 +25,8 @@ overflow hidden */
     </div>
     <DiagramControls
       :zoomLevel="zoomLevel"
+      :displayMode="displayMode"
+      @update:displaymode="toggleDisplayMode"
       @update:zoom="setZoom"
       @open:help="helpModalRef.open()"
     />
@@ -62,6 +64,19 @@ overflow hidden */
           @hover:end="onElementHoverEnd(group)"
           @resize="onNodeLayoutOrLocationChange(group)"
         />
+        <template v-if="displayMode === 'Edges Under'">
+          <DiagramEdge
+            v-for="edge in edges"
+            :key="edge.uniqueKey"
+            :edge="edge"
+            :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
+            :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
+            :isHovered="elementIsHovered(edge)"
+            :isSelected="elementIsSelected(edge)"
+            @hover:start="onElementHoverStart(edge)"
+            @hover:end="onElementHoverEnd(edge)"
+          />
+        </template>
         <DiagramNode
           v-for="node in nodes"
           :key="node.uniqueKey"
@@ -71,6 +86,7 @@ overflow hidden */
           :drawEdgeState="drawEdgeState"
           :isHovered="elementIsHovered(node)"
           :isSelected="elementIsSelected(node)"
+          :displayMode="displayMode"
           @hover:start="(meta) => onElementHoverStart(node, meta)"
           @hover:end="(meta) => onElementHoverEnd(node)"
           @resize="onNodeLayoutOrLocationChange(node)"
@@ -80,17 +96,19 @@ overflow hidden */
           :key="mouseCursor.userPk"
           :cursor="mouseCursor"
         />
-        <DiagramEdge
-          v-for="edge in edges"
-          :key="edge.uniqueKey"
-          :edge="edge"
-          :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
-          :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
-          :isHovered="elementIsHovered(edge)"
-          :isSelected="elementIsSelected(edge)"
-          @hover:start="onElementHoverStart(edge)"
-          @hover:end="onElementHoverEnd(edge)"
-        />
+        <template v-if="displayMode === 'Edges Over'">
+          <DiagramEdge
+            v-for="edge in edges"
+            :key="edge.uniqueKey"
+            :edge="edge"
+            :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
+            :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
+            :isHovered="elementIsHovered(edge)"
+            :isSelected="elementIsSelected(edge)"
+            @hover:start="onElementHoverStart(edge)"
+            @hover:end="onElementHoverEnd(edge)"
+          />
+        </template>
         <DiagramGroupOverlay
           v-for="group in groups"
           :key="group.uniqueKey"
@@ -267,6 +285,15 @@ const props = defineProps({
 
   controlsDisabled: { type: Boolean },
 });
+
+export type DisplayMode = "Edges Over" | "Edges Under";
+
+const displayMode = ref("Edges Over" as DisplayMode);
+
+const toggleDisplayMode = () => {
+  if (displayMode.value === "Edges Over") displayMode.value = "Edges Under";
+  else displayMode.value = "Edges Over";
+};
 
 const emit = defineEmits<{
   (e: "update:zoom", newZoom: number): void;

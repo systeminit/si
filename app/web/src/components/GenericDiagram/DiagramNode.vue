@@ -25,19 +25,43 @@
     />
 
     <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
+      <template v-if="displayMode === 'Edges Under'">
+        <v-rect
+          :config="{
+            width: nodeWidth,
+            height: nodeHeaderHeight,
+            x: -halfWidth,
+            y: 0,
+            fill: colors.bodyBg,
+            opacity: 0.9,
+          }"
+        />
+        <v-rect
+          :config="{
+            width: nodeWidth,
+            height: nodeHeight - nodeHeaderHeight,
+            x: -halfWidth,
+            y: nodeHeaderHeight,
+            cornerRadius: CORNER_RADIUS,
+            fill: colors.bodyBg,
+            opacity: 0.7,
+          }"
+        />
+      </template>
+
       <!-- box background - also used by layout manager to figure out nodes location and size -->
       <v-rect
         :config="{
           id: `${node.uniqueKey}--bg`,
-          width: nodeWidth,
-          height: nodeHeight,
-          x: -halfWidth,
-          y: 0,
-          cornerRadius: CORNER_RADIUS,
-          fill: colors.bodyBg,
-          fillAfterStrokeEnabled: true,
+          width: nodeWidth + (displayMode === 'Edges Under' ? 2 : 0),
+          height: nodeHeight + (displayMode === 'Edges Under' ? 2 : 0),
+          x: -halfWidth + (displayMode === 'Edges Under' ? -1 : 0),
+          y: 0 + (displayMode === 'Edges Under' ? -1 : 0),
+          cornerRadius: CORNER_RADIUS + (displayMode === 'Edges Under' ? 1 : 0),
+          fill: displayMode === 'Edges Over' ? colors.bodyBg : null,
+          fillAfterStrokeEnabled: displayMode === 'Edges Over',
           stroke: colors.border,
-          strokeWidth: 4,
+          strokeWidth: displayMode === 'Edges Over' ? 4 : 2,
           shadowColor: 'black',
           shadowBlur: 8,
           shadowOffset: { x: 3, y: 3 },
@@ -100,7 +124,7 @@
           stroke: colors.border,
           strokeWidth: 1,
           listening: false,
-          opacity: 0.7,
+          opacity: 1,
         }"
       />
 
@@ -255,6 +279,7 @@ import {
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
+import { DisplayMode } from "./GenericDiagram.vue";
 
 const props = defineProps({
   node: {
@@ -274,6 +299,8 @@ const props = defineProps({
   },
   isHovered: Boolean,
   isSelected: Boolean,
+
+  displayMode: { type: String as PropType<DisplayMode>, default: "Edges Over" },
 });
 
 const emit = defineEmits<{

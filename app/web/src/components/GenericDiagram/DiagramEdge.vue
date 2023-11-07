@@ -29,7 +29,7 @@
         strokeWidth: 2,
         hitStrokeWidth: 10,
         listening: !edge.def.isInvisible,
-        opacity: isDeleted ? 0.5 : 1,
+        opacity: isDeleted ? 0.75 : 1,
         dash: [10, 10],
         dashEnabled: isDeleted,
         shadowColor: '#000',
