@@ -4,38 +4,13 @@ import ReconnectingWebSocket from "reconnecting-websocket";
 import { computed, reactive, ref, watch } from "vue";
 import { API_WS_URL } from "@/store/apis";
 import { useAuthStore } from "../auth.store";
-import { UserId, CursorContainerKind } from "../cursor.store";
-import { WsEventPayloadMap } from "./realtime_events";
+import { WebsocketRequest, WsEventPayloadMap } from "./realtime_events";
 
 type RawConnectionStatus = "open" | "closed";
 
 type SubscriptionId = string;
 type SubscriberId = string;
 type SubscriptionTopic = string;
-
-interface CursorRequest {
-  kind: "Cursor";
-  data: {
-    userName: string;
-    userPk: UserId;
-    changeSetPk: string | null;
-    container: CursorContainerKind;
-    containerKey: string | null;
-    x: string;
-    y: string;
-  };
-}
-
-interface OnlineRequest {
-  kind: "Online";
-  data: {
-    pk: UserId;
-    name: string;
-    pictureUrl: string | null;
-  };
-}
-
-type WebsocketRequest = CursorRequest | OnlineRequest;
 
 // some fairly magic TS wizardry happening here...
 // just reshuffling the WsEventPayloadMap into a format usable in our subscribe call

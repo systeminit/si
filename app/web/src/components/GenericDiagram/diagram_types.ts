@@ -165,14 +165,6 @@ export type DiagramStatusIcon = {
   color?: string;
 };
 
-export interface DiagramCursorDef {
-  x: number;
-  y: number;
-  userPk: string;
-  userName: string;
-  timestamp: Date;
-}
-
 export type DiagramNodeDef = {
   /** unique id of the node */
   id: DiagramElementId;
@@ -284,7 +276,7 @@ export type HoverElementEvent = {
 export type MovePointerEvent = {
   x: number;
   y: number;
-};
+} | null;
 
 export type ResizeElementEvent = {
   element: DiagramElementData;

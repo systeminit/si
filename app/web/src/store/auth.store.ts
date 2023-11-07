@@ -9,6 +9,8 @@ import { User } from "@/api/sdf/dal/user";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { useWorkspacesStore } from "./workspaces.store";
 
+export type UserId = string;
+
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 
 // keys we use to store auth tokens in local storage

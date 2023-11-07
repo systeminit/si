@@ -2,7 +2,7 @@
   <div
     :class="
       clsx(
-        'flex flex-row justify-evenly items-center overflow-hidden m-xs',
+        'flex flex-row justify-evenly items-center m-xs',
         width,
         moreUsersPopoverRef?.isOpen && 'pointer-events-none',
       )
@@ -19,7 +19,11 @@
     </template>
 
     <div
-      v-if="sortedUsers.length !== 1 && (showOneIcon || sortedUsers.length > 6)"
+      v-if="
+        sortedUsers.length !== 1 &&
+        (showOneIcon || sortedUsers.length > 6) &&
+        sortedUsers.length > 0
+      "
       class="h-8 w-0"
     >
       <div
@@ -88,17 +92,20 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import clsx from "clsx";
 import Popover from "@/components/Popover.vue";
 import SiSearch from "@/components/SiSearch.vue";
-import { useCursorStore } from "@/store/cursor.store";
+import { usePresenceStore } from "@/store/presence.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
 
-const cursorStore = useCursorStore();
+const presenceStore = usePresenceStore();
+const changeSetsStore = useChangeSetsStore();
 
 export type UserInfo = {
   name: string;
   color?: string | null;
   status?: string | null;
-  pictureUrl: string | null;
+  changeset?: string;
+  pictureUrl?: string | null;
 };
 
 const moreUsersPopoverRef = ref();
@@ -106,20 +113,36 @@ const moreUsersButtonRef = ref();
 
 const users = computed<UserInfo[]>(() => {
   const list = [];
-  for (const user of _.values(cursorStore.users)) {
+  for (const user of _.values(presenceStore.usersById)) {
     list.push({
       name: user.name,
-      color: null,
-      status: "active",
+      color: user.color,
+      status: user.idle ? "idle" : "active",
+      changeset: user.changeSetId,
       pictureUrl: user.pictureUrl,
     });
   }
+
   return list;
 });
 
 const sortedUsers = computed(() => {
   const usersCopy = _.clone(users.value);
   return usersCopy.sort((a, b) => {
+    if (changeSetsStore.selectedChangeSetId) {
+      if (
+        a.changeset !== changeSetsStore.selectedChangeSetId &&
+        b.changeset === changeSetsStore.selectedChangeSetId
+      ) {
+        return 2;
+      }
+      if (
+        a.changeset === changeSetsStore.selectedChangeSetId &&
+        b.changeset !== changeSetsStore.selectedChangeSetId
+      ) {
+        return -2;
+      }
+    }
     if (a.status === "idle" && b.status !== "idle") return 1;
     if (a.status !== "idle" && b.status === "idle") return -1;
     return 0;
@@ -148,7 +171,19 @@ const userTooltips = computed(() => {
 
   displayUsers.value.forEach((user) => {
     tooltips.push({
-      content: `<div class='flex flex-col items-center max-w-lg'><div class='text-center font-bold w-full break-words line-clamp-3 pb-[2px] px-sm min-w-0'>${user.name}</div><div class='text-xs w-full text-center line-clamp-3 px-sm'>${user.status}</div></div>`,
+      content: `<div class='flex flex-col items-center max-w-lg'>
+        <div class='text-center font-bold w-full break-words line-clamp-3 pb-[2px] px-sm min-w-0'>${
+          user.name
+        }</div>
+        <div class='text-xs font-bold w-full text-center line-clamp-3 px-sm'>${
+          user.changeset
+            ? changeSetsStore.changeSetsById[user.changeset]?.name || "Head"
+            : "Head"
+        }</div>
+        <div class='text-xs w-full text-center line-clamp-3 px-sm'>${
+          user.status
+        }</div>
+        </div>`,
       theme: "user-info",
     });
   });

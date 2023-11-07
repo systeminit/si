@@ -10,7 +10,7 @@
 
     <WorkspaceSettingsMenu v-if="featureFlagsStore.WORKSPACE_BACKUPS" />
 
-    <NavbarButton tooltipText="Profile" class="flex-none">
+    <NavbarButton tooltipText="Profile" class="flex-none py-xs">
       <template #default="{ open, hovered }">
         <div class="flex-row flex text-white items-center">
           <UserIcon

@@ -99,14 +99,16 @@ mod workspace_updates {
             change_set_pk: Option<ChangeSetPk>,
             container: Option<String>,
             container_key: Option<String>,
-            x: String,
-            y: String,
+            x: Option<String>,
+            y: Option<String>,
         },
         #[serde(rename_all = "camelCase")]
         Online {
-            pk: UserPk,
+            user_pk: UserPk,
             name: String,
             picture_url: Option<String>,
+            change_set_pk: Option<ChangeSetPk>,
+            idle: bool,
         },
     }
 
@@ -194,12 +196,14 @@ mod workspace_updates {
                                         }).await?;
                                         self.nats.publish(subject, serde_json::to_vec(&event)?).await?;
                                     }
-                                    WebsocketEventRequest::Online { pk, name, picture_url } => {
+                                    WebsocketEventRequest::Online { user_pk, name, picture_url, change_set_pk, idle } => {
                                         let subject = format!("si.workspace_pk.{}.event", self.workspace_pk);
                                         let event = WsEvent::online(self.workspace_pk, OnlinePayload {
-                                            pk,
+                                            user_pk,
                                             name,
-                                            picture_url
+                                            picture_url,
+                                            change_set_pk,
+                                            idle,
                                         }).await?;
                                         self.nats.publish(subject, serde_json::to_vec(&event)?).await?;
                                     }

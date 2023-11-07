@@ -41,6 +41,7 @@ import Play from "~icons/ion/play-sharp";
 
 import Arrow from "~icons/heroicons-solid/arrow-up";
 import Chevron from "~icons/heroicons-solid/chevron-up";
+import Star from "~icons/heroicons-solid/star";
 
 import Gear from "~icons/heroicons-solid/cog-8-tooth";
 import Save from "~icons/heroicons-solid/save";
@@ -219,6 +220,7 @@ export const ICONS = Object.freeze({
   settings: Gear,
   show: Eye,
   slash: SlashForward,
+  star: Star,
   sun: Sun,
   "thumbs-down": ThumbsDown,
   "thumbs-up": ThumbsUp,
