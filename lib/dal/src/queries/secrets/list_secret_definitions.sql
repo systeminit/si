@@ -9,7 +9,7 @@ SELECT json_build_object(
                                        'options', fields.widget_options))
                    )) AS object
 FROM props_v1($1, $2) prop_definition
-         JOIN prop_belongs_to_prop pbtp ON prop_definition.id = pbtp.belongs_to_id
+         JOIN prop_belongs_to_prop_v1($1, $2) pbtp ON prop_definition.id = pbtp.belongs_to_id
          JOIN props_v1($1, $2) fields ON fields.id = pbtp.object_id
 
          JOIN props_v1($1, $2) prop_secret ON
