@@ -32,7 +32,7 @@ pub mod update;
 pub mod vector_clock;
 
 use chrono::{DateTime, Utc};
-use content_store::{ContentHash, StoreError};
+use content_store::{ContentHash, Store, StoreError};
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_cbor::CborError;
@@ -205,6 +205,9 @@ impl WorkspaceSnapshot {
         // Mark everything left as seen.
         working_copy.mark_graph_seen(vector_clock_id)?;
 
+        // Write out to the content store.
+        ctx.content_store().lock().await.write().await?;
+
         // Stamp the new workspace snapshot.
         let serialized_snapshot = si_cbor::encode(&working_copy)?;
         let row = ctx
@@ -295,6 +298,13 @@ impl WorkspaceSnapshot {
             .get_edge_by_index_stableish(edge_index)?)
     }
 
+    pub fn edge_endpoints(
+        &mut self,
+        edge_index: EdgeIndex,
+    ) -> WorkspaceSnapshotResult<(NodeIndex, NodeIndex)> {
+        Ok(self.working_copy()?.edge_endpoints(edge_index)?)
+    }
+
     pub fn import_subgraph(
         &mut self,
         other: &mut Self,
@@ -310,7 +320,7 @@ impl WorkspaceSnapshot {
         &mut self,
         original_node_index: NodeIndex,
         new_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<()> {
+    ) -> WorkspaceSnapshotResult<HashMap<NodeIndex, NodeIndex>> {
         Ok(self
             .working_copy()?
             .replace_references(original_node_index, new_node_index)?)

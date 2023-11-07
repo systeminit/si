@@ -51,13 +51,6 @@ pk!(WorkspacePk);
 pk!(WorkspaceId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct WorkspaceSignup {
-    pub key_pair: KeyPair,
-    pub user: User,
-    pub workspace: Workspace,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Workspace {
     pk: WorkspacePk,
     name: String,
@@ -254,6 +247,7 @@ impl Workspace {
 
         Ok(workspace)
     }
+
     pub async fn find_by_name(ctx: &DalContext, name: &str) -> WorkspaceResult<Option<Workspace>> {
         let maybe_row = ctx
             .txns()

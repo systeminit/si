@@ -40,7 +40,8 @@ pub use si_test_macros::{dal_test as test, sdf_test};
 pub use telemetry;
 pub use tracing_subscriber;
 
-// pub mod helpers;
+pub mod helpers;
+mod signup;
 // pub mod test_harness;
 
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
@@ -95,6 +96,7 @@ pub struct Config {
     #[builder(default)]
     pkgs_path: Option<PathBuf>,
     symmetric_crypto_service_config: SymmetricCryptoServiceConfig,
+    #[builder(default)]
     rebaser_config: RebaserClientConfig,
 }
 
@@ -551,8 +553,11 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     let pinga_server_handle = pinga_server.shutdown_handle();
     tokio::spawn(pinga_server.run());
 
-    // Do not start up the Rebaser server since we do not need it for initial migrations.
-    debug!("skipping Rebaser server startup and shutdown for initial migrations");
+    // Start up a Rebaser server for migrations
+    info!("starting Rebaser server for initial migrations");
+    let rebaser_server = rebaser_server(&services_ctx)?;
+    let rebaser_server_handle = rebaser_server.shutdown_handle();
+    tokio::spawn(rebaser_server.run());
 
     // Start up a Veritech server as a task exclusively to allow the migrations to run
     info!("starting Veritech server for initial migrations");
@@ -640,6 +645,11 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     // unique subject prefix)
     info!("shutting down initial migrations Pinga server");
     pinga_server_handle.shutdown().await;
+
+    // Shutdown the Rebaser server (each test gets their own server instance with an exclusively
+    // unique subject prefix)
+    info!("shutting down initial migrations Rebaser server");
+    rebaser_server_handle.shutdown().await;
 
     // Shutdown the Veritech server (each test gets their own server instance with an exclusively
     // unique subject prefix)

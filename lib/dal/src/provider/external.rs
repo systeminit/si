@@ -4,13 +4,8 @@ use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 
-
-
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{
-    pk,
-    StandardModel, Timestamp,
-};
+use crate::{pk, StandardModel, Timestamp};
 use crate::{AttributePrototypeId, SchemaVariantId};
 
 // const LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_TAIL_COMPONENT_ID: &str = include_str!(

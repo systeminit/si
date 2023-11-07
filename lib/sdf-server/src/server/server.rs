@@ -395,10 +395,7 @@ async fn install_builtins(
         }
     }
 
-    // XXX: the rebaser is hanging on the second attempt here if all builtins were already installed...
-    if count > 0 {
-        dal.commit().await?;
-    }
+    dal.commit().await?;
 
     let mut ctx = ctx.clone();
     ctx.update_snapshot_to_visibility().await?;

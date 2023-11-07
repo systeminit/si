@@ -47,7 +47,7 @@ mod tests {
 
     #[test]
     async fn round_trip() {
-        let environment = Environment::new()
+        let environment = Environment::new(&Config::default())
             .await
             .expect("could not create environment");
 

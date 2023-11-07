@@ -5,9 +5,7 @@
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
-use crate::{
-    FuncBackendResponseType, StandardModel,
-};
+use crate::{FuncBackendResponseType, StandardModel};
 use si_pkg::{LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind};
 
 use crate::schema::variant::root_prop::RootPropChild;

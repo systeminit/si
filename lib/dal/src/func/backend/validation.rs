@@ -1,10 +1,6 @@
-
-
 use serde::{Deserialize, Serialize};
 
-
-
-use crate::validation::{Validation};
+use crate::validation::Validation;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FuncBackendValidation {

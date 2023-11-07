@@ -53,7 +53,7 @@ pub async fn list_funcs(
             Ok(ListedFuncView {
                 id: func.id,
                 handler: func.handler.to_owned().map(|handler| handler.to_owned()),
-                variant: func.try_into()?,
+                variant: FuncVariant::Attribute,
                 name: func.name.to_owned(),
                 display_name: func.display_name.to_owned().map(Into::into),
                 is_builtin: func.builtin,
@@ -67,7 +67,7 @@ pub async fn list_funcs(
     for func_view in try_func_views {
         match func_view {
             Ok(func_view) => funcs.push(func_view),
-            Err(err) => Err(err)?,
+            Err(err) => {}
         }
     }
 

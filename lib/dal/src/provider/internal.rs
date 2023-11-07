@@ -73,14 +73,8 @@ use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 
-
-
-
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{
-    pk, StandardModel, Timestamp,
-};
-
+use crate::{pk, StandardModel, Timestamp};
 
 // const FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME: &str =
 //     include_str!("../queries/internal_provider/find_explicit_for_schema_variant_and_name.sql");

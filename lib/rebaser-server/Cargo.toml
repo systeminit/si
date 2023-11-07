@@ -19,9 +19,11 @@ telemetry = { path = "../../lib/telemetry-rs" }
 veritech-client = { path = "../../lib/veritech-client" }
 
 derive_builder = { workspace = true }
+futures = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+stream-cancel = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 ulid = { workspace = true }

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
-use crate::{FuncId};
+use crate::FuncId;
 
 pub mod prototype;
 // pub mod resolver;

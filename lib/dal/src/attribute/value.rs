@@ -43,9 +43,7 @@ use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{
-    pk, StandardModel, Timestamp,
-};
+use crate::{pk, StandardModel, Timestamp};
 
 pub mod view;
 

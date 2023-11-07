@@ -221,11 +221,28 @@ async fn perform_updates_and_write_out_and_update_pointer(
                     onto_workspace_snapshot,
                     to_rebase_workspace_snapshot,
                 )?;
-                to_rebase_workspace_snapshot.add_edge(source, edge_weight.clone(), destination)?;
+                let new_edge_index = to_rebase_workspace_snapshot.add_edge(
+                    source,
+                    edge_weight.clone(),
+                    destination,
+                )?;
+                let (new_source, _) =
+                    to_rebase_workspace_snapshot.edge_endpoints(new_edge_index)?;
+                updated.insert(source, new_source);
             }
-            Update::RemoveEdge(edge) => {
-                // TODO(nick): debug log or handle whether or not the edge was deleted.
-                let _ = to_rebase_workspace_snapshot.remove_edge(*edge)?;
+            Update::RemoveEdge {
+                source,
+                destination,
+                edge_kind,
+            } => {
+                let source = *updated.get(source).unwrap_or(source);
+                let destination = *updated.get(destination).unwrap_or(destination);
+                updated.extend(to_rebase_workspace_snapshot.remove_edge(
+                    to_rebase_change_set,
+                    source,
+                    destination,
+                    *edge_kind,
+                )?);
             }
             Update::ReplaceSubgraph { onto, to_rebase } => {
                 let to_rebase = *updated.get(to_rebase).unwrap_or(to_rebase);
@@ -235,7 +252,10 @@ async fn perform_updates_and_write_out_and_update_pointer(
                     onto_workspace_snapshot,
                     to_rebase_workspace_snapshot,
                 )?;
-                to_rebase_workspace_snapshot.replace_references(to_rebase, new_subgraph_root)?;
+                updated.extend(
+                    to_rebase_workspace_snapshot
+                        .replace_references(to_rebase, new_subgraph_root)?,
+                );
             }
         }
     }

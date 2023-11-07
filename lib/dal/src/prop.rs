@@ -1,4 +1,3 @@
-
 use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,15 +7,12 @@ use si_pkg::PropSpecKind;
 use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
 use telemetry::prelude::*;
 
-
-
 use crate::workspace_snapshot::content_address::ContentAddress;
+use crate::FuncBackendResponseType;
 use crate::{
-    label_list::ToLabelList,
-    pk,
-    property_editor::schema::WidgetKind, FuncId, StandardModel, Timestamp,
+    label_list::ToLabelList, pk, property_editor::schema::WidgetKind, FuncId, StandardModel,
+    Timestamp,
 };
-use crate::{FuncBackendResponseType};
 
 pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
 

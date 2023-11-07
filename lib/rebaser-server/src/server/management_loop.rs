@@ -1,18 +1,18 @@
 use dal::{DalContext, JobQueueProcessor, ServicesContext};
-
+use futures::{FutureExt, StreamExt};
 use rebaser_core::{ManagementMessage, ManagementMessageAction, StreamNameGenerator};
+use si_crypto::SymmetricCryptoService;
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use si_rabbitmq::{
     Config as SiRabbitMqConfig, Consumer, ConsumerHandle, ConsumerOffsetSpecification, Environment,
     Producer,
 };
+use si_rabbitmq::{Delivery, RabbitError};
 use std::collections::HashMap;
-
 use std::sync::Arc;
+use stream_cancel::StreamExt as StreamCancelStreamExt;
 use telemetry::prelude::*;
-
-use si_crypto::SymmetricCryptoService;
 use tokio::sync::watch;
 use ulid::Ulid;
 
@@ -55,7 +55,7 @@ async fn management_loop(
     symmetric_crypto_service: SymmetricCryptoService,
     encryption_key: Arc<veritech_client::EncryptionKey>,
     rabbitmq_config: SiRabbitMqConfig,
-    _shutdown_watch_rx: watch::Receiver<()>,
+    mut shutdown_watch_rx: watch::Receiver<()>,
 ) -> ServerResult<()> {
     let services_context = ServicesContext::new(
         pg_pool,
@@ -100,7 +100,16 @@ async fn management_loop(
     let management_handle = management_consumer.handle();
     let mut rebaser_handles: HashMap<Ulid, (String, ConsumerHandle)> = HashMap::new();
 
-    while let Some(management_delivery) = management_consumer.next().await? {
+    let mut inbound_management_stream = management_consumer
+        .into_stream()
+        .await?
+        .take_until_if(Box::pin(shutdown_watch_rx.changed().map(|_| true)));
+
+    while let Some(unprocessed_management_delivery) = inbound_management_stream.next().await {
+        let management_delivery = Delivery::try_from(
+            unprocessed_management_delivery.map_err(RabbitError::ConsumerDelivery)?,
+        )?;
+
         let contents = management_delivery
             .message_contents
             .ok_or(ServerError::MissingManagementMessageContents)?;

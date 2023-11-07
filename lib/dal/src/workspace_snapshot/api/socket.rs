@@ -1,19 +1,19 @@
-use content_store::{Store};
+use content_store::Store;
 use ulid::Ulid;
 
 use crate::change_set_pointer::ChangeSetPointer;
 
-
-
-use crate::socket::{SocketContent, SocketContentV1, SocketEdgeKind, SocketGraphNode, SocketKind, DiagramKind};
+use crate::socket::{
+    DiagramKind, SocketContent, SocketContentV1, SocketEdgeKind, SocketGraphNode, SocketKind,
+};
 
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::WorkspaceSnapshotResult;
 use crate::{
-    DalContext, ExternalProviderId, InternalProviderId,
-    SchemaVariantId, SocketArity, Timestamp, WorkspaceSnapshot,
+    DalContext, ExternalProviderId, InternalProviderId, SchemaVariantId, SocketArity, Timestamp,
+    WorkspaceSnapshot,
 };
 
 pub enum SocketParent {

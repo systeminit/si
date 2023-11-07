@@ -1,7 +1,9 @@
+use crate::change_set_pointer::ChangeSetPointer;
 use petgraph::stable_graph::EdgeIndex;
 use petgraph::stable_graph::Edges;
 use petgraph::visit::EdgeRef;
 use petgraph::Directed;
+use std::collections::HashMap;
 use ulid::Ulid;
 
 use crate::workspace_snapshot::edge_weight::EdgeWeight;
@@ -101,8 +103,16 @@ impl WorkspaceSnapshot {
 
     pub fn remove_edge(
         &mut self,
-        edge_index: EdgeIndex,
-    ) -> WorkspaceSnapshotResult<Option<EdgeWeight>> {
-        Ok(self.working_copy()?.remove_edge_by_index(edge_index))
+        change_set: &ChangeSetPointer,
+        source_node_index: NodeIndex,
+        target_node_index: NodeIndex,
+        edge_kind: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<HashMap<NodeIndex, NodeIndex>> {
+        Ok(self.working_copy()?.remove_edge(
+            change_set,
+            source_node_index,
+            target_node_index,
+            edge_kind,
+        )?)
     }
 }

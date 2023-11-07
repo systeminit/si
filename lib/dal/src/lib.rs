@@ -111,7 +111,7 @@ pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserPk, UserResult};
 pub use visibility::{Visibility, VisibilityError};
-pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, WorkspaceSignup};
+pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult};
 pub use workspace_snapshot::graph::WorkspaceSnapshotGraph;
 pub use workspace_snapshot::WorkspaceSnapshot;
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
@@ -224,7 +224,8 @@ pub async fn migrate_builtins(
 
     let workspace = Workspace::builtin(&mut ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
-    ctx.blocking_commit().await?;
+    ctx.update_to_head();
+    ctx.update_snapshot_to_visibility().await?;
 
     builtins::migrate(&ctx, selected_test_builtin_schemas).await?;
 
