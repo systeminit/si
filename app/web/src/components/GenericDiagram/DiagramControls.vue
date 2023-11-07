@@ -46,11 +46,24 @@
     >
       <Icon name="help-circle" size="full" />
     </div>
+
+    <div
+      v-tooltip="displayModeTooltip"
+      class="ml-4"
+      :class="
+        displayMode === 'Edges Over'
+          ? getButtonClasses(false)
+          : getInvertedButtonClasses(false)
+      "
+      @click="emit('update:displaymode')"
+    >
+      <Icon name="eye" size="full" />
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { PropType, computed, ref } from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { tw } from "@si/vue-lib";
@@ -60,16 +73,24 @@ import {
   Icon,
 } from "@si/vue-lib/design-system";
 import { MAX_ZOOM, MIN_ZOOM } from "./diagram_constants";
+import { DisplayMode } from "./GenericDiagram.vue";
 
 const ZOOM_LEVEL_OPTIONS = [25, 50, 100, 150, 200];
 
 const props = defineProps({
   zoomLevel: { type: Number, required: true },
+  displayMode: { type: String as PropType<DisplayMode>, default: "Edges Over" },
 });
+
+const displayModeTooltip = computed(() => ({
+  content: props.displayMode,
+  hideTriggers: ["hover", "focus", "touch"],
+}));
 
 const emit = defineEmits<{
   (e: "update:zoom", newZoom: number): void;
   (e: "open:help"): void;
+  (e: "update:displaymode"): void;
 }>();
 
 const zoomMenuRef = ref<InstanceType<typeof DropdownMenu>>();
@@ -84,7 +105,17 @@ const roundedZoomPercent = computed(() => Math.round(props.zoomLevel * 100));
 function getButtonClasses(isDisabled: boolean) {
   return clsx(
     tw`rounded-full p-1 bg-neutral-600 text-white`,
-    tw`dark:bg-gray-200 dark:text-black`,
+    tw`dark:bg-neutral-200 dark:text-black`,
+    isDisabled
+      ? tw`cursor-not-allowed opacity-50`
+      : tw`cursor-pointer hover:scale-110`,
+  );
+}
+
+function getInvertedButtonClasses(isDisabled: boolean) {
+  return clsx(
+    tw`rounded-full p-1 bg-neutral-200 text-black border border-black`,
+    tw`dark:bg-neutral-700 dark:text-white dark:border-white`,
     isDisabled
       ? tw`cursor-not-allowed opacity-50`
       : tw`cursor-pointer hover:scale-110`,
