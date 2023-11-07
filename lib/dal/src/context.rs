@@ -439,6 +439,10 @@ impl DalContext {
             Some(workspace_snapshot_id) => Some(self.get_rebase_request(workspace_snapshot_id)?),
             None => None,
         };
+        info!(
+            "rebase request during blocking commit: {:?}",
+            &rebase_request
+        );
         let mut guard = self.conns_state.lock().await;
 
         *guard = guard.take().blocking_commit(rebase_request).await?;
@@ -823,6 +827,18 @@ impl DalContextBuilder {
         content_store: PgStore,
     ) -> Result<DalContext, TransactionsError> {
         let conns = self.connections().await?;
+        // let mut ctx = DalContext {
+        //     services_context: self.services_context.clone(),
+        //     blocking: self.blocking,
+        //     conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
+        //     tenancy: Tenancy::new_empty(),
+        //     visibility: Visibility::new_head(false),
+        //     history_actor: HistoryActor::SystemInit,
+        //     no_dependent_values: self.no_dependent_values,
+        //     content_store: Arc::new(Mutex::new(content_store)),
+        //     workspace_snapshot: None,
+        //     change_set_pointer: None,
+        // };
         Ok(DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,

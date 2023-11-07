@@ -7,6 +7,7 @@ pub struct Config {
     username: String,
     password: String,
     port: u16,
+    stream_prefix: Option<String>,
 }
 
 impl Default for Config {
@@ -16,18 +17,26 @@ impl Default for Config {
             username: "guest".into(),
             password: "guest".into(),
             port: 5552,
+            stream_prefix: None,
         }
     }
 }
 
 impl Config {
     /// Create a new config for the rabbitmq [`Environment`](`crate::Environment`)
-    pub fn new(host: String, username: String, password: String, port: u16) -> Self {
+    pub fn new(
+        host: String,
+        username: String,
+        password: String,
+        port: u16,
+        stream_prefix: Option<String>,
+    ) -> Self {
         Self {
             host,
             username,
             password,
             port,
+            stream_prefix,
         }
     }
 
@@ -49,5 +58,16 @@ impl Config {
     /// The port of the rabbitmq stream server we will connect to (usually 5552)
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    /// The stream prefix to be used when creating, using and deleting rabbitmq streams
+    pub fn stream_prefix(&self) -> Option<&str> {
+        self.stream_prefix.as_deref()
+    }
+
+    /// Set the stream prefix on the config
+    pub fn set_stream_prefix(&mut self, stream_prefix: impl Into<String>) -> &mut Self {
+        self.stream_prefix = Some(stream_prefix.into());
+        self
     }
 }

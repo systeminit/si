@@ -178,7 +178,7 @@ async fn process_delivery(
     // Send reply to the "reply to stream" for the specific client.
     let inbound_stream = inbound_stream.as_ref();
     let reply_to_stream = reply_to_stream.as_ref();
-    debug!(
+    info!(
         "processed delivery from \"{inbound_stream}\", committed transaction and sending reply to \"{reply_to_stream}\"",
     );
     let mut producer = Producer::new(&environment, reply_to_stream).await?;
@@ -188,7 +188,7 @@ async fn process_delivery(
 
     // Close the producer _after_ logging, but do not make it an infallible close. We do that
     // because the function managing the change set loop is infallible and will log the error.
-    debug!("sent reply to \"{reply_to_stream}\"");
+    info!("sent reply to \"{reply_to_stream}\"");
     producer.close().await?;
 
     Ok(())

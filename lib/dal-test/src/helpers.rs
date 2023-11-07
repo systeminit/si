@@ -1,4 +1,5 @@
 use color_eyre::Result;
+use dal::change_set_pointer::{ChangeSetPointer, ChangeSetPointerId};
 use dal::{
     ChangeSet, DalContext, Func, FuncId, HistoryActor, StandardModel, User, UserClaim, UserPk,
     Visibility, Workspace,
@@ -61,28 +62,31 @@ pub async fn workspace_signup(ctx: &DalContext) -> Result<(WorkspaceSignup, Stri
 //     .expect("cannot create user")
 // }
 //
-pub async fn create_change_set(ctx: &DalContext) -> ChangeSet {
-    let name = generate_fake_name();
-    ChangeSet::new(ctx, &name, None)
+
+pub async fn create_change_set_and_update_ctx(
+    ctx: &mut DalContext,
+    base_change_set_id: ChangeSetPointerId,
+) {
+    let base_change_set = ChangeSetPointer::find(ctx, base_change_set_id)
         .await
-        .expect("cannot create change_set")
-}
-
-pub fn create_visibility_for_change_set(change_set: &ChangeSet) -> Visibility {
-    Visibility::new(change_set.pk, None)
-}
-
-/// Creates a new [`Visibility`] backed by a new [`ChangeSet`]
-pub async fn create_visibility_for_new_change_set(ctx: &DalContext) -> Visibility {
-    let _history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(ctx).await;
-
-    create_visibility_for_change_set(&change_set)
-}
-
-pub async fn create_change_set_and_update_ctx(ctx: &mut DalContext) {
-    let visibility = create_visibility_for_new_change_set(ctx).await;
-    ctx.update_visibility(visibility);
+        .expect("could not perform find change set")
+        .expect("no change set found");
+    let mut change_set = ChangeSetPointer::new(ctx, generate_fake_name(), Some(base_change_set_id))
+        .await
+        .expect("could not create change set pointer");
+    change_set
+        .update_pointer(
+            ctx,
+            base_change_set
+                .workspace_snapshot_id
+                .expect("no workspace snapshot set on base change set"),
+        )
+        .await
+        .expect("could not update pointer");
+    ctx.update_visibility(Visibility::new_for_change_set_pointer(change_set.id));
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("could not update snapshot to visibility");
 }
 
 // /// Get the "si:identity" [`Func`] and execute (if necessary).

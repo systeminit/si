@@ -84,16 +84,16 @@ async fn management_loop(
     // NOTE: QUERY DB FOR OFFSET NUMBER OR GO TO FIRST SPECIFICATION
 
     // Prepare the environment and management stream.
-    let management_stream = StreamNameGenerator::management();
+    let management_stream = StreamNameGenerator::management(rabbitmq_config.stream_prefix());
     let environment = Environment::new(&rabbitmq_config).await?;
     if recreate_management_stream {
-        environment.delete_stream(management_stream).await?;
+        environment.delete_stream(&management_stream).await?;
     }
-    environment.create_stream(management_stream).await?;
+    environment.create_stream(&management_stream).await?;
 
     let mut management_consumer = Consumer::new(
         &environment,
-        management_stream,
+        &management_stream,
         ConsumerOffsetSpecification::Next,
     )
     .await?;
@@ -136,7 +136,14 @@ async fn management_loop(
                 }
             }
             ManagementMessageAction::OpenChangeSet => {
-                let new_stream = StreamNameGenerator::change_set(mm.change_set_id);
+                info!(
+                    "finding or creating stream for change set: {}",
+                    mm.change_set_id
+                );
+                let new_stream = StreamNameGenerator::change_set(
+                    mm.change_set_id,
+                    rabbitmq_config.stream_prefix(),
+                );
                 let stream_already_exists = environment.create_stream(&new_stream).await?;
 
                 // Only create the new stream and loop if the stream does not already exist.
@@ -165,12 +172,9 @@ async fn management_loop(
     }
 
     // Once the loop is done, perform cleanup.
-    for (_, (stream, handle)) in rebaser_handles.drain() {
-        if let Err(err) = handle.close().await {
+    for (_, (_change_set_stream, change_set_consumer_handle)) in rebaser_handles.drain() {
+        if let Err(err) = change_set_consumer_handle.close().await {
             warn!(error = ?err, "closing change set consumer failed during cleanup");
-        }
-        if let Err(err) = environment.delete_stream(stream).await {
-            warn!(error = ?err, "deleting change set stream failed during cleanup");
         }
     }
     if let Err(err) = management_handle.close().await {

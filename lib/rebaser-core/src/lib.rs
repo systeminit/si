@@ -92,24 +92,46 @@ pub struct StreamNameGenerator;
 
 impl StreamNameGenerator {
     /// Returns the name of the management stream.
-    pub fn management() -> &'static str {
-        "rebaser-management"
+    pub fn management(stream_prefix: Option<impl AsRef<str>>) -> String {
+        Self::assemble_with_prefix("rebaser-management", stream_prefix)
     }
 
     /// Returns the name of the stream that the rebaser will reply to for messages sent to the
     /// management stream from a specific client.
-    pub fn management_reply(client_id: Ulid) -> String {
-        format!("rebaser-management-reply-{client_id}")
+    pub fn management_reply(client_id: Ulid, stream_prefix: Option<impl AsRef<str>>) -> String {
+        Self::assemble_with_prefix(
+            format!("rebaser-management-reply-{client_id}"),
+            stream_prefix,
+        )
     }
 
     /// Returns the name of a stream for a given change set.
-    pub fn change_set(change_set_id: Ulid) -> String {
-        format!("rebaser-{change_set_id}")
+    pub fn change_set(change_set_id: Ulid, stream_prefix: Option<impl AsRef<str>>) -> String {
+        Self::assemble_with_prefix(format!("rebaser-{change_set_id}"), stream_prefix)
     }
 
     /// Returns the name of the stream that the rebaser will reply to for messages sent to a change
     /// set stream from a specific client.
-    pub fn change_set_reply(change_set_id: Ulid, client_id: Ulid) -> String {
-        format!("rebaser-{change_set_id}-reply-{client_id}")
+    pub fn change_set_reply(
+        change_set_id: Ulid,
+        client_id: Ulid,
+        stream_prefix: Option<impl AsRef<str>>,
+    ) -> String {
+        Self::assemble_with_prefix(
+            format!("rebaser-{change_set_id}-reply-{client_id}"),
+            stream_prefix,
+        )
+    }
+
+    fn assemble_with_prefix(
+        base_stream_name: impl AsRef<str>,
+        maybe_stream_prefix: Option<impl AsRef<str>>,
+    ) -> String {
+        let base_stream_name = base_stream_name.as_ref();
+        if let Some(stream_prefix) = maybe_stream_prefix {
+            format!("{}-{base_stream_name}", stream_prefix.as_ref())
+        } else {
+            base_stream_name.to_string()
+        }
     }
 }

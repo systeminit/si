@@ -320,13 +320,14 @@ impl TestContextBuilder {
     }
 
     async fn build_inner(&self, pg_pool: PgPool, content_store: PgStore) -> Result<TestContext> {
+        let universal_prefix = random_identifier_string();
+
         // Need to make a new NatsConfig so that we can add the test-specific subject prefix
         // without leaking it to other tests.
         let mut nats_config = self.config.nats.clone();
-        let nats_subject_prefix = random_identifier_string();
-        nats_config.subject_prefix = Some(nats_subject_prefix.clone());
+        nats_config.subject_prefix = Some(universal_prefix.clone());
         let mut config = self.config.clone();
-        config.nats.subject_prefix = Some(nats_subject_prefix);
+        config.nats.subject_prefix = Some(universal_prefix.clone());
 
         let nats_conn = NatsClient::new(&nats_config)
             .await
@@ -338,7 +339,8 @@ impl TestContextBuilder {
             SymmetricCryptoService::from_config(&self.config.symmetric_crypto_service_config)
                 .await?;
 
-        let rebaser_config = RebaserClientConfig::default();
+        let mut rebaser_config = RebaserClientConfig::default();
+        rebaser_config.set_stream_prefix(universal_prefix);
 
         Ok(TestContext {
             config,

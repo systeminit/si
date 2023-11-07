@@ -179,8 +179,6 @@ impl Workspace {
             ChangeSetPointer::new(ctx, "HEAD", Some(builtin.default_change_set_id)).await?;
         let mut workspace_snapshot =
             WorkspaceSnapshot::find_for_change_set(ctx, builtin.default_change_set_id).await?;
-        dbg!("poop");
-        workspace_snapshot.dot();
         change_set
             .update_pointer(ctx, workspace_snapshot.id())
             .await?;

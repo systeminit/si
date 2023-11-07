@@ -39,8 +39,9 @@ impl Client {
         let environment = Environment::new(&config).await?;
 
         let id = Ulid::new();
-        let management_stream = StreamNameGenerator::management();
-        let management_reply_stream = StreamNameGenerator::management_reply(id);
+        let management_stream = StreamNameGenerator::management(config.stream_prefix());
+        let management_reply_stream =
+            StreamNameGenerator::management_reply(id, config.stream_prefix());
 
         environment.create_stream(&management_reply_stream).await?;
         let management_reply_consumer = Consumer::new(
@@ -157,7 +158,11 @@ impl Client {
 
         // TODO(nick): move stream generation to a common crate.
         let environment = Environment::new(&self.config).await?;
-        let reply_stream = StreamNameGenerator::change_set_reply(change_set_id, self.id);
+        let reply_stream = StreamNameGenerator::change_set_reply(
+            change_set_id,
+            self.id,
+            self.config.stream_prefix(),
+        );
         environment.create_stream(&reply_stream).await?;
 
         // FIXME(nick): name the producer properly.
