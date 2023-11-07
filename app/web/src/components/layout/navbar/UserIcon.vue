@@ -16,19 +16,44 @@
     </div>
     <div
       v-if="user.status === 'idle'"
-      class="absolute top-0 w-full h-full z-100 opacity-60 bg-shade-100 rounded-full pointer-events-none"
+      class="absolute top-0 w-full h-full z-90 opacity-60 bg-shade-100 rounded-full pointer-events-none"
     />
+    <div
+      v-if="
+        changeSetsStore.selectedChangeSetId &&
+        changeSetsStore.selectedChangeSetId === user.changeset
+      "
+      :class="
+        clsx(
+          'absolute w-full h-full z-100 flex flex-col items-center text-warning-300 pointer-events-none',
+          changeSetStarSide ? 'top-[10px]' : 'top-0',
+        )
+      "
+    >
+      <Icon
+        name="star"
+        size="2xs"
+        :class="
+          changeSetStarSide ? 'translate-x-[-24px]' : 'translate-y-[-12px]'
+        "
+      />
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { Icon } from "@si/vue-lib/design-system";
 import { PropType, computed } from "vue";
+import clsx from "clsx";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import { UserInfo } from "./Collaborators.vue";
+
+const changeSetsStore = useChangeSetsStore();
 
 const props = defineProps({
   tooltip: { type: Object },
   user: { type: Object as PropType<UserInfo>, required: true },
+  changeSetStarSide: { type: Boolean },
 });
 
 const color = computed(() => {

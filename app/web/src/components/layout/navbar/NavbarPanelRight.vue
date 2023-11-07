@@ -10,7 +10,7 @@
 
     <WorkspaceSettingsMenu v-if="featureFlagsStore.WORKSPACE_BACKUPS" />
 
-    <NavbarButton tooltipText="Profile" class="flex-none">
+    <NavbarButton tooltipText="Profile" class="flex-none py-xs">
       <template #default="{ open, hovered }">
         <div class="flex-row flex text-white items-center">
           <UserIcon
@@ -45,6 +45,7 @@ import { Icon, DropdownMenuItem } from "@si/vue-lib/design-system";
 import { useAuthStore } from "@/store/auth.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import SiArrow from "@/components/SiArrow.vue";
+import { usePresenceStore } from "@/store/presence.store";
 import SiThemeSwitcher from "./NavbarThemeSwitcher.vue";
 import NavbarButton from "./NavbarButton.vue";
 import Collaborators from "./Collaborators.vue";

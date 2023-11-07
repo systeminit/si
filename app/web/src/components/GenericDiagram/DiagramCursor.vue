@@ -1,7 +1,7 @@
 <template>
   <v-group
     :config="{
-      id: `cursor-${props.cursor.userPk}`,
+      id: `cursor-${cursor.userId}`,
       x: props.cursor.x,
       y: props.cursor.y,
     }"
@@ -9,7 +9,7 @@
     <!-- package/type icon -->
     <DiagramIcon
       icon="cursor-array-rays"
-      :color="colorPrefix"
+      :color="cursor.color || colorPrefix"
       :size="40"
       :x="0"
       :y="0"
@@ -19,8 +19,8 @@
       :config="{
         x: 10,
         y: 10,
-        text: props.cursor.userName,
-        fill: colorPrefix,
+        text: cursor.name,
+        fill: cursor.color || colorPrefix,
         fontStyle: 'bold',
       }"
     >
@@ -31,7 +31,7 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import { useTheme } from "@si/vue-lib/design-system";
-import { DiagramCursorDef } from "./diagram_types";
+import { DiagramCursorDef } from "@/store/presence.store";
 import DiagramIcon from "./DiagramIcon.vue";
 
 const props = defineProps<{

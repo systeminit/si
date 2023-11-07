@@ -227,8 +227,8 @@ impl UserClaim {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct CursorPayload {
-    pub x: String,
-    pub y: String,
+    pub x: Option<String>,
+    pub y: Option<String>,
     pub container: Option<String>,
     pub container_key: Option<String>,
     pub user_pk: UserPk,
@@ -238,9 +238,11 @@ pub struct CursorPayload {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct OnlinePayload {
-    pub pk: UserPk,
+    pub user_pk: UserPk,
     pub name: String,
     pub picture_url: Option<String>,
+    pub change_set_pk: Option<ChangeSetPk>,
+    pub idle: bool,
 }
 
 impl WsEvent {

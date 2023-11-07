@@ -2,6 +2,7 @@ import { Vector2d } from "konva/lib/types";
 import { IconNames } from "@si/vue-lib/design-system";
 import { useComponentsStore, ComponentId } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
+import { UserId } from "@/store/auth.store";
 
 export type DiagramConfig = {
   // canNodesConnectToThemselves: boolean;
@@ -165,14 +166,6 @@ export type DiagramStatusIcon = {
   color?: string;
 };
 
-export interface DiagramCursorDef {
-  x: number;
-  y: number;
-  userPk: string;
-  userName: string;
-  timestamp: Date;
-}
-
 export type DiagramNodeDef = {
   /** unique id of the node */
   id: DiagramElementId;
@@ -284,7 +277,7 @@ export type HoverElementEvent = {
 export type MovePointerEvent = {
   x: number;
   y: number;
-};
+} | null;
 
 export type ResizeElementEvent = {
   element: DiagramElementData;

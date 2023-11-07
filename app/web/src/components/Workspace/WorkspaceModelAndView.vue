@@ -23,8 +23,7 @@
 
   <div
     class="grow h-full relative bg-neutral-50 dark:bg-neutral-900"
-    @mouseover="mouseOverDiagram"
-    @mouseout="mouseOutDiagram"
+    @mouseout="presenceStore.clearCursor"
   >
     <!--div
       v-if="!statusStore.globalStatus.isUpdating && isViewMode"
@@ -45,7 +44,7 @@
       :customConfig="diagramCustomConfig"
       :nodes="diagramNodes"
       :edges="diagramEdges"
-      :cursors="cursorStore.cursors"
+      :cursors="presenceStore.diagramCursors"
       @insert-element="onDiagramInsertElement"
       @hover-element="onDiagramHoverElement"
       @move-element="onDiagramMoveElement"
@@ -160,7 +159,7 @@ import {
 import { useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import FixProgressOverlay from "@/components/FixProgressOverlay.vue";
-import { useCursorStore } from "@/store/cursor.store";
+import { usePresenceStore } from "@/store/presence.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
@@ -187,15 +186,10 @@ import NoSelectionDetailsPanel from "../NoSelectionDetailsPanel.vue";
 
 const changeSetStore = useChangeSetsStore();
 const fixesStore = useFixesStore();
-const cursorStore = useCursorStore();
-
-const mouseOverDiagram = () => cursorStore.setContainer("diagram", null);
-const mouseOutDiagram = () => cursorStore.setContainer(null, null);
+const presenceStore = usePresenceStore();
 
 const updatePointer = (pos: MovePointerEvent) => {
-  if (cursorStore.container !== "diagram" || cursorStore.containerKey !== null)
-    return;
-  cursorStore.updateCursor(pos.x, pos.y);
+  presenceStore.updateCursor(pos);
 };
 
 const fixesAreRunning = computed(

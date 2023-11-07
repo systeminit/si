@@ -93,7 +93,7 @@ overflow hidden */
         />
         <DiagramCursor
           v-for="mouseCursor in props.cursors"
-          :key="mouseCursor.userPk"
+          :key="mouseCursor.userId"
           :cursor="mouseCursor"
         />
         <template v-if="displayMode === 'Edges Over'">
@@ -192,6 +192,7 @@ import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/GenericDiagram/DiagramGroup.vue";
 import { useComponentsStore } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/GenericDiagram/DiagramGroupOverlay.vue";
+import { DiagramCursorDef } from "@/store/presence.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DeleteElementsEvent,
@@ -220,7 +221,6 @@ import {
   SideAndCornerIdentifiers,
   ElementHoverMeta,
   MovePointerEvent,
-  DiagramCursorDef,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramCursor from "./DiagramCursor.vue";
@@ -265,8 +265,8 @@ const ZOOM_PAN_FACTOR = 0.5;
 
 const props = defineProps({
   cursors: {
-    type: Object as PropType<Record<string, DiagramCursorDef>>,
-    default: () => ({}),
+    type: Array as PropType<DiagramCursorDef[]>,
+    default: () => [],
   },
   customConfig: {
     type: Object as PropType<DiagramConfig>,
@@ -377,7 +377,8 @@ const gridPointerPos = computed(() => {
 });
 watch(gridPointerPos, (pos) => {
   if (!pos) return;
-  emit("update:pointer", { x: pos.x, y: pos.y });
+  if (pointerIsWithinGrid.value) emit("update:pointer", { x: pos.x, y: pos.y });
+  else emit("update:pointer", null);
 });
 const pointerIsWithinGrid = computed(() => {
   if (!gridPointerPos.value) return false;

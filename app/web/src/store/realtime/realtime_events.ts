@@ -11,7 +11,34 @@ import {
   AttributeValueStatus,
   StatusUpdatePk,
 } from "../status.store";
-import { OnlineUser } from "../cursor.store";
+import { CursorContainerKind } from "../presence.store";
+import { UserId } from "../auth.store";
+
+export type WebsocketRequest = CursorRequest | OnlineRequest;
+
+export interface CursorRequest {
+  kind: "Cursor";
+  data: {
+    userName: string;
+    userPk: UserId;
+    changeSetPk: string | null;
+    container: CursorContainerKind;
+    containerKey: string | null;
+    x: string | null;
+    y: string | null;
+  };
+}
+
+export interface OnlineRequest {
+  kind: "Online";
+  data: {
+    userPk: UserId;
+    name: string;
+    pictureUrl: string | null;
+    idle: boolean;
+    changeSetPk: string | null;
+  };
+}
 
 // TODO: a few of these use the same id objects (ex: componentId)
 // but in a few cases the changeset ID may have been accidentally left out?
@@ -19,8 +46,8 @@ import { OnlineUser } from "../cursor.store";
 
 export type WsEventPayloadMap = {
   Cursor: {
-    x: string;
-    y: string;
+    x: string | null;
+    y: string | null;
     container: string | null;
     containerKey: string | null;
     userPk: string;
@@ -51,7 +78,13 @@ export type WsEventPayloadMap = {
     executionKey: string;
   };
 
-  Online: OnlineUser;
+  Online: {
+    userPk: string;
+    name: string;
+    pictureUrl: string | null;
+    changeSetPk: string | null;
+    idle: boolean;
+  };
 
   // NOT CURRENTLY USED - but leaving here so we remember these events exist
   // SecretCreated: number;
