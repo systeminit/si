@@ -9,7 +9,7 @@ import {
 } from "../function";
 import { RequestCtx } from "../request";
 
-const debug = Debug("langJs:validation");
+const debug = Debug("langJs:before");
 
 export interface BeforeFunc extends Func {
   arg: unknown
