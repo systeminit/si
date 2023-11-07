@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import { Debugger } from "debug";
+import Debug, { Debugger } from "debug";
 import { NodeVM } from "vm2";
 import { base64ToJs } from "./base64";
 import { createNodeVm } from "./vm";
@@ -17,6 +17,9 @@ import schema_variant_definition, {
 } from "./function_kinds/schema_variant_definition";
 import action_run, { ActionRunFunc } from "./function_kinds/action_run";
 import before from "./function_kinds/before";
+import { rawStorageRequest } from "./sandbox/requestStorage";
+
+const debug = Debug("langJs:function");
 
 export enum FunctionKind {
   ActionRun = "actionRun",
@@ -93,6 +96,14 @@ export async function executeFunction(kind: FunctionKind, request: Request) {
 
   for (const beforeFunction of request.before || []) {
     await executor(ctx, beforeFunction, FunctionKind.Before, before);
+  }
+
+  // Set process environment variables, set from requestStorage
+  {
+    const requestStorageEnv = rawStorageRequest().env();
+    for (const key in requestStorageEnv) {
+      process.env[key] = requestStorageEnv[key];
+    }
   }
 
   // TODO Create Func types instead of casting request objs
