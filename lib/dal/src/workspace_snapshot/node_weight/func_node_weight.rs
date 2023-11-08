@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
+use crate::FuncBackendKind;
 use crate::{
     change_set_pointer::ChangeSetPointer,
     workspace_snapshot::{
@@ -24,6 +25,7 @@ pub struct FuncNodeWeight {
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
     name: String,
+    backend_kind: FuncBackendKind,
 }
 
 impl FuncNodeWeight {
@@ -32,6 +34,7 @@ impl FuncNodeWeight {
         id: Ulid,
         content_address: ContentAddress,
         name: String,
+        backend_kind: FuncBackendKind,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
@@ -39,6 +42,7 @@ impl FuncNodeWeight {
             content_address,
             merkle_tree_hash: ContentHash::default(),
             name,
+            backend_kind,
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
@@ -108,6 +112,20 @@ impl FuncNodeWeight {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn set_name(&mut self, name: impl Into<String>) -> &mut Self {
+        self.name = name.into();
+        self
+    }
+
+    pub fn backend_kind(&self) -> FuncBackendKind {
+        self.backend_kind
+    }
+
+    pub fn set_backend_kind(&mut self, backend_kind: FuncBackendKind) -> &mut Self {
+        self.backend_kind = backend_kind;
+        self
     }
 
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
@@ -218,6 +236,7 @@ impl FuncNodeWeight {
         ContentHash::from(&serde_json::json![{
             "content_address": self.content_address,
             "name": self.name,
+            "backend_kind": self.backend_kind,
         }])
     }
 
@@ -253,6 +272,7 @@ impl std::fmt::Debug for FuncNodeWeight {
             .field("id", &self.id().to_string())
             .field("lineage_id", &self.lineage_id.to_string())
             .field("name", &self.name)
+            .field("backend_kind", &self.backend_kind)
             .field("content_hash", &self.content_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .field("vector_clock_first_seen", &self.vector_clock_first_seen)

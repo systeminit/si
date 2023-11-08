@@ -1,10 +1,12 @@
 use chrono::{DateTime, Utc};
 use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 use thiserror::Error;
 use ulid::Ulid;
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
+use crate::FuncBackendKind;
 
 use crate::{
     change_set_pointer::{ChangeSetPointer, ChangeSetPointerError},
@@ -43,13 +45,16 @@ pub enum NodeWeightError {
     IncompatibleNodeWeightVariants,
     #[error("Invalid ContentAddress variant ({0}) for NodeWeight variant ({1})")]
     InvalidContentAddressForWeightKind(String, String),
+    #[error("Unexpected node weight variant: {0} expected {1}")]
+    UnexpectedNodeWeightVariant(NodeWeightDiscriminants, NodeWeightDiscriminants),
     #[error("Vector Clock error: {0}")]
     VectorClock(#[from] VectorClockError),
 }
 
 pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, EnumDiscriminants)]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 pub enum NodeWeight {
     Category(CategoryNodeWeight),
     Content(ContentNodeWeight),
@@ -280,6 +285,16 @@ impl NodeWeight {
         }
     }
 
+    pub fn get_func_node_weight(&self) -> NodeWeightResult<FuncNodeWeight> {
+        match self {
+            NodeWeight::Func(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::Func,
+                other.into(),
+            )),
+        }
+    }
+
     // NOTE(nick): individual node weight funcs below.
 
     pub fn new_content(
@@ -312,6 +327,7 @@ impl NodeWeight {
         change_set: &ChangeSetPointer,
         func_id: Ulid,
         name: impl AsRef<str>,
+        backend_kind: FuncBackendKind,
         content_hash: ContentHash,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Func(FuncNodeWeight::new(
@@ -319,6 +335,7 @@ impl NodeWeight {
             func_id,
             ContentAddress::Func(content_hash),
             name.as_ref().to_string(),
+            backend_kind,
         )?))
     }
 }

@@ -7,6 +7,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::workspace_snapshot::content_address::ContentAddress;
+use crate::workspace_snapshot::node_weight::FuncNodeWeight;
 use crate::{pk, StandardModel, Timestamp};
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -51,26 +52,26 @@ pub struct Func {
     pub backend_response_type: FuncBackendResponseType,
     pub handler: Option<String>,
     pub code_base64: Option<String>,
-    pub code_sha256: String,
+    pub code_blake3: ContentHash,
 }
 
 impl Func {
-    pub fn assemble(id: FuncId, inner: &FuncContentV1) -> Self {
-        let inner = inner.to_owned();
+    pub fn assemble(node_weight: &FuncNodeWeight, content: &FuncContentV1) -> Self {
+        let content = content.to_owned();
         Self {
-            id,
-            timestamp: inner.timestamp,
-            name: inner.name,
-            display_name: inner.display_name,
-            description: inner.description,
-            link: inner.link,
-            hidden: inner.hidden,
-            builtin: inner.builtin,
-            backend_kind: inner.backend_kind,
-            backend_response_type: inner.backend_response_type,
-            handler: inner.handler,
-            code_base64: inner.code_base64,
-            code_sha256: inner.code_sha256,
+            id: node_weight.id().into(),
+            timestamp: content.timestamp,
+            name: node_weight.name().to_owned(),
+            display_name: content.display_name,
+            description: content.description,
+            link: content.link,
+            hidden: content.hidden,
+            builtin: content.builtin,
+            backend_kind: node_weight.backend_kind(),
+            backend_response_type: content.backend_response_type,
+            handler: content.handler,
+            code_base64: content.code_base64,
+            code_blake3: content.code_blake3,
         }
     }
 }
@@ -79,17 +80,15 @@ impl From<Func> for FuncContentV1 {
     fn from(value: Func) -> Self {
         Self {
             timestamp: value.timestamp,
-            name: value.name,
             display_name: value.display_name,
             description: value.description,
             link: value.link,
             hidden: value.hidden,
             builtin: value.builtin,
-            backend_kind: value.backend_kind,
             backend_response_type: value.backend_response_type,
             handler: value.handler,
             code_base64: value.code_base64,
-            code_sha256: value.code_sha256,
+            code_blake3: value.code_blake3,
         }
     }
 }
@@ -112,17 +111,16 @@ pub enum FuncContent {
 pub struct FuncContentV1 {
     #[serde(flatten)]
     pub timestamp: Timestamp,
-    pub name: String,
     pub display_name: Option<String>,
     pub description: Option<String>,
     pub link: Option<String>,
     pub hidden: bool,
     pub builtin: bool,
-    pub backend_kind: FuncBackendKind,
     pub backend_response_type: FuncBackendResponseType,
     pub handler: Option<String>,
     pub code_base64: Option<String>,
-    pub code_sha256: String,
+    /// A hash of the code above
+    pub code_blake3: ContentHash,
 }
 
 impl FuncGraphNode {

@@ -1459,6 +1459,7 @@ pub async fn import_pkg_from_pkg(
             )
             .await?;
 
+            /*
             dbg!(ctx
                 .workspace_snapshot()?
                 .lock()
@@ -1467,6 +1468,7 @@ pub async fn import_pkg_from_pkg(
                 .await
                 .expect("should get list funcs")
                 .len());
+            */
 
             Ok((installed_pkg_id, installed_schema_variant_ids, None))
         }
@@ -1566,6 +1568,7 @@ async fn create_func(
     ctx: &DalContext,
     workspace_snapshot: &mut WorkspaceSnapshot,
     func_spec: &SiPkgFunc<'_>,
+    is_builtin: bool,
 ) -> PkgResult<Func> {
     let name = func_spec.name();
 
@@ -1578,8 +1581,17 @@ async fn create_func(
         .func_create(
             ctx,
             name,
+            func_spec_data
+                .display_name()
+                .map(|display_name| display_name.to_owned()),
+            func_spec_data.description().map(|desc| desc.to_owned()),
+            func_spec_data.link().map(|l| l.to_string()),
+            func_spec_data.hidden(),
+            is_builtin,
             func_spec_data.backend_kind().into(),
             func_spec_data.response_type().into(),
+            Some(func_spec_data.handler().to_owned()),
+            Some(func_spec_data.code_base64().to_owned()),
         )
         .await?;
 
@@ -1651,12 +1663,11 @@ async fn import_func(
                         (workspace_snapshot.func_get_by_id(ctx, id).await?, false)
                     }
                 },
-                None => (create_func(ctx, workspace_snapshot, func_spec).await?, true),
+                None => (
+                    create_func(ctx, workspace_snapshot, func_spec, is_builtin).await?,
+                    true,
+                ),
             };
-
-            if is_builtin {
-                // func.set_builtin(ctx, true).await?
-            }
 
             if let Some(installed_pkg_id) = installed_pkg_id {
                 InstalledPkgAsset::new(

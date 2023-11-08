@@ -12,42 +12,47 @@ use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::NodeWeight;
+use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight};
 use crate::workspace_snapshot::{WorkspaceSnapshotError, WorkspaceSnapshotResult};
 use crate::{
     DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncId, Timestamp,
     WorkspaceSnapshot,
 };
 
-// TODO(nick,jacob): when "updating content" to set the code, we need to do something like the following:
-// code_base64 text,
-// code_sha256 text GENERATED ALWAYS AS (COALESCE(ENCODE(DIGEST(code_base64, 'sha256'), 'hex'), '0')) STORE
-
 impl WorkspaceSnapshot {
     pub async fn func_create(
         &mut self,
         ctx: &DalContext,
         name: impl AsRef<str>,
+        display_name: Option<impl AsRef<str>>,
+        description: Option<impl AsRef<str>>,
+        link: Option<impl AsRef<str>>,
+        hidden: bool,
+        builtin: bool,
         backend_kind: FuncBackendKind,
         backend_response_type: FuncBackendResponseType,
+        handler: Option<impl AsRef<str>>,
+        code_base64: Option<impl AsRef<str>>,
     ) -> WorkspaceSnapshotResult<Func> {
         let name = name.as_ref().to_string();
         let timestamp = Timestamp::now();
         let _finalized_once = false;
 
+        let code_base64 = code_base64.map(|c| c.as_ref().to_string());
+
+        let code_blake3 = ContentHash::new(code_base64.as_deref().unwrap_or("").as_bytes());
+
         let content = FuncContentV1 {
             timestamp,
-            name: name.clone(),
-            display_name: None,
-            description: None,
-            link: None,
-            hidden: false,
-            builtin: false,
-            backend_kind,
+            display_name: display_name.map(|d| d.as_ref().to_string()),
+            description: description.map(|d| d.as_ref().to_string()),
+            link: link.map(|l| l.as_ref().to_string()),
+            hidden,
+            builtin,
             backend_response_type,
-            handler: None,
-            code_base64: None,
-            code_sha256: "".to_string(),
+            handler: handler.map(|h| h.as_ref().to_string()),
+            code_base64,
+            code_blake3,
         };
 
         let hash = ctx
@@ -58,8 +63,8 @@ impl WorkspaceSnapshot {
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_func(change_set, id, name.clone(), hash)?;
-        let node_index = self.working_copy()?.add_node(node_weight)?;
+        let node_weight = NodeWeight::new_func(change_set, id, name.clone(), backend_kind, hash)?;
+        let node_index = self.working_copy()?.add_node(node_weight.clone())?;
 
         let (_, func_category_index) = self.working_copy()?.get_category(CategoryNodeKind::Func)?;
         self.working_copy()?.add_edge(
@@ -68,14 +73,20 @@ impl WorkspaceSnapshot {
             node_index,
         )?;
 
-        Ok(Func::assemble(id.into(), &content))
+        match node_weight {
+            NodeWeight::Func(func_node_weight) => Ok(Func::assemble(&func_node_weight, &content)),
+            _ => Err(WorkspaceSnapshotError::NodeWeightMismatch(
+                node_index,
+                "FuncNodeWeight".into(),
+            )),
+        }
     }
 
-    pub async fn func_get_content(
+    pub async fn func_get_node_weight_and_content(
         &mut self,
         ctx: &DalContext,
         func_id: FuncId,
-    ) -> WorkspaceSnapshotResult<(ContentHash, FuncContentV1)> {
+    ) -> WorkspaceSnapshotResult<(FuncNodeWeight, FuncContentV1)> {
         let id: Ulid = func_id.into();
         let node_index = self.working_copy()?.get_node_index_by_id(id)?;
         let node_weight = self.working_copy()?.get_node_weight(node_index)?;
@@ -92,7 +103,9 @@ impl WorkspaceSnapshot {
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let FuncContent::V1(inner) = content;
 
-        Ok((hash, inner))
+        let func_node_weight = node_weight.get_func_node_weight()?;
+
+        Ok((func_node_weight, inner))
     }
 
     pub async fn func_get_by_id(
@@ -100,9 +113,9 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
         func_id: FuncId,
     ) -> WorkspaceSnapshotResult<Func> {
-        let (_, content) = self.func_get_content(ctx, func_id).await?;
+        let (node_weight, content) = self.func_get_node_weight_and_content(ctx, func_id).await?;
 
-        Ok(Func::assemble(func_id, &content))
+        Ok(Func::assemble(&node_weight, &content))
     }
 
     pub fn func_find_intrinsic(
@@ -128,16 +141,12 @@ impl WorkspaceSnapshot {
         )?;
 
         for index in func_node_indexes {
-            if let NodeWeight::Func(func_inner) = self.get_node_weight(index)? {
-                let func_id: FuncId = func_inner.id().into();
+            let func_node_weight = self.get_node_weight(index)?.get_func_node_weight()?;
+            let func_id: FuncId = func_node_weight.id().into();
 
-                let func = self.func_get_by_id(ctx, func_id).await?;
-                funcs.push(func);
-            } else {
-                panic!("not a func node weight???");
-            }
+            let func = self.func_get_by_id(ctx, func_id).await?;
+            funcs.push(func);
         }
-        //        dbg!(start.elapsed());
 
         Ok(funcs)
     }
@@ -164,21 +173,43 @@ impl WorkspaceSnapshot {
     where
         L: FnOnce(&mut Func) -> WorkspaceSnapshotResult<()>,
     {
-        let (_, inner) = self.func_get_content(ctx, id).await?;
+        let (mut node_weight, content) = self.func_get_node_weight_and_content(ctx, id).await?;
+        let mut func = Func::assemble(&node_weight, &content);
 
-        let mut func = Func::assemble(id, &inner);
         lambda(&mut func)?;
-        let updated = FuncContentV1::from(func);
 
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&FuncContent::V1(updated.clone()))?;
+        // If both either the name or backend_kind have changed, *and* parts of the FuncContent
+        // have changed, this ends up updating the node for the function twice. This could be
+        // optimized to do it only once.
+        if func.name.as_str() != node_weight.name()
+            || func.backend_kind != node_weight.backend_kind()
+        {
+            let original_node_index = self.working_copy()?.get_node_index_by_id(id.into())?;
 
-        self.working_copy()?
-            .update_content(ctx.change_set_pointer()?, id.into(), hash)?;
+            node_weight
+                .set_name(func.name.as_str())
+                .set_backend_kind(func.backend_kind);
 
-        Ok(Func::assemble(id, &updated))
+            let new_node_index = self
+                .working_copy()?
+                .add_node(NodeWeight::Func(node_weight.clone()))?;
+
+            self.working_copy()?
+                .replace_references(original_node_index, new_node_index)?;
+        }
+
+        let updated = FuncContentV1::from(func.clone());
+        if updated != content {
+            let hash = ctx
+                .content_store()
+                .lock()
+                .await
+                .add(&FuncContent::V1(updated.clone()))?;
+
+            self.working_copy()?
+                .update_content(ctx.change_set_pointer()?, id.into(), hash)?;
+        }
+
+        Ok(Func::assemble(&node_weight, &updated))
     }
 }
