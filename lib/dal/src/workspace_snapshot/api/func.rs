@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use content_store::{ContentHash, Store};
+use std::collections::HashMap;
 
 use ulid::Ulid;
 
@@ -140,12 +141,33 @@ impl WorkspaceSnapshot {
             EdgeWeightKindDiscriminants::Use,
         )?;
 
+        let mut func_node_weights = vec![];
+        let mut func_content_hash = vec![];
         for index in func_node_indexes {
-            let func_node_weight = self.get_node_weight(index)?.get_func_node_weight()?;
-            let func_id: FuncId = func_node_weight.id().into();
+            let node_weight = self.get_node_weight(index)?.get_func_node_weight()?;
+            func_content_hash.push(node_weight.content_hash());
+            func_node_weights.push(node_weight);
+        }
 
-            let func = self.func_get_by_id(ctx, func_id).await?;
-            funcs.push(func);
+        let func_contents: HashMap<ContentHash, FuncContent> = ctx
+            .content_store()
+            .lock()
+            .await
+            .get_bulk(func_content_hash.as_slice())
+            .await?;
+
+        for node_weight in func_node_weights {
+            match func_contents.get(&node_weight.content_hash()) {
+                Some(func_content) => {
+                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+                    let FuncContent::V1(inner) = func_content;
+
+                    funcs.push(Func::assemble(&node_weight, inner));
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
+            }
         }
 
         Ok(funcs)

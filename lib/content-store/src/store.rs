@@ -2,6 +2,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use si_cbor::CborError;
 use si_data_pg::{PgError, PgPoolError};
+use std::collections::HashMap;
 use thiserror::Error;
 
 use crate::hash::ContentHash;
@@ -49,6 +50,12 @@ pub trait Store {
     async fn get<T>(&mut self, key: &ContentHash) -> StoreResult<Option<T>>
     where
         T: DeserializeOwned;
+
+    /// Gets multiple items from the store
+    ///
+    async fn get_bulk<T>(&mut self, keys: &[ContentHash]) -> StoreResult<HashMap<ContentHash, T>>
+    where
+        T: DeserializeOwned + std::marker::Send;
 
     /// Writes out content in the store to a persistent storage layer, if applicable.
     async fn write(&mut self) -> StoreResult<()>;

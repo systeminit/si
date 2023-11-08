@@ -1,12 +1,15 @@
-use crate::hash::ContentHash;
+use crate::hash::{ContentHash, ContentHashParseError};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgPool, PgPoolError, PgRow};
+use std::str::FromStr;
 use thiserror::Error;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ContentPairError {
+    #[error("content hash parse error: {0}")]
+    ContentHashParse(#[from] ContentHashParseError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("pg pool error: {0}")]
@@ -40,6 +43,10 @@ impl TryFrom<PgRow> for ContentPair {
 impl ContentPair {
     pub(crate) fn value(&self) -> &[u8] {
         &self.value
+    }
+
+    pub(crate) fn key(&self) -> ContentPairResult<ContentHash> {
+        Ok(ContentHash::from_str(self.key.as_str())?)
     }
 
     pub(crate) async fn find_or_create(
@@ -78,5 +85,30 @@ impl ContentPair {
             Some(row) => Ok(Some(Self::try_from(row)?)),
             None => Ok(None),
         }
+    }
+
+    pub(crate) async fn find_many(
+        pg_pool: &PgPool,
+        keys: &[ContentHash],
+    ) -> ContentPairResult<Vec<Self>> {
+        let mut result = vec![];
+        let client = pg_pool.get().await?;
+
+        let key_strings: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
+        let key_string_refs: Vec<&String> = key_strings.iter().collect();
+
+        let rows = client
+            .query(
+                "SELECT * FROM content_pairs WHERE key = any($1)",
+                &[&key_string_refs],
+            )
+            .await?;
+
+        for row in rows {
+            let pair = Self::try_from(row)?;
+            result.push(pair);
+        }
+
+        Ok(result)
     }
 }

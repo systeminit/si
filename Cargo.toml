@@ -168,6 +168,7 @@ tokio-postgres = { version = "0.7.8", features = [
     "runtime",
     "with-chrono-0_4",
     "with-serde_json-1",
+    "array-impls"
 ] }
 tokio-serde = { version = "0.8.0", features = ["json"] }
 tokio-stream = "0.1.14"

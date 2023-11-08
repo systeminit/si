@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use super::{FuncError, FuncResult, FuncVariant};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
@@ -37,6 +39,7 @@ pub async fn list_funcs(
 
     //ctx.workspace_snapshot()?.lock().await.dot();
 
+    let start = Instant::now();
     let funcs = ctx
         .workspace_snapshot()?
         .lock()
@@ -44,7 +47,7 @@ pub async fn list_funcs(
         .list_funcs(&ctx)
         .await?;
 
-    dbg!(&funcs);
+    dbg!(start.elapsed());
 
     let customizable_backend_kinds = [
         FuncBackendKind::JsAction,
@@ -73,7 +76,7 @@ pub async fn list_funcs(
         })
         .collect();
 
-    dbg!(&try_func_views);
+    dbg!(start.elapsed());
 
     let mut funcs = vec![];
     for func_view in try_func_views {
@@ -82,6 +85,8 @@ pub async fn list_funcs(
             Err(err) => Err(err)?,
         }
     }
+
+    dbg!(start.elapsed());
 
     Ok(Json(ListFuncsResponse { funcs }))
 }

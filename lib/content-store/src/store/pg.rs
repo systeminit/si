@@ -81,13 +81,40 @@ impl Store for PgStore {
             None => match ContentPair::find(&self.pg_pool, key).await? {
                 Some(content_pair) => {
                     let encoded = content_pair.value();
+                    let decoded = si_cbor::decode(encoded)?;
                     self.add(encoded)?;
-                    si_cbor::decode(encoded)?
+
+                    decoded
                 }
                 None => return Ok(None),
             },
         };
         Ok(Some(object))
+    }
+
+    async fn get_bulk<T>(&mut self, keys: &[ContentHash]) -> StoreResult<HashMap<ContentHash, T>>
+    where
+        T: DeserializeOwned + std::marker::Send,
+    {
+        let mut result = HashMap::new();
+        let mut keys_to_fetch = vec![];
+
+        for key in keys {
+            match self.inner.get(key) {
+                Some(item) => {
+                    result.insert(*key, si_cbor::decode(&item.value)?);
+                }
+                None => keys_to_fetch.push(*key),
+            }
+        }
+
+        for pair in ContentPair::find_many(&self.pg_pool, keys_to_fetch.as_slice()).await? {
+            let encoded = pair.value();
+            result.insert(pair.key()?, si_cbor::decode(encoded)?);
+            self.add(encoded)?;
+        }
+
+        Ok(result)
     }
 
     async fn write(&mut self) -> StoreResult<()> {
