@@ -4,11 +4,8 @@ use si_pkg::ActionFuncSpecKind;
 use std::default::Default;
 use strum::{AsRefStr, Display, EnumDiscriminants};
 
-use si_pkg::ActionFuncSpecKind;
-use telemetry::prelude::*;
-
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{pk, SchemaVariantId, StandardModel, Timestamp};
+use crate::{pk, SchemaVariantId, Timestamp};
 
 // const FIND_FOR_CONTEXT: &str = include_str!("./queries/action_prototype/find_for_context.sql");
 // const FIND_FOR_CONTEXT_AND_KIND: &str =
@@ -17,13 +14,13 @@ use crate::{pk, SchemaVariantId, StandardModel, Timestamp};
 // const FIND_FOR_CONTEXT_AND_FUNC: &str =
 //     include_str!("./queries/action_prototype/find_for_context_and_func.sql");
 
-// #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct ActionPrototypeView {
-//     id: ActionPrototypeId,
-//     name: String,
-//     display_name: Option<String>,
-// }
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ActionPrototypeView {
+    id: ActionPrototypeId,
+    name: String,
+    display_name: Option<String>,
+}
 
 // impl ActionPrototypeView {
 //     pub async fn new(

@@ -1,9 +1,22 @@
-use std::time::Duration;
-use std::{io, net::SocketAddr, path::Path, path::PathBuf};
-
 use axum::routing::IntoMakeService;
 use axum::Router;
+use dal::{
+    builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
+    Workspace, WorkspaceError,
+};
+use dal::{cyclone_key_pair::CycloneKeyPairError, ServicesContext};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
+use module_index_client::types::BuiltinsDetailsResponse;
+use module_index_client::{IndexClient, ModuleDetailsResponse};
+use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig};
+use si_data_nats::{NatsClient, NatsConfig, NatsError};
+use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
+use si_pkg::{SiPkg, SiPkgError};
+use si_posthog::{PosthogClient, PosthogConfig};
+use si_std::SensitiveString;
+use std::time::Duration;
+use std::{io, net::SocketAddr, path::Path, path::PathBuf};
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::Instant;
 use tokio::{
@@ -15,29 +28,11 @@ use tokio::{
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use ulid::Ulid;
-
-use dal::ServicesContext;
-use dal::{
-    builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
-    Workspace, WorkspaceError,
-};
-use module_index_client::types::BuiltinsDetailsResponse;
-use module_index_client::{IndexClient, ModuleDetailsResponse};
-use si_crypto::{
-    CycloneKeyPairError, SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig,
-};
-use si_data_nats::{NatsClient, NatsConfig, NatsError};
-use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
-use si_pkg::{SiPkg, SiPkgError};
-use si_posthog::{PosthogClient, PosthogConfig};
-use si_std::SensitiveString;
-use telemetry::prelude::*;
-use veritech_client::{Client as VeritechClient, CycloneEncryptionKey, CycloneEncryptionKeyError};
-
-use crate::server::config::CycloneKeyPair;
+use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyError};
 
 use super::state::AppState;
 use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
+use crate::server::config::CycloneKeyPair;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -396,20 +391,10 @@ async fn install_builtins(
             }
         }
     }
-
     dal.commit().await?;
 
     let mut ctx = ctx.clone();
     ctx.update_snapshot_to_visibility().await?;
-    dbg!(ctx
-        .workspace_snapshot()
-        .expect("wsnapshot")
-        .lock()
-        .await
-        .list_funcs(&ctx)
-        .await
-        .expect("list funcs")
-        .len());
 
     Ok(())
 }

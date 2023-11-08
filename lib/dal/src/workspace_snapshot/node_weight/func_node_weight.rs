@@ -3,7 +3,9 @@ use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
+use crate::FuncBackendKind;
 use crate::{
     change_set_pointer::ChangeSetPointer,
     workspace_snapshot::{
@@ -24,6 +26,7 @@ pub struct FuncNodeWeight {
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
     name: String,
+    backend_kind: FuncBackendKind,
 }
 
 impl FuncNodeWeight {
@@ -32,6 +35,7 @@ impl FuncNodeWeight {
         id: Ulid,
         content_address: ContentAddress,
         name: String,
+        backend_kind: FuncBackendKind,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
@@ -39,6 +43,7 @@ impl FuncNodeWeight {
             content_address,
             merkle_tree_hash: ContentHash::default(),
             name,
+            backend_kind,
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
@@ -110,91 +115,27 @@ impl FuncNodeWeight {
         &self.name
     }
 
+    pub fn set_name(&mut self, name: impl Into<String>) -> &mut Self {
+        self.name = name.into();
+        self
+    }
+
+    pub fn backend_kind(&self) -> FuncBackendKind {
+        self.backend_kind
+    }
+
+    pub fn set_backend_kind(&mut self, backend_kind: FuncBackendKind) -> &mut Self {
+        self.backend_kind = backend_kind;
+        self
+    }
+
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
         let new_address = match &self.content_address {
-            ContentAddress::ActionPrototype(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "ActionPrototype".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::AttributePrototype(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "AttributePrototype".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::AttributeValue(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "AttributeValue".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::Component(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Component".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::ExternalProvider(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "ExternalProvider".to_string(),
-                    "Func".to_string(),
-                ));
-            }
             ContentAddress::Func(_) => ContentAddress::Func(content_hash),
-            ContentAddress::FuncArg(_) => {
+            other => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "FuncArc".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::InternalProvider(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "InternalProvider".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::Node(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Node".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::Prop(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Prop".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::Root => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Root".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::Schema(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Schema".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::SchemaVariant(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "SchemaVariant".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::Socket(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Socket".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::ValidationPrototype(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "ValidationPrototype".to_string(),
-                    "Func".to_string(),
+                    Into::<ContentAddressDiscriminants>::into(other).to_string(),
+                    ContentAddressDiscriminants::Func.to_string(),
                 ));
             }
         };
@@ -218,6 +159,7 @@ impl FuncNodeWeight {
         ContentHash::from(&serde_json::json![{
             "content_address": self.content_address,
             "name": self.name,
+            "backend_kind": self.backend_kind,
         }])
     }
 
@@ -253,6 +195,7 @@ impl std::fmt::Debug for FuncNodeWeight {
             .field("id", &self.id().to_string())
             .field("lineage_id", &self.lineage_id.to_string())
             .field("name", &self.name)
+            .field("backend_kind", &self.backend_kind)
             .field("content_hash", &self.content_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .field("vector_clock_first_seen", &self.vector_clock_first_seen)

@@ -10,8 +10,8 @@ use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeS
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, standard_model, standard_model_accessor_ro, ChangeSetPk, DalContext, HistoryActor,
-    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, StandardModelError, Tenancy, Timestamp,
-    TransactionsError, User, UserError, UserPk, Visibility, WorkspaceSnapshot,
+    HistoryEvent, HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, UserError, Visibility, WorkspaceSnapshot,
 };
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
@@ -94,13 +94,13 @@ impl Workspace {
         // If not, create the builtin workspace with a corresponding base change set and initial
         // workspace snapshot.
         let name = "builtin";
-
         let mut change_set = ChangeSetPointer::new_head(ctx).await?;
         let workspace_snapshot = WorkspaceSnapshot::initial(ctx, &change_set).await?;
         change_set
             .update_pointer(ctx, workspace_snapshot.id())
             .await?;
         let change_set_id = change_set.id;
+
         let head_pk = WorkspaceId::NONE;
 
         let row = ctx
@@ -112,7 +112,12 @@ impl Workspace {
                 &[&head_pk, &name, &change_set_id],
             )
             .await?;
-        Self::try_from(row)
+
+        let workspace = Self::try_from(row)?;
+
+        change_set.update_workspace_id(ctx, *workspace.pk()).await?;
+
+        Ok(workspace)
     }
 
     /// This private method attempts to find the builtin [`Workspace`].
@@ -177,7 +182,7 @@ impl Workspace {
         // Point to the snapshot that the builtin's default change set is pointing to.
         let mut change_set =
             ChangeSetPointer::new(ctx, "HEAD", Some(builtin.default_change_set_id)).await?;
-        let mut workspace_snapshot =
+        let workspace_snapshot =
             WorkspaceSnapshot::find_for_change_set(ctx, builtin.default_change_set_id).await?;
         change_set
             .update_pointer(ctx, workspace_snapshot.id())
@@ -195,6 +200,10 @@ impl Workspace {
             )
             .await?;
         let new_workspace = Self::try_from(row)?;
+
+        change_set
+            .update_workspace_id(ctx, *new_workspace.pk())
+            .await?;
 
         ctx.update_tenancy(Tenancy::new(new_workspace.pk));
 

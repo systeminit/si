@@ -196,7 +196,7 @@ async function onCreateChangeSet() {
   );
   if (createReq.result.success) {
     // reusing above to navigate to new change set... will probably clean this all up later
-    onSelectChangeSet(createReq.result.data.changeSet.pk);
+    onSelectChangeSet(createReq.result.data.changeSet.id);
   }
 }
 

@@ -6,7 +6,7 @@ pub mod func;
 // pub mod pkg;
 // pub mod provider;
 // pub mod qualification;
-// pub mod schema;
+pub mod schema;
 // pub mod secret;
 pub mod session;
 // pub mod status;

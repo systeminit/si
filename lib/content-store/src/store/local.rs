@@ -3,6 +3,7 @@ use crate::store::{Store, StoreResult};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
+use telemetry::prelude::*;
 
 /// A kind of content store that operates entirely in memory.
 #[derive(Default, Debug)]
@@ -37,6 +38,29 @@ impl Store for LocalStore {
             None => None,
         };
         Ok(maybe_object)
+    }
+
+    async fn get_bulk<T>(&mut self, keys: &[ContentHash]) -> StoreResult<HashMap<ContentHash, T>>
+    where
+        T: DeserializeOwned + std::marker::Send,
+    {
+        Ok(keys
+            .iter()
+            .filter_map(|key| match self.0.get(key) {
+                None => None,
+                Some(item) => match serde_json::from_slice(item) {
+                    Ok(deserialized) => Some((key.to_owned(), deserialized)),
+                    Err(err) => {
+                        error!(
+                            "Could not deserialize item {} in content store: {}",
+                            key,
+                            err.to_string()
+                        );
+                        None
+                    }
+                },
+            })
+            .collect())
     }
 
     /// This a "no-op" for the [`LocalStore`] since everything is handled in memory.

@@ -1,19 +1,46 @@
-use content_store::ContentHash;
+use content_store::Store;
 use serde::{Deserialize, Serialize};
-
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
+use thiserror::Error;
 
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::func::backend::validation::FuncBackendValidationArgs;
+use crate::func::intrinsics::IntrinsicFunc;
+use crate::func::FuncError;
+use crate::validation::Validation;
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{func::FuncId, pk, StandardModel, Timestamp};
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{func::FuncId, pk, DalContext, Func, PropId, Timestamp, TransactionsError};
 
 // pub mod context;
 
-// const LIST_FOR_PROP: &str = include_str!("../queries/validation_prototype/list_for_prop.sql");
-// const LIST_FOR_SCHEMA_VARIANT: &str =
-//     include_str!("../queries/validation_prototype/list_for_schema_variant.sql");
-// const LIST_FOR_FUNC: &str = include_str!("../queries/validation_prototype/list_for_func.sql");
-// const FIND_FOR_CONTEXT: &str = include_str!("../queries/validation_prototype/find_for_context.sql");
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum ValidationPrototypeError {
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("store error: {0}")]
+    Store(#[from] content_store::StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+pub type ValidationPrototypeResult<T> = Result<T, ValidationPrototypeError>;
 
 pk!(ValidationPrototypeId);
 
@@ -29,39 +56,71 @@ pub struct ValidationPrototype {
     link: Option<String>,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct ValidationPrototypeGraphNode {
-    id: ValidationPrototypeId,
-    content_address: ContentAddress,
-    content: ValidationPrototypeContentV1,
-}
-
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
 pub enum ValidationPrototypeContent {
     V1(ValidationPrototypeContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ValidationPrototypeContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
     pub func_id: FuncId,
     pub args: serde_json::Value,
     pub link: Option<String>,
 }
 
-impl ValidationPrototypeGraphNode {
-    pub fn assemble(
-        id: impl Into<ValidationPrototypeId>,
-        content_hash: ContentHash,
-        content: ValidationPrototypeContentV1,
-    ) -> Self {
+impl ValidationPrototype {
+    pub fn assemble(id: ValidationPrototypeId, inner: ValidationPrototypeContentV1) -> Self {
         Self {
-            id: id.into(),
-            content_address: ContentAddress::ValidationPrototype(content_hash),
-            content,
+            id,
+            timestamp: inner.timestamp,
+            func_id: inner.func_id,
+            args: inner.args,
+            link: inner.link,
         }
+    }
+
+    pub fn new(
+        ctx: &DalContext,
+        func_id: FuncId,
+        args: serde_json::Value,
+        parent_prop_id: PropId,
+    ) -> ValidationPrototypeResult<Self> {
+        let content = ValidationPrototypeContentV1 {
+            timestamp: Timestamp::now(),
+            func_id,
+            args,
+            link: None,
+        };
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&ValidationPrototypeContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight =
+            NodeWeight::new_content(change_set, id, ContentAddress::ValidationPrototype(hash))?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let _node_index = workspace_snapshot.add_node(node_weight)?;
+
+        workspace_snapshot.add_edge(
+            parent_prop_id.into(),
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            id,
+        )?;
+
+        Ok(Self::assemble(id.into(), content))
+    }
+
+    pub fn new_intrinsic(
+        ctx: &DalContext,
+        validation: Validation,
+        parent_prop_id: PropId,
+    ) -> ValidationPrototypeResult<Self> {
+        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Validation)?;
+        let args = serde_json::to_value(FuncBackendValidationArgs::new(validation))?;
+        Self::new(ctx, func_id, args, parent_prop_id)
     }
 }
 

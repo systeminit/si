@@ -1,8 +1,10 @@
-use super::{FuncError, FuncResult, FuncVariant};
-use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::{Func, FuncBackendKind, FuncId, StandardModel, Visibility};
+use dal::{Func, FuncBackendKind, FuncId, Visibility};
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
+
+use super::{FuncResult, FuncVariant};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,18 +35,15 @@ pub async fn list_funcs(
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListFuncsRequest>,
 ) -> FuncResult<Json<ListFuncsResponse>> {
+    let start = tokio::time::Instant::now();
+
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    //ctx.workspace_snapshot()?.lock().await.dot();
+    info!("after context build: {:?}", start.elapsed());
 
-    let funcs = ctx
-        .workspace_snapshot()?
-        .lock()
-        .await
-        .list_funcs(&ctx)
-        .await?;
+    let funcs = Func::list(&ctx).await?;
 
-    dbg!(&funcs);
+    info!("after content store fetch: {:?}", start.elapsed());
 
     let customizable_backend_kinds = [
         FuncBackendKind::JsAction,
@@ -56,9 +55,9 @@ pub async fn list_funcs(
         .iter()
         .filter(|f| {
             if f.hidden {
-                return false;
+                false
             } else {
-                return customizable_backend_kinds.contains(&f.backend_kind);
+                customizable_backend_kinds.contains(&f.backend_kind)
             }
         })
         .map(|func| {
@@ -73,8 +72,6 @@ pub async fn list_funcs(
         })
         .collect();
 
-    dbg!(&try_func_views);
-
     let mut funcs = vec![];
     for func_view in try_func_views {
         match func_view {
@@ -82,6 +79,10 @@ pub async fn list_funcs(
             Err(err) => Err(err)?,
         }
     }
+
+    funcs.sort_by(|a, b| a.name.cmp(&b.name));
+
+    info!("after list funcs: {:?}", start.elapsed());
 
     Ok(Json(ListFuncsResponse { funcs }))
 }

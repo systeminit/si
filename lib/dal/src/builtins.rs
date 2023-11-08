@@ -20,7 +20,7 @@ use crate::{
 
 // Private builtins modules.
 pub mod func;
-// pub mod schema;
+pub mod schema;
 
 pub const SI_AWS_PKG: &str = "si-aws-2023-09-13.sipkg";
 pub const SI_AWS_EC2_PKG: &str = "si-aws-ec2-2023-09-26.sipkg";
@@ -115,6 +115,10 @@ pub async fn migrate(
     info!("intrinsics migrated");
     // info!("migrating builtin functions");
     // func::migrate(ctx).await?;
+
+    // FIXME(nick): restore builtin migration functionality for all variants.
+    info!("migrate schema for docker image package");
+    schema::migrate_pkg(ctx, SI_DOCKER_IMAGE_PKG, None).await?;
 
     // match selected_test_builtin_schemas {
     //     Some(found_selected_test_builtin_schemas) => {

@@ -1,25 +1,30 @@
-use axum::response::Response;
-use axum::Json;
-use axum::{routing::get, Router};
-use dal::workspace_snapshot::WorkspaceSnapshotError;
+use axum::{
+    response::Response,
+    routing::{get, post},
+    Json, Router,
+};
+use dal::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
+use dal::WsEventError;
 use dal::{
-    Func, FuncBackendKind, FuncBackendResponseType, FuncId, StandardModel, TransactionsError,
+    workspace_snapshot::WorkspaceSnapshotError, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncId, TransactionsError,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::server::impl_default_error_into_response;
-use crate::server::state::AppState;
+use crate::server::{impl_default_error_into_response, state::AppState};
+use crate::service::func::get_func::GetFuncResponse;
 
-// pub mod create_func;
+pub mod create_func;
+pub mod get_func;
+pub mod list_funcs;
+pub mod save_func;
+
 // pub mod delete_func;
 // pub mod execute;
-// pub mod get_func;
-pub mod list_funcs;
 // pub mod list_input_sources;
 // pub mod revert_func;
 // pub mod save_and_exec;
-// pub mod save_func;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -70,12 +75,12 @@ pub enum FuncError {
     //     EditingReconciliationFuncsNotImplemented,
     //     #[error(transparent)]
     //     ExternalProvider(#[from] ExternalProviderError),
-    //     #[error(transparent)]
-    //     Func(#[from] dal::FuncError),
+    #[error(transparent)]
+    Func(#[from] dal::func::FuncError),
     //     #[error("func argument not found")]
     //     FuncArgNotFound,
-    //     #[error("func argument error: {0}")]
-    //     FuncArgument(#[from] FuncArgumentError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
     //     #[error("func argument already exists for that name")]
     //     FuncArgumentAlreadyExists,
     //     #[error("func argument {0} missing attribute prototype argument for prototype {1}")]
@@ -101,20 +106,18 @@ pub enum FuncError {
     //     FuncExecutionFailedNoPrototypes,
     //     #[error("Function still has associations: {0}")]
     //     FuncHasAssociations(FuncId),
-    //     #[error("Function named \"{0}\" already exists in this changeset")]
-    //     FuncNameExists(String),
-    //     #[error("The function name \"{0}\" is reserved")]
-    //     FuncNameReserved(String),
-    //     #[error("Function not found")]
-    //     FuncNotFound,
+    #[error("Function named \"{0}\" already exists in this changeset")]
+    FuncNameExists(String),
+    #[error("The function name \"{0}\" is reserved")]
+    FuncNameReserved(String),
     //     #[error("func is not revertible")]
     //     FuncNotRevertible,
     //     #[error("Cannot create that type of function")]
     //     FuncNotSupported,
     //     #[error("Function options are incompatible with variant")]
     //     FuncOptionsAndVariantMismatch,
-    //     #[error("Hyper error: {0}")]
-    //     Hyper(#[from] hyper::http::Error),
+    #[error("Hyper error: {0}")]
+    Hyper(#[from] hyper::http::Error),
     //     #[error("internal provider error: {0}")]
     //     InternalProvider(#[from] InternalProviderError),
     //     #[error("failed to join async task; bug!")]
@@ -143,14 +146,13 @@ pub enum FuncError {
     //     SchemaVariantMissingSchema(SchemaVariantId),
     //     #[error("Could not find schema variant for prop {0}")]
     //     SchemaVariantNotFoundForProp(PropId),
-    //     #[error("json serialization error: {0}")]
-    //     SerdeJson(#[from] serde_json::Error),
-    //     #[error(transparent)]
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     //     StandardModel(#[from] StandardModelError),
     //     #[error("tenancy error: {0}")]
     //     Tenancy(#[from] TenancyError),
-    //     #[error("unexpected func variant ({0:?}) creating attribute func")]
-    //     UnexpectedFuncVariantCreatingAttributeFunc(FuncVariant),
+    #[error("unexpected func variant ({0:?}) creating attribute func")]
+    UnexpectedFuncVariantCreatingAttributeFunc(FuncVariant),
     //     #[error("A validation already exists for that attribute")]
     //     ValidationAlreadyExists,
     //     #[error("validation prototype error: {0}")]
@@ -159,10 +161,10 @@ pub enum FuncError {
     //     ValidationPrototypeMissingSchema,
     //     #[error("validation prototype {0} schema_variant is missing")]
     //     ValidationPrototypeMissingSchemaVariant(SchemaVariantId),
-    //     #[error("could not publish websocket event: {0}")]
-    //     WsEvent(#[from] WsEventError),
     #[error(transparent)]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    #[error("could not publish websocket event: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 //impl From<si_data_pg::PgPoolError> for FuncError {
@@ -242,10 +244,10 @@ impl TryFrom<&Func> for FuncVariant {
 //     id: Option<AttributePrototypeArgumentId>,
 //     internal_provider_id: Option<InternalProviderId>,
 // }
-
-// #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct AttributePrototypeView {
+//
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributePrototypeView {}
 //     id: AttributePrototypeId,
 //     component_id: Option<ComponentId>,
 //     prop_id: Option<PropId>,
@@ -276,56 +278,52 @@ impl TryFrom<&Func> for FuncVariant {
 //     schema_variant_id: SchemaVariantId,
 //     prop_id: PropId,
 // }
+//
+#[remain::sorted]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum FuncAssociations {
+    //     #[serde(rename_all = "camelCase")]
+    //     Action {
+    //         schema_variant_ids: Vec<SchemaVariantId>,
+    //         kind: Option<ActionKind>,
+    //     },
+    #[serde(rename_all = "camelCase")]
+    Attribute {
+        prototypes: Vec<AttributePrototypeView>,
+        arguments: Vec<FuncArgumentView>,
+    },
+    //     #[serde(rename_all = "camelCase")]
+    //     CodeGeneration {
+    //         schema_variant_ids: Vec<SchemaVariantId>,
+    //         component_ids: Vec<ComponentId>,
+    //         inputs: Vec<LeafInputLocation>,
+    //     },
+    //     #[serde(rename_all = "camelCase")]
+    //     Qualification {
+    //         schema_variant_ids: Vec<SchemaVariantId>,
+    //         component_ids: Vec<ComponentId>,
+    //         inputs: Vec<LeafInputLocation>,
+    //     },
+    //     #[serde(rename_all = "camelCase")]
+    //     SchemaVariantDefinitions {
+    //         schema_variant_ids: Vec<SchemaVariantId>,
+    //     },
+    //     #[serde(rename_all = "camelCase")]
+    //     Validation {
+    //         prototypes: Vec<ValidationPrototypeView>,
+    //     },
+}
 
-// #[remain::sorted]
-// #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-// #[serde(tag = "type", rename_all = "camelCase")]
-// pub enum FuncAssociations {
-//     #[serde(rename_all = "camelCase")]
-//     Action {
-//         schema_variant_ids: Vec<SchemaVariantId>,
-//         kind: Option<ActionKind>,
-//     },
-//     #[serde(rename_all = "camelCase")]
-//     Attribute {
-//         prototypes: Vec<AttributePrototypeView>,
-//         arguments: Vec<FuncArgumentView>,
-//     },
-//     #[serde(rename_all = "camelCase")]
-//     Authentication {
-//         schema_variant_ids: Vec<SchemaVariantId>,
-//     },
-//     #[serde(rename_all = "camelCase")]
-//     CodeGeneration {
-//         schema_variant_ids: Vec<SchemaVariantId>,
-//         component_ids: Vec<ComponentId>,
-//         inputs: Vec<LeafInputLocation>,
-//     },
-//     #[serde(rename_all = "camelCase")]
-//     Qualification {
-//         schema_variant_ids: Vec<SchemaVariantId>,
-//         component_ids: Vec<ComponentId>,
-//         inputs: Vec<LeafInputLocation>,
-//     },
-//     #[serde(rename_all = "camelCase")]
-//     SchemaVariantDefinitions {
-//         schema_variant_ids: Vec<SchemaVariantId>,
-//     },
-//     #[serde(rename_all = "camelCase")]
-//     Validation {
-//         prototypes: Vec<ValidationPrototypeView>,
-//     },
-// }
-
-// #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct FuncArgumentView {
-//     pub id: FuncArgumentId,
-//     pub name: String,
-//     pub kind: FuncArgumentKind,
-//     pub element_kind: Option<FuncArgumentKind>,
-// }
-
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncArgumentView {
+    pub id: FuncArgumentId,
+    pub name: String,
+    pub kind: FuncArgumentKind,
+    pub element_kind: Option<FuncArgumentKind>,
+}
+//
 // async fn is_func_revertible(ctx: &DalContext, func: &Func) -> FuncResult<bool> {
 //     // refetch to get updated visibility
 //     let is_in_change_set = match Func::get_by_id(ctx, func.id()).await? {
@@ -450,154 +448,155 @@ impl TryFrom<&Func> for FuncVariant {
 //         .filter_map(|arg| LeafInputLocation::maybe_from_arg_name(arg.name()))
 //         .collect())
 // }
+//
+pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncResponse> {
+    let arguments = FuncArgument::list_for_func(ctx, func.id).await?;
 
-// pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncResponse> {
-//     let arguments = FuncArgument::list_for_func(ctx, *func.id()).await?;
+    let (associations, input_type) = match &func.backend_kind {
+        FuncBackendKind::JsAttribute => {
+            let (associations, input_type) = match &func.backend_response_type {
+                FuncBackendResponseType::CodeGeneration
+                | FuncBackendResponseType::Qualification => {
+                    (None, "".into())
+                    //                         let (schema_variant_ids, component_ids) =
+                    //                             attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
+                    //                                 .await?;
+                    //
+                    //                         let inputs = get_leaf_function_inputs(ctx, *func.id()).await?;
+                    //                         let input_type =
+                    //                             compile_leaf_function_input_types(ctx, &schema_variant_ids, &inputs)
+                    //                                 .await?;
+                    //
+                    //                         (
+                    //                             Some(match func.backend_response_type() {
+                    //                                 FuncBackendResponseType::CodeGeneration => {
+                    //                                     FuncAssociations::CodeGeneration {
+                    //                                         schema_variant_ids,
+                    //                                         component_ids,
+                    //                                         inputs,
+                    //                                     }
+                    //                                 }
+                    //
+                    //                                 FuncBackendResponseType::Qualification => {
+                    //                                     FuncAssociations::Qualification {
+                    //                                         schema_variant_ids,
+                    //                                         component_ids,
+                    //                                         inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
+                    //                                     }
+                    //                                 }
+                    //                                 _ => unreachable!("the match above ensures this is unreachable"),
+                    //                             }),
+                    //                             input_type,
+                    //                         )
+                }
+                _ => {
+                    // let protos = AttributePrototype::find_for_func(ctx, func.id()).await?;
 
-//     let (associations, input_type) = match func.backend_kind() {
-//         FuncBackendKind::JsAttribute => {
-//             let (associations, input_type) = match func.backend_response_type() {
-//                 FuncBackendResponseType::CodeGeneration
-//                 | FuncBackendResponseType::Qualification => {
-//                     let (schema_variant_ids, component_ids) =
-//                         attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
-//                             .await?;
+                    //                         let mut prototypes = Vec::with_capacity(protos.len());
+                    //                         for proto in &protos {
+                    //                             prototypes.push(
+                    //                                 prototype_view_for_attribute_prototype(ctx, *func.id(), proto).await?,
+                    //                             );
+                    //                         }
 
-//                     let inputs = get_leaf_function_inputs(ctx, *func.id()).await?;
-//                     let input_type =
-//                         compile_leaf_function_input_types(ctx, &schema_variant_ids, &inputs)
-//                             .await?;
+                    // let ts_types = compile_attribute_function_types(ctx, &prototypes).await?;
 
-//                     (
-//                         Some(match func.backend_response_type() {
-//                             FuncBackendResponseType::CodeGeneration => {
-//                                 FuncAssociations::CodeGeneration {
-//                                     schema_variant_ids,
-//                                     component_ids,
-//                                     inputs,
-//                                 }
-//                             }
+                    (
+                        Some(FuncAssociations::Attribute {
+                            prototypes: vec![],
+                            arguments: arguments
+                                .iter()
+                                .map(|arg| FuncArgumentView {
+                                    id: arg.id,
+                                    name: arg.name.to_owned(),
+                                    kind: arg.kind,
+                                    element_kind: arg.element_kind.to_owned(),
+                                })
+                                .collect(),
+                        }),
+                        "type Input = any".into(),
+                    )
+                }
+            };
+            (associations, input_type)
+        }
+        //         FuncBackendKind::JsAction => {
+        //             let (kind, schema_variant_ids) =
+        //                 action_prototypes_into_schema_variants_and_components(ctx, *func.id()).await?;
+        //
+        //             let ts_types = compile_action_types(ctx, &schema_variant_ids).await?;
+        //
+        //             let associations = Some(FuncAssociations::Action {
+        //                 schema_variant_ids,
+        //                 kind,
+        //             });
+        //
+        //             (associations, ts_types)
+        //         }
+        //         FuncBackendKind::JsReconciliation => {
+        //             return Err(FuncError::EditingReconciliationFuncsNotImplemented);
+        //         }
+        //         FuncBackendKind::JsValidation => {
+        //             let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
+        //             let input_type = compile_validation_types(ctx, &protos).await?;
+        //
+        //             let associations = Some(FuncAssociations::Validation {
+        //                 prototypes: protos
+        //                     .iter()
+        //                     .map(|proto| ValidationPrototypeView {
+        //                         schema_variant_id: proto.context().schema_variant_id(),
+        //                         prop_id: proto.context().prop_id(),
+        //                     })
+        //                     .collect(),
+        //             });
+        //             (associations, input_type)
+        //         }
+        //         FuncBackendKind::JsAuthentication => {
+        //             let schema_variant_ids = AuthenticationPrototype::find_for_func(ctx, *func.id())
+        //                 .await?
+        //                 .iter()
+        //                 .map(|p| p.schema_variant_id())
+        //                 .collect();
 
-//                             FuncBackendResponseType::Qualification => {
-//                                 FuncAssociations::Qualification {
-//                                     schema_variant_ids,
-//                                     component_ids,
-//                                     inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
-//                                 }
-//                             }
-//                             _ => unreachable!("the match above ensures this is unreachable"),
-//                         }),
-//                         input_type,
-//                     )
-//                 }
-//                 _ => {
-//                     let protos = AttributePrototype::find_for_func(ctx, func.id()).await?;
+        //             (
+        //                 Some(FuncAssociations::Authentication { schema_variant_ids }),
+        //                 concat!(
+        //                     "type Input = Record<string, unknown>;\n",
+        //                     "\n",
+        //                     "declare namespace requestStorage {\n",
+        //                     "    function setEnv(key: string, value: any);\n",
+        //                     "    function setItem(key: string, value: any);\n",
+        //                     "    function deleteEnv(key: string);\n",
+        //                     "    function deleteItem(key: string);\n",
+        //                     "}",
+        //                 )
+        //                 .to_owned(),
+        //             )
+        //         }
+        _ => (None, String::new()),
+    };
+    //
+    //     let is_revertible = is_func_revertible(ctx, func).await?;
+    //     let types = [
+    //         compile_return_types(*func.backend_response_type(), *func.backend_kind()),
+    //         &input_type,
+    //         langjs_types(),
+    //     ]
+    //     .join("\n");
 
-//                     let mut prototypes = Vec::with_capacity(protos.len());
-//                     for proto in &protos {
-//                         prototypes.push(
-//                             prototype_view_for_attribute_prototype(ctx, *func.id(), proto).await?,
-//                         );
-//                     }
-
-//                     let ts_types = compile_attribute_function_types(ctx, &prototypes).await?;
-
-//                     (
-//                         Some(FuncAssociations::Attribute {
-//                             prototypes,
-//                             arguments: arguments
-//                                 .iter()
-//                                 .map(|arg| FuncArgumentView {
-//                                     id: *arg.id(),
-//                                     name: arg.name().to_owned(),
-//                                     kind: arg.kind().to_owned(),
-//                                     element_kind: arg.element_kind().cloned(),
-//                                 })
-//                                 .collect(),
-//                         }),
-//                         ts_types,
-//                     )
-//                 }
-//             };
-//             (associations, input_type)
-//         }
-//         FuncBackendKind::JsAction => {
-//             let (kind, schema_variant_ids) =
-//                 action_prototypes_into_schema_variants_and_components(ctx, *func.id()).await?;
-
-//             let ts_types = compile_action_types(ctx, &schema_variant_ids).await?;
-
-//             let associations = Some(FuncAssociations::Action {
-//                 schema_variant_ids,
-//                 kind,
-//             });
-
-//             (associations, ts_types)
-//         }
-//         FuncBackendKind::JsReconciliation => {
-//             return Err(FuncError::EditingReconciliationFuncsNotImplemented);
-//         }
-//         FuncBackendKind::JsValidation => {
-//             let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
-//             let input_type = compile_validation_types(ctx, &protos).await?;
-
-//             let associations = Some(FuncAssociations::Validation {
-//                 prototypes: protos
-//                     .iter()
-//                     .map(|proto| ValidationPrototypeView {
-//                         schema_variant_id: proto.context().schema_variant_id(),
-//                         prop_id: proto.context().prop_id(),
-//                     })
-//                     .collect(),
-//             });
-//             (associations, input_type)
-//         }
-//         FuncBackendKind::JsAuthentication => {
-//             let schema_variant_ids = AuthenticationPrototype::find_for_func(ctx, *func.id())
-//                 .await?
-//                 .iter()
-//                 .map(|p| p.schema_variant_id())
-//                 .collect();
-
-//             (
-//                 Some(FuncAssociations::Authentication { schema_variant_ids }),
-//                 concat!(
-//                     "type Input = Record<string, unknown>;\n",
-//                     "\n",
-//                     "declare namespace requestStorage {\n",
-//                     "    function setEnv(key: string, value: any);\n",
-//                     "    function setItem(key: string, value: any);\n",
-//                     "    function deleteEnv(key: string);\n",
-//                     "    function deleteItem(key: string);\n",
-//                     "}",
-//                 )
-//                 .to_owned(),
-//             )
-//         }
-//         _ => (None, String::new()),
-//     };
-
-//     let is_revertible = is_func_revertible(ctx, func).await?;
-//     let types = [
-//         compile_return_types(*func.backend_response_type(), *func.backend_kind()),
-//         &input_type,
-//         langjs_types(),
-//     ]
-//     .join("\n");
-
-//     Ok(GetFuncResponse {
-//         id: func.id().to_owned(),
-//         variant: func.try_into()?,
-//         display_name: func.display_name().map(Into::into),
-//         name: func.name().to_owned(),
-//         description: func.description().map(|d| d.to_owned()),
-//         code: func.code_plaintext()?,
-//         is_builtin: func.builtin(),
-//         is_revertible,
-//         associations,
-//         types,
-//     })
-// }
+    Ok(GetFuncResponse {
+        id: func.id.to_owned(),
+        variant: func.try_into()?,
+        display_name: func.display_name.as_ref().map(Into::into),
+        name: func.name.to_owned(),
+        description: func.description.as_ref().map(|d| d.to_owned()),
+        code: func.code_plaintext()?,
+        is_builtin: func.builtin,
+        is_revertible: false,
+        associations,
+        types: input_type,
+    })
+}
 
 // pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) -> &'static str {
 //     if matches!(kind, FuncBackendKind::JsAttribute)
@@ -615,35 +614,35 @@ impl TryFrom<&Func> for FuncVariant {
 //         FuncBackendResponseType::Integer => "type Output = number | null;",
 //         FuncBackendResponseType::Qualification => {
 //             "type Output {
-//   result: 'success' | 'warning' | 'failure';
-//   message?: string | null;
-// }"
+//    result: 'success' | 'warning' | 'failure';
+//    message?: string | null;
+//  }"
 //         }
 //         FuncBackendResponseType::CodeGeneration => {
 //             "type Output {
-//   format: string;
-//   code: string;
-// }"
+//    format: string;
+//    code: string;
+//  }"
 //         }
 //         FuncBackendResponseType::Validation => {
 //             "type Output {
-//   valid: boolean;
-//   message: string;
-// }"
+//    valid: boolean;
+//    message: string;
+//  }"
 //         }
 //         FuncBackendResponseType::Reconciliation => {
 //             "type Output {
-//   updates: { [key: string]: unknown };
-//   actions: string[];
-//   message: string | null;
-// }"
+//    updates: { [key: string]: unknown };
+//    actions: string[];
+//    message: string | null;
+//  }"
 //         }
 //         FuncBackendResponseType::Action => {
 //             "type Output {
-//     status: 'ok' | 'warning' | 'error';
-//     payload?: { [key: string]: unknown } | null;
-//     message?: string | null;
-// }"
+//      status: 'ok' | 'warning' | 'error';
+//      payload?: { [key: string]: unknown } | null;
+//      message?: string | null;
+//  }"
 //         }
 //         FuncBackendResponseType::Json => "type Output = any;",
 //         // Note: there is no ts function returning those
@@ -677,35 +676,35 @@ impl TryFrom<&Func> for FuncVariant {
 //         FuncBackendResponseType::Integer => "type Output = number | null;",
 //         FuncBackendResponseType::Qualification => {
 //             "type Output {
-//   result: 'success' | 'warning' | 'failure';
-//   message?: string | null;
-// }"
+//    result: 'success' | 'warning' | 'failure';
+//    message?: string | null;
+//  }"
 //         }
 //         FuncBackendResponseType::CodeGeneration => {
 //             "type Output {
-//   format: string;
-//   code: string;
-// }"
+//    format: string;
+//    code: string;
+//  }"
 //         }
 //         FuncBackendResponseType::Validation => {
 //             "type Output {
-//   valid: boolean;
-//   message: string;
-// }"
+//    valid: boolean;
+//    message: string;
+//  }"
 //         }
 //         FuncBackendResponseType::Reconciliation => {
 //             "type Output {
-//   updates: { [key: string]: unknown };
-//   actions: string[];
-//   message: string | null;
-// }"
+//    updates: { [key: string]: unknown };
+//    actions: string[];
+//    message: string | null;
+//  }"
 //         }
 //         FuncBackendResponseType::Action => {
 //             "type Output {
-//     status: 'ok' | 'warning' | 'error';
-//     payload?: { [key: string]: unknown } | null;
-//     message?: string | null;
-// }"
+//      status: 'ok' | 'warning' | 'error';
+//      payload?: { [key: string]: unknown } | null;
+//      message?: string | null;
+//  }"
 //         }
 //         FuncBackendResponseType::Json => "type Output = any;",
 //         // Note: there is no ts function returning those
@@ -878,9 +877,9 @@ impl TryFrom<&Func> for FuncVariant {
 
 //     Ok(format!(
 //         "type Input {{
-//     kind: 'standard';
-//     properties: {};
-// }}",
+//      kind: 'standard';
+//      properties: {};
+//  }}",
 //         ts_types.join(" | "),
 //     ))
 // }
@@ -892,20 +891,19 @@ impl TryFrom<&Func> for FuncVariant {
 //     "declare namespace YAML {
 //     function stringify(obj: unknown): string;
 // }
-
+//
 //     declare namespace zlib {
 //         function gzip(inputstr: string, callback: any);
 //     }
-
 //     declare namespace requestStorage {
 //         function getEnv(key: string): string;
 //         function getItem(key: string): any;
 //         function getEnvKeys(): string[];
 //         function getKeys(): string[];
 //     }
-
+//
 //     declare namespace siExec {
-
+//
 //     interface WatchArgs {
 //         cmd: string,
 //         args?: readonly string[],
@@ -914,28 +912,30 @@ impl TryFrom<&Func> for FuncVariant {
 //         maxRetryCount?: number,
 //         callback: (child: execa.ExecaReturnValue<string>) => Promise<boolean>,
 //     }
-
+//
 //     interface WatchResult {
 //         result: SiExecResult,
 //         failed?: 'deadlineExceeded' | 'commandFailed',
 //     }
-
+//
 //     type SiExecResult = ExecaReturnValue<string>;
-
+//
 //     async function waitUntilEnd(execaFile: string, execaArgs?: string[], execaOptions?: any): Promise<any>;
 //     async function watch(options: WatchArgs, deadlineCount?: number): Promise<WatchResult>;
 // }"
 // }
-
+//
+//
 pub fn routes() -> Router<AppState> {
-    Router::new().route("/list_funcs", get(list_funcs::list_funcs))
-    //         .route("/get_func", get(get_func::get_func))
-    //         .route(
-    //             "/get_func_last_execution",
-    //             get(get_func::get_latest_func_execution),
-    //         )
-    //         .route("/create_func", post(create_func::create_func))
-    //         .route("/save_func", post(save_func::save_func))
+    Router::new()
+        .route("/list_funcs", get(list_funcs::list_funcs))
+        .route("/get_func", get(get_func::get_func))
+        //         .route(
+        //             "/get_func_last_execution",
+        //             get(get_func::get_latest_func_execution),
+        //         )
+        .route("/create_func", post(create_func::create_func))
+        .route("/save_func", post(save_func::save_func))
     //         .route("/delete_func", post(delete_func::delete_func))
     //         .route("/save_and_exec", post(save_and_exec::save_and_exec))
     //         .route("/execute", post(execute::execute))

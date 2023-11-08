@@ -1,67 +1,75 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
-use chrono::{DateTime, Utc};
-use content_store::ContentHash;
+use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use si_data_nats::NatsError;
-use si_data_pg::PgError;
+use std::collections::{HashMap, VecDeque};
 use strum::EnumDiscriminants;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::TryLockError;
+use ulid::Ulid;
 
-use crate::attribute::value::AttributeValue;
-use crate::code_view::CodeViewError;
-use crate::func::binding::FuncBindingError;
-use crate::func::binding_return_value::{FuncBindingReturnValueError, FuncBindingReturnValueId};
-use crate::job::definition::DependentValuesUpdate;
-use crate::schema::variant::root_prop::SiPropChild;
-use crate::schema::variant::SchemaVariantId;
-use crate::schema::SchemaVariant;
-use crate::socket::SocketEdgeKind;
-use crate::standard_model::object_from_row;
-use crate::validation::ValidationConstructorError;
-use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::ws_event::WsEventError;
-use crate::{
-    impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
-    standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
-    AttributePrototypeArgumentError, AttributePrototypeError, AttributePrototypeId,
-    AttributeReadContext, ComponentType, DalContext, EdgeError, ExternalProviderError, FixError,
-    FixId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError, Node, NodeError,
-    PropError, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, ValidationPrototypeError,
-    ValidationResolverError, Visibility, WorkspaceError, WsEvent, WsEventResult, WsPayload,
+use crate::attribute::value::AttributeValueError;
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::schema::variant::root_prop::component_type::ComponentType;
+use crate::schema::variant::SchemaVariantError;
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-use crate::{AttributeValueId, QualificationError};
-use crate::{Edge, FixResolverError, NodeKind};
+use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{
+    pk, AttributeValue, AttributeValueId, DalContext, PropId, PropKind, SchemaVariant,
+    SchemaVariantId, Timestamp, TransactionsError, WsEvent, WsEventResult, WsPayload,
+};
+
+pub mod resource;
 
 // pub mod code;
 // pub mod diff;
 // pub mod qualification;
-// pub mod resource;
 // pub mod status;
 // pub mod validation;
 // pub mod view;
 
 // pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
 
-// const FIND_FOR_NODE: &str = include_str!("queries/component/find_for_node.sql");
-// const FIND_SI_CHILD_PROP_ATTRIBUTE_VALUE: &str =
-//     include_str!("queries/component/find_si_child_attribute_value.sql");
-// const LIST_FOR_SCHEMA_VARIANT: &str = include_str!("queries/component/list_for_schema_variant.sql");
-// const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
-//     include_str!("queries/component/list_sockets_for_socket_edge_kind.sql");
-// const FIND_NAME: &str = include_str!("queries/component/find_name.sql");
-// const ROOT_CHILD_ATTRIBUTE_VALUE_FOR_COMPONENT: &str =
-//     include_str!("queries/component/root_child_attribute_value_for_component.sql");
-// const LIST_CONNECTED_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE: &str =
-//     include_str!("queries/component/list_connected_input_sockets_for_attribute_value.sql");
-// const COMPONENT_STATUS_UPDATE_BY_PK: &str =
-//     include_str!("queries/component/status_update_by_pk.sql");
+pub const DEFAULT_COMPONENT_X_POSITION: &str = "0";
+pub const DEFAULT_COMPONENT_Y_POSITION: &str = "0";
+pub const DEFAULT_COMPONENT_WIDTH: &str = "500";
+pub const DEFAULT_COMPONENT_HEIGHT: &str = "500";
+
+#[derive(Debug, Error)]
+pub enum ComponentError {
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("found prop id ({0}) that is not a prop")]
+    PropIdNotAProp(PropId),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
+    #[error("schema variant not found for component: {0}")]
+    SchemaVariantNotFound(ComponentId),
+    #[error("store error: {0}")]
+    Store(#[from] StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("try lock error: {0}")]
+    TryLock(#[from] TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+pub type ComponentResult<T> = Result<T, ComponentError>;
 
 pk!(ComponentId);
 
@@ -98,42 +106,396 @@ pub struct Component {
     id: ComponentId,
     #[serde(flatten)]
     timestamp: Timestamp,
+    name: String,
     kind: ComponentKind,
     needs_destroy: bool,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct ComponentGraphNode {
-    id: ComponentId,
-    content_address: ContentAddress,
-    content: ComponentContentV1,
+    x: String,
+    y: String,
+    width: Option<String>,
+    height: Option<String>,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
 pub enum ComponentContent {
     V1(ComponentContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ComponentContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
+    pub name: String,
     pub kind: ComponentKind,
     pub needs_destroy: bool,
+    pub x: String,
+    pub y: String,
+    pub width: Option<String>,
+    pub height: Option<String>,
 }
 
-impl ComponentGraphNode {
-    pub fn assemble(
-        id: impl Into<ComponentId>,
-        content_hash: ContentHash,
-        content: ComponentContentV1,
-    ) -> Self {
+impl From<Component> for ComponentContentV1 {
+    fn from(value: Component) -> Self {
         Self {
-            id: id.into(),
-            content_address: ContentAddress::Component(content_hash),
-            content,
+            timestamp: value.timestamp,
+            name: value.name,
+            kind: value.kind,
+            needs_destroy: value.needs_destroy,
+            x: value.x,
+            y: value.y,
+            width: value.width,
+            height: value.height,
         }
+    }
+}
+
+impl Component {
+    pub fn assemble(id: ComponentId, inner: ComponentContentV1) -> Self {
+        Self {
+            id,
+            timestamp: inner.timestamp,
+            name: inner.name,
+            kind: inner.kind,
+            needs_destroy: inner.needs_destroy,
+            x: inner.x,
+            y: inner.y,
+            width: inner.width,
+            height: inner.height,
+        }
+    }
+
+    pub fn id(&self) -> ComponentId {
+        self.id
+    }
+
+    pub fn x(&self) -> &str {
+        &self.x
+    }
+
+    pub fn y(&self) -> &str {
+        &self.y
+    }
+
+    pub fn width(&self) -> Option<&str> {
+        self.width.as_deref()
+    }
+
+    pub fn height(&self) -> Option<&str> {
+        self.height.as_deref()
+    }
+
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        schema_variant_id: SchemaVariantId,
+        component_kind: Option<ComponentKind>,
+    ) -> ComponentResult<Self> {
+        let content = ComponentContentV1 {
+            timestamp: Timestamp::now(),
+            name: name.into(),
+            kind: match component_kind {
+                Some(provided_kind) => provided_kind,
+                None => ComponentKind::Standard,
+            },
+            needs_destroy: false,
+            x: DEFAULT_COMPONENT_X_POSITION.to_string(),
+            y: DEFAULT_COMPONENT_Y_POSITION.to_string(),
+            width: None,
+            height: None,
+        };
+        let hash = ctx
+            .content_store()
+            .lock()
+            .await
+            .add(&ComponentContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Component(hash))?;
+        let provider_indices = {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.add_node(node_weight)?;
+
+            // Root --> Component Category --> Component (this)
+            let component_category_id =
+                workspace_snapshot.get_category_node(None, CategoryNodeKind::Component)?;
+            workspace_snapshot.add_edge(
+                component_category_id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                id,
+            )?;
+
+            // Component (this) --> Schema Variant
+            workspace_snapshot.add_edge(
+                id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                schema_variant_id.into(),
+            )?;
+
+            // Collect all providers corresponding to input and output sockets for the schema
+            // variant.
+            workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::Provider,
+            )?
+        };
+
+        // Create attribute values for all providers corresponding to input and output sockets.
+        for provider_index in provider_indices {
+            let attribute_value = AttributeValue::new(ctx, false).await?;
+            {
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+                // Component (this) --> AttributeValue (new)
+                workspace_snapshot.add_edge(
+                    id,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                    attribute_value.id().into(),
+                )?;
+
+                // AttributeValue (new) --> Provider (corresponding to an input or an output Socket)
+                let attribute_value_index =
+                    workspace_snapshot.get_node_index_by_id(attribute_value.id())?;
+                workspace_snapshot.add_edge_unchecked(
+                    attribute_value_index,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
+                    provider_index,
+                )?;
+            }
+        }
+
+        // Walk all the props for the schema variant and create attribute values for all of them
+        let root_prop_id = SchemaVariant::get_root_prop_id(ctx, schema_variant_id)?;
+        let mut work_queue = VecDeque::from([(root_prop_id, None::<AttributeValueId>)]);
+
+        while let Some((prop_id, maybe_parent_attribute_value_id)) = work_queue.pop_front() {
+            // Ensure that we are processing a prop before creating attribute values. Cache the
+            // prop kind for later.
+            let prop_kind = {
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                match workspace_snapshot.get_node_weight_by_id(prop_id)? {
+                    NodeWeight::Prop(prop_node_weight) => prop_node_weight.kind(),
+                    _ => return Err(ComponentError::PropIdNotAProp(prop_id)),
+                }
+            };
+
+            // Create an attribute value for the prop.
+            let attribute_value = AttributeValue::new(ctx, false).await?;
+
+            // AttributeValue --Prop--> Prop
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.add_edge(
+                attribute_value.id().into(),
+                EdgeWeight::new(change_set, EdgeWeightKind::Prop)?,
+                prop_id.into(),
+            )?;
+
+            // If it is the root prop, the component should use it. Otherwise, it should be used
+            // by the parent prop.
+            match maybe_parent_attribute_value_id {
+                Some(parent_attribute_value_id) => {
+                    // AttributeValue (Parent) --Contain--> AttributeValue
+                    workspace_snapshot.add_edge(
+                        parent_attribute_value_id.into(),
+                        EdgeWeight::new(change_set, EdgeWeightKind::Contain(None))?,
+                        attribute_value.id().into(),
+                    )?;
+                }
+                None => {
+                    // Component --Use--> AttributeValue
+                    workspace_snapshot.add_edge(
+                        id,
+                        EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                        attribute_value.id().into(),
+                    )?;
+                }
+            }
+
+            // If there is an outgoing ordering node, we know that we are a container type. We only
+            // descend if the current prop we are processing has an "object" kind.
+            if PropKind::Object == prop_kind {
+                if let Some(ordering_node_idx) = workspace_snapshot
+                    .outgoing_targets_for_edge_weight_kind(
+                        prop_id,
+                        EdgeWeightKindDiscriminants::Ordering,
+                    )?
+                    .get(0)
+                {
+                    let ordering_node_weight = workspace_snapshot
+                        .get_node_weight(*ordering_node_idx)?
+                        .get_ordering_node_weight()?;
+
+                    for &child_prop_id in ordering_node_weight.order() {
+                        work_queue.push_back((child_prop_id.into(), Some(attribute_value.id())));
+                    }
+                } else {
+                    // TODO(nick): address this better.
+                    unreachable!("object props must have ordering nodes")
+                }
+            }
+        }
+
+        Ok(Self::assemble(id.into(), content))
+    }
+
+    async fn get_content_with_hash(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<(ContentHash, ComponentContentV1)> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let id: Ulid = component_id.into();
+        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        let content: ComponentContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let ComponentContent::V1(inner) = content;
+
+        Ok((hash, inner))
+    }
+
+    pub async fn list(ctx: &DalContext) -> ComponentResult<Vec<Self>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let mut components = vec![];
+        let component_category_node_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Component)?;
+
+        let component_node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            component_category_node_id,
+            EdgeWeightKindDiscriminants::Use,
+        )?;
+
+        let mut node_weights = vec![];
+        let mut hashes = vec![];
+        for index in component_node_indices {
+            let node_weight = workspace_snapshot
+                .get_node_weight(index)?
+                .get_content_node_weight_of_kind(ContentAddressDiscriminants::Component)?;
+            hashes.push(node_weight.content_hash());
+            node_weights.push(node_weight);
+        }
+
+        let contents: HashMap<ContentHash, ComponentContent> = ctx
+            .content_store()
+            .try_lock()?
+            .get_bulk(hashes.as_slice())
+            .await?;
+
+        for node_weight in node_weights {
+            match contents.get(&node_weight.content_hash()) {
+                Some(content) => {
+                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+                    let ComponentContent::V1(inner) = content;
+
+                    components.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
+            }
+        }
+
+        Ok(components)
+    }
+
+    pub async fn schema_variant(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<SchemaVariant> {
+        let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
+        Ok(SchemaVariant::get_by_id(ctx, schema_variant_id).await?)
+    }
+
+    pub async fn schema_variant_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<SchemaVariantId> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let maybe_schema_variant_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                component_id,
+                EdgeWeightKindDiscriminants::Use,
+            )?;
+
+        let mut schema_variant_id: Option<SchemaVariantId> = None;
+        for maybe_schema_variant_index in maybe_schema_variant_indices {
+            if let NodeWeight::Content(content) =
+                workspace_snapshot.get_node_weight(maybe_schema_variant_index)?
+            {
+                let content_hash_discriminants: ContentAddressDiscriminants =
+                    content.content_address().into();
+                if let ContentAddressDiscriminants::SchemaVariant = content_hash_discriminants {
+                    // TODO(nick): consider creating a new edge weight kind to make this easier.
+                    // We also should use a proper error here.
+                    schema_variant_id = match schema_variant_id {
+                        None => Some(content.id().into()),
+                        Some(_already_found_schema_variant_id) => {
+                            panic!("already found a schema variant")
+                        }
+                    };
+                }
+            }
+        }
+        let schema_variant_id =
+            schema_variant_id.ok_or(ComponentError::SchemaVariantNotFound(component_id))?;
+        Ok(schema_variant_id)
+    }
+
+    pub async fn get_by_id(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<Self> {
+        let (_, content) = Self::get_content_with_hash(ctx, component_id).await?;
+        Ok(Self::assemble(component_id, content))
+    }
+
+    pub async fn set_geometry(
+        self,
+        ctx: &DalContext,
+        x: impl Into<String>,
+        y: impl Into<String>,
+        width: Option<impl Into<String>>,
+        height: Option<impl Into<String>>,
+    ) -> ComponentResult<Self> {
+        let id: ComponentId = self.id;
+        let mut component = self;
+
+        let before = ComponentContentV1::from(component.clone());
+        component.x = x.into();
+        component.y = y.into();
+        component.width = width.map(|w| w.into());
+        component.height = height.map(|h| h.into());
+        let updated = ComponentContentV1::from(component);
+
+        if updated != before {
+            let hash = ctx
+                .content_store()
+                .try_lock()?
+                .add(&ComponentContent::V1(updated.clone()))?;
+
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.update_content(ctx.change_set_pointer()?, id.into(), hash)?;
+        }
+
+        Ok(Self::assemble(id, updated))
+    }
+
+    // TODO(nick): use the prop tree here.
+    pub async fn name(&self, _ctx: &DalContext) -> ComponentResult<String> {
+        Ok(self.name.clone())
+    }
+
+    // TODO(nick): use the prop tree here.
+    pub async fn color(&self, _ctx: &DalContext) -> ComponentResult<Option<String>> {
+        Ok(None)
+    }
+
+    // TODO(nick): use the prop tree here.
+    pub async fn get_type(&self, _ctx: &DalContext) -> ComponentResult<ComponentType> {
+        Ok(ComponentType::Component)
     }
 }
 
@@ -858,18 +1220,18 @@ impl ComponentGraphNode {
 //     }
 // }
 
-// #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct ComponentCreatedPayload {
-//     success: bool,
-// }
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentCreatedPayload {
+    success: bool,
+}
 
-// impl WsEvent {
-//     pub async fn component_created(ctx: &DalContext) -> WsEventResult<Self> {
-//         WsEvent::new(
-//             ctx,
-//             WsPayload::ComponentCreated(ComponentCreatedPayload { success: true }),
-//         )
-//         .await
-//     }
-// }
+impl WsEvent {
+    pub async fn component_created(ctx: &DalContext) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ComponentCreated(ComponentCreatedPayload { success: true }),
+        )
+        .await
+    }
+}

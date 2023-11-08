@@ -1,19 +1,283 @@
-// //! An [`AttributePrototypeArgument`] represents an argument name and how to dynamically derive
-// //! the corresponding value. [`AttributePrototype`](crate::AttributePrototype) can have multiple
-// //! arguments.
+//! An [`AttributePrototypeArgument`] joins a prototype to a function argument
+//! and to either the internal provider that supplies its value or to a constant
+//! value. It defines source of the value for the function argument in the
+//! context of the prototype.
 
+use content_store::Store;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
-use si_data_pg::PgError;
+use strum::EnumDiscriminants;
 use telemetry::prelude::*;
+use thiserror::Error;
+use ulid::Ulid;
 
-// use crate::{
-//     func::argument::FuncArgumentId, impl_standard_model, pk,
-//     provider::internal::InternalProviderId, standard_model, standard_model_accessor,
-//     AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, HistoryEventError,
-//     StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
-// };
+use crate::{
+    change_set_pointer::ChangeSetPointerError,
+    func::argument::FuncArgumentId,
+    pk,
+    provider::internal::InternalProviderId,
+    workspace_snapshot::{
+        content_address::{ContentAddress, ContentAddressDiscriminants},
+        edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
+        node_weight::{NodeWeight, NodeWeightError},
+        WorkspaceSnapshotError,
+    },
+    AttributePrototypeId, DalContext, Timestamp, TransactionsError,
+};
+
+use self::static_value::{StaticArgumentValue, StaticArgumentValueId};
+
+pub mod static_value;
+
+pk!(AttributePrototypeArgumentId);
+
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum AttributePrototypeArgumentError {
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("attribute prototype argument {0} has no func argument")]
+    MissingFuncArgument(AttributePrototypeArgumentId),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("serde json error: {0}")]
+    Serde(#[from] serde_json::Error),
+    #[error("store error: {0}")]
+    Store(#[from] content_store::StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+pub type AttributePrototypeArgumentResult<T> = Result<T, AttributePrototypeArgumentError>;
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct AttributePrototypeArgument {
+    id: AttributePrototypeArgumentId,
+    timestamp: Timestamp,
+}
+
+#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum AttributePrototypeArgumentContent {
+    V1(AttributePrototypeArgumentContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct AttributePrototypeArgumentContentV1 {
+    pub timestamp: Timestamp,
+}
+
+impl AttributePrototypeArgument {
+    pub fn assemble(
+        id: AttributePrototypeArgumentId,
+        inner: &AttributePrototypeArgumentContentV1,
+    ) -> Self {
+        Self {
+            id,
+            timestamp: inner.timestamp.to_owned(),
+        }
+    }
+
+    pub fn id(&self) -> AttributePrototypeArgumentId {
+        self.id
+    }
+
+    pub async fn static_value_by_id(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<Option<StaticArgumentValue>> {
+        let mut static_value_id: Option<StaticArgumentValueId> = None;
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+            for node_idx in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+                apa_id,
+                EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+            )? {
+                match workspace_snapshot.get_node_weight(node_idx)? {
+                    NodeWeight::Content(inner) => {
+                        let inner_addr_discrim: ContentAddressDiscriminants =
+                            inner.content_address().into();
+
+                        if inner_addr_discrim == ContentAddressDiscriminants::StaticArgumentValue {
+                            static_value_id = Some(inner.id().into());
+                            break;
+                        }
+                    }
+                    _ => continue,
+                }
+            }
+        }
+
+        Ok(match static_value_id {
+            Some(static_value_id) => {
+                Some(StaticArgumentValue::get_by_id(ctx, static_value_id).await?)
+            }
+            None => None,
+        })
+    }
+
+    pub fn new(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+        arg_id: FuncArgumentId,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        let timestamp = Timestamp::now();
+        let content = AttributePrototypeArgumentContentV1 { timestamp };
+
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&AttributePrototypeArgumentContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_content(
+            change_set,
+            id,
+            ContentAddress::AttributePrototypeArgument(hash),
+        )?;
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        workspace_snapshot.add_node(node_weight)?;
+
+        workspace_snapshot.add_edge(
+            prototype_id.into(),
+            EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgument)?,
+            id,
+        )?;
+        workspace_snapshot.add_edge(
+            id,
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            arg_id.into(),
+        )?;
+
+        Ok(AttributePrototypeArgument::assemble(id.into(), &content))
+    }
+
+    pub fn func_argument_id_by_id(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<FuncArgumentId> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        for target in workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(apa_id, EdgeWeightKindDiscriminants::Use)?
+        {
+            match workspace_snapshot
+                .get_node_weight(target)?
+                .get_content_node_weight_of_kind(ContentAddressDiscriminants::FuncArg)
+            {
+                Ok(content_node_weight) => {
+                    return Ok(content_node_weight.id().into());
+                }
+                Err(NodeWeightError::UnexpectedNodeWeightVariant(_, _)) => continue,
+                Err(e) => Err(e)?,
+            }
+        }
+
+        Err(AttributePrototypeArgumentError::MissingFuncArgument(apa_id))
+    }
+
+    fn set_value_source(
+        self,
+        ctx: &DalContext,
+        value_id: Ulid,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let change_set = ctx.change_set_pointer()?;
+
+        for existing_value_source in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            self.id,
+            EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+        )? {
+            let self_node_index = workspace_snapshot.get_node_index_by_id(self.id)?;
+            workspace_snapshot.remove_edge(
+                change_set,
+                self_node_index,
+                existing_value_source,
+                EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+            )?;
+        }
+
+        workspace_snapshot.add_edge(
+            self.id.into(),
+            EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgumentValue)?,
+            value_id,
+        )?;
+
+        Ok(self)
+    }
+
+    pub fn set_value_from_internal_provider_id(
+        self,
+        ctx: &DalContext,
+        internal_provider_id: InternalProviderId,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        self.set_value_source(ctx, internal_provider_id.into())
+    }
+
+    pub fn set_value_from_static_value_id(
+        self,
+        ctx: &DalContext,
+        value_id: StaticArgumentValueId,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        self.set_value_source(ctx, value_id.into())
+    }
+
+    pub fn set_value_from_static_value(
+        self,
+        ctx: &DalContext,
+        value: serde_json::Value,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        let static_value = StaticArgumentValue::new(ctx, value)?;
+
+        self.set_value_from_static_value_id(ctx, static_value.id())
+    }
+
+    pub fn list_ids_for_prototype(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeArgumentResult<Vec<AttributePrototypeArgumentId>> {
+        let mut apas = vec![];
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let apa_node_idxs = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            prototype_id,
+            EdgeWeightKindDiscriminants::PrototypeArgument,
+        )?;
+
+        for idx in apa_node_idxs {
+            let node_weight = workspace_snapshot.get_node_weight(idx)?;
+            apas.push(node_weight.id().into())
+        }
+
+        Ok(apas)
+    }
+
+    pub fn remove(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<()> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        workspace_snapshot.remove_incoming_edges_of_kind(
+            ctx.change_set_pointer()?,
+            apa_id,
+            EdgeWeightKindDiscriminants::PrototypeArgument,
+        )?;
+
+        Ok(())
+    }
+}
+
+// use si_data_pg::PgError;
+// use telemetry::prelude::*;
+// use thiserror::Error;
 
 // const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
 //     include_str!("../../queries/attribute_prototype_argument/list_for_attribute_prototype.sql");
@@ -45,9 +309,6 @@ use telemetry::prelude::*;
 // }
 
 // pub type AttributePrototypeArgumentResult<T> = Result<T, AttributePrototypeArgumentError>;
-
-// pk!(AttributePrototypeArgumentPk);
-// pk!(AttributePrototypeArgumentId);
 
 // /// Contains a "key" and fields to derive a "value" that dynamically used as an argument for a
 // /// [`AttributePrototypes`](crate::AttributePrototype) function execution.

@@ -1,100 +1,46 @@
-use std::{
-    collections::{HashMap, HashSet},
-    path::Path,
-    str::FromStr,
-};
-
-use chrono::Utc;
-use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
-use ulid::Ulid;
-
 use si_pkg::{
-    AttributeValuePath, ComponentSpecVariant, EdgeSpecKind, SchemaVariantSpecPropRoot, SiPkg,
-    SiPkgActionFunc, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgAttributeValue,
-    SiPkgAuthFunc, SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument,
-    SiPkgFuncData, SiPkgKind, SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData,
-    SiPkgSchema, SiPkgSchemaData, SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
-    ValidationSpec,
+    SchemaVariantSpecPropRoot, SiPkg, SiPkgAttrFuncInputView, SiPkgComponent, SiPkgEdge,
+    SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind, SiPkgLeafFunction,
+    SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData, SiPkgSchemaVariant,
+    SiPkgSocket, SiPkgSocketData, SocketSpecKind, ValidationSpec,
 };
+use std::{collections::HashMap, path::Path};
 use telemetry::prelude::*;
+use tokio::sync::Mutex;
 
-use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeContext};
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentId,
+};
+use crate::prop::PropParent;
+use crate::{func::intrinsics::IntrinsicFunc, ComponentKind, ProviderKind};
 use crate::{
-    change_set_pointer::{self, ChangeSetPointer, ChangeSetPointerId},
-    // component::ComponentKind,
-    // edge::EdgeKind,
-    func::{
-        self,
-        // argument::FuncArgumentKind,
-        backend::validation::FuncBackendValidationArgs,
-        // binding::FuncBinding,
-        // binding_return_value::FuncBindingReturnValue,
-        // execution::{FuncExecution, FuncExecutionPk},
-    },
+    func::{self, argument::FuncArgument},
     installed_pkg::{
         InstalledPkg, InstalledPkgAsset, InstalledPkgAssetKind, InstalledPkgAssetTyped,
         InstalledPkgId,
     },
     prop::PropPath,
-    schema::{variant::leaves::LeafInputLocation, SchemaUiMenu},
-    socket::SocketEdgeKind,
-    validation::{Validation, ValidationKind},
-    workspace_snapshot::{self, WorkspaceSnapshotError},
-    ActionKind,
-    ActionPrototype,
-    ActionPrototypeContext,
-    AttributePrototype,
-    AttributePrototypeId,
-    AttributeValue,
-    ChangeSet,
-    ChangeSetPk,
-    // Component,
-    ComponentId,
-    DalContext,
-    // Edge,
-    ExternalProvider,
-    ExternalProviderId,
-    Func,
-    // FuncArgument,
-    // FuncBindingError,
-    // FuncBindingReturnValueError,
-    FuncId,
-    InternalProvider,
-    InternalProviderId,
-    // LeafKind,
-    Node,
-    Prop,
-    PropId,
-    PropKind,
-    Schema,
-    SchemaId,
-    SchemaVariant,
-    SchemaVariantId,
-    Socket,
-    StandardModel,
-    Tenancy,
-    UserPk,
-    // ValidationPrototype,
-    // ValidationPrototypeContext,
-    Workspace,
-    WorkspacePk,
-    WorkspaceSnapshot,
+    schema::variant::leaves::{LeafInputLocation, LeafKind},
+    ActionPrototype, ChangeSetPk, DalContext, ExternalProvider, Func, FuncId, InternalProvider,
+    Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
 };
+use crate::{AttributePrototype, AttributePrototypeId};
 
 use super::{PkgError, PkgResult};
 
 #[derive(Clone, Debug)]
 enum Thing {
-    // ActionPrototype(ActionPrototype),
+    #[allow(dead_code)]
+    ActionPrototype(ActionPrototype),
     // AttributePrototypeArgument(AttributePrototypeArgument),
     // Component((Component, Node)),
     // Edge(Edge),
     Func(Func),
-    // FuncArgument(FuncArgument),
-    // Schema(Schema),
-    // SchemaVariant(SchemaVariant),
-    // Socket(Box<(Socket, Option<InternalProvider>, Option<ExternalProvider>)>),
+    #[allow(dead_code)]
+    FuncArgument(FuncArgument),
+    Schema(Schema),
+    SchemaVariant(SchemaVariant),
+    Socket(Box<(Option<InternalProvider>, Option<ExternalProvider>)>),
     // Validation(ValidationPrototype),
 }
 
@@ -119,8 +65,8 @@ async fn import_change_set(
     metadata: &SiPkgMetadata,
     funcs: &[SiPkgFunc<'_>],
     schemas: &[SiPkgSchema<'_>],
-    components: &[SiPkgComponent<'_>],
-    edges: &[SiPkgEdge<'_>],
+    _components: &[SiPkgComponent<'_>],
+    _edges: &[SiPkgEdge<'_>],
     installed_pkg_id: Option<InstalledPkgId>,
     thing_map: &mut ThingMap,
     options: &ImportOptions,
@@ -129,8 +75,6 @@ async fn import_change_set(
     Vec<(String, Vec<bool /*ImportAttributeSkip*/>)>,
     Vec<bool /*ImportEdgeSkip*/>,
 )> {
-    let mut workspace_snapshot = ctx.workspace_snapshot()?.lock().await;
-
     for func_spec in funcs {
         let unique_id = func_spec.unique_id().to_string();
 
@@ -142,17 +86,16 @@ async fn import_change_set(
             || special_case_funcs.contains(&func_spec.name())
             || func_spec.is_from_builtin().unwrap_or(false)
         {
-            if let Some(func_id) = workspace_snapshot.func_find_by_name(func_spec.name())? {
-                let func = workspace_snapshot.func_get_by_id(ctx, func_id).await?;
+            if let Some(func_id) = Func::find_by_name(ctx, func_spec.name())? {
+                let func = Func::get_by_id(ctx, func_id).await?;
 
                 thing_map.insert(
                     change_set_pk,
                     unique_id.to_owned(),
                     Thing::Func(func.to_owned()),
                 );
-            } else if let Some(_func) = import_func(
+            } else if let Some(func) = import_func(
                 ctx,
-                &mut workspace_snapshot,
                 None,
                 func_spec,
                 installed_pkg_id,
@@ -161,11 +104,11 @@ async fn import_change_set(
             )
             .await?
             {
-                // let args = vec![]; //func_spec.arguments()?;
+                let args = func_spec.arguments()?;
 
-                // if !args.is_empty() {
-                //     // import_func_arguments(ctx, None, *func.id(), &args, thing_map).await?;
-                // }
+                if !args.is_empty() {
+                    import_func_arguments(ctx, None, func.id, &args, thing_map).await?;
+                }
             }
         } else {
             let func = if let Some(Some(func)) = options
@@ -196,7 +139,6 @@ async fn import_change_set(
             } else {
                 import_func(
                     ctx,
-                    &mut workspace_snapshot,
                     change_set_pk,
                     func_spec,
                     installed_pkg_id,
@@ -216,7 +158,7 @@ async fn import_change_set(
                 let args = func_spec.arguments()?;
 
                 if !args.is_empty() {
-                    // import_func_arguments(ctx, change_set_pk, *func.id(), &args, thing_map).await?;
+                    import_func_arguments(ctx, change_set_pk, func.id, &args, thing_map).await?;
                 }
             }
         };
@@ -224,27 +166,27 @@ async fn import_change_set(
 
     let mut installed_schema_variant_ids = vec![];
 
-    // for schema_spec in schemas {
-    //     match &options.schemas {
-    //         None => {}
-    //         Some(schemas) => {
-    //             if !schemas.contains(&schema_spec.name().to_string().to_lowercase()) {
-    //                 continue;
-    //             }
-    //         }
-    //     }
+    for schema_spec in schemas {
+        match &options.schemas {
+            None => {}
+            Some(schemas) => {
+                if !schemas.contains(&schema_spec.name().to_string().to_lowercase()) {
+                    continue;
+                }
+            }
+        }
 
-    //     info!(
-    //         "installing schema '{}' from {}",
-    //         schema_spec.name(),
-    //         metadata.name(),
-    //     );
+        info!(
+            "installing schema '{}' from {}",
+            schema_spec.name(),
+            metadata.name(),
+        );
 
-    //     let (_, schema_variant_ids) =
-    //         import_schema(ctx, change_set_pk, schema_spec, installed_pkg_id, thing_map).await?;
+        let (_, schema_variant_ids) =
+            import_schema(ctx, change_set_pk, schema_spec, installed_pkg_id, thing_map).await?;
 
-    //     installed_schema_variant_ids.extend(schema_variant_ids);
-    // }
+        installed_schema_variant_ids.extend(schema_variant_ids);
+    }
 
     // let mut component_attribute_skips = vec![];
     // for component_spec in components {
@@ -261,9 +203,6 @@ async fn import_change_set(
     //     }
     // }
     //
-
-    //    workspace_snapshot.cleanup();
-    //    workspace_snapshot.dot();
 
     Ok((
         installed_schema_variant_ids,
@@ -1454,7 +1393,7 @@ pub async fn import_pkg_from_pkg(
                 None,
                 &metadata,
                 &pkg.funcs()?,
-                &[], // &pkg.schemas()?,
+                &pkg.schemas()?,
                 &[],
                 &[],
                 installed_pkg_id,
@@ -1462,15 +1401,6 @@ pub async fn import_pkg_from_pkg(
                 &options,
             )
             .await?;
-
-            dbg!(ctx
-                .workspace_snapshot()?
-                .lock()
-                .await
-                .list_funcs(ctx)
-                .await
-                .expect("should get list funcs")
-                .len());
 
             Ok((installed_pkg_id, installed_schema_variant_ids, None))
         }
@@ -1569,8 +1499,8 @@ pub async fn import_pkg(ctx: &DalContext, pkg_file_path: impl AsRef<Path>) -> Pk
 
 async fn create_func(
     ctx: &DalContext,
-    workspace_snapshot: &mut WorkspaceSnapshot,
     func_spec: &SiPkgFunc<'_>,
+    is_builtin: bool,
 ) -> PkgResult<Func> {
     let name = func_spec.name();
 
@@ -1578,42 +1508,34 @@ async fn create_func(
         .data()
         .ok_or(PkgError::DataNotFound(name.into()))?;
 
-    // How to handle name conflicts?
-    let func = workspace_snapshot
-        .func_create(
-            ctx,
-            name,
-            func_spec_data.backend_kind().into(),
-            func_spec_data.response_type().into(),
-        )
-        .await?;
-
-    let func = workspace_snapshot
-        .func_modify_by_id(ctx, func.id, |func| {
-            func.display_name = func_spec_data
-                .display_name()
-                .map(|display_name| display_name.to_owned());
-            func.code_base64 = Some(func_spec_data.code_base64().to_owned());
-            func.description = func_spec_data.description().map(|desc| desc.to_owned());
-            func.handler = Some(func_spec_data.handler().to_owned());
-            func.hidden = func_spec_data.hidden();
-            func.link = func_spec_data.link().map(|l| l.to_string());
-
-            Ok(())
-        })
-        .await?;
+    let func = Func::new(
+        ctx,
+        name,
+        func_spec_data
+            .display_name()
+            .map(|display_name| display_name.to_owned()),
+        func_spec_data.description().map(|desc| desc.to_owned()),
+        func_spec_data.link().map(|l| l.to_string()),
+        func_spec_data.hidden(),
+        is_builtin,
+        func_spec_data.backend_kind().into(),
+        func_spec_data.response_type().into(),
+        Some(func_spec_data.handler().to_owned()),
+        Some(func_spec_data.code_base64().to_owned()),
+    )
+    .await?;
 
     Ok(func)
 }
 
+#[allow(dead_code)]
 async fn update_func(
     ctx: &DalContext,
-    workspace_snapshot: &mut WorkspaceSnapshot,
-    func: &Func,
+    func: Func,
     func_spec_data: &SiPkgFuncData,
-) -> PkgResult<()> {
-    workspace_snapshot
-        .func_modify_by_id(ctx, func.id, |func| {
+) -> PkgResult<Func> {
+    let func = func
+        .modify(ctx, |func| {
             func.name = func_spec_data.name().to_owned();
             func.backend_kind = func_spec_data.backend_kind().into();
             func.backend_response_type = func_spec_data.response_type().into();
@@ -1630,12 +1552,11 @@ async fn update_func(
         })
         .await?;
 
-    Ok(())
+    Ok(func)
 }
 
 async fn import_func(
     ctx: &DalContext,
-    workspace_snapshot: &mut WorkspaceSnapshot,
     change_set_pk: Option<ChangeSetPk>,
     func_spec: &SiPkgFunc<'_>,
     installed_pkg_id: Option<InstalledPkgId>,
@@ -1653,15 +1574,12 @@ async fn import_func(
             let (func, created) = match existing_func {
                 Some(installed_func_record) => match installed_func_record.as_installed_func()? {
                     InstalledPkgAssetTyped::Func { id, .. } => {
-                        (workspace_snapshot.func_get_by_id(ctx, id).await?, false)
+                        (Func::get_by_id(ctx, id).await?, false)
                     }
+                    _ => unimplemented!("no idea what happens here!"),
                 },
-                None => (create_func(ctx, workspace_snapshot, func_spec).await?, true),
+                None => (create_func(ctx, func_spec, is_builtin).await?, true),
             };
-
-            if is_builtin {
-                // func.set_builtin(ctx, true).await?
-            }
 
             if let Some(installed_pkg_id) = installed_pkg_id {
                 InstalledPkgAsset::new(
@@ -1727,20 +1645,20 @@ async fn import_func(
     Ok(func)
 }
 
-// async fn create_func_argument(
-//     ctx: &DalContext,
-//     func_id: FuncId,
-//     func_arg: &SiPkgFuncArgument<'_>,
-// ) -> PkgResult<FuncArgument> {
-//     Ok(FuncArgument::new(
-//         ctx,
-//         func_arg.name(),
-//         func_arg.kind().into(),
-//         func_arg.element_kind().to_owned().map(|&kind| kind.into()),
-//         func_id,
-//     )
-//     .await?)
-// }
+async fn create_func_argument(
+    ctx: &DalContext,
+    func_id: FuncId,
+    func_arg: &SiPkgFuncArgument<'_>,
+) -> PkgResult<FuncArgument> {
+    Ok(FuncArgument::new(
+        ctx,
+        func_arg.name(),
+        func_arg.kind().into(),
+        func_arg.element_kind().to_owned().map(|&kind| kind.into()),
+        func_id,
+    )
+    .await?)
+}
 
 // async fn update_func_argument(
 //     ctx: &DalContext,
@@ -1753,83 +1671,74 @@ async fn import_func(
 //     let element_kind: Option<FuncArgumentKind> = func_arg.element_kind().map(|&kind| kind.into());
 //     existing_arg.set_element_kind(ctx, element_kind).await?;
 //     existing_arg.set_func_id(ctx, func_id).await?;
-
+//
 //     Ok(())
 // }
 
-// async fn import_func_arguments(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     func_id: FuncId,
-//     func_arguments: &[SiPkgFuncArgument<'_>],
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<()> {
-//     match change_set_pk {
-//         None => {
-//             for arg in func_arguments {
-//                 create_func_argument(ctx, func_id, arg).await?;
-//             }
-//         }
-//         Some(_) => {
-//             for arg in func_arguments {
-//                 let unique_id =
-//                     arg.unique_id()
-//                         .ok_or(PkgError::MissingUniqueIdForNode(format!(
-//                             "func-argument-{}",
-//                             arg.hash()
-//                         )))?;
+async fn import_func_arguments(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    func_id: FuncId,
+    func_arguments: &[SiPkgFuncArgument<'_>],
+    _thing_map: &mut ThingMap,
+) -> PkgResult<()> {
+    match change_set_pk {
+        None => {
+            for arg in func_arguments {
+                create_func_argument(ctx, func_id, arg).await?;
+            }
+        }
+        Some(_) => {} //             for arg in func_arguments {
+                      //                 let unique_id =
+                      //                     arg.unique_id()
+                      //                         .ok_or(PkgError::MissingUniqueIdForNode(format!(
+                      //                             "func-argument-{}",
+                      //                             arg.hash()
+                      //                         )))?;
+                      //
+                      //                 match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+                      //                     Some(Thing::FuncArgument(existing_arg)) => {
+                      //                         let mut existing_arg = existing_arg.to_owned();
+                      //
+                      //                         if arg.deleted() {
+                      //                             existing_arg.delete_by_id(ctx).await?;
+                      //                         } else {
+                      //                             update_func_argument(ctx, &mut existing_arg, func_id, arg).await?;
+                      //                             thing_map.insert(
+                      //                                 change_set_pk,
+                      //                                 unique_id.to_owned(),
+                      //                                 Thing::FuncArgument(existing_arg.to_owned()),
+                      //                             );
+                      //                         }
+                      //                     }
+                      //                     _ => {
+                      //                         if !arg.deleted() {
+                      //                             let new_arg = create_func_argument(ctx, func_id, arg).await?;
+                      //                             thing_map.insert(
+                      //                                 change_set_pk,
+                      //                                 unique_id.to_owned(),
+                      //                                 Thing::FuncArgument(new_arg),
+                      //                             );
+                      //                         }
+                      //                     }
+                      //                 }
+                      //             }
+                      //         }
+    }
 
-//                 match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-//                     Some(Thing::FuncArgument(existing_arg)) => {
-//                         let mut existing_arg = existing_arg.to_owned();
+    Ok(())
+}
 
-//                         if arg.deleted() {
-//                             existing_arg.delete_by_id(ctx).await?;
-//                         } else {
-//                             update_func_argument(ctx, &mut existing_arg, func_id, arg).await?;
-//                             thing_map.insert(
-//                                 change_set_pk,
-//                                 unique_id.to_owned(),
-//                                 Thing::FuncArgument(existing_arg.to_owned()),
-//                             );
-//                         }
-//                     }
-//                     _ => {
-//                         if !arg.deleted() {
-//                             let new_arg = create_func_argument(ctx, func_id, arg).await?;
-//                             thing_map.insert(
-//                                 change_set_pk,
-//                                 unique_id.to_owned(),
-//                                 Thing::FuncArgument(new_arg),
-//                             );
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-
-//     Ok(())
-// }
-
-// async fn create_schema(ctx: &DalContext, schema_spec_data: &SiPkgSchemaData) -> PkgResult<Schema> {
-//     let mut schema = Schema::new(ctx, schema_spec_data.name(), &ComponentKind::Standard).await?;
-//     schema
-//         .set_ui_hidden(ctx, schema_spec_data.ui_hidden())
-//         .await?;
-
-//     let ui_menu = SchemaUiMenu::new(
-//         ctx,
-//         schema_spec_data
-//             .category_name()
-//             .unwrap_or_else(|| schema_spec_data.name()),
-//         schema_spec_data.category(),
-//     )
-//     .await?;
-//     ui_menu.set_schema(ctx, schema.id()).await?;
-
-//     Ok(schema)
-// }
+async fn create_schema(ctx: &DalContext, schema_spec_data: &SiPkgSchemaData) -> PkgResult<Schema> {
+    let schema = Schema::new(ctx, schema_spec_data.name(), ComponentKind::Standard)
+        .await?
+        .modify(ctx, |schema| {
+            schema.ui_hidden = schema_spec_data.ui_hidden();
+            Ok(())
+        })
+        .await?;
+    Ok(schema)
+}
 
 // async fn update_schema(
 //     ctx: &DalContext,
@@ -1860,164 +1769,165 @@ async fn import_func(
 //     Ok(())
 // }
 
-// async fn import_schema(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     schema_spec: &SiPkgSchema<'_>,
-//     installed_pkg_id: Option<InstalledPkgId>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
-//     let schema = match change_set_pk {
-//         None => {
-//             let hash = schema_spec.hash().to_string();
-//             let existing_schema = InstalledPkgAsset::list_for_kind_and_hash(
-//                 ctx,
-//                 InstalledPkgAssetKind::Schema,
-//                 &hash,
-//             )
-//             .await?
-//             .pop();
+async fn import_schema(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    schema_spec: &SiPkgSchema<'_>,
+    installed_pkg_id: Option<InstalledPkgId>,
+    thing_map: &mut ThingMap,
+) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
+    let schema_and_category = match change_set_pk {
+        None => {
+            let hash = schema_spec.hash().to_string();
+            let existing_schema = InstalledPkgAsset::list_for_kind_and_hash(
+                ctx,
+                InstalledPkgAssetKind::Schema,
+                &hash,
+            )
+            .await?
+            .pop();
 
-//             let schema = match existing_schema {
-//                 None => {
-//                     let data = schema_spec
-//                         .data()
-//                         .ok_or(PkgError::DataNotFound("schema".into()))?;
+            let data = schema_spec
+                .data()
+                .ok_or(PkgError::DataNotFound("schema".into()))?;
 
-//                     create_schema(ctx, data).await?
-//                 }
-//                 Some(installed_schema_record) => {
-//                     match installed_schema_record.as_installed_schema()? {
-//                         InstalledPkgAssetTyped::Schema { id, .. } => {
-//                             match Schema::get_by_id(ctx, &id).await? {
-//                                 Some(schema) => schema,
-//                                 None => return Err(PkgError::InstalledSchemaMissing(id)),
-//                             }
-//                         }
-//                         _ => unreachable!(),
-//                     }
-//                 }
-//             };
+            // NOTE(nick): with the new engine, the category moves to the schema variant, so we need
+            // to pull it off here, even if we find an existing schema.
+            let category = data.category.clone();
 
-//             // Even if the asset is already installed, we write a record of the asset installation so that
-//             // we can track the installed packages that share schemas.
-//             if let Some(installed_pkg_id) = installed_pkg_id {
-//                 InstalledPkgAsset::new(
-//                     ctx,
-//                     InstalledPkgAssetTyped::new_for_schema(*schema.id(), installed_pkg_id, hash),
-//                 )
-//                 .await?;
-//             }
+            let schema = match existing_schema {
+                None => create_schema(ctx, data).await?,
+                Some(installed_schema_record) => {
+                    match installed_schema_record.as_installed_schema()? {
+                        InstalledPkgAssetTyped::Schema { id, .. } => {
+                            Schema::get_by_id(ctx, id).await?
+                        }
+                        _ => unimplemented!("no idea what happens here!"),
+                    }
+                }
+            };
 
-//             Some(schema)
-//         }
-//         Some(_) => {
-//             let unique_id = schema_spec
-//                 .unique_id()
-//                 .ok_or(PkgError::MissingUniqueIdForNode(format!(
-//                     "schema {}",
-//                     schema_spec.hash()
-//                 )))?;
+            // Even if the asset is already installed, we write a record of the asset installation so that
+            // we can track the installed packages that share schemas.
+            if let Some(installed_pkg_id) = installed_pkg_id {
+                InstalledPkgAsset::new(
+                    ctx,
+                    InstalledPkgAssetTyped::new_for_schema(schema.id(), installed_pkg_id, hash),
+                )
+                .await?;
+            }
 
-//             match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-//                 Some(Thing::Schema(schema)) => {
-//                     let mut schema = schema.to_owned();
+            Some((schema, category))
+        }
+        Some(_) => {
+            unimplemented!("workspace import not yet implemented")
+            // let unique_id = schema_spec
+            //     .unique_id()
+            //     .ok_or(PkgError::MissingUniqueIdForNode(format!(
+            //         "schema {}",
+            //         schema_spec.hash()
+            //     )))?;
+            //
+            // match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+            //     Some(Thing::Schema(schema)) => {
+            //         let mut schema = schema.to_owned();
+            //
+            //         if schema_spec.deleted() {
+            //             schema.delete_by_id(ctx).await?;
+            //             // delete all schema children?
+            //
+            //             None
+            //         } else {
+            //             if let Some(data) = schema_spec.data() {
+            //                 update_schema(ctx, &mut schema, data).await?;
+            //             }
+            //
+            //             Some(schema)
+            //         }
+            //     }
+            //     _ => {
+            //         if schema_spec.deleted() {
+            //             None
+            //         } else {
+            //             Some(
+            //                 create_schema(
+            //                     ctx,
+            //                     schema_spec
+            //                         .data()
+            //                         .ok_or(PkgError::DataNotFound("schema".into()))?,
+            //                 )
+            //                 .await?,
+            //             )
+            //         }
+            //     }
+            // }
+        }
+    };
 
-//                     if schema_spec.deleted() {
-//                         schema.delete_by_id(ctx).await?;
-//                         // delete all schema children?
+    if let Some((mut schema, category)) = schema_and_category {
+        if let Some(unique_id) = schema_spec.unique_id() {
+            thing_map.insert(
+                change_set_pk,
+                unique_id.to_owned(),
+                Thing::Schema(schema.to_owned()),
+            );
+        }
 
-//                         None
-//                     } else {
-//                         if let Some(data) = schema_spec.data() {
-//                             update_schema(ctx, &mut schema, data).await?;
-//                         }
+        let installed_schema_variant_ids = vec![];
+        for variant_spec in &schema_spec.variants()? {
+            let _variant = import_schema_variant(
+                ctx,
+                change_set_pk,
+                &mut schema,
+                category.clone(),
+                variant_spec,
+                installed_pkg_id,
+                thing_map,
+            )
+            .await?;
 
-//                         Some(schema)
-//                     }
-//                 }
-//                 _ => {
-//                     if schema_spec.deleted() {
-//                         None
-//                     } else {
-//                         Some(
-//                             create_schema(
-//                                 ctx,
-//                                 schema_spec
-//                                     .data()
-//                                     .ok_or(PkgError::DataNotFound("schema".into()))?,
-//                             )
-//                             .await?,
-//                         )
-//                     }
-//                 }
-//             }
-//         }
-//     };
+            // if let Some(variant) = variant {
+            //     installed_schema_variant_ids.push(*variant.id());
+            //
+            //     if let Some(variant_spec_data) = variant_spec.data() {
+            //         let func_unique_id = variant_spec_data.func_unique_id().to_owned();
+            //
+            //         set_default_schema_variant_id(
+            //             ctx,
+            //             change_set_pk,
+            //             &mut schema,
+            //             schema_spec
+            //                 .data()
+            //                 .as_ref()
+            //                 .and_then(|data| data.default_schema_variant()),
+            //             variant_spec.unique_id(),
+            //             *variant.id(),
+            //         )
+            //         .await?;
+            //
+            //         if let Thing::Func(asset_func) =
+            //             thing_map
+            //                 .get(change_set_pk, &func_unique_id)
+            //                 .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
+            //         {
+            //             create_schema_variant_definition(
+            //                 ctx,
+            //                 schema_spec.clone(),
+            //                 installed_pkg_id,
+            //                 *variant.id(),
+            //                 asset_func,
+            //             )
+            //             .await?;
+            //         }
+            //     }
+            // }
+        }
 
-//     if let Some(mut schema) = schema {
-//         if let Some(unique_id) = schema_spec.unique_id() {
-//             thing_map.insert(
-//                 change_set_pk,
-//                 unique_id.to_owned(),
-//                 Thing::Schema(schema.to_owned()),
-//             );
-//         }
-
-//         let mut installed_schema_variant_ids = vec![];
-//         for variant_spec in &schema_spec.variants()? {
-//             let variant = import_schema_variant(
-//                 ctx,
-//                 change_set_pk,
-//                 &mut schema,
-//                 variant_spec,
-//                 installed_pkg_id,
-//                 thing_map,
-//             )
-//             .await?;
-
-//             if let Some(variant) = variant {
-//                 installed_schema_variant_ids.push(*variant.id());
-
-//                 if let Some(variant_spec_data) = variant_spec.data() {
-//                     let func_unique_id = variant_spec_data.func_unique_id().to_owned();
-
-//                     set_default_schema_variant_id(
-//                         ctx,
-//                         change_set_pk,
-//                         &mut schema,
-//                         schema_spec
-//                             .data()
-//                             .as_ref()
-//                             .and_then(|data| data.default_schema_variant()),
-//                         variant_spec.unique_id(),
-//                         *variant.id(),
-//                     )
-//                     .await?;
-
-//                     if let Thing::Func(asset_func) =
-//                         thing_map
-//                             .get(change_set_pk, &func_unique_id)
-//                             .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
-//                     {
-//                         create_schema_variant_definition(
-//                             ctx,
-//                             schema_spec.clone(),
-//                             installed_pkg_id,
-//                             *variant.id(),
-//                             asset_func,
-//                         )
-//                         .await?;
-//                     }
-//                 }
-//             }
-//         }
-
-//         Ok((Some(*schema.id()), installed_schema_variant_ids))
-//     } else {
-//         Ok((None, vec![]))
-//     }
-// }
+        Ok((Some(schema.id()), installed_schema_variant_ids))
+    } else {
+        Ok((None, vec![]))
+    }
+}
 
 // async fn set_default_schema_variant_id(
 //     ctx: &DalContext,
@@ -2131,220 +2041,198 @@ async fn import_func(
 //     Ok(())
 // }
 
-// #[derive(Clone, Debug)]
-// struct AttrFuncInfo {
-//     func_unique_id: String,
-//     prop_id: PropId,
-//     inputs: Vec<SiPkgAttrFuncInputView>,
-// }
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+struct AttrFuncInfo {
+    func_unique_id: String,
+    prop_id: PropId,
+    inputs: Vec<SiPkgAttrFuncInputView>,
+}
 
-// #[remain::sorted]
-// #[derive(Clone, Debug)]
-// enum DefaultValueInfo {
-//     Boolean {
-//         prop_id: PropId,
-//         default_value: bool,
-//     },
-//     Number {
-//         prop_id: PropId,
-//         default_value: i64,
-//     },
-//     String {
-//         prop_id: PropId,
-//         default_value: String,
-//     },
-// }
+#[allow(dead_code)]
+#[remain::sorted]
+#[derive(Clone, Debug)]
+enum DefaultValueInfo {
+    Boolean {
+        prop_id: PropId,
+        default_value: bool,
+    },
+    Number {
+        prop_id: PropId,
+        default_value: i64,
+    },
+    String {
+        prop_id: PropId,
+        default_value: String,
+    },
+}
 
-// struct PropVisitContext<'a> {
-//     pub ctx: &'a DalContext,
-//     pub schema_variant_id: SchemaVariantId,
-//     pub attr_funcs: Mutex<Vec<AttrFuncInfo>>,
-//     pub default_values: Mutex<Vec<DefaultValueInfo>>,
-//     pub map_key_funcs: Mutex<Vec<(String, AttrFuncInfo)>>,
-//     pub validations: Mutex<Vec<(PropId, ValidationSpec)>>,
-//     pub change_set_pk: Option<ChangeSetPk>,
-// }
+struct PropVisitContext<'a> {
+    pub ctx: &'a DalContext,
+    pub schema_variant_id: SchemaVariantId,
+    pub attr_funcs: Mutex<Vec<AttrFuncInfo>>,
+    pub default_values: Mutex<Vec<DefaultValueInfo>>,
+    pub map_key_funcs: Mutex<Vec<(String, AttrFuncInfo)>>,
+    pub validations: Mutex<Vec<(PropId, ValidationSpec)>>,
+    pub change_set_pk: Option<ChangeSetPk>,
+}
 
-// async fn import_leaf_function(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     leaf_func: SiPkgLeafFunction<'_>,
-//     schema_variant_id: SchemaVariantId,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<()> {
-//     let inputs: Vec<LeafInputLocation> = leaf_func
-//         .inputs()
-//         .iter()
-//         .map(|input| input.into())
-//         .collect();
+async fn import_leaf_function(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    leaf_func: SiPkgLeafFunction<'_>,
+    schema_variant_id: SchemaVariantId,
+    thing_map: &mut ThingMap,
+) -> PkgResult<()> {
+    let inputs: Vec<LeafInputLocation> = leaf_func
+        .inputs()
+        .iter()
+        .map(|input| input.into())
+        .collect();
 
-//     let kind: LeafKind = leaf_func.leaf_kind().into();
+    let kind: LeafKind = leaf_func.leaf_kind().into();
 
-//     match thing_map.get(change_set_pk, &leaf_func.func_unique_id().to_owned()) {
-//         Some(Thing::Func(func)) => {
-//             SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, None, kind, &inputs, func)
-//                 .await?;
-//         }
-//         _ => {
-//             return Err(PkgError::MissingFuncUniqueId(
-//                 leaf_func.func_unique_id().to_string(),
-//             ));
-//         }
-//     }
+    match thing_map.get(change_set_pk, &leaf_func.func_unique_id().to_owned()) {
+        Some(Thing::Func(func)) => {
+            SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, None, kind, &inputs, func)
+                .await?;
+        }
+        _ => {
+            return Err(PkgError::MissingFuncUniqueId(
+                leaf_func.func_unique_id().to_string(),
+            ));
+        }
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// // TODO: cache this so we don't fetch it for every socket
-// async fn get_identity_func(
-//     ctx: &DalContext,
-// ) -> PkgResult<(Func, FuncBinding, FuncBindingReturnValue, FuncArgument)> {
-//     let func_name = "si:identity";
-//     let func_argument_name = "identity";
-//     let func: Func = Func::find_by_name(ctx, func_name)
-//         .await?
-//         .ok_or_else(|| FuncError::NotFoundByName(func_name.to_string()))?;
+fn get_identity_func(ctx: &DalContext) -> PkgResult<FuncId> {
+    let id_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)?;
+    Ok(id_func_id)
+}
 
-//     let func_id = *func.id();
-//     let (func_binding, func_binding_return_value) =
-//         FuncBinding::create_and_execute(ctx, serde_json::json![{ "identity": null }], func_id)
-//             .await?;
-//     let func_argument = FuncArgument::find_by_name_for_func(ctx, func_argument_name, func_id)
-//         .await?
-//         .ok_or_else(|| {
-//             PkgError::MissingIntrinsicFuncArgument(
-//                 func_name.to_string(),
-//                 func_argument_name.to_string(),
-//             )
-//         })?;
+async fn create_socket(
+    ctx: &DalContext,
+    data: &SiPkgSocketData,
+    schema_variant_id: SchemaVariantId,
+) -> PkgResult<(Option<InternalProvider>, Option<ExternalProvider>)> {
+    let identity_func_id = get_identity_func(ctx)?;
 
-//     Ok((func, func_binding, func_binding_return_value, func_argument))
-// }
+    let (ip, ep) = match data.kind() {
+        SocketSpecKind::Input => {
+            let ip = InternalProvider::new_explicit(
+                ctx,
+                schema_variant_id,
+                data.name(),
+                identity_func_id,
+                data.arity().into(),
+                ProviderKind::Standard,
+            )
+            .await?;
 
-// async fn create_socket(
-//     ctx: &DalContext,
-//     data: &SiPkgSocketData,
-//     schema_id: SchemaId,
-//     schema_variant_id: SchemaVariantId,
-// ) -> PkgResult<(Socket, Option<InternalProvider>, Option<ExternalProvider>)> {
-//     let (identity_func, identity_func_binding, identity_fbrv, _) = get_identity_func(ctx).await?;
+            (Some(ip), None)
+        }
+        SocketSpecKind::Output => {
+            let ep = ExternalProvider::new(
+                ctx,
+                schema_variant_id,
+                data.name(),
+                None,
+                identity_func_id,
+                data.arity().into(),
+                ProviderKind::Standard,
+            )
+            .await?;
 
-//     let (mut socket, ip, ep) = match data.kind() {
-//         SocketSpecKind::Input => {
-//             let (ip, socket) = InternalProvider::new_explicit_with_socket(
-//                 ctx,
-//                 schema_variant_id,
-//                 data.name(),
-//                 *identity_func.id(),
-//                 *identity_func_binding.id(),
-//                 *identity_fbrv.id(),
-//                 data.arity().into(),
-//                 false,
-//             )
-//             .await?;
+            (None, Some(ep))
+        }
+    };
 
-//             (socket, Some(ip), None)
-//         }
-//         SocketSpecKind::Output => {
-//             let (ep, socket) = ExternalProvider::new_with_socket(
-//                 ctx,
-//                 schema_id,
-//                 schema_variant_id,
-//                 data.name(),
-//                 None,
-//                 *identity_func.id(),
-//                 *identity_func_binding.id(),
-//                 *identity_fbrv.id(),
-//                 data.arity().into(),
-//                 false,
-//             )
-//             .await?;
+    // TODO: add modify_by_id to socket, ui hide frames
+    // socket.set_ui_hidden(ctx, data.ui_hidden()).await?;
 
-//             (socket, None, Some(ep))
-//         }
-//     };
+    Ok((ip, ep))
+}
 
-//     socket.set_ui_hidden(ctx, data.ui_hidden()).await?;
+async fn import_socket(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    socket_spec: SiPkgSocket<'_>,
+    schema_variant_id: SchemaVariantId,
+    thing_map: &mut ThingMap,
+) -> PkgResult<()> {
+    let (ip, ep) = match change_set_pk {
+        None => {
+            let data = socket_spec
+                .data()
+                .ok_or(PkgError::DataNotFound(socket_spec.name().into()))?;
 
-//     Ok((socket, ip, ep))
-// }
+            create_socket(ctx, data, schema_variant_id).await?
+        }
+        Some(_) => {
+            todo!("workspace backup imports");
+            //            let unique_id = socket_spec
+            //                .unique_id()
+            //                .ok_or(PkgError::MissingUniqueIdForNode(format!(
+            //                    "socket {}",
+            //                    socket_spec.hash()
+            //                )))?;
+            //
+            //            match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+            //                Some(Thing::Socket(socket_box)) => {
+            //                    (
+            //                        socket_box.0.to_owned(),
+            //                        socket_box.1.to_owned(),
+            //                        socket_box.2.to_owned(),
+            //                    )
+            //                    // prop trees, including sockets and providers, are created whole cloth, so
+            //                    // should not have differences in change sets (currently)
+            //                }
+            //                _ => {
+            //                    let data = socket_spec
+            //                        .data()
+            //                        .ok_or(PkgError::DataNotFound(socket_spec.name().into()))?;
+            //
+            //                    create_socket(ctx, data, schema_id, schema_variant_id).await?
+            //                }
+            //            }
+        }
+    };
 
-// async fn import_socket(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     socket_spec: SiPkgSocket<'_>,
-//     schema_id: SchemaId,
-//     schema_variant_id: SchemaVariantId,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<()> {
-//     let (socket, ip, ep) = match change_set_pk {
-//         None => {
-//             let data = socket_spec
-//                 .data()
-//                 .ok_or(PkgError::DataNotFound(socket_spec.name().into()))?;
+    if let Some(unique_id) = socket_spec.unique_id() {
+        thing_map.insert(
+            change_set_pk,
+            unique_id.to_owned(),
+            Thing::Socket(Box::new((ip.to_owned(), ep.to_owned()))),
+        );
+    }
 
-//             create_socket(ctx, data, schema_id, schema_variant_id).await?
-//         }
-//         Some(_) => {
-//             let unique_id = socket_spec
-//                 .unique_id()
-//                 .ok_or(PkgError::MissingUniqueIdForNode(format!(
-//                     "socket {}",
-//                     socket_spec.hash()
-//                 )))?;
+    /*
+    match (
+        socket_spec.data().and_then(|data| data.func_unique_id()),
+        ep,
+        ip,
+    ) {
+        (Some(func_unique_id), Some(ep), None) => {
+            import_attr_func_for_output_socket(
+                ctx,
+                change_set_pk,
+                schema_variant_id,
+                *ep.id(),
+                func_unique_id,
+                socket_spec.inputs()?.drain(..).map(Into::into).collect(),
+                thing_map,
+            )
+            .await?;
+        }
+        (Some(_), _, Some(_)) => {}
+        _ => {}
+    }
+        */
 
-//             match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-//                 Some(Thing::Socket(socket_box)) => {
-//                     (
-//                         socket_box.0.to_owned(),
-//                         socket_box.1.to_owned(),
-//                         socket_box.2.to_owned(),
-//                     )
-//                     // prop trees, including sockets and providers, are created whole cloth, so
-//                     // should not have differences in change sets (currently)
-//                 }
-//                 _ => {
-//                     let data = socket_spec
-//                         .data()
-//                         .ok_or(PkgError::DataNotFound(socket_spec.name().into()))?;
-
-//                     create_socket(ctx, data, schema_id, schema_variant_id).await?
-//                 }
-//             }
-//         }
-//     };
-
-//     if let Some(unique_id) = socket_spec.unique_id() {
-//         thing_map.insert(
-//             change_set_pk,
-//             unique_id.to_owned(),
-//             Thing::Socket(Box::new((socket, ip.to_owned(), ep.to_owned()))),
-//         );
-//     }
-
-//     match (
-//         socket_spec.data().and_then(|data| data.func_unique_id()),
-//         ep,
-//         ip,
-//     ) {
-//         (Some(func_unique_id), Some(ep), None) => {
-//             import_attr_func_for_output_socket(
-//                 ctx,
-//                 change_set_pk,
-//                 schema_variant_id,
-//                 *ep.id(),
-//                 func_unique_id,
-//                 socket_spec.inputs()?.drain(..).map(Into::into).collect(),
-//                 thing_map,
-//             )
-//             .await?;
-//         }
-//         (Some(_), _, Some(_)) => {}
-//         _ => {}
-//     }
-
-//     Ok(())
-// }
+    Ok(())
+}
 
 // async fn create_action_protoype(
 //     ctx: &DalContext,
@@ -2396,131 +2284,134 @@ async fn import_func(
 //     Ok(())
 // }
 
-// async fn import_action_func(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     action_func_spec: &SiPkgActionFunc<'_>,
-//     schema_variant_id: SchemaVariantId,
-//     thing_map: &ThingMap,
-// ) -> PkgResult<Option<ActionPrototype>> {
-//     let prototype =
-//         match thing_map.get(change_set_pk, &action_func_spec.func_unique_id().to_owned()) {
-//             Some(Thing::Func(func)) => {
-//                 let func_id = *func.id();
+//async fn import_action_func(
+//    ctx: &DalContext,
+//    change_set_pk: Option<ChangeSetPk>,
+//    action_func_spec: &SiPkgActionFunc<'_>,
+//    schema_variant_id: SchemaVariantId,
+//    thing_map: &ThingMap,
+//) -> PkgResult<Option<ActionPrototype>> {
+//    let prototype =
+//        match thing_map.get(change_set_pk, &action_func_spec.func_unique_id().to_owned()) {
+//            Some(Thing::Func(func)) => {
+//                let func_id = func.id();
+//
+//                if let Some(unique_id) = action_func_spec.unique_id() {
+//                    match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+//                        Some(Thing::ActionPrototype(prototype)) => {
+//                            todo!("workspace import paths not yet implemented");
+//                            //                            let mut prototype = prototype.to_owned();
+//                            //
+//                            //                            if action_func_spec.deleted() {
+//                            //                                prototype.delete_by_id(ctx).await?;
+//                            //                            } else {
+//                            //                                update_action_prototype(
+//                            //                                    ctx,
+//                            //                                    &mut prototype,
+//                            //                                    action_func_spec,
+//                            //                                    func_id,
+//                            //                                    schema_variant_id,
+//                            //                                )
+//                            //                                .await?;
+//                            //                            }
+//                            //
+//                            //                            Some(prototype)
+//                        }
+//                        _ => {
+//                            if action_func_spec.deleted() {
+//                                None
+//                            } else {
+//                                Some(
+//                                    create_action_protoype(
+//                                        ctx,
+//                                        action_func_spec,
+//                                        func_id,
+//                                        schema_variant_id,
+//                                    )
+//                                    .await?,
+//                                )
+//                            }
+//                        }
+//                    }
+//                } else {
+//                    Some(
+//                        create_action_protoype(ctx, action_func_spec, func_id, schema_variant_id)
+//                            .await?,
+//                    )
+//                }
+//            }
+//            _ => {
+//                return Err(PkgError::MissingFuncUniqueId(
+//                    action_func_spec.func_unique_id().into(),
+//                ));
+//            }
+//        };
+//
+//    Ok(prototype)
+//}
 
-//                 if let Some(unique_id) = action_func_spec.unique_id() {
-//                     match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-//                         Some(Thing::ActionPrototype(prototype)) => {
-//                             let mut prototype = prototype.to_owned();
+#[derive(Default, Clone, Debug)]
+struct CreatePropsSideEffects {
+    attr_funcs: Vec<AttrFuncInfo>,
+    default_values: Vec<DefaultValueInfo>,
+    map_key_funcs: Vec<(String, AttrFuncInfo)>,
+    validations: Vec<(PropId, ValidationSpec)>,
+}
 
-//                             if action_func_spec.deleted() {
-//                                 prototype.delete_by_id(ctx).await?;
-//                             } else {
-//                                 update_action_prototype(
-//                                     ctx,
-//                                     &mut prototype,
-//                                     action_func_spec,
-//                                     func_id,
-//                                     schema_variant_id,
-//                                 )
-//                                 .await?;
-//                             }
+impl IntoIterator for CreatePropsSideEffects {
+    type Item = CreatePropsSideEffects;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+    fn into_iter(self) -> Self::IntoIter {
+        vec![self].into_iter()
+    }
+}
 
-//                             Some(prototype)
-//                         }
-//                         _ => {
-//                             if action_func_spec.deleted() {
-//                                 None
-//                             } else {
-//                                 Some(
-//                                     create_action_protoype(
-//                                         ctx,
-//                                         action_func_spec,
-//                                         func_id,
-//                                         schema_variant_id,
-//                                     )
-//                                     .await?,
-//                                 )
-//                             }
-//                         }
-//                     }
-//                 } else {
-//                     Some(
-//                         create_action_protoype(ctx, action_func_spec, func_id, schema_variant_id)
-//                             .await?,
-//                     )
-//                 }
-//             }
-//             _ => {
-//                 return Err(PkgError::MissingFuncUniqueId(
-//                     action_func_spec.func_unique_id().into(),
-//                 ));
-//             }
-//         };
+impl Extend<CreatePropsSideEffects> for CreatePropsSideEffects {
+    fn extend<T: IntoIterator<Item = CreatePropsSideEffects>>(&mut self, iter: T) {
+        for element in iter {
+            self.attr_funcs.extend(element.attr_funcs);
+            self.default_values.extend(element.default_values);
+            self.map_key_funcs.extend(element.map_key_funcs);
+            self.validations.extend(element.validations);
+        }
+    }
+}
 
-//     Ok(prototype)
-// }
+async fn create_props(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    variant_spec: &SiPkgSchemaVariant<'_>,
+    prop_root: SchemaVariantSpecPropRoot,
+    prop_root_prop_id: PropId,
+    schema_variant_id: SchemaVariantId,
+) -> PkgResult<CreatePropsSideEffects> {
+    let context = PropVisitContext {
+        ctx,
+        schema_variant_id,
+        attr_funcs: Mutex::new(vec![]),
+        default_values: Mutex::new(vec![]),
+        map_key_funcs: Mutex::new(vec![]),
+        validations: Mutex::new(vec![]),
+        change_set_pk,
+    };
 
-// #[derive(Default, Clone, Debug)]
-// struct CreatePropsSideEffects {
-//     attr_funcs: Vec<AttrFuncInfo>,
-//     default_values: Vec<DefaultValueInfo>,
-//     map_key_funcs: Vec<(String, AttrFuncInfo)>,
-//     validations: Vec<(PropId, ValidationSpec)>,
-// }
+    let parent_info = ParentPropInfo {
+        prop_id: prop_root_prop_id,
+        path: PropPath::new(prop_root.path_parts()),
+        kind: PropKind::Object,
+    };
 
-// impl IntoIterator for CreatePropsSideEffects {
-//     type Item = CreatePropsSideEffects;
+    variant_spec
+        .visit_prop_tree(prop_root, create_prop, Some(parent_info), &context)
+        .await?;
 
-//     type IntoIter = std::vec::IntoIter<Self::Item>;
-
-//     fn into_iter(self) -> Self::IntoIter {
-//         vec![self].into_iter()
-//     }
-// }
-
-// impl Extend<CreatePropsSideEffects> for CreatePropsSideEffects {
-//     fn extend<T: IntoIterator<Item = CreatePropsSideEffects>>(&mut self, iter: T) {
-//         for element in iter {
-//             self.attr_funcs.extend(element.attr_funcs);
-//             self.default_values.extend(element.default_values);
-//             self.map_key_funcs.extend(element.map_key_funcs);
-//             self.validations.extend(element.validations);
-//         }
-//     }
-// }
-
-// async fn create_props(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     variant_spec: &SiPkgSchemaVariant<'_>,
-//     prop_root: SchemaVariantSpecPropRoot,
-//     prop_root_prop_id: PropId,
-//     schema_variant_id: SchemaVariantId,
-// ) -> PkgResult<CreatePropsSideEffects> {
-//     let context = PropVisitContext {
-//         ctx,
-//         schema_variant_id,
-//         attr_funcs: Mutex::new(vec![]),
-//         default_values: Mutex::new(vec![]),
-//         map_key_funcs: Mutex::new(vec![]),
-//         validations: Mutex::new(vec![]),
-//         change_set_pk,
-//     };
-
-//     let parent_info = (prop_root_prop_id, PropPath::new(prop_root.path_parts()));
-
-//     variant_spec
-//         .visit_prop_tree(prop_root, create_prop, Some(parent_info), &context)
-//         .await?;
-
-//     Ok(CreatePropsSideEffects {
-//         attr_funcs: context.attr_funcs.into_inner(),
-//         default_values: context.default_values.into_inner(),
-//         map_key_funcs: context.map_key_funcs.into_inner(),
-//         validations: context.validations.into_inner(),
-//     })
-// }
+    Ok(CreatePropsSideEffects {
+        attr_funcs: context.attr_funcs.into_inner(),
+        default_values: context.default_values.into_inner(),
+        map_key_funcs: context.map_key_funcs.into_inner(),
+        validations: context.validations.into_inner(),
+    })
+}
 
 // async fn update_schema_variant(
 //     ctx: &DalContext,
@@ -2545,403 +2436,434 @@ async fn import_func(
 //     Ok(())
 // }
 
-// async fn import_schema_variant(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     schema: &mut Schema,
-//     variant_spec: &SiPkgSchemaVariant<'_>,
-//     installed_pkg_id: Option<InstalledPkgId>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<Option<SchemaVariant>> {
-//     let mut schema_variant = match change_set_pk {
-//         None => {
-//             let hash = variant_spec.hash().to_string();
-//             let existing_schema_variant = InstalledPkgAsset::list_for_kind_and_hash(
-//                 ctx,
-//                 InstalledPkgAssetKind::SchemaVariant,
-//                 &hash,
-//             )
-//             .await?
-//             .pop();
+async fn import_schema_variant(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    schema: &mut Schema,
+    category: String,
+    variant_spec: &SiPkgSchemaVariant<'_>,
+    installed_pkg_id: Option<InstalledPkgId>,
+    thing_map: &mut ThingMap,
+) -> PkgResult<Option<SchemaVariant>> {
+    let schema_variant = match change_set_pk {
+        None => {
+            let hash = variant_spec.hash().to_string();
+            let existing_schema_variant = InstalledPkgAsset::list_for_kind_and_hash(
+                ctx,
+                InstalledPkgAssetKind::SchemaVariant,
+                &hash,
+            )
+            .await?
+            .pop();
 
-//             let (variant, created) = match existing_schema_variant {
-//                 Some(installed_sv_record) => {
-//                     match installed_sv_record.as_installed_schema_variant()? {
-//                         InstalledPkgAssetTyped::SchemaVariant { id, .. } => (
-//                             SchemaVariant::get_by_id(ctx, &id)
-//                                 .await?
-//                                 .ok_or(PkgError::InstalledSchemaVariantMissing(id))?,
-//                             false,
-//                         ),
-//                         _ => unreachable!(
-//                             "the as_installed_schema_variant method ensures we cannot hit this branch"
-//                         ),
-//                     }
-//                 }
-//                 None => (
-//                     SchemaVariant::new(ctx, *schema.id(), variant_spec.name())
-//                         .await?
-//                         .0,
-//                     true,
-//                 ),
-//             };
+            let (variant, created) = match existing_schema_variant {
+                Some(installed_sv_record) => {
+                    match installed_sv_record.as_installed_schema_variant()? {
+                        InstalledPkgAssetTyped::SchemaVariant { id, .. } => (SchemaVariant::get_by_id(ctx, id) .await?, false),
+                        _ => unreachable!(
+                            "the as_installed_schema_variant method ensures we cannot hit this branch"
+                        ),
+                    }
+                }
+                None => (
+                    // FIXME(nick): move category, color, and all metadata to variant or somewhere
+                    // else. It should not be on schema.
+                    SchemaVariant::new(ctx, schema.id(), variant_spec.name(), category)
+                        .await?
+                        .0,
+                    true,
+                ),
+            };
 
-//             if let Some(installed_pkg_id) = installed_pkg_id {
-//                 InstalledPkgAsset::new(
-//                     ctx,
-//                     InstalledPkgAssetTyped::new_for_schema_variant(
-//                         *variant.id(),
-//                         installed_pkg_id,
-//                         hash,
-//                     ),
-//                 )
-//                 .await?;
-//             }
+            if let Some(installed_pkg_id) = installed_pkg_id {
+                InstalledPkgAsset::new(
+                    ctx,
+                    InstalledPkgAssetTyped::new_for_schema_variant(
+                        variant.id(),
+                        installed_pkg_id,
+                        hash,
+                    ),
+                )
+                .await?;
+            }
 
-//             if created {
-//                 Some(variant)
-//             } else {
-//                 None
-//             }
-//         }
-//         Some(_) => {
-//             let unique_id = variant_spec
-//                 .unique_id()
-//                 .ok_or(PkgError::MissingUniqueIdForNode(format!(
-//                     "variant {}",
-//                     variant_spec.hash()
-//                 )))?;
+            if created {
+                Some(variant)
+            } else {
+                None
+            }
+        }
+        Some(_) => {
+            unimplemented!("workspace import is not working at this time")
+            // let unique_id = variant_spec
+            //     .unique_id()
+            //     .ok_or(PkgError::MissingUniqueIdForNode(format!(
+            //         "variant {}",
+            //         variant_spec.hash()
+            //     )))?;
+            //
+            // match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+            //     Some(Thing::SchemaVariant(variant)) => {
+            //         let mut variant = variant.to_owned();
+            //         update_schema_variant(ctx, &mut variant, variant_spec.name(), *schema.id())
+            //             .await?;
+            //
+            //         if variant_spec.deleted() {
+            //             variant.delete_by_id(ctx).await?;
+            //
+            //             None
+            //         } else {
+            //             Some(variant)
+            //         }
+            //     }
+            //     _ => {
+            //         if variant_spec.deleted() {
+            //             None
+            //         } else {
+            //             Some(
+            //                 SchemaVariant::new(ctx, *schema.id(), variant_spec.name())
+            //                     .await?
+            //                     .0,
+            //             )
+            //         }
+            //     }
+            // }
+        }
+    };
 
-//             match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-//                 Some(Thing::SchemaVariant(variant)) => {
-//                     let mut variant = variant.to_owned();
-//                     update_schema_variant(ctx, &mut variant, variant_spec.name(), *schema.id())
-//                         .await?;
+    let schema_variant = match schema_variant {
+        None => None,
+        Some(schema_variant) => {
+            if let Some(unique_id) = variant_spec.unique_id() {
+                thing_map.insert(
+                    change_set_pk,
+                    unique_id.to_owned(),
+                    Thing::SchemaVariant(schema_variant.to_owned()),
+                );
+            }
 
-//                     if variant_spec.deleted() {
-//                         variant.delete_by_id(ctx).await?;
+            let schema_variant = match variant_spec.data() {
+                Some(data) => match data.color() {
+                    Some(color) => {
+                        let current_color = schema_variant.get_color(ctx).await?;
+                        if current_color.as_deref() != Some(color) {
+                            schema_variant.set_color(ctx, color).await?
+                        } else {
+                            schema_variant
+                        }
+                    }
+                    None => schema_variant,
+                },
+                None => schema_variant,
+            };
 
-//                         None
-//                     } else {
-//                         Some(variant)
-//                     }
-//                 }
-//                 _ => {
-//                     if variant_spec.deleted() {
-//                         None
-//                     } else {
-//                         Some(
-//                             SchemaVariant::new(ctx, *schema.id(), variant_spec.name())
-//                                 .await?
-//                                 .0,
-//                         )
-//                     }
-//                 }
-//             }
-//         }
-//     };
+            let mut side_effects = CreatePropsSideEffects::default();
 
-//     if let Some(schema_variant) = schema_variant.as_mut() {
-//         if let Some(unique_id) = variant_spec.unique_id() {
-//             thing_map.insert(
-//                 change_set_pk,
-//                 unique_id.to_owned(),
-//                 Thing::SchemaVariant(schema_variant.to_owned()),
-//             );
-//         }
+            let domain_prop_id = Prop::find_prop_id_by_path(
+                ctx,
+                schema_variant.id(),
+                &PropPath::new(["root", "domain"]),
+            )?;
 
-//         if let Some(data) = variant_spec.data() {
-//             if let (Some(spec_color), current_color) =
-//                 (data.color(), schema_variant.color(ctx).await?)
-//             {
-//                 if current_color.is_none()
-//                     || spec_color
-//                         != current_color.expect("is none condition ensures this won't panic")
-//                 {
-//                     schema_variant.set_color(ctx, spec_color.to_owned()).await?;
-//                 }
-//             }
-//         }
+            side_effects.extend(
+                create_props(
+                    ctx,
+                    change_set_pk,
+                    variant_spec,
+                    SchemaVariantSpecPropRoot::Domain,
+                    domain_prop_id,
+                    schema_variant.id(),
+                )
+                .await?,
+            );
 
-//         let mut side_effects = CreatePropsSideEffects::default();
+            let resource_value_prop_id = Prop::find_prop_id_by_path(
+                ctx,
+                schema_variant.id(),
+                &PropPath::new(["root", "resource_value"]),
+            )?;
 
-//         let domain_prop_id = schema_variant
-//             .find_prop(ctx, &["root", "domain"])
-//             .await?
-//             .id()
-//             .to_owned();
+            side_effects.extend(
+                create_props(
+                    ctx,
+                    change_set_pk,
+                    variant_spec,
+                    SchemaVariantSpecPropRoot::ResourceValue,
+                    resource_value_prop_id,
+                    schema_variant.id(),
+                )
+                .await?,
+            );
 
-//         side_effects.extend(
-//             create_props(
-//                 ctx,
-//                 change_set_pk,
-//                 variant_spec,
-//                 SchemaVariantSpecPropRoot::Domain,
-//                 domain_prop_id,
-//                 *schema_variant.id(),
-//             )
-//             .await?,
-//         );
+            let secrets_prop_id = Prop::find_prop_id_by_path(
+                ctx,
+                schema_variant.id(),
+                &PropPath::new(["root", "secrets"]),
+            )?;
 
-//         let secrets_prop_id = schema_variant
-//             .find_prop(ctx, &["root", "secrets"])
-//             .await?
-//             .id()
-//             .to_owned();
+            side_effects.extend(
+                create_props(
+                    ctx,
+                    change_set_pk,
+                    variant_spec,
+                    SchemaVariantSpecPropRoot::Secrets,
+                    secrets_prop_id,
+                    schema_variant.id(),
+                )
+                .await?,
+            );
 
-//         side_effects.extend(
-//             create_props(
-//                 ctx,
-//                 change_set_pk,
-//                 variant_spec,
-//                 SchemaVariantSpecPropRoot::Secrets,
-//                 secrets_prop_id,
-//                 *schema_variant.id(),
-//             )
-//             .await?,
-//         );
+            if !variant_spec.secret_definitions()?.is_empty() {
+                let root_prop_id =
+                    Prop::find_prop_id_by_path(ctx, schema_variant.id(), &PropPath::new(["root"]))?;
 
-//         if !variant_spec.secret_definitions()?.is_empty() {
-//             let secret_definition_prop_id = *Prop::new(
-//                 ctx,
-//                 "secret_definition",
-//                 PropKind::Object,
-//                 None,
-//                 *schema_variant.id(),
-//                 Some(*schema_variant.find_prop(ctx, &["root"]).await?.id()),
-//             )
-//             .await?
-//             .id();
+                let secret_definition_prop = Prop::new(
+                    ctx,
+                    "secret_definition",
+                    PropKind::Object,
+                    false,
+                    None,
+                    None,
+                    PropParent::OrderedProp(root_prop_id),
+                )?;
+                let secret_definition_prop_id = secret_definition_prop.id();
 
-//             side_effects.extend(
-//                 create_props(
-//                     ctx,
-//                     change_set_pk,
-//                     variant_spec,
-//                     SchemaVariantSpecPropRoot::SecretDefinition,
-//                     secret_definition_prop_id,
-//                     *schema_variant.id(),
-//                 )
-//                 .await?,
-//             );
-//         }
+                side_effects.extend(
+                    create_props(
+                        ctx,
+                        change_set_pk,
+                        variant_spec,
+                        SchemaVariantSpecPropRoot::SecretDefinition,
+                        secret_definition_prop_id,
+                        schema_variant.id(),
+                    )
+                    .await?,
+                );
+            }
 
-//         match schema_variant
-//             .find_prop(ctx, &["root", "resource_value"])
-//             .await
-//         {
-//             Ok(resource_value_prop) => {
-//                 side_effects.extend(
-//                     create_props(
-//                         ctx,
-//                         change_set_pk,
-//                         variant_spec,
-//                         SchemaVariantSpecPropRoot::ResourceValue,
-//                         *resource_value_prop.id(),
-//                         *schema_variant.id(),
-//                     )
-//                     .await?,
-//                 );
-//             }
-//             Err(SchemaVariantError::PropNotFoundAtPath(_, _, _)) => {
-//                 warn!("Cannot find /root/resource_value prop, so skipping creating props under the resource value. If the /root/resource_value pr has been merged, this should be an error!");
-//             }
-//             Err(err) => Err(err)?,
-//         };
+            for socket in variant_spec.sockets()? {
+                import_socket(ctx, change_set_pk, socket, schema_variant.id(), thing_map).await?;
+            }
 
-//         if let Some(data) = variant_spec.data() {
-//             schema_variant
-//                 .finalize(ctx, Some(data.component_type().into()))
-//                 .await?;
-//         }
+            info!("finalizing");
+            SchemaVariant::finalize(ctx, schema_variant.id()).await?;
 
-//         for action_func in &variant_spec.action_funcs()? {
-//             let prototype = import_action_func(
-//                 ctx,
-//                 change_set_pk,
-//                 action_func,
-//                 *schema_variant.id(),
-//                 thing_map,
-//             )
-//             .await?;
+            //     if let Some(data) = variant_spec.data() {
+            //         schema_variant
+            //             .finalize(ctx, Some(data.component_type().into()))
+            //             .await?;
+            //     }
+            //
+            //            for action_func in &variant_spec.action_funcs()? {
+            //                let prototype = import_action_func(
+            //                    ctx,
+            //                    change_set_pk,
+            //                    action_func,
+            //                    *schema_variant.id(),
+            //                    thing_map,
+            //                )
+            //                .await?;
+            //
+            //                if let (Some(prototype), Some(unique_id)) = (prototype, action_func.unique_id()) {
+            //                    thing_map.insert(
+            //                        change_set_pk,
+            //                        unique_id.to_owned(),
+            //                        Thing::ActionPrototype(prototype),
+            //                    );
+            //                }
+            //            }
+            //
 
-//             if let (Some(prototype), Some(unique_id)) = (prototype, action_func.unique_id()) {
-//                 thing_map.insert(
-//                     change_set_pk,
-//                     unique_id.to_owned(),
-//                     Thing::ActionPrototype(prototype),
-//                 );
-//             }
-//         }
+            for leaf_func in variant_spec.leaf_functions()? {
+                import_leaf_function(
+                    ctx,
+                    change_set_pk,
+                    leaf_func,
+                    schema_variant.id(),
+                    thing_map,
+                )
+                .await?;
+            }
 
-//         for leaf_func in variant_spec.leaf_functions()? {
-//             import_leaf_function(
-//                 ctx,
-//                 change_set_pk,
-//                 leaf_func,
-//                 *schema_variant.id(),
-//                 thing_map,
-//             )
-//             .await?;
-//         }
+            // Default values must be set before attribute functions are configured so they don't
+            // override the prototypes set there
+            for default_value_info in side_effects.default_values {
+                set_default_value(ctx, default_value_info).await?;
+            }
 
-//         for socket in variant_spec.sockets()? {
-//             import_socket(
-//                 ctx,
-//                 change_set_pk,
-//                 socket,
-//                 *schema.id(),
-//                 *schema_variant.id(),
-//                 thing_map,
-//             )
-//             .await?;
-//         }
+            // Set a default name value for all name props, this ensures region has a name before
+            // the function is executed
+            {
+                let name_prop_id = Prop::find_prop_id_by_path(
+                    ctx,
+                    schema_variant.id(),
+                    &PropPath::new(["root", "si", "name"]),
+                )?;
+                let name_default_value_info = DefaultValueInfo::String {
+                    prop_id: name_prop_id,
+                    default_value: schema.name.to_owned().to_lowercase(),
+                };
 
-//         // Default values must be set before attribute functions are configured so they don't
-//         // override the prototypes set there
-//         for default_value_info in side_effects.default_values {
-//             set_default_value(ctx, default_value_info).await?;
-//         }
+                set_default_value(ctx, name_default_value_info).await?;
+            }
 
-//         // Set a default name value for all name props, this ensures region has a name before
-//         // the function is executed
-//         {
-//             let name_prop = schema_variant
-//                 .find_prop(ctx, &["root", "si", "name"])
-//                 .await?;
-//             let name_default_value_info = DefaultValueInfo::String {
-//                 prop_id: *name_prop.id(),
-//                 default_value: schema.name().to_lowercase(),
-//             };
+            for si_prop_func in variant_spec.si_prop_funcs()? {
+                let prop_id = Prop::find_prop_id_by_path(
+                    ctx,
+                    schema_variant.id(),
+                    &PropPath::new(si_prop_func.kind().prop_path()),
+                )?;
+                import_attr_func_for_prop(
+                    ctx,
+                    change_set_pk,
+                    schema_variant.id(),
+                    AttrFuncInfo {
+                        func_unique_id: si_prop_func.func_unique_id().to_owned(),
+                        prop_id,
+                        inputs: si_prop_func
+                            .inputs()?
+                            .iter()
+                            .map(|input| input.to_owned().into())
+                            .collect(),
+                    },
+                    None,
+                    thing_map,
+                )
+                .await?;
+            }
 
-//             set_default_value(ctx, name_default_value_info).await?;
-//         }
+            let mut _has_resource_value_func = false;
+            for root_prop_func in variant_spec.root_prop_funcs()? {
+                if root_prop_func.prop() == SchemaVariantSpecPropRoot::ResourceValue {
+                    _has_resource_value_func = true;
+                }
 
-//         for si_prop_func in variant_spec.si_prop_funcs()? {
-//             let prop = schema_variant
-//                 .find_prop(ctx, &si_prop_func.kind().prop_path())
-//                 .await?;
-//             import_attr_func_for_prop(
-//                 ctx,
-//                 change_set_pk,
-//                 *schema_variant.id(),
-//                 AttrFuncInfo {
-//                     func_unique_id: si_prop_func.func_unique_id().to_owned(),
-//                     prop_id: *prop.id(),
-//                     inputs: si_prop_func
-//                         .inputs()?
-//                         .iter()
-//                         .map(|input| input.to_owned().into())
-//                         .collect(),
-//                 },
-//                 None,
-//                 thing_map,
-//             )
-//             .await?;
-//         }
+                let prop_id = Prop::find_prop_id_by_path(
+                    ctx,
+                    schema_variant.id(),
+                    &PropPath::new(root_prop_func.prop().path_parts()),
+                )?;
+                import_attr_func_for_prop(
+                    ctx,
+                    change_set_pk,
+                    schema_variant.id(),
+                    AttrFuncInfo {
+                        func_unique_id: root_prop_func.func_unique_id().to_owned(),
+                        prop_id,
+                        inputs: root_prop_func
+                            .inputs()?
+                            .iter()
+                            .map(|input| input.to_owned().into())
+                            .collect(),
+                    },
+                    None,
+                    thing_map,
+                )
+                .await?;
+            }
+            //if !has_resource_value_func {
+            //attach_resource_payload_to_value(ctx, *schema_variant.id()).await?;
+            //}
 
-//         for attr_func in side_effects.attr_funcs {
-//             import_attr_func_for_prop(
-//                 ctx,
-//                 change_set_pk,
-//                 *schema_variant.id(),
-//                 attr_func,
-//                 None,
-//                 thing_map,
-//             )
-//             .await?;
-//         }
+            for attr_func in side_effects.attr_funcs {
+                import_attr_func_for_prop(
+                    ctx,
+                    change_set_pk,
+                    schema_variant.id(),
+                    attr_func,
+                    None,
+                    thing_map,
+                )
+                .await?;
+            }
 
-//         for (key, map_key_func) in side_effects.map_key_funcs {
-//             import_attr_func_for_prop(
-//                 ctx,
-//                 change_set_pk,
-//                 *schema_variant.id(),
-//                 map_key_func,
-//                 Some(key),
-//                 thing_map,
-//             )
-//             .await?;
-//         }
+            for (key, map_key_func) in side_effects.map_key_funcs {
+                import_attr_func_for_prop(
+                    ctx,
+                    change_set_pk,
+                    schema_variant.id(),
+                    map_key_func,
+                    Some(key),
+                    thing_map,
+                )
+                .await?;
+            }
 
-//         for (prop_id, validation_spec) in side_effects.validations {
-//             import_prop_validation(
-//                 ctx,
-//                 change_set_pk,
-//                 validation_spec,
-//                 *schema.id(),
-//                 *schema_variant.id(),
-//                 prop_id,
-//                 thing_map,
-//             )
-//             .await?;
-//         }
-//     }
+            Some(schema_variant)
+        } //
+          //     for (prop_id, validation_spec) in side_effects.validations {
+          //         import_prop_validation(
+          //             ctx,
+          //             change_set_pk,
+          //             validation_spec,
+          //             *schema.id(),
+          //             *schema_variant.id(),
+          //             prop_id,
+          //             thing_map,
+          //         )
+          //         .await?;
+          //     }
+    };
 
-//     Ok(schema_variant)
-// }
+    Ok(schema_variant)
+}
 
-// async fn set_default_value(
-//     ctx: &DalContext,
-//     default_value_info: DefaultValueInfo,
-// ) -> PkgResult<()> {
-//     let prop = match &default_value_info {
-//         DefaultValueInfo::Number { prop_id, .. }
-//         | DefaultValueInfo::String { prop_id, .. }
-//         | DefaultValueInfo::Boolean { prop_id, .. } => Prop::get_by_id(ctx, prop_id)
-//             .await?
-//             .ok_or(PkgError::MissingProp(*prop_id))?,
-//     };
+async fn set_default_value(
+    ctx: &DalContext,
+    default_value_info: DefaultValueInfo,
+) -> PkgResult<()> {
+    let prop_id = match &default_value_info {
+        DefaultValueInfo::Number { prop_id, .. }
+        | DefaultValueInfo::String { prop_id, .. }
+        | DefaultValueInfo::Boolean { prop_id, .. } => *prop_id,
+    };
 
-//     match default_value_info {
-//         DefaultValueInfo::Boolean { default_value, .. } => {
-//             prop.set_default_value(ctx, default_value).await?
-//         }
-//         DefaultValueInfo::Number { default_value, .. } => {
-//             prop.set_default_value(ctx, default_value).await?
-//         }
-//         DefaultValueInfo::String { default_value, .. } => {
-//             prop.set_default_value(ctx, default_value).await?
-//         }
-//     }
+    match default_value_info {
+        DefaultValueInfo::Boolean { default_value, .. } => {
+            Prop::set_default_value(ctx, prop_id, default_value).await?
+        }
+        DefaultValueInfo::Number { default_value, .. } => {
+            Prop::set_default_value(ctx, prop_id, default_value).await?
+        }
+        DefaultValueInfo::String { default_value, .. } => {
+            Prop::set_default_value(ctx, prop_id, default_value).await?
+        }
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// async fn import_attr_func_for_prop(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     schema_variant_id: SchemaVariantId,
-//     AttrFuncInfo {
-//         func_unique_id,
-//         prop_id,
-//         inputs,
-//     }: AttrFuncInfo,
-//     key: Option<String>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<()> {
-//     match thing_map.get(change_set_pk, &func_unique_id.to_owned()) {
-//         Some(Thing::Func(func)) => {
-//             import_attr_func(
-//                 ctx,
-//                 change_set_pk,
-//                 AttributeReadContext {
-//                     prop_id: Some(prop_id),
-//                     ..Default::default()
-//                 },
-//                 key,
-//                 schema_variant_id,
-//                 *func.id(),
-//                 inputs,
-//                 thing_map,
-//             )
-//             .await?;
-//         }
-//         _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_string())),
-//     }
+async fn import_attr_func_for_prop(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    schema_variant_id: SchemaVariantId,
+    AttrFuncInfo {
+        func_unique_id,
+        prop_id,
+        inputs,
+    }: AttrFuncInfo,
+    key: Option<String>,
+    thing_map: &mut ThingMap,
+) -> PkgResult<()> {
+    match thing_map.get(change_set_pk, &func_unique_id.to_owned()) {
+        Some(Thing::Func(func)) => {
+            import_attr_func(
+                ctx,
+                change_set_pk,
+                AttrFuncContext::Prop(prop_id),
+                key,
+                schema_variant_id,
+                func.id,
+                inputs,
+                thing_map,
+            )
+            .await?;
+        }
+        _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_string())),
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 // async fn import_attr_func_for_output_socket(
 //     ctx: &DalContext,
@@ -2975,139 +2897,106 @@ async fn import_func(
 //     Ok(())
 // }
 
-// async fn get_prototype_for_context(
-//     ctx: &DalContext,
-//     context: AttributeReadContext,
-//     key: Option<String>,
-// ) -> PkgResult<AttributePrototype> {
-//     let value = AttributeValue::find_for_context(ctx, context)
-//         .await?
-//         .ok_or(AttributeValueError::Missing)?;
+async fn get_prototype_for_context(
+    ctx: &DalContext,
+    context: AttrFuncContext,
+    key: Option<String>,
+) -> PkgResult<AttributePrototypeId> {
+    if key.is_some() {
+        #[allow(clippy::infallible_destructuring_match)]
+        let map_prop_id = match context {
+            AttrFuncContext::Prop(prop_id) => prop_id,
+            //            _ => Err(PkgError::AttributeFuncForKeyMissingProp(
+            //                context,
+            //                key.to_owned(),
+            //            ))?,
+        };
+        let map_prop = Prop::get_by_id(ctx, map_prop_id).await?;
 
-//     let real_value = if let Some(key) = key {
-//         let parent_prop_id = context
-//             .prop_id()
-//             .ok_or(PkgError::AttributeFuncForKeyMissingProp(
-//                 context,
-//                 key.to_owned(),
-//             ))?;
+        if map_prop.kind != PropKind::Map {
+            return Err(PkgError::AttributeFuncForKeySetOnWrongKind(
+                map_prop_id,
+                key.expect("check above ensures this is some"),
+                map_prop.kind,
+            ));
+        }
 
-//         let parent_prop = Prop::get_by_id(ctx, &parent_prop_id)
-//             .await?
-//             .ok_or(PkgError::MissingProp(parent_prop_id))?;
+        let element_prop_id = map_prop.element_prop_id(ctx)?;
+        Ok(
+            match AttributePrototype::find_for_prop(ctx, element_prop_id, &key)? {
+                None => {
+                    let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset)?;
+                    let prototype_id = AttributePrototype::new(ctx, unset_func_id)?.id();
+                    InternalProvider::new_implicit_with_prototype_and_key(
+                        ctx,
+                        element_prop_id,
+                        prototype_id,
+                        &key,
+                    )?;
+                    prototype_id
+                }
+                Some(prototype_id) => prototype_id,
+            },
+        )
+    } else {
+        Ok(match context {
+            AttrFuncContext::Prop(prop_id) => {
+                AttributePrototype::find_for_prop(ctx, prop_id, &None)?
+                    .ok_or(PkgError::PropMissingPrototype(prop_id))?
+            }
+        })
+    }
+}
 
-//         if *parent_prop.kind() != PropKind::Map {
-//             return Err(PkgError::AttributeFuncForKeySetOnWrongKind(
-//                 parent_prop_id,
-//                 key,
-//                 *parent_prop.kind(),
-//             ));
-//         }
+async fn create_attr_proto_arg(
+    ctx: &DalContext,
+    prototype_id: AttributePrototypeId,
+    input: &SiPkgAttrFuncInputView,
+    func_id: FuncId,
+    schema_variant_id: SchemaVariantId,
+) -> PkgResult<AttributePrototypeArgumentId> {
+    let arg = match &input {
+        SiPkgAttrFuncInputView::Prop { name, .. }
+        | SiPkgAttrFuncInputView::InputSocket { name, .. }
+        | SiPkgAttrFuncInputView::OutputSocket { name, .. } => {
+            FuncArgument::find_by_name_for_func(ctx, name, func_id)
+                .await?
+                .ok_or(PkgError::MissingFuncArgument(name.to_owned(), func_id))?
+        }
+    };
 
-//         match parent_prop.child_props(ctx).await?.pop() {
-//             Some(item_prop) => {
-//                 let item_write_context = AttributeContextBuilder::new()
-//                     .set_prop_id(*item_prop.id())
-//                     .to_context()?;
+    Ok(match input {
+        SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
+            let prop_id = Prop::find_prop_id_by_path(ctx, schema_variant_id, &prop_path.into())?;
+            let prop_ip_id = InternalProvider::find_for_prop_id(ctx, prop_id)?
+                .ok_or(PkgError::MissingInternalProviderForProp(prop_id))?;
 
-//                 let item_read_context: AttributeReadContext = item_write_context.to_owned().into();
+            let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id)?;
+            let apa_id = apa.id();
 
-//                 match AttributeValue::find_with_parent_and_key_for_context(
-//                     ctx,
-//                     Some(*value.id()),
-//                     Some(key.to_owned()),
-//                     item_read_context,
-//                 )
-//                 .await?
-//                 {
-//                     Some(item_av) => item_av,
-//                     None => {
-//                         let item_id = AttributeValue::insert_for_context(
-//                             ctx,
-//                             item_write_context,
-//                             *value.id(),
-//                             None,
-//                             Some(key),
-//                         )
-//                         .await?;
+            apa.set_value_from_internal_provider_id(ctx, prop_ip_id)?;
 
-//                         AttributeValue::get_by_id(ctx, &item_id)
-//                             .await?
-//                             .ok_or(AttributeValueError::MissingForId(item_id))?
-//                     }
-//                 }
-//             }
-//             None => {
-//                 return Err(PkgError::MissingItemPropForMapProp(parent_prop_id));
-//             }
-//         }
-//     } else {
-//         value
-//     };
+            apa_id
+        }
+        SiPkgAttrFuncInputView::InputSocket { socket_name, .. } => {
+            let explicit_ip =
+                InternalProvider::find_explicit_with_name(ctx, socket_name, schema_variant_id)
+                    .await?
+                    .ok_or(PkgError::MissingInternalProviderForSocketName(
+                        socket_name.to_owned(),
+                    ))?;
+            let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id)?;
+            let apa_id = apa.id();
 
-//     Ok(real_value
-//         .attribute_prototype(ctx)
-//         .await?
-//         .ok_or(AttributeValueError::MissingAttributePrototype)?)
-// }
-
-// async fn create_attr_proto_arg(
-//     ctx: &DalContext,
-//     prototype_id: AttributePrototypeId,
-//     input: &SiPkgAttrFuncInputView,
-//     func_id: FuncId,
-//     schema_variant_id: SchemaVariantId,
-// ) -> PkgResult<AttributePrototypeArgument> {
-//     let arg = match &input {
-//         SiPkgAttrFuncInputView::Prop { name, .. }
-//         | SiPkgAttrFuncInputView::InputSocket { name, .. }
-//         | SiPkgAttrFuncInputView::OutputSocket { name, .. } => {
-//             FuncArgument::find_by_name_for_func(ctx, name, func_id)
-//                 .await?
-//                 .ok_or(PkgError::MissingFuncArgument(name.to_owned(), func_id))?
-//         }
-//     };
-
-//     Ok(match input {
-//         SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
-//             let prop = Prop::find_prop_by_path(ctx, schema_variant_id, &prop_path.into()).await?;
-//             let prop_ip = InternalProvider::find_for_prop(ctx, *prop.id())
-//                 .await?
-//                 .ok_or(PkgError::MissingInternalProviderForProp(*prop.id()))?;
-
-//             AttributePrototypeArgument::new_for_intra_component(
-//                 ctx,
-//                 prototype_id,
-//                 *arg.id(),
-//                 *prop_ip.id(),
-//             )
-//             .await?
-//         }
-//         SiPkgAttrFuncInputView::InputSocket { socket_name, .. } => {
-//             let explicit_ip = InternalProvider::find_explicit_for_schema_variant_and_name(
-//                 ctx,
-//                 schema_variant_id,
-//                 &socket_name,
-//             )
-//             .await?
-//             .ok_or(PkgError::MissingInternalProviderForSocketName(
-//                 socket_name.to_owned(),
-//             ))?;
-
-//             AttributePrototypeArgument::new_for_intra_component(
-//                 ctx,
-//                 prototype_id,
-//                 *arg.id(),
-//                 *explicit_ip.id(),
-//             )
-//             .await?
-//         }
-//         _ => {
-//             // xxx: make this an error
-//             panic!("unsupported taking external provider as input for prop");
-//         }
-//     })
-// }
+            apa.set_value_from_internal_provider_id(ctx, explicit_ip.id())?;
+            apa_id
+        }
+        _ => {
+            // xxx: make this an error
+            panic!("unsupported taking external provider as input for prop");
+        }
+    })
+}
 
 // async fn update_attr_proto_arg(
 //     ctx: &DalContext,
@@ -3165,97 +3054,104 @@ async fn import_func(
 //     Ok(())
 // }
 
-// #[allow(clippy::too_many_arguments)]
-// async fn import_attr_func(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     context: AttributeReadContext,
-//     key: Option<String>,
-//     schema_variant_id: SchemaVariantId,
-//     func_id: FuncId,
-//     inputs: Vec<SiPkgAttrFuncInputView>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<()> {
-//     let mut prototype = get_prototype_for_context(ctx, context, key).await?;
+#[derive(Debug, Clone)]
+pub enum AttrFuncContext {
+    Prop(PropId),
+}
 
-//     if prototype.func_id() != func_id {
-//         prototype.set_func_id(ctx, &func_id).await?;
-//     }
+#[allow(clippy::too_many_arguments)]
+async fn import_attr_func(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    context: AttrFuncContext,
+    key: Option<String>,
+    schema_variant_id: SchemaVariantId,
+    func_id: FuncId,
+    inputs: Vec<SiPkgAttrFuncInputView>,
+    _thing_map: &mut ThingMap,
+) -> PkgResult<()> {
+    let prototype_id = get_prototype_for_context(ctx, context, key).await?;
 
-//     for input in &inputs {
-//         match change_set_pk {
-//             None => {
-//                 create_attr_proto_arg(ctx, *prototype.id(), input, func_id, schema_variant_id)
-//                     .await?;
-//             }
-//             Some(_) => {
-//                 let (unique_id, deleted) = match input {
-//                     SiPkgAttrFuncInputView::Prop {
-//                         unique_id, deleted, ..
-//                     }
-//                     | SiPkgAttrFuncInputView::InputSocket {
-//                         unique_id, deleted, ..
-//                     }
-//                     | SiPkgAttrFuncInputView::OutputSocket {
-//                         unique_id, deleted, ..
-//                     } => (
-//                         unique_id
-//                             .as_deref()
-//                             .ok_or(PkgError::MissingUniqueIdForNode("attr-func-input".into()))?,
-//                         *deleted,
-//                     ),
-//                 };
+    let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id)?;
 
-//                 let apa = match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-//                     Some(Thing::AttributePrototypeArgument(apa)) => {
-//                         let mut apa = apa.to_owned();
-//                         if deleted {
-//                             apa.delete_by_id(ctx).await?;
-//                         } else {
-//                             update_attr_proto_arg(
-//                                 ctx,
-//                                 &mut apa,
-//                                 *prototype.id(),
-//                                 input,
-//                                 func_id,
-//                                 schema_variant_id,
-//                             )
-//                             .await?;
-//                         }
+    if prototype_func_id != func_id {
+        AttributePrototype::update_func_by_id(ctx, prototype_id, func_id)?;
+    }
 
-//                         Some(apa)
-//                     }
-//                     _ => {
-//                         if deleted {
-//                             None
-//                         } else {
-//                             Some(
-//                                 create_attr_proto_arg(
-//                                     ctx,
-//                                     *prototype.id(),
-//                                     input,
-//                                     func_id,
-//                                     schema_variant_id,
-//                                 )
-//                                 .await?,
-//                             )
-//                         }
-//                     }
-//                 };
+    for input in &inputs {
+        match change_set_pk {
+            None => {
+                create_attr_proto_arg(ctx, prototype_id, input, func_id, schema_variant_id).await?;
+            }
+            Some(_) => {
+                todo!();
+                //                let (unique_id, deleted) = match input {
+                //                    SiPkgAttrFuncInputView::Prop {
+                //                        unique_id, deleted, ..
+                //                    }
+                //                    | SiPkgAttrFuncInputView::InputSocket {
+                //                        unique_id, deleted, ..
+                //                    }
+                //                    | SiPkgAttrFuncInputView::OutputSocket {
+                //                        unique_id, deleted, ..
+                //                    } => (
+                //                        unique_id
+                //                            .as_deref()
+                //                            .ok_or(PkgError::MissingUniqueIdForNode("attr-func-input".into()))?,
+                //                        *deleted,
+                //                    ),
+                //                };
+                //
+                //                let apa = match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+                //                    Some(Thing::AttributePrototypeArgument(apa)) => {
+                //                        let mut apa = apa.to_owned();
+                //                        if deleted {
+                //                            apa.delete_by_id(ctx).await?;
+                //                        } else {
+                //                            update_attr_proto_arg(
+                //                                ctx,
+                //                                &mut apa,
+                //                                *prototype.id(),
+                //                                input,
+                //                                func_id,
+                //                                schema_variant_id,
+                //                            )
+                //                            .await?;
+                //                        }
+                //
+                //                        Some(apa)
+                //                    }
+                //                    _ => {
+                //                        if deleted {
+                //                            None
+                //                        } else {
+                //                            Some(
+                //                                create_attr_proto_arg(
+                //                                    ctx,
+                //                                    *prototype.id(),
+                //                                    input,
+                //                                    func_id,
+                //                                    schema_variant_id,
+                //                                )
+                //                                .await?,
+                //                            )
+                //                        }
+                // }
+                //                };
 
-//                 if let Some(apa) = apa {
-//                     thing_map.insert(
-//                         change_set_pk,
-//                         unique_id.to_owned(),
-//                         Thing::AttributePrototypeArgument(apa),
-//                     );
-//                 }
-//             }
-//         }
-//     }
+                //                if let Some(apa) = apa {
+                //                    thing_map.insert(
+                //                        change_set_pk,
+                //                        unique_id.to_owned(),
+                //                        Thing::AttributePrototypeArgument(apa),
+                //                    );
+                //                }
+            }
+        }
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 // async fn create_validation(
 //     ctx: &DalContext,
@@ -3453,171 +3349,189 @@ async fn import_func(
 //     Ok(())
 // }
 
-// fn prop_kind_for_pkg_prop(pkg_prop: &SiPkgProp<'_>) -> PropKind {
-//     match pkg_prop {
-//         SiPkgProp::Array { .. } => PropKind::Array,
-//         SiPkgProp::Boolean { .. } => PropKind::Boolean,
-//         SiPkgProp::Map { .. } => PropKind::Map,
-//         SiPkgProp::Number { .. } => PropKind::Integer,
-//         SiPkgProp::Object { .. } => PropKind::Object,
-//         SiPkgProp::String { .. } => PropKind::String,
-//     }
-// }
+fn prop_kind_for_pkg_prop(pkg_prop: &SiPkgProp<'_>) -> PropKind {
+    match pkg_prop {
+        SiPkgProp::Array { .. } => PropKind::Array,
+        SiPkgProp::Boolean { .. } => PropKind::Boolean,
+        SiPkgProp::Map { .. } => PropKind::Map,
+        SiPkgProp::Number { .. } => PropKind::Integer,
+        SiPkgProp::Object { .. } => PropKind::Object,
+        SiPkgProp::String { .. } => PropKind::String,
+    }
+}
 
-// async fn create_dal_prop(
-//     ctx: &DalContext,
-//     data: &SiPkgPropData,
-//     kind: PropKind,
-//     schema_variant_id: SchemaVariantId,
-//     parent_prop_id: Option<PropId>,
-// ) -> PkgResult<Prop> {
-//     let mut prop = Prop::new(
-//         ctx,
-//         &data.name,
-//         kind,
-//         Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
-//         schema_variant_id,
-//         parent_prop_id,
-//     )
-//     .await
-//     .map_err(SiPkgError::visit_prop)?;
+async fn create_dal_prop(
+    ctx: &DalContext,
+    data: &SiPkgPropData,
+    kind: PropKind,
+    schema_variant_id: SchemaVariantId,
+    parent_prop_info: Option<ParentPropInfo>,
+) -> PkgResult<Prop> {
+    let prop_parent = match parent_prop_info {
+        None => PropParent::SchemaVariant(schema_variant_id),
+        Some(parent_info) => {
+            if parent_info.kind.ordered() {
+                PropParent::OrderedProp(parent_info.prop_id)
+            } else {
+                PropParent::Prop(parent_info.prop_id)
+            }
+        }
+    };
 
-//     prop.set_hidden(ctx, data.hidden).await?;
-//     prop.set_doc_link(ctx, data.doc_link.as_ref().map(|l| l.to_string()))
-//         .await?;
+    let prop = Prop::new(
+        ctx,
+        &data.name,
+        kind,
+        data.hidden,
+        data.doc_link.as_ref().map(|l| l.to_string()),
+        Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
+        prop_parent,
+    )
+    .map_err(SiPkgError::visit_prop)?;
 
-//     Ok(prop)
-// }
+    Ok(prop)
+}
 
-// async fn create_prop(
-//     spec: SiPkgProp<'_>,
-//     parent_prop_info: Option<(PropId, PropPath)>,
-//     ctx: &PropVisitContext<'_>,
-// ) -> PkgResult<Option<(PropId, PropPath)>> {
-//     let prop = match ctx.change_set_pk {
-//         None => {
-//             let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
-//             create_dal_prop(
-//                 ctx.ctx,
-//                 data,
-//                 prop_kind_for_pkg_prop(&spec),
-//                 ctx.schema_variant_id,
-//                 parent_prop_info.map(|info| info.0),
-//             )
-//             .await?
-//         }
-//         Some(_) => {
-//             let parent_path = parent_prop_info
-//                 .as_ref()
-//                 .map(|info| info.1.to_owned())
-//                 .unwrap_or(PropPath::new(["root"]));
+#[derive(Debug, Clone)]
+struct ParentPropInfo {
+    prop_id: PropId,
+    path: PropPath,
+    kind: PropKind,
+}
 
-//             let path = parent_path.join(&PropPath::new([spec.name()]));
+async fn create_prop(
+    spec: SiPkgProp<'_>,
+    parent_prop_info: Option<ParentPropInfo>,
+    ctx: &PropVisitContext<'_>,
+) -> PkgResult<Option<ParentPropInfo>> {
+    let prop = match ctx.change_set_pk {
+        None => {
+            let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
+            create_dal_prop(
+                ctx.ctx,
+                data,
+                prop_kind_for_pkg_prop(&spec),
+                ctx.schema_variant_id,
+                parent_prop_info,
+            )
+            .await?
+        }
+        Some(_) => {
+            let parent_path = parent_prop_info
+                .as_ref()
+                .map(|info| info.path.to_owned())
+                .unwrap_or(PropPath::new(["root"]));
 
-//             match Prop::find_prop_by_path_opt(ctx.ctx, ctx.schema_variant_id, &path).await? {
-//                 None => {
-//                     let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
-//                     create_dal_prop(
-//                         ctx.ctx,
-//                         data,
-//                         prop_kind_for_pkg_prop(&spec),
-//                         ctx.schema_variant_id,
-//                         parent_prop_info.as_ref().map(|info| info.0.to_owned()),
-//                     )
-//                     .await?
-//                 }
-//                 Some(prop) => prop,
-//             }
-//         }
-//     };
+            let path = parent_path.join(&PropPath::new([spec.name()]));
 
-//     let prop_id = *prop.id();
+            match Prop::find_prop_id_by_path_opt(ctx.ctx, ctx.schema_variant_id, &path)? {
+                None => {
+                    let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
+                    create_dal_prop(
+                        ctx.ctx,
+                        data,
+                        prop_kind_for_pkg_prop(&spec),
+                        ctx.schema_variant_id,
+                        parent_prop_info,
+                    )
+                    .await?
+                }
+                Some(prop_id) => Prop::get_by_id(ctx.ctx, prop_id).await?,
+            }
+        }
+    };
 
-//     // Both attribute functions and default values have to be set *after* the schema variant is
-//     // "finalized", so we can't do until we construct the *entire* prop tree. Hence we push work
-//     // queues up to the outer context via the PropVisitContext, which uses Mutexes for interior
-//     // mutability (maybe there's a better type for that here?)
+    let prop_id = prop.id();
 
-//     if let Some(data) = spec.data() {
-//         if let Some(default_value_info) = match &spec {
-//             SiPkgProp::String { .. } => {
-//                 if let Some(serde_json::Value::String(default_value)) = &data.default_value {
-//                     Some(DefaultValueInfo::String {
-//                         prop_id,
-//                         default_value: default_value.to_owned(),
-//                     })
-//                 } else {
-//                     // Raise error here for type mismatch
-//                     None
-//                 }
-//             }
-//             SiPkgProp::Number { .. } => {
-//                 if let Some(serde_json::Value::Number(default_value_number)) = &data.default_value {
-//                     if default_value_number.is_i64() {
-//                         default_value_number
-//                             .as_i64()
-//                             .map(|dv_i64| DefaultValueInfo::Number {
-//                                 prop_id,
-//                                 default_value: dv_i64,
-//                             })
-//                     } else {
-//                         None
-//                     }
-//                 } else {
-//                     None
-//                 }
-//             }
-//             SiPkgProp::Boolean { .. } => {
-//                 if let Some(serde_json::Value::Bool(default_value)) = &data.default_value {
-//                     Some(DefaultValueInfo::Boolean {
-//                         prop_id,
-//                         default_value: *default_value,
-//                     })
-//                 } else {
-//                     None
-//                 }
-//             }
-//             // Default values for complex types are not yet supported in packages
-//             _ => None,
-//         } {
-//             ctx.default_values.lock().await.push(default_value_info);
-//         }
-//     }
+    // Both attribute functions and default values have to be set *after* the schema variant is
+    // "finalized", so we can't do until we construct the *entire* prop tree. Hence we push work
+    // queues up to the outer context via the PropVisitContext, which uses Mutexes for interior
+    // mutability (maybe there's a better type for that here?)
 
-//     if matches!(&spec, SiPkgProp::Map { .. }) {
-//         for map_key_func in spec.map_key_funcs()? {
-//             let key = map_key_func.key();
-//             let mut inputs = map_key_func.inputs()?;
-//             let func_unique_id = map_key_func.func_unique_id();
+    if let Some(data) = spec.data() {
+        if let Some(default_value_info) = match &spec {
+            SiPkgProp::String { .. } => {
+                if let Some(serde_json::Value::String(default_value)) = &data.default_value {
+                    Some(DefaultValueInfo::String {
+                        prop_id,
+                        default_value: default_value.to_owned(),
+                    })
+                } else {
+                    // Raise error here for type mismatch
+                    None
+                }
+            }
+            SiPkgProp::Number { .. } => {
+                if let Some(serde_json::Value::Number(default_value_number)) = &data.default_value {
+                    if default_value_number.is_i64() {
+                        default_value_number
+                            .as_i64()
+                            .map(|dv_i64| DefaultValueInfo::Number {
+                                prop_id,
+                                default_value: dv_i64,
+                            })
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            SiPkgProp::Boolean { .. } => {
+                if let Some(serde_json::Value::Bool(default_value)) = &data.default_value {
+                    Some(DefaultValueInfo::Boolean {
+                        prop_id,
+                        default_value: *default_value,
+                    })
+                } else {
+                    None
+                }
+            }
+            // Default values for complex types are not yet supported in packages
+            _ => None,
+        } {
+            ctx.default_values.lock().await.push(default_value_info);
+        }
+    }
 
-//             ctx.map_key_funcs.lock().await.push((
-//                 key.to_owned(),
-//                 AttrFuncInfo {
-//                     func_unique_id: func_unique_id.to_owned(),
-//                     prop_id,
-//                     inputs: inputs.drain(..).map(Into::into).collect(),
-//                 },
-//             ));
-//         }
-//     }
+    if matches!(&spec, SiPkgProp::Map { .. }) {
+        for map_key_func in spec.map_key_funcs()? {
+            let key = map_key_func.key();
+            let mut inputs = map_key_func.inputs()?;
+            let func_unique_id = map_key_func.func_unique_id();
 
-//     if let Some(func_unique_id) = spec.data().and_then(|data| data.func_unique_id.to_owned()) {
-//         let mut inputs = spec.inputs()?;
-//         ctx.attr_funcs.lock().await.push(AttrFuncInfo {
-//             func_unique_id,
-//             prop_id,
-//             inputs: inputs.drain(..).map(Into::into).collect(),
-//         });
-//     }
+            ctx.map_key_funcs.lock().await.push((
+                key.to_owned(),
+                AttrFuncInfo {
+                    func_unique_id: func_unique_id.to_owned(),
+                    prop_id,
+                    inputs: inputs.drain(..).map(Into::into).collect(),
+                },
+            ));
+        }
+    }
 
-//     for validation_pkg_spec in spec.validations()? {
-//         let validation_spec: ValidationSpec = validation_pkg_spec.try_into()?;
+    if let Some(func_unique_id) = spec.data().and_then(|data| data.func_unique_id.to_owned()) {
+        let mut inputs = spec.inputs()?;
+        ctx.attr_funcs.lock().await.push(AttrFuncInfo {
+            func_unique_id,
+            prop_id,
+            inputs: inputs.drain(..).map(Into::into).collect(),
+        });
+    }
 
-//         ctx.validations
-//             .lock()
-//             .await
-//             .push((*prop.id(), validation_spec));
-//     }
+    for validation_pkg_spec in spec.validations()? {
+        let validation_spec: ValidationSpec = validation_pkg_spec.try_into()?;
 
-//     Ok(Some((*prop.id(), prop.path())))
-// }
+        ctx.validations
+            .lock()
+            .await
+            .push((prop.id(), validation_spec));
+    }
+
+    Ok(Some(ParentPropInfo {
+        prop_id: prop.id(),
+        path: prop.path(ctx.ctx)?,
+        kind: prop.kind,
+    }))
+}

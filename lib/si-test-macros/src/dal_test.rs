@@ -258,6 +258,7 @@ impl DalTestFnSetupExpander {
         }
     }
 
+    #[allow(dead_code)]
     fn has_args(&self) -> bool {
         !self.args.is_empty()
     }

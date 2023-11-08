@@ -1,11 +1,12 @@
-use thiserror::Error;
-
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
+use thiserror::Error;
 use veritech_client::ResolverFunctionResponseType;
 
-use crate::{label_list::ToLabelList, StandardModel};
+use crate::label_list::ToLabelList;
+
+pub mod validation;
 
 // pub mod array;
 // pub mod boolean;
@@ -20,7 +21,6 @@ use crate::{label_list::ToLabelList, StandardModel};
 // pub mod map;
 // pub mod object;
 // pub mod string;
-pub mod validation;
 
 // #[remain::sorted]
 // #[derive(Error, Debug)]

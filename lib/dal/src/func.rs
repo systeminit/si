@@ -1,45 +1,57 @@
-use base64::Engine;
-use content_store::ContentHash;
+use base64::{engine::general_purpose, Engine};
+use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::string::FromUtf8Error;
 use std::string::FromUtf8Error;
 use strum::{EnumDiscriminants, IntoEnumIterator};
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 use veritech_client::CycloneValueEncryptError;
 
-use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{
-    pk, FuncBackendKind, FuncBackendResponseType, HistoryEventError, StandardModel, Timestamp,
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::func::intrinsics::IntrinsicFunc;
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
+use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
+use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{pk, DalContext, Timestamp, TransactionsError};
+
+use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncError {
-    #[error("cyclone value encrypt error: {0}")]
-    CycloneValueEncrypt(#[from] CycloneValueEncryptError),
-    #[error("error decoding code_base64: {0}")]
-    Decode(#[from] base64::DecodeError),
-    #[error("utf8 encoding error: {0}")]
-    FromUtf8(#[from] FromUtf8Error),
-    #[error("func binding error: {0}")]
-    FuncBinding(String),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    /// Could not find [`FuncArgument`](crate::FuncArgument) corresponding to the identity [`Func`].
-    #[error("identity func argument not found")]
-    IdentityFuncArgumentNotFound,
-    /// Could not find the identity [`Func`].
-    #[error("identity func not found")]
-    IdentityFuncNotFound,
-    #[error("intrinsic parse error: {0} is not an intrinsic")]
-    IntrinsicParse(String),
+    #[error("base64 decode error: {0}")]
+    Base64Decode(#[from] base64::DecodeError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("cannot find intrinsic func {0}")]
+    IntrinsicFuncNotFound(String),
     #[error("intrinsic spec creation error {0}")]
     IntrinsicSpecCreation(String),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("store error: {0}")]
+    Store(#[from] StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("utf8 error: {0}")]
+    Utf8(#[from] FromUtf8Error),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;
 
-// pub mod argument;
+pub mod argument;
 pub mod backend;
 // pub before;
 // pub mod binding;
@@ -47,6 +59,56 @@ pub mod backend;
 // pub mod execution;
 // pub mod identity;
 pub mod intrinsics;
+
+impl From<Func> for FuncContentV1 {
+    fn from(value: Func) -> Self {
+        Self {
+            timestamp: value.timestamp,
+            display_name: value.display_name,
+            description: value.description,
+            link: value.link,
+            hidden: value.hidden,
+            builtin: value.builtin,
+            backend_response_type: value.backend_response_type,
+            handler: value.handler,
+            code_base64: value.code_base64,
+            code_blake3: value.code_blake3,
+        }
+    }
+}
+
+#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+// TODO(nick,jacob,zack): decide if this will work with postcard.
+// #[serde(tag = "version")]
+pub enum FuncContent {
+    V1(FuncContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct FuncContentV1 {
+    pub timestamp: Timestamp,
+    pub display_name: Option<String>,
+    pub description: Option<String>,
+    pub link: Option<String>,
+    pub hidden: bool,
+    pub builtin: bool,
+    pub backend_response_type: FuncBackendResponseType,
+    pub handler: Option<String>,
+    pub code_base64: Option<String>,
+    /// A hash of the code above
+    pub code_blake3: ContentHash,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct FuncMetadataView {
+    pub display_name: String,
+    pub description: Option<String>,
+    pub link: Option<String>,
+}
+
+pub fn is_intrinsic(name: &str) -> bool {
+    intrinsics::IntrinsicFunc::iter().any(|intrinsic| intrinsic.name() == name)
+}
 
 pk!(FuncId);
 
@@ -60,7 +122,6 @@ pk!(FuncId);
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Func {
     pub id: FuncId,
-    #[serde(flatten)]
     pub timestamp: Timestamp,
     pub name: String,
     pub display_name: Option<String>,
@@ -72,109 +133,275 @@ pub struct Func {
     pub backend_response_type: FuncBackendResponseType,
     pub handler: Option<String>,
     pub code_base64: Option<String>,
-    pub code_sha256: String,
+    pub code_blake3: ContentHash,
 }
 
 impl Func {
-    pub fn assemble(id: FuncId, inner: &FuncContentV1) -> Self {
-        let inner = inner.to_owned();
+    pub fn assemble(node_weight: &FuncNodeWeight, content: &FuncContentV1) -> Self {
+        let content = content.to_owned();
         Self {
-            id,
-            timestamp: inner.timestamp,
-            name: inner.name,
-            display_name: inner.display_name,
-            description: inner.description,
-            link: inner.link,
-            hidden: inner.hidden,
-            builtin: inner.builtin,
-            backend_kind: inner.backend_kind,
-            backend_response_type: inner.backend_response_type,
-            handler: inner.handler,
-            code_base64: inner.code_base64,
-            code_sha256: inner.code_sha256,
+            id: node_weight.id().into(),
+            timestamp: content.timestamp,
+            name: node_weight.name().to_owned(),
+            display_name: content.display_name,
+            description: content.description,
+            link: content.link,
+            hidden: content.hidden,
+            builtin: content.builtin,
+            backend_kind: node_weight.backend_kind(),
+            backend_response_type: content.backend_response_type,
+            handler: content.handler,
+            code_base64: content.code_base64,
+            code_blake3: content.code_blake3,
         }
     }
-}
 
-impl From<Func> for FuncContentV1 {
-    fn from(value: Func) -> Self {
-        Self {
-            timestamp: value.timestamp,
-            name: value.name,
-            display_name: value.display_name,
-            description: value.description,
-            link: value.link,
-            hidden: value.hidden,
-            builtin: value.builtin,
-            backend_kind: value.backend_kind,
-            backend_response_type: value.backend_response_type,
-            handler: value.handler,
-            code_base64: value.code_base64,
-            code_sha256: value.code_sha256,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct FuncGraphNode {
-    id: FuncId,
-    name: String,
-    content_address: ContentAddress,
-    content: FuncContentV1,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
-pub enum FuncContent {
-    V1(FuncContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct FuncContentV1 {
-    #[serde(flatten)]
-    pub timestamp: Timestamp,
-    pub name: String,
-    pub display_name: Option<String>,
-    pub description: Option<String>,
-    pub link: Option<String>,
-    pub hidden: bool,
-    pub builtin: bool,
-    pub backend_kind: FuncBackendKind,
-    pub backend_response_type: FuncBackendResponseType,
-    pub handler: Option<String>,
-    pub code_base64: Option<String>,
-    pub code_sha256: String,
-}
-
-impl FuncGraphNode {
-    pub fn assemble(
-        id: impl Into<FuncId>,
+    #[allow(clippy::too_many_arguments)]
+    pub async fn new(
+        ctx: &DalContext,
         name: impl Into<String>,
-        content_hash: ContentHash,
-        content: FuncContentV1,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            name: name.into(),
-            content_address: ContentAddress::Func(content_hash),
-            content,
+        display_name: Option<impl Into<String>>,
+        description: Option<impl Into<String>>,
+        link: Option<impl Into<String>>,
+        hidden: bool,
+        builtin: bool,
+        backend_kind: FuncBackendKind,
+        backend_response_type: FuncBackendResponseType,
+        handler: Option<impl Into<String>>,
+        code_base64: Option<impl Into<String>>,
+    ) -> FuncResult<Self> {
+        let timestamp = Timestamp::now();
+        let _finalized_once = false;
+
+        let code_base64 = code_base64.map(Into::into);
+
+        let code_blake3 = ContentHash::new(code_base64.as_deref().unwrap_or("").as_bytes());
+
+        let content = FuncContentV1 {
+            timestamp,
+            display_name: display_name.map(Into::into),
+            description: description.map(Into::into),
+            link: link.map(Into::into),
+            hidden,
+            builtin,
+            backend_response_type,
+            handler: handler.map(Into::into),
+            code_base64,
+            code_blake3,
+        };
+
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&FuncContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_func(change_set, id, name.into(), backend_kind, hash)?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let _node_index = workspace_snapshot.add_node(node_weight.clone())?;
+
+        let func_category_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Func)?;
+        workspace_snapshot.add_edge(
+            func_category_id,
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            id,
+        )?;
+
+        let func_node_weight = node_weight.get_func_node_weight()?;
+
+        Ok(Self::assemble(&func_node_weight, &content))
+    }
+
+    pub async fn get_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<Self> {
+        let (node_weight, content) = Self::get_node_weight_and_content(ctx, id).await?;
+        Ok(Self::assemble(&node_weight, &content))
+    }
+
+    pub fn find_by_name(ctx: &DalContext, name: impl AsRef<str>) -> FuncResult<Option<FuncId>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let func_category_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Func)?;
+        let func_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            func_category_id,
+            EdgeWeightKindDiscriminants::Use,
+        )?;
+        let name = name.as_ref();
+        for func_index in func_indices {
+            let node_weight = workspace_snapshot.get_node_weight(func_index)?;
+            if let NodeWeight::Func(inner_weight) = node_weight {
+                if inner_weight.name() == name {
+                    return Ok(Some(inner_weight.id().into()));
+                }
+            }
         }
+        Ok(None)
     }
 
-    pub fn name(&self) -> &String {
-        &self.name
+    pub fn code_plaintext(&self) -> FuncResult<Option<String>> {
+        Ok(match &self.code_base64 {
+            Some(base64_code) => Some(String::from_utf8(
+                general_purpose::STANDARD_NO_PAD.decode(base64_code)?,
+            )?),
+            None => None,
+        })
     }
-}
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct FuncMetadataView {
-    pub display_name: String,
-    pub description: Option<String>,
-    pub link: Option<String>,
-}
+    pub async fn modify_by_id<L>(ctx: &DalContext, id: FuncId, lambda: L) -> FuncResult<Func>
+    where
+        L: FnOnce(&mut Func) -> FuncResult<()>,
+    {
+        let func = Func::get_by_id(ctx, id).await?;
+        let modified_func = func.modify(ctx, lambda).await?;
+        Ok(modified_func)
+    }
 
-pub fn is_intrinsic(name: &str) -> bool {
-    intrinsics::IntrinsicFunc::iter().any(|intrinsic| intrinsic.name() == name)
+    pub async fn get_node_weight_and_content(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> FuncResult<(FuncNodeWeight, FuncContentV1)> {
+        let (func_node_weight, hash) = Self::get_node_weight_and_content_hash(ctx, func_id).await?;
+
+        let content: FuncContent = ctx.content_store().try_lock()?.get(&hash).await?.ok_or(
+            WorkspaceSnapshotError::MissingContentFromStore(func_id.into()),
+        )?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let FuncContent::V1(inner) = content;
+
+        Ok((func_node_weight, inner))
+    }
+
+    async fn get_node_weight_and_content_hash(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> FuncResult<(FuncNodeWeight, ContentHash)> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let id: Ulid = func_id.into();
+        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+
+        let hash = node_weight.content_hash();
+        let func_node_weight = node_weight.get_func_node_weight()?;
+        Ok((func_node_weight, hash))
+    }
+
+    pub async fn modify<L>(self, ctx: &DalContext, lambda: L) -> FuncResult<Self>
+    where
+        L: FnOnce(&mut Self) -> FuncResult<()>,
+    {
+        let mut func = self;
+
+        let before = FuncContentV1::from(func.clone());
+        lambda(&mut func)?;
+
+        let (mut node_weight, _) = Func::get_node_weight_and_content_hash(ctx, func.id).await?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        // If both either the name or backend_kind have changed, *and* parts of the FuncContent
+        // have changed, this ends up updating the node for the function twice. This could be
+        // optimized to do it only once.
+        if func.name.as_str() != node_weight.name()
+            || func.backend_kind != node_weight.backend_kind()
+        {
+            let original_node_index = workspace_snapshot.get_node_index_by_id(func.id)?;
+
+            node_weight
+                .set_name(func.name.as_str())
+                .set_backend_kind(func.backend_kind);
+
+            let new_node_index =
+                workspace_snapshot.add_node(NodeWeight::Func(node_weight.clone()))?;
+
+            workspace_snapshot.replace_references(original_node_index, new_node_index)?;
+        }
+        let updated = FuncContentV1::from(func.clone());
+
+        if updated != before {
+            let hash = ctx
+                .content_store()
+                .try_lock()?
+                .add(&FuncContent::V1(updated.clone()))?;
+            workspace_snapshot.update_content(ctx.change_set_pointer()?, func.id.into(), hash)?;
+        }
+
+        Ok(Func::assemble(&node_weight, &updated))
+    }
+
+    pub fn remove(ctx: &DalContext, id: FuncId) -> FuncResult<()> {
+        // to remove a func we must remove all incoming edges to it. It will then be
+        // garbage collected out of the graph
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let arg_node_idx = workspace_snapshot.get_node_index_by_id(id)?;
+
+        let users = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKind::Use.into())?;
+
+        let change_set = ctx.change_set_pointer()?;
+        for user in users {
+            workspace_snapshot.remove_edge(
+                change_set,
+                user,
+                arg_node_idx,
+                EdgeWeightKind::Use.into(),
+            )?;
+        }
+
+        Ok(())
+    }
+
+    pub fn find_intrinsic(ctx: &DalContext, intrinsic: IntrinsicFunc) -> FuncResult<FuncId> {
+        let name = intrinsic.name();
+        Self::find_by_name(ctx, name)?.ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()))
+    }
+
+    pub async fn list(ctx: &DalContext) -> FuncResult<Vec<Self>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let mut funcs = vec![];
+        let func_category_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Func)?;
+
+        let func_node_indexes = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            func_category_id,
+            EdgeWeightKindDiscriminants::Use,
+        )?;
+
+        let mut func_node_weights = vec![];
+        let mut func_content_hash = vec![];
+        for index in func_node_indexes {
+            let node_weight = workspace_snapshot
+                .get_node_weight(index)?
+                .get_func_node_weight()?;
+            func_content_hash.push(node_weight.content_hash());
+            func_node_weights.push(node_weight);
+        }
+
+        let func_contents: HashMap<ContentHash, FuncContent> = ctx
+            .content_store()
+            .try_lock()?
+            .get_bulk(func_content_hash.as_slice())
+            .await?;
+
+        for node_weight in func_node_weights {
+            match func_contents.get(&node_weight.content_hash()) {
+                Some(func_content) => {
+                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+                    let FuncContent::V1(inner) = func_content;
+
+                    funcs.push(Func::assemble(&node_weight, inner));
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
+            }
+        }
+
+        Ok(funcs)
+    }
 }
 
 // impl Func {

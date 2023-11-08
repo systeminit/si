@@ -83,9 +83,8 @@ export function useChangeSetsStore() {
               this.changeSetsById = {};
 
               for (const changeSet of response) {
-                this.changeSetsById[changeSet.pk] = {
-                  id: changeSet.pk,
-                  pk: changeSet.pk,
+                this.changeSetsById[changeSet.id] = {
+                  id: changeSet.id,
                   name: changeSet.name,
                   actions: changeSet.actions,
                   status: changeSet.status,
@@ -102,7 +101,7 @@ export function useChangeSetsStore() {
               changeSetName: name,
             },
             onSuccess: (response) => {
-              this.changeSetsById[response.changeSet.pk] = response.changeSet;
+              this.changeSetsById[response.changeSet.id] = response.changeSet;
             },
           });
         },
@@ -125,10 +124,10 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/apply_change_set",
             params: {
-              changeSetPk: this.selectedChangeSet.pk,
+              changeSetPk: this.selectedChangeSet.id,
             },
             onSuccess: (response) => {
-              this.changeSetsById[response.changeSet.pk] = response.changeSet;
+              this.changeSetsById[response.changeSet.id] = response.changeSet;
               // could switch to head here, or could let the caller decide...
             },
           });
@@ -175,7 +174,7 @@ export function useChangeSetsStore() {
           if (!this.openChangeSets?.length) return false; // no open change sets
           if (this.openChangeSets.length === 1) {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            return this.openChangeSets[0]!.pk; // only 1 change set - will auto select it
+            return this.openChangeSets[0]!.id; // only 1 change set - will auto select it
           }
           // TODO: add logic to for auto-selecting when multiple change sets open
           // - select one created by you
@@ -213,7 +212,7 @@ export function useChangeSetsStore() {
             if (this.selectedChangeSet && workspacePk) {
               storage.setItem(
                 `SI:LAST_CHANGE_SET/${workspacePk}`,
-                this.selectedChangeSet.pk,
+                this.selectedChangeSet.id,
               );
             }
           },

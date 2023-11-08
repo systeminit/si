@@ -1083,7 +1083,7 @@ function sendMovedElementPosition(e: {
     e.element instanceof DiagramGroupData
   ) {
     componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
-      e.element.def.id,
+      e.element.def.componentId,
       e.position,
     );
   }
@@ -1570,7 +1570,11 @@ function endResizeElement() {
     return;
   }
 
-  componentsStore.SET_COMPONENT_DIAGRAM_POSITION(el.def.id, position, size);
+  componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
+    el.def.componentId,
+    position,
+    size,
+  );
 
   resizeElement.value = undefined;
 }
@@ -1944,7 +1948,7 @@ async function endDrawEdge() {
 }
 // ELEMENT ADDITION
 const insertElementActive = computed(
-  () => !!componentsStore.selectedInsertSchemaId,
+  () => !!componentsStore.selectedInsertSchemaVariantId,
 );
 
 async function triggerInsertElement() {
@@ -1959,28 +1963,32 @@ async function triggerInsertElement() {
     parentGroupId = hoveredElement.value.def.id;
   }
 
-  if (!componentsStore.selectedInsertSchemaId)
+  if (!componentsStore.selectedInsertSchemaVariantId)
     throw new Error("missing insert selection metadata");
 
-  const schemaId = componentsStore.selectedInsertSchemaId;
-  componentsStore.selectedInsertSchemaId = null;
+  const schemaVariantId = componentsStore.selectedInsertSchemaVariantId;
+  componentsStore.selectedInsertSchemaVariantId = null;
 
-  let parentId;
+  let parentComponentId;
 
   if (parentGroupId) {
     const parentComponent = Object.values(componentsStore.componentsById).find(
-      (c) => c.nodeId === parentGroupId,
+      (c) => c.id === parentGroupId,
     );
     if (
       parentComponent &&
       (parentComponent.nodeType !== "aggregationFrame" ||
-        schemaId === parentComponent.schemaId)
+        schemaVariantId === parentComponent.schemaVariantId)
     ) {
-      parentId = parentGroupId;
+      parentComponentId = parentGroupId;
     }
   }
 
-  componentsStore.CREATE_COMPONENT(schemaId, gridPointerPos.value, parentId);
+  componentsStore.CREATE_COMPONENT(
+    schemaVariantId,
+    gridPointerPos.value,
+    parentComponentId,
+  );
 }
 
 // LAYOUT REGISTRY + HELPERS ///////////////////////////////////////////////////////////

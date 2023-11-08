@@ -24,9 +24,6 @@ pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 pub enum EdgeWeightKind {
     /// A function used by a [`SchemaVariant`] to perform an action that affects its resource
     ActionPrototype(ActionKind),
-    /// An argument to a function defined by an [`AttributePrototype`][crate::AttributePrototype],
-    /// including the name of the argument to the function.
-    Argument(String),
     /// An [`AttributeValue`] "contained" by another [`AttributeValue`], such as an entry in an
     /// array/map, or a field of an object. The optional [`String`] represents the key of the entry
     /// in a map.
@@ -35,7 +32,17 @@ pub enum EdgeWeightKind {
     Ordering,
     /// Used to link an attribute value to the prop that it is for.
     Prop,
-    Prototype,
+    /// An edge from a [`provider`](crate::provider) to an
+    /// [`AttributePrototype`](crate::AttributePrototype). The optional [`String`] is used for
+    /// maps, arrays and relevant container types to indicate which element the prototype is for.
+    Prototype(Option<String>),
+    /// An edge from an [`AttributePrototype`][crate::AttributePrototype] to an
+    /// [`AttributePrototypeArgument`][crate::AttributePrototypeArgument].
+    PrototypeArgument,
+    /// An edge from an
+    /// [`AttributePrototypeArgument`][crate::AttributePrototypeArgument] to the
+    /// source for the value for this argument
+    PrototypeArgumentValue,
     /// Used when the target/destination of an edge is an [`InternalProvider`], or an
     /// [`ExternalProvider`].
     Provider,

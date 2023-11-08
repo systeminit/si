@@ -1,22 +1,92 @@
-use content_store::ContentHash;
+use content_store::{ContentHash, Store};
+use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
 use si_pkg::PropSpecKind;
-
+use std::collections::VecDeque;
 use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
 use telemetry::prelude::*;
+use thiserror::Error;
+use ulid::Ulid;
 
-use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::FuncBackendResponseType;
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentError,
+};
+use crate::attribute::prototype::AttributePrototypeError;
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::func::argument::{FuncArgument, FuncArgumentError};
+use crate::func::intrinsics::IntrinsicFunc;
+use crate::func::FuncError;
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    label_list::ToLabelList, pk, property_editor::schema::WidgetKind, FuncId, StandardModel,
-    Timestamp,
+    label_list::ToLabelList, pk, property_editor::schema::WidgetKind, AttributePrototype,
+    AttributePrototypeId, DalContext, Func, FuncBackendResponseType, FuncId, SchemaVariantId,
+    Timestamp, TransactionsError,
 };
 
 pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
 
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum PropError {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("child prop of {0:?} not found by name: {1}")]
+    ChildPropNotFoundByName(NodeIndex, String),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("prop {0} of kind {1} does not have an element prop")]
+    ElementPropNotOnKind(PropId, PropKind),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
+    #[error("map or array {0} missing element prop")]
+    MapOrArrayMissingElementProp(PropId),
+    #[error("missing prototype for prop {0}")]
+    MissingPrototypeForProp(PropId),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("prop {0} is orphaned")]
+    PropIsOrphan(PropId),
+    #[error("prop {0} has a non prop or schema variant parent")]
+    PropParentInvalid(PropId),
+    #[error("serde error: {0}")]
+    Serde(#[from] serde_json::Error),
+    #[error("can only set default values for scalars (string, integer, boolean), prop {0} is {1}")]
+    SetDefaultForNonScalar(PropId, PropKind),
+    #[error("store error: {0}")]
+    Store(#[from] content_store::StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+pub type PropResult<T> = Result<T, PropError>;
+
 pk!(PropId);
+
+// TODO: currently we only have string values in all widget_options but we should extend this to
+// support other types. However, we cannot use serde_json::Value since postcard will not
+// deserialize into a serde_json::Value.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct WidgetOption {
+    label: String,
+    value: String,
+}
+
+type WidgetOptions = Vec<WidgetOption>;
 
 /// An individual "field" within the tree of a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -31,7 +101,7 @@ pub struct Prop {
     /// The kind of "widget" that should be used for this [`Prop`].
     pub widget_kind: WidgetKind,
     /// The configuration of the "widget".
-    pub widget_options: Option<Value>,
+    pub widget_options: Option<WidgetOptions>,
     /// A link to external documentation for working with this specific [`Prop`].
     pub doc_link: Option<String>,
     /// A toggle for whether or not the [`Prop`] should be visually hidden.
@@ -43,22 +113,13 @@ pub struct Prop {
     pub diff_func_id: Option<FuncId>,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct PropGraphNode {
-    id: PropId,
-    content_address: ContentAddress,
-    content: PropContentV1,
-}
-
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
 pub enum PropContent {
     V1(PropContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PropContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
     /// The name of the [`Prop`].
     pub name: String,
@@ -67,7 +128,7 @@ pub struct PropContentV1 {
     /// The kind of "widget" that should be used for this [`Prop`].
     pub widget_kind: WidgetKind,
     /// The configuration of the "widget".
-    pub widget_options: Option<Value>,
+    pub widget_options: Option<WidgetOptions>,
     /// A link to external documentation for working with this specific [`Prop`].
     pub doc_link: Option<String>,
     /// A toggle for whether or not the [`Prop`] should be visually hidden.
@@ -77,27 +138,6 @@ pub struct PropContentV1 {
     pub refers_to_prop_id: Option<PropId>,
     /// Connected props may need a custom diff function
     pub diff_func_id: Option<FuncId>,
-}
-
-impl Prop {
-    pub fn assemble(id: PropId, inner: &PropContentV1) -> Self {
-        Self {
-            id,
-            timestamp: inner.timestamp,
-            name: inner.name.clone(),
-            kind: inner.kind,
-            widget_kind: inner.widget_kind,
-            widget_options: inner.widget_options.clone(),
-            doc_link: inner.doc_link.clone(),
-            hidden: inner.hidden,
-            refers_to_prop_id: inner.refers_to_prop_id,
-            diff_func_id: inner.diff_func_id,
-        }
-    }
-
-    pub fn id(&self) -> PropId {
-        self.id
-    }
 }
 
 impl From<Prop> for PropContentV1 {
@@ -113,24 +153,6 @@ impl From<Prop> for PropContentV1 {
             refers_to_prop_id: value.refers_to_prop_id,
             diff_func_id: value.diff_func_id,
         }
-    }
-}
-
-impl PropGraphNode {
-    pub fn assemble(
-        id: impl Into<PropId>,
-        content_hash: ContentHash,
-        content: PropContentV1,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            content_address: ContentAddress::Prop(content_hash),
-            content,
-        }
-    }
-
-    pub fn id(&self) -> PropId {
-        self.id
     }
 }
 
@@ -250,6 +272,12 @@ pub enum PropKind {
     String,
 }
 
+impl PropKind {
+    pub fn ordered(&self) -> bool {
+        matches!(self, PropKind::Array | PropKind::Map | PropKind::Object)
+    }
+}
+
 impl From<PropKind> for PropSpecKind {
     fn from(prop: PropKind) -> Self {
         match prop {
@@ -290,55 +318,357 @@ impl From<PropKind> for FuncBackendResponseType {
     }
 }
 
-// /// An individual "field" within the tree of a [`SchemaVariant`](crate::SchemaVariant).
-// #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-// pub struct Prop {
-//     pk: PropPk,
-//     id: PropId,
-//     #[serde(flatten)]
-//     tenancy: Tenancy,
-//     #[serde(flatten)]
-//     timestamp: Timestamp,
-//     #[serde(flatten)]
-//     visibility: Visibility,
+pub enum PropParent {
+    OrderedProp(PropId),
+    Prop(PropId),
+    SchemaVariant(SchemaVariantId),
+}
 
-//     /// The name of the [`Prop`].
-//     name: String,
-//     /// The kind of the [`Prop`].
-//     kind: PropKind,
-//     /// The kind of "widget" that should be used for this [`Prop`].
-//     widget_kind: WidgetKind,
-//     /// The configuration of the "widget".
-//     widget_options: Option<Value>,
-//     /// A link to external documentation for working with this specific [`Prop`].
-//     doc_link: Option<String>,
-//     /// Embedded documentation for working with this specific [`Prop`].
-//     documentation: Option<String>,
-//     /// A toggle for whether or not the [`Prop`] should be visually hidden.
-//     hidden: bool,
-//     /// The "path" for a given [`Prop`]. It is a concatenation of [`Prop`] names based on lineage
-//     /// with [`PROP_PATH_SEPARATOR`] as the separator between each parent and child.
-//     ///
-//     /// This is useful for finding and querying for specific [`Props`](Prop) in a
-//     /// [`SchemaVariant`](crate::SchemaVariant)'s tree.
-//     path: String,
-//     /// The [`SchemaVariant`](crate::SchemaVariant) whose tree we (the [`Prop`]) reside in.
-//     schema_variant_id: SchemaVariantId,
-//     /// Props can be connected to eachother to signify that they should contain the same value
-//     /// This is useful for diffing the resource with the domain, to suggest actions if the real world changes
-//     refers_to_prop_id: Option<PropId>,
-//     /// Connected props may need a custom diff function
-//     diff_func_id: Option<FuncId>,
-// }
+impl Prop {
+    pub fn assemble(id: PropId, inner: PropContentV1) -> Self {
+        Self {
+            id,
+            timestamp: inner.timestamp,
+            name: inner.name,
+            kind: inner.kind,
+            widget_kind: inner.widget_kind,
+            widget_options: inner.widget_options,
+            doc_link: inner.doc_link,
+            hidden: inner.hidden,
+            refers_to_prop_id: inner.refers_to_prop_id,
+            diff_func_id: inner.diff_func_id,
+        }
+    }
 
-// impl_standard_model! {
-//     model: Prop,
-//     pk: PropPk,
-//     id: PropId,
-//     table_name: "props",
-//     history_event_label_base: "prop",
-//     history_event_message_name: "Prop"
-// }
+    pub fn id(&self) -> PropId {
+        self.id
+    }
+
+    pub fn parent_prop_id_by_id(ctx: &DalContext, prop_id: PropId) -> PropResult<Option<PropId>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let parent_node_idx = *workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Use)?
+            .get(0)
+            .ok_or(PropError::PropIsOrphan(prop_id))?;
+
+        Ok(match workspace_snapshot.get_node_weight(parent_node_idx)? {
+            NodeWeight::Prop(prop_inner) => Some(prop_inner.id().into()),
+            NodeWeight::Content(content_inner) => {
+                let content_addr_discrim: ContentAddressDiscriminants =
+                    content_inner.content_address().into();
+                match content_addr_discrim {
+                    ContentAddressDiscriminants::SchemaVariant => None,
+                    _ => return Err(PropError::PropParentInvalid(prop_id)),
+                }
+            }
+            _ => return Err(PropError::PropParentInvalid(prop_id)),
+        })
+    }
+
+    pub fn path(&self, ctx: &DalContext) -> PropResult<PropPath> {
+        let mut parts = vec![self.name.to_owned()];
+
+        let mut work_queue = VecDeque::from([self.id]);
+
+        while let Some(prop_id) = work_queue.pop_front() {
+            if let Some(prop_id) = Prop::parent_prop_id_by_id(ctx, prop_id)? {
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                let node_idx = workspace_snapshot.get_node_index_by_id(prop_id)?;
+
+                if let NodeWeight::Prop(inner) = workspace_snapshot.get_node_weight(node_idx)? {
+                    parts.push(inner.name().to_owned());
+                    work_queue.push_back(inner.id().into());
+                }
+            }
+        }
+
+        parts.reverse();
+        Ok(PropPath::new(&parts))
+    }
+
+    /// Create a new [`Prop`]. A corresponding [`AttributePrototype`] and [`AttributeValue`] will be
+    /// created when the provided [`SchemaVariant`](crate::SchemaVariant) is
+    /// [`finalized`](crate::SchemaVariant::finalize).
+    pub fn new(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        kind: PropKind,
+        hidden: bool,
+        doc_link: Option<String>,
+        widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
+        prop_parent: PropParent,
+    ) -> PropResult<Self> {
+        let ordered = kind.ordered();
+        let name = name.into();
+
+        if let Some((_, Some(options))) = &widget_kind_and_options {
+            info!("{}: {:?}", &name, options);
+        }
+
+        let timestamp = Timestamp::now();
+        let (widget_kind, widget_options): (WidgetKind, Option<WidgetOptions>) =
+            match widget_kind_and_options {
+                Some((kind, options)) => (
+                    kind,
+                    match options {
+                        Some(options) => Some(serde_json::from_value(options)?),
+                        None => None,
+                    },
+                ),
+                None => (WidgetKind::from(kind), None),
+            };
+
+        let content = PropContentV1 {
+            timestamp,
+            name: name.clone(),
+            kind,
+            widget_kind,
+            widget_options,
+            doc_link,
+            hidden,
+            refers_to_prop_id: None,
+            diff_func_id: None,
+        };
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&PropContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let _node_index = if ordered {
+            workspace_snapshot.add_ordered_node(change_set, node_weight)?
+        } else {
+            workspace_snapshot.add_node(node_weight)?
+        };
+
+        match prop_parent {
+            PropParent::OrderedProp(ordered_prop_id) => {
+                workspace_snapshot.add_ordered_edge(
+                    change_set,
+                    ordered_prop_id.into(),
+                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                    id,
+                )?;
+            }
+            PropParent::Prop(prop_id) => {
+                workspace_snapshot.add_edge(
+                    prop_id.into(),
+                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                    id,
+                )?;
+            }
+            PropParent::SchemaVariant(schema_variant_id) => {
+                workspace_snapshot.add_edge(
+                    schema_variant_id.into(),
+                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                    id,
+                )?;
+            }
+        };
+
+        Ok(Self::assemble(id.into(), content))
+    }
+
+    pub async fn get_by_id(ctx: &DalContext, id: PropId) -> PropResult<Self> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let ulid: ulid::Ulid = id.into();
+        let node_index = workspace_snapshot.get_node_index_by_id(ulid)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        info!("fetching prop content");
+        let content: PropContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let PropContent::V1(inner) = content;
+
+        Ok(Prop::assemble(id, inner))
+    }
+
+    pub fn element_prop_id(&self, ctx: &DalContext) -> PropResult<PropId> {
+        if !matches!(self.kind, PropKind::Array | PropKind::Map) {
+            return Err(PropError::ElementPropNotOnKind(self.id, self.kind));
+        }
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        for maybe_elem_node_idx in workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)?
+        {
+            if let NodeWeight::Prop(prop_inner) =
+                workspace_snapshot.get_node_weight(maybe_elem_node_idx)?
+            {
+                return Ok(prop_inner.id().into());
+            }
+        }
+
+        Err(PropError::MapOrArrayMissingElementProp(self.id))
+    }
+
+    pub fn find_child_prop_index_by_name(
+        ctx: &DalContext,
+        node_index: NodeIndex,
+        child_name: impl AsRef<str>,
+    ) -> PropResult<NodeIndex> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        for prop_node_index in workspace_snapshot.outgoing_targets_for_edge_weight_kind_by_index(
+            node_index,
+            EdgeWeightKindDiscriminants::Use,
+        )? {
+            if let NodeWeight::Prop(prop_inner) =
+                workspace_snapshot.get_node_weight(prop_node_index)?
+            {
+                if prop_inner.name() == child_name.as_ref() {
+                    return Ok(prop_node_index);
+                }
+            }
+        }
+
+        Err(PropError::ChildPropNotFoundByName(
+            node_index,
+            child_name.as_ref().to_string(),
+        ))
+    }
+
+    pub fn find_prop_id_by_path_opt(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        path: &PropPath,
+    ) -> PropResult<Option<PropId>> {
+        match Self::find_prop_id_by_path(ctx, schema_variant_id, path) {
+            Ok(prop_id) => Ok(Some(prop_id)),
+            Err(err) => match err {
+                PropError::ChildPropNotFoundByName(_, _) => Ok(None),
+                err => Err(err),
+            },
+        }
+    }
+
+    pub fn find_prop_id_by_path(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        path: &PropPath,
+    ) -> PropResult<PropId> {
+        let schema_variant_node_index = {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+            workspace_snapshot.get_node_index_by_id(schema_variant_id)?
+        };
+
+        let path_parts = path.as_parts();
+
+        let mut current_node_index = schema_variant_node_index;
+        for part in path_parts {
+            current_node_index =
+                Self::find_child_prop_index_by_name(ctx, current_node_index, part)?;
+        }
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        Ok(workspace_snapshot
+            .get_node_weight(current_node_index)?
+            .id()
+            .into())
+    }
+
+    pub fn prototype_id(ctx: &DalContext, prop_id: PropId) -> PropResult<AttributePrototypeId> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let prototype_node_index = *workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Prototype)?
+            .get(0)
+            .ok_or(PropError::MissingPrototypeForProp(prop_id))?;
+
+        Ok(workspace_snapshot
+            .get_node_weight(prototype_node_index)?
+            .id()
+            .into())
+    }
+
+    pub async fn set_default_value<T: Serialize>(
+        ctx: &DalContext,
+        prop_id: PropId,
+        value: T,
+    ) -> PropResult<()> {
+        let value = serde_json::to_value(value)?;
+
+        let prop = Prop::get_by_id(ctx, prop_id).await?;
+        if !matches!(
+            prop.kind,
+            PropKind::String | PropKind::Boolean | PropKind::Integer
+        ) {
+            return Err(PropError::SetDefaultForNonScalar(prop_id, prop.kind));
+        }
+
+        let prototype_id = Prop::prototype_id(ctx, prop_id)?;
+        let intrinsic: IntrinsicFunc = prop.kind.into();
+        let intrinsic_id = Func::find_intrinsic(ctx, intrinsic)?;
+        let value_arg_id = *FuncArgument::list_ids_for_func(ctx, intrinsic_id)?
+            .get(0)
+            .ok_or(FuncArgumentError::IntrinsicMissingFuncArgumentEdge(
+                intrinsic.name().into(),
+                intrinsic_id,
+            ))?;
+
+        AttributePrototype::update_func_by_id(ctx, prototype_id, intrinsic_id)?;
+        AttributePrototypeArgument::new(ctx, prototype_id, value_arg_id)?
+            .set_value_from_static_value(ctx, value)?;
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    async fn get_content(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<(ContentHash, PropContentV1)> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let id: Ulid = prop_id.into();
+        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        let content: PropContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let PropContent::V1(inner) = content;
+
+        Ok((hash, inner))
+    }
+
+    pub async fn modify<L>(self, ctx: &DalContext, lambda: L) -> PropResult<Self>
+    where
+        L: FnOnce(&mut Self) -> PropResult<()>,
+    {
+        let mut prop = self;
+
+        let before = PropContentV1::from(prop.clone());
+        lambda(&mut prop)?;
+        let updated = PropContentV1::from(prop.clone());
+
+        if updated != before {
+            let hash = ctx
+                .content_store()
+                .try_lock()?
+                .add(&PropContent::V1(updated.clone()))?;
+
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.update_content(ctx.change_set_pointer()?, prop.id.into(), hash)?;
+        }
+        Ok(prop)
+    }
+}
 
 // impl Prop {
 //     /// Create a new [`Prop`]. A corresponding [`AttributePrototype`] and [`AttributeValue`] will be

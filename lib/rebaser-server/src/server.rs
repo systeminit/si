@@ -140,6 +140,7 @@ impl Server {
     }
 
     /// Build a [`Server`] from information provided via companion services.
+    #[allow(clippy::too_many_arguments)]
     #[instrument(name = "rebaser.init.from_services", skip_all)]
     pub fn from_services(
         encryption_key: Arc<CycloneEncryptionKey>,

@@ -1,9 +1,19 @@
-use content_store::ContentHash;
+use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use strum::EnumDiscriminants;
+use thiserror::Error;
+use tokio::sync::TryLockError;
 
-use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{pk, Timestamp};
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
+use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{pk, ComponentKind, DalContext, Timestamp, TransactionsError};
 
 pub use ui_menu::SchemaUiMenu;
 pub use variant::{SchemaVariant, SchemaVariantId};
@@ -11,10 +21,28 @@ pub use variant::{SchemaVariant, SchemaVariantId};
 pub mod ui_menu;
 pub mod variant;
 
-// const FIND_SCHEMA_VARIANT_BY_NAME_FOR_SCHEMA: &str =
-//     include_str!("./queries/find_schema_variant_for_schema_and_name.sql");
-
 pub const SCHEMA_VERSION: SchemaContentDiscriminants = SchemaContentDiscriminants::V1;
+
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum SchemaError {
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("store error: {0}")]
+    Store(#[from] StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("try lock error: {0}")]
+    TryLock(#[from] TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+pub type SchemaResult<T> = Result<T, SchemaError>;
 
 pk!(SchemaId);
 
@@ -23,68 +51,182 @@ pub struct Schema {
     id: SchemaId,
     #[serde(flatten)]
     timestamp: Timestamp,
-    name: String,
-    ui_hidden: bool,
+    pub name: String,
+    pub ui_hidden: bool,
+    // NOTE(nick): maybe we should have a special edge for this instead or remove it altogether.
     default_schema_variant_id: Option<SchemaVariantId>,
     component_kind: ComponentKind,
 }
 
-// FIXME(nick,zack,jacob): temporarily moved here.
-#[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Copy)]
-#[serde(rename_all = "camelCase")]
-pub enum ComponentKind {
-    Credential,
-    Standard,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct SchemaGraphNode {
-    id: SchemaId,
-    content_address: ContentAddress,
-    content: SchemaContentV1,
-}
-
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
 pub enum SchemaContent {
     V1(SchemaContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct SchemaContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
     pub name: String,
     pub ui_hidden: bool,
+    // NOTE(nick): maybe we should have a special edge for this instead or remove it altogether.
     pub default_schema_variant_id: Option<SchemaVariantId>,
     pub component_kind: ComponentKind,
 }
 
-impl SchemaGraphNode {
-    pub fn assemble(
-        id: impl Into<SchemaId>,
-        content_hash: ContentHash,
-        content: SchemaContentV1,
-    ) -> Self {
+impl From<Schema> for SchemaContentV1 {
+    fn from(value: Schema) -> Self {
         Self {
-            id: id.into(),
-            content_address: ContentAddress::Schema(content_hash),
-            content,
+            timestamp: value.timestamp,
+            name: value.name,
+            ui_hidden: value.ui_hidden,
+            default_schema_variant_id: value.default_schema_variant_id,
+            component_kind: value.component_kind,
         }
     }
 }
 
 impl Schema {
-    pub fn assemble(id: SchemaId, inner: &SchemaContentV1) -> Self {
+    pub fn assemble(id: SchemaId, inner: SchemaContentV1) -> Self {
         Self {
             id,
             timestamp: inner.timestamp,
-            name: inner.name.clone(),
+            name: inner.name,
             ui_hidden: inner.ui_hidden,
             default_schema_variant_id: inner.default_schema_variant_id,
             component_kind: inner.component_kind,
         }
+    }
+
+    pub fn id(&self) -> SchemaId {
+        self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        component_kind: ComponentKind,
+    ) -> SchemaResult<Self> {
+        let content = SchemaContentV1 {
+            timestamp: Timestamp::now(),
+            name: name.into(),
+            ui_hidden: false,
+            default_schema_variant_id: None,
+            component_kind,
+        };
+
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&SchemaContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Schema(hash))?;
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let _node_index = workspace_snapshot.add_node(node_weight)?;
+
+        let schema_category_index_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Schema)?;
+        workspace_snapshot.add_edge(
+            schema_category_index_id,
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            id,
+        )?;
+
+        Ok(Self::assemble(id.into(), content))
+    }
+
+    pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Self> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        let content: SchemaContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let SchemaContent::V1(inner) = content;
+
+        Ok(Self::assemble(id, inner))
+    }
+
+    pub async fn modify<L>(self, ctx: &DalContext, lambda: L) -> SchemaResult<Self>
+    where
+        L: FnOnce(&mut Self) -> SchemaResult<()>,
+    {
+        let mut schema = self;
+
+        let before = SchemaContentV1::from(schema.clone());
+        lambda(&mut schema)?;
+        let updated = SchemaContentV1::from(schema.clone());
+
+        if updated != before {
+            let hash = ctx
+                .content_store()
+                .try_lock()?
+                .add(&SchemaContent::V1(updated.clone()))?;
+
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.update_content(ctx.change_set_pointer()?, schema.id.into(), hash)?;
+        }
+
+        Ok(schema)
+    }
+
+    pub async fn list(ctx: &DalContext) -> SchemaResult<Vec<Self>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let mut schemas = vec![];
+        let schema_category_index_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Schema)?;
+
+        let schema_node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            schema_category_index_id,
+            EdgeWeightKindDiscriminants::Use,
+        )?;
+
+        let mut schema_node_weights = vec![];
+        let mut schema_content_hashes = vec![];
+        for index in schema_node_indices {
+            let node_weight = workspace_snapshot
+                .get_node_weight(index)?
+                .get_content_node_weight_of_kind(ContentAddressDiscriminants::Schema)?;
+            schema_content_hashes.push(node_weight.content_hash());
+            schema_node_weights.push(node_weight);
+        }
+
+        let schema_contents: HashMap<ContentHash, SchemaContent> = ctx
+            .content_store()
+            .try_lock()?
+            .get_bulk(schema_content_hashes.as_slice())
+            .await?;
+
+        for node_weight in schema_node_weights {
+            match schema_contents.get(&node_weight.content_hash()) {
+                Some(func_content) => {
+                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+                    let SchemaContent::V1(inner) = func_content;
+
+                    schemas.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
+            }
+        }
+
+        Ok(schemas)
     }
 }
 

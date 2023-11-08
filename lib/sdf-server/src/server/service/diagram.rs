@@ -1,29 +1,27 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::socket::SocketId;
+use dal::component::ComponentError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::WsEventError;
-use dal::{
-    node::NodeId, ChangeSetError, NodeKind, SchemaVariantId, StandardModelError, TransactionsError,
-};
+use dal::{ChangeSetError, SchemaVariantId, StandardModelError, TransactionsError};
 use thiserror::Error;
 
 use crate::server::state::AppState;
 
+pub mod create_component;
+pub mod get_diagram;
+pub mod list_schema_variants;
+pub mod set_component_position;
+
 // mod connect_component_to_frame;
 // pub mod create_connection;
-// pub mod create_node;
 // pub mod delete_component;
 // pub mod delete_connection;
-// pub mod get_diagram;
-// pub mod get_node_add_menu;
-pub mod list_schema_variants;
 // mod restore_component;
 // pub mod restore_connection;
-// pub mod set_node_position;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -32,36 +30,34 @@ pub enum DiagramError {
     ChangeSet(#[from] ChangeSetError),
     #[error("change set not found")]
     ChangeSetNotFound,
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error("component not found")]
     ComponentNotFound,
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
+    #[error("dal diagram error: {0}")]
+    DalDiagram(#[from] dal::diagram::DiagramError),
+    #[error("dal schema error: {0}")]
+    DalSchema(#[from] dal::SchemaError),
+    #[error("dal schema variant error: {0}")]
+    DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
     #[error("edge not found")]
     EdgeNotFound,
-    #[error("external provider not found for socket id: {0}")]
-    ExternalProviderNotFoundForSocket(SocketId),
     #[error("frame internal provider not found for schema variant id: {0}")]
     FrameInternalProviderNotFoundForSchemaVariant(SchemaVariantId),
     #[error("frame socket not found for schema variant id: {0}")]
     FrameSocketNotFound(SchemaVariantId),
     #[error("invalid header name {0}")]
     Hyper(#[from] hyper::http::Error),
-    #[error("internal provider not found for socket id: {0}")]
-    InternalProviderNotFoundForSocket(SocketId),
-    #[error("invalid parent node kind {0:?}")]
-    InvalidParentNode(NodeKind),
     #[error("invalid request")]
     InvalidRequest,
     #[error("invalid system")]
     InvalidSystem,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
-    #[error("node not found: {0}")]
-    NodeNotFound(NodeId),
     #[error("not authorized")]
     NotAuthorized,
-    #[error("parent node not found {0}")]
-    ParentNodeNotFound(NodeId),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
@@ -101,16 +97,6 @@ impl IntoResponse for DiagramError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        // .route("/get_diagram", get(get_diagram::get_diagram))
-        // .route(
-        //     "/get_node_add_menu",
-        //     post(get_node_add_menu::get_node_add_menu),
-        // )
-        // .route("/create_node", post(create_node::create_node))
-        // .route(
-        //     "/set_node_position",
-        //     post(set_node_position::set_node_position),
-        // )
         // .route(
         //     "/create_connection",
         //     post(create_connection::create_connection),
@@ -143,6 +129,15 @@ pub fn routes() -> Router<AppState> {
         //     "/connect_component_to_frame",
         //     post(connect_component_to_frame::connect_component_to_frame),
         // )
+        .route(
+            "/create_component",
+            post(create_component::create_component),
+        )
+        .route(
+            "/set_component_position",
+            post(set_component_position::set_component_position),
+        )
+        .route("/get_diagram", get(get_diagram::get_diagram))
         .route(
             "/list_schema_variants",
             get(list_schema_variants::list_schema_variants),

@@ -21,7 +21,6 @@
 //     clippy::missing_panics_doc
 // )]
 
-pub mod api;
 pub mod conflict;
 pub mod content_address;
 pub mod edge_weight;
@@ -34,8 +33,8 @@ pub mod vector_clock;
 use chrono::{DateTime, Utc};
 use content_store::{ContentHash, Store, StoreError};
 use petgraph::prelude::*;
+use petgraph::stable_graph::Edges;
 use serde::{Deserialize, Serialize};
-use si_cbor::CborError;
 use si_data_pg::{PgError, PgRow};
 use std::collections::HashMap;
 use telemetry::prelude::*;
@@ -44,7 +43,9 @@ use ulid::Ulid;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
 use crate::workspace_snapshot::conflict::Conflict;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::update::Update;
@@ -54,7 +55,7 @@ use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
 };
-use crate::{AttributePrototypeId, AttributeValueId, PropId, PropKind};
+use crate::{AttributeValueId, PropId, PropKind};
 
 const FIND_FOR_CHANGE_SET: &str =
     include_str!("queries/workspace_snapshot/find_for_change_set.sql");
@@ -62,22 +63,16 @@ const FIND_FOR_CHANGE_SET: &str =
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
-    #[error("attribute prototype {0} is missing a function edge")]
-    AttributePrototypeMissingFunction(AttributePrototypeId),
     #[error("attribute value {0} missing prop edge when one was expected")]
     AttributeValueMissingPropEdge(AttributeValueId),
     #[error("attribute value {0} missing prototype")]
     AttributeValueMissingPrototype(AttributeValueId),
-    #[error("cbor error: {0}")]
-    Cbor(#[from] CborError),
     #[error("change set pointer error: {0}")]
     ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("cannot insert for prop kind: {0}")]
     InsertionForInvalidPropKind(PropKind),
-    #[error("cannot find intrinsic func {0}")]
-    IntrinsicFuncNotFound(String),
     #[error("missing content from store for id: {0}")]
     MissingContentFromStore(Ulid),
     #[error("monotonic error: {0}")]
@@ -90,6 +85,8 @@ pub enum WorkspaceSnapshotError {
     Pg(#[from] PgError),
     #[error("poison error: {0}")]
     Poison(String),
+    #[error("postcard error: {0}")]
+    Postcard(#[from] postcard::Error),
     #[error("Array or map prop missing element prop: {0}")]
     PropMissingElementProp(PropId),
     #[error("Array or map prop has more than one child prop: {0}")]
@@ -100,6 +97,8 @@ pub enum WorkspaceSnapshotError {
     Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
     #[error("Type mismatch, expected prop kind {0} got {1}")]
     TypeMismatch(PropKind, String),
     #[error("unexpected graph layout: {0}")]
@@ -138,6 +137,7 @@ impl TryFrom<PgRow> for WorkspaceSnapshot {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn serde_value_to_string_type(value: &serde_json::Value) -> String {
     match value {
         serde_json::Value::Array(_) => "array",
@@ -206,10 +206,10 @@ impl WorkspaceSnapshot {
         working_copy.mark_graph_seen(vector_clock_id)?;
 
         // Write out to the content store.
-        ctx.content_store().lock().await.write().await?;
+        ctx.content_store().try_lock()?.write().await?;
 
         // Stamp the new workspace snapshot.
-        let serialized_snapshot = si_cbor::encode(&working_copy)?;
+        let serialized_snapshot = postcard::to_stdvec(&working_copy)?;
         let row = ctx
             .txns()
             .await?
@@ -236,24 +236,27 @@ impl WorkspaceSnapshot {
 
     fn working_copy(&mut self) -> WorkspaceSnapshotResult<&mut WorkspaceSnapshotGraph> {
         if self.working_copy.is_none() {
-            self.working_copy = Some(si_cbor::decode(&self.snapshot)?);
+            self.working_copy = Some(postcard::from_bytes(&self.snapshot)?);
         }
         self.working_copy
             .as_mut()
             .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing)
     }
 
-    pub fn root(&mut self) -> WorkspaceSnapshotResult<NodeIndex> {
-        Ok(self.working_copy()?.root())
-    }
-
-    // TODO(nick): replace this with the api.
     pub fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
         let new_node_index = self.working_copy()?.add_node(node)?;
         Ok(new_node_index)
     }
 
-    // TODO(nick): replace this with the api.
+    pub fn add_ordered_node(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        node: NodeWeight,
+    ) -> WorkspaceSnapshotResult<NodeIndex> {
+        let new_node_index = self.working_copy()?.add_ordered_node(change_set, node)?;
+        Ok(new_node_index)
+    }
+
     pub fn update_content(
         &mut self,
         change_set: &ChangeSetPointer,
@@ -267,6 +270,21 @@ impl WorkspaceSnapshot {
 
     pub fn add_edge(
         &mut self,
+        from_node_id: Ulid,
+        edge_weight: EdgeWeight,
+        to_node_id: Ulid,
+    ) -> WorkspaceSnapshotResult<EdgeIndex> {
+        let from_node_index = self.working_copy()?.get_node_index_by_id(from_node_id)?;
+        let to_node_index = self.working_copy()?.get_node_index_by_id(to_node_id)?;
+        Ok(self
+            .working_copy()?
+            .add_edge(from_node_index, edge_weight, to_node_index)?)
+    }
+
+    // NOTE(nick): this should only be used by the rebaser and in specific scenarios where the
+    // indices are definitely correct.
+    pub fn add_edge_unchecked(
+        &mut self,
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
@@ -274,6 +292,23 @@ impl WorkspaceSnapshot {
         Ok(self
             .working_copy()?
             .add_edge(from_node_index, edge_weight, to_node_index)?)
+    }
+
+    pub fn add_ordered_edge(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        from_node_id: Ulid,
+        edge_weight: EdgeWeight,
+        to_node_id: Ulid,
+    ) -> WorkspaceSnapshotResult<EdgeIndex> {
+        let from_node_index = self.working_copy()?.get_node_index_by_id(from_node_id)?;
+        let to_node_index = self.working_copy()?.get_node_index_by_id(to_node_id)?;
+        Ok(self.working_copy()?.add_ordered_edge(
+            change_set,
+            from_node_index,
+            edge_weight,
+            to_node_index,
+        )?)
     }
 
     pub async fn detect_conflicts_and_updates(
@@ -289,15 +324,7 @@ impl WorkspaceSnapshot {
         )?)
     }
 
-    pub fn get_edge_by_index_stableish(
-        &mut self,
-        edge_index: EdgeIndex,
-    ) -> WorkspaceSnapshotResult<EdgeWeight> {
-        Ok(self
-            .working_copy()?
-            .get_edge_by_index_stableish(edge_index)?)
-    }
-
+    // NOTE(nick): this should only be used by the rebaser.
     pub fn edge_endpoints(
         &mut self,
         edge_index: EdgeIndex,
@@ -326,6 +353,14 @@ impl WorkspaceSnapshot {
             .replace_references(original_node_index, new_node_index)?)
     }
 
+    pub fn get_node_weight_by_id(
+        &mut self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<&NodeWeight> {
+        let node_idx = self.get_node_index_by_id(id)?;
+        Ok(self.working_copy()?.get_node_weight(node_idx)?)
+    }
+
     pub fn get_node_weight(
         &mut self,
         node_index: NodeIndex,
@@ -341,8 +376,9 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy()?.find_equivalent_node(id, lineage_id)?)
     }
 
-    pub fn cleanup(&mut self) {
-        self.working_copy().expect("oh no").cleanup();
+    pub fn cleanup(&mut self) -> WorkspaceSnapshotResult<()> {
+        self.working_copy()?.cleanup();
+        Ok(())
     }
 
     pub fn dot(&mut self) {
@@ -351,22 +387,18 @@ impl WorkspaceSnapshot {
             .dot();
     }
 
-    pub fn get_node_index_by_id(&mut self, id: Ulid) -> WorkspaceSnapshotResult<NodeIndex> {
-        Ok(self.working_copy()?.get_node_index_by_id(id)?)
+    pub fn tiny_dot_to_file(&mut self) {
+        self.working_copy()
+            .expect("failed on accessing or creating a working copy")
+            .tiny_dot_to_file();
     }
 
-    pub fn add_edge_from_root(
+    #[inline(always)]
+    pub fn get_node_index_by_id(
         &mut self,
-        change_set: &ChangeSetPointer,
-        destination: NodeIndex,
-    ) -> WorkspaceSnapshotResult<EdgeIndex> {
-        let root = self.working_copy()?.root();
-        let new_edge = self.working_copy()?.add_edge(
-            root,
-            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            destination,
-        )?;
-        Ok(new_edge)
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<NodeIndex> {
+        Ok(self.working_copy()?.get_node_index_by_id(id)?)
     }
 
     #[instrument(skip_all)]
@@ -398,5 +430,130 @@ impl WorkspaceSnapshot {
             .query_one(FIND_FOR_CHANGE_SET, &[&change_set_pointer_id])
             .await?;
         Self::try_from(row)
+    }
+
+    pub fn get_category_node(
+        &mut self,
+        source: Option<Ulid>,
+        kind: CategoryNodeKind,
+    ) -> WorkspaceSnapshotResult<Ulid> {
+        let (category_node_id, _) = self.working_copy()?.get_category_node(source, kind)?;
+        Ok(category_node_id)
+    }
+
+    pub fn edges_directed(
+        &mut self,
+        id: impl Into<Ulid>,
+        direction: Direction,
+    ) -> WorkspaceSnapshotResult<Edges<'_, EdgeWeight, Directed, u32>> {
+        let node_index = self.working_copy()?.get_node_index_by_id(id)?;
+        Ok(self.working_copy()?.edges_directed(node_index, direction))
+    }
+
+    pub fn edges_directed_by_index(
+        &mut self,
+        node_index: NodeIndex,
+        direction: Direction,
+    ) -> WorkspaceSnapshotResult<Edges<'_, EdgeWeight, Directed, u32>> {
+        Ok(self.working_copy()?.edges_directed(node_index, direction))
+    }
+
+    pub fn incoming_sources_for_edge_weight_kind(
+        &mut self,
+        id: impl Into<Ulid>,
+        edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<Vec<NodeIndex>> {
+        Ok(self
+            .edges_directed(id.into(), Direction::Incoming)?
+            .filter_map(|edge_ref| {
+                if edge_weight_kind_discrim == edge_ref.weight().kind().into() {
+                    Some(edge_ref.source())
+                } else {
+                    None
+                }
+            })
+            .collect())
+    }
+
+    pub fn outgoing_targets_for_edge_weight_kind(
+        &mut self,
+        id: impl Into<Ulid>,
+        edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<Vec<NodeIndex>> {
+        let id = id.into();
+        Ok(self
+            .edges_directed(id, Direction::Outgoing)?
+            .filter_map(|edge_ref| {
+                if edge_weight_kind_discrim == edge_ref.weight().kind().into() {
+                    Some(edge_ref.target())
+                } else {
+                    None
+                }
+            })
+            .collect())
+    }
+
+    pub fn outgoing_targets_for_edge_weight_kind_by_index(
+        &mut self,
+        node_index: NodeIndex,
+        edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<Vec<NodeIndex>> {
+        Ok(self
+            .edges_directed_by_index(node_index, Direction::Outgoing)?
+            .filter_map(|edge_ref| {
+                if edge_weight_kind_discrim == edge_ref.weight().kind().into() {
+                    Some(edge_ref.target())
+                } else {
+                    None
+                }
+            })
+            .collect())
+    }
+
+    pub fn remove_incoming_edges_of_kind(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        target_id: impl Into<Ulid>,
+        kind: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<()> {
+        let target_id = target_id.into();
+
+        let sources = self.incoming_sources_for_edge_weight_kind(target_id, kind)?;
+        for source_node_idx in sources {
+            let target_node_idx = self.get_node_index_by_id(target_id)?;
+            self.remove_edge(change_set, source_node_idx, target_node_idx, kind)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn remove_edge(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        source_node_index: NodeIndex,
+        target_node_index: NodeIndex,
+        edge_kind: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<HashMap<NodeIndex, NodeIndex>> {
+        Ok(self.working_copy()?.remove_edge(
+            change_set,
+            source_node_index,
+            target_node_index,
+            edge_kind,
+        )?)
+    }
+
+    /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshot) as the "to rebase" graph and
+    /// another [`snapshot`](WorkspaceSnapshot) as the "onto" graph.
+    pub fn perform_updates(
+        &mut self,
+        to_rebase_change_set: &ChangeSetPointer,
+        onto: &mut WorkspaceSnapshot,
+        updates: &[Update],
+    ) -> WorkspaceSnapshotResult<()> {
+        Ok(self.working_copy()?.perform_updates(
+            to_rebase_change_set,
+            onto.working_copy()?,
+            updates,
+        )?)
     }
 }

@@ -1,11 +1,12 @@
 use chrono::{DateTime, Utc};
 use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 use thiserror::Error;
 use ulid::Ulid;
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
-
+use crate::FuncBackendKind;
 use crate::{
     change_set_pointer::{ChangeSetPointer, ChangeSetPointerError},
     workspace_snapshot::{
@@ -43,13 +44,18 @@ pub enum NodeWeightError {
     IncompatibleNodeWeightVariants,
     #[error("Invalid ContentAddress variant ({0}) for NodeWeight variant ({1})")]
     InvalidContentAddressForWeightKind(String, String),
+    #[error("Unexpected content address variant: {1} expected {0}")]
+    UnexpectedContentAddressVariant(ContentAddressDiscriminants, ContentAddressDiscriminants),
+    #[error("Unexpected node weight variant: {1} expected {0}")]
+    UnexpectedNodeWeightVariant(NodeWeightDiscriminants, NodeWeightDiscriminants),
     #[error("Vector Clock error: {0}")]
     VectorClock(#[from] VectorClockError),
 }
 
 pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, EnumDiscriminants)]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 pub enum NodeWeight {
     Category(CategoryNodeWeight),
     Content(ContentNodeWeight),
@@ -280,6 +286,59 @@ impl NodeWeight {
         }
     }
 
+    pub fn get_prop_node_weight(&self) -> NodeWeightResult<PropNodeWeight> {
+        match self {
+            NodeWeight::Prop(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::Prop,
+                other.into(),
+            )),
+        }
+    }
+    pub fn get_func_node_weight(&self) -> NodeWeightResult<FuncNodeWeight> {
+        match self {
+            NodeWeight::Func(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::Func,
+                other.into(),
+            )),
+        }
+    }
+
+    pub fn get_ordering_node_weight(&self) -> NodeWeightResult<OrderingNodeWeight> {
+        match self {
+            NodeWeight::Ordering(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::Ordering,
+                other.into(),
+            )),
+        }
+    }
+
+    pub fn get_content_node_weight_of_kind(
+        &self,
+        content_addr_discrim: ContentAddressDiscriminants,
+    ) -> NodeWeightResult<ContentNodeWeight> {
+        match self {
+            NodeWeight::Content(inner) => {
+                let inner_addr_discrim: ContentAddressDiscriminants =
+                    inner.content_address().into();
+                if inner_addr_discrim != content_addr_discrim {
+                    return Err(NodeWeightError::UnexpectedContentAddressVariant(
+                        content_addr_discrim,
+                        inner_addr_discrim,
+                    ));
+                }
+
+                Ok(inner.to_owned())
+            }
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::Content,
+                other.into(),
+            )),
+        }
+    }
+
     // NOTE(nick): individual node weight funcs below.
 
     pub fn new_content(
@@ -312,6 +371,7 @@ impl NodeWeight {
         change_set: &ChangeSetPointer,
         func_id: Ulid,
         name: impl AsRef<str>,
+        backend_kind: FuncBackendKind,
         content_hash: ContentHash,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::Func(FuncNodeWeight::new(
@@ -319,6 +379,7 @@ impl NodeWeight {
             func_id,
             ContentAddress::Func(content_hash),
             name.as_ref().to_string(),
+            backend_kind,
         )?))
     }
 }

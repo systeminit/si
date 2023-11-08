@@ -3,11 +3,10 @@ use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
 
-use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
-use crate::pkg::ModuleImportedPayload;
-use crate::user::{CursorPayload, OnlinePayload};
+use crate::component::ComponentCreatedPayload;
 use crate::{
-    ChangeSetPk, DalContext, PropId, SocketId, StandardModelError, TransactionsError, WorkspacePk,
+    pkg::ModuleImported, user::CursorPayload, ChangeSetPk, DalContext, PropId, StandardModelError,
+    TransactionsError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -46,7 +45,7 @@ pub enum WsPayload {
     ChangeSetWritten(ChangeSetPk),
     // CheckedQualifications(QualificationCheckPayload),
     // CodeGenerated(CodeGeneratedPayload),
-    // ComponentCreated(ComponentCreatedPayload),
+    ComponentCreated(ComponentCreatedPayload),
     Cursor(CursorPayload),
     // FixBatchReturn(FixBatchReturn),
     // FixReturn(FixReturn),
@@ -69,9 +68,11 @@ pub enum WsPayload {
 pub enum StatusValueKind {
     Attribute(PropId),
     CodeGen,
-    InputSocket(SocketId),
+    // TODO(nick): sockets are no more, so replace this with the provider id.
+    // InputSocket(SocketId),
     Internal,
-    OutputSocket(SocketId),
+    // TODO(nick): sockets are no more, so replace this with the provider id.
+    // OutputSocket(SocketId),
     Qualification,
 }
 

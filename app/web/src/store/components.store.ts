@@ -14,7 +14,6 @@ import {
   GridPoint,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
-import { MenuItem } from "@/api/sdf/dal/menu";
 import {
   DiagramNode,
   DiagramSchemaVariant,
@@ -108,17 +107,6 @@ export type ComponentTreeNode = {
   typeIcon?: string;
   statusIcons?: StatusIconsSet;
 } & FullComponent;
-
-export type MenuSchema = {
-  id: SchemaId;
-  displayName: string;
-  color: string;
-};
-
-export type NodeAddMenu = {
-  displayName: string;
-  schemas: MenuSchema[];
-}[];
 
 const qualificationStatusToIconMap: Record<
   QualificationStatus | "notexists",
@@ -236,7 +224,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             SchemaVariantId,
             DiagramSchemaVariant
           >,
-          rawNodeAddMenu: [] as MenuItem[],
 
           selectedComponentIds: [] as ComponentId[],
           selectedEdgeId: null as EdgeId | null,
@@ -246,8 +233,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           panTargetComponentId: null as ComponentId | null,
 
-          // used by the diagram to track which schema is selected for insertion
-          selectedInsertSchemaId: null as SchemaId | null,
+          // used by the diagram to track which schema variant is selected for insertion
+          selectedInsertSchemaVariantId: null as SchemaVariantId | null,
 
           refreshingStatus: {} as Record<ComponentId, boolean>,
 
@@ -486,36 +473,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           schemaVariants: (state) => _.values(state.schemaVariantsById),
 
-          nodeAddMenu(): NodeAddMenu {
-            return _.compact(
-              _.map(this.rawNodeAddMenu, (category) => {
-                // all root level items are categories for now... will probably rework this endpoint anyway
-                if (category.kind !== "category") return null;
-                return {
-                  displayName: category.name,
-                  // TODO: add color + logo on categories?
-                  schemas: _.compact(
-                    _.map(category.items, (item) => {
-                      // ignoring "link" items - don't think these are relevant at the moment
-                      if (item.kind !== "item") return;
-
-                      // TODO: return hex code from backend...
-                      const schemaVariant = Object.values(
-                        this.schemaVariantsById,
-                      ).find((v) => v.schemaId === item.schema_id);
-                      return {
-                        displayName: item.name,
-                        id: item.schema_id,
-                        // links: item.links, // not sure this is needed?
-                        color: schemaVariant?.color ?? "#777",
-                      };
-                    }),
-                  ),
-                };
-              }),
-            );
-          },
-
           changeStatsSummary(): Record<ChangeStatus | "total", number> {
             const allChanged = _.filter(
               this.allComponents,
@@ -644,22 +601,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          async FETCH_NODE_ADD_MENU() {
-            return new ApiRequest<MenuItem[]>({
-              method: "post",
-              // TODO: probably combine into single call with FETCH_AVAILABLE_SCHEMAS
-              url: "diagram/get_node_add_menu",
-              params: {
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                this.rawNodeAddMenu = response;
-              },
-            });
-          },
-
           async SET_COMPONENT_DIAGRAM_POSITION(
-            nodeId: ComponentNodeId,
+            componentId: ComponentId,
             position: Vector2d,
             size?: Size2D,
           ) {
@@ -672,14 +615,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             return new ApiRequest<{ componentStats: ComponentStats }>({
               method: "post",
-              url: "diagram/set_node_position",
+              url: "diagram/set_component_position",
               params: {
-                nodeId,
+                componentId,
                 x: Math.round(position.x).toString(),
                 y: Math.round(position.y).toString(),
                 width,
                 height,
-                diagramKind: "configuration",
                 ...visibilityParams,
               },
               onSuccess: (response) => {
@@ -688,18 +630,18 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          setInsertSchema(schemaId: SchemaId) {
-            this.selectedInsertSchemaId = schemaId;
+          setInsertSchemaVariant(schemaVariantId: SchemaVariantId) {
+            this.selectedInsertSchemaVariantId = schemaVariantId;
             this.setSelectedComponentId(null);
           },
           cancelInsert() {
-            this.selectedInsertSchemaId = null;
+            this.selectedInsertSchemaVariantId = null;
           },
 
           async CREATE_COMPONENT(
-            schemaId: string,
+            schemaVariantId: string,
             position: Vector2d,
-            parentNodeId?: string,
+            parentComponentId?: string,
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -710,14 +652,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             return new ApiRequest<{
               componentId: ComponentId;
-              nodeId: ComponentNodeId;
             }>({
               method: "post",
-              url: "diagram/create_node",
+              url: "diagram/create_component",
               headers: { accept: "application/json" },
               params: {
-                schemaId,
-                parentId: parentNodeId,
+                schemaVariantId,
+                parentId: parentComponentId,
                 x: position.x.toString(),
                 y: position.y.toString(),
                 ...visibilityParams,
@@ -1226,7 +1167,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // trigger initial load
           this.FETCH_DIAGRAM_DATA();
           this.FETCH_AVAILABLE_SCHEMAS();
-          this.FETCH_NODE_ADD_MENU();
 
           // TODO: prob want to take loading state into consideration as this will set it before its loaded
           const stopWatchingUrl = watch(

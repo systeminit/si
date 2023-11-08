@@ -42,13 +42,20 @@ impl PgStore {
     }
 
     /// Create a new [`PgStore`] from a given [`PgPool`].
-    pub async fn new_production_with_migration() -> StoreResult<Self> {
+    pub async fn new_production() -> StoreResult<Self> {
         let pg_pool = PgStoreTools::new_production_pg_pool().await?;
-        PgStoreTools::migrate(&pg_pool).await?;
         Ok(Self {
             inner: Default::default(),
             pg_pool,
         })
+    }
+
+    /// Migrate the content store database
+    pub async fn migrate() -> StoreResult<()> {
+        let pg_pool = PgStoreTools::new_production_pg_pool().await?;
+        PgStoreTools::migrate(&pg_pool).await?;
+
+        Ok(())
     }
 }
 
@@ -66,8 +73,8 @@ impl Store for PgStore {
     where
         T: Serialize + ?Sized,
     {
-        let value = si_cbor::encode(object)?;
-        let key = ContentHash::new(&value);
+        let value = postcard::to_stdvec(object)?;
+        let key = ContentHash::new(value.as_slice());
         self.inner.insert(key, PgStoreItem::new(value));
         Ok(key)
     }
@@ -77,12 +84,14 @@ impl Store for PgStore {
         T: DeserializeOwned,
     {
         let object = match self.inner.get(key) {
-            Some(item) => si_cbor::decode(&item.value)?,
+            Some(item) => postcard::from_bytes(&item.value)?,
             None => match ContentPair::find(&self.pg_pool, key).await? {
                 Some(content_pair) => {
                     let encoded = content_pair.value();
+                    let decoded = postcard::from_bytes(encoded)?;
                     self.add(encoded)?;
-                    si_cbor::decode(encoded)?
+
+                    decoded
                 }
                 None => return Ok(None),
             },
@@ -90,11 +99,34 @@ impl Store for PgStore {
         Ok(Some(object))
     }
 
+    async fn get_bulk<T>(&mut self, keys: &[ContentHash]) -> StoreResult<HashMap<ContentHash, T>>
+    where
+        T: DeserializeOwned + std::marker::Send,
+    {
+        let mut result = HashMap::new();
+        let mut keys_to_fetch = vec![];
+
+        for key in keys {
+            match self.inner.get(key) {
+                Some(item) => {
+                    result.insert(*key, postcard::from_bytes(&item.value)?);
+                }
+                None => keys_to_fetch.push(*key),
+            }
+        }
+
+        for pair in ContentPair::find_many(&self.pg_pool, keys_to_fetch.as_slice()).await? {
+            let encoded = pair.value();
+            result.insert(pair.key()?, postcard::from_bytes(encoded)?);
+            self.add(encoded)?;
+        }
+        Ok(result)
+    }
+
     async fn write(&mut self) -> StoreResult<()> {
         for (key, item) in self.inner.iter_mut() {
             if !item.written {
-                ContentPair::find_or_create(&self.pg_pool, key.to_owned(), item.value.clone())
-                    .await?;
+                ContentPair::find_or_create(&self.pg_pool, key.to_owned(), &item.value).await?;
                 item.written = true;
             }
         }

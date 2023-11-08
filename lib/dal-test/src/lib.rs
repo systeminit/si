@@ -96,6 +96,8 @@ pub struct Config {
     #[builder(default)]
     pkgs_path: Option<PathBuf>,
     symmetric_crypto_service_config: SymmetricCryptoServiceConfig,
+    // TODO(nick): determine why this is unused.
+    #[allow(dead_code)]
     #[builder(default)]
     rebaser_config: RebaserClientConfig,
 }
