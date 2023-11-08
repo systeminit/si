@@ -1109,8 +1109,14 @@ impl AttributeValue {
         }
 
         let func_id = attribute_prototype.func_id();
-        let before =
-            before_funcs_for_component(ctx, &attribute_prototype.context.component_id()).await?;
+
+        let before = {
+            // We need the associated [`ComponentId`] for this function--this is how we resolve and
+            // prepare before functions
+            let asssociated_component_id = self.context.component_id();
+
+            before_funcs_for_component(ctx, &asssociated_component_id).await?
+        };
 
         let (func_binding, mut func_binding_return_value) = match FuncBinding::create_and_execute(
             ctx,
