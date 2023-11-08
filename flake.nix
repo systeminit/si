@@ -68,6 +68,7 @@
           libiconv
           darwin.apple_sdk.frameworks.Security
           darwin.apple_sdk.frameworks.SystemConfiguration
+          darwin.apple_sdk.frameworks.CoreFoundation
         ];
 
       # This isn't an exact science, but confirming the system interpreter by
