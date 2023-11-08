@@ -9,8 +9,8 @@ use thiserror::Error;
 use crate::standard_model::{object_option_from_row_option, objects_from_rows};
 use crate::ws_event::{WsEvent, WsEventError, WsPayload};
 use crate::{
-    pk, Action, ActionError, HistoryEvent, HistoryEventError, LabelListError, StandardModelError,
-    Tenancy, Timestamp, TransactionsError, UserError, UserPk, Visibility,
+    pk, Action, ActionError, HistoryActor, HistoryEvent, HistoryEventError, LabelListError,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, User, UserError, UserPk, Visibility,
 };
 use crate::{ComponentError, DalContext, WsEventResult};
 
@@ -29,6 +29,8 @@ pub enum ChangeSetError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("invalid user actor pk")]
     InvalidActor(UserPk),
+    #[error("invalid user system init")]
+    InvalidUserSystemInit,
     #[error(transparent)]
     LabelList(#[from] LabelListError),
     #[error(transparent)]
@@ -134,7 +136,19 @@ impl ChangeSet {
         )
         .await?;
 
-        WsEvent::change_set_applied(ctx, self.pk)
+        let actor = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => {
+                let user = User::get_by_pk(ctx, *user_pk)
+                    .await?
+                    .ok_or(ChangeSetError::InvalidActor(*user_pk))?;
+
+                user.email().to_string()
+            }
+
+            HistoryActor::SystemInit => "SystemInitiativeUser".to_string(),
+        };
+
+        WsEvent::change_set_applied(ctx, self.pk, actor)
             .await?
             .publish_on_commit(ctx)
             .await?;
@@ -213,8 +227,16 @@ impl WsEvent {
     pub async fn change_set_applied(
         ctx: &DalContext,
         change_set_pk: ChangeSetPk,
+        actor: String,
     ) -> WsEventResult<Self> {
-        WsEvent::new(ctx, WsPayload::ChangeSetApplied(change_set_pk)).await
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetApplied(ChangeSetAppliedPayload {
+                change_set_pk,
+                actor,
+            }),
+        )
+        .await
     }
 
     pub async fn change_set_canceled(
@@ -231,4 +253,11 @@ impl WsEvent {
         )
         .await
     }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetAppliedPayload {
+    change_set_pk: ChangeSetPk,
+    actor: String,
 }
