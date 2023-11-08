@@ -46,14 +46,26 @@ pub async fn list_funcs(
 
     dbg!(&funcs);
 
+    let customizable_backend_kinds = [
+        FuncBackendKind::JsAction,
+        FuncBackendKind::JsAttribute,
+        FuncBackendKind::JsValidation,
+    ];
+
     let try_func_views: Vec<FuncResult<ListedFuncView>> = funcs
         .iter()
-        .filter(|f| !f.hidden)
+        .filter(|f| {
+            if f.hidden {
+                return false;
+            } else {
+                return customizable_backend_kinds.contains(&f.backend_kind);
+            }
+        })
         .map(|func| {
             Ok(ListedFuncView {
                 id: func.id,
                 handler: func.handler.to_owned().map(|handler| handler.to_owned()),
-                variant: FuncVariant::Attribute,
+                variant: func.try_into()?,
                 name: func.name.to_owned(),
                 display_name: func.display_name.to_owned().map(Into::into),
                 is_builtin: func.builtin,
@@ -67,7 +79,7 @@ pub async fn list_funcs(
     for func_view in try_func_views {
         match func_view {
             Ok(func_view) => funcs.push(func_view),
-            Err(err) => {}
+            Err(err) => Err(err)?,
         }
     }
 
