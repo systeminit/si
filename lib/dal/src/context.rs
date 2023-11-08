@@ -315,11 +315,6 @@ impl DalContext {
                 .await
                 .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
 
-        dbg!(
-            "update snapshot to visibility got workspace snapshot: ",
-            workspace_snapshot.id()
-        );
-
         self.set_change_set_pointer(change_set_pointer)?;
         self.set_workspace_snapshot(workspace_snapshot);
 
@@ -434,7 +429,6 @@ impl DalContext {
     /// Consumes all inner transactions, committing all changes made within them, and
     /// blocks until all queued jobs have reported as finishing.
     pub async fn blocking_commit(&self) -> Result<(), TransactionsError> {
-        dbg!("blocking commit");
         let rebase_request = match self.write_snapshot().await? {
             Some(workspace_snapshot_id) => Some(self.get_rebase_request(workspace_snapshot_id)?),
             None => None,
@@ -827,18 +821,6 @@ impl DalContextBuilder {
         content_store: PgStore,
     ) -> Result<DalContext, TransactionsError> {
         let conns = self.connections().await?;
-        // let mut ctx = DalContext {
-        //     services_context: self.services_context.clone(),
-        //     blocking: self.blocking,
-        //     conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
-        //     tenancy: Tenancy::new_empty(),
-        //     visibility: Visibility::new_head(false),
-        //     history_actor: HistoryActor::SystemInit,
-        //     no_dependent_values: self.no_dependent_values,
-        //     content_store: Arc::new(Mutex::new(content_store)),
-        //     workspace_snapshot: None,
-        //     change_set_pointer: None,
-        // };
         Ok(DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
@@ -859,7 +841,7 @@ impl DalContextBuilder {
         access_builder: AccessBuilder,
     ) -> Result<DalContext, TransactionsError> {
         let conns = self.connections().await?;
-        let raw_content_store = match &self.content_store {
+        let raw_content_store = match dbg!(&self.content_store) {
             Some(found_content_store) => found_content_store.clone(),
             None => PgStore::new_production_with_migration().await?,
         };
@@ -1063,8 +1045,6 @@ async fn rebase(
     rebase_request: RebaseRequest,
 ) -> Result<(), TransactionsError> {
     let mut rebaser_client = rebaser_client::Client::new(rebaser_config).await?;
-
-    dbg!(&rebase_request);
 
     rebaser_client
         .open_stream_for_change_set(rebase_request.to_rebase_change_set_id.into())

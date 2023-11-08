@@ -118,7 +118,7 @@ impl WorkspaceSnapshot {
     }
 
     pub async fn list_funcs(&mut self, ctx: &DalContext) -> WorkspaceSnapshotResult<Vec<Func>> {
-        let start = Instant::now();
+        //      let start = Instant::now();
         let mut funcs = vec![];
         let (_, func_category_index) = self.working_copy()?.get_category(CategoryNodeKind::Func)?;
 
@@ -134,10 +134,10 @@ impl WorkspaceSnapshot {
                 let func = self.func_get_by_id(ctx, func_id).await?;
                 funcs.push(func);
             } else {
-                dbg!("not a func node weight???");
+                panic!("not a func node weight???");
             }
         }
-        dbg!(start.elapsed());
+        //        dbg!(start.elapsed());
 
         Ok(funcs)
     }

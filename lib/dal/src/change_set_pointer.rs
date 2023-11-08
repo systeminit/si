@@ -92,7 +92,6 @@ impl ChangeSetPointer {
         base_change_set_id: Option<ChangeSetPointerId>,
     ) -> ChangeSetPointerResult<Self> {
         let name = name.as_ref();
-        dbg!(name, &base_change_set_id);
         let row = ctx
             .txns()
             .await?

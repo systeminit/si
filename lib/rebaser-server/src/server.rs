@@ -221,6 +221,7 @@ impl Server {
 
     #[instrument(name = "rebaser.init.create_pg_pool", skip_all)]
     async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> ServerResult<PgPool> {
+        dbg!(&pg_pool_config);
         let pool = PgPool::new(pg_pool_config).await?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
         Ok(pool)

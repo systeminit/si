@@ -624,6 +624,9 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     info!("creating builtins");
     // TODO: @stack72 - remove this code path and install these from the module-index??
+    let content_store_pg_store = content_store_pg_test_migration_client
+        .global_store()
+        .await?;
     dal::migrate_builtins(
         services_ctx.pg_pool(),
         services_ctx.nats_conn(),
@@ -639,6 +642,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         test_context.config.module_index_url.clone(),
         services_ctx.symmetric_crypto_service(),
         services_ctx.rebaser_config().clone(),
+        &content_store_pg_store,
     )
     .await
     .wrap_err("failed to run builtin migrations")?;

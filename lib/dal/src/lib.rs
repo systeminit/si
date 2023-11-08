@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use content_store::PgStore;
 use rand::Rng;
 use rebaser_client::Config as RebaserClientConfig;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
@@ -197,7 +198,7 @@ pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
 #[allow(clippy::too_many_arguments)]
 #[instrument(skip_all)]
 pub async fn migrate_builtins(
-    pg: &PgPool,
+    dal_pg: &PgPool,
     nats: &NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech_client::Client,
@@ -207,9 +208,10 @@ pub async fn migrate_builtins(
     module_index_url: String,
     symmetric_crypto_service: &SymmetricCryptoService,
     rebaser_config: RebaserClientConfig,
+    content_store_pg: &PgStore,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
-        pg.clone(),
+        dal_pg.clone(),
         nats.clone(),
         job_processor,
         veritech,
@@ -220,7 +222,9 @@ pub async fn migrate_builtins(
         rebaser_config,
     );
     let dal_context = services_context.into_builder(true);
-    let mut ctx = dal_context.build_default().await?;
+    let mut ctx = dal_context
+        .build_default_with_content_store(content_store_pg.to_owned())
+        .await?;
 
     let workspace = Workspace::builtin(&mut ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));

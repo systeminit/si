@@ -490,7 +490,6 @@ impl WorkspaceSnapshotGraph {
     ) -> WorkspaceSnapshotGraphResult<(Vec<Conflict>, Vec<Update>)> {
         let mut conflicts: Vec<Conflict> = Vec::new();
         let mut updates: Vec<Update> = Vec::new();
-        dbg!(onto.graph.node_count(), onto.graph.edge_count());
         if let Err(traversal_error) =
             petgraph::visit::depth_first_search(&onto.graph, Some(onto.root_index), |event| {
                 self.detect_conflicts_and_updates_process_dfs_event(
@@ -665,7 +664,7 @@ impl WorkspaceSnapshotGraph {
                                 "Found what appears to be two unordered containers: onto {:?}, to_rebase {:?}",
                                 onto_node_index, to_rebase_node_index,
                             );
-                            println!(
+                            debug!(
                                 "Comparing unordered containers: {:?}, {:?}",
                                 onto_node_index, to_rebase_node_index
                             );
@@ -697,7 +696,7 @@ impl WorkspaceSnapshotGraph {
                             return Err(event);
                         }
                         (Some(to_rebase_ordering_node_index), Some(onto_ordering_node_index)) => {
-                            println!(
+                            debug!(
                                 "Comparing ordered containers: {:?}, {:?}",
                                 onto_node_index, to_rebase_node_index
                             );

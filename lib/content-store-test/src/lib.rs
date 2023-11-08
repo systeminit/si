@@ -76,6 +76,18 @@ impl PgTestMigrationClient {
         Ok(())
     }
 
+    /// Returns a reference to the pg pool used by the content store
+    pub fn pg_pool(&self) -> &PgPool {
+        &self.pg_pool
+    }
+
+    /// Return a PgStore for the PgPool used by the test content store
+    pub async fn global_store(&self) -> Result<PgStore> {
+        PgStore::new(self.pg_pool.clone())
+            .await
+            .wrap_err("failed to create PgStore for global")
+    }
+
     /// Drop and create the public schema for the global content store test database.
     pub async fn drop_and_create_public_schema(&self) -> Result<()> {
         Ok(self.pg_pool.drop_and_create_public_schema().await?)

@@ -201,11 +201,6 @@ async fn perform_updates_and_write_out_and_update_pointer(
     onto_workspace_snapshot: &mut WorkspaceSnapshot,
     updates: &Vec<Update>,
 ) -> ChangeSetLoopResult<()> {
-    dbg!("updates", &updates);
-    dbg!("before updates", to_rebase_workspace_snapshot.id());
-    to_rebase_workspace_snapshot.dot();
-    dbg!("onto workspace snapshot", onto_workspace_snapshot.id());
-    onto_workspace_snapshot.dot();
     let mut updated = HashMap::new();
     for update in updates {
         match update {
@@ -214,7 +209,7 @@ async fn perform_updates_and_write_out_and_update_pointer(
                 destination,
                 edge_weight,
             } => {
-                let source = *updated.get(source).unwrap_or(source);
+                let updated_source = *updated.get(source).unwrap_or(source);
                 let destination = find_in_to_rebase_or_create_using_onto(
                     *destination,
                     &mut updated,
@@ -222,30 +217,30 @@ async fn perform_updates_and_write_out_and_update_pointer(
                     to_rebase_workspace_snapshot,
                 )?;
                 let new_edge_index = to_rebase_workspace_snapshot.add_edge(
-                    source,
+                    updated_source,
                     edge_weight.clone(),
                     destination,
                 )?;
                 let (new_source, _) =
                     to_rebase_workspace_snapshot.edge_endpoints(new_edge_index)?;
-                updated.insert(source, new_source);
+                updated.insert(*source, new_source);
             }
             Update::RemoveEdge {
                 source,
                 destination,
                 edge_kind,
             } => {
-                let source = *updated.get(source).unwrap_or(source);
+                let updated_source = *updated.get(source).unwrap_or(source);
                 let destination = *updated.get(destination).unwrap_or(destination);
                 updated.extend(to_rebase_workspace_snapshot.remove_edge(
                     to_rebase_change_set,
-                    source,
+                    updated_source,
                     destination,
                     *edge_kind,
                 )?);
             }
             Update::ReplaceSubgraph { onto, to_rebase } => {
-                let to_rebase = *updated.get(to_rebase).unwrap_or(to_rebase);
+                let updated_to_rebase = *updated.get(to_rebase).unwrap_or(to_rebase);
                 let new_subgraph_root = find_in_to_rebase_or_create_using_onto(
                     *onto,
                     &mut updated,
@@ -254,14 +249,11 @@ async fn perform_updates_and_write_out_and_update_pointer(
                 )?;
                 updated.extend(
                     to_rebase_workspace_snapshot
-                        .replace_references(to_rebase, new_subgraph_root)?,
+                        .replace_references(updated_to_rebase, new_subgraph_root)?,
                 );
             }
         }
     }
-
-    dbg!("after updates");
-    to_rebase_workspace_snapshot.dot();
 
     // Once all updates have been performed, we can write out, mark everything as recently seen
     // and update the pointer.
@@ -271,7 +263,7 @@ async fn perform_updates_and_write_out_and_update_pointer(
     to_rebase_change_set
         .update_pointer(ctx, to_rebase_workspace_snapshot.id())
         .await?;
-    dbg!(to_rebase_workspace_snapshot.id());
+    //   dbg!(to_rebase_workspace_snapshot.id());
 
     Ok(())
 }

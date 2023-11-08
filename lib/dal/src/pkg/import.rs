@@ -1459,6 +1459,15 @@ pub async fn import_pkg_from_pkg(
             )
             .await?;
 
+            dbg!(ctx
+                .workspace_snapshot()?
+                .lock()
+                .await
+                .list_funcs(ctx)
+                .await
+                .expect("should get list funcs")
+                .len());
+
             Ok((installed_pkg_id, installed_schema_variant_ids, None))
         }
         SiPkgKind::WorkspaceBackup => {
