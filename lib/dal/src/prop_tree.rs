@@ -50,6 +50,7 @@ pub struct PropTreeNode {
     pub widget_kind: WidgetKind,
     pub widget_options: Option<serde_json::Value>,
     pub doc_link: Option<String>,
+    pub documentation: Option<String>,
 }
 
 impl PropTreeNode {
@@ -138,6 +139,9 @@ impl PropTree {
         for row in rows {
             let prop_json: serde_json::Value = row.try_get("object")?;
             let prop: Prop = serde_json::from_value(prop_json)?;
+
+            dbg!(&prop);
+
             if prop.hidden() && !include_hidden {
                 continue;
             }
@@ -170,6 +174,7 @@ impl PropTree {
                 widget_kind: *prop.widget_kind(),
                 widget_options: prop.widget_options().cloned(),
                 doc_link: prop.doc_link().map(|l| l.to_owned()),
+                documentation: prop.documentation().map(|d| d.to_owned()),
                 visibility_change_set_pk,
             };
 

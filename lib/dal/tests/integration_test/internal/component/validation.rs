@@ -34,6 +34,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -44,6 +45,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -339,6 +341,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         None,
         *schema_variant.id(),
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");

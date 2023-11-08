@@ -743,6 +743,10 @@ impl PkgExporter {
                 builder.try_doc_link(doc_link.as_str())?;
             }
 
+            if let Some(documentation) = tree_node.documentation {
+                builder.documentation(documentation.as_str());
+            }
+
             traversal_stack.push(TraversalStackEntry {
                 builder,
                 prop_id,

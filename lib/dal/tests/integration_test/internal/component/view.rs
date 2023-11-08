@@ -36,6 +36,7 @@ pub async fn create_schema_with_object_and_string_prop(
         None,
         schema_variant_id,
         Some(root.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -46,6 +47,7 @@ pub async fn create_schema_with_object_and_string_prop(
         None,
         schema_variant_id,
         Some(*queen_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -56,6 +58,7 @@ pub async fn create_schema_with_object_and_string_prop(
         None,
         schema_variant_id,
         Some(*queen_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -111,6 +114,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         None,
         schema_variant_id,
         Some(root.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -121,6 +125,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         None,
         schema_variant_id,
         Some(*queen_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -131,6 +136,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         None,
         schema_variant_id,
         Some(*queen_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -141,6 +147,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         None,
         schema_variant_id,
         Some(*queen_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -151,6 +158,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         None,
         schema_variant_id,
         Some(*pressure_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -199,6 +207,7 @@ pub async fn create_schema_with_string_props(
         None,
         schema_variant_id,
         Some(root.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -209,6 +218,7 @@ pub async fn create_schema_with_string_props(
         None,
         schema_variant_id,
         Some(root.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -249,6 +259,7 @@ pub async fn create_schema_with_array_of_string_props(
         None,
         schema_variant_id,
         Some(root.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -259,6 +270,7 @@ pub async fn create_schema_with_array_of_string_props(
         None,
         schema_variant_id,
         Some(*sammy_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -312,6 +324,7 @@ pub async fn create_schema_with_nested_array_objects(
         None,
         schema_variant_id,
         Some(root.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -322,6 +335,7 @@ pub async fn create_schema_with_nested_array_objects(
         None,
         schema_variant_id,
         Some(*sammy_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -332,6 +346,7 @@ pub async fn create_schema_with_nested_array_objects(
         None,
         schema_variant_id,
         Some(*album_object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -342,6 +357,7 @@ pub async fn create_schema_with_nested_array_objects(
         None,
         schema_variant_id,
         Some(*album_object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -352,6 +368,7 @@ pub async fn create_schema_with_nested_array_objects(
         None,
         schema_variant_id,
         Some(*songs_array_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -401,6 +418,7 @@ pub async fn create_simple_map(ctx: &DalContext) -> (Schema, SchemaVariant, Prop
         None,
         schema_variant_id,
         Some(root.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -411,6 +429,7 @@ pub async fn create_simple_map(ctx: &DalContext) -> (Schema, SchemaVariant, Prop
         None,
         schema_variant_id,
         Some(*album_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -464,6 +483,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         None,
         schema_variant_id,
         Some(root.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -474,6 +494,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         None,
         schema_variant_id,
         Some(*sammy_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -484,6 +505,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         None,
         schema_variant_id,
         Some(*album_object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -494,6 +516,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         None,
         schema_variant_id,
         Some(*album_object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -504,6 +527,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         None,
         schema_variant_id,
         Some(*songs_array_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -514,6 +538,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         None,
         schema_variant_id,
         Some(*song_map_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");

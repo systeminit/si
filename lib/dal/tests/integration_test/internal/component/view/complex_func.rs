@@ -30,6 +30,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -40,6 +41,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*ragnarok_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -50,6 +52,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*ragnarok_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -338,6 +341,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -348,6 +352,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -361,6 +366,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(map_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -371,6 +377,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*map_item_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -381,6 +388,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*map_item_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");

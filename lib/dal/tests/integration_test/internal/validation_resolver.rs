@@ -27,6 +27,7 @@ async fn new(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");

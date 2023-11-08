@@ -59,6 +59,7 @@ pub struct PropSpecData {
     pub widget_options: Option<serde_json::Value>,
     pub hidden: Option<bool>,
     pub doc_link: Option<Url>,
+    pub documentation: Option<String>,
 }
 
 #[remain::sorted]
@@ -128,6 +129,7 @@ pub enum PropSpecKind {
 pub struct PropSpecBuilder {
     default_value: Option<serde_json::Value>,
     doc_link: Option<Url>,
+    documentation: Option<String>,
     entries: Vec<PropSpec>,
     func_unique_id: Option<String>,
     hidden: bool,
@@ -148,6 +150,7 @@ impl Default for PropSpecBuilder {
         Self {
             default_value: None,
             doc_link: None,
+            documentation: None,
             entries: vec![],
             func_unique_id: None,
             hidden: false,
@@ -248,6 +251,11 @@ impl PropSpecBuilder {
         self
     }
 
+    pub fn documentation(&mut self, value: impl Into<String>) -> &mut Self {
+        self.documentation = Some(value.into());
+        self
+    }
+
     pub fn map_key_func(&mut self, value: impl Into<MapKeyFuncSpec>) -> &mut Self {
         self.has_data = true;
         self.map_key_funcs.push(value.into());
@@ -293,6 +301,7 @@ impl PropSpecBuilder {
         let widget_options = self.widget_options.to_owned();
         let hidden = self.hidden;
         let doc_link = self.doc_link.to_owned();
+        let documentation = self.documentation.to_owned();
 
         Ok(match self.kind {
             Some(kind) => match kind {
@@ -310,6 +319,7 @@ impl PropSpecBuilder {
                             widget_options,
                             hidden: Some(hidden),
                             doc_link,
+                            documentation,
                         })
                     } else {
                         None
@@ -329,6 +339,7 @@ impl PropSpecBuilder {
                             widget_options,
                             hidden: Some(hidden),
                             doc_link,
+                            documentation,
                         })
                     } else {
                         None
@@ -348,6 +359,7 @@ impl PropSpecBuilder {
                             widget_options,
                             hidden: Some(hidden),
                             doc_link,
+                            documentation,
                         })
                     } else {
                         None
@@ -367,6 +379,7 @@ impl PropSpecBuilder {
                             widget_options,
                             hidden: Some(hidden),
                             doc_link,
+                            documentation,
                         })
                     } else {
                         None
@@ -393,6 +406,7 @@ impl PropSpecBuilder {
                             widget_options,
                             hidden: Some(hidden),
                             doc_link,
+                            documentation,
                         })
                     } else {
                         None
@@ -418,6 +432,7 @@ impl PropSpecBuilder {
                             widget_options,
                             hidden: Some(hidden),
                             doc_link,
+                            documentation,
                         })
                     } else {
                         None

@@ -85,6 +85,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(root.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -95,6 +96,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*albums_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -105,6 +107,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*album_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -349,6 +352,7 @@ async fn remove_least_specific(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*domain_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -391,6 +395,7 @@ async fn remove_component_specific(ctx: &DalContext) {
         None,
         *schema_variant.id(),
         Some(root.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");

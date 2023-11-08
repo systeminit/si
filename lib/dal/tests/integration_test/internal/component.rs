@@ -246,6 +246,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
         None,
         *noctua_schema_variant.id(),
         Some(noctua_root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");

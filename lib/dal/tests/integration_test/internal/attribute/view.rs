@@ -25,6 +25,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
         None,
         *schema_variant.id(),
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");

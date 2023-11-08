@@ -33,6 +33,7 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -178,6 +179,7 @@ async fn all_code_generation_attribute_values(ctx: &DalContext) {
         None,
         *navi_schema_variant.id(),
         Some(navi_root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -198,6 +200,7 @@ async fn all_code_generation_attribute_values(ctx: &DalContext) {
         None,
         *kru_schema_variant.id(),
         Some(kru_root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");

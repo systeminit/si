@@ -172,6 +172,7 @@ impl SchemaVariantSpecBuilder {
                 hidden: Some(false),
                 validations: None,
                 doc_link: None,
+                documentation: None,
             }),
             entries: vec![],
         }
@@ -191,6 +192,7 @@ impl SchemaVariantSpecBuilder {
                 hidden: Some(false),
                 validations: None,
                 doc_link: None,
+                documentation: None,
             }),
             entries: vec![],
         }
@@ -210,6 +212,7 @@ impl SchemaVariantSpecBuilder {
                 hidden: Some(false),
                 validations: None,
                 doc_link: None,
+                documentation: None,
             }),
             entries: vec![],
         })
@@ -229,6 +232,7 @@ impl SchemaVariantSpecBuilder {
                 hidden: Some(false),
                 validations: None,
                 doc_link: None,
+                documentation: None,
             }),
             entries: vec![],
         }

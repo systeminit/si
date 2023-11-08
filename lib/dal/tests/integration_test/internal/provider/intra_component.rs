@@ -35,6 +35,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -45,6 +46,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -55,6 +57,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         None,
         schema_variant_id,
         Some(*object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -338,6 +341,7 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
         None,
         *schema_variant.id(),
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");

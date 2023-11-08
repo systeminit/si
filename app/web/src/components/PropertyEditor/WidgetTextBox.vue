@@ -51,6 +51,7 @@ const props = defineProps<{
   validation?: PropertyEditorValidation;
   disabled?: boolean;
   textArea?: boolean;
+  documentation?: string;
 }>();
 
 const emit = defineEmits<{

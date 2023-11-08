@@ -332,6 +332,7 @@ async fn setup_esp(ctx: &DalContext) -> (ComponentBag, PropId, PropId) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -342,6 +343,7 @@ async fn setup_esp(ctx: &DalContext) -> (ComponentBag, PropId, PropId) {
         None,
         schema_variant_id,
         Some(*object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -352,6 +354,7 @@ async fn setup_esp(ctx: &DalContext) -> (ComponentBag, PropId, PropId) {
         None,
         schema_variant_id,
         Some(*object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -433,6 +436,7 @@ async fn setup_swings(ctx: &DalContext) -> (ComponentBag, PropId) {
         None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -499,6 +503,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         None,
         *source_schema_variant.id(),
         Some(source_root.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -509,6 +514,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         None,
         *source_schema_variant.id(),
         Some(*source_object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -519,6 +525,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         None,
         *source_schema_variant.id(),
         Some(*source_object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -575,6 +582,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         None,
         *destination_schema_variant.id(),
         Some(destination_root.domain_prop_id),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -585,6 +593,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         None,
         *destination_schema_variant.id(),
         Some(*destination_parent_object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -595,6 +604,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         None,
         *destination_schema_variant.id(),
         Some(*destination_object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");
@@ -605,6 +615,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         None,
         *destination_schema_variant.id(),
         Some(*destination_object_prop.id()),
+        None,
     )
     .await
     .expect("could not create prop");

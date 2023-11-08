@@ -88,6 +88,7 @@ export interface PropertyEditorProp {
   docLink?: string;
   isHidden: boolean;
   isReadonly: boolean;
+  documentation?: string;
 }
 
 export interface PropertyEditorSchema {
