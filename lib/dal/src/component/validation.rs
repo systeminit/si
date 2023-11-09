@@ -10,6 +10,7 @@ use crate::component::ComponentResult;
 use crate::func::backend::{
     js_validation::FuncBackendJsValidationArgs, validation::FuncBackendValidationArgs,
 };
+use crate::func::before::before_funcs_for_component;
 use crate::func::binding::FuncBinding;
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::ComponentError;
@@ -82,9 +83,11 @@ impl Component {
             }
         };
 
+        let before = before_funcs_for_component(ctx, self.id()).await?;
+
         // Now, we can load in the mutated args!
         let (func_binding, _) =
-            FuncBinding::create_and_execute(ctx, mutated_args, *func.id()).await?;
+            FuncBinding::create_and_execute(ctx, mutated_args, *func.id(), before).await?;
 
         let attribute_value_id = *attribute_value.id();
 

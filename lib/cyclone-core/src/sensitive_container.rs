@@ -50,3 +50,9 @@ impl<T> From<T> for SensitiveContainer<T> {
         Self(value)
     }
 }
+
+impl<T> SensitiveContainer<T> {
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}

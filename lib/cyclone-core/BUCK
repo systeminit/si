@@ -3,6 +3,9 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "cyclone-core",
     deps = [
+        "//lib/si-crypto:si-crypto",
+        "//lib/si-hash:si-hash",
+        "//lib/si-std:si-std",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:base64",
         "//third-party/rust:nix",

@@ -40,6 +40,7 @@ pub async fn list_funcs(
         "backend_kind",
         &[
             &FuncBackendKind::JsAction.as_ref().to_string(),
+            &FuncBackendKind::JsAuthentication.as_ref().to_string(),
             &FuncBackendKind::JsAttribute.as_ref().to_string(),
             &FuncBackendKind::JsValidation.as_ref().to_string(),
         ],

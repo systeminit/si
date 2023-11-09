@@ -115,6 +115,7 @@ pub async fn setup_identity_func(
             ctx,
             serde_json::json![{ "identity": null }],
             *identity_func.id(),
+            vec![],
         )
         .await
         .expect("could not find or create identity func binding");

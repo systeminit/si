@@ -113,7 +113,8 @@ pub async fn exec_variant_def(
     let metadata: SchemaVariantDefinitionMetadataJson = variant_def.clone().into();
 
     let (_, return_value) =
-        FuncBinding::create_and_execute(&ctx, serde_json::Value::Null, *asset_func.id()).await?;
+        FuncBinding::create_and_execute(&ctx, serde_json::Value::Null, *asset_func.id(), vec![])
+            .await?;
 
     if let Some(error) = return_value
         .value()

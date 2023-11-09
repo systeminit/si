@@ -1185,6 +1185,9 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
+ "si-crypto",
+ "si-hash",
+ "si-std",
  "sodiumoxide",
  "telemetry",
  "thiserror",
@@ -4801,12 +4804,14 @@ dependencies = [
 name = "si-crypto"
 version = "0.1.0"
 dependencies = [
+ "base64 0.21.2",
  "ciborium",
  "remain",
  "serde",
  "si-hash",
  "si-std",
  "sodiumoxide",
+ "telemetry",
  "tempfile",
  "thiserror",
  "tokio",
@@ -6068,6 +6073,7 @@ dependencies = [
  "remain",
  "serde",
  "serde_json",
+ "si-crypto",
  "si-data-nats",
  "telemetry",
  "test-log",

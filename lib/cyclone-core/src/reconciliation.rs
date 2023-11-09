@@ -1,3 +1,4 @@
+use crate::BeforeFunction;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -8,6 +9,7 @@ pub struct ReconciliationRequest {
     pub handler: String,
     pub code_base64: String,
     pub args: serde_json::Value,
+    pub before: Vec<BeforeFunction>,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

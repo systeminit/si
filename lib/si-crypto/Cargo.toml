@@ -6,12 +6,14 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+base64 = { workspace = true }
 ciborium = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
-sodiumoxide = { workspace = true }
 si-hash = { path = "../../lib/si-hash" }
 si-std = { path = "../../lib/si-std" }
+sodiumoxide = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 

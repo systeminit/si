@@ -16,7 +16,12 @@
     clippy::module_name_repetitions
 )]
 
+mod cyclone;
 mod symmetric;
+
+pub use cyclone::decryption_key::{CycloneDecryptionKey, CycloneDecryptionKeyError};
+pub use cyclone::encryption_key::{CycloneEncryptionKey, CycloneEncryptionKeyError};
+pub use cyclone::key_pair::{CycloneKeyPair, CycloneKeyPairError};
 
 pub use symmetric::{
     SymmetricCryptoError, SymmetricCryptoResult, SymmetricCryptoService,

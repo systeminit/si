@@ -1,10 +1,10 @@
 use futures::{StreamExt, TryStreamExt};
 use nats_subscriber::{Subscriber, SubscriberError};
 use serde::{de::DeserializeOwned, Serialize};
+use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
-
 use veritech_core::{
     nats_action_run_subject, nats_reconciliation_subject, nats_resolver_function_subject,
     nats_schema_variant_definition_subject, nats_subject, nats_validation_subject,
@@ -12,14 +12,15 @@ use veritech_core::{
 };
 
 pub use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, ComponentKind, ComponentView, EncryptionKey,
-    EncryptionKeyError, FunctionResult, FunctionResultFailure, OutputStream, ReconciliationRequest,
-    ReconciliationResultSuccess, ResolverFunctionComponent, ResolverFunctionRequest,
-    ResolverFunctionResponseType, ResolverFunctionResultSuccess, ResourceStatus,
-    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveContainer,
-    ValidationRequest, ValidationResultSuccess,
+    encrypt_value_tree, ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentKind,
+    ComponentView, CycloneValueDecryptError, CycloneValueEncryptError, FunctionResult,
+    FunctionResultFailure, OutputStream, ReconciliationRequest, ReconciliationResultSuccess,
+    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
+    ResolverFunctionResultSuccess, ResourceStatus, SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess, SensitiveContainer, ValidationRequest,
+    ValidationResultSuccess,
 };
-use si_data_nats::NatsClient;
+pub use si_crypto::{CycloneEncryptionKey, CycloneEncryptionKeyError};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
