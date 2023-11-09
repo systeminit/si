@@ -5,6 +5,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{Func, FuncBackendKind, FuncId, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -35,11 +36,14 @@ pub async fn list_funcs(
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListFuncsRequest>,
 ) -> FuncResult<Json<ListFuncsResponse>> {
+    let start = tokio::time::Instant::now();
+
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    info!("after context build: {:?}", start.elapsed());
 
     //ctx.workspace_snapshot()?.lock().await.dot();
 
-    let start = Instant::now();
     let funcs = ctx
         .workspace_snapshot()?
         .lock()
@@ -47,7 +51,7 @@ pub async fn list_funcs(
         .list_funcs(&ctx)
         .await?;
 
-    dbg!(start.elapsed());
+    info!("after content store fetch: {:?}", start.elapsed());
 
     let customizable_backend_kinds = [
         FuncBackendKind::JsAction,
@@ -76,8 +80,6 @@ pub async fn list_funcs(
         })
         .collect();
 
-    dbg!(start.elapsed());
-
     let mut funcs = vec![];
     for func_view in try_func_views {
         match func_view {
@@ -86,7 +88,9 @@ pub async fn list_funcs(
         }
     }
 
-    dbg!(start.elapsed());
+    funcs.sort_by(|a, b| a.name.cmp(&b.name));
+
+    info!("after list funcs: {:?}", start.elapsed());
 
     Ok(Json(ListFuncsResponse { funcs }))
 }

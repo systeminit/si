@@ -25,7 +25,7 @@ pub(crate) struct ContentPair {
     key: String,
     created_at: DateTime<Utc>,
     /// Serialized CBOR bytes.
-    value: Vec<u8>,
+    value: serde_json::Value,
 }
 
 impl TryFrom<PgRow> for ContentPair {
@@ -41,7 +41,7 @@ impl TryFrom<PgRow> for ContentPair {
 }
 
 impl ContentPair {
-    pub(crate) fn value(&self) -> &[u8] {
+    pub(crate) fn value(&self) -> &serde_json::Value {
         &self.value
     }
 
@@ -52,7 +52,7 @@ impl ContentPair {
     pub(crate) async fn find_or_create(
         pg_pool: &PgPool,
         key: ContentHash,
-        value: Vec<u8>,
+        value: serde_json::Value,
     ) -> ContentPairResult<Self> {
         let content_pair = match Self::find(pg_pool, &key).await? {
             Some(found_content_pair) => found_content_pair,

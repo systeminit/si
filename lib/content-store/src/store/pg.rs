@@ -2,6 +2,8 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use si_data_pg::PgPool;
 use std::collections::HashMap;
+use std::time::Instant;
+use telemetry::prelude::*;
 
 use crate::hash::ContentHash;
 use crate::pair::ContentPair;
@@ -19,12 +21,12 @@ pub struct PgStore {
 
 #[derive(Default, Debug, Clone, Eq, PartialEq)]
 struct PgStoreItem {
-    value: Vec<u8>,
+    value: serde_json::Value,
     written: bool,
 }
 
 impl PgStoreItem {
-    fn new(value: Vec<u8>) -> Self {
+    fn new(value: serde_json::Value) -> Self {
         Self {
             value,
             ..Default::default()
@@ -44,7 +46,7 @@ impl PgStore {
     /// Create a new [`PgStore`] from a given [`PgPool`].
     pub async fn new_production_with_migration() -> StoreResult<Self> {
         let pg_pool = PgStoreTools::new_production_pg_pool().await?;
-        PgStoreTools::migrate(&pg_pool).await?;
+        //PgStoreTools::migrate(&pg_pool).await?;
         Ok(Self {
             inner: Default::default(),
             pg_pool,
@@ -66,8 +68,8 @@ impl Store for PgStore {
     where
         T: Serialize + ?Sized,
     {
-        let value = si_cbor::encode(object)?;
-        let key = ContentHash::new(&value);
+        let value = serde_json::to_value(object)?;
+        let key = ContentHash::new(value.to_string().as_bytes());
         self.inner.insert(key, PgStoreItem::new(value));
         Ok(key)
     }
@@ -77,11 +79,11 @@ impl Store for PgStore {
         T: DeserializeOwned,
     {
         let object = match self.inner.get(key) {
-            Some(item) => si_cbor::decode(&item.value)?,
+            Some(item) => serde_json::from_value(item.value.to_owned())?,
             None => match ContentPair::find(&self.pg_pool, key).await? {
                 Some(content_pair) => {
                     let encoded = content_pair.value();
-                    let decoded = si_cbor::decode(encoded)?;
+                    let decoded = serde_json::from_value(encoded.to_owned())?;
                     self.add(encoded)?;
 
                     decoded
@@ -96,13 +98,14 @@ impl Store for PgStore {
     where
         T: DeserializeOwned + std::marker::Send,
     {
+        let get_bulk_start = Instant::now();
         let mut result = HashMap::new();
         let mut keys_to_fetch = vec![];
 
         for key in keys {
             match self.inner.get(key) {
                 Some(item) => {
-                    result.insert(*key, si_cbor::decode(&item.value)?);
+                    result.insert(*key, serde_json::from_value(item.value.to_owned())?);
                 }
                 None => keys_to_fetch.push(*key),
             }
@@ -110,9 +113,11 @@ impl Store for PgStore {
 
         for pair in ContentPair::find_many(&self.pg_pool, keys_to_fetch.as_slice()).await? {
             let encoded = pair.value();
-            result.insert(pair.key()?, si_cbor::decode(encoded)?);
+            result.insert(pair.key()?, serde_json::from_value(encoded.to_owned())?);
             self.add(encoded)?;
         }
+
+        info!("get_bulk: {:?}", get_bulk_start.elapsed());
 
         Ok(result)
     }
