@@ -1,7 +1,7 @@
-use base64::Engine;
+use base64::{engine::general_purpose, Engine};
 use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
-
+use std::string::FromUtf8Error;
 use strum::{EnumDiscriminants, IntoEnumIterator};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -14,8 +14,12 @@ use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
 #[derive(Debug, Error)]
 pub enum FuncError {
+    #[error("base64 decode error: {0}")]
+    Base64Decode(#[from] base64::DecodeError),
     #[error("TODO(nick): restore this error message, but here is what was passed to it: {0}")]
     IntrinsicSpecCreation(String),
+    #[error("utf8 error: {0}")]
+    Utf8(#[from] FromUtf8Error),
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;
@@ -73,6 +77,15 @@ impl Func {
             code_base64: content.code_base64,
             code_blake3: content.code_blake3,
         }
+    }
+
+    pub fn code_plaintext(&self) -> FuncResult<Option<String>> {
+        Ok(match &self.code_base64 {
+            Some(base64_code) => Some(String::from_utf8(
+                general_purpose::STANDARD_NO_PAD.decode(base64_code)?,
+            )?),
+            None => None,
+        })
     }
 }
 

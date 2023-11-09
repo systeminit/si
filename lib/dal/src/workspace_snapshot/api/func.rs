@@ -19,6 +19,7 @@ use crate::{
     DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncId, Timestamp,
     WorkspaceSnapshot,
 };
+use telemetry::prelude::*;
 
 impl WorkspaceSnapshot {
     pub async fn func_create(
