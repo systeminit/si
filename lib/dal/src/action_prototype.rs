@@ -9,12 +9,13 @@ use si_data_pg::PgError;
 use si_pkg::ActionFuncSpecKind;
 use telemetry::prelude::*;
 
+use crate::func::before::before_funcs_for_component;
 use crate::{
     component::view::ComponentViewError, func::backend::js_action::ActionRunResult,
     impl_standard_model, pk, standard_model, standard_model_accessor, Component, ComponentId,
     ComponentView, DalContext, Func, FuncBinding, FuncBindingError, FuncBindingReturnValueError,
-    FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, TransactionsError, Visibility, WsEvent, WsEventError,
+    FuncError, FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError,
+    Tenancy, Timestamp, TransactionsError, Visibility, WsEvent, WsEventError,
 };
 
 const FIND_FOR_CONTEXT: &str = include_str!("./queries/action_prototype/find_for_context.sql");
@@ -67,6 +68,8 @@ pub enum ActionPrototypeError {
     ComponentNotFound(ComponentId),
     #[error(transparent)]
     ComponentView(#[from] ComponentViewError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error(transparent)]
     FuncBinding(#[from] FuncBindingError),
     #[error(transparent)]
@@ -373,10 +376,14 @@ impl ActionPrototype {
         component_id: ComponentId,
     ) -> ActionPrototypeResult<Option<ActionRunResult>> {
         let component_view = ComponentView::new(ctx, component_id).await?;
+
+        let before = before_funcs_for_component(ctx, &component_id).await?;
+
         let (_, return_value) = FuncBinding::create_and_execute(
             ctx,
             serde_json::to_value(component_view)?,
             self.func_id(),
+            before,
         )
         .await?;
 

@@ -10,6 +10,11 @@ export interface ActionAssociations {
 
 export type LeafInputLocation = "code" | "deletedAt" | "domain" | "resource";
 
+export interface AuthenticationAssociations {
+  type: "authentication";
+  schemaVariantIds: string[];
+}
+
 export interface CodeGenerationAssociations {
   type: "codeGeneration";
   schemaVariantIds: string[];
@@ -55,6 +60,7 @@ export interface AttributeAssociations {
 }
 
 export type FuncAssociations =
+  | AuthenticationAssociations
   | ActionAssociations
   | AttributeAssociations
   | CodeGenerationAssociations
@@ -108,6 +114,11 @@ export type CreateFuncOutputLocation =
   | CreateFuncAttributeOutputLocationOutputSocket
   | CreateFuncAttributeOutputLocationProp;
 
+export interface CreateFuncAuthenticationOptions {
+  type: "authenticationOptions";
+  schemaVariantId: string;
+}
+
 export interface CreateFuncAttributeOptions {
   type: "attributeOptions";
   schemaVariantId: string;
@@ -137,6 +148,7 @@ export interface CreateFuncCodeGenerationOptions {
 }
 
 export type CreateFuncOptions =
+  | CreateFuncAuthenticationOptions
   | CreateFuncActionOptions
   | CreateFuncAttributeOptions
   | CreateFuncCodeGenerationOptions

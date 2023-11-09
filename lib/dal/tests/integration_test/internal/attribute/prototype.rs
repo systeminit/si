@@ -28,18 +28,15 @@ async fn new_attribute_prototype(ctx: &DalContext) {
     .expect("cannot create func");
 
     let args = FuncBackendStringArgs::new("eldenring".to_string());
-    let func_binding = FuncBinding::new(
+
+    let (func_binding, func_binding_return_value) = FuncBinding::create_and_execute(
         ctx,
         serde_json::to_value(args).expect("cannot turn args into json"),
         *func.id(),
-        *func.backend_kind(),
+        vec![],
     )
     .await
-    .expect("cannot create function binding");
-    let func_binding_return_value = func_binding
-        .execute(ctx)
-        .await
-        .expect("failed to execute func binding");
+    .expect("failed to execute func binding");
 
     let root_prop_id = schema_variant
         .root_prop_id()

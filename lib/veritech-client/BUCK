@@ -10,6 +10,7 @@ rust_library(
         "//lib/cyclone-core:cyclone-core",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/si-data-nats:si-data-nats",
+        "//lib/si-crypto:si-crypto",
         "//lib/telemetry-rs:telemetry",
         "//lib/veritech-core:veritech-core",
         "//third-party/rust:futures",
@@ -40,7 +41,7 @@ rust_test(
     ],
     crate_root = "tests/integration.rs",
     srcs = glob([
-       "tests/**/*.rs",
+        "tests/**/*.rs",
     ]),
     env = {
         "CARGO_PKG_NAME": "integration",

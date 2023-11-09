@@ -16,7 +16,11 @@ interface FuncScenario {
   kind: FunctionKind;
   funcSpec: AnyFunction;
   func: FuncOrFuncLocation;
-  before?: { handler: string; func: FuncOrFuncLocation }[];
+  before?: {
+    handler: string;
+    func: FuncOrFuncLocation;
+    arg: Record<string, any>
+  }[];
 }
 
 const scenarios: FuncScenario[] = [
@@ -50,10 +54,12 @@ const scenarios: FuncScenario[] = [
       {
         handler: "before1",
         func: "beforeFuncs.ts",
+        arg: { username: "name" },
       },
       {
         handler: "before2",
         func: "beforeFuncs.ts",
+        arg: {},
       },
     ],
   },
@@ -95,10 +101,11 @@ describe("executeFunction", () => {
 
       const before = [];
 
-      for (const b of scenario.before ?? []) {
+      for (const { func, handler, arg } of scenario.before ?? []) {
         before.push({
-          handler: b.handler,
-          codeBase64: await base64FromFile(FUNCS_FOLDER + b.func),
+          handler,
+          codeBase64: await base64FromFile(FUNCS_FOLDER + func),
+          arg,
         });
       }
 

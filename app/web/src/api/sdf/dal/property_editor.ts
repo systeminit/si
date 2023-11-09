@@ -43,6 +43,10 @@ export interface PropertyEditorPropWidgetKindTextArea {
   kind: "textArea";
 }
 
+export interface PropertyEditorPropWidgetKindPassword {
+  kind: "password";
+}
+
 export interface PropertyEditorPropWidgetKindInteger {
   kind: "integer";
 }
@@ -69,6 +73,7 @@ export interface PropertyEditorPropWidgetKindColor {
 export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindText
   | PropertyEditorPropWidgetKindTextArea
+  | PropertyEditorPropWidgetKindPassword
   | PropertyEditorPropWidgetKindCheckBox
   | PropertyEditorPropWidgetKindMap
   | PropertyEditorPropWidgetKindInteger

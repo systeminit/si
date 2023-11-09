@@ -26,15 +26,15 @@ use tokio::{
     task,
 };
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyError};
+use veritech_client::{Client as VeritechClient, CycloneEncryptionKey, CycloneEncryptionKeyError};
 
 use crate::{nats_jobs_subject, Config, NATS_JOBS_DEFAULT_QUEUE};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
-    #[error("error when loading encryption key: {0}")]
-    EncryptionKey(#[from] EncryptionKeyError),
+    #[error("error when loading cyclone encryption key: {0}")]
+    EncryptionKey(#[from] CycloneEncryptionKeyError),
     #[error(transparent)]
     Initialization(#[from] InitializationError),
     #[error(transparent)]
@@ -194,8 +194,8 @@ impl Server {
     }
 
     #[instrument(name = "pinga.init.load_encryption_key", skip_all)]
-    async fn load_encryption_key(path: impl AsRef<Path>) -> Result<Arc<EncryptionKey>> {
-        Ok(Arc::new(EncryptionKey::load(path).await?))
+    async fn load_encryption_key(path: impl AsRef<Path>) -> Result<Arc<CycloneEncryptionKey>> {
+        Ok(Arc::new(CycloneEncryptionKey::load(path).await?))
     }
 
     #[instrument(name = "pinga.init.connect_to_nats", skip_all)]

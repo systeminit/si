@@ -1,10 +1,15 @@
-use crate::server::{impl_default_error_into_response, state::AppState};
-use crate::service::func::get_func::GetFuncResponse;
+use std::collections::HashMap;
+
 use axum::{
     response::Response,
     routing::{get, post},
     Json, Router,
 };
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use tokio::task::JoinError;
+
+use dal::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeError};
 use dal::func::execution::FuncExecutionError;
 use dal::{
     attribute::context::{AttributeContextBuilder, AttributeContextBuilderError},
@@ -24,10 +29,9 @@ use dal::{
     PrototypeListForFuncError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
     TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError, WsEventError,
 };
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use thiserror::Error;
-use tokio::task::JoinError;
+
+use crate::server::{impl_default_error_into_response, state::AppState};
+use crate::service::func::get_func::GetFuncResponse;
 
 pub mod create_func;
 pub mod delete_func;
@@ -76,6 +80,8 @@ pub enum FuncError {
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value missing")]
     AttributeValueMissing,
+    #[error("authentication prototype error: {0}")]
+    AuthenticationPrototypeError(#[from] AuthenticationPrototypeError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
@@ -127,6 +133,8 @@ pub enum FuncError {
     FuncNotFound,
     #[error("func is not revertible")]
     FuncNotRevertible,
+    #[error("Function not runnable")]
+    FuncNotRunnable,
     #[error("Cannot create that type of function")]
     FuncNotSupported,
     #[error("Function options are incompatible with variant")]
@@ -198,6 +206,7 @@ impl_default_error_into_response!(FuncError);
 pub enum FuncVariant {
     Action,
     Attribute,
+    Authentication,
     CodeGeneration,
     Qualification,
     Reconciliation,
@@ -213,6 +222,7 @@ impl From<FuncVariant> for FuncBackendKind {
             FuncVariant::Attribute | FuncVariant::CodeGeneration | FuncVariant::Qualification => {
                 FuncBackendKind::JsAttribute
             }
+            FuncVariant::Authentication => FuncBackendKind::JsAuthentication,
         }
     }
 }
@@ -230,7 +240,20 @@ impl TryFrom<&Func> for FuncVariant {
             (FuncBackendKind::JsReconciliation, _) => Ok(FuncVariant::Reconciliation),
             (FuncBackendKind::JsAction, _) => Ok(FuncVariant::Action),
             (FuncBackendKind::JsValidation, _) => Ok(FuncVariant::Validation),
-            _ => Err(FuncError::FuncCannotBeTurnedIntoVariant(*func.id())),
+            (FuncBackendKind::JsAuthentication, _) => Ok(FuncVariant::Authentication),
+            (FuncBackendKind::Array, _)
+            | (FuncBackendKind::Boolean, _)
+            | (FuncBackendKind::Diff, _)
+            | (FuncBackendKind::Identity, _)
+            | (FuncBackendKind::Integer, _)
+            | (FuncBackendKind::JsSchemaVariantDefinition, _)
+            | (FuncBackendKind::Map, _)
+            | (FuncBackendKind::Object, _)
+            | (FuncBackendKind::String, _)
+            | (FuncBackendKind::Unset, _)
+            | (FuncBackendKind::Validation, _) => {
+                Err(FuncError::FuncCannotBeTurnedIntoVariant(*func.id()))
+            }
         }
     }
 }
@@ -291,6 +314,10 @@ pub enum FuncAssociations {
     Attribute {
         prototypes: Vec<AttributePrototypeView>,
         arguments: Vec<FuncArgumentView>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Authentication {
+        schema_variant_ids: Vec<SchemaVariantId>,
     },
     #[serde(rename_all = "camelCase")]
     CodeGeneration {
@@ -549,6 +576,28 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             });
             (associations, input_type)
         }
+        FuncBackendKind::JsAuthentication => {
+            let schema_variant_ids = AuthenticationPrototype::find_for_func(ctx, *func.id())
+                .await?
+                .iter()
+                .map(|p| p.schema_variant_id())
+                .collect();
+
+            (
+                Some(FuncAssociations::Authentication { schema_variant_ids }),
+                concat!(
+                    "type Input = Record<string, unknown>;\n",
+                    "\n",
+                    "declare namespace requestStorage {\n",
+                    "    function setEnv(key: string, value: any);\n",
+                    "    function setItem(key: string, value: any);\n",
+                    "    function deleteEnv(key: string);\n",
+                    "    function deleteItem(key: string);\n",
+                    "}",
+                )
+                .to_owned(),
+            )
+        }
         _ => (None, String::new()),
     };
 
@@ -627,6 +676,7 @@ pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) 
         FuncBackendResponseType::Map => "type Output = Record<string, any>;",
         FuncBackendResponseType::Object => "type Output = any;",
         FuncBackendResponseType::Unset => "type Output = undefined | null;",
+        FuncBackendResponseType::Void => "type Output = void;",
         FuncBackendResponseType::SchemaVariantDefinition => concat!(
             include_str!("./ts_types/asset_builder.d.ts"),
             "\n",
@@ -688,6 +738,7 @@ pub fn compile_return_types_2(ty: FuncBackendResponseType, kind: FuncBackendKind
         FuncBackendResponseType::Map => "type Output = Record<string, any>;",
         FuncBackendResponseType::Object => "type Output = any;",
         FuncBackendResponseType::Unset => "type Output = undefined | null;",
+        FuncBackendResponseType::Void => "type Output = void;",
         FuncBackendResponseType::SchemaVariantDefinition => concat!(
             include_str!("./ts_types/asset_types_with_secrets.d.ts"),
             "\n",
@@ -868,6 +919,13 @@ fn langjs_types() -> &'static str {
 
     declare namespace zlib {
         function gzip(inputstr: string, callback: any);
+    }
+
+    declare namespace requestStorage {
+        function getEnv(key: string): string;
+        function getItem(key: string): any;
+        function getEnvKeys(): string[];
+        function getKeys(): string[];
     }
 
     declare namespace siExec {

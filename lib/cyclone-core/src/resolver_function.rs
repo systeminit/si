@@ -1,3 +1,4 @@
+use crate::before::BeforeFunction;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -11,6 +12,7 @@ pub struct ResolverFunctionRequest {
     pub component: ResolverFunctionComponent,
     pub response_type: ResolverFunctionResponseType,
     pub code_base64: String,
+    pub before: Vec<BeforeFunction>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Default)]
@@ -38,6 +40,7 @@ pub enum ResolverFunctionResponseType {
     String,
     #[default]
     Unset,
+    Void,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

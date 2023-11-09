@@ -5,8 +5,8 @@ import * as _ from "lodash-es";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore, ChangeSetId } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { LabelList } from "@/api/sdf/dal/label_list";
 import { encryptMessage } from "@/utils/messageEncryption";
+import { PropertyEditorPropWidgetKind } from "@/api/sdf/dal/property_editor";
 import { ActorAndTimestamp } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
@@ -68,8 +68,7 @@ export type Secret = {
 export interface SecretFormSchema {
   name: string;
   kind: string;
-  widgetKind: string;
-  widgetOptions: null | LabelList<string | number>;
+  widgetKind: PropertyEditorPropWidgetKind;
 }
 
 export interface SecretDefinitionView {

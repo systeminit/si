@@ -71,6 +71,21 @@
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
     />
+    <WidgetTextBox
+      v-else-if="schemaProp.widgetKind.kind === 'password'"
+      :name="schemaProp.name"
+      :path="path"
+      :collapsedPaths="collapsedPaths"
+      :value="propValue.value"
+      :propId="propValue.propId"
+      :valueId="propValue.id"
+      :propKind="schemaProp.kind"
+      :docLink="schemaProp.docLink"
+      :validation="validation"
+      :disabled="disabled"
+      :class="INPUT_CLASSES"
+      @updated-property="updatedProperty($event)"
+    />
     <WidgetCodeEditor
       v-else-if="schemaProp.widgetKind.kind === 'codeEditor'"
       :name="schemaProp.name"

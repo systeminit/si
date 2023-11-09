@@ -110,7 +110,7 @@
               v-for="(field, index) in fields"
               :key="index"
               v-model="secretFormData.value[field.name]"
-              type="text"
+              :type="fieldInputType(field)"
               :label="field.name"
               :required="!editingSecret || replacingSecret"
             />
@@ -177,6 +177,7 @@ import clsx from "clsx";
 import {
   Secret,
   SecretDefinitionId,
+  SecretFormSchema,
   useSecretsStore,
 } from "@/store/secrets.store";
 
@@ -294,6 +295,14 @@ const updateSecret = async () => {
 
       emit("save", secret);
     }, 2000);
+  }
+};
+
+const fieldInputType = (field: SecretFormSchema) => {
+  if (field.widgetKind.kind === "password") {
+    return "password";
+  } else {
+    return "text";
   }
 };
 

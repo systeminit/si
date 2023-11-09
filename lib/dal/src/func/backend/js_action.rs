@@ -3,7 +3,8 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use telemetry::tracing::trace;
 use veritech_client::{
-    ActionRunRequest, ActionRunResultSuccess, FunctionResult, OutputStream, ResourceStatus,
+    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, FunctionResult, OutputStream,
+    ResourceStatus,
 };
 
 use crate::func::backend::{
@@ -29,6 +30,7 @@ impl FuncDispatch for FuncBackendJsAction {
         code_base64: &str,
         handler: &str,
         args: Self::Args,
+        before: Vec<BeforeFunction>,
     ) -> Box<Self> {
         let request = ActionRunRequest {
             // Once we start tracking the state of these executions, then this id will be useful,
@@ -37,6 +39,7 @@ impl FuncDispatch for FuncBackendJsAction {
             handler: handler.into(),
             code_base64: code_base64.into(),
             args: serde_json::to_value(args).unwrap(),
+            before,
         };
 
         Box::new(Self { context, request })

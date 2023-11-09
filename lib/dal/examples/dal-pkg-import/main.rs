@@ -10,7 +10,7 @@ use si_crypto::{SymmetricCryptoService, SymmetricCryptoServiceConfigFile};
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_pkg::SiPkg;
-use veritech_client::{Client as VeritechClient, EncryptionKey};
+use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
 
@@ -95,7 +95,7 @@ fn create_veritech_client(nats: NatsClient) -> VeritechClient {
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development
-async fn load_encryption_key() -> Result<EncryptionKey> {
+async fn load_encryption_key() -> Result<CycloneEncryptionKey> {
     let path = if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
         Buck2Resources::read()?.get_ends_with("dev.encryption.key")?
     } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
@@ -104,7 +104,7 @@ async fn load_encryption_key() -> Result<EncryptionKey> {
         unimplemented!("not running with Buck2 or Cargo, unsupported")
     };
 
-    EncryptionKey::load(path).await.map_err(Into::into)
+    CycloneEncryptionKey::load(path).await.map_err(Into::into)
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

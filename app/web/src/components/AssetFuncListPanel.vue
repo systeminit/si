@@ -62,12 +62,12 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from "vue";
+import { computed, ref } from "vue";
 import groupBy from "lodash-es/groupBy";
 import {
   Collapsible,
-  ScrollArea,
   RequestStatusMessage,
+  ScrollArea,
 } from "@si/vue-lib/design-system";
 import { CUSTOMIZABLE_FUNC_TYPES } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";

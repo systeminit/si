@@ -549,7 +549,8 @@ impl Prop {
         // If the func binding was created, we execute on it to generate our value id. Otherwise,
         // we try to find a value by id and then fallback to executing anyway if one was not found.
         let (func_binding, func_binding_return_value) =
-            FuncBinding::create_and_execute(ctx, serde_json::json![null], *func.id()).await?;
+            FuncBinding::create_and_execute(ctx, serde_json::json![null], *func.id(), vec![])
+                .await?;
 
         while let Some(WorkItem { maybe_parent, prop }) = work_queue.pop_front() {
             let attribute_context = AttributeContext::builder()

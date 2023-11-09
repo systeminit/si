@@ -67,6 +67,7 @@ pub enum FuncSpecBackendKind {
     Integer,
     JsAction,
     JsAttribute,
+    JsAuthentication,
     JsReconciliation,
     JsSchemaVariantDefinition,
     JsValidation,
@@ -96,6 +97,7 @@ pub enum FuncSpecBackendResponseType {
     String,
     Unset,
     Validation,
+    Void,
 }
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]

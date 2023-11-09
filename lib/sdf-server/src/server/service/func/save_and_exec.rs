@@ -8,7 +8,7 @@ use dal::{
     job::definition::DependentValuesUpdate, ActionPrototype, AttributePrototype, AttributeValue,
     AttributeValueError, AttributeValueId, ChangeSet, Component, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, PropId, RootPropChild, SchemaVariant, StandardModel,
-    ValidationPrototype, Visibility, WsEvent,
+    ValidationPrototype, WsEvent,
 };
 use serde_json::Value;
 use std::collections::HashMap;
@@ -143,8 +143,7 @@ async fn run_actions(ctx: &DalContext, func: &Func) -> FuncResult<()> {
     if protos.is_empty() {
         return Err(FuncError::FuncExecutionFailedNoPrototypes);
     }
-
-    for proto in ActionPrototype::find_for_func(ctx, *func.id()).await? {
+    for proto in protos {
         let schema_variant_id = proto.context().schema_variant_id();
         if schema_variant_id.is_none() {
             continue;
@@ -165,21 +164,7 @@ pub async fn save_and_exec(
 ) -> FuncResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut force_changeset_pk = None;
-    if ctx.visibility().is_head() {
-        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
-
-        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
-
-        ctx.update_visibility(new_visibility);
-
-        force_changeset_pk = Some(change_set.pk);
-
-        WsEvent::change_set_created(&ctx, change_set.pk)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
-    };
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     let (save_func_response, func) = do_save_func(&ctx, request).await?;
 
@@ -193,7 +178,19 @@ pub async fn save_and_exec(
         FuncBackendKind::JsAction => {
             run_actions(&ctx, &func).await?;
         }
-        _ => {}
+        FuncBackendKind::Array
+        | FuncBackendKind::Boolean
+        | FuncBackendKind::Diff
+        | FuncBackendKind::Identity
+        | FuncBackendKind::Integer
+        | FuncBackendKind::JsAuthentication
+        | FuncBackendKind::JsReconciliation
+        | FuncBackendKind::JsSchemaVariantDefinition
+        | FuncBackendKind::Map
+        | FuncBackendKind::Object
+        | FuncBackendKind::String
+        | FuncBackendKind::Unset
+        | FuncBackendKind::Validation => Err(FuncError::FuncNotRunnable)?,
     }
 
     WsEvent::change_set_written(&ctx)

@@ -63,7 +63,7 @@ pub async fn execute(
     });
 
     let (value, _unprocessed_value) = func_binding
-        .execute_critical_section(func.clone(), context)
+        .execute_critical_section(func.clone(), context, vec![])
         .await?;
     let logs = log_handler.await??;
 

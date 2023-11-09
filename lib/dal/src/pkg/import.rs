@@ -207,6 +207,8 @@ async fn import_change_set(
         installed_schema_variant_ids.extend(schema_variant_ids);
     }
 
+    println!("Finished Imports");
+
     let mut component_attribute_skips = vec![];
     for component_spec in components {
         let skips = import_component(ctx, change_set_pk, component_spec, thing_map).await?;
@@ -1687,9 +1689,13 @@ async fn get_identity_func(
         .ok_or_else(|| FuncError::NotFoundByName(func_name.to_string()))?;
 
     let func_id = *func.id();
-    let (func_binding, func_binding_return_value) =
-        FuncBinding::create_and_execute(ctx, serde_json::json![{ "identity": null }], func_id)
-            .await?;
+    let (func_binding, func_binding_return_value) = FuncBinding::create_and_execute(
+        ctx,
+        serde_json::json![{ "identity": null }],
+        func_id,
+        vec![],
+    )
+    .await?;
     let func_argument = FuncArgument::find_by_name_for_func(ctx, func_argument_name, func_id)
         .await?
         .ok_or_else(|| {

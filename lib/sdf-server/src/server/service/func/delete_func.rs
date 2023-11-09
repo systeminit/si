@@ -75,6 +75,9 @@ pub async fn delete_func(
                 schema_variant_ids.is_empty()
             }
             FuncAssociations::Validation { prototypes } => !prototypes.is_empty(),
+            FuncAssociations::Authentication { schema_variant_ids } => {
+                !schema_variant_ids.is_empty()
+            }
         };
 
         if has_associations {

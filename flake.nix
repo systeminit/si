@@ -90,6 +90,7 @@
       langJsExtraPkgs = with pkgs; [
         awscli2
         butane
+        gh
         skopeo
       ];
 
@@ -314,7 +315,6 @@
             [
               alejandra
               docker-compose
-              gh
               jq
               # pgcli
               reindeer
