@@ -4,6 +4,7 @@ use strum::EnumDiscriminants;
 
 #[remain::sorted]
 #[derive(EnumDiscriminants, Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 /// The type of the object, and the content-addressable-storage address (content hash)
 /// of the object itself.
 pub enum ContentAddress {

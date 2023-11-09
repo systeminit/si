@@ -75,13 +75,9 @@ impl WorkspaceSnapshot {
             node_index,
         )?;
 
-        match node_weight {
-            NodeWeight::Func(func_node_weight) => Ok(Func::assemble(&func_node_weight, &content)),
-            _ => Err(WorkspaceSnapshotError::NodeWeightMismatch(
-                node_index,
-                "FuncNodeWeight".into(),
-            )),
-        }
+        let func_node_weight = node_weight.get_func_node_weight()?;
+
+        Ok(Func::assemble(&func_node_weight, &content))
     }
 
     pub async fn func_get_node_weight_and_content(

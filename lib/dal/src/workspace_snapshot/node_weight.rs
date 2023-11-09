@@ -45,7 +45,9 @@ pub enum NodeWeightError {
     IncompatibleNodeWeightVariants,
     #[error("Invalid ContentAddress variant ({0}) for NodeWeight variant ({1})")]
     InvalidContentAddressForWeightKind(String, String),
-    #[error("Unexpected node weight variant: {0} expected {1}")]
+    #[error("Unexpected content address variant: {1} expected {0}")]
+    UnexpectedContentAddressVariant(ContentAddressDiscriminants, ContentAddressDiscriminants),
+    #[error("Unexpected node weight variant: {1} expected {0}")]
     UnexpectedNodeWeightVariant(NodeWeightDiscriminants, NodeWeightDiscriminants),
     #[error("Vector Clock error: {0}")]
     VectorClock(#[from] VectorClockError),
@@ -290,6 +292,30 @@ impl NodeWeight {
             NodeWeight::Func(inner) => Ok(inner.to_owned()),
             other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
                 NodeWeightDiscriminants::Func,
+                other.into(),
+            )),
+        }
+    }
+
+    pub fn get_content_node_weight_of_kind(
+        &self,
+        content_addr_discrim: ContentAddressDiscriminants,
+    ) -> NodeWeightResult<ContentNodeWeight> {
+        match self {
+            NodeWeight::Content(inner) => {
+                let inner_addr_discrim: ContentAddressDiscriminants =
+                    inner.content_address().into();
+                if inner_addr_discrim != content_addr_discrim {
+                    return Err(NodeWeightError::UnexpectedContentAddressVariant(
+                        content_addr_discrim,
+                        inner_addr_discrim,
+                    ));
+                }
+
+                Ok(inner.to_owned())
+            }
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::Content,
                 other.into(),
             )),
         }

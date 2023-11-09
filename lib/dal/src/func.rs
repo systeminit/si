@@ -24,7 +24,7 @@ pub enum FuncError {
 
 pub type FuncResult<T> = Result<T, FuncError>;
 
-// pub mod argument;
+pub mod argument;
 pub mod backend;
 // pub mod binding;
 // pub mod binding_return_value;
@@ -44,7 +44,6 @@ pk!(FuncId);
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Func {
     pub id: FuncId,
-    #[serde(flatten)]
     pub timestamp: Timestamp,
     pub name: String,
     pub display_name: Option<String>,

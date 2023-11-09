@@ -22,7 +22,7 @@ use crate::{
     // edge::EdgeKind,
     func::{
         self,
-        // argument::FuncArgumentKind,
+        argument::{FuncArgument, FuncArgumentKind},
         backend::validation::FuncBackendValidationArgs,
         // binding::FuncBinding,
         // binding_return_value::FuncBindingReturnValue,
@@ -87,7 +87,7 @@ enum Thing {
     // Component((Component, Node)),
     // Edge(Edge),
     Func(Func),
-    // FuncArgument(FuncArgument),
+    FuncArgument(FuncArgument),
     // Schema(Schema),
     // SchemaVariant(SchemaVariant),
     // Socket(Box<(Socket, Option<InternalProvider>, Option<ExternalProvider>)>),
@@ -146,7 +146,7 @@ async fn import_change_set(
                     unique_id.to_owned(),
                     Thing::Func(func.to_owned()),
                 );
-            } else if let Some(_func) = import_func(
+            } else if let Some(func) = import_func(
                 ctx,
                 &mut workspace_snapshot,
                 None,
@@ -157,11 +157,11 @@ async fn import_change_set(
             )
             .await?
             {
-                // let args = vec![]; //func_spec.arguments()?;
+                let args = func_spec.arguments()?;
 
-                // if !args.is_empty() {
-                //     // import_func_arguments(ctx, None, *func.id(), &args, thing_map).await?;
-                // }
+                if !args.is_empty() {
+                    //import_func_arguments(ctx, None, func.id, &args, thing_map).await?;
+                }
             }
         } else {
             let func = if let Some(Some(func)) = options
@@ -1733,20 +1733,20 @@ async fn import_func(
     Ok(func)
 }
 
-// async fn create_func_argument(
-//     ctx: &DalContext,
-//     func_id: FuncId,
-//     func_arg: &SiPkgFuncArgument<'_>,
-// ) -> PkgResult<FuncArgument> {
-//     Ok(FuncArgument::new(
-//         ctx,
-//         func_arg.name(),
-//         func_arg.kind().into(),
-//         func_arg.element_kind().to_owned().map(|&kind| kind.into()),
-//         func_id,
-//     )
-//     .await?)
-// }
+async fn create_func_argument(
+    ctx: &DalContext,
+    func_id: FuncId,
+    func_arg: &SiPkgFuncArgument<'_>,
+) -> PkgResult<FuncArgument> {
+    Ok(FuncArgument::new(
+        ctx,
+        func_arg.name(),
+        func_arg.kind().into(),
+        func_arg.element_kind().to_owned().map(|&kind| kind.into()),
+        func_id,
+    )
+    .await?)
+}
 
 // async fn update_func_argument(
 //     ctx: &DalContext,
@@ -1759,64 +1759,63 @@ async fn import_func(
 //     let element_kind: Option<FuncArgumentKind> = func_arg.element_kind().map(|&kind| kind.into());
 //     existing_arg.set_element_kind(ctx, element_kind).await?;
 //     existing_arg.set_func_id(ctx, func_id).await?;
-
+//
 //     Ok(())
 // }
 
-// async fn import_func_arguments(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     func_id: FuncId,
-//     func_arguments: &[SiPkgFuncArgument<'_>],
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<()> {
-//     match change_set_pk {
-//         None => {
-//             for arg in func_arguments {
-//                 create_func_argument(ctx, func_id, arg).await?;
-//             }
-//         }
-//         Some(_) => {
-//             for arg in func_arguments {
-//                 let unique_id =
-//                     arg.unique_id()
-//                         .ok_or(PkgError::MissingUniqueIdForNode(format!(
-//                             "func-argument-{}",
-//                             arg.hash()
-//                         )))?;
+async fn import_func_arguments(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    func_id: FuncId,
+    func_arguments: &[SiPkgFuncArgument<'_>],
+    _thing_map: &mut ThingMap,
+) -> PkgResult<()> {
+    match change_set_pk {
+        None => {
+            for arg in func_arguments {
+                create_func_argument(ctx, func_id, arg).await?;
+            }
+        }
+        Some(_) => {} //             for arg in func_arguments {
+                      //                 let unique_id =
+                      //                     arg.unique_id()
+                      //                         .ok_or(PkgError::MissingUniqueIdForNode(format!(
+                      //                             "func-argument-{}",
+                      //                             arg.hash()
+                      //                         )))?;
+                      //
+                      //                 match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+                      //                     Some(Thing::FuncArgument(existing_arg)) => {
+                      //                         let mut existing_arg = existing_arg.to_owned();
+                      //
+                      //                         if arg.deleted() {
+                      //                             existing_arg.delete_by_id(ctx).await?;
+                      //                         } else {
+                      //                             update_func_argument(ctx, &mut existing_arg, func_id, arg).await?;
+                      //                             thing_map.insert(
+                      //                                 change_set_pk,
+                      //                                 unique_id.to_owned(),
+                      //                                 Thing::FuncArgument(existing_arg.to_owned()),
+                      //                             );
+                      //                         }
+                      //                     }
+                      //                     _ => {
+                      //                         if !arg.deleted() {
+                      //                             let new_arg = create_func_argument(ctx, func_id, arg).await?;
+                      //                             thing_map.insert(
+                      //                                 change_set_pk,
+                      //                                 unique_id.to_owned(),
+                      //                                 Thing::FuncArgument(new_arg),
+                      //                             );
+                      //                         }
+                      //                     }
+                      //                 }
+                      //             }
+                      //         }
+    }
 
-//                 match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-//                     Some(Thing::FuncArgument(existing_arg)) => {
-//                         let mut existing_arg = existing_arg.to_owned();
-
-//                         if arg.deleted() {
-//                             existing_arg.delete_by_id(ctx).await?;
-//                         } else {
-//                             update_func_argument(ctx, &mut existing_arg, func_id, arg).await?;
-//                             thing_map.insert(
-//                                 change_set_pk,
-//                                 unique_id.to_owned(),
-//                                 Thing::FuncArgument(existing_arg.to_owned()),
-//                             );
-//                         }
-//                     }
-//                     _ => {
-//                         if !arg.deleted() {
-//                             let new_arg = create_func_argument(ctx, func_id, arg).await?;
-//                             thing_map.insert(
-//                                 change_set_pk,
-//                                 unique_id.to_owned(),
-//                                 Thing::FuncArgument(new_arg),
-//                             );
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-
-//     Ok(())
-// }
+    Ok(())
+}
 
 // async fn create_schema(ctx: &DalContext, schema_spec_data: &SiPkgSchemaData) -> PkgResult<Schema> {
 //     let mut schema = Schema::new(ctx, schema_spec_data.name(), &ComponentKind::Standard).await?;
