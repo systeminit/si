@@ -11,20 +11,28 @@
       >
         Read-only
       </VButton>
-      <VButton
-        v-else
-        size="xs"
-        :tone="vimEnabled ? 'success' : 'neutral'"
-        icon="logo-vim"
-        @click="vimEnabled = !vimEnabled"
-      />
+      <template v-else>
+        <VButton
+          v-if="props.json || props.typescript"
+          size="xs"
+          tone="neutral"
+          label="Format"
+          @click="format"
+        />
+        <VButton
+          size="xs"
+          :tone="vimEnabled ? 'success' : 'neutral'"
+          icon="logo-vim"
+          @click="vimEnabled = !vimEnabled"
+        />
+      </template>
     </div>
     <div ref="editorMount" class="h-full" @keyup.stop @keydown.stop />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from "vue";
+import { onBeforeUnmount, computed, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { basicSetup, EditorView } from "codemirror";
 import { Compartment, EditorState, StateEffect } from "@codemirror/state";
@@ -46,7 +54,14 @@ import { useTheme, VButton } from "@si/vue-lib/design-system";
 import { vim, Vim } from "@replit/codemirror-vim";
 import storage from "local-storage-fallback";
 import beautify from "js-beautify";
+import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
+// import { IndexeddbPersistence } from "y-indexeddb";
+import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
+import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { API_WS_URL } from "@/store/apis";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import {
   createTypescriptSource,
   GetTooltipFromPos,
@@ -66,79 +81,67 @@ const props = defineProps({
 const emit = defineEmits<{
   "update:modelValue": [v: string];
   blur: [v: string];
-  change: [v: string];
+  save: [v: string];
   close: [];
 }>();
 
-const changeSetsStore = useChangeSetsStore();
-
-const editorMount = ref(); // div (template ref) where we will mount the editor
-let view: EditorView; // instance of the CodeMirror editor
-
-// our local copy of code
-const draftValue = ref(props.modelValue || "");
-
-const autoformat = (code: string): string => {
-  if (props.disabled) return code;
-
-  if (props.json || props.typescript) {
-    return beautify(draftValue.value);
-  }
-  return code;
-};
-
-// if v-model value changes, update our local draft
 watch(
   () => props.modelValue,
   () => {
-    if (draftValue.value !== props.modelValue) {
-      draftValue.value = props.modelValue || "";
-    }
-  },
-);
-
-// when our draft value changes, make sure editor is in sync, and emit (debounced) update event
-watch(
-  () => draftValue.value,
-  () => {
-    const currentEditorValue = view?.state.doc.toString();
-
-    // update the code in the code mirror instance value (if it's not matching)
-    if (view && currentEditorValue !== draftValue.value) {
+    if (!props.id && yText) {
       view.update([
         view.state.update({
           changes: {
             from: 0,
             to: view.state.doc.length,
-            insert: draftValue.value,
+            insert: props.modelValue,
           },
         }),
       ]);
     }
-
-    if (props.debounceUpdate) debouncedEmitUpdatedValue();
-    else emitUpdatedValue();
   },
 );
+
+const changeSetsStore = useChangeSetsStore();
+const authStore = useAuthStore();
+const featureFlagsStore = useFeatureFlagsStore();
+
+const editorMount = ref(); // div (template ref) where we will mount the editor
+let view: EditorView; // instance of the CodeMirror editor
+
+// TODO: investigate relative positions so we don't lose cursor context when formatting
+const format = (): boolean => {
+  if (props.disabled || !yText) return false;
+
+  if (props.json || props.typescript) {
+    const text = beautify(view.state.doc.toString());
+    if (text !== view.state.doc.toString()) {
+      yText.delete(0, yText.length);
+      yText.insert(0, text);
+    }
+  }
+  return true;
+};
 
 const localStorageHistoryBufferKey = computed(
   () => `code-mirror-state-${changeSetsStore.selectedChangeSetId}-${props.id}`,
 );
 
-// when editor value changes, update our draft value
 function onEditorValueUpdated(update: ViewUpdate) {
   if (!update.docChanged) return;
-  const newEditorValue = update.view.state.doc.toString();
-  if (newEditorValue !== draftValue.value) {
-    draftValue.value = newEditorValue;
-  }
+
+  emit("update:modelValue", update.state.doc.toString());
+
+  debouncedEmitUpdatedValue();
 
   const serializedState = update.view.state.toJSON({ history: historyField });
   if (props.id && serializedState.history) {
     serializedState.history.done.splice(
+      0,
       Math.max(serializedState.history.done.length - 50, 0),
     );
     serializedState.history.undone.splice(
+      0,
       Math.max(serializedState.history.undone.length - 50, 0),
     );
     window.localStorage.setItem(
@@ -150,11 +153,10 @@ function onEditorValueUpdated(update: ViewUpdate) {
     );
   }
 }
-function emitUpdatedValue() {
-  emit("update:modelValue", draftValue.value);
-  emit("change", draftValue.value);
-}
-const debouncedEmitUpdatedValue = _.debounce(emitUpdatedValue, 3000);
+
+const debouncedEmitUpdatedValue = _.debounce(() => {
+  emit("save", view.state.doc.toString());
+}, 1000);
 
 // set up all compartments
 const language = new Compartment();
@@ -166,6 +168,7 @@ const styleExtensionCompartment = new Compartment();
 const vimCompartment = new Compartment();
 const hoverTooltipCompartment = new Compartment();
 const removeTooltipOnUpdateCompartment = new Compartment();
+const yCompartment = new Compartment();
 
 // Theme / style ///////////////////////////////////////////////////////////////////////////////////////////
 const { theme: appTheme } = useTheme();
@@ -252,7 +255,7 @@ watch(vimEnabled, (useVim) => {
   });
 });
 // Emit when the user writes (i.e. ":w") in vim mode.
-Vim.defineEx("write", "w", onLocalSave);
+Vim.defineEx("write", "w", format);
 // Emit when the user quits in vim mode.
 Vim.defineEx("quit", "q", onVimExit);
 
@@ -284,6 +287,12 @@ const codeTooltip = {
     return true;
   },
 };
+
+let wsProvider: WebsocketProvider | undefined;
+let yText: Y.Text | undefined;
+onBeforeUnmount(() => {
+  wsProvider?.destroy();
+});
 
 // Initialization /////////////////////////////////////////////////////////////////////////////////
 const mountEditor = async () => {
@@ -318,55 +327,115 @@ const mountEditor = async () => {
     extensions.push(language.of(CodemirrorJsonLang()));
   }
 
-  const config = {
-    doc: draftValue.value,
-    extensions: extensions.concat([
-      themeCompartment.of(codeMirrorTheme.value),
-      styleExtensionCompartment.of(styleExtension.value),
-      keymap.of([
-        indentWithTab,
-        { key: "ctrl-s", run: onLocalSave },
-        { key: "cmd-s", run: onLocalSave },
-        { key: "ctrl-m", run: codeTooltip?.toggle },
-        { key: "cmd-m", run: codeTooltip?.toggle },
-      ]),
+  const ydoc = new Y.Doc();
+  yText = ydoc.getText("codemirror");
 
-      readOnly.of(EditorState.readOnly.of(props.disabled)),
-      vimCompartment.of(vimEnabled.value ? vim({ status: true }) : []),
-      EditorView.updateListener.of(onEditorValueUpdated),
-      EditorView.lineWrapping,
-    ]),
+  const finishEditor = () => {
+    const config = {
+      doc: yText?.toString() ?? "",
+      extensions: extensions.concat([
+        themeCompartment.of(codeMirrorTheme.value),
+        styleExtensionCompartment.of(styleExtension.value),
+        keymap.of([
+          indentWithTab,
+          { key: "ctrl-m", run: codeTooltip?.toggle },
+          { key: "cmd-m", run: codeTooltip?.toggle },
+          { key: "ctrl-s", run: format },
+          { key: "cmd-s", run: format },
+        ]),
+
+        readOnly.of(EditorState.readOnly.of(props.disabled)),
+        vimCompartment.of(vimEnabled.value ? vim({ status: true }) : []),
+        EditorView.updateListener.of(onEditorValueUpdated),
+        EditorView.lineWrapping,
+      ]),
+    };
+
+    let editorState;
+    const state = props.id
+      ? window.localStorage.getItem(localStorageHistoryBufferKey.value)
+      : null;
+    if (state) {
+      editorState = EditorState.fromJSON(
+        {
+          doc: config.doc,
+          selection: { ranges: [{ anchor: 0, head: 0 }], main: 0 },
+          history: JSON.parse(state).history,
+        },
+        config,
+        { history: historyField },
+      );
+    } else {
+      editorState = EditorState.create(config);
+    }
+
+    view?.destroy();
+    view = new EditorView({
+      state: editorState,
+      parent: editorMount.value,
+    });
+
+    view.contentDOM.onblur = () => {
+      emit("blur", view.state.doc.toString());
+    };
   };
 
-  let editorState;
+  if (props.id) {
+    // TODO: investigate the following PRs to fix UX/UI bugs
+    // https://github.com/yjs/y-codemirror.next/pull/12
+    // https://github.com/codemirror/dev/issues/989
+    // https://github.com/yjs/y-codemirror.next/issues/8
+    // https://github.com/yjs/y-codemirror.next/pull/17
 
-  const state = props.id
-    ? window.localStorage.getItem(localStorageHistoryBufferKey.value)
-    : null;
-  if (state) {
-    editorState = EditorState.fromJSON(
-      {
-        doc: config.doc,
-        selection: { ranges: [{ anchor: 0, head: 0 }], main: 0 },
-        history: JSON.parse(state).history,
+    let id = `${changeSetsStore.selectedChangeSetId}-${props.id}`;
+    if (!featureFlagsStore.INVITE_USER) {
+      id = `${id}-${authStore.user?.pk}`;
+    }
+
+    // const _storageProvider = new IndexeddbPersistence(id, ydoc);
+
+    wsProvider?.destroy();
+    wsProvider = new WebsocketProvider(
+      `${API_WS_URL}/crdt?token=Bearer+${authStore.selectedWorkspaceToken}&id=${id}`,
+      id,
+      ydoc,
+    );
+
+    wsProvider.on("sync", (synced: boolean) => {
+      if (yText && synced && yText.toString().length === 0) {
+        yText.insert(0, props.modelValue);
+      }
+
+      if (synced) {
+        finishEditor();
+      }
+    });
+    wsProvider.on(
+      "status",
+      (status: "disconnected" | "connecting" | "connected") => {
+        if (status === "disconnected") {
+          finishEditor();
+        }
       },
-      config,
-      { history: historyField },
+    );
+
+    wsProvider.awareness.setLocalStateField("user", {
+      name:
+        authStore.user?.name ?? `Anonymous ${Math.floor(Math.random() * 100)}`,
+      color: "black",
+      colorLight: "white",
+    });
+
+    extensions.push(keymap.of([...yUndoManagerKeymap]));
+
+    // const undoManager = new Y.UndoManager(yText);
+    extensions.push(
+      yCompartment.of(yCollab(yText, wsProvider.awareness)), // , { undoManager })),
     );
   } else {
-    editorState = EditorState.create(config);
+    yText.insert(0, props.modelValue);
+    finishEditor();
   }
-
-  view?.destroy();
-  view = new EditorView({
-    state: editorState,
-    parent: editorMount.value,
-  });
-
-  view.contentDOM.onblur = () => {
-    draftValue.value = autoformat(draftValue.value);
-    emit("blur", draftValue.value);
-  };
 
   for (const key in window.localStorage) {
     if (key.startsWith("code-mirror-state-")) {
@@ -389,17 +458,11 @@ watch(
     () => props.disabled,
     () => props.json,
     () => props.noLint,
+    () => authStore.user?.name,
     editorMount,
   ],
   mountEditor,
 );
-
-function onLocalSave() {
-  draftValue.value = autoformat(draftValue.value);
-  emitUpdatedValue();
-  emit("blur", draftValue.value);
-  return true; // codemirror needs this when used as a "command"
-}
 
 function onVimExit() {
   emit("close");

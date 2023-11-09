@@ -45,8 +45,10 @@ tower-http = { workspace = true }
 ulid = { workspace = true }
 url = { workspace = true }
 veritech-client = { path = "../../lib/veritech-client" }
+y-sync = { workspace = true }
 
 [dev-dependencies]
+yrs = { workspace = true }
 dal-test = { path = "../../lib/dal-test" }
 pretty_assertions_sorted = { workspace = true }
 serde_url_params = { workspace = true }

@@ -7,12 +7,10 @@
         </label>
 
         <CodeEditor
-          :id="id"
           v-model="currentValue"
-          :disabled="disabled"
+          disabled
           class="cursor-pointer"
           @click="editorModalRef?.open()"
-          @blur="blur"
         />
 
         <div
@@ -73,13 +71,15 @@ import {
   usePropertyEditorValidations,
 } from "@/utils/input_validations";
 import { useComponentsStore } from "@/store/components.store";
+import { useAuthStore } from "@/store/auth.store";
 import UnsetButton from "./UnsetButton.vue";
 
 const componentsStore = useComponentsStore();
+const authStore = useAuthStore();
 
 const id = computed(() =>
   componentsStore.selectedComponentId
-    ? `value-${componentsStore.selectedComponentId}-${props.propId}`
+    ? `value-${componentsStore.selectedComponentId}-${props.propId}-${authStore.user?.pk}`
     : undefined,
 );
 

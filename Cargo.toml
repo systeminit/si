@@ -145,6 +145,8 @@ url = { version = "2.3.1", features = ["serde"] }
 uuid = { version = "1.3.2", features = ["serde", "v4"] }
 vfs = "0.9.0"
 vfs-tar = { version = "0.4.0", features = ["mmap"] }
+yrs = { version = "0.16" }
+y-sync = { version = "0.3.1", features = ["net"] }
 
 [patch.crates-io]
 # pending a potential merge and release of

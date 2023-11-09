@@ -19,7 +19,7 @@
         :id="selectedFuncDetails ? `func-${selectedFuncDetails.id}` : undefined"
         v-model="editingFunc"
         :typescript="selectedFuncDetails?.types"
-        @change="updateFuncCode"
+        @save="updateFuncCode"
         @close="emit('close')"
       />
     </template>
