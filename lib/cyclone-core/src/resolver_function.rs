@@ -40,6 +40,7 @@ pub enum ResolverFunctionResponseType {
     String,
     #[default]
     Unset,
+    Void,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

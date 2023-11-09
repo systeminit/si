@@ -97,6 +97,7 @@ pub enum FuncSpecBackendResponseType {
     String,
     Unset,
     Validation,
+    Void,
 }
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
