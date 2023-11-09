@@ -585,7 +585,17 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
 
             (
                 Some(FuncAssociations::Authentication { schema_variant_ids }),
-                "type Input = Record<string, unknown>;".to_owned(),
+                concat!(
+                    "type Input = Record<string, unknown>;\n",
+                    "\n",
+                    "declare namespace requestStorage {\n",
+                    "    function setEnv(key: string, value: any);\n",
+                    "    function setItem(key: string, value: any);\n",
+                    "    function deleteEnv(key: string);\n",
+                    "    function deleteItem(key: string);\n",
+                    "}",
+                )
+                .to_owned(),
             )
         }
         _ => (None, String::new()),
@@ -666,6 +676,7 @@ pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) 
         FuncBackendResponseType::Map => "type Output = Record<string, any>;",
         FuncBackendResponseType::Object => "type Output = any;",
         FuncBackendResponseType::Unset => "type Output = undefined | null;",
+        FuncBackendResponseType::Void => "type Output = void;",
         FuncBackendResponseType::SchemaVariantDefinition => concat!(
             include_str!("./ts_types/asset_builder.d.ts"),
             "\n",
@@ -727,6 +738,7 @@ pub fn compile_return_types_2(ty: FuncBackendResponseType, kind: FuncBackendKind
         FuncBackendResponseType::Map => "type Output = Record<string, any>;",
         FuncBackendResponseType::Object => "type Output = any;",
         FuncBackendResponseType::Unset => "type Output = undefined | null;",
+        FuncBackendResponseType::Void => "type Output = void;",
         FuncBackendResponseType::SchemaVariantDefinition => concat!(
             include_str!("./ts_types/asset_types_with_secrets.d.ts"),
             "\n",
@@ -907,6 +919,13 @@ fn langjs_types() -> &'static str {
 
     declare namespace zlib {
         function gzip(inputstr: string, callback: any);
+    }
+
+    declare namespace requestStorage {
+        function getEnv(key: string): string;
+        function getItem(key: string): any;
+        function getEnvKeys(): string[];
+        function getKeys(): string[];
     }
 
     declare namespace siExec {

@@ -315,7 +315,7 @@ async fn create_authentication_func(
         ctx,
         name,
         FuncVariant::Authentication,
-        FuncBackendResponseType::Unset,
+        FuncBackendResponseType::Void,
         DEFAULT_AUTHENTICATION_CODE,
         DEFAULT_CODE_HANDLER,
     )

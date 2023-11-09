@@ -123,6 +123,7 @@ pub enum FuncBackendResponseType {
     String,
     Unset,
     Validation,
+    Void,
 }
 
 impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
@@ -140,6 +141,7 @@ impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
             ResolverFunctionResponseType::String => FuncBackendResponseType::String,
             ResolverFunctionResponseType::Unset => FuncBackendResponseType::Unset,
             ResolverFunctionResponseType::Json => FuncBackendResponseType::Json,
+            ResolverFunctionResponseType::Void => FuncBackendResponseType::Void,
         }
     }
 }
@@ -174,6 +176,7 @@ impl TryFrom<FuncBackendResponseType> for ResolverFunctionResponseType {
             FuncBackendResponseType::SchemaVariantDefinition => {
                 return Err(InvalidResolverFunctionTypeError(value))
             }
+            FuncBackendResponseType::Void => ResolverFunctionResponseType::Void,
         };
         Ok(value)
     }
