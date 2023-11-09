@@ -115,14 +115,14 @@ pub struct FuncGraphNode {
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
+// TODO(nick,jacob,zack): decide if this will work with postcard.
+// #[serde(tag = "version")]
 pub enum FuncContent {
     V1(FuncContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct FuncContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
     pub display_name: Option<String>,
     pub description: Option<String>,

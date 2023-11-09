@@ -10,6 +10,7 @@ rust_library(
         "//third-party/rust:blake3",
         "//third-party/rust:chrono",
         "//third-party/rust:color-eyre",
+        "//third-party/rust:postcard",
         "//third-party/rust:refinery",
         "//third-party/rust:remain",
         "//third-party/rust:serde",

@@ -1,9 +1,10 @@
-use crate::hash::{ContentHash, ContentHashParseError};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgPool, PgPoolError, PgRow};
 use std::str::FromStr;
 use thiserror::Error;
+
+use crate::hash::{ContentHash, ContentHashParseError};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -14,8 +15,6 @@ pub enum ContentPairError {
     Pg(#[from] PgError),
     #[error("pg pool error: {0}")]
     PgPool(#[from] PgPoolError),
-    #[error("serde json error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
 }
 
 pub(crate) type ContentPairResult<T> = Result<T, ContentPairError>;
@@ -24,8 +23,7 @@ pub(crate) type ContentPairResult<T> = Result<T, ContentPairError>;
 pub(crate) struct ContentPair {
     key: String,
     created_at: DateTime<Utc>,
-    /// Serialized CBOR bytes.
-    value: serde_json::Value,
+    value: Vec<u8>,
 }
 
 impl TryFrom<PgRow> for ContentPair {
@@ -41,7 +39,7 @@ impl TryFrom<PgRow> for ContentPair {
 }
 
 impl ContentPair {
-    pub(crate) fn value(&self) -> &serde_json::Value {
+    pub(crate) fn value(&self) -> &[u8] {
         &self.value
     }
 
@@ -52,7 +50,7 @@ impl ContentPair {
     pub(crate) async fn find_or_create(
         pg_pool: &PgPool,
         key: ContentHash,
-        value: serde_json::Value,
+        value: &[u8],
     ) -> ContentPairResult<Self> {
         let content_pair = match Self::find(pg_pool, &key).await? {
             Some(found_content_pair) => found_content_pair,

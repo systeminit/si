@@ -74,6 +74,7 @@ pathdiff = "0.2.1"
 petgraph = { version = "0.6.3", features = ["serde-1"] }
 pin-project-lite = "0.2.9"
 podman-api = "0.10"
+postcard = { version = "1.0.8", features = ["use-std"] }
 postgres-types = { version = "0.2.5", features = ["derive"] }
 pretty_assertions_sorted = "1.2.1"
 proc-macro2 = "1.0.56"

@@ -1,6 +1,5 @@
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use si_cbor::CborError;
 use si_data_pg::{PgError, PgPoolError};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -15,14 +14,14 @@ pub(crate) mod pg;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum StoreError {
-    #[error("cbor error: {0}")]
-    Cbor(#[from] CborError),
     #[error("content pair error: {0}")]
     ContentPair(#[from] ContentPairError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("pg pool error: {0}")]
     PgPool(#[from] PgPoolError),
+    #[error("postcard error: {0}")]
+    Postcard(#[from] postcard::Error),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }

@@ -21,12 +21,12 @@ pub struct PgStore {
 
 #[derive(Default, Debug, Clone, Eq, PartialEq)]
 struct PgStoreItem {
-    value: serde_json::Value,
+    value: Vec<u8>,
     written: bool,
 }
 
 impl PgStoreItem {
-    fn new(value: serde_json::Value) -> Self {
+    fn new(value: Vec<u8>) -> Self {
         Self {
             value,
             ..Default::default()
@@ -75,8 +75,8 @@ impl Store for PgStore {
     where
         T: Serialize + ?Sized,
     {
-        let value = serde_json::to_value(object)?;
-        let key = ContentHash::new(value.to_string().as_bytes());
+        let value = postcard::to_stdvec(object)?;
+        let key = ContentHash::new(value.as_slice());
         self.inner.insert(key, PgStoreItem::new(value));
         Ok(key)
     }
@@ -86,11 +86,11 @@ impl Store for PgStore {
         T: DeserializeOwned,
     {
         let object = match self.inner.get(key) {
-            Some(item) => serde_json::from_value(item.value.to_owned())?,
+            Some(item) => postcard::from_bytes(&item.value)?,
             None => match ContentPair::find(&self.pg_pool, key).await? {
                 Some(content_pair) => {
                     let encoded = content_pair.value();
-                    let decoded = serde_json::from_value(encoded.to_owned())?;
+                    let decoded = postcard::from_bytes(encoded)?;
                     self.add(encoded)?;
 
                     decoded
@@ -112,7 +112,7 @@ impl Store for PgStore {
         for key in keys {
             match self.inner.get(key) {
                 Some(item) => {
-                    result.insert(*key, serde_json::from_value(item.value.to_owned())?);
+                    result.insert(*key, postcard::from_bytes(&item.value)?);
                 }
                 None => keys_to_fetch.push(*key),
             }
@@ -120,7 +120,7 @@ impl Store for PgStore {
 
         for pair in ContentPair::find_many(&self.pg_pool, keys_to_fetch.as_slice()).await? {
             let encoded = pair.value();
-            result.insert(pair.key()?, serde_json::from_value(encoded.to_owned())?);
+            result.insert(pair.key()?, postcard::from_bytes(encoded)?);
             self.add(encoded)?;
         }
 
@@ -132,8 +132,7 @@ impl Store for PgStore {
     async fn write(&mut self) -> StoreResult<()> {
         for (key, item) in self.inner.iter_mut() {
             if !item.written {
-                ContentPair::find_or_create(&self.pg_pool, key.to_owned(), item.value.clone())
-                    .await?;
+                ContentPair::find_or_create(&self.pg_pool, key.to_owned(), &item.value).await?;
                 item.written = true;
             }
         }

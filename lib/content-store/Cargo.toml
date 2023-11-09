@@ -13,6 +13,7 @@ async-trait = { workspace = true }
 blake3 = { workspace = true }
 chrono = { workspace = true }
 color-eyre = { workspace = true }
+postcard = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }

@@ -35,7 +35,6 @@ use chrono::{DateTime, Utc};
 use content_store::{ContentHash, Store, StoreError};
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
-use si_cbor::CborError;
 use si_data_pg::{PgError, PgRow};
 use std::collections::HashMap;
 use telemetry::prelude::*;
@@ -68,8 +67,6 @@ pub enum WorkspaceSnapshotError {
     AttributeValueMissingPropEdge(AttributeValueId),
     #[error("attribute value {0} missing prototype")]
     AttributeValueMissingPrototype(AttributeValueId),
-    #[error("cbor error: {0}")]
-    Cbor(#[from] CborError),
     #[error("change set pointer error: {0}")]
     ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
@@ -90,6 +87,8 @@ pub enum WorkspaceSnapshotError {
     Pg(#[from] PgError),
     #[error("poison error: {0}")]
     Poison(String),
+    #[error("postcard error: {0}")]
+    Postcard(#[from] postcard::Error),
     #[error("Array or map prop missing element prop: {0}")]
     PropMissingElementProp(PropId),
     #[error("Array or map prop has more than one child prop: {0}")]
@@ -209,7 +208,7 @@ impl WorkspaceSnapshot {
         ctx.content_store().lock().await.write().await?;
 
         // Stamp the new workspace snapshot.
-        let serialized_snapshot = si_cbor::encode(&working_copy)?;
+        let serialized_snapshot = postcard::to_stdvec(&working_copy)?;
         let row = ctx
             .txns()
             .await?
@@ -236,7 +235,7 @@ impl WorkspaceSnapshot {
 
     fn working_copy(&mut self) -> WorkspaceSnapshotResult<&mut WorkspaceSnapshotGraph> {
         if self.working_copy.is_none() {
-            self.working_copy = Some(si_cbor::decode(&self.snapshot)?);
+            self.working_copy = Some(postcard::from_bytes(&self.snapshot)?);
         }
         self.working_copy
             .as_mut()

@@ -30,6 +30,7 @@ object-tree = { path = "../../lib/object-tree" }
 once_cell = { workspace = true }
 paste = { workspace = true }
 petgraph = { workspace = true }
+postcard = { version = "1.0.8", features = ["alloc"] }
 postgres-types = { workspace = true }
 rand = { workspace = true }
 rebaser-client = { path = "../../lib/rebaser-client" }

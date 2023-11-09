@@ -39,6 +39,7 @@ rust_library(
         "//third-party/rust:once_cell",
         "//third-party/rust:paste",
         "//third-party/rust:petgraph",
+        "//third-party/rust:postcard",
         "//third-party/rust:postgres-types",
         "//third-party/rust:pretty_assertions_sorted",
         "//third-party/rust:rand",
