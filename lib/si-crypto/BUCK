@@ -5,6 +5,8 @@ rust_library(
     deps = [
         "//lib/si-hash:si-hash",
         "//lib/si-std:si-std",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:base64",
         "//third-party/rust:ciborium",
         "//third-party/rust:remain",
         "//third-party/rust:serde",

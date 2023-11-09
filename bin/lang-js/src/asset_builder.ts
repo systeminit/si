@@ -351,6 +351,7 @@ export type PropWidgetDefinitionKind =
   | "comboBox"
   | "header"
   | "map"
+  | "password"
   | "secret"
   | "select"
   | "text"

@@ -7,18 +7,21 @@ use si_data_pg::PgError;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech_client::CycloneValueEncryptError;
 
 use crate::func::argument::FuncArgumentError;
 use crate::{
     generate_unique_id, impl_standard_model, pk, standard_model, standard_model_accessor,
-    standard_model_accessor_ro, DalContext, FuncBinding, HistoryEventError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility, WorkspacePk,
+    standard_model_accessor_ro, DalContext, FuncBinding, HistoryEventError, SecretError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
+    WorkspacePk,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
 pub mod argument;
 pub mod backend;
+pub mod before;
 pub mod binding;
 pub mod binding_return_value;
 pub mod execution;
@@ -32,6 +35,8 @@ pub fn is_intrinsic(name: &str) -> bool {
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncError {
+    #[error("cyclone value encrypt error: {0}")]
+    CycloneValueEncrypt(#[from] CycloneValueEncryptError),
     #[error("error decoding code_base64: {0}")]
     Decode(#[from] base64::DecodeError),
     #[error("utf8 encoding error: {0}")]
@@ -52,6 +57,10 @@ pub enum FuncError {
     IntrinsicParse(String),
     #[error("intrinsic spec creation error {0}")]
     IntrinsicSpecCreation(String),
+    #[error("Function missing expected code: {0}")]
+    MissingCode(FuncId),
+    #[error("Function missing expected handler: {0}")]
+    MissingHandler(FuncId),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("could not find func by id: {0}")]
@@ -60,6 +69,8 @@ pub enum FuncError {
     NotFoundByName(String),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("secret error: {0}")]
+    Secret(#[from] SecretError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]

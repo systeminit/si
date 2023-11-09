@@ -1,19 +1,23 @@
+use std::collections::HashMap;
+
 use axum::{extract::Query, Json};
+use serde::{Deserialize, Serialize};
+
 use dal::func::backend::js_reconciliation::{
     ReconciliationDiff, ReconciliationDiffDomain, ReconciliationResult,
 };
+use dal::func::before::before_funcs_for_component;
 use dal::{
     AttributeReadContext, AttributeValue, AttributeView, Component, ComponentId,
-    ExternalProviderId, Func, FuncBinding, FuncError, InternalProviderId, Prop,
-    ReconciliationPrototype, ReconciliationPrototypeContext, StandardModel, Visibility,
+    ExternalProviderId, FuncBinding, InternalProviderId, Prop, ReconciliationPrototype,
+    ReconciliationPrototypeContext, StandardModel, Visibility,
 };
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use telemetry::prelude::*;
 
-use super::ComponentResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::component::ComponentError;
+
+use super::ComponentResult;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -106,25 +110,23 @@ pub async fn get_diff(
                 AttributeView::new(ctx, view_context, Some(*domain_prop_av.id())).await?;
 
             if let Some(func_id) = prop.diff_func_id() {
-                let func = Func::get_by_id(ctx, func_id)
-                    .await?
-                    .ok_or(FuncError::NotFound(*func_id))?;
-                let func_binding = FuncBinding::new(
-                    ctx,
-                    serde_json::json!({
-                        "first": domain_prop_view.value(),
-                        "second": resource_prop_view.value(),
-                    }),
-                    *func.id(),
-                    *func.backend_kind(),
-                )
-                .await?;
-                let diff_value = func_binding
-                    .execute(ctx)
-                    .await?
-                    .value()
-                    .cloned()
-                    .unwrap_or(serde_json::Value::Null);
+                let diff_value = {
+                    let (_, func_binding_return_value) = FuncBinding::create_and_execute(
+                        ctx,
+                        serde_json::json!({
+                            "first": domain_prop_view.value(),
+                            "second": resource_prop_view.value(),
+                        }),
+                        *func_id,
+                        vec![],
+                    )
+                    .await?;
+
+                    func_binding_return_value
+                        .value()
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null)
+                };
 
                 let diff_value = DiffValue::deserialize(&diff_value)?;
 
@@ -155,14 +157,17 @@ pub async fn get_diff(
             ReconciliationPrototype::find_for_context(ctx, context).await?
         {
             let func = reconciliation_prototype.func(ctx).await?;
-            let func_binding = FuncBinding::new(
+
+            let before = before_funcs_for_component(ctx, component.id()).await?;
+
+            let (_, func_binding_return_value) = FuncBinding::create_and_execute(
                 ctx,
                 serde_json::to_value(&diff)?,
                 *func.id(),
-                *func.backend_kind(),
+                before,
             )
             .await?;
-            let func_binding_return_value = func_binding.execute(ctx).await?;
+
             let reconciliation = ReconciliationResult::deserialize(
                 func_binding_return_value
                     .value()

@@ -15,7 +15,8 @@ use si_std::{CanonicalFile, CanonicalFileError, SensitiveString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-pub use dal::{CycloneKeyPair, MigrationMode};
+pub use dal::MigrationMode;
+pub use si_crypto::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
 const DEFAULT_SIGNUP_SECRET: &str = "cool-steam";

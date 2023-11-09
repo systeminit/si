@@ -452,10 +452,10 @@ mod tests {
     use base64::{engine::general_purpose, Engine};
     use buck2_resources::Buck2Resources;
     use cyclone_core::{
-        ComponentKind, ComponentView, FunctionResult, ProgressMessage, ResolverFunctionComponent,
-        ValidationRequest,
+        ComponentKind, ComponentView, CycloneDecryptionKey, FunctionResult, ProgressMessage,
+        ResolverFunctionComponent, ValidationRequest,
     };
-    use cyclone_server::{Config, ConfigBuilder, DecryptionKey, Server, UdsIncomingStream};
+    use cyclone_server::{Config, ConfigBuilder, Server, UdsIncomingStream};
     use futures::StreamExt;
     use hyper::server::conn::AddrIncoming;
     use serde_json::json;
@@ -466,9 +466,9 @@ mod tests {
 
     use super::*;
 
-    fn gen_keys() -> (PublicKey, DecryptionKey) {
+    fn gen_keys() -> (PublicKey, CycloneDecryptionKey) {
         let (pkey, skey) = sodiumoxide::crypto::box_::gen_keypair();
-        (pkey, DecryptionKey::from(skey))
+        (pkey, CycloneDecryptionKey::from(skey))
     }
 
     fn rand_uds() -> TempPath {
@@ -518,7 +518,7 @@ mod tests {
     async fn uds_server(
         builder: &mut ConfigBuilder,
         tmp_socket: &TempPath,
-        key: DecryptionKey,
+        key: CycloneDecryptionKey,
     ) -> Server<UdsIncomingStream, PathBuf> {
         let config = builder
             .unix_domain_socket(tmp_socket)
@@ -535,7 +535,7 @@ mod tests {
     async fn uds_client_for_running_server(
         builder: &mut ConfigBuilder,
         tmp_socket: &TempPath,
-        key: DecryptionKey,
+        key: CycloneDecryptionKey,
     ) -> UdsClient {
         let server = uds_server(builder, tmp_socket, key).await;
         let path = server.local_socket().clone();
@@ -546,7 +546,7 @@ mod tests {
 
     async fn http_server(
         builder: &mut ConfigBuilder,
-        key: DecryptionKey,
+        key: CycloneDecryptionKey,
     ) -> Server<AddrIncoming, SocketAddr> {
         let config = builder
             .http_socket("127.0.0.1:0")
@@ -561,7 +561,7 @@ mod tests {
 
     async fn http_client_for_running_server(
         builder: &mut ConfigBuilder,
-        key: DecryptionKey,
+        key: CycloneDecryptionKey,
     ) -> HttpClient {
         let server = http_server(builder, key).await;
         let socket = *server.local_socket();
@@ -788,6 +788,7 @@ mod tests {
                     return v;
                 }"#,
             ),
+            before: vec![],
         };
 
         // Start the protocol
@@ -889,6 +890,7 @@ mod tests {
                     return v;
                 }"#,
             ),
+            before: vec![],
         };
 
         // Start the protocol
@@ -971,6 +973,7 @@ mod tests {
                     }
                 }",
             ),
+            before: vec![],
         };
         let mut progress = client
             .execute_validation(req)
@@ -1068,6 +1071,7 @@ mod tests {
                     return { status: 'ok' };
                 }"#,
             ),
+            before: vec![],
         };
 
         // Start the protocol
@@ -1154,6 +1158,7 @@ mod tests {
                     return { status: 'ok' };
                 }"#,
             ),
+            before: vec![],
         };
 
         // Start the protocol
@@ -1240,6 +1245,7 @@ mod tests {
                     return { updates: { "myid": true }, actions: ["run"] };
                 }"#,
             ),
+            before: vec![],
         };
 
         // Start the protocol
@@ -1316,6 +1322,7 @@ mod tests {
                     return { updates: { "myid": true }, actions: ["run"] };
                 }"#,
             ),
+            before: vec![],
         };
 
         // Start the protocol

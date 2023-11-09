@@ -61,18 +61,16 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext) {
         .await
         .expect("cannot create func argument");
     let args = FuncBackendStringArgs::new("starfield".to_string());
-    let func_binding = FuncBinding::new(
+
+    let (func_binding, func_binding_return_value) = FuncBinding::create_and_execute(
         ctx,
         serde_json::to_value(args).expect("cannot turn args into json"),
         *func.id(),
-        *func.backend_kind(),
+        vec![],
     )
     .await
-    .expect("cannot create function binding");
-    let func_binding_return_value = func_binding
-        .execute(ctx)
-        .await
-        .expect("failed to execute func binding");
+    .expect("failed to execute func binding");
+
     let context = AttributeContext::builder()
         .set_prop_id(*name_prop.id())
         .to_context()

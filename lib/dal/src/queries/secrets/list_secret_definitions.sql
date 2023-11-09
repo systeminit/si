@@ -1,11 +1,15 @@
 SELECT json_build_object(
                'secret_definition', prop_secret.name,
                'form_data', json_agg(
-                       json_build_object('name', fields.name, 'kind', fields.kind, 'widget_kind', fields.widget_kind,
-                                         'widget_options', fields.widget_options)
+                       json_build_object(
+                               'name', fields.name,
+                               'kind', fields.kind,
+                               'widget_kind', json_build_object(
+                                       'kind', fields.widget_kind,
+                                       'options', fields.widget_options))
                    )) AS object
 FROM props_v1($1, $2) prop_definition
-         JOIN prop_belongs_to_prop pbtp ON prop_definition.id = pbtp.belongs_to_id
+         JOIN prop_belongs_to_prop_v1($1, $2) pbtp ON prop_definition.id = pbtp.belongs_to_id
          JOIN props_v1($1, $2) fields ON fields.id = pbtp.object_id
 
          JOIN props_v1($1, $2) prop_secret ON

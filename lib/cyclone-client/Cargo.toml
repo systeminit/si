@@ -6,8 +6,8 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
-cyclone-core = { path = "../../lib/cyclone-core" }
 async-trait = { workspace = true }
+cyclone-core = { path = "../../lib/cyclone-core" }
 futures = { workspace = true }
 futures-lite = { workspace = true }
 http = { workspace = true }

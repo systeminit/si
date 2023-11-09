@@ -68,9 +68,9 @@ import { storeToRefs } from "pinia";
 import * as _ from "lodash-es";
 import {
   Collapsible,
+  ErrorMessage,
   RequestStatusMessage,
   ScrollArea,
-  ErrorMessage,
 } from "@si/vue-lib/design-system";
 import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SiSearch from "@/components/SiSearch.vue";
@@ -105,6 +105,7 @@ const funcsByVariant = computed(() =>
 );
 
 const createFuncReqStatus = funcStore.getRequestStatus("CREATE_FUNC");
+
 async function createNewFunc(variant: FuncVariant) {
   const createReq = await funcStore.CREATE_FUNC({ variant });
   if (createReq.result.success) {

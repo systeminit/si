@@ -105,6 +105,7 @@ async fn executes_simple_resolver_function() {
         code_base64: base64_encode(
             "function numberOfInputs(input) { return Object.keys(input)?.length ?? 0; }",
         ),
+        before: vec![],
     };
 
     let result = client
@@ -171,6 +172,7 @@ async fn type_checks_resolve_function() {
             },
             response_type,
             code_base64: base64_encode("function returnInputValue(input) { return input.value; }"),
+            before: vec![],
         };
 
         let result = client
@@ -232,6 +234,7 @@ async fn type_checks_resolve_function() {
             },
             response_type: response_type.clone(),
             code_base64: base64_encode("function returnInputValue(input) { return input.value; }"),
+            before: vec![],
         };
 
         let result = client
@@ -274,6 +277,7 @@ async fn executes_simple_validation() {
         code_base64: base64_encode(
             "function isThirtyThree(value) { return { valid: value === 33 }; };",
         ),
+        before: vec![],
     };
 
     let result = client

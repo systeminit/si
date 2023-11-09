@@ -6,7 +6,9 @@ use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use veritech_client::{FunctionResult, OutputStream, ValidationRequest, ValidationResultSuccess};
+use veritech_client::{
+    BeforeFunction, FunctionResult, OutputStream, ValidationRequest, ValidationResultSuccess,
+};
 
 #[derive(Debug, Clone)]
 pub struct FuncBackendJsValidation {
@@ -35,12 +37,14 @@ impl FuncDispatch for FuncBackendJsValidation {
         code_base64: &str,
         handler: &str,
         args: Self::Args,
+        before: Vec<BeforeFunction>,
     ) -> Box<Self> {
         let request = ValidationRequest {
             execution_id: "johnwick".to_string(),
             handler: handler.into(),
             code_base64: code_base64.to_owned(),
             value: args.value,
+            before,
         };
 
         Box::new(Self { context, request })

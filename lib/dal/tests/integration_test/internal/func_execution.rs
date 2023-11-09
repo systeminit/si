@@ -3,7 +3,7 @@ use dal::{
         backend::string::FuncBackendStringArgs,
         execution::{FuncExecution, FuncExecutionState},
     },
-    DalContext, StandardModel,
+    DalContext, FuncBinding, StandardModel,
 };
 use dal_test::{
     test,
@@ -74,12 +74,15 @@ async fn set_output_stream(ctx: &DalContext) {
 async fn process_return_value(ctx: &DalContext) {
     let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("slayer".to_string());
-    let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
-    let func_binding = create_func_binding(ctx, args_json, *func.id(), *func.backend_kind()).await;
-    let func_binding_return_value = func_binding
-        .execute(ctx)
-        .await
-        .expect("cannot execute binding");
+
+    let (func_binding, func_binding_return_value) = FuncBinding::create_and_execute(
+        ctx,
+        serde_json::to_value(args).expect("cannot turn args into json"),
+        *func.id(),
+        vec![],
+    )
+    .await
+    .expect("failed to execute func binding");
 
     let mut execution = FuncExecution::new(ctx, &func, &func_binding)
         .await

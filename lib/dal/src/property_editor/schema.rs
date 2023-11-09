@@ -143,6 +143,7 @@ pub enum PropertyEditorPropWidgetKind {
     ComboBox { options: Option<Value> },
     Header,
     Map,
+    Password,
     Secret { options: Option<Value> },
     Select { options: Option<Value> },
     Text,
@@ -167,6 +168,7 @@ pub enum WidgetKind {
     ComboBox,
     Header,
     Map,
+    Password,
     Secret,
     /// Provides a select box for corresponding "primitive" (e.g. string, number, boolean)
     /// [`PropKinds`](crate::PropKind).
@@ -183,6 +185,7 @@ impl From<WidgetKind> for PropSpecWidgetKind {
             WidgetKind::CodeEditor => Self::CodeEditor,
             WidgetKind::Header => Self::Header,
             WidgetKind::Map => Self::Map,
+            WidgetKind::Password => Self::Password,
             WidgetKind::Select => Self::Select,
             WidgetKind::Color => Self::Color,
             WidgetKind::Secret => Self::Secret,
@@ -201,6 +204,7 @@ impl From<&PropSpecWidgetKind> for WidgetKind {
             PropSpecWidgetKind::CodeEditor => Self::CodeEditor,
             PropSpecWidgetKind::Header => Self::Header,
             PropSpecWidgetKind::Map => Self::Map,
+            PropSpecWidgetKind::Password => Self::Password,
             PropSpecWidgetKind::Select => Self::Select,
             PropSpecWidgetKind::Color => Self::Color,
             PropSpecWidgetKind::Secret => Self::Secret,
@@ -219,6 +223,7 @@ impl PropertyEditorPropWidgetKind {
             WidgetKind::CodeEditor => Self::CodeEditor,
             WidgetKind::Header => Self::Header,
             WidgetKind::Map => Self::Map,
+            WidgetKind::Password => Self::Password,
             WidgetKind::Select => Self::Select {
                 options: widget_options,
             },

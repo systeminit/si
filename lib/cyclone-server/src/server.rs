@@ -5,6 +5,7 @@ use std::{
 };
 
 use axum::routing::{IntoMakeService, Router};
+use cyclone_core::{CycloneDecryptionKey, CycloneDecryptionKeyError};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::{prelude::*, TelemetryLevel};
@@ -17,8 +18,8 @@ use tokio::{
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use crate::{
-    routes::routes, state::AppState, Config, DecryptionKey, DecryptionKeyError, IncomingStream,
-    UdsIncomingStream, UdsIncomingStreamError,
+    routes::routes, state::AppState, Config, IncomingStream, UdsIncomingStream,
+    UdsIncomingStreamError,
 };
 
 #[remain::sorted]
@@ -27,7 +28,7 @@ pub enum ServerError {
     #[error(transparent)]
     CanonicalFile(#[from] CanonicalFileError),
     #[error(transparent)]
-    DecryptionKey(#[from] DecryptionKeyError),
+    DecryptionKey(#[from] CycloneDecryptionKeyError),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
     #[error("failed to setup signal handler")]
@@ -51,7 +52,7 @@ impl Server<(), ()> {
     pub fn http(
         config: Config,
         telemetry_level: Box<dyn TelemetryLevel>,
-        decryption_key: DecryptionKey,
+        decryption_key: CycloneDecryptionKey,
     ) -> Result<Server<AddrIncoming, SocketAddr>> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
@@ -79,7 +80,7 @@ impl Server<(), ()> {
     pub async fn uds(
         config: Config,
         telemetry_level: Box<dyn TelemetryLevel>,
-        decryption_key: DecryptionKey,
+        decryption_key: CycloneDecryptionKey,
     ) -> Result<Server<UdsIncomingStream, PathBuf>> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
@@ -105,11 +106,11 @@ impl Server<(), ()> {
         }
     }
 
-    pub async fn load_decryption_key(key_path: &Path) -> Result<DecryptionKey> {
+    pub async fn load_decryption_key(key_path: &Path) -> Result<CycloneDecryptionKey> {
         // Ensure the key path is canonicalized and exists
         let path = CanonicalFile::try_from(key_path)?;
 
-        let key = DecryptionKey::load(path.as_path()).await?;
+        let key = CycloneDecryptionKey::load(path.as_path()).await?;
         Ok(key)
     }
 }
@@ -145,7 +146,7 @@ where
 fn build_service(
     config: &Config,
     telemetry_level: Box<dyn TelemetryLevel>,
-    decryption_key: DecryptionKey,
+    decryption_key: CycloneDecryptionKey,
 ) -> Result<(IntoMakeService<Router>, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
 

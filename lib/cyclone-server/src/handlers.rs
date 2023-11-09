@@ -25,7 +25,7 @@ use telemetry::prelude::*;
 use super::extract::LimitRequestGuard;
 use crate::{
     execution::{self, Execution},
-    request::{DecryptRequest, ListSecrets},
+    request::DecryptRequest,
     result::{
         LangServerActionRunResultSuccess, LangServerReconciliationResultSuccess,
         LangServerResolverFunctionResultSuccess, LangServerValidationResultSuccess,
@@ -220,14 +220,14 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     mut socket: WebSocket,
     lang_server_path: PathBuf,
     lang_server_debugging: bool,
-    key: Arc<crate::DecryptionKey>,
+    key: Arc<cyclone_core::CycloneDecryptionKey>,
     _limit_request_guard: LimitRequestGuard,
     sub_command: String,
     _request_marker: PhantomData<Request>,
     _lang_server_success_marker: PhantomData<LangServerSuccess>,
     success_marker: PhantomData<Success>,
 ) where
-    Request: DecryptRequest + ListSecrets + Serialize + DeserializeOwned + Unpin + fmt::Debug,
+    Request: DecryptRequest + Serialize + DeserializeOwned + Unpin + fmt::Debug,
     Success: Serialize + Unpin + fmt::Debug,
     LangServerSuccess: Serialize + DeserializeOwned + Unpin + fmt::Debug + Into<Success>,
 {

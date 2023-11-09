@@ -16,13 +16,13 @@ import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
 
 import {
-  FuncAssociations,
-  InputSourceSocket,
-  InputSourceProp,
-  OutputSocket,
-  CreateFuncOptions,
   AttributePrototypeView,
+  CreateFuncOptions,
+  FuncAssociations,
+  InputSourceProp,
+  InputSourceSocket,
   OutputLocation,
+  OutputSocket,
 } from "./types";
 import { useRouterStore } from "../router.store";
 
