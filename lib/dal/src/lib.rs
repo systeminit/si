@@ -146,6 +146,8 @@ pub enum ModelError {
     #[error("builtins error: {0}")]
     Builtins(#[from] BuiltinsError),
     #[error(transparent)]
+    ContentStorePg(#[from] content_store::StoreError),
+    #[error(transparent)]
     Migration(#[from] PgPoolError),
     #[error(transparent)]
     Nats(#[from] NatsError),
@@ -192,7 +194,9 @@ pub async fn migrate_all_with_progress(services_context: &ServicesContext) -> Mo
 
 #[instrument(skip_all)]
 pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
-    Ok(pg.migrate(embedded::migrations::runner()).await?)
+    content_store::PgStore::migrate().await?;
+    pg.migrate(embedded::migrations::runner()).await?;
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]

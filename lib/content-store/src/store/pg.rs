@@ -44,13 +44,20 @@ impl PgStore {
     }
 
     /// Create a new [`PgStore`] from a given [`PgPool`].
-    pub async fn new_production_with_migration() -> StoreResult<Self> {
+    pub async fn new_production() -> StoreResult<Self> {
         let pg_pool = PgStoreTools::new_production_pg_pool().await?;
-        //PgStoreTools::migrate(&pg_pool).await?;
         Ok(Self {
             inner: Default::default(),
             pg_pool,
         })
+    }
+
+    /// Migrate the content store database
+    pub async fn migrate() -> StoreResult<()> {
+        let pg_pool = PgStoreTools::new_production_pg_pool().await?;
+        PgStoreTools::migrate(&pg_pool).await?;
+
+        Ok(())
     }
 }
 
