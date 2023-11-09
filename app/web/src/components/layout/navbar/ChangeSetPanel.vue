@@ -5,6 +5,7 @@
 
       <div class="flex-grow flex gap-2.5">
         <VormInput
+          ref="dropdownRef"
           class="flex-grow font-bold"
           size="sm"
           type="dropdown"
@@ -83,6 +84,10 @@
         </div>
       </template>
     </Wipe>
+    <ChangeSetAppliedPopover
+      ref="changeSetAppliedRef"
+      :anchorTo="dropdownRef"
+    />
   </div>
 </template>
 
@@ -98,11 +103,15 @@ import {
   Modal,
   useValidatedInputGroup,
 } from "@si/vue-lib/design-system";
+import { storeToRefs } from "pinia";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useFixesStore } from "@/store/fixes.store";
 import Wipe from "../../Wipe.vue";
+import ChangeSetAppliedPopover from "./ChangeSetAppliedPopover.vue";
 
+const dropdownRef = ref();
+const changeSetAppliedRef = ref();
 const wipeRef = ref<InstanceType<typeof Wipe>>();
 
 const changeSetsStore = useChangeSetsStore();
@@ -187,4 +196,21 @@ function openCreateModal() {
   createChangeSetName.value = changeSetsStore.getGeneratedChangesetName();
   createModalRef.value?.open();
 }
+
+const openChangeSetAppliedPopover = () => {
+  const dropDownRect = dropdownRef.value.inputRef.getBoundingClientRect();
+
+  changeSetAppliedRef.value.openAt({
+    x: dropDownRect.x + dropDownRect.width / 2 - 16,
+    y: dropDownRect.bottom,
+  });
+};
+
+// TODO(Wendy) - Eventually we should replace this to not be reliant on the WSEvent
+const { postApplyActor } = storeToRefs(changeSetsStore);
+watch(postApplyActor, () => {
+  if (postApplyActor.value !== null) {
+    openChangeSetAppliedPopover();
+  }
+});
 </script>

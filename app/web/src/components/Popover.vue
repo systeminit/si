@@ -3,7 +3,13 @@
     <div
       ref="internalRef"
       :style="computedStyle"
-      :class="clsx('absolute ml-sm', onTopOfEverything ? 'z-100' : 'z-50')"
+      :class="
+        clsx(
+          'absolute ml-sm',
+          onTopOfEverything ? 'z-100' : 'z-50',
+          isRepositioning && 'invisible',
+        )
+      "
     >
       <slot />
     </div>
@@ -42,6 +48,9 @@ const props = defineProps({
 
   // go on top of all elements, including the navbar and statusbar
   onTopOfEverything: { type: Boolean },
+
+  // act like a Modal that cannot be closed
+  noExit: { type: Boolean },
 });
 
 const internalRef = ref<HTMLElement>();
@@ -52,8 +61,11 @@ const anchorPos = ref<{ x: number; y: number }>();
 
 function onWindowMousedown(e: MouseEvent) {
   requestAnimationFrame(() => {
-    if (e.target instanceof Element && internalRef.value?.contains(e.target)) {
-      return; // Don't close on click inside popover
+    if (
+      (e.target instanceof Element && internalRef.value?.contains(e.target)) ||
+      props.noExit
+    ) {
+      return; // Don't close on click inside popover or if noExit is set
     }
 
     close();
@@ -62,6 +74,7 @@ function onWindowMousedown(e: MouseEvent) {
 
 function onKeyboardEvent(e: KeyboardEvent) {
   if (e.key === "Escape") {
+    if (props.noExit) return;
     close();
   }
 }
@@ -100,6 +113,15 @@ function open(e?: MouseEvent, anchorToMouse?: boolean) {
     // shouldn't happen...?
     anchorEl.value = undefined;
   }
+
+  isRepositioning.value = true;
+  isOpen.value = true;
+
+  nextFrame(finishOpening);
+}
+
+function openAt(pos: { x: number; y: number }) {
+  anchorPos.value = pos;
 
   isRepositioning.value = true;
   isOpen.value = true;
@@ -198,5 +220,5 @@ onUnmounted(() => {
   window.removeEventListener("resize", closeOnResize);
 });
 
-defineExpose({ open, close, isOpen });
+defineExpose({ open, openAt, close, isOpen });
 </script>

@@ -13,6 +13,7 @@ const FLAG_MAPPING = {
   FUNC_TEST_PANEL: "func_test_panel",
   AUTO_REATTACH_FUNCTIONS: "auto_reattach_functions",
   COLLABORATORS: "collaborators",
+  MUTLIPLAYER_CHANGESET_APPLY: "multiplayer_changeset_apply_flow",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
