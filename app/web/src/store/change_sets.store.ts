@@ -9,6 +9,7 @@ import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import router from "@/router";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
+import { useFeatureFlagsStore } from "./feature_flags.store";
 
 export type ChangeSetId = string;
 
@@ -17,6 +18,7 @@ export function changeSetIdNil(): string {
 }
 
 export function useChangeSetsStore() {
+  const featureFlagsStore = useFeatureFlagsStore();
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
 
@@ -27,6 +29,7 @@ export function useChangeSetsStore() {
         selectedChangeSetId: null as ChangeSetId | null,
         changeSetsWrittenAtById: {} as Record<ChangeSetId, Date>,
         creatingChangeSet: false as boolean,
+        postApplyActor: null as string | null,
       }),
       getters: {
         allChangeSets: (state) => _.values(state.changeSetsById),
@@ -184,11 +187,22 @@ export function useChangeSetsStore() {
           // TODO(Theo/Wendy) - for multiplayer support, we should add code to react if the change set you are using is merged by someone else
           {
             eventType: "ChangeSetApplied",
-            callback: (id) => {
-              const changeSet = this.changeSetsById[id];
+            callback: (data) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const { changeSetPk, actor } = data as any as {
+                changeSetPk: string;
+                actor: string;
+              };
+              const changeSet = this.changeSetsById[changeSetPk];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Applied;
-                this.changeSetsById[id] = changeSet;
+                if (
+                  this.selectedChangeSetId === changeSetPk &&
+                  featureFlagsStore.MUTLIPLAYER_CHANGESET_APPLY
+                ) {
+                  this.postApplyActor = actor;
+                }
+                this.changeSetsById[changeSetPk] = changeSet;
               }
             },
           },

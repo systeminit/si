@@ -42,6 +42,10 @@
         @click="applyChangeSet"
       />
     </Modal>
+    <ChangeSetApplyVotingPopover
+      ref="changeSetApplyVotingPopoverRef"
+      appliedByYou
+    />
   </VButton>
 </template>
 
@@ -55,15 +59,30 @@ import ActionSprite from "@/components/ActionSprite.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
 import { useActionsStore } from "@/store/actions.store";
+import ChangeSetApplyVotingPopover from "./layout/navbar/ChangeSetApplyVotingPopover.vue";
 
 const createModalRef = ref<InstanceType<typeof Modal> | null>(null);
+const changeSetApplyVotingPopoverRef = ref();
 
 const maybeOpenModal = () => {
+  // TODO(Wendy) - voting Popover needs to be put into this flow
+
   if (!changeSetsStore.selectedChangeSet?.actions?.length) {
     applyChangeSet();
   } else {
     createModalRef.value?.open();
   }
+};
+
+// TODO(Wendy) - implement the code that invokes this Popover when appropriate
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const openVotingPopover = () => {
+  const applyButtonRect = applyButtonRef.value.$el.getBoundingClientRect();
+
+  changeSetApplyVotingPopoverRef.value.openAt({
+    x: applyButtonRect.x + applyButtonRect.width / 2 - 16,
+    y: applyButtonRect.bottom,
+  });
 };
 
 const changeSetsStore = useChangeSetsStore();

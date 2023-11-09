@@ -1,14 +1,22 @@
 <template>
+  <!-- Hover styles - hover:bg-action-200 dark:hover:bg-action-500 cursor-pointer -->
   <div
-    class="flex flex-row items-center gap-xs p-xs pl-sm cursor-pointer overflow-hidden hover:bg-action-200 dark:hover:bg-action-500 flex-none"
+    class="flex flex-row items-center gap-xs p-xs pl-sm overflow-hidden flex-none"
   >
-    <UserIcon :user="user" changeSetStarSide />
+    <UserIcon
+      :user="user"
+      changeSetStarSide
+      :hideChangesetStar="hideChangesetInfo"
+    />
 
     <div class="flex flex-col min-w-0">
       <div class="w-full truncate leading-tight">
         {{ user.name }}
       </div>
-      <div class="text-xs font-bold line-clamp-3 break-words">
+      <div
+        v-if="!hideChangesetInfo"
+        class="text-xs font-bold line-clamp-3 break-words"
+      >
         {{
           user.changeset
             ? changeSetsStore.changeSetsById[user.changeset]?.name || "Head"
@@ -32,5 +40,6 @@ const changeSetsStore = useChangeSetsStore();
 
 defineProps({
   user: { type: Object as PropType<UserInfo>, required: true },
+  hideChangesetInfo: { type: Boolean },
 });
 </script>

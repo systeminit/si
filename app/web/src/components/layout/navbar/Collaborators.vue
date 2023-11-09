@@ -8,6 +8,7 @@
       )
     "
   >
+    <!-- Displays all visible users, up to 6 of them -->
     <template v-if="!(showOneIcon && displayUsers.length > 1)">
       <div v-for="(user, index) in displayUsers" :key="index" class="h-8 w-0">
         <UserIcon
@@ -18,6 +19,7 @@
       </div>
     </template>
 
+    <!-- If there are 7 or more users or if the screen is small and there are multiple users, some are put into this menu -->
     <div
       v-if="
         sortedUsers.length !== 1 &&
@@ -51,6 +53,7 @@
         </div>
       </div>
     </div>
+    <!-- Overflow menu for users -->
     <Popover
       ref="moreUsersPopoverRef"
       popDown
@@ -83,6 +86,8 @@
         </div>
       </div>
     </Popover>
+
+    <ChangeSetApplyVotingPopover ref="changeSetApplyVotingPopoverRef" />
   </div>
 </template>
 
@@ -96,6 +101,7 @@ import { usePresenceStore } from "@/store/presence.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
+import ChangeSetApplyVotingPopover from "./ChangeSetApplyVotingPopover.vue";
 
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
@@ -112,7 +118,7 @@ const moreUsersPopoverRef = ref();
 const moreUsersButtonRef = ref();
 
 const users = computed<UserInfo[]>(() => {
-  const list = [];
+  const list = [] as UserInfo[];
   for (const user of _.values(presenceStore.usersById)) {
     list.push({
       name: user.name,
@@ -122,6 +128,19 @@ const users = computed<UserInfo[]>(() => {
       pictureUrl: user.pictureUrl,
     });
   }
+
+  list.push({
+    name: "test user",
+    color: "red",
+    status: "active",
+    changeset: changeSetsStore.selectedChangeSetId || undefined,
+  });
+  list.push({
+    name: "test user 2",
+    color: "green",
+    status: "active",
+    changeset: changeSetsStore.selectedChangeSetId || undefined,
+  });
 
   return list;
 });
@@ -257,4 +276,16 @@ const filteredUsers = computed(() => {
     );
   } else return sortedUsers.value;
 });
+
+// Code for the ChangeSetApplyVotingPopover
+// TODO(Wendy) - Currently this is triggered by clicking on a user, should be tied to Apply Changes via the store
+
+const changeSetApplyVotingPopoverRef = ref();
+
+// TODO(Wendy) - invoke this function when it's time to open the voting Popover for a particular user
+// Also probably need to have functionality to pull a user to the front of the list if they aren't visible on the bar
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const openChangeSetApplyVotingPopover = (e: MouseEvent) => {
+  changeSetApplyVotingPopoverRef.value.open(e);
+};
 </script>

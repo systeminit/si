@@ -1,12 +1,13 @@
 // TODO: remove
 import { ActionInstance } from "@/store/actions.store";
+import { UserId } from "@/store/auth.store";
 
 export enum ChangeSetStatus {
   Open = "Open",
-  Closed = "Closed",
-  Abandoned = "Abandoned",
   Applied = "Applied",
   Failed = "Failed",
+  Closed = "Closed",
+  Abandoned = "Abandoned",
 }
 
 export type ChangeSetId = string;
@@ -16,6 +17,8 @@ export interface ChangeSet {
   name: string;
   actions: ActionInstance[];
   status: ChangeSetStatus;
+  appliedByUserId?: UserId;
+  appliedAt?: IsoDateString;
 }
 
 export type ChangeStatus = "added" | "deleted" | "modified" | "unmodified";

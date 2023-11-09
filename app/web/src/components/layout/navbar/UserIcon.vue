@@ -20,6 +20,7 @@
     />
     <div
       v-if="
+        !hideChangesetStar &&
         changeSetsStore.selectedChangeSetId &&
         changeSetsStore.selectedChangeSetId === user.changeset
       "
@@ -54,6 +55,7 @@ const props = defineProps({
   tooltip: { type: Object },
   user: { type: Object as PropType<UserInfo>, required: true },
   changeSetStarSide: { type: Boolean },
+  hideChangesetStar: { type: Boolean },
 });
 
 const color = computed(() => {

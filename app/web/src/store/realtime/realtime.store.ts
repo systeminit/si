@@ -3,6 +3,7 @@ import * as _ from "lodash-es";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { computed, reactive, ref, watch } from "vue";
 import { API_WS_URL } from "@/store/apis";
+import { ActorView } from "@/api/sdf/dal/history_actor";
 import { useAuthStore } from "../auth.store";
 import { WebsocketRequest, WsEventPayloadMap } from "./realtime_events";
 
@@ -35,6 +36,7 @@ type TrackedSubscription = EventTypeAndCallback & {
 type RealtimeEventMetadata = {
   version: number;
   workspace_pk: string;
+  actor: ActorView;
 };
 
 export const useRealtimeStore = defineStore("realtime", () => {
