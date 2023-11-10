@@ -140,8 +140,6 @@ impl PropTree {
             let prop_json: serde_json::Value = row.try_get("object")?;
             let prop: Prop = serde_json::from_value(prop_json)?;
 
-            dbg!(&prop);
-
             if prop.hidden() && !include_hidden {
                 continue;
             }
