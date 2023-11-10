@@ -1,0 +1,9 @@
+[package]
+name = "firecracker_example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+netlink = "0.1.1"
+netlink-packet-route = "0.17.1"
+[workspace]
