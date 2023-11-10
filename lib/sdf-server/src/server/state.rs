@@ -6,11 +6,13 @@ use si_std::SensitiveString;
 use tokio::sync::{broadcast, mpsc};
 
 use super::server::ShutdownSource;
+use crate::server::service::ws::crdt::BroadcastGroups;
 
 #[derive(Clone, FromRef)]
 pub struct AppState {
     services_context: ServicesContext,
     signup_secret: SignupSecret,
+    broadcast_groups: BroadcastGroups,
     jwt_public_signing_key: JwtPublicSigningKey,
     posthog_client: PosthogClient,
     shutdown_broadcast: ShutdownBroadcast,
@@ -36,6 +38,7 @@ impl AppState {
             services_context: services_context.into(),
             signup_secret: signup_secret.into(),
             jwt_public_signing_key: jwt_public_signing_key.into(),
+            broadcast_groups: Default::default(),
             posthog_client: posthog_client.into(),
             shutdown_broadcast: ShutdownBroadcast(shutdown_broadcast_tx),
             for_tests,
@@ -134,6 +137,10 @@ where
 pub struct ShutdownBroadcast(broadcast::Sender<()>);
 
 impl ShutdownBroadcast {
+    pub fn new(sender: broadcast::Sender<()>) -> Self {
+        Self(sender)
+    }
+
     pub fn subscribe(&self) -> broadcast::Receiver<()> {
         self.0.subscribe()
     }

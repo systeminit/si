@@ -665,6 +665,24 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "atomic_refcell-0.1.13.crate",
+    sha256 = "41e67cd8309bbd06cd603a9e693a784ac2e5d1e955f11286e355089fcab3047c",
+    strip_prefix = "atomic_refcell-0.1.13",
+    urls = ["https://crates.io/api/v1/crates/atomic_refcell/0.1.13/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "atomic_refcell-0.1.13",
+    srcs = [":atomic_refcell-0.1.13.crate"],
+    crate = "atomic_refcell",
+    crate_root = "atomic_refcell-0.1.13.crate/src/lib.rs",
+    edition = "2018",
+    features = ["default"],
+    visibility = [],
+)
+
+http_archive(
     name = "attohttpc-0.22.0.crate",
     sha256 = "1fcf00bc6d5abb29b5f97e3c61a90b6d3caa12f3faf897d4a3e3607c050a35a7",
     strip_prefix = "attohttpc-0.22.0",
@@ -4732,6 +4750,44 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "getrandom-0.1.16.crate",
+    sha256 = "8fc3cb4d91f53b50155bdcfd23f6a4c39ae1969c2ae85982b135750cccaf5fce",
+    strip_prefix = "getrandom-0.1.16",
+    urls = ["https://crates.io/api/v1/crates/getrandom/0.1.16/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "getrandom-0.1.16",
+    srcs = [":getrandom-0.1.16.crate"],
+    crate = "getrandom",
+    crate_root = "getrandom-0.1.16.crate/src/lib.rs",
+    edition = "2018",
+    features = [
+        "bindgen",
+        "js-sys",
+        "std",
+        "wasm-bindgen",
+    ],
+    platform = {
+        "linux-arm64": dict(
+            deps = [":libc-0.2.146"],
+        ),
+        "linux-x86_64": dict(
+            deps = [":libc-0.2.146"],
+        ),
+        "macos-arm64": dict(
+            deps = [":libc-0.2.146"],
+        ),
+        "macos-x86_64": dict(
+            deps = [":libc-0.2.146"],
+        ),
+    },
+    visibility = [],
+    deps = [":cfg-if-1.0.0"],
+)
+
+http_archive(
     name = "getrandom-0.2.10.crate",
     sha256 = "be4136b2a15dd319360be1c07d9933517ccf0be8f16bf62a3bee4f0d618df427",
     strip_prefix = "getrandom-0.2.10",
@@ -6034,6 +6090,24 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [":spin-0.5.2"],
+)
+
+http_archive(
+    name = "lib0-0.16.10.crate",
+    sha256 = "29dc19a026a0d45fc391898c6d4a6d0a5aab5ae6a826ebddc0f33572ffdae8dc",
+    strip_prefix = "lib0-0.16.10",
+    urls = ["https://crates.io/api/v1/crates/lib0/0.16.10/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "lib0-0.16.10",
+    srcs = [":lib0-0.16.10.crate"],
+    crate = "lib0",
+    crate_root = "lib0-0.16.10.crate/src/lib.rs",
+    edition = "2018",
+    visibility = [],
+    deps = [":thiserror-1.0.40"],
 )
 
 http_archive(
@@ -9673,6 +9747,68 @@ cargo.rust_library(
     visibility = [],
 )
 
+http_archive(
+    name = "rand-0.7.3.crate",
+    sha256 = "6a6b1679d49b24bbfe0c803429aa1874472f50d9b363131f0e89fc356b544d03",
+    strip_prefix = "rand-0.7.3",
+    urls = ["https://crates.io/api/v1/crates/rand/0.7.3/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "rand-0.7.3",
+    srcs = [":rand-0.7.3.crate"],
+    crate = "rand",
+    crate_root = "rand-0.7.3.crate/src/lib.rs",
+    edition = "2018",
+    features = [
+        "alloc",
+        "default",
+        "getrandom",
+        "getrandom_package",
+        "libc",
+        "std",
+        "wasm-bindgen",
+    ],
+    named_deps = {
+        "getrandom_package": ":getrandom-0.1.16",
+    },
+    platform = {
+        "linux-arm64": dict(
+            deps = [
+                ":libc-0.2.146",
+                ":rand_chacha-0.2.2",
+            ],
+        ),
+        "linux-x86_64": dict(
+            deps = [
+                ":libc-0.2.146",
+                ":rand_chacha-0.2.2",
+            ],
+        ),
+        "macos-arm64": dict(
+            deps = [
+                ":libc-0.2.146",
+                ":rand_chacha-0.2.2",
+            ],
+        ),
+        "macos-x86_64": dict(
+            deps = [
+                ":libc-0.2.146",
+                ":rand_chacha-0.2.2",
+            ],
+        ),
+        "windows-gnu": dict(
+            deps = [":rand_chacha-0.2.2"],
+        ),
+        "windows-msvc": dict(
+            deps = [":rand_chacha-0.2.2"],
+        ),
+    },
+    visibility = [],
+    deps = [":rand_core-0.5.1"],
+)
+
 alias(
     name = "rand",
     actual = ":rand-0.8.5",
@@ -9725,6 +9861,28 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "rand_chacha-0.2.2.crate",
+    sha256 = "f4c8ed856279c9737206bf725bf36935d8666ead7aa69b52be55af369d193402",
+    strip_prefix = "rand_chacha-0.2.2",
+    urls = ["https://crates.io/api/v1/crates/rand_chacha/0.2.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "rand_chacha-0.2.2",
+    srcs = [":rand_chacha-0.2.2.crate"],
+    crate = "rand_chacha",
+    crate_root = "rand_chacha-0.2.2.crate/src/lib.rs",
+    edition = "2018",
+    features = ["std"],
+    visibility = [],
+    deps = [
+        ":ppv-lite86-0.2.17",
+        ":rand_core-0.5.1",
+    ],
+)
+
+http_archive(
     name = "rand_chacha-0.3.1.crate",
     sha256 = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88",
     strip_prefix = "rand_chacha-0.3.1",
@@ -9760,7 +9918,13 @@ cargo.rust_library(
     crate = "rand_core",
     crate_root = "rand_core-0.5.1.crate/src/lib.rs",
     edition = "2018",
+    features = [
+        "alloc",
+        "getrandom",
+        "std",
+    ],
     visibility = [],
+    deps = [":getrandom-0.1.16"],
 )
 
 http_archive(
@@ -12621,6 +12785,25 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "smallstr-0.2.0.crate",
+    sha256 = "1e922794d168678729ffc7e07182721a14219c65814e66e91b839a272fe5ae4f",
+    strip_prefix = "smallstr-0.2.0",
+    urls = ["https://crates.io/api/v1/crates/smallstr/0.2.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "smallstr-0.2.0",
+    srcs = [":smallstr-0.2.0.crate"],
+    crate = "smallstr",
+    crate_root = "smallstr-0.2.0.crate/src/lib.rs",
+    edition = "2018",
+    features = ["union"],
+    visibility = [],
+    deps = [":smallvec-1.10.0"],
+)
+
+http_archive(
     name = "smallvec-1.10.0.crate",
     sha256 = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0",
     strip_prefix = "smallvec-1.10.0",
@@ -12634,6 +12817,11 @@ cargo.rust_library(
     crate = "smallvec",
     crate_root = "smallvec-1.10.0.crate/src/lib.rs",
     edition = "2018",
+    features = [
+        "const_generics",
+        "const_new",
+        "union",
+    ],
     visibility = [],
 )
 
@@ -13687,6 +13875,8 @@ cargo.rust_binary(
         ":uuid-1.3.4",
         ":vfs-0.9.0",
         ":vfs-tar-0.4.0",
+        ":y-sync-0.3.1",
+        ":yrs-0.16.10",
     ],
 )
 
@@ -16123,6 +16313,37 @@ cargo.rust_library(
     deps = [":libc-0.2.146"],
 )
 
+alias(
+    name = "y-sync",
+    actual = ":y-sync-0.3.1",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "y-sync-0.3.1.crate",
+    sha256 = "f54d34b68ec4514a0659838c2b1ba867c571b20b3804a1338dacf4fa9062d801",
+    strip_prefix = "y-sync-0.3.1",
+    urls = ["https://crates.io/api/v1/crates/y-sync/0.3.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "y-sync-0.3.1",
+    srcs = [":y-sync-0.3.1.crate"],
+    crate = "y_sync",
+    crate_root = "y-sync-0.3.1.crate/src/lib.rs",
+    edition = "2021",
+    features = ["net"],
+    visibility = [],
+    deps = [
+        ":futures-util-0.3.28",
+        ":lib0-0.16.10",
+        ":thiserror-1.0.40",
+        ":tokio-1.28.2",
+        ":yrs-0.16.10",
+    ],
+)
+
 http_archive(
     name = "yansi-0.5.1.crate",
     sha256 = "09041cd90cf85f7f8b2df60c646f853b7f535ce68f85244eb6731cf89fa498ec",
@@ -16138,6 +16359,37 @@ cargo.rust_library(
     crate_root = "yansi-0.5.1.crate/src/lib.rs",
     edition = "2015",
     visibility = [],
+)
+
+alias(
+    name = "yrs",
+    actual = ":yrs-0.16.10",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "yrs-0.16.10.crate",
+    sha256 = "0c48071f2693893c866cffdad3e6a931aefcd14e4400d45353a0e3f91a96e80b",
+    strip_prefix = "yrs-0.16.10",
+    urls = ["https://crates.io/api/v1/crates/yrs/0.16.10/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "yrs-0.16.10",
+    srcs = [":yrs-0.16.10.crate"],
+    crate = "yrs",
+    crate_root = "yrs-0.16.10.crate/src/lib.rs",
+    edition = "2018",
+    visibility = [],
+    deps = [
+        ":atomic_refcell-0.1.13",
+        ":lib0-0.16.10",
+        ":rand-0.7.3",
+        ":smallstr-0.2.0",
+        ":smallvec-1.10.0",
+        ":thiserror-1.0.40",
+    ],
 )
 
 http_archive(

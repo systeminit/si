@@ -6,10 +6,13 @@ use si_data_pg::{PgError, PgPoolError};
 use thiserror::Error;
 
 use crate::server::state::AppState;
+use crdt::CrdtError;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum WsError {
+    #[error(transparent)]
+    Crdt(#[from] CrdtError),
     #[error(transparent)]
     Pg(#[from] PgError),
     #[error(transparent)]
@@ -18,6 +21,7 @@ pub enum WsError {
     Transactions(#[from] TransactionsError),
 }
 
+pub mod crdt;
 pub mod workspace_updates;
 
 impl IntoResponse for WsError {
@@ -37,8 +41,10 @@ impl IntoResponse for WsError {
 }
 
 pub fn routes() -> Router<AppState> {
-    Router::new().route(
-        "/workspace_updates",
-        get(workspace_updates::workspace_updates),
-    )
+    Router::new()
+        .route(
+            "/workspace_updates",
+            get(workspace_updates::workspace_updates),
+        )
+        .route("/crdt", get(crdt::crdt))
 }
