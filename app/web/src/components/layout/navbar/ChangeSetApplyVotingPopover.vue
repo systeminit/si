@@ -81,12 +81,7 @@
           class="p-sm border-b dark:border-neutral-500 flex flex-row items-center gap-xs justify-between"
         >
           <div class="flex flex-row gap-xs items-center">
-            <UserIcon
-              :user="{
-                name: authStore.user?.name ?? '',
-                pictureUrl: authStore.user?.picture_url ?? null,
-              }"
-            />
+            <UserIcon :user="presenceStore.myUserInfo" />
             <div class="flex flex-col">
               <div>Apply this change set?</div>
               <div class="text-xs text-neutral-400 pt-[2px]">
@@ -186,9 +181,9 @@ import { TransitionChild, TransitionRoot } from "@headlessui/vue";
 import clsx from "clsx";
 import Popover from "@/components/Popover.vue";
 import { useAuthStore } from "@/store/auth.store";
+import { OnlineUserInfo, usePresenceStore } from "@/store/presence.store";
 import UserCard from "./UserCard.vue";
 import UserIcon from "./UserIcon.vue";
-import { UserInfo } from "./Collaborators.vue";
 
 export type ChangeSetVote = "Approve" | "Deny" | "Abstain" | undefined;
 
@@ -196,45 +191,55 @@ const VOTE_TIME = 30;
 const authStore = useAuthStore();
 const internalRef = ref();
 
+const presenceStore = usePresenceStore();
+
 const props = defineProps({
   appliedByYou: { type: Boolean },
 });
 
 // TODO(Wendy) - Mock data, should populate with users in the current changeset
-const applyUser = ref<UserInfo>({
+const applyUser = ref<OnlineUserInfo>({
+  pk: "xyz",
   name: "cool user 666",
   color: "magenta",
-  status: "active",
+  idle: false,
+  changeSetId: "123",
+  pictureUrl: "https://placekitten.com/50/50",
 });
 
 const votingUsers = [
   {
+    pk: "u1",
     name: "test user 1",
     color: "red",
-    status: "active",
+    idle: false,
   },
   {
+    pk: "u2",
     name: "test user 2 has an extremely long name woah dang so long",
     color: "green",
-    status: "active",
+    idle: false,
     vote: "Approve" as ChangeSetVote,
   },
   {
+    pk: "u3",
     name: "test user 3",
     color: "blue",
-    status: "active",
+    idle: false,
     vote: "Deny" as ChangeSetVote,
   },
   {
+    pk: "u4",
     name: "test user 4",
     color: "yellow",
-    status: "active",
+    idle: false,
     vote: "Abstain" as ChangeSetVote,
   },
   {
+    pk: "u5",
     name: "test user 5",
     color: "cyan",
-    status: "active",
+    idle: false,
   },
 ];
 // End mock data
@@ -248,10 +253,8 @@ const voteTimerTimeout = ref();
 
 const startVoting = () => {
   if (props.appliedByYou) {
-    applyUser.value = {
-      name: "You",
-      pictureUrl: authStore.user?.picture_url ?? null,
-    };
+    applyUser.value.name = "You";
+    applyUser.value.pictureUrl = authStore.user?.picture_url ?? null;
   }
   if (closeTimeout.value) clearTimeout(closeTimeout.value);
   closeTimeout.value = undefined;

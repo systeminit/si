@@ -15,14 +15,14 @@
       <Icon v-else name="user-circle" size="full" />
     </div>
     <div
-      v-if="user.status === 'idle'"
+      v-if="user.idle"
       class="absolute top-0 w-full h-full z-90 opacity-60 bg-shade-100 rounded-full pointer-events-none"
     />
     <div
       v-if="
         !hideChangesetStar &&
         changeSetsStore.selectedChangeSetId &&
-        changeSetsStore.selectedChangeSetId === user.changeset
+        changeSetsStore.selectedChangeSetId === user.changeSetId
       "
       :class="
         clsx(
@@ -47,19 +47,18 @@ import { Icon } from "@si/vue-lib/design-system";
 import { PropType, computed } from "vue";
 import clsx from "clsx";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { UserInfo } from "./Collaborators.vue";
+import { OnlineUserInfo } from "@/store/presence.store";
 
 const changeSetsStore = useChangeSetsStore();
 
 const props = defineProps({
   tooltip: { type: Object },
-  user: { type: Object as PropType<UserInfo>, required: true },
+  user: { type: Object as PropType<OnlineUserInfo>, required: true },
   changeSetStarSide: { type: Boolean },
   hideChangesetStar: { type: Boolean },
 });
 
 const color = computed(() => {
-  if (props.user.color) return props.user.color;
-  else return "black";
+  return props.user.color || 'black';
 });
 </script>

@@ -9,7 +9,7 @@
     :to="linkTo"
     :class="
       clsx(
-        'relative h-full flex items-center children:pointer-events-none p-sm',
+        'relative flex items-center children:pointer-events-none px-sm',
         isSelectedOrMenuOpen && 'bg-action-500',
         !isSelectedOrMenuOpen && 'hover:bg-black',
       )

@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="flex items-center justify-center place-items-center mx-auto h-full flex-none"
-  >
+  <div class="flex justify-center mx-auto flex-none">
     <NavbarButton
       tooltipText="Model"
       :selected="route.name === 'workspace-compose'"

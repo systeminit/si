@@ -66,6 +66,7 @@ import {
   createTypescriptSource,
   GetTooltipFromPos,
 } from "@/utils/typescriptLinter";
+import { usePresenceStore } from "@/store/presence.store";
 
 const props = defineProps({
   id: String,
@@ -294,6 +295,12 @@ onBeforeUnmount(() => {
   wsProvider?.destroy();
 });
 
+const presenceStore = usePresenceStore();
+function getUserInfo(userId: { id: string }) {
+  const user = presenceStore.usersById[userId.id];
+  return { name: user?.name, colorLight: user?.color, color: user?.color };
+}
+
 // Initialization /////////////////////////////////////////////////////////////////////////////////
 const mountEditor = async () => {
   if (!editorMount.value) return;
@@ -420,17 +427,29 @@ const mountEditor = async () => {
     );
 
     wsProvider.awareness.setLocalStateField("user", {
-      name:
-        authStore.user?.name ?? `Anonymous ${Math.floor(Math.random() * 100)}`,
-      color: "black",
-      colorLight: "white",
+      id: authStore.user?.pk,
+      // name:
+      //   authStore.user?.name ?? `Anonymous ${Math.floor(Math.random() * 100)}`,
+      // color: "black",
+      // colorLight: "white",
+    });
+
+    wsProvider.awareness.on("update", (updates: any) => {
+      if (updates.added) {
+        const localState = wsProvider?.awareness.getStates();
+        console.log(localState);
+      }
     });
 
     extensions.push(keymap.of([...yUndoManagerKeymap]));
 
     // const undoManager = new Y.UndoManager(yText);
     extensions.push(
-      yCompartment.of(yCollab(yText, wsProvider.awareness)), // , { undoManager })),
+      yCompartment.of(
+        yCollab(yText, wsProvider.awareness, {
+          getUserInfo /* , undoManager */,
+        }),
+      ),
     );
   } else {
     yText.insert(0, props.modelValue);

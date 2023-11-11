@@ -258,8 +258,8 @@ importers:
         specifier: 2.0.0-rc.5
         version: 2.0.0-rc.5(vue@3.3.4)
       y-codemirror.next:
-        specifier: ^0.3.2
-        version: 0.3.2(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(yjs@13.6.8)
+        specifier: ../../../y-codemirror.next
+        version: link:../../../y-codemirror.next
       y-indexeddb:
         specifier: ^9.0.12
         version: 9.0.12(yjs@13.6.8)
@@ -16734,19 +16734,6 @@ packages:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
     engines: {node: '>=0.4'}
     requiresBuild: true
-
-  /y-codemirror.next@0.3.2(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(yjs@13.6.8):
-    resolution: {integrity: sha512-3ksMXoietzNkrgluG9ut+5q4PNHCS6sQ+mHd44hNX1s7TBe4iDgOOIswfY3oLsdamZLAUPr+TnRdYgYuNDs7Qg==}
-    peerDependencies:
-      '@codemirror/state': ^6.0.0
-      '@codemirror/view': ^6.0.0
-      yjs: ^13.5.6
-    dependencies:
-      '@codemirror/state': 6.1.4
-      '@codemirror/view': 6.7.1
-      lib0: 0.2.87
-      yjs: 13.6.8
-    dev: false
 
   /y-indexeddb@9.0.12(yjs@13.6.8):
     resolution: {integrity: sha512-9oCFRSPPzBK7/w5vOkJBaVCQZKHXB/v6SIT+WYhnJxlEC61juqG0hBrAf+y3gmSMLFLwICNH9nQ53uscuse6Hg==}

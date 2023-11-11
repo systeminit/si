@@ -22,9 +22,8 @@
     <!-- If there are 7 or more users or if the screen is small and there are multiple users, some are put into this menu -->
     <div
       v-if="
-        sortedUsers.length !== 1 &&
-        (showOneIcon || sortedUsers.length > 6) &&
-        sortedUsers.length > 0
+        sortedUsers.length > 1 &&
+        (showOneIcon || sortedUsers.length > DISPLAY_MAX_USERS)
       "
       class="h-8 w-0"
     >
@@ -106,80 +105,27 @@ import ChangeSetApplyVotingPopover from "./ChangeSetApplyVotingPopover.vue";
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
 
-export type UserInfo = {
-  name: string;
-  color?: string | null;
-  status?: string | null;
-  changeset?: string;
-  pictureUrl?: string | null;
-};
-
 const moreUsersPopoverRef = ref();
 const moreUsersButtonRef = ref();
 
-const users = computed<UserInfo[]>(() => {
-  const list = [] as UserInfo[];
-  for (const user of _.values(presenceStore.usersById)) {
-    list.push({
-      name: user.name,
-      color: user.color,
-      status: user.idle ? "idle" : "active",
-      changeset: user.changeSetId,
-      pictureUrl: user.pictureUrl,
-    });
-  }
-
-  list.push({
-    name: "test user",
-    color: "red",
-    status: "active",
-    changeset: changeSetsStore.selectedChangeSetId || undefined,
-  });
-  list.push({
-    name: "test user 2",
-    color: "green",
-    status: "active",
-    changeset: changeSetsStore.selectedChangeSetId || undefined,
-  });
-
-  return list;
-});
-
 const sortedUsers = computed(() => {
-  const usersCopy = _.clone(users.value);
-  return usersCopy.sort((a, b) => {
-    if (changeSetsStore.selectedChangeSetId) {
-      if (
-        a.changeset !== changeSetsStore.selectedChangeSetId &&
-        b.changeset === changeSetsStore.selectedChangeSetId
-      ) {
-        return 2;
-      }
-      if (
-        a.changeset === changeSetsStore.selectedChangeSetId &&
-        b.changeset !== changeSetsStore.selectedChangeSetId
-      ) {
-        return -2;
-      }
-    }
-    if (a.status === "idle" && b.status !== "idle") return 1;
-    if (a.status !== "idle" && b.status === "idle") return -1;
+  return _.sortBy(presenceStore.users, (u) => {
+    if (u.changeSetId === changeSetsStore.selectedChangeSetId) return 2;
+    if (!u.idle) return 1;
     return 0;
   });
 });
 
-const displayUsers = computed(() => {
-  if (sortedUsers.value.length < 7) return sortedUsers.value;
-  else {
-    const displayUsers = sortedUsers.value.slice(0, 5);
+const DISPLAY_MAX_USERS = 6;
 
-    return displayUsers;
-  }
+const displayUsers = computed(() => {
+  if (sortedUsers.value.length <= DISPLAY_MAX_USERS) return sortedUsers.value;
+  else return sortedUsers.value.slice(0, DISPLAY_MAX_USERS - 1);
 });
 
 const moreUsersNumber = computed(() => {
   if (showOneIcon.value) return sortedUsers.value.length;
-  else return sortedUsers.value.length - 5;
+  else return sortedUsers.value.length - DISPLAY_MAX_USERS;
 });
 
 const userTooltips = computed(() => {
@@ -195,12 +141,12 @@ const userTooltips = computed(() => {
           user.name
         }</div>
         <div class='text-xs font-bold w-full text-center line-clamp-3 px-sm'>${
-          user.changeset
-            ? changeSetsStore.changeSetsById[user.changeset]?.name || "Head"
+          user.changeSetId
+            ? changeSetsStore.changeSetsById[user.changeSetId]?.name || "Head"
             : "Head"
         }</div>
         <div class='text-xs w-full text-center line-clamp-3 px-sm'>${
-          user.status
+          user.idle ? "idle" : "active"
         }</div>
         </div>`,
       theme: "user-info",

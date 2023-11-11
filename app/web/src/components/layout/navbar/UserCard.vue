@@ -18,13 +18,13 @@
         class="text-xs font-bold line-clamp-3 break-words"
       >
         {{
-          user.changeset
-            ? changeSetsStore.changeSetsById[user.changeset]?.name || "Head"
+          user.changeSetId
+            ? changeSetsStore.changeSetsById[user.changeSetId]?.name || "Head"
             : "Head"
         }}
       </div>
       <div class="text-xs italic line-clamp-3 break-words">
-        {{ user.status }}
+        {{ user.idle ? "idle" : "active" }}
       </div>
     </div>
   </div>
@@ -33,13 +33,13 @@
 <script lang="ts" setup>
 import { PropType } from "vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { OnlineUserInfo } from "@/store/presence.store";
 import UserIcon from "./UserIcon.vue";
-import { UserInfo } from "./Collaborators.vue";
 
 const changeSetsStore = useChangeSetsStore();
 
 defineProps({
-  user: { type: Object as PropType<UserInfo>, required: true },
+  user: { type: Object as PropType<OnlineUserInfo>, required: true },
   hideChangesetInfo: { type: Boolean },
 });
 </script>

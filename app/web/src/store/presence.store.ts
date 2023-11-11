@@ -30,14 +30,14 @@ export type DiagramCursorDef = RawDiagramCursor & {
   color: string | undefined;
 };
 
-interface OnlineUser {
+export type OnlineUserInfo = {
   pk: string;
   name: string;
-  pictureUrl: string | null;
+  pictureUrl?: string | null;
   changeSetId?: string;
   color?: string | null;
   idle: boolean;
-}
+};
 
 export const usePresenceStore = () => {
   const workspacesStore = useWorkspacesStore();
@@ -56,12 +56,21 @@ export const usePresenceStore = () => {
         diagramCursorsByUserId: {} as Record<UserId, RawDiagramCursor>,
         usersById: {} as Record<
           UserId,
-          OnlineUser & { lastOnlineAt: Date; lastActiveAt: Date }
+          OnlineUserInfo & { lastOnlineAt: Date; lastActiveAt: Date }
         >,
         now: new Date(),
         lastSeenAt: new Date(),
       }),
       getters: {
+        myUserInfo(): OnlineUserInfo {
+          return {
+            pk: authStore.userPk!,
+            name: authStore.user?.name ?? "",
+            pictureUrl: authStore.user?.picture_url ?? null,
+            changeSetId: changeSetsStore.selectedChangeSetId || undefined,
+            idle: this.isIdle,
+          };
+        },
         users: (state) => _.values(state.usersById),
         diagramCursors: (state): DiagramCursorDef[] =>
           _.filter(

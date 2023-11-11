@@ -1,17 +1,10 @@
 <template>
   <nav
-    class="bg-neutral-900 text-white relative border-b border-shade-100 shadow-[0_4px_4px_0_rgba(0,0,0,0.15)] z-90"
+    class="bg-neutral-900 text-white relative border-b border-shade-100 shadow-[0_4px_4px_0_rgba(0,0,0,0.15)] z-90 pl-sm flex gap-sm"
   >
-    <div class="pl-sm flex gap-sm">
-      <!-- Left side -->
-      <NavbarPanelLeft />
-
-      <!-- Center -->
-      <NavbarPanelCenter />
-
-      <!-- Right -->
-      <NavbarPanelRight />
-    </div>
+    <NavbarPanelLeft />
+    <NavbarPanelCenter />
+    <NavbarPanelRight />
   </nav>
 </template>
 
