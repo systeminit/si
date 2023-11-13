@@ -12,7 +12,11 @@
           <ErrorMessage :requestStatus="executeAssetReqStatus" />
           <VButton
             :requestStatus="executeAssetReqStatus"
-            loadingText="Creating Asset..."
+            :loadingText="
+              editingAsset.schemaVariantId
+                ? 'Updating Asset...'
+                : 'Creating Asset...'
+            "
             :label="
               editingAsset.schemaVariantId ? 'Update Asset' : 'Create Asset'
             "
@@ -140,8 +144,20 @@
       >
       <template v-else>Select an asset to view its details.</template>
     </div>
-    <Modal ref="executeAssetModalRef" size="sm" :title="assetModalTitle">
-      The asset you just created will now appear in the Assets Panel.
+    <Modal
+      ref="executeAssetModalRef"
+      size="sm"
+      :title="
+        editingAsset && editingAsset.schemaVariantId
+          ? 'Asset Updated'
+          : 'New Asset Created'
+      "
+    >
+      {{
+        editingAsset && editingAsset.schemaVariantId
+          ? "The asset you just updated will be available to use from the Assets Panel"
+          : "The asset you just created will now appear in the Assets Panel."
+      }}
     </Modal>
   </div>
 </template>
@@ -184,7 +200,6 @@ const executeAssetReqStatus = assetStore.getRequestStatus(
   props.assetId,
 );
 const executeAssetModalRef = ref();
-const assetModalTitle = ref("New Asset Created");
 
 const openAttachModal = (warning: {
   variant?: FuncVariant;
