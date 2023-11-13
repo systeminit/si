@@ -175,7 +175,6 @@ import {
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { FuncVariant } from "@/api/sdf/dal/func";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore, FuncId } from "@/store/func/funcs.store";
 import { nilId } from "@/utils/nilId";
@@ -190,7 +189,6 @@ const props = defineProps<{
 const componentsStore = useComponentsStore();
 const assetStore = useAssetStore();
 const funcStore = useFuncStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const loadAssetReqStatus = assetStore.getRequestStatus(
   "LOAD_ASSET",
   props.assetId,
@@ -242,9 +240,7 @@ const updateAsset = async () => {
 const disabled = computed(
   () =>
     !!(
-      (editingAsset.value?.hasComponents ||
-        (editingAsset.value?.hasAttrFuncs &&
-          !featureFlagsStore.AUTO_REATTACH_FUNCTIONS)) ??
+      (editingAsset.value?.hasComponents || editingAsset.value?.hasAttrFuncs) ??
       false
     ),
 );
@@ -255,16 +251,11 @@ const disabledWarning = computed(() => {
     byComponents = "by components";
   }
   let byFuncs = "";
-  if (
-    editingAsset.value?.hasAttrFuncs &&
-    !featureFlagsStore.AUTO_REATTACH_FUNCTIONS
-  ) {
+  if (editingAsset.value?.hasAttrFuncs) {
     byFuncs = "by attribute functions or custom validations";
   }
   const and =
-    editingAsset.value?.hasComponents &&
-    editingAsset.value?.hasAttrFuncs &&
-    !featureFlagsStore.AUTO_REATTACH_FUNCTIONS
+    editingAsset.value?.hasComponents && editingAsset.value?.hasAttrFuncs
       ? " and "
       : "";
   return `This asset cannot be edited because it is in use ${byComponents}${and}${byFuncs}.`;

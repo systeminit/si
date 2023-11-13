@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { FuncVariant } from "@/api/sdf/dal/func";
@@ -9,19 +9,17 @@ import { nilId } from "@/utils/nilId";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
-  FuncSummary,
   FuncId,
-  useFuncStore,
+  FuncSummary,
   FuncWithDetails,
+  useFuncStore,
 } from "./func/funcs.store";
 import { useRouterStore } from "./router.store";
 
 export type AssetId = string;
-export type AssetSlug = string;
 
 export interface ListVariantDefsResponse {
   variantDefs: ListedVariantDef[];
@@ -132,7 +130,6 @@ export const useAssetStore = () => {
   const workspaceId = workspacesStore.selectedWorkspacePk;
 
   const funcsStore = useFuncStore();
-  const featureFlagsStore = useFeatureFlagsStore();
 
   let assetSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
@@ -232,9 +229,7 @@ export const useAssetStore = () => {
         },
 
         generateMockAssets() {
-          const assets = {} as Record<AssetId, Asset>;
-
-          return assets;
+          return {} as Record<AssetId, Asset>;
         },
 
         createNewAsset(): Asset {
@@ -391,13 +386,12 @@ export const useAssetStore = () => {
               detachedAttributePrototypes: DetachedAttributePrototype[];
               detachedValidationPrototypes: DetachedValidationPrototype[];
             },
-            AssetSaveRequest & { autoReattachFunctions?: boolean }
+            AssetSaveRequest
           >({
             method: "post",
             url: "/variant_def/exec_variant_def",
             keyRequestStatusBy: assetId,
             params: {
-              autoReattachFunctions: featureFlagsStore.AUTO_REATTACH_FUNCTIONS,
               ...visibility,
               ..._.omit(asset, [
                 "schemaVariantId",

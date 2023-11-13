@@ -31,11 +31,7 @@
           <Stack class="p-2 border-b dark:border-neutral-600" spacing="xs">
             <div class="flex gap-1 flex-wrap">
               <VButton
-                v-if="
-                  featureFlagsStore.FUNC_TEST_PANEL &&
-                  testPanelEnabled &&
-                  funcStore.selectedFuncDetails
-                "
+                v-if="testPanelEnabled && funcStore.selectedFuncDetails"
                 class="--tone-action"
                 icon="save"
                 size="md"
@@ -247,11 +243,7 @@
       </TabGroupItem>
 
       <TabGroupItem
-        v-if="
-          featureFlagsStore.FUNC_TEST_PANEL &&
-          testPanelEnabled &&
-          funcStore.selectedFuncDetails
-        "
+        v-if="testPanelEnabled && funcStore.selectedFuncDetails"
         label="Test"
         slug="test"
       >
@@ -285,7 +277,6 @@ import {
 import clsx from "clsx";
 import { FuncArgument, FuncVariant } from "@/api/sdf/dal/func";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AuthenticationDetails from "@/components/FuncEditor/AuthenticationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
 import ActionDetails from "./ActionDetails.vue";
@@ -294,8 +285,6 @@ import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import ValidationDetails from "./ValidationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncTest from "./FuncTest.vue";
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 const props = defineProps<{
   funcId?: FuncId;
