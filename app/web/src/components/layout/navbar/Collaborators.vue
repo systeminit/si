@@ -129,19 +129,6 @@ const users = computed<UserInfo[]>(() => {
     });
   }
 
-  list.push({
-    name: "test user",
-    color: "red",
-    status: "active",
-    changeset: changeSetsStore.selectedChangeSetId || undefined,
-  });
-  list.push({
-    name: "test user 2",
-    color: "green",
-    status: "active",
-    changeset: changeSetsStore.selectedChangeSetId || undefined,
-  });
-
   return list;
 });
 
