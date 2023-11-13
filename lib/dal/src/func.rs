@@ -8,7 +8,8 @@ use thiserror::Error;
 
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::node_weight::FuncNodeWeight;
-use crate::{pk, StandardModel, Timestamp};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{pk, DalContext, Timestamp};
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
@@ -18,8 +19,12 @@ pub enum FuncError {
     Base64Decode(#[from] base64::DecodeError),
     #[error("TODO(nick): restore this error message, but here is what was passed to it: {0}")]
     IntrinsicSpecCreation(String),
+    #[error("Could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
     #[error("utf8 error: {0}")]
     Utf8(#[from] FromUtf8Error),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;
@@ -76,6 +81,53 @@ impl Func {
             code_base64: content.code_base64,
             code_blake3: content.code_blake3,
         }
+    }
+
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        display_name: Option<impl AsRef<str>>,
+        description: Option<impl AsRef<str>>,
+        link: Option<impl AsRef<str>>,
+        hidden: bool,
+        builtin: bool,
+        backend_kind: FuncBackendKind,
+        backend_response_type: FuncBackendResponseType,
+        handler: Option<impl AsRef<str>>,
+        code_base64: Option<impl AsRef<str>>,
+    ) -> FuncResult<Func> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        Ok(workspace_snapshot
+            .func_create(
+                ctx,
+                name,
+                display_name,
+                description,
+                link,
+                hidden,
+                builtin,
+                backend_kind,
+                backend_response_type,
+                handler,
+                code_base64,
+            )
+            .await?)
+    }
+
+    pub async fn get_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<Func> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        Ok(workspace_snapshot.func_get_by_id(ctx, id).await?)
+    }
+
+    pub fn find_by_name(ctx: &DalContext, name: impl AsRef<str>) -> FuncResult<Option<FuncId>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        Ok(workspace_snapshot.func_find_by_name(name)?)
+    }
+
+    pub async fn list_funcs(ctx: &DalContext) -> FuncResult<Vec<Func>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        Ok(workspace_snapshot.list_funcs(ctx).await?)
     }
 
     pub fn code_plaintext(&self) -> FuncResult<Option<String>> {

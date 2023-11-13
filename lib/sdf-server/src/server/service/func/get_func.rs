@@ -54,12 +54,7 @@ pub async fn get_func(
 ) -> FuncResult<Json<GetFuncResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let func = ctx
-        .workspace_snapshot()?
-        .lock()
-        .await
-        .func_get_by_id(&ctx, request.id)
-        .await?;
+    let func = Func::get_by_id(&ctx, request.id).await?;
 
     Ok(Json(super::get_func_view(&ctx, &func).await?))
 }

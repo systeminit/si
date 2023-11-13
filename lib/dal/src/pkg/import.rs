@@ -125,8 +125,6 @@ async fn import_change_set(
     Vec<(String, Vec<bool /*ImportAttributeSkip*/>)>,
     Vec<bool /*ImportEdgeSkip*/>,
 )> {
-    let mut workspace_snapshot = ctx.workspace_snapshot()?.lock().await;
-
     for func_spec in funcs {
         let unique_id = func_spec.unique_id().to_string();
 
@@ -138,8 +136,8 @@ async fn import_change_set(
             || special_case_funcs.contains(&func_spec.name())
             || func_spec.is_from_builtin().unwrap_or(false)
         {
-            if let Some(func_id) = workspace_snapshot.func_find_by_name(func_spec.name())? {
-                let func = workspace_snapshot.func_get_by_id(ctx, func_id).await?;
+            if let Some(func_id) = Func::find_by_name(ctx, func_spec.name())? {
+                let func = Func::get_by_id(ctx, func_id).await?;
 
                 thing_map.insert(
                     change_set_pk,
@@ -148,7 +146,6 @@ async fn import_change_set(
                 );
             } else if let Some(func) = import_func(
                 ctx,
-                &mut workspace_snapshot,
                 None,
                 func_spec,
                 installed_pkg_id,
@@ -160,7 +157,7 @@ async fn import_change_set(
                 let args = func_spec.arguments()?;
 
                 if !args.is_empty() {
-                    //import_func_arguments(ctx, None, func.id, &args, thing_map).await?;
+                    import_func_arguments(ctx, None, func.id, &args, thing_map).await?;
                 }
             }
         } else {
@@ -192,7 +189,6 @@ async fn import_change_set(
             } else {
                 import_func(
                     ctx,
-                    &mut workspace_snapshot,
                     change_set_pk,
                     func_spec,
                     installed_pkg_id,
@@ -1566,7 +1562,6 @@ pub async fn import_pkg(ctx: &DalContext, pkg_file_path: impl AsRef<Path>) -> Pk
 
 async fn create_func(
     ctx: &DalContext,
-    workspace_snapshot: &mut WorkspaceSnapshot,
     func_spec: &SiPkgFunc<'_>,
     is_builtin: bool,
 ) -> PkgResult<Func> {
@@ -1576,39 +1571,22 @@ async fn create_func(
         .data()
         .ok_or(PkgError::DataNotFound(name.into()))?;
 
-    // How to handle name conflicts?
-    let func = workspace_snapshot
-        .func_create(
-            ctx,
-            name,
-            func_spec_data
-                .display_name()
-                .map(|display_name| display_name.to_owned()),
-            func_spec_data.description().map(|desc| desc.to_owned()),
-            func_spec_data.link().map(|l| l.to_string()),
-            func_spec_data.hidden(),
-            is_builtin,
-            func_spec_data.backend_kind().into(),
-            func_spec_data.response_type().into(),
-            Some(func_spec_data.handler().to_owned()),
-            Some(func_spec_data.code_base64().to_owned()),
-        )
-        .await?;
-
-    let func = workspace_snapshot
-        .func_modify_by_id(ctx, func.id, |func| {
-            func.display_name = func_spec_data
-                .display_name()
-                .map(|display_name| display_name.to_owned());
-            func.code_base64 = Some(func_spec_data.code_base64().to_owned());
-            func.description = func_spec_data.description().map(|desc| desc.to_owned());
-            func.handler = Some(func_spec_data.handler().to_owned());
-            func.hidden = func_spec_data.hidden();
-            func.link = func_spec_data.link().map(|l| l.to_string());
-
-            Ok(())
-        })
-        .await?;
+    let func = Func::new(
+        ctx,
+        name,
+        func_spec_data
+            .display_name()
+            .map(|display_name| display_name.to_owned()),
+        func_spec_data.description().map(|desc| desc.to_owned()),
+        func_spec_data.link().map(|l| l.to_string()),
+        func_spec_data.hidden(),
+        is_builtin,
+        func_spec_data.backend_kind().into(),
+        func_spec_data.response_type().into(),
+        Some(func_spec_data.handler().to_owned()),
+        Some(func_spec_data.code_base64().to_owned()),
+    )
+    .await?;
 
     Ok(func)
 }
@@ -1642,7 +1620,6 @@ async fn update_func(
 
 async fn import_func(
     ctx: &DalContext,
-    workspace_snapshot: &mut WorkspaceSnapshot,
     change_set_pk: Option<ChangeSetPk>,
     func_spec: &SiPkgFunc<'_>,
     installed_pkg_id: Option<InstalledPkgId>,
@@ -1660,13 +1637,10 @@ async fn import_func(
             let (func, created) = match existing_func {
                 Some(installed_func_record) => match installed_func_record.as_installed_func()? {
                     InstalledPkgAssetTyped::Func { id, .. } => {
-                        (workspace_snapshot.func_get_by_id(ctx, id).await?, false)
+                        (Func::get_by_id(ctx, id).await?, false)
                     }
                 },
-                None => (
-                    create_func(ctx, workspace_snapshot, func_spec, is_builtin).await?,
-                    true,
-                ),
+                None => (create_func(ctx, func_spec, is_builtin).await?, true),
             };
 
             if let Some(installed_pkg_id) = installed_pkg_id {

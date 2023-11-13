@@ -43,14 +43,7 @@ pub async fn list_funcs(
 
     info!("after context build: {:?}", start.elapsed());
 
-    //ctx.workspace_snapshot()?.lock().await.dot();
-
-    let funcs = ctx
-        .workspace_snapshot()?
-        .lock()
-        .await
-        .list_funcs(&ctx)
-        .await?;
+    let funcs = Func::list_funcs(&ctx).await?;
 
     info!("after content store fetch: {:?}", start.elapsed());
 

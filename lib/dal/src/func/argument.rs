@@ -44,6 +44,8 @@ pub enum FuncArgumentError {
     Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
     #[error("workspace snapshot: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -174,15 +176,14 @@ impl FuncArgument {
 
         let hash = ctx
             .content_store()
-            .lock()
-            .await
+            .try_lock()?
             .add(&FuncArgumentContent::V1(content.clone()))?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::FuncArg(hash))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.lock().await;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
         let func_arg_node_index = workspace_snapshot.add_node(node_weight.clone())?;
 

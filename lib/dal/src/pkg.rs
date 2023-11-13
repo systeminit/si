@@ -18,7 +18,10 @@ use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecE
 use crate::{
     change_set_pointer::ChangeSetPointerError,
     //component::view::debug::ComponentDebugViewError,
-    func::argument::{FuncArgumentError, FuncArgumentId},
+    func::{
+        argument::{FuncArgumentError, FuncArgumentId},
+        FuncError,
+    },
     installed_pkg::InstalledPkgError,
     //prop_tree::PropTreeError,
     // schema::variant::definition::{SchemaVariantDefinitionError, SchemaVariantDefinitionId},
@@ -121,8 +124,8 @@ pub enum PkgError {
     // ExternalProvider(#[from] ExternalProviderError),
     // #[error("Cannot find Socket for ExternalProvider {0}")]
     // ExternalProviderMissingSocket(ExternalProviderId),
-    // #[error(transparent)]
-    // Func(#[from] FuncError),
+    #[error(transparent)]
+    Func(#[from] FuncError),
     #[error(transparent)]
     FuncArgument(#[from] FuncArgumentError),
     // #[error(transparent)]
