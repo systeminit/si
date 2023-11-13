@@ -7,6 +7,7 @@ import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import router from "@/router";
+import { UserId } from "@/store/auth.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useFeatureFlagsStore } from "./feature_flags.store";
@@ -189,9 +190,9 @@ export function useChangeSetsStore() {
             eventType: "ChangeSetApplied",
             callback: (data) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const { changeSetPk, actor } = data as any as {
+              const { changeSetPk, userPk } = data as any as {
                 changeSetPk: string;
-                actor: string;
+                userPk: UserId;
               };
               const changeSet = this.changeSetsById[changeSetPk];
               if (changeSet) {
@@ -200,7 +201,7 @@ export function useChangeSetsStore() {
                   this.selectedChangeSetId === changeSetPk &&
                   featureFlagsStore.MUTLIPLAYER_CHANGESET_APPLY
                 ) {
-                  this.postApplyActor = actor;
+                  this.postApplyActor = userPk;
                 }
                 this.changeSetsById[changeSetPk] = changeSet;
               }

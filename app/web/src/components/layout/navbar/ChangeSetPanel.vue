@@ -84,10 +84,29 @@
         </div>
       </template>
     </Wipe>
-    <ChangeSetAppliedPopover
-      ref="changeSetAppliedRef"
-      :anchorTo="dropdownRef"
-    />
+    <Modal ref="changeSetAppliedRef" noExit>
+      <div
+        class="bg-white dark:bg-neutral-700 rounded-lg flex flex-col items-center w-96 max-h-[90vh] shadow-md overflow-hidden pb-xs"
+      >
+        <div class="px-sm pt-sm pb-xs w-full">
+          The change set you were in was merged by:
+        </div>
+
+        <div v-if="applyUser" class="pr-xs">
+          <UserCard :user="applyUser" hideChangesetInfo />
+        </div>
+        <div class="px-sm pb-sm pt-xs w-full">
+          You are now on Head. You can continue your work by creating a new
+          change set or joining another existing change set.
+        </div>
+        <VButton
+          label="Ok"
+          variant="ghost"
+          size="sm"
+          @click="changeSetAppliedHandler()"
+        />
+      </div>
+    </Modal>
   </div>
 </template>
 
@@ -107,14 +126,18 @@ import { storeToRefs } from "pinia";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useFixesStore } from "@/store/fixes.store";
+import UserCard from "@/components/layout/navbar/UserCard.vue";
+import { usePresenceStore } from "@/store/presence.store";
+import { useAuthStore } from "@/store/auth.store";
 import Wipe from "../../Wipe.vue";
-import ChangeSetAppliedPopover from "./ChangeSetAppliedPopover.vue";
 
 const dropdownRef = ref();
 const changeSetAppliedRef = ref();
 const wipeRef = ref<InstanceType<typeof Wipe>>();
 
 const changeSetsStore = useChangeSetsStore();
+const presenceStore = usePresenceStore();
+const authStore = useAuthStore();
 const fixesStore = useFixesStore();
 const openChangeSets = computed(() => changeSetsStore.openChangeSets);
 const selectedChangeSetId = computed(() => changeSetsStore.selectedChangeSetId);
@@ -197,20 +220,32 @@ function openCreateModal() {
   createModalRef.value?.open();
 }
 
-const openChangeSetAppliedPopover = () => {
-  const dropDownRect = dropdownRef.value.inputRef.getBoundingClientRect();
-
-  changeSetAppliedRef.value.openAt({
-    x: dropDownRect.x + dropDownRect.width / 2 - 16,
-    y: dropDownRect.bottom,
-  });
-};
-
-// TODO(Wendy) - Eventually we should replace this to not be reliant on the WSEvent
 const { postApplyActor } = storeToRefs(changeSetsStore);
 watch(postApplyActor, () => {
-  if (postApplyActor.value !== null) {
-    openChangeSetAppliedPopover();
+  if (
+    postApplyActor.value !== null &&
+    postApplyActor.value !== authStore.user?.pk
+  ) {
+    changeSetAppliedRef.value?.open();
   }
+});
+
+function changeSetAppliedHandler() {
+  changeSetAppliedRef.value?.close();
+  // Redirect the user to head changeset
+  if (route.name) {
+    router.push({
+      name: route.name,
+      params: {
+        ...route.params,
+        changeSetId: "head",
+      },
+    });
+  }
+}
+
+const applyUser = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return presenceStore.usersById[changeSetsStore.postApplyActor!];
 });
 </script>
