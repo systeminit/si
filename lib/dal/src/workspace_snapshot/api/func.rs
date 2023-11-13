@@ -148,8 +148,7 @@ impl WorkspaceSnapshot {
 
         let func_contents: HashMap<ContentHash, FuncContent> = ctx
             .content_store()
-            .lock()
-            .await
+            .try_lock()?
             .get_bulk(func_content_hash.as_slice())
             .await?;
 

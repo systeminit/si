@@ -177,7 +177,7 @@ impl Workspace {
         // Point to the snapshot that the builtin's default change set is pointing to.
         let mut change_set =
             ChangeSetPointer::new(ctx, "HEAD", Some(builtin.default_change_set_id)).await?;
-        let mut workspace_snapshot =
+        let workspace_snapshot =
             WorkspaceSnapshot::find_for_change_set(ctx, builtin.default_change_set_id).await?;
         change_set
             .update_pointer(ctx, workspace_snapshot.id())

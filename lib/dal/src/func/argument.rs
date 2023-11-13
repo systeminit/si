@@ -1,4 +1,6 @@
-use content_store::{Store, StoreError};
+use std::collections::HashMap;
+
+use content_store::{ContentHash, Store, StoreError};
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -12,8 +14,12 @@ use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
-use crate::workspace_snapshot::node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
+use crate::workspace_snapshot::node_weight::{
+    self, ContentNodeWeight, NodeWeight, NodeWeightError,
+};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, AttributePrototypeId,
@@ -201,9 +207,51 @@ impl FuncArgument {
         Ok(FuncArgument::assemble(&content_node_weight, &content))
     }
 
-    // List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId).
-    //     pub async fn list_for_func(ctx: &DalContext, func_id: FuncId) -> FuncArgumentResult<Vec<Self>> {
-    //     }
+    /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId).
+    pub async fn list_for_func(ctx: &DalContext, func_id: FuncId) -> FuncArgumentResult<Vec<Self>> {
+        let mut func_args = vec![];
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id.into())?;
+
+        let func_arg_node_idxs = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind_by_index(
+                func_node_idx,
+                EdgeWeightKindDiscriminants::Use,
+            )?;
+
+        let mut arg_node_weights = vec![];
+        let mut arg_content_hashes = vec![];
+
+        for idx in func_arg_node_idxs {
+            let node_weight = workspace_snapshot
+                .get_node_weight(idx)?
+                .get_content_node_weight_of_kind(ContentAddressDiscriminants::FuncArg)?;
+
+            arg_content_hashes.push(node_weight.content_hash());
+            arg_node_weights.push(node_weight);
+        }
+
+        let arg_contents: HashMap<ContentHash, FuncArgumentContent> = ctx
+            .content_store()
+            .try_lock()?
+            .get_bulk(arg_content_hashes.as_slice())
+            .await?;
+
+        for weight in arg_node_weights {
+            match arg_contents.get(&weight.content_hash()) {
+                Some(arg_content) => {
+                    let FuncArgumentContent::V1(inner) = arg_content;
+
+                    func_args.push(FuncArgument::assemble(&weight, inner));
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(weight.id()))?,
+            }
+        }
+
+        Ok(func_args)
+    }
 
     //     /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId) along with the
     //     /// [`AttributePrototypeArgument`](crate::AttributePrototypeArgument) that corresponds to it

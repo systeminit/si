@@ -1,6 +1,7 @@
 use crate::server::{impl_default_error_into_response, state::AppState};
 use crate::service::func::get_func::GetFuncResponse;
 use axum::{response::Response, routing::get, Json, Router};
+use dal::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
 //use dal::func::execution::FuncExecutionError;
 use dal::{
     workspace_snapshot::WorkspaceSnapshotError, DalContext, Func, FuncBackendKind,
@@ -74,8 +75,8 @@ pub enum FuncError {
     Func(#[from] dal::func::FuncError),
     //     #[error("func argument not found")]
     //     FuncArgNotFound,
-    //     #[error("func argument error: {0}")]
-    //     FuncArgument(#[from] FuncArgumentError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
     //     #[error("func argument already exists for that name")]
     //     FuncArgumentAlreadyExists,
     //     #[error("func argument {0} missing attribute prototype argument for prototype {1}")]
@@ -228,9 +229,9 @@ impl TryFrom<&Func> for FuncVariant {
 //     internal_provider_id: Option<InternalProviderId>,
 // }
 //
-// #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct AttributePrototypeView {
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributePrototypeView {}
 //     id: AttributePrototypeId,
 //     component_id: Option<ComponentId>,
 //     prop_id: Option<PropId>,
@@ -271,11 +272,11 @@ pub enum FuncAssociations {
     //         schema_variant_ids: Vec<SchemaVariantId>,
     //         kind: Option<ActionKind>,
     //     },
-    //     #[serde(rename_all = "camelCase")]
-    //     Attribute {
-    //         prototypes: Vec<AttributePrototypeView>,
-    //         arguments: Vec<FuncArgumentView>,
-    //     },
+    #[serde(rename_all = "camelCase")]
+    Attribute {
+        prototypes: Vec<AttributePrototypeView>,
+        arguments: Vec<FuncArgumentView>,
+    },
     //     #[serde(rename_all = "camelCase")]
     //     CodeGeneration {
     //         schema_variant_ids: Vec<SchemaVariantId>,
@@ -298,14 +299,14 @@ pub enum FuncAssociations {
     //     },
 }
 
-// #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct FuncArgumentView {
-//     pub id: FuncArgumentId,
-//     pub name: String,
-//     pub kind: FuncArgumentKind,
-//     pub element_kind: Option<FuncArgumentKind>,
-// }
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncArgumentView {
+    pub id: FuncArgumentId,
+    pub name: String,
+    pub kind: FuncArgumentKind,
+    pub element_kind: Option<FuncArgumentKind>,
+}
 //
 // async fn is_func_revertible(ctx: &DalContext, func: &Func) -> FuncResult<bool> {
 //     // refetch to get updated visibility
@@ -433,108 +434,109 @@ pub enum FuncAssociations {
 // }
 //
 pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncResponse> {
-    //let arguments = FuncArgument::list_for_func(ctx, *func.id()).await?;
+    let arguments = FuncArgument::list_for_func(ctx, func.id).await?;
 
-    //     let (associations, input_type) = match func.backend_kind() {
-    //         FuncBackendKind::JsAttribute => {
-    //             let (associations, input_type) = match func.backend_response_type() {
-    //                 FuncBackendResponseType::CodeGeneration
-    //                 | FuncBackendResponseType::Qualification => {
-    //                     let (schema_variant_ids, component_ids) =
-    //                         attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
-    //                             .await?;
-    //
-    //                     let inputs = get_leaf_function_inputs(ctx, *func.id()).await?;
-    //                     let input_type =
-    //                         compile_leaf_function_input_types(ctx, &schema_variant_ids, &inputs)
-    //                             .await?;
-    //
-    //                     (
-    //                         Some(match func.backend_response_type() {
-    //                             FuncBackendResponseType::CodeGeneration => {
-    //                                 FuncAssociations::CodeGeneration {
-    //                                     schema_variant_ids,
-    //                                     component_ids,
-    //                                     inputs,
-    //                                 }
-    //                             }
-    //
-    //                             FuncBackendResponseType::Qualification => {
-    //                                 FuncAssociations::Qualification {
-    //                                     schema_variant_ids,
-    //                                     component_ids,
-    //                                     inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
-    //                                 }
-    //                             }
-    //                             _ => unreachable!("the match above ensures this is unreachable"),
-    //                         }),
-    //                         input_type,
-    //                     )
-    //                 }
-    //                 _ => {
-    //                     let protos = AttributePrototype::find_for_func(ctx, func.id()).await?;
-    //
-    //                     let mut prototypes = Vec::with_capacity(protos.len());
-    //                     for proto in &protos {
-    //                         prototypes.push(
-    //                             prototype_view_for_attribute_prototype(ctx, *func.id(), proto).await?,
-    //                         );
-    //                     }
-    //
-    //                     let ts_types = compile_attribute_function_types(ctx, &prototypes).await?;
-    //
-    //                     (
-    //                         Some(FuncAssociations::Attribute {
-    //                             prototypes,
-    //                             arguments: arguments
-    //                                 .iter()
-    //                                 .map(|arg| FuncArgumentView {
-    //                                     id: *arg.id(),
-    //                                     name: arg.name().to_owned(),
-    //                                     kind: arg.kind().to_owned(),
-    //                                     element_kind: arg.element_kind().cloned(),
-    //                                 })
-    //                                 .collect(),
-    //                         }),
-    //                         ts_types,
-    //                     )
-    //                 }
-    //             };
-    //             (associations, input_type)
-    //         }
-    //         FuncBackendKind::JsAction => {
-    //             let (kind, schema_variant_ids) =
-    //                 action_prototypes_into_schema_variants_and_components(ctx, *func.id()).await?;
-    //
-    //             let ts_types = compile_action_types(ctx, &schema_variant_ids).await?;
-    //
-    //             let associations = Some(FuncAssociations::Action {
-    //                 schema_variant_ids,
-    //                 kind,
-    //             });
-    //
-    //             (associations, ts_types)
-    //         }
-    //         FuncBackendKind::JsReconciliation => {
-    //             return Err(FuncError::EditingReconciliationFuncsNotImplemented);
-    //         }
-    //         FuncBackendKind::JsValidation => {
-    //             let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
-    //             let input_type = compile_validation_types(ctx, &protos).await?;
-    //
-    //             let associations = Some(FuncAssociations::Validation {
-    //                 prototypes: protos
-    //                     .iter()
-    //                     .map(|proto| ValidationPrototypeView {
-    //                         schema_variant_id: proto.context().schema_variant_id(),
-    //                         prop_id: proto.context().prop_id(),
-    //                     })
-    //                     .collect(),
-    //             });
-    //             (associations, input_type)
-    //         }
-    //         _ => (None, String::new()),
-    //     };
+    let (associations, input_type) = match &func.backend_kind {
+        FuncBackendKind::JsAttribute => {
+            let (associations, input_type) = match &func.backend_response_type {
+                FuncBackendResponseType::CodeGeneration
+                | FuncBackendResponseType::Qualification => {
+                    (None, "".into())
+                    //                         let (schema_variant_ids, component_ids) =
+                    //                             attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
+                    //                                 .await?;
+                    //
+                    //                         let inputs = get_leaf_function_inputs(ctx, *func.id()).await?;
+                    //                         let input_type =
+                    //                             compile_leaf_function_input_types(ctx, &schema_variant_ids, &inputs)
+                    //                                 .await?;
+                    //
+                    //                         (
+                    //                             Some(match func.backend_response_type() {
+                    //                                 FuncBackendResponseType::CodeGeneration => {
+                    //                                     FuncAssociations::CodeGeneration {
+                    //                                         schema_variant_ids,
+                    //                                         component_ids,
+                    //                                         inputs,
+                    //                                     }
+                    //                                 }
+                    //
+                    //                                 FuncBackendResponseType::Qualification => {
+                    //                                     FuncAssociations::Qualification {
+                    //                                         schema_variant_ids,
+                    //                                         component_ids,
+                    //                                         inputs: get_leaf_function_inputs(ctx, *func.id()).await?,
+                    //                                     }
+                    //                                 }
+                    //                                 _ => unreachable!("the match above ensures this is unreachable"),
+                    //                             }),
+                    //                             input_type,
+                    //                         )
+                }
+                _ => {
+                    // let protos = AttributePrototype::find_for_func(ctx, func.id()).await?;
+
+                    //                         let mut prototypes = Vec::with_capacity(protos.len());
+                    //                         for proto in &protos {
+                    //                             prototypes.push(
+                    //                                 prototype_view_for_attribute_prototype(ctx, *func.id(), proto).await?,
+                    //                             );
+                    //                         }
+
+                    // let ts_types = compile_attribute_function_types(ctx, &prototypes).await?;
+
+                    (
+                        Some(FuncAssociations::Attribute {
+                            prototypes: vec![],
+                            arguments: arguments
+                                .iter()
+                                .map(|arg| FuncArgumentView {
+                                    id: arg.id,
+                                    name: arg.name.to_owned(),
+                                    kind: arg.kind,
+                                    element_kind: arg.element_kind.to_owned(),
+                                })
+                                .collect(),
+                        }),
+                        "type Input = any".into(),
+                    )
+                }
+            };
+            (associations, input_type)
+        }
+        //         FuncBackendKind::JsAction => {
+        //             let (kind, schema_variant_ids) =
+        //                 action_prototypes_into_schema_variants_and_components(ctx, *func.id()).await?;
+        //
+        //             let ts_types = compile_action_types(ctx, &schema_variant_ids).await?;
+        //
+        //             let associations = Some(FuncAssociations::Action {
+        //                 schema_variant_ids,
+        //                 kind,
+        //             });
+        //
+        //             (associations, ts_types)
+        //         }
+        //         FuncBackendKind::JsReconciliation => {
+        //             return Err(FuncError::EditingReconciliationFuncsNotImplemented);
+        //         }
+        //         FuncBackendKind::JsValidation => {
+        //             let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
+        //             let input_type = compile_validation_types(ctx, &protos).await?;
+        //
+        //             let associations = Some(FuncAssociations::Validation {
+        //                 prototypes: protos
+        //                     .iter()
+        //                     .map(|proto| ValidationPrototypeView {
+        //                         schema_variant_id: proto.context().schema_variant_id(),
+        //                         prop_id: proto.context().prop_id(),
+        //                     })
+        //                     .collect(),
+        //             });
+        //             (associations, input_type)
+        //         }
+        _ => (None, String::new()),
+    };
     //
     //     let is_revertible = is_func_revertible(ctx, func).await?;
     //     let types = [
@@ -553,8 +555,8 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
         code: func.code_plaintext()?,
         is_builtin: func.builtin,
         is_revertible: false,
-        associations: None,
-        types: "".into(),
+        associations,
+        types: input_type,
     })
 }
 
@@ -878,7 +880,8 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
 // }
 
 pub fn routes() -> Router<AppState> {
-    Router::new().route("/list_funcs", get(list_funcs::list_funcs))
+    Router::new()
+        .route("/list_funcs", get(list_funcs::list_funcs))
         .route("/get_func", get(get_func::get_func))
     //         .route(
     //             "/get_func_last_execution",

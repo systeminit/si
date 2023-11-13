@@ -3,6 +3,7 @@ use std::{io, net::SocketAddr, path::Path, path::PathBuf};
 
 use axum::routing::IntoMakeService;
 use axum::Router;
+use dal::func::argument::FuncArgument;
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use thiserror::Error;
 use tokio::time::Instant;
@@ -17,7 +18,7 @@ use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use ulid::Ulid;
 
 use dal::{
-    builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
+    builtins, BuiltinsError, DalContext, Func, JwtPublicSigningKey, Tenancy, TransactionsError,
     Workspace, WorkspaceError,
 };
 use dal::{cyclone_key_pair::CycloneKeyPairError, ServicesContext};
@@ -399,15 +400,13 @@ async fn install_builtins(
 
     let mut ctx = ctx.clone();
     ctx.update_snapshot_to_visibility().await?;
-    dbg!(ctx
-        .workspace_snapshot()
-        .expect("wsnapshot")
-        .lock()
-        .await
-        .list_funcs(&ctx)
-        .await
-        .expect("list funcs")
-        .len());
+    let funcs = Func::list_funcs(&ctx).await.expect("list_funcs");
+    for func in funcs {
+        let args = FuncArgument::list_for_func(&ctx, func.id)
+            .await
+            .expect("list_for_func");
+        dbg!(args.len());
+    }
 
     Ok(())
 }

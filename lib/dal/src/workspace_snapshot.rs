@@ -99,6 +99,8 @@ pub enum WorkspaceSnapshotError {
     Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
     #[error("Type mismatch, expected prop kind {0} got {1}")]
     TypeMismatch(PropKind, String),
     #[error("unexpected graph layout: {0}")]

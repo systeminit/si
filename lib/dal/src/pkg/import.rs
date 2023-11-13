@@ -208,7 +208,7 @@ async fn import_change_set(
                 let args = func_spec.arguments()?;
 
                 if !args.is_empty() {
-                    // import_func_arguments(ctx, change_set_pk, *func.id(), &args, thing_map).await?;
+                    import_func_arguments(ctx, change_set_pk, func.id, &args, thing_map).await?;
                 }
             }
         };
@@ -1454,17 +1454,6 @@ pub async fn import_pkg_from_pkg(
                 &options,
             )
             .await?;
-
-            /*
-            dbg!(ctx
-                .workspace_snapshot()?
-                .lock()
-                .await
-                .list_funcs(ctx)
-                .await
-                .expect("should get list funcs")
-                .len());
-            */
 
             Ok((installed_pkg_id, installed_schema_variant_ids, None))
         }
