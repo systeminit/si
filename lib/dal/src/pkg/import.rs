@@ -16,6 +16,7 @@ use si_pkg::{
     SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind, ValidationSpec,
 };
 
+use crate::schema::ComponentKind;
 use crate::{
     change_set_pointer::{self, ChangeSetPointer, ChangeSetPointerId},
     // component::ComponentKind,
@@ -88,7 +89,7 @@ enum Thing {
     // Edge(Edge),
     Func(Func),
     FuncArgument(FuncArgument),
-    // Schema(Schema),
+    Schema(Schema),
     // SchemaVariant(SchemaVariant),
     // Socket(Box<(Socket, Option<InternalProvider>, Option<ExternalProvider>)>),
     // Validation(ValidationPrototype),
@@ -216,27 +217,27 @@ async fn import_change_set(
 
     let mut installed_schema_variant_ids = vec![];
 
-    // for schema_spec in schemas {
-    //     match &options.schemas {
-    //         None => {}
-    //         Some(schemas) => {
-    //             if !schemas.contains(&schema_spec.name().to_string().to_lowercase()) {
-    //                 continue;
-    //             }
-    //         }
-    //     }
+    for schema_spec in schemas {
+        match &options.schemas {
+            None => {}
+            Some(schemas) => {
+                if !schemas.contains(&schema_spec.name().to_string().to_lowercase()) {
+                    continue;
+                }
+            }
+        }
 
-    //     info!(
-    //         "installing schema '{}' from {}",
-    //         schema_spec.name(),
-    //         metadata.name(),
-    //     );
+        info!(
+            "installing schema '{}' from {}",
+            schema_spec.name(),
+            metadata.name(),
+        );
 
-    //     let (_, schema_variant_ids) =
-    //         import_schema(ctx, change_set_pk, schema_spec, installed_pkg_id, thing_map).await?;
+        let (_, schema_variant_ids) =
+            import_schema(ctx, change_set_pk, schema_spec, installed_pkg_id, thing_map).await?;
 
-    //     installed_schema_variant_ids.extend(schema_variant_ids);
-    // }
+        installed_schema_variant_ids.extend(schema_variant_ids);
+    }
 
     // let mut component_attribute_skips = vec![];
     // for component_spec in components {
@@ -1628,6 +1629,7 @@ async fn import_func(
                     InstalledPkgAssetTyped::Func { id, .. } => {
                         (Func::get_by_id(ctx, id).await?, false)
                     }
+                    _ => unimplemented!("no idea what happens here!"),
                 },
                 None => (create_func(ctx, func_spec, is_builtin).await?, true),
             };
@@ -1780,24 +1782,24 @@ async fn import_func_arguments(
     Ok(())
 }
 
-// async fn create_schema(ctx: &DalContext, schema_spec_data: &SiPkgSchemaData) -> PkgResult<Schema> {
-//     let mut schema = Schema::new(ctx, schema_spec_data.name(), &ComponentKind::Standard).await?;
-//     schema
-//         .set_ui_hidden(ctx, schema_spec_data.ui_hidden())
-//         .await?;
-
-//     let ui_menu = SchemaUiMenu::new(
-//         ctx,
-//         schema_spec_data
-//             .category_name()
-//             .unwrap_or_else(|| schema_spec_data.name()),
-//         schema_spec_data.category(),
-//     )
-//     .await?;
-//     ui_menu.set_schema(ctx, schema.id()).await?;
-
-//     Ok(schema)
-// }
+async fn create_schema(ctx: &DalContext, schema_spec_data: &SiPkgSchemaData) -> PkgResult<Schema> {
+    let schema = Schema::new(
+        ctx,
+        schema_spec_data.name(),
+        ComponentKind::Standard,
+        schema_spec_data
+            .category_name()
+            .unwrap_or_else(|| schema_spec_data.name()),
+        schema_spec_data.category(),
+    )
+    .await?
+    .modify(ctx, |schema| {
+        schema.ui_hidden = schema_spec_data.ui_hidden();
+        Ok(())
+    })
+    .await?;
+    Ok(schema)
+}
 
 // async fn update_schema(
 //     ctx: &DalContext,
@@ -1828,164 +1830,162 @@ async fn import_func_arguments(
 //     Ok(())
 // }
 
-// async fn import_schema(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     schema_spec: &SiPkgSchema<'_>,
-//     installed_pkg_id: Option<InstalledPkgId>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
-//     let schema = match change_set_pk {
-//         None => {
-//             let hash = schema_spec.hash().to_string();
-//             let existing_schema = InstalledPkgAsset::list_for_kind_and_hash(
-//                 ctx,
-//                 InstalledPkgAssetKind::Schema,
-//                 &hash,
-//             )
-//             .await?
-//             .pop();
+async fn import_schema(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    schema_spec: &SiPkgSchema<'_>,
+    installed_pkg_id: Option<InstalledPkgId>,
+    thing_map: &mut ThingMap,
+) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
+    let schema = match change_set_pk {
+        None => {
+            let hash = schema_spec.hash().to_string();
+            let existing_schema = InstalledPkgAsset::list_for_kind_and_hash(
+                ctx,
+                InstalledPkgAssetKind::Schema,
+                &hash,
+            )
+            .await?
+            .pop();
 
-//             let schema = match existing_schema {
-//                 None => {
-//                     let data = schema_spec
-//                         .data()
-//                         .ok_or(PkgError::DataNotFound("schema".into()))?;
+            let schema = match existing_schema {
+                None => {
+                    let data = schema_spec
+                        .data()
+                        .ok_or(PkgError::DataNotFound("schema".into()))?;
 
-//                     create_schema(ctx, data).await?
-//                 }
-//                 Some(installed_schema_record) => {
-//                     match installed_schema_record.as_installed_schema()? {
-//                         InstalledPkgAssetTyped::Schema { id, .. } => {
-//                             match Schema::get_by_id(ctx, &id).await? {
-//                                 Some(schema) => schema,
-//                                 None => return Err(PkgError::InstalledSchemaMissing(id)),
-//                             }
-//                         }
-//                         _ => unreachable!(),
-//                     }
-//                 }
-//             };
+                    create_schema(ctx, data).await?
+                }
+                Some(installed_schema_record) => {
+                    match installed_schema_record.as_installed_schema()? {
+                        InstalledPkgAssetTyped::Schema { id, .. } => {
+                            Schema::get_by_id(ctx, id).await?
+                        }
+                        _ => unimplemented!("no idea what happens here!"),
+                    }
+                }
+            };
 
-//             // Even if the asset is already installed, we write a record of the asset installation so that
-//             // we can track the installed packages that share schemas.
-//             if let Some(installed_pkg_id) = installed_pkg_id {
-//                 InstalledPkgAsset::new(
-//                     ctx,
-//                     InstalledPkgAssetTyped::new_for_schema(*schema.id(), installed_pkg_id, hash),
-//                 )
-//                 .await?;
-//             }
+            // Even if the asset is already installed, we write a record of the asset installation so that
+            // we can track the installed packages that share schemas.
+            if let Some(installed_pkg_id) = installed_pkg_id {
+                InstalledPkgAsset::new(
+                    ctx,
+                    InstalledPkgAssetTyped::new_for_schema(schema.id(), installed_pkg_id, hash),
+                )
+                .await?;
+            }
 
-//             Some(schema)
-//         }
-//         Some(_) => {
-//             let unique_id = schema_spec
-//                 .unique_id()
-//                 .ok_or(PkgError::MissingUniqueIdForNode(format!(
-//                     "schema {}",
-//                     schema_spec.hash()
-//                 )))?;
+            Some(schema)
+        }
+        Some(_) => {
+            unimplemented!("workspace import not yet implemented")
+            // let unique_id = schema_spec
+            //     .unique_id()
+            //     .ok_or(PkgError::MissingUniqueIdForNode(format!(
+            //         "schema {}",
+            //         schema_spec.hash()
+            //     )))?;
+            //
+            // match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+            //     Some(Thing::Schema(schema)) => {
+            //         let mut schema = schema.to_owned();
+            //
+            //         if schema_spec.deleted() {
+            //             schema.delete_by_id(ctx).await?;
+            //             // delete all schema children?
+            //
+            //             None
+            //         } else {
+            //             if let Some(data) = schema_spec.data() {
+            //                 update_schema(ctx, &mut schema, data).await?;
+            //             }
+            //
+            //             Some(schema)
+            //         }
+            //     }
+            //     _ => {
+            //         if schema_spec.deleted() {
+            //             None
+            //         } else {
+            //             Some(
+            //                 create_schema(
+            //                     ctx,
+            //                     schema_spec
+            //                         .data()
+            //                         .ok_or(PkgError::DataNotFound("schema".into()))?,
+            //                 )
+            //                 .await?,
+            //             )
+            //         }
+            //     }
+            // }
+        }
+    };
 
-//             match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-//                 Some(Thing::Schema(schema)) => {
-//                     let mut schema = schema.to_owned();
+    if let Some(mut schema) = schema {
+        if let Some(unique_id) = schema_spec.unique_id() {
+            thing_map.insert(
+                change_set_pk,
+                unique_id.to_owned(),
+                Thing::Schema(schema.to_owned()),
+            );
+        }
 
-//                     if schema_spec.deleted() {
-//                         schema.delete_by_id(ctx).await?;
-//                         // delete all schema children?
+        let mut installed_schema_variant_ids = vec![];
+        // for variant_spec in &schema_spec.variants()? {
+        //     let variant = import_schema_variant(
+        //         ctx,
+        //         change_set_pk,
+        //         &mut schema,
+        //         variant_spec,
+        //         installed_pkg_id,
+        //         thing_map,
+        //     )
+        //     .await?;
+        //
+        //     if let Some(variant) = variant {
+        //         installed_schema_variant_ids.push(*variant.id());
+        //
+        //         if let Some(variant_spec_data) = variant_spec.data() {
+        //             let func_unique_id = variant_spec_data.func_unique_id().to_owned();
+        //
+        //             set_default_schema_variant_id(
+        //                 ctx,
+        //                 change_set_pk,
+        //                 &mut schema,
+        //                 schema_spec
+        //                     .data()
+        //                     .as_ref()
+        //                     .and_then(|data| data.default_schema_variant()),
+        //                 variant_spec.unique_id(),
+        //                 *variant.id(),
+        //             )
+        //             .await?;
+        //
+        //             if let Thing::Func(asset_func) =
+        //                 thing_map
+        //                     .get(change_set_pk, &func_unique_id)
+        //                     .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
+        //             {
+        //                 create_schema_variant_definition(
+        //                     ctx,
+        //                     schema_spec.clone(),
+        //                     installed_pkg_id,
+        //                     *variant.id(),
+        //                     asset_func,
+        //                 )
+        //                 .await?;
+        //             }
+        //         }
+        //     }
+        // }
 
-//                         None
-//                     } else {
-//                         if let Some(data) = schema_spec.data() {
-//                             update_schema(ctx, &mut schema, data).await?;
-//                         }
-
-//                         Some(schema)
-//                     }
-//                 }
-//                 _ => {
-//                     if schema_spec.deleted() {
-//                         None
-//                     } else {
-//                         Some(
-//                             create_schema(
-//                                 ctx,
-//                                 schema_spec
-//                                     .data()
-//                                     .ok_or(PkgError::DataNotFound("schema".into()))?,
-//                             )
-//                             .await?,
-//                         )
-//                     }
-//                 }
-//             }
-//         }
-//     };
-
-//     if let Some(mut schema) = schema {
-//         if let Some(unique_id) = schema_spec.unique_id() {
-//             thing_map.insert(
-//                 change_set_pk,
-//                 unique_id.to_owned(),
-//                 Thing::Schema(schema.to_owned()),
-//             );
-//         }
-
-//         let mut installed_schema_variant_ids = vec![];
-//         for variant_spec in &schema_spec.variants()? {
-//             let variant = import_schema_variant(
-//                 ctx,
-//                 change_set_pk,
-//                 &mut schema,
-//                 variant_spec,
-//                 installed_pkg_id,
-//                 thing_map,
-//             )
-//             .await?;
-
-//             if let Some(variant) = variant {
-//                 installed_schema_variant_ids.push(*variant.id());
-
-//                 if let Some(variant_spec_data) = variant_spec.data() {
-//                     let func_unique_id = variant_spec_data.func_unique_id().to_owned();
-
-//                     set_default_schema_variant_id(
-//                         ctx,
-//                         change_set_pk,
-//                         &mut schema,
-//                         schema_spec
-//                             .data()
-//                             .as_ref()
-//                             .and_then(|data| data.default_schema_variant()),
-//                         variant_spec.unique_id(),
-//                         *variant.id(),
-//                     )
-//                     .await?;
-
-//                     if let Thing::Func(asset_func) =
-//                         thing_map
-//                             .get(change_set_pk, &func_unique_id)
-//                             .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
-//                     {
-//                         create_schema_variant_definition(
-//                             ctx,
-//                             schema_spec.clone(),
-//                             installed_pkg_id,
-//                             *variant.id(),
-//                             asset_func,
-//                         )
-//                         .await?;
-//                     }
-//                 }
-//             }
-//         }
-
-//         Ok((Some(*schema.id()), installed_schema_variant_ids))
-//     } else {
-//         Ok((None, vec![]))
-//     }
-// }
+        Ok((Some(schema.id()), installed_schema_variant_ids))
+    } else {
+        Ok((None, vec![]))
+    }
+}
 
 // async fn set_default_schema_variant_id(
 //     ctx: &DalContext,

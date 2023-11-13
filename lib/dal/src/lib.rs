@@ -105,7 +105,7 @@ pub use node::{Node, NodeKind};
 pub use prop::{Prop, PropId, PropKind};
 pub use provider::external::{ExternalProvider, ExternalProviderId};
 pub use provider::internal::{InternalProvider, InternalProviderId};
-pub use schema::{Schema, SchemaId, SchemaVariant, SchemaVariantId};
+pub use schema::{Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId};
 pub use socket::{Socket, SocketArity, SocketId};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use tenancy::{Tenancy, TenancyError};

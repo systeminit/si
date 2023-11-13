@@ -41,6 +41,7 @@ use crate::{
     InternalProviderId,
     PropId,
     PropKind,
+    SchemaError,
     SchemaId,
     SchemaVariantId,
     StandardModelError,
@@ -138,8 +139,6 @@ pub enum PkgError {
     InstalledFuncMissing(FuncId),
     #[error(transparent)]
     InstalledPkg(#[from] InstalledPkgError),
-    // #[error("Installed schema id {0} does not exist")]
-    // InstalledSchemaMissing(SchemaId),
     // #[error("Installed schema variant definition {0} does not exist")]
     // InstalledSchemaVariantDefinitionMissing(SchemaVariantDefinitionId),
     // #[error("Installed schema variant {0} does not exist")]
@@ -206,8 +205,8 @@ pub enum PkgError {
     // PropTree(#[from] PropTreeError),
     // #[error("prop tree structure is invalid: {0}")]
     // PropTreeInvalid(String),
-    // #[error(transparent)]
-    // Schema(#[from] SchemaError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
     // #[error(transparent)]
     // SchemaVariant(#[from] SchemaVariantError),
     // #[error(transparent)]

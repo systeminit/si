@@ -14,7 +14,7 @@ use crate::{pk, DalContext, PropId, StandardModel, Timestamp, WorkspaceSnapshot}
 
 // use self::leaves::{LeafInput, LeafInputLocation, LeafKind};
 
-// pub mod definition;
+pub mod definition;
 pub mod leaves;
 pub mod root_prop;
 
