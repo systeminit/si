@@ -16,6 +16,7 @@ once_cell = { workspace = true }
 dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 futures = { workspace = true }
+futures-lite = { workspace = true }
 hyper = { workspace = true }
 names = { workspace = true }
 nix = { workspace = true }
