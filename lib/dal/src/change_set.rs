@@ -136,19 +136,19 @@ impl ChangeSet {
         )
         .await?;
 
-        let actor = match ctx.history_actor() {
+        let user_pk = match ctx.history_actor() {
             HistoryActor::User(user_pk) => {
                 let user = User::get_by_pk(ctx, *user_pk)
                     .await?
                     .ok_or(ChangeSetError::InvalidActor(*user_pk))?;
 
-                user.email().to_string()
+                Some(user.pk())
             }
 
-            HistoryActor::SystemInit => "SystemInitiativeUser".to_string(),
+            HistoryActor::SystemInit => None,
         };
 
-        WsEvent::change_set_applied(ctx, self.pk, actor)
+        WsEvent::change_set_applied(ctx, self.pk, user_pk)
             .await?
             .publish_on_commit(ctx)
             .await?;
@@ -246,13 +246,13 @@ impl WsEvent {
     pub async fn change_set_applied(
         ctx: &DalContext,
         change_set_pk: ChangeSetPk,
-        actor: String,
+        user_pk: Option<UserPk>,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::ChangeSetApplied(ChangeSetAppliedPayload {
                 change_set_pk,
-                actor,
+                user_pk,
             }),
         )
         .await
@@ -278,5 +278,5 @@ impl WsEvent {
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSetAppliedPayload {
     change_set_pk: ChangeSetPk,
-    actor: String,
+    user_pk: Option<UserPk>,
 }
