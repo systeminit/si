@@ -1,7 +1,12 @@
 use crate::server::{impl_default_error_into_response, state::AppState};
 use crate::service::func::get_func::GetFuncResponse;
-use axum::{response::Response, routing::get, Json, Router};
+use axum::{
+    response::Response,
+    routing::{get, post},
+    Json, Router,
+};
 use dal::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
+use dal::WsEventError;
 //use dal::func::execution::FuncExecutionError;
 use dal::{
     workspace_snapshot::WorkspaceSnapshotError, DalContext, Func, FuncBackendKind,
@@ -20,7 +25,7 @@ pub mod list_funcs;
 // pub mod list_input_sources;
 // pub mod revert_func;
 // pub mod save_and_exec;
-// pub mod save_func;
+pub mod save_func;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -106,16 +111,14 @@ pub enum FuncError {
     //     FuncNameExists(String),
     //     #[error("The function name \"{0}\" is reserved")]
     //     FuncNameReserved(String),
-    //     #[error("Function not found")]
-    //     FuncNotFound,
     //     #[error("func is not revertible")]
     //     FuncNotRevertible,
     //     #[error("Cannot create that type of function")]
     //     FuncNotSupported,
     //     #[error("Function options are incompatible with variant")]
     //     FuncOptionsAndVariantMismatch,
-    //     #[error("Hyper error: {0}")]
-    //     Hyper(#[from] hyper::http::Error),
+    #[error("Hyper error: {0}")]
+    Hyper(#[from] hyper::http::Error),
     //     #[error("internal provider error: {0}")]
     //     InternalProvider(#[from] InternalProviderError),
     //     #[error("failed to join async task; bug!")]
@@ -144,9 +147,8 @@ pub enum FuncError {
     //     SchemaVariantMissingSchema(SchemaVariantId),
     //     #[error("Could not find schema variant for prop {0}")]
     //     SchemaVariantNotFoundForProp(PropId),
-    //     #[error("json serialization error: {0}")]
-    //     SerdeJson(#[from] serde_json::Error),
-    //     #[error(transparent)]
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     //     StandardModel(#[from] StandardModelError),
     //     #[error("tenancy error: {0}")]
     //     Tenancy(#[from] TenancyError),
@@ -160,10 +162,10 @@ pub enum FuncError {
     //     ValidationPrototypeMissingSchema,
     //     #[error("validation prototype {0} schema_variant is missing")]
     //     ValidationPrototypeMissingSchemaVariant(SchemaVariantId),
-    //     #[error("could not publish websocket event: {0}")]
-    //     WsEvent(#[from] WsEventError),
     #[error(transparent)]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    #[error("could not publish websocket event: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 //impl From<si_data_pg::PgPoolError> for FuncError {
@@ -883,12 +885,12 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/list_funcs", get(list_funcs::list_funcs))
         .route("/get_func", get(get_func::get_func))
-    //         .route(
-    //             "/get_func_last_execution",
-    //             get(get_func::get_latest_func_execution),
-    //         )
-    //         .route("/create_func", post(create_func::create_func))
-    //.route("/save_func", post(save_func::save_func))
+        //         .route(
+        //             "/get_func_last_execution",
+        //             get(get_func::get_latest_func_execution),
+        //         )
+        //         .route("/create_func", post(create_func::create_func))
+        .route("/save_func", post(save_func::save_func))
     //         .route("/delete_func", post(delete_func::delete_func))
     //         .route("/save_and_exec", post(save_and_exec::save_and_exec))
     //         .route("/execute", post(execute::execute))

@@ -261,6 +261,14 @@ impl std::fmt::Debug for ChangeSetPointer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ChangeSetPointer")
             .field("id", &self.id.to_string())
+            .field(
+                "base_change_set_id",
+                &self.base_change_set_id.map(|bcsid| bcsid.to_string()),
+            )
+            .field(
+                "workspace_snapshot_id",
+                &self.workspace_snapshot_id.map(|wsid| wsid.to_string()),
+            )
             .finish()
     }
 }

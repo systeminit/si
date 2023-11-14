@@ -1,15 +1,16 @@
 use base64::{engine::general_purpose, Engine};
-use content_store::ContentHash;
+use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use std::string::FromUtf8Error;
 use strum::{EnumDiscriminants, IntoEnumIterator};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::change_set_pointer::ChangeSetPointerError;
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::workspace_snapshot::node_weight::FuncNodeWeight;
+use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, DalContext, Timestamp};
+use crate::{pk, DalContext, Timestamp, TransactionsError};
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
@@ -17,10 +18,16 @@ use self::backend::{FuncBackendKind, FuncBackendResponseType};
 pub enum FuncError {
     #[error("base64 decode error: {0}")]
     Base64Decode(#[from] base64::DecodeError),
+    #[error("change set pointer error: {0}")]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error("TODO(nick): restore this error message, but here is what was passed to it: {0}")]
     IntrinsicSpecCreation(String),
+    #[error("store error: {0}")]
+    Store(#[from] StoreError),
     #[error("Could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     #[error("utf8 error: {0}")]
     Utf8(#[from] FromUtf8Error),
     #[error("workspace snapshot error: {0}")]
@@ -137,6 +144,50 @@ impl Func {
             )?),
             None => None,
         })
+    }
+
+    pub async fn modify_by_id<L>(ctx: &DalContext, id: FuncId, lambda: L) -> FuncResult<Func>
+    where
+        L: FnOnce(&mut Func) -> FuncResult<()>,
+    {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let (mut node_weight, content) = workspace_snapshot
+            .func_get_node_weight_and_content(ctx, id)
+            .await?;
+        let mut func = Func::assemble(&node_weight, &content);
+
+        lambda(&mut func)?;
+
+        // If both either the name or backend_kind have changed, *and* parts of the FuncContent
+        // have changed, this ends up updating the node for the function twice. This could be
+        // optimized to do it only once.
+        if func.name.as_str() != node_weight.name()
+            || func.backend_kind != node_weight.backend_kind()
+        {
+            let original_node_index = workspace_snapshot.get_node_index_by_id(id.into())?;
+
+            node_weight
+                .set_name(func.name.as_str())
+                .set_backend_kind(func.backend_kind);
+
+            let new_node_index =
+                workspace_snapshot.add_node(NodeWeight::Func(node_weight.clone()))?;
+
+            workspace_snapshot.replace_references(original_node_index, new_node_index)?;
+        }
+
+        let updated = FuncContentV1::from(func.clone());
+        if updated != content {
+            let hash = ctx
+                .content_store()
+                .try_lock()?
+                .add(&FuncContent::V1(updated.clone()))?;
+
+            workspace_snapshot.update_content(ctx.change_set_pointer()?, id.into(), dbg!(hash))?;
+        }
+
+        Ok(Func::assemble(&node_weight, &updated))
     }
 }
 

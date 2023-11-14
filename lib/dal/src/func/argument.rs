@@ -207,6 +207,29 @@ impl FuncArgument {
         Ok(FuncArgument::assemble(&content_node_weight, &content))
     }
 
+    pub async fn get_by_id(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<Self> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let id: ulid::Ulid = id.into();
+        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        let content: FuncArgumentContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let FuncArgumentContent::V1(inner) = content;
+
+        let arg_node_weight =
+            node_weight.get_content_node_weight_of_kind(ContentAddressDiscriminants::FuncArg)?;
+
+        Ok(FuncArgument::assemble(&arg_node_weight, &inner))
+    }
+
     /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId).
     pub async fn list_for_func(ctx: &DalContext, func_id: FuncId) -> FuncArgumentResult<Vec<Self>> {
         let mut func_args = vec![];

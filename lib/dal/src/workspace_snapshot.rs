@@ -207,7 +207,7 @@ impl WorkspaceSnapshot {
         working_copy.mark_graph_seen(vector_clock_id)?;
 
         // Write out to the content store.
-        ctx.content_store().lock().await.write().await?;
+        ctx.content_store().try_lock()?.write().await?;
 
         // Stamp the new workspace snapshot.
         let serialized_snapshot = postcard::to_stdvec(&working_copy)?;

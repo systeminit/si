@@ -257,6 +257,12 @@ async fn perform_updates_and_write_out_and_update_pointer(
 
     // Once all updates have been performed, we can write out, mark everything as recently seen
     // and update the pointer.
+
+    //    dbg!("onto_workspace_snapshot");
+    //    onto_workspace_snapshot.dot();
+    //    dbg!("to_rebase_workspace_snapshot");
+    //    to_rebase_workspace_snapshot.dot();
+
     to_rebase_workspace_snapshot
         .write(ctx, to_rebase_change_set.vector_clock_id())
         .await?;
@@ -283,8 +289,12 @@ fn find_in_to_rebase_or_create_using_onto(
                 unchecked_node_weight.lineage_id(),
             )? {
                 Some(found_equivalent_node) => {
-                    updated.insert(unchecked, found_equivalent_node);
-                    found_equivalent_node
+                    updated.extend(
+                        to_rebase_workspace_snapshot
+                            .import_subgraph(onto_workspace_snapshot, unchecked)?,
+                    );
+                    updated.insert(found_equivalent_node, unchecked);
+                    unchecked
                 }
                 None => {
                     updated.extend(

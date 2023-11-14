@@ -92,8 +92,7 @@ impl WorkspaceSnapshot {
 
         let content: FuncContent = ctx
             .content_store()
-            .lock()
-            .await
+            .try_lock()?
             .get(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
@@ -220,8 +219,7 @@ impl WorkspaceSnapshot {
         if updated != content {
             let hash = ctx
                 .content_store()
-                .lock()
-                .await
+                .try_lock()?
                 .add(&FuncContent::V1(updated.clone()))?;
 
             self.working_copy()?
