@@ -21,15 +21,40 @@ For a given crate, you can use `buck2 test`.
 buck2 test <crate>:test
 ```
 
+*`<crate>` has the structure `//{dir}/{module}`, for example `//lib/sdf-server`*
+
 To see all options, use `buck2 targets` with a `:` character at the end.
 
 ```bash
 buck2 targets <crate>:
 ```
 
+To list all targets run:
+
+```
+buck2 targets //bin/...
+buck2 targets //lib/...
+```
+
+*Ellipsis also work for other directories, or even for root, but at root the list will contain a lot of noise*
+
+bash
+```
+buck2 targets ...
+```
+
 ## Running Individual Tests
 
 You can also run individual tests, as needed.
+
+To run tests in the current directory run:
+
+bash
+```
+cd /lib/sdf-server
+buck2 test :test
+```
+
 Instead of using `buck2 test`, we will use `buck2 run`.
 
 Here is an example with an individual [dal](../lib/dal) integration test:
