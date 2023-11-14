@@ -1,20 +1,44 @@
-use content_store::ContentHash;
+use content_store::{ContentHash, Store};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
 use si_pkg::PropSpecKind;
-
 use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
-use telemetry::prelude::*;
+use thiserror::Error;
+use ulid::Ulid;
 
-use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::FuncBackendResponseType;
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::workspace_snapshot::edge_weight::EdgeWeightError;
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     label_list::ToLabelList, pk, property_editor::schema::WidgetKind, FuncId, StandardModel,
-    Timestamp,
+    Timestamp, TransactionsError,
 };
+use crate::{DalContext, FuncBackendResponseType, SchemaVariantId};
 
 pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
+
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum PropError {
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("store error: {0}")]
+    Store(#[from] content_store::StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+pub type PropResult<T> = Result<T, PropError>;
 
 pk!(PropId);
 
@@ -41,13 +65,6 @@ pub struct Prop {
     pub refers_to_prop_id: Option<PropId>,
     /// Connected props may need a custom diff function
     pub diff_func_id: Option<FuncId>,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct PropGraphNode {
-    id: PropId,
-    content_address: ContentAddress,
-    content: PropContentV1,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -79,27 +96,6 @@ pub struct PropContentV1 {
     pub diff_func_id: Option<FuncId>,
 }
 
-impl Prop {
-    pub fn assemble(id: PropId, inner: &PropContentV1) -> Self {
-        Self {
-            id,
-            timestamp: inner.timestamp,
-            name: inner.name.clone(),
-            kind: inner.kind,
-            widget_kind: inner.widget_kind,
-            widget_options: inner.widget_options.clone(),
-            doc_link: inner.doc_link.clone(),
-            hidden: inner.hidden,
-            refers_to_prop_id: inner.refers_to_prop_id,
-            diff_func_id: inner.diff_func_id,
-        }
-    }
-
-    pub fn id(&self) -> PropId {
-        self.id
-    }
-}
-
 impl From<Prop> for PropContentV1 {
     fn from(value: Prop) -> Self {
         Self {
@@ -113,24 +109,6 @@ impl From<Prop> for PropContentV1 {
             refers_to_prop_id: value.refers_to_prop_id,
             diff_func_id: value.diff_func_id,
         }
-    }
-}
-
-impl PropGraphNode {
-    pub fn assemble(
-        id: impl Into<PropId>,
-        content_hash: ContentHash,
-        content: PropContentV1,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            content_address: ContentAddress::Prop(content_hash),
-            content,
-        }
-    }
-
-    pub fn id(&self) -> PropId {
-        self.id
     }
 }
 
@@ -287,6 +265,156 @@ impl From<PropKind> for FuncBackendResponseType {
             PropKind::Map => Self::Map,
             PropKind::String => Self::String,
         }
+    }
+}
+
+pub enum PropParent {
+    OrderedProp(PropId),
+    Prop(PropId),
+    SchemaVariant(SchemaVariantId),
+}
+
+impl Prop {
+    pub fn assemble(id: PropId, inner: PropContentV1) -> Self {
+        Self {
+            id,
+            timestamp: inner.timestamp,
+            name: inner.name,
+            kind: inner.kind,
+            widget_kind: inner.widget_kind,
+            widget_options: inner.widget_options,
+            doc_link: inner.doc_link,
+            hidden: inner.hidden,
+            refers_to_prop_id: inner.refers_to_prop_id,
+            diff_func_id: inner.diff_func_id,
+        }
+    }
+
+    pub fn id(&self) -> PropId {
+        self.id
+    }
+
+    /// Create a new [`Prop`]. A corresponding [`AttributePrototype`] and [`AttributeValue`] will be
+    /// created when the provided [`SchemaVariant`](crate::SchemaVariant) is
+    /// [`finalized`](crate::SchemaVariant::finalize).
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        kind: PropKind,
+        widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
+        prop_parent: PropParent,
+        ordered: bool,
+    ) -> PropResult<Self> {
+        let timestamp = Timestamp::now();
+        let (widget_kind, widget_options) = match widget_kind_and_options {
+            Some((kind, options)) => (kind, options),
+            None => (WidgetKind::from(kind), None),
+        };
+        let name = name.into();
+
+        let content = PropContentV1 {
+            timestamp,
+            name: name.clone(),
+            kind,
+            widget_kind,
+            widget_options,
+            doc_link: None,
+            hidden: false,
+            refers_to_prop_id: None,
+            diff_func_id: None,
+        };
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&PropContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let node_index = if ordered {
+            workspace_snapshot.add_ordered_node(change_set, node_weight)?
+        } else {
+            workspace_snapshot.add_node(node_weight)?
+        };
+
+        match prop_parent {
+            PropParent::OrderedProp(ordered_prop_id) => {
+                let parent_node_index =
+                    workspace_snapshot.get_node_index_by_id(ordered_prop_id.into())?;
+                workspace_snapshot.add_ordered_edge(
+                    change_set,
+                    parent_node_index,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                    node_index,
+                )?;
+            }
+            PropParent::Prop(prop_id) => {
+                let parent_node_index = workspace_snapshot.get_node_index_by_id(prop_id.into())?;
+                workspace_snapshot.add_edge(
+                    parent_node_index,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                    node_index,
+                )?;
+            }
+            PropParent::SchemaVariant(schema_variant_id) => {
+                let parent_node_index =
+                    workspace_snapshot.get_node_index_by_id(schema_variant_id.into())?;
+                workspace_snapshot.add_edge(
+                    parent_node_index,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                    node_index,
+                )?;
+            }
+        };
+
+        Ok(Self::assemble(id.into(), content))
+    }
+
+    async fn get_content(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<(ContentHash, PropContentV1)> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let id: Ulid = prop_id.into();
+        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        let content: PropContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let PropContent::V1(inner) = content;
+
+        Ok((hash, inner))
+    }
+
+    pub async fn modify<L>(self, ctx: &DalContext, lambda: L) -> PropResult<Self>
+    where
+        L: FnOnce(&mut Self) -> PropResult<()>,
+    {
+        let mut prop = self;
+
+        let before = PropContentV1::from(prop.clone());
+        lambda(&mut prop)?;
+        let updated = PropContentV1::from(prop.clone());
+
+        if updated != before {
+            let hash = ctx
+                .content_store()
+                .try_lock()?
+                .add(&PropContent::V1(updated.clone()))?;
+
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.update_content(ctx.change_set_pointer()?, prop.id.into(), hash)?;
+        }
+
+        Ok(prop)
     }
 }
 

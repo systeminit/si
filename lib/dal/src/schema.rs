@@ -133,8 +133,7 @@ impl Schema {
 
         let hash = ctx
             .content_store()
-            .lock()
-            .await
+            .try_lock()?
             .add(&SchemaContent::V1(content.clone()))?;
 
         let change_set = ctx.change_set_pointer()?;
@@ -168,8 +167,7 @@ impl Schema {
 
         let content: SchemaContent = ctx
             .content_store()
-            .lock()
-            .await
+            .try_lock()?
             .get(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
@@ -193,8 +191,7 @@ impl Schema {
         if updated != before {
             let hash = ctx
                 .content_store()
-                .lock()
-                .await
+                .try_lock()?
                 .add(&SchemaContent::V1(updated.clone()))?;
 
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;

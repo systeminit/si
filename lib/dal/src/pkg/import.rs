@@ -1583,12 +1583,11 @@ async fn create_func(
 
 async fn update_func(
     ctx: &DalContext,
-    workspace_snapshot: &mut WorkspaceSnapshot,
-    func: &Func,
+    func: Func,
     func_spec_data: &SiPkgFuncData,
-) -> PkgResult<()> {
-    workspace_snapshot
-        .func_modify_by_id(ctx, func.id, |func| {
+) -> PkgResult<Func> {
+    let func = func
+        .modify(ctx, |func| {
             func.name = func_spec_data.name().to_owned();
             func.backend_kind = func_spec_data.backend_kind().into();
             func.backend_response_type = func_spec_data.response_type().into();
@@ -1605,7 +1604,7 @@ async fn update_func(
         })
         .await?;
 
-    Ok(())
+    Ok(func)
 }
 
 async fn import_func(
@@ -1933,53 +1932,53 @@ async fn import_schema(
         }
 
         let mut installed_schema_variant_ids = vec![];
-        // for variant_spec in &schema_spec.variants()? {
-        //     let variant = import_schema_variant(
-        //         ctx,
-        //         change_set_pk,
-        //         &mut schema,
-        //         variant_spec,
-        //         installed_pkg_id,
-        //         thing_map,
-        //     )
-        //     .await?;
-        //
-        //     if let Some(variant) = variant {
-        //         installed_schema_variant_ids.push(*variant.id());
-        //
-        //         if let Some(variant_spec_data) = variant_spec.data() {
-        //             let func_unique_id = variant_spec_data.func_unique_id().to_owned();
-        //
-        //             set_default_schema_variant_id(
-        //                 ctx,
-        //                 change_set_pk,
-        //                 &mut schema,
-        //                 schema_spec
-        //                     .data()
-        //                     .as_ref()
-        //                     .and_then(|data| data.default_schema_variant()),
-        //                 variant_spec.unique_id(),
-        //                 *variant.id(),
-        //             )
-        //             .await?;
-        //
-        //             if let Thing::Func(asset_func) =
-        //                 thing_map
-        //                     .get(change_set_pk, &func_unique_id)
-        //                     .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
-        //             {
-        //                 create_schema_variant_definition(
-        //                     ctx,
-        //                     schema_spec.clone(),
-        //                     installed_pkg_id,
-        //                     *variant.id(),
-        //                     asset_func,
-        //                 )
-        //                 .await?;
-        //             }
-        //         }
-        //     }
-        // }
+        for variant_spec in &schema_spec.variants()? {
+            let variant = import_schema_variant(
+                ctx,
+                change_set_pk,
+                &mut schema,
+                variant_spec,
+                installed_pkg_id,
+                thing_map,
+            )
+            .await?;
+
+            // if let Some(variant) = variant {
+            //     installed_schema_variant_ids.push(*variant.id());
+            //
+            //     if let Some(variant_spec_data) = variant_spec.data() {
+            //         let func_unique_id = variant_spec_data.func_unique_id().to_owned();
+            //
+            //         set_default_schema_variant_id(
+            //             ctx,
+            //             change_set_pk,
+            //             &mut schema,
+            //             schema_spec
+            //                 .data()
+            //                 .as_ref()
+            //                 .and_then(|data| data.default_schema_variant()),
+            //             variant_spec.unique_id(),
+            //             *variant.id(),
+            //         )
+            //         .await?;
+            //
+            //         if let Thing::Func(asset_func) =
+            //             thing_map
+            //                 .get(change_set_pk, &func_unique_id)
+            //                 .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
+            //         {
+            //             create_schema_variant_definition(
+            //                 ctx,
+            //                 schema_spec.clone(),
+            //                 installed_pkg_id,
+            //                 *variant.id(),
+            //                 asset_func,
+            //             )
+            //             .await?;
+            //         }
+            //     }
+            // }
+        }
 
         Ok((Some(schema.id()), installed_schema_variant_ids))
     } else {
@@ -2513,374 +2512,373 @@ async fn import_schema(
 //     Ok(())
 // }
 
-// async fn import_schema_variant(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     schema: &mut Schema,
-//     variant_spec: &SiPkgSchemaVariant<'_>,
-//     installed_pkg_id: Option<InstalledPkgId>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<Option<SchemaVariant>> {
-//     let mut schema_variant = match change_set_pk {
-//         None => {
-//             let hash = variant_spec.hash().to_string();
-//             let existing_schema_variant = InstalledPkgAsset::list_for_kind_and_hash(
-//                 ctx,
-//                 InstalledPkgAssetKind::SchemaVariant,
-//                 &hash,
-//             )
-//             .await?
-//             .pop();
-
-//             let (variant, created) = match existing_schema_variant {
-//                 Some(installed_sv_record) => {
-//                     match installed_sv_record.as_installed_schema_variant()? {
-//                         InstalledPkgAssetTyped::SchemaVariant { id, .. } => (
-//                             SchemaVariant::get_by_id(ctx, &id)
-//                                 .await?
-//                                 .ok_or(PkgError::InstalledSchemaVariantMissing(id))?,
-//                             false,
-//                         ),
-//                         _ => unreachable!(
-//                             "the as_installed_schema_variant method ensures we cannot hit this branch"
-//                         ),
-//                     }
-//                 }
-//                 None => (
-//                     SchemaVariant::new(ctx, *schema.id(), variant_spec.name())
-//                         .await?
-//                         .0,
-//                     true,
-//                 ),
-//             };
-
-//             if let Some(installed_pkg_id) = installed_pkg_id {
-//                 InstalledPkgAsset::new(
-//                     ctx,
-//                     InstalledPkgAssetTyped::new_for_schema_variant(
-//                         *variant.id(),
-//                         installed_pkg_id,
-//                         hash,
-//                     ),
-//                 )
-//                 .await?;
-//             }
-
-//             if created {
-//                 Some(variant)
-//             } else {
-//                 None
-//             }
-//         }
-//         Some(_) => {
-//             let unique_id = variant_spec
-//                 .unique_id()
-//                 .ok_or(PkgError::MissingUniqueIdForNode(format!(
-//                     "variant {}",
-//                     variant_spec.hash()
-//                 )))?;
-
-//             match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-//                 Some(Thing::SchemaVariant(variant)) => {
-//                     let mut variant = variant.to_owned();
-//                     update_schema_variant(ctx, &mut variant, variant_spec.name(), *schema.id())
-//                         .await?;
-
-//                     if variant_spec.deleted() {
-//                         variant.delete_by_id(ctx).await?;
-
-//                         None
-//                     } else {
-//                         Some(variant)
-//                     }
-//                 }
-//                 _ => {
-//                     if variant_spec.deleted() {
-//                         None
-//                     } else {
-//                         Some(
-//                             SchemaVariant::new(ctx, *schema.id(), variant_spec.name())
-//                                 .await?
-//                                 .0,
-//                         )
-//                     }
-//                 }
-//             }
-//         }
-//     };
-
-//     if let Some(schema_variant) = schema_variant.as_mut() {
-//         if let Some(unique_id) = variant_spec.unique_id() {
-//             thing_map.insert(
-//                 change_set_pk,
-//                 unique_id.to_owned(),
-//                 Thing::SchemaVariant(schema_variant.to_owned()),
-//             );
-//         }
-
-//         if let Some(data) = variant_spec.data() {
-//             if let (Some(spec_color), current_color) =
-//                 (data.color(), schema_variant.color(ctx).await?)
-//             {
-//                 if current_color.is_none()
-//                     || spec_color
-//                         != current_color.expect("is none condition ensures this won't panic")
-//                 {
-//                     schema_variant.set_color(ctx, spec_color.to_owned()).await?;
-//                 }
-//             }
-//         }
-
-//         let mut side_effects = CreatePropsSideEffects::default();
-
-//         let domain_prop_id = schema_variant
-//             .find_prop(ctx, &["root", "domain"])
-//             .await?
-//             .id()
-//             .to_owned();
-
-//         side_effects.extend(
-//             create_props(
-//                 ctx,
-//                 change_set_pk,
-//                 variant_spec,
-//                 SchemaVariantSpecPropRoot::Domain,
-//                 domain_prop_id,
-//                 *schema_variant.id(),
-//             )
-//             .await?,
-//         );
-
-//         let secrets_prop_id = schema_variant
-//             .find_prop(ctx, &["root", "secrets"])
-//             .await?
-//             .id()
-//             .to_owned();
-
-//         side_effects.extend(
-//             create_props(
-//                 ctx,
-//                 change_set_pk,
-//                 variant_spec,
-//                 SchemaVariantSpecPropRoot::Secrets,
-//                 secrets_prop_id,
-//                 *schema_variant.id(),
-//             )
-//             .await?,
-//         );
-
-//         if !variant_spec.secret_definitions()?.is_empty() {
-//             let secret_definition_prop_id = *Prop::new(
-//                 ctx,
-//                 "secret_definition",
-//                 PropKind::Object,
-//                 None,
-//                 *schema_variant.id(),
-//                 Some(*schema_variant.find_prop(ctx, &["root"]).await?.id()),
-//             )
-//             .await?
-//             .id();
-
-//             side_effects.extend(
-//                 create_props(
-//                     ctx,
-//                     change_set_pk,
-//                     variant_spec,
-//                     SchemaVariantSpecPropRoot::SecretDefinition,
-//                     secret_definition_prop_id,
-//                     *schema_variant.id(),
-//                 )
-//                 .await?,
-//             );
-//         }
-
-//         match schema_variant
-//             .find_prop(ctx, &["root", "resource_value"])
-//             .await
-//         {
-//             Ok(resource_value_prop) => {
-//                 side_effects.extend(
-//                     create_props(
-//                         ctx,
-//                         change_set_pk,
-//                         variant_spec,
-//                         SchemaVariantSpecPropRoot::ResourceValue,
-//                         *resource_value_prop.id(),
-//                         *schema_variant.id(),
-//                     )
-//                     .await?,
-//                 );
-//             }
-//             Err(SchemaVariantError::PropNotFoundAtPath(_, _, _)) => {
-//                 warn!("Cannot find /root/resource_value prop, so skipping creating props under the resource value. If the /root/resource_value pr has been merged, this should be an error!");
-//             }
-//             Err(err) => Err(err)?,
-//         };
-
-//         if let Some(data) = variant_spec.data() {
-//             schema_variant
-//                 .finalize(ctx, Some(data.component_type().into()))
-//                 .await?;
-//         }
-
-//         for action_func in &variant_spec.action_funcs()? {
-//             let prototype = import_action_func(
-//                 ctx,
-//                 change_set_pk,
-//                 action_func,
-//                 *schema_variant.id(),
-//                 thing_map,
-//             )
-//             .await?;
-
-//             if let (Some(prototype), Some(unique_id)) = (prototype, action_func.unique_id()) {
-//                 thing_map.insert(
-//                     change_set_pk,
-//                     unique_id.to_owned(),
-//                     Thing::ActionPrototype(prototype),
-//                 );
-//             }
-//         }
-
-//         for leaf_func in variant_spec.leaf_functions()? {
-//             import_leaf_function(
-//                 ctx,
-//                 change_set_pk,
-//                 leaf_func,
-//                 *schema_variant.id(),
-//                 thing_map,
-//             )
-//             .await?;
-//         }
-
-//         for socket in variant_spec.sockets()? {
-//             import_socket(
-//                 ctx,
-//                 change_set_pk,
-//                 socket,
-//                 *schema.id(),
-//                 *schema_variant.id(),
-//                 thing_map,
-//             )
-//             .await?;
-//         }
-
-//         // Default values must be set before attribute functions are configured so they don't
-//         // override the prototypes set there
-//         for default_value_info in side_effects.default_values {
-//             set_default_value(ctx, default_value_info).await?;
-//         }
-
-//         // Set a default name value for all name props, this ensures region has a name before
-//         // the function is executed
-//         {
-//             let name_prop = schema_variant
-//                 .find_prop(ctx, &["root", "si", "name"])
-//                 .await?;
-//             let name_default_value_info = DefaultValueInfo::String {
-//                 prop_id: *name_prop.id(),
-//                 default_value: schema.name().to_lowercase(),
-//             };
-
-//             set_default_value(ctx, name_default_value_info).await?;
-//         }
-
-//         for si_prop_func in variant_spec.si_prop_funcs()? {
-//             let prop = schema_variant
-//                 .find_prop(ctx, &si_prop_func.kind().prop_path())
-//                 .await?;
-//             import_attr_func_for_prop(
-//                 ctx,
-//                 change_set_pk,
-//                 *schema_variant.id(),
-//                 AttrFuncInfo {
-//                     func_unique_id: si_prop_func.func_unique_id().to_owned(),
-//                     prop_id: *prop.id(),
-//                     inputs: si_prop_func
-//                         .inputs()?
-//                         .iter()
-//                         .map(|input| input.to_owned().into())
-//                         .collect(),
-//                 },
-//                 None,
-//                 thing_map,
-//             )
-//             .await?;
-//         }
-
-//     let mut has_resource_value_func = false;
-//         for root_prop_func in variant_spec.root_prop_funcs()? {
-//             if root_prop_func.prop() == SchemaVariantSpecPropRoot::ResourceValue {
-//                 has_resource_value_func = true;
-//             }
-//
-//             let prop = schema_variant
-//                 .find_prop(ctx, root_prop_func.prop().path_parts())
-//                 .await?;
-//             import_attr_func_for_prop(
-//                 ctx,
-//                 change_set_pk,
-//                 *schema_variant.id(),
-//                 AttrFuncInfo {
-//                     func_unique_id: root_prop_func.func_unique_id().to_owned(),
-//                     prop_id: *prop.id(),
-//                     inputs: root_prop_func
-//                         .inputs()?
-//                         .iter()
-//                         .map(|input| input.to_owned().into())
-//                         .collect(),
-//                 },
-//                 None,
-//                 thing_map,
-//             )
-//             .await?;
-//         }
-//         if !has_resource_value_func {
-//             attach_resource_payload_to_value(ctx, *schema_variant.id()).await?;
-//         }
-//
-//
-
-//         for attr_func in side_effects.attr_funcs {
-//             import_attr_func_for_prop(
-//                 ctx,
-//                 change_set_pk,
-//                 *schema_variant.id(),
-//                 attr_func,
-//                 None,
-//                 thing_map,
-//             )
-//             .await?;
-//         }
-
-//         for (key, map_key_func) in side_effects.map_key_funcs {
-//             import_attr_func_for_prop(
-//                 ctx,
-//                 change_set_pk,
-//                 *schema_variant.id(),
-//                 map_key_func,
-//                 Some(key),
-//                 thing_map,
-//             )
-//             .await?;
-//         }
-
-//         for (prop_id, validation_spec) in side_effects.validations {
-//             import_prop_validation(
-//                 ctx,
-//                 change_set_pk,
-//                 validation_spec,
-//                 *schema.id(),
-//                 *schema_variant.id(),
-//                 prop_id,
-//                 thing_map,
-//             )
-//             .await?;
-//         }
-//     }
-
-//     Ok(schema_variant)
-// }
+async fn import_schema_variant(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    schema: &mut Schema,
+    variant_spec: &SiPkgSchemaVariant<'_>,
+    installed_pkg_id: Option<InstalledPkgId>,
+    thing_map: &mut ThingMap,
+) -> PkgResult<Option<SchemaVariant>> {
+    // let mut schema_variant = match change_set_pk {
+    //     None => {
+    //         let hash = variant_spec.hash().to_string();
+    //         let existing_schema_variant = InstalledPkgAsset::list_for_kind_and_hash(
+    //             ctx,
+    //             InstalledPkgAssetKind::SchemaVariant,
+    //             &hash,
+    //         )
+    //         .await?
+    //         .pop();
+    //
+    //         let (variant, created) = match existing_schema_variant {
+    //             Some(installed_sv_record) => {
+    //                 match installed_sv_record.as_installed_schema_variant()? {
+    //                     InstalledPkgAssetTyped::SchemaVariant { id, .. } => (
+    //                         SchemaVariant::get_by_id(ctx, &id)
+    //                             .await?
+    //                             .ok_or(PkgError::InstalledSchemaVariantMissing(id))?,
+    //                         false,
+    //                     ),
+    //                     _ => unreachable!(
+    //                         "the as_installed_schema_variant method ensures we cannot hit this branch"
+    //                     ),
+    //                 }
+    //             }
+    //             None => (
+    //                 SchemaVariant::new(ctx, *schema.id(), variant_spec.name())
+    //                     .await?
+    //                     .0,
+    //                 true,
+    //             ),
+    //         };
+    //
+    //         if let Some(installed_pkg_id) = installed_pkg_id {
+    //             InstalledPkgAsset::new(
+    //                 ctx,
+    //                 InstalledPkgAssetTyped::new_for_schema_variant(
+    //                     *variant.id(),
+    //                     installed_pkg_id,
+    //                     hash,
+    //                 ),
+    //             )
+    //             .await?;
+    //         }
+    //
+    //         if created {
+    //             Some(variant)
+    //         } else {
+    //             None
+    //         }
+    //     }
+    //     Some(_) => {
+    //         let unique_id = variant_spec
+    //             .unique_id()
+    //             .ok_or(PkgError::MissingUniqueIdForNode(format!(
+    //                 "variant {}",
+    //                 variant_spec.hash()
+    //             )))?;
+    //
+    //         match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+    //             Some(Thing::SchemaVariant(variant)) => {
+    //                 let mut variant = variant.to_owned();
+    //                 update_schema_variant(ctx, &mut variant, variant_spec.name(), *schema.id())
+    //                     .await?;
+    //
+    //                 if variant_spec.deleted() {
+    //                     variant.delete_by_id(ctx).await?;
+    //
+    //                     None
+    //                 } else {
+    //                     Some(variant)
+    //                 }
+    //             }
+    //             _ => {
+    //                 if variant_spec.deleted() {
+    //                     None
+    //                 } else {
+    //                     Some(
+    //                         SchemaVariant::new(ctx, *schema.id(), variant_spec.name())
+    //                             .await?
+    //                             .0,
+    //                     )
+    //                 }
+    //             }
+    //         }
+    //     }
+    // };
+    //
+    // if let Some(schema_variant) = schema_variant.as_mut() {
+    //     if let Some(unique_id) = variant_spec.unique_id() {
+    //         thing_map.insert(
+    //             change_set_pk,
+    //             unique_id.to_owned(),
+    //             Thing::SchemaVariant(schema_variant.to_owned()),
+    //         );
+    //     }
+    //
+    //     if let Some(data) = variant_spec.data() {
+    //         if let (Some(spec_color), current_color) =
+    //             (data.color(), schema_variant.color(ctx).await?)
+    //         {
+    //             if current_color.is_none()
+    //                 || spec_color
+    //                     != current_color.expect("is none condition ensures this won't panic")
+    //             {
+    //                 schema_variant.set_color(ctx, spec_color.to_owned()).await?;
+    //             }
+    //         }
+    //     }
+    //
+    //     let mut side_effects = CreatePropsSideEffects::default();
+    //
+    //     let domain_prop_id = schema_variant
+    //         .find_prop(ctx, &["root", "domain"])
+    //         .await?
+    //         .id()
+    //         .to_owned();
+    //
+    //     side_effects.extend(
+    //         create_props(
+    //             ctx,
+    //             change_set_pk,
+    //             variant_spec,
+    //             SchemaVariantSpecPropRoot::Domain,
+    //             domain_prop_id,
+    //             *schema_variant.id(),
+    //         )
+    //         .await?,
+    //     );
+    //
+    //     let secrets_prop_id = schema_variant
+    //         .find_prop(ctx, &["root", "secrets"])
+    //         .await?
+    //         .id()
+    //         .to_owned();
+    //
+    //     side_effects.extend(
+    //         create_props(
+    //             ctx,
+    //             change_set_pk,
+    //             variant_spec,
+    //             SchemaVariantSpecPropRoot::Secrets,
+    //             secrets_prop_id,
+    //             *schema_variant.id(),
+    //         )
+    //         .await?,
+    //     );
+    //
+    //     if !variant_spec.secret_definitions()?.is_empty() {
+    //         let secret_definition_prop_id = *Prop::new(
+    //             ctx,
+    //             "secret_definition",
+    //             PropKind::Object,
+    //             None,
+    //             *schema_variant.id(),
+    //             Some(*schema_variant.find_prop(ctx, &["root"]).await?.id()),
+    //         )
+    //         .await?
+    //         .id();
+    //
+    //         side_effects.extend(
+    //             create_props(
+    //                 ctx,
+    //                 change_set_pk,
+    //                 variant_spec,
+    //                 SchemaVariantSpecPropRoot::SecretDefinition,
+    //                 secret_definition_prop_id,
+    //                 *schema_variant.id(),
+    //             )
+    //             .await?,
+    //         );
+    //     }
+    //
+    //     match schema_variant
+    //         .find_prop(ctx, &["root", "resource_value"])
+    //         .await
+    //     {
+    //         Ok(resource_value_prop) => {
+    //             side_effects.extend(
+    //                 create_props(
+    //                     ctx,
+    //                     change_set_pk,
+    //                     variant_spec,
+    //                     SchemaVariantSpecPropRoot::ResourceValue,
+    //                     *resource_value_prop.id(),
+    //                     *schema_variant.id(),
+    //                 )
+    //                 .await?,
+    //             );
+    //         }
+    //         Err(SchemaVariantError::PropNotFoundAtPath(_, _, _)) => {
+    //             warn!("Cannot find /root/resource_value prop, so skipping creating props under the resource value. If the /root/resource_value pr has been merged, this should be an error!");
+    //         }
+    //         Err(err) => Err(err)?,
+    //     };
+    //
+    //     if let Some(data) = variant_spec.data() {
+    //         schema_variant
+    //             .finalize(ctx, Some(data.component_type().into()))
+    //             .await?;
+    //     }
+    //
+    //     for action_func in &variant_spec.action_funcs()? {
+    //         let prototype = import_action_func(
+    //             ctx,
+    //             change_set_pk,
+    //             action_func,
+    //             *schema_variant.id(),
+    //             thing_map,
+    //         )
+    //         .await?;
+    //
+    //         if let (Some(prototype), Some(unique_id)) = (prototype, action_func.unique_id()) {
+    //             thing_map.insert(
+    //                 change_set_pk,
+    //                 unique_id.to_owned(),
+    //                 Thing::ActionPrototype(prototype),
+    //             );
+    //         }
+    //     }
+    //
+    //     for leaf_func in variant_spec.leaf_functions()? {
+    //         import_leaf_function(
+    //             ctx,
+    //             change_set_pk,
+    //             leaf_func,
+    //             *schema_variant.id(),
+    //             thing_map,
+    //         )
+    //         .await?;
+    //     }
+    //
+    //     for socket in variant_spec.sockets()? {
+    //         import_socket(
+    //             ctx,
+    //             change_set_pk,
+    //             socket,
+    //             *schema.id(),
+    //             *schema_variant.id(),
+    //             thing_map,
+    //         )
+    //         .await?;
+    //     }
+    //
+    //     // Default values must be set before attribute functions are configured so they don't
+    //     // override the prototypes set there
+    //     for default_value_info in side_effects.default_values {
+    //         set_default_value(ctx, default_value_info).await?;
+    //     }
+    //
+    //     // Set a default name value for all name props, this ensures region has a name before
+    //     // the function is executed
+    //     {
+    //         let name_prop = schema_variant
+    //             .find_prop(ctx, &["root", "si", "name"])
+    //             .await?;
+    //         let name_default_value_info = DefaultValueInfo::String {
+    //             prop_id: *name_prop.id(),
+    //             default_value: schema.name().to_lowercase(),
+    //         };
+    //
+    //         set_default_value(ctx, name_default_value_info).await?;
+    //     }
+    //
+    //     for si_prop_func in variant_spec.si_prop_funcs()? {
+    //         let prop = schema_variant
+    //             .find_prop(ctx, &si_prop_func.kind().prop_path())
+    //             .await?;
+    //         import_attr_func_for_prop(
+    //             ctx,
+    //             change_set_pk,
+    //             *schema_variant.id(),
+    //             AttrFuncInfo {
+    //                 func_unique_id: si_prop_func.func_unique_id().to_owned(),
+    //                 prop_id: *prop.id(),
+    //                 inputs: si_prop_func
+    //                     .inputs()?
+    //                     .iter()
+    //                     .map(|input| input.to_owned().into())
+    //                     .collect(),
+    //             },
+    //             None,
+    //             thing_map,
+    //         )
+    //         .await?;
+    //     }
+    //
+    //     let mut has_resource_value_func = false;
+    //     for root_prop_func in variant_spec.root_prop_funcs()? {
+    //         if root_prop_func.prop() == SchemaVariantSpecPropRoot::ResourceValue {
+    //             has_resource_value_func = true;
+    //         }
+    //
+    //         let prop = schema_variant
+    //             .find_prop(ctx, root_prop_func.prop().path_parts())
+    //             .await?;
+    //         import_attr_func_for_prop(
+    //             ctx,
+    //             change_set_pk,
+    //             *schema_variant.id(),
+    //             AttrFuncInfo {
+    //                 func_unique_id: root_prop_func.func_unique_id().to_owned(),
+    //                 prop_id: *prop.id(),
+    //                 inputs: root_prop_func
+    //                     .inputs()?
+    //                     .iter()
+    //                     .map(|input| input.to_owned().into())
+    //                     .collect(),
+    //             },
+    //             None,
+    //             thing_map,
+    //         )
+    //         .await?;
+    //     }
+    //     if !has_resource_value_func {
+    //         attach_resource_payload_to_value(ctx, *schema_variant.id()).await?;
+    //     }
+    //
+    //     for attr_func in side_effects.attr_funcs {
+    //         import_attr_func_for_prop(
+    //             ctx,
+    //             change_set_pk,
+    //             *schema_variant.id(),
+    //             attr_func,
+    //             None,
+    //             thing_map,
+    //         )
+    //         .await?;
+    //     }
+    //
+    //     for (key, map_key_func) in side_effects.map_key_funcs {
+    //         import_attr_func_for_prop(
+    //             ctx,
+    //             change_set_pk,
+    //             *schema_variant.id(),
+    //             map_key_func,
+    //             Some(key),
+    //             thing_map,
+    //         )
+    //         .await?;
+    //     }
+    //
+    //     for (prop_id, validation_spec) in side_effects.validations {
+    //         import_prop_validation(
+    //             ctx,
+    //             change_set_pk,
+    //             validation_spec,
+    //             *schema.id(),
+    //             *schema_variant.id(),
+    //             prop_id,
+    //             thing_map,
+    //         )
+    //         .await?;
+    //     }
+    // }
+    //
+    // Ok(schema_variant)
+    Ok(None)
+}
 
 // async fn set_default_value(
 //     ctx: &DalContext,

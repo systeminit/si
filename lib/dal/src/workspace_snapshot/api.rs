@@ -15,15 +15,9 @@ use crate::WorkspaceSnapshot;
 
 use super::edge_weight::EdgeWeightKindDiscriminants;
 
-pub mod attribute;
+// pub mod attribute;
 // pub mod component;
-pub mod func;
 // pub mod node;
-pub mod prop;
-pub mod provider;
-pub mod schema;
-pub mod socket;
-pub mod validation;
 
 impl WorkspaceSnapshot {
     pub fn get_category(

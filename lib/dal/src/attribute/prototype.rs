@@ -9,40 +9,48 @@
 //!     [`Map`](crate::prop::PropKind::Map): Which key of the `Map` the value is
 //!     for.
 
-use content_store::ContentHash;
+use content_store::{ContentHash, Store};
+use petgraph::prelude::EdgeRef;
+use petgraph::Direction;
 use serde::{Deserialize, Serialize};
-
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
+use thiserror::Error;
 
+use crate::change_set_pointer::ChangeSetPointerError;
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{pk, StandardModel, Timestamp};
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
+use crate::workspace_snapshot::graph::NodeIndex;
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{pk, DalContext, FuncId, StandardModel, Timestamp, TransactionsError};
 
 pub mod argument;
 
-// const ARGUMENT_VALUES_BY_NAME_FOR_HEAD_COMPONENT_ID: &str = include_str!(
-//     "../queries/attribute_prototype/argument_values_by_name_for_head_component_id.sql"
-// );
-// const ATTRIBUTE_VALUES_IN_CONTEXT_OR_GREATER: &str =
-//     include_str!("../queries/attribute_prototype/attribute_values_in_context_or_greater.sql");
-// const LIST_BY_HEAD_FROM_EXTERNAL_PROVIDER_USE_WITH_TAIL: &str = include_str!(
-//     "../queries/attribute_prototype/list_by_head_from_external_provider_use_with_tail.sql"
-// );
-// const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
-//     include_str!("../queries/attribute_prototype/list_from_internal_provider_use.sql");
-// const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype/list_for_context.sql");
-// const LIST_FOR_SCHEMA_VARIANT: &str =
-//     include_str!("../queries/attribute_prototype/list_for_schema_variant.sql");
-// const LIST_FUNCS_FOR_CONTEXT_AND_BACKEND_RESPONSE_TYPE: &str = include_str!("../queries/attribute_prototype/list_protoype_funcs_for_context_and_func_backend_response_type.sql");
-// const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
-//     include_str!("../queries/attribute_prototype/find_with_parent_value_and_key_for_context.sql");
-// const FIND_FOR_FUNC: &str = include_str!("../queries/attribute_prototype/find_for_func.sql");
-// const FIND_FOR_CONTEXT_AND_KEY: &str =
-//     include_str!("../queries/attribute_prototype/find_for_context_and_key.sql");
-// const FIND_FOR_CONTEXT_NULL_KEY: &str =
-//     include_str!("../queries/attribute_prototype/find_for_context_null_key.sql");
-// const FIND_FOR_FUNC_AS_VARIANT_AND_COMPONENT: &str =
-//     include_str!("../queries/attribute_prototype/find_for_func_as_variant_and_component.sql");
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum AttributePrototypeError {
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("attribute prototype {0} is missing a function edge")]
+    MissingFunction(AttributePrototypeId),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("store error: {0}")]
+    Store(#[from] content_store::StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
 
 pk!(AttributePrototypeId);
 
@@ -97,6 +105,82 @@ impl AttributePrototype {
 
     pub fn id(&self) -> AttributePrototypeId {
         self.id
+    }
+
+    // NOTE(nick,jacob,zack): all incoming edges to an attribute prototype must come from one of two places:
+    //   - an attribute value whose lineage comes from a component
+    //   - a prop whose lineage comes from a schema variant
+    // Outgoing edges from an attribute prototype are used for intra and inter component relationships.
+    pub async fn new(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> AttributePrototypeResult<(Self, NodeIndex)> {
+        let timestamp = Timestamp::now();
+
+        let content = AttributePrototypeContentV1 { timestamp };
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&AttributePrototypeContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight =
+            NodeWeight::new_content(change_set, id, ContentAddress::AttributePrototype(hash))?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let node_index = workspace_snapshot.add_node(node_weight)?;
+
+        let func_node_index = workspace_snapshot.get_node_index_by_id(func_id.into())?;
+        workspace_snapshot.add_edge(
+            node_index,
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            func_node_index,
+        )?;
+
+        Ok((
+            AttributePrototype::assemble(AttributePrototypeId::from(id), &content),
+            node_index,
+        ))
+    }
+
+    pub fn update_func_by_id(
+        ctx: &DalContext,
+        attribute_prototype_id: AttributePrototypeId,
+        func_id: FuncId,
+    ) -> AttributePrototypeResult<()> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let attribute_prototype_idx =
+            workspace_snapshot.get_node_index_by_id(attribute_prototype_id.into())?;
+
+        let current_func_node_idx = workspace_snapshot
+            .edges_directed(attribute_prototype_id.into(), Direction::Outgoing)?
+            .find(|edge_ref| edge_ref.weight().kind() == &EdgeWeightKind::Use)
+            .map(|edge_ref| edge_ref.target())
+            .ok_or(AttributePrototypeError::MissingFunction(
+                attribute_prototype_id,
+            ))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        workspace_snapshot.remove_edge(
+            change_set,
+            attribute_prototype_idx,
+            current_func_node_idx,
+            EdgeWeightKindDiscriminants::Use,
+        )?;
+
+        // Node index changes after edge removal, so we have to fetch it again
+        let attribute_prototype_idx =
+            workspace_snapshot.get_node_index_by_id(attribute_prototype_id.into())?;
+
+        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id.into())?;
+
+        workspace_snapshot.add_edge(
+            attribute_prototype_idx,
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            func_node_idx,
+        )?;
+
+        Ok(())
     }
 }
 

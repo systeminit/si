@@ -61,8 +61,6 @@ const FIND_FOR_CHANGE_SET: &str =
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
-    #[error("attribute prototype {0} is missing a function edge")]
-    AttributePrototypeMissingFunction(AttributePrototypeId),
     #[error("attribute value {0} missing prop edge when one was expected")]
     AttributeValueMissingPropEdge(AttributeValueId),
     #[error("attribute value {0} missing prototype")]
@@ -73,8 +71,6 @@ pub enum WorkspaceSnapshotError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("cannot insert for prop kind: {0}")]
     InsertionForInvalidPropKind(PropKind),
-    #[error("cannot find intrinsic func {0}")]
-    IntrinsicFuncNotFound(String),
     #[error("missing content from store for id: {0}")]
     MissingContentFromStore(Ulid),
     #[error("monotonic error: {0}")]
@@ -248,13 +244,20 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy()?.root())
     }
 
-    // TODO(nick): replace this with the api.
     pub fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
         let new_node_index = self.working_copy()?.add_node(node)?;
         Ok(new_node_index)
     }
 
-    // TODO(nick): replace this with the api.
+    pub fn add_ordered_node(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        node: NodeWeight,
+    ) -> WorkspaceSnapshotResult<NodeIndex> {
+        let new_node_index = self.working_copy()?.add_ordered_node(change_set, node)?;
+        Ok(new_node_index)
+    }
+
     pub fn update_content(
         &mut self,
         change_set: &ChangeSetPointer,
@@ -275,6 +278,21 @@ impl WorkspaceSnapshot {
         Ok(self
             .working_copy()?
             .add_edge(from_node_index, edge_weight, to_node_index)?)
+    }
+
+    pub fn add_ordered_edge(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        from_node_index: NodeIndex,
+        edge_weight: EdgeWeight,
+        to_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotResult<EdgeIndex> {
+        Ok(self.working_copy()?.add_ordered_edge(
+            change_set,
+            from_node_index,
+            edge_weight,
+            to_node_index,
+        )?)
     }
 
     pub async fn detect_conflicts_and_updates(

@@ -1,23 +1,46 @@
-use content_store::ContentHash;
+use content_store::{ContentHash, Store};
 use serde::{Deserialize, Serialize};
-
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
+use thiserror::Error;
 
+use crate::attribute::prototype::AttributePrototypeError;
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::socket::{DiagramKind, SocketEdgeKind, SocketError, SocketKind, SocketParent};
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{pk, StandardModel, Timestamp};
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{
+    pk, AttributePrototype, DalContext, FuncId, Socket, SocketArity, StandardModel, Timestamp,
+    TransactionsError,
+};
 use crate::{AttributePrototypeId, SchemaVariantId};
 
-// const LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_TAIL_COMPONENT_ID: &str = include_str!(
-//     "../queries/external_provider/list_for_attribute_prototype_with_tail_component_id.sql"
-// );
-// const FIND_FOR_SCHEMA_VARIANT_AND_NAME: &str =
-//     include_str!("../queries/external_provider/find_for_schema_variant_and_name.sql");
-// const FIND_FOR_SOCKET: &str = include_str!("../queries/external_provider/find_for_socket.sql");
-// const LIST_FOR_SCHEMA_VARIANT: &str =
-//     include_str!("../queries/external_provider/list_for_schema_variant.sql");
-// const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
-//     include_str!("../queries/external_provider/list_from_internal_provider_use.sql");
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum ExternalProviderError {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
+    #[error("store error: {0}")]
+    Store(#[from] content_store::StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+pub type ExternalProviderResult<T> = Result<T, ExternalProviderError>;
 
 pk!(ExternalProviderId);
 
@@ -39,13 +62,6 @@ pub struct ExternalProvider {
     name: String,
     /// Definition of the data type (e.g. "JSONSchema" or "Number").
     type_definition: Option<String>,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct ExternalProviderGraphNode {
-    id: ExternalProviderId,
-    content_address: ContentAddress,
-    content: ExternalProviderContentV1,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -70,17 +86,72 @@ pub struct ExternalProviderContentV1 {
     pub type_definition: Option<String>,
 }
 
-impl ExternalProviderGraphNode {
-    pub fn assemble(
-        id: impl Into<ExternalProviderId>,
-        content_hash: ContentHash,
-        content: ExternalProviderContentV1,
-    ) -> Self {
+impl ExternalProvider {
+    pub fn assemble(id: ExternalProviderId, inner: ExternalProviderContentV1) -> Self {
         Self {
-            id: id.into(),
-            content_address: ContentAddress::ExternalProvider(content_hash),
-            content,
+            id,
+            timestamp: inner.timestamp,
+            schema_variant_id: inner.schema_variant_id,
+            attribute_prototype_id: inner.attribute_prototype_id,
+            name: inner.name,
+            type_definition: inner.type_definition,
         }
+    }
+
+    pub async fn new_with_socket(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        name: impl Into<String>,
+        type_definition: Option<String>,
+        func_id: FuncId,
+        arity: SocketArity,
+        frame_socket: bool,
+    ) -> ExternalProviderResult<Self> {
+        let name = name.into();
+        let content = ExternalProviderContentV1 {
+            timestamp: Timestamp::now(),
+            schema_variant_id,
+            attribute_prototype_id: None,
+            name: name.clone(),
+            type_definition,
+        };
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&ExternalProviderContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight =
+            NodeWeight::new_content(change_set, id, ContentAddress::ExternalProvider(hash))?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let node_index = workspace_snapshot.add_node(node_weight)?;
+
+        let schema_variant_node_index =
+            workspace_snapshot.get_node_index_by_id(schema_variant_id.into())?;
+        workspace_snapshot.add_edge(
+            schema_variant_node_index,
+            EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
+            node_index,
+        )?;
+
+        AttributePrototype::new(ctx, func_id).await?;
+
+        Socket::new(
+            ctx,
+            name,
+            match frame_socket {
+                true => SocketKind::Frame,
+                false => SocketKind::Provider,
+            },
+            SocketEdgeKind::ConfigurationOutput,
+            arity,
+            DiagramKind::Configuration,
+            SocketParent::ExternalProvider(id.into()),
+        )
+        .await?;
+
+        Ok(Self::assemble(id.into(), content))
     }
 }
 

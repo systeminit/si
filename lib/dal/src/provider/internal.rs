@@ -67,28 +67,54 @@
 //! This design also lets us cache the view of a [`Prop`](crate::Prop) and its children rather
 //! than directly observing the real time values frequently.
 
-use content_store::ContentHash;
+use content_store::{ContentHash, Store};
+use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
+use thiserror::Error;
 
+use crate::attribute::prototype::AttributePrototypeError;
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::func::intrinsics::IntrinsicFunc;
+use crate::func::FuncError;
+use crate::socket::{DiagramKind, SocketEdgeKind, SocketError, SocketKind, SocketParent};
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{pk, StandardModel, Timestamp};
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{
+    pk, AttributePrototype, DalContext, Func, FuncId, SchemaVariantId, Socket, SocketArity,
+    StandardModel, Timestamp, TransactionsError,
+};
 
-// const FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME: &str =
-//     include_str!("../queries/internal_provider/find_explicit_for_schema_variant_and_name.sql");
-// const FIND_FOR_PROP: &str = include_str!("../queries/internal_provider/find_for_prop.sql");
-// const FIND_EXPLICIT_FOR_SOCKET: &str =
-//     include_str!("../queries/internal_provider/find_explicit_for_socket.sql");
-// const LIST_FOR_SCHEMA_VARIANT: &str =
-//     include_str!("../queries/internal_provider/list_for_schema_variant.sql");
-// const LIST_EXPLICIT_FOR_SCHEMA_VARIANT: &str =
-//     include_str!("../queries/internal_provider/list_explicit_for_schema_variant.sql");
-// const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
-//     include_str!("../queries/internal_provider/list_for_attribute_prototype.sql");
-// const LIST_FOR_INPUT_SOCKETS: &str =
-//     include_str!("../queries/internal_provider/list_for_input_sockets_for_all_schema_variants.sql");
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum InternalProviderError {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
+    #[error("store error: {0}")]
+    Store(#[from] content_store::StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+pub type InternalProviderResult<T> = Result<T, InternalProviderError>;
 
 pk!(InternalProviderId);
 
@@ -114,13 +140,6 @@ pub struct InternalProvider {
     outbound_type_definition: Option<String>,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct InternalProviderGraphNode {
-    id: InternalProviderId,
-    content_address: ContentAddress,
-    content: InternalProviderContentV1,
-}
-
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "version")]
 pub enum InternalProviderContent {
@@ -139,17 +158,116 @@ pub struct InternalProviderContentV1 {
     pub outbound_type_definition: Option<String>,
 }
 
-impl InternalProviderGraphNode {
-    pub fn assemble(
-        id: impl Into<InternalProviderId>,
-        content_hash: ContentHash,
-        content: InternalProviderContentV1,
-    ) -> Self {
+impl InternalProvider {
+    pub fn assemble(id: InternalProviderId, inner: InternalProviderContentV1) -> Self {
         Self {
-            id: id.into(),
-            content_address: ContentAddress::InternalProvider(content_hash),
-            content,
+            id,
+            timestamp: inner.timestamp,
+            name: inner.name,
+            inbound_type_definition: inner.inbound_type_definition,
+            outbound_type_definition: inner.outbound_type_definition,
         }
+    }
+
+    pub async fn new_implicit(
+        ctx: &DalContext,
+        prop: &PropNodeWeight,
+    ) -> InternalProviderResult<()> {
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+            for edgeref in workspace_snapshot.edges_directed(prop.id(), Direction::Outgoing)? {
+                if edgeref.weight().kind() == &EdgeWeightKind::Provider {
+                    // It already exists!
+                    return Ok(());
+                }
+            }
+
+            let content = InternalProviderContentV1 {
+                timestamp: Timestamp::now(),
+                name: prop.name().to_string(),
+                inbound_type_definition: None,
+                outbound_type_definition: None,
+            };
+            let hash = ctx
+                .content_store()
+                .try_lock()?
+                .add(&InternalProviderContent::V1(content.clone()))?;
+
+            let change_set = ctx.change_set_pointer()?;
+            let id = change_set.generate_ulid()?;
+            let node_weight =
+                NodeWeight::new_content(change_set, id, ContentAddress::InternalProvider(hash))?;
+            let node_index = workspace_snapshot.add_node(node_weight)?;
+
+            let prop_node_index = workspace_snapshot.get_node_index_by_id(prop.id())?;
+            workspace_snapshot.add_edge(
+                prop_node_index,
+                EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
+                node_index,
+            )?;
+        }
+
+        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
+        AttributePrototype::new(ctx, func_id).await?;
+
+        Ok(())
+    }
+
+    pub async fn new_explicit_with_socket(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        name: impl Into<String>,
+        func_id: FuncId,
+        arity: SocketArity,
+        frame_socket: bool,
+    ) -> InternalProviderResult<Self> {
+        let name = name.into();
+        let content = InternalProviderContentV1 {
+            timestamp: Timestamp::now(),
+            name: name.clone(),
+            inbound_type_definition: None,
+            outbound_type_definition: None,
+        };
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&InternalProviderContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let node_weight =
+                NodeWeight::new_content(change_set, id, ContentAddress::InternalProvider(hash))?;
+            let node_index = workspace_snapshot.add_node(node_weight)?;
+
+            let schema_variant_node_index =
+                workspace_snapshot.get_node_index_by_id(schema_variant_id.into())?;
+            workspace_snapshot.add_edge(
+                schema_variant_node_index,
+                EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
+                node_index,
+            )?;
+        }
+
+        AttributePrototype::new(ctx, func_id).await?;
+
+        Socket::new(
+            ctx,
+            name,
+            match frame_socket {
+                true => SocketKind::Frame,
+                false => SocketKind::Provider,
+            },
+            SocketEdgeKind::ConfigurationInput,
+            arity,
+            DiagramKind::Configuration,
+            SocketParent::ExplicitInternalProvider(id.into()),
+        )
+        .await?;
+
+        Ok(Self::assemble(id.into(), content))
     }
 }
 

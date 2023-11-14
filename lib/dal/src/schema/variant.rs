@@ -1,16 +1,38 @@
 //! This module contains [`SchemaVariant`](crate::SchemaVariant), which is t/he "class" of a
 //! [`Component`](crate::Component).
 
-use content_store::ContentHash;
+use content_store::{ContentHash, Store};
+use petgraph::prelude::EdgeRef;
+use petgraph::Direction;
 use serde::{Deserialize, Serialize};
-
+use std::collections::VecDeque;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 
-use crate::workspace_snapshot::content_address::ContentAddress;
+use crate::attribute::prototype::AttributePrototypeError;
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::func::intrinsics::IntrinsicFunc;
+use crate::func::FuncError;
+use crate::prop::PropError;
+use crate::provider::external::ExternalProviderError;
+use crate::provider::internal::InternalProviderError;
+use crate::schema::variant::root_prop::RootProp;
+use crate::validation::prototype::ValidationPrototypeError;
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
+use crate::workspace_snapshot::graph::NodeIndex;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::{pk, DalContext, PropId, StandardModel, Timestamp, WorkspaceSnapshot};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{
+    pk, AttributePrototype, AttributePrototypeId, DalContext, ExternalProvider, ExternalProviderId,
+    Func, FuncId, InternalProvider, PropId, PropKind, SchemaId, SocketArity, StandardModel,
+    Timestamp, TransactionsError, WorkspaceSnapshot,
+};
 
 // use self::leaves::{LeafInput, LeafInputLocation, LeafKind};
 
@@ -30,14 +52,40 @@ pub mod root_prop;
 pub const SCHEMA_VARIANT_VERSION: SchemaVariantContentDiscriminants =
     SchemaVariantContentDiscriminants::V1;
 
-pk!(SchemaVariantId);
-
-#[derive(Debug, PartialEq)]
-pub struct SchemaVariantGraphNode {
-    id: SchemaVariantId,
-    content_address: ContentAddress,
-    content: SchemaVariantContentV1,
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum SchemaVariantError {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] ExternalProviderError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
+    #[error("store error: {0}")]
+    Store(#[from] content_store::StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("validation prototype error: {0}")]
+    ValidationPrototype(#[from] ValidationPrototypeError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
+
+pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
+
+pk!(SchemaVariantId);
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "version")]
@@ -72,17 +120,292 @@ pub struct SchemaVariant {
     finalized_once: bool,
 }
 
-impl SchemaVariantGraphNode {
-    pub fn assemble(
-        id: impl Into<SchemaVariantId>,
-        content_hash: ContentHash,
-        content: SchemaVariantContentV1,
-    ) -> Self {
+impl SchemaVariant {
+    pub fn assemble(id: SchemaVariantId, inner: SchemaVariantContentV1) -> Self {
         Self {
-            id: id.into(),
-            content_address: ContentAddress::Schema(content_hash),
-            content,
+            id,
+            timestamp: inner.timestamp,
+            name: inner.name,
+            root_prop_id: inner.root_prop_id,
+            link: inner.link,
+            ui_hidden: inner.ui_hidden,
+            finalized_once: inner.finalized_once,
         }
+    }
+
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        schema_id: SchemaId,
+        ui_hidden: bool,
+    ) -> SchemaVariantResult<(Self, RootProp)> {
+        let content = SchemaVariantContentV1 {
+            timestamp: Timestamp::now(),
+            name: name.into(),
+            root_prop_id: None,
+            // schema_variant_definition_id: None,
+            link: None,
+            ui_hidden,
+            finalized_once: false,
+        };
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&SchemaVariantContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let node_weight =
+                NodeWeight::new_content(change_set, id, ContentAddress::SchemaVariant(hash))?;
+            let node_index = workspace_snapshot.add_node(node_weight)?;
+
+            let schema_node_index = workspace_snapshot.get_node_index_by_id(schema_id.into())?;
+            workspace_snapshot.add_edge(
+                schema_node_index,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                node_index,
+            )?;
+        }
+
+        let schema_variant_id: SchemaVariantId = id.into();
+        let root_prop = RootProp::new(ctx, schema_variant_id).await?;
+        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
+
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            schema_variant_id,
+            "Frame",
+            func_id,
+            SocketArity::Many,
+            true,
+        )
+        .await?;
+        ExternalProvider::new_with_socket(
+            ctx,
+            schema_variant_id,
+            "Frame",
+            None,
+            func_id,
+            SocketArity::One,
+            true,
+        )
+        .await?;
+
+        Ok((Self::assemble(id.into(), content), root_prop))
+    }
+
+    async fn get_root_prop_node_weight(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<PropNodeWeight> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let edge_targets: Vec<NodeIndex> = workspace_snapshot
+            .edges_directed(schema_variant_id.into(), Direction::Outgoing)?
+            .map(|edge_ref| edge_ref.target())
+            .collect();
+
+        for index in edge_targets {
+            let node_weight = workspace_snapshot.get_node_weight(index)?;
+            // TODO(nick): ensure that only one prop can be under a schema variant.
+            if let NodeWeight::Prop(inner_weight) = node_weight {
+                if inner_weight.name() == "root" {
+                    return Ok(inner_weight.clone());
+                }
+            }
+        }
+        todo!("could not get root prop")
+    }
+
+    pub async fn create_default_prototypes(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<()> {
+        let change_set = ctx.change_set_pointer()?;
+        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
+        let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
+        let mut work_queue: VecDeque<PropNodeWeight> = VecDeque::from(vec![root_prop_node_weight]);
+
+        while let Some(prop) = work_queue.pop_front() {
+            // See an attribute prototype exists.
+            let mut found_attribute_prototype_id: Option<AttributePrototypeId> = None;
+            {
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                let targets = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+                    prop.id(),
+                    EdgeWeightKindDiscriminants::Prototype,
+                )?;
+                for target in targets {
+                    let node_weight = workspace_snapshot.get_node_weight(target)?;
+                    if let Some(discriminants) = node_weight.content_address_discriminants() {
+                        if let ContentAddressDiscriminants::AttributePrototype = discriminants {
+                            found_attribute_prototype_id = Some(node_weight.id().into());
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Create the attribute prototype and appropriate edges if they do not exist.
+            if found_attribute_prototype_id.is_none() {
+                // We did not find a prototype, so we must create one.
+                let (_attribute_prototype, attribute_prototype_node_index) =
+                    AttributePrototype::new(ctx, func_id).await?;
+
+                // New edge Prop --Prototype--> AttributePrototype.
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                let prop_node_index = workspace_snapshot.get_node_index_by_id(prop.id())?;
+                workspace_snapshot.add_edge(
+                    prop_node_index,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Prototype)?,
+                    attribute_prototype_node_index,
+                )?;
+            }
+
+            // Push all children onto the work queue.
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let targets = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+                prop.id(),
+                EdgeWeightKindDiscriminants::Use,
+            )?;
+            for target in targets {
+                let node_weight = workspace_snapshot.get_node_weight(target)?;
+                if let NodeWeight::Prop(child_prop) = node_weight {
+                    work_queue.push_back(child_prop.to_owned())
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn create_implicit_internal_providers(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<()> {
+        let root_prop = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
+        let mut work_queue = VecDeque::new();
+        work_queue.push_back(root_prop);
+
+        while let Some(prop) = work_queue.pop_front() {
+            InternalProvider::new_implicit(ctx, &prop).await?;
+
+            // Only descend if we are an object.
+            if prop.kind() == PropKind::Object {
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                let targets = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+                    prop.id(),
+                    EdgeWeightKindDiscriminants::Use,
+                )?;
+                for target in targets {
+                    let node_weight = workspace_snapshot.get_node_weight(target)?;
+                    if let NodeWeight::Prop(child_prop) = node_weight {
+                        work_queue.push_back(child_prop.to_owned());
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn new_action_prototype(
+        ctx: &DalContext,
+        func_id: FuncId,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<()> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let schema_variant_index =
+            workspace_snapshot.get_node_index_by_id(schema_variant_id.into())?;
+        let func_index = workspace_snapshot.get_node_index_by_id(func_id.into())?;
+
+        workspace_snapshot.add_edge(
+            schema_variant_index,
+            EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Use)?,
+            func_index,
+        )?;
+
+        Ok(())
+    }
+
+    async fn get_content(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<(ContentHash, SchemaVariantContentV1)> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let id: Ulid = schema_variant_id.into();
+        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        let content: SchemaVariantContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let inner = match content {
+            SchemaVariantContent::V1(inner) => inner,
+        };
+
+        Ok((hash, inner))
+    }
+
+    pub async fn schema_variant_list(
+        &mut self,
+        _ctx: &DalContext,
+    ) -> SchemaVariantResult<Vec<SchemaVariant>> {
+        // let schema_category_index = self.get_category(CategoryNodeKind::Schema)?;
+        // let schema_indices = self.outgoing_targets_for_edge_weight_kind_by_index(
+        //     schema_category_index,
+        //     EdgeWeightKindDiscriminants::Use,
+        // )?;
+        //
+        // // TODO(nick,zack,jacob,wendy): start here!
+        // let mut unchecked_node_weights = Vec::new();
+        // for schema_index in schema_indices {
+        //     unchecked_node_weights.push(self.get_node_weight(schema_index)?);
+        // }
+        // let mut schemas = Vec::new();
+        // for unchecked_node_weight in unchecked_node_weights {
+        //     if let NodeWeight::Content(content_node_weight) = unchecked_node_weight {
+        //         let (_, content) = self
+        //             .schema_get_content(ctx, content_node_weight.id().into())
+        //             .await?;
+        //         schemas.push(Schema::assemble(content_node_weight.id().into(), &content));
+        //     }
+        // }
+        Ok(vec![])
+    }
+
+    /// This _idempotent_ function "finalizes" a [`SchemaVariant`].
+    ///
+    /// Once a [`SchemaVariant`] has had all of its [`Props`](crate::Prop) created, there are a few
+    /// things that need to happen before it is usable:
+    ///
+    /// * Create the default [`AttributePrototypes`](crate::AttributePrototype)
+    /// * Create the _internally consuming_ [`InternalProviders`](crate::InternalProvider)
+    ///   corresponding to every [`Prop`](crate::Prop) in the [`SchemaVariant`] that is not a
+    ///   descendant of an Array or a Map.
+    ///
+    /// This method **MUST** be called once all the [`Props`](Prop) have been created for the
+    /// [`SchemaVariant`]. It can be called multiple times while [`Props`](Prop) are being created,
+    /// but it must be called once after all [`Props`](Prop) have been created.
+    pub async fn finalize(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<()> {
+        Self::create_default_prototypes(ctx, schema_variant_id).await?;
+        Self::create_implicit_internal_providers(ctx, schema_variant_id).await?;
+
+        // TODO(nick,jacob,zack): if we are going to copy the existing system (which we likely will), we need to
+        // set "/root/si/type" and "/root/si/protected".
+
+        Ok(())
     }
 }
 

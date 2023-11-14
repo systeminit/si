@@ -1,23 +1,40 @@
-use content_store::ContentHash;
+use content_store::Store;
 use serde::{Deserialize, Serialize};
-
-use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
-use telemetry::prelude::*;
-
 use si_pkg::SocketSpecArity;
+use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
+use thiserror::Error;
+use ulid::Ulid;
 
+use crate::change_set_pointer::ChangeSetPointerError;
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{label_list::ToLabelList, pk, StandardModel, Timestamp};
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{
+    label_list::ToLabelList, pk, DalContext, ExternalProviderId, InternalProviderId, StandardModel,
+    Timestamp, TransactionsError,
+};
 
-// const FIND_BY_NAME_FOR_EDGE_KIND_AND_NODE: &str =
-//     include_str!("queries/socket/find_by_name_for_edge_kind_and_node.sql");
-// const FIND_FRAME_SOCKET_FOR_NODE: &str =
-//     include_str!("queries/socket/find_frame_socket_for_node.sql");
-// const LIST_FOR_COMPONENT: &str = include_str!("queries/socket/list_for_component.sql");
-// const FIND_FOR_INTERNAL_PROVIDER: &str =
-//     include_str!("queries/socket/find_for_internal_provider.sql");
-// const FIND_FOR_EXTERNAL_PROVIDER: &str =
-//     include_str!("queries/socket/find_for_external_provider.sql");
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum SocketError {
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("store error: {0}")]
+    Store(#[from] content_store::StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+pub type SocketResult<T> = Result<T, SocketError>;
 
 pk!(SocketId);
 
@@ -51,13 +68,6 @@ pub struct Socket {
     ui_hidden: bool,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct SocketGraphNode {
-    id: SocketId,
-    content_address: ContentAddress,
-    content: SocketContentV1,
-}
-
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "version")]
 pub enum SocketContent {
@@ -76,20 +86,6 @@ pub struct SocketContentV1 {
     pub arity: SocketArity,
     pub required: bool,
     pub ui_hidden: bool,
-}
-
-impl SocketGraphNode {
-    pub fn assemble(
-        id: impl Into<SocketId>,
-        content_hash: ContentHash,
-        content: SocketContentV1,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            content_address: ContentAddress::Socket(content_hash),
-            content,
-        }
-    }
 }
 
 /// Dictates the kind of behavior possible for a [`Socket`](Socket).
@@ -179,6 +175,76 @@ pub enum SocketEdgeKind {
 }
 
 impl ToLabelList for SocketEdgeKind {}
+
+pub enum SocketParent {
+    ExplicitInternalProvider(InternalProviderId),
+    ExternalProvider(ExternalProviderId),
+}
+
+impl Socket {
+    pub fn assemble(id: SocketId, inner: SocketContentV1) -> Self {
+        Self {
+            id,
+            timestamp: inner.timestamp,
+            name: inner.name.clone(),
+            human_name: inner.human_name,
+            kind: inner.kind,
+            edge_kind: inner.edge_kind,
+            diagram_kind: inner.diagram_kind,
+            arity: inner.arity,
+            required: inner.required,
+            ui_hidden: inner.ui_hidden,
+        }
+    }
+
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        kind: SocketKind,
+        socket_edge_kind: SocketEdgeKind,
+        arity: SocketArity,
+        diagram_kind: DiagramKind,
+        socket_parent: SocketParent,
+    ) -> SocketResult<Self> {
+        let content = SocketContentV1 {
+            timestamp: Timestamp::now(),
+            name: name.into(),
+            human_name: None,
+            kind,
+            edge_kind: socket_edge_kind,
+            diagram_kind,
+            arity,
+            required: false,
+            ui_hidden: false,
+        };
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&SocketContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Socket(hash))?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let node_index = workspace_snapshot.add_node(node_weight)?;
+
+        let parent_id: Ulid = match socket_parent {
+            SocketParent::ExplicitInternalProvider(explicit_internal_provider_id) => {
+                explicit_internal_provider_id.into()
+            }
+            SocketParent::ExternalProvider(external_provider_id) => external_provider_id.into(),
+        };
+
+        let parent_node_index = workspace_snapshot.get_node_index_by_id(parent_id)?;
+        workspace_snapshot.add_edge(
+            parent_node_index,
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            node_index,
+        )?;
+
+        Ok(Self::assemble(id.into(), content))
+    }
+}
 
 // impl Socket {
 //     pub async fn new(

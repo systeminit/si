@@ -187,27 +187,6 @@ impl WorkspaceSnapshotGraph {
         self.graph.edges_directed(node_index, direction)
     }
 
-    pub fn func_find_by_name(
-        &mut self,
-        parent_node_index: NodeIndex,
-        name: impl AsRef<str>,
-    ) -> WorkspaceSnapshotGraphResult<Option<FuncId>> {
-        let name = name.as_ref();
-        for edgeref in self.graph.edges_directed(parent_node_index, Outgoing) {
-            let node_weight = self
-                .graph
-                .node_weight(edgeref.target())
-                .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
-            if let NodeWeight::Func(inner_weight) = node_weight {
-                if inner_weight.name() == name {
-                    return Ok(Some(inner_weight.id().into()));
-                }
-            }
-        }
-
-        Ok(None)
-    }
-
     pub fn add_ordered_edge(
         &mut self,
         change_set: &ChangeSetPointer,
