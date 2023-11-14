@@ -36,6 +36,8 @@ pub enum ServerError {
     Signal(#[source] io::Error),
     #[error("UDS incoming stream error")]
     Uds(#[from] UdsIncomingStreamError),
+    #[error("Vsock incoming stream error")]
+    Vsock(#[from] VsockIncomingStreamError),
     #[error("wrong incoming stream for {0} server: {1:?}")]
     WrongIncomingStream(&'static str, IncomingStream),
 }
@@ -125,14 +127,14 @@ impl Server<(), ()> {
 
                 debug!(socket = %addr, "binding a unix domain server");
                 let inner =
-                    axum::Server::builder(VsockIncomingStream::create(addr).await?).serve(service);
+                    axum::Server::builder(VsockIncomingStream::create(*addr).await?).serve(service);
                 let socket = addr;
                 info!(socket = %socket, "unix domain server serving");
 
                 Ok(Server {
                     config,
                     inner,
-                    socket,
+                    socket: *socket,
                     shutdown_rx,
                 })
             }

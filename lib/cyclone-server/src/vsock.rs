@@ -45,9 +45,10 @@ impl Accept for VsockIncomingStream {
     type Error = VsockIncomingStreamError;
 
     fn poll_accept(
-        self: std::pin::Pin<&mut Self>
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Self::Conn>>> {
-        let (stream, _addr) = self.vsock.accept()?;
+        let (stream, _addr) =  ready!(self.vsock.accept())?;
         Poll::Ready(Some(Ok(stream)))
     }
 }
