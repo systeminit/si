@@ -8,6 +8,7 @@ use tower::ServiceExt;
 
 mod change_set;
 mod component;
+mod crdt;
 mod functions;
 mod scenario;
 mod schema;

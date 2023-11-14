@@ -12,7 +12,7 @@
     clippy::module_name_repetitions
 )]
 
-mod server;
+pub mod server;
 pub use server::{
     build_service, build_service_for_tests, detect_and_configure_development,
     job_processor::JobProcessorClientCloser, job_processor::JobProcessorConnector, service, Config,

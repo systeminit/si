@@ -14,7 +14,7 @@ pub(crate) mod job_processor;
 mod routes;
 mod server;
 pub mod service;
-mod state;
+pub mod state;
 pub mod tracking;
 mod uds;
 

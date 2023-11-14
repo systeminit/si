@@ -4394,6 +4394,7 @@ dependencies = [
  "dal-test",
  "derive_builder",
  "futures",
+ "futures-lite",
  "hyper",
  "module-index-client",
  "names",
