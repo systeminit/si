@@ -118,7 +118,7 @@ const changeSetDropdownOptions = computed(() => {
     openChangeSets.value ?? [],
     (cs) => ({ value: cs.id, label: cs.name }),
   );
-  cs.unshift({ value: nilId(), label: "head" });
+  // cs.unshift({ value: nilId(), label: "head" });
   return cs;
 });
 
@@ -151,7 +151,6 @@ const { validationState, validationMethods } = useValidatedInputGroup();
 
 function onSelectChangeSet(newVal: string) {
   if (newVal && route.name) {
-    if (newVal === nilId()) newVal = "head";
     router.push({
       name: route.name,
       params: {
@@ -172,7 +171,7 @@ async function onCreateChangeSet() {
 
   if (createReq.result.success) {
     // reusing above to navigate to new change set... will probably clean this all up later
-    onSelectChangeSet(createReq.result.data.changeSet.pk);
+    onSelectChangeSet(createReq.result.data.changeSet.id);
     createModalRef.value?.close();
   }
 }

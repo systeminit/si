@@ -888,7 +888,7 @@ pub fn routes() -> Router<AppState> {
     //             get(get_func::get_latest_func_execution),
     //         )
     //         .route("/create_func", post(create_func::create_func))
-    //         .route("/save_func", post(save_func::save_func))
+    //.route("/save_func", post(save_func::save_func))
     //         .route("/delete_func", post(delete_func::delete_func))
     //         .route("/save_and_exec", post(save_and_exec::save_and_exec))
     //         .route("/execute", post(execute::execute))

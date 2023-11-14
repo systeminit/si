@@ -1,6 +1,7 @@
 use super::ChangeSetResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
+use dal::change_set_pointer::{ChangeSetPointer, ChangeSetPointerId};
 use dal::{
     ActionKind, ActionPrototypeId, ChangeSet, ChangeSetPk, ChangeSetStatus, ComponentId, Func,
     StandardModel, Visibility,
@@ -20,7 +21,7 @@ pub struct ActionView {
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct ChangeSetView {
-    pub pk: ChangeSetPk,
+    pub id: ChangeSetPointerId,
     pub name: String,
     pub status: ChangeSetStatus,
     pub actions: Vec<ActionView>,
@@ -34,7 +35,7 @@ pub async fn list_open_change_sets(
 ) -> ChangeSetResult<Json<ListOpenChangeSetsResponse>> {
     let ctx = builder.build_head(access_builder).await?;
 
-    let list = ChangeSet::list_open(&ctx).await?;
+    let list = ChangeSetPointer::list_open(&ctx).await?;
     let mut view = Vec::with_capacity(list.len());
     for cs in list {
         // let ctx =
@@ -65,7 +66,8 @@ pub async fn list_open_change_sets(
         // }
 
         view.push(ChangeSetView {
-            pk: cs.pk,
+            // TODO: remove change sets entirely!
+            id: cs.id,
             name: cs.name,
             status: cs.status,
             actions,

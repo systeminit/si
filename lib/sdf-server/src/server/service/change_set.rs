@@ -1,12 +1,13 @@
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 use dal::{
+    change_set_pointer::{ChangeSetPointerError, ChangeSetPointerId},
     ChangeSetError as DalChangeSetError, StandardModelError, TransactionsError, UserError, UserPk,
-    WsEventError,
+    WorkspaceError, WorkspacePk, WsEventError,
 };
 use module_index_client::IndexClientError;
 use telemetry::prelude::*;
@@ -16,7 +17,7 @@ use crate::server::state::AppState;
 
 // pub mod add_action;
 // pub mod apply_change_set;
-// pub mod create_change_set;
+pub mod create_change_set;
 // pub mod get_change_set;
 // pub mod get_stats;
 pub mod list_open_change_sets;
@@ -34,12 +35,18 @@ pub enum ChangeSetError {
     ChangeSet(#[from] DalChangeSetError),
     #[error("change set not found")]
     ChangeSetNotFound,
+    #[error("change set error: {0}")]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
     // #[error(transparent)]
     // ChangeStatusError(#[from] ChangeStatusError),
     // #[error(transparent)]
     // Component(#[from] DalComponentError),
     #[error(transparent)]
     ContextError(#[from] TransactionsError),
+    #[error("could not find default change set: {0}")]
+    DefaultChangeSetNotFound(ChangeSetPointerId),
+    #[error("default change set {0} has no workspace snapshot pointer")]
+    DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetPointerId),
     // #[error(transparent)]
     // DalPkg(#[from] dal::pkg::PkgError),
     // #[error(transparent)]
@@ -52,6 +59,8 @@ pub enum ChangeSetError {
     InvalidUserSystemInit,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
+    #[error("no tenancy set in context")]
+    NoTenancySet,
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     // #[error(transparent)]
@@ -62,6 +71,10 @@ pub enum ChangeSetError {
     UrlParse(#[from] url::ParseError),
     #[error(transparent)]
     User(#[from] UserError),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
+    #[error("workspace not found: {0}")]
+    WorkspaceNotFound(WorkspacePk),
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
 }
@@ -84,16 +97,17 @@ impl IntoResponse for ChangeSetError {
 }
 
 pub fn routes() -> Router<AppState> {
-    Router::new().route(
-        "/list_open_change_sets",
-        get(list_open_change_sets::list_open_change_sets),
-    )
-    // .route("/remove_action", post(remove_action::remove_action))
-    // .route("/add_action", post(add_action::add_action))
-    // .route(
-    //     "/create_change_set",
-    //     post(create_change_set::create_change_set),
-    // )
+    Router::new()
+        .route(
+            "/list_open_change_sets",
+            get(list_open_change_sets::list_open_change_sets),
+        )
+        // .route("/remove_action", post(remove_action::remove_action))
+        // .route("/add_action", post(add_action::add_action))
+        .route(
+            "/create_change_set",
+            post(create_change_set::create_change_set),
+        )
     // .route("/get_change_set", get(get_change_set::get_change_set))
     // .route("/get_stats", get(get_stats::get_stats))
     // .route(

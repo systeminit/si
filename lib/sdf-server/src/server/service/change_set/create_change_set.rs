@@ -1,9 +1,11 @@
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::ChangeSet;
+use dal::change_set_pointer::ChangeSetPointer;
+use dal::{Workspace, WorkspaceError};
+// use dal::ChangeSet;
 use serde::{Deserialize, Serialize};
 
-use super::ChangeSetResult;
+use super::{ChangeSetError, ChangeSetResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 
@@ -16,7 +18,7 @@ pub struct CreateChangeSetRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateChangeSetResponse {
-    pub change_set: ChangeSet,
+    pub change_set: ChangeSetPointer,
 }
 
 pub async fn create_change_set(
@@ -29,7 +31,39 @@ pub async fn create_change_set(
     let ctx = builder.build_head(access_builder).await?;
 
     let change_set_name = &request.change_set_name;
-    let change_set = ChangeSet::new(&ctx, change_set_name, None).await?;
+
+    let workspace_pk = ctx
+        .tenancy()
+        .workspace_pk()
+        .ok_or(ChangeSetError::NoTenancySet)?;
+
+    let workspace = Workspace::get_by_pk(&ctx, &workspace_pk)
+        .await?
+        .ok_or(ChangeSetError::WorkspaceNotFound(workspace_pk))?;
+
+    let base_change_set_pointer = ChangeSetPointer::find(&ctx, workspace.default_change_set_id())
+        .await?
+        .ok_or(ChangeSetError::DefaultChangeSetNotFound(
+            workspace.default_change_set_id(),
+        ))?;
+
+    let mut change_set_pointer = ChangeSetPointer::new(
+        &ctx,
+        change_set_name,
+        Some(workspace.default_change_set_id()),
+    )
+    .await?;
+
+    change_set_pointer
+        .update_pointer(
+            &ctx,
+            base_change_set_pointer.workspace_snapshot_id.ok_or(
+                ChangeSetError::DefaultChangeSetNoWorkspaceSnapshotPointer(
+                    workspace.default_change_set_id(),
+                ),
+            )?,
+        )
+        .await?;
 
     track(
         &posthog_client,
@@ -41,7 +75,9 @@ pub async fn create_change_set(
         }),
     );
 
-    ctx.commit().await?;
+    ctx.commit_no_rebase().await?;
 
-    Ok(Json(CreateChangeSetResponse { change_set }))
+    Ok(Json(CreateChangeSetResponse {
+        change_set: change_set_pointer,
+    }))
 }

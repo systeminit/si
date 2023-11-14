@@ -12,7 +12,6 @@ export enum ChangeSetStatus {
 export type ChangeSetId = string;
 export interface ChangeSet {
   id: ChangeSetId;
-  pk: ChangeSetId;
   name: string;
   actions: ActionInstance[];
   status: ChangeSetStatus;

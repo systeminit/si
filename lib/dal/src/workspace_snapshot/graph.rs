@@ -1691,7 +1691,7 @@ fn prop_node_indexes_for_node_index(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{ComponentId, FuncId, PropId, PropKind, SchemaId, SchemaVariantId};
+    use crate::{ComponentId, FuncId, PropId, PropKind, SchemaId, SchemaVariantId, WorkspacePk};
     use content_store::ContentHash;
     use pretty_assertions_sorted::assert_eq;
 

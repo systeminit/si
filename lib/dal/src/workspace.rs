@@ -94,13 +94,13 @@ impl Workspace {
         // If not, create the builtin workspace with a corresponding base change set and initial
         // workspace snapshot.
         let name = "builtin";
-
         let mut change_set = ChangeSetPointer::new_head(ctx).await?;
         let workspace_snapshot = WorkspaceSnapshot::initial(ctx, &change_set).await?;
         change_set
             .update_pointer(ctx, workspace_snapshot.id())
             .await?;
         let change_set_id = change_set.id;
+
         let head_pk = WorkspaceId::NONE;
 
         let row = ctx
@@ -112,7 +112,12 @@ impl Workspace {
                 &[&head_pk, &name, &change_set_id],
             )
             .await?;
-        Self::try_from(row)
+
+        let workspace = Self::try_from(row)?;
+
+        change_set.update_workspace_id(ctx, *workspace.pk()).await?;
+
+        Ok(workspace)
     }
 
     /// This private method attempts to find the builtin [`Workspace`].
@@ -195,6 +200,10 @@ impl Workspace {
             )
             .await?;
         let new_workspace = Self::try_from(row)?;
+
+        change_set
+            .update_workspace_id(ctx, *new_workspace.pk())
+            .await?;
 
         ctx.update_tenancy(Tenancy::new(new_workspace.pk));
 

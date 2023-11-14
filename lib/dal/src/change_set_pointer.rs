@@ -11,11 +11,13 @@ use ulid::{Generator, Ulid};
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
-use crate::{pk, DalContext, TransactionsError};
+use crate::{pk, ChangeSetStatus, DalContext, TransactionsError, WorkspacePk};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetPointerError {
+    #[error("enum parse error: {0}")]
+    EnumParse(#[from] strum::ParseError),
     #[error("ulid monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("mutex error: {0}")]
@@ -39,8 +41,10 @@ pub struct ChangeSetPointer {
     pub updated_at: DateTime<Utc>,
 
     pub name: String,
+    pub status: ChangeSetStatus,
     pub base_change_set_id: Option<ChangeSetPointerId>,
     pub workspace_snapshot_id: Option<WorkspaceSnapshotId>,
+    pub workspace_id: Option<WorkspacePk>,
 
     #[serde(skip)]
     pub generator: Arc<Mutex<Generator>>,
@@ -50,13 +54,17 @@ impl TryFrom<PgRow> for ChangeSetPointer {
     type Error = ChangeSetPointerError;
 
     fn try_from(value: PgRow) -> Result<Self, Self::Error> {
+        let status_string: String = value.try_get("status")?;
+        let status = ChangeSetStatus::try_from(status_string.as_str())?;
         Ok(Self {
             id: value.try_get("id")?,
             created_at: value.try_get("created_at")?,
             updated_at: value.try_get("updated_at")?,
             name: value.try_get("name")?,
+            status,
             base_change_set_id: value.try_get("base_change_set_id")?,
             workspace_snapshot_id: value.try_get("workspace_snapshot_id")?,
+            workspace_id: value.try_get("workspace_id")?,
             generator: Arc::new(Mutex::new(Default::default())),
         })
     }
@@ -74,7 +82,9 @@ impl ChangeSetPointer {
             generator: Arc::new(Mutex::new(generator)),
             base_change_set_id: None,
             workspace_snapshot_id: None,
+            workspace_id: None,
             name: "".to_string(),
+            status: ChangeSetStatus::Open,
         })
     }
 
@@ -82,8 +92,30 @@ impl ChangeSetPointer {
         let mut new_local = Self::new_local()?;
         new_local.base_change_set_id = self.base_change_set_id;
         new_local.workspace_snapshot_id = self.workspace_snapshot_id;
+        new_local.workspace_id = self.workspace_id;
         new_local.name = self.name.to_owned();
+        new_local.status = self.status.to_owned();
         Ok(new_local)
+    }
+
+    pub async fn new_with_id(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        id: ChangeSetPointerId,
+        base_change_set_id: Option<ChangeSetPointerId>,
+    ) -> ChangeSetPointerResult<Self> {
+        let workspace_id = ctx.tenancy().workspace_pk();
+        let name = name.as_ref();
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                "INSERT INTO change_set_pointers (id, name, base_change_set_id, status, workspace_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+                &[&id, &name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id],
+            )
+            .await?;
+        Self::try_from(row)
     }
 
     pub async fn new(
@@ -91,14 +123,15 @@ impl ChangeSetPointer {
         name: impl AsRef<str>,
         base_change_set_id: Option<ChangeSetPointerId>,
     ) -> ChangeSetPointerResult<Self> {
+        let workspace_id = ctx.tenancy().workspace_pk();
         let name = name.as_ref();
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "INSERT INTO change_set_pointers (name, base_change_set_id) VALUES ($1, $2) RETURNING *",
-                &[&name, &base_change_set_id],
+                "INSERT INTO change_set_pointers (name, base_change_set_id, status, workspace_id) VALUES ($1, $2, $3, $4) RETURNING *",
+                &[&name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id],
             )
             .await?;
         Self::try_from(row)
@@ -106,16 +139,8 @@ impl ChangeSetPointer {
 
     pub async fn new_head(ctx: &DalContext) -> ChangeSetPointerResult<Self> {
         let name = "HEAD";
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_one(
-                "INSERT INTO change_set_pointers (id, name, base_change_set_id) VALUES ($1, $2, $3) RETURNING *",
-                &[&ChangeSetPointerId::NONE, &name, &None::<ChangeSetPointerId>],
-            )
-            .await?;
-        Self::try_from(row)
+
+        Self::new_with_id(ctx, name, ChangeSetPointerId::NONE, None).await
     }
 
     /// Create a [`VectorClockId`] from the [`ChangeSetPointer`].
@@ -131,6 +156,25 @@ impl ChangeSetPointer {
             .map_err(Into::into)
     }
 
+    pub async fn update_workspace_id(
+        &mut self,
+        ctx: &DalContext,
+        workspace_id: WorkspacePk,
+    ) -> ChangeSetPointerResult<()> {
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE change_set_pointers SET workspace_id = $2 WHERE id = $1",
+                &[&self.id, &workspace_id],
+            )
+            .await?;
+
+        self.workspace_id = Some(workspace_id);
+
+        Ok(())
+    }
+
     pub async fn update_pointer(
         &mut self,
         ctx: &DalContext,
@@ -144,7 +188,28 @@ impl ChangeSetPointer {
                 &[&self.id, &workspace_snapshot_id],
             )
             .await?;
+
         self.workspace_snapshot_id = Some(workspace_snapshot_id);
+
+        Ok(())
+    }
+
+    pub async fn update_status(
+        &mut self,
+        ctx: &DalContext,
+        status: ChangeSetStatus,
+    ) -> ChangeSetPointerResult<()> {
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE change_set_pointers SET status = $2 WHERE id = $1",
+                &[&self.id, &status.to_string()],
+            )
+            .await?;
+
+        self.status = status;
+
         Ok(())
     }
 
@@ -167,6 +232,28 @@ impl ChangeSetPointer {
             Some(row) => Ok(Some(Self::try_from(row)?)),
             None => Ok(None),
         }
+    }
+
+    pub async fn list_open(ctx: &DalContext) -> ChangeSetPointerResult<Vec<Self>> {
+        let mut result = vec![];
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status = $2",
+                &[
+                    &ctx.tenancy().workspace_pk(),
+                    &ChangeSetStatus::Open.to_string(),
+                ],
+            )
+            .await?;
+
+        for row in rows {
+            result.push(Self::try_from(row)?);
+        }
+
+        Ok(result)
     }
 }
 

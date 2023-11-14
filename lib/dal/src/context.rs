@@ -350,20 +350,52 @@ impl DalContext {
         })
     }
 
-    /// Consumes all inner transactions and committing all changes made within them.
-    pub async fn commit(&self) -> Result<(), TransactionsError> {
+    async fn commit_internal(
+        &self,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<(), TransactionsError> {
         if self.blocking {
-            self.blocking_commit().await?;
+            self.blocking_commit_internal(rebase_request).await?;
         } else {
-            let rebase_request = match self.write_snapshot().await? {
-                Some(workspace_snapshot_id) => {
-                    Some(self.get_rebase_request(workspace_snapshot_id)?)
-                }
-                None => None,
-            };
-
             let mut guard = self.conns_state.lock().await;
             *guard = guard.take().commit(rebase_request).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn blocking_commit_internal(
+        &self,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<(), TransactionsError> {
+        let mut guard = self.conns_state.lock().await;
+
+        *guard = guard.take().blocking_commit(rebase_request).await?;
+
+        Ok(())
+    }
+
+    /// Consumes all inner transactions and committing all changes made within them.
+    pub async fn commit(&self) -> Result<(), TransactionsError> {
+        let rebase_request = match self.write_snapshot().await? {
+            Some(workspace_snapshot_id) => Some(self.get_rebase_request(workspace_snapshot_id)?),
+            None => None,
+        };
+
+        if self.blocking {
+            self.blocking_commit_internal(rebase_request).await?;
+        } else {
+            self.commit_internal(rebase_request).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn commit_no_rebase(&self) -> Result<(), TransactionsError> {
+        if self.blocking {
+            self.blocking_commit_internal(None).await?;
+        } else {
+            self.commit_internal(None).await?;
         }
 
         Ok(())
@@ -433,13 +465,8 @@ impl DalContext {
             Some(workspace_snapshot_id) => Some(self.get_rebase_request(workspace_snapshot_id)?),
             None => None,
         };
-        info!(
-            "rebase request during blocking commit: {:?}",
-            &rebase_request
-        );
-        let mut guard = self.conns_state.lock().await;
 
-        *guard = guard.take().blocking_commit(rebase_request).await?;
+        self.blocking_commit_internal(rebase_request).await?;
 
         Ok(())
     }
