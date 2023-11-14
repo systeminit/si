@@ -33,7 +33,7 @@ pub struct VsockIncomingStream {
 // Change this to Port, so that Vsock can pick up the port and translate onto the host v.sock
 impl VsockIncomingStream {
     pub async fn create(addr: VsockAddr) -> Result<Self> {
-        let vsock = VsockListener::bind(addr)
+        let vsock = VsockListener::bind(&addr)
             .map_err(|err| VsockIncomingStreamError::Bind(err, addr))?;
 
         Ok(Self { vsock })
@@ -47,7 +47,7 @@ impl Accept for VsockIncomingStream {
     fn poll_accept(
         self: std::pin::Pin<&mut Self>
     ) -> Poll<Option<Result<Self::Conn>>> {
-        let (stream, _addr) = ready!(self.vsock.accept())?;
+        let (stream, _addr) = self.vsock.accept()?;
         Poll::Ready(Some(Ok(stream)))
     }
 }
