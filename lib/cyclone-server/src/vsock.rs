@@ -6,10 +6,6 @@ use std::{
 use futures::ready;
 use hyper::server::accept::Accept;
 use thiserror::Error;
-use tokio::{
-    fs,
-    net::{UnixListener, UnixStream},
-};
 
 use vsock::{VsockAddr,VsockListener,VsockStream};
 
@@ -36,10 +32,9 @@ pub struct VsockIncomingStream {
 
 // Change this to Port, so that Vsock can pick up the port and translate onto the host v.sock
 impl VsockIncomingStream {
-    pub async fn create(vSockAddr: VsockAddr) -> Result<Self> {
-                                      //addr: &impl SockaddrLike
-        let vsock = VsockListener::bind(vSockAddr)
-            .map_err(|err| VsockIncomingStreamError::Bind(err, vSockAddr))?;
+    pub async fn create(addr: VsockAddr) -> Result<Self> {
+        let vsock = VsockListener::bind(addr)
+            .map_err(|err| VsockIncomingStreamError::Bind(err, addr))?;
 
         Ok(Self { vsock })
     }

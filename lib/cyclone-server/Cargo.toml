@@ -29,3 +29,4 @@ tokio-serde = { workspace = true }
 tokio-util = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
+vsock = { workspace = true }
