@@ -13772,6 +13772,7 @@ cargo.rust_binary(
         ":tokio-test-0.4.2",
         ":tokio-tungstenite-0.18.0",
         ":tokio-util-0.7.8",
+        ":tokio-vsock-0.4.0",
         ":toml-0.7.6",
         ":tower-0.4.13",
         ":tower-http-0.4.1",
@@ -13783,7 +13784,6 @@ cargo.rust_binary(
         ":uuid-1.3.4",
         ":vfs-0.9.0",
         ":vfs-tar-0.4.0",
-        ":vsock-0.3.0",
     ],
 )
 
@@ -14435,6 +14435,36 @@ cargo.rust_library(
         ":pin-project-lite-0.2.9",
         ":tokio-1.28.2",
         ":tracing-0.1.37",
+    ],
+)
+
+alias(
+    name = "tokio-vsock",
+    actual = ":tokio-vsock-0.4.0",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "tokio-vsock-0.4.0.crate",
+    sha256 = "52a15c15b1bc91f90902347eff163b5b682643aff0c8e972912cca79bd9208dd",
+    strip_prefix = "tokio-vsock-0.4.0",
+    urls = ["https://crates.io/api/v1/crates/tokio-vsock/0.4.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "tokio-vsock-0.4.0",
+    srcs = [":tokio-vsock-0.4.0.crate"],
+    crate = "tokio_vsock",
+    crate_root = "tokio-vsock-0.4.0.crate/src/lib.rs",
+    edition = "2018",
+    visibility = [],
+    deps = [
+        ":bytes-1.4.0",
+        ":futures-0.3.28",
+        ":libc-0.2.146",
+        ":tokio-1.28.2",
+        ":vsock-0.3.0",
     ],
 )
 
@@ -15559,12 +15589,6 @@ cargo.rust_library(
         ":tar-parser2-0.9.1",
         ":vfs-0.9.0",
     ],
-)
-
-alias(
-    name = "vsock",
-    actual = ":vsock-0.3.0",
-    visibility = ["PUBLIC"],
 )
 
 http_archive(

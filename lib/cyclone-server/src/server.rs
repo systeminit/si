@@ -16,7 +16,7 @@ use tokio::{
     sync::{mpsc, oneshot},
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
-use vsock::VsockAddr;
+use tokio_vsock::VsockAddr;
 
 use crate::{
     routes::routes, state::AppState, Config, IncomingStream, UdsIncomingStream,
@@ -128,13 +128,13 @@ impl Server<(), ()> {
                 debug!(socket = %addr, "binding a unix domain server");
                 let inner =
                     axum::Server::builder(VsockIncomingStream::create(*addr).await?).serve(service);
-                let socket = addr;
+                let socket = *addr;
                 info!(socket = %socket, "unix domain server serving");
 
                 Ok(Server {
                     config,
                     inner,
-                    socket: *socket,
+                    socket,
                     shutdown_rx,
                 })
             }

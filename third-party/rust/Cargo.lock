@@ -4804,6 +4804,7 @@ dependencies = [
  "tokio-test",
  "tokio-tungstenite",
  "tokio-util",
+ "tokio-vsock",
  "toml 0.7.6",
  "tower",
  "tower-http",
@@ -4815,7 +4816,6 @@ dependencies = [
  "uuid",
  "vfs",
  "vfs-tar",
- "vsock",
 ]
 
 [[package]]
@@ -5060,6 +5060,19 @@ dependencies = [
  "pin-project-lite",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "tokio-vsock"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52a15c15b1bc91f90902347eff163b5b682643aff0c8e972912cca79bd9208dd"
+dependencies = [
+ "bytes 1.4.0",
+ "futures",
+ "libc",
+ "tokio",
+ "vsock",
 ]
 
 [[package]]

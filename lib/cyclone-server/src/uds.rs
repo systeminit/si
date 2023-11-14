@@ -35,12 +35,12 @@ pub struct UdsIncomingStream {
 impl UdsIncomingStream {
     pub async fn create(path: impl AsRef<Path>) -> Result<Self> {
         // File might not exist so don't worry about possible error
-        //let _ignored = fs::remove_file(path.as_ref()).await;
-        //fs::create_dir_all(path.as_ref().parent().ok_or_else(|| {
-        //    UdsIncomingStreamError::ParentPathNotFound(path.as_ref().to_path_buf())
-        //})?)
-        //.await
-        //.map_err(UdsIncomingStreamError::CreateParentPath)?;
+        let _ignored = fs::remove_file(path.as_ref()).await;
+        fs::create_dir_all(path.as_ref().parent().ok_or_else(|| {
+           UdsIncomingStreamError::ParentPathNotFound(path.as_ref().to_path_buf())
+        })?)
+        .await
+        .map_err(UdsIncomingStreamError::CreateParentPath)?;
 
         let uds = UnixListener::bind(path.as_ref())
             .map_err(|err| UdsIncomingStreamError::Bind(err, path.as_ref().to_path_buf()))?;

@@ -7,7 +7,7 @@ use std::{
 use derive_builder::Builder;
 use si_std::{CanonicalFile, CanonicalFileError};
 use thiserror::Error;
-use vsock::VsockAddr;
+use tokio_vsock::VsockAddr;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
