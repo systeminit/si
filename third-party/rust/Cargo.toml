@@ -109,6 +109,7 @@ tokio-stream = "0.1.14"
 tokio-test = "0.4.2"
 tokio-tungstenite = "0.18.0"
 tokio-util = { version = "0.7.8", features = ["codec"] }
+tokio-vsock = { version = "0.4.0"}
 toml = { version = "0.7.6" }
 tower = "0.4.13"
 tower-http = { version = "0.4.0", features = ["cors", "trace"] }
@@ -120,7 +121,6 @@ url = { version = "2.3.1", features = ["serde"] }
 uuid = { version = "1.3.2", features = ["serde", "v4"] }
 vfs = "0.9.0"
 vfs-tar = { version = "0.4.0", features = ["mmap"] }
-tokio-vsock = { version = "0.4.0"}
 
 # Local patches - typically Git references
 [patch.crates-io]
