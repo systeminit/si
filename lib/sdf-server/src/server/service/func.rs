@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-// pub mod create_func;
+pub mod create_func;
 // pub mod delete_func;
 // pub mod execute;
 pub mod get_func;
@@ -107,10 +107,10 @@ pub enum FuncError {
     //     FuncExecutionFailedNoPrototypes,
     //     #[error("Function still has associations: {0}")]
     //     FuncHasAssociations(FuncId),
-    //     #[error("Function named \"{0}\" already exists in this changeset")]
-    //     FuncNameExists(String),
-    //     #[error("The function name \"{0}\" is reserved")]
-    //     FuncNameReserved(String),
+    #[error("Function named \"{0}\" already exists in this changeset")]
+    FuncNameExists(String),
+    #[error("The function name \"{0}\" is reserved")]
+    FuncNameReserved(String),
     //     #[error("func is not revertible")]
     //     FuncNotRevertible,
     //     #[error("Cannot create that type of function")]
@@ -152,8 +152,8 @@ pub enum FuncError {
     //     StandardModel(#[from] StandardModelError),
     //     #[error("tenancy error: {0}")]
     //     Tenancy(#[from] TenancyError),
-    //     #[error("unexpected func variant ({0:?}) creating attribute func")]
-    //     UnexpectedFuncVariantCreatingAttributeFunc(FuncVariant),
+    #[error("unexpected func variant ({0:?}) creating attribute func")]
+    UnexpectedFuncVariantCreatingAttributeFunc(FuncVariant),
     //     #[error("A validation already exists for that attribute")]
     //     ValidationAlreadyExists,
     //     #[error("validation prototype error: {0}")]
@@ -889,7 +889,7 @@ pub fn routes() -> Router<AppState> {
         //             "/get_func_last_execution",
         //             get(get_func::get_latest_func_execution),
         //         )
-        //         .route("/create_func", post(create_func::create_func))
+        .route("/create_func", post(create_func::create_func))
         .route("/save_func", post(save_func::save_func))
     //         .route("/delete_func", post(delete_func::delete_func))
     //         .route("/save_and_exec", post(save_and_exec::save_and_exec))

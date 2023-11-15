@@ -400,13 +400,6 @@ async fn install_builtins(
 
     let mut ctx = ctx.clone();
     ctx.update_snapshot_to_visibility().await?;
-    let funcs = Func::list_funcs(&ctx).await.expect("list_funcs");
-    for func in funcs {
-        let args = FuncArgument::list_for_func(&ctx, func.id)
-            .await
-            .expect("list_for_func");
-        dbg!(args.len());
-    }
 
     Ok(())
 }

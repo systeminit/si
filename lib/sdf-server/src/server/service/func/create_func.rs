@@ -4,12 +4,13 @@ use crate::server::tracking::track;
 use crate::service::func::FuncError;
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
+use base64::engine::general_purpose;
+use base64::Engine;
+use dal::change_set_pointer::ChangeSetPointerId;
 use dal::{
-    generate_name, validation::prototype::context::ValidationPrototypeContext, ActionKind,
-    ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
-    ChangeSet, DalContext, ExternalProviderId, Func, FuncBackendResponseType, FuncId,
-    LeafInputLocation, LeafKind, PropId, SchemaVariant, SchemaVariantId, StandardModel,
-    ValidationPrototype, Visibility, WsEvent,
+    generate_name, ActionKind, ActionPrototype, ActionPrototypeContext, AttributePrototype,
+    ChangeSet, DalContext, ExternalProviderId, Func, FuncBackendResponseType, FuncId, PropId,
+    SchemaVariant, SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -86,14 +87,26 @@ async fn create_func_stub(
     handler: &str,
 ) -> FuncResult<Func> {
     let name = name.unwrap_or(generate_name());
-    if Func::find_by_name(ctx, &name).await?.is_some() {
+    if Func::find_by_name(ctx, &name)?.is_some() {
         return Err(FuncError::FuncNameExists(name));
     }
 
-    let mut func = Func::new(ctx, name, variant.into(), response_type).await?;
+    let code_base64 = general_purpose::STANDARD_NO_PAD.encode(code);
 
-    func.set_code_plaintext(ctx, Some(code)).await?;
-    func.set_handler(ctx, Some(handler)).await?;
+    let func = Func::new(
+        ctx,
+        name,
+        None::<String>,
+        None::<String>,
+        None::<String>,
+        false,
+        false,
+        variant.into(),
+        response_type,
+        Some(handler),
+        Some(code_base64),
+    )
+    .await?;
 
     Ok(func)
 }
@@ -113,39 +126,39 @@ async fn create_validation_func(
     )
     .await?;
 
-    if let Some(CreateFuncOptions::ValidationOptions {
-        schema_variant_id,
-        prop_to_validate,
-    }) = options
-    {
-        let mut context = ValidationPrototypeContext::builder();
-        let schema_id = *SchemaVariant::get_by_id(ctx, &schema_variant_id)
-            .await?
-            .ok_or(FuncError::ValidationPrototypeMissingSchemaVariant(
-                schema_variant_id,
-            ))?
-            .schema(ctx)
-            .await?
-            .ok_or(FuncError::ValidationPrototypeMissingSchema)?
-            .id();
-
-        let context = context
-            .set_prop_id(prop_to_validate)
-            .set_schema_variant_id(schema_variant_id)
-            .set_schema_id(schema_id)
-            .to_context(ctx)
-            .await?;
-
-        // Can we have more than one validation per prop?
-        if !ValidationPrototype::find_for_context(ctx, context.to_owned())
-            .await?
-            .is_empty()
-        {
-            return Err(FuncError::ValidationAlreadyExists);
-        }
-
-        ValidationPrototype::new(ctx, *func.id(), serde_json::json!(null), context).await?;
-    }
+    //    if let Some(CreateFuncOptions::ValidationOptions {
+    //        schema_variant_id,
+    //        prop_to_validate,
+    //    }) = options
+    //    {
+    //        let mut context = ValidationPrototypeContext::builder();
+    //        let schema_id = *SchemaVariant::get_by_id(ctx, &schema_variant_id)
+    //            .await?
+    //            .ok_or(FuncError::ValidationPrototypeMissingSchemaVariant(
+    //                schema_variant_id,
+    //            ))?
+    //            .schema(ctx)
+    //            .await?
+    //            .ok_or(FuncError::ValidationPrototypeMissingSchema)?
+    //            .id();
+    //
+    //        let context = context
+    //            .set_prop_id(prop_to_validate)
+    //            .set_schema_variant_id(schema_variant_id)
+    //            .set_schema_id(schema_id)
+    //            .to_context(ctx)
+    //            .await?;
+    //
+    //        // Can we have more than one validation per prop?
+    //        if !ValidationPrototype::find_for_context(ctx, context.to_owned())
+    //            .await?
+    //            .is_empty()
+    //        {
+    //            return Err(FuncError::ValidationAlreadyExists);
+    //        }
+    //
+    //        ValidationPrototype::new(ctx, *func.id(), serde_json::json!(null), context).await?;
+    //    }
 
     Ok(func)
 }
@@ -165,52 +178,52 @@ async fn create_action_func(
     )
     .await?;
 
-    if let Some(CreateFuncOptions::ActionOptions {
-        schema_variant_id,
-        action_kind,
-    }) = options
-    {
-        ActionPrototype::new(
-            ctx,
-            *func.id(),
-            action_kind,
-            ActionPrototypeContext { schema_variant_id },
-        )
-        .await?;
-    }
+    //    if let Some(CreateFuncOptions::ActionOptions {
+    //        schema_variant_id,
+    //        action_kind,
+    //    }) = options
+    //    {
+    //        ActionPrototype::new(
+    //            ctx,
+    //            *func.id(),
+    //            action_kind,
+    //            ActionPrototypeContext { schema_variant_id },
+    //        )
+    //        .await?;
+    //    }
 
     Ok(func)
 }
 
-async fn create_leaf_prototype(
-    ctx: &DalContext,
-    func: &Func,
-    schema_variant_id: SchemaVariantId,
-    variant: FuncVariant,
-) -> FuncResult<()> {
-    let leaf_kind = match variant {
-        FuncVariant::CodeGeneration => LeafKind::CodeGeneration,
-        FuncVariant::Qualification => LeafKind::Qualification,
-        _ => return Err(FuncError::FuncOptionsAndVariantMismatch),
-    };
-
-    let input_locations = match leaf_kind {
-        LeafKind::CodeGeneration => vec![LeafInputLocation::Domain],
-        LeafKind::Qualification => vec![LeafInputLocation::Domain, LeafInputLocation::Code],
-    };
-
-    SchemaVariant::upsert_leaf_function(
-        ctx,
-        schema_variant_id,
-        None,
-        leaf_kind,
-        &input_locations,
-        func,
-    )
-    .await?;
-
-    Ok(())
-}
+//async fn create_leaf_prototype(
+//    ctx: &DalContext,
+//    func: &Func,
+//    schema_variant_id: SchemaVariantId,
+//    variant: FuncVariant,
+//) -> FuncResult<()> {
+//    let leaf_kind = match variant {
+//        FuncVariant::CodeGeneration => LeafKind::CodeGeneration,
+//        FuncVariant::Qualification => LeafKind::Qualification,
+//        _ => return Err(FuncError::FuncOptionsAndVariantMismatch),
+//    };
+//
+//    let input_locations = match leaf_kind {
+//        LeafKind::CodeGeneration => vec![LeafInputLocation::Domain],
+//        LeafKind::Qualification => vec![LeafInputLocation::Domain, LeafInputLocation::Code],
+//    };
+//
+//    SchemaVariant::upsert_leaf_function(
+//        ctx,
+//        schema_variant_id,
+//        None,
+//        leaf_kind,
+//        &input_locations,
+//        func,
+//    )
+//    .await?;
+//
+//    Ok(())
+//}
 
 async fn create_attribute_func(
     ctx: &DalContext,
@@ -243,62 +256,62 @@ async fn create_attribute_func(
 
     let func = create_func_stub(ctx, name, variant, response_type, code, handler).await?;
 
-    if let Some(options) = options {
-        match (variant, options) {
-            (
-                FuncVariant::Attribute,
-                CreateFuncOptions::AttributeOptions {
-                    output_location, ..
-                },
-            ) => {
-                // XXX: we need to search *up* the attribute tree to ensure that
-                // the parent of this prop is not also set by a function. But we
-                // should also hide props on the frontend if they are the
-                // children of a value that is set by a function.
-                let mut context_builder = AttributeContextBuilder::new();
-                match output_location {
-                    AttributeOutputLocation::OutputSocket {
-                        external_provider_id,
-                    } => {
-                        context_builder.set_external_provider_id(external_provider_id);
-                    }
-                    AttributeOutputLocation::Prop { prop_id } => {
-                        context_builder.set_prop_id(prop_id);
-                    }
-                }
-
-                let context = context_builder.to_context()?;
-                let mut prototype =
-                    AttributePrototype::find_for_context_and_key(ctx, context, &None)
-                        .await?
-                        .pop()
-                        .ok_or(FuncError::AttributePrototypeMissing)?;
-
-                if let Some(func) = Func::get_by_id(ctx, &prototype.func_id()).await? {
-                    if !func.is_intrinsic() {
-                        return Err(FuncError::AttributePrototypeAlreadySetByFunc(
-                            func.name().into(),
-                        ));
-                    }
-                }
-
-                prototype.set_func_id(ctx, *func.id()).await?;
-            }
-            (
-                FuncVariant::CodeGeneration,
-                CreateFuncOptions::CodeGenerationOptions { schema_variant_id },
-            ) => {
-                create_leaf_prototype(ctx, &func, schema_variant_id, variant).await?;
-            }
-            (
-                FuncVariant::Qualification,
-                CreateFuncOptions::QualificationOptions { schema_variant_id },
-            ) => {
-                create_leaf_prototype(ctx, &func, schema_variant_id, variant).await?;
-            }
-            (_, _) => return Err(FuncError::FuncOptionsAndVariantMismatch),
-        }
-    }
+    //    if let Some(options) = options {
+    //        match (variant, options) {
+    //            (
+    //                FuncVariant::Attribute,
+    //                CreateFuncOptions::AttributeOptions {
+    //                    output_location, ..
+    //                },
+    //            ) => {
+    //                // XXX: we need to search *up* the attribute tree to ensure that
+    //                // the parent of this prop is not also set by a function. But we
+    //                // should also hide props on the frontend if they are the
+    //                // children of a value that is set by a function.
+    //                let mut context_builder = AttributeContextBuilder::new();
+    //                match output_location {
+    //                    AttributeOutputLocation::OutputSocket {
+    //                        external_provider_id,
+    //                    } => {
+    //                        context_builder.set_external_provider_id(external_provider_id);
+    //                    }
+    //                    AttributeOutputLocation::Prop { prop_id } => {
+    //                        context_builder.set_prop_id(prop_id);
+    //                    }
+    //                }
+    //
+    //                let context = context_builder.to_context()?;
+    //                let mut prototype =
+    //                    AttributePrototype::find_for_context_and_key(ctx, context, &None)
+    //                        .await?
+    //                        .pop()
+    //                        .ok_or(FuncError::AttributePrototypeMissing)?;
+    //
+    //                if let Some(func) = Func::get_by_id(ctx, &prototype.func_id()).await? {
+    //                    if !func.is_intrinsic() {
+    //                        return Err(FuncError::AttributePrototypeAlreadySetByFunc(
+    //                            func.name().into(),
+    //                        ));
+    //                    }
+    //                }
+    //
+    //                prototype.set_func_id(ctx, *func.id()).await?;
+    //            }
+    //            (
+    //                FuncVariant::CodeGeneration,
+    //                CreateFuncOptions::CodeGenerationOptions { schema_variant_id },
+    //            ) => {
+    //                create_leaf_prototype(ctx, &func, schema_variant_id, variant).await?;
+    //            }
+    //            (
+    //                FuncVariant::Qualification,
+    //                CreateFuncOptions::QualificationOptions { schema_variant_id },
+    //            ) => {
+    //                create_leaf_prototype(ctx, &func, schema_variant_id, variant).await?;
+    //            }
+    //            (_, _) => return Err(FuncError::FuncOptionsAndVariantMismatch),
+    //        }
+    //    }
 
     Ok(func)
 }
@@ -320,22 +333,22 @@ pub async fn create_func(
         }
     }
 
-    let mut force_changeset_pk = None;
-    if ctx.visibility().is_head() {
-        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
-
-        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
-
-        ctx.update_visibility(new_visibility);
-
-        force_changeset_pk = Some(change_set.pk);
-
-        WsEvent::change_set_created(&ctx, change_set.pk)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
-    };
-
+    let mut force_changeset_pk: Option<ChangeSetPointerId> = None;
+    //    if ctx.visibility().is_head() {
+    //        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
+    //
+    //        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
+    //
+    //        ctx.update_visibility(new_visibility);
+    //
+    //        force_changeset_pk = Some(change_set.pk);
+    //
+    //        WsEvent::change_set_created(&ctx, change_set.pk)
+    //            .await?
+    //            .publish_on_commit(&ctx)
+    //            .await?;
+    //    };
+    //
     let func = match request.variant {
         FuncVariant::Attribute => {
             create_attribute_func(&ctx, request.name, FuncVariant::Attribute, request.options)
@@ -374,9 +387,9 @@ pub async fn create_func(
         &original_uri,
         "created_func",
         serde_json::json!({
-                    "func_id": func.id().to_owned(),
-                    "func_handler": func.handler().map(|h| h.to_owned()),
-                    "func_name": func.name().to_owned(),
+                    "func_id": func.id,
+                    "func_handler": func.handler.as_ref().map(|h| h.to_owned()),
+                    "func_name": func.name.to_owned(),
                     "func_variant": func_variant,
         }),
     );
@@ -393,10 +406,10 @@ pub async fn create_func(
         response = response.header("force_changeset_pk", force_changeset_pk.to_string());
     }
     Ok(response.body(serde_json::to_string(&CreateFuncResponse {
-        id: func.id().to_owned(),
-        handler: func.handler().map(|h| h.to_owned()),
+        id: func.id,
+        handler: func.handler.as_ref().map(|h| h.to_owned()),
         variant: func_variant,
-        name: func.name().to_owned(),
+        name: func.name.to_owned(),
         code: func.code_plaintext()?,
     })?)?)
 }
