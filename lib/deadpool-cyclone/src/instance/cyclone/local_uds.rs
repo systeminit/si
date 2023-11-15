@@ -477,10 +477,10 @@ fn temp_path_and_socket_from(
 pub enum LocalUdsRuntimeStrategy {
     /// Run Docker containers on the local machine
     LocalDocker,
-    /// Run processes on the local machine
-    LocalProcess,
     /// Run processes on firecracker
     LocalFirecracker,
+    /// Run processes on the local machine
+    LocalProcess,
 }
 
 impl Default for LocalUdsRuntimeStrategy {
@@ -682,12 +682,10 @@ struct LocalFirecrackerRuntime {
 
 impl LocalFirecrackerRuntime {
     async fn build(
-        spec: LocalUdsInstanceSpec,
     ) -> Result<Box<dyn LocalInstanceRuntime>> {
-        
+
         // Chage this to a five integer ID
-        let rand_string: String = thread_rng()
-            .gen_range(0..5000);
+        let vm_id: String = thread_rng().gen_range(0..5000).to_string();
 
         // TODO(johnwatson): Run some checks against the ID to see if it's been used before
         // Calculate it instead of random?
@@ -703,38 +701,26 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
 
         let command = "/firecracker-data/start.sh ".to_owned()  + &self.vm_id;
-    
+
         // Spawn the shell process
-        let status = Command::new("sudo")
+        let _status = Command::new("sudo")
             .arg("bash")
             .arg("-c")
             .arg(command)
-            .status()
-            .expect("Failed to start shell process");
-         if status.success() {
-            println!("Command executed successfully!");
-        } else {
-            println!("Command failed with {:?}", status);
-        }
+            .status().await;
         Ok(())
 
     }
 
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
         let command = "/firecracker-data/stop.sh ".to_owned()  + &self.vm_id;
-    
+
         // Spawn the shell process
-        let status = Command::new("sudo")
+        let _status = Command::new("sudo")
             .arg("bash")
             .arg("-c")
             .arg(command)
-            .status()
-            .expect("Failed to start shell process");
-         if status.success() {
-            println!("Command executed successfully!");
-        } else {
-            println!("Command failed with {:?}", status);
-        }
+            .status().await;
         Ok(())
     }
 }
@@ -751,7 +737,7 @@ async fn runtime_instance_from_spec(
             LocalDockerRuntime::build(socket, spec.clone()).await
         }
         LocalUdsRuntimeStrategy::LocalFirecracker => {
-            LocalFirecrackerRuntime::build(spec.clone()).await
+            LocalFirecrackerRuntime::build().await
         }
     }
 }
