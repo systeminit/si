@@ -337,11 +337,7 @@ impl Spec for LocalUdsInstanceSpec {
         let mut runtime = runtime_instance_from_spec(self, &socket).await?;
 
         runtime.spawn().await?;
-        let mut client = Client::uds(socket)?;
-
-//         if self.runtime_strategy == LocalUdsRuntimeStrategy::LocalFirecracker {
-// `
-//         }
+        let mut client = Client::uds(runtime.socket())?;
 
 
         // Establish the client watch session. As the process may be booting, we will retry for a
@@ -350,7 +346,7 @@ impl Spec for LocalUdsInstanceSpec {
             let mut retries = 30;
             loop {
                 trace!("calling client.watch()");
-                client.connect();
+                let _ =client.connect();
                 if let Ok(watch) = client.watch().await {
                     trace!("client watch session established");
                     break watch;
@@ -502,6 +498,7 @@ impl Default for LocalUdsRuntimeStrategy {
 
 #[async_trait]
 pub trait LocalInstanceRuntime: Send + Sync {
+    fn socket(&mut self) -> PathBuf;
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError>;
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError>;
 }
@@ -510,6 +507,7 @@ pub trait LocalInstanceRuntime: Send + Sync {
 struct LocalProcessRuntime {
     cmd: Command,
     child: Option<Child>,
+    socket: PathBuf
 }
 
 impl LocalProcessRuntime {
@@ -542,12 +540,17 @@ impl LocalProcessRuntime {
             cmd.arg("--enable-action-run");
         }
 
-        Ok(Box::new(LocalProcessRuntime { cmd, child: None }))
+        Ok(Box::new(LocalProcessRuntime { cmd, child: None, socket: socket.to_path_buf() }))
     }
 }
 
 #[async_trait]
 impl LocalInstanceRuntime for LocalProcessRuntime {
+
+    fn socket(&mut self) -> PathBuf {
+        self.socket.to_path_buf()
+    }
+
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
         self.child = Some(
             self.cmd
@@ -571,6 +574,7 @@ impl LocalInstanceRuntime for LocalProcessRuntime {
 struct LocalDockerRuntime {
     container_id: String,
     docker: Docker,
+    socket: PathBuf
 }
 
 impl LocalDockerRuntime {
@@ -655,12 +659,18 @@ impl LocalDockerRuntime {
         Ok(Box::new(LocalDockerRuntime {
             container_id,
             docker,
+            socket: socket.to_path_buf()
         }))
     }
 }
 
 #[async_trait]
 impl LocalInstanceRuntime for LocalDockerRuntime {
+
+    fn socket(&mut self) -> PathBuf {
+        self.socket.to_path_buf()
+    }
+
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
         self.docker
             .start_container(
@@ -689,6 +699,7 @@ impl LocalInstanceRuntime for LocalDockerRuntime {
 #[derive(Debug)]
 struct LocalFirecrackerRuntime {
     vm_id: String,
+    socket: PathBuf,
 }
 
 impl LocalFirecrackerRuntime {
@@ -697,18 +708,25 @@ impl LocalFirecrackerRuntime {
 
         // Chage this to a five integer ID
         let vm_id: String = thread_rng().gen_range(0..5000).to_string();
+        let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", vm_id));
 
         // TODO(johnwatson): Run some checks against the ID to see if it's been used before
         // Calculate it instead of random?
 
         Ok(Box::new(LocalFirecrackerRuntime {
             vm_id,
+            socket: sock,
         }))
     }
 }
 
 #[async_trait]
 impl LocalInstanceRuntime for LocalFirecrackerRuntime {
+
+    fn socket(&mut self) -> PathBuf {
+        self.socket.to_path_buf()
+    }
+
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
 
         let command = "/firecracker-data/start.sh ".to_owned()  + &self.vm_id;
