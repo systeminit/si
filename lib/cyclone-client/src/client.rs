@@ -28,7 +28,7 @@ use hyper::{
 use hyperlocal::{UnixClientExt, UnixConnector, UnixStream};
 use thiserror::Error;
 use tokio::{
-    io::{AsyncRead, AsyncWrite},
+    io::{AsyncRead, AsyncWrite, AsyncWriteExt, AsyncReadExt},
     net::TcpStream,
 };
 use tokio_tungstenite::WebSocketStream;
@@ -119,6 +119,8 @@ pub trait CycloneClient<Strm>
 where
     Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
+    async fn connect(&mut self) -> Result<()>;
+
     async fn watch(&mut self) -> result::Result<Watch<Strm>, ClientError>;
 
     async fn liveness(&mut self) -> result::Result<LivenessStatus, ClientError>;
@@ -230,6 +232,29 @@ where
     Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + Sync + 'static,
     Sock: Send + Sync,
 {
+    async fn connect(&mut self) -> Result<()> {
+        let connect_cmd = format!("CONNECT {}\n", 52);
+        let mut stream = self
+            .connector
+            .call(self.uri.clone())
+            .await
+            .map_err(|err| ClientError::Connect(err.into()))?;
+        if stream.write_all(connect_cmd.as_bytes()).await.is_err() { };
+                // poor mans take_while
+        let mut connect_response = Vec::<u8>::new();
+        while {
+            let mut single_byte = vec![0; 1];
+            if stream.read_exact(&mut single_byte).await.is_err() {
+            }
+            connect_response.push(single_byte[0]);
+            single_byte != [b'\n']
+        } {}
+
+        if !connect_response.starts_with(b"OK ") {
+        }
+        Ok(())
+    }
+
     async fn watch(&mut self) -> Result<Watch<Strm>> {
         let stream = self.websocket_stream("/watch").await?;
         Ok(watch::watch(stream, self.config.watch_timeout))

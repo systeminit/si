@@ -124,6 +124,11 @@ impl Instance for LocalUdsInstance {
 
 #[async_trait]
 impl CycloneClient<UnixStream> for LocalUdsInstance {
+
+    async fn connect(&mut self) -> result::Result<(), ClientError> {
+       self.client.connect().await
+    }
+
     async fn watch(&mut self) -> result::Result<Watch<UnixStream>, ClientError> {
         self.ensure_healthy_client()
             .await
@@ -334,12 +339,18 @@ impl Spec for LocalUdsInstanceSpec {
         runtime.spawn().await?;
         let mut client = Client::uds(socket)?;
 
+//         if self.runtime_strategy == LocalUdsRuntimeStrategy::LocalFirecracker {
+// `
+//         }
+
+
         // Establish the client watch session. As the process may be booting, we will retry for a
         // period before giving up and assuming that the server instance has failed.
         let watch = {
             let mut retries = 30;
             loop {
                 trace!("calling client.watch()");
+                client.connect();
                 if let Ok(watch) = client.watch().await {
                     trace!("client watch session established");
                     break watch;
