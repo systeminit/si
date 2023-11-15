@@ -14,6 +14,7 @@ use si_rabbitmq::{
 use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::time::Instant;
 
 #[allow(missing_docs)]
 #[remain::sorted]
@@ -63,8 +64,10 @@ async fn change_set_loop(
         ctx.update_visibility(Visibility::new_head(false));
         ctx.update_tenancy(Tenancy::new(WorkspacePk::NONE));
 
+        let start = Instant::now();
         process_delivery_infallible_wrapper(&mut ctx, &environment, consumer.stream(), &delivery)
             .await;
+        info!("process delivery total: {:?}", start.elapsed());
     }
     Ok(None)
 }
@@ -118,6 +121,7 @@ async fn process_delivery(
     delivery: &Delivery,
     reply_to_stream: impl AsRef<str>,
 ) -> ChangeSetLoopResult<()> {
+    let start = Instant::now();
     let raw_message = match &delivery.message_contents {
         Some(found_raw_message) => found_raw_message,
         None => return Err(ChangeSetLoopError::MissingChangeSetMessageReplyTo),
@@ -134,10 +138,12 @@ async fn process_delivery(
     let to_rebase_workspace_snapshot_id = to_rebase_change_set.workspace_snapshot_id.ok_or(
         ChangeSetLoopError::MissingWorkspaceSnapshotForChangeSet(to_rebase_change_set.id),
     )?;
+    info!("before snapshot fetch and parse: {:?}", start.elapsed());
     let mut to_rebase_workspace_snapshot =
         WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_id).await?;
     let mut onto_workspace_snapshot: WorkspaceSnapshot =
         WorkspaceSnapshot::find(ctx, message.onto_workspace_snapshot_id.into()).await?;
+    info!("after snapshot fetch and parse: {:?}", start.elapsed());
 
     // Perform the conflicts and updates detection.
     let onto_vector_clock_id: VectorClockId = message.onto_vector_clock_id.into();
@@ -148,7 +154,10 @@ async fn process_delivery(
             onto_vector_clock_id,
         )
         .await?;
-    info!("conflicts and updates detected: {conflicts:?} {updates:?}");
+    info!(
+        "conflicts and updates detected: {conflicts:?} {updates:?}, {:?}",
+        start.elapsed()
+    );
 
     // If there are conflicts, immediately assemble a reply message that conflicts were found.
     // Otherwise, we can perform updates and assemble a "success" reply message.
@@ -172,8 +181,10 @@ async fn process_delivery(
         }
     };
 
+    info!("updates performed: {:?}", start.elapsed());
+
     // Before replying to the requester, we must commit.
-    ctx.blocking_commit().await?;
+    ctx.commit_no_rebase().await?;
 
     // Send reply to the "reply to stream" for the specific client.
     let inbound_stream = inbound_stream.as_ref();
@@ -188,7 +199,7 @@ async fn process_delivery(
 
     // Close the producer _after_ logging, but do not make it an infallible close. We do that
     // because the function managing the change set loop is infallible and will log the error.
-    info!("sent reply to \"{reply_to_stream}\"");
+    info!("sent reply to \"{reply_to_stream}\", {:?}", start.elapsed());
     producer.close().await?;
 
     Ok(())
@@ -258,10 +269,10 @@ async fn perform_updates_and_write_out_and_update_pointer(
     // Once all updates have been performed, we can write out, mark everything as recently seen
     // and update the pointer.
 
-    //    dbg!("onto_workspace_snapshot");
-    //    onto_workspace_snapshot.dot();
-    //    dbg!("to_rebase_workspace_snapshot");
-    //    to_rebase_workspace_snapshot.dot();
+    //dbg!("onto_workspace_snapshot");
+    //onto_workspace_snapshot.dot();
+    //dbg!("to_rebase_workspace_snapshot");
+    //to_rebase_workspace_snapshot.dot();
 
     to_rebase_workspace_snapshot
         .write(ctx, to_rebase_change_set.vector_clock_id())
@@ -289,12 +300,9 @@ fn find_in_to_rebase_or_create_using_onto(
                 unchecked_node_weight.lineage_id(),
             )? {
                 Some(found_equivalent_node) => {
-                    updated.extend(
-                        to_rebase_workspace_snapshot
-                            .import_subgraph(onto_workspace_snapshot, unchecked)?,
-                    );
-                    updated.insert(found_equivalent_node, unchecked);
-                    unchecked
+                    updated.insert(unchecked, found_equivalent_node);
+
+                    found_equivalent_node
                 }
                 None => {
                     updated.extend(

@@ -499,9 +499,10 @@ impl WorkspaceSnapshotGraph {
         match event {
             DfsEvent::Discover(onto_node_index, _) => {
                 let onto_node_weight = onto.get_node_weight(onto_node_index).map_err(|err| {
-                    error!(
+                    dbg!(
                         "Unable to get NodeWeight for onto NodeIndex {:?}: {}",
-                        onto_node_index, err,
+                        onto_node_index,
+                        err,
                     );
                     event
                 })?;
@@ -523,7 +524,7 @@ impl WorkspaceSnapshotGraph {
                     let mut potential_to_rebase_node_indexes: Vec<NodeIndex> = self
                         .get_node_index_by_lineage(onto_node_weight.lineage_id())
                         .map_err(|err| {
-                            error!(
+                            dbg!(
                                 "Unable to find NodeIndex(es) for lineage_id {}: {}",
                                 onto_node_weight.lineage_id(),
                                 err,
@@ -542,7 +543,7 @@ impl WorkspaceSnapshotGraph {
                         let category_node_kind = onto_category_node_weight.kind();
                         let (_, to_rebase_category_node_index) =
                             self.get_category(category_node_kind).map_err(|err| {
-                                error!(
+                                dbg!(
                                     "Unable to get to rebase Category node for kind {:?} from onto {:?}: {}",
                                     onto_category_node_weight.kind(), onto, err,
                                 );
@@ -564,9 +565,10 @@ impl WorkspaceSnapshotGraph {
                 for to_rebase_node_index in to_rebase_node_indexes {
                     let to_rebase_node_weight =
                         self.get_node_weight(to_rebase_node_index).map_err(|err| {
-                            error!(
+                            dbg!(
                                 "Unable to get to_rebase NodeWeight for NodeIndex {:?}: {}",
-                                to_rebase_node_index, err,
+                                to_rebase_node_index,
+                                err,
                             );
                             event
                         })?;
@@ -574,9 +576,10 @@ impl WorkspaceSnapshotGraph {
                     if onto_node_weight.merkle_tree_hash()
                         == to_rebase_node_weight.merkle_tree_hash()
                     {
+                        dbg!(onto_node_index, to_rebase_node_index);
                         // If the merkle tree hashes are the same, then the entire sub-graph is
                         // identical, and we don't need to check any further.
-                        debug!(
+                        dbg!(
                             "onto {} and to rebase {} merkle tree hashes are the same",
                             onto_node_weight.id(),
                             to_rebase_node_weight.id()
@@ -626,7 +629,10 @@ impl WorkspaceSnapshotGraph {
                         .ordering_node_index_for_container(to_rebase_node_index)
                         .map_err(|_| event)?;
 
-                    match (to_rebase_ordering_node_index, onto_ordering_node_index) {
+                    match (
+                        dbg!(to_rebase_ordering_node_index),
+                        dbg!(onto_ordering_node_index),
+                    ) {
                         (None, None) => {
                             // Neither is ordered. The potential conflict could be because one
                             // or more elements changed, because elements were added/removed,
@@ -639,13 +645,14 @@ impl WorkspaceSnapshotGraph {
                             // Eventually, this will only happen on the root node itself, since
                             // Objects, Maps, and Arrays should all have an ordering, for at
                             // least display purposes.
-                            debug!(
+                            dbg!(
                                 "Found what appears to be two unordered containers: onto {:?}, to_rebase {:?}",
                                 onto_node_index, to_rebase_node_index,
                             );
-                            debug!(
+                            dbg!(
                                 "Comparing unordered containers: {:?}, {:?}",
-                                onto_node_index, to_rebase_node_index
+                                onto_node_index,
+                                to_rebase_node_index
                             );
 
                             let (container_conflicts, container_updates) = self
@@ -657,7 +664,7 @@ impl WorkspaceSnapshotGraph {
                                     onto_node_index,
                                 )
                                 .map_err(|err| {
-                                    error!("Unable to find unordered container membership conflicts and updates for onto container NodeIndex {:?} and to_rebase container NodeIndex {:?}: {}", onto_node_index, to_rebase_node_index, err);
+                                    dbg!("Unable to find unordered container membership conflicts and updates for onto container NodeIndex {:?} and to_rebase container NodeIndex {:?}: {}", onto_node_index, to_rebase_node_index, err);
                                     event
                                 })?;
 
@@ -765,6 +772,7 @@ impl WorkspaceSnapshotGraph {
             .vector_clock_write()
             .is_newer_than(to_rebase_ordering.vector_clock_write())
         {
+            info!("onto_ordering_clock_newer");
             let onto_ordering_set: HashSet<Ulid> = onto_ordering.order().iter().copied().collect();
             let to_rebase_ordering_set: HashSet<Ulid> =
                 to_rebase_ordering.order().iter().copied().collect();
@@ -1069,10 +1077,19 @@ impl WorkspaceSnapshotGraph {
             unique_edges
         };
 
+        dbg!("only to rebase edges: {:?}", &only_to_rebase_edges);
+        dbg!("only onto edges: {:?}", &only_onto_edges);
+
         let root_seen_as_of_onto = self
             .get_node_weight(self.root_index)?
             .vector_clock_recently_seen()
             .entry_for(onto_vector_clock_id);
+
+        let onto_last_saw_to_rebase = onto
+            .get_node_weight(onto.root_index)?
+            .vector_clock_recently_seen()
+            .entry_for(to_rebase_vector_clock_id);
+
         for only_to_rebase_edge_info in only_to_rebase_edges.values() {
             let to_rebase_edge_weight = self
                 .graph
@@ -1085,15 +1102,15 @@ impl WorkspaceSnapshotGraph {
             // no updates.
             if to_rebase_edge_weight
                 .vector_clock_first_seen()
-                .entry_for(onto_vector_clock_id)
-                .is_some()
+                .entry_for(to_rebase_vector_clock_id)
+                < onto_last_saw_to_rebase
             {
                 if to_rebase_item_weight
                     .vector_clock_write()
                     .entry_for(to_rebase_vector_clock_id)
-                    > root_seen_as_of_onto
+                    > onto_last_saw_to_rebase
                 {
-                    // Edge has been modified in `onto` (`onto` item write vector clock > "seen as
+                    // Item has been modified in `onto` (`onto` item write vector clock > "seen as
                     // of" for `onto` entry in `to_rebase` root): Conflict (ModifyRemovedItem)
                     conflicts.push(Conflict::ModifyRemovedItem(
                         only_to_rebase_edge_info.target_node_index,
@@ -1395,12 +1412,23 @@ impl WorkspaceSnapshotGraph {
             }
         }
 
-        self.update_merkle_tree_hash(
-            // If we updated the ordering node, that means we've invalidated the container's
-            // NodeIndex (new_source_node_index), so we need to find the new NodeIndex to be able
-            // to update the container's merkle tree hash.
-            self.get_node_index_by_id(self.get_node_weight(new_source_node_index)?.id())?,
-        )?;
+        let new_source_node_index =
+            self.get_node_index_by_id(self.get_node_weight(new_source_node_index)?.id())?;
+
+        let mut work_queue = VecDeque::from([new_source_node_index]);
+
+        while let Some(node_index) = work_queue.pop_front() {
+            self.update_merkle_tree_hash(
+                // If we updated the ordering node, that means we've invalidated the container's
+                // NodeIndex (new_source_node_index), so we need to find the new NodeIndex to be able
+                // to update the container's merkle tree hash.
+                node_index,
+            )?;
+
+            for edge_ref in self.graph.edges_directed(node_index, Incoming) {
+                work_queue.push_back(edge_ref.source());
+            }
+        }
 
         Ok(updated)
     }
@@ -3645,6 +3673,286 @@ mod test {
                 )
                 .expect("Unable to find ordered children for node")
                 .expect("Node is not an ordered node")
+        );
+    }
+
+    #[test]
+    fn remove_unordered_node_and_detect_edge_removal() {
+        let initial_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let initial_change_set = &initial_change_set;
+        let mut graph = WorkspaceSnapshotGraph::new(initial_change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+
+        let schema_id = initial_change_set
+            .generate_ulid()
+            .expect("Unable to generate Ulid");
+        let schema_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    initial_change_set,
+                    schema_id,
+                    ContentAddress::Schema(ContentHash::new(
+                        SchemaId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema");
+        let schema_variant_id = initial_change_set
+            .generate_ulid()
+            .expect("Unable to generate Ulid");
+        let schema_variant_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    initial_change_set,
+                    schema_variant_id,
+                    ContentAddress::SchemaVariant(ContentHash::new(
+                        SchemaVariantId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema variant");
+
+        graph
+            .add_edge(
+                graph.root_index,
+                EdgeWeight::new(initial_change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                schema_index,
+            )
+            .expect("Unable to add root -> schema edge");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(schema_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(initial_change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                schema_variant_index,
+            )
+            .expect("Unable to add schema -> schema variant edge");
+
+        let schema_variant_2_id = initial_change_set
+            .generate_ulid()
+            .expect("Unable to generate Ulid");
+        let schema_variant_2_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    initial_change_set,
+                    schema_variant_2_id,
+                    ContentAddress::SchemaVariant(ContentHash::new(
+                        SchemaVariantId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema variant");
+
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(schema_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(initial_change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                schema_variant_2_index,
+            )
+            .expect("Unable to add schema -> schema variant edge");
+
+        let expected_edges = HashSet::from([schema_variant_2_index, schema_variant_index]);
+
+        let existing_edges: HashSet<NodeIndex> = graph
+            .edges_directed(
+                graph
+                    .get_node_index_by_id(schema_id)
+                    .expect("Unable to get NodeIndex for schema"),
+                Outgoing,
+            )
+            .map(|edge_ref| edge_ref.target())
+            .collect();
+
+        assert_eq!(
+            expected_edges, existing_edges,
+            "confirm edges are there before deleting"
+        );
+
+        graph
+            .mark_graph_seen(initial_change_set.vector_clock_id())
+            .expect("Unable to mark initial graph as seen");
+
+        let mut graph_with_deleted_edge = graph.clone();
+        let new_change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let new_change_set = &new_change_set;
+
+        graph_with_deleted_edge.dot();
+
+        graph_with_deleted_edge
+            .remove_edge(
+                new_change_set,
+                graph_with_deleted_edge
+                    .get_node_index_by_id(schema_id)
+                    .expect("Unable to get NodeIndex for schema"),
+                schema_variant_2_index,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .expect("Edge removal failed");
+
+        graph_with_deleted_edge.dot();
+
+        let existing_edges: Vec<NodeIndex> = graph_with_deleted_edge
+            .edges_directed(
+                graph_with_deleted_edge
+                    .get_node_index_by_id(schema_id)
+                    .expect("Unable to get NodeIndex for schema"),
+                Outgoing,
+            )
+            .map(|edge_ref| edge_ref.target())
+            .collect();
+
+        assert_eq!(
+            vec![schema_variant_index],
+            existing_edges,
+            "confirm edges after deletion"
+        );
+
+        graph_with_deleted_edge
+            .mark_graph_seen(new_change_set.vector_clock_id())
+            .expect("Unable to mark new graph as seen");
+
+        let (conflicts, updates) = graph
+            .detect_conflicts_and_updates(
+                initial_change_set.vector_clock_id(),
+                &graph_with_deleted_edge,
+                new_change_set.vector_clock_id(),
+            )
+            .expect("Failed to detect conflicts and updates");
+
+        dbg!(&conflicts);
+        assert!(conflicts.is_empty());
+        assert_eq!(1, updates.len());
+    }
+
+    #[test]
+    fn remove_unordered_node() {
+        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = &change_set;
+        let mut graph = WorkspaceSnapshotGraph::new(change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+
+        let schema_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let schema_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    schema_id,
+                    ContentAddress::Schema(ContentHash::new(
+                        SchemaId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema");
+        let schema_variant_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let schema_variant_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    schema_variant_id,
+                    ContentAddress::SchemaVariant(ContentHash::new(
+                        SchemaVariantId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema variant");
+
+        graph
+            .add_edge(
+                graph.root_index,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                schema_index,
+            )
+            .expect("Unable to add root -> schema edge");
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(schema_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                schema_variant_index,
+            )
+            .expect("Unable to add schema -> schema variant edge");
+
+        let schema_variant_2_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let schema_variant_2_index = graph
+            .add_node(
+                NodeWeight::new_content(
+                    change_set,
+                    schema_variant_2_id,
+                    ContentAddress::SchemaVariant(ContentHash::new(
+                        SchemaVariantId::generate().to_string().as_bytes(),
+                    )),
+                )
+                .expect("Unable to create NodeWeight"),
+            )
+            .expect("Unable to add schema variant");
+
+        graph
+            .add_edge(
+                graph
+                    .get_node_index_by_id(schema_id)
+                    .expect("Unable to get NodeIndex"),
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)
+                    .expect("Unable to create EdgeWeight"),
+                schema_variant_2_index,
+            )
+            .expect("Unable to add schema -> schema variant edge");
+
+        let expected_edges = HashSet::from([schema_variant_2_index, schema_variant_index]);
+
+        let existing_edges: HashSet<NodeIndex> = graph
+            .edges_directed(
+                graph
+                    .get_node_index_by_id(schema_id)
+                    .expect("Unable to get NodeIndex for schema"),
+                Outgoing,
+            )
+            .map(|edge_ref| edge_ref.target())
+            .collect();
+
+        assert_eq!(
+            expected_edges, existing_edges,
+            "confirm edges are there before deleting"
+        );
+
+        graph
+            .remove_edge(
+                change_set,
+                graph
+                    .get_node_index_by_id(schema_id)
+                    .expect("Unable to get NodeIndex for schema"),
+                schema_variant_2_index,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .expect("Edge removal failed");
+
+        let existing_edges: Vec<NodeIndex> = graph
+            .edges_directed(
+                graph
+                    .get_node_index_by_id(schema_id)
+                    .expect("Unable to get NodeIndex for schema"),
+                Outgoing,
+            )
+            .map(|edge_ref| edge_ref.target())
+            .collect();
+
+        assert_eq!(
+            vec![schema_variant_index],
+            existing_edges,
+            "confirm edges after deletion"
         );
     }
 

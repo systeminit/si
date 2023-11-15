@@ -333,6 +333,34 @@ impl FuncArgument {
         Ok(FuncArgument::assemble(&arg_content_nw, &updated))
     }
 
+    pub fn remove(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<()> {
+        // to remove a func argument we must remove all incoming edges to it. It will then be
+        // garbage collected out of the graph
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let arg_node_idx = workspace_snapshot.get_node_index_by_id(id.into())?;
+
+        let users_of_arg = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(id.into(), EdgeWeightKind::Use.into())?;
+
+        let change_set = ctx.change_set_pointer()?;
+        for user_of_arg in users_of_arg {
+            info!("removing edge from {:?} to {:?}", user_of_arg, arg_node_idx);
+            workspace_snapshot.remove_edge(
+                change_set,
+                user_of_arg,
+                arg_node_idx,
+                EdgeWeightKind::Use.into(),
+            )?;
+        }
+
+        // TODO: Note we must also delete the attribute prototype arguments that depend on this func
+        // argument
+
+        Ok(())
+    }
+
     //     /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId) along with the
     //     /// [`AttributePrototypeArgument`](crate::AttributePrototypeArgument) that corresponds to it
     //     /// *if* one exists.
@@ -397,25 +425,5 @@ impl FuncArgument {
     //         name: &str,
     //         func_id: FuncId,
     //     ) -> FuncArgumentResult<Option<Self>> {
-    //     }
-
-    //     pub async fn remove(
-    //         ctx: &DalContext,
-    //         func_argument_id: &FuncArgumentId,
-    //     ) -> FuncArgumentResult<()> {
-    //         let mut func_arg = match FuncArgument::get_by_id(ctx, func_argument_id).await? {
-    //             Some(func_arg) => func_arg,
-    //             None => return Ok(()),
-    //         };
-    //
-    //         for mut prototype_argument in
-    //             AttributePrototypeArgument::list_by_func_argument_id(ctx, *func_argument_id).await?
-    //         {
-    //             prototype_argument.delete_by_id(ctx).await?;
-    //         }
-    //
-    //         func_arg.delete_by_id(ctx).await?;
-    //
-    //         Ok(())
     //     }
 }

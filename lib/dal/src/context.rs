@@ -12,6 +12,7 @@ use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult,
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
+use tokio::time::Instant;
 use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, EncryptionKey};
 
@@ -345,7 +346,7 @@ impl DalContext {
         let vector_clock_id = self.change_set_pointer()?.vector_clock_id();
         Ok(RebaseRequest {
             onto_workspace_snapshot_id,
-            to_rebase_change_set_id: self.change_set_id().into(),
+            to_rebase_change_set_id: self.change_set_pointer()?.base_change_set_id.into(),
             onto_vector_clock_id: vector_clock_id,
         })
     }
@@ -1071,11 +1072,14 @@ async fn rebase(
     rebaser_config: RebaserClientConfig,
     rebase_request: RebaseRequest,
 ) -> Result<(), TransactionsError> {
+    let start = Instant::now();
     let mut rebaser_client = rebaser_client::Client::new(rebaser_config).await?;
+    info!("got rebaser client: {:?}", start.elapsed());
 
     rebaser_client
         .open_stream_for_change_set(rebase_request.to_rebase_change_set_id.into())
         .await?;
+    info!("opened stream: {:?} ", start.elapsed());
 
     let response = rebaser_client
         .request_rebase(
@@ -1084,6 +1088,7 @@ async fn rebase(
             rebase_request.onto_vector_clock_id.into(),
         )
         .await?;
+    info!("got reply: {:?}", start.elapsed());
 
     match response {
         ChangeSetReplyMessage::Success { .. } => Ok(()),
@@ -1134,7 +1139,9 @@ impl Transactions {
         let nats_conn = self.nats_txn.commit_into_conn().await?;
 
         if let Some(rebase_request) = rebase_request {
+            let start = Instant::now();
             rebase(self.rebaser_config.clone(), rebase_request).await?;
+            info!("rebase took: {:?}", start.elapsed());
         }
 
         self.job_processor.process_queue().await?;
