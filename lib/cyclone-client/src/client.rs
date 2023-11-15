@@ -233,14 +233,20 @@ where
     Sock: Send + Sync,
 {
     async fn connect(&mut self) -> Result<()> {
+        println!("TRYNA CONNECT WITHIN CONNECT");
         let connect_cmd = format!("CONNECT {}\n", 52);
         let mut stream = self
             .connector
             .call(self.uri.clone())
             .await
             .map_err(|err| ClientError::Connect(err.into()))?;
-        if stream.write_all(connect_cmd.as_bytes()).await.is_err() { };
-                // poor mans take_while
+
+        println!("About to do write_all");
+        if stream.write_all(connect_cmd.as_bytes()).await.is_err() { 
+            println!("Within write_all");
+        };
+        println!("Got further in CONNECT");
+        // poor mans take_while
         let mut connect_response = Vec::<u8>::new();
         while {
             let mut single_byte = vec![0; 1];

@@ -2,7 +2,7 @@ use ::std::path::Path;
 use rand::distributions::Alphanumeric;
 use rand::thread_rng;
 use rand::Rng;
-use std::{io, path::PathBuf, result, time::Duration};
+use std::{thread, io, path::PathBuf, result, time::Duration};
 
 use bollard::container::{
     Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions,
@@ -339,6 +339,7 @@ impl Spec for LocalUdsInstanceSpec {
         runtime.spawn().await?;
         let mut client = Client::uds(runtime.socket())?;
 
+        println!("TRYNA CONNECT FROM LOCAL UDS");
 
         // Establish the client watch session. As the process may be booting, we will retry for a
         // period before giving up and assuming that the server instance has failed.
@@ -346,7 +347,10 @@ impl Spec for LocalUdsInstanceSpec {
             let mut retries = 30;
             loop {
                 trace!("calling client.watch()");
-                let _ =client.connect();
+                println!("Calling Client Watch, iteration {}", retries.to_string());
+                let _ = client.connect().await;
+                //let one_s = time::Duration::from_millis(1000);
+                //std::thread::sleep(one_s);
                 if let Ok(watch) = client.watch().await {
                     trace!("client watch session established");
                     break watch;
