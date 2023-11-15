@@ -348,7 +348,8 @@ impl Spec for LocalUdsInstanceSpec {
             loop {
                 trace!("calling client.watch()");
                 println!("Calling Client Watch, iteration {}", retries.to_string());
-                let _ = client.connect().await;
+                let _ = dbg!(client.connect().await);
+
                 //let one_s = time::Duration::from_millis(1000);
                 //std::thread::sleep(one_s);
                 if let Ok(watch) = client.watch().await {

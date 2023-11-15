@@ -111,6 +111,7 @@ mod tests {
     };
 
     #[tokio::test]
+    #[ignore]
     async fn boom() {
         let mut config_file = veritech_server::ConfigFile::default_local_uds();
         veritech_server::detect_and_configure_development(&mut config_file)

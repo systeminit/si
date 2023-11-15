@@ -50,6 +50,8 @@ pub enum ClientError {
     InvalidUri(#[from] InvalidUri),
     #[error("invalid websocket uri scheme: {0}")]
     InvalidWebsocketScheme(String),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
     #[error("missing authority")]
     MissingAuthority,
     #[error("missing websocket scheme")]
@@ -230,11 +232,13 @@ where
     Conn::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
     Conn::Future: Unpin + Send,
     Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + Sync + 'static,
-    Sock: Send + Sync,
+    Sock: Send + Sync + std::fmt::Debug,
 {
     async fn connect(&mut self) -> Result<()> {
         println!("TRYNA CONNECT WITHIN CONNECT");
+        println!("socket: {:?}", self.socket);
         let connect_cmd = format!("CONNECT {}\n", 52);
+
         let mut stream = self
             .connector
             .call(self.uri.clone())
@@ -248,13 +252,16 @@ where
         println!("Got further in CONNECT");
         // poor mans take_while
         let mut connect_response = Vec::<u8>::new();
-        while {
+        loop {
             let mut single_byte = vec![0; 1];
-            if stream.read_exact(&mut single_byte).await.is_err() {
-            }
+            stream.read_exact(&mut single_byte).await?;
             connect_response.push(single_byte[0]);
-            single_byte != [b'\n']
-        } {}
+            if single_byte == [b'\n'] { break; }
+        }
+        println!("Read all the bytes to /n");
+
+        let the_string = std::str::from_utf8(&connect_response)?;
+        println!("{}", the_string);
 
         if !connect_response.starts_with(b"OK ") {
         }
