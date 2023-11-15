@@ -1,6 +1,4 @@
-use std::{
-    task::{Context, Poll},
-};
+use std::task::{Context, Poll};
 
 use futures::ready;
 use hyper::server::accept::Accept;

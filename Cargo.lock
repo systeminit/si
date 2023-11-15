@@ -1146,6 +1146,7 @@ dependencies = [
  "cyclone-server",
  "telemetry-application",
  "tokio",
+ "tokio-vsock",
 ]
 
 [[package]]
