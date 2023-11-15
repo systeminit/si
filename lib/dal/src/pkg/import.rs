@@ -1,3 +1,4 @@
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -207,7 +208,7 @@ async fn import_change_set(
         installed_schema_variant_ids.extend(schema_variant_ids);
     }
 
-    println!("Finished Imports");
+    println!("Finished Imports: {}", Utc::now());
 
     let mut component_attribute_skips = vec![];
     for component_spec in components {
@@ -1051,6 +1052,7 @@ pub async fn import_pkg_from_pkg(
 }
 
 pub async fn import_pkg(ctx: &DalContext, pkg_file_path: impl AsRef<Path>) -> PkgResult<SiPkg> {
+    println!("Importing package from {:?}", pkg_file_path.as_ref());
     let pkg = SiPkg::load_from_file(&pkg_file_path).await?;
 
     import_pkg_from_pkg(ctx, &pkg, None).await?;

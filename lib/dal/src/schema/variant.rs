@@ -72,7 +72,7 @@ pub enum SchemaVariantError {
     /// An [`AttributeValue`](crate::AttributeValue) could not be found for the specified
     /// [`AttributeReadContext`](crate::AttributeReadContext).
     #[error("attribute value not found for attribute read context: {0:?}")]
-    AttributeValueNotFoundForContext(AttributeReadContext),
+    AttributeValueNotFoundForContext(Box<AttributeReadContext>),
     #[error(transparent)]
     Builtins(#[from] Box<BuiltinsError>),
     #[error(transparent)]
@@ -321,9 +321,9 @@ impl SchemaVariant {
         let attribute_read_context = AttributeReadContext::default_with_prop(type_prop_id);
         let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
             .await?
-            .ok_or(SchemaVariantError::AttributeValueNotFoundForContext(
-                attribute_read_context,
-            ))?;
+            .ok_or_else(|| {
+                SchemaVariantError::AttributeValueNotFoundForContext(attribute_read_context.into())
+            })?;
         let parent_attribute_value = attribute_value
             .parent_attribute_value(ctx)
             .await?
@@ -345,9 +345,9 @@ impl SchemaVariant {
         let attribute_read_context = AttributeReadContext::default_with_prop(protected_prop_id);
         let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
             .await?
-            .ok_or(SchemaVariantError::AttributeValueNotFoundForContext(
-                attribute_read_context,
-            ))?;
+            .ok_or_else(|| {
+                SchemaVariantError::AttributeValueNotFoundForContext(attribute_read_context.into())
+            })?;
         let parent_attribute_value = attribute_value
             .parent_attribute_value(ctx)
             .await?
