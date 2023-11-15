@@ -10,6 +10,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
+use ulid::Ulid;
 
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::workspace_snapshot::content_address::ContentAddress;
@@ -151,6 +152,17 @@ pub struct FuncArgumentContentV1 {
     pub timestamp: Timestamp,
 }
 
+impl From<FuncArgument> for FuncArgumentContentV1 {
+    fn from(value: FuncArgument) -> Self {
+        Self {
+            name: value.name,
+            kind: value.kind,
+            element_kind: value.element_kind,
+            timestamp: value.timestamp,
+        }
+    }
+}
+
 impl FuncArgument {
     pub fn assemble(node_weight: &ContentNodeWeight, content: &FuncArgumentContentV1) -> Self {
         let content = content.to_owned();
@@ -274,6 +286,51 @@ impl FuncArgument {
         }
 
         Ok(func_args)
+    }
+
+    pub async fn modify_by_id<L>(
+        ctx: &DalContext,
+        id: FuncArgumentId,
+        lambda: L,
+    ) -> FuncArgumentResult<FuncArgument>
+    where
+        L: FnOnce(&mut FuncArgument) -> FuncArgumentResult<()>,
+    {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let ulid: Ulid = id.into();
+
+        let arg_node_idx = workspace_snapshot.get_node_index_by_id(ulid)?;
+        let arg_nw = workspace_snapshot.get_node_weight(arg_node_idx)?;
+        let hash = arg_nw.content_hash();
+
+        let content: FuncArgumentContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
+
+        let FuncArgumentContent::V1(inner) = content;
+
+        let arg_content_nw =
+            arg_nw.get_content_node_weight_of_kind(ContentAddressDiscriminants::FuncArg)?;
+
+        let mut func_arg = FuncArgument::assemble(&arg_content_nw, &inner);
+
+        lambda(&mut func_arg)?;
+
+        let updated = FuncArgumentContentV1::from(func_arg.clone());
+        if updated != inner {
+            let hash = ctx
+                .content_store()
+                .try_lock()?
+                .add(&FuncArgumentContent::V1(updated.clone()))?;
+
+            workspace_snapshot.update_content(ctx.change_set_pointer()?, ulid, hash)?;
+        }
+
+        Ok(FuncArgument::assemble(&arg_content_nw, &updated))
     }
 
     //     /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId) along with the

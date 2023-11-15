@@ -3,6 +3,7 @@ use axum::{response::IntoResponse, Json};
 use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use telemetry::prelude::*;
 
 // use super::ValidationPrototypeView;
 use super::{
@@ -446,39 +447,44 @@ enum RemovedPrototypeOp {
 //    Ok(())
 //}
 
-//async fn save_attr_func_arguments(
-//    ctx: &DalContext,
-//    func: &Func,
-//    arguments: Vec<FuncArgumentView>,
-//) -> FuncResult<()> {
-//    let mut id_set = HashSet::new();
-//    for arg in &arguments {
-//        let arg_id = if arg.id.is_some() {
-//            id_set.insert(arg.id);
-//            let mut existing = FuncArgument::get_by_id(ctx, arg.id).await?;
-//
-//            existing.set_name(ctx, &arg.name).await?;
-//            existing.set_kind(ctx, arg.kind).await?;
-//            existing.set_element_kind(ctx, arg.element_kind).await?;
-//
-//            *existing.id()
-//        } else {
-//            let new_arg =
-//                FuncArgument::new(ctx, &arg.name, arg.kind, arg.element_kind, *func.id()).await?;
-//            *new_arg.id()
-//        };
-//
-//        id_set.insert(arg_id);
-//    }
-//
-//    for func_arg in FuncArgument::list_for_func(ctx, *func.id()).await? {
-//        if !id_set.contains(func_arg.id()) {
-//            FuncArgument::remove(ctx, func_arg.id()).await?;
-//        }
-//    }
-//
-//    Ok(())
-//}
+async fn save_attr_func_arguments(
+    ctx: &DalContext,
+    func: &Func,
+    arguments: Vec<FuncArgumentView>,
+) -> FuncResult<()> {
+    let mut id_set = HashSet::new();
+    for arg in &arguments {
+        let arg_id = if arg.id.is_some() {
+            id_set.insert(arg.id);
+
+            FuncArgument::modify_by_id(ctx, arg.id, |existing_arg| {
+                existing_arg.name = arg.name.to_owned();
+                existing_arg.kind = arg.kind;
+                existing_arg.element_kind = arg.element_kind;
+
+                Ok(())
+            })
+            .await?;
+
+            arg.id
+        } else {
+            let new_arg =
+                FuncArgument::new(ctx, &arg.name, arg.kind, arg.element_kind, func.id).await?;
+            new_arg.id
+        };
+
+        id_set.insert(arg_id);
+    }
+
+    for func_arg in FuncArgument::list_for_func(ctx, func.id).await? {
+        if !id_set.contains(&func_arg.id) {
+            info!("should remove func arg: {:?}", func_arg.id);
+            // FuncArgument::remove(ctx, func_arg.id()).await?;
+        }
+    }
+
+    Ok(())
+}
 
 //async fn save_action_func_prototypes(
 //    ctx: &DalContext,
@@ -670,7 +676,7 @@ pub async fn do_save_func(
                     //                        None,
                     //                    )
                     //                    .await?;
-                    // save_attr_func_arguments(ctx, &func, arguments).await?;
+                    save_attr_func_arguments(ctx, &func, arguments).await?;
 
                     //                    func.set_backend_response_type(ctx, backend_response_type)
                     //                        .await?;
