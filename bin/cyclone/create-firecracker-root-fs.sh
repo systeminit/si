@@ -59,7 +59,7 @@ sudo docker run \
   -v $INITSCRIPT:/init.sh \
   -it --rm \
   --entrypoint sh \
-  systeminit/cyclone:stable \
+  systeminit/cyclone:sha-880fc9c75cccf0159ba20129f02c9f559301bb56-dirty-amd64 \
   /init.sh
 
 # lets go find the dev decryption key for now
@@ -71,6 +71,8 @@ rm -rf $ROOTFSMOUNT $KERNELMOUNT $INITSCRIPT $KERNELISO
 
 # make the package
 #sudo tar -czvf cyclone-package.tar.gz -C $PACKAGEDIR .
+
+sudo mv cyclone-pkg/cyclone-rootfs.ext4 /firecracker-data/rootfs.ext4
 
 # cleanup
 #sudo rm -rf $PACKAGEDIR
