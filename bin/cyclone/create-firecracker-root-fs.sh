@@ -41,7 +41,7 @@ name="cyclone"
 description="Cyclone"
 supervisor="supervise-daemon"
 command="cyclone"
-command_args="--bind-uds /tmp/socket --decryption-key /dev.decryption.key --lang-server /usr/local/bin/lang-js --enable-watch --limit-requests 1 --watch-timeout 10 --enable-ping --enable-resolver --enable-action-run -v"
+command_args="--bind-vsock 3:52 --decryption-key /dev.decryption.key --lang-server /usr/local/bin/lang-js --enable-watch --limit-requests 1 --watch-timeout 10 --enable-ping --enable-resolver --enable-action-run -v"
 pidfile="/run/agent.pid"
 EOF
 
@@ -59,7 +59,7 @@ sudo docker run \
   -v $INITSCRIPT:/init.sh \
   -it --rm \
   --entrypoint sh \
-  systeminit/cyclone \
+  systeminit/cyclone:stable \
   /init.sh
 
 # lets go find the dev decryption key for now
@@ -70,7 +70,7 @@ sudo umount $ROOTFSMOUNT
 rm -rf $ROOTFSMOUNT $KERNELMOUNT $INITSCRIPT $KERNELISO
 
 # make the package
-sudo tar -czvf cyclone-package.tar.gz -C $PACKAGEDIR .
+#sudo tar -czvf cyclone-package.tar.gz -C $PACKAGEDIR .
 
 # cleanup
-sudo rm -rf $PACKAGEDIR
+#sudo rm -rf $PACKAGEDIR
