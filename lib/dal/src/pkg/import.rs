@@ -16,6 +16,7 @@ use si_pkg::{
     SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind, ValidationSpec,
 };
 
+use crate::schema::variant::definition::SchemaVariantDefinitionJson;
 use crate::schema::ComponentKind;
 use crate::{
     change_set_pointer::{self, ChangeSetPointer, ChangeSetPointerId},
@@ -254,9 +255,6 @@ async fn import_change_set(
     //     }
     // }
     //
-
-    //    workspace_snapshot.cleanup();
-    //    workspace_snapshot.dot();
 
     Ok((
         installed_schema_variant_ids,
@@ -1447,7 +1445,7 @@ pub async fn import_pkg_from_pkg(
                 None,
                 &metadata,
                 &pkg.funcs()?,
-                &[], // &pkg.schemas()?,
+                &pkg.schemas()?,
                 &[],
                 &[],
                 installed_pkg_id,
@@ -1852,7 +1850,6 @@ async fn import_schema(
                     let data = schema_spec
                         .data()
                         .ok_or(PkgError::DataNotFound("schema".into()))?;
-
                     create_schema(ctx, data).await?
                 }
                 Some(installed_schema_record) => {
@@ -1931,17 +1928,36 @@ async fn import_schema(
             );
         }
 
+        // FIXME(nick): we only assemble this to get the color. Remove this once default values
+        // are possible for schema variants again.
+        let metadata =
+            SchemaVariantDefinitionJson::metadata_from_spec(schema_spec.to_spec().await?)
+                .expect("could not get metadata from spec");
+        let color = metadata.color.to_owned();
+
         let mut installed_schema_variant_ids = vec![];
         for variant_spec in &schema_spec.variants()? {
-            let variant = import_schema_variant(
+            let _variant = import_schema_variant(
                 ctx,
                 change_set_pk,
                 &mut schema,
                 variant_spec,
                 installed_pkg_id,
                 thing_map,
+                color.clone(),
             )
             .await?;
+
+            // NOTE(nick): keeping this debugging code because it's useful for seeing the graph
+            // when a single schema variant has been imported... it's not absolutely gigantic at
+            // this point.
+            // {
+            //     let mut snapshot = ctx.workspace_snapshot().unwrap().try_lock().unwrap();
+            //     dbg!("snapshot before panic");
+            //     snapshot.cleanup().unwrap();
+            //     snapshot.tiny_dot_to_file()
+            //     panic!();
+            // }
 
             // if let Some(variant) = variant {
             //     installed_schema_variant_ids.push(*variant.id());
@@ -2519,95 +2535,106 @@ async fn import_schema_variant(
     variant_spec: &SiPkgSchemaVariant<'_>,
     installed_pkg_id: Option<InstalledPkgId>,
     thing_map: &mut ThingMap,
+    // FIXME(nick): move this to the attribute tree once we have defaults for
+    // schema variants in place.
+    color: String,
 ) -> PkgResult<Option<SchemaVariant>> {
-    // let mut schema_variant = match change_set_pk {
-    //     None => {
-    //         let hash = variant_spec.hash().to_string();
-    //         let existing_schema_variant = InstalledPkgAsset::list_for_kind_and_hash(
-    //             ctx,
-    //             InstalledPkgAssetKind::SchemaVariant,
-    //             &hash,
-    //         )
-    //         .await?
-    //         .pop();
-    //
-    //         let (variant, created) = match existing_schema_variant {
-    //             Some(installed_sv_record) => {
-    //                 match installed_sv_record.as_installed_schema_variant()? {
-    //                     InstalledPkgAssetTyped::SchemaVariant { id, .. } => (
-    //                         SchemaVariant::get_by_id(ctx, &id)
-    //                             .await?
-    //                             .ok_or(PkgError::InstalledSchemaVariantMissing(id))?,
-    //                         false,
-    //                     ),
-    //                     _ => unreachable!(
-    //                         "the as_installed_schema_variant method ensures we cannot hit this branch"
-    //                     ),
-    //                 }
-    //             }
-    //             None => (
-    //                 SchemaVariant::new(ctx, *schema.id(), variant_spec.name())
-    //                     .await?
-    //                     .0,
-    //                 true,
-    //             ),
-    //         };
-    //
-    //         if let Some(installed_pkg_id) = installed_pkg_id {
-    //             InstalledPkgAsset::new(
-    //                 ctx,
-    //                 InstalledPkgAssetTyped::new_for_schema_variant(
-    //                     *variant.id(),
-    //                     installed_pkg_id,
-    //                     hash,
-    //                 ),
-    //             )
-    //             .await?;
-    //         }
-    //
-    //         if created {
-    //             Some(variant)
-    //         } else {
-    //             None
-    //         }
-    //     }
-    //     Some(_) => {
-    //         let unique_id = variant_spec
-    //             .unique_id()
-    //             .ok_or(PkgError::MissingUniqueIdForNode(format!(
-    //                 "variant {}",
-    //                 variant_spec.hash()
-    //             )))?;
-    //
-    //         match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-    //             Some(Thing::SchemaVariant(variant)) => {
-    //                 let mut variant = variant.to_owned();
-    //                 update_schema_variant(ctx, &mut variant, variant_spec.name(), *schema.id())
-    //                     .await?;
-    //
-    //                 if variant_spec.deleted() {
-    //                     variant.delete_by_id(ctx).await?;
-    //
-    //                     None
-    //                 } else {
-    //                     Some(variant)
-    //                 }
-    //             }
-    //             _ => {
-    //                 if variant_spec.deleted() {
-    //                     None
-    //                 } else {
-    //                     Some(
-    //                         SchemaVariant::new(ctx, *schema.id(), variant_spec.name())
-    //                             .await?
-    //                             .0,
-    //                     )
-    //                 }
-    //             }
-    //         }
-    //     }
-    // };
-    //
+    let mut schema_variant = match change_set_pk {
+        None => {
+            let hash = variant_spec.hash().to_string();
+            let existing_schema_variant = InstalledPkgAsset::list_for_kind_and_hash(
+                ctx,
+                InstalledPkgAssetKind::SchemaVariant,
+                &hash,
+            )
+            .await?
+            .pop();
+
+            let (variant, created) = match existing_schema_variant {
+                Some(installed_sv_record) => {
+                    match installed_sv_record.as_installed_schema_variant()? {
+                        InstalledPkgAssetTyped::SchemaVariant { id, .. } => (
+                            (SchemaVariant::get_by_id(ctx, id)
+                                .await?,
+                            false)
+                        ),
+                        _ => unreachable!(
+                            "the as_installed_schema_variant method ensures we cannot hit this branch"
+                        ),
+                    }
+                }
+                None => (
+                    // FIXME(nick): move category, color, and all metadata to variant or somewhere
+                    // else. It should not be on schema.
+                    SchemaVariant::new(
+                        ctx,
+                        schema.id(),
+                        variant_spec.name(),
+                        schema.category.clone(),
+                        Some(color),
+                    )
+                    .await?
+                    .0,
+                    true,
+                ),
+            };
+
+            if let Some(installed_pkg_id) = installed_pkg_id {
+                InstalledPkgAsset::new(
+                    ctx,
+                    InstalledPkgAssetTyped::new_for_schema_variant(
+                        variant.id(),
+                        installed_pkg_id,
+                        hash,
+                    ),
+                )
+                .await?;
+            }
+
+            if created {
+                Some(variant)
+            } else {
+                None
+            }
+        }
+        Some(_) => {
+            unimplemented!("workspace import is not working at this time")
+            // let unique_id = variant_spec
+            //     .unique_id()
+            //     .ok_or(PkgError::MissingUniqueIdForNode(format!(
+            //         "variant {}",
+            //         variant_spec.hash()
+            //     )))?;
+            //
+            // match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+            //     Some(Thing::SchemaVariant(variant)) => {
+            //         let mut variant = variant.to_owned();
+            //         update_schema_variant(ctx, &mut variant, variant_spec.name(), *schema.id())
+            //             .await?;
+            //
+            //         if variant_spec.deleted() {
+            //             variant.delete_by_id(ctx).await?;
+            //
+            //             None
+            //         } else {
+            //             Some(variant)
+            //         }
+            //     }
+            //     _ => {
+            //         if variant_spec.deleted() {
+            //             None
+            //         } else {
+            //             Some(
+            //                 SchemaVariant::new(ctx, *schema.id(), variant_spec.name())
+            //                     .await?
+            //                     .0,
+            //             )
+            //         }
+            //     }
+            // }
+        }
+    };
+
     // if let Some(schema_variant) = schema_variant.as_mut() {
     //     if let Some(unique_id) = variant_spec.unique_id() {
     //         thing_map.insert(
@@ -2875,9 +2902,8 @@ async fn import_schema_variant(
     //         .await?;
     //     }
     // }
-    //
-    // Ok(schema_variant)
-    Ok(None)
+
+    Ok(schema_variant)
 }
 
 // async fn set_default_value(

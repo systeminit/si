@@ -18,8 +18,7 @@ use crate::server::state::AppState;
 // pub mod create_node;
 // pub mod delete_component;
 // pub mod delete_connection;
-// pub mod get_diagram;
-// pub mod get_node_add_menu;
+pub mod get_diagram;
 pub mod list_schema_variants;
 // mod restore_component;
 // pub mod restore_connection;
@@ -36,6 +35,12 @@ pub enum DiagramError {
     ComponentNotFound,
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
+    #[error("dal schema error: {0}")]
+    DalSchema(#[from] dal::SchemaError),
+    #[error("dal schema variant error: {0}")]
+    DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
+    #[error("dal socket error: {0}")]
+    DalSocket(#[from] dal::socket::SocketError),
     #[error("edge not found")]
     EdgeNotFound,
     #[error("external provider not found for socket id: {0}")]
@@ -101,11 +106,6 @@ impl IntoResponse for DiagramError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        // .route("/get_diagram", get(get_diagram::get_diagram))
-        // .route(
-        //     "/get_node_add_menu",
-        //     post(get_node_add_menu::get_node_add_menu),
-        // )
         // .route("/create_node", post(create_node::create_node))
         // .route(
         //     "/set_node_position",
@@ -143,6 +143,7 @@ pub fn routes() -> Router<AppState> {
         //     "/connect_component_to_frame",
         //     post(connect_component_to_frame::connect_component_to_frame),
         // )
+        .route("/get_diagram", get(get_diagram::get_diagram))
         .route(
             "/list_schema_variants",
             get(list_schema_variants::list_schema_variants),

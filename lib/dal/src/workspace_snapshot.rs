@@ -240,10 +240,6 @@ impl WorkspaceSnapshot {
             .ok_or(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing)
     }
 
-    pub fn root(&mut self) -> WorkspaceSnapshotResult<NodeIndex> {
-        Ok(self.working_copy()?.root())
-    }
-
     pub fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotResult<NodeIndex> {
         let new_node_index = self.working_copy()?.add_node(node)?;
         Ok(new_node_index)
@@ -271,6 +267,20 @@ impl WorkspaceSnapshot {
 
     pub fn add_edge(
         &mut self,
+        from_node_id: Ulid,
+        edge_weight: EdgeWeight,
+        to_node_id: Ulid,
+    ) -> WorkspaceSnapshotResult<EdgeIndex> {
+        let from_node_index = self.working_copy()?.get_node_index_by_id(from_node_id)?;
+        let to_node_index = self.working_copy()?.get_node_index_by_id(to_node_id)?;
+        Ok(self
+            .working_copy()?
+            .add_edge(from_node_index, edge_weight, to_node_index)?)
+    }
+
+    // NOTE(nick): this should only be used by the rebaser.
+    pub fn add_edge_unchecked(
+        &mut self,
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
@@ -283,10 +293,12 @@ impl WorkspaceSnapshot {
     pub fn add_ordered_edge(
         &mut self,
         change_set: &ChangeSetPointer,
-        from_node_index: NodeIndex,
+        from_node_id: Ulid,
         edge_weight: EdgeWeight,
-        to_node_index: NodeIndex,
+        to_node_id: Ulid,
     ) -> WorkspaceSnapshotResult<EdgeIndex> {
+        let from_node_index = self.working_copy()?.get_node_index_by_id(from_node_id)?;
+        let to_node_index = self.working_copy()?.get_node_index_by_id(to_node_id)?;
         Ok(self.working_copy()?.add_ordered_edge(
             change_set,
             from_node_index,
@@ -308,15 +320,7 @@ impl WorkspaceSnapshot {
         )?)
     }
 
-    pub fn get_edge_by_index_stableish(
-        &mut self,
-        edge_index: EdgeIndex,
-    ) -> WorkspaceSnapshotResult<EdgeWeight> {
-        Ok(self
-            .working_copy()?
-            .get_edge_by_index_stableish(edge_index)?)
-    }
-
+    // NOTE(nick): this should only be used by the rebaser.
     pub fn edge_endpoints(
         &mut self,
         edge_index: EdgeIndex,
@@ -360,14 +364,20 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy()?.find_equivalent_node(id, lineage_id)?)
     }
 
-    pub fn cleanup(&mut self) {
-        self.working_copy().expect("oh no").cleanup();
+    pub fn cleanup(&mut self) -> WorkspaceSnapshotResult<()> {
+        Ok(self.working_copy()?.cleanup())
     }
 
     pub fn dot(&mut self) {
         self.working_copy()
             .expect("failed on accessing or creating a working copy")
             .dot();
+    }
+
+    pub fn tiny_dot_to_file(&mut self) {
+        self.working_copy()
+            .expect("failed on accessing or creating a working copy")
+            .tiny_dot_to_file();
     }
 
     pub fn get_node_index_by_id(&mut self, id: Ulid) -> WorkspaceSnapshotResult<NodeIndex> {

@@ -65,14 +65,12 @@ pub struct ExternalProvider {
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
 pub enum ExternalProviderContent {
     V1(ExternalProviderContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ExternalProviderContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
 
     /// Indicates which [`SchemaVariant`](crate::SchemaVariant) this provider belongs to.
@@ -98,6 +96,10 @@ impl ExternalProvider {
         }
     }
 
+    pub fn id(&self) -> ExternalProviderId {
+        self.id
+    }
+
     pub async fn new_with_socket(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -107,6 +109,7 @@ impl ExternalProvider {
         arity: SocketArity,
         frame_socket: bool,
     ) -> ExternalProviderResult<Self> {
+        info!("creating external provider");
         let name = name.into();
         let content = ExternalProviderContentV1 {
             timestamp: Timestamp::now(),
@@ -124,18 +127,25 @@ impl ExternalProvider {
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::ExternalProvider(hash))?;
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        let node_index = workspace_snapshot.add_node(node_weight)?;
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let _node_index = workspace_snapshot.add_node(node_weight)?;
+            workspace_snapshot.add_edge(
+                schema_variant_id.into(),
+                EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
+                id,
+            )?;
+        }
 
-        let schema_variant_node_index =
-            workspace_snapshot.get_node_index_by_id(schema_variant_id.into())?;
-        workspace_snapshot.add_edge(
-            schema_variant_node_index,
-            EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
-            node_index,
-        )?;
-
-        AttributePrototype::new(ctx, func_id).await?;
+        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.add_edge(
+                id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Prototype)?,
+                attribute_prototype.id().into(),
+            )?;
+        }
 
         Socket::new(
             ctx,

@@ -22,9 +22,7 @@ pub async fn get_schema(
 ) -> SchemaResult<Json<GetSchemaResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let response = Schema::get_by_id(&ctx, &request.schema_id)
-        .await?
-        .ok_or(SchemaError::SchemaNotFound)?;
+    let response = Schema::get_by_id(&ctx, request.schema_id).await?;
 
     Ok(Json(response))
 }

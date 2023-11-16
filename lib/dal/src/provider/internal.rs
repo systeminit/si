@@ -141,14 +141,12 @@ pub struct InternalProvider {
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
 pub enum InternalProviderContent {
     V1(InternalProviderContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct InternalProviderContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
     /// Name for [`Self`] that can be used for identification.
     pub name: String,
@@ -169,11 +167,15 @@ impl InternalProvider {
         }
     }
 
+    pub fn id(&self) -> InternalProviderId {
+        self.id
+    }
+
     pub async fn new_implicit(
         ctx: &DalContext,
         prop: &PropNodeWeight,
     ) -> InternalProviderResult<()> {
-        {
+        let id = {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
             for edgeref in workspace_snapshot.edges_directed(prop.id(), Direction::Outgoing)? {
@@ -198,18 +200,23 @@ impl InternalProvider {
             let id = change_set.generate_ulid()?;
             let node_weight =
                 NodeWeight::new_content(change_set, id, ContentAddress::InternalProvider(hash))?;
-            let node_index = workspace_snapshot.add_node(node_weight)?;
-
-            let prop_node_index = workspace_snapshot.get_node_index_by_id(prop.id())?;
+            let _node_index = workspace_snapshot.add_node(node_weight)?;
             workspace_snapshot.add_edge(
-                prop_node_index,
+                prop.id(),
                 EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
-                node_index,
+                id,
             )?;
-        }
+            id
+        };
 
         let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
-        AttributePrototype::new(ctx, func_id).await?;
+        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        workspace_snapshot.add_edge(
+            id,
+            EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype)?,
+            attribute_prototype.id().into(),
+        )?;
 
         Ok(())
     }
@@ -222,6 +229,7 @@ impl InternalProvider {
         arity: SocketArity,
         frame_socket: bool,
     ) -> InternalProviderResult<Self> {
+        info!("creating explicit internal provider");
         let name = name.into();
         let content = InternalProviderContentV1 {
             timestamp: Timestamp::now(),
@@ -240,18 +248,23 @@ impl InternalProvider {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
             let node_weight =
                 NodeWeight::new_content(change_set, id, ContentAddress::InternalProvider(hash))?;
-            let node_index = workspace_snapshot.add_node(node_weight)?;
-
-            let schema_variant_node_index =
-                workspace_snapshot.get_node_index_by_id(schema_variant_id.into())?;
+            let _node_index = workspace_snapshot.add_node(node_weight)?;
             workspace_snapshot.add_edge(
-                schema_variant_node_index,
+                schema_variant_id.into(),
                 EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
-                node_index,
+                id,
             )?;
         }
 
-        AttributePrototype::new(ctx, func_id).await?;
+        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.add_edge(
+                id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Prototype)?,
+                attribute_prototype.id().into(),
+            )?;
+        }
 
         Socket::new(
             ctx,
