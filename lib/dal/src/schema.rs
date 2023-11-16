@@ -1,13 +1,16 @@
 use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use serde_json::error::Category;
+use std::collections::HashMap;
 use strum::EnumDiscriminants;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
 use crate::change_set_pointer::ChangeSetPointerError;
-use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
@@ -49,7 +52,7 @@ pub struct Schema {
     id: SchemaId,
     #[serde(flatten)]
     timestamp: Timestamp,
-    name: String,
+    pub name: String,
     pub ui_hidden: bool,
     default_schema_variant_id: Option<SchemaVariantId>,
     component_kind: ComponentKind,
@@ -68,14 +71,12 @@ pub enum ComponentKind {
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
 pub enum SchemaContent {
     V1(SchemaContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct SchemaContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
     pub name: String,
     pub ui_hidden: bool,
@@ -141,14 +142,13 @@ impl Schema {
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Schema(hash))?;
 
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        let node_index = workspace_snapshot.add_node(node_weight)?;
+        let _node_index = workspace_snapshot.add_node(node_weight)?;
 
-        let (_, schema_category_index) =
-            workspace_snapshot.get_category(CategoryNodeKind::Schema)?;
+        let schema_category_index_id = workspace_snapshot.get_category(CategoryNodeKind::Schema)?;
         workspace_snapshot.add_edge(
-            schema_category_index,
+            schema_category_index_id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            node_index,
+            id,
         )?;
 
         Ok(Self::assemble(id.into(), content))
@@ -199,6 +199,50 @@ impl Schema {
         }
 
         Ok(schema)
+    }
+
+    pub async fn list(ctx: &DalContext) -> SchemaResult<Vec<Self>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let mut schemas = vec![];
+        let schema_category_index_id = workspace_snapshot.get_category(CategoryNodeKind::Schema)?;
+
+        let schema_node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            schema_category_index_id,
+            EdgeWeightKindDiscriminants::Use,
+        )?;
+
+        let mut schema_node_weights = vec![];
+        let mut schema_content_hashes = vec![];
+        for index in schema_node_indices {
+            let node_weight = workspace_snapshot
+                .get_node_weight(index)?
+                .get_content_node_weight_of_kind(ContentAddressDiscriminants::Schema)?;
+            schema_content_hashes.push(node_weight.content_hash());
+            schema_node_weights.push(node_weight);
+        }
+
+        let schema_contents: HashMap<ContentHash, SchemaContent> = ctx
+            .content_store()
+            .try_lock()?
+            .get_bulk(schema_content_hashes.as_slice())
+            .await?;
+
+        for node_weight in schema_node_weights {
+            match schema_contents.get(&node_weight.content_hash()) {
+                Some(func_content) => {
+                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+                    let SchemaContent::V1(inner) = func_content;
+
+                    schemas.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
+            }
+        }
+
+        Ok(schemas)
     }
 }
 

@@ -1,6 +1,6 @@
 <template>
   <div class="inset-0 absolute">
-    <template v-if="schemasReqStatus.isPending || addMenuReqStatus.isPending">
+    <template v-if="schemasReqStatus.isPending">
       <div class="w-full p-lg flex flex-col gap-2 items-center">
         <Icon name="loader" size="2xl" />
         <h2>Loading Asset Palette...</h2>
@@ -36,7 +36,7 @@
 
         <ul class="overflow-y-auto">
           <Collapsible
-            v-for="(category, categoryIndex) in filteredComponents"
+            v-for="(category, categoryIndex) in orderedFilteredComponents"
             :key="categoryIndex"
             :label="category.displayName"
             as="li"
@@ -110,12 +110,8 @@ const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used
 // otherwise we could trigger calls here
 
-// TODO - probably should not need 2 requests here. currently we only use schema variants for the colors...
 const schemasReqStatus = componentsStore.getRequestStatus(
   "FETCH_AVAILABLE_SCHEMAS",
-);
-const addMenuReqStatus = componentsStore.getRequestStatus(
-  "FETCH_NODE_ADD_MENU",
 );
 
 const filterString = ref("");
@@ -128,6 +124,18 @@ function onSearchUpdated(newFilterString: string) {
   filterString.value = newFilterString;
 }
 const addMenuData = computed(() => componentsStore.nodeAddMenu);
+
+// TODO(nick): fold this into "filteredComponents" so that they are already sorted.
+// For context, TypeScript was super rusty (pun not intended) when I wrote this.
+const orderedFilteredComponents = computed(() => {
+  const orderedFilteredComponents = [];
+  for (const filteredComponent of filteredComponents.value) {
+    const schemas = filteredComponent.schemas;
+    filteredComponent.schemas = _.orderBy(schemas, "displayName");
+    orderedFilteredComponents.push(filteredComponent);
+  }
+  return _.orderBy(orderedFilteredComponents, "displayName");
+});
 
 const filteredComponents = computed(() => {
   if (!filterModeActive.value) return addMenuData.value;

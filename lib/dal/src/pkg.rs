@@ -15,6 +15,7 @@ pub use import::{
 
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
 
+use crate::schema::variant::SchemaVariantError;
 use crate::{
     change_set_pointer::ChangeSetPointerError,
     //component::view::debug::ComponentDebugViewError,
@@ -135,8 +136,8 @@ pub enum PkgError {
     // FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     // #[error(transparent)]
     // FuncExecution(#[from] crate::func::execution::FuncExecutionError),
-    #[error("Installed func id {0} does not exist")]
-    InstalledFuncMissing(FuncId),
+    // #[error("Installed func id {0} does not exist")]
+    // InstalledFuncMissing(FuncId),
     #[error(transparent)]
     InstalledPkg(#[from] InstalledPkgError),
     // #[error("Installed schema variant definition {0} does not exist")]
@@ -167,8 +168,8 @@ pub enum PkgError {
     // MissingFuncArgument(String, FuncId),
     // #[error("Cannot find FuncArgument {0}")]
     // MissingFuncArgumentById(FuncArgumentId),
-    // #[error("Package asked for a function with the unique id {0} but none could be found")]
-    // MissingFuncUniqueId(String),
+    #[error("Package asked for a function with the unique id {0} but none could be found")]
+    MissingFuncUniqueId(String),
     // #[error("Cannot find InternalProvider for Prop {0}")]
     // MissingInternalProviderForProp(PropId),
     // #[error("Cannot find InternalProvider for Socket named {0}")]
@@ -207,8 +208,8 @@ pub enum PkgError {
     // PropTreeInvalid(String),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
-    // #[error(transparent)]
-    // SchemaVariant(#[from] SchemaVariantError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     // #[error(transparent)]
     // SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
     // #[error("schema variant not found: {0}")]

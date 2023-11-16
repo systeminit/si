@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_pkg::PropSpecKind;
 use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
+use telemetry::prelude::info;
 use thiserror::Error;
 use ulid::Ulid;
 
@@ -68,14 +69,12 @@ pub struct Prop {
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
 pub enum PropContent {
     V1(PropContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PropContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
     /// The name of the [`Prop`].
     pub name: String,
@@ -305,6 +304,8 @@ impl Prop {
         prop_parent: PropParent,
         ordered: bool,
     ) -> PropResult<Self> {
+        let start = std::time::Instant::now();
+
         let timestamp = Timestamp::now();
         let (widget_kind, widget_options) = match widget_kind_and_options {
             Some((kind, options)) => (kind, options),
@@ -333,38 +334,49 @@ impl Prop {
         let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         let node_index = if ordered {
-            workspace_snapshot.add_ordered_node(change_set, node_weight)?
+            // info!("began adding ordered node at: {:?}", start.elapsed());
+            let ordered_node_index =
+                workspace_snapshot.add_ordered_node(change_set, node_weight)?;
+            // info!("added ordered node: {:?}", start.elapsed());
+            ordered_node_index
         } else {
             workspace_snapshot.add_node(node_weight)?
         };
 
         match prop_parent {
             PropParent::OrderedProp(ordered_prop_id) => {
-                let parent_node_index =
-                    workspace_snapshot.get_node_index_by_id(ordered_prop_id.into())?;
+                // info!(
+                //     "begin adding edge for ordered prop parent: {:?}",
+                //     start.elapsed()
+                // );
                 workspace_snapshot.add_ordered_edge(
                     change_set,
-                    parent_node_index,
+                    ordered_prop_id.into(),
                     EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-                    node_index,
+                    id,
                 )?;
+                // info!("added edge for ordered prop parent: {:?}", start.elapsed());
             }
             PropParent::Prop(prop_id) => {
-                let parent_node_index = workspace_snapshot.get_node_index_by_id(prop_id.into())?;
+                // info!("begin adding edge for prop parent: {:?}", start.elapsed());
                 workspace_snapshot.add_edge(
-                    parent_node_index,
+                    prop_id.into(),
                     EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-                    node_index,
+                    id,
                 )?;
+                // info!("added edge for prop: {:?}", start.elapsed());
             }
             PropParent::SchemaVariant(schema_variant_id) => {
-                let parent_node_index =
-                    workspace_snapshot.get_node_index_by_id(schema_variant_id.into())?;
+                // info!(
+                //     "begin adding edge for schema variant parent: {:?}",
+                //     start.elapsed()
+                // );
                 workspace_snapshot.add_edge(
-                    parent_node_index,
+                    schema_variant_id.into(),
                     EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-                    node_index,
+                    id,
                 )?;
+                // info!("added edge for schema variant: {:?}", start.elapsed());
             }
         };
 
@@ -413,7 +425,6 @@ impl Prop {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
             workspace_snapshot.update_content(ctx.change_set_pointer()?, prop.id.into(), hash)?;
         }
-
         Ok(prop)
     }
 }

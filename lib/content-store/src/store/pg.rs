@@ -105,7 +105,6 @@ impl Store for PgStore {
     where
         T: DeserializeOwned + std::marker::Send,
     {
-        let get_bulk_start = Instant::now();
         let mut result = HashMap::new();
         let mut keys_to_fetch = vec![];
 
@@ -123,9 +122,6 @@ impl Store for PgStore {
             result.insert(pair.key()?, postcard::from_bytes(encoded)?);
             self.add(encoded)?;
         }
-
-        info!("get_bulk: {:?}", get_bulk_start.elapsed());
-
         Ok(result)
     }
 

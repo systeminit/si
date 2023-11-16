@@ -1,9 +1,12 @@
 use chrono::Utc;
 use content_store::{ContentHash, Store, StoreError};
 use petgraph::stable_graph::Edges;
-use petgraph::{algo, prelude::*, visit::DfsEvent};
+use petgraph::{algo, prelude::*, visit::DfsEvent, EdgeDirection};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::fs::File;
+use std::io::Write;
+use std::time::Instant;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -57,8 +60,6 @@ pub enum WorkspaceSnapshotGraphError {
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight not found")]
     NodeWeightNotFound,
-    #[error("node weight not found by node index: {0:?}")]
-    NodeWeightNotFoundByNodeIndex(NodeIndex),
     #[error("Node with ID {} not found", .0.to_string())]
     NodeWithIdNotFound(Ulid),
     #[error("No Prop found for NodeIndex {0:?}")]
@@ -67,8 +68,6 @@ pub enum WorkspaceSnapshotGraphError {
     TooManyOrderingForNode(NodeIndex),
     #[error("NodeIndex has too many Prop children: {0:?}")]
     TooManyPropForNode(NodeIndex),
-    #[error("Unable to add node to the graph")]
-    UnableToAddNode,
     #[error("Workspace Snapshot has conflicts and must be rebased")]
     WorkspaceNeedsRebase,
     #[error("Workspace Snapshot has conflicts")]
@@ -80,6 +79,8 @@ pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError
 #[derive(Default, Deserialize, Serialize, Clone)]
 pub struct WorkspaceSnapshotGraph {
     graph: StableDiGraph<NodeWeight, EdgeWeight>,
+    node_index_by_id: HashMap<Ulid, NodeIndex>,
+    node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>>,
     root_index: NodeIndex,
 }
 
@@ -87,6 +88,7 @@ impl std::fmt::Debug for WorkspaceSnapshotGraph {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WorkspaceSnapshotGraph")
             .field("root_index", &self.root_index)
+            .field("node_index_by_id", &self.node_index_by_id)
             .field("graph", &self.graph)
             .finish()
     }
@@ -101,7 +103,11 @@ impl WorkspaceSnapshotGraph {
             ContentAddress::Root,
         )?);
 
-        Ok(Self { root_index, graph })
+        Ok(Self {
+            root_index,
+            graph,
+            ..Default::default()
+        })
     }
 
     pub fn root(&self) -> NodeIndex {
@@ -142,7 +148,21 @@ impl WorkspaceSnapshotGraph {
     }
 
     pub fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        // Cache the node id and the lineage id;
+        let node_id = node.id();
+        let lineage_id = node.lineage_id();
+
+        // Create the node and cache the index.
         let new_node_index = self.graph.add_node(node);
+
+        // Update the accessor maps using the new index.
+        self.node_index_by_id.insert(node_id, new_node_index);
+        self.node_indices_by_lineage_id
+            .entry(lineage_id)
+            .and_modify(|set| {
+                set.insert(new_node_index);
+            })
+            .or_insert_with(|| HashSet::from([new_node_index]));
         self.update_merkle_tree_hash(new_node_index)?;
 
         Ok(new_node_index)
@@ -173,7 +193,6 @@ impl WorkspaceSnapshotGraph {
                 }
             }
         }
-        self.dot();
         todo!("could not get category child")
     }
 
@@ -192,7 +211,10 @@ impl WorkspaceSnapshotGraph {
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
+        let start = std::time::Instant::now();
+        // info!("begin adding edge: {:?}", start.elapsed());
         let new_edge_index = self.add_edge(from_node_index, edge_weight, to_node_index)?;
+        // info!("added edge: {:?}", start.elapsed());
 
         let (new_from_node_index, _) = self
             .graph
@@ -201,9 +223,17 @@ impl WorkspaceSnapshotGraph {
 
         // Find the ordering node of the "container" if there is one, and add the thing pointed to
         // by the `to_node_index` to the ordering.
+        // info!(
+        //     "begin ordering node index for container: {:?}",
+        //     start.elapsed()
+        // );
         if let Some(container_ordering_node_index) =
             self.ordering_node_index_for_container(new_from_node_index)?
         {
+            // info!(
+            //     "got ordering node index for container: {:?}",
+            //     start.elapsed()
+            // );
             if let NodeWeight::Ordering(previous_container_ordering_node_weight) = self
                 .graph
                 .node_weight(container_ordering_node_index)
@@ -238,28 +268,16 @@ impl WorkspaceSnapshotGraph {
         change_set: &ChangeSetPointer,
         node: NodeWeight,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
-        let node_weight_id = node.id();
         let new_node_index = self.add_node(node)?;
         let ordering_node_index =
             self.add_node(NodeWeight::Ordering(OrderingNodeWeight::new(change_set)?))?;
-        self.add_edge(
+        let edge_index = self.add_edge(
             new_node_index,
             EdgeWeight::new(change_set, EdgeWeightKind::Ordering)?,
             ordering_node_index,
         )?;
-
-        // We can't use `self.get_node_index_by_id` yet, since the node isn't connected to the rest
-        // of the graph yet, and `get_node_index_by_id` checks to make sure there's a path from the
-        // root to the node before returning it. There should only be one node with an edge
-        // pointing to the ordering node we just created, however, and that should be the "new
-        // version" of the node we're adding.
-        for neighbor_index in self.graph.neighbors_directed(ordering_node_index, Incoming) {
-            if self.get_node_weight(neighbor_index)?.id() == node_weight_id {
-                return Ok(neighbor_index);
-            }
-        }
-
-        Err(WorkspaceSnapshotGraphError::UnableToAddNode)
+        let (source, _) = self.edge_endpoints(edge_index)?;
+        Ok(source)
     }
 
     pub async fn attribute_value_view(
@@ -428,6 +446,23 @@ impl WorkspaceSnapshotGraph {
             // We cannot use "has_path_to_root" because we need to use the Frozen<StableGraph<...>>.
             algo::has_path_connecting(&*frozen_graph, self.root_index, current_node, None)
         });
+
+        // After we retain the nodes, collect the remaining ids and indices.
+        let remaining_node_ids: HashSet<Ulid> = self.graph.node_weights().map(|n| n.id()).collect();
+        let remaining_node_indices: HashSet<NodeIndex> = self.graph.node_indices().collect();
+
+        // Cleanup the node index by id map.
+        self.node_index_by_id
+            .retain(|id, index| remaining_node_ids.contains(id));
+
+        // Cleanup the node indices by lineage id map.
+        self.node_indices_by_lineage_id
+            .iter_mut()
+            .for_each(|(lineage_id, node_indices)| {
+                node_indices.retain(|node_index| remaining_node_indices.contains(node_index));
+            });
+        self.node_indices_by_lineage_id
+            .retain(|lineage_id, node_indices| !node_indices.is_empty());
     }
 
     pub fn find_equivalent_node(
@@ -435,27 +470,26 @@ impl WorkspaceSnapshotGraph {
         id: Ulid,
         lineage_id: Ulid,
     ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
-        // This looks a bit clunky and could be improved with the following issue resolved:
-        // https://github.com/petgraph/petgraph/issues/577
-        for node_index in self.graph.node_indices() {
-            let node_weight = self.graph.node_weight(node_index).ok_or(
-                WorkspaceSnapshotGraphError::NodeWeightNotFoundByNodeIndex(node_index),
-            )?;
-            if id == node_weight.id() && lineage_id == node_weight.lineage_id() {
-                return Ok(Some(node_index));
+        let maybe_equivalent_node = match self.get_node_index_by_id(id) {
+            Ok(node_index) => {
+                let node_indices = self.get_node_index_by_lineage(lineage_id);
+                if node_indices.contains(&node_index) {
+                    Some(node_index)
+                } else {
+                    None
+                }
             }
-        }
-        Ok(None)
+            Err(WorkspaceSnapshotGraphError::NodeWithIdNotFound(_)) => None,
+            Err(e) => return Err(e),
+        };
+        Ok(maybe_equivalent_node)
     }
 
     fn copy_node_by_index(
         &mut self,
         node_index_to_copy: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
-        let new_node_index = self
-            .graph
-            .add_node(self.get_node_weight(node_index_to_copy)?.clone());
-        Ok(new_node_index)
+        self.add_node(self.get_node_weight(node_index_to_copy)?.clone())
     }
 
     pub fn detect_conflicts_and_updates(
@@ -518,16 +552,8 @@ impl WorkspaceSnapshotGraph {
                     // Only retain node indexes... or indices... if they are part of the current
                     // graph. There may still be garbage from previous updates to the graph
                     // laying around.
-                    let mut potential_to_rebase_node_indexes: Vec<NodeIndex> = self
-                        .get_node_index_by_lineage(onto_node_weight.lineage_id())
-                        .map_err(|err| {
-                            dbg!(
-                                "Unable to find NodeIndex(es) for lineage_id {}: {}",
-                                onto_node_weight.lineage_id(),
-                                err,
-                            );
-                            event
-                        })?;
+                    let mut potential_to_rebase_node_indexes =
+                        self.get_node_index_by_lineage(onto_node_weight.lineage_id());
                     potential_to_rebase_node_indexes
                         .retain(|node_index| self.has_path_to_root(*node_index));
                     to_rebase_node_indexes.extend(potential_to_rebase_node_indexes);
@@ -751,6 +777,37 @@ impl WorkspaceSnapshotGraph {
         );
     }
 
+    #[allow(dead_code)]
+    pub fn tiny_dot_to_file(&self) {
+        // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
+        // process and open a new tab in your browser.
+        // ```
+        // GRAPHFILE=<filename-without-extension>; cat $GRAPHFILE.txt | dot -Tsvg -o processed-$GRAPHFILE.svg; open processed-$GRAPHFILE.svg
+        // ```
+        let dot = format!(
+            "{:?}",
+            petgraph::dot::Dot::with_attr_getters(
+                &self.graph,
+                &[
+                    petgraph::dot::Config::NodeNoLabel,
+                    petgraph::dot::Config::EdgeNoLabel
+                ],
+                &|_, _| "".to_string(),
+                &|_, (node_index, node_weight)| format!(
+                    "label = \"\n\n{}\n{:?}\n\n\n\"",
+                    node_weight.debugging_label(),
+                    node_index
+                ),
+            ),
+        );
+        let filename_no_extension = format!("dot-{}", Ulid::new().to_string());
+        let mut file = File::create(format!("/Users/nick/src/si/{filename_no_extension}.txt"))
+            .expect("could not create file");
+        file.write_all(dot.as_bytes())
+            .expect("could not write file");
+        println!("dot output stored in file (filename without extension: {filename_no_extension})");
+    }
+
     fn find_ordered_container_membership_conflicts_and_updates(
         &self,
         to_rebase_vector_clock_id: VectorClockId,
@@ -781,7 +838,7 @@ impl WorkspaceSnapshotGraph {
             .vector_clock_write()
             .is_newer_than(to_rebase_ordering.vector_clock_write())
         {
-            info!("onto_ordering_clock_newer");
+            // info!("onto_ordering_clock_newer");
             let onto_ordering_set: HashSet<Ulid> = onto_ordering.order().iter().copied().collect();
             let to_rebase_ordering_set: HashSet<Ulid> =
                 to_rebase_ordering.order().iter().copied().collect();
@@ -1179,36 +1236,17 @@ impl WorkspaceSnapshotGraph {
     }
 
     pub(crate) fn get_node_index_by_id(&self, id: Ulid) -> WorkspaceSnapshotGraphResult<NodeIndex> {
-        for node_index in self.graph.node_indices() {
-            // It's possible that there are multiple nodes in the petgraph that have the
-            // same ID as the one we're interested in, as we may not yet have cleaned up
-            // nodes/edges representing "old" versions when we're making changes. There
-            // should only be one in the sub-graph starting at `self.root_index`,
-            // however, and this represents the current state of the workspace after all
-            // changes have been made.
-            if self.has_path_to_root(node_index) {
-                let node_weight = self.get_node_weight(node_index)?;
-                if node_weight.id() == id {
-                    return Ok(node_index);
-                }
-            }
-        }
-
-        Err(WorkspaceSnapshotGraphError::NodeWithIdNotFound(id))
+        self.node_index_by_id
+            .get(&id)
+            .copied()
+            .ok_or(WorkspaceSnapshotGraphError::NodeWithIdNotFound(id))
     }
 
-    fn get_node_index_by_lineage(
-        &self,
-        lineage_id: Ulid,
-    ) -> WorkspaceSnapshotGraphResult<Vec<NodeIndex>> {
-        let mut results = Vec::new();
-        for node_index in self.graph.node_indices() {
-            let node_weight = self.get_node_weight(node_index)?;
-            if node_weight.lineage_id() == lineage_id {
-                results.push(node_index);
-            }
-        }
-        Ok(results)
+    fn get_node_index_by_lineage(&self, lineage_id: Ulid) -> HashSet<NodeIndex> {
+        self.node_indices_by_lineage_id
+            .get(&lineage_id)
+            .cloned()
+            .unwrap_or_default()
     }
 
     pub fn get_node_weight(
@@ -1436,6 +1474,10 @@ impl WorkspaceSnapshotGraph {
             }
         }
 
+        // NOTE(nick,jacob): this is potentially expensive. We may want to be smarter about how
+        // we update the maps on self.
+        self.cleanup();
+
         Ok(updated)
     }
 
@@ -1468,11 +1510,32 @@ impl WorkspaceSnapshotGraph {
         let mut old_to_new_node_indices: HashMap<NodeIndex, NodeIndex> = HashMap::new();
         old_to_new_node_indices.insert(original_node_index, new_node_index);
 
-        let mut dfspo = DfsPostOrder::new(&self.graph, self.root_index);
-        while let Some(old_node_index) = dfspo.next(&self.graph) {
-            // All nodes that exist between the root and the `original_node_index` are affected by the replace, and only
-            // those nodes are affected, because the replacement affects their merkel tree hashes.
-            if self.is_on_path_between(self.root_index, original_node_index, old_node_index) {
+        // Create a post order traversal work queue by starting with the original
+        // node index in front.
+        let mut work_queue = VecDeque::new();
+        work_queue.push_front(original_node_index);
+
+        // Push all sources of incoming edges that have a path to the root to the back to ensure
+        // post order traversal.
+        for edgeref in self.edges_directed(original_node_index, Incoming) {
+            let source_for_incoming_edge = edgeref.source();
+            if self.is_on_path_between(
+                self.root_index,
+                original_node_index,
+                source_for_incoming_edge,
+            ) {
+                work_queue.push_back(source_for_incoming_edge);
+            }
+        }
+
+        while let Some(old_node_index) = work_queue.pop_front() {
+            if self.has_path_to_root(old_node_index) {
+                // First, check if we have incoming edges and push them to the back to ensure we
+                // continue to perform post order traversal.
+                for edgeref in self.edges_directed(old_node_index, Direction::Incoming) {
+                    work_queue.push_back(edgeref.source());
+                }
+
                 // Copy the node if we have not seen it or grab it if we have. Only the first node in DFS post order
                 // traversal should already exist since it was created before we entered `replace_references`, and
                 // is the reason we're updating things in the first place.
@@ -2057,8 +2120,6 @@ mod test {
             )
             .expect("Unable to add component -> schema variant edge");
 
-        graph.dot();
-
         // Ensure that the root node merkle tree hash looks as we expect before the update.
         let pre_update_root_node_merkle_tree_hash: ContentHash =
             serde_json::from_value(serde_json::json![
@@ -2077,8 +2138,6 @@ mod test {
         graph
             .update_content(change_set, component_id.into(), updated_content_hash)
             .expect("Unable to update Component content hash");
-
-        graph.dot();
 
         let post_update_root_node_merkle_tree_hash: ContentHash =
             serde_json::from_value(serde_json::json![
@@ -2105,8 +2164,6 @@ mod test {
         );
 
         graph.cleanup();
-
-        graph.dot();
 
         // Ensure that there are not more nodes than the ones that should be in use.
         assert_eq!(4, graph.node_count());

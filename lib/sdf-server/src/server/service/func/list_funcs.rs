@@ -36,7 +36,6 @@ pub async fn list_funcs(
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListFuncsRequest>,
 ) -> FuncResult<Json<ListFuncsResponse>> {
-    info!("==================");
     let start = tokio::time::Instant::now();
 
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;

@@ -12,7 +12,6 @@ import {
   GridPoint,
   Size2D,
 } from "@/components/GenericDiagram/diagram_types";
-import { MenuItem } from "@/api/sdf/dal/menu";
 import {
   DiagramNode,
   DiagramSchemaVariant,
@@ -214,7 +213,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             SchemaVariantId,
             DiagramSchemaVariant
           >,
-          rawNodeAddMenu: [] as MenuItem[],
 
           selectedComponentIds: [] as ComponentId[],
           selectedEdgeId: null as EdgeId | null,
@@ -392,33 +390,29 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           schemaVariants: (state) => _.values(state.schemaVariantsById),
 
+          schemaVariantsByCategory(): Record<string, DiagramSchemaVariant[]> {
+            return _.groupBy(this.schemaVariants, (s) => s.category);
+          },
+
           nodeAddMenu(): NodeAddMenu {
             return _.compact(
-              _.map(this.rawNodeAddMenu, (category) => {
-                // all root level items are categories for now... will probably rework this endpoint anyway
-                if (category.kind !== "category") return null;
-                return {
-                  displayName: category.name,
-                  // TODO: add color + logo on categories?
-                  schemas: _.compact(
-                    _.map(category.items, (item) => {
-                      // ignoring "link" items - don't think these are relevant at the moment
-                      if (item.kind !== "item") return;
-
-                      // TODO: return hex code from backend...
-                      const schemaVariant = Object.values(
-                        this.schemaVariantsById,
-                      ).find((v) => v.schemaId === item.schema_id);
-                      return {
-                        displayName: item.name,
-                        id: item.schema_id,
-                        // links: item.links, // not sure this is needed?
-                        color: schemaVariant?.color ?? "#777",
-                      };
-                    }),
-                  ),
-                };
-              }),
+              _.map(
+                this.schemaVariantsByCategory,
+                (schemaVariants, displayName) => {
+                  return {
+                    displayName,
+                    schemas: _.compact(
+                      _.map(schemaVariants, (schemaVariant) => {
+                        return {
+                          displayName: schemaVariant.schemaName,
+                          id: schemaVariant.id,
+                          color: schemaVariant?.color ?? "#777",
+                        };
+                      }),
+                    ),
+                  };
+                },
+              ),
             );
           },
 
@@ -509,20 +503,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               onSuccess: (response) => {
                 this.schemaVariantsById = _.keyBy(response, "id");
-              },
-            });
-          },
-
-          async FETCH_NODE_ADD_MENU() {
-            return new ApiRequest<MenuItem[]>({
-              method: "post",
-              // TODO: probably combine into single call with FETCH_AVAILABLE_SCHEMAS
-              url: "diagram/get_node_add_menu",
-              params: {
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                this.rawNodeAddMenu = response;
               },
             });
           },
@@ -1003,7 +983,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           this.FETCH_DIAGRAM_DATA();
           this.FETCH_AVAILABLE_SCHEMAS();
-          this.FETCH_NODE_ADD_MENU();
 
           const realtimeStore = useRealtimeStore();
 

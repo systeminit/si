@@ -203,13 +203,13 @@ impl Func {
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_func(change_set, id, name.into(), backend_kind, hash)?;
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        let node_index = workspace_snapshot.add_node(node_weight.clone())?;
+        let _node_index = workspace_snapshot.add_node(node_weight.clone())?;
 
-        let (_, func_category_index) = workspace_snapshot.get_category(CategoryNodeKind::Func)?;
+        let func_category_id = workspace_snapshot.get_category(CategoryNodeKind::Func)?;
         workspace_snapshot.add_edge(
-            func_category_index,
+            func_category_id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            node_index,
+            id,
         )?;
 
         let func_node_weight = node_weight.get_func_node_weight()?;
@@ -224,9 +224,9 @@ impl Func {
 
     pub fn find_by_name(ctx: &DalContext, name: impl AsRef<str>) -> FuncResult<Option<FuncId>> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        let (_, func_category_index) = workspace_snapshot.get_category(CategoryNodeKind::Func)?;
-        let func_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind_by_index(
-            func_category_index,
+        let func_category_id = workspace_snapshot.get_category(CategoryNodeKind::Func)?;
+        let func_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            func_category_id,
             EdgeWeightKindDiscriminants::Use,
         )?;
         let name = name.as_ref();
@@ -357,17 +357,17 @@ impl Func {
 
     pub async fn find_intrinsic(ctx: &DalContext, intrinsic: IntrinsicFunc) -> FuncResult<FuncId> {
         let name = intrinsic.name();
-        Func::find_by_name(ctx, name)?.ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()))
+        Self::find_by_name(ctx, name)?.ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()))
     }
 
     pub async fn list(ctx: &DalContext) -> FuncResult<Vec<Self>> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
         let mut funcs = vec![];
-        let (_, func_category_index) = workspace_snapshot.get_category(CategoryNodeKind::Func)?;
+        let func_category_id = workspace_snapshot.get_category(CategoryNodeKind::Func)?;
 
-        let func_node_indexes = workspace_snapshot.outgoing_targets_for_edge_weight_kind_by_index(
-            func_category_index,
+        let func_node_indexes = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            func_category_id,
             EdgeWeightKindDiscriminants::Use,
         )?;
 

@@ -25,7 +25,9 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::graph::NodeIndex;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, DalContext, FuncId, StandardModel, Timestamp, TransactionsError};
+use crate::{
+    pk, DalContext, FuncId, InternalProviderId, StandardModel, Timestamp, TransactionsError,
+};
 
 pub mod argument;
 
@@ -69,14 +71,12 @@ pub struct AttributePrototypeGraphNode {
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
 pub enum AttributePrototypeContent {
     V1(AttributePrototypeContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct AttributePrototypeContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
 }
 
@@ -107,14 +107,11 @@ impl AttributePrototype {
         self.id
     }
 
-    // NOTE(nick,jacob,zack): all incoming edges to an attribute prototype must come from one of two places:
+    // NOTE(nick): all incoming edges to an attribute prototype must come from one of two places:
     //   - an attribute value whose lineage comes from a component
-    //   - a prop whose lineage comes from a schema variant
+    //   - a prop or provider whose lineage comes from a schema variant
     // Outgoing edges from an attribute prototype are used for intra and inter component relationships.
-    pub async fn new(
-        ctx: &DalContext,
-        func_id: FuncId,
-    ) -> AttributePrototypeResult<(Self, NodeIndex)> {
+    pub async fn new(ctx: &DalContext, func_id: FuncId) -> AttributePrototypeResult<Self> {
         let timestamp = Timestamp::now();
 
         let content = AttributePrototypeContentV1 { timestamp };
@@ -128,18 +125,17 @@ impl AttributePrototype {
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::AttributePrototype(hash))?;
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        let node_index = workspace_snapshot.add_node(node_weight)?;
+        let _node_index = workspace_snapshot.add_node(node_weight)?;
 
-        let func_node_index = workspace_snapshot.get_node_index_by_id(func_id.into())?;
         workspace_snapshot.add_edge(
-            node_index,
+            id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            func_node_index,
+            func_id.into(),
         )?;
 
-        Ok((
-            AttributePrototype::assemble(AttributePrototypeId::from(id), &content),
-            node_index,
+        Ok(AttributePrototype::assemble(
+            AttributePrototypeId::from(id),
+            &content,
         ))
     }
 
@@ -168,16 +164,10 @@ impl AttributePrototype {
             EdgeWeightKindDiscriminants::Use,
         )?;
 
-        // Node index changes after edge removal, so we have to fetch it again
-        let attribute_prototype_idx =
-            workspace_snapshot.get_node_index_by_id(attribute_prototype_id.into())?;
-
-        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id.into())?;
-
         workspace_snapshot.add_edge(
-            attribute_prototype_idx,
+            attribute_prototype_id.into(),
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            func_node_idx,
+            func_id.into(),
         )?;
 
         Ok(())

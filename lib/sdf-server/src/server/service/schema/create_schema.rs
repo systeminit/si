@@ -1,7 +1,8 @@
 use super::SchemaResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
-use dal::{component::ComponentKind, Schema, Visibility, WsEvent};
+use dal::schema::ComponentKind;
+use dal::{Schema, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -25,7 +26,15 @@ pub async fn create_schema(
 ) -> SchemaResult<Json<CreateSchemaResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let schema = Schema::new(&ctx, &request.name, &ComponentKind::Standard).await?;
+    // TODO(nick): handle categories.
+    let schema = Schema::new(
+        &ctx,
+        &request.name,
+        ComponentKind::Standard,
+        "Unknown Category Name",
+        "Unknown Category",
+    )
+    .await?;
     let response = CreateSchemaResponse { schema };
 
     WsEvent::change_set_written(&ctx)

@@ -20,11 +20,10 @@ use super::edge_weight::EdgeWeightKindDiscriminants;
 // pub mod node;
 
 impl WorkspaceSnapshot {
-    pub fn get_category(
-        &mut self,
-        kind: CategoryNodeKind,
-    ) -> WorkspaceSnapshotResult<(Ulid, NodeIndex)> {
-        Ok(self.working_copy()?.get_category(kind)?)
+    pub fn get_category(&mut self, kind: CategoryNodeKind) -> WorkspaceSnapshotResult<Ulid> {
+        // NOTE(nick): we should not expose the index.
+        let (category_node_id, _) = self.working_copy()?.get_category(kind)?;
+        Ok(category_node_id)
     }
 
     pub fn edges_directed(

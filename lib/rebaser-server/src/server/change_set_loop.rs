@@ -160,7 +160,9 @@ async fn process_delivery(
         )
         .await?;
     info!(
-        "conflicts and updates detected: {conflicts:?} {updates:?}, {:?}",
+        "count: conflicts ({}) and updates ({}), {:?}",
+        conflicts.len(),
+        updates.len(),
         start.elapsed()
     );
 
@@ -232,7 +234,7 @@ async fn perform_updates_and_write_out_and_update_pointer(
                     onto_workspace_snapshot,
                     to_rebase_workspace_snapshot,
                 )?;
-                let new_edge_index = to_rebase_workspace_snapshot.add_edge(
+                let new_edge_index = to_rebase_workspace_snapshot.add_edge_unchecked(
                     updated_source,
                     edge_weight.clone(),
                     destination,
@@ -273,19 +275,12 @@ async fn perform_updates_and_write_out_and_update_pointer(
 
     // Once all updates have been performed, we can write out, mark everything as recently seen
     // and update the pointer.
-
-    //dbg!("onto_workspace_snapshot");
-    //onto_workspace_snapshot.dot();
-    //dbg!("to_rebase_workspace_snapshot");
-    //to_rebase_workspace_snapshot.dot();
-
     to_rebase_workspace_snapshot
         .write(ctx, to_rebase_change_set.vector_clock_id())
         .await?;
     to_rebase_change_set
         .update_pointer(ctx, to_rebase_workspace_snapshot.id())
         .await?;
-    //   dbg!(to_rebase_workspace_snapshot.id());
 
     Ok(())
 }

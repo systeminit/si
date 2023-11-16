@@ -5,7 +5,7 @@ use content_store::{ContentHash, Store};
 use petgraph::prelude::EdgeRef;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -40,15 +40,9 @@ pub mod definition;
 pub mod leaves;
 pub mod root_prop;
 
-// const ALL_FUNCS: &str = include_str!("../queries/schema_variant/all_related_funcs.sql");
-// const ALL_PROPS: &str = include_str!("../queries/schema_variant/all_props.sql");
-// const FIND_ROOT_PROP: &str = include_str!("../queries/schema_variant/find_root_prop.sql");
-// const FIND_LEAF_ITEM_PROP: &str = include_str!("../queries/schema_variant/find_leaf_item_prop.sql");
-// const FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER: &str =
-//     include_str!("../queries/schema_variant/find_root_child_implicit_internal_provider.sql");
-// const LIST_ROOT_SI_CHILD_PROPS: &str =
-//     include_str!("../queries/schema_variant/list_root_si_child_props.sql");
-
+// FIXME(nick,theo): colors should be required for all schema variants.
+// There should be no default in the backend as there should always be a color.
+pub const DEFAULT_SCHEMA_VARIANT_COLOR: &'static str = "00b0bc";
 pub const SCHEMA_VARIANT_VERSION: SchemaVariantContentDiscriminants =
     SchemaVariantContentDiscriminants::V1;
 
@@ -87,25 +81,6 @@ pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
 
 pk!(SchemaVariantId);
 
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
-pub enum SchemaVariantContent {
-    V1(SchemaVariantContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct SchemaVariantContentV1 {
-    #[serde(flatten)]
-    pub timestamp: Timestamp,
-    pub ui_hidden: bool,
-    pub name: String,
-    /// The [`RootProp`](crate::RootProp) for [`self`](Self).
-    pub root_prop_id: Option<PropId>,
-    // pub schema_variant_definition_id: Option<SchemaVariantDefinitionId>,
-    pub link: Option<String>,
-    pub finalized_once: bool,
-}
-
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct SchemaVariant {
     id: SchemaVariantId,
@@ -118,6 +93,31 @@ pub struct SchemaVariant {
     // schema_variant_definition_id: Option<SchemaVariantDefinitionId>,
     link: Option<String>,
     finalized_once: bool,
+    category: String,
+    // FIXME(nick): move this to the attribute tree once we have defaults for
+    // schema variants in place.
+    color: String,
+}
+
+#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum SchemaVariantContent {
+    V1(SchemaVariantContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct SchemaVariantContentV1 {
+    pub timestamp: Timestamp,
+    pub ui_hidden: bool,
+    pub name: String,
+    /// The [`RootProp`](crate::RootProp) for [`self`](Self).
+    pub root_prop_id: Option<PropId>,
+    // pub schema_variant_definition_id: Option<SchemaVariantDefinitionId>,
+    pub link: Option<String>,
+    pub finalized_once: bool,
+    pub category: String,
+    // FIXME(nick): move this to the attribute tree once we have defaults for
+    // schema variants in place.
+    color: String,
 }
 
 impl SchemaVariant {
@@ -130,23 +130,31 @@ impl SchemaVariant {
             link: inner.link,
             ui_hidden: inner.ui_hidden,
             finalized_once: inner.finalized_once,
+            category: inner.category,
+            color: inner.color,
         }
     }
 
     pub async fn new(
         ctx: &DalContext,
-        name: impl Into<String>,
         schema_id: SchemaId,
-        ui_hidden: bool,
+        name: impl Into<String>,
+        category: impl Into<String>,
+        color: Option<impl Into<String>>,
     ) -> SchemaVariantResult<(Self, RootProp)> {
+        info!("creating schema variant and root prop tree");
         let content = SchemaVariantContentV1 {
             timestamp: Timestamp::now(),
             name: name.into(),
             root_prop_id: None,
             // schema_variant_definition_id: None,
             link: None,
-            ui_hidden,
+            ui_hidden: false,
             finalized_once: false,
+            category: category.into(),
+            color: color
+                .map(Into::into)
+                .unwrap_or(DEFAULT_SCHEMA_VARIANT_COLOR.into()),
         };
         let hash = ctx
             .content_store()
@@ -159,13 +167,12 @@ impl SchemaVariant {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
             let node_weight =
                 NodeWeight::new_content(change_set, id, ContentAddress::SchemaVariant(hash))?;
-            let node_index = workspace_snapshot.add_node(node_weight)?;
+            let _node_index = workspace_snapshot.add_node(node_weight)?;
 
-            let schema_node_index = workspace_snapshot.get_node_index_by_id(schema_id.into())?;
             workspace_snapshot.add_edge(
-                schema_node_index,
+                schema_id.into(),
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-                node_index,
+                id,
             )?;
         }
 
@@ -193,7 +200,99 @@ impl SchemaVariant {
         )
         .await?;
 
-        Ok((Self::assemble(id.into(), content), root_prop))
+        // Run cleanup before leaving in order to reduce round trip times for subsequent queries.
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        workspace_snapshot.cleanup()?;
+
+        let schema_variant = Self::assemble(id.into(), content);
+        Ok((schema_variant, root_prop))
+    }
+
+    pub async fn get_by_id(ctx: &DalContext, id: SchemaVariantId) -> SchemaVariantResult<Self> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let node_index = workspace_snapshot.get_node_index_by_id(id.into())?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        let content: SchemaVariantContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let SchemaVariantContent::V1(inner) = content;
+
+        Ok(Self::assemble(id, inner))
+    }
+
+    pub async fn list_for_schema(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> SchemaVariantResult<Vec<Self>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let mut schema_variants = vec![];
+        let parent_index = workspace_snapshot.get_node_index_by_id(schema_id.into())?;
+
+        let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind_by_index(
+            parent_index,
+            EdgeWeightKindDiscriminants::Use,
+        )?;
+
+        let mut node_weights = vec![];
+        let mut content_hashes = vec![];
+        for index in node_indices {
+            let node_weight = workspace_snapshot
+                .get_node_weight(index)?
+                .get_content_node_weight_of_kind(ContentAddressDiscriminants::SchemaVariant)?;
+            content_hashes.push(node_weight.content_hash());
+            node_weights.push(node_weight);
+        }
+
+        let content_map: HashMap<ContentHash, SchemaVariantContent> = ctx
+            .content_store()
+            .try_lock()?
+            .get_bulk(content_hashes.as_slice())
+            .await?;
+
+        for node_weight in node_weights {
+            match content_map.get(&node_weight.content_hash()) {
+                Some(func_content) => {
+                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+                    let SchemaVariantContent::V1(inner) = func_content;
+
+                    schema_variants.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
+            }
+        }
+
+        Ok(schema_variants)
+    }
+
+    pub fn id(&self) -> SchemaVariantId {
+        self.id
+    }
+
+    pub fn ui_hidden(&self) -> bool {
+        self.ui_hidden
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn category(&self) -> &str {
+        &self.category
+    }
+
+    pub fn color(&self) -> &str {
+        &self.color
     }
 
     async fn get_root_prop_node_weight(
@@ -222,6 +321,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
+        info!("creating default prototypes");
         let change_set = ctx.change_set_pointer()?;
         let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
         let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
@@ -250,16 +350,14 @@ impl SchemaVariant {
             // Create the attribute prototype and appropriate edges if they do not exist.
             if found_attribute_prototype_id.is_none() {
                 // We did not find a prototype, so we must create one.
-                let (_attribute_prototype, attribute_prototype_node_index) =
-                    AttributePrototype::new(ctx, func_id).await?;
+                let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
 
                 // New edge Prop --Prototype--> AttributePrototype.
                 let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-                let prop_node_index = workspace_snapshot.get_node_index_by_id(prop.id())?;
                 workspace_snapshot.add_edge(
-                    prop_node_index,
+                    prop.id(),
                     EdgeWeight::new(change_set, EdgeWeightKind::Prototype)?,
-                    attribute_prototype_node_index,
+                    attribute_prototype.id().into(),
                 )?;
             }
 
@@ -284,6 +382,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
+        info!("creating implicit internal providers");
         let root_prop = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
         let mut work_queue = VecDeque::new();
         work_queue.push_back(root_prop);
@@ -316,17 +415,11 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-
-        let schema_variant_index =
-            workspace_snapshot.get_node_index_by_id(schema_variant_id.into())?;
-        let func_index = workspace_snapshot.get_node_index_by_id(func_id.into())?;
-
         workspace_snapshot.add_edge(
-            schema_variant_index,
+            schema_variant_id.into(),
             EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Use)?,
-            func_index,
+            func_id.into(),
         )?;
-
         Ok(())
     }
 

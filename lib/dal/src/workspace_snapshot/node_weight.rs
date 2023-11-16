@@ -5,9 +5,9 @@ use strum::EnumDiscriminants;
 use thiserror::Error;
 use ulid::Ulid;
 
+use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::FuncBackendKind;
-
 use crate::{
     change_set_pointer::{ChangeSetPointer, ChangeSetPointerError},
     workspace_snapshot::{
@@ -83,6 +83,27 @@ impl NodeWeight {
             | NodeWeight::Func(_)
             | NodeWeight::Ordering(_)
             | NodeWeight::Prop(_) => None,
+        }
+    }
+
+    /// Get the label for debugging via the raw
+    /// [`ContentAddressDiscriminant`](ContentAddressDiscriminants), the raw
+    /// [`NodeWeightDiscriminant`](NodeWeightDiscriminants) or other data from the the
+    /// [`NodeWeight`].
+    #[allow(dead_code)]
+    pub fn debugging_label(&self) -> String {
+        match self {
+            NodeWeight::Content(weight) => {
+                ContentAddressDiscriminants::from(weight.content_address()).to_string()
+            }
+            NodeWeight::Category(category_node_weight) => match category_node_weight.kind() {
+                CategoryNodeKind::Component => "Components (Category)".to_string(),
+                CategoryNodeKind::Func => "Funcs (Category)".to_string(),
+                CategoryNodeKind::Schema => "Schemas (Category)".to_string(),
+            },
+            NodeWeight::Func(func_node_weight) => format!("Func\n{}", func_node_weight.name()),
+            NodeWeight::Ordering(_) => NodeWeightDiscriminants::Ordering.to_string(),
+            NodeWeight::Prop(prop_node_weight) => format!("Prop\n{}", prop_node_weight.name()),
         }
     }
 

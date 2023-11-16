@@ -59,14 +59,12 @@ pub struct ValidationPrototype {
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
 pub enum ValidationPrototypeContent {
     V1(ValidationPrototypeContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ValidationPrototypeContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
     pub func_id: FuncId,
     pub args: serde_json::Value,
@@ -106,13 +104,12 @@ impl ValidationPrototype {
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::ValidationPrototype(hash))?;
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        let node_index = workspace_snapshot.add_node(node_weight)?;
+        let _node_index = workspace_snapshot.add_node(node_weight)?;
 
-        let parent_prop_index = workspace_snapshot.get_node_index_by_id(parent_prop_id.into())?;
         workspace_snapshot.add_edge(
-            parent_prop_index,
+            parent_prop_id.into(),
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            node_index,
+            id,
         )?;
 
         Ok(Self::assemble(id.into(), content))

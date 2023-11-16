@@ -203,14 +203,12 @@ impl FuncArgument {
 
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
-        let func_arg_node_index = workspace_snapshot.add_node(node_weight.clone())?;
-
-        let func_node_index = workspace_snapshot.get_node_index_by_id(func_id.into())?;
+        let _func_arg_node_index = workspace_snapshot.add_node(node_weight.clone())?;
 
         workspace_snapshot.add_edge(
-            func_node_index,
+            func_id.into(),
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            func_arg_node_index,
+            id,
         )?;
 
         let content_node_weight =

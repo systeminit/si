@@ -1,8 +1,8 @@
 use axum::extract::{Json, Query};
 use dal::{
     socket::{DiagramKind, SocketEdgeKind, SocketId},
-    ExternalProviderId, InternalProviderId, SchemaId, SchemaVariant, SchemaVariantId, Visibility,
-    Workspace, WorkspaceSnapshot,
+    ExternalProviderId, InternalProviderId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    Socket, Visibility, Workspace, WorkspaceSnapshot,
 };
 use serde::{Deserialize, Serialize};
 
@@ -59,6 +59,7 @@ pub struct SchemaVariantView {
     schema_name: String,
     schema_id: SchemaId,
     color: String,
+    category: String,
     input_sockets: Vec<InputSocketView>,
     output_sockets: Vec<OutputSocketView>,
 }
@@ -71,79 +72,70 @@ pub async fn list_schema_variants(
 ) -> DiagramResult<Json<ListSchemaVariantsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let change_set_id = ctx.change_set_id();
-    let snapshot = WorkspaceSnapshot::find_for_change_set(&ctx, change_set_id).await?;
+    let mut schema_variants_views: Vec<SchemaVariantView> = Vec::new();
+    let schemas = Schema::list(&ctx).await?;
 
-    // let variants = SchemaVariant::list(&ctx).await?;
-
-    let variants_view: Vec<SchemaVariantView> = vec![];
-
-    /*
-    let mut variants_view = Vec::with_capacity(variants.len());
-    for variant in variants {
-        if variant.ui_hidden() {
+    for schema in schemas {
+        if schema.ui_hidden {
             continue;
         }
 
-        let schema = variant
-            .schema(&ctx)
-            .await?
-            .ok_or(DiagramError::SchemaNotFound)?;
-
-        if schema.ui_hidden() {
-            continue;
-        }
-        let mut input_sockets = Vec::new();
-        let mut output_sockets = Vec::new();
-
-        let sockets = variant.sockets(&ctx).await?;
-        for socket in sockets {
-            match socket.edge_kind() {
-                SocketEdgeKind::ConfigurationOutput => {
-                    let provider = socket.external_provider(&ctx).await?.ok_or_else(|| {
-                        DiagramError::ExternalProviderNotFoundForSocket(*socket.id())
-                    })?;
-                    output_sockets.push(OutputSocketView {
-                        id: *socket.id(),
-                        name: socket.name().to_owned(),
-                        diagram_kind: *socket.diagram_kind(),
-                        provider: OutputProviderView {
-                            id: *provider.id(),
-                            ty: socket.name().to_owned(),
-                        },
-                    })
-                }
-                SocketEdgeKind::ConfigurationInput => {
-                    let provider = socket.internal_provider(&ctx).await?.ok_or_else(|| {
-                        DiagramError::InternalProviderNotFoundForSocket(*socket.id())
-                    })?;
-                    input_sockets.push(InputSocketView {
-                        id: *socket.id(),
-                        name: socket.name().to_owned(),
-                        diagram_kind: *socket.diagram_kind(),
-                        provider: InputProviderView {
-                            id: *provider.id(),
-                            ty: socket.name().to_owned(),
-                        },
-                    })
-                }
+        let schema_variants = SchemaVariant::list_for_schema(&ctx, schema.id()).await?;
+        for schema_variant in schema_variants {
+            if schema_variant.ui_hidden() {
+                continue;
             }
-        }
 
-        variants_view.push(SchemaVariantView {
-            id: *variant.id(),
-            builtin: variant.is_builtin(&ctx).await?,
-            name: variant.name().to_owned(),
-            schema_id: *schema.id(),
-            schema_name: schema.name().to_owned(),
-            color: variant
-                .color(&ctx)
-                .await?
-                .unwrap_or_else(|| "00b0bc".to_owned()),
-            input_sockets,
-            output_sockets,
-        });
+            let mut input_sockets = Vec::new();
+            let mut output_sockets = Vec::new();
+
+            let (input_sockets_with_providers, output_sockets_with_providers) =
+                Socket::list_for_schema_variant(&ctx, schema_variant.id()).await?;
+
+            for (input_socket, internal_provider) in input_sockets_with_providers {
+                input_sockets.push(InputSocketView {
+                    id: input_socket.id(),
+                    name: input_socket.name().to_owned(),
+                    diagram_kind: input_socket.diagram_kind(),
+                    provider: InputProviderView {
+                        id: internal_provider.id(),
+                        ty: input_socket.name().to_owned(),
+                    },
+                })
+            }
+
+            for (output_socket, external_provider) in output_sockets_with_providers {
+                output_sockets.push(OutputSocketView {
+                    id: output_socket.id(),
+                    name: output_socket.name().to_owned(),
+                    diagram_kind: output_socket.diagram_kind(),
+                    provider: OutputProviderView {
+                        id: external_provider.id(),
+                        ty: output_socket.name().to_owned(),
+                    },
+                })
+            }
+
+            schema_variants_views.push(SchemaVariantView {
+                id: schema_variant.id(),
+                // FIXME(nick): use the real value here
+                builtin: true,
+                // builtin: schema_variant.is_builtin(&ctx).await?,
+                name: schema_variant.name().to_owned(),
+                schema_id: schema.id(),
+                schema_name: schema.name.to_owned(),
+                color: schema_variant.color().to_owned(),
+                category: schema_variant.category().to_owned(),
+                // FIXME(nick): use the real value here
+                // color: schema_variant
+                //     .color(&ctx)
+                //     .await?
+                //     .unwrap_or_else(|| "00b0bc".to_owned()),
+                input_sockets,
+                output_sockets,
+            });
+        }
     }
-    */
-    Ok(Json(variants_view))
+
+    Ok(Json(schema_variants_views))
 }
