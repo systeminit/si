@@ -15,11 +15,12 @@ use tokio::{
     signal::unix,
     sync::{mpsc, oneshot},
 };
+use tokio_vsock::VsockAddr;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use crate::{
     routes::routes, state::AppState, Config, IncomingStream, UdsIncomingStream,
-    UdsIncomingStreamError,
+    UdsIncomingStreamError, VsockIncomingStream, VsockIncomingStreamError,
 };
 
 #[remain::sorted]
@@ -35,6 +36,8 @@ pub enum ServerError {
     Signal(#[source] io::Error),
     #[error("UDS incoming stream error")]
     Uds(#[from] UdsIncomingStreamError),
+    #[error("Vsock incoming stream error")]
+    Vsock(#[from] VsockIncomingStreamError),
     #[error("wrong incoming stream for {0} server: {1:?}")]
     WrongIncomingStream(&'static str, IncomingStream),
 }
@@ -72,7 +75,10 @@ impl Server<(), ()> {
                 })
             }
             wrong @ IncomingStream::UnixDomainSocket(_) => {
-                Err(ServerError::WrongIncomingStream("http", wrong.clone()))
+                Err(ServerError::WrongIncomingStream("uds", wrong.clone()))
+            }
+            wrong @ IncomingStream::VsockSocket(_) => {
+                Err(ServerError::WrongIncomingStream("vsock", wrong.clone()))
             }
         }
     }
@@ -101,7 +107,42 @@ impl Server<(), ()> {
                 })
             }
             wrong @ IncomingStream::HTTPSocket(_) => {
+                Err(ServerError::WrongIncomingStream("uds", wrong.clone()))
+            }
+            wrong @ IncomingStream::VsockSocket(_) => {
+                Err(ServerError::WrongIncomingStream("vsock", wrong.clone()))
+            }
+        }
+    }
+
+    pub async fn vsock(
+        config: Config,
+        telemetry_level: Box<dyn TelemetryLevel>,
+        decryption_key: CycloneDecryptionKey,
+    ) -> Result<Server<VsockIncomingStream, VsockAddr>> {
+        match config.incoming_stream() {
+            IncomingStream::VsockSocket(addr) => {
+                let (service, shutdown_rx) =
+                    build_service(&config, telemetry_level, decryption_key)?;
+
+                debug!(socket = %addr, "binding a unix domain server");
+                let inner =
+                    axum::Server::builder(VsockIncomingStream::create(*addr).await?).serve(service);
+                let socket = *addr;
+                info!(socket = %socket, "unix domain server serving");
+
+                Ok(Server {
+                    config,
+                    inner,
+                    socket,
+                    shutdown_rx,
+                })
+            }
+            wrong @ IncomingStream::HTTPSocket(_) => {
                 Err(ServerError::WrongIncomingStream("http", wrong.clone()))
+            }
+            wrong @ IncomingStream::UnixDomainSocket(_) => {
+                Err(ServerError::WrongIncomingStream("uds", wrong.clone()))
             }
         }
     }
