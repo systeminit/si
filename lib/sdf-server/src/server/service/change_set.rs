@@ -9,7 +9,6 @@ use dal::{
     ComponentError as DalComponentError, FixError, StandardModelError, TransactionsError,
     UserError, UserPk, WsEventError,
 };
-use merge_vote::merge_vote;
 use module_index_client::IndexClientError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -18,6 +17,7 @@ use crate::{server::state::AppState, service::pkg::PkgError};
 
 pub mod add_action;
 pub mod apply_change_set;
+mod begin_approval_process;
 pub mod create_change_set;
 pub mod get_change_set;
 pub mod get_stats;
@@ -108,5 +108,9 @@ pub fn routes() -> Router<AppState> {
             "/update_selected_change_set",
             post(update_selected_change_set::update_selected_change_set),
         )
-        .route("/merge_vote", post(merge_vote))
+        .route(
+            "/being_merge_flow",
+            post(begin_approval_process::begin_approval_process),
+        )
+        .route("/merge_vote", post(merge_vote::merge_vote))
 }

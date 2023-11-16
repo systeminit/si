@@ -44,10 +44,15 @@ pub async fn merge_vote(
         }),
     );
 
-    WsEvent::change_set(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+    WsEvent::change_set_merge_vote(
+        &ctx,
+        ctx.visibility().change_set_pk,
+        user.pk(),
+        request.approve,
+    )
+    .await?
+    .publish_on_commit(&ctx)
+    .await?;
 
     ctx.commit().await?;
 
