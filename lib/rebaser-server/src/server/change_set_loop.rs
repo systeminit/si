@@ -143,15 +143,21 @@ async fn process_delivery(
         WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_id).await?;
     let mut onto_workspace_snapshot: WorkspaceSnapshot =
         WorkspaceSnapshot::find(ctx, message.onto_workspace_snapshot_id.into()).await?;
+    info!(
+        "to_rebase_id: {}, onto_id: {}",
+        to_rebase_workspace_snapshot_id,
+        onto_workspace_snapshot.id()
+    );
     info!("after snapshot fetch and parse: {:?}", start.elapsed());
 
     // Perform the conflicts and updates detection.
     let onto_vector_clock_id: VectorClockId = message.onto_vector_clock_id.into();
+    dbg!(to_rebase_change_set.vector_clock_id() < onto_vector_clock_id);
     let (conflicts, updates) = to_rebase_workspace_snapshot
         .detect_conflicts_and_updates(
-            to_rebase_change_set.vector_clock_id(),
+            dbg!(to_rebase_change_set.vector_clock_id()),
             &mut onto_workspace_snapshot,
-            onto_vector_clock_id,
+            dbg!(onto_vector_clock_id),
         )
         .await?;
     info!(
@@ -300,9 +306,13 @@ fn find_in_to_rebase_or_create_using_onto(
                 unchecked_node_weight.lineage_id(),
             )? {
                 Some(found_equivalent_node) => {
-                    updated.insert(unchecked, found_equivalent_node);
+                    updated.extend(
+                        to_rebase_workspace_snapshot
+                            .import_subgraph(onto_workspace_snapshot, unchecked)?,
+                    );
+                    updated.insert(found_equivalent_node, unchecked);
 
-                    found_equivalent_node
+                    unchecked
                 }
                 None => {
                     updated.extend(

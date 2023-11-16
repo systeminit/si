@@ -304,7 +304,6 @@ impl WorkspaceSnapshotGraph {
             if let Some(child_ordering) = self.ordered_children_for_node(current_node_index)? {
                 for (child_position_index, &child_node_index) in child_ordering.iter().enumerate() {
                     // `.enumerate()` gives us 1-indexed, but we need 0-indexed.
-                    dbg!(child_position_index, child_node_index);
 
                     // We insert a JSON `Null` as a "place holder" for the write location. We need
                     // it to exist to be able to get a `pointer_mut` to it on the next time around,
@@ -353,7 +352,7 @@ impl WorkspaceSnapshotGraph {
                             _ => continue,
                         };
                         let child_write_location = format!("{}/{}", write_location, child_position);
-                        nodes_to_add.push_back(dbg!((child_node_index, child_write_location)));
+                        nodes_to_add.push_back((child_node_index, child_write_location));
                     }
                 }
             } else {
@@ -543,7 +542,7 @@ impl WorkspaceSnapshotGraph {
                         let category_node_kind = onto_category_node_weight.kind();
                         let (_, to_rebase_category_node_index) =
                             self.get_category(category_node_kind).map_err(|err| {
-                                dbg!(
+                                error!(
                                     "Unable to get to rebase Category node for kind {:?} from onto {:?}: {}",
                                     onto_category_node_weight.kind(), onto, err,
                                 );
@@ -565,10 +564,9 @@ impl WorkspaceSnapshotGraph {
                 for to_rebase_node_index in to_rebase_node_indexes {
                     let to_rebase_node_weight =
                         self.get_node_weight(to_rebase_node_index).map_err(|err| {
-                            dbg!(
+                            error!(
                                 "Unable to get to_rebase NodeWeight for NodeIndex {:?}: {}",
-                                to_rebase_node_index,
-                                err,
+                                to_rebase_node_index, err,
                             );
                             event
                         })?;
@@ -576,10 +574,9 @@ impl WorkspaceSnapshotGraph {
                     if onto_node_weight.merkle_tree_hash()
                         == to_rebase_node_weight.merkle_tree_hash()
                     {
-                        dbg!(onto_node_index, to_rebase_node_index);
                         // If the merkle tree hashes are the same, then the entire sub-graph is
                         // identical, and we don't need to check any further.
-                        dbg!(
+                        debug!(
                             "onto {} and to rebase {} merkle tree hashes are the same",
                             onto_node_weight.id(),
                             to_rebase_node_weight.id()
@@ -587,6 +584,8 @@ impl WorkspaceSnapshotGraph {
                         continue;
                     }
                     any_content_with_lineage_has_changed = true;
+
+                    debug!("merkle tree hashes are not the same");
 
                     // Check if there's a difference in the node itself (and whether it is a
                     // conflict if there is a difference).
@@ -629,10 +628,7 @@ impl WorkspaceSnapshotGraph {
                         .ordering_node_index_for_container(to_rebase_node_index)
                         .map_err(|_| event)?;
 
-                    match (
-                        dbg!(to_rebase_ordering_node_index),
-                        dbg!(onto_ordering_node_index),
-                    ) {
+                    match (to_rebase_ordering_node_index, onto_ordering_node_index) {
                         (None, None) => {
                             // Neither is ordered. The potential conflict could be because one
                             // or more elements changed, because elements were added/removed,
@@ -645,14 +641,13 @@ impl WorkspaceSnapshotGraph {
                             // Eventually, this will only happen on the root node itself, since
                             // Objects, Maps, and Arrays should all have an ordering, for at
                             // least display purposes.
-                            dbg!(
+                            debug!(
                                 "Found what appears to be two unordered containers: onto {:?}, to_rebase {:?}",
                                 onto_node_index, to_rebase_node_index,
                             );
-                            dbg!(
+                            debug!(
                                 "Comparing unordered containers: {:?}, {:?}",
-                                onto_node_index,
-                                to_rebase_node_index
+                                onto_node_index, to_rebase_node_index
                             );
 
                             let (container_conflicts, container_updates) = self
@@ -664,7 +659,7 @@ impl WorkspaceSnapshotGraph {
                                     onto_node_index,
                                 )
                                 .map_err(|err| {
-                                    dbg!("Unable to find unordered container membership conflicts and updates for onto container NodeIndex {:?} and to_rebase container NodeIndex {:?}: {}", onto_node_index, to_rebase_node_index, err);
+                                    error!("Unable to find unordered container membership conflicts and updates for onto container NodeIndex {:?} and to_rebase container NodeIndex {:?}: {}", onto_node_index, to_rebase_node_index, err);
                                     event
                                 })?;
 
@@ -1077,8 +1072,8 @@ impl WorkspaceSnapshotGraph {
             unique_edges
         };
 
-        dbg!("only to rebase edges: {:?}", &only_to_rebase_edges);
-        dbg!("only onto edges: {:?}", &only_onto_edges);
+        debug!("only to rebase edges: {:?}", &only_to_rebase_edges);
+        debug!("only onto edges: {:?}", &only_onto_edges);
 
         let root_seen_as_of_onto = self
             .get_node_weight(self.root_index)?
@@ -1103,12 +1098,12 @@ impl WorkspaceSnapshotGraph {
             if to_rebase_edge_weight
                 .vector_clock_first_seen()
                 .entry_for(to_rebase_vector_clock_id)
-                < onto_last_saw_to_rebase
+                <= onto_last_saw_to_rebase
             {
                 if to_rebase_item_weight
                     .vector_clock_write()
                     .entry_for(to_rebase_vector_clock_id)
-                    > onto_last_saw_to_rebase
+                    >= onto_last_saw_to_rebase
                 {
                     // Item has been modified in `onto` (`onto` item write vector clock > "seen as
                     // of" for `onto` entry in `to_rebase` root): Conflict (ModifyRemovedItem)
@@ -1123,6 +1118,9 @@ impl WorkspaceSnapshotGraph {
                         edge_kind: only_to_rebase_edge_info.edge_kind,
                     });
                 }
+            } else {
+                debug!(
+                    "edge weight entry for to rebase vector clock id {:?} is older than onto last saw {:?}", to_rebase_edge_weight.vector_clock_first_seen().entry_for(to_rebase_vector_clock_id), onto_last_saw_to_rebase);
             }
         }
 
@@ -3828,9 +3826,13 @@ mod test {
             )
             .expect("Failed to detect conflicts and updates");
 
-        dbg!(&conflicts);
         assert!(conflicts.is_empty());
         assert_eq!(1, updates.len());
+
+        assert!(matches!(
+            updates.get(0).expect("should be there"),
+            Update::RemoveEdge { .. }
+        ));
     }
 
     #[test]

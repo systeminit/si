@@ -6,4 +6,4 @@
 mod builtins;
 // mod change_set;
 // mod content_store;
-// mod rebaser;
+mod rebaser;

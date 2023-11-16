@@ -32,38 +32,7 @@ pub async fn create_change_set(
 
     let change_set_name = &request.change_set_name;
 
-    let workspace_pk = ctx
-        .tenancy()
-        .workspace_pk()
-        .ok_or(ChangeSetError::NoTenancySet)?;
-
-    let workspace = Workspace::get_by_pk(&ctx, &workspace_pk)
-        .await?
-        .ok_or(ChangeSetError::WorkspaceNotFound(workspace_pk))?;
-
-    let base_change_set_pointer = ChangeSetPointer::find(&ctx, workspace.default_change_set_id())
-        .await?
-        .ok_or(ChangeSetError::DefaultChangeSetNotFound(
-            workspace.default_change_set_id(),
-        ))?;
-
-    let mut change_set_pointer = ChangeSetPointer::new(
-        &ctx,
-        change_set_name,
-        Some(workspace.default_change_set_id()),
-    )
-    .await?;
-
-    change_set_pointer
-        .update_pointer(
-            &ctx,
-            base_change_set_pointer.workspace_snapshot_id.ok_or(
-                ChangeSetError::DefaultChangeSetNoWorkspaceSnapshotPointer(
-                    workspace.default_change_set_id(),
-                ),
-            )?,
-        )
-        .await?;
+    let change_set_pointer = ChangeSetPointer::fork_head(&ctx, change_set_name).await?;
 
     track(
         &posthog_client,
