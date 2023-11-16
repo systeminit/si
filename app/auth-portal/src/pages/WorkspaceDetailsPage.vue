@@ -158,8 +158,7 @@
                 v-model="newMember.email"
                 type="email"
                 label="User Email to Grant Workspace Access"
-                submitFormOnEnter
-                @submit="inviteButtonHandler"
+                @enterPressed="inviteButtonHandler"
               />
               <VButton
                 class="flex-none"

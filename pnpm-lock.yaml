@@ -84,8 +84,8 @@ importers:
         specifier: ^4.9.5
         version: 4.9.5
       unplugin-icons:
-        specifier: ^0.14.14
-        version: 0.14.14
+        specifier: ^0.17.1
+        version: 0.17.1
       vite:
         specifier: ^4.1.4
         version: 4.1.4(@types/node@18.15.11)(less@4.1.3)
@@ -218,6 +218,9 @@ importers:
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
+      mitt:
+        specifier: ^3.0.1
+        version: 3.0.1
       pinia:
         specifier: ^2.1.3
         version: 2.1.3(typescript@4.9.5)(vue@3.3.4)
@@ -271,8 +274,8 @@ importers:
         version: 13.6.8
     devDependencies:
       '@iconify/json':
-        specifier: ^2.2.131
-        version: 2.2.131
+        specifier: ^2.2.135
+        version: 2.2.135
       '@si/eslint-config':
         specifier: workspace:*
         version: link:../../lib/eslint-config
@@ -319,8 +322,8 @@ importers:
         specifier: ^6.6.6
         version: 6.6.6
       unplugin-icons:
-        specifier: ^0.14.14
-        version: 0.14.14
+        specifier: ^0.17.1
+        version: 0.17.1
       vite:
         specifier: ^4.4.9
         version: 4.4.9(@types/node@18.15.11)(less@4.1.3)
@@ -688,6 +691,9 @@ importers:
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
+      mitt:
+        specifier: ^3.0.1
+        version: 3.0.1
       pinia:
         specifier: ^2.1.3
         version: 2.1.3(typescript@4.9.5)(vue@3.3.4)
@@ -708,8 +714,8 @@ importers:
         version: 0.1.2(vue@3.3.4)
     devDependencies:
       '@iconify/json':
-        specifier: ^2.2.131
-        version: 2.2.131
+        specifier: ^2.2.135
+        version: 2.2.135
       '@si/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
@@ -741,8 +747,8 @@ importers:
         specifier: ^4.9.5
         version: 4.9.5
       unplugin-icons:
-        specifier: ^0.14.14
-        version: 0.14.14
+        specifier: ^0.17.1
+        version: 0.17.1
       vite:
         specifier: ^4.1.4
         version: 4.1.4
@@ -770,12 +776,8 @@ packages:
       find-up: 5.0.0
     dev: true
 
-  /@antfu/utils@0.5.2:
-    resolution: {integrity: sha512-CQkeV+oJxUazwjlHD0/3ZD08QWKuGQkhnrKo3e6ly5pd48VUpXbb77q0xMU4+vc2CkJnDS02Eq/M9ugyX20XZA==}
-    dev: true
-
-  /@antfu/utils@0.6.3:
-    resolution: {integrity: sha512-sEYpyyKUPOew9QsXZ8feRVMzW6DWLviwOl+/ap06UQW02A8Srbc95CPHVm4eUbiBzBgD46eyIT+przv//KSSlQ==}
+  /@antfu/utils@0.7.6:
+    resolution: {integrity: sha512-pvFiLP2BeOKA/ZOS6jxx4XhKzdVLHDhGlFEaZ2flWWYf2xOqVniqpk38I04DFRyz+L0ASggl7SkItTc+ZLju4w==}
     dev: true
 
   /@babel/code-frame@7.18.6:
@@ -1900,8 +1902,8 @@ packages:
     resolution: {integrity: sha512-ZnQMnLV4e7hDlUvw8H+U8ASL02SS2Gn6+9Ac3wGGLIe7+je2AeAOxPY+izIPJDfFDb7eDjev0Us8MO1iFRN8hA==}
     dev: true
 
-  /@iconify/json@2.2.131:
-    resolution: {integrity: sha512-KpGOd7EkL+TvCsvlKln0HBvwl/KQyo2jZyLwUaU5mbGCPnIToO8Stxjl4QgYwg3SI1q3Pba0AAqmPxs1nD+g9w==}
+  /@iconify/json@2.2.135:
+    resolution: {integrity: sha512-SrssFU+P37j3QhxatYazLgNfvlwP3NVMFRUBlKfb8MvMtXqT46lT1KZsXLsRsORbLjm89+VJqXKOyK4u5K6T8A==}
     dependencies:
       '@iconify/types': 2.0.0
       pathe: 1.1.1
@@ -1911,15 +1913,15 @@ packages:
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
     dev: true
 
-  /@iconify/utils@2.0.2:
-    resolution: {integrity: sha512-13B3wJxDLmSNBEIEpKleKSkJVQgdAy9ra3Xsu233i/5qD5yXBGhpOFxTB/k8cqme0xVsMKBPV5vbvq9MgQlX+w==}
+  /@iconify/utils@2.1.11:
+    resolution: {integrity: sha512-M/w3PkN8zQYXi8N6qK/KhnYMfEbbb6Sk8RZVn8g+Pmmu5ybw177RpsaGwpziyHeUsu4etrexYSWq3rwnIqzYCg==}
     dependencies:
       '@antfu/install-pkg': 0.1.1
-      '@antfu/utils': 0.5.2
+      '@antfu/utils': 0.7.6
       '@iconify/types': 2.0.0
       debug: 4.3.4
-      kolorist: 1.6.0
-      local-pkg: 0.4.2
+      kolorist: 1.8.0
+      local-pkg: 0.4.3
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -4094,7 +4096,7 @@ packages:
     dependencies:
       '@mapbox/node-pre-gyp': 1.0.10
       '@rollup/pluginutils': 4.2.1
-      acorn: 8.8.1
+      acorn: 8.10.0
       async-sema: 3.1.1
       bindings: 1.5.0
       estree-walker: 2.0.2
@@ -4115,7 +4117,7 @@ packages:
     dependencies:
       '@mapbox/node-pre-gyp': 1.0.10(supports-color@9.3.1)
       '@rollup/pluginutils': 4.2.1
-      acorn: 8.8.1
+      acorn: 8.10.0
       async-sema: 3.1.1
       bindings: 1.5.0
       estree-walker: 2.0.2
@@ -4494,7 +4496,7 @@ packages:
   /acorn-globals@7.0.1:
     resolution: {integrity: sha512-umOSDSDrfHbTNPuNpC2NSnnA3LUrqpevPb4T9jRx4MagXNS0rs+gwiTcAvqCRmsD6utzsrzNt+ebm00SNWiC3Q==}
     dependencies:
-      acorn: 8.8.1
+      acorn: 8.10.0
       acorn-walk: 8.2.0
     dev: false
 
@@ -4538,7 +4540,6 @@ packages:
     resolution: {integrity: sha512-F0SAmZ8iUtS//m8DmCTA0jlh6TDKkHQyK6xc6V4KDTyZKA9dnvX9/3sRTVQrWm79glUAZbnmmNcdYwUIHWVybw==}
     engines: {node: '>=0.4.0'}
     hasBin: true
-    dev: true
 
   /acorn@8.8.1:
     resolution: {integrity: sha512-7zFpHzhnqYKrkYdUjF1HI1bzd0VygEGX8lFk4k5zVMqHEoES+P+7TKI+EvLO9WVMJ8eekdO0aDEK044xTXwPPA==}
@@ -10981,6 +10982,11 @@ packages:
 
   /kolorist@1.6.0:
     resolution: {integrity: sha512-dLkz37Ab97HWMx9KTes3Tbi3D1ln9fCAy2zr2YVExJasDRPGRaKcoE4fycWNtnCAJfjFqe0cnY+f8KT2JePEXQ==}
+    dev: false
+
+  /kolorist@1.8.0:
+    resolution: {integrity: sha512-Y+60/zizpJ3HRH8DCss+q95yr6145JXZo46OTpFvDZWLfRCE4qChOyk1b26nMaNpfHHgxagk9dXT5OP0Tfe+dQ==}
+    dev: true
 
   /konva@8.3.13:
     resolution: {integrity: sha512-O5VxHfRfTj4PscTglQH1NimS8+CC5hQYLeB8YQstu8MN/i2L8GjA1T9d7xxzITF2TD5+xcIs5ei7en3cztbNXg==}
@@ -11296,9 +11302,17 @@ packages:
       - zenObservable
     dev: true
 
-  /local-pkg@0.4.2:
-    resolution: {integrity: sha512-mlERgSPrbxU3BP4qBqAvvwlgW4MTg78iwJdGGnv7kibKjWcJksrG3t6LB5lXI93wXRDvG4NpUgJFmTG4T6rdrg==}
+  /local-pkg@0.4.3:
+    resolution: {integrity: sha512-SFppqq5p42fe2qcZQqqEOiVRXl+WCP1MdT6k7BDEW1j++sp5fIY+/fdRQitvKgB5BrBcmrs5m/L0v2FrU5MY1g==}
     engines: {node: '>=14'}
+    dev: true
+
+  /local-pkg@0.5.0:
+    resolution: {integrity: sha512-ok6z3qlYyCDS4ZEU27HaU6x/xZa9Whf8jD4ptH5UZTQYZVYeb9bnZ3ojVhiJNLiXK1Hfc0GNbLXcmZ5plLDDBg==}
+    engines: {node: '>=14'}
+    dependencies:
+      mlly: 1.4.2
+      pkg-types: 1.0.3
     dev: true
 
   /local-storage-fallback@4.1.2:
@@ -11869,6 +11883,10 @@ packages:
       yallist: 4.0.0
     dev: true
 
+  /mitt@3.0.1:
+    resolution: {integrity: sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==}
+    dev: false
+
   /mixin-deep@1.3.2:
     resolution: {integrity: sha512-WRoDn//mXBiJ1H40rqa3vH0toePwSsGb45iInWlTySa+Uu4k3tYUSxa2v1KqAiLtvlrSzaExqS1gtk96A9zvEA==}
     engines: {node: '>=0.10.0'}
@@ -11892,6 +11910,15 @@ packages:
     resolution: {integrity: sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==}
     engines: {node: '>=10'}
     hasBin: true
+    dev: true
+
+  /mlly@1.4.2:
+    resolution: {integrity: sha512-i/Ykufi2t1EZ6NaPLdfnZk2AX8cs0d+mTzVKuPfqPKPatxLApaBoxJQ9x1/uckXtrS/U5oisPMDkNs0yQTaBRg==}
+    dependencies:
+      acorn: 8.10.0
+      pathe: 1.1.1
+      pkg-types: 1.0.3
+      ufo: 1.3.1
     dev: true
 
   /module-definition@4.1.0:
@@ -13200,6 +13227,14 @@ packages:
     transitivePeerDependencies:
       - encoding
       - supports-color
+    dev: true
+
+  /pkg-types@1.0.3:
+    resolution: {integrity: sha512-nN7pYi0AQqJnoLPC9eHFQ8AcyaixBUOwvqc5TDnIKCMEE6I0y8P7OKA7fPexsXGCGxQDl/cmrLAp26LhcwxZ4A==}
+    dependencies:
+      jsonc-parser: 3.2.0
+      mlly: 1.4.2
+      pathe: 1.1.1
     dev: true
 
   /pkg@5.8.0:
@@ -15625,6 +15660,10 @@ packages:
     resolution: {integrity: sha512-8Y75pvTYkLJW2hWQHXxoqRgV7qb9B+9vFEtidML+7koHUFapnVJAZ6cKs+Qjz5Aw3aZWHMC6u0wJE3At+nSGwA==}
     dev: true
 
+  /ufo@1.3.1:
+    resolution: {integrity: sha512-uY/99gMLIOlJPwATcMVYfqDSxUR9//AUcgZMzwfSTJPDKzA1S8mX4VLqa+fiAtveraQUBCz4FFcwVZBGbwBXIw==}
+    dev: true
+
   /uglify-js@3.17.4:
     resolution: {integrity: sha512-T9q82TJI9e/C1TAxYvfb16xO120tMVFZrGA3f9/P4424DNu6ypK103y0GPFVa17yotwSyZW5iYXgjYHkGrJW/g==}
     engines: {node: '>=0.8.0'}
@@ -15755,15 +15794,18 @@ packages:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
     engines: {node: '>= 0.8'}
 
-  /unplugin-icons@0.14.14:
-    resolution: {integrity: sha512-5apStlsB9AetB7JQ0DpHG+aFNGQOL8yrO+6XbYadywMXwCeLAPDPdSW0gWd8R3aB/rER1PM+LQikXlaakHH1Uw==}
+  /unplugin-icons@0.17.1:
+    resolution: {integrity: sha512-KsWejBPCHokYCNDQUzGu6R3E3XDYH/YpewgQwrVBXgpl1iR0RdW1NEGNdjlbuapwVnZXVgA5eiDTfNaQCawSdg==}
     peerDependencies:
-      '@svgr/core': '>=5.5.0'
-      '@vue/compiler-sfc': ^3.0.2
+      '@svgr/core': '>=7.0.0'
+      '@svgx/core': ^1.0.1
+      '@vue/compiler-sfc': ^3.0.2 || ^2.7.0
       vue-template-compiler: ^2.6.12
       vue-template-es2015-compiler: ^1.9.0
     peerDependenciesMeta:
       '@svgr/core':
+        optional: true
+      '@svgx/core':
         optional: true
       '@vue/compiler-sfc':
         optional: true
@@ -15773,23 +15815,23 @@ packages:
         optional: true
     dependencies:
       '@antfu/install-pkg': 0.1.1
-      '@antfu/utils': 0.6.3
-      '@iconify/utils': 2.0.2
+      '@antfu/utils': 0.7.6
+      '@iconify/utils': 2.1.11
       debug: 4.3.4
-      kolorist: 1.6.0
-      local-pkg: 0.4.2
-      unplugin: 1.0.0
+      kolorist: 1.8.0
+      local-pkg: 0.5.0
+      unplugin: 1.5.0
     transitivePeerDependencies:
       - supports-color
     dev: true
 
-  /unplugin@1.0.0:
-    resolution: {integrity: sha512-H5UnBUxfhTXBXGo2AwKsl0UaLSHzSNDZNehPQSgdhVfO/t+XAS1Yoj3vmLrrlBrS9ZwtH5tejbX/TCp5DcyCKg==}
+  /unplugin@1.5.0:
+    resolution: {integrity: sha512-9ZdRwbh/4gcm1JTOkp9lAkIDrtOyOxgHmY7cjuwI8L/2RTikMcVG25GsZwNAgRuap3iDw2jeq7eoqtAsz5rW3A==}
     dependencies:
       acorn: 8.10.0
       chokidar: 3.5.3
       webpack-sources: 3.2.3
-      webpack-virtual-modules: 0.4.6
+      webpack-virtual-modules: 0.5.0
     dev: true
 
   /unset-value@1.0.0:
@@ -16488,8 +16530,8 @@ packages:
     engines: {node: '>=10.13.0'}
     dev: true
 
-  /webpack-virtual-modules@0.4.6:
-    resolution: {integrity: sha512-5tyDlKLqPfMqjT3Q9TAqf2YqjwmnUleZwzJi1A5qXnlBCdj2AtOJ6wAWdglTIDOPgOiOrXeBeFcsQ8+aGQ6QbA==}
+  /webpack-virtual-modules@0.5.0:
+    resolution: {integrity: sha512-kyDivFZ7ZM0BVOUteVbDFhlRt7Ah/CSPwJdi8hBpkK7QLumUqdLtVfm/PX/hkcnrvr0i77fO5+TjZ94Pe+C9iw==}
     dev: true
 
   /well-known-symbols@2.0.0:

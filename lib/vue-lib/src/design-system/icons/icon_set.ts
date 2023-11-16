@@ -82,12 +82,23 @@ import Logout from "~icons/material-symbols/logout";
 import Cat from "~icons/fa6-solid/cat";
 import Filter from "~icons/heroicons/funnel-20-solid";
 import Menu from "~icons/heroicons-solid/menu-alt-1";
-import BulletList from "~icons/fluent/text-bullet-list-tree-16-regular";
+import BulletListIndented from "~icons/fluent/text-bullet-list-tree-16-regular";
+import BulletList from "~icons/material-symbols/list";
 import UserCircle from "~icons/heroicons/user-circle-solid";
 import Plug from "~icons/ph/plugs-fill";
 import Boxes from "~icons/bi/boxes";
 import TreeParents from "~icons/fluent-mdl2/breadcrumb";
-// import ExternalLink rom "~icons/heroicons/arrow-top-right-on-square-20-solid";
+import Docs from "~icons/fluent/book-question-mark-20-filled";
+import Password from "~icons/material-symbols-light/password";
+import Key from "~icons/material-symbols/key";
+
+import BracketsCurly from "~icons/ph/brackets-curly";
+import BracketsSquare from "~icons/ph/brackets-square";
+import BracketsAngle from "~icons/ph/brackets-angle";
+import NestedArrowRight from "~icons/material-symbols/subdirectory-arrow-right";
+
+import CollapseAll from "~icons/material-symbols/collapse-all";
+import ExpandAll from "~icons/material-symbols/expand-all";
 
 import EmptyIcon from "./custom-icons/empty-icon.svg?raw";
 
@@ -115,8 +126,13 @@ import GithubLogo from "~icons/carbon/logo-github";
 import VimLogo from "~icons/raphael/vim";
 
 // carbon
-import Hashtag from "~icons/carbon/hashtag";
 import Create from "~icons/carbon/intent-request-create";
+
+// attribute widget types
+import InputTypeString from "~icons/carbon/string-text";
+import InputTypeText from "~icons/carbon/text-long-paragraph";
+import InputTypeNumber from "~icons/carbon/string-integer";
+import InputTypeSelect from "~icons/octicon/single-select-24";
 
 import Laptop from "~icons/material-symbols/laptop-mac-outline";
 import Celebrate from "~icons/game-icons/party-popper";
@@ -146,7 +162,11 @@ export const ICONS = Object.freeze({
   beaker: Beaker,
   bell: Bell,
   bolt: Bolt,
+  "brackets-angle": BracketsAngle,
+  "brackets-curly": BracketsCurly,
+  "brackets-square": BracketsSquare,
   "bullet-list": BulletList,
+  "bullet-list-indented": BulletListIndented,
   cat: Cat,
   celebrate: Celebrate,
   check: Check,
@@ -160,18 +180,21 @@ export const ICONS = Object.freeze({
   clock: Clock,
   "cloud-download": CloudDownload,
   "cloud-upload": CloudUpload,
+  "collapse-row": CollapseAll,
   component: Cube,
   "component-plus": CubePlus,
   create: Create,
   "credit-card": CreditCard,
   "cursor-array-rays": CursorArrayRays,
   diagram: Diagram,
+  docs: Docs,
   "dots-horizontal": DotsHorizontal,
   "dots-vertical": DotsVertical,
   download: Download,
   edit: Pencil,
   "empty-square": EmptySquare,
   "exclamation-circle": ExclamationCircle,
+  "expand-row": ExpandAll,
   "external-link": ExternalLink,
   eye: Eye,
   filter: Filter,
@@ -180,9 +203,13 @@ export const ICONS = Object.freeze({
   "git-commit": GitCommit,
   "git-merge": GitMerge,
   globe: Globe,
-  hashtag: Hashtag,
   "help-circle": QuestionMarkCircle,
   hide: EyeOff,
+  "input-type-number": InputTypeNumber,
+  "input-type-select": InputTypeSelect,
+  "input-type-string": InputTypeString,
+  "input-type-text": InputTypeText,
+  key: Key,
   laptop: Laptop,
   link: Link,
   loader: Loader,
@@ -197,7 +224,9 @@ export const ICONS = Object.freeze({
   "minus-square": MinusSquare,
   moon: Moon,
   multiselect: Boxes,
+  "nested-arrow-right": NestedArrowRight,
   none: EmptyIcon,
+  password: Password,
   play: Play,
   "play-circle": PlayCircle,
   plug: Plug,

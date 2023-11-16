@@ -4,7 +4,7 @@
       <SidebarSubpanelTitle label="Asset Details" icon="component" />
 
       <div v-if="DEV_MODE" class="px-xs pt-xs text-2xs italic opacity-30">
-        COMPONENT ID = {{ selectedComponent?.id }}
+        COMPONENT ID = {{ selectedComponent.id }}
         <br />
         NODE ID = {{ selectedComponent.nodeId }}
       </div>
@@ -79,9 +79,7 @@
             </template>
             <TabGroup trackingSlug="asset_details/component" minimal>
               <TabGroupItem label="Attributes" slug="attributes">
-                <AttributeViewer
-                  class="dark:text-neutral-50 text-neutral-900"
-                />
+                <AttributesPanel />
               </TabGroupItem>
               <TabGroupItem label="Code" slug="code">
                 <template v-if="codeReqStatus.isPending">
@@ -169,7 +167,6 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useStatusStore } from "@/store/status.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import AttributeViewer from "@/components/AttributeViewer.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useActionsStore } from "@/store/actions.store";
@@ -182,6 +179,7 @@ import AssetActionsDetails from "./AssetActionsDetails.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import AssetDiffDetails from "./AssetDiffDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
+import AttributesPanel from "./AttributesPanel/AttributesPanel.vue";
 
 const emit = defineEmits(["delete", "restore"]);
 

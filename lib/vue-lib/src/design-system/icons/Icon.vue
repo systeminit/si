@@ -49,7 +49,7 @@ const props = defineProps({
   name: { type: String as PropType<IconNames>, required: true },
   rotate: { type: String as PropType<"left" | "right" | "up" | "down"> },
   size: {
-    type: String as PropType<IconSizes>,
+    type: String as PropType<IconSizes | "inherit" | "none">,
     default: "md",
   },
   tone: {
@@ -87,6 +87,8 @@ const sizeClasses = computed(
       lg: "w-8 h-8",
       xl: "w-9 h-9",
       "2xl": "w-12 h-12",
+      inherit: "w-inherit h-inherit",
+      none: "",
     }[props.size]),
 );
 

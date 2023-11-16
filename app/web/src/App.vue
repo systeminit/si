@@ -93,7 +93,7 @@ const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
 const realtimeStore = useRealtimeStore();
 </script>
 
-<style>
+<style lang="less">
 .v-popper__arrow-container {
   display: none;
 }
@@ -126,5 +126,21 @@ const realtimeStore = useRealtimeStore();
     #333 10px,
     #333 20px
   );
+}
+
+/* some global css vars to be used in a few places... */
+body.light {
+  --input-border-color: @colors-neutral-400;
+  --input-bg-color: @colors-neutral-100;
+  --input-focus-bg-color: @colors-white;
+  --input-focus-border-color: @colors-action-400;
+  --panel-bg-color: @colors-white;
+}
+body.dark {
+  --input-border-color: @colors-neutral-600;
+  --input-bg-color: @colors-neutral-900;
+  --input-focus-bg-color: @colors-black;
+  --input-focus-border-color: @colors-action-300;
+  --panel-bg-color: @colors-neutral-800;
 }
 </style>
