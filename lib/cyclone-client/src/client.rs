@@ -246,7 +246,7 @@ where
             .map_err(|err| ClientError::Connect(err.into()))?;
 
         println!("About to do write_all");
-        if stream.write_all(connect_cmd.as_bytes()).await.is_err() { 
+        if stream.write_all(connect_cmd.as_bytes()).await.is_err() {
             println!("Within write_all");
         };
         println!("Got further in CONNECT");
@@ -263,8 +263,6 @@ where
         let the_string = std::str::from_utf8(&connect_response)?;
         println!("{}", the_string);
 
-        if !connect_response.starts_with(b"OK ") {
-        }
         Ok(())
     }
 
@@ -451,16 +449,17 @@ where
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
+        println!("in websocket stream");
         let stream = self
             .connector
             .call(self.uri.clone())
             .await
             .map_err(|err| ClientError::Connect(err.into()))?;
-        let uri = self.new_ws_request(path_and_query)?;
+        let uri = dbg!(self.new_ws_request(path_and_query)?);
         let (websocket_stream, response) = tokio_tungstenite::client_async(uri, stream)
             .await
             .map_err(ClientError::WebsocketConnection)?;
-
+        println!("next");
         if response.status() != StatusCode::SWITCHING_PROTOCOLS {
             return Err(ClientError::UnexpectedStatusCode(response.status()));
         }

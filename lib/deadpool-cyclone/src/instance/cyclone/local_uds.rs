@@ -2,7 +2,7 @@ use ::std::path::Path;
 use rand::distributions::Alphanumeric;
 use rand::thread_rng;
 use rand::Rng;
-use std::{thread, io, path::PathBuf, result, time::Duration};
+use std::{io, path::PathBuf, result, time::Duration};
 
 use bollard::container::{
     Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions,
@@ -341,21 +341,36 @@ impl Spec for LocalUdsInstanceSpec {
 
         println!("TRYNA CONNECT FROM LOCAL UDS");
 
+
+        let connect = {
+            let mut retries = 30;
+            loop {
+                match client.connect().await {
+                    Ok(connect) => break connect,
+                    Err(err) => dbg!(err)
+                };
+                if retries < 1 {
+                    return Err(Self::Error::WatchInitTimeout);
+                }
+                retries -= 1;
+                time::sleep(Duration::from_millis(64)).await;
+            }
+        };
+
         // Establish the client watch session. As the process may be booting, we will retry for a
         // period before giving up and assuming that the server instance has failed.
         let watch = {
             let mut retries = 30;
             loop {
                 trace!("calling client.watch()");
-                println!("Calling Client Watch, iteration {}", retries.to_string());
-                let _ = dbg!(client.connect().await);
 
-                //let one_s = time::Duration::from_millis(1000);
-                //std::thread::sleep(one_s);
-                if let Ok(watch) = client.watch().await {
-                    trace!("client watch session established");
-                    break watch;
-                }
+                match client.watch().await {
+                    Ok(watch) => {
+                        trace!("client watch session established");
+                        break watch;
+                    }
+                    Err(err) => dbg!(err)
+                };
                 if retries < 1 {
                     return Err(Self::Error::WatchInitTimeout);
                 }
