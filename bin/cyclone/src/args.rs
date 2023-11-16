@@ -1,5 +1,7 @@
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
+use tokio_vsock::VsockAddr;
+
 use clap::{ArgAction, Parser};
 use cyclone_server::{Config, ConfigError, IncomingStream};
 
@@ -35,6 +37,10 @@ pub(crate) struct Args {
     /// Binds service to a unix domain socket [example: /var/run/cyclone.sock]
     #[arg(long, group = "bind")]
     pub(crate) bind_uds: Option<PathBuf>,
+
+    /// Binds service to a vsock socket [example: ]
+    #[arg(long, group = "bind")]
+    pub(crate) bind_vsock: Option<String>,
 
     /// Enables active/watch behavior.
     #[arg(long, group = "watch")]
@@ -116,6 +122,15 @@ impl TryFrom<Args> for Config {
         }
         if let Some(pathbuf) = args.bind_uds {
             builder.incoming_stream(IncomingStream::UnixDomainSocket(pathbuf));
+        }
+        if let Some(addr) = args.bind_vsock {
+            let split = addr.split(':').collect::<Vec<&str>>();
+
+            let vsock_addr = VsockAddr::new(
+                split[0].parse::<u32>().unwrap(),
+                split[1].parse::<u32>().unwrap(),
+            );
+            builder.incoming_stream(IncomingStream::VsockSocket(vsock_addr));
         }
 
         builder.try_lang_server_path(args.lang_server)?;
