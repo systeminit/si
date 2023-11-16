@@ -63,6 +63,15 @@ export const usePresenceStore = () => {
       }),
       getters: {
         users: (state) => _.values(state.usersById),
+        usersInChangeset: (state) =>
+          _.filter(
+            _.mapValues(
+              state.usersById,
+              (u) =>
+                u.changeSetId &&
+                u.changeSetId === changeSetsStore.selectedChangeSetId,
+            ),
+          ),
         diagramCursors: (state): DiagramCursorDef[] =>
           _.filter(
             _.values(
