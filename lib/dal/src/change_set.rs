@@ -1,22 +1,25 @@
 use chrono::{DateTime, Utc};
+use postgres_types::ToSql;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
-use si_data_pg::PgError;
+use si_data_pg::{PgError, PgPoolError};
 use strum::{Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::standard_model::{object_option_from_row_option, objects_from_rows};
-use crate::ws_event::{WsEvent, WsEventError, WsPayload};
 use crate::{
     pk, Action, ActionError, HistoryActor, HistoryEvent, HistoryEventError, LabelListError,
     StandardModelError, Tenancy, Timestamp, TransactionsError, User, UserError, UserPk, Visibility,
+    WsEvent, WsEventError, WsPayload,
 };
 use crate::{ComponentError, DalContext, WsEventResult};
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("queries/change_set/open_list.sql");
 const CHANGE_SET_GET_BY_PK: &str = include_str!("queries/change_set/get_by_pk.sql");
 const GET_ACTORS: &str = include_str!("queries/change_set/get_actors.sql");
+
+const BEGIN_MERGE_FLOW: &str = include_str!("queries/change_set/begin_merge_flow.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -38,6 +41,8 @@ pub enum ChangeSetError {
     #[error(transparent)]
     Pg(#[from] PgError),
     #[error(transparent)]
+    PgPool(#[from] PgPoolError),
+    #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
@@ -52,12 +57,13 @@ pub enum ChangeSetError {
 pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
 
 #[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, Display, EnumString, PartialEq, Eq, Clone)]
+#[derive(Deserialize, Serialize, Debug, Display, EnumString, PartialEq, Eq, Clone, ToSql)]
 pub enum ChangeSetStatus {
     Abandoned,
     Applied,
     Closed,
     Failed,
+    NeedsApproval,
     Open,
 }
 
@@ -111,6 +117,23 @@ impl ChangeSet {
 
     pub fn generate_name() -> String {
         Utc::now().format("%Y-%m-%d-%H:%M").to_string()
+    }
+
+    pub async fn begin_approval_flow(&mut self, ctx: &mut DalContext) -> ChangeSetResult<()> {
+        let row = ctx
+            .pg_pool()
+            .get()
+            .await?
+            .query_one(
+                BEGIN_MERGE_FLOW,
+                &[&self.pk, &ChangeSetStatus::NeedsApproval],
+            )
+            .await?;
+        let updated_at: DateTime<Utc> = row.try_get("timestamp_updated_at")?;
+        self.timestamp.updated_at = updated_at;
+        self.status = ChangeSetStatus::NeedsApproval;
+
+        Ok(())
     }
 
     #[instrument(skip(ctx))]
@@ -272,6 +295,30 @@ impl WsEvent {
         )
         .await
     }
+
+    pub async fn change_set_merge_vote(
+        ctx: &DalContext,
+        change_set_pk: ChangeSetPk,
+        user_pk: UserPk,
+        vote: bool,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetMergeVote(ChangeSetMergeVotePayload {
+                change_set_pk,
+                user_pk,
+                vote,
+            }),
+        )
+        .await
+    }
+
+    pub async fn change_set_begin_approval_process(
+        ctx: &DalContext,
+        change_set_pk: ChangeSetPk,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::ChangeSetBeginApprovalProcess(change_set_pk)).await
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -279,4 +326,12 @@ impl WsEvent {
 pub struct ChangeSetAppliedPayload {
     change_set_pk: ChangeSetPk,
     user_pk: Option<UserPk>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetMergeVotePayload {
+    change_set_pk: ChangeSetPk,
+    user_pk: UserPk,
+    vote: bool,
 }
