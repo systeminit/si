@@ -7,10 +7,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::standard_model::{object_option_from_row_option, objects_from_rows};
-use crate::ws_event::{WsEvent, WsEventError, WsPayload};
 use crate::{
     pk, Action, ActionError, HistoryActor, HistoryEvent, HistoryEventError, LabelListError,
     StandardModelError, Tenancy, Timestamp, TransactionsError, User, UserError, UserPk, Visibility,
+    WsEvent, WsEventError, WsPayload,
 };
 use crate::{ComponentError, DalContext, WsEventResult};
 
@@ -272,6 +272,23 @@ impl WsEvent {
         )
         .await
     }
+
+    pub async fn changeset_merge_vote(
+        ctx: &DalContext,
+        change_set_pk: ChangeSetPk,
+        user_pk: UserPk,
+        vote: bool,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetMergeVote(ChangeSetMergeVotePayload {
+                change_set_pk,
+                user_pk,
+                vote,
+            }),
+        )
+        .await
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -279,4 +296,12 @@ impl WsEvent {
 pub struct ChangeSetAppliedPayload {
     change_set_pk: ChangeSetPk,
     user_pk: Option<UserPk>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetMergeVotePayload {
+    change_set_pk: ChangeSetPk,
+    user_pk: UserPk,
+    vote: bool,
 }
