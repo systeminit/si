@@ -305,13 +305,24 @@ fn find_in_to_rebase_or_create_using_onto(
                 unchecked_node_weight.lineage_id(),
             )? {
                 Some(found_equivalent_node) => {
-                    updated.extend(
-                        to_rebase_workspace_snapshot
-                            .import_subgraph(onto_workspace_snapshot, unchecked)?,
-                    );
-                    updated.insert(found_equivalent_node, unchecked);
+                    let found_equivalent_node_weight =
+                        to_rebase_workspace_snapshot.get_node_weight(found_equivalent_node)?;
+                    if found_equivalent_node_weight.merkle_tree_hash()
+                        != unchecked_node_weight.merkle_tree_hash()
+                    {
+                        updated.extend(
+                            to_rebase_workspace_snapshot
+                                .import_subgraph(onto_workspace_snapshot, unchecked)?,
+                        );
 
-                    unchecked
+                        *updated
+                            .get(&unchecked)
+                            .ok_or(ChangeSetLoopError::DestinationNotUpdatedWhenImportingSubgraph)?
+                    } else {
+                        updated.insert(unchecked, found_equivalent_node);
+
+                        found_equivalent_node
+                    }
                 }
                 None => {
                     updated.extend(

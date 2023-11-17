@@ -102,8 +102,10 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
 
     let new_code_base64 = general_purpose::STANDARD_NO_PAD.encode("this is new code");
 
+    // modify func
     let func = func
         .modify(ctx, |f| {
+            f.name = "test:modified".into();
             f.code_base64 = Some(new_code_base64.clone());
 
             Ok(())
@@ -111,7 +113,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
         .await
         .expect("able to modify func");
 
-    // create a new func argument
+    // create func arguments
     let arg_1 = FuncArgument::new(ctx, "argle bargle", FuncArgumentKind::Object, None, func.id)
         .await
         .expect("able to create func argument");
@@ -141,6 +143,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
 
     assert_eq!(2, args.len());
 
+    // Modify func argument 
     FuncArgument::modify_by_id(ctx, arg_1.id, |arg| {
         arg.name = "bargle argle".into();
 
@@ -231,8 +234,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
             .id()
     };
 
-    dbg!(snapshot_id_after_deletion, snapshot_id_before_deletion);
-
+    // A sanity check
     assert_ne!(snapshot_id_before_deletion, snapshot_id_after_deletion);
 
     let result = Func::get_by_id(ctx, func.id).await;
