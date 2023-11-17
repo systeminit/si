@@ -413,6 +413,8 @@ where
     }
 
     fn request(&self, req: Request<Body>) -> ResponseFuture {
+        let conn = Request::connect("52").body(Body::empty()).map_err(ClientError::Request);
+        let _ = self.inner_client.request(conn.unwrap());
         self.inner_client.request(req)
     }
 
