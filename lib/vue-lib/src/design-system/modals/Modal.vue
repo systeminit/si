@@ -37,6 +37,7 @@
             <DialogPanel
               :class="
                 clsx(
+                  props.class,
                   'w-full rounded text-left align-middle shadow-2xl',
                   'flex flex-col-reverse',
                   'transform transition-all',
@@ -152,6 +153,7 @@ const props = defineProps({
     required: false,
   },
   noAutoFocus: Boolean,
+  class: String,
 });
 
 // make modal a new "theme container" but by passing no value, we reset the theme back to the root theme

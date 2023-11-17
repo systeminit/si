@@ -15,6 +15,7 @@ export { default as RequestStatusMessage } from "./general/RequestStatusMessage.
 export { default as RichText } from "./general/RichText.vue";
 export { default as Timestamp } from "./general/Timestamp.vue";
 export { default as VButton } from "./general/VButton.vue";
+export { default as JsonTreeExplorer } from "./general/JsonTreeExplorer/JsonTreeExplorer.vue";
 
 // ./icons
 export { default as Icon } from "./icons/Icon.vue";

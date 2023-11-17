@@ -38,6 +38,20 @@ export interface SetTypeArgs {
   value?: unknown;
 }
 
+export type AttributeTreeItem = {
+  propDef: PropertyEditorProp;
+  children: AttributeTreeItem[];
+  value: PropertyEditorValue | undefined;
+  valueId: string;
+  parentValueId: string;
+  propId: string;
+  mapKey?: string;
+  arrayIndex?: number;
+  validations: PropertyEditorValidation[] | undefined;
+  isValid: boolean;
+  validationError: string | undefined;
+};
+
 export const useComponentAttributesStore = (componentId: ComponentId) => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
@@ -62,59 +76,90 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           values: null as PropertyEditorValues | null,
         }),
         getters: {
-          currentValueForValueId:
-            (state) =>
-            (valueId: string): PropertyEditorValue | undefined =>
-              state.values?.values[valueId],
-          // puts the schema, validations, values all together in a format used by the property editor
-          editorContext: (state) => {
-            const { schema, validations, values } = state;
-            if (!schema || !validations || !values) return undefined;
+          // recombine the schema + values + validations into a single nested tree that can be used by the attributes panel
+          attributesTree: (state): AttributeTreeItem | undefined => {
+            const { schema, values } = state;
+            if (!schema || !values) return;
 
-            // previously called hackAwayTheZeroElementOfContainers - not entirely clear what it's doing
-            // can likely refactor how we store/retrieve the data so we wont need this...
-            const filteredChildValues: { [key: string]: Array<string> } = {};
+            const validationsByValueId = _.groupBy(
+              state.validations,
+              (v) => v.valueId,
+            );
+            const valuesByValueId = state.values?.values;
+            const propsByPropId = state.schema?.props;
+            const rootValueId = values.rootValueId;
 
-            for (const [parentValueId, childValuesIds] of Object.entries(
-              values.childValues,
-            )) {
-              const parentValue = values.values[parentValueId];
-              if (!parentValue) {
-                // If we don't find a value, then don't filter and continue
-                filteredChildValues[parentValueId] = childValuesIds;
-                continue;
-              }
-              const parentProp = schema.props[parentValue.propId];
-              if (!parentProp) {
-                // If we don't find a prop, then don't filter and continue
-                filteredChildValues[parentValue.id] = childValuesIds;
-                continue;
-              }
+            if (!valuesByValueId || !propsByPropId || !rootValueId) return;
 
-              if (parentProp.kind === "array" || parentProp.kind === "map") {
-                filteredChildValues[parentValue.id] = childValuesIds.filter(
-                  (childValueId) => {
-                    const childValue = values.values[childValueId];
-                    if (childValue && _.isNull(childValue.key)) {
-                      // If we don't find a value, then don't filter it out
-                      return false;
-                    } else {
-                      return true;
-                    }
-                  },
-                );
-              } else {
-                filteredChildValues[parentValue.id] = childValuesIds;
-              }
+            function getAttributeValueWithChildren(
+              valueId: string,
+              parentValueId: string,
+              indexInParentArray?: number,
+            ): AttributeTreeItem | undefined {
+              /* eslint-disable @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-explicit-any */
+              const value = valuesByValueId![valueId]!;
+
+              const propDef = propsByPropId![value.propId as any];
+
+              // some values that we see are for props that are hidden, so we filter them out
+              if (!propDef) return;
+
+              const validations = validationsByValueId[value.id as any] as
+                | PropertyEditorValidation[]
+                | undefined;
+              const failingValidation = _.find(validations, (v) => !v.valid);
+
+              return {
+                propDef,
+                value,
+                valueId,
+                parentValueId,
+                // using isNil because its actually null (not undefined)
+                ...(indexInParentArray === undefined &&
+                  !_.isNil(value.key) && { mapKey: value.key }),
+                ...(indexInParentArray !== undefined && {
+                  arrayIndex: indexInParentArray,
+                }),
+                propId: value.propId,
+                validations,
+                isValid: !failingValidation,
+                validationError: failingValidation?.errors[0]?.message,
+                children: _.compact(
+                  _.map(values?.childValues[valueId], (cvId, index) =>
+                    getAttributeValueWithChildren(
+                      cvId,
+                      valueId,
+                      propDef.kind === "array" ? index : undefined,
+                    ),
+                  ),
+                ),
+              };
             }
-            return {
-              schema,
-              validations,
-              values: {
-                ...values,
-                childValues: filteredChildValues,
-              },
-            };
+
+            // dummy parent root value id - not used by anything
+            return getAttributeValueWithChildren(rootValueId, "ROOT");
+          },
+          domainTree(): AttributeTreeItem | undefined {
+            if (!this.attributesTree) return undefined;
+            return _.find(
+              this.attributesTree.children,
+              (c) => c.propDef.name === "domain",
+            );
+          },
+          secretsTree(): AttributeTreeItem | undefined {
+            if (!this.attributesTree) return undefined;
+            return _.find(
+              this.attributesTree.children,
+              (c) => c.propDef.name === "secrets",
+            );
+          },
+          siTreeByPropName(): Record<string, AttributeTreeItem> | undefined {
+            if (!this.attributesTree) return undefined;
+            const siTree = _.find(
+              this.attributesTree.children,
+              (c) => c.propDef.name === "si",
+            );
+            return _.keyBy(siTree?.children, (prop) => prop.propDef.name);
           },
 
           // getter to be able to quickly grab selected component id
@@ -211,11 +256,11 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             // If the valueid for this update does not exist in the values tree,
             // we shouldn't perform the update!
             if (
-              this.currentValueForValueId(
+              this.values?.values[
                 isInsert
                   ? updatePayload.insert.parentAttributeValueId
-                  : updatePayload.update.attributeValueId,
-              ) === undefined
+                  : updatePayload.update.attributeValueId
+              ] === undefined
             ) {
               return;
             }

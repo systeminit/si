@@ -111,7 +111,8 @@ import { usePresenceStore } from "@/store/presence.store";
 import { UserInfo } from "@/components/layout/navbar/Collaborators.vue";
 import UserIcon from "@/components/layout/navbar/UserIcon.vue";
 
-const createModalRef = ref<InstanceType<typeof Modal> | null>(null);
+const createModalRef = ref<InstanceType<typeof Modal>>();
+
 const presenceStore = usePresenceStore();
 
 const hasActions = computed(() => actionsStore.proposedActions.length > 0);

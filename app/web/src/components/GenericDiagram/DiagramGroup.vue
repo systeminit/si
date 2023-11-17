@@ -20,7 +20,7 @@
         y: -4 - nodeHeaderHeight - GROUP_HEADER_BOTTOM_MARGIN,
         cornerRadius: CORNER_RADIUS + 3,
         stroke: SELECTION_COLOR,
-        strokeWidth: isSelected ? 5 : 2,
+        strokeWidth: isSelected ? 3 : 1,
         listening: false,
       }"
     />

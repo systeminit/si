@@ -127,11 +127,9 @@ export function useSecretsStore() {
       }),
       getters: {
         secretsByDefinitionId(state): SecretsHashMap {
-          return _.transform(
+          return _.mapValues(
             state.secretDefinitionByDefinitionId,
-            (acc, value, key) => {
-              acc[key] = value.secrets;
-            },
+            (s) => s.secrets,
           );
         },
         secretsByLastCreated(state): SecretsOrderedArray {
