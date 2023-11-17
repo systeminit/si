@@ -138,6 +138,10 @@ impl<'a> SiPkgSchemaVariant<'a> {
         self.unique_id.as_deref()
     }
 
+    pub fn source(&self) -> Source<'a> {
+        self.source.clone()
+    }
+
     pub fn deleted(&self) -> bool {
         self.deleted
     }

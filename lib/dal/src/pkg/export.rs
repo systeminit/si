@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap, HashSet};
+
 use strum::IntoEnumIterator;
-use telemetry::prelude::*;
 
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, AttributeValuePath,
@@ -12,6 +12,7 @@ use si_pkg::{
     SiPropFuncSpecKind, SocketSpec, SocketSpecData, SocketSpecKind, SpecError, ValidationSpec,
     ValidationSpecKind,
 };
+use telemetry::prelude::*;
 
 use crate::{
     component::view::{AttributeDebugView, ComponentDebugView},
@@ -291,6 +292,24 @@ impl PkgExporter {
             variant,
             &mut variant_spec_builder,
             SchemaVariantSpecPropRoot::ResourceValue,
+        )
+        .await?;
+
+        self.export_prop_tree(
+            ctx,
+            change_set_pk,
+            variant,
+            &mut variant_spec_builder,
+            SchemaVariantSpecPropRoot::Secrets,
+        )
+        .await?;
+
+        self.export_prop_tree(
+            ctx,
+            change_set_pk,
+            variant,
+            &mut variant_spec_builder,
+            SchemaVariantSpecPropRoot::SecretDefinition,
         )
         .await?;
 
