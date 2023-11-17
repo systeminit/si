@@ -490,7 +490,7 @@ pub enum LocalUdsRuntimeStrategy {
 
 impl Default for LocalUdsRuntimeStrategy {
     fn default() -> Self {
-        Self::LocalProcess
+        Self::LocalFirecracker
     }
 }
 
@@ -705,7 +705,9 @@ impl LocalFirecrackerRuntime {
     ) -> Result<Box<dyn LocalInstanceRuntime>> {
 
         // Chage this to a five integer ID
-        let vm_id: String = thread_rng().gen_range(0..5000).to_string();
+        // TODO(johnrwatson): debugging, needs reverted
+        //let vm_id: String = thread_rng().gen_range(0..5000).to_string();
+        let vm_id: String = "1".to_string();
         let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", vm_id));
 
         // TODO(johnwatson): Run some checks against the ID to see if it's been used before
@@ -727,14 +729,15 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
 
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
 
-        let command = "/firecracker-data/start.sh ".to_owned()  + &self.vm_id;
+        // TODO(johnrwatson): debugging, needs reverted
+        //let command = "/firecracker-data/start.sh ".to_owned()  + &self.vm_id;
 
-        // Spawn the shell process
-        let _status = Command::new("sudo")
-            .arg("bash")
-            .arg("-c")
-            .arg(command)
-            .status().await;
+        //// Spawn the shell process
+        //let _status = Command::new("sudo")
+        //    .arg("bash")
+        //    .arg("-c")
+        //    .arg(command)
+        //    .status().await;
         Ok(())
 
     }
@@ -781,7 +784,8 @@ async fn watch_task<Strm>(
             _ = Pin::new(&mut shutdown_rx) => {
                 trace!("watch task received shutdown");
                 if let Err(err) = watch_progress.stop().await {
-                    warn!(error = ?err, "failed to cleanly close the watch session");
+                    dbg!(err);
+                    //warn!(error = ?err, "failed to cleanly close the watch session");
                 }
                 break;
             }
@@ -795,7 +799,8 @@ async fn watch_task<Strm>(
                     Some(Err(err)) => {
                         warn!(error = ?err, "error on watch stream");
                         if let Err(err) = watch_progress.stop().await {
-                            warn!(error = ?err, "failed to cleanly close the watch session");
+                            dbg!(err);
+                            //warn!(error = ?err, "failed to cleanly close the watch session");
                         }
                         break
                     }

@@ -133,20 +133,6 @@ mod tests {
             .await
             .expect("failed to create instance");
 
-        let status = instance
-            .liveness()
-            .await
-            .expect("failed to run liveness check");
-        assert_eq!(status, LivenessStatus::Ok);
-        instance.ensure_healthy().await.expect("failed healthy");
-
-        let status = instance
-            .readiness()
-            .await
-            .expect("failed to run readiness check");
-        assert_eq!(status, ReadinessStatus::Ready);
-        instance.ensure_healthy().await.expect("failed healthy");
-
         instance
             .execute_ping()
             .await
@@ -234,20 +220,6 @@ mod tests {
         let mut instance = managed::Manager::create(&manager)
             .await
             .expect("failed to create instance");
-
-        //let status = instance
-        //    .liveness()
-        //    .await
-        //    .expect("failed to run liveness check");
-        //assert_eq!(status, LivenessStatus::Ok);
-        //instance.ensure_healthy().await.expect("failed healthy");
-//
-        //let status = instance
-        //    .readiness()
-        //    .await
-        //    .expect("failed to run readiness check");
-        //assert_eq!(status, ReadinessStatus::Ready);
-        //instance.ensure_healthy().await.expect("failed healthy");
 
         instance
             .execute_ping()

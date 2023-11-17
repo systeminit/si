@@ -420,6 +420,7 @@ where
 
     async fn connect(&mut self, mut stream: Strm) -> Result<Strm> {
         println!("TRYNA CONNECT WITHIN CONNECT");
+
         let connect_cmd = format!("CONNECT {}\n", 52);
 
         println!("About to do write_all");
@@ -454,13 +455,15 @@ where
             .await
             .map_err(|err| ClientError::Connect(err.into()))?;
 
+        // TODO(johnrwatson): Need to fix the tokio/threaded variant/fork here
+        // as it currently fails with the connect
         stream = self.connect(stream).await?;
 
         let uri = dbg!(self.new_ws_request(path_and_query)?);
         let (websocket_stream, response) = tokio_tungstenite::client_async(uri, stream)
             .await
             .map_err(ClientError::WebsocketConnection)?;
-        println!("next");
+
         if dbg!(response.status()) != StatusCode::SWITCHING_PROTOCOLS {
             return Err(ClientError::UnexpectedStatusCode(response.status()));
         }
@@ -477,7 +480,8 @@ struct ClientConfig {
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
-            watch_timeout: Duration::from_secs(10),
+            // TODO(johnrwatson): debugging, needs reverted
+            watch_timeout: Duration::from_secs(1000000),
         }
     }
 }
