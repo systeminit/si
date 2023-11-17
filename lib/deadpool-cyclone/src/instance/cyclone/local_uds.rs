@@ -124,34 +124,18 @@ impl Instance for LocalUdsInstance {
 impl CycloneClient<UnixStream> for LocalUdsInstance {
 
     async fn watch(&mut self) -> result::Result<Watch<UnixStream>, ClientError> {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
         self.client.watch().await
     }
 
     async fn liveness(&mut self) -> result::Result<LivenessStatus, ClientError> {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
         self.client.liveness().await
     }
 
     async fn readiness(&mut self) -> result::Result<ReadinessStatus, ClientError> {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
         self.client.readiness().await
     }
 
     async fn execute_ping(&mut self) -> result::Result<PingExecution<UnixStream>, ClientError> {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
         let result = self.client.execute_ping().await;
         self.count_request();
 
@@ -165,12 +149,8 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         Execution<UnixStream, ResolverFunctionRequest, ResolverFunctionResultSuccess>,
         ClientError,
     > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
         let result = self.client.execute_resolver(request).await;
-        self.count_request();
+        dbg!(self.count_request());
 
         result
     }
@@ -182,10 +162,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         Execution<UnixStream, ValidationRequest, ValidationResultSuccess>,
         ClientError,
     > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
         let result = self.client.execute_validation(request).await;
         self.count_request();
 
@@ -199,10 +175,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         request: ActionRunRequest,
     ) -> result::Result<Execution<UnixStream, ActionRunRequest, ActionRunResultSuccess>, ClientError>
     {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
         // Use the websocket client for cyclone to execute command run.
         let result = self.client.execute_action_run(request).await;
         self.count_request();
@@ -217,10 +189,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         Execution<UnixStream, ReconciliationRequest, ReconciliationResultSuccess>,
         ClientError,
     > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
         // Use the websocket client for cyclone to execute reconciliation.
         let result = self.client.execute_reconciliation(request).await;
         self.count_request();
@@ -235,10 +203,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         Execution<UnixStream, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
         ClientError,
     > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
         // Use the websocket client for cyclone to execute reconciliation.
         let result = self.client.execute_schema_variant_definition(request).await;
         self.count_request();
@@ -338,13 +302,15 @@ impl Spec for LocalUdsInstanceSpec {
         // Establish the client watch session. As the process may be booting, we will retry for a
         // period before giving up and assuming that the server instance has failed.
         let watch = {
-            let mut retries = 10;
+            let mut retries = 30;
             loop {
                 trace!("calling client.watch()");
+                println!("calling client.watch()");
 
                 match client.watch().await {
                     Ok(watch) => {
                         trace!("client watch session established");
+                        println!("client watch session established");
                         break watch;
                     }
                     Err(err) => dbg!(err)
@@ -357,17 +323,21 @@ impl Spec for LocalUdsInstanceSpec {
             }
         };
 
+        println!("made watch");
         let mut watch_progress = watch.start().await?;
+                println!("watch progress");
         // Establish that we have received our first watch ping, which should happen immediately
         // after establishing a watch session
         watch_progress
             .next()
             .await
             .ok_or(Self::Error::WatchClosed)??;
+                println!("watch progress next");
 
         let (watch_shutdown_tx, watch_shutdown_rx) = oneshot::channel();
         // Spawn a task to keep the watch session open until we shut it down
         tokio::spawn(watch_task(watch_progress, watch_shutdown_rx));
+        println!("after spawn");
 
         Ok(Self::Instance {
             _temp_path: temp_path,
@@ -708,8 +678,7 @@ impl LocalFirecrackerRuntime {
         // TODO(johnrwatson): debugging, needs reverted
         //let vm_id: String = thread_rng().gen_range(0..5000).to_string();
         let vm_id: String = "1".to_string();
-        let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", vm_id));
-
+        let sock = PathBuf::from(&format!("/srv/jailer/firecracker/1/root/v.sock"));
         // TODO(johnwatson): Run some checks against the ID to see if it's been used before
         // Calculate it instead of random?
 
@@ -783,6 +752,7 @@ async fn watch_task<Strm>(
             // Got a shutdown message
             _ = Pin::new(&mut shutdown_rx) => {
                 trace!("watch task received shutdown");
+                println!("watch task received shutdown");
                 if let Err(err) = watch_progress.stop().await {
                     dbg!(err);
                     //warn!(error = ?err, "failed to cleanly close the watch session");
@@ -793,10 +763,13 @@ async fn watch_task<Strm>(
             result = watch_progress.next() => {
                 match result {
                     // Got a ping, good news, proceed
-                    Some(Ok(())) => {},
+                    Some(Ok(())) => {
+                        println!("got a good ping")
+                    },
                     // An error occurred on the stream. We are going to treat this as catastrophic
                     // and end the watch.
                     Some(Err(err)) => {
+                        println!("bad stuff happened");
                         warn!(error = ?err, "error on watch stream");
                         if let Err(err) = watch_progress.stop().await {
                             dbg!(err);

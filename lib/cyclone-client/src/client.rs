@@ -236,8 +236,8 @@ where
     Sock: Send + Sync + std::fmt::Debug,
 {
 
-
     async fn watch(&mut self) -> Result<Watch<Strm>> {
+        println!("in watch");
         let stream = self.websocket_stream("/watch").await?;
         Ok(watch::watch(stream, self.config.watch_timeout))
     }
@@ -271,6 +271,7 @@ where
     }
 
     async fn execute_ping(&mut self) -> Result<PingExecution<Strm>> {
+        println!("in ping");
         let stream = self.websocket_stream("/execute/ping").await?;
         Ok(ping::execute(stream))
     }
@@ -279,6 +280,7 @@ where
         &mut self,
         request: ResolverFunctionRequest,
     ) -> Result<Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>> {
+        println!("in execute resolver");
         let stream = self.websocket_stream("/execute/resolver").await?;
         Ok(execution::execute(stream, request))
     }
@@ -288,6 +290,7 @@ where
         request: ActionRunRequest,
     ) -> result::Result<Execution<Strm, ActionRunRequest, ActionRunResultSuccess>, ClientError>
     {
+        println!("in execute action run");
         let stream = self.websocket_stream("/execute/command").await?;
         Ok(execution::execute(stream, request))
     }
@@ -308,6 +311,7 @@ where
         request: ValidationRequest,
     ) -> result::Result<Execution<Strm, ValidationRequest, ValidationResultSuccess>, ClientError>
     {
+        println!("in execute validation");
         Ok(execution::execute(
             self.websocket_stream("/execute/validation").await?,
             request,
@@ -321,6 +325,7 @@ where
         Execution<Strm, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
         ClientError,
     > {
+        println!("in execute schema def");
         Ok(execution::execute(
             self.websocket_stream("/execute/schema_variant_definition")
                 .await?,
@@ -467,6 +472,7 @@ where
         if dbg!(response.status()) != StatusCode::SWITCHING_PROTOCOLS {
             return Err(ClientError::UnexpectedStatusCode(response.status()));
         }
+        println!("websocket established");
 
         Ok(websocket_stream)
     }
@@ -481,7 +487,7 @@ impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             // TODO(johnrwatson): debugging, needs reverted
-            watch_timeout: Duration::from_secs(1000000),
+            watch_timeout: Duration::from_secs(10),
         }
     }
 }

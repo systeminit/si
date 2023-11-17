@@ -88,6 +88,7 @@ pub async fn ws_execute_resolver(
     State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
+    println!("we executin now");
     let lang_server_path = lang_server_path.as_path().to_path_buf();
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<ResolverFunctionRequest> = PhantomData;
@@ -231,6 +232,7 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     Success: Serialize + Unpin + fmt::Debug,
     LangServerSuccess: Serialize + DeserializeOwned + Unpin + fmt::Debug + Into<Success>,
 {
+    println!("handling sockets");
     let proto = {
         let execution: Execution<Request, LangServerSuccess, Success> =
             execution::new(lang_server_path, lang_server_debugging, key, sub_command);
