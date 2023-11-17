@@ -1,6 +1,7 @@
 use base64::{engine::general_purpose, Engine};
 use content_store::ContentHash;
 use dal::change_set_pointer::ChangeSetPointer;
+use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::workspace_snapshot::conflict::Conflict;
 use dal::workspace_snapshot::content_address::ContentAddress;
 use dal::workspace_snapshot::node_weight::NodeWeight;
@@ -67,6 +68,110 @@ async fn modify_func_node(ctx: &mut DalContext) {
         .expect("able to get func by id again");
 
     assert_eq!(Some(new_code_base64), modified_func.code_base64);
+}
+
+#[test]
+async fn func_node_with_arguments(ctx: &mut DalContext) {
+    let code_base64 = general_purpose::STANDARD_NO_PAD.encode("this is code");
+
+    let func = Func::new(
+        ctx,
+        "test",
+        None::<String>,
+        None::<String>,
+        None::<String>,
+        false,
+        false,
+        FuncBackendKind::JsAttribute,
+        FuncBackendResponseType::Boolean,
+        None::<String>,
+        Some(code_base64),
+    )
+    .await
+    .expect("able to make a func");
+
+    ctx.commit().await.expect("unable to commit");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("unable to update snapshot to visiblity");
+
+    Func::get_by_id(ctx, func.id)
+        .await
+        .expect("able to get func by id");
+
+    let new_code_base64 = general_purpose::STANDARD_NO_PAD.encode("this is new code");
+
+    let func = func
+        .modify(ctx, |f| {
+            f.code_base64 = Some(new_code_base64.clone());
+
+            Ok(())
+        })
+        .await
+        .expect("able to modify func");
+
+    // create a new func argument
+    let arg_1 = FuncArgument::new(ctx, "argle bargle", FuncArgumentKind::Object, None, func.id)
+        .await
+        .expect("able to create func argument");
+    FuncArgument::new(ctx, "argy bargy", FuncArgumentKind::Object, None, func.id)
+        .await
+        .expect("able to create func argument 2");
+
+    let conflicts = ctx.commit().await.expect("unable to commit");
+    assert!(matches!(conflicts, None));
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("unable to update snapshot to visiblity again");
+
+    let modified_func = Func::get_by_id(ctx, func.id)
+        .await
+        .expect("able to get func by id again");
+
+    assert_eq!(
+        Some(new_code_base64).as_deref(),
+        modified_func.code_base64.as_deref()
+    );
+
+    let args = FuncArgument::list_for_func(ctx, modified_func.id)
+        .await
+        .expect("able to list args");
+
+    assert_eq!(2, args.len());
+
+    FuncArgument::modify_by_id(ctx, arg_1.id, |arg| {
+        arg.name = "bargle argle".into();
+
+        Ok(())
+    })
+    .await
+    .expect("able to modify func");
+
+    let conflicts = ctx.commit().await.expect("unable to commit");
+    assert!(matches!(conflicts, None));
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("unable to update snapshot to visiblity again");
+
+    let func = Func::get_by_id(ctx, func.id)
+        .await
+        .expect("able to get func by id again");
+
+    let args = FuncArgument::list_for_func(ctx, func.id)
+        .await
+        .expect("able to list args again");
+
+    assert_eq!(2, args.len());
+
+    let modified_arg = args
+        .iter()
+        .find(|a| a.id == arg_1.id)
+        .expect("able to get modified func arg");
+
+    assert_eq!("bargle argle", modified_arg.name.as_str());
 }
 
 #[test]

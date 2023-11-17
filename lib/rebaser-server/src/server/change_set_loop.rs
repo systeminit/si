@@ -152,7 +152,6 @@ async fn process_delivery(
 
     // Perform the conflicts and updates detection.
     let onto_vector_clock_id: VectorClockId = message.onto_vector_clock_id.into();
-    dbg!(to_rebase_change_set.vector_clock_id() < onto_vector_clock_id);
     let (conflicts, updates) = to_rebase_workspace_snapshot
         .detect_conflicts_and_updates(
             dbg!(to_rebase_change_set.vector_clock_id()),

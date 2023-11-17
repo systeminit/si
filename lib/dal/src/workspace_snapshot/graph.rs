@@ -1,8 +1,7 @@
 use chrono::Utc;
 use content_store::{ContentHash, Store, StoreError};
-use petgraph::graph::Edge;
 use petgraph::stable_graph::Edges;
-use petgraph::{algo, prelude::*, visit::DfsEvent, EdgeDirection};
+use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use telemetry::prelude::*;
@@ -18,7 +17,6 @@ use crate::workspace_snapshot::{
     node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
     update::Update,
 };
-use crate::FuncId;
 
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::CategoryNodeWeight;
@@ -585,8 +583,6 @@ impl WorkspaceSnapshotGraph {
                     }
                     any_content_with_lineage_has_changed = true;
 
-                    debug!("merkle tree hashes are not the same");
-
                     // Check if there's a difference in the node itself (and whether it is a
                     // conflict if there is a difference).
                     if onto_node_weight.content_hash() != to_rebase_node_weight.content_hash() {
@@ -609,13 +605,31 @@ impl WorkspaceSnapshotGraph {
                                 to_rebase: to_rebase_node_index,
                             });
                         } else {
-                            // There are changes on both sides that have not been seen by the other
-                            // side; this is a conflict. There may also be other conflicts in the
-                            // outgoing relationships, the downstream nodes, or both.
-                            conflicts.push(Conflict::NodeContent {
-                                to_rebase: to_rebase_node_index,
-                                onto: onto_node_index,
-                            });
+                            // There are changes on both sides that have not
+                            // been seen by the other side; this is a conflict.
+                            // There may also be other conflicts in the outgoing
+                            // relationships, the downstream nodes, or both.
+
+                            // If the nodes in question are ordering nodes, the
+                            // conflict we care about is the ChildOrder
+                            // conflict, and will have already been detected.
+                            // The content on the ordering node is just the
+                            // ordering of the edges, so what matters if there
+                            // is a conflict in order, not if the hashes differ
+                            // because there is an extra edge (but the rest of
+                            // the edges are ordered the same)
+                            if !matches!(
+                                (onto_node_weight, to_rebase_node_weight),
+                                (
+                                    NodeWeight::Ordering(OrderingNodeWeight { .. }),
+                                    NodeWeight::Ordering(OrderingNodeWeight { .. })
+                                )
+                            ) {
+                                conflicts.push(Conflict::NodeContent {
+                                    to_rebase: to_rebase_node_index,
+                                    onto: onto_node_index,
+                                });
+                            }
                         }
                     }
 
@@ -825,12 +839,6 @@ impl WorkspaceSnapshotGraph {
                     }
                 }
             }
-
-            // Use the ordering from `other` in `to_rebase`.
-            updates.push(Update::ReplaceSubgraph {
-                onto: onto_ordering_index,
-                to_rebase: to_rebase_ordering_index,
-            });
         } else if to_rebase_ordering
             .vector_clock_write()
             .is_newer_than(onto_ordering.vector_clock_write())
@@ -4033,13 +4041,13 @@ mod test {
             )
             .expect("Unable to add root -> func edge");
 
-        let prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
-        let prop_index = graph
+        let root_prop_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+        let root_prop_index = graph
             .add_ordered_node(
                 change_set,
                 NodeWeight::new_content(
                     change_set,
-                    prop_id,
+                    root_prop_id,
                     ContentAddress::Prop(ContentHash::new(
                         PropId::generate().to_string().as_bytes(),
                     )),
@@ -4054,13 +4062,13 @@ mod test {
                     .expect("Unable to get NodeIndex"),
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)
                     .expect("Unable to create EdgeWeight"),
-                prop_index,
+                root_prop_index,
             )
             .expect("Unable to add schema variant -> prop edge");
         graph
             .add_edge(
                 graph
-                    .get_node_index_by_id(prop_id)
+                    .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeIndex"),
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)
                     .expect("Unable to create EdgeWeight"),
@@ -4089,7 +4097,7 @@ mod test {
             .add_ordered_edge(
                 change_set,
                 graph
-                    .get_node_index_by_id(prop_id)
+                    .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeWeight for prop"),
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)
                     .expect("Unable to create uses edge weight"),
@@ -4114,7 +4122,7 @@ mod test {
             .add_ordered_edge(
                 change_set,
                 graph
-                    .get_node_index_by_id(prop_id)
+                    .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeWeight for prop"),
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)
                     .expect("Unable to create uses edge weight"),
@@ -4139,7 +4147,7 @@ mod test {
             .add_ordered_edge(
                 change_set,
                 graph
-                    .get_node_index_by_id(prop_id)
+                    .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeWeight for prop"),
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)
                     .expect("Unable to create uses edge weight"),
@@ -4164,7 +4172,7 @@ mod test {
             .add_ordered_edge(
                 change_set,
                 graph
-                    .get_node_index_by_id(prop_id)
+                    .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeWeight for prop"),
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)
                     .expect("Unable to create uses edge weight"),
@@ -4185,7 +4193,7 @@ mod test {
             graph
                 .ordered_children_for_node(
                     graph
-                        .get_node_index_by_id(prop_id)
+                        .get_node_index_by_id(root_prop_id)
                         .expect("Unable to get prop NodeIndex")
                 )
                 .expect("Unable to find ordered children for node")
@@ -4196,7 +4204,7 @@ mod test {
             .remove_edge(
                 change_set,
                 graph
-                    .get_node_index_by_id(prop_id)
+                    .get_node_index_by_id(root_prop_id)
                     .expect("Unable to get NodeIndex for prop"),
                 ordered_prop_2_index,
                 EdgeWeightKindDiscriminants::Use,
@@ -4212,7 +4220,7 @@ mod test {
             graph
                 .ordered_children_for_node(
                     graph
-                        .get_node_index_by_id(prop_id)
+                        .get_node_index_by_id(root_prop_id)
                         .expect("Unable to get prop NodeIndex")
                 )
                 .expect("Unable to find ordered children for node")
@@ -4223,7 +4231,7 @@ mod test {
                 graph
                     .ordering_node_index_for_container(
                         graph
-                            .get_node_index_by_id(prop_id)
+                            .get_node_index_by_id(root_prop_id)
                             .expect("Unable to find ordering node for prop"),
                     )
                     .expect("Error getting ordering NodeIndex for prop")
