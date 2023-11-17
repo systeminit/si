@@ -1,5 +1,5 @@
-use dal::func::intrinsics::IntrinsicFunc;
-use dal::{DalContext, Func};
+use dal::DalContext;
+use dal::{func::intrinsics::IntrinsicFunc, Func};
 use dal_test::test;
 use strum::IntoEnumIterator;
 

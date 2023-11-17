@@ -9,6 +9,7 @@ use si_rabbitmq::{Config, Consumer, ConsumerOffsetSpecification, Environment, Pr
 use std::collections::HashMap;
 use std::time::Duration;
 use telemetry::prelude::*;
+use tokio::time::Instant;
 use ulid::Ulid;
 
 use crate::{ClientError, ClientResult};
@@ -75,10 +76,12 @@ impl Client {
         onto_workspace_snapshot_id: Ulid,
         onto_vector_clock_id: Ulid,
     ) -> ClientResult<ChangeSetReplyMessage> {
+        let start = Instant::now();
         let stream = self
             .streams
             .get_mut(&to_rebase_change_set_id)
             .ok_or(ClientError::RebaserStreamForChangeSetNotFound)?;
+        info!("got stream for change set: {:?}", start.elapsed());
         stream
             .producer
             .send_single(
@@ -90,6 +93,7 @@ impl Client {
                 Some(stream.reply_stream.clone()),
             )
             .await?;
+        info!("sent cs message: {:?}", start.elapsed());
         let maybe_delivery = match tokio::time::timeout(
             self.reply_timeout,
             stream.reply_consumer.next(),
@@ -105,6 +109,7 @@ impl Client {
                 return Err(ClientError::ReplyTimeout);
             }
         };
+        info!("got cs message: {:?}", start.elapsed());
 
         let delivery = maybe_delivery.ok_or(ClientError::EmptyDelivery(
             stream.reply_consumer.stream().to_string(),
@@ -113,6 +118,7 @@ impl Client {
             .clone()
             .message_contents
             .ok_or(ClientError::EmptyMessageContentsForDelivery(delivery))?;
+        info!("got contents: {:?}", start.elapsed());
 
         Ok(serde_json::from_value(contents)?)
     }
@@ -122,6 +128,7 @@ impl Client {
         &mut self,
         change_set_id: Ulid,
     ) -> ClientResult<String> {
+        let start = Instant::now();
         self.management_stream
             .producer
             .send_single(
@@ -132,6 +139,7 @@ impl Client {
                 Some(self.management_stream.reply_stream.clone()),
             )
             .await?;
+        info!("send management message: {:?}", start.elapsed());
 
         // FIXME(nick): we should probably not await a reply and assume that it is working OR we
         // should await a reply, but only to see if it was successful. This is because we should
@@ -145,6 +153,7 @@ impl Client {
             Ok(result) => result?,
             Err(_elapsed) => return Err(ClientError::ReplyTimeout),
         };
+        info!("get management reply: {:?}", start.elapsed());
 
         let delivery = maybe_delivery.ok_or(ClientError::EmptyDelivery(
             self.management_stream.reply_consumer.stream().to_string(),
@@ -155,6 +164,7 @@ impl Client {
             .ok_or(ClientError::EmptyMessageContentsForDelivery(delivery))?;
 
         let change_set_stream: String = serde_json::from_value(contents)?;
+        info!("get contents: {:?}", start.elapsed());
 
         // TODO(nick): move stream generation to a common crate.
         let environment = Environment::new(&self.config).await?;
@@ -164,15 +174,18 @@ impl Client {
             self.config.stream_prefix(),
         );
         environment.create_stream(&reply_stream).await?;
+        info!("create stream: {} {:?}", &reply_stream, start.elapsed());
 
         // FIXME(nick): name the producer properly.
         let producer = Producer::new(&environment, &change_set_stream).await?;
+        info!("create producer: {:?}", start.elapsed());
         let reply_consumer = Consumer::new(
             &environment,
             &reply_stream,
             ConsumerOffsetSpecification::First,
         )
         .await?;
+        info!("create consumer: {:?}", start.elapsed());
 
         self.streams.insert(
             change_set_id,

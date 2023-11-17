@@ -331,6 +331,30 @@ impl Func {
         Ok(Func::assemble(&node_weight, &updated))
     }
 
+    pub fn remove(ctx: &DalContext, id: FuncId) -> FuncResult<()> {
+        // to remove a func we must remove all incoming edges to it. It will then be
+        // garbage collected out of the graph
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let arg_node_idx = workspace_snapshot.get_node_index_by_id(id.into())?;
+
+        let users = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(id.into(), EdgeWeightKind::Use.into())?;
+
+        let change_set = ctx.change_set_pointer()?;
+        for user in users {
+            workspace_snapshot.remove_edge(
+                change_set,
+                user,
+                arg_node_idx,
+                EdgeWeightKind::Use.into(),
+            )?;
+        }
+
+        Ok(())
+    }
+
     pub async fn find_intrinsic(ctx: &DalContext, intrinsic: IntrinsicFunc) -> FuncResult<FuncId> {
         let name = intrinsic.name();
         Func::find_by_name(ctx, name)?.ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()))

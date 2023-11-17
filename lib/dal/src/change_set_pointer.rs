@@ -11,23 +11,35 @@ use ulid::{Generator, Ulid};
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
-use crate::{pk, ChangeSetStatus, DalContext, TransactionsError, WorkspacePk};
+use crate::{pk, ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspacePk};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetPointerError {
+    #[error("change set not found")]
+    ChangeSetNotFound,
+    #[error("could not find default change set: {0}")]
+    DefaultChangeSetNotFound(ChangeSetPointerId),
+    #[error("default change set {0} has no workspace snapshot pointer")]
+    DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetPointerId),
     #[error("enum parse error: {0}")]
     EnumParse(#[from] strum::ParseError),
     #[error("ulid monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("mutex error: {0}")]
     Mutex(String),
+    #[error("no tenancy set in context")]
+    NoTenancySet,
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("workspace error: {0}")]
+    Workspace(String),
+    #[error("workspace not found: {0}")]
+    WorkspaceNotFound(WorkspacePk),
 }
 
 pub type ChangeSetPointerResult<T> = Result<T, ChangeSetPointerError>;
@@ -135,6 +147,44 @@ impl ChangeSetPointer {
             )
             .await?;
         Self::try_from(row)
+    }
+
+    pub async fn fork_head(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+    ) -> ChangeSetPointerResult<Self> {
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(ChangeSetPointerError::NoTenancySet)?;
+
+        let workspace = Workspace::get_by_pk(&ctx, &workspace_pk)
+            .await
+            .map_err(|err| ChangeSetPointerError::Workspace(err.to_string()))?
+            .ok_or(ChangeSetPointerError::WorkspaceNotFound(workspace_pk))?;
+
+        let base_change_set_pointer =
+            ChangeSetPointer::find(&ctx, workspace.default_change_set_id())
+                .await?
+                .ok_or(ChangeSetPointerError::DefaultChangeSetNotFound(
+                    workspace.default_change_set_id(),
+                ))?;
+
+        let mut change_set_pointer =
+            ChangeSetPointer::new(&ctx, name, Some(workspace.default_change_set_id())).await?;
+
+        change_set_pointer
+            .update_pointer(
+                &ctx,
+                base_change_set_pointer.workspace_snapshot_id.ok_or(
+                    ChangeSetPointerError::DefaultChangeSetNoWorkspaceSnapshotPointer(
+                        workspace.default_change_set_id(),
+                    ),
+                )?,
+            )
+            .await?;
+
+        Ok(change_set_pointer)
     }
 
     pub async fn new_head(ctx: &DalContext) -> ChangeSetPointerResult<Self> {
