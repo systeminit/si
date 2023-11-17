@@ -125,10 +125,6 @@ impl Instance for LocalUdsInstance {
 #[async_trait]
 impl CycloneClient<UnixStream> for LocalUdsInstance {
 
-    async fn connect(&mut self) -> result::Result<(), ClientError> {
-       self.client.connect().await
-    }
-
     async fn watch(&mut self) -> result::Result<Watch<UnixStream>, ClientError> {
         self.ensure_healthy_client()
             .await

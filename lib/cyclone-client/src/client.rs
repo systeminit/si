@@ -121,7 +121,6 @@ pub trait CycloneClient<Strm>
 where
     Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    async fn connect(&mut self) -> Result<()>;
 
     async fn watch(&mut self) -> result::Result<Watch<Strm>, ClientError>;
 
@@ -225,6 +224,8 @@ impl Client<(), (), ()> {
     }
 }
 
+
+
 #[async_trait]
 impl<Conn, Strm, Sock> CycloneClient<Strm> for Client<Conn, Strm, Sock>
 where
@@ -234,37 +235,7 @@ where
     Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + Sync + 'static,
     Sock: Send + Sync + std::fmt::Debug,
 {
-    async fn connect(mut stream) -> Result<()> {
-        println!("TRYNA CONNECT WITHIN CONNECT");
-        println!("socket: {:?}", self.socket);
-        let connect_cmd = format!("CONNECT {}\n", 52);
 
-        let mut stream = self
-            .connector
-            .call(self.uri.clone())
-            .await
-            .map_err(|err| ClientError::Connect(err.into()))?;
-
-        println!("About to do write_all");
-        if stream.write_all(connect_cmd.as_bytes()).await.is_err() {
-            println!("Within write_all");
-        };
-        println!("Got further in CONNECT");
-        // poor mans take_while
-        let mut connect_response = Vec::<u8>::new();
-        loop {
-            let mut single_byte = vec![0; 1];
-            stream.read_exact(&mut single_byte).await?;
-            connect_response.push(single_byte[0]);
-            if single_byte == [b'\n'] { break; }
-        }
-        println!("Read all the bytes to /n");
-
-        let the_string = std::str::from_utf8(&connect_response)?;
-        println!("{}", the_string);
-
-        Ok(())
-    }
 
     async fn watch(&mut self) -> Result<Watch<Strm>> {
         let stream = self.websocket_stream("/watch").await?;
@@ -445,6 +416,31 @@ where
         self.inner_client.request(req)
     }
 
+    async fn connect(&mut self, mut stream: Strm) -> Result<Strm> {
+        println!("TRYNA CONNECT WITHIN CONNECT");
+        let connect_cmd = format!("CONNECT {}\n", 52);
+
+        println!("About to do write_all");
+        if stream.write_all(connect_cmd.as_bytes()).await.is_err() {
+            println!("Within write_all");
+        };
+        println!("Got further in CONNECT");
+        // poor mans take_while
+        let mut connect_response = Vec::<u8>::new();
+        loop {
+            let mut single_byte = vec![0; 1];
+            stream.read_exact(&mut single_byte).await?;
+            connect_response.push(single_byte[0]);
+            if single_byte == [b'\n'] { break; }
+        }
+        println!("Read all the bytes to /n");
+
+        let the_string = std::str::from_utf8(&connect_response)?;
+        println!("{}", the_string);
+
+        Ok(stream)
+    }
+
     async fn websocket_stream<P>(&mut self, path_and_query: P) -> Result<WebSocketStream<Strm>>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
@@ -455,6 +451,8 @@ where
             .call(self.uri.clone())
             .await
             .map_err(|err| ClientError::Connect(err.into()))?;
+
+        stream = self.connect(stream).await?;
 
         let uri = dbg!(self.new_ws_request(path_and_query)?);
         let (websocket_stream, response) = tokio_tungstenite::client_async(uri, stream)
