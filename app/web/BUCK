@@ -65,6 +65,7 @@ filegroup(
 prod_deps_srcs = {
     "lib/ts-lib": "//lib/ts-lib:src",
     "lib/vue-lib": "//lib/vue-lib:src",
+    "lib/yjs-codemirror-plugin": "//lib/yjs-codemirror-plugin:src",
 }
 
 dev_deps_srcs = {

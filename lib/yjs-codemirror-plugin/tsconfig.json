@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es2018",
+    "lib": ["es2018", "dom"],                             /* Specify library files to be included in the compilation. */
+    "allowJs": true,                       /* Allow javascript files to be compiled. */
+    "checkJs": true,                       /* Report errors in .js files. */
+    "declaration": true,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "emitDeclarationOnly": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "moduleResolution": "node",            /* Specify module resolution strategy: 'node' (Node.js) or 'classic' (TypeScript pre-1.6). */
+    "baseUrl": "./",                       /* Base directory to resolve non-absolute module names. */
+    "paths": {
+      "y-codemirror": ["src/index.js"]
+    },
+    "maxNodeModuleJsDepth": 0,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["src/index.js", "./demo/codemirror.js"]
+}

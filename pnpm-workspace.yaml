@@ -8,3 +8,4 @@ packages:
   - lib/ts-lib
   - lib/tsconfig
   - lib/vue-lib
+  - lib/yjs-codemirror-plugin
