@@ -114,9 +114,7 @@ impl Instance for LocalUdsInstance {
 
     async fn ensure_healthy(&mut self) -> result::Result<(), Self::Error> {
         self.ensure_healthy_client().await?;
-        match self.client.readiness().await? {
-            ReadinessStatus::Ready => {}
-        }
+        self.client.execute_ping().await?;
 
         Ok(())
     }
