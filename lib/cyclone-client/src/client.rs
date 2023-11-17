@@ -234,7 +234,7 @@ where
     Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + Sync + 'static,
     Sock: Send + Sync + std::fmt::Debug,
 {
-    async fn connect(&mut self) -> Result<()> {
+    async fn connect(mut stream) -> Result<()> {
         println!("TRYNA CONNECT WITHIN CONNECT");
         println!("socket: {:?}", self.socket);
         let connect_cmd = format!("CONNECT {}\n", 52);
@@ -450,17 +450,18 @@ where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
         println!("in websocket stream");
-        let stream = self
+        let mut stream = self
             .connector
             .call(self.uri.clone())
             .await
             .map_err(|err| ClientError::Connect(err.into()))?;
+
         let uri = dbg!(self.new_ws_request(path_and_query)?);
         let (websocket_stream, response) = tokio_tungstenite::client_async(uri, stream)
             .await
             .map_err(ClientError::WebsocketConnection)?;
         println!("next");
-        if response.status() != StatusCode::SWITCHING_PROTOCOLS {
+        if dbg!(response.status()) != StatusCode::SWITCHING_PROTOCOLS {
             return Err(ClientError::UnexpectedStatusCode(response.status()));
         }
 

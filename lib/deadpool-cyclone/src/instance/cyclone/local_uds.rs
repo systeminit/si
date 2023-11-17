@@ -341,26 +341,10 @@ impl Spec for LocalUdsInstanceSpec {
 
         println!("TRYNA CONNECT FROM LOCAL UDS");
 
-
-        let connect = {
-            let mut retries = 30;
-            loop {
-                match client.connect().await {
-                    Ok(connect) => break connect,
-                    Err(err) => dbg!(err)
-                };
-                if retries < 1 {
-                    return Err(Self::Error::WatchInitTimeout);
-                }
-                retries -= 1;
-                time::sleep(Duration::from_millis(64)).await;
-            }
-        };
-
         // Establish the client watch session. As the process may be booting, we will retry for a
         // period before giving up and assuming that the server instance has failed.
         let watch = {
-            let mut retries = 30;
+            let mut retries = 10;
             loop {
                 trace!("calling client.watch()");
 
