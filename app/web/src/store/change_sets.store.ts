@@ -31,13 +31,15 @@ export function useChangeSetsStore() {
         changeSetsWrittenAtById: {} as Record<ChangeSetId, Date>,
         creatingChangeSet: false as boolean,
         postApplyActor: null as string | null,
+        changeSetApprovals: {} as Record<UserId, string>,
       }),
       getters: {
         allChangeSets: (state) => _.values(state.changeSetsById),
         openChangeSets(): ChangeSet[] | null {
-          return _.filter(
-            this.allChangeSets,
-            (cs) => cs.status === ChangeSetStatus.Open,
+          return _.filter(this.allChangeSets, (cs) =>
+            [ChangeSetStatus.Open, ChangeSetStatus.NeedsApproval].includes(
+              cs.status,
+            ),
           );
         },
         selectedChangeSet: (state) =>
@@ -118,6 +120,37 @@ export function useChangeSetsStore() {
             },
           });
         },
+        async APPLY_CHANGE_SET_VOTE(vote: string) {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          return new ApiRequest({
+            method: "post",
+            url: "change_set/merge_vote",
+            params: {
+              vote,
+              visibility_change_set_pk: this.selectedChangeSetId,
+            },
+          });
+        },
+        async BEGIN_APPROVAL_PROCESS() {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          return new ApiRequest({
+            method: "post",
+            url: "change_set/begin_approval_process",
+            params: {
+              visibility_change_set_pk: this.selectedChangeSetId,
+            },
+          });
+        },
+        async CANCEL_APPROVAL_PROCESS() {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          return new ApiRequest({
+            method: "post",
+            url: "change_set/cancel_approval_process",
+            params: {
+              visibility_change_set_pk: this.selectedChangeSetId,
+            },
+          });
+        },
         // TODO: async CANCEL_CHANGE_SET() {},
 
         // other related endpoints, not necessarily needed at the moment, but available
@@ -185,7 +218,6 @@ export function useChangeSetsStore() {
             eventType: "ChangeSetCancelled",
             callback: this.FETCH_CHANGE_SETS,
           },
-          // TODO(Theo/Wendy) - for multiplayer support, we should add code to react if the change set you are using is merged by someone else
           {
             eventType: "ChangeSetApplied",
             callback: (data) => {
@@ -208,6 +240,32 @@ export function useChangeSetsStore() {
             },
           },
           {
+            eventType: "ChangeSetBeginApprovalProcess",
+            callback: (data) => {
+              if (this.selectedChangeSetId === data.changeSetPk) {
+                this.changeSetApprovals = {};
+              }
+              const changeSet = this.changeSetsById[data.changeSetPk];
+              if (changeSet) {
+                changeSet.status = ChangeSetStatus.NeedsApproval;
+                changeSet.mergeRequestedAt = new Date().toISOString();
+                changeSet.mergeRequestedByUserId = data.userPk;
+              }
+            },
+          },
+          {
+            eventType: "ChangeSetCancelApprovalProcess",
+            callback: (data) => {
+              if (this.selectedChangeSetId === data.changeSetPk) {
+                this.changeSetApprovals = {};
+              }
+              const changeSet = this.changeSetsById[data.changeSetPk];
+              if (changeSet) {
+                changeSet.status = ChangeSetStatus.Open;
+              }
+            },
+          },
+          {
             eventType: "ChangeSetWritten",
             callback: (cs) => {
               // we'll update a timestamp here so individual components can watch this to trigger something if necessary
@@ -216,6 +274,14 @@ export function useChangeSetsStore() {
               this.FETCH_CHANGE_SETS();
 
               // could refetch the change sets here, but not useful right now since no interesting metadata exists on the changeset itself
+            },
+          },
+          {
+            eventType: "ChangeSetMergeVote",
+            callback: (data) => {
+              if (this.selectedChangeSetId === data.changeSetPk) {
+                this.changeSetApprovals[data.userPk] = data.vote;
+              }
             },
           },
         ]);

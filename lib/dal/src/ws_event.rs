@@ -3,7 +3,7 @@ use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
 
-use crate::change_set::{ChangeSetAppliedPayload, ChangeSetMergeVotePayload};
+use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::ComponentCreatedPayload;
 use crate::pkg::ModuleImported;
 use crate::{
@@ -43,8 +43,9 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[serde(tag = "kind", content = "data")]
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
-    ChangeSetApplied(ChangeSetAppliedPayload),
-    ChangeSetBeginApprovalProcess(ChangeSetPk),
+    ChangeSetApplied(ChangeSetActorPayload),
+    ChangeSetBeginApprovalProcess(ChangeSetActorPayload),
+    ChangeSetCancelApprovalProcess(ChangeSetActorPayload),
     ChangeSetCanceled(ChangeSetPk),
     ChangeSetCreated(ChangeSetPk),
     ChangeSetMergeVote(ChangeSetMergeVotePayload),

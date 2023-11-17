@@ -8,6 +8,7 @@ export enum ChangeSetStatus {
   Failed = "Failed",
   Closed = "Closed",
   Abandoned = "Abandoned",
+  NeedsApproval = "NeedsApproval",
 }
 
 export type ChangeSetId = string;
@@ -19,6 +20,8 @@ export interface ChangeSet {
   status: ChangeSetStatus;
   appliedByUserId?: UserId;
   appliedAt?: IsoDateString;
+  mergeRequestedAt?: IsoDateString;
+  mergeRequestedByUserId?: UserId;
 }
 
 export type ChangeStatus = "added" | "deleted" | "modified" | "unmodified";

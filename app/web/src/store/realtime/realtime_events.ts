@@ -3,6 +3,7 @@
 
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { FuncId } from "@/store/func/funcs.store";
+import { ChangeSetId } from "@/store/change_sets.store";
 import { ComponentId } from "../components.store";
 import { FixStatus } from "../fixes.store";
 import {
@@ -57,6 +58,19 @@ export type WsEventPayloadMap = {
   ChangeSetApplied: string;
   ChangeSetWritten: string;
   ChangeSetCancelled: string;
+  ChangeSetBeginApprovalProcess: {
+    changeSetPk: ChangeSetId;
+    userPk: UserId;
+  };
+  ChangeSetCancelApprovalProcess: {
+    changeSetPk: ChangeSetId;
+    userPk: UserId;
+  };
+  ChangeSetMergeVote: {
+    changeSetPk: ChangeSetId;
+    userPk: UserId;
+    vote: string;
+  };
 
   CheckedQualifications: {
     prototypeId: string;

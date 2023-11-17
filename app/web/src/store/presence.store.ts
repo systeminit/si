@@ -62,16 +62,15 @@ export const usePresenceStore = () => {
         lastSeenAt: new Date(),
       }),
       getters: {
-        users: (state) => _.values(state.usersById),
-        usersInChangeset: (state) =>
-          _.filter(
-            _.mapValues(
-              state.usersById,
-              (u) =>
-                u.changeSetId &&
-                u.changeSetId === changeSetsStore.selectedChangeSetId,
-            ),
-          ),
+        users(): OnlineUser[] {
+          return _.values(this.usersById);
+        },
+        usersInChangeset(): OnlineUser[] {
+          return _.filter(
+            this.users,
+            (u) => u.changeSetId === changeSetsStore.selectedChangeSetId,
+          );
+        },
         diagramCursors: (state): DiagramCursorDef[] =>
           _.filter(
             _.values(
@@ -215,7 +214,7 @@ export const usePresenceStore = () => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 this.usersById[payload.userPk] ||= {} as any;
                 _.assign(this.usersById[payload.userPk], {
-                  userId: payload.userPk,
+                  pk: payload.userPk,
                   ..._.pick(payload, "name", "idle", "pictureUrl"),
                   changeSetId: payload.changeSetPk,
                   lastOnlineAt: new Date(),
