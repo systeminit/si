@@ -20,6 +20,7 @@ const CHANGE_SET_GET_BY_PK: &str = include_str!("queries/change_set/get_by_pk.sq
 const GET_ACTORS: &str = include_str!("queries/change_set/get_actors.sql");
 
 const BEGIN_MERGE_FLOW: &str = include_str!("queries/change_set/begin_merge_flow.sql");
+const CANCEL_MERGE_FLOW: &str = include_str!("queries/change_set/cancel_merge_flow.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -124,14 +125,25 @@ impl ChangeSet {
             .pg_pool()
             .get()
             .await?
-            .query_one(
-                BEGIN_MERGE_FLOW,
-                &[&self.pk, &ChangeSetStatus::NeedsApproval],
-            )
+            .query_one(BEGIN_MERGE_FLOW, &[&self.pk])
             .await?;
-        let updated_at: DateTime<Utc> = row.try_get("timestamp_updated_at")?;
+        let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
         self.timestamp.updated_at = updated_at;
         self.status = ChangeSetStatus::NeedsApproval;
+
+        Ok(())
+    }
+
+    pub async fn cancel_approval_flow(&mut self, ctx: &mut DalContext) -> ChangeSetResult<()> {
+        let row = ctx
+            .pg_pool()
+            .get()
+            .await?
+            .query_one(CANCEL_MERGE_FLOW, &[&self.pk])
+            .await?;
+        let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
+        self.timestamp.updated_at = updated_at;
+        self.status = ChangeSetStatus::Open;
 
         Ok(())
     }
@@ -273,7 +285,7 @@ impl WsEvent {
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::ChangeSetApplied(ChangeSetAppliedPayload {
+            WsPayload::ChangeSetApplied(ChangeSetActorPayload {
                 change_set_pk,
                 user_pk,
             }),
@@ -300,7 +312,7 @@ impl WsEvent {
         ctx: &DalContext,
         change_set_pk: ChangeSetPk,
         user_pk: UserPk,
-        vote: bool,
+        vote: String,
     ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
@@ -316,14 +328,37 @@ impl WsEvent {
     pub async fn change_set_begin_approval_process(
         ctx: &DalContext,
         change_set_pk: ChangeSetPk,
+        user_pk: Option<UserPk>,
     ) -> WsEventResult<Self> {
-        WsEvent::new(ctx, WsPayload::ChangeSetBeginApprovalProcess(change_set_pk)).await
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetBeginApprovalProcess(ChangeSetActorPayload {
+                change_set_pk,
+                user_pk,
+            }),
+        )
+        .await
+    }
+
+    pub async fn change_set_cancel_approval_process(
+        ctx: &DalContext,
+        change_set_pk: ChangeSetPk,
+        user_pk: Option<UserPk>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetCancelApprovalProcess(ChangeSetActorPayload {
+                change_set_pk,
+                user_pk,
+            }),
+        )
+        .await
     }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ChangeSetAppliedPayload {
+pub struct ChangeSetActorPayload {
     change_set_pk: ChangeSetPk,
     user_pk: Option<UserPk>,
 }
@@ -333,5 +368,5 @@ pub struct ChangeSetAppliedPayload {
 pub struct ChangeSetMergeVotePayload {
     change_set_pk: ChangeSetPk,
     user_pk: UserPk,
-    vote: bool,
+    vote: String,
 }

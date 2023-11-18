@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct MergeVoteRequest {
-    pub approve: bool,
+    pub vote: String,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -40,7 +40,7 @@ pub async fn merge_vote(
             "how": "/change_set/merge_vote",
             "change_set_pk": ctx.visibility().change_set_pk,
             "user_pk": user.pk(),
-            "vote": request.approve,
+            "vote": request.vote,
         }),
     );
 
@@ -48,7 +48,7 @@ pub async fn merge_vote(
         &ctx,
         ctx.visibility().change_set_pk,
         user.pk(),
-        request.approve,
+        request.vote,
     )
     .await?
     .publish_on_commit(&ctx)

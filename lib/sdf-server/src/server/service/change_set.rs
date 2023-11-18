@@ -109,8 +109,12 @@ pub fn routes() -> Router<AppState> {
             post(update_selected_change_set::update_selected_change_set),
         )
         .route(
-            "/being_merge_flow",
+            "/begin_approval_process",
             post(begin_approval_process::begin_approval_process),
+        )
+        .route(
+            "/cancel_approval_process",
+            post(begin_approval_process::cancel_approval_process),
         )
         .route("/merge_vote", post(merge_vote::merge_vote))
 }
