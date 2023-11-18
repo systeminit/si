@@ -86,8 +86,6 @@
         </div>
       </div>
     </Popover>
-
-    <ChangeSetApplyVotingPopover ref="changeSetApplyVotingPopoverRef" />
   </div>
 </template>
 
@@ -101,7 +99,6 @@ import { usePresenceStore } from "@/store/presence.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
-import ChangeSetApplyVotingPopover from "./ChangeSetApplyVotingPopover.vue";
 
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
@@ -263,16 +260,4 @@ const filteredUsers = computed(() => {
     );
   } else return sortedUsers.value;
 });
-
-// Code for the ChangeSetApplyVotingPopover
-// TODO(Wendy) - Currently this is triggered by clicking on a user, should be tied to Apply Changes via the store
-
-const changeSetApplyVotingPopoverRef = ref();
-
-// TODO(Wendy) - invoke this function when it's time to open the voting Popover for a particular user
-// Also probably need to have functionality to pull a user to the front of the list if they aren't visible on the bar
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const openChangeSetApplyVotingPopover = (e: MouseEvent) => {
-  changeSetApplyVotingPopoverRef.value.open(e);
-};
 </script>
