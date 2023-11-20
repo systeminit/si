@@ -7,7 +7,6 @@ use std::{
 use derive_builder::Builder;
 use si_std::{CanonicalFile, CanonicalFileError};
 use thiserror::Error;
-use tokio_vsock::VsockAddr;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -140,7 +139,6 @@ impl ConfigBuilder {
 pub enum IncomingStream {
     HTTPSocket(SocketAddr),
     UnixDomainSocket(PathBuf),
-    VsockSocket(VsockAddr),
 }
 
 impl Default for IncomingStream {
@@ -162,9 +160,5 @@ impl IncomingStream {
     pub fn unix_domain_socket(path: impl Into<PathBuf>) -> Self {
         let pathbuf = path.into();
         Self::UnixDomainSocket(pathbuf)
-    }
-
-    pub fn vsock_socket(addr: VsockAddr) -> Self {
-        Self::VsockSocket(addr)
     }
 }

@@ -21,11 +21,6 @@ RUN cp -R $(nix-store --query --requisites result/) /tmp/nix-store-closure
 # hadolint ignore=SC2046
 RUN ln -snf $(nix-store --query result/)/bin/* /tmp/local-bin/
 
-# Add wrapper/entrypoint for `$BIN` to exec `.$BIN`
-RUN set -eux; \
-    mv -v "/tmp/local-bin/$BIN" "/tmp/local-bin/.$BIN"; \
-    cp -pv /workdir/bin/$BIN/docker-entrypoint.sh "/tmp/local-bin/$BIN";
-
 ###########################################################################
 # Builder Stage: lang-js
 ###########################################################################
