@@ -34,7 +34,6 @@ rust_binary(
         "//third-party/rust:clap",
         "//third-party/rust:color-eyre",
         "//third-party/rust:tokio",
-        "//third-party/rust:tokio-vsock",
     ],
     srcs = glob(["src/**/*.rs"]),
 )
