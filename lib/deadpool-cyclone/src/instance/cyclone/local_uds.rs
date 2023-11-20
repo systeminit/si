@@ -676,9 +676,10 @@ impl LocalFirecrackerRuntime {
 
         // Chage this to a five integer ID
         // TODO(johnrwatson): debugging, needs reverted
-        //let vm_id: String = thread_rng().gen_range(0..5000).to_string();
-        let vm_id: String = "1".to_string();
-        let sock = PathBuf::from(&format!("/srv/jailer/firecracker/1/root/v.sock"));
+        let vm_id: String = thread_rng().gen_range(0..5000).to_string();
+        //let vm_id: String = "232".to_string();
+        let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", vm_id));
+
         // TODO(johnwatson): Run some checks against the ID to see if it's been used before
         // Calculate it instead of random?
 
@@ -699,14 +700,14 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
 
         // TODO(johnrwatson): debugging, needs reverted
-        //let command = "/firecracker-data/start.sh ".to_owned()  + &self.vm_id;
+        let command = "/firecracker-data/start.sh ".to_owned()  + &self.vm_id;
 
-        //// Spawn the shell process
-        //let _status = Command::new("sudo")
-        //    .arg("bash")
-        //    .arg("-c")
-        //    .arg(command)
-        //    .status().await;
+        // Spawn the shell process
+        let _status = Command::new("sudo")
+            .arg("bash")
+            .arg("-c")
+            .arg(command)
+            .status().await;
         Ok(())
 
     }
