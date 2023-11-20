@@ -25,6 +25,11 @@ rc-update add procfs boot
 rc-update add sysfs boot
 rc-update add local boot
 
+mkdir -p /root/.ssh/
+echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDLjOIStmAZ0kLEUQNem4nssCr9TYxcTQ7+N7SoI9A2Rvr8S1gAu4f48OxuAtsLemW3UFUQZSFGyJwMw6VXF7MTASv4/d61zD/5kWmkacNlcwKxyOV31wV1zwG/genCTgIOnG34v81VhHWr8t8aJN9+7rT0hKy9Xhkb3NvLlcv2J4U4+zgoic+W0lSDmApBnMCq5XadEUYyJ/NxEcDxcDp1nbaSNrl/Iy1l0p3VAsHF6Rfpjbh8z1JWcF/CKDAQuou22XA7cgnkN1RJsf1d5Y/czp0twBiRZtXJHC1csNlM/O5jdI1Nh90rzpYEgtURlP9+ABdNWV70tc7A8QZ0d6Sn3Yail6FRlLWFsY4mHrUPbyUQkg3Y4LWSrjz7hC5jjjNkl0mUP5gHlleGoJr8cli5M1Hl2MFD4vlbmHosj6+5Fs18YCVDRrxyeyLjLnDp8SHP9BDDGhBQMprfB3C1v1yiiOm6ZZTyztOx+7tLsaWc9MgCfqIoT9L2/l6m9Yt2zcE= john@Threadripper" >> /root/.ssh/authorized_keys
+apk add openssh
+rc-update add sshd
+
 # Then, copy the newly configured system to the rootfs image:
 for d in bin etc lib root sbin usr nix; do tar c "/\${d}" | tar x -C ${GUESTDISK}; done
 for dir in dev proc run sys var; do mkdir ${GUESTDISK}/\${dir}; done
