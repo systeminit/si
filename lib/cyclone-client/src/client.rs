@@ -239,6 +239,7 @@ where
     async fn watch(&mut self) -> Result<Watch<Strm>> {
         println!("in watch");
         let stream = self.websocket_stream("/watch").await?;
+        println!("in watch, after creating websocket_stream");
         Ok(watch::watch(stream, self.config.watch_timeout))
     }
 
@@ -418,8 +419,6 @@ where
     }
 
     fn request(&self, req: Request<Body>) -> ResponseFuture {
-        let conn = Request::connect("52").body(Body::empty()).map_err(ClientError::Request);
-        let _ = self.inner_client.request(conn.unwrap());
         self.inner_client.request(req)
     }
 
@@ -466,9 +465,8 @@ where
 
         let uri = dbg!(self.new_ws_request(path_and_query)?);
         let (websocket_stream, response) = tokio_tungstenite::client_async(uri, stream)
-            .await
-            .map_err(ClientError::WebsocketConnection)?;
-
+            .await.unwrap();
+        dbg!(&response);
         if dbg!(response.status()) != StatusCode::SWITCHING_PROTOCOLS {
             return Err(ClientError::UnexpectedStatusCode(response.status()));
         }

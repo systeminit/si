@@ -73,6 +73,7 @@ where
     pub async fn start(mut self) -> Result<ExecutionStarted<T, Success>, ExecutionError<Success>> {
         match self.stream.next().await {
             Some(Ok(WebSocketMessage::Text(json_str))) => {
+                println!("in start in client");
                 let msg = Message::deserialize_from_str(&json_str)
                     .map_err(ExecutionError::JSONDeserialize)?;
                 match msg {
@@ -88,11 +89,13 @@ where
         }
 
         let msg = serde_json::to_string(&self.request).map_err(ExecutionError::JSONSerialize)?;
+        dbg!(msg.clone());
         self.stream
             .send(WebSocketMessage::Text(msg))
             .await
             .map_err(ExecutionError::WSSendIO)?;
 
+        println!("we sent to the server");
         Ok(self.into())
     }
 }
@@ -129,9 +132,11 @@ where
     type Item = Result<ProgressMessage, ExecutionError<Success>>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        println!("entering poll_next in execution started");
         match Pin::new(&mut self.stream.next()).poll(cx) {
             // We successfully got a websocket text message
             Poll::Ready(Some(Ok(WebSocketMessage::Text(json_str)))) => {
+                println!("got msg: {}", &json_str);
                 let msg = Message::deserialize_from_str(&json_str)
                     .map_err(ExecutionError::JSONDeserialize)?;
                 match msg {
@@ -177,7 +182,10 @@ where
             // We see the end of the websocket stream, but finish was never sent
             Poll::Ready(None) => Poll::Ready(Some(Err(ExecutionError::WSClosedBeforeFinish))),
             // Not ready, so...not ready!
-            Poll::Pending => Poll::Pending,
+            Poll::Pending => {
+                println!("pending");
+                Poll::Pending
+            }
         }
     }
 }

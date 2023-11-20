@@ -122,7 +122,6 @@ impl Instance for LocalUdsInstance {
 
 #[async_trait]
 impl CycloneClient<UnixStream> for LocalUdsInstance {
-
     async fn watch(&mut self) -> result::Result<Watch<UnixStream>, ClientError> {
         self.client.watch().await
     }
@@ -150,8 +149,8 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         ClientError,
     > {
         let result = self.client.execute_resolver(request).await;
-        dbg!(self.count_request());
-
+        self.count_request();
+        println!("in execute_resolver deadpool");
         result
     }
 
@@ -313,7 +312,10 @@ impl Spec for LocalUdsInstanceSpec {
                         println!("client watch session established");
                         break watch;
                     }
-                    Err(err) => dbg!(err)
+                    Err(err) => {
+                        println!("error in watch in deadpool");
+                        dbg!(err)
+                    }
                 };
                 if retries < 1 {
                     return Err(Self::Error::WatchInitTimeout);
@@ -325,14 +327,14 @@ impl Spec for LocalUdsInstanceSpec {
 
         println!("made watch");
         let mut watch_progress = watch.start().await?;
-                println!("watch progress");
+        println!("watch progress");
         // Establish that we have received our first watch ping, which should happen immediately
         // after establishing a watch session
         watch_progress
             .next()
             .await
             .ok_or(Self::Error::WatchClosed)??;
-                println!("watch progress next");
+        println!("watch progress next");
 
         let (watch_shutdown_tx, watch_shutdown_rx) = oneshot::channel();
         // Spawn a task to keep the watch session open until we shut it down
@@ -475,7 +477,7 @@ pub trait LocalInstanceRuntime: Send + Sync {
 struct LocalProcessRuntime {
     cmd: Command,
     child: Option<Child>,
-    socket: PathBuf
+    socket: PathBuf,
 }
 
 impl LocalProcessRuntime {
@@ -508,13 +510,16 @@ impl LocalProcessRuntime {
             cmd.arg("--enable-action-run");
         }
 
-        Ok(Box::new(LocalProcessRuntime { cmd, child: None, socket: socket.to_path_buf() }))
+        Ok(Box::new(LocalProcessRuntime {
+            cmd,
+            child: None,
+            socket: socket.to_path_buf(),
+        }))
     }
 }
 
 #[async_trait]
 impl LocalInstanceRuntime for LocalProcessRuntime {
-
     fn socket(&mut self) -> PathBuf {
         self.socket.to_path_buf()
     }
@@ -542,7 +547,7 @@ impl LocalInstanceRuntime for LocalProcessRuntime {
 struct LocalDockerRuntime {
     container_id: String,
     docker: Docker,
-    socket: PathBuf
+    socket: PathBuf,
 }
 
 impl LocalDockerRuntime {
@@ -627,14 +632,13 @@ impl LocalDockerRuntime {
         Ok(Box::new(LocalDockerRuntime {
             container_id,
             docker,
-            socket: socket.to_path_buf()
+            socket: socket.to_path_buf(),
         }))
     }
 }
 
 #[async_trait]
 impl LocalInstanceRuntime for LocalDockerRuntime {
-
     fn socket(&mut self) -> PathBuf {
         self.socket.to_path_buf()
     }
@@ -663,7 +667,6 @@ impl LocalInstanceRuntime for LocalDockerRuntime {
     }
 }
 
-
 #[derive(Debug)]
 struct LocalFirecrackerRuntime {
     vm_id: String,
@@ -671,15 +674,15 @@ struct LocalFirecrackerRuntime {
 }
 
 impl LocalFirecrackerRuntime {
-    async fn build(
-    ) -> Result<Box<dyn LocalInstanceRuntime>> {
-
+    async fn build() -> Result<Box<dyn LocalInstanceRuntime>> {
         // Chage this to a five integer ID
         // TODO(johnrwatson): debugging, needs reverted
         let vm_id: String = thread_rng().gen_range(0..5000).to_string();
         //let vm_id: String = "232".to_string();
         let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", vm_id));
 
+        //let vm_id = String::from("1");
+        //let sock = PathBuf::from(&format!("/firecracker-data/v.sock"));
         // TODO(johnwatson): Run some checks against the ID to see if it's been used before
         // Calculate it instead of random?
 
@@ -692,13 +695,11 @@ impl LocalFirecrackerRuntime {
 
 #[async_trait]
 impl LocalInstanceRuntime for LocalFirecrackerRuntime {
-
     fn socket(&mut self) -> PathBuf {
         self.socket.to_path_buf()
     }
 
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-
         // TODO(johnrwatson): debugging, needs reverted
         let command = "/firecracker-data/start.sh ".to_owned()  + &self.vm_id;
 
@@ -708,19 +709,20 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
             .arg("-c")
             .arg(command)
             .status().await;
-        Ok(())
 
+        Ok(())
     }
 
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-        let command = "/firecracker-data/stop.sh ".to_owned()  + &self.vm_id;
+        let command = "/firecracker-data/stop.sh ".to_owned() + &self.vm_id;
 
         // Spawn the shell process
         let _status = Command::new("sudo")
             .arg("bash")
             .arg("-c")
             .arg(command)
-            .status().await;
+            .status()
+            .await;
         Ok(())
     }
 }
@@ -736,9 +738,7 @@ async fn runtime_instance_from_spec(
         LocalUdsRuntimeStrategy::LocalDocker => {
             LocalDockerRuntime::build(socket, spec.clone()).await
         }
-        LocalUdsRuntimeStrategy::LocalFirecracker => {
-            LocalFirecrackerRuntime::build().await
-        }
+        LocalUdsRuntimeStrategy::LocalFirecracker => LocalFirecrackerRuntime::build().await,
     }
 }
 

@@ -17,7 +17,7 @@ sudo mount $ROOTFS $ROOTFSMOUNT
 
 # create our script to add an init system to our container image
 cat << EOL > $INITSCRIPT
-apk add openrc mingetty
+apk add openrc mingetty openssh
 
 # Make sure special file systems are mounted on boot:
 rc-update add devfs boot
@@ -46,7 +46,7 @@ name="cyclone"
 description="Cyclone"
 supervisor="supervise-daemon"
 command="cyclone"
-command_args="--bind-vsock 3:52 --decryption-key /dev.decryption.key --lang-server /usr/local/bin/lang-js --enable-watch --limit-requests 1 --watch-timeout 10 --enable-ping --enable-resolver --enable-action-run -v"
+command_args="--bind-vsock 3:52 --decryption-key /dev.decryption.key --lang-server /usr/local/bin/lang-js --enable-watch --limit-requests 1 --watch-timeout 10 --enable-ping --enable-resolver --enable-action-run -vvvv >> /cyclone.log"
 pidfile="/run/agent.pid"
 EOF
 
@@ -64,7 +64,7 @@ sudo docker run \
   -v $INITSCRIPT:/init.sh \
   -it --rm \
   --entrypoint sh \
-  systeminit/cyclone:sha-880fc9c75cccf0159ba20129f02c9f559301bb56-dirty-amd64 \
+  systeminit/cyclone:20231120.223123.0-sha.10c725585-dirty-amd64  \
   /init.sh
 
 # lets go find the dev decryption key for now
@@ -81,3 +81,8 @@ sudo mv cyclone-pkg/cyclone-rootfs.ext4 /firecracker-data/rootfs.ext4
 
 # cleanup
 #sudo rm -rf $PACKAGEDIR
+  ## working systeminit/cyclone:20231120.162459.0-sha.10c725585-dirty-amd64 \
+  #
+  #
+  # built with root: 20231120.190923.0-sha.10c725585-dirty-amd64
+

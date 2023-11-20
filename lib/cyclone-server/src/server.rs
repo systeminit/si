@@ -75,10 +75,10 @@ impl Server<(), ()> {
                 })
             }
             wrong @ IncomingStream::UnixDomainSocket(_) => {
-                Err(ServerError::WrongIncomingStream("http", wrong.clone()))
+                Err(ServerError::WrongIncomingStream("uds", wrong.clone()))
             }
             wrong @ IncomingStream::VsockSocket(_) => {
-                Err(ServerError::WrongIncomingStream("http", wrong.clone()))
+                Err(ServerError::WrongIncomingStream("vsock", wrong.clone()))
             }
         }
     }
@@ -110,7 +110,7 @@ impl Server<(), ()> {
                 Err(ServerError::WrongIncomingStream("http", wrong.clone()))
             }
             wrong @ IncomingStream::VsockSocket(_) => {
-                Err(ServerError::WrongIncomingStream("http", wrong.clone()))
+                Err(ServerError::WrongIncomingStream("vsock", wrong.clone()))
             }
         }
     }
@@ -125,11 +125,11 @@ impl Server<(), ()> {
                 let (service, shutdown_rx) =
                     build_service(&config, telemetry_level, decryption_key)?;
 
-                debug!(socket = %addr, "binding a unix domain server");
+                debug!(socket = %addr, "binding a vsock server");
                 let inner =
                     axum::Server::builder(VsockIncomingStream::create(*addr).await?).serve(service);
                 let socket = *addr;
-                info!(socket = %socket, "unix domain server serving");
+                info!(socket = %socket, "vsock server serving");
 
                 Ok(Server {
                     config,
@@ -142,7 +142,7 @@ impl Server<(), ()> {
                 Err(ServerError::WrongIncomingStream("http", wrong.clone()))
             }
             wrong @ IncomingStream::UnixDomainSocket(_) => {
-                Err(ServerError::WrongIncomingStream("http", wrong.clone()))
+                Err(ServerError::WrongIncomingStream("uds", wrong.clone()))
             }
         }
     }

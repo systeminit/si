@@ -52,7 +52,7 @@ RUN ln -snf $(nix-store --query result/)/bin/* /tmp/local-bin/
 ###########################################################################
 # Final Stage
 ###########################################################################
-FROM alpine:3 AS final
+FROM alpine:latest AS final
 ARG BIN=cyclone
 
 # hadolint ignore=DL3018

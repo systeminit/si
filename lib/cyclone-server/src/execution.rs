@@ -109,6 +109,7 @@ where
         self,
         ws: &mut WebSocket,
     ) -> Result<ExecutionStarted<LangServerSuccess, Success>> {
+        println!("in execution start");
         // Send start is the initial communication before we read the request.
         Self::ws_send_start(ws).await?;
         let mut sensitive_strings = CycloneSensitiveStrings::default();
@@ -163,6 +164,7 @@ where
     }
 
     async fn read_request(ws: &mut WebSocket) -> Result<Request> {
+        trace!("in read_request");
         let request = match ws.next().await {
             Some(Ok(WebSocketMessage::Text(json_str))) => {
                 serde_json::from_str(&json_str).map_err(ExecutionError::JSONDeserialize)?
@@ -175,6 +177,7 @@ where
     }
 
     async fn ws_send_start(ws: &mut WebSocket) -> Result<()> {
+        trace!("in ws_send_start");
         let msg = Message::<Success>::Start
             .serialize_to_string()
             .map_err(ExecutionError::JSONSerialize)?;

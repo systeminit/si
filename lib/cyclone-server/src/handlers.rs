@@ -49,7 +49,9 @@ pub async fn ws_watch(
     wsu: WebSocketUpgrade,
     Extension(watch_keepalive): Extension<Arc<WatchKeepalive>>,
 ) -> impl IntoResponse {
+    trace!("ws_watch");
     async fn handle_socket(mut socket: WebSocket, watch_keepalive: Arc<WatchKeepalive>) {
+        trace!("in ws_watch.handle_socket");
         if let Err(err) = watch::run(watch_keepalive.clone_tx(), watch_keepalive.timeout())
             .start(&mut socket)
             .await
@@ -60,6 +62,8 @@ pub async fn ws_watch(
         }
     }
 
+    println!("about to upgrade");
+    trace!("about to upgrade");
     wsu.on_upgrade(move |socket| handle_socket(socket, watch_keepalive))
 }
 
@@ -232,7 +236,7 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     Success: Serialize + Unpin + fmt::Debug,
     LangServerSuccess: Serialize + DeserializeOwned + Unpin + fmt::Debug + Into<Success>,
 {
-    println!("handling sockets");
+    trace!("handling sockets");
     let proto = {
         let execution: Execution<Request, LangServerSuccess, Success> =
             execution::new(lang_server_path, lang_server_debugging, key, sub_command);
