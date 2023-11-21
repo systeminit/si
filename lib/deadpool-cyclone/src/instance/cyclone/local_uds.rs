@@ -296,20 +296,16 @@ impl Spec for LocalUdsInstanceSpec {
         runtime.spawn().await?;
         let mut client = Client::uds(runtime.socket())?;
 
-        println!("TRYNA CONNECT FROM LOCAL UDS");
-
         // Establish the client watch session. As the process may be booting, we will retry for a
         // period before giving up and assuming that the server instance has failed.
         let watch = {
             let mut retries = 30;
             loop {
                 trace!("calling client.watch()");
-                println!("calling client.watch()");
 
                 match client.watch().await {
                     Ok(watch) => {
                         trace!("client watch session established");
-                        println!("client watch session established");
                         break watch;
                     }
                     Err(err) => {
@@ -325,21 +321,25 @@ impl Spec for LocalUdsInstanceSpec {
             }
         };
 
-        println!("made watch");
         let mut watch_progress = watch.start().await?;
+<<<<<<< HEAD
         println!("watch progress");
+=======
+>>>>>>> afc33f474 (initiate tidyup)
         // Establish that we have received our first watch ping, which should happen immediately
         // after establishing a watch session
         watch_progress
             .next()
             .await
             .ok_or(Self::Error::WatchClosed)??;
+<<<<<<< HEAD
         println!("watch progress next");
+=======
+>>>>>>> afc33f474 (initiate tidyup)
 
         let (watch_shutdown_tx, watch_shutdown_rx) = oneshot::channel();
         // Spawn a task to keep the watch session open until we shut it down
         tokio::spawn(watch_task(watch_progress, watch_shutdown_rx));
-        println!("after spawn");
 
         Ok(Self::Instance {
             _temp_path: temp_path,
@@ -700,10 +700,13 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
     }
 
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+<<<<<<< HEAD
         // TODO(johnrwatson): debugging, needs reverted
+=======
+
+>>>>>>> afc33f474 (initiate tidyup)
         let command = "/firecracker-data/start.sh ".to_owned()  + &self.vm_id;
 
-        // Spawn the shell process
         let _status = Command::new("sudo")
             .arg("bash")
             .arg("-c")
@@ -714,9 +717,13 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
     }
 
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+<<<<<<< HEAD
         let command = "/firecracker-data/stop.sh ".to_owned() + &self.vm_id;
+=======
 
-        // Spawn the shell process
+        let command = "/firecracker-data/stop.sh ".to_owned()  + &self.vm_id;
+>>>>>>> afc33f474 (initiate tidyup)
+
         let _status = Command::new("sudo")
             .arg("bash")
             .arg("-c")
@@ -753,10 +760,8 @@ async fn watch_task<Strm>(
             // Got a shutdown message
             _ = Pin::new(&mut shutdown_rx) => {
                 trace!("watch task received shutdown");
-                println!("watch task received shutdown");
                 if let Err(err) = watch_progress.stop().await {
-                    dbg!(err);
-                    //warn!(error = ?err, "failed to cleanly close the watch session");
+                    warn!(error = ?err, "failed to cleanly close the watch session");
                 }
                 break;
             }
@@ -770,11 +775,9 @@ async fn watch_task<Strm>(
                     // An error occurred on the stream. We are going to treat this as catastrophic
                     // and end the watch.
                     Some(Err(err)) => {
-                        println!("bad stuff happened");
                         warn!(error = ?err, "error on watch stream");
                         if let Err(err) = watch_progress.stop().await {
-                            dbg!(err);
-                            //warn!(error = ?err, "failed to cleanly close the watch session");
+                            warn!(error = ?err, "failed to cleanly close the watch session");
                         }
                         break
                     }

@@ -69,6 +69,8 @@ COPY --from=builder-cyclone /tmp/local-bin/* /usr/local/bin/
 COPY --from=builder-lang-js /tmp/nix-store-closure /nix/store
 COPY --from=builder-lang-js /tmp/local-bin/* /usr/local/bin/
 
+RUN apk add aws-cli
+
 ENTRYPOINT [ \
   "/sbin/runuser", "-u", "app", "--", "/usr/local/bin/cyclone" \
 ]
