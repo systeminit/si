@@ -49,9 +49,7 @@ pub async fn ws_watch(
     wsu: WebSocketUpgrade,
     Extension(watch_keepalive): Extension<Arc<WatchKeepalive>>,
 ) -> impl IntoResponse {
-    trace!("ws_watch");
     async fn handle_socket(mut socket: WebSocket, watch_keepalive: Arc<WatchKeepalive>) {
-        trace!("in ws_watch.handle_socket");
         if let Err(err) = watch::run(watch_keepalive.clone_tx(), watch_keepalive.timeout())
             .start(&mut socket)
             .await
@@ -61,9 +59,6 @@ pub async fn ws_watch(
             trace!(error = ?err, "protocol finished");
         }
     }
-
-    println!("about to upgrade");
-    trace!("about to upgrade");
     wsu.on_upgrade(move |socket| handle_socket(socket, watch_keepalive))
 }
 
@@ -92,7 +87,6 @@ pub async fn ws_execute_resolver(
     State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
-    println!("we executin now");
     let lang_server_path = lang_server_path.as_path().to_path_buf();
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<ResolverFunctionRequest> = PhantomData;
@@ -236,7 +230,6 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     Success: Serialize + Unpin + fmt::Debug,
     LangServerSuccess: Serialize + DeserializeOwned + Unpin + fmt::Debug + Into<Success>,
 {
-    trace!("handling sockets");
     let proto = {
         let execution: Execution<Request, LangServerSuccess, Success> =
             execution::new(lang_server_path, lang_server_debugging, key, sub_command);

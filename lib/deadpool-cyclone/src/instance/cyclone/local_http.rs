@@ -104,7 +104,6 @@ impl Instance for LocalHttpInstance {
 
 #[async_trait]
 impl CycloneClient<TcpStream> for LocalHttpInstance {
-
     async fn watch(&mut self) -> result::Result<Watch<TcpStream>, ClientError> {
         self.ensure_healthy_client()
             .await

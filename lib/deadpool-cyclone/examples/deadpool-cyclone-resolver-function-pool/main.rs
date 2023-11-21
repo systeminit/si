@@ -98,7 +98,7 @@ async fn execute(
     info!(status = ?pool.status(), "Getting an instance from the pool");
     let mut instance = pool.get().await?;
     info!("Checking if instance is healthy");
-
+    instance.ensure_healthy().await?;
     info!(
         execution_id = &request.execution_id.as_str(),
         "Executing resolver function"

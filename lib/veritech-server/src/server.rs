@@ -340,9 +340,7 @@ async fn resolver_function_request(
         .start()
         .await?;
 
-    println!("started");
     while let Some(msg) = progress.next().await {
-        println!("next");
         match msg {
             Ok(ProgressMessage::OutputStream(output)) => {
                 publisher.publish_output(&output).await?;
@@ -357,9 +355,7 @@ async fn resolver_function_request(
         }
     }
 
-    println!("finished");
     let function_result = progress.finish().await?;
-    dbg!(&function_result);
 
     Ok(function_result)
 }

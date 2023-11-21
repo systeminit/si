@@ -33,8 +33,6 @@ pub struct WatchRun {
 
 impl WatchRun {
     pub async fn start(self, ws: &mut WebSocket) -> Result<()> {
-        trace!("starting watch");
-        println!("starting watch");
         let mut heartbeat_interval = time::interval(
             self.timeout
                 .checked_div(3)

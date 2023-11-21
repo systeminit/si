@@ -111,7 +111,6 @@ mod tests {
     };
 
     #[tokio::test]
-    #[ignore]
     async fn boom() {
         let mut config_file = veritech_server::ConfigFile::default_local_uds();
         veritech_server::detect_and_configure_development(&mut config_file)
@@ -198,6 +197,10 @@ mod tests {
 
 
     #[tokio::test]
+    // Ignore for now as there is a pre-requisite on the execution
+    // system to allow this test to pass. I.e. all systems have 
+    // processes but not all have firecracker setup.
+    #[ignore]
     async fn chop() {
         let mut config_file = veritech_server::ConfigFile::default_local_uds();
         veritech_server::detect_and_configure_development(&mut config_file)

@@ -115,7 +115,6 @@ impl Instance for LocalUdsInstance {
     async fn ensure_healthy(&mut self) -> result::Result<(), Self::Error> {
         self.ensure_healthy_client().await?;
         self.client.execute_ping().await?;
-
         Ok(())
     }
 }
@@ -123,18 +122,30 @@ impl Instance for LocalUdsInstance {
 #[async_trait]
 impl CycloneClient<UnixStream> for LocalUdsInstance {
     async fn watch(&mut self) -> result::Result<Watch<UnixStream>, ClientError> {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
         self.client.watch().await
     }
 
     async fn liveness(&mut self) -> result::Result<LivenessStatus, ClientError> {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
         self.client.liveness().await
     }
 
     async fn readiness(&mut self) -> result::Result<ReadinessStatus, ClientError> {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
         self.client.readiness().await
     }
 
     async fn execute_ping(&mut self) -> result::Result<PingExecution<UnixStream>, ClientError> {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
         let result = self.client.execute_ping().await;
         self.count_request();
 
@@ -148,9 +159,11 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         Execution<UnixStream, ResolverFunctionRequest, ResolverFunctionResultSuccess>,
         ClientError,
     > {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
         let result = self.client.execute_resolver(request).await;
         self.count_request();
-        println!("in execute_resolver deadpool");
         result
     }
 
@@ -161,6 +174,9 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         Execution<UnixStream, ValidationRequest, ValidationResultSuccess>,
         ClientError,
     > {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
         let result = self.client.execute_validation(request).await;
         self.count_request();
 
@@ -174,6 +190,10 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         request: ActionRunRequest,
     ) -> result::Result<Execution<UnixStream, ActionRunRequest, ActionRunResultSuccess>, ClientError>
     {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
+
         // Use the websocket client for cyclone to execute command run.
         let result = self.client.execute_action_run(request).await;
         self.count_request();
@@ -188,6 +208,10 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         Execution<UnixStream, ReconciliationRequest, ReconciliationResultSuccess>,
         ClientError,
     > {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
+
         // Use the websocket client for cyclone to execute reconciliation.
         let result = self.client.execute_reconciliation(request).await;
         self.count_request();
@@ -202,6 +226,10 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         Execution<UnixStream, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
         ClientError,
     > {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
+
         // Use the websocket client for cyclone to execute reconciliation.
         let result = self.client.execute_schema_variant_definition(request).await;
         self.count_request();
@@ -454,7 +482,12 @@ pub enum LocalUdsRuntimeStrategy {
 
 impl Default for LocalUdsRuntimeStrategy {
     fn default() -> Self {
-        Self::LocalFirecracker
+        // To use alternatives, drive via uncommenting this line
+        // We will use configuration or otherwise to "pick" which
+        // Runtime stategy or otherwise in the future.
+        Self::LocalProcess
+        //Self::LocalDocker
+        //Self::LocalFirecracker
     }
 }
 
@@ -667,16 +700,18 @@ struct LocalFirecrackerRuntime {
 
 impl LocalFirecrackerRuntime {
     async fn build() -> Result<Box<dyn LocalInstanceRuntime>> {
-        // Chage this to a five integer ID
-        // TODO(johnrwatson): debugging, needs reverted
+
+        // TODO(johnwatson): Calculate it instead of random (uuid)
+        // or could use a better/deeper uuid variant. There is a limitation
+        // in the shell due to the regex limits on user ids and veth names.
+        // The chances of sister-parallel clash in this model for 10
+        // functions executed at the same time is 0.2% and the user 
+        // could simply re-run failed functions for those within this failure mode.
+        // We run in series at the minute so the chances of clash are very limited.
         let vm_id: String = thread_rng().gen_range(0..5000).to_string();
-        //let vm_id: String = "232".to_string();
         let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", vm_id));
 
-        //let vm_id = String::from("1");
-        //let sock = PathBuf::from(&format!("/firecracker-data/v.sock"));
         // TODO(johnwatson): Run some checks against the ID to see if it's been used before
-        // Calculate it instead of random?
 
         Ok(Box::new(LocalFirecrackerRuntime {
             vm_id,
@@ -752,9 +787,7 @@ async fn watch_task<Strm>(
             result = watch_progress.next() => {
                 match result {
                     // Got a ping, good news, proceed
-                    Some(Ok(())) => {
-                        println!("got a good ping")
-                    },
+                    Some(Ok(())) => {},
                     // An error occurred on the stream. We are going to treat this as catastrophic
                     // and end the watch.
                     Some(Err(err)) => {
