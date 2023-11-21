@@ -9,16 +9,10 @@ use tokio_vsock::{VsockAddr,VsockListener,VsockStream};
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum VsockIncomingStreamError {
-
     #[error("failed to bind to vsock: {1}")]
     Bind(#[source] std::io::Error, VsockAddr),
-
-    //#[error("failed to create parent path for unix domain socket")]
-    // CreateParentPath(#[source] std::io::Error),
     #[error("IO error")]
     IO(#[from] std::io::Error),
-    //#[error("parent path not found for unix domain socket: {0}")]
-    //ParentPathNotFound(PathBuf),
 }
 
 type Result<T> = std::result::Result<T, VsockIncomingStreamError>;

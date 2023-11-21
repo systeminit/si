@@ -338,7 +338,7 @@ impl Spec for LocalUdsInstanceSpec {
                     }
                     Err(err) => {
                         println!("error in watch in deadpool");
-                        dbg!(err)
+                        trace!(err)
                     }
                 };
                 if retries < 1 {

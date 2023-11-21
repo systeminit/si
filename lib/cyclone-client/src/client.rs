@@ -446,11 +446,10 @@ where
         // as it currently fails with the connect
         stream = self.connect(stream).await?;
 
-        let uri = dbg!(self.new_ws_request(path_and_query)?);
+        let uri = self.new_ws_request(path_and_query)?;
         let (websocket_stream, response) = tokio_tungstenite::client_async(uri, stream)
             .await.unwrap();
-        dbg!(&response);
-        if dbg!(response.status()) != StatusCode::SWITCHING_PROTOCOLS {
+        if response.status() != StatusCode::SWITCHING_PROTOCOLS {
             return Err(ClientError::UnexpectedStatusCode(response.status()));
         }
 

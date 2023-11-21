@@ -177,9 +177,7 @@ where
             // We see the end of the websocket stream, but finish was never sent
             Poll::Ready(None) => Poll::Ready(Some(Err(ExecutionError::WSClosedBeforeFinish))),
             // Not ready, so...not ready!
-            Poll::Pending => {
-                Poll::Pending
-            }
+            Poll::Pending => Poll::Pending,
         }
     }
 }
