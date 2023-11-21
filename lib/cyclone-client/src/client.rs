@@ -224,8 +224,6 @@ impl Client<(), (), ()> {
     }
 }
 
-
-
 #[async_trait]
 impl<Conn, Strm, Sock> CycloneClient<Strm> for Client<Conn, Strm, Sock>
 where
@@ -233,13 +231,11 @@ where
     Conn::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
     Conn::Future: Unpin + Send,
     Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + Sync + 'static,
-    Sock: Send + Sync + std::fmt::Debug,
+    Sock: Send + Sync,
 {
 
     async fn watch(&mut self) -> Result<Watch<Strm>> {
-        println!("in watch");
         let stream = self.websocket_stream("/watch").await?;
-        println!("in watch, after creating websocket_stream");
         Ok(watch::watch(stream, self.config.watch_timeout))
     }
 
@@ -272,7 +268,6 @@ where
     }
 
     async fn execute_ping(&mut self) -> Result<PingExecution<Strm>> {
-        println!("in ping");
         let stream = self.websocket_stream("/execute/ping").await?;
         Ok(ping::execute(stream))
     }
@@ -281,7 +276,6 @@ where
         &mut self,
         request: ResolverFunctionRequest,
     ) -> Result<Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>> {
-        println!("in execute resolver");
         let stream = self.websocket_stream("/execute/resolver").await?;
         Ok(execution::execute(stream, request))
     }
@@ -291,7 +285,6 @@ where
         request: ActionRunRequest,
     ) -> result::Result<Execution<Strm, ActionRunRequest, ActionRunResultSuccess>, ClientError>
     {
-        println!("in execute action run");
         let stream = self.websocket_stream("/execute/command").await?;
         Ok(execution::execute(stream, request))
     }
@@ -312,7 +305,6 @@ where
         request: ValidationRequest,
     ) -> result::Result<Execution<Strm, ValidationRequest, ValidationResultSuccess>, ClientError>
     {
-        println!("in execute validation");
         Ok(execution::execute(
             self.websocket_stream("/execute/validation").await?,
             request,
@@ -326,7 +318,6 @@ where
         Execution<Strm, SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess>,
         ClientError,
     > {
-        println!("in execute schema def");
         Ok(execution::execute(
             self.websocket_stream("/execute/schema_variant_definition")
                 .await?,
@@ -423,16 +414,10 @@ where
     }
 
     async fn connect(&mut self, mut stream: Strm) -> Result<Strm> {
-        println!("TRYNA CONNECT WITHIN CONNECT");
 
         let connect_cmd = format!("CONNECT {}\n", 52);
 
-        println!("About to do write_all");
-        if stream.write_all(connect_cmd.as_bytes()).await.is_err() {
-            println!("Within write_all");
-        };
-        println!("Got further in CONNECT");
-        // poor mans take_while
+        if stream.write_all(connect_cmd.as_bytes()).await.is_err() {};
         let mut connect_response = Vec::<u8>::new();
         loop {
             let mut single_byte = vec![0; 1];
@@ -440,7 +425,6 @@ where
             connect_response.push(single_byte[0]);
             if single_byte == [b'\n'] { break; }
         }
-        println!("Read all the bytes to /n");
 
         let the_string = std::str::from_utf8(&connect_response)?;
         println!("{}", the_string);
@@ -452,7 +436,6 @@ where
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
-        println!("in websocket stream");
         let mut stream = self
             .connector
             .call(self.uri.clone())
@@ -470,7 +453,6 @@ where
         if dbg!(response.status()) != StatusCode::SWITCHING_PROTOCOLS {
             return Err(ClientError::UnexpectedStatusCode(response.status()));
         }
-        println!("websocket established");
 
         Ok(websocket_stream)
     }
