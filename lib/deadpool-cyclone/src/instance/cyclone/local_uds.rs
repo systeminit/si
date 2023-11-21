@@ -322,20 +322,12 @@ impl Spec for LocalUdsInstanceSpec {
         };
 
         let mut watch_progress = watch.start().await?;
-<<<<<<< HEAD
-        println!("watch progress");
-=======
->>>>>>> afc33f474 (initiate tidyup)
         // Establish that we have received our first watch ping, which should happen immediately
         // after establishing a watch session
         watch_progress
             .next()
             .await
             .ok_or(Self::Error::WatchClosed)??;
-<<<<<<< HEAD
-        println!("watch progress next");
-=======
->>>>>>> afc33f474 (initiate tidyup)
 
         let (watch_shutdown_tx, watch_shutdown_rx) = oneshot::channel();
         // Spawn a task to keep the watch session open until we shut it down
@@ -700,11 +692,6 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
     }
 
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-<<<<<<< HEAD
-        // TODO(johnrwatson): debugging, needs reverted
-=======
-
->>>>>>> afc33f474 (initiate tidyup)
         let command = "/firecracker-data/start.sh ".to_owned()  + &self.vm_id;
 
         let _status = Command::new("sudo")
@@ -717,12 +704,8 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
     }
 
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-<<<<<<< HEAD
-        let command = "/firecracker-data/stop.sh ".to_owned() + &self.vm_id;
-=======
 
         let command = "/firecracker-data/stop.sh ".to_owned()  + &self.vm_id;
->>>>>>> afc33f474 (initiate tidyup)
 
         let _status = Command::new("sudo")
             .arg("bash")

@@ -59,11 +59,7 @@ sudo docker run \
   -v $INITSCRIPT:/init.sh \
   -it --rm \
   --entrypoint sh \
-<<<<<<< HEAD
   systeminit/cyclone:20231120.223123.0-sha.10c725585-dirty-amd64  \
-=======
-  systeminit/cyclone:sha-279614a494b1636d294237073b5e31297a350c59 \
->>>>>>> afc33f474 (initiate tidyup)
   /init.sh
 
 # lets go find the dev decryption key for now
@@ -73,20 +69,5 @@ sudo cp $GITROOT/lib/cyclone-server/src/dev.decryption.key $ROOTFSMOUNT
 sudo umount $ROOTFSMOUNT
 rm -rf $ROOTFSMOUNT $KERNELMOUNT $INITSCRIPT $KERNELISO
 
-<<<<<<< HEAD
-# make the package
-#sudo tar -czvf cyclone-package.tar.gz -C $PACKAGEDIR .
-
-sudo mv cyclone-pkg/cyclone-rootfs.ext4 /firecracker-data/rootfs.ext4
-
-# cleanup
-#sudo rm -rf $PACKAGEDIR
-  ## working systeminit/cyclone:20231120.162459.0-sha.10c725585-dirty-amd64 \
-  #
-  #
-  # built with root: 20231120.190923.0-sha.10c725585-dirty-amd64
-
-=======
 echo "Info: To promote on the host run:"
 echo "sudo mv cyclone-pkg/cyclone-rootfs.ext4 /firecracker-data/rootfs.ext4"
->>>>>>> afc33f474 (initiate tidyup)
