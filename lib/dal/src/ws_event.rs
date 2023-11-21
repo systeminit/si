@@ -5,7 +5,10 @@ use thiserror::Error;
 
 use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::ComponentCreatedPayload;
-use crate::pkg::ModuleImported;
+use crate::pkg::{
+    ImportWorkspaceVotePayload, ModuleImportedPayload, WorkspaceActorPayload,
+    WorkspaceExportPayload, WorkspaceImportApprovalActorPayload, WorkspaceImportPayload,
+};
 use crate::{
     component::{code::CodeGeneratedPayload, resource::ResourceRefreshedPayload},
     fix::{batch::FixBatchReturn, FixReturn},
@@ -56,12 +59,17 @@ pub enum WsPayload {
     Cursor(CursorPayload),
     FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),
+    ImportWorkspaceVote(ImportWorkspaceVotePayload),
     LogLine(LogLinePayload),
-    ModuleImported(ModuleImported),
+    ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),
     ResourceRefreshed(ResourceRefreshedPayload),
     SchemaCreated(SchemaPk),
     StatusUpdate(StatusMessage),
+    WorkspaceExported(WorkspaceExportPayload),
+    WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
+    WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),
+    WorkspaceImported(WorkspaceImportPayload),
 }
 
 #[remain::sorted]

@@ -30,7 +30,7 @@ export type DiagramCursorDef = RawDiagramCursor & {
   color: string | undefined;
 };
 
-interface OnlineUser {
+export interface OnlineUser {
   pk: string;
   name: string;
   pictureUrl: string | null;
