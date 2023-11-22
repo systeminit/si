@@ -31,7 +31,12 @@
           <Stack class="p-2 border-b dark:border-neutral-600" spacing="xs">
             <div class="flex gap-1 flex-wrap">
               <VButton
-                v-if="testPanelEnabled && funcStore.selectedFuncDetails"
+                v-if="
+                  testPanelEnabled &&
+                  funcStore.selectedFuncDetails &&
+                  funcStore.selectedFuncDetails?.associations?.type !==
+                    'authentication'
+                "
                 class="--tone-action"
                 icon="save"
                 size="md"
@@ -243,7 +248,11 @@
       </TabGroupItem>
 
       <TabGroupItem
-        v-if="testPanelEnabled && funcStore.selectedFuncDetails"
+        v-if="
+          testPanelEnabled &&
+          funcStore.selectedFuncDetails &&
+          funcStore.selectedFuncDetails?.associations?.type !== 'authentication'
+        "
         label="Test"
         slug="test"
       >

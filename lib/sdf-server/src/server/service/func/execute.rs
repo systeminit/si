@@ -2,8 +2,9 @@ use super::FuncResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    func::binding::FuncBindingResult, func::binding::LogLinePayload, DalContext, Func, FuncBinding,
-    FuncBindingError, FuncError, FuncId, StandardModel, Visibility, WsEvent,
+    func::before::before_funcs_for_component, func::binding::FuncBindingResult,
+    func::binding::LogLinePayload, ComponentId, DalContext, Func, FuncBinding, FuncBindingError,
+    FuncError, FuncId, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use veritech_client::OutputStream;
@@ -14,6 +15,7 @@ pub struct ExecuteRequest {
     pub id: FuncId,
     pub args: serde_json::Value,
     pub execution_key: String,
+    pub component_id: ComponentId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -38,6 +40,11 @@ pub async fn execute(
     let func = Func::get_by_id(&ctx, &req.id)
         .await?
         .ok_or(FuncError::NotFound(req.id))?;
+
+    // We need the associated [`ComponentId`] for this function--this is how we resolve and
+    // prepare before functions
+    let before = before_funcs_for_component(&ctx, &req.component_id).await?;
+
     let func_binding =
         FuncBinding::new(&ctx, req.args.clone(), req.id, *func.backend_kind()).await?;
 
@@ -63,7 +70,7 @@ pub async fn execute(
     });
 
     let (value, _unprocessed_value) = func_binding
-        .execute_critical_section(func.clone(), context, vec![])
+        .execute_critical_section(func.clone(), context, before)
         .await?;
     let logs = log_handler.await??;
 
