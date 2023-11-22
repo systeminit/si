@@ -8,7 +8,7 @@ use convert_case::{Case, Casing};
 use dal::{
     installed_pkg::InstalledPkgError, pkg::PkgError as DalPkgError, DalContextBuilder,
     SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError, TransactionsError,
-    UserError, WorkspaceError, WorkspacePk, WsEventError,
+    UserError, UserPk, WorkspaceError, WorkspacePk, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgError};
@@ -20,10 +20,12 @@ use tokio::fs::read_dir;
 const PKG_EXTENSION: &str = "sipkg";
 const MAX_NAME_SEARCH_ATTEMPTS: usize = 100;
 
+mod approval_process;
 pub mod builtin_module_spec;
 pub mod export_pkg;
 pub mod export_workspace;
 pub mod get_pkg;
+pub mod import_workspace_vote;
 pub mod install_pkg;
 pub mod list_pkgs;
 mod reject_pkg;
@@ -43,6 +45,10 @@ pub enum PkgError {
     InstalledPkg(#[from] InstalledPkgError),
     #[error("Invalid pacakge file name: {0}")]
     InvalidPackageFileName(String),
+    #[error("invalid user {0}")]
+    InvalidUser(UserPk),
+    #[error("invalid user system init")]
+    InvalidUserSystemInit,
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
     #[error("Module hash not be found: {0}")]
@@ -210,4 +216,16 @@ pub fn routes() -> Router<AppState> {
             post(builtin_module_spec::promote_to_builtin),
         )
         .route("/reject_pkg", post(reject_pkg::reject_pkg))
+        .route(
+            "/begin_approval_process",
+            post(approval_process::begin_approval_process),
+        )
+        .route(
+            "/cancel_approval_process",
+            post(approval_process::cancel_approval_process),
+        )
+        .route(
+            "/import_workspace_vote",
+            post(import_workspace_vote::import_workspace_vote),
+        )
 }

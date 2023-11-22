@@ -9,9 +9,8 @@ use crate::{
 };
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::pkg::ModuleImported;
-use dal::WorkspacePk;
 use dal::{pkg::import_pkg_from_pkg, Visibility, WsEvent};
+use dal::{HistoryActor, User, WorkspacePk};
 use module_index_client::IndexClient;
 use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgKind};
@@ -65,25 +64,37 @@ pub async fn install_pkg(
         }),
     );
 
-    WsEvent::module_imported(
-        &ctx,
-        match metadata.kind() {
-            SiPkgKind::Module => ModuleImported::Module {
-                schema_variant_ids: svs,
-            },
-            SiPkgKind::WorkspaceBackup => {
-                let workspace_pk = match metadata.workspace_pk() {
-                    Some(workspace_pk) => Some(WorkspacePk::from_str(workspace_pk)?),
-                    None => None,
-                };
+    let user_pk = match ctx.history_actor() {
+        HistoryActor::User(user_pk) => {
+            let user = User::get_by_pk(&ctx, *user_pk)
+                .await?
+                .ok_or(PkgError::InvalidUser(*user_pk))?;
 
-                ModuleImported::WorkspaceBackup { workspace_pk }
-            }
-        },
-    )
-    .await?
-    .publish_on_commit(&ctx)
-    .await?;
+            Some(user.pk())
+        }
+
+        HistoryActor::SystemInit => None,
+    };
+
+    match metadata.kind() {
+        SiPkgKind::Module => {
+            WsEvent::module_imported(&ctx, svs)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?;
+        }
+        SiPkgKind::WorkspaceBackup => {
+            let workspace_pk = match metadata.workspace_pk() {
+                Some(workspace_pk) => Some(WorkspacePk::from_str(workspace_pk)?),
+                None => None,
+            };
+
+            WsEvent::workspace_imported(&ctx, workspace_pk, user_pk)
+                .await?
+                .publish_on_commit(&ctx)
+                .await?
+        }
+    }
 
     ctx.commit().await?;
 

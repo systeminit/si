@@ -5,6 +5,7 @@ import { ActorView } from "@/api/sdf/dal/history_actor";
 import { FuncId } from "@/store/func/funcs.store";
 import { ChangeSetId } from "@/store/change_sets.store";
 import { ComponentId } from "../components.store";
+import { WorkspacePk } from "../workspaces.store";
 import { FixStatus } from "../fixes.store";
 import {
   AttributeValueId,
@@ -131,16 +132,29 @@ export type WsEventPayloadMap = {
   ComponentCreated: {
     success: boolean;
   };
-
-  ModuleImported:
-    | {
-        kind: "workspaceBackup";
-        workspacePk?: string | null;
-      }
-    | {
-        kind: "module";
-        schemaVariantIds: string[];
-      };
+  ModuleImported: {
+    schemaVariantIds: string[];
+  };
+  WorkspaceImportBeginApprovalProcess: {
+    workspacePk: WorkspacePk;
+    userPk: UserId;
+    createdAt: IsoDateString;
+    createdBy: string;
+    name: string;
+  };
+  WorkspaceImportCancelApprovalProcess: {
+    workspacePk: WorkspacePk;
+    userPk: UserId;
+  };
+  ImportWorkspaceVote: {
+    workspacePk: WorkspacePk;
+    userPk: UserId;
+    vote: string;
+  };
+  WorkspaceImported: {
+    workspacePk: WorkspacePk;
+    userPk: UserId;
+  };
 
   // Old fake status update
   // UpdateStatus: {

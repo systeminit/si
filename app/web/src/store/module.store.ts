@@ -368,19 +368,23 @@ export const useModuleStore = () => {
           this.LOAD_LOCAL_MODULES();
           this.LIST_BUILTINS();
 
-          const realTimeStore = useRealtimeStore();
-          realTimeStore.subscribe(this.$id, "workspaceBackupImports", {
-            eventType: "ModuleImported",
-            callback: (payload) => {
-              if (payload.kind === "workspaceBackup") {
+          const realtimeStore = useRealtimeStore();
+          realtimeStore.subscribe(this.$id, `workspace/${workspaceId}`, [
+            {
+              eventType: "ModuleImported",
+              callback: () => {
                 if (!this.installingModule) {
                   window.location.reload();
                 } else {
                   this.installingModule = false;
                 }
-              }
+              },
             },
-          });
+          ]);
+
+          return () => {
+            realtimeStore.unsubscribe(this.$id);
+          };
         },
       },
     ),
