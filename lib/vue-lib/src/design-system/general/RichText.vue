@@ -151,8 +151,7 @@ onUpdated(adjustments);
 <style lang="less">
 .richtext {
   // this styling can be a bit problematic when nesting actual components inside
-  // so likely will need some work if we do that more...
-  // for now, I try to not apply styling if something is in an element with class "escape"
+  // so likely will need some work if we do that a lot more... (see the link rules below for an example)
 
   max-width: 100%;
   position: relative;
@@ -166,19 +165,23 @@ onUpdated(adjustments);
     }
   }
 
-  :not(.escape) a:not(.vbutton) {
-    html.dark & {
-      color: @colors-action-300;
-    }
-    html.light & {
-      color: @colors-action-500;
-    }
-    text-decoration: underline;
-    text-decoration-thickness: 0.05em;
-    text-underline-offset: 0.15em;
+  // this is really imperfect... not way to match a "not within <div class="escape">" at any level
+  // so instead we just look for the link being inside of something normally richtext-y
+  :where(p, ul, h1, h2, h3, h4, h5, table) {
+    a:not(.vbutton) {
+      html.dark & {
+        color: @colors-action-300;
+      }
+      html.light & {
+        color: @colors-action-500;
+      }
+      text-decoration: underline;
+      text-decoration-thickness: 0.05em;
+      text-underline-offset: 0.15em;
 
-    &:hover {
-      color: @colors-action-400;
+      &:hover {
+        color: @colors-action-400;
+      }
     }
   }
 
