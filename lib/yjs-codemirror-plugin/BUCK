@@ -1,0 +1,28 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+    "filegroup",
+    "package_node_modules",
+)
+
+export_file(
+    name = "package.json",
+)
+
+package_node_modules(
+    name = "node_modules",
+    package_name = "yjs-codemirror-plugin",
+)
+
+filegroup(
+    name = "src",
+    srcs = glob([
+        "src/**/*",
+        "dist/**/*", # temporarily we are just going to commit the built dist folder
+        "tsconfig.json"
+    ]),
+)
+
+prod_deps_srcs = {}
+
+dev_deps_srcs = {}

@@ -57,11 +57,12 @@ import beautify from "js-beautify";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 // import { IndexeddbPersistence } from "y-indexeddb";
-import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
+import { yCollab, yUndoManagerKeymap } from "yjs-codemirror-plugin";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { API_WS_URL } from "@/store/apis";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { usePresenceStore } from "@/store/presence.store";
 import {
   createTypescriptSource,
   GetTooltipFromPos,
@@ -288,6 +289,16 @@ const codeTooltip = {
   },
 };
 
+const presenceStore = usePresenceStore();
+function getUserInfo(userId: { id: string }) {
+  const user = presenceStore.usersById[userId.id];
+  return {
+    name: user?.name,
+    colorLight: user?.color ? `${user.color}30` : undefined,
+    color: user?.color || undefined,
+  };
+}
+
 let wsProvider: WebsocketProvider | undefined;
 let yText: Y.Text | undefined;
 onBeforeUnmount(() => {
@@ -420,17 +431,14 @@ const mountEditor = async () => {
     );
 
     wsProvider.awareness.setLocalStateField("user", {
-      name:
-        authStore.user?.name ?? `Anonymous ${Math.floor(Math.random() * 100)}`,
-      color: "black",
-      colorLight: "white",
+      id: authStore.user?.pk,
     });
 
     extensions.push(keymap.of([...yUndoManagerKeymap]));
 
     // const undoManager = new Y.UndoManager(yText);
     extensions.push(
-      yCompartment.of(yCollab(yText, wsProvider.awareness)), // , { undoManager })),
+      yCompartment.of(yCollab(yText, wsProvider.awareness, { getUserInfo })), // , { undoManager })),
     );
   } else {
     yText.insert(0, props.modelValue);
