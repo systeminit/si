@@ -1,7 +1,7 @@
 import * as _ from "lodash-es";
 import { defineStore } from "pinia";
 import { ApiRequest } from "@si/vue-lib/pinia";
-import { UserId } from "./auth.store";
+import { UserId, useAuthStore } from "./auth.store";
 import { ISODateString } from "./shared-types";
 
 export type WorkspaceId = string;
@@ -13,7 +13,7 @@ export type Workspace = {
   instanceUrl: string;
   displayName: string;
   slug: string;
-  createdByUserId: UserId;
+  creatorUserId: UserId;
   creatorUser: {
     firstName?: string;
     lastName?: string;
@@ -40,8 +40,18 @@ export const useWorkspacesStore = defineStore("workspaces", {
     workspaces: (state) => _.values(state.workspacesById),
     selectedWorkspaceMembers: (state) =>
       _.values(state.selectedWorkspaceMembersById),
-    // when we have multiple workspaces, we'll want to track which one was the default...
-    defaultWorkspace: (state) => _.values(state.workspacesById)[0],
+    // grabbing the oldest workspace you created and assuming that it's your "default"
+    // which is going to be shown on the connect widget in the tutorial
+    defaultWorkspace: (state) => {
+      const authStore = useAuthStore();
+      return _.sortBy(
+        _.filter(
+          _.values(state.workspacesById),
+          (w) => w.creatorUserId === authStore.user?.id,
+        ),
+        (w) => w.createdAt,
+      )[0];
+    },
   },
   actions: {
     async LOAD_WORKSPACES() {
