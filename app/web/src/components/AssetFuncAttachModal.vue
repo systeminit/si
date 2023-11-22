@@ -127,6 +127,7 @@ import {
 import { useRouter } from "vue-router";
 import clsx from "clsx";
 import uniqBy from "lodash-es/uniqBy";
+import * as _ from "lodash-es";
 import { ActionKind } from "@/store/fixes.store";
 import SiCheckBox from "@/components/SiCheckBox.vue";
 import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";
@@ -358,21 +359,6 @@ const newFuncOptions = (
   }
 };
 
-const attachToLeafFunctionOrAction = (
-  schemaVariantId: string,
-  associations: FuncAssociations,
-): FuncAssociations =>
-  associations.type === "codeGeneration" ||
-  associations.type === "qualification" ||
-  associations.type === "action"
-    ? {
-        ...associations,
-        schemaVariantIds: Array.from(
-          new Set(associations.schemaVariantIds.concat([schemaVariantId])),
-        ),
-      }
-    : associations;
-
 const attachToValidationFunction = (
   schemaVariantId: string,
   propId: string,
@@ -421,24 +407,23 @@ const attachExistingFunc = async () => {
   if (props.schemaVariantId && selectedExistingFuncId.value) {
     const func = funcStore.funcDetailsById[selectedExistingFuncId.value];
     if (func) {
-      let updatedAssocations: FuncAssociations | undefined;
+      let updatedAssociations: FuncAssociations | undefined;
       const associations = func?.associations;
       if (!associations) {
         return;
       }
 
       switch (associations.type) {
+        case "authentication":
         case "action":
         case "codeGeneration":
         case "qualification":
-          updatedAssocations = attachToLeafFunctionOrAction(
-            props.schemaVariantId,
-            associations,
-          );
+          updatedAssociations = _.cloneDeep(associations);
+          updatedAssociations.schemaVariantIds.push(props.schemaVariantId);
           break;
         case "attribute":
           if (attributeOutputLocationParsed.value) {
-            updatedAssocations = attachToAttributeFunction(
+            updatedAssociations = attachToAttributeFunction(
               attributeOutputLocationParsed.value,
               associations,
             );
@@ -446,7 +431,7 @@ const attachExistingFunc = async () => {
           break;
         case "validation":
           if (attrToValidate.value) {
-            updatedAssocations = attachToValidationFunction(
+            updatedAssociations = attachToValidationFunction(
               props.schemaVariantId,
               attrToValidate.value,
               associations,
@@ -454,10 +439,14 @@ const attachExistingFunc = async () => {
           }
           break;
         default:
-          break;
+          throw new Error(
+            `type "${
+              (associations as FuncAssociations)?.type
+            }" is not supported by attachExistingFunc`,
+          );
       }
-      if (updatedAssocations) {
-        func.associations = updatedAssocations;
+      if (updatedAssociations) {
+        func.associations = updatedAssociations;
         const response = await funcStore.UPDATE_FUNC(func);
         if (response.result.success && props.assetId) {
           await reloadAssetAndRoute(props.assetId, func.id);
