@@ -1,7 +1,12 @@
 <template>
   <div class="flex flex-row items-stretch">
     <RouterLink
-      v-if="!compact && !hideEditButton && featureFlagsStore.EDIT_WORKSPACES"
+      v-if="
+        !compact &&
+        !hideEditButton &&
+        featureFlagsStore.EDIT_WORKSPACES &&
+        workspace
+      "
       :to="{
         name: 'workspace-settings',
         params: { workspaceId: workspace.id },
