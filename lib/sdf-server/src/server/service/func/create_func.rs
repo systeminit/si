@@ -4,6 +4,7 @@ use crate::server::tracking::track;
 use crate::service::func::FuncError;
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
+use dal::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeContext};
 use dal::{
     generate_name, validation::prototype::context::ValidationPrototypeContext, ActionKind,
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
@@ -309,7 +310,7 @@ async fn create_attribute_func(
 async fn create_authentication_func(
     ctx: &DalContext,
     name: Option<String>,
-    _options: Option<CreateFuncOptions>,
+    options: Option<CreateFuncOptions>,
 ) -> FuncResult<Func> {
     let func = create_func_stub(
         ctx,
@@ -321,7 +322,14 @@ async fn create_authentication_func(
     )
     .await?;
 
-    // TODO We'll need to create a prototype here when we get to executing auth funcs directly
+    if let Some(CreateFuncOptions::AuthenticationOptions { schema_variant_id }) = options {
+        AuthenticationPrototype::new(
+            ctx,
+            *func.id(),
+            AuthenticationPrototypeContext { schema_variant_id },
+        )
+        .await?;
+    }
 
     Ok(func)
 }
@@ -343,21 +351,7 @@ pub async fn create_func(
         }
     }
 
-    let mut force_changeset_pk = None;
-    if ctx.visibility().is_head() {
-        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
-
-        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
-
-        ctx.update_visibility(new_visibility);
-
-        force_changeset_pk = Some(change_set.pk);
-
-        WsEvent::change_set_created(&ctx, change_set.pk)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
-    };
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     let func = match request.variant {
         FuncVariant::Attribute => {

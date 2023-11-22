@@ -44,7 +44,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch, toRef } from "vue";
+import { ref, toRef, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { ApiRequestStatus } from "@si/vue-lib/pinia";
 import { ErrorMessage } from "@si/vue-lib/design-system";
@@ -126,7 +126,7 @@ const updateKind = () => {
   }
 };
 
-const getUpdatedAssocations = (
+const getUpdatedAssociations = (
   schemaVariantIds: string[],
 ): ActionAssociations => {
   let kind = ActionKind.Other;
@@ -141,7 +141,7 @@ const getUpdatedAssocations = (
 };
 
 const updateAssociations = () => {
-  const associations = getUpdatedAssocations(
+  const associations = getUpdatedAssociations(
     selectedVariants.value.map(({ value }) => value as string),
   );
   emit("update:modelValue", associations);
@@ -150,7 +150,7 @@ const updateAssociations = () => {
 
 const detachFunc = (): FuncAssociations | undefined => {
   if (props.schemaVariantId) {
-    return getUpdatedAssocations(
+    return getUpdatedAssociations(
       selectedVariants.value
         .map(({ value }) => value as string)
         .filter((schemaVariantId) => schemaVariantId !== props.schemaVariantId),

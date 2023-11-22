@@ -156,7 +156,9 @@
           />
           <AuthenticationDetails
             v-if="editingFunc.associations?.type === 'authentication'"
+            ref="detachRef"
             v-model="editingFunc.associations"
+            :schemaVariantId="schemaVariantId"
             @change="updateFunc"
           />
           <CodeGenerationDetails

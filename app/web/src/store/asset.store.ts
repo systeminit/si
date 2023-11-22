@@ -168,6 +168,16 @@ export const useAssetStore = () => {
         },
         assetListEntryById: (state) => (assetId: AssetId) =>
           state.assetList.find((asset) => asset.id === assetId),
+        assetBySchemaVariantId(): Record<string, Asset> {
+          const assetsWithSchemaVariantId = _.filter(
+            this.assets,
+            (a) => a.schemaVariantId !== undefined,
+          ) as (VariantDef & {
+            schemaVariantId: string;
+          })[];
+
+          return _.keyBy(assetsWithSchemaVariantId, (a) => a.schemaVariantId);
+        },
       },
       actions: {
         setSchemaVariantIdForAsset(assetId: AssetId, schemaVariantId: string) {

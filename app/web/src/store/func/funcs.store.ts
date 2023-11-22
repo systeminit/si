@@ -11,6 +11,7 @@ import { nilId } from "@/utils/nilId";
 import { trackEvent } from "@/utils/tracking";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { useAssetStore } from "@/store/asset.store";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -362,6 +363,8 @@ export const useFuncStore = () => {
             changeSetStore.creatingChangeSet = true;
           const isHead = changeSetStore.headSelected;
 
+          const oldAssociations = this.funcDetailsById[func.id]?.associations;
+
           return new ApiRequest<SaveFuncResponse>({
             method: "post",
             url: "func/save_func",
@@ -388,6 +391,36 @@ export const useFuncStore = () => {
             keyRequestStatusBy: func.id,
             onSuccess: (response) => {
               if (isHead) return;
+
+              if (
+                response.associations &&
+                "schemaVariantIds" in response.associations &&
+                oldAssociations &&
+                "schemaVariantIds" in oldAssociations
+              ) {
+                const addedVariantIds = _.difference(
+                  response.associations.schemaVariantIds,
+                  oldAssociations.schemaVariantIds,
+                );
+
+                const removedVariantIds = _.difference(
+                  oldAssociations.schemaVariantIds,
+                  response.associations.schemaVariantIds,
+                );
+
+                for (const schemaVariantId of _.concat(
+                  addedVariantIds,
+                  removedVariantIds,
+                )) {
+                  const assetStore = useAssetStore();
+                  const asset =
+                    assetStore.assetBySchemaVariantId[schemaVariantId];
+
+                  if (asset) {
+                    useAssetStore().LOAD_ASSET(asset.id);
+                  }
+                }
+              }
 
               func.associations = response.associations;
               func.isRevertible = response.isRevertible;
