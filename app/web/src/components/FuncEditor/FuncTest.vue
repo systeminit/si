@@ -525,6 +525,7 @@ const startTest = async () => {
     id: funcStore.selectedFuncId,
     args,
     executionKey,
+    componentId: testAttribute.value,
   });
 
   realtimeStore.unsubscribe(executionKey);

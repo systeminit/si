@@ -490,6 +490,7 @@ export const useFuncStore = () => {
           id: FuncId;
           args: unknown;
           executionKey: string;
+          componentId: string;
         }) {
           const func = this.funcById(executeRequest.id);
           if (func) {

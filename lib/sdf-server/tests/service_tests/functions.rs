@@ -1,6 +1,6 @@
 use axum::{http::Method, Router};
 
-use dal::{Func, FuncBackendKind, FuncBackendResponseType, StandardModel};
+use dal::{Func, FuncBackendKind, FuncBackendResponseType, StandardModel, ComponentId};
 use dal_test::{sdf_test, AuthTokenRef, DalContextHead};
 
 use sdf_server::service::func::execute::{ExecuteRequest, ExecuteResponse};
@@ -45,6 +45,7 @@ async fn test_execution_endpoint_qualification_function(
         id: *func.id(),
         args: serde_json::json!({"properties": {"some" : "info"}}),
         execution_key: "somethingfun".to_string(),
+        component_id: ComponentId::NONE,
         visibility: *ctx.visibility(),
     };
 
