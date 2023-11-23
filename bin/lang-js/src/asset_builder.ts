@@ -396,7 +396,7 @@ implements IPropWidgetDefinitionBuilder {
   /**
    * The type of widget
    *
-   * @param {string} kind [array | checkbox | color | comboBox | header | map | secret | select | text | textArea | codeEditor]
+   * @param {string} kind [array | checkbox | color | comboBox | header | map | select | text | textArea | codeEditor | password]
    *
    * @returns this
    *
@@ -895,6 +895,15 @@ export interface ISecretPropBuilder {
   build(): SecretPropDefinition;
 }
 
+/**
+ * Creates a prop [and a socket] in an asset with which to connect a secret
+ *
+ * @example
+ *  const secretPropName = new SecretPropBuilder()
+ *   .setName("credential")
+ *   .setSecretKind("DigitalOcean Credential")
+ *  .build();
+ */
 export class SecretPropBuilder implements ISecretPropBuilder {
   prop = <SecretPropDefinition>{};
 
@@ -908,11 +917,31 @@ export class SecretPropBuilder implements ISecretPropBuilder {
     this.prop.hasInputSocket = true;
   }
 
+  /**
+   * The secret prop name. This will appear in the model UI and can be any value
+   *
+   * @param {string} name - the name of the secret prop
+   *
+   * @returns this
+   *
+   * @example
+   * .setName("token")
+   */
   setName(name: string): this {
     this.prop.name = name;
     return this;
   }
 
+  /**
+   * The type of the secret - relates to the Secret Definition Name
+   *
+   * @param {any} value
+   *
+   * @returns this
+   *
+   * @example
+   * .setSecretKind("DigitalOcean Credential")
+   */
   setSecretKind(kind: string): this {
     this.prop.widget?.options.push({ label: "secretKind", value: kind });
     return this;
@@ -936,6 +965,14 @@ export class SecretPropBuilder implements ISecretPropBuilder {
     return this;
   }
 
+  /**
+   * Whether the prop should disable the auto-creation of an input socket
+   *
+   * @returns this
+   *
+   * @example
+   *  .skipInputSocket()
+   */
   skipInputSocket(): this {
     this.prop.hasInputSocket = false;
     return this;
@@ -965,6 +1002,25 @@ export interface ISecretDefinitionBuilder {
   build(): SecretDefinition;
 }
 
+/**
+ * Creates a secret to be used with a set of assets
+ *
+ * @example
+ * const secretDefinition = new SecretDefinitionBuilder()
+*          .setName("DigitalOcean Token")
+ *         .addProp(
+ *             new PropBuilder()
+ *             .setKind("string")
+ *             .setName("token")
+ *             .setWidget(
+ *                 new PropWidgetDefinitionBuilder()
+ *                 .setKind("password")
+ *                 .build()
+ *             )
+ *             .build()
+ *         )
+ *         .build();
+ */
 export class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
   definition: SecretDefinition;
 
@@ -974,11 +1030,35 @@ export class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
     this.definition.props = [];
   }
 
+  /**
+   * The secret name. This corresponds to the kind of secret
+   *
+   * @param {string} name - the name of the secret kind
+   *
+   * @returns this
+   *
+   * @example
+   * .setName("DigitalOcean Token")
+   */
   setName(name: string): this {
     this.definition.name = name;
     return this;
   }
 
+  /**
+   * Adds a Prop to the secret definition. These define the form fields for the secret input
+   *
+   * @param {PropDefinition} child
+   *
+   * @returns this
+   *
+   * @example
+   *   .addProp(new PropBuilder()
+   *     .setName("token")
+   *     .setKind("string")
+   *     .setWidget(new PropWidgetDefinitionBuilder().setKind("password").build())
+   *     .build())
+   */
   addProp(prop: PropDefinition): this {
     this.definition.props?.push(prop);
     return this;
