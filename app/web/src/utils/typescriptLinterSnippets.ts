@@ -15,6 +15,38 @@ export const snippets = [
     },
   ),
 
+  // new secret prop
+  snippetCompletion(
+    `const \${secretPropName} = new SecretPropBuilder()
+        .setName("\${name}")
+        .setSecretKind("\${Secret Kind}")
+        .build();`,
+    {
+      label: "New Secret Prop Snippet",
+      type: "function",
+    },
+  ),
+
+  // new secret definition
+  snippetCompletion(
+    `const \${secretDefinition} = new SecretDefinitionBuilder()
+        .setName("\${name}")
+        .addProp(
+            new PropBuilder()
+            .setName("\${value}")
+            .setKind("\${string}")
+            .setWidget(
+                new PropWidgetDefinitionBuilder()
+                .setKind("password")
+                .build()
+            ).build()
+        ).build();`,
+    {
+      label: "New Secret Definition",
+      type: "function",
+    },
+  ),
+
   // basic socket
   snippetCompletion(
     `const \${socketName} = new SocketDefinitionBuilder()
