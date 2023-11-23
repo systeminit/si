@@ -23,7 +23,7 @@ load(":packages.bzl", "go_attr_pkg_name")
 def _gen_test_main(
         ctx: AnalysisContext,
         pkg_name: str,
-        coverage_mode: [GoCoverageMode.type, None],
+        coverage_mode: [GoCoverageMode, None],
         coverage_vars: [cmd_args, None],
         srcs: cmd_args) -> Artifact:
     """
@@ -109,5 +109,7 @@ def go_test_impl(ctx: AnalysisContext) -> list[Provider]:
             env = ctx.attrs.env,
             labels = ctx.attrs.labels,
             contacts = ctx.attrs.contacts,
+            # FIXME: Consider setting to true
+            run_from_project_root = False,
         ),
     ) + [DefaultInfo(default_output = bin, other_outputs = [gen_main] + runtime_files)]

@@ -12,7 +12,7 @@ load(
 load(
     "@prelude//linking:link_info.bzl",
     "MergedLinkInfo",
-    "merge_link_infos",
+    "create_merged_link_info_for_propagation",
 )
 load(
     "@prelude//linking:shared_libraries.bzl",
@@ -33,7 +33,9 @@ def go_library_impl(ctx: AnalysisContext) -> list[Provider]:
     pkg_name = None
     if ctx.attrs.srcs:
         pkg_name = go_attr_pkg_name(ctx)
-        srcs = get_filtered_srcs(ctx, ctx.attrs.srcs)
+
+        # We need to set CGO_DESABLED for "pure" Go libraries, otherwise CGo files may be selected for compilation.
+        srcs = get_filtered_srcs(ctx, ctx.attrs.srcs, force_disable_cgo = True)
 
         static_pkg = compile(
             ctx,
@@ -77,7 +79,7 @@ def go_library_impl(ctx: AnalysisContext) -> list[Provider]:
             srcs = ctx.attrs.srcs,
             pkg_name = pkg_name,
         ),
-        merge_link_infos(ctx, filter(None, [d.get(MergedLinkInfo) for d in ctx.attrs.deps])),
+        create_merged_link_info_for_propagation(ctx, filter(None, [d.get(MergedLinkInfo) for d in ctx.attrs.deps])),
         merge_shared_libraries(
             ctx.actions,
             deps = filter(None, map_idx(SharedLibraryInfo, ctx.attrs.deps)),

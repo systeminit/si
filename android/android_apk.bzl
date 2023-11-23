@@ -9,7 +9,8 @@ load("@prelude//android:android_binary.bzl", "get_binary_info")
 load("@prelude//android:android_providers.bzl", "AndroidApkInfo", "AndroidApkUnderTestInfo", "AndroidBinaryNativeLibsInfo", "AndroidBinaryResourcesInfo", "DexFilesInfo", "ExopackageInfo")
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//java:java_providers.bzl", "KeystoreInfo")
-load("@prelude//java/utils:java_utils.bzl", "get_path_separator")
+load("@prelude//java/utils:java_more_utils.bzl", "get_path_separator_for_exec_os")
+load("@prelude//java/utils:java_utils.bzl", "get_class_to_source_map_info")
 load("@prelude//utils:set.bzl", "set")
 
 def android_apk_impl(ctx: AnalysisContext) -> list[Provider]:
@@ -38,6 +39,12 @@ def android_apk_impl(ctx: AnalysisContext) -> list[Provider]:
         resources_info = resources_info.exopackage_info,
     )
 
+    class_to_srcs, class_to_srcs_subtargets = get_class_to_source_map_info(
+        ctx,
+        outputs = None,
+        deps = android_binary_info.deps_by_platform[android_binary_info.primary_platform],
+    )
+
     return [
         AndroidApkInfo(apk = output_apk, manifest = resources_info.manifest),
         AndroidApkUnderTestInfo(
@@ -48,27 +55,28 @@ def android_apk_impl(ctx: AnalysisContext) -> list[Provider]:
             platforms = android_binary_info.deps_by_platform.keys(),
             primary_platform = android_binary_info.primary_platform,
             resource_infos = set([info.raw_target for info in resources_info.unfiltered_resource_infos]),
-            r_dot_java_packages = dedupe([info.specified_r_dot_java_package for info in resources_info.unfiltered_resource_infos if info.specified_r_dot_java_package]),
-            shared_libraries = set([shared_lib.label.raw_target() for shared_lib in native_library_info.apk_under_test_shared_libraries]),
+            r_dot_java_packages = set([info.specified_r_dot_java_package for info in resources_info.unfiltered_resource_infos if info.specified_r_dot_java_package]),
+            shared_libraries = set(native_library_info.apk_under_test_shared_libraries),
         ),
-        DefaultInfo(default_output = output_apk, other_outputs = _get_exopackage_outputs(exopackage_info), sub_targets = sub_targets),
+        DefaultInfo(default_output = output_apk, other_outputs = _get_exopackage_outputs(exopackage_info), sub_targets = sub_targets | class_to_srcs_subtargets),
         get_install_info(ctx, output_apk = output_apk, manifest = resources_info.manifest, exopackage_info = exopackage_info),
         TemplatePlaceholderInfo(
             keyed_variables = {
-                "classpath": cmd_args([dep.jar for dep in java_packaging_deps if dep.jar], delimiter = get_path_separator()),
-                "classpath_including_targets_with_no_output": cmd_args([dep.output_for_classpath_macro for dep in java_packaging_deps], delimiter = get_path_separator()),
+                "classpath": cmd_args([dep.jar for dep in java_packaging_deps if dep.jar], delimiter = get_path_separator_for_exec_os(ctx)),
+                "classpath_including_targets_with_no_output": cmd_args([dep.output_for_classpath_macro for dep in java_packaging_deps], delimiter = get_path_separator_for_exec_os(ctx)),
             },
         ),
+        class_to_srcs,
     ]
 
 def build_apk(
         label: Label,
         actions: AnalysisActions,
-        keystore: KeystoreInfo.type,
-        android_toolchain: AndroidToolchainInfo.type,
-        dex_files_info: DexFilesInfo.type,
-        native_library_info: AndroidBinaryNativeLibsInfo.type,
-        resources_info: AndroidBinaryResourcesInfo.type,
+        keystore: KeystoreInfo,
+        android_toolchain: AndroidToolchainInfo,
+        dex_files_info: DexFilesInfo,
+        native_library_info: AndroidBinaryNativeLibsInfo,
+        resources_info: AndroidBinaryResourcesInfo,
         compress_resources_dot_arsc: bool = False) -> Artifact:
     output_apk = actions.declare_output("{}.apk".format(label.name))
 
@@ -125,7 +133,7 @@ def build_apk(
 
     return output_apk
 
-def get_install_info(ctx: AnalysisContext, output_apk: Artifact, manifest: Artifact, exopackage_info: [ExopackageInfo.type, None]) -> InstallInfo.type:
+def get_install_info(ctx: AnalysisContext, output_apk: Artifact, manifest: Artifact, exopackage_info: [ExopackageInfo, None]) -> InstallInfo:
     files = {
         ctx.attrs.name: output_apk,
         "manifest": manifest,
@@ -160,12 +168,15 @@ def get_install_info(ctx: AnalysisContext, output_apk: Artifact, manifest: Artif
     if secondary_dex_exopackage_info or native_library_exopackage_info or resources_info:
         files["exopackage_agent_apk"] = ctx.attrs._android_toolchain[AndroidToolchainInfo].exopackage_agent_apk
 
+    if hasattr(ctx.attrs, "cpu_filters"):
+        files["cpu_filters"] = ctx.actions.write("cpu_filters.txt", ctx.attrs.cpu_filters)
+
     return InstallInfo(
         installer = ctx.attrs._android_toolchain[AndroidToolchainInfo].installer,
         files = files,
     )
 
-def _get_exopackage_outputs(exopackage_info: ExopackageInfo.type) -> list[Artifact]:
+def _get_exopackage_outputs(exopackage_info: ExopackageInfo) -> list[Artifact]:
     outputs = []
     secondary_dex_exopackage_info = exopackage_info.secondary_dex_info
     if secondary_dex_exopackage_info:
@@ -199,8 +210,11 @@ def get_install_config() -> dict[str, typing.Any]:
         "agent_port_base": read_root_config("adb", "agent_port_base", "2828"),
         "always_use_java_agent": read_root_config("adb", "always_use_java_agent", "false"),
         "is_zstd_compression_enabled": read_root_config("adb", "is_zstd_compression_enabled", "false"),
+        "max_retries": read_root_config("adb", "retries", "5"),
         "multi_install_mode": read_root_config("adb", "multi_install_mode", "false"),
+        "retry_delay_millis": read_root_config("adb", "retry_delay_millis", "500"),
         "skip_install_metadata": read_root_config("adb", "skip_install_metadata", "false"),
+        "staged_install_mode": read_root_config("adb", "staged_install_mode", "false"),
     }
 
     adb_executable = read_root_config("android", "adb", None)

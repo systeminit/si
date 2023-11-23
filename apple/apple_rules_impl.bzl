@@ -5,11 +5,19 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//apple:apple_buck2_compatibility.bzl", "BUCK2_COMPATIBILITY_ATTRIB_NAME", "BUCK2_COMPATIBILITY_ATTRIB_TYPE")
+load(
+    "@prelude//apple:apple_genrule_deps.bzl",
+    "APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_NAME",
+    "APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_TYPE",
+    "APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_NAME",
+    "APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_TYPE",
+)
+load("@prelude//apple/swift:swift_incremental_support.bzl", "SwiftCompilationMode")
 load("@prelude//apple/swift:swift_toolchain.bzl", "swift_toolchain_impl")
 load("@prelude//apple/swift:swift_toolchain_types.bzl", "SwiftObjectFormat")
 load("@prelude//apple/user:cpu_split_transition.bzl", "cpu_split_transition")
-load("@prelude//cxx:headers.bzl", "CPrecompiledHeaderInfo")
-load("@prelude//cxx:omnibus.bzl", "omnibus_environment_attr")
+load("@prelude//cxx:headers.bzl", "CPrecompiledHeaderInfo", "HeaderMode")
 load("@prelude//cxx/user:link_group_map.bzl", "link_group_map_attr")
 load("@prelude//linking:execution_preference.bzl", "link_execution_preference_attr")
 load("@prelude//linking:link_info.bzl", "LinkOrdering")
@@ -28,6 +36,7 @@ load(
     "APPLE_ARCHIVE_OBJECTS_LOCALLY_OVERRIDE_ATTR_NAME",
     "apple_bundle_extra_attrs",
     "apple_test_extra_attrs",
+    "get_apple_bundle_toolchain_attr",
     "get_apple_toolchain_attr",
     "get_apple_xctoolchain_attr",
     "get_apple_xctoolchain_bundle_id_attr",
@@ -61,6 +70,13 @@ implemented_rules = {
 
 _APPLE_TOOLCHAIN_ATTR = get_apple_toolchain_attr()
 
+ApplePackageExtension = enum(
+    "ipa",
+    "pkg",
+    "dmg",
+    "zip",
+)
+
 extra_attributes = {
     "apple_asset_catalog": {
         "dirs": attrs.list(attrs.source(allow_directory = True), default = []),
@@ -76,17 +92,20 @@ extra_attributes = {
         "prefer_stripped_objects": attrs.bool(default = False),
         "preferred_linkage": attrs.enum(Linkage, default = "any"),
         "stripped": attrs.option(attrs.bool(), default = None),
+        "swift_compilation_mode": attrs.enum(SwiftCompilationMode.values(), default = "wmo"),
         "_apple_toolchain": _APPLE_TOOLCHAIN_ATTR,
-        # FIXME: prelude// should be standalone (not refer to fbsource//)
-        "_apple_tools": attrs.exec_dep(default = "fbsource//xplat/buck2/platform/apple:apple-tools", providers = [AppleToolsInfo]),
+        "_apple_tools": attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo]),
         "_apple_xctoolchain": get_apple_xctoolchain_attr(),
         "_apple_xctoolchain_bundle_id": get_apple_xctoolchain_bundle_id_attr(),
-        "_omnibus_environment": omnibus_environment_attr(),
         "_stripped_default": attrs.bool(default = False),
+        APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_NAME: APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_TYPE,
+        APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_NAME: APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_TYPE,
+        BUCK2_COMPATIBILITY_ATTRIB_NAME: BUCK2_COMPATIBILITY_ATTRIB_TYPE,
     },
     "apple_bundle": apple_bundle_extra_attrs(),
     "apple_library": {
         "extra_xcode_sources": attrs.list(attrs.source(allow_directory = True), default = []),
+        "header_mode": attrs.option(attrs.enum(HeaderMode.values()), default = None),
         "link_execution_preference": link_execution_preference_attr(),
         "link_group_map": link_group_map_attr(),
         "link_ordering": attrs.option(attrs.enum(LinkOrdering.values()), default = None),
@@ -96,21 +115,26 @@ extra_attributes = {
         "stripped": attrs.option(attrs.bool(), default = None),
         "supports_header_symlink_subtarget": attrs.bool(default = False),
         "supports_shlib_interfaces": attrs.bool(default = True),
+        "swift_compilation_mode": attrs.enum(SwiftCompilationMode.values(), default = "wmo"),
         "use_archive": attrs.option(attrs.bool(), default = None),
         "_apple_toolchain": _APPLE_TOOLCHAIN_ATTR,
-        # FIXME: prelude// should be standalone (not refer to fbsource//)
-        "_apple_tools": attrs.exec_dep(default = "fbsource//xplat/buck2/platform/apple:apple-tools", providers = [AppleToolsInfo]),
+        "_apple_tools": attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo]),
         "_apple_xctoolchain": get_apple_xctoolchain_attr(),
         "_apple_xctoolchain_bundle_id": get_apple_xctoolchain_bundle_id_attr(),
-        "_omnibus_environment": omnibus_environment_attr(),
         "_stripped_default": attrs.bool(default = False),
         APPLE_ARCHIVE_OBJECTS_LOCALLY_OVERRIDE_ATTR_NAME: attrs.option(attrs.bool(), default = None),
+        APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_NAME: APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_TYPE,
+        APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_NAME: APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_TYPE,
+        BUCK2_COMPATIBILITY_ATTRIB_NAME: BUCK2_COMPATIBILITY_ATTRIB_TYPE,
     },
     "apple_package": {
         "bundle": attrs.dep(providers = [AppleBundleInfo]),
-        "_apple_toolchain": _APPLE_TOOLCHAIN_ATTR,
-        # FIXME: prelude// should be standalone (not refer to fbsource//)
-        "_apple_tools": attrs.exec_dep(default = "fbsource//xplat/buck2/platform/apple:apple-tools", providers = [AppleToolsInfo]),
+        "ext": attrs.enum(ApplePackageExtension.values(), default = "ipa"),
+        "packager": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "packager_args": attrs.list(attrs.arg(), default = []),
+        "validator": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "_apple_toolchain": get_apple_bundle_toolchain_attr(),
+        "_apple_tools": attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo]),
         "_ipa_compression_level": attrs.enum(IpaCompressionLevel.values()),
     },
     "apple_resource": {
@@ -118,6 +142,7 @@ extra_attributes = {
         "content_dirs": attrs.list(attrs.source(allow_directory = True), default = []),
         "dirs": attrs.list(attrs.source(allow_directory = True), default = []),
         "files": attrs.list(attrs.one_of(attrs.dep(), attrs.source()), default = []),
+        "skip_universal_resource_dedupe": attrs.bool(default = False),
     },
     "apple_test": apple_test_extra_attrs(),
     "apple_toolchain": {
@@ -166,11 +191,12 @@ extra_attributes = {
     },
     "apple_universal_executable": {
         "executable": attrs.split_transition_dep(cfg = cpu_split_transition),
+        "executable_name": attrs.option(attrs.string(), default = None),
         "labels": attrs.list(attrs.string()),
         "split_arch_dsym": attrs.bool(default = False),
         "universal": attrs.option(attrs.bool(), default = None),
         "_apple_toolchain": _APPLE_TOOLCHAIN_ATTR,
-        "_apple_tools": attrs.exec_dep(default = "fbsource//xplat/buck2/platform/apple:apple-tools", providers = [AppleToolsInfo]),
+        "_apple_tools": attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo]),
     },
     "core_data_model": {
         "path": attrs.source(allow_directory = True),
@@ -179,7 +205,6 @@ extra_attributes = {
         "framework": attrs.option(attrs.source(allow_directory = True), default = None),
         "preferred_linkage": attrs.enum(Linkage, default = "any"),
         "_apple_toolchain": _APPLE_TOOLCHAIN_ATTR,
-        "_omnibus_environment": omnibus_environment_attr(),
     },
     "scene_kit_assets": {
         "path": attrs.source(allow_directory = True),
@@ -189,6 +214,7 @@ extra_attributes = {
     },
     "swift_toolchain": {
         "architecture": attrs.option(attrs.string(), default = None),  # TODO(T115173356): Make field non-optional
+        "make_swift_comp_db": attrs.default_only(attrs.dep(providers = [RunInfo], default = "prelude//apple/tools:make_swift_comp_db")),
         "object_format": attrs.enum(SwiftObjectFormat.values(), default = "object"),
         # A placeholder tool that can be used to set up toolchain constraints.
         # Useful when fat and thin toolchahins share the same underlying tools via `command_alias()`,

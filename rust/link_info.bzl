@@ -26,7 +26,6 @@ load(
     "LinkGroupInfo",  # @unused Used as a type
     "LinkGroupLinkInfo",  # @unused Used as a type
     "create_link_groups",
-    "find_relevant_roots",
     "get_filtered_labels_to_links_map",
     "get_filtered_links",
     "get_filtered_targets",
@@ -44,8 +43,8 @@ load(
     "LinkStyle",
     "Linkage",  # @unused Used as a type
     "MergedLinkInfo",
-    "get_link_args",
-    "merge_link_infos",
+    "get_link_args_for_strategy",
+    "to_link_strategy",
     "unpack_external_debug_info",
 )
 load(
@@ -66,6 +65,11 @@ load(
     "@prelude//utils:utils.bzl",
     "filter_and_map_idx",
 )
+load(
+    ":context.bzl",
+    "CrateName",  # @unused Used as a type
+    "DepCollectionContext",  # @unused Used as a type
+)
 
 # Link style for targets which do not set an explicit `link_style` attribute.
 DEFAULT_STATIC_LINK_STYLE = LinkStyle("static_pic")
@@ -77,25 +81,15 @@ DEFAULT_STATIC_LINK_STYLE = LinkStyle("static_pic")
 # so default to v1 behaviour. (Should be controlled with the `rust.force_rlib` option)
 FORCE_RLIB = True
 
-# Output of a Rust compilation
-RustLinkInfo = provider(fields = [
-    # crate - crate name
-    "crate",
-    # styles - information about each LinkStyle as RustLinkStyleInfo
-    # {LinkStyle: RustLinkStyleInfo}
-    "styles",
-    # Propagate non-rust native linkable dependencies through rust libraries.
-    "non_rust_exported_link_deps",
-    # Propagate non-rust native linkable info through rust libraries.
-    "non_rust_link_info",
-    # Propagate non-rust shared libraries through rust libraries.
-    "non_rust_shared_libs",
-])
+RustProcMacroPlugin = plugins.kind()
 
-CrateName = record(
-    simple = field(str),
-    dynamic = field([Artifact, None]),
-)
+# This provider is used for proc macros in those places where `RustLinkInfo` would typically be used
+# for libraries. It represents a proc macro in the dependency graph, and contains as a field the
+# `target_label` of that proc macro. The actual providers will always be accessed later through
+# `ctx.plugins`
+RustProcMacroMarker = provider(fields = {
+    "label": typing.Any,
+})
 
 # Information which is keyed on link_style
 RustLinkStyleInfo = record(
@@ -103,32 +97,51 @@ RustLinkStyleInfo = record(
     rlib = field(Artifact),
     # Transitive dependencies which are relevant to the consumer. For crate types which do not
     # propagate their deps (specifically proc macros), this set is empty
-    transitive_deps = field(dict[Artifact, CrateName.type]),
+    # This does not include the proc macros, which are passed separately in `RustLinkInfo`
+    transitive_deps = field(dict[Artifact, CrateName]),
 
     # Path for library metadata (used for check or pipelining)
     rmeta = field(Artifact),
     # Transitive rmeta deps. This is the same dict as `transitive_deps`, except that it has the
     # rmeta and not the rlib artifact
-    transitive_rmeta_deps = field(dict[Artifact, CrateName.type]),
+    transitive_rmeta_deps = field(dict[Artifact, CrateName]),
+    transitive_proc_macro_deps = field(dict[RustProcMacroMarker, ()]),
 
     # Path to PDB file with Windows debug data.
     pdb = field([Artifact, None]),
     # Debug info which is referenced -- but not included -- by the linkable rlib.
-    external_debug_info = field(ArtifactTSet.type),
+    external_debug_info = field(ArtifactTSet),
 )
 
-def _adjust_link_style_for_rust_dependencies(dep_link_style: LinkStyle.type) -> LinkStyle.type:
+# Output of a Rust compilation
+RustLinkInfo = provider(
+    # @unsorted-dict-items
+    fields = {
+        # crate - crate name
+        "crate": CrateName,
+        # styles - information about each LinkStyle as RustLinkStyleInfo
+        "styles": dict[LinkStyle, RustLinkStyleInfo],
+        # Propagate native linkable dependencies through rust libraries.
+        "exported_link_deps": typing.Any,
+        # Propagate native linkable info through rust libraries.
+        "merged_link_info": typing.Any,
+        # Propagate shared libraries through rust libraries.
+        "shared_libs": typing.Any,
+    },
+)
+
+def _adjust_link_style_for_rust_dependencies(dep_link_style: LinkStyle) -> LinkStyle:
     if FORCE_RLIB and dep_link_style == LinkStyle("shared"):
         return DEFAULT_STATIC_LINK_STYLE
     else:
         return dep_link_style
 
-def style_info(info: RustLinkInfo.type, dep_link_style: LinkStyle.type) -> RustLinkStyleInfo.type:
+def style_info(info: RustLinkInfo, dep_link_style: LinkStyle) -> RustLinkStyleInfo:
     rust_dep_link_style = _adjust_link_style_for_rust_dependencies(dep_link_style)
     return info.styles[rust_dep_link_style]
 
-# A Rust dependency
-RustDependency = record(
+# Any dependency of a Rust crate
+RustOrNativeDependency = record(
     # The actual dependency
     dep = field(Dependency),
     # The local name, if any (for `named_deps`)
@@ -137,28 +150,36 @@ RustDependency = record(
     flags = field(list[str]),
 )
 
+RustDependency = record(
+    info = field(RustLinkInfo),
+    label = field(ConfiguredProvidersLabel),
+    name = field([None, str]),
+    flags = field(list[str]),
+    proc_macro_marker = field([None, RustProcMacroMarker]),
+)
+
 # Information about cxx link groups that rust depends on
 RustCxxLinkGroupInfo = record(
     # cxx link infos to link against
-    filtered_links = field(list[LinkInfo.type]),
+    filtered_links = field(list[LinkInfo]),
     # symbol files args to ensure we export the required symbols
-    symbol_files_info = field(LinkInfo.type),
+    symbol_files_info = field(LinkInfo),
     # targets to link against
-    filtered_targets = field(list["target_label"]),
+    filtered_targets = field(list[TargetLabel]),
     # information about the link groups
-    link_group_info = field([LinkGroupInfo.type, None]),
+    link_group_info = field([LinkGroupInfo, None]),
     # shared libraries created from link groups
-    link_group_libs = field(dict[str, [LinkGroupLib.type, None]]),
+    link_group_libs = field(dict[str, [LinkGroupLib, None]]),
     # mapping from target labels to the corresponding link group link_info
-    labels_to_links_map = field(dict[Label, LinkGroupLinkInfo.type]),
-    # prefrred linkage mode for link group libraries
-    link_group_preferred_linkage = field(dict[Label, Linkage.type]),
+    labels_to_links_map = field(dict[Label, LinkGroupLinkInfo]),
+    # preferred linkage mode for link group libraries
+    link_group_preferred_linkage = field(dict[Label, Linkage]),
 )
 
 def enable_link_groups(
         ctx: AnalysisContext,
-        link_style: [LinkStyle.type, None],
-        specified_link_style: LinkStyle.type,
+        link_style: [LinkStyle, None],
+        specified_link_style: LinkStyle,
         is_binary: bool):
     if not (cxx_is_gnu(ctx) and is_binary):
         # check minium requirements
@@ -174,17 +195,53 @@ def enable_link_groups(
 def _do_resolve_deps(
         deps: list[Dependency],
         named_deps: dict[str, Dependency],
-        flagged_deps: list[(Dependency, list[str])] = []) -> list[RustDependency.type]:
+        flagged_deps: list[(Dependency, list[str])] = []) -> list[RustOrNativeDependency]:
     return [
-        RustDependency(name = name, dep = dep, flags = flags)
+        RustOrNativeDependency(name = name, dep = dep, flags = flags)
         for name, dep, flags in [(None, dep, []) for dep in deps] +
                                 [(name, dep, []) for name, dep in named_deps.items()] +
                                 [(None, dep, flags) for dep, flags in flagged_deps]
     ]
 
+def _gather_explicit_sysroot_deps(dep_ctx: DepCollectionContext) -> list[RustOrNativeDependency]:
+    explicit_sysroot_deps = dep_ctx.explicit_sysroot_deps
+    if not explicit_sysroot_deps:
+        return []
+
+    out = []
+    if explicit_sysroot_deps.core:
+        out.append(RustOrNativeDependency(
+            dep = explicit_sysroot_deps.core,
+            name = None,
+            flags = ["nounused"],
+        ))
+    if explicit_sysroot_deps.std:
+        out.append(RustOrNativeDependency(
+            dep = explicit_sysroot_deps.std,
+            name = None,
+            flags = ["nounused", "force"],
+        ))
+    if explicit_sysroot_deps.proc_macro:
+        flags = ["noprelude"] if not dep_ctx.is_proc_macro or dep_ctx.include_doc_deps else []
+        out.append(RustOrNativeDependency(
+            dep = explicit_sysroot_deps.proc_macro,
+            name = None,
+            flags = ["nounused"] + flags,
+        ))
+    for d in explicit_sysroot_deps.others:
+        # FIXME(JakobDegen): Ideally we would not be using `noprelude` here but
+        # instead report these as regular transitive dependencies. However,
+        # that's a bit harder to get right, so leave it like this for now.
+        out.append(RustOrNativeDependency(
+            dep = d,
+            name = None,
+            flags = ["noprelude", "nounused"],
+        ))
+    return out
+
 def resolve_deps(
         ctx: AnalysisContext,
-        include_doc_deps: bool = False) -> list[RustDependency.type]:
+        dep_ctx: DepCollectionContext) -> list[RustOrNativeDependency]:
     # The `getattr`s are needed for when we're operating on
     # `prebuilt_rust_library` rules, which don't have those attrs.
     dependencies = _do_resolve_deps(
@@ -193,29 +250,60 @@ def resolve_deps(
         flagged_deps = getattr(ctx.attrs, "flagged_deps", []),
     )
 
-    if include_doc_deps:
+    if dep_ctx.include_doc_deps:
         dependencies.extend(_do_resolve_deps(
             deps = ctx.attrs.doc_deps,
             named_deps = getattr(ctx.attrs, "doc_named_deps", {}),
         ))
 
-    return dependencies
+    return dependencies + _gather_explicit_sysroot_deps(dep_ctx)
 
-def _non_rust_linkable_graph(
+def resolve_rust_deps(
         ctx: AnalysisContext,
-        deps: list[Dependency]) -> LinkableGraph.type:
+        dep_ctx: DepCollectionContext) -> list[RustDependency]:
+    all_deps = resolve_deps(ctx, dep_ctx)
+    rust_deps = []
+    available_proc_macros = get_available_proc_macros(ctx)
+    for dep in all_deps:
+        proc_macro_marker = dep.dep.get(RustProcMacroMarker)
+        if proc_macro_marker != None:
+            # Confusingly, this is not `proc_macro_marker.label`, since that has type
+            # `target_label`, but this wants a `label`
+            label = available_proc_macros[proc_macro_marker.label].label
+            info = available_proc_macros[proc_macro_marker.label][RustLinkInfo]
+        else:
+            label = dep.dep.label
+            info = dep.dep.get(RustLinkInfo)
+            if info == None:
+                continue
+
+        rust_deps.append(RustDependency(
+            info = info,
+            label = label,
+            name = dep.name,
+            flags = dep.flags,
+            proc_macro_marker = proc_macro_marker,
+        ))
+    return rust_deps
+
+def get_available_proc_macros(ctx: AnalysisContext) -> dict[TargetLabel, Dependency]:
+    return {x.label.raw_target(): x for x in ctx.plugins[RustProcMacroPlugin]}
+
+def _create_linkable_graph(
+        ctx: AnalysisContext,
+        deps: list[Dependency]) -> LinkableGraph:
     linkable_graph = create_linkable_graph(
         ctx,
-        children = filter(None, (
+        deps = filter(None, (
             [d.linkable_graph for d in linkables(deps)]
         )),
     )
     return linkable_graph
 
 # Returns native link dependencies.
-def _non_rust_link_deps(
+def _native_link_dependencies(
         ctx: AnalysisContext,
-        include_doc_deps: bool = False) -> list[Dependency]:
+        dep_ctx: DepCollectionContext) -> list[Dependency]:
     """
     Return all first-order native linkable dependencies of all transitive Rust
     libraries.
@@ -223,69 +311,72 @@ def _non_rust_link_deps(
     This emulates v1's graph walk, where it traverses through Rust libraries
     looking for non-Rust native link infos (and terminating the search there).
     """
-    first_order_deps = [dep.dep for dep in resolve_deps(ctx, include_doc_deps)]
-    return [
-        d
-        for d in first_order_deps
-        if RustLinkInfo not in d and MergedLinkInfo in d
-    ]
+    first_order_deps = [dep.dep for dep in resolve_deps(ctx, dep_ctx)]
+
+    if dep_ctx.native_unbundle_deps:
+        return [d for d in first_order_deps if MergedLinkInfo in d]
+    else:
+        return [
+            d
+            for d in first_order_deps
+            if RustLinkInfo not in d and MergedLinkInfo in d
+        ]
 
 # Returns native link dependencies.
-def _non_rust_link_infos(
+def _native_link_infos(
         ctx: AnalysisContext,
-        include_doc_deps: bool = False) -> list[MergedLinkInfo.type]:
+        dep_ctx: DepCollectionContext) -> list[MergedLinkInfo]:
     """
     Return all first-order native link infos of all transitive Rust libraries.
-
-    This emulates v1's graph walk, where it traverses through Rust libraries
-    looking for non-Rust native link infos (and terminating the search there).
-    MergedLinkInfo is a mapping from link style to all the transitive deps
-    rolled up in a tset.
     """
-    link_deps = _non_rust_link_deps(ctx, include_doc_deps)
+    link_deps = _native_link_dependencies(ctx, dep_ctx)
     return [d[MergedLinkInfo] for d in link_deps]
 
 # Returns native link dependencies.
-def _non_rust_shared_lib_infos(
+def _native_shared_lib_infos(
         ctx: AnalysisContext,
-        include_doc_deps: bool = False) -> list[SharedLibraryInfo.type]:
+        dep_ctx: DepCollectionContext) -> list[SharedLibraryInfo]:
     """
     Return all transitive shared libraries for non-Rust native linkabes.
 
     This emulates v1's graph walk, where it traverses through -- and ignores --
     Rust libraries to collect all transitive shared libraries.
     """
-    first_order_deps = [dep.dep for dep in resolve_deps(ctx, include_doc_deps)]
-    return [
-        d[SharedLibraryInfo]
-        for d in first_order_deps
-        if RustLinkInfo not in d and SharedLibraryInfo in d
-    ]
+    first_order_deps = [dep.dep for dep in resolve_deps(ctx, dep_ctx)]
+
+    if dep_ctx.native_unbundle_deps:
+        return [d[SharedLibraryInfo] for d in first_order_deps if SharedLibraryInfo in d]
+    else:
+        return [
+            d[SharedLibraryInfo]
+            for d in first_order_deps
+            if RustLinkInfo not in d and SharedLibraryInfo in d
+        ]
 
 # Returns native link dependencies.
 def _rust_link_infos(
         ctx: AnalysisContext,
-        include_doc_deps: bool = False) -> list[RustLinkInfo.type]:
-    first_order_deps = resolve_deps(ctx, include_doc_deps)
-    return filter(None, [d.dep.get(RustLinkInfo) for d in first_order_deps])
+        dep_ctx: DepCollectionContext) -> list[RustLinkInfo]:
+    return [d.info for d in resolve_rust_deps(ctx, dep_ctx)]
 
 def normalize_crate(label: str) -> str:
     return label.replace("-", "_")
 
-def inherited_non_rust_exported_link_deps(ctx: AnalysisContext) -> list[Dependency]:
+def inherited_exported_link_deps(ctx: AnalysisContext, dep_ctx: DepCollectionContext) -> list[Dependency]:
     deps = {}
-    for dep in _non_rust_link_deps(ctx):
+    for dep in _native_link_dependencies(ctx, dep_ctx):
         deps[dep.label] = dep
-    for info in _rust_link_infos(ctx):
-        for dep in info.non_rust_exported_link_deps:
-            deps[dep.label] = dep
+    if not dep_ctx.native_unbundle_deps:
+        for info in _rust_link_infos(ctx, dep_ctx):
+            for dep in info.exported_link_deps:
+                deps[dep.label] = dep
     return deps.values()
 
-def inherited_non_rust_link_group_info(
+def inherited_rust_cxx_link_group_info(
         ctx: AnalysisContext,
-        include_doc_deps: bool = False,
-        link_style: [LinkStyle.type, None] = None) -> RustCxxLinkGroupInfo:
-    link_deps = _non_rust_link_deps(ctx, include_doc_deps) + inherited_non_rust_exported_link_deps(ctx)
+        dep_ctx: DepCollectionContext,
+        link_style: [LinkStyle, None] = None) -> RustCxxLinkGroupInfo:
+    link_deps = inherited_exported_link_deps(ctx, dep_ctx)
 
     # Assume a rust executable wants to use link groups if a link group map
     # is present
@@ -296,18 +387,26 @@ def inherited_non_rust_link_group_info(
     link_group_preferred_linkage = get_link_group_preferred_linkage(link_groups.values())
 
     auto_link_group_specs = get_auto_link_group_specs(ctx, link_group_info)
-    linkable_graph = _non_rust_linkable_graph(
+    linkable_graph = _create_linkable_graph(
         ctx,
         link_deps,
     )
     linkable_graph_node_map = get_linkable_graph_node_map_func(linkable_graph)()
+
+    executable_deps = []
+    for d in link_deps:
+        if d.label in linkable_graph_node_map:
+            executable_deps.append(d.label)
+        else:
+            # handle labels that are mutated by version alias
+            executable_deps.append(d.get(LinkableGraph).nodes.value.label)
 
     linked_link_groups = create_link_groups(
         ctx = ctx,
         link_groups = link_groups,
         link_group_mappings = link_group_mappings,
         link_group_preferred_linkage = link_group_preferred_linkage,
-        executable_deps = [],  # TODO: do we need this?
+        executable_deps = executable_deps,
         linker_flags = [],
         link_group_specs = auto_link_group_specs,
         root_link_group = link_group,
@@ -325,21 +424,6 @@ def inherited_non_rust_link_group_info(
         if linked_link_group.library != None:
             link_group_libs[name] = linked_link_group.library
 
-    # Some third-party dependencies are stored in the linkable_graph_node_map as
-    # third-party-buck, but the non_rust_link_deps contain the unresolved third-party
-    # path. Filter out the unresolved paths from the roots to avoid traversal error.
-    filtered_roots = []
-    roots = ([d.label for d in link_deps] +
-             find_relevant_roots(
-                 link_group = link_group,
-                 linkable_graph_node_map = linkable_graph_node_map,
-                 link_group_mappings = link_group_mappings,
-                 roots = [],
-             ))
-    for root in roots:
-        if root in linkable_graph_node_map:
-            filtered_roots.append(root)
-
     labels_to_links_map = get_filtered_labels_to_links_map(
         linkable_graph_node_map,
         link_group,
@@ -351,14 +435,13 @@ def inherited_non_rust_link_group_info(
             name: (lib.label, lib.shared_link_infos)
             for name, lib in link_group_libs.items()
         },
-        link_style = link_style,
-        roots = filtered_roots,
+        link_strategy = to_link_strategy(link_style),
+        roots = executable_deps,
         is_executable_link = True,
         prefer_stripped = False,
         force_static_follows_dependents = True,
     )
 
-    # TODO(@christylee): Check that this works with unittests
     return RustCxxLinkGroupInfo(
         filtered_links = get_filtered_links(labels_to_links_map),
         symbol_files_info = LinkInfo(
@@ -371,41 +454,43 @@ def inherited_non_rust_link_group_info(
         link_group_preferred_linkage = link_group_preferred_linkage,
     )
 
-def inherited_non_rust_link_info(
+def inherited_merged_link_infos(
         ctx: AnalysisContext,
-        include_doc_deps: bool = False) -> MergedLinkInfo.type:
+        dep_ctx: DepCollectionContext) -> list[MergedLinkInfo]:
     infos = []
-    infos.extend(_non_rust_link_infos(ctx, include_doc_deps))
-    infos.extend([d.non_rust_link_info for d in _rust_link_infos(ctx, include_doc_deps)])
-    return merge_link_infos(ctx, infos)
+    infos.extend(_native_link_infos(ctx, dep_ctx))
+    if not dep_ctx.native_unbundle_deps:
+        infos.extend([d.merged_link_info for d in _rust_link_infos(ctx, dep_ctx) if d.merged_link_info])
+    return infos
 
-def inherited_non_rust_shared_libs(
+def inherited_shared_libs(
         ctx: AnalysisContext,
-        include_doc_deps: bool = False) -> list[SharedLibraryInfo.type]:
+        dep_ctx: DepCollectionContext) -> list[SharedLibraryInfo]:
     infos = []
-    infos.extend(_non_rust_shared_lib_infos(ctx, include_doc_deps))
-    infos.extend([d.non_rust_shared_libs for d in _rust_link_infos(ctx, include_doc_deps)])
+    infos.extend(_native_shared_lib_infos(ctx, dep_ctx))
+    if not dep_ctx.native_unbundle_deps:
+        infos.extend([d.shared_libs for d in _rust_link_infos(ctx, dep_ctx)])
     return infos
 
 def inherited_external_debug_info(
         ctx: AnalysisContext,
+        dep_ctx: DepCollectionContext,
         dwo_output_directory: [Artifact, None],
-        dep_link_style: LinkStyle.type) -> ArtifactTSet:
+        dep_link_style: LinkStyle) -> ArtifactTSet:
     rust_dep_link_style = _adjust_link_style_for_rust_dependencies(dep_link_style)
     non_rust_dep_link_style = dep_link_style
 
     inherited_debug_infos = []
-    inherited_non_rust_link_infos = []
+    inherited_link_infos = []
 
-    for d in resolve_deps(ctx):
+    for d in resolve_deps(ctx, dep_ctx):
         if RustLinkInfo in d.dep:
             inherited_debug_infos.append(d.dep[RustLinkInfo].styles[rust_dep_link_style].external_debug_info)
-            inherited_non_rust_link_infos.append(d.dep[RustLinkInfo].non_rust_link_info)
+            inherited_link_infos.append(d.dep[RustLinkInfo].merged_link_info)
         elif MergedLinkInfo in d.dep:
-            inherited_non_rust_link_infos.append(d.dep[MergedLinkInfo])
+            inherited_link_infos.append(d.dep[MergedLinkInfo])
 
-    non_rust_merged_link_info = merge_link_infos(ctx, inherited_non_rust_link_infos)
-    link_args = get_link_args(non_rust_merged_link_info, non_rust_dep_link_style)
+    link_args = get_link_args_for_strategy(ctx, inherited_link_infos, to_link_strategy(non_rust_dep_link_style))
     inherited_debug_infos.append(unpack_external_debug_info(ctx.actions, link_args))
 
     return make_artifact_tset(
@@ -437,7 +522,7 @@ def attr_simple_crate_for_filenames(ctx: AnalysisContext) -> str:
     """
     return normalize_crate(ctx.attrs.crate or ctx.label.name)
 
-def attr_crate(ctx: AnalysisContext) -> CrateName.type:
+def attr_crate(ctx: AnalysisContext) -> CrateName:
     """
     The true user-facing name of the crate, which may only be known at build
     time, not during analysis.

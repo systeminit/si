@@ -32,6 +32,8 @@ _REFS = {
     "default_platform": "config//platform/android:x86_32-fbsource",
     "maybe_build_only_native_code": "prelude//android/constraints:maybe_build_only_native_code",
     "maybe_building_android_binary": "prelude//os:maybe_building_android_binary",
+    "maybe_merge_native_libraries": "config//features/android/constraints:maybe_merge_native_libraries",
+    "merge_native_libraries": "config//features/android/constraints:merge_native_libraries",
     "min_sdk_version": "prelude//android/constraints:min_sdk_version",
     "x86": "config//cpu/constraints:x86_32",
     "x86_64": "config//cpu/constraints:x86_64",
@@ -41,9 +43,9 @@ for min_sdk in get_min_sdk_version_range():
     _REFS[constraint_value_name] = "prelude//android/constraints:{}".format(constraint_value_name)
 
 def _cpu_split_transition_impl(
-        platform: PlatformInfo.type,
-        refs: struct.type,
-        attrs: struct.type) -> dict[str, PlatformInfo.type]:
+        platform: PlatformInfo,
+        refs: struct,
+        attrs: struct) -> dict[str, PlatformInfo]:
     cpu_filters = attrs.cpu_filters or ALL_CPU_FILTERS
     if attrs._is_force_single_cpu:
         cpu_filters = [CPU_FILTER_FOR_PRIMARY_PLATFORM]
@@ -55,13 +57,17 @@ def _cpu_split_transition_impl(
         refs,
         cpu_filters,
         attrs.min_sdk_version,
+        attrs.native_library_merge_map,
+        attrs.native_library_merge_sequence,
     )
 
 def _cpu_split_transition(
-        platform: PlatformInfo.type,
-        refs: struct.type,
+        platform: PlatformInfo,
+        refs: struct,
         cpu_filters: list[str],
-        min_sdk_version: [int, None]) -> dict[str, PlatformInfo.type]:
+        min_sdk_version: [int, None],
+        native_library_merge_map: [dict[str, list[str]], None],
+        native_library_merge_sequence: [list[tuple], None]) -> dict[str, PlatformInfo]:
     cpu = refs.cpu
     x86 = refs.x86[ConstraintValueInfo]
     x86_64 = refs.x86_64[ConstraintValueInfo]
@@ -95,6 +101,9 @@ def _cpu_split_transition(
 
     base_constraints[refs.maybe_building_android_binary[ConstraintSettingInfo].label] = refs.building_android_binary[ConstraintValueInfo]
 
+    if native_library_merge_map or native_library_merge_sequence:
+        base_constraints[refs.maybe_merge_native_libraries[ConstraintSettingInfo].label] = refs.merge_native_libraries[ConstraintValueInfo]
+
     if min_sdk_version:
         base_constraints[refs.min_sdk_version[ConstraintSettingInfo].label] = _get_min_sdk_constraint_value(min_sdk_version, refs)
 
@@ -116,9 +125,9 @@ def _cpu_split_transition(
     return new_configs
 
 def _cpu_transition_impl(
-        platform: PlatformInfo.type,
-        refs: struct.type,
-        attrs: struct.type) -> PlatformInfo.type:
+        platform: PlatformInfo,
+        refs: struct,
+        attrs: struct) -> PlatformInfo:
     return _cpu_split_transition_impl(platform, refs, attrs).values()[0]
 
 cpu_split_transition = transition(
@@ -127,6 +136,8 @@ cpu_split_transition = transition(
     attrs = [
         "cpu_filters",
         "min_sdk_version",
+        "native_library_merge_map",
+        "native_library_merge_sequence",
         "_is_force_single_cpu",
         "_is_force_single_default_cpu",
     ],
@@ -146,6 +157,8 @@ cpu_transition = transition(
     attrs = [
         "cpu_filters",
         "min_sdk_version",
+        "native_library_merge_map",
+        "native_library_merge_sequence",
         "_is_force_single_cpu",
         "_is_force_single_default_cpu",
     ],
@@ -161,7 +174,7 @@ def get_deps_by_platform(ctx: AnalysisContext) -> dict[str, list[Dependency]]:
 
     return deps_by_platform
 
-def _get_min_sdk_constraint_value(min_sdk_version: int, refs: struct.type) -> ConstraintValueInfo.type:
+def _get_min_sdk_constraint_value(min_sdk_version: int, refs: struct) -> ConstraintValueInfo:
     constraint_name = get_min_sdk_version_constraint_value_name(min_sdk_version)
     constraint = getattr(refs, constraint_name, None)
     if not constraint:
@@ -177,5 +190,5 @@ def _is_building_android_binary() -> Select:
         },
     )
 
-def is_building_android_binary_attr() -> "attribute":
+def is_building_android_binary_attr() -> Attr:
     return attrs.default_only(attrs.bool(default = _is_building_android_binary()))

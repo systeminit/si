@@ -8,53 +8,37 @@
 load("@prelude//utils:set.bzl", "set")
 load(
     ":swift_toolchain_types.bzl",
-    "SdkCompiledModuleInfo",  # @unused Used as a type
     "SdkSwiftOverlayInfo",
+    "SwiftCompiledModuleTset",
     "SwiftToolchainInfo",  # @unused Used as a type
     "WrappedSdkCompiledModuleInfo",
 )
 
-def project_as_hidden(module_info: SdkCompiledModuleInfo.type):
-    # NOTE(cjhopman): This would probably be better done by projecting as normal args and the caller putting it in hidden.
-    args = cmd_args()
-    args.hidden(module_info.output_artifact)
-    return args
+def is_sdk_modules_provided(toolchain: SwiftToolchainInfo) -> bool:
+    has_swift_modules = bool(toolchain.uncompiled_swift_sdk_modules_deps)
+    has_clang_modules = bool(toolchain.uncompiled_clang_sdk_modules_deps)
+    return has_swift_modules or has_clang_modules
 
-def project_as_clang_deps(module_info: SdkCompiledModuleInfo.type):
-    if module_info.is_swiftmodule:
-        return []
-    else:
-        return [
-            "-Xcc",
-            cmd_args(["-fmodule-file=", module_info.module_name, "=", module_info.output_artifact], delimiter = ""),
-            "-Xcc",
-            cmd_args(["-fmodule-map-file=", module_info.input_relative_path], delimiter = ""),
-        ]
-
-SDKDepTSet = transitive_set(args_projections = {
-    "clang_deps": project_as_clang_deps,
-    "hidden": project_as_hidden,
-})
-
-def is_sdk_modules_provided(toolchain: SwiftToolchainInfo.type) -> bool:
-    no_swift_modules = toolchain.uncompiled_swift_sdk_modules_deps == None or len(toolchain.uncompiled_swift_sdk_modules_deps) == 0
-    no_clang_modules = toolchain.uncompiled_clang_sdk_modules_deps == None or len(toolchain.uncompiled_clang_sdk_modules_deps) == 0
-    if no_swift_modules and no_clang_modules:
-        return False
-    return True
-
-def get_compiled_sdk_deps_tset(ctx: AnalysisContext, deps_providers: list) -> SDKDepTSet.type:
+def get_compiled_sdk_clang_deps_tset(ctx: AnalysisContext, deps_providers: list) -> SwiftCompiledModuleTset:
     sdk_deps = [
-        deps_provider[WrappedSdkCompiledModuleInfo].tset
-        for deps_provider in deps_providers
-        if WrappedSdkCompiledModuleInfo in deps_provider
+        d[WrappedSdkCompiledModuleInfo].clang_deps
+        for d in deps_providers
+        if WrappedSdkCompiledModuleInfo in d and d[WrappedSdkCompiledModuleInfo].clang_deps != None
     ]
-    return ctx.actions.tset(SDKDepTSet, children = sdk_deps)
+    return ctx.actions.tset(SwiftCompiledModuleTset, children = sdk_deps)
+
+def get_compiled_sdk_swift_deps_tset(ctx: AnalysisContext, deps_providers: list) -> SwiftCompiledModuleTset:
+    sdk_deps = [
+        d[WrappedSdkCompiledModuleInfo].swift_deps
+        for d in deps_providers
+        if WrappedSdkCompiledModuleInfo in d and d[WrappedSdkCompiledModuleInfo].swift_deps != None
+    ]
+    return ctx.actions.tset(SwiftCompiledModuleTset, children = sdk_deps)
 
 def get_uncompiled_sdk_deps(
         sdk_modules: list[str],
         required_modules: list[str],
-        toolchain: SwiftToolchainInfo.type) -> list[Dependency]:
+        toolchain: SwiftToolchainInfo) -> list[Dependency]:
     if not is_sdk_modules_provided(toolchain):
         fail("SDK deps are not set for swift_toolchain")
 

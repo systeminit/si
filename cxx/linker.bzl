@@ -30,7 +30,7 @@ SharedLibraryFlagOverrides = record(
     # How to format arguments to the linker to set a shared lib name.
     shared_library_name_linker_flags_format = list[str],
     # Flags to pass to the linker to make it generate a shared library.
-    shared_library_flags = list[str],
+    shared_library_flags = list[ArgLike],
 )
 
 LINKERS = {
@@ -44,6 +44,14 @@ LINKERS = {
         default_shared_library_extension = "so",
         default_shared_library_versioned_extension_format = "so.{}",
         shared_library_name_linker_flags_format = ["-Wl,-soname,{}"],
+        shared_library_flags = ["-shared"],
+    ),
+    "wasm": Linker(
+        default_shared_library_extension = "wasm",
+        default_shared_library_versioned_extension_format = "{}.wasm",
+        shared_library_name_linker_flags_format = [],
+        # lld supports this, at least.
+        # See https://github.com/WebAssembly/tool-conventions/blob/main/DynamicLinking.md#llvm-implementation
         shared_library_flags = ["-shared"],
     ),
     "windows": Linker(
@@ -63,16 +71,22 @@ def _sanitize(s: str) -> str:
 
 # NOTE(agallagher): Does this belong in the native/shared_libraries.bzl?
 def get_shared_library_name(
-        linker_info: LinkerInfo.type,
+        linker_info: LinkerInfo,
         short_name: str,
+        apply_default_prefix: bool,
         version: [str, None] = None):
     """
     Generate a platform-specific shared library name based for the given rule.
     """
     if version == None:
-        return linker_info.shared_library_name_format.format(short_name)
+        full_name = linker_info.shared_library_name_format.format(short_name)
     else:
-        return linker_info.shared_library_versioned_name_format.format(short_name, version)
+        full_name = linker_info.shared_library_versioned_name_format.format(short_name, version)
+
+    if apply_default_prefix:
+        full_name = linker_info.shared_library_name_default_prefix + full_name
+
+    return full_name
 
 def _parse_ext_macro(name: str) -> [(str, [str, None]), None]:
     """
@@ -98,7 +112,7 @@ def _parse_ext_macro(name: str) -> [(str, [str, None]), None]:
     expect(rest.startswith(" "))
     return (base, rest[1:-1])
 
-def get_shared_library_name_for_param(linker_info: LinkerInfo.type, name: str):
+def get_shared_library_name_for_param(linker_info: LinkerInfo, name: str):
     """
     Format a user-provided shared library name, supporting v1's `$(ext)` suffix.
     """
@@ -107,13 +121,14 @@ def get_shared_library_name_for_param(linker_info: LinkerInfo.type, name: str):
         base, version = parsed
         name = get_shared_library_name(
             linker_info,
-            base.removeprefix("lib"),
+            base,
+            apply_default_prefix = False,
             version = version,
         )
     return name
 
 # NOTE(agallagher): Does this belong in the native/shared_libraries.bzl?
-def get_default_shared_library_name(linker_info: LinkerInfo.type, label: Label):
+def get_default_shared_library_name(linker_info: LinkerInfo, label: Label):
     """
     Generate a platform-specific shared library name based for the given rule.
     """
@@ -121,9 +136,9 @@ def get_default_shared_library_name(linker_info: LinkerInfo.type, label: Label):
     # TODO(T110378119): v1 doesn't use the cell/repo name, so we don't here for
     # initial compatibility, but maybe we should?
     short_name = "{}_{}".format(_sanitize(label.package), _sanitize(label.name))
-    return get_shared_library_name(linker_info, short_name)
+    return get_shared_library_name(linker_info, short_name, apply_default_prefix = True)
 
-def get_shared_library_name_linker_flags(linker_type: str, soname: str, flag_overrides: [SharedLibraryFlagOverrides.type, None] = None) -> list[str]:
+def get_shared_library_name_linker_flags(linker_type: str, soname: str, flag_overrides: [SharedLibraryFlagOverrides, None] = None) -> list[str]:
     """
     Arguments to pass to the linker to set the given soname.
     """
@@ -137,7 +152,7 @@ def get_shared_library_name_linker_flags(linker_type: str, soname: str, flag_ove
         for f in shared_library_name_linker_flags_format
     ]
 
-def get_shared_library_flags(linker_type: str, flag_overrides: [SharedLibraryFlagOverrides.type, None] = None) -> list[str]:
+def get_shared_library_flags(linker_type: str, flag_overrides: [SharedLibraryFlagOverrides, None] = None) -> list[ArgLike]:
     """
     Arguments to pass to the linker to link a shared library.
     """
@@ -256,7 +271,7 @@ def get_rpath_origin(
 
 def is_pdb_generated(
         linker_type: str,
-        linker_flags: list[[str, "resolved_macro"]]) -> bool:
+        linker_flags: list[[str, ResolvedStringWithMacros]]) -> bool:
     if linker_type != "windows":
         return False
     for flag in reversed(linker_flags):
@@ -267,8 +282,9 @@ def is_pdb_generated(
     return False
 
 def get_pdb_providers(
-        pdb: Artifact):
-    return [DefaultInfo(default_output = pdb)]
+        pdb: Artifact,
+        binary: Artifact):
+    return [DefaultInfo(default_output = pdb, other_outputs = [binary])]
 
 DUMPBIN_SUB_TARGET = "dumpbin"
 

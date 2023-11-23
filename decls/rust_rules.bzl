@@ -5,13 +5,14 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//cxx:omnibus.bzl", "omnibus_environment_attr")
 load("@prelude//cxx/user:link_group_map.bzl", "link_group_map_attr")
+load("@prelude//rust:link_info.bzl", "RustProcMacroPlugin")
 load("@prelude//rust:rust_binary.bzl", "rust_binary_impl", "rust_test_impl")
 load("@prelude//rust:rust_library.bzl", "prebuilt_rust_library_impl", "rust_library_impl")
 load(":common.bzl", "LinkableDepType", "Linkage", "buck", "prelude_rule")
 load(":native_common.bzl", "native_common")
-load(":rust_common.bzl", "rust_common")
+load(":re_test_common.bzl", "re_test_common")
+load(":rust_common.bzl", "rust_common", "rust_target_dep")
 
 prebuilt_rust_library = prelude_rule(
     name = "prebuilt_rust_library",
@@ -51,7 +52,7 @@ prebuilt_rust_library = prelude_rule(
             """),
         } |
         rust_common.crate(crate_type = attrs.string(default = "")) |
-        rust_common.deps_arg() |
+        rust_common.deps_arg(is_binary = False) |
         {
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
@@ -60,33 +61,36 @@ prebuilt_rust_library = prelude_rule(
             "link_style": attrs.option(attrs.enum(LinkableDepType), default = None),
             "proc_macro": attrs.bool(default = False),
         } |
-        rust_common.toolchains_args()
+        rust_common.cxx_toolchain_arg()
     ),
+    uses_plugins = [RustProcMacroPlugin],
 )
 
-_RUST_COMMON_ATTRIBUTES = {
-    "contacts": attrs.list(attrs.string(), default = []),
-    "coverage": attrs.bool(default = False),
-    "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
-    "default_platform": attrs.option(attrs.string(), default = None),
-    "flagged_deps": attrs.list(attrs.tuple(attrs.dep(), attrs.list(attrs.string())), default = []),
-    "incremental_build_mode": attrs.option(attrs.string(), default = None),
-    "incremental_enabled": attrs.bool(default = False),
-    "labels": attrs.list(attrs.string(), default = []),
-    "licenses": attrs.list(attrs.source(), default = []),
-    # linker_flags weren't supported for rust_library in Buck v1 but the
-    # fbcode macros pass them anyway. They're typically empty since the
-    # config-level flags don't get injected, but it doesn't hurt to accept
-    # them and it simplifies the implementation of Rust rules since they
-    # don't have to know whether we're building a rust_binary or a
-    # rust_library.
-    "linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
-    "resources": attrs.named_set(attrs.one_of(attrs.dep(), attrs.source()), sorted = True, default = []),
-    "rustdoc_flags": attrs.list(attrs.arg(), default = []),
-    "version_universe": attrs.option(attrs.string(), default = None),
-    "_exec_os_type": buck.exec_os_type_arg(),
-    "_target_os_type": buck.target_os_type_arg(),
-}
+def _rust_common_attributes(is_binary: bool):
+    return {
+        "contacts": attrs.list(attrs.string(), default = []),
+        "coverage": attrs.bool(default = False),
+        "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
+        "default_platform": attrs.option(attrs.string(), default = None),
+        "flagged_deps": attrs.list(attrs.tuple(rust_target_dep(is_binary), attrs.list(attrs.string())), default = []),
+        "incremental_build_mode": attrs.option(attrs.string(), default = None),
+        "incremental_enabled": attrs.bool(default = False),
+        "labels": attrs.list(attrs.string(), default = []),
+        "licenses": attrs.list(attrs.source(), default = []),
+        "resources": attrs.named_set(attrs.one_of(attrs.dep(), attrs.source()), sorted = True, default = []),
+        "rustdoc_flags": attrs.list(attrs.arg(), default = []),
+        "version_universe": attrs.option(attrs.string(), default = None),
+        "_exec_os_type": buck.exec_os_type_arg(),
+        "_target_os_type": buck.target_os_type_arg(),
+    }
+
+def _rust_binary_attrs_group(prefix: str) -> dict[str, Attr]:
+    attrs = (rust_common.deps_arg(is_binary = True) |
+             rust_common.named_deps_arg(is_binary = True) |
+             rust_common.linker_flags_arg() |
+             rust_common.env_arg() |
+             native_common.link_style())
+    return {prefix + name: v for name, v in attrs.items()}
 
 _RUST_EXECUTABLE_ATTRIBUTES = {
     "anonymous_link_groups": attrs.bool(default = True),
@@ -161,24 +165,20 @@ rust_binary = prelude_rule(
         # @unsorted-dict-items
         rust_common.srcs_arg() |
         rust_common.mapped_srcs_arg() |
-        rust_common.deps_arg() |
-        rust_common.named_deps_arg() |
         rust_common.edition_arg() |
         rust_common.features_arg() |
         rust_common.rustc_flags_arg() |
-        rust_common.linker_flags_arg() |
-        rust_common.env_arg() |
         rust_common.crate(crate_type = attrs.option(attrs.string(), default = None)) |
         rust_common.crate_root() |
-        native_common.link_style() |
-        _RUST_COMMON_ATTRIBUTES |
-        _RUST_EXECUTABLE_ATTRIBUTES | {
-            "framework": attrs.bool(default = False),
-        } |
-        rust_common.toolchains_args() |
+        _rust_binary_attrs_group(prefix = "") |
+        _rust_common_attributes(is_binary = True) |
+        _RUST_EXECUTABLE_ATTRIBUTES |
+        rust_common.cxx_toolchain_arg() |
+        rust_common.rust_toolchain_arg() |
         rust_common.workspaces_arg() |
         buck.allow_cache_upload_arg()
     ),
+    uses_plugins = [RustProcMacroPlugin],
 )
 
 rust_library = prelude_rule(
@@ -222,33 +222,35 @@ rust_library = prelude_rule(
         # @unsorted-dict-items
         rust_common.srcs_arg() |
         rust_common.mapped_srcs_arg() |
-        rust_common.deps_arg() |
-        rust_common.named_deps_arg() |
+        rust_common.deps_arg(is_binary = False) |
+        rust_common.named_deps_arg(is_binary = False) |
         rust_common.edition_arg() |
         rust_common.features_arg() |
         rust_common.rustc_flags_arg() |
+        # linker_flags weren't supported for rust_library in Buck v1 but the
+        # fbcode macros pass them anyway. They're typically empty since the
+        # config-level flags don't get injected, but it doesn't hurt to accept
+        # them and it simplifies the implementation of Rust rules since they
+        # don't have to know whether we're building a rust_binary or a
+        # rust_library.
+        rust_common.linker_flags_arg() |
         rust_common.env_arg() |
         rust_common.crate(crate_type = attrs.option(attrs.string(), default = None)) |
         rust_common.crate_root() |
         native_common.preferred_linkage(preferred_linkage_type = attrs.enum(Linkage, default = "any")) |
-        _RUST_COMMON_ATTRIBUTES |
+        _rust_common_attributes(is_binary = False) |
         {
             "crate_dynamic": attrs.option(attrs.dep(), default = None),
-            "doc_deps": attrs.list(attrs.dep(), default = []),
-            "doc_env": attrs.dict(key = attrs.string(), value = attrs.option(attrs.arg()), sorted = False, default = {}),
-            "doc_linker_flags": attrs.list(attrs.arg(), default = []),
-            "doc_named_deps": attrs.dict(key = attrs.string(), value = attrs.dep(), sorted = False, default = {}),
             "doctests": attrs.option(attrs.bool(), default = None),
-            "doctest_link_style": attrs.option(attrs.enum(LinkableDepType), default = None, doc = """
-            Like `link_style` on binaries, but applies specifically to doctests.
-            """),
             "proc_macro": attrs.bool(default = False),
             "supports_python_dlopen": attrs.option(attrs.bool(), default = None),
-            "_omnibus_environment": omnibus_environment_attr(),
         } |
-        rust_common.toolchains_args() |
+        _rust_binary_attrs_group(prefix = "doc_") |
+        rust_common.cxx_toolchain_arg() |
+        rust_common.rust_toolchain_arg() |
         rust_common.workspaces_arg()
     ),
+    uses_plugins = [RustProcMacroPlugin],
 )
 
 rust_test = prelude_rule(
@@ -299,33 +301,29 @@ rust_test = prelude_rule(
     further = None,
     attrs = (
         # @unsorted-dict-items
+        rust_common.srcs_arg() |
+        rust_common.mapped_srcs_arg() |
+        rust_common.edition_arg() |
+        rust_common.features_arg() |
+        rust_common.rustc_flags_arg() |
+        rust_common.crate(crate_type = attrs.option(attrs.string(), default = None)) |
+        rust_common.crate_root() |
+        _rust_binary_attrs_group(prefix = "") |
+        _rust_common_attributes(is_binary = True) |
+        _RUST_EXECUTABLE_ATTRIBUTES |
         {
-            "framework": attrs.bool(default = False, doc = """
+            "framework": attrs.bool(default = True, doc = """
                 Use the standard test framework. If this is set to false, then the result is a normal
                 executable which requires a `main()`, etc. It is still expected to accept the
                 same command-line parameters and produce the same output as the test framework.
             """),
         } |
-        rust_common.srcs_arg() |
-        rust_common.mapped_srcs_arg() |
-        rust_common.deps_arg() |
-        rust_common.named_deps_arg() |
-        rust_common.edition_arg() |
-        rust_common.features_arg() |
-        rust_common.rustc_flags_arg() |
-        rust_common.env_arg() |
-        rust_common.crate(crate_type = attrs.option(attrs.string(), default = None)) |
-        rust_common.crate_root() |
-        native_common.link_style() |
-        _RUST_COMMON_ATTRIBUTES |
-        _RUST_EXECUTABLE_ATTRIBUTES |
-        {
-            "framework": attrs.bool(default = True),
-            "remote_execution": buck.re_opts_for_tests_arg(),
-        } |
-        rust_common.toolchains_args() |
+        re_test_common.test_args() |
+        rust_common.cxx_toolchain_arg() |
+        rust_common.rust_toolchain_arg() |
         rust_common.workspaces_arg()
     ),
+    uses_plugins = [RustProcMacroPlugin],
 )
 
 rust_rules = struct(

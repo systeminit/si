@@ -14,37 +14,38 @@ JavaProcessorsType = enum(
 )
 
 JavaProcessorsInfo = provider(
+    # @unsorted-dict-items
     doc = "Information about java annotation processor/ java compiler plugins and their dependencies",
-    fields = [
-        # Type of processor
-        "type",  # "JavaProcessorsType"
-
-        # Names of processors
-        "processors",  # ["string"]
+    fields = {
+        "affects_abi": provider_field(typing.Any, default = None),
 
         # Java dependencies exposed to dependent targets and supposed to be used during compilation.
-        "deps",  # ["JavaPackagingDepTSet", None]
-        "affects_abi",
-        "supports_source_only_abi",
-        "isolate_class_loader",
-    ],
+        "deps": provider_field(typing.Any, default = None),  # [JavaPackagingDepTSet, None]
+        "isolate_class_loader": provider_field(typing.Any, default = None),
+
+        # Names of processors
+        "processors": provider_field(typing.Any, default = None),  # ["string"]
+        "supports_source_only_abi": provider_field(typing.Any, default = None),
+        # Type of processor
+        "type": provider_field(typing.Any, default = None),  # "JavaProcessorsType"
+    },
 )
 
 AnnotationProcessor = record(
     affects_abi = field(bool),
     supports_source_only_abi = field(bool),
     processors = field(list[str]),
-    deps = field(["JavaPackagingDepTSet", None]),
+    deps = field([JavaPackagingDepTSet, None]),
     isolate_class_loader = field(bool),
 )
 
 AnnotationProcessorProperties = record(
-    annotation_processors = field(list[AnnotationProcessor.type]),
+    annotation_processors = field(list[AnnotationProcessor]),
     annotation_processor_params = field(list[str]),
 )
 
 # Every transitive java annotation processors dependency has to be included into processor classpath for AP/Java Plugin run
-def derive_transitive_deps(ctx: AnalysisContext, deps: list[Dependency]) -> ["JavaPackagingDepTSet", None]:
+def derive_transitive_deps(ctx: AnalysisContext, deps: list[Dependency]) -> [JavaPackagingDepTSet, None]:
     for dep in deps:
         if not dep[JavaLibraryInfo]:
             fail("Dependency must have a type of `java_library` or `prebuilt_jar`. Deps: {}".format(deps))
@@ -59,7 +60,7 @@ def create_annotation_processor_properties(
         plugins: list[Dependency],
         annotation_processor_names: list[str],
         annotation_processor_params: list[str],
-        annotation_processor_deps: list[Dependency]) -> AnnotationProcessorProperties.type:
+        annotation_processor_deps: list[Dependency]) -> AnnotationProcessorProperties:
     annotation_processors = []
 
     # Extend `ap_processor_deps` with java deps from `annotation_processor_deps`
@@ -96,7 +97,7 @@ def create_annotation_processor_properties(
         annotation_processor_params = annotation_processor_params,
     )
 
-def create_ksp_annotation_processor_properties(ctx: AnalysisContext, plugins: list[Dependency]) -> AnnotationProcessorProperties.type:
+def create_ksp_annotation_processor_properties(ctx: AnalysisContext, plugins: list[Dependency]) -> AnnotationProcessorProperties:
     ap_processors = []
     ap_processor_deps = []
 
@@ -123,7 +124,7 @@ def create_ksp_annotation_processor_properties(ctx: AnalysisContext, plugins: li
         annotation_processor_params = [],
     )
 
-def _get_processor_type(processor_class: str) -> JavaProcessorsType.type:
+def _get_processor_type(processor_class: str) -> JavaProcessorsType:
     if processor_class.startswith("KSP:"):
         return JavaProcessorsType("ksp_annotation_processor")
 

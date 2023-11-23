@@ -17,14 +17,14 @@ LinkExecutionPreferenceTypes = [
 
 LinkExecutionPreference = enum(*LinkExecutionPreferenceTypes)
 
-LinkExecutionPreferenceDeterminatorInfo = provider(fields = [
+LinkExecutionPreferenceDeterminatorInfo = provider(fields = {
     # function that takes a list of target labels and the LinkExecutionPreferenceInfo of deps, and returns a LinkExecutionPreference
-    "preference_for_links",
-])
+    "preference_for_links": provider_field(typing.Any, default = None),
+})
 
-LinkExecutionPreferenceInfo = provider(fields = [
-    "preference",  # LinkExecutionPreference
-])
+LinkExecutionPreferenceInfo = provider(fields = {
+    "preference": provider_field(typing.Any, default = None),  # LinkExecutionPreference
+})
 
 _ActionExecutionAttributes = record(
     full_hybrid = field(bool, default = False),
@@ -47,7 +47,7 @@ def link_execution_preference_attr():
     The default is None, expressing that no preference has been set on the target itself.
     """)
 
-def get_link_execution_preference(ctx, links: list[Label]) -> LinkExecutionPreference.type:
+def get_link_execution_preference(ctx, links: list[Label]) -> LinkExecutionPreference:
     if not hasattr(ctx.attrs, "link_execution_preference"):
         fail("`get_link_execution_preference` called on a rule that does not support link_execution_preference!")
 
@@ -66,7 +66,7 @@ def get_link_execution_preference(ctx, links: list[Label]) -> LinkExecutionPrefe
     info = link_execution_preference[LinkExecutionPreferenceDeterminatorInfo]
     return info.preference_for_links(links, deps_preferences)
 
-def get_action_execution_attributes(preference: LinkExecutionPreference.type) -> _ActionExecutionAttributes.type:
+def get_action_execution_attributes(preference: LinkExecutionPreference) -> _ActionExecutionAttributes:
     if preference == LinkExecutionPreference("any"):
         return _ActionExecutionAttributes()
     elif preference == LinkExecutionPreference("full_hybrid"):

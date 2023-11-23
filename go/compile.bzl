@@ -16,25 +16,28 @@ load(
 load(":toolchain.bzl", "GoToolchainInfo", "get_toolchain_cmd_args")
 
 # Provider wrapping packages used for compiling.
-GoPkgCompileInfo = provider(fields = [
-    "pkgs",  # {str: GoPkg.type}
-])
+GoPkgCompileInfo = provider(fields = {
+    "pkgs": provider_field(typing.Any, default = None),  # dict[str, GoPkg]
+})
 
 # Provider for test targets that test a library. Contains information for
 # compiling the test and library code together as expected by go.
-GoTestInfo = provider(fields = [
-    "deps",  # [Dependency]
-    "srcs",  # ["source"]
-    "pkg_name",  # str
-])
+GoTestInfo = provider(
+    # @unsorted-dict-items
+    fields = {
+        "deps": provider_field(typing.Any, default = None),  # [Dependency]
+        "srcs": provider_field(typing.Any, default = None),  # ["source"]
+        "pkg_name": provider_field(typing.Any, default = None),  # str
+    },
+)
 
 def _out_root(shared: bool = False):
     return "__shared__" if shared else "__static__"
 
-def get_inherited_compile_pkgs(deps: list[Dependency]) -> dict[str, GoPkg.type]:
+def get_inherited_compile_pkgs(deps: list[Dependency]) -> dict[str, GoPkg]:
     return merge_pkgs([d[GoPkgCompileInfo].pkgs for d in deps if GoPkgCompileInfo in d])
 
-def get_filtered_srcs(ctx: AnalysisContext, srcs: list[Artifact], tests: bool = False) -> cmd_args:
+def get_filtered_srcs(ctx: AnalysisContext, srcs: list[Artifact], tests: bool = False, force_disable_cgo: bool = False) -> cmd_args:
     """
     Filter the input sources based on build pragma
     """
@@ -48,7 +51,7 @@ def get_filtered_srcs(ctx: AnalysisContext, srcs: list[Artifact], tests: bool = 
         "__srcs__",
         {src.short_path: src for src in srcs},
     )
-    filter_cmd = get_toolchain_cmd_args(go_toolchain, go_root = False)
+    filter_cmd = get_toolchain_cmd_args(go_toolchain, go_root = True, force_disable_cgo = force_disable_cgo)
     filter_cmd.add(go_toolchain.filter_srcs[RunInfo])
     filter_cmd.add(cmd_args(go_toolchain.go, format = "--go={}"))
     if tests:

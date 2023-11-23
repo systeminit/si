@@ -21,6 +21,8 @@ Platform = ["linux", "macos", "windows", "freebsd", "unknown"]
 
 RemoteFileType = ["data", "executable", "exploded_zip"]
 
+TargetCpuType = ["arm", "armv7", "arm64", "x86", "x86_64", "mips"]
+
 alias = prelude_rule(
     name = "alias",
     docs = "",
@@ -29,7 +31,7 @@ alias = prelude_rule(
     attrs = (
         # @unsorted-dict-items
         {
-            "actual": attrs.dep(),
+            "actual": attrs.dep(pulls_and_pushes_plugins = plugins.All),
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "labels": attrs.list(attrs.string(), default = []),
@@ -1131,7 +1133,7 @@ worker_tool = prelude_rule(
         ```
 
 
-        $(worker //path/to:target)
+        $(exe //path/to:target)
 
         ```
     """,
@@ -1158,19 +1160,19 @@ worker_tool = prelude_rule(
         genrule(
           name = 'TransformA',
           out = 'OutputA.txt',
-          cmd = '$(worker :ExternalToolWorker) argA',
+          cmd = '$(exe :ExternalToolWorker) argA',
         )
 
         genrule(
           name = 'TransformB',
           out = 'OutputB.txt',
-          cmd = '$(worker :ExternalToolWorker) argB',
+          cmd = '$(exe :ExternalToolWorker) argB',
         )
 
         genrule(
           name = 'TransformC',
           out = 'OutputC.txt',
-          cmd = '$(worker :ExternalToolWorker) argC',
+          cmd = '$(exe :ExternalToolWorker) argC',
         )
         ```
 

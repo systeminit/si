@@ -7,8 +7,9 @@
 
 load("@prelude//android:android_providers.bzl", "AndroidApkInfo", "AndroidInstrumentationApkInfo")
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
+load("@prelude//java:class_to_srcs.bzl", "JavaClassToSourceMapInfo")
 load("@prelude//java:java_toolchain.bzl", "JavaToolchainInfo")
-load("@prelude//java/utils:java_utils.bzl", "get_path_separator")
+load("@prelude//java/utils:java_more_utils.bzl", "get_path_separator_for_exec_os")
 load("@prelude//utils:utils.bzl", "expect")
 load("@prelude//test/inject_test_run_info.bzl", "inject_test_run_info")
 
@@ -23,7 +24,10 @@ def android_instrumentation_test_impl(ctx: AnalysisContext):
 
     classpath_args = cmd_args()
     classpath_args.add("-classpath")
-    classpath_args.add(cmd_args(classpath, delimiter = get_path_separator()))
+    extra_classpath = []
+    if ctx.attrs.instrumentation_test_listener != None:
+        extra_classpath.append(ctx.attrs.instrumentation_test_listener)
+    classpath_args.add(cmd_args(classpath + extra_classpath, delimiter = get_path_separator_for_exec_os(ctx)))
     classpath_args_file = ctx.actions.write("classpath_args_file", classpath_args)
     cmd.append(cmd_args(classpath_args_file, format = "@{}").hidden(classpath_args))
 
@@ -51,7 +55,6 @@ def android_instrumentation_test_impl(ctx: AnalysisContext):
         test_runner_file.as_output(),
     ])
     ctx.actions.run(manifest_utils_cmd, category = "get_manifest_info")
-
     cmd.extend(
         [
             "--test-package-name",
@@ -62,6 +65,9 @@ def android_instrumentation_test_impl(ctx: AnalysisContext):
             cmd_args(test_runner_file, format = "@{}"),
         ],
     )
+
+    if ctx.attrs.instrumentation_test_listener_class != None:
+        cmd.extend(["--extra-instrumentation-test-listener", ctx.attrs.instrumentation_test_listener_class])
 
     cmd.extend(
         [
@@ -103,9 +109,12 @@ def android_instrumentation_test_impl(ctx: AnalysisContext):
             "android_emulator": None,
         },
     )
+
+    classmap_source_info = [ctx.attrs.apk[JavaClassToSourceMapInfo]] if JavaClassToSourceMapInfo in ctx.attrs.apk else []
+
     return inject_test_run_info(ctx, test_info) + [
         DefaultInfo(),
-    ]
+    ] + classmap_source_info
 
 # replicating the logic in https://fburl.com/code/1fqowxu4 to match buck1's behavior
 def _compute_emulator_target(labels: list[str]) -> str:

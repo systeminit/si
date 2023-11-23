@@ -12,13 +12,13 @@
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxPlatformInfo", "CxxToolchainInfo")
 load("@prelude//ocaml:ocaml_toolchain_types.bzl", "OCamlPlatformInfo", "OCamlToolchainInfo")
 
-def _toolchain(lang: str, providers: list[typing.Any]) -> "attribute":
+def _toolchain(lang: str, providers: list[typing.Any]) -> Attr:
     return attrs.default_only(attrs.toolchain_dep(default = "toolchains//:" + lang, providers = providers))
 
-def _cxx_toolchain() -> "attribute":
+def _cxx_toolchain() -> Attr:
     return _toolchain("cxx", [CxxToolchainInfo, CxxPlatformInfo])
 
-def _ocaml_toolchain() -> "attribute":
+def _ocaml_toolchain() -> Attr:
     return _toolchain("ocaml", [OCamlToolchainInfo, OCamlPlatformInfo])
 
 # --

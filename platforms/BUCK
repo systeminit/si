@@ -1,10 +1,23 @@
 # Used by open source projects to provide a simple platform setting
+# This file exports a sub-set of the definitions from TARGETS.v2 for backwards-compatibility with buck1.
+# NOTE: These have no effect in BUCK1 and are only provided so imports can resolve.
 
-load(":defs.bzl", "execution_platform", "host_configuration")
+config_setting(
+    name = "runs_remote",
+    visibility = ["PUBLIC"],
+)
 
-execution_platform(
-    name = "default",
-    cpu_configuration = host_configuration.cpu,
-    os_configuration = host_configuration.os,
-    use_windows_path_separators = host_info().os.is_windows,
+config_setting(
+    name = "runs_local",
+    visibility = ["PUBLIC"],
+)
+
+config_setting(
+    name = "runs_only_local",
+    visibility = ["PUBLIC"],
+)
+
+config_setting(
+    name = "runs_only_remote",
+    visibility = ["PUBLIC"],
 )
