@@ -1,8 +1,8 @@
 apple_tools(
     name = "apple-tools",
     assemble_bundle = "prelude//apple/tools/bundling:assemble_bundle",
-    # @oss-disable: adhoc_codesign_tool = "prelude//apple/tools/meta_only/codesign_rust:adhoc-signer", 
-    adhoc_codesign_tool = None # @oss-enable
+    # @oss-disable: adhoc_codesign_tool = "prelude//apple/tools/meta_only/codesign_rust:adhoc-signer",
+    adhoc_codesign_tool = None, # @oss-enable
     split_arch_combine_dsym_bundles_tool = ":split_arch_combine_dsym_bundles_tool",
     dry_codesign_tool = ":dry_codesign_tool",
     info_plist_processor = "prelude//apple/tools/info_plist_processor:tool",
