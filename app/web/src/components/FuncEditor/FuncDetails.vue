@@ -45,6 +45,11 @@
               />
 
               <VButton
+                v-if="
+                  funcStore.selectedFuncDetails &&
+                  funcStore.selectedFuncDetails?.associations?.type !==
+                    'authentication'
+                "
                 class="--tone-success"
                 icon="save"
                 size="md"
