@@ -9,12 +9,11 @@ load("@prelude//android:android_providers.bzl", "Aapt2LinkInfo", "AndroidResourc
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 
 BASE_PACKAGE_ID = 0x7f
-ZIP_NOTHING_TO_DO_EXIT_CODE = 12
 
 def get_aapt2_link(
         ctx: AnalysisContext,
-        android_toolchain: AndroidToolchainInfo.type,
-        resource_infos: list[AndroidResourceInfo.type],
+        android_toolchain: AndroidToolchainInfo,
+        resource_infos: list[AndroidResourceInfo],
         android_manifest: Artifact,
         includes_vector_drawables: bool,
         no_auto_version: bool,
@@ -30,7 +29,7 @@ def get_aapt2_link(
         locales: list[str],
         compiled_resource_apks: list[Artifact],
         additional_aapt2_params: list[str],
-        extra_filtered_resources: list[str]) -> (Aapt2LinkInfo.type, Aapt2LinkInfo.type):
+        extra_filtered_resources: list[str]) -> (Aapt2LinkInfo, Aapt2LinkInfo):
     link_infos = []
     for use_proto_format in [False, True]:
         if use_proto_format:
@@ -114,17 +113,11 @@ def get_aapt2_link(
         # If zip -d returns that there was nothing to do, then we don't fail.
         if len(extra_filtered_resources) > 0:
             filtered_resources_apk = ctx.actions.declare_output("{}/filtered-resource-apk.ap_".format(identifier))
-            filter_resources_sh_cmd = cmd_args([
-                "sh",
-                "-c",
-                'cp "$1" "$2" && chmod 644 "$2"; zip -d "$2" "$3"; if [$? -eq $4]; then\nexit 0\nfi\nexit $?;',
-                "--",
-                resources_apk,
-                filtered_resources_apk.as_output(),
-                extra_filtered_resources,
-                str(ZIP_NOTHING_TO_DO_EXIT_CODE),
-            ])
-            ctx.actions.run(filter_resources_sh_cmd, category = "aapt2_filter_resources", identifier = identifier)
+            filter_resources_cmd = cmd_args(ctx.attrs._android_toolchain[AndroidToolchainInfo].aapt2_filter_resources)
+            filter_resources_cmd.add(cmd_args(resources_apk, format = "--input-apk={}"))
+            filter_resources_cmd.add(cmd_args(filtered_resources_apk.as_output(), format = "--output-apk={}"))
+            filter_resources_cmd.add(cmd_args(extra_filtered_resources, format = "--extra-filtered-resources={}"))
+            ctx.actions.run(filter_resources_cmd, category = "aapt2_filter_resources", identifier = identifier)
             primary_resources_apk = filtered_resources_apk
         else:
             primary_resources_apk = resources_apk
@@ -139,7 +132,7 @@ def get_aapt2_link(
 
 def get_module_manifest_in_proto_format(
         ctx: AnalysisContext,
-        android_toolchain: AndroidToolchainInfo.type,
+        android_toolchain: AndroidToolchainInfo,
         android_manifest: Artifact,
         primary_resources_apk: Artifact,
         module_name: str) -> Artifact:

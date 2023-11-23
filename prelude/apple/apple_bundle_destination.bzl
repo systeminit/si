@@ -25,6 +25,7 @@ AppleBundleDestination = enum(
     "watchkitstub",
     "bundleroot",
     "loginitems",
+    "appclips",
 )
 
 AppleBundleDestinationPaths = record(
@@ -41,6 +42,7 @@ AppleBundleDestinationPaths = record(
     watchkitstub = field(str, ""),
     bundleroot = field(str, ""),
     loginitems = field(str, ""),
+    appclips = field(str, ""),
 )
 
 _IOSBundleDestinationPaths = AppleBundleDestinationPaths(
@@ -50,6 +52,7 @@ _IOSBundleDestinationPaths = AppleBundleDestinationPaths(
     watchapp = "Watch",
     quicklook = "Library/QuickLook",
     watchkitstub = "_WatchKitStub",
+    appclips = "AppClips",
 )
 
 _IOSFrameworkBundleDestinationPaths = AppleBundleDestinationPaths(
@@ -85,19 +88,19 @@ _MacOSFrameworkBundleDestinationPaths = AppleBundleDestinationPaths(
     modules = "Modules",
 )
 
-def _get_apple_bundle_destinations_for_sdk_name(name: str) -> AppleBundleDestinationPaths.type:
+def _get_apple_bundle_destinations_for_sdk_name(name: str) -> AppleBundleDestinationPaths:
     if name == "macosx" or name == "maccatalyst":
         return _MacOSBundleDestinationPaths
     else:
         return _IOSBundleDestinationPaths
 
-def _get_apple_framework_bundle_destinations_for_sdk_name(name: str) -> AppleBundleDestinationPaths.type:
+def _get_apple_framework_bundle_destinations_for_sdk_name(name: str) -> AppleBundleDestinationPaths:
     if name == "macosx" or name == "maccatalyst":
         return _MacOSFrameworkBundleDestinationPaths
     else:
         return _IOSFrameworkBundleDestinationPaths
 
-def bundle_relative_path_for_destination(destination: AppleBundleDestination.type, sdk_name: str, extension: str) -> str:
+def bundle_relative_path_for_destination(destination: AppleBundleDestination, sdk_name: str, extension: str) -> str:
     if extension == "framework":
         bundle_destinations = _get_apple_framework_bundle_destinations_for_sdk_name(sdk_name)
     else:
@@ -129,4 +132,6 @@ def bundle_relative_path_for_destination(destination: AppleBundleDestination.typ
         return bundle_destinations.bundleroot
     elif destination.value == "loginitems":
         return bundle_destinations.loginitems
+    elif destination.value == "appclips":
+        return bundle_destinations.appclips
     fail("Unsupported Apple bundle destination {}".format(destination))

@@ -57,10 +57,10 @@ ASSET_EXTENSIONS = [
 ]
 
 # Matches the default value for resolver.platforms in metro-config
-ASSET_PLATFORMS = ["ios", "android", "windows", "web"]
+ASSET_PLATFORMS = ["ios", "android", "windows", "macos", "web"]
 
-def get_apple_resource_providers_for_js_bundle(ctx: AnalysisContext, js_bundle_info: JsBundleInfo.type, platform: str, skip_resources: bool) -> list[ResourceGraphInfo.type]:
-    if platform != "ios":
+def get_apple_resource_providers_for_js_bundle(ctx: AnalysisContext, js_bundle_info: JsBundleInfo, platform: str, skip_resources: bool) -> list[ResourceGraphInfo]:
+    if platform != "ios" and platform != "macos":
         return []
 
     # `skip_resources` controls whether the JS resources should be skipped, not whether
@@ -142,11 +142,17 @@ def run_worker_commands(
         identifier: str,
         category: str,
         hidden_artifacts = [cmd_args]):
+    worker_args = cmd_args("--command-args-file", command_args_files)
+    worker_args.add("--command-args-file-extra-data-fixup-hack=true")
+
+    worker_argsfile = ctx.actions.declare_output(paths.join(identifier, "worker_{}.argsfile".format(category)))
+    ctx.actions.write(worker_argsfile.as_output(), worker_args)
+
     worker_tool_info = worker_tool[WorkerToolInfo]
     worker_command = worker_tool_info.command.copy()
-    worker_command.add("--command-args-file", command_args_files)
     worker_command.hidden(hidden_artifacts)
-    worker_command.add("--command-args-file-extra-data-fixup-hack=true")
+    worker_command.hidden(command_args_files)
+    worker_command.add(cmd_args(worker_argsfile, format = "@{}"))
 
     ctx.actions.run(
         worker_command,

@@ -6,6 +6,10 @@
 # of this source tree.
 
 load("@prelude//:paths.bzl", "paths")
+load(
+    ":erlang_toolchain.bzl",
+    "Toolchain",  # @unused Used as type
+)
 
 def normalise_metadata(data: [str, list[str]]) -> [cmd_args, list[cmd_args]]:
     if type(data) == type([]):
@@ -118,20 +122,22 @@ def convert_bool(bl: bool) -> cmd_args:
     else:
         return cmd_args(["false"])
 
-def multidict_projection(build_environments: dict[str, "BuildEnvironment"], field_name: str) -> dict:
+# `build_environments` is a `dict[str, BuildEnvironment]`.
+def multidict_projection(build_environments: dict[str, typing.Any], field_name: str) -> dict:
     field = {}
     for name, env in build_environments.items():
         field[name] = getattr(env, field_name)
     return field
 
-def multidict_projection_key(build_environments: dict[str, "BuildEnvironment"], field_name: str, key: str) -> dict:
+# `build_environments` is a `dict[str, BuildEnvironment]`.
+def multidict_projection_key(build_environments: dict[str, typing.Any], field_name: str, key: str) -> dict:
     field = {}
     for name, env in build_environments.items():
         dict_val = getattr(env, field_name)
         field[name] = dict_val[key]
     return field
 
-def action_identifier(toolchain: "Toolchain", name: str) -> str:
+def action_identifier(toolchain: Toolchain, name: str) -> str:
     """builds an action identifier parameterized by the toolchain"""
     return "%s(%s)" % (name, toolchain.name)
 

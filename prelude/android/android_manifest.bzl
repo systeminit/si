@@ -5,7 +5,12 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//android:android_providers.bzl", "AndroidManifestInfo", "merge_android_packageable_info")
+load(
+    "@prelude//android:android_providers.bzl",
+    "AndroidManifestInfo",
+    "ManifestTSet",  # @unused Used as type
+    "merge_android_packageable_info",
+)
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//android:voltron.bzl", "ROOT_MODULE")
 
@@ -26,10 +31,10 @@ def android_manifest_impl(ctx: AnalysisContext) -> list[Provider]:
 
 def generate_android_manifest(
         ctx: AnalysisContext,
-        generate_manifest: RunInfo.type,
+        generate_manifest: RunInfo,
         manifest_skeleton: Artifact,
         module_name: str,
-        manifests: ["ManifestTSet", list[Artifact], None],
+        manifests: [ManifestTSet, list[Artifact], None],
         placeholder_entries: dict) -> (Artifact, Artifact):
     generate_manifest_cmd = cmd_args(generate_manifest)
     generate_manifest_cmd.add([
@@ -51,7 +56,7 @@ def generate_android_manifest(
 
     placeholder_entries_args = cmd_args()
     for key, val in placeholder_entries.items():
-        placeholder_entries_args.add(cmd_args(key, val, delimiter = " "))
+        placeholder_entries_args.add(cmd_args(str(key), str(val), delimiter = " "))
     placeholder_entries_file = ctx.actions.write("{}/placeholder_entries_file".format(module_name), placeholder_entries_args)
 
     generate_manifest_cmd.add(["--placeholder-entries-list", placeholder_entries_file])
@@ -69,7 +74,7 @@ def generate_android_manifest(
 
     return (output, merge_report)
 
-def _get_manifests_from_deps(ctx: AnalysisContext) -> ["ManifestTSet", None]:
+def _get_manifests_from_deps(ctx: AnalysisContext) -> [ManifestTSet, None]:
     if len(ctx.attrs.deps) == 0:
         return None
 

@@ -5,11 +5,12 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//android:android.bzl", "android_toolchain")
 load("@prelude//android:build_only_native_code.bzl", "is_build_only_native_code")
 load("@prelude//js:js_bundle.bzl", "js_bundle_impl")
 load("@prelude//js:js_bundle_genrule.bzl", "js_bundle_genrule_impl")
 load("@prelude//js:js_library.bzl", "js_library_impl")
+load("@prelude//decls/common.bzl", "buck")
+load("@prelude//decls/toolchains_common.bzl", "toolchains_common")
 load("@prelude//genrule.bzl", "genrule_attributes")
 
 def _select_platform():
@@ -38,7 +39,7 @@ implemented_rules = {
 extra_attributes = {
     "js_bundle": {
         "worker": attrs.exec_dep(),
-        "_android_toolchain": android_toolchain(),
+        "_android_toolchain": toolchains_common.android(),
         "_is_release": attrs.bool(
             default = _is_release(),
         ),
@@ -50,6 +51,7 @@ extra_attributes = {
         "type": attrs.string(
             default = "js_bundle_genrule",
         ),
+        "_exec_os_type": buck.exec_os_type_arg(),
         "_is_release": attrs.bool(
             default = _is_release(),
         ),

@@ -6,11 +6,12 @@
 # of this source tree.
 
 load("@prelude//java:java_toolchain.bzl", "JavaToolchainInfo")
+load("@prelude//os_lookup:defs.bzl", "OsLookup")
 load(":android_toolchain.bzl", "AndroidToolchainInfo")
 
-_AidlSourceInfo = provider(fields = [
-    "srcs",
-])
+_AidlSourceInfo = provider(fields = {
+    "srcs": provider_field(typing.Any, default = None),
+})
 
 def gen_aidl_impl(ctx: AnalysisContext) -> list[Provider]:
     android_toolchain = ctx.attrs._android_toolchain[AndroidToolchainInfo]
@@ -39,7 +40,26 @@ def gen_aidl_impl(ctx: AnalysisContext) -> list[Provider]:
     aidl_out = ctx.actions.declare_output("aidl_output", dir = True)
     aidl_cmd.add("-o", aidl_out.as_output())
     aidl_cmd.add(ctx.attrs.aidl)
-    ctx.actions.run(aidl_cmd, category = "aidl")
+
+    # Aidl does not create any output for parcelables. Therefore, we always initialize the output
+    # directory so that we don't get an "Action failed to produce outputs" error.
+    if ctx.attrs._exec_os_type[OsLookup].platform == "windows":
+        sh_cmd = cmd_args([
+            cmd_args(["cmd.exe", "/c", cmd_args([aidl_out.as_output()], format = "if not exist {} md {}")]),
+            "&&",
+            aidl_cmd,
+        ])
+    else:
+        sh_cmd = cmd_args([
+            "sh",
+            "-c",
+            "mkdir -p $1 && $2",
+            "--",
+            aidl_out.as_output(),
+            cmd_args(aidl_cmd, delimiter = " "),
+        ])
+
+    ctx.actions.run(sh_cmd, category = "aidl")
 
     # Put the generated Java files into a zip file to be used as srcs to other rules.
     java_toolchain = ctx.attrs._java_toolchain[JavaToolchainInfo]

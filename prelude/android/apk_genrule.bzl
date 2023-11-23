@@ -9,6 +9,7 @@ load("@prelude//:genrule.bzl", "process_genrule")
 load("@prelude//android:android_apk.bzl", "get_install_info")
 load("@prelude//android:android_providers.bzl", "AndroidAabInfo", "AndroidApkInfo", "AndroidApkUnderTestInfo")
 load("@prelude//utils:utils.bzl", "expect")
+load("@prelude//java/class_to_srcs.bzl", "JavaClassToSourceMapInfo")
 
 def apk_genrule_impl(ctx: AnalysisContext) -> list[Provider]:
     expect((ctx.attrs.apk == None) != (ctx.attrs.aab == None), "Exactly one of 'apk' and 'aab' must be specified")
@@ -37,8 +38,13 @@ def apk_genrule_impl(ctx: AnalysisContext) -> list[Provider]:
 
     genrule_providers = process_genrule(ctx, output_apk_name, None, env_vars)
 
-    expect(len(genrule_providers) == 1 and type(genrule_providers[0]) == DefaultInfo.type, "Expecting just a single DefaultInfo, but got {}".format(genrule_providers))
+    expect(
+        len(genrule_providers) == 1 and isinstance(genrule_providers[0], DefaultInfo),
+        "Expecting just a single DefaultInfo, but got {}".format(genrule_providers),
+    )
     output_apk = genrule_providers[0].default_outputs[0]
+
+    class_to_src_map = [ctx.attrs.apk[JavaClassToSourceMapInfo]] if (ctx.attrs.apk and JavaClassToSourceMapInfo in ctx.attrs.apk) else []
 
     install_info = get_install_info(
         ctx,
@@ -53,4 +59,4 @@ def apk_genrule_impl(ctx: AnalysisContext) -> list[Provider]:
             manifest = input_manifest,
         ),
         install_info,
-    ] + filter(None, [input_android_apk_under_test_info])
+    ] + filter(None, [input_android_apk_under_test_info]) + class_to_src_map
