@@ -1,8 +1,6 @@
-diff --git a/prelude/rust/tools/rustc_action.py b/prelude/rust/tools/rustc_action.py
-index b4b4a0176..bfe952cc7 100755
---- a/prelude/rust/tools/rustc_action.py
-+++ b/prelude/rust/tools/rustc_action.py
-@@ -228,6 +228,7 @@ async def main() -> int:
+--- prelude/rust/tools/rustc_action.py.orig	2023-11-23 12:43:59.061213695 -0700
++++ prelude/rust/tools/rustc_action.py	2023-11-23 12:41:00.948050856 -0700
+@@ -259,6 +259,7 @@
          ]
          if k in os.environ
      }
@@ -10,7 +8,7 @@ index b4b4a0176..bfe952cc7 100755
      if args.env:
          # Unescape previously escaped newlines.
          # Example: \\\\n\\n -> \\\n\n -> \\n\n
-@@ -326,4 +327,38 @@ async def main() -> int:
+@@ -369,6 +370,40 @@
      return res
  
  
@@ -48,4 +46,6 @@ index b4b4a0176..bfe952cc7 100755
 +        env.update({k: v for k, v in vars_starting_with.items()})
 +
 +
- sys.exit(asyncio.run(main()))
+ # There is a bug with asyncio.run() on Windows:
+ # https://bugs.python.org/issue39232
+ sys.exit(asyncio.get_event_loop().run_until_complete(main()))
