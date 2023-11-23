@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import { z } from 'zod';
 import { ApiError } from "../lib/api-error";
 import { getCache, setCache } from "../lib/cache";
-import { getUserById } from "../services/users.service";
+import { getUserById, refreshUserAuth0Profile } from "../services/users.service";
 import {
   createWorkspace,
   getUserWorkspaces,
@@ -189,8 +189,14 @@ router.get("/workspaces/:workspaceId/go", async (ctx) => {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const authUser = ctx.state.authUser!;
 
+  // we require the user to have verified their email before they can log into a workspace
   if (!authUser.emailVerified) {
-    throw new ApiError('Unauthorized', "System Initiative Requires Verified Emails to access Workspaces. Check your registered email for Verification email from SI Auth Portal.");
+    // we'll first refresh from auth0 to make sure its actually not verified
+    await refreshUserAuth0Profile(authUser);
+    // then throw an error
+    if (!authUser.emailVerified) {
+      throw new ApiError('Unauthorized', 'EmailNotVerified', "System Initiative Requires Verified Emails to access Workspaces. Check your registered email for Verification email from SI Auth Portal.");
+    }
   }
 
   // generate a new single use authentication code that we will send to the instance

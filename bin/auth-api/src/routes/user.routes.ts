@@ -5,7 +5,8 @@ import { validate } from "../lib/validation-helpers";
 import { findLatestTosForUser, saveTosAgreement } from "../services/tos.service";
 
 import { CustomRouteContext } from '../custom-state';
-import { saveUser } from '../services/users.service';
+import { refreshUserAuth0Profile, saveUser } from '../services/users.service';
+import { resendAuth0EmailVerification } from '../services/auth0.service';
 import { router } from ".";
 
 router.get("/whoami", async (ctx) => {
@@ -91,6 +92,28 @@ router.post("/users/:userId/complete-profile", async (ctx) => {
   await saveUser(user);
 
   ctx.body = { user };
+});
+
+router.post("/users/:userId/refresh-auth0-profile", async (ctx) => {
+  const user = await handleUserIdParam(ctx);
+  await refreshUserAuth0Profile(user);
+  ctx.body = { user };
+});
+router.post("/users/:userId/resend-email-verification", async (ctx) => {
+  const user = await handleUserIdParam(ctx);
+  if (!user.auth0Id) {
+    throw new ApiError('Conflict', 'User has no auth0 id');
+  }
+  if (user.emailVerified) {
+    throw new ApiError('Conflict', 'EmailAlreadyVerified', 'Email is already verified');
+  }
+  await refreshUserAuth0Profile(user);
+  if (user.emailVerified) {
+    throw new ApiError('Conflict', 'EmailAlreadyVerified', 'Email is already verified');
+  }
+
+  await resendAuth0EmailVerification(user.auth0Id);
+  ctx.body = { success: true };
 });
 
 router.get("/tos-details", async (ctx) => {

@@ -8,13 +8,18 @@ import { mockAuth0TokenExchange } from './helpers/auth0-mocks';
 import { decodeAuthToken, createSdfAuthToken } from '../src/services/auth.service';
 import { createWorkspace } from "../src/services/workspaces.service";
 import { createInvitedUser, getUserById } from "../src/services/users.service";
+import { setManagementApiTokenForTesting } from '../src/services/auth0.service';
 
-t.before(testSuiteBefore);
+t.before(async () => {
+  await testSuiteBefore();
+  await setManagementApiTokenForTesting();
+});
 t.teardown(testSuiteAfter);
 
 t.test('Auth routes', async () => {
+
   t.test('GET /auth/login - begin login flow', async (t) => {
-    await t.test('redirects to auth0', async () => {
+    t.test('redirects to auth0', async () => {
       await request.get('/auth/login')
         .expect(302)
         .expect((res) => {
@@ -165,13 +170,12 @@ t.test('Auth routes', async () => {
 
     const AUTH0_ID = 'google-oauth|123456';
     const EMAIL_1 = 'new-user@systeminit.dev';
-    const EMAIL_2 = 'updated@systeminit.dev';
 
     let originalUserId: string;
     t.test('can sign up a new account', async () => {
       const { userId } = await runAuthTest({
         mockOptions: {
-          profileOverrides: { sub: AUTH0_ID, email: EMAIL_1 },
+          profileOverrides: { user_id: AUTH0_ID, email: EMAIL_1, email_verified: false },
         },
         expectUserData: { auth0Id: AUTH0_ID, email: EMAIL_1 },
       });
@@ -181,67 +185,65 @@ t.test('Auth routes', async () => {
     t.test('logging in again with dupe email but different auth0 id will create new account', async () => {
       const { userId } = await runAuthTest({
         mockOptions: {
-          profileOverrides: { sub: `${AUTH0_ID}9`, email: EMAIL_1 },
+          profileOverrides: { user_id: `${AUTH0_ID}9`, email: EMAIL_1 },
         },
         expectUserData: { email: EMAIL_1 },
       });
       expect(userId).not.to.eq(originalUserId);
     });
 
-    t.test('logging in again with existing auth0 id will not create a new account, but will update other data', async () => {
+    t.test('logging in again with existing auth0 id will not create a new account, but will update other EMPTY data', async () => {
       await runAuthTest({
         mockOptions: {
-          profileOverrides: { sub: AUTH0_ID, email: EMAIL_2 },
+          profileOverrides: { user_id: AUTH0_ID, email_verified: true },
         },
-        expectUserData: { id: originalUserId, email: EMAIL_2 },
+        expectUserData: { id: originalUserId, emailVerified: true },
       });
     });
 
     t.test('logging in with a partially signed up user will not create a new account, but will update other data', async () => {
-      const user = await createInvitedUser("partially+signedup@systeminit.com");
-      const { userId } = await runAuthTest({
+      const invitedUser = await createInvitedUser("partially+signedup@systeminit.com");
+      await runAuthTest({
         mockOptions: {
-          profileOverrides: { sub: AUTH0_ID, email: user.email },
+          profileOverrides: { user_id: `${AUTH0_ID}999`, email: invitedUser.email },
         },
-        expectUserData: { id: originalUserId, email: "partially+signedup@systeminit.com" },
+        expectUserData: { id: invitedUser.id, email: invitedUser.email },
       });
-      originalUserId = userId;
     });
-  });
 
-  t.test('GET /auth/logout - begin logout flow', async (t) => {
-    await t.test('redirects to auth0', async () => {
-      await request.get('/auth/logout')
-        .expect(302)
-        .expect((res) => {
-          // check redirects to auth0 logout, which will clear the cookie used for user <> auth0 requests
-          const redirectUrl = res.headers.location;
-          expect(redirectUrl.startsWith(`https://${process.env.AUTH0_DOMAIN}/v2/logout?`)).to.eq(true);
+    t.test('GET /auth/logout - begin logout flow', async (t) => {
+      t.test('redirects to auth0', async () => {
+        await request.get('/auth/logout')
+          .expect(302)
+          .expect((res) => {
+            // check redirects to auth0 logout, which will clear the cookie used for user <> auth0 requests
+            const redirectUrl = res.headers.location;
+            expect(redirectUrl.startsWith(`https://${process.env.AUTH0_DOMAIN}/v2/logout?`)).to.eq(true);
 
-          // // check we cleared our cookie, which is used for user <> auth-api requests
-          const setCookie = res.headers['set-cookie'][0];
-          expect(setCookie).to.eq('si-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; httponly');
-        });
+            // // check we cleared our cookie, which is used for user <> auth-api requests
+            const setCookie = res.headers['set-cookie'][0];
+            expect(setCookie).to.eq('si-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; httponly');
+          });
+      });
     });
-  });
 
-  t.test('GET /auth/logout-callback - auth0 logout callback', async (t) => {
-    await t.test('redirects to auth portal', async () => {
-      await request.get('/auth/logout-callback')
-        .expect(302)
-        .expect((res) => {
-          const redirectUrl = res.headers.location;
-          expect(redirectUrl).to.eq(`${process.env.AUTH_PORTAL_URL}/logout-success`);
-        });
+    t.test('GET /auth/logout-callback - auth0 logout callback', async (t) => {
+      t.test('redirects to auth portal', async () => {
+        await request.get('/auth/logout-callback')
+          .expect(302)
+          .expect((res) => {
+            const redirectUrl = res.headers.location;
+            expect(redirectUrl).to.eq(`${process.env.AUTH_PORTAL_URL}/logout-success`);
+          });
+      });
     });
-  });
 
-  t.test('signup', async () => {
-    /*
-      - duplicate emails are allowed and do not merge
-      - first login will sign up, second will just log in
-      - check default workspace is automatically created
-    */
-
+    t.test('signup', async () => {
+      /*
+        - duplicate emails are allowed and do not merge
+        - first login will sign up, second will just log in
+        - check default workspace is automatically created
+      */
+    });
   });
 });

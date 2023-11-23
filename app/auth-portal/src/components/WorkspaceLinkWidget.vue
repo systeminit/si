@@ -33,6 +33,7 @@
           'cursor-pointer z-20',
         )
       "
+      @click="clickHandler"
       @mousedown="tracker.trackEvent('workspace_launcher_widget_click')"
     >
       <Icon v-if="!compact" name="laptop" size="lg" />
@@ -150,6 +151,7 @@ import { useOnboardingStore } from "@/store/onboarding.store";
 
 import { API_HTTP_URL } from "@/store/api";
 import { tracker } from "@/lib/posthog";
+import { useAuthStore } from "@/store/auth.store";
 
 const featureFlagsStore = useFeatureFlagsStore();
 
@@ -190,4 +192,13 @@ const workspaceNameTooltip = computed(() => {
 const emit = defineEmits<{
   (e: "edit"): void;
 }>();
+
+const authStore = useAuthStore();
+function clickHandler(e: MouseEvent) {
+  if (authStore.user && !authStore.user.emailVerified) {
+    // eslint-disable-next-line no-alert
+    alert("You must verify your email before you can log into a workspace");
+    e.preventDefault();
+  }
+}
 </script>

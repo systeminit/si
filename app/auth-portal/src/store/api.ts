@@ -18,6 +18,9 @@ const api = Axios.create({
   baseURL: API_HTTP_URL,
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (window) (window as any).api = api;
+
 // // add axios interceptors to add auth headers, handle logout errors, etc...
 // api.interceptors.request.use((config) => {
 //   // inject auth token from the store as a custom header

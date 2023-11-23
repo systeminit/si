@@ -1,16 +1,18 @@
 import Axios from "axios";
 import { nanoid } from "nanoid";
 import Auth0 from 'auth0';
+import JWT from "jsonwebtoken";
 
 import { ApiError } from "../lib/api-error";
 import { tryCatch } from "../lib/try-catch";
 import { getQueryString } from "../lib/querystring";
+import { getCache, setCache } from "../lib/cache";
 
-const auth0Client = new Auth0.AuthenticationClient({
-  /* eslint-disable @typescript-eslint/no-non-null-assertion */
-  domain: process.env.AUTH0_DOMAIN!,
-  clientId: process.env.AUTH0_CLIENT_ID!,
-});
+// const auth0Client = new Auth0.AuthenticationClient({
+//   /* eslint-disable @typescript-eslint/no-non-null-assertion */
+//   domain: process.env.AUTH0_DOMAIN!,
+//   clientId: process.env.AUTH0_CLIENT_ID!,
+// });
 
 const LOGIN_CALLBACK_URL = `${process.env.AUTH_API_URL}/auth/login-callback`;
 const LOGOUT_CALLBACK_URL = `${process.env.AUTH_API_URL}/auth/logout-callback`;
@@ -55,7 +57,7 @@ export function getAuth0LogoutUrl() {
 }
 
 export async function completeAuth0TokenExchange(code: string) {
-  const token = await tryCatch(async () => {
+  const tokenAndBasicProfile = await tryCatch(async () => {
     const tokenReq = await auth0Api.post(
       "/oauth/token",
       getQueryString({
@@ -69,10 +71,13 @@ export async function completeAuth0TokenExchange(code: string) {
         headers: { "content-type": "application/x-www-form-urlencoded" },
       },
     );
-    // console.log(tokenReq.data);
-    return tokenReq.data.access_token as string;
+    return {
+      accessToken: tokenReq.data.access_token as string,
+      idTokenData: JWT.decode(tokenReq.data.id_token) as any,
+    };
   }, (err) => {
     // if err is an http error from auth0, it will usually look something like:
+
     // err.response.data.error -- ex: 'invalid_grant'
     // err.response.data.error_description -- ex: 'Invalid authorization code'
 
@@ -85,24 +90,79 @@ export async function completeAuth0TokenExchange(code: string) {
       err.response.data.error_description,
     );
   });
-  if (!token) throw new Error('no token'); // just for TS
+  // access token is an "opaque token" so does not contain any info and cannot be decoded
+  // but id_token data is decoded into idTokenData and includes some basic info
+  const { accessToken, idTokenData } = tokenAndBasicProfile!;
+  const profile = await fetchAuth0Profile(idTokenData.sub);
 
-  // token is an "opaque token" so does not contain any info and cannot be decoded
+  return { profile, token: accessToken };
+}
+const AUTH0_MANAGEMENT_TOKEN_REDIS_KEY = 'auth0-management-api-key';
+type SavedAuth0TokenData = {
+  clientId: string,
+  token: string,
+};
+async function getManagementApiToken() {
+  // first check if we have a valid token in redis (and make sure the client id has not changed)
+  const savedTokenInfo = await getCache<SavedAuth0TokenData>(AUTH0_MANAGEMENT_TOKEN_REDIS_KEY);
+  if (savedTokenInfo?.clientId === process.env.AUTH0_M2M_CLIENT_ID) {
+    return savedTokenInfo?.token;
+  }
 
-  // but we can fetch profile data from auth0
+  // otherwise we'll generate a new token, save it in redis for future requests, and return it
+
+  // TODO: with actual volume, we'd want to acquire some kind of mutex so only one running instance is refreshing the token at a time
+  // but since nothing bad happens if we refresh the token multiple times and we have very low volume, we can ignore safely ignore for now
+
+  const result = await auth0Api.request({
+    method: 'post',
+    url: '/oauth/token',
+    headers: { 'content-type': 'application/json' },
+    data: JSON.stringify({
+      client_id: process.env.AUTH0_M2M_CLIENT_ID,
+      client_secret: process.env.AUTH0_M2M_CLIENT_SECRET,
+      audience: `https://${process.env.AUTH0_DOMAIN}/api/v2/`,
+      grant_type: "client_credentials",
+    }),
+  });
+  const token = result.data.access_token;
+
+  await setCache(AUTH0_MANAGEMENT_TOKEN_REDIS_KEY, {
+    clientId: process.env.AUTH0_M2M_CLIENT_ID,
+    token,
+  }, {
+    // expire the key from redis 5 minutes before token expiration
+    expiresIn: result.data.expires_in - (5 * 60),
+  });
+
+  return token;
+}
+export async function setManagementApiTokenForTesting() {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('This should only be used in test mode...');
+  }
+  await setCache(AUTH0_MANAGEMENT_TOKEN_REDIS_KEY, {
+    clientId: process.env.AUTH0_M2M_CLIENT_ID!,
+    token: 'mocktoken',
+  });
+}
+
+async function getManagementClient() {
+  const m2mToken = await getManagementApiToken();
+  return new Auth0.ManagementClient({
+    /* eslint-disable @typescript-eslint/no-non-null-assertion */
+    domain: process.env.AUTH0_DOMAIN!,
+    // clientId: process.env.AUTH0_M2M_CLIENT_ID!,
+    token: m2mToken,
+  });
+}
+
+export async function fetchAuth0Profile(auth0Id: string) {
+  const auth0ManagementClient = await getManagementClient();
+
   const profile = await tryCatch(async () => {
-    return await auth0Client.getProfile(token) as Auth0UserData;
-    // const profileReq = await Axios.get(
-    //   `https://${process.env.AUTH0_DOMAIN}/userinfo`,
-    //   {
-    //     headers: {
-    //       Authorization: `Bearer ${token}x`,
-    //     },
-    //   },
-    // );
-    // return profileReq.data;
+    return await auth0ManagementClient.getUser({ id: auth0Id });
   }, (err) => {
-    // console.log(err);
     if (!err?.response.data.error_description) throw err;
     throw new ApiError(
       "Conflict",
@@ -112,41 +172,10 @@ export async function completeAuth0TokenExchange(code: string) {
   });
   if (!profile) throw new Error('no profile'); // just for TS
 
-  // GITHUB
-  // {
-  //   sub: 'github|1158956',
-  //   nickname: 'theoephraim',
-  //   name: 'Theo Ephraim',
-  //   picture: 'https://avatars.githubusercontent.com/u/1158956?v=4',
-  //   updated_at: '2023-03-09T06:27:35.133Z',
-  //   email: 'theozero@gmail.com',
-  //   email_verified: true
-  // }
+  return profile;
+}
 
-  // GOOGLE
-  // {
-  //   sub: 'google-oauth2|108933039912882011657',
-  //   given_name: 'Theo',
-  //   family_name: 'Ephraim',
-  //   nickname: 'theo',
-  //   name: 'Theo Ephraim',
-  //   picture: 'https://lh3.googleusercontent.com/a/AGNmyxZ1h4N1UM02p5F938k8qIA_G16oGtLdg8W7T647=s96-c',
-  //   locale: 'en',
-  //   updated_at: '2023-03-09T06:28:20.845Z',
-  //   email: 'theo@systeminit.com',
-  //   email_verified: true
-  // }
-
-  // PASSWORD
-  // {
-  //   sub: 'auth0|64097e57b62dadad87ac788a',
-  //   nickname: 'theozero',
-  //   name: 'theozero@gmail.com',
-  //   picture: 'https://s.gravatar.com/avatar/ff33e7ba3ea72a853ed7d668439d4639?s=480&r=pg&d=https%3A%2F%2Fcdn.auth0.com%2Favatars%2Fth.png',
-  //   updated_at: '2023-03-09T06:36:07.055Z',
-  //   email: 'theozero@gmail.com',
-  //   email_verified: false
-  // }
-
-  return { profile, token };
+export async function resendAuth0EmailVerification(auth0Id: string) {
+  const auth0ManagementClient = await getManagementClient();
+  await auth0ManagementClient.sendEmailVerification({ user_id: auth0Id });
 }

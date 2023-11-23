@@ -6,6 +6,8 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { createWorkspace } from "./workspaces.service";
 import { LATEST_TOS_VERSION_ID } from './tos.service';
 import { tracker } from '../lib/tracker';
+import { fetchAuth0Profile } from './auth0.service';
+import { ApiError } from '../lib/api-error';
 
 const prisma = new PrismaClient();
 
@@ -37,6 +39,7 @@ export async function getUserById(id: UserId) {
     needsTosUpdate,
   };
 }
+export type User = NonNullable<Awaited<ReturnType<typeof prisma.user.findUnique>>>;
 export type UserWithTosStatus = NonNullable<Awaited<ReturnType<typeof getUserById>>>;
 
 export async function getUserByAuth0Id(auth0Id: string) {
@@ -56,93 +59,104 @@ export async function createInvitedUser(email: string) {
   });
 }
 
-export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.UserData) {
-  // auth0 docs showing user_id, but looks like "sub" contains the identifier
-  // TODO: check data when logging in with other providers
-  const auth0Id = auth0UserData.user_id || (auth0UserData as any).sub;
-  const email = auth0UserData.email;
+export async function createOrUpdateUserFromAuth0Details(auth0UserData: Auth0.User) {
+  // not sure why this type says the id could be empty? probably will not happen but we'll watch for this error
+  if (!auth0UserData.user_id) throw new Error('Missing auth0 user_id');
+  if (!auth0UserData.email) throw new Error('Missing auth0 email');
 
-  // We want to ensure we track that we need to create a workspace for a partially
-  // signed up (i.e. invited) user.
-  let requiresWorkspace = false;
+  const auth0Id = auth0UserData.user_id;
 
-  let existingUser = await getUserByAuth0Id(auth0Id);
-  if (!existingUser) {
-    // We should check that we have a user that is potentially partially signed up
-    // a partially signed up user is a user that we have a record for but that record
-    // only has an email and not anything else
-    const potentialUser = await getUserByEmail(email!);
-    if (potentialUser && !potentialUser.signupAt) {
-      existingUser = potentialUser;
-      requiresWorkspace = true;
-    }
+  let user = await getUserByAuth0Id(auth0Id);
+  // if no user found, we'll check if there is an invited (but not yet signed up) user with a matching email
+  // TODO: currently we can have multiple users with the same email, and we are just grabbing the first
+  // we'll also want to switch to link accounts rather than creating anothe one
+  if (!user) {
+    user = await getUserByEmail(auth0UserData.email);
+    if (user?.signupAt) user = null;
   }
 
-  const userData = {
-    // TODO: figure out json fields...
-    auth0Details: auth0UserData as Prisma.JsonObject,
-    nickname: auth0UserData.nickname || auth0UserData.given_name || auth0UserData.email || 'user',
-    firstName: auth0UserData.given_name,
-    lastName: auth0UserData.family_name,
-    // need to confirm email will always be present with our chosen auth providers
-    email: auth0UserData.email,
-    emailVerified: auth0UserData.email_verified || false,
-    pictureUrl: auth0UserData.picture,
-
-    // fairly certain nickname is github username
-    ...auth0Id.startsWith('github|') && {
-      githubUsername: auth0UserData.nickname,
-    },
-  };
-
-  if (existingUser) {
-    if (!existingUser.signupAt) {
-      existingUser.signupAt = new Date();
+  let isSignup = false;
+  if (user) {
+    if (!user.signupAt) {
+      user.auth0Id ||= auth0Id;
+      user.signupAt ||= new Date();
+      isSignup = true;
     }
-    if (!existingUser.auth0Id) {
-      existingUser.auth0Id = auth0Id;
-    }
-    _.assign(existingUser, userData);
+
+    setUserDataFromAuth0Details(user, auth0UserData, isSignup);
+
     await prisma.user.update({
-      where: { id: existingUser.id },
+      where: { id: user.id },
       data: {
-        ..._.omit(existingUser, 'id', 'onboardingDetails'),
+        ..._.omit(user, 'id', 'onboardingDetails'),
         auth0Details: auth0UserData as Prisma.JsonObject,
       },
     });
-
-    tracker.identifyUser(existingUser);
-
-    if (requiresWorkspace) {
-      await createWorkspace(existingUser);
-    }
-    return existingUser;
+    tracker.identifyUser(user);
   } else {
-    const newUser = await prisma.user.create({
+    isSignup = true;
+    user = await prisma.user.create({
       data: {
         id: ulid(),
         signupAt: new Date(),
         auth0Id,
-        ...userData,
+        ...setUserDataFromAuth0Details({}, auth0UserData, isSignup),
       },
     });
 
-    tracker.identifyUser(newUser);
-    tracker.trackEvent(newUser, 'auth_connected', {
-      id: newUser.id,
-      email: newUser.email,
-      firstName: newUser.firstName,
-      lastName: newUser.lastName,
+    tracker.identifyUser(user);
+  }
+
+  if (isSignup) {
+    tracker.trackEvent(user, 'auth_connected', {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
     });
 
-    // user is new, so we create a default dev workspace
-    await createWorkspace(newUser);
-
-    return newUser;
+    // create a default dev workspace
+    await createWorkspace(user);
   }
+
+  return user;
 }
 
-export async function saveUser(user: UserWithTosStatus) {
+export async function refreshUserAuth0Profile(user: User) {
+  if (!user.auth0Id) {
+    throw new ApiError('Conflict', 'User has no auth0 id');
+  }
+  const auth0Details = await fetchAuth0Profile(user.auth0Id);
+  setUserDataFromAuth0Details(user, auth0Details);
+  await saveUser(user);
+}
+function setUserDataFromAuth0Details(user: any, auth0Details: Auth0.User, isSignup = false) {
+  // save most up to date copy of auth0 details
+  user.auth0Details = auth0Details as Prisma.JsonObject;
+
+  // fill in any empty data we can infer from auth0 data
+  // pickBy just removed empty values
+  _.each({
+    nickname: auth0Details.nickname || auth0Details.given_name || auth0Details.email,
+    firstName: auth0Details.given_name,
+    lastName: auth0Details.family_name,
+    email: auth0Details.email,
+    emailVerified: auth0Details.email_verified,
+    pictureUrl: auth0Details.picture,
+    // fairly certain nickname is github username when auth provider is github
+    ...auth0Details.user_id?.startsWith('github|') && {
+      githubUsername: auth0Details.nickname,
+    },
+  }, (val, key) => {
+    // special handling to leave a photo that the user explicitly cleared as empty
+    // TODO: ideally we'd have some other way of knowing the user explicitly cleared it, but this should work
+    if (key === 'pictureUrl' && !isSignup && !user.pictureUrl) return;
+    if (!user[key]) user[key] = val;
+  });
+  return user;
+}
+
+export async function saveUser(user: User) {
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -157,6 +171,7 @@ export async function saveUser(user: UserWithTosStatus) {
       ),
       // this is dumb... prisma is annoying
       onboardingDetails: user.onboardingDetails as Prisma.JsonObject || undefined,
+      auth0Details: user.auth0Details as Prisma.JsonObject || undefined,
     },
   });
   tracker.identifyUser(user);

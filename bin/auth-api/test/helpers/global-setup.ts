@@ -1,7 +1,11 @@
 import { execSync } from 'node:child_process';
 import chalk from 'chalk';
+import wtf from 'wtfnode';
 
 import '../../src/init-env';
+
+// helps track processes that are left open / hanging
+wtf.init();
 
 console.log(chalk.magentaBright('>>> global test env - setup <<<'));
 

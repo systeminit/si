@@ -108,6 +108,38 @@ export const useAuthStore = defineStore("auth", {
         },
       });
     },
+
+    async REFRESH_AUTH0_PROFILE() {
+      if (!this.user) throw new Error("User not loaded");
+      return new ApiRequest<{ user: User }>({
+        method: "post",
+        url: `/users/${this.user.id}/refresh-auth0-profile`,
+        onSuccess: (response) => {
+          this.user = response.user;
+        },
+      });
+    },
+    async RESEND_EMAIL_VERIFICATION() {
+      if (!this.user) throw new Error("User not loaded");
+      return new ApiRequest<{ user: User }>({
+        method: "post",
+        url: `/users/${this.user.id}/resend-email-verification`,
+        onSuccess: (response) => {
+          this.user = response.user;
+        },
+        onFail: (response) => {
+          // if we see this error, it means the backend will have updated the user already too
+          // so we can optimistically update the user and refresh the user data
+          if (response.kind === "EmailAlreadyVerified") {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            this.user!.emailVerified = true;
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            this.LOAD_USER();
+          }
+        },
+      });
+    },
+
     // All of the questions answered in onboarding are put into an object
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async COMPLETE_PROFILE(onboardingQuestions: Record<string, any>) {
