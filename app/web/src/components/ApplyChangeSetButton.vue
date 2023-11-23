@@ -16,16 +16,10 @@
       ref="applyModalRef"
       title="Apply Change Set"
       :noExit="!canCloseModal"
+      noClickOutExit
     >
       <template v-if="changeSet.status === ChangeSetStatus.NeedsApproval">
-        <div
-          :class="
-            clsx(
-              'p-sm flex items-center gap-3',
-              !appliedByYou && 'border-b dark:border-neutral-500',
-            )
-          "
-        >
+        <div :class="clsx('px-sm pb-sm flex items-center gap-3')">
           <UserIcon :user="applyUser" />
           <div>
             <template v-if="appliedByYou">You have</template>
@@ -111,7 +105,7 @@
                 <VButton
                   icon="minus"
                   variant="ghost"
-                  tone="error"
+                  tone="warning"
                   loadingText="Passing"
                   label="Pass"
                   :disabled="statusStoreUpdating"
@@ -120,7 +114,7 @@
                 <VButton
                   icon="thumbs-down"
                   variant="ghost"
-                  tone="error"
+                  tone="destructive"
                   loadingText="Rejecting"
                   label="Reject"
                   :disabled="statusStoreUpdating"
@@ -216,24 +210,23 @@
       </template>
     </Modal>
     <Modal ref="changeSetAppliedRef" title="Change Set Has Been Merged" noExit>
-      <div
-        class="bg-white dark:bg-neutral-700 rounded-lg flex flex-col items-center max-h-[90vh] shadow-md overflow-hidden pb-xs"
-      >
-        <div class="px-sm pt-sm pb-xs w-full">
-          The change set you were in was merged by:
-        </div>
+      <div class="px-sm pb-xs w-full">
+        The change set you were in was merged by:
+      </div>
 
-        <div v-if="appliedByUser" class="pr-xs">
-          <UserCard :user="appliedByUser" hideChangesetInfo />
-        </div>
-        <div class="px-sm pb-sm pt-xs w-full">
-          You are now on Head. You can continue your work by creating a new
-          change set or joining another existing change set.
-        </div>
+      <div v-if="appliedByUser" class="pr-xs">
+        <UserCard :user="appliedByUser" hideChangesetInfo />
+      </div>
+      <div class="px-sm pb-sm pt-xs w-full">
+        You are now on Head. You can continue your work by creating a new change
+        set or joining another existing change set.
+      </div>
+      <div class="px-sm">
         <VButton
+          class="w-full"
           label="Ok"
-          variant="ghost"
-          size="sm"
+          variant="solid"
+          size="md"
           @click="changeSetAppliedHandler()"
         />
       </div>
@@ -280,6 +273,7 @@ const requiresVoting = computed(
 );
 
 function openModalHandler() {
+  canCloseModal.value = true;
   changeSetAppliedRef.value.close();
   applyModalRef.value?.open();
   resetState();
@@ -361,6 +355,7 @@ const applyUser = computed(() => {
     color: "magenta",
     status: "active",
   };
+
   if (changeSet.value?.mergeRequestedByUserId) {
     const user =
       presenceStore.usersById[changeSet.value?.mergeRequestedByUserId];

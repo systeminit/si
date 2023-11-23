@@ -140,6 +140,7 @@ const props = defineProps({
   title: { type: String },
   capitalizeTitle: { type: Boolean, default: true },
   noExit: { type: Boolean },
+  noClickOutExit: { type: Boolean },
   type: {
     type: String as PropType<"save" | "custom">,
   },
@@ -200,7 +201,7 @@ function fixAutoFocusElement() {
 // "exit" triggered when clicking on background or hitting escape key
 // (currently this is done via headless UI)
 function exitHandler() {
-  if (props.noExit) return;
+  if (props.noExit || props.noClickOutExit) return;
   close();
 }
 
