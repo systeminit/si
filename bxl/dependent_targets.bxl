@@ -163,7 +163,7 @@ def _filter_targets(ctx: "bxl_ctx", targets: "target_set") -> "target_set":
         filtered = filtered + ctx.uquery().kind("docker_image_release", targets)
     if ctx.cli_args.releasable_binary:
         has_filtered = True
-        filtered = filtered +  ctx.uquery().attrfilter(
+        filtered = filtered + ctx.uquery().attrfilter(
             "name",
             "si",
             ctx.uquery().kind("rust_binary", targets),
@@ -246,7 +246,6 @@ def _rdeps_for_targets(ctx: "bxl_ctx", targets: list[str]) -> "target_set":
     universe = ctx.unconfigured_targets(raw_universe)
     raw_targets = map(_normalize_target_str, targets)
     targets = ctx.unconfigured_targets(raw_targets)
-
 
     results = ctx.uquery().rdeps(
         universe,
