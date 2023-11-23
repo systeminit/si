@@ -87,7 +87,7 @@ dependent_targets = bxl_main(
 )
 
 # Computes affected targets given various CLI file options.
-def _compute_targets(ctx: "bxl_ctx") -> "target_set":
+def _compute_targets(ctx: bxl.Context) -> bxl.TargetSet:
     targets = utarget_set()
 
     # Add affected targets if global project files are provided.
@@ -132,8 +132,8 @@ def _compute_targets(ctx: "bxl_ctx") -> "target_set":
 
     return targets
 
-# Filters a `"target_set"` given CLI boolean filter options.
-def _filter_targets(ctx: "bxl_ctx", targets: "target_set") -> "target_set":
+# Filters a `TargetSet` given CLI boolean filter options.
+def _filter_targets(ctx: bxl.Context, targets: bxl.TargetSet) -> bxl.TargetSet:
     filtered = utarget_set()
     has_filtered = False
 
@@ -183,7 +183,7 @@ def _filter_targets(ctx: "bxl_ctx", targets: "target_set") -> "target_set":
 # Every relevant `:release` target should become a `:promote` target as the promotions are triggered
 # from merge to the main branch whereas the releases are triggered in the merge queue pipeline. In
 # other words, every necessary release has a 1:1 promotion that needs to happen later.
-def _filtered_promote_docker_targets(ctx: "bxl_ctx", targets: "target_set") -> "target_set":
+def _filtered_promote_docker_targets(ctx: bxl.Context, targets: bxl.TargetSet) -> bxl.TargetSet:
     release_targets = ctx.uquery().kind("docker_image_release", targets)
 
     promote_target_strs = map(
@@ -195,25 +195,25 @@ def _filtered_promote_docker_targets(ctx: "bxl_ctx", targets: "target_set") -> "
     return promote_targets
 
 # Computes a list of targets for all targets in the project.
-def _dependent_global_file_targets(ctx: "bxl_ctx") -> "target_set":
+def _dependent_global_file_targets(ctx: bxl.Context) -> bxl.TargetSet:
     query = "root//..."
     results = ctx.uquery().eval(query)
 
     return results
 
 # Computes a list of targets for all targets affected by given `BUCK` files.
-def _dependent_buck_file_targets(ctx: "bxl_ctx", buck_files: list[str]) -> "target_set":
+def _dependent_buck_file_targets(ctx: bxl.Context, buck_files: list[str]) -> bxl.TargetSet:
     buck_target_strs = _buck_files_to_targets(buck_files)
     return _rdeps_for_targets(ctx, buck_target_strs)
 
-def _dependent_prelude_file_targets(ctx: "bxl_ctx") -> "target_set":
+def _dependent_prelude_file_targets(ctx: bxl.Context) -> bxl.TargetSet:
     # TODO(nick,fletcher): we need to figure this out. Use "rbuildfile" maybe?
     print("xxx TODO prelude files: {}".format(ctx.cli_args.prelude_file))
 
     return utarget_set()
 
 # Computes a list of target strings for all targets affected by given deleted files.
-def _dependent_deleted_file_targets(ctx: "bxl_ctx") -> "target_set":
+def _dependent_deleted_file_targets(ctx: bxl.Context) -> bxl.TargetSet:
     buck_files = []
     for deleted_file in ctx.cli_args.deleted_file:
         if ctx.fs.is_file(deleted_file):
@@ -225,7 +225,7 @@ def _dependent_deleted_file_targets(ctx: "bxl_ctx") -> "target_set":
     return _dependent_buck_file_targets(ctx, buck_files)
 
 # Computes a list of targets for all targets affected by given modified files.
-def _dependent_modified_file_targets(ctx: "bxl_ctx") -> "target_set":
+def _dependent_modified_file_targets(ctx: bxl.Context) -> bxl.TargetSet:
     modified_files = map(
         _normalize_target_str,
         filter(lambda e: ctx.fs.is_file(e), ctx.cli_args.modified_file),
@@ -241,7 +241,7 @@ def _dependent_modified_file_targets(ctx: "bxl_ctx") -> "target_set":
     return _rdeps_for_targets(ctx, map(lambda e: "{}".format(e.label), targets))
 
 # Computes a list of targets which are reverse dependencies of given targets within a universe.
-def _rdeps_for_targets(ctx: "bxl_ctx", targets: list[str]) -> "target_set":
+def _rdeps_for_targets(ctx: bxl.Context, targets: list[str]) -> bxl.TargetSet:
     raw_universe = map(_normalize_target_str, ctx.cli_args.rdeps_universe)
     universe = ctx.unconfigured_targets(raw_universe)
     raw_targets = map(_normalize_target_str, targets)
@@ -254,7 +254,7 @@ def _rdeps_for_targets(ctx: "bxl_ctx", targets: list[str]) -> "target_set":
     return results
 
 # Returns a file path to the nearest `BUCK` file in parent directories of a given file path.
-def _find_parent_buck_file(ctx: "bxl_ctx", deleted_file: str) -> str:
+def _find_parent_buck_file(ctx: bxl.Context, deleted_file: str) -> str:
     for i in range(1, len(deleted_file.split("/")), 1):
         candidate = "{}/{}".format(deleted_file.rsplit("/", i)[0], "BUCK")
         if ctx.fs.is_file(candidate):
