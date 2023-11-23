@@ -259,10 +259,16 @@ def _find_parent_buck_file(ctx: "bxl_ctx", deleted_file: str) -> str:
         candidate = "{}/{}".format(deleted_file.rsplit("/", i)[0], "BUCK")
         if ctx.fs.is_file(candidate):
             return candidate
+        candidate_v2 = "{}/{}".format(deleted_file.rsplit("/", i)[0], "BUCK.v2")
+        if ctx.fs.is_file(candidate_v2):
+            return candidate_v2
 
     candidate = "BUCK"
     if ctx.fs.is_file(candidate):
         return candidate
+    candidate_v2 = "BUCK.v2"
+    if ctx.fs.is_file(candidate_v2):
+        return candidate_v2
 
     return ""
 
@@ -294,7 +300,7 @@ def _normalize_target_str(file_str: str) -> str:
 
 # Returns a normlalized file target string for a path string containing a `BUCK` file.
 def _normalize_buck_file_target_str(buck_file_str: str) -> str:
-    normalized = buck_file_str.rstrip("BUCK")
+    normalized = buck_file_str.rstrip("BUCK.v2").rstrip("BUCK")
     if normalized.endswith("//"):
         result = normalized + ":"
         return result

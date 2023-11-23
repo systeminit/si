@@ -12,7 +12,7 @@ def _docker_build_context_srcs_from_deps_impl(ctx):
         for buck_file in map(lambda e: str(e), buck_files):
             # Add the `BUCK` file as a candidate path
             raw_paths.append(buck_file)
-            all_targets = buck_file.replace("BUCK", ":")
+            all_targets = buck_file.replace("BUCK.v2", ":").replace("BUCK", ":")
 
             # Find all input files for all the targets in the `BUCK` file
             inputs = ctx.uquery().inputs(all_targets)
