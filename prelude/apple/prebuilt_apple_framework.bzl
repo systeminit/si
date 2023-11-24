@@ -24,9 +24,9 @@ load(
 )
 load(
     "@prelude//linking:link_info.bzl",
+    "LibOutputStyle",
     "LinkInfo",
     "LinkInfos",
-    "LinkStyle",
     "Linkage",
     "create_merged_link_info",
 )
@@ -42,7 +42,7 @@ load(
     "merge_shared_libraries",
 )
 load("@prelude//utils:utils.bzl", "filter_and_map_idx")
-load(":apple_bundle_types.bzl", "AppleBundleInfo")
+load(":apple_bundle_types.bzl", "AppleBundleInfo", "AppleBundleTypeDefault")
 load(":apple_frameworks.bzl", "to_framework_name")
 
 def prebuilt_apple_framework_impl(ctx: AnalysisContext) -> list[Provider]:
@@ -81,7 +81,7 @@ def prebuilt_apple_framework_impl(ctx: AnalysisContext) -> list[Provider]:
         providers.append(create_merged_link_info(
             ctx,
             get_cxx_toolchain_info(ctx).pic_behavior,
-            {link_style: LinkInfos(default = link) for link_style in LinkStyle},
+            {output_style: LinkInfos(default = link) for output_style in LibOutputStyle},
         ))
 
         # Create, augment and provide the linkable graph.
@@ -92,7 +92,9 @@ def prebuilt_apple_framework_impl(ctx: AnalysisContext) -> list[Provider]:
                 linkable_node = create_linkable_node(
                     ctx,
                     preferred_linkage = Linkage("shared"),
-                    link_infos = {LinkStyle("shared"): LinkInfos(default = link)},
+                    link_infos = {LibOutputStyle("shared_lib"): LinkInfos(default = link)},
+                    # TODO(cjhopman): this should be set to non-None
+                    default_soname = None,
                 ),
                 excluded = {ctx.label: None},
             ),
@@ -103,7 +105,7 @@ def prebuilt_apple_framework_impl(ctx: AnalysisContext) -> list[Provider]:
     providers.append(DefaultInfo(default_output = framework_directory_artifact))
     providers.append(AppleBundleInfo(
         bundle = framework_directory_artifact,
-        is_watchos = None,
+        bundle_type = AppleBundleTypeDefault,
         skip_copying_swift_stdlib = True,
         contains_watchapp = None,
     ))

@@ -6,11 +6,15 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+import importlib
 import multiprocessing.util as mp_util
 import os
 import sys
+import threading
 from importlib.machinery import PathFinder
 from importlib.util import module_from_spec
+
+lock = threading.Lock()
 
 
 # pyre-fixme[3]: Return type must be annotated.
@@ -24,17 +28,18 @@ def __patch_spawn(var_names, saved_env):
     # pyre-fixme[3]: Return type must be annotated.
     # pyre-fixme[2]: Parameter must be annotated.
     def spawnv_passfds(path, args, passfds):
-        try:
-            for var in var_names:
-                val = os.environ.get(var, None)
-                if val is not None:
-                    os.environ["FB_SAVED_" + var] = val
-                saved_val = saved_env.get(var, None)
-                if saved_val is not None:
-                    os.environ[var] = saved_val
-            return std_spawn(path, args, passfds)
-        finally:
-            __clear_env(False)
+        with lock:
+            try:
+                for var in var_names:
+                    val = os.environ.get(var, None)
+                    if val is not None:
+                        os.environ["FB_SAVED_" + var] = val
+                    saved_val = saved_env.get(var, None)
+                    if saved_val is not None:
+                        os.environ[var] = saved_val
+                return std_spawn(path, args, passfds)
+            finally:
+                __clear_env(False)
 
     mp_util.spawnv_passfds = spawnv_passfds
 
@@ -68,6 +73,24 @@ def __clear_env(patch_spawn=True):
 
 
 # pyre-fixme[3]: Return type must be annotated.
+def __startup__():
+    for name, var in os.environ.items():
+        if name.startswith("STARTUP_"):
+            name, sep, func = var.partition(":")
+            if sep:
+                try:
+                    module = importlib.import_module(name)
+                    getattr(module, func)()
+                except Exception as e:
+                    # TODO: Ignoring errors for now. The way to properly fix this should be to make
+                    # sure we are still at the same binary that configured `STARTUP_` before importing.
+                    print(
+                        "Error running startup function %s:%s: %s" % (name, func, e),
+                        file=sys.stderr,
+                    )
+
+
+# pyre-fixme[3]: Return type must be annotated.
 def __passthrough_exec_module():
     # Delegate this module execution to the next module in the path, if any,
     # effectively making this sitecustomize.py a passthrough module.
@@ -82,4 +105,5 @@ def __passthrough_exec_module():
 
 
 __clear_env()
+__startup__()
 __passthrough_exec_module()

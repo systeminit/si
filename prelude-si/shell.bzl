@@ -7,8 +7,8 @@ load(
     "ShellToolchainInfo",
 )
 load(
-    "@prelude//decls/common.bzl",
-    "buck",
+    "@prelude//decls/re_test_common.bzl",
+    "re_test_common",
 )
 load(
     "@prelude//test/inject_test_run_info.bzl",
@@ -17,6 +17,10 @@ load(
 load(
     "@prelude//tests:re_utils.bzl",
     "get_re_executor_from_props",
+)
+load(
+    "@prelude-si//:test.bzl",
+    "inject_test_env",
 )
 
 def shellcheck_impl(ctx: AnalysisContext) -> list[[
@@ -36,7 +40,13 @@ def shellcheck_impl(ctx: AnalysisContext) -> list[[
     args_file = ctx.actions.write("args.txt", run_cmd_args)
 
     # Setup a RE executor based on the `remote_execution` param.
-    re_executor = get_re_executor_from_props(ctx.attrs.remote_execution)
+    re_executor = get_re_executor_from_props(ctx)
+
+    # We implicitly make the target run from the project root if remote
+    # excution options were specified
+    run_from_project_root = "buck2_run_from_project_root" in (
+        ctx.attrs.labels or []
+    ) or re_executor != None
 
     return inject_test_run_info(
         ctx,
@@ -47,10 +57,8 @@ def shellcheck_impl(ctx: AnalysisContext) -> list[[
             labels = ctx.attrs.labels,
             contacts = ctx.attrs.contacts,
             default_executor = re_executor,
-            # We implicitly make this test via the project root, instead of
-            # the cell root (e.g. fbcode root).
-            run_from_project_root = re_executor != None,
-            use_project_relative_paths = re_executor != None,
+            run_from_project_root = run_from_project_root,
+            use_project_relative_paths = run_from_project_root,
         ),
     ) + [
         DefaultInfo(default_output = args_file),
@@ -62,27 +70,7 @@ shellcheck = rule(
         "srcs": attrs.list(
             attrs.source(),
             default = [],
-            doc = """The set of source files to consider."""
-        ),
-        "env": attrs.dict(
-            key = attrs.string(),
-            value = attrs.arg(),
-            sorted = False,
-            default = {},
-            doc = """Set environment variables for this rule's invocation of shfmt. The environment
-            variable values may include macros which are expanded.""",
-        ),
-        "labels": attrs.list(
-            attrs.string(),
-            default = [],
-        ),
-        "contacts": attrs.list(
-            attrs.string(),
-            default = [],
-        ),
-        "remote_execution": buck.re_opts_for_tests_arg(),
-        "_inject_test_env": attrs.default_only(
-            attrs.dep(default = "prelude//test/tools:inject_test_env"),
+            doc = """The set of source files to consider.""",
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
@@ -92,7 +80,7 @@ shellcheck = rule(
             default = "toolchains//:shell",
             providers = [ShellToolchainInfo],
         ),
-    },
+    } | re_test_common.test_args() | inject_test_env.args(),
 )
 
 def shfmt_check_impl(ctx: AnalysisContext) -> list[[
@@ -112,7 +100,13 @@ def shfmt_check_impl(ctx: AnalysisContext) -> list[[
     args_file = ctx.actions.write("args.txt", run_cmd_args)
 
     # Setup a RE executor based on the `remote_execution` param.
-    re_executor = get_re_executor_from_props(ctx.attrs.remote_execution)
+    re_executor = get_re_executor_from_props(ctx)
+
+    # We implicitly make the target run from the project root if remote
+    # excution options were specified
+    run_from_project_root = "buck2_run_from_project_root" in (
+        ctx.attrs.labels or []
+    ) or re_executor != None
 
     return inject_test_run_info(
         ctx,
@@ -123,10 +117,8 @@ def shfmt_check_impl(ctx: AnalysisContext) -> list[[
             labels = ctx.attrs.labels,
             contacts = ctx.attrs.contacts,
             default_executor = re_executor,
-            # We implicitly make this test via the project root, instead of
-            # the cell root (e.g. fbcode root).
-            run_from_project_root = re_executor != None,
-            use_project_relative_paths = re_executor != None,
+            run_from_project_root = run_from_project_root,
+            use_project_relative_paths = run_from_project_root,
         ),
     ) + [
         DefaultInfo(default_output = args_file),
@@ -138,27 +130,7 @@ shfmt_check = rule(
         "srcs": attrs.list(
             attrs.source(),
             default = [],
-            doc = """The set of source files to consider."""
-        ),
-        "env": attrs.dict(
-            key = attrs.string(),
-            value = attrs.arg(),
-            sorted = False,
-            default = {},
-            doc = """Set environment variables for this rule's invocation of shfmt. The environment
-            variable values may include macros which are expanded.""",
-        ),
-        "labels": attrs.list(
-            attrs.string(),
-            default = [],
-        ),
-        "contacts": attrs.list(
-            attrs.string(),
-            default = [],
-        ),
-        "remote_execution": buck.re_opts_for_tests_arg(),
-        "_inject_test_env": attrs.default_only(
-            attrs.dep(default = "prelude//test/tools:inject_test_env"),
+            doc = """The set of source files to consider.""",
         ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
@@ -168,7 +140,7 @@ shfmt_check = rule(
             default = "toolchains//:shell",
             providers = [ShellToolchainInfo],
         ),
-    },
+    } | re_test_common.test_args() | inject_test_env.args(),
 )
 
 SourcesContext = record(

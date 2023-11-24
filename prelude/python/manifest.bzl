@@ -23,17 +23,18 @@ ManifestInfo = record(
 # Parse imports from a *.py file to generate a list of required modules
 def create_dep_manifest_for_source_map(
         ctx: AnalysisContext,
-        python_toolchain: PythonToolchainInfo.type,
-        srcs: dict[str, Artifact]) -> ManifestInfo.type:
+        python_toolchain: PythonToolchainInfo,
+        srcs: dict[str, Artifact]) -> ManifestInfo:
     entries = []
     artifacts = []
     for path, artifact in srcs.items():
         out_name = "__dep_manifests__/{}".format(path)
-        if not path.endswith(".py"):
+        if not (path.endswith(".py") or path.endswith(".pyi")):
             continue
 
         dep_manifest = ctx.actions.declare_output(out_name)
         cmd = cmd_args(python_toolchain.parse_imports)
+        cmd.add("--ignore-syntax-errors")
         cmd.add(cmd_args(artifact))
         cmd.add(cmd_args(dep_manifest.as_output()))
         ctx.actions.run(cmd, category = "generate_dep_manifest", identifier = out_name)
@@ -58,7 +59,7 @@ def _write_manifest(
 def create_manifest_for_entries(
         ctx: AnalysisContext,
         name: str,
-        entries: list[(str, Artifact, str)]) -> ManifestInfo.type:
+        entries: list[(str, Artifact, str)]) -> ManifestInfo:
     """
     Generate a source manifest for the given list of sources.
     """
@@ -70,7 +71,7 @@ def create_manifest_for_entries(
 def create_manifest_for_source_map(
         ctx: AnalysisContext,
         param: str,
-        srcs: dict[str, Artifact]) -> ManifestInfo.type:
+        srcs: dict[str, Artifact]) -> ManifestInfo:
     """
     Generate a source manifest for the given map of sources from the given rule.
     """
@@ -85,7 +86,7 @@ def create_manifest_for_source_dir(
         ctx: AnalysisContext,
         param: str,
         extracted: Artifact,
-        exclude: [str, None]) -> ManifestInfo.type:
+        exclude: [str, None]) -> ManifestInfo:
     """
     Generate a source manifest for the given directory of sources from the given
     rule.
@@ -106,7 +107,7 @@ def create_manifest_for_extensions(
         ctx: AnalysisContext,
         extensions: dict[str, (typing.Any, Label)],
         # Whether to include DWP files.
-        dwp: bool = False) -> ManifestInfo.type:
+        dwp: bool = False) -> ManifestInfo:
     entries = []
     for dest, (lib, label) in extensions.items():
         entries.append((dest, lib.output, str(label.raw_target())))

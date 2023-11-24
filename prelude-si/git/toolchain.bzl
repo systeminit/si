@@ -1,6 +1,6 @@
-GitToolchainInfo = provider(fields = [
-    "git_info",
-])
+GitToolchainInfo = provider(fields = {
+    "git_info": typing.Any,
+})
 
 def git_toolchain_impl(ctx) -> list[[DefaultInfo, GitToolchainInfo]]:
     """

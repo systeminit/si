@@ -65,18 +65,23 @@ load(
 )
 load(
     "@prelude//linking:link_info.bzl",
+    "LibOutputStyle",
     "LinkInfo",
     "LinkInfos",
-    "LinkStyle",
+    "LinkStrategy",
+    "LinkerFlags",
     "MergedLinkInfo",
     "ObjectsLinkable",
     "create_merged_link_info",
-    "get_link_args",
-    "merge_link_infos",
+    "create_merged_link_info_for_propagation",
+    "get_link_args_for_strategy",
 )
 load(
     "@prelude//linking:linkable_graph.bzl",
+    "LinkableGraph",
     "create_linkable_graph",
+    "create_linkable_graph_node",
+    "create_linkable_node",
 )
 load(
     "@prelude//linking:shared_libraries.bzl",
@@ -96,7 +101,7 @@ load(":ocaml_toolchain_types.bzl", "OCamlLibraryInfo", "OCamlLinkInfo", "OCamlTo
 BuildMode = enum("native", "bytecode", "expand")
 
 # Native vs. bytecode compiler.
-def _is_native(mode: "BuildMode") -> bool:
+def _is_native(mode: BuildMode) -> bool:
     return mode.value in ("native", "expand")
 
 # The type of the return value of the `_compile()` function.
@@ -135,13 +140,13 @@ def _by_platform(ctx: AnalysisContext, xs: list[(str, list[typing.Any])]) -> lis
 def _attr_deps(ctx: AnalysisContext) -> list[Dependency]:
     return ctx.attrs.deps + _by_platform(ctx, ctx.attrs.platform_deps)
 
-def _attr_deps_merged_link_infos(ctx: AnalysisContext) -> list[MergedLinkInfo.type]:
+def _attr_deps_merged_link_infos(ctx: AnalysisContext) -> list[MergedLinkInfo]:
     return filter(None, [d.get(MergedLinkInfo) for d in _attr_deps(ctx)])
 
-def _attr_deps_ocaml_link_infos(ctx: AnalysisContext) -> list[OCamlLinkInfo.type]:
+def _attr_deps_ocaml_link_infos(ctx: AnalysisContext) -> list[OCamlLinkInfo]:
     return filter(None, [d.get(OCamlLinkInfo) for d in _attr_deps(ctx)])
 
-def _attr_deps_other_outputs_infos(ctx: AnalysisContext) -> list[OtherOutputsInfo.type]:
+def _attr_deps_other_outputs_infos(ctx: AnalysisContext) -> list[OtherOutputsInfo]:
     return filter(None, [d.get(OtherOutputsInfo) for d in _attr_deps(ctx)])
 
 # ---
@@ -207,12 +212,40 @@ def _mk_ld(ctx: AnalysisContext, link_args: list[typing.Any], ld_sh_filename: ty
 # `build_mode`. It produces a script that forwards arguments to the ocaml
 # compiler (one of `ocamlopt.opt` vs `ocamlc.opt` consistent with the value of
 # `build_mode`) in the environment of a local 'bin' directory.
-def _mk_ocaml_compiler(ctx: AnalysisContext, env: dict[str, typing.Any], build_mode: BuildMode.type) -> cmd_args:
+def _mk_ocaml_compiler(ctx: AnalysisContext, env: dict[str, typing.Any], build_mode: BuildMode) -> cmd_args:
     ocaml_toolchain = ctx.attrs._ocaml_toolchain[OCamlToolchainInfo]
     compiler = ocaml_toolchain.ocaml_compiler if _is_native(build_mode) else ocaml_toolchain.ocaml_bytecode_compiler
     script_name = "ocamlopt" + build_mode.value + ".sh"
     script_args = _mk_script(ctx, script_name, [compiler], env)
     return script_args
+
+def _get_empty_link_infos() -> dict[LibOutputStyle, LinkInfos]:
+    infos = {}
+    for output_style in LibOutputStyle:
+        infos[output_style] = LinkInfos(default = LinkInfo())
+    return infos
+
+def _get_linkable_graph(
+        ctx: AnalysisContext,
+        deps: list[Dependency] = [],
+        link_infos: dict[LibOutputStyle, LinkInfos] = {},
+        linker_flags: [LinkerFlags, None] = None) -> LinkableGraph:
+    if not deps:
+        deps = ctx.attrs.deps
+    return create_linkable_graph(
+        ctx,
+        node = create_linkable_graph_node(
+            ctx,
+            linkable_node = create_linkable_node(
+                ctx,
+                default_soname = None,
+                deps = deps,
+                link_infos = link_infos if link_infos else _get_empty_link_infos(),
+                linker_flags = linker_flags,
+            ),
+        ),
+        deps = deps,
+    )
 
 # A command initialized with flags common to all compiler commands.
 def _compiler_cmd(ctx: AnalysisContext, compiler: cmd_args, cc: cmd_args) -> cmd_args:
@@ -239,7 +272,7 @@ def _compiler_cmd(ctx: AnalysisContext, compiler: cmd_args, cc: cmd_args) -> cmd
     return cmd
 
 # The include paths for the immediate dependencies of the current target.
-def _include_paths_in_context(ctx: AnalysisContext, build_mode: BuildMode.type):
+def _include_paths_in_context(ctx: AnalysisContext, build_mode: BuildMode):
     ocaml_libs = merge_ocaml_link_infos(_attr_deps_ocaml_link_infos(ctx)).info
     includes = []
     for lib in ocaml_libs:
@@ -251,7 +284,7 @@ def _include_paths_in_context(ctx: AnalysisContext, build_mode: BuildMode.type):
 
     return includes
 
-def _compiler_flags(ctx: AnalysisContext, build_mode: BuildMode.type):
+def _compiler_flags(ctx: AnalysisContext, build_mode: BuildMode):
     ocaml_toolchain = ctx.attrs._ocaml_toolchain[OCamlToolchainInfo]
     mode_flags = ocaml_toolchain.ocamlopt_flags if _is_native(build_mode) else ocaml_toolchain.ocamlc_flags
 
@@ -259,7 +292,7 @@ def _compiler_flags(ctx: AnalysisContext, build_mode: BuildMode.type):
 
 # Configure a new compile command. Each source file (.mli, .ml) gets one of its
 # own.
-def _compile_cmd(ctx: AnalysisContext, compiler: cmd_args, build_mode: BuildMode.type, cc: cmd_args, includes: list[cmd_args]) -> cmd_args:
+def _compile_cmd(ctx: AnalysisContext, compiler: cmd_args, build_mode: BuildMode, cc: cmd_args, includes: list[cmd_args]) -> cmd_args:
     cmd = _compiler_cmd(ctx, compiler, cc)
     cmd.add("-bin-annot")  # TODO(sf, 2023-02-21): Move this to 'gen_modes.py'?
     cmd.add(_compiler_flags(ctx, build_mode))
@@ -268,7 +301,7 @@ def _compile_cmd(ctx: AnalysisContext, compiler: cmd_args, build_mode: BuildMode
     return cmd
 
 # Run any preprocessors, returning a list of ml/mli/c artifacts you can compile
-def _preprocess(ctx: AnalysisContext, srcs: list[Artifact], build_mode: BuildMode.type) -> list[Artifact]:
+def _preprocess(ctx: AnalysisContext, srcs: list[Artifact], build_mode: BuildMode) -> list[Artifact]:
     ocaml_toolchain = ctx.attrs._ocaml_toolchain[OCamlToolchainInfo]
     ocamllex = ocaml_toolchain.lex_compiler
     menhir = ocaml_toolchain.menhir_compiler  # We no longer use yacc_compiler, just menhir.
@@ -306,7 +339,7 @@ def _preprocess(ctx: AnalysisContext, srcs: list[Artifact], build_mode: BuildMod
     return result
 
 # Generate the dependencies
-def _depends(ctx: AnalysisContext, srcs: list[Artifact], build_mode: BuildMode.type) -> Artifact:
+def _depends(ctx: AnalysisContext, srcs: list[Artifact], build_mode: BuildMode) -> Artifact:
     ocaml_toolchain = ctx.attrs._ocaml_toolchain[OCamlToolchainInfo]
     ocamldep = ocaml_toolchain.dep_tool
 
@@ -336,7 +369,7 @@ def _depends(ctx: AnalysisContext, srcs: list[Artifact], build_mode: BuildMode.t
 # be empty in the returned tuple while 'cmos' will be non-empty. If compiling
 # native code, 'cmos' in the returned info will be empty while 'objs' & 'cmxs'
 # will be non-empty.
-def _compile(ctx: AnalysisContext, compiler: cmd_args, build_mode: BuildMode.type) -> CompileResultInfo.type:
+def _compile(ctx: AnalysisContext, compiler: cmd_args, build_mode: BuildMode) -> CompileResultInfo:
     opaque_enabled = "-opaque" in _compiler_flags(ctx, build_mode)
     is_native = _is_native(build_mode)
     is_bytecode = not is_native
@@ -555,7 +588,7 @@ def _compile(ctx: AnalysisContext, compiler: cmd_args, build_mode: BuildMode.typ
 
 # The include path directories a client will provide a compile command to use
 # the given artifacts.
-def _include_paths(cmis: list[Artifact], cmos: list[Artifact]) -> cmd_args.type:
+def _include_paths(cmis: list[Artifact], cmos: list[Artifact]) -> cmd_args:
     include_paths = []
     seen_dirs = {}
     for f in cmis:
@@ -680,14 +713,11 @@ def ocaml_library_impl(ctx: AnalysisContext) -> list[Provider]:
     return [
         DefaultInfo(default_output = cmxa, sub_targets = sub_targets),
         merge_ocaml_link_infos(infos),
-        merge_link_infos(ctx, _attr_deps_merged_link_infos(ctx)),
+        create_merged_link_info_for_propagation(ctx, _attr_deps_merged_link_infos(ctx)),
         merge_shared_libraries(ctx.actions, deps = filter_and_map_idx(SharedLibraryInfo, _attr_deps(ctx))),
         merge_link_group_lib_info(deps = _attr_deps(ctx)),
         other_outputs_info,
-        create_linkable_graph(
-            ctx,
-            deps = _attr_deps(ctx),
-        ),
+        _get_linkable_graph(ctx),
     ]
 
 def ocaml_binary_impl(ctx: AnalysisContext) -> list[Provider]:
@@ -697,13 +727,15 @@ def ocaml_binary_impl(ctx: AnalysisContext) -> list[Provider]:
     ocamlopt = _mk_ocaml_compiler(ctx, env, BuildMode("native"))
     ocamlc = _mk_ocaml_compiler(ctx, env, BuildMode("bytecode"))
 
-    link_infos = merge_link_infos(
-        ctx,
-        _attr_deps_merged_link_infos(ctx) + filter(None, [ocaml_toolchain.libc]),
+    dep_link_infos = _attr_deps_merged_link_infos(ctx) + filter(None, [ocaml_toolchain.libc])
+    cxx_toolchain = get_cxx_toolchain_info(ctx)
+    link_args_output = make_link_args(
+        ctx.actions,
+        cxx_toolchain,
+        [get_link_args_for_strategy(ctx, dep_link_infos, LinkStrategy("static_pic"))],
     )
-    ld_args, linker_deps, _ = make_link_args(ctx, [get_link_args(link_infos, LinkStyle("static_pic"))])
-    ld_nat = _mk_ld(ctx, [ld_args], "ld_native.sh")
-    ld_byt = _mk_ld(ctx, [ld_args], "ld_bytecode.sh")
+    ld_nat = _mk_ld(ctx, [link_args_output.link_args], "ld_native.sh")
+    ld_byt = _mk_ld(ctx, [link_args_output.link_args], "ld_bytecode.sh")
 
     cmd_nat = _compiler_cmd(ctx, ocamlopt, ld_nat)
     cmd_byt = _compiler_cmd(ctx, ocamlc, ld_byt)
@@ -723,7 +755,7 @@ def ocaml_binary_impl(ctx: AnalysisContext) -> list[Provider]:
 
     # These were produced by the compile step and are therefore hidden
     # dependencies of the link step.
-    cmd_nat.hidden(cmxs, cmis_nat, cmts_nat, cmtis_nat, objs, linker_deps)
+    cmd_nat.hidden(cmxs, cmis_nat, cmts_nat, cmtis_nat, objs, link_args_output.hidden)
     binary_nat = ctx.actions.declare_output(ctx.attrs.name + ".opt")
     cmd_nat.add("-cclib", "-lpthread")
     cmd_nat.add("-o", binary_nat.as_output())
@@ -735,7 +767,7 @@ def ocaml_binary_impl(ctx: AnalysisContext) -> list[Provider]:
 
     # These were produced by the compile step and are therefore hidden
     # dependencies of the link step.
-    cmd_byt.hidden(cmos, cmis_byt, cmts_byt, cmtis_byt, linker_deps)
+    cmd_byt.hidden(cmos, cmis_byt, cmts_byt, cmtis_byt, link_args_output.hidden)
     binary_byt = ctx.actions.declare_output(ctx.attrs.name)
     cmd_byt.add("-custom")
     cmd_byt.add("-cclib", "-lpthread")
@@ -784,9 +816,14 @@ def ocaml_object_impl(ctx: AnalysisContext) -> list[Provider]:
 
     env = _mk_env(ctx)
     ocamlopt = _mk_ocaml_compiler(ctx, env, BuildMode("native"))
-    deps_link_info = merge_link_infos(ctx, _attr_deps_merged_link_infos(ctx))
-    ld_args, linker_deps, _ = make_link_args(ctx, [get_link_args(deps_link_info, LinkStyle("static_pic"))])
-    ld = _mk_ld(ctx, [ld_args], "ld.sh")
+    dep_link_infos = _attr_deps_merged_link_infos(ctx)
+    cxx_toolchain = get_cxx_toolchain_info(ctx)
+    link_args_output = make_link_args(
+        ctx.actions,
+        cxx_toolchain,
+        [get_link_args_for_strategy(ctx, dep_link_infos, LinkStrategy("static_pic"))],
+    )
+    ld = _mk_ld(ctx, [link_args_output.link_args], "ld.sh")
 
     cmxs_order, stbs, objs, cmis, _cmos, cmxs, cmts, cmtis, _, _ = _compile_result_to_tuple(_compile(ctx, ocamlopt, BuildMode("native")))
     _, _, _, _, _, _, _, _, ppmlis, ppmls = _compile_result_to_tuple(_compile(ctx, ocamlopt, BuildMode("expand")))
@@ -802,7 +839,7 @@ def ocaml_object_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd.hidden(lib.cmxs, lib.cmis_nat, lib.cmts_nat)
 
     cmd.add(stbs, "-args", cmxs_order)
-    cmd.hidden(cmxs, cmis, cmts, objs, cmtis, linker_deps)
+    cmd.hidden(cmxs, cmis, cmts, objs, cmtis, link_args_output.hidden)
 
     obj = ctx.actions.declare_output(ctx.attrs.name + ".o")
     cmd.add("-output-complete-obj")
@@ -811,19 +848,23 @@ def ocaml_object_impl(ctx: AnalysisContext) -> list[Provider]:
     ctx.actions.run(cmd, category = "ocaml_complete_obj_link", local_only = local_only)
 
     cxx_toolchain = get_cxx_toolchain_info(ctx)
+    ocaml_toolchain_runtime_deps = ocaml_toolchain.runtime_dep_link_extras
     linker_type = cxx_toolchain.linker_info.type
     link_infos = {}
-    for link_style in LinkStyle:
-        link_infos[link_style] = LinkInfos(default = LinkInfo(
+    linker_flags = [cmd_args(f) for f in ocaml_toolchain.runtime_dep_link_flags]
+    for output_style in LibOutputStyle:
+        link_infos[output_style] = LinkInfos(default = LinkInfo(
             linkables = [
                 ObjectsLinkable(objects = [obj], linker_type = linker_type),
             ],
+            post_flags = linker_flags,
         ))
+
     obj_link_info = create_merged_link_info(
         ctx,
         pic_behavior = cxx_toolchain.pic_behavior,
         link_infos = link_infos,
-        exported_deps = [deps_link_info],
+        exported_deps = dep_link_infos + [d.get(MergedLinkInfo) for d in ocaml_toolchain_runtime_deps],
     )
 
     other_outputs = {
@@ -853,15 +894,14 @@ def ocaml_object_impl(ctx: AnalysisContext) -> list[Provider]:
     ]
     sub_targets = {"bytecode": info_byt, "expand": info_expand, "ide": info_ide}
 
+    deps = _attr_deps(ctx) + ocaml_toolchain_runtime_deps
+
     return [
         DefaultInfo(default_output = obj, sub_targets = sub_targets),
         obj_link_info,
-        merge_link_group_lib_info(deps = _attr_deps(ctx)),
-        merge_shared_libraries(ctx.actions, deps = filter_and_map_idx(SharedLibraryInfo, _attr_deps(ctx))),
-        create_linkable_graph(
-            ctx,
-            deps = ctx.attrs.deps,
-        ),
+        merge_link_group_lib_info(deps = deps),
+        merge_shared_libraries(ctx.actions, deps = filter_and_map_idx(SharedLibraryInfo, deps)),
+        _get_linkable_graph(ctx, deps, link_infos, LinkerFlags(post_flags = linker_flags)),
     ]
 
 # `ocaml_shared` enables one to produce an OCaml "plugin". Such native code
@@ -875,11 +915,13 @@ def ocaml_shared_impl(ctx: AnalysisContext) -> list[Provider]:
     env = _mk_env(ctx)
     ocamlopt = _mk_ocaml_compiler(ctx, env, BuildMode("native"))
 
-    link_infos = merge_link_infos(
-        ctx,
-        _attr_deps_merged_link_infos(ctx) + filter(None, [ocaml_toolchain.libc]),
+    dep_link_infos = _attr_deps_merged_link_infos(ctx) + filter(None, [ocaml_toolchain.libc])
+    cxx_toolchain = get_cxx_toolchain_info(ctx)
+    link_args_output = make_link_args(
+        ctx.actions,
+        cxx_toolchain,
+        [get_link_args_for_strategy(ctx, dep_link_infos, LinkStrategy("static_pic"))],
     )
-    ld_args, linker_deps, _ = make_link_args(ctx, [get_link_args(link_infos, LinkStyle("static_pic"))])
 
     # 'ocamlopt.opt' with '-cc' fails to propagate '-shared' (and potentially
     # other required flags - see the darwin "dylib" specific block below) to the
@@ -889,7 +931,7 @@ def ocaml_shared_impl(ctx: AnalysisContext) -> list[Provider]:
     if host_info().os.is_macos:
         shared_args.extend(["-flat_namespace", "-undefined suppress", "-Wl,-no_compact_unwind"])
 
-    ld_nat = _mk_ld(ctx, shared_args + [ld_args], "ld_native.sh")
+    ld_nat = _mk_ld(ctx, shared_args + [link_args_output.link_args], "ld_native.sh")
 
     cmd_nat = _compiler_cmd(ctx, ocamlopt, ld_nat)
 
@@ -900,7 +942,7 @@ def ocaml_shared_impl(ctx: AnalysisContext) -> list[Provider]:
 
     # These were produced by the compile step and are therefore hidden
     # dependencies of the link step.
-    cmd_nat.hidden(cmxs, cmis_nat, cmts_nat, cmtis_nat, objs, linker_deps)
+    cmd_nat.hidden(cmxs, cmis_nat, cmts_nat, cmtis_nat, objs, link_args_output.hidden)
     binary_nat = ctx.actions.declare_output(ctx.attrs.name + ".cmxs")
     cmd_nat.add("-shared")
     cmd_nat.add("-o", binary_nat.as_output())
@@ -930,6 +972,7 @@ def ocaml_shared_impl(ctx: AnalysisContext) -> list[Provider]:
 
     return [
         DefaultInfo(default_output = binary_nat, sub_targets = sub_targets),
+        _get_linkable_graph(ctx),
     ]
 
 def prebuilt_ocaml_library_impl(ctx: AnalysisContext) -> list[Provider]:
@@ -992,11 +1035,8 @@ def prebuilt_ocaml_library_impl(ctx: AnalysisContext) -> list[Provider]:
     return [
         DefaultInfo(),
         merge_ocaml_link_infos(ocaml_infos + [OCamlLinkInfo(info = [info])]),
-        merge_link_infos(ctx, native_infos),
+        create_merged_link_info_for_propagation(ctx, native_infos),
         merge_link_group_lib_info(deps = ctx.attrs.deps),
         merge_shared_libraries(ctx.actions, deps = filter_and_map_idx(SharedLibraryInfo, ctx.attrs.deps)),
-        create_linkable_graph(
-            ctx,
-            deps = ctx.attrs.deps,
-        ),
+        _get_linkable_graph(ctx),
     ]

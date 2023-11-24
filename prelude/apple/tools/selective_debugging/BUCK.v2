@@ -1,0 +1,39 @@
+# @oss-disable: load("@prelude//apple/tools/defs.bzl", "meta_python_test")
+
+python_library(
+    name = "lib",
+    srcs = [
+        "macho.py",
+        "macho_parser.py",
+        "scrubber.py",
+        "spec.py",
+        "utils.py",
+    ],
+    deps = [
+        "prelude//apple/tools/re_compatibility_utils:re_compatibility_utils",
+    ],
+)
+
+python_binary(
+    name = "tool",
+    main = "main.py",
+    visibility = ["PUBLIC"],
+    deps = [
+        ":lib",
+    ],
+)
+
+# @oss-disable: meta_python_test(
+# @oss-disable:     name = "tests",
+# @oss-disable:     srcs = [
+# @oss-disable:         "scrubber_test.py",
+# @oss-disable:         "spec_test.py",
+# @oss-disable:     ],
+# @oss-disable:     resources = glob([
+# @oss-disable:         "test_resources/*",
+# @oss-disable:     ]),
+# @oss-disable:     deps = [
+# @oss-disable:         "fbsource//third-party/pypi/importlib-resources:importlib-resources",
+# @oss-disable:         ":lib",
+# @oss-disable:     ],
+# @oss-disable: )

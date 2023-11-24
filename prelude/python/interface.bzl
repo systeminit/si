@@ -10,7 +10,7 @@
 # below.
 PythonLibraryInterface = record(
     # Shared libraries used by this Python library.
-    # {str: SharedLibraryInfo.type}
+    # dict[str, SharedLibraryInfo]
     shared_libraries = field(typing.Callable),
 
     # An iterator of PythonLibraryManifests objects. This is used to collect extensions.
@@ -74,4 +74,4 @@ PythonLibraryManifestsInterface = record(
 # Entry point for Python binaries. First component designates if the second
 # component is to be interpreted as a module or a function name.
 EntryPointKind = enum("module", "function")
-EntryPoint = (EntryPointKind.type, str)
+EntryPoint = (EntryPointKind, str)

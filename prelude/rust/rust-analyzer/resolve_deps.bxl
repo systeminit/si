@@ -5,6 +5,9 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//linking:link_info.bzl", "LinkStyle")
+load("@prelude//rust:link_info.bzl", "RustLinkInfo")
+
 def materialize(ctx, target):
     analysis = ctx.analysis(target)
     sources = analysis.providers()[DefaultInfo].sub_targets["sources"][DefaultInfo].default_outputs[0]
@@ -64,13 +67,14 @@ def _process_target_config(ctx, target, in_workspace):
     # Always generate the source folder. Let rust-project resolve whether or not to use it
     copy["source_folder"] = materialize(ctx, target)
     copy["label"] = target.label.raw_target()
+    copy["project_relative_buildfile"] = ctx.fs.project_rel_path(target.buildfile_path)
     copy["kind"] = target.rule_type
     copy["in_workspace"] = in_workspace
     return copy
 
 def cquery_deps(ctx, top_targets, workspaces):
-    # the set that we have at home.
-    targets = [target for top_target in top_targets for target in ctx.cquery().deps(top_target)]
+    target_universe = ctx.target_universe(top_targets).target_set()
+    targets = ctx.cquery().deps(target_universe)
     outputs = ctx.cquery().kind("^(rust_binary|rust_library|rust_test)$", targets)
     out = {}
 
@@ -86,43 +90,38 @@ def cquery_deps(ctx, top_targets, workspaces):
     return out
 
 def expand_proc_macros(ctx, targets):
-    targets = ctx.cquery().deps(targets)
-    outputs = ctx.cquery().kind("^(configured_alias)$", targets)
+    target_universe = ctx.target_universe(targets).target_set()
+    targets = ctx.cquery().deps(target_universe)
+    targets = ctx.cquery().kind("^(rust_binary|rust_library)$", targets)
 
     out = {}
-    for alias in outputs:
-        cfg_actual = alias.resolved_attrs_eager(ctx).actual
-        actual = ctx.cquery().kind("rust_library", cfg_actual.raw_target())
-
-        # if a `configured_alias` has a single `configured_actual` that corresponds to
-        # a rust library, then that is probably the resolved library, but we'll
-        # double-check to make sure it's a proc macro.
-        if len(actual) == 1:
-            if actual[0].attrs_eager().proc_macro:
-                out[alias.label] = actual[0]
-
-    macros = {}
-    for (alias, actual) in out.items():
-        analysis = ctx.analysis(actual.label.raw_target())
-        so = analysis.providers()[DefaultInfo].sub_targets["shared"][DefaultInfo].default_outputs[0]
-        macros[alias] = {"actual": actual.label, "dylib": ctx.output.ensure(so).abs_path()}
-
-    return macros
+    for target in targets:
+        attrs = target.resolved_attrs_eager(ctx)
+        proc_macro = getattr(attrs, "proc_macro", False)
+        if proc_macro:
+            analysis = ctx.analysis(target)
+            rlib = analysis.providers()[RustLinkInfo].styles[LinkStyle("shared")].rlib
+            label = target.label.raw_target()
+            out[label] = {"actual": label, "dylib": ctx.output.ensure(rlib).abs_path()}
+    return out
 
 # Returns a list of all the expanded targets including any workspaces, followed by just the workspaces
 def expand_targets(ctx, targets):
-    kind_target_list = ctx.cquery().kind("^(rust_binary|rust_library|rust_test|alias)$", targets)
+    target_universe = ctx.target_universe(targets).target_set()
+    kind_target_list = ctx.cquery().kind("^(rust_binary|rust_library|rust_test|alias)$", target_universe)
 
     # Allow targets to opt-in to being treated as rust-analyzer-compatible.
     # This is used for cross-compilation targets that apply Buck transitions to Rust rules.
-    labeled_target_list = ctx.cquery().attrfilter("labels", "rust_analyzer_target", targets)
+    labeled_target_list = ctx.cquery().attrfilter("labels", "rust_analyzer_target", target_universe)
     expanded_targets = {t.label.raw_target(): t for t in kind_target_list + labeled_target_list}
 
     # Map of potential workspaces to a list of the targets that name these as potential workspaces
     possible_workspaces = {}
     for label, t in expanded_targets.items():
-        for workspace in t.attrs_lazy().get("_workspaces").value():
-            possible_workspaces.setdefault(workspace.raw_target(), []).append(label)
+        workspaces = t.attrs_lazy().get("_workspaces")
+        if workspaces:
+            for workspace in workspaces.value():
+                possible_workspaces.setdefault(workspace.raw_target(), []).append(label)
 
     active_workspaces = {}
     for workspace, candidate_deps in possible_workspaces.items():

@@ -148,6 +148,7 @@ apple_binary = prelude_rule(
         cxx_common.exported_linker_flags_arg() |
         cxx_common.platform_linker_flags_arg() |
         native_common.link_style() |
+        native_common.link_group_public_deps_label() |
         apple_common.target_sdk_version() |
         apple_common.extra_xcode_sources() |
         apple_common.extra_xcode_files() |
@@ -180,6 +181,7 @@ apple_binary = prelude_rule(
             "force_static": attrs.option(attrs.bool(), default = None),
             "header_namespace": attrs.option(attrs.string(), default = None),
             "headers_as_raw_headers_mode": attrs.option(attrs.enum(HeadersAsRawHeadersMode), default = None),
+            "import_obj_c_forward_declarations": attrs.bool(default = True),
             "include_directories": attrs.set(attrs.string(), sorted = True, default = []),
             "info_plist": attrs.option(attrs.source(), default = None),
             "info_plist_substitutions": attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False, default = {}),
@@ -469,6 +471,7 @@ apple_library = prelude_rule(
             "focused_list_target": attrs.option(attrs.dep(), default = None),
             "force_static": attrs.option(attrs.bool(), default = None),
             "headers_as_raw_headers_mode": attrs.option(attrs.enum(HeadersAsRawHeadersMode), default = None),
+            "import_obj_c_forward_declarations": attrs.bool(default = True),
             "include_directories": attrs.set(attrs.string(), sorted = True, default = []),
             "info_plist": attrs.option(attrs.source(), default = None),
             "info_plist_substitutions": attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False, default = {}),
@@ -725,6 +728,7 @@ apple_test = prelude_rule(
             "force_static": attrs.option(attrs.bool(), default = None),
             "header_namespace": attrs.option(attrs.string(), default = None),
             "headers_as_raw_headers_mode": attrs.option(attrs.enum(HeadersAsRawHeadersMode), default = None),
+            "import_obj_c_forward_declarations": attrs.bool(default = True),
             "include_directories": attrs.set(attrs.string(), sorted = True, default = []),
             "incremental_bundling_enabled": attrs.option(attrs.bool(), default = None),
             "is_ui_test": attrs.bool(default = False),
@@ -953,6 +957,7 @@ swift_library = prelude_rule(
             "deps": attrs.list(attrs.dep(), default = []),
             "enable_cxx_interop": attrs.bool(default = False),
             "frameworks": attrs.list(attrs.string(), default = []),
+            "import_obj_c_forward_declarations": attrs.bool(default = True),
             "labels": attrs.list(attrs.string(), default = []),
             "libraries": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
@@ -993,7 +998,9 @@ swift_toolchain = prelude_rule(
             "sdk_dependencies_path": attrs.option(attrs.string(), default = None),
             "sdk_path": attrs.source(),
             "static_runtime_paths": attrs.list(attrs.string(), default = []),
+            "supports_relative_resource_dir": attrs.bool(default = False),
             "supports_swift_cxx_interoperability_mode": attrs.bool(default = False),
+            "supports_swift_importing_obj_c_forward_declarations": attrs.bool(default = False),
             "supports_cxx_interop_requirement_at_import": attrs.bool(default = False),
             "swift_stdlib_tool": attrs.option(attrs.source(), default = None),
             "swift_stdlib_tool_flags": attrs.list(attrs.arg(), default = []),

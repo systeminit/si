@@ -18,8 +18,9 @@ prelude_rule = record(
     docs = field([str, None], None),
     examples = field([str, None], None),
     further = field([str, None], None),
-    attrs = field(dict[str, "attribute"]),
+    attrs = field(dict[str, Attr]),
     impl = field([typing.Callable, None], None),
+    uses_plugins = field([list["PluginKind"], None], None),
 )
 
 AbiGenerationMode = ["unknown", "class", "source", "migrating_to_source_only", "source_only", "unrecognized"]
@@ -196,40 +197,11 @@ def _test_rule_timeout_ms():
 """),
     }
 
-def _target_os_type_arg() -> "attribute":
+def _target_os_type_arg() -> Attr:
     return attrs.default_only(attrs.dep(default = "prelude//os_lookup/targets:os_lookup"))
 
-def _exec_os_type_arg() -> "attribute":
+def _exec_os_type_arg() -> Attr:
     return attrs.default_only(attrs.exec_dep(default = "prelude//os_lookup/targets:os_lookup"))
-
-def _re_opts_for_tests_arg() -> "attribute":
-    # Attributes types do not have records.
-    # The expected shape of re_opts is:
-    # {
-    #     "capabilities": Dict<str, str> | None
-    #     "use_case": str | None
-    #     "remote_cache_enabled": bool | None
-    # }
-    return attrs.option(
-        attrs.dict(
-            key = attrs.string(),
-            value = attrs.option(
-                attrs.one_of(
-                    attrs.dict(
-                        key = attrs.string(),
-                        value = attrs.string(),
-                        sorted = False,
-                    ),
-                    attrs.string(),
-                    attrs.bool(),
-                ),
-                # TODO(cjhopman): I think this default does nothing, it should be deleted
-                default = None,
-            ),
-            sorted = False,
-        ),
-        default = None,
-    )
 
 def _allow_cache_upload_arg():
     return {
@@ -258,7 +230,6 @@ buck = struct(
     run_test_separately_arg = _run_test_separately_arg,
     fork_mode = _fork_mode,
     test_rule_timeout_ms = _test_rule_timeout_ms,
-    re_opts_for_tests_arg = _re_opts_for_tests_arg,
     target_os_type_arg = _target_os_type_arg,
     allow_cache_upload_arg = _allow_cache_upload_arg,
 )

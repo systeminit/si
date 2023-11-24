@@ -7,10 +7,10 @@
 
 load("@prelude//:paths.bzl", "paths")
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
-load(":cxx_context.bzl", "get_cxx_toolchain_info")
 
 def _extract_symbol_names(
         ctx: AnalysisContext,
+        cxx_toolchain: CxxToolchainInfo,
         name: str,
         objects: list[Artifact],
         category: str,
@@ -19,7 +19,8 @@ def _extract_symbol_names(
         dynamic: bool = False,
         prefer_local: bool = False,
         local_only: bool = False,
-        global_only: bool = False) -> Artifact:
+        global_only: bool = False,
+        allow_cache_upload: bool = False) -> Artifact:
     """
     Generate a file with a sorted list of symbol names extracted from the given
     native objects.
@@ -28,7 +29,6 @@ def _extract_symbol_names(
     if not objects:
         fail("no objects provided")
 
-    cxx_toolchain = get_cxx_toolchain_info(ctx)
     nm = cxx_toolchain.binary_utilities_info.nm
     output = ctx.actions.declare_output(paths.join("__symbols__", name))
 
@@ -73,16 +73,18 @@ def _extract_symbol_names(
         prefer_local = prefer_local,
         local_only = local_only,
         weight_percentage = 15,  # 10% + a little padding
+        allow_cache_upload = allow_cache_upload,
     )
     return output
 
-_SymbolsInfo = provider(fields = [
-    "artifact",  # "artifact"
-])
+_SymbolsInfo = provider(fields = {
+    "artifact": provider_field(typing.Any, default = None),  # "artifact"
+})
 
 def _anon_extract_symbol_names_impl(ctx):
     output = _extract_symbol_names(
         ctx = ctx,
+        cxx_toolchain = ctx.attrs._cxx_toolchain[CxxToolchainInfo],
         category = ctx.attrs.category,
         dynamic = ctx.attrs.dynamic,
         global_only = ctx.attrs.global_only,
@@ -92,13 +94,15 @@ def _anon_extract_symbol_names_impl(ctx):
         objects = ctx.attrs.objects,
         prefer_local = ctx.attrs.prefer_local,
         undefined_only = ctx.attrs.undefined_only,
+        allow_cache_upload = ctx.attrs.allow_cache_upload,
     )
     return [DefaultInfo(), _SymbolsInfo(artifact = output)]
 
 # Anonymous wrapper for `extract_symbol_names`.
-_anon_extract_symbol_names_impl_rule = rule(
+_anon_extract_symbol_names_impl_rule = anon_rule(
     impl = _anon_extract_symbol_names_impl,
     attrs = {
+        "allow_cache_upload": attrs.bool(default = False),
         "category": attrs.string(),
         "dynamic": attrs.bool(default = False),
         "global_only": attrs.bool(default = False),
@@ -110,46 +114,55 @@ _anon_extract_symbol_names_impl_rule = rule(
         "undefined_only": attrs.bool(default = False),
         "_cxx_toolchain": attrs.dep(providers = [CxxToolchainInfo]),
     },
+    artifact_promise_mappings = {
+        "symbols": lambda p: p[_SymbolsInfo].artifact,
+    },
 )
 
 def extract_symbol_names(
         ctx: AnalysisContext,
+        cxx_toolchain: CxxToolchainInfo,
         name: str,
         anonymous: bool = False,
-        **kwargs) -> [Artifact, "promise_artifact"]:
+        **kwargs) -> Artifact:
     """
     Generate a file with a sorted list of symbol names extracted from the given
     native objects.
     """
 
     if anonymous:
-        anon_providers = ctx.actions.anon_target(
+        cxx_toolchain_from_attrs = ctx.attrs._cxx_toolchain[CxxToolchainInfo]
+        if cxx_toolchain != cxx_toolchain_from_attrs:
+            fail("anon symbol extraction requires that the cxx_toolchain be from the _cxx_toolchain attr")
+        artifact = ctx.actions.anon_target(
             _anon_extract_symbol_names_impl_rule,
             dict(
                 _cxx_toolchain = ctx.attrs._cxx_toolchain,
                 output = name,
                 **kwargs
             ),
-        )
-        return ctx.actions.artifact_promise(
-            anon_providers.map(lambda p: p[_SymbolsInfo].artifact),
-            short_path = paths.join("__symbols__", name),
-        )
+        ).artifact("symbols")
+
+        return ctx.actions.assert_short_path(artifact, short_path = paths.join("__symbols__", name))
     else:
         return _extract_symbol_names(
             ctx = ctx,
+            cxx_toolchain = cxx_toolchain,
             name = name,
             **kwargs
         )
 
 def extract_undefined_syms(
         ctx: AnalysisContext,
+        cxx_toolchain: CxxToolchainInfo,
         output: Artifact,
         category_prefix: str,
         prefer_local: bool = False,
-        anonymous: bool = False) -> Artifact:
+        anonymous: bool = False,
+        allow_cache_upload: bool = False) -> Artifact:
     return extract_symbol_names(
         ctx = ctx,
+        cxx_toolchain = cxx_toolchain,
         name = output.short_path + ".undefined_syms.txt",
         objects = [output],
         dynamic = True,
@@ -159,16 +172,20 @@ def extract_undefined_syms(
         identifier = output.short_path,
         prefer_local = prefer_local,
         anonymous = anonymous,
+        allow_cache_upload = allow_cache_upload,
     )
 
 def extract_global_syms(
         ctx: AnalysisContext,
+        cxx_toolchain: CxxToolchainInfo,
         output: Artifact,
         category_prefix: str,
         prefer_local: bool = False,
-        anonymous: bool = False) -> Artifact:
+        anonymous: bool = False,
+        allow_cache_upload: bool = False) -> Artifact:
     return extract_symbol_names(
         ctx = ctx,
+        cxx_toolchain = cxx_toolchain,
         name = output.short_path + ".global_syms.txt",
         objects = [output],
         dynamic = True,
@@ -177,6 +194,7 @@ def extract_global_syms(
         identifier = output.short_path,
         prefer_local = prefer_local,
         anonymous = anonymous,
+        allow_cache_upload = allow_cache_upload,
     )
 
 def _create_symbols_file_from_script(
@@ -216,12 +234,13 @@ def _create_symbols_file_from_script(
 
 def get_undefined_symbols_args(
         ctx: AnalysisContext,
+        cxx_toolchain: CxxToolchainInfo,
         name: str,
         symbol_files: list[Artifact],
         category: [str, None] = None,
         identifier: [str, None] = None,
-        prefer_local: bool = False) -> cmd_args.type:
-    if get_cxx_toolchain_info(ctx).linker_info.type == "gnu":
+        prefer_local: bool = False) -> cmd_args:
+    if cxx_toolchain.linker_info.type == "gnu":
         # linker script is only supported in gnu linkers
         linker_script = create_undefined_symbols_linker_script(
             ctx.actions,

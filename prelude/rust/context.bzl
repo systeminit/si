@@ -8,8 +8,12 @@
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
 load("@prelude//linking:link_info.bzl", "LinkStyle")
 load(":build_params.bzl", "CrateType", "Emit")
-load(":link_info.bzl", "CrateName")
-load(":rust_toolchain.bzl", "RustToolchainInfo")
+load(":rust_toolchain.bzl", "RustExplicitSysrootDeps", "RustToolchainInfo")
+
+CrateName = record(
+    simple = field(str),
+    dynamic = field([Artifact, None]),
+)
 
 # Struct for sharing common args between rustc and rustdoc
 # (rustdoc just relays bunch of the same args to rustc when trying to gen docs)
@@ -19,7 +23,7 @@ CommonArgsInfo = record(
     tempfile = field(str),
     short_cmd = field(str),
     is_check = field(bool),
-    crate_map = field(list[(CrateName.type, Label)]),
+    crate_map = field(list[(CrateName, Label)]),
 )
 
 ExternArg = record(
@@ -31,11 +35,24 @@ CrateMapArg = record(
     label = field(Label),
 )
 
+# Information that determines how dependencies should be collected
+DepCollectionContext = record(
+    native_unbundle_deps = field(bool),
+    include_doc_deps = field(bool),
+    # Is the target a proc-macro target? This is ignored if `include_doc_deps`
+    # is set, since doc tests in proc macro crates are not built with
+    # `--extern proc_macro`
+    is_proc_macro = field(bool),
+    # From the toolchain, if available
+    explicit_sysroot_deps = field(RustExplicitSysrootDeps | None),
+)
+
 # Compile info which is reusable between multiple compilation command performed
 # by the same rule.
 CompileContext = record(
-    toolchain_info = field(RustToolchainInfo.type),
-    cxx_toolchain_info = field(CxxToolchainInfo.type),
+    toolchain_info = field(RustToolchainInfo),
+    cxx_toolchain_info = field(CxxToolchainInfo),
+    dep_ctx = field(DepCollectionContext),
     # Symlink root containing all sources.
     symlinked_srcs = field(Artifact),
     # Linker args to pass the linker wrapper to rustc.
@@ -43,8 +60,8 @@ CompileContext = record(
     # Clippy wrapper (wrapping clippy-driver so it has the same CLI as rustc).
     clippy_wrapper = field(cmd_args),
     # Memoized common args for reuse.
-    common_args = field(dict[(CrateType.type, Emit.type, LinkStyle.type), CommonArgsInfo.type]),
-    flagfiles_for_extern = field(dict[ExternArg.type, Artifact]),
-    flagfiles_for_crate_map = field(dict[CrateMapArg.type, Artifact]),
+    common_args = field(dict[(CrateType, Emit, LinkStyle), CommonArgsInfo]),
+    flagfiles_for_extern = field(dict[ExternArg, Artifact]),
+    flagfiles_for_crate_map = field(dict[CrateMapArg, Artifact]),
     transitive_dependency_dirs = field(dict[Artifact, None]),
 )
