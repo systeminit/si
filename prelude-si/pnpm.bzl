@@ -3,8 +3,8 @@ load(
     "ArtifactGroupInfo",
 )
 load(
-    "@prelude//decls/common.bzl",
-    "buck",
+    "@prelude//decls/re_test_common.bzl",
+    "re_test_common",
 )
 load(
     "@prelude//test/inject_test_run_info.bzl",
@@ -23,14 +23,18 @@ load(
     "get_re_executor_from_props",
 )
 load(
+    "@prelude-si//:test.bzl",
+    "inject_test_env",
+)
+load(
     "//pnpm:toolchain.bzl",
     "PnpmToolchainInfo",
 )
 
-TypescriptRunnableDistInfo = provider(fields = [
-    "runnable_dist",  # [Artifact]
-    "bin",  # [str]
-])
+TypescriptRunnableDistInfo = provider(fields = {
+    "runnable_dist": provider_field(typing.Any, default = None),  # [Artifact]
+    "bin": provider_field(typing.Any, default = None),  # [str]
+})
 
 def _npm_test_impl(
         ctx: AnalysisContext,
@@ -66,7 +70,13 @@ def _npm_test_impl(
     args_file = ctx.actions.write("args.txt", run_cmd_args)
 
     # Setup a RE executor based on the `remote_execution` param.
-    re_executor = get_re_executor_from_props(ctx.attrs.remote_execution)
+    re_executor = get_re_executor_from_props(ctx)
+
+    # We implicitly make the target run from the project root if remote
+    # excution options were specified
+    run_from_project_root = "buck2_run_from_project_root" in (
+        ctx.attrs.labels or []
+    ) or re_executor != None
 
     return inject_test_run_info(
         ctx,
@@ -77,10 +87,8 @@ def _npm_test_impl(
             labels = ctx.attrs.labels,
             contacts = ctx.attrs.contacts,
             default_executor = re_executor,
-            # We implicitly make this test via the project root, instead of
-            # the cell root (e.g. fbcode root).
-            run_from_project_root = re_executor != None,
-            use_project_relative_paths = re_executor != None,
+            run_from_project_root = run_from_project_root,
+            use_project_relative_paths = run_from_project_root,
         ),
     ) + [
         DefaultInfo(default_output = args_file),
@@ -157,26 +165,6 @@ eslint = rule(
             default = None,
             doc = """Invoke a command via 'pnpm exec' rather than npm_bin script.""",
         ),
-        "env": attrs.dict(
-            key = attrs.string(),
-            value = attrs.arg(),
-            sorted = False,
-            default = {},
-            doc = """Set environment variables for this rule's invocation of eslint. The environment
-            variable values may include macros which are expanded.""",
-        ),
-        "labels": attrs.list(
-            attrs.string(),
-            default = [],
-        ),
-        "contacts": attrs.list(
-            attrs.string(),
-            default = [],
-        ),
-        "remote_execution": buck.re_opts_for_tests_arg(),
-        "_inject_test_env": attrs.default_only(
-            attrs.dep(default = "prelude//test/tools:inject_test_env"),
-        ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
             providers = [PythonToolchainInfo],
@@ -185,7 +173,7 @@ eslint = rule(
             default = "toolchains//:pnpm",
             providers = [PnpmToolchainInfo],
         ),
-    },
+    } | re_test_common.test_args() | inject_test_env.args(),
 )
 
 def jest_impl(ctx: AnalysisContext) -> list[[
@@ -240,26 +228,6 @@ jest = rule(
             default = None,
             doc = """Invoke a command via 'pnpm exec' rather than npm_bin script.""",
         ),
-        "env": attrs.dict(
-            key = attrs.string(),
-            value = attrs.arg(),
-            sorted = False,
-            default = {},
-            doc = """Set environment variables for this rule's invocation of jest. The environment
-            variable values may include macros which are expanded.""",
-        ),
-        "labels": attrs.list(
-            attrs.string(),
-            default = [],
-        ),
-        "contacts": attrs.list(
-            attrs.string(),
-            default = [],
-        ),
-        "remote_execution": buck.re_opts_for_tests_arg(),
-        "_inject_test_env": attrs.default_only(
-            attrs.dep(default = "prelude//test/tools:inject_test_env"),
-        ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
             providers = [PythonToolchainInfo],
@@ -268,7 +236,7 @@ jest = rule(
             default = "toolchains//:pnpm",
             providers = [PnpmToolchainInfo],
         ),
-    },
+    } | re_test_common.test_args() | inject_test_env.args(),
 )
 
 def typescript_check_impl(ctx: AnalysisContext) -> list[[
@@ -324,26 +292,6 @@ typescript_check = rule(
             default = None,
             doc = """Invoke a command via 'pnpm exec' rather than npm_bin script.""",
         ),
-        "env": attrs.dict(
-            key = attrs.string(),
-            value = attrs.arg(),
-            sorted = False,
-            default = {},
-            doc = """Set environment variables for this rule's invocation of tsc. The environment
-            variable values may include macros which are expanded.""",
-        ),
-        "labels": attrs.list(
-            attrs.string(),
-            default = [],
-        ),
-        "contacts": attrs.list(
-            attrs.string(),
-            default = [],
-        ),
-        "remote_execution": buck.re_opts_for_tests_arg(),
-        "_inject_test_env": attrs.default_only(
-            attrs.dep(default = "prelude//test/tools:inject_test_env"),
-        ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
             providers = [PythonToolchainInfo],
@@ -352,7 +300,7 @@ typescript_check = rule(
             default = "toolchains//:pnpm",
             providers = [PnpmToolchainInfo],
         ),
-    },
+    } | re_test_common.test_args() | inject_test_env.args(),
 )
 
 def prettier_check_impl(ctx: AnalysisContext) -> list[[
@@ -409,26 +357,6 @@ prettier_check = rule(
             default = None,
             doc = """Invoke a command via 'pnpm exec' rather than npm_bin script.""",
         ),
-        "env": attrs.dict(
-            key = attrs.string(),
-            value = attrs.arg(),
-            sorted = False,
-            default = {},
-            doc = """Set environment variables for this rule's invocation of prettier. The
-            environment variable values may include macros which are expanded.""",
-        ),
-        "labels": attrs.list(
-            attrs.string(),
-            default = [],
-        ),
-        "contacts": attrs.list(
-            attrs.string(),
-            default = [],
-        ),
-        "remote_execution": buck.re_opts_for_tests_arg(),
-        "_inject_test_env": attrs.default_only(
-            attrs.dep(default = "prelude//test/tools:inject_test_env"),
-        ),
         "_python_toolchain": attrs.toolchain_dep(
             default = "toolchains//:python",
             providers = [PythonToolchainInfo],
@@ -437,7 +365,7 @@ prettier_check = rule(
             default = "toolchains//:pnpm",
             providers = [PnpmToolchainInfo],
         ),
-    },
+    } | re_test_common.test_args() | inject_test_env.args(),
 )
 
 def node_pkg_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:

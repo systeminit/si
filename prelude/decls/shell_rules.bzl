@@ -6,6 +6,7 @@
 # of this source tree.
 
 load(":common.bzl", "buck", "prelude_rule")
+load(":re_test_common.bzl", "re_test_common")
 
 sh_binary = prelude_rule(
     name = "sh_binary",
@@ -74,6 +75,11 @@ sh_binary = prelude_rule(
                  environment variable `$BUCK_PROJECT_ROOT` specifies a directory
                  that contains all the resources, laid out in their locations relative to
                  the original buck project root.
+            """),
+            "append_script_extension": attrs.bool(default = True, doc = """
+                By default, sh_binary ensures that the script has an appropriate extension (e.g. `.sh` or `.bat`),
+                  appending one itself if necessary. Setting this to False prevents that behavior and makes the caller
+                  responsible for ensuring an existing appropriate extension.
             """),
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
@@ -181,13 +187,12 @@ sh_test = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "list_args": attrs.option(attrs.list(attrs.string()), default = None),
             "list_env": attrs.option(attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False), default = None),
-            "remote_execution": buck.re_opts_for_tests_arg(),
             "resources": attrs.list(attrs.source(), default = []),
             "run_args": attrs.list(attrs.string(), default = []),
             "run_env": attrs.dict(key = attrs.string(), value = attrs.string(), sorted = False, default = {}),
             "run_test_separately": attrs.bool(default = False),
             "test_rule_timeout_ms": attrs.option(attrs.int(), default = None),
-        }
+        } | re_test_common.test_args()
     ),
 )
 

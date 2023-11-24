@@ -12,8 +12,10 @@
 
 load(":android_common.bzl", "android_common")
 load(":common.bzl", "AbiGenerationMode", "AnnotationProcessingTool", "ForkMode", "LogLevel", "OnDuplicateEntry", "SourceAbiVerificationMode", "TestType", "UnusedDependenciesAction", "buck", "prelude_rule")
+load(":core_rules.bzl", "TargetCpuType")
 load(":genrule_common.bzl", "genrule_common")
 load(":jvm_common.bzl", "jvm_common")
+load(":re_test_common.bzl", "re_test_common")
 
 AaptMode = ["aapt1", "aapt2"]
 
@@ -34,8 +36,6 @@ RType = ["anim", "animator", "array", "attr", "bool", "color", "dimen", "drawabl
 ResourceCompressionMode = ["disabled", "enabled", "enabled_strings_only", "enabled_with_strings_as_assets"]
 
 SdkProguardType = ["default", "optimized", "none"]
-
-TargetCpuType = ["arm", "armv7", "arm64", "x86", "x86_64", "mips"]
 
 android_aar = prelude_rule(
     name = "android_aar",
@@ -115,10 +115,7 @@ android_aar = prelude_rule(
             "build_config_values_file": attrs.option(attrs.source(), default = None),
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
-            "deps_query": attrs.option(attrs.query(), default = None),
             "enable_relinker": attrs.bool(default = False),
-            "exported_deps": attrs.list(attrs.dep(), default = []),
-            "exported_provided_deps": attrs.list(attrs.dep(), default = []),
             "extra_arguments": attrs.list(attrs.string(), default = []),
             "extra_kotlinc_arguments": attrs.list(attrs.string(), default = []),
             "extra_non_source_only_abi_kotlinc_arguments": attrs.list(attrs.string(), default = []),
@@ -142,8 +139,6 @@ android_aar = prelude_rule(
             "on_unused_dependencies": attrs.option(attrs.enum(UnusedDependenciesAction), default = None),
             "plugins": attrs.list(attrs.dep(), default = []),
             "proguard_config": attrs.option(attrs.source(), default = None),
-            "provided_deps": attrs.list(attrs.dep(), default = []),
-            "provided_deps_query": attrs.option(attrs.query(), default = None),
             "relinker_whitelist": attrs.list(attrs.regex(), default = []),
             "required_for_source_only_abi": attrs.bool(default = False),
             "resource_union_package": attrs.option(attrs.string(), default = None),
@@ -193,6 +188,7 @@ android_binary = prelude_rule(
         {
             "aapt2_keep_raw_values": attrs.bool(default = False),
             "aapt2_locale_filtering": attrs.bool(default = False),
+            "aapt2_preferred_density": attrs.option(attrs.string(), default = None),
             "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),
             "additional_aapt_params": attrs.list(attrs.string(), default = []),
             "allow_r_dot_java_in_secondary_dex": attrs.bool(default = False),
@@ -422,6 +418,7 @@ android_bundle = prelude_rule(
         {
             "aapt2_keep_raw_values": attrs.bool(default = False),
             "aapt2_locale_filtering": attrs.bool(default = False),
+            "aapt2_preferred_density": attrs.option(attrs.string(), default = None),
             "aapt_mode": attrs.enum(AaptMode, default = "aapt1"),
             "additional_aapt_params": attrs.list(attrs.string(), default = []),
             "allow_r_dot_java_in_secondary_dex": attrs.bool(default = False),
@@ -733,11 +730,11 @@ android_library = prelude_rule(
         jvm_common.exported_deps() |
         jvm_common.provided_deps() |
         jvm_common.exported_provided_deps() |
-        buck.deps_query_arg() |
         buck.provided_deps_query_arg() |
         jvm_common.abi_generation_mode() |
         jvm_common.source_only_abi_deps() |
         jvm_common.required_for_source_only_abi() |
+        jvm_common.k2() |
         {
             "remove_classes": attrs.list(attrs.regex(), default = [], doc = """
                 List of classes to remove from the output jar. It only removes classes from the target's own
@@ -1398,7 +1395,6 @@ robolectric_test = prelude_rule(
             "default_cxx_platform": attrs.option(attrs.string(), default = None),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "deps": attrs.list(attrs.dep(), default = []),
-            "deps_query": attrs.option(attrs.query(), default = None),
             "env": attrs.dict(key = attrs.string(), value = attrs.arg(), sorted = False, default = {}),
             "exported_deps": attrs.list(attrs.dep(), default = []),
             "exported_provided_deps": attrs.list(attrs.dep(), default = []),
@@ -1430,6 +1426,7 @@ robolectric_test = prelude_rule(
             "resource_union_package": attrs.option(attrs.string(), default = None),
             "resources": attrs.list(attrs.source(), default = []),
             "resources_root": attrs.option(attrs.source(), default = None),
+            "resource_stable_ids": attrs.option(attrs.source(), default = None),
             "robolectric_runtime_dependencies": attrs.list(attrs.dep(), default = []),
             "run_test_separately": attrs.bool(default = False),
             "runtime_deps": attrs.list(attrs.dep(), default = []),
@@ -1448,7 +1445,8 @@ robolectric_test = prelude_rule(
             "use_dependency_order_classpath": attrs.option(attrs.bool(), default = None),
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
             "vm_args": attrs.list(attrs.arg(), default = []),
-        }
+        } | jvm_common.k2() |
+        re_test_common.test_args()
     ),
 )
 

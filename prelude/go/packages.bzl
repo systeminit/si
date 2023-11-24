@@ -14,6 +14,7 @@ GoPkg = record(
     shared = field(Artifact),
     # Built w/o `-shared`.
     static = field(Artifact),
+    cgo = field(bool, default = False),
 )
 
 def go_attr_pkg_name(ctx: AnalysisContext) -> str:
@@ -38,7 +39,7 @@ def merge_pkgs(pkgss: list[dict[str, typing.Any]]) -> dict[str, typing.Any]:
 
     return all_pkgs
 
-def pkg_artifacts(pkgs: dict[str, GoPkg.type], shared: bool = False) -> dict[str, Artifact]:
+def pkg_artifacts(pkgs: dict[str, GoPkg], shared: bool = False) -> dict[str, Artifact]:
     """
     Return a map package name to a `shared` or `static` package artifact.
     """
@@ -47,17 +48,26 @@ def pkg_artifacts(pkgs: dict[str, GoPkg.type], shared: bool = False) -> dict[str
         for name, pkg in pkgs.items()
     }
 
-def stdlib_pkg_artifacts(toolchain: GoToolchainInfo.type, shared: bool = False) -> dict[str, Artifact]:
+def stdlib_pkg_artifacts(toolchain: GoToolchainInfo, shared: bool = False) -> dict[str, Artifact]:
     """
     Return a map package name to a `shared` or `static` package artifact of stdlib.
     """
 
     prebuilt_stdlib = toolchain.prebuilt_stdlib_shared if shared else toolchain.prebuilt_stdlib
     stdlib_pkgs = prebuilt_stdlib[ArtifactGroupInfo].artifacts
+
+    if len(stdlib_pkgs) == 0:
+        fail("Stdlib for current platfrom is missing from toolchain.")
+
     pkgs = {}
     for pkg in stdlib_pkgs:
-        _, _, pkg_relpath = pkg.short_path.removeprefix("prebuilt_std/").partition("/")  # like net/http.a
-        name = pkg_relpath.removesuffix(".a")  # like net/http
+        # remove first directory like `pgk`
+        _, _, temp_path = pkg.short_path.partition("/")
+
+        # remove second directory like `darwin_amd64`
+        # now we have name like `net/http.a`
+        _, _, pkg_relpath = temp_path.partition("/")
+        name = pkg_relpath.removesuffix(".a")  # like `net/http`
         pkgs[name] = pkg
 
     return pkgs

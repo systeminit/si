@@ -20,8 +20,6 @@ def apple_sdk_swift_module_impl(ctx: AnalysisContext) -> list[Provider]:
         "-suppress-warnings",
         "-module-name",
         module_name,
-        "-target",
-        ctx.attrs.target,
         "-Xcc",
         "-fno-implicit-modules",
         "-Xcc",
@@ -38,17 +36,19 @@ def apple_sdk_swift_module_impl(ctx: AnalysisContext) -> list[Provider]:
     if ctx.attrs.overlays:
         overlays = [SdkSwiftOverlayInfo(overlays = ctx.attrs.overlays)]
 
+    module_info = SdkUncompiledModuleInfo(
+        deps = ctx.attrs.deps,
+        input_relative_path = ctx.attrs.swiftinterface_relative_path,
+        is_framework = ctx.attrs.is_framework,
+        is_swiftmodule = True,
+        module_name = ctx.attrs.module_name,
+        partial_cmd = cmd,
+        target = ctx.attrs.target,
+    )
+
     return [
         DefaultInfo(),
-        SdkUncompiledModuleInfo(
-            name = ctx.attrs.name,
-            module_name = ctx.attrs.module_name,
-            is_framework = ctx.attrs.is_framework,
-            is_swiftmodule = True,
-            partial_cmd = cmd,
-            input_relative_path = ctx.attrs.swiftinterface_relative_path,
-            deps = ctx.attrs.deps,
-        ),
+        module_info,
     ] + overlays
 
 # This rule represent a Swift module from SDK and forms a graph of dependencies between such modules.

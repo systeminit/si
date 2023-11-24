@@ -17,7 +17,10 @@ modules_dir = "<MODULES_DIR>"
 def __run():
     import sys
     import os
-    import platform
+    import site
+    import time
+
+    os.environ["PAR_LAUNCH_TIMESTAMP"] = str(time.time())
 
     # We set the paths beforehand to have a minimal amount of imports before
     # nuking PWD from sys.path. Otherwise, there can be problems if someone runs
@@ -28,25 +31,23 @@ def __run():
 
     dirpath = os.path.dirname(os.path.realpath(__file__))
 
+    # Save the variables that will be restored back into the environment by
+    # fbcode/buck2/prelude/python/tools/make_par/sitecustomize.py
+    for env in ("PYTHONPATH", "LD_LIBRARY_PATH", "LD_PRELOAD",
+                "DYLD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES"):
+        if env in os.environ:
+            os.environ["FB_SAVED_" + env] = os.environ[env]
+
+    path = os.path.join(dirpath, modules_dir)
+    os.environ["PYTHONPATH"] = path
+
     # Replace the working directory with location of the modules directory.
-    sys.path[0] = os.path.join(dirpath, modules_dir)
+    sys.path[0] = path
 
-    import os
-    import runpy
+    site.execsitecustomize()
 
-    if main_module:
-        runpy._run_module_as_main(main_module, False)
-        return
-
-    assert main_function
-    mod_name, fn_name = main_function.rsplit(".", 1)
-    from importlib import import_module
-    mod = import_module(mod_name)
-    main = getattr(mod, fn_name)
-    # This is normally done by `runpy._run_module_as_main`, and is
-    # important to make multiprocessing work
-    sys.modules["__main__"] = mod
-    main()
+    from <MAIN_RUNNER_MODULE> import <MAIN_RUNNER_FUNCTION> as run_as_main
+    run_as_main(main_module, main_function)
 
 
 __run()

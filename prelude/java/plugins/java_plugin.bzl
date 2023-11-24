@@ -16,10 +16,10 @@ load(
 PluginParams = record(
     processors = field(list[str]),
     args = field(dict[str, cmd_args]),
-    deps = field(["JavaPackagingDepTSet", None]),
+    deps = field([JavaPackagingDepTSet, None]),
 )
 
-def create_plugin_params(ctx: AnalysisContext, plugins: list[Dependency]) -> [PluginParams.type, None]:
+def create_plugin_params(ctx: AnalysisContext, plugins: list[Dependency]) -> [PluginParams, None]:
     processors = []
     plugin_deps = []
 

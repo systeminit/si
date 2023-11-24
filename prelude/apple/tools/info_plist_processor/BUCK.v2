@@ -1,0 +1,35 @@
+# @oss-disable: load("@prelude//apple/tools/defs.bzl", "meta_python_test")
+
+python_library(
+    name = "preprocess",
+    srcs = ["preprocess.py"],
+)
+
+# @oss-disable: meta_python_test(
+# @oss-disable:     name = "preprocess_test",
+# @oss-disable:     srcs = ["preprocess_test.py"],
+# @oss-disable:     deps = [":preprocess"],
+# @oss-disable: )
+
+python_library(
+    name = "process",
+    srcs = ["process.py"],
+    deps = ["prelude//apple/tools:plistlib_utils"],
+    visibility = ["PUBLIC"],
+)
+
+# @oss-disable: meta_python_test(
+# @oss-disable:     name = "process_test",
+# @oss-disable:     srcs = ["process_test.py"],
+# @oss-disable:     deps = [":process"],
+# @oss-disable: )
+
+python_binary(
+    name = "tool",
+    main = "main.py",
+    deps = [
+        ":preprocess",
+        ":process",
+    ],
+    visibility = ["PUBLIC"],
+)
