@@ -7,31 +7,23 @@
       </div>
     </template>
     <template v-else-if="schemasReqStatus.isSuccess">
-      <ScrollArea class="">
-        <SiSearch
-          autoSearch
-          placeholder="search assets"
-          @search="onSearchUpdated"
-        />
+      <ScrollArea>
         <template #top>
-          <SidebarSubpanelTitle label="Assets" icon="component-plus" />
+          <SidebarSubpanelTitle label="Assets" icon="component-plus">
+            <Icon
+              v-tooltip="
+                'Drag the assets that you wish to include in your application into the canvas to the right.'
+              "
+              allowPointerEvents
+              name="question-circle"
+            />
+          </SidebarSubpanelTitle>
 
-          <div
-            ref="instructionsRef"
-            class="border-b-2 dark:border-neutral-600 text-sm leading-tight p-2.5 text-neutral-400 dark:text-neutral-300 flex flex-row items-center gap-2"
-          >
-            <!-- <a
-              href="#"
-              class="hover:text-neutral-600 dark:hover:text-neutral-400"
-              @click="hideInstructions"
-            >
-              <Icon name="x-circle" />
-            </a> -->
-            <div>
-              Drag the assets that you wish to include in your application into
-              the canvas to the right.
-            </div>
-          </div>
+          <SiSearch
+            autoSearch
+            placeholder="search assets"
+            @search="onSearchUpdated"
+          />
         </template>
 
         <ul class="overflow-y-auto">
@@ -97,14 +89,6 @@ import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch from "@/components/SiSearch.vue";
 
 defineProps<{ fixesAreRunning: boolean }>();
-
-const instructionsRef = ref();
-
-// const hideInstructions = () => {
-//   if (instructionsRef.value) {
-//     instructionsRef.value.classList.add("hidden");
-//   }
-// };
 
 const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used
@@ -175,8 +159,13 @@ function onSelect(schemaId: string, fixesAreRunning: boolean) {
     return;
   }
 
-  componentsStore.selectedInsertSchemaId = schemaId;
-  selecting.value = true;
+  if (componentsStore.selectedInsertSchemaId === schemaId) {
+    componentsStore.selectedInsertSchemaId = null;
+    selecting.value = false;
+  } else {
+    componentsStore.selectedInsertSchemaId = schemaId;
+    selecting.value = true;
+  }
 }
 
 function onDeselect() {

@@ -44,7 +44,7 @@
       :class="getButtonClasses(false)"
       @click="emit('open:help')"
     >
-      <Icon name="help-circle" size="full" />
+      <Icon name="question-circle" size="full" />
     </div>
 
     <div

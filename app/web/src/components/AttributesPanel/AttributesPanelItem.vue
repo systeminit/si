@@ -156,7 +156,7 @@
         <!-- <Icon
           v-if="propName === 'region'"
           v-tooltip="'Some help info'"
-          name="help-circle"
+          name="question-circle"
           allowPointerEvents
           class="attributes-panel-item__help-icon"
         /> -->
@@ -437,7 +437,7 @@ const icon = computed((): IconNames => {
   if (propKind.value === "array") return "brackets-square";
   if (propKind.value === "map") return "brackets-curly";
   if (propKind.value === "object") return "bullet-list";
-  return WIDGET_ICON_LOOKUP[widgetKind.value] || "help-circle";
+  return WIDGET_ICON_LOOKUP[widgetKind.value] || "question-circle";
 });
 
 const HEADER_HEIGHT = 24;
@@ -639,6 +639,7 @@ function secretSelectedHandler(newSecret: Secret) {
   display: flex;
   align-items: center;
   border-bottom: 1px solid var(--panel-bg-color);
+  user-select: none;
 }
 
 .attributes-panel-item__section-header-child-count {
@@ -653,7 +654,7 @@ function secretSelectedHandler(newSecret: Secret) {
   position: absolute;
   width: @header-height;
   height: @header-height;
-  opacity: 0;
+  opacity: 0.8;
   transition: all 0.2s;
 
   body.light & {
@@ -756,7 +757,7 @@ function secretSelectedHandler(newSecret: Secret) {
   width: 45%;
   flex-shrink: 0;
   background: var(--input-bg-color);
-  margin-right: 4px;
+  margin-right: 8px;
   font-family: monospace;
   font-size: 13px;
   line-height: 18px;
@@ -782,6 +783,14 @@ function secretSelectedHandler(newSecret: Secret) {
   textarea {
     min-height: 80px;
     margin: 0;
+  }
+
+  // chrome + linux showing white on white text - this might fix it?
+  select {
+    option {
+      background: white;
+      color: black;
+    }
   }
 }
 .attributes-panel-item__input-value {
@@ -880,7 +889,7 @@ function secretSelectedHandler(newSecret: Secret) {
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  margin-right: 4px;
+  margin-right: 8px;
 
   // unset a few shared styles from the other buttons
   width: unset;

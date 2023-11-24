@@ -2,12 +2,6 @@
   <ScrollArea v-if="selectedComponent">
     <template #top>
       <SidebarSubpanelTitle label="Asset Details" icon="component" />
-
-      <div v-if="DEV_MODE" class="px-xs pt-xs text-2xs italic opacity-30">
-        COMPONENT ID = {{ selectedComponent.id }}
-        <br />
-        NODE ID = {{ selectedComponent.nodeId }}
-      </div>
       <ComponentCard :componentId="selectedComponent.id" class="m-xs" />
 
       <div
@@ -108,13 +102,32 @@
                   </div>
                 </template>
               </TabGroupItem>
-              <TabGroupItem label="Qualifications" slug="qualifications">
+              <TabGroupItem slug="qualifications">
+                <template #label>
+                  <Inline noWrap alignY="center">
+                    <span>Qualifications</span>
+                    <PillCounter
+                      :count="selectedComponentFailingQualificationsCount"
+                      tone="destructive"
+                    />
+                  </Inline>
+                </template>
                 <AssetQualificationsDetails
                   :componentId="selectedComponentId"
                 />
               </TabGroupItem>
 
               <TabGroupItem label="Diff" slug="diff">
+                <template #label>
+                  <Inline noWrap alignY="center">
+                    <span>Diff</span>
+                    <StatusIndicatorIcon
+                      type="change"
+                      :status="selectedComponent.changeStatus"
+                    />
+                  </Inline>
+                </template>
+
                 <AssetDiffDetails :componentId="selectedComponentId" />
               </TabGroupItem>
               <TabGroupItem label="Debug" slug="debug">
@@ -183,8 +196,6 @@ import AttributesPanel from "./AttributesPanel/AttributesPanel.vue";
 
 const emit = defineEmits(["delete", "restore"]);
 
-const DEV_MODE = import.meta.env.DEV;
-
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
 const changeSetStore = useChangeSetsStore();
@@ -201,6 +212,12 @@ const selectedComponentQualificationStatus = computed(
     qualificationsStore.qualificationStatusByComponentId[
       selectedComponentId.value
     ],
+);
+const selectedComponentFailingQualificationsCount = computed(
+  () =>
+    qualificationsStore.qualificationStatsByComponentId[
+      selectedComponentId.value
+    ]?.failed || 0,
 );
 
 const selectedComponentCode = computed(

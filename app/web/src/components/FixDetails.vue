@@ -76,7 +76,10 @@ const icon = computed(() => {
       };
     case ResourceHealth.Unknown:
     default:
-      return { name: "help-circle" as IconNames, class: "text-neutral-300" };
+      return {
+        name: "question-circle" as IconNames,
+        class: "text-neutral-300",
+      };
   }
 });
 
