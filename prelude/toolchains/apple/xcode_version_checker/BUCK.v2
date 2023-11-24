@@ -1,8 +1,8 @@
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+# @oss-disable: load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 
-fb_native.export_file(
-    name = "xcode_version_checker",
-    labels = ["buck2-only"],
-    mode = "reference",
-    visibility = ["PUBLIC"],
-)
+# @oss-disable: fb_native.export_file(
+# @oss-disable:     name = "xcode_version_checker",
+# @oss-disable:     labels = ["buck2-only"],
+# @oss-disable:     mode = "reference",
+# @oss-disable:     visibility = ["PUBLIC"],
+# @oss-disable: )
