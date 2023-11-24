@@ -309,7 +309,11 @@ async def main() -> int:
 
         if shutdown:
             # We got what we want so shut down early
-            proc.terminate()
+            try:
+                proc.terminate()
+            except ProcessLookupError:
+                # The process already terminated on its own.
+                pass
             await proc.wait()
             res = 0
         else:
@@ -400,4 +404,6 @@ def nix_env(env: Dict[str, str]):
         env.update({k: v for k, v in vars_starting_with.items()})
 
 
-sys.exit(asyncio.run(main()))
+# There is a bug with asyncio.run() on Windows:
+# https://bugs.python.org/issue39232
+sys.exit(asyncio.get_event_loop().run_until_complete(main()))

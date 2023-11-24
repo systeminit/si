@@ -1,15 +1,15 @@
-PnpmToolchainInfo = provider(fields = [
-    "build_npm_bin",
-    "build_package_node_modules",
-    "build_pkg_bin",
-    "build_typescript_runnable_dist_bin",
-    "build_workspace_node_modules",
-    "editorconfig",
-    "exec_cmd",
-    "package_build_context",
-    "package_dist_context",
-    "run_pnpm_script",
-])
+PnpmToolchainInfo = provider(fields = {
+    "build_npm_bin": typing.Any,
+    "build_package_node_modules": typing.Any,
+    "build_pkg_bin": typing.Any,
+    "build_typescript_runnable_dist_bin": typing.Any,
+    "build_workspace_node_modules": typing.Any,
+    "editorconfig": provider_field(typing.Any, default = None),
+    "exec_cmd": typing.Any,
+    "package_build_context": typing.Any,
+    "package_dist_context": typing.Any,
+    "run_pnpm_script": typing.Any,
+})
 
 def pnpm_toolchain_impl(ctx) -> list[[DefaultInfo, PnpmToolchainInfo]]:
     """

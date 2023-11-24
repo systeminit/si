@@ -5,7 +5,8 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//android:android_providers.bzl", "AndroidResourceInfo")
+load("@prelude//android:android_providers.bzl", "AndroidResourceInfo", "RDotJavaInfo")
+load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//java:java_library.bzl", "compile_to_jar")
 load("@prelude//java:java_providers.bzl", "JavaClasspathEntry", "JavaLibraryInfo", "derive_compiling_deps")
 load("@prelude//utils:set.bzl", "set")
@@ -21,25 +22,20 @@ RDotJavaSourceCode = record(
 
 def get_dummy_r_dot_java(
         ctx: AnalysisContext,
-        merge_android_resources_tool: RunInfo.type,
-        android_resources: list[AndroidResourceInfo.type],
-        union_package: [str, None]) -> JavaLibraryInfo.type:
+        merge_android_resources_tool: RunInfo,
+        android_resources: list[AndroidResourceInfo],
+        union_package: [str, None]) -> JavaLibraryInfo:
     r_dot_java_source_code = _generate_r_dot_java_source_code(ctx, merge_android_resources_tool, android_resources, "dummy_r_dot_java", union_package = union_package)
-    library_output = _generate_and_compile_r_dot_java(
+    return _generate_and_compile_r_dot_java(
         ctx,
         r_dot_java_source_code.r_dot_java_source_code_zipped,
         "dummy_r_dot_java",
-    )
-    return JavaLibraryInfo(
-        compiling_deps = derive_compiling_deps(ctx.actions, library_output, []),
-        library_output = library_output,
-        output_for_classpath_macro = library_output.full_library,
-    )
+    ).library_info
 
 def generate_r_dot_javas(
         ctx: AnalysisContext,
-        merge_android_resources_tool: RunInfo.type,
-        android_resources: list[AndroidResourceInfo.type],
+        merge_android_resources_tool: RunInfo,
+        android_resources: list[AndroidResourceInfo],
         banned_duplicate_resource_types: list[str],
         uber_r_dot_txt_files: list[Artifact],
         override_symbols_paths: list[Artifact],
@@ -47,7 +43,19 @@ def generate_r_dot_javas(
         union_package: [str, None],
         referenced_resources_lists: list[Artifact],
         generate_strings_and_ids_separately: [bool, None] = True,
-        remove_classes: [list[str], None] = []) -> list[JavaLibraryInfo.type]:
+        remove_classes: list[str] = []) -> list[RDotJavaInfo]:
+    if not android_resources:
+        # d8 will fail if its input contains no classes. Rather than add empty input handling in multiple places,
+        # like buck1 we just generate a stub class if we have no resources.  This will be stripped from release
+        # builds and have minimal impact on debug builds.
+        return [
+            _generate_and_compile_r_dot_java(
+                ctx,
+                ctx.attrs._android_toolchain[AndroidToolchainInfo].app_without_resources_stub,
+                "main_r_dot_java",
+            ),
+        ]
+
     r_dot_java_source_code = _generate_r_dot_java_source_code(
         ctx,
         merge_android_resources_tool,
@@ -63,39 +71,36 @@ def generate_r_dot_javas(
         referenced_resources_lists = referenced_resources_lists,
     )
 
-    main_library_output = _generate_and_compile_r_dot_java(
-        ctx,
-        r_dot_java_source_code.r_dot_java_source_code_zipped,
-        "main_r_dot_java",
-        remove_classes = remove_classes,
-    )
+    library_infos = [
+        _generate_and_compile_r_dot_java(
+            ctx,
+            r_dot_java_source_code.r_dot_java_source_code_zipped,
+            "main_r_dot_java",
+            remove_classes = remove_classes,
+        ),
+    ]
     if generate_strings_and_ids_separately:
-        strings_library_output = _generate_and_compile_r_dot_java(
-            ctx,
-            r_dot_java_source_code.strings_source_code_zipped,
-            "strings_r_dot_java",
-            remove_classes = remove_classes + [".R$"],
-        )
-        ids_library_output = _generate_and_compile_r_dot_java(
-            ctx,
-            r_dot_java_source_code.ids_source_code_zipped,
-            "ids_r_dot_java",
-            remove_classes = remove_classes + [".R$"],
-        )
-    else:
-        strings_library_output = None
-        ids_library_output = None
+        library_infos += [
+            _generate_and_compile_r_dot_java(
+                ctx,
+                r_dot_java_source_code.strings_source_code_zipped,
+                "strings_r_dot_java",
+                remove_classes = remove_classes + [".R$"],
+            ),
+            _generate_and_compile_r_dot_java(
+                ctx,
+                r_dot_java_source_code.ids_source_code_zipped,
+                "ids_r_dot_java",
+                remove_classes = remove_classes + [".R$"],
+            ),
+        ]
 
-    return [JavaLibraryInfo(
-        compiling_deps = derive_compiling_deps(ctx.actions, library_output, []),
-        library_output = library_output,
-        output_for_classpath_macro = library_output.full_library,
-    ) for library_output in filter(None, [main_library_output, strings_library_output, ids_library_output])]
+    return library_infos
 
 def _generate_r_dot_java_source_code(
         ctx: AnalysisContext,
-        merge_android_resources_tool: RunInfo.type,
-        android_resources: list[AndroidResourceInfo.type],
+        merge_android_resources_tool: RunInfo,
+        android_resources: list[AndroidResourceInfo],
         identifier: str,
         force_final_resources_ids = False,
         generate_strings_and_ids_separately = False,
@@ -104,13 +109,13 @@ def _generate_r_dot_java_source_code(
         override_symbols_paths: list[Artifact] = [],
         duplicate_resources_allowlist: [Artifact, None] = None,
         union_package: [str, None] = None,
-        referenced_resources_lists: list[Artifact] = []) -> RDotJavaSourceCode.type:
+        referenced_resources_lists: list[Artifact] = []) -> RDotJavaSourceCode:
     merge_resources_cmd = cmd_args(merge_android_resources_tool)
 
     r_dot_txt_info = cmd_args()
-    deduped_android_resources = set([(android_resource.text_symbols, android_resource.r_dot_java_package) for android_resource in android_resources])
-    for (text_symbols, r_dot_java_package) in deduped_android_resources.list():
-        r_dot_txt_info.add(cmd_args([text_symbols, r_dot_java_package, "_"], delimiter = " "))  # pass target name
+    deduped_android_resources = set([(android_resource.text_symbols, android_resource.r_dot_java_package, android_resource.raw_target) for android_resource in android_resources])
+    for (text_symbols, r_dot_java_package, raw_target) in deduped_android_resources.list():
+        r_dot_txt_info.add(cmd_args([text_symbols, r_dot_java_package, raw_target], delimiter = " "))
 
     r_dot_txt_info_file = ctx.actions.write("r_dot_txt_info_file_for_{}.txt".format(identifier), r_dot_txt_info)
     merge_resources_cmd.add(["--symbol-file-info", r_dot_txt_info_file])
@@ -180,7 +185,7 @@ def _generate_and_compile_r_dot_java(
         ctx: AnalysisContext,
         r_dot_java_source_code_zipped: Artifact,
         identifier: str,
-        remove_classes: list[str] = []) -> JavaClasspathEntry.type:
+        remove_classes: list[str] = []) -> RDotJavaInfo:
     r_dot_java_out = ctx.actions.declare_output("{}.jar".format(identifier))
 
     compile_to_jar(
@@ -193,11 +198,19 @@ def _generate_and_compile_r_dot_java(
     )
 
     # Extracting an abi is unnecessary as there's not really anything to strip.
-    outputs = JavaClasspathEntry(
+    library_output = JavaClasspathEntry(
         full_library = r_dot_java_out,
         abi = r_dot_java_out,
         abi_as_dir = None,
         required_for_source_only_abi = False,
     )
 
-    return outputs
+    return RDotJavaInfo(
+        identifier = identifier,
+        library_info = JavaLibraryInfo(
+            compiling_deps = derive_compiling_deps(ctx.actions, library_output, []),
+            library_output = library_output,
+            output_for_classpath_macro = library_output.full_library,
+        ),
+        source_zipped = r_dot_java_source_code_zipped,
+    )

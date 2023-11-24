@@ -70,6 +70,9 @@ def main() -> int:
         if "BUCK2_DAEMON_UUID" in env:
             del (env["BUCK2_DAEMON_UUID"])
         result = subprocess.run(cmd, capture_output=True, env=env)
+        # Print out stderr from process if it failed
+        if result.returncode != 0:
+            sys.stderr.write(result.stderr.decode("ascii"))
         result.check_returncode()
         srcs_from_deps_raw = result.stdout.decode("ascii").splitlines()
         srcs_from_deps = map(

@@ -5,12 +5,18 @@ load(
     "system_python_bootstrap_toolchain",
     "system_python_toolchain",
 )
+load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
 load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
 load("@prelude-si//rust:toolchain.bzl", "si_rust_toolchain")
 load("@prelude-si//shell:toolchain.bzl", "shell_toolchain")
+
+remote_test_execution_toolchain(
+    name = "remote_test_execution",
+    visibility = ["PUBLIC"],
+)
 
 system_cxx_toolchain(
     name = "cxx",

@@ -6,8 +6,14 @@
 # of this source tree.
 
 load("@prelude//java:java_toolchain.bzl", "JavaToolchainInfo")
-load("@prelude//java/utils:java_utils.bzl", "get_classpath_subtarget")
-load("@prelude//linking:shared_libraries.bzl", "SharedLibraryInfo", "merge_shared_libraries", "traverse_shared_library_info")
+load("@prelude//java/utils:java_utils.bzl", "get_class_to_source_map_info", "get_classpath_subtarget")
+load(
+    "@prelude//linking:shared_libraries.bzl",
+    "SharedLibrary",  # @unused used as type
+    "SharedLibraryInfo",
+    "merge_shared_libraries",
+    "traverse_shared_library_info",
+)
 load("@prelude//utils:utils.bzl", "expect")
 load(
     ":java_providers.bzl",
@@ -16,16 +22,16 @@ load(
     "get_java_packaging_info",
 )
 
-def _generate_script(generate_wrapper: bool, native_libs: dict[str, "SharedLibrary"]) -> bool:
+def _generate_script(generate_wrapper: bool, native_libs: dict[str, SharedLibrary]) -> bool:
     # if `generate_wrapper` is set and no native libs then it should be a wrapper script as result,
     # otherwise fat jar will be generated (inner jar or script will be included inside a final fat jar)
     return generate_wrapper and len(native_libs) == 0
 
 def _create_fat_jar(
         ctx: AnalysisContext,
-        java_toolchain: JavaToolchainInfo.type,
+        java_toolchain: JavaToolchainInfo,
         jars: cmd_args,
-        native_libs: dict[str, "SharedLibrary"],
+        native_libs: dict[str, SharedLibrary],
         do_not_create_inner_jar: bool,
         generate_wrapper: bool) -> list[Artifact]:
     extension = "sh" if _generate_script(generate_wrapper, native_libs) else "jar"
@@ -124,16 +130,16 @@ def _create_fat_jar(
     return outputs
 
 def _get_run_cmd(
-        attrs: struct.type,
+        attrs: struct,
         script_mode: bool,
         main_artifact: Artifact,
-        java_toolchain: JavaToolchainInfo.type) -> cmd_args:
+        java_toolchain: JavaToolchainInfo) -> cmd_args:
     if script_mode:
         return cmd_args(["/usr/bin/env", "bash", main_artifact])
     else:
         return cmd_args([java_toolchain.java[RunInfo]] + attrs.java_args_for_run_info + ["-jar", main_artifact])
 
-def _get_java_tool_artifacts(java_toolchain: JavaToolchainInfo.type) -> list[Artifact]:
+def _get_java_tool_artifacts(java_toolchain: JavaToolchainInfo) -> list[Artifact]:
     default_info = java_toolchain.java[DefaultInfo]
     return default_info.default_outputs + default_info.other_outputs
 
@@ -191,8 +197,15 @@ def java_binary_impl(ctx: AnalysisContext) -> list[Provider]:
 
     sub_targets = get_classpath_subtarget(ctx.actions, packaging_info)
 
+    class_to_src_map, _ = get_class_to_source_map_info(
+        ctx,
+        outputs = None,
+        deps = ctx.attrs.deps,
+    )
+
     return [
         DefaultInfo(default_output = main_artifact, other_outputs = other_outputs, sub_targets = sub_targets),
         RunInfo(args = run_cmd),
-        create_template_info(packaging_info, first_order_libs),
+        create_template_info(ctx, packaging_info, first_order_libs),
+        class_to_src_map,
     ]

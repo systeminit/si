@@ -97,6 +97,7 @@ def cxx_toolchain_impl(ctx):
         requires_objects = value_or(ctx.attrs.requires_objects, False),
         supports_distributed_thinlto = ctx.attrs.supports_distributed_thinlto,
         shared_dep_runtime_ld_flags = ctx.attrs.shared_dep_runtime_ld_flags,
+        shared_library_name_default_prefix = _get_shared_library_name_default_prefix(ctx),
         shared_library_name_format = _get_shared_library_name_format(ctx),
         shared_library_versioned_name_format = _get_shared_library_versioned_name_format(ctx),
         static_dep_runtime_ld_flags = ctx.attrs.static_dep_runtime_ld_flags,
@@ -211,13 +212,13 @@ def cxx_toolchain_extra_attributes(is_toolchain_rule):
                 # to fail, so I need a DEFAULT here when some target without cpu constraint tries to configure against the
                 # windows exec platform.
                 "DEFAULT": None,
-                "ovr_config//cpu:x86_32": "fbsource//arvr/third-party/toolchains/visual_studio:14.28.29910-cl_32_and_tools",
-                "ovr_config//cpu:x86_64": "fbsource//arvr/third-party/toolchains/visual_studio:14.28.29910-cl_64_and_tools",
+                "ovr_config//cpu:x86_32": "fbsource//arvr/third-party/toolchains/visual_studio:cl_x86_and_tools",
+                "ovr_config//cpu:x86_64": "fbsource//arvr/third-party/toolchains/visual_studio:cl_x64_and_tools",
             }),
         }) if is_full_meta_repo() else None)),
         "_mk_comp_db": attrs.default_only(dep_type(providers = [RunInfo], default = "prelude//cxx/tools:make_comp_db")),
         # FIXME: prelude// should be standalone (not refer to fbsource//)
-        "_mk_hmap": attrs.default_only(dep_type(providers = [RunInfo], default = "fbsource//xplat/buck2/tools/cxx:hmap_wrapper")),
+        "_mk_hmap": attrs.default_only(dep_type(providers = [RunInfo], default = "prelude//cxx/tools:hmap_wrapper")),
         "_msvc_hermetic_exec": attrs.default_only(dep_type(providers = [RunInfo], default = "prelude//windows/tools:msvc_hermetic_exec")),
     }
 
@@ -250,7 +251,7 @@ def _get_default_use_dep_files(platform_name: str) -> bool:
             return True
     return False
 
-def _get_header_mode(ctx: AnalysisContext) -> HeaderMode.type:
+def _get_header_mode(ctx: AnalysisContext) -> HeaderMode:
     if ctx.attrs.use_header_map:
         if ctx.attrs.private_headers_symlinks_enabled or ctx.attrs.public_headers_symlinks_enabled:
             return HeaderMode("symlink_tree_with_header_map")
@@ -259,23 +260,25 @@ def _get_header_mode(ctx: AnalysisContext) -> HeaderMode.type:
     else:
         return HeaderMode("symlink_tree_only")
 
+def _get_shared_library_name_default_prefix(ctx: AnalysisContext) -> str:
+    extension = ctx.attrs.shared_library_extension
+    return "" if extension == "dll" else "lib"
+
 def _get_shared_library_name_format(ctx: AnalysisContext) -> str:
     linker_type = ctx.attrs.linker_type
     extension = ctx.attrs.shared_library_extension
     if extension == "":
         extension = LINKERS[linker_type].default_shared_library_extension
-    prefix = "" if extension == "dll" else "lib"
-    return prefix + "{}." + extension
+    return "{}." + extension
 
 def _get_shared_library_versioned_name_format(ctx: AnalysisContext) -> str:
     linker_type = ctx.attrs.linker_type
     extension_format = ctx.attrs.shared_library_versioned_extension_format.replace("%s", "{}")
     if extension_format == "":
         extension_format = LINKERS[linker_type].default_shared_library_versioned_extension_format
-    prefix = "" if extension_format == "dll" else "lib"
-    return prefix + "{}." + extension_format
+    return "{}." + extension_format
 
-def _get_maybe_wrapped_msvc(compiler: RunInfo.type, compiler_type: str, msvc_hermetic_exec: RunInfo.type) -> RunInfo.type:
+def _get_maybe_wrapped_msvc(compiler: RunInfo, compiler_type: str, msvc_hermetic_exec: RunInfo) -> RunInfo:
     if compiler_type == "windows":
         return RunInfo(args = cmd_args(msvc_hermetic_exec, compiler))
     return compiler

@@ -22,6 +22,9 @@ import platform
 import signal
 import subprocess
 import sys
+import time
+
+os.environ["PAR_LAUNCH_TIMESTAMP"] = str(time.time())
 
 dirpath = os.path.dirname(os.path.realpath(__file__))
 
@@ -45,18 +48,7 @@ if native_libs_preload is not None:
         for l in native_libs_preload.split(":")
     )
 
-# Allow users to decorate the main module. In normal Python invocations this
-# can be done by prefixing the arguments with `-m decoratingmodule`. It's not
-# that easy for par files. The startup script below sets up `sys.path` from
-# within the Python interpreter. Enable decorating the main module after
-# `sys.path` has been setup by setting the PAR_MAIN_OVERRIDE environment
-# variable.
-decorate_main_module = os.environ.pop("PAR_MAIN_OVERRIDE", None)
-if decorate_main_module:
-    # Pass the original main module as environment variable for the process.
-    # Allowing the decorating module to pick it up.
-    os.environ["PAR_MAIN_ORIGINAL"] = main_module
-    main_module = decorate_main_module
+<ENV>
 
 # Note: this full block of code will be included as the argument to Python,
 # and will be the first thing that shows up in the process arguments as displayed
@@ -76,15 +68,15 @@ def __run():
     # from a directory with a similarly named file, even if their code is properly
     # namespaced. e.g. if one has foo/bar/contextlib.py and while in foo/bar runs
     # `buck run foo/bar:bin`, runpy will fail as it tries to import
-    # foo/bar/contextlib.py. You're just out of luck if you have sys.py or os.py
+    # foo/bar/contextlib.py. You're just out of luck if you have sys.py
 
     # Set `argv[0]` to the executing script.
     assert sys.argv[0] == '-c'
     sys.argv[0] = {sys.argv[0]!r}
 
-    # Replace the working directory with location of the modules directory.
+    # Remove the working directory.
     assert sys.path[0] == ''
-    sys.path[0] = {os.path.join(dirpath, modules_dir)!r}
+    del sys.path[0]
 
     import os
     import runpy
@@ -100,19 +92,9 @@ def __run():
             setenv(k, v)
 
     restoreenv({env_vals_to_restore!r})
-    if {main_module!r}:
-        runpy._run_module_as_main({main_module!r}, False)
-        return
 
-    assert {main_function!r}
-    mod_name, fn_name = {main_function!r}.rsplit(".", 1)
-    from importlib import import_module
-    mod = import_module(mod_name)
-    main = getattr(mod, fn_name)
-    # This is normally done by `runpy._run_module_as_main`, and is
-    # important to make multiprocessing work
-    sys.modules["__main__"] = mod
-    main()
+    from <MAIN_RUNNER_MODULE> import <MAIN_RUNNER_FUNCTION> as run_as_main
+    run_as_main({main_module!r}, {main_function!r})
 
 
 __run()
@@ -145,6 +127,16 @@ if (
     and (sys.version_info[0], sys.version_info[1]) >= (3, 7)
 ):
     args[1:1] = ["-X", "importtime"]
+
+# Save the variables that will be restored back into the environment by
+# fbcode/buck2/prelude/python/tools/make_par/sitecustomize.py
+for env in ("PYTHONPATH", "LD_LIBRARY_PATH", "LD_PRELOAD",
+            "DYLD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES"):
+    if env in os.environ:
+        os.environ["FB_SAVED_" + env] = os.environ[env]
+
+path = os.path.join(dirpath, modules_dir)
+os.environ["PYTHONPATH"] = path
 
 if platform.system() == "Windows":
     # exec on Windows is not true exec - there is only 'spawn' ('CreateProcess').

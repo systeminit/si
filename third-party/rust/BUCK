@@ -11,23 +11,23 @@ load(
 )
 
 git_fetch(
-    name = "fnichol/hyperlocal.git",
+    name = "docker-api-rs-d97f2a5a9d828d40.git",
+    repo = "https://github.com/vv9k/docker-api-rs.git",
+    rev = "b1f1891d1d17cb522cc20212452c8c039c5e0810",
+    visibility = [],
+)
+
+git_fetch(
+    name = "hyperlocal-49be1e49c1f262a7.git",
     repo = "https://github.com/fnichol/hyperlocal.git",
     rev = "6dfd2ad721d7031876ce494f62aae98bc5de0fae",
     visibility = [],
 )
 
 git_fetch(
-    name = "systeminit/self-replace.git",
+    name = "self-replace-d5b121286b3f77e3.git",
     repo = "https://github.com/systeminit/self-replace.git",
     rev = "702afa3e3ccc1d683bd7141a56f2dd4459f979f0",
-    visibility = [],
-)
-
-git_fetch(
-    name = "vv9k/docker-api-rs.git",
-    repo = "https://github.com/vv9k/docker-api-rs.git",
-    rev = "b1f1891d1d17cb522cc20212452c8c039c5e0810",
     visibility = [],
 )
 
@@ -3669,9 +3669,9 @@ alias(
 
 cargo.rust_library(
     name = "docker-api-0.14.0",
-    srcs = [":vv9k/docker-api-rs.git"],
+    srcs = [":docker-api-rs-d97f2a5a9d828d40.git"],
     crate = "docker_api",
-    crate_root = "vv9k/docker-api-rs/src/lib.rs",
+    crate_root = "docker-api-rs-d97f2a5a9d828d40/src/lib.rs",
     edition = "2021",
     features = [
         "chrono",
@@ -3701,9 +3701,9 @@ cargo.rust_library(
 
 cargo.rust_library(
     name = "docker-api-stubs-0.6.0",
-    srcs = [":vv9k/docker-api-rs.git"],
+    srcs = [":docker-api-rs-d97f2a5a9d828d40.git"],
     crate = "docker_api_stubs",
-    crate_root = "vv9k/docker-api-rs/docker-api-stubs/lib/src/lib.rs",
+    crate_root = "docker-api-rs-d97f2a5a9d828d40/docker-api-stubs/lib/src/lib.rs",
     edition = "2021",
     visibility = [],
     deps = [
@@ -5446,9 +5446,9 @@ alias(
 
 cargo.rust_library(
     name = "hyperlocal-0.8.0",
-    srcs = [":fnichol/hyperlocal.git"],
+    srcs = [":hyperlocal-49be1e49c1f262a7.git"],
     crate = "hyperlocal",
-    crate_root = "fnichol/hyperlocal/src/lib.rs",
+    crate_root = "hyperlocal-49be1e49c1f262a7/src/lib.rs",
     edition = "2018",
     features = [
         "client",
@@ -11989,9 +11989,9 @@ alias(
 
 cargo.rust_library(
     name = "self-replace-1.3.5",
-    srcs = [":systeminit/self-replace.git"],
+    srcs = [":self-replace-d5b121286b3f77e3.git"],
     crate = "self_replace",
-    crate_root = "systeminit/self-replace/src/lib.rs",
+    crate_root = "self-replace-d5b121286b3f77e3/src/lib.rs",
     edition = "2018",
     platform = {
         "windows-gnu": dict(
@@ -15858,6 +15858,7 @@ cargo.rust_library(
     platform = {
         "windows-gnu": dict(
             rustc_flags = ["@$(location :winapi-0.3.9-build-script-run[rustc_flags])"],
+            deps = [":winapi-x86_64-pc-windows-gnu-0.4.0"],
         ),
         "windows-msvc": dict(
             rustc_flags = ["@$(location :winapi-0.3.9-build-script-run[rustc_flags])"],
@@ -15970,6 +15971,53 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "winapi-x86_64-pc-windows-gnu-0.4.0.crate",
+    sha256 = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f",
+    strip_prefix = "winapi-x86_64-pc-windows-gnu-0.4.0",
+    sub_targets = [
+        "lib/libwinapi_ole32.a",
+        "lib/libwinapi_shell32.a",
+    ],
+    urls = ["https://crates.io/api/v1/crates/winapi-x86_64-pc-windows-gnu/0.4.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "winapi-x86_64-pc-windows-gnu-0.4.0",
+    srcs = [":winapi-x86_64-pc-windows-gnu-0.4.0.crate"],
+    crate = "winapi_x86_64_pc_windows_gnu",
+    crate_root = "winapi-x86_64-pc-windows-gnu-0.4.0.crate/src/lib.rs",
+    edition = "2015",
+    platform = {
+        "windows-gnu": dict(
+            deps = [
+                ":winapi-x86_64-pc-windows-gnu-0.4.0-extra_libraries-libwinapi_ole32.a",
+                ":winapi-x86_64-pc-windows-gnu-0.4.0-extra_libraries-libwinapi_shell32.a",
+            ],
+        ),
+        "windows-msvc": dict(
+            deps = [
+                ":winapi-x86_64-pc-windows-gnu-0.4.0-extra_libraries-libwinapi_ole32.a",
+                ":winapi-x86_64-pc-windows-gnu-0.4.0-extra_libraries-libwinapi_shell32.a",
+            ],
+        ),
+    },
+    visibility = [],
+)
+
+third_party_rust_prebuilt_cxx_library(
+    name = "winapi-x86_64-pc-windows-gnu-0.4.0-extra_libraries-libwinapi_ole32.a",
+    static_lib = ":winapi-x86_64-pc-windows-gnu-0.4.0.crate[lib/libwinapi_ole32.a]",
+    visibility = [],
+)
+
+third_party_rust_prebuilt_cxx_library(
+    name = "winapi-x86_64-pc-windows-gnu-0.4.0-extra_libraries-libwinapi_shell32.a",
+    static_lib = ":winapi-x86_64-pc-windows-gnu-0.4.0.crate[lib/libwinapi_shell32.a]",
+    visibility = [],
+)
+
+http_archive(
     name = "windows-0.48.0.crate",
     sha256 = "e686886bc078bc1b0b600cac0147aadb815089b6e4da64016cbd754b6342700f",
     strip_prefix = "windows-0.48.0",
@@ -16017,6 +16065,14 @@ cargo.rust_library(
         "Win32_System_Memory",
         "default",
     ],
+    platform = {
+        "windows-gnu": dict(
+            deps = [":windows_x86_64_gnu-0.42.2"],
+        ),
+        "windows-msvc": dict(
+            deps = [":windows_x86_64_msvc-0.42.2"],
+        ),
+    },
     visibility = [],
 )
 
@@ -16130,6 +16186,14 @@ cargo.rust_library(
     crate = "windows_targets",
     crate_root = "windows-targets-0.42.2.crate/src/lib.rs",
     edition = "2018",
+    platform = {
+        "windows-gnu": dict(
+            deps = [":windows_x86_64_gnu-0.42.2"],
+        ),
+        "windows-msvc": dict(
+            deps = [":windows_x86_64_msvc-0.42.2"],
+        ),
+    },
     visibility = [],
 )
 
@@ -16148,11 +16212,8 @@ cargo.rust_library(
     crate_root = "windows-targets-0.48.0.crate/src/lib.rs",
     edition = "2018",
     platform = {
-        "linux-arm64": dict(
-            deps = [":windows_aarch64_gnullvm-0.48.0"],
-        ),
         "linux-x86_64": dict(
-            deps = [":windows_x86_64_gnullvm-0.48.0"],
+            deps = [":windows_x86_64_gnu-0.48.0"],
         ),
         "windows-gnu": dict(
             deps = [":windows_x86_64_gnu-0.48.0"],
@@ -16165,19 +16226,34 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "windows_aarch64_gnullvm-0.48.0.crate",
-    sha256 = "91ae572e1b79dba883e0d315474df7305d12f569b400fcf90581b06062f7e1bc",
-    strip_prefix = "windows_aarch64_gnullvm-0.48.0",
-    urls = ["https://crates.io/api/v1/crates/windows_aarch64_gnullvm/0.48.0/download"],
+    name = "windows_x86_64_gnu-0.42.2.crate",
+    sha256 = "8de912b8b8feb55c064867cf047dda097f92d51efad5b491dfb98f6bbb70cb36",
+    strip_prefix = "windows_x86_64_gnu-0.42.2",
+    sub_targets = ["lib/libwindows.a"],
+    urls = ["https://crates.io/api/v1/crates/windows_x86_64_gnu/0.42.2/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "windows_aarch64_gnullvm-0.48.0",
-    srcs = [":windows_aarch64_gnullvm-0.48.0.crate"],
-    crate = "windows_aarch64_gnullvm",
-    crate_root = "windows_aarch64_gnullvm-0.48.0.crate/src/lib.rs",
+    name = "windows_x86_64_gnu-0.42.2",
+    srcs = [":windows_x86_64_gnu-0.42.2.crate"],
+    crate = "windows_x86_64_gnu",
+    crate_root = "windows_x86_64_gnu-0.42.2.crate/src/lib.rs",
     edition = "2018",
+    platform = {
+        "windows-gnu": dict(
+            deps = [":windows_x86_64_gnu-0.42.2-libwindows.a-libwindows.a"],
+        ),
+        "windows-msvc": dict(
+            deps = [":windows_x86_64_gnu-0.42.2-libwindows.a-libwindows.a"],
+        ),
+    },
+    visibility = [],
+)
+
+third_party_rust_prebuilt_cxx_library(
+    name = "windows_x86_64_gnu-0.42.2-libwindows.a-libwindows.a",
+    static_lib = ":windows_x86_64_gnu-0.42.2.crate[lib/libwindows.a]",
     visibility = [],
 )
 
@@ -16199,19 +16275,34 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "windows_x86_64_gnullvm-0.48.0.crate",
-    sha256 = "7896dbc1f41e08872e9d5e8f8baa8fdd2677f29468c4e156210174edc7f7b953",
-    strip_prefix = "windows_x86_64_gnullvm-0.48.0",
-    urls = ["https://crates.io/api/v1/crates/windows_x86_64_gnullvm/0.48.0/download"],
+    name = "windows_x86_64_msvc-0.42.2.crate",
+    sha256 = "9aec5da331524158c6d1a4ac0ab1541149c0b9505fde06423b02f5ef0106b9f0",
+    strip_prefix = "windows_x86_64_msvc-0.42.2",
+    sub_targets = ["lib/windows.lib"],
+    urls = ["https://crates.io/api/v1/crates/windows_x86_64_msvc/0.42.2/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "windows_x86_64_gnullvm-0.48.0",
-    srcs = [":windows_x86_64_gnullvm-0.48.0.crate"],
-    crate = "windows_x86_64_gnullvm",
-    crate_root = "windows_x86_64_gnullvm-0.48.0.crate/src/lib.rs",
+    name = "windows_x86_64_msvc-0.42.2",
+    srcs = [":windows_x86_64_msvc-0.42.2.crate"],
+    crate = "windows_x86_64_msvc",
+    crate_root = "windows_x86_64_msvc-0.42.2.crate/src/lib.rs",
     edition = "2018",
+    platform = {
+        "windows-gnu": dict(
+            deps = [":windows_x86_64_msvc-0.42.2-windows.lib-windows.lib"],
+        ),
+        "windows-msvc": dict(
+            deps = [":windows_x86_64_msvc-0.42.2-windows.lib-windows.lib"],
+        ),
+    },
+    visibility = [],
+)
+
+third_party_rust_prebuilt_cxx_library(
+    name = "windows_x86_64_msvc-0.42.2-windows.lib-windows.lib",
+    static_lib = ":windows_x86_64_msvc-0.42.2.crate[lib/windows.lib]",
     visibility = [],
 )
 

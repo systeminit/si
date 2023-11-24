@@ -64,8 +64,8 @@ load(
     "DEFAULT_STATIC_LINK_STYLE",
     "attr_simple_crate_for_filenames",
     "enable_link_groups",
-    "inherited_non_rust_link_group_info",
-    "inherited_non_rust_shared_libs",
+    "inherited_rust_cxx_link_group_info",
+    "inherited_shared_libs",
 )
 load(":resources.bzl", "rust_attr_resources")
 
@@ -79,10 +79,10 @@ _CompileOutputs = record(
 
 def _rust_binary_common(
         ctx: AnalysisContext,
-        compile_ctx: CompileContext.type,
+        compile_ctx: CompileContext,
         default_roots: list[str],
         extra_flags: list[str],
-        allow_cache_upload: bool) -> (list[[DefaultInfo.type, RunInfo.type]], cmd_args):
+        allow_cache_upload: bool) -> (list[Provider], cmd_args):
     toolchain_info = compile_ctx.toolchain_info
 
     simple_crate = attr_simple_crate_for_filenames(ctx)
@@ -105,6 +105,8 @@ def _rust_binary_common(
     ).values())
 
     for link_style in LinkStyle:
+        # Unlike for libraries, there's no possibility of different link styles
+        # resulting in the same build params, so no need to deduplicate.
         params = build_params(
             rule = RuleType("binary"),
             proc_macro = False,
@@ -129,9 +131,9 @@ def _rust_binary_common(
         filtered_targets = []
 
         if enable_link_groups(ctx, link_style, specified_link_style, is_binary = True):
-            rust_cxx_link_group_info = inherited_non_rust_link_group_info(
+            rust_cxx_link_group_info = inherited_rust_cxx_link_group_info(
                 ctx,
-                include_doc_deps = False,
+                compile_ctx.dep_ctx,
                 link_style = link_style,
             )
             link_group_mappings = rust_cxx_link_group_info.link_group_info.mappings
@@ -146,7 +148,7 @@ def _rust_binary_common(
         if link_style == LinkStyle("shared") or rust_cxx_link_group_info != None:
             shlib_info = merge_shared_libraries(
                 ctx.actions,
-                deps = inherited_non_rust_shared_libs(ctx),
+                deps = inherited_shared_libs(ctx, compile_ctx.dep_ctx),
             )
 
             link_group_ctx = LinkGroupContext(
@@ -168,7 +170,7 @@ def _rust_binary_common(
 
         # link groups shared libraries link args are directly added to the link command,
         # we don't have to add them here
-        extra_link_args, runtime_files, shared_libs_symlink_tree = executable_shared_lib_arguments(
+        executable_args = executable_shared_lib_arguments(
             ctx.actions,
             compile_ctx.cxx_toolchain_info,
             output,
@@ -185,7 +187,7 @@ def _rust_binary_common(
             params = params,
             dep_link_style = link_style,
             default_roots = default_roots,
-            extra_link_args = extra_link_args,
+            extra_link_args = executable_args.extra_link_args,
             predeclared_outputs = {Emit("link"): output},
             extra_flags = extra_flags,
             is_binary = True,
@@ -193,12 +195,13 @@ def _rust_binary_common(
             rust_cxx_link_group_info = rust_cxx_link_group_info,
         )
 
-        args = cmd_args(link.output).hidden(runtime_files)
+        args = cmd_args(link.output).hidden(executable_args.runtime_files)
         extra_targets = [("check", meta.output)] + meta.diag.items()
 
         # If we have some resources, write it to the resources JSON file and add
         # it and all resources to "runtime_files" so that we make to materialize
         # them with the final binary.
+        runtime_files = list(executable_args.runtime_files)
         if resources:
             resources_hidden = [create_resource_db(
                 ctx = ctx,
@@ -220,7 +223,7 @@ def _rust_binary_common(
                 {
                     "libraries": ["{}:{}[shared-libraries][{}]".format(ctx.label.path, ctx.label.name, name) for name in shared_libs.keys()],
                     "librariesdwp": ["{}:{}[shared-libraries][{}][dwp]".format(ctx.label.path, ctx.label.name, name) for name, lib in shared_libs.items() if lib.dwp],
-                    "rpathtree": ["{}:{}[rpath-tree]".format(ctx.label.path, ctx.label.name)] if shared_libs_symlink_tree else [],
+                    "rpathtree": ["{}:{}[rpath-tree]".format(ctx.label.path, ctx.label.name)] if executable_args.shared_libs_symlink_tree else [],
                 },
             ),
             sub_targets = {
@@ -232,9 +235,9 @@ def _rust_binary_common(
             },
         )]
 
-        if shared_libs_symlink_tree:
+        if isinstance(executable_args.shared_libs_symlink_tree, Artifact):
             sub_targets_for_link_style["rpath-tree"] = [DefaultInfo(
-                default_output = shared_libs_symlink_tree,
+                default_output = executable_args.shared_libs_symlink_tree,
                 other_outputs = [
                     lib.output
                     for lib in shared_libs.values()
@@ -313,7 +316,7 @@ def _rust_binary_common(
         ]
 
     if pdb:
-        sub_targets[PDB_SUB_TARGET] = get_pdb_providers(pdb)
+        sub_targets[PDB_SUB_TARGET] = get_pdb_providers(pdb = pdb, binary = compiled_outputs.link)
 
     dupmbin_toolchain = compile_ctx.cxx_toolchain_info.dumpbin_toolchain_path
     if dupmbin_toolchain:
@@ -328,7 +331,7 @@ def _rust_binary_common(
     ]
     return (providers, compiled_outputs.args)
 
-def rust_binary_impl(ctx: AnalysisContext) -> list[[DefaultInfo.type, RunInfo.type]]:
+def rust_binary_impl(ctx: AnalysisContext) -> list[Provider]:
     compile_ctx = compile_context(ctx)
 
     providers, args = _rust_binary_common(
@@ -341,7 +344,7 @@ def rust_binary_impl(ctx: AnalysisContext) -> list[[DefaultInfo.type, RunInfo.ty
 
     return providers + [RunInfo(args = args)]
 
-def rust_test_impl(ctx: AnalysisContext) -> list[[DefaultInfo.type, RunInfo.type, ExternalRunnerTestInfo.type]]:
+def rust_test_impl(ctx: AnalysisContext) -> list[Provider]:
     compile_ctx = compile_context(ctx)
     toolchain_info = compile_ctx.toolchain_info
 
@@ -358,7 +361,7 @@ def rust_test_impl(ctx: AnalysisContext) -> list[[DefaultInfo.type, RunInfo.type
     )
 
     # Setup a RE executor based on the `remote_execution` param.
-    re_executor = get_re_executor_from_props(ctx.attrs.remote_execution)
+    re_executor = get_re_executor_from_props(ctx)
 
     return inject_test_run_info(
         ctx,

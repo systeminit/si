@@ -13,6 +13,7 @@ load("@prelude//android:android_resource.bzl", "get_text_symbols")
 load("@prelude//android:android_toolchain.bzl", "AndroidToolchainInfo")
 load("@prelude//android:configuration.bzl", "get_deps_by_platform")
 load("@prelude//android:cpu_filters.bzl", "CPU_FILTER_FOR_DEFAULT_PLATFORM", "CPU_FILTER_FOR_PRIMARY_PLATFORM")
+load("@prelude//android:util.bzl", "create_enhancement_context")
 load("@prelude//java:java_providers.bzl", "get_all_java_packaging_deps", "get_all_java_packaging_deps_from_packaging_infos")
 load("@prelude//java:java_toolchain.bzl", "JavaToolchainInfo")
 
@@ -62,19 +63,20 @@ def android_aar_impl(ctx: AnalysisContext) -> list[Provider]:
     android_toolchain = ctx.attrs._android_toolchain[AndroidToolchainInfo]
     if resource_infos:
         res_dirs = [resource_info.res for resource_info in resource_infos if resource_info.res]
-        merged_resource_sources_dir = ctx.actions.declare_output("merged_resource_sources_dir/res", dir = True)
-        merge_resource_sources_cmd = cmd_args([
-            android_toolchain.merge_android_resource_sources[RunInfo],
-            "--resource-paths",
-            ctx.actions.write("resource_paths.txt", res_dirs),
-            "--output",
-            merged_resource_sources_dir.as_output(),
-        ]).hidden(res_dirs)
+        if res_dirs:
+            merged_resource_sources_dir = ctx.actions.declare_output("merged_resource_sources_dir/res", dir = True)
+            merge_resource_sources_cmd = cmd_args([
+                android_toolchain.merge_android_resource_sources[RunInfo],
+                "--resource-paths",
+                ctx.actions.write("resource_paths.txt", res_dirs),
+                "--output",
+                merged_resource_sources_dir.as_output(),
+            ]).hidden(res_dirs)
 
-        ctx.actions.run(merge_resource_sources_cmd, category = "merge_android_resource_sources")
+            ctx.actions.run(merge_resource_sources_cmd, category = "merge_android_resource_sources")
 
-        r_dot_txt = get_text_symbols(ctx, merged_resource_sources_dir, [dep for dep in deps if AndroidResourceInfo in dep or ExportedAndroidResourceInfo in dep])
-        entries.extend([merged_resource_sources_dir, r_dot_txt])
+            r_dot_txt = get_text_symbols(ctx, merged_resource_sources_dir, [dep for dep in deps if AndroidResourceInfo in dep or ExportedAndroidResourceInfo in dep])
+            entries.extend([merged_resource_sources_dir, r_dot_txt])
 
         assets_dirs = [resource_infos.assets for resource_infos in resource_infos if resource_infos.assets]
         entries.extend(assets_dirs)
@@ -83,7 +85,8 @@ def android_aar_impl(ctx: AnalysisContext) -> list[Provider]:
     if cxx_resources:
         entries.append(cxx_resources)
 
-    android_binary_native_library_info = get_android_binary_native_library_info(ctx, android_packageable_info, deps_by_platform)
+    enhancement_ctx = create_enhancement_context(ctx)
+    android_binary_native_library_info = get_android_binary_native_library_info(enhancement_ctx, android_packageable_info, deps_by_platform)
     native_libs_file = ctx.actions.write("native_libs_entries.txt", android_binary_native_library_info.native_libs_for_primary_apk)
     native_libs_assets_file = ctx.actions.write("native_libs_assets_entries.txt", android_binary_native_library_info.root_module_native_lib_assets)
 
@@ -106,4 +109,4 @@ def android_aar_impl(ctx: AnalysisContext) -> list[Provider]:
 
     ctx.actions.run(create_aar_cmd, category = "create_aar")
 
-    return [DefaultInfo(default_outputs = [aar])]
+    return [DefaultInfo(default_outputs = [aar], sub_targets = enhancement_ctx.get_sub_targets())]

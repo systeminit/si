@@ -12,6 +12,7 @@
 
 load(":common.bzl", "AbiGenerationMode", "LogLevel", "SourceAbiVerificationMode", "TestType", "UnusedDependenciesAction", "buck", "prelude_rule")
 load(":jvm_common.bzl", "jvm_common")
+load(":re_test_common.bzl", "re_test_common")
 
 Style = ["obf", "pretty", "detailed"]
 
@@ -26,16 +27,16 @@ gwt_binary = prelude_rule(
             "contacts": attrs.list(attrs.string(), default = []),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "deps": attrs.list(attrs.dep(), default = []),
-            "draft_compile": attrs.option(attrs.bool(), default = None),
+            "draft_compile": attrs.bool(default = False),
             "experimental_args": attrs.list(attrs.string(), default = []),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
-            "local_workers": attrs.option(attrs.int(), default = None),
+            "local_workers": attrs.int(default = 2),
             "module_deps": attrs.list(attrs.dep(), default = []),
             "modules": attrs.list(attrs.string(), default = []),
-            "optimize": attrs.option(attrs.int(), default = None),
-            "strict": attrs.option(attrs.bool(), default = None),
-            "style": attrs.option(attrs.enum(Style), default = None),
+            "optimize": attrs.int(default = 9),
+            "strict": attrs.bool(default = False),
+            "style": attrs.enum(Style, default = "obf"),
             "vm_args": attrs.list(attrs.string(), default = []),
         }
     ),
@@ -364,6 +365,7 @@ java_test = prelude_rule(
         } |
         buck.run_test_separately_arg(run_test_separately_type = attrs.bool(default = False)) |
         buck.fork_mode() |
+        re_test_common.test_args() |
         buck.test_rule_timeout_ms() |
         {
             "std_out_log_level": attrs.option(attrs.one_of(attrs.enum(LogLevel), attrs.int()), default = None, doc = """

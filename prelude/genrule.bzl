@@ -10,10 +10,13 @@
 load("@prelude//:cache_mode.bzl", "CacheModeInfo")
 load("@prelude//:genrule_local_labels.bzl", "genrule_labels_require_local")
 load("@prelude//:genrule_toolchain.bzl", "GenruleToolchainInfo")
+load("@prelude//:genrule_types.bzl", "GENRULE_MARKER_SUBTARGET_NAME", "GenruleMarkerInfo")
 load("@prelude//:is_full_meta_repo.bzl", "is_full_meta_repo")
 load("@prelude//android:build_only_native_code.bzl", "is_build_only_native_code")
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
-load("@prelude//utils:utils.bzl", "flatten", "value_or")
+load("@prelude//utils:utils.bzl", "expect", "flatten", "value_or")
+
+GENRULE_OUT_DIR = "out"
 
 # Currently, some rules require running from the project root, so provide an
 # opt-in list for those here.  Longer-term, these should be ported to actual
@@ -36,6 +39,7 @@ _BUILD_ROOT_LABELS = {label: True for label in [
     "pxl",  # T151533831
     "app_modules_genrule",  # produces JSON containing file paths that are read from the root dir.
     "android_langpack_strings",  # produces JSON containing file paths that are read from the root dir.
+    "windows_long_path_issue",  # Windows: relative path length exceeds PATH_MAX, program cannot access file
 ]}
 
 # In Buck1 the SRCS environment variable is only set if the substring SRCS is on the command line.
@@ -43,6 +47,14 @@ _BUILD_ROOT_LABELS = {label: True for label in [
 # But in some cases, $SRCS is so large it breaks the process limit, so have a label to opt in to
 # that behavior.
 _NO_SRCS_ENVIRONMENT_LABEL = "no_srcs_environment"
+
+_WINDOWS_ENV_SUBSTITUTIONS = [
+    # Replace $OUT and ${OUT}
+    (regex("\\$(OUT\\b|\\{OUT\\})"), "%OUT%"),
+    (regex("\\$(SRCDIR\\b|\\{SRCDIR\\})"), "%SRCDIR%"),
+    (regex("\\$(SRCS\\b|\\{SRCS\\})"), "%SRCS%"),
+    (regex("\\$(TMP\\b|\\{TMP\\})"), "%TMP%"),
+]
 
 def _requires_build_root(ctx: AnalysisContext) -> bool:
     for label in ctx.attrs.labels:
@@ -63,8 +75,9 @@ def _requires_no_srcs_environment(ctx: AnalysisContext) -> bool:
 _USE_CACHE_MODE = is_full_meta_repo()
 
 # Extra attributes required by every genrule based on genrule_impl
-def genrule_attributes() -> dict[str, "attribute"]:
+def genrule_attributes() -> dict[str, Attr]:
     attributes = {
+        "always_print_stderr": attrs.bool(default = False),
         "metadata_env_var": attrs.option(attrs.string(), default = None),
         "metadata_path": attrs.option(attrs.string(), default = None),
         "no_outputs_cleanup": attrs.bool(default = False),
@@ -72,13 +85,12 @@ def genrule_attributes() -> dict[str, "attribute"]:
         "_genrule_toolchain": attrs.default_only(attrs.toolchain_dep(default = "toolchains//:genrule", providers = [GenruleToolchainInfo])),
     }
 
-    if _USE_CACHE_MODE:
-        # FIXME: prelude// should be standalone (not refer to fbsource//)
-        attributes["_cache_mode"] = attrs.dep(default = "fbsource//xplat/buck2/platform/cache_mode:cache_mode")
+    if _USE_CACHE_MODE and not read_root_config("fb", "cache_mode") == None:
+        attributes["_cache_mode"] = attrs.dep(default = read_root_config("fb", "cache_mode"))
 
     return attributes
 
-def _get_cache_mode(ctx: AnalysisContext) -> CacheModeInfo.type:
+def _get_cache_mode(ctx: AnalysisContext) -> CacheModeInfo:
     if _USE_CACHE_MODE:
         return ctx.attrs._cache_mode[CacheModeInfo]
     else:
@@ -96,11 +108,11 @@ def genrule_impl(ctx: AnalysisContext) -> list[Provider]:
 
 def _declare_output(ctx: AnalysisContext, path: str) -> Artifact:
     if path == ".":
-        return ctx.actions.declare_output("out", dir = True)
+        return ctx.actions.declare_output(GENRULE_OUT_DIR, dir = True)
     elif path.endswith("/"):
-        return ctx.actions.declare_output("out", path[:-1], dir = True)
+        return ctx.actions.declare_output(GENRULE_OUT_DIR, path[:-1], dir = True)
     else:
-        return ctx.actions.declare_output("out", path)
+        return ctx.actions.declare_output(GENRULE_OUT_DIR, path)
 
 def _project_output(out: Artifact, path: str) -> Artifact:
     if path == ".":
@@ -132,7 +144,7 @@ def process_genrule(
         named_outputs = {}
         default_outputs = [out_artifact]
     elif outs_attr != None:
-        out_artifact = ctx.actions.declare_output("out", dir = True)
+        out_artifact = ctx.actions.declare_output(GENRULE_OUT_DIR, dir = True)
 
         named_outputs = {
             name: [_project_output(out_artifact, path) for path in outputs]
@@ -165,11 +177,11 @@ def process_genrule(
 
     # For backwards compatibility with Buck1.
     if is_windows:
-        # Replace $OUT and ${OUT}
-        cmd.replace_regex("\\$(OUT\\b|\\{OUT\\})", "%OUT%")
-        cmd.replace_regex("\\$(SRCDIR\\b|\\{SRCDIR\\})", "%SRCDIR%")
-        cmd.replace_regex("\\$(SRCS\\b|\\{SRCS\\})", "%SRCS%")
-        cmd.replace_regex("\\$(TMP\\b|\\{TMP\\})", "%TMP%")
+        for re, sub in _WINDOWS_ENV_SUBSTITUTIONS:
+            cmd.replace_regex(re, sub)
+
+        for extra_env_var in extra_env_vars:
+            cmd.replace_regex(regex("\\$(%s\\b|\\{%s\\})" % (extra_env_var, extra_env_var)), "%%%s%%" % extra_env_var)
 
     if _ignore_artifacts(ctx):
         cmd = cmd.ignore_artifacts()
@@ -190,8 +202,13 @@ def process_genrule(
         symlinks = ctx.attrs.srcs
     srcs_artifact = ctx.actions.symlinked_dir("srcs" if not identifier else "{}-srcs".format(identifier), symlinks)
 
+    if ctx.attrs.environment_expansion_separator:
+        delimiter = ctx.attrs.environment_expansion_separator
+    else:
+        delimiter = " "
+
     # Setup environment variables.
-    srcs = cmd_args()
+    srcs = cmd_args(delimiter = delimiter)
     for symlink in symlinks:
         srcs.add(cmd_args(srcs_artifact, format = path_sep.join([".", "{}", symlink.replace("/", path_sep)])))
     env_vars = {
@@ -267,7 +284,7 @@ def process_genrule(
         if is_windows:
             rewrite_scratch_path = cmd_args(
                 cmd_args(ctx.label.project_root).relative_to(srcs_artifact),
-                format = 'set "BUCK_SCRATCH_PATH={}/$BUCK_SCRATCH_PATH"',
+                format = 'set "BUCK_SCRATCH_PATH={}\\%BUCK_SCRATCH_PATH%"',
             )
         else:
             srcs_dir = cmd_args(srcs_dir, quote = "shell")
@@ -324,12 +341,21 @@ def process_genrule(
         category = category,
         identifier = identifier,
         no_outputs_cleanup = ctx.attrs.no_outputs_cleanup,
+        always_print_stderr = ctx.attrs.always_print_stderr,
         **metadata_args
     )
 
+    # Use a subtarget to insert a marker, as callsites make assumptions about
+    # the providers of `process_genrule()`. We want to have the marker in
+    # `DefaultInfo` rather than in `genrule_impl()` because we want to identify
+    # all classes of genrule-like rules.
+    sub_targets = {k: [DefaultInfo(default_outputs = v)] for (k, v) in named_outputs.items()}
+    expect(GENRULE_MARKER_SUBTARGET_NAME not in sub_targets, "Conflicting private `{}` subtarget and named output".format(GENRULE_MARKER_SUBTARGET_NAME))
+    sub_targets[GENRULE_MARKER_SUBTARGET_NAME] = [GenruleMarkerInfo()]
+
     providers = [DefaultInfo(
         default_outputs = default_outputs,
-        sub_targets = {k: [DefaultInfo(default_outputs = v)] for (k, v) in named_outputs.items()},
+        sub_targets = sub_targets,
     )]
 
     # The cxx_genrule also forwards here, and that doesn't have .executable, so use getattr

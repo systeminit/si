@@ -16,20 +16,22 @@ load(
 load("@prelude//linking:lto.bzl", "LtoMode")
 load("@prelude//user:rule_spec.bzl", "RuleRegistrationSpec")
 load("@prelude//utils:pick.bzl", _pick = "pick", _pick_and_add = "pick_and_add", _pick_bin = "pick_bin", _pick_dep = "pick_dep")
-load("@prelude//utils:utils.bzl", "value_or")
+load("@prelude//utils:utils.bzl", "map_val", "value_or")
 
 def _cxx_toolchain_override(ctx):
     base_toolchain = ctx.attrs.base[CxxToolchainInfo]
     base_as_info = base_toolchain.as_compiler_info
-    as_info = AsCompilerInfo(
-        compiler = _pick_bin(ctx.attrs.as_compiler, base_as_info.compiler),
-        compiler_type = base_as_info.compiler_type,
-        compiler_flags = _pick(ctx.attrs.as_compiler_flags, base_as_info.compiler_flags),
-        preprocessor = _pick_bin(ctx.attrs.as_compiler, base_as_info.preprocessor),
-        preprocessor_type = base_as_info.preprocessor_type,
-        preprocessor_flags = _pick(ctx.attrs.as_preprocessor_flags, base_as_info.preprocessor_flags),
-        dep_files_processor = base_as_info.dep_files_processor,
-    )
+    as_info = None
+    if base_as_info != None:
+        as_info = AsCompilerInfo(
+            compiler = _pick_bin(ctx.attrs.as_compiler, base_as_info.compiler),
+            compiler_type = base_as_info.compiler_type,
+            compiler_flags = _pick(ctx.attrs.as_compiler_flags, base_as_info.compiler_flags),
+            preprocessor = _pick_bin(ctx.attrs.as_compiler, base_as_info.preprocessor),
+            preprocessor_type = base_as_info.preprocessor_type,
+            preprocessor_flags = _pick(ctx.attrs.as_preprocessor_flags, base_as_info.preprocessor_flags),
+            dep_files_processor = base_as_info.dep_files_processor,
+        )
     asm_info = base_toolchain.asm_compiler_info
     if asm_info != None:
         asm_info = AsmCompilerInfo(
@@ -72,6 +74,7 @@ def _cxx_toolchain_override(ctx):
     # This shouldn't be a problem because to use windows linker after non-windows
     # linker flags should be changed as well.
     pdb_expected = linker_type == "windows" and pdb_expected
+    shlib_interfaces = ShlibInterfacesMode(ctx.attrs.shared_library_interface_mode) if ctx.attrs.shared_library_interface_mode else None
     linker_info = LinkerInfo(
         archiver = _pick_bin(ctx.attrs.archiver, base_linker_info.archiver),
         archiver_type = base_linker_info.archiver_type,
@@ -87,15 +90,16 @@ def _cxx_toolchain_override(ctx):
         link_ordering = base_linker_info.link_ordering,
         linker = _pick_bin(ctx.attrs.linker, base_linker_info.linker),
         linker_flags = _pick(ctx.attrs.linker_flags, base_linker_info.linker_flags),
-        lto_mode = LtoMode(value_or(ctx.attrs.lto_mode, base_linker_info.lto_mode.value)),
+        lto_mode = value_or(map_val(LtoMode, ctx.attrs.lto_mode), base_linker_info.lto_mode),
         object_file_extension = base_linker_info.object_file_extension,
-        shlib_interfaces = value_or(ctx.attrs.shared_library_interface_mode, base_linker_info.shlib_interfaces),
+        shlib_interfaces = value_or(shlib_interfaces, base_linker_info.shlib_interfaces),
         mk_shlib_intf = _pick_dep(ctx.attrs.mk_shlib_intf, base_linker_info.mk_shlib_intf),
         requires_archives = base_linker_info.requires_archives,
         requires_objects = base_linker_info.requires_objects,
         supports_distributed_thinlto = base_linker_info.supports_distributed_thinlto,
         independent_shlib_interface_linker_flags = base_linker_info.independent_shlib_interface_linker_flags,
         shared_dep_runtime_ld_flags = [],
+        shared_library_name_default_prefix = ctx.attrs.shared_library_name_default_prefix if ctx.attrs.shared_library_name_default_prefix != None else base_linker_info.shared_library_name_default_prefix,
         shared_library_name_format = ctx.attrs.shared_library_name_format if ctx.attrs.shared_library_name_format != None else base_linker_info.shared_library_name_format,
         shared_library_versioned_name_format = ctx.attrs.shared_library_versioned_name_format if ctx.attrs.shared_library_versioned_name_format != None else base_linker_info.shared_library_versioned_name_format,
         static_dep_runtime_ld_flags = [],
@@ -203,6 +207,7 @@ def _cxx_toolchain_override_inheriting_target_platform_attrs(is_toolchain_rule):
         "produce_interface_from_stub_shared_library": attrs.option(attrs.bool(), default = None),
         "ranlib": attrs.option(dep_type(providers = [RunInfo]), default = None),
         "shared_library_interface_mode": attrs.option(attrs.enum(ShlibInterfacesMode.values()), default = None),
+        "shared_library_name_default_prefix": attrs.option(attrs.string(), default = None),
         "shared_library_name_format": attrs.option(attrs.string(), default = None),
         "shared_library_versioned_name_format": attrs.option(attrs.string(), default = None),
         "split_debug_mode": attrs.option(attrs.enum(SplitDebugMode.values()), default = None),

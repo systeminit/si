@@ -90,6 +90,8 @@ cxx_binary = prelude_rule(
         cxx_common.platform_linker_flags_arg() |
         cxx_common.precompiled_header_arg() |
         native_common.link_style() |
+        native_common.link_group_deps() |
+        native_common.link_group_public_deps_label() |
         buck.deps_query_arg() |
         cxx_common.raw_headers_arg() |
         cxx_common.include_directories_arg() |
@@ -507,6 +509,7 @@ cxx_library = prelude_rule(
         cxx_common.lang_platform_compiler_flags_arg() |
         cxx_common.linker_extra_outputs_arg() |
         cxx_common.linker_flags_arg() |
+        cxx_common.local_linker_flags_arg() |
         cxx_common.platform_linker_flags_arg() |
         cxx_common.exported_linker_flags_arg() |
         cxx_common.exported_post_linker_flags_arg() |
@@ -562,7 +565,7 @@ cxx_library = prelude_rule(
             "focused_list_target": attrs.option(attrs.dep(), default = None),
             "frameworks": attrs.list(attrs.string(), default = []),
             "headers_as_raw_headers_mode": attrs.option(attrs.enum(HeadersAsRawHeadersMode), default = None),
-            "include_in_android_merge_map_output": attrs.bool(default = False),
+            "include_in_android_merge_map_output": attrs.bool(default = True),
             "labels": attrs.list(attrs.string(), default = []),
             "libraries": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
@@ -706,8 +709,14 @@ cxx_precompiled_header = prelude_rule(
     """,
     further = None,
     attrs = (
-        # @unsorted-dict-items
         {
+            "contacts": attrs.list(attrs.string(), default = []),
+            "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
+            "deps": attrs.list(attrs.dep(), default = [], doc = """
+                Dependency rules which export headers used by the header specified in `src`.
+            """),
+            "labels": attrs.list(attrs.string(), default = []),
+            "licenses": attrs.list(attrs.source(), default = []),
             "src": attrs.source(doc = """
                 The path to the header file that should be precompiled.
                  Only one header file can be specified. But of course this header could include
@@ -715,13 +724,6 @@ cxx_precompiled_header = prelude_rule(
                  be `exported_headers` from -- another rule, in which case, the rule would
                  have to be added to `deps` as usual.
             """),
-            "deps": attrs.list(attrs.dep(), default = [], doc = """
-                Dependency rules which export headers used by the header specified in `src`.
-            """),
-            "contacts": attrs.list(attrs.string(), default = []),
-            "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
-            "labels": attrs.list(attrs.string(), default = []),
-            "licenses": attrs.list(attrs.source(), default = []),
             "version_universe": attrs.option(attrs.string(), default = None),
         }
     ),
@@ -804,6 +806,8 @@ cxx_test = prelude_rule(
         } |
         buck.run_test_separately_arg(run_test_separately_type = attrs.option(attrs.bool(), default = None)) |
         buck.test_rule_timeout_ms() |
+        native_common.link_group_deps() |
+        native_common.link_group_public_deps_label() |
         {
             "additional_coverage_targets": attrs.list(attrs.source(), default = []),
             "contacts": attrs.list(attrs.string(), default = []),
@@ -855,7 +859,6 @@ cxx_toolchain = prelude_rule(
     examples = None,
     further = None,
     attrs = (
-        # @unsorted-dict-items
         {
             "archive_contents": attrs.enum(ArchiveContents, default = "normal"),
             "archiver": attrs.source(),
@@ -1001,15 +1004,14 @@ prebuilt_cxx_library = prelude_rule(
     """,
     further = None,
     attrs = (
-        # @unsorted-dict-items
         {
-            "header_only": attrs.bool(default = False, doc = """
-                Indicates if this library only consists of headers or not. If this is set to
-                 `True`, Buck will not link this library into any library that depends on it.
-            """),
             "header_dirs": attrs.option(attrs.list(attrs.source()), default = None, doc = """
                 A directory that headers can be included from. These directories are added
                  to the include path using `-isystem`.
+            """),
+            "header_only": attrs.bool(default = False, doc = """
+                Indicates if this library only consists of headers or not. If this is set to
+                 `True`, Buck will not link this library into any library that depends on it.
             """),
             "platform_header_dirs": attrs.option(attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.source()))), default = None, doc = """
                 Platform specific header directories. These should be specified as a list of pairs where the first
@@ -1017,17 +1019,17 @@ prebuilt_cxx_library = prelude_rule(
                  name is matched, and the second element is either a list of header directories.
                  See `header_dirs` for more information.
             """),
-            "static_lib": attrs.option(attrs.source(), default = None, doc = """
-                The path to the library to use when performing static linking.
+            "platform_shared_lib": attrs.option(attrs.list(attrs.tuple(attrs.regex(), attrs.source())), default = None, doc = """
+                Platform specific shared library. These should be specified as a list of pairs where the first
+                 element is an un-anchored regex (in java.util.regex.Pattern syntax) against which the platform
+                 name is matched, and the second element the path to the library.
+                 See `shared_lib` for more information.
             """),
             "platform_static_lib": attrs.option(attrs.list(attrs.tuple(attrs.regex(), attrs.source())), default = None, doc = """
                 Platform specific static library. These should be specified as a list of pairs where the first
                  element is an un-anchored regex (in java.util.regex.Pattern syntax) against which the platform
                  name is matched, and the second element the path to the library.
                  See `static_lib` for more information.
-            """),
-            "static_pic_lib": attrs.option(attrs.source(), default = None, doc = """
-                The path to the library to use when performing static PIC linking.
             """),
             "platform_static_pic_lib": attrs.option(attrs.list(attrs.tuple(attrs.regex(), attrs.source())), default = None, doc = """
                 Platform specific static PIC library. These should be specified as a list of pairs where the first
@@ -1038,11 +1040,11 @@ prebuilt_cxx_library = prelude_rule(
             "shared_lib": attrs.option(attrs.source(), default = None, doc = """
                 The path to the library to use when performing shared linking.
             """),
-            "platform_shared_lib": attrs.option(attrs.list(attrs.tuple(attrs.regex(), attrs.source())), default = None, doc = """
-                Platform specific shared library. These should be specified as a list of pairs where the first
-                 element is an un-anchored regex (in java.util.regex.Pattern syntax) against which the platform
-                 name is matched, and the second element the path to the library.
-                 See `shared_lib` for more information.
+            "static_lib": attrs.option(attrs.source(), default = None, doc = """
+                The path to the library to use when performing static linking.
+            """),
+            "static_pic_lib": attrs.option(attrs.source(), default = None, doc = """
+                The path to the library to use when performing static PIC linking.
             """),
         } |
         cxx_common.supported_platforms_regex_arg() |
@@ -1057,6 +1059,7 @@ prebuilt_cxx_library = prelude_rule(
         cxx_common.exported_deps_arg() |
         cxx_common.exported_platform_deps_arg() |
         cxx_common.supports_merged_linking() |
+        cxx_common.local_linker_flags_arg() |
         {
             "can_be_asset": attrs.bool(default = False),
             "contacts": attrs.list(attrs.string(), default = []),
@@ -1069,7 +1072,7 @@ prebuilt_cxx_library = prelude_rule(
             "exported_post_platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "frameworks": attrs.list(attrs.string(), default = []),
             "import_lib": attrs.option(attrs.source(), default = None),
-            "include_in_android_merge_map_output": attrs.bool(default = False),
+            "include_in_android_merge_map_output": attrs.bool(default = True),
             "labels": attrs.list(attrs.string(), default = []),
             "libraries": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
@@ -1078,7 +1081,7 @@ prebuilt_cxx_library = prelude_rule(
             "platform_import_lib": attrs.option(attrs.list(attrs.tuple(attrs.regex(), attrs.source())), default = None),
             "provided": attrs.bool(default = False),
             "soname": attrs.option(attrs.string(), default = None),
-            "supports_shared_library_interface": attrs.bool(default = False),
+            "supports_shared_library_interface": attrs.bool(default = True),
             "versioned_exported_lang_platform_preprocessor_flags": attrs.versioned(attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg()))), sorted = False)),
             "versioned_exported_lang_preprocessor_flags": attrs.versioned(attrs.dict(key = attrs.enum(CxxSourceType), value = attrs.list(attrs.arg()), sorted = False)),
             "versioned_exported_platform_preprocessor_flags": attrs.versioned(attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg())))),
@@ -1192,10 +1195,11 @@ prebuilt_cxx_library_group = prelude_rule(
             "deps": attrs.list(attrs.dep(), default = []),
             "import_libs": attrs.dict(key = attrs.string(), value = attrs.source(), sorted = False, default = {}),
             "include_dirs": attrs.list(attrs.source(), default = []),
-            "include_in_android_merge_map_output": attrs.bool(default = False),
+            "include_in_android_merge_map_output": attrs.bool(default = True),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
             "supported_platforms_regex": attrs.option(attrs.regex(), default = None),
+            "supports_shared_library_interface": attrs.bool(default = True),
         }
     ),
 )

@@ -5,15 +5,24 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//apple:apple_buck2_compatibility.bzl", "BUCK2_COMPATIBILITY_ATTRIB_NAME", "BUCK2_COMPATIBILITY_ATTRIB_TYPE")
 load("@prelude//apple:apple_bundle_attrs.bzl", "get_apple_info_plist_build_system_identification_attrs")
-load("@prelude//apple:apple_bundle_types.bzl", "AppleBundleResourceInfo")
+load("@prelude//apple:apple_bundle_types.bzl", "AppleBundleResourceInfo", "AppleBundleTypeAttributeType")
 load("@prelude//apple:apple_code_signing_types.bzl", "CodeSignType")
+load(
+    "@prelude//apple:apple_genrule_deps.bzl",
+    "APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_NAME",
+    "APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_TYPE",
+    "APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_NAME",
+    "APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_TYPE",
+)
 load("@prelude//apple:apple_toolchain_types.bzl", "AppleToolchainInfo", "AppleToolsInfo")
+load("@prelude//apple/swift:swift_incremental_support.bzl", "SwiftCompilationMode")
 load("@prelude//apple/user:apple_selective_debugging.bzl", "AppleSelectiveDebuggingInfo")
+load("@prelude//apple/user:apple_simulators.bzl", "apple_simulators_transition")
 load("@prelude//apple/user:cpu_split_transition.bzl", "cpu_split_transition")
 load("@prelude//apple/user:resource_group_map.bzl", "resource_group_map_attr")
 load("@prelude//cxx:headers.bzl", "CPrecompiledHeaderInfo")
-load("@prelude//cxx:omnibus.bzl", "omnibus_environment_attr")
 load("@prelude//linking:execution_preference.bzl", "link_execution_preference_attr")
 load("@prelude//linking:link_info.bzl", "LinkOrdering")
 load("@prelude//decls/common.bzl", "LinkableDepType", "Linkage")
@@ -22,7 +31,7 @@ def get_apple_toolchain_attr():
     # FIXME: prelude// should be standalone (not refer to fbcode//)
     return attrs.toolchain_dep(default = "fbcode//buck2/platform/toolchain:apple-default", providers = [AppleToolchainInfo])
 
-def _get_apple_bundle_toolchain_attr():
+def get_apple_bundle_toolchain_attr():
     # FIXME: prelude// should be standalone (not refer to fbcode//)
     return attrs.toolchain_dep(default = "fbcode//buck2/platform/toolchain:apple-bundle", providers = [AppleToolchainInfo])
 
@@ -41,12 +50,14 @@ APPLE_USE_ENTITLEMENTS_WHEN_ADHOC_CODE_SIGNING_ATTR_NAME = "use_entitlements_whe
 def _apple_bundle_like_common_attrs():
     # `apple_bundle()` and `apple_test()` share a common set of extra attrs
     attribs = {
-        # FIXME: prelude// should be standalone (not refer to fbsource//)
-        "_apple_tools": attrs.exec_dep(default = "fbsource//xplat/buck2/platform/apple:apple-tools", providers = [AppleToolsInfo]),
+        "codesign_type": attrs.option(attrs.enum(CodeSignType.values()), default = None),
+        "_apple_tools": attrs.exec_dep(default = "prelude//apple/tools:apple-tools", providers = [AppleToolsInfo]),
         "_apple_xctoolchain": get_apple_xctoolchain_attr(),
         "_apple_xctoolchain_bundle_id": get_apple_xctoolchain_bundle_id_attr(),
         "_bundling_cache_buster": attrs.option(attrs.string(), default = None),
         "_bundling_log_file_enabled": attrs.bool(default = False),
+        "_bundling_log_file_level": attrs.option(attrs.string(), default = None),
+        "_bundling_path_conflicts_check_enabled": attrs.bool(default = False),
         "_codesign_type": attrs.option(attrs.enum(CodeSignType.values()), default = None),
         "_compile_resources_locally_override": attrs.option(attrs.bool(), default = None),
         "_dry_run_code_signing": attrs.bool(default = False),
@@ -58,6 +69,7 @@ def _apple_bundle_like_common_attrs():
         "_resource_bundle": attrs.option(attrs.dep(providers = [AppleBundleResourceInfo]), default = None),
         APPLE_USE_ENTITLEMENTS_WHEN_ADHOC_CODE_SIGNING_CONFIG_OVERRIDE_ATTR_NAME: attrs.option(attrs.bool(), default = None),
         APPLE_USE_ENTITLEMENTS_WHEN_ADHOC_CODE_SIGNING_ATTR_NAME: attrs.bool(default = False),
+        BUCK2_COMPATIBILITY_ATTRIB_NAME: BUCK2_COMPATIBILITY_ATTRIB_TYPE,
     }
     attribs.update(get_apple_info_plist_build_system_identification_attrs())
     return attribs
@@ -85,24 +97,31 @@ def apple_test_extra_attrs():
         # Expected by `apple_bundle`, for `apple_test` this field is always None.
         "resource_group_map": attrs.option(attrs.string(), default = None),
         "stripped": attrs.bool(default = False),
+        "swift_compilation_mode": attrs.enum(SwiftCompilationMode.values(), default = "wmo"),
         "_apple_toolchain": get_apple_toolchain_attr(),
-        "_ios_booted_simulator": attrs.default_only(attrs.dep(default = "fbsource//xplat/buck2/platform/apple:ios_booted_simulator", providers = [LocalResourceInfo])),
-        "_ios_unbooted_simulator": attrs.default_only(attrs.dep(default = "fbsource//xplat/buck2/platform/apple:ios_unbooted_simulator", providers = [LocalResourceInfo])),
-        "_macos_idb_companion": attrs.default_only(attrs.dep(default = "fbsource//xplat/buck2/platform/apple:macos_idb_companion", providers = [LocalResourceInfo])),
-        "_omnibus_environment": omnibus_environment_attr(),
+        "_ios_booted_simulator": attrs.transition_dep(cfg = apple_simulators_transition, default = "fbsource//xplat/buck2/platform/apple:ios_booted_simulator", providers = [LocalResourceInfo]),
+        "_ios_unbooted_simulator": attrs.transition_dep(cfg = apple_simulators_transition, default = "fbsource//xplat/buck2/platform/apple:ios_unbooted_simulator", providers = [LocalResourceInfo]),
+        "_macos_idb_companion": attrs.transition_dep(cfg = apple_simulators_transition, default = "fbsource//xplat/buck2/platform/apple:macos_idb_companion", providers = [LocalResourceInfo]),
     }
     attribs.update(_apple_bundle_like_common_attrs())
+    attribs.update({
+        APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_NAME: APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_TYPE,
+        APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_NAME: APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_TYPE,
+    })
     return attribs
 
 def apple_bundle_extra_attrs():
     attribs = {
         "binary": attrs.option(attrs.split_transition_dep(cfg = cpu_split_transition), default = None),
+        "bundle_type": attrs.option(attrs.enum(AppleBundleTypeAttributeType.values()), default = None),
         "resource_group_map": resource_group_map_attr(),
         "selective_debugging": attrs.option(attrs.dep(providers = [AppleSelectiveDebuggingInfo]), default = None),
         "split_arch_dsym": attrs.bool(default = False),
         "universal": attrs.option(attrs.bool(), default = None),
-        "_apple_toolchain": _get_apple_bundle_toolchain_attr(),
+        "_apple_toolchain": get_apple_bundle_toolchain_attr(),
         "_codesign_entitlements": attrs.option(attrs.source(), default = None),
+        APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_NAME: APPLE_BUILD_GENRULE_DEPS_DEFAULT_ATTRIB_TYPE,
+        APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_NAME: APPLE_BUILD_GENRULE_DEPS_TARGET_ATTRIB_TYPE,
     }
     attribs.update(_apple_bundle_like_common_attrs())
     return attribs
