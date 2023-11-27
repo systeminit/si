@@ -132,6 +132,12 @@
                   </ul>
                 </div>
               </template>
+              <div class="flex w-full text-xs justify-center pt-4 gap-2">
+                <Icon name="tools" tone="warning" size="sm" /> Importing a
+                workspace means replacing all the changesets in this workspace.
+                They cannot be recovered. If you want to save current work
+                please export your workspace now.
+              </div>
             </div>
           </div>
           <div>
@@ -142,7 +148,7 @@
                   size="sm"
                   tone="success"
                   loadingText="Importing Workspace"
-                  label="Override Approval And Apply"
+                  label="Override vote and apply"
                   @click="importWorkspaceHandler"
                 />
               </div>
@@ -189,7 +195,7 @@
                     variant="ghost"
                     tone="success"
                     loadingText="Approving"
-                    label="Approve"
+                    label="Go ahead"
                     @click="importApprovalVote('Approve')"
                   />
                   <VButton
@@ -197,7 +203,7 @@
                     variant="ghost"
                     tone="error"
                     loadingText="Rejecting"
-                    label="Reject"
+                    label="No"
                     @click="importApprovalVote('Reject')"
                   />
                 </div>
