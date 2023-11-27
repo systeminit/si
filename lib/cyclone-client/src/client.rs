@@ -28,7 +28,7 @@ use hyper::{
 use hyperlocal::{UnixClientExt, UnixConnector, UnixStream};
 use thiserror::Error;
 use tokio::{
-    io::{AsyncRead, AsyncWrite},
+    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     net::TcpStream,
 };
 use tokio_tungstenite::WebSocketStream;
@@ -50,6 +50,8 @@ pub enum ClientError {
     InvalidUri(#[from] InvalidUri),
     #[error("invalid websocket uri scheme: {0}")]
     InvalidWebsocketScheme(String),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
     #[error("missing authority")]
     MissingAuthority,
     #[error("missing websocket scheme")]
@@ -228,7 +230,7 @@ where
     Conn::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
     Conn::Future: Unpin + Send,
     Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + Sync + 'static,
-    Sock: Send + Sync,
+    Sock: Send + Sync + std::fmt::Debug,
 {
     async fn watch(&mut self) -> Result<Watch<Strm>> {
         let stream = self.websocket_stream("/watch").await?;
@@ -328,6 +330,7 @@ where
     Conn::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
     Conn::Future: Unpin + Send,
     Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + Sync + 'static,
+    Sock: Send + Sync + std::fmt::Debug,
 {
     fn http_request_uri<P>(&self, path_and_query: P) -> Result<Uri>
     where
@@ -409,20 +412,40 @@ where
         self.inner_client.request(req)
     }
 
+    async fn connect(&mut self, mut stream: Strm) -> Result<Strm> {
+        let connect_cmd = format!("CONNECT {}\n", 52);
+        stream.write_all(connect_cmd.as_bytes()).await?;
+        // We need to read off the response to clear the stream
+        let mut connect_response = Vec::<u8>::new();
+        loop {
+            let mut single_byte = vec![0; 1];
+            stream.read_exact(&mut single_byte).await?;
+            connect_response.push(single_byte[0]);
+            if single_byte == [b'\n'] {
+                break;
+            }
+        }
+        Ok(stream)
+    }
+
     async fn websocket_stream<P>(&mut self, path_and_query: P) -> Result<WebSocketStream<Strm>>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
-        let stream = self
+        let mut stream = self
             .connector
             .call(self.uri.clone())
             .await
             .map_err(|err| ClientError::Connect(err.into()))?;
+
+        if self.config.firecracker_connect {
+            stream = self.connect(stream).await?;
+        }
+
         let uri = self.new_ws_request(path_and_query)?;
         let (websocket_stream, response) = tokio_tungstenite::client_async(uri, stream)
             .await
             .map_err(ClientError::WebsocketConnection)?;
-
         if response.status() != StatusCode::SWITCHING_PROTOCOLS {
             return Err(ClientError::UnexpectedStatusCode(response.status()));
         }
@@ -433,12 +456,15 @@ where
 
 #[derive(Debug)]
 struct ClientConfig {
+    firecracker_connect: bool,
     watch_timeout: Duration,
 }
 
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
+            // firecracker-setup: change firecracker_connect to "true"
+            firecracker_connect: false,
             watch_timeout: Duration::from_secs(10),
         }
     }

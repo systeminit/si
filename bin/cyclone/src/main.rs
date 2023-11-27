@@ -61,6 +61,13 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 .run()
                 .await?
         }
+        #[cfg(target_os = "linux")]
+        IncomingStream::VsockSocket(_) => {
+            Server::vsock(config, telemetry, decryption_key)
+                .await?
+                .run()
+                .await?
+        }
     }
 
     Ok(())

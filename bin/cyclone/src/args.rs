@@ -36,6 +36,10 @@ pub(crate) struct Args {
     #[arg(long, group = "bind")]
     pub(crate) bind_uds: Option<PathBuf>,
 
+    /// Binds service to a vsock socket [example: 3:52]
+    #[arg(long, group = "bind")]
+    pub(crate) bind_vsock: Option<String>,
+
     /// Enables active/watch behavior.
     #[arg(long, group = "watch")]
     pub(crate) enable_watch: bool,
@@ -116,6 +120,18 @@ impl TryFrom<Args> for Config {
         }
         if let Some(pathbuf) = args.bind_uds {
             builder.incoming_stream(IncomingStream::UnixDomainSocket(pathbuf));
+        }
+
+        #[cfg(target_os = "linux")]
+        if let Some(addr) = args.bind_vsock {
+            // todo(scott): check the format before attempting to parse
+            let split = addr.split(':').collect::<Vec<&str>>();
+
+            let vsock_addr = cyclone_server::VsockAddr::new(
+                split[0].parse::<u32>().unwrap(),
+                split[1].parse::<u32>().unwrap(),
+            );
+            builder.incoming_stream(IncomingStream::VsockSocket(vsock_addr));
         }
 
         builder.try_lang_server_path(args.lang_server)?;

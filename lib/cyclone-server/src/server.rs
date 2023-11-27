@@ -22,6 +22,9 @@ use crate::{
     UdsIncomingStreamError,
 };
 
+#[cfg(target_os = "linux")]
+use crate::{VsockIncomingStream, VsockIncomingStreamError};
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
@@ -35,6 +38,9 @@ pub enum ServerError {
     Signal(#[source] io::Error),
     #[error("UDS incoming stream error")]
     Uds(#[from] UdsIncomingStreamError),
+    #[cfg(target_os = "linux")]
+    #[error("Vsock incoming stream error")]
+    Vsock(#[from] VsockIncomingStreamError),
     #[error("wrong incoming stream for {0} server: {1:?}")]
     WrongIncomingStream(&'static str, IncomingStream),
 }
@@ -72,7 +78,11 @@ impl Server<(), ()> {
                 })
             }
             wrong @ IncomingStream::UnixDomainSocket(_) => {
-                Err(ServerError::WrongIncomingStream("http", wrong.clone()))
+                Err(ServerError::WrongIncomingStream("uds", wrong.clone()))
+            }
+            #[cfg(target_os = "linux")]
+            wrong @ IncomingStream::VsockSocket(_) => {
+                Err(ServerError::WrongIncomingStream("vsock", wrong.clone()))
             }
         }
     }
@@ -102,6 +112,44 @@ impl Server<(), ()> {
             }
             wrong @ IncomingStream::HTTPSocket(_) => {
                 Err(ServerError::WrongIncomingStream("http", wrong.clone()))
+            }
+            #[cfg(target_os = "linux")]
+            wrong @ IncomingStream::VsockSocket(_) => {
+                Err(ServerError::WrongIncomingStream("vsock", wrong.clone()))
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    pub async fn vsock(
+        config: Config,
+        telemetry_level: Box<dyn TelemetryLevel>,
+        decryption_key: CycloneDecryptionKey,
+    ) -> Result<Server<VsockIncomingStream, tokio_vsock::VsockAddr>> {
+        match config.incoming_stream() {
+            IncomingStream::VsockSocket(addr) => {
+                let (service, shutdown_rx) =
+                    build_service(&config, telemetry_level, decryption_key)?;
+
+                debug!(socket = %addr, "binding a vsock server");
+                let inner =
+                    axum::Server::builder(VsockIncomingStream::create(*addr).await?).serve(service);
+                let socket = *addr;
+                info!(socket = %socket, "vsock server serving");
+
+                Ok(Server {
+                    config,
+                    inner,
+                    socket,
+                    shutdown_rx,
+                })
+            }
+            wrong @ IncomingStream::HTTPSocket(_) => {
+                Err(ServerError::WrongIncomingStream("http", wrong.clone()))
+            }
+            #[cfg(target_os = "linux")]
+            wrong @ IncomingStream::UnixDomainSocket(_) => {
+                Err(ServerError::WrongIncomingStream("uds", wrong.clone()))
             }
         }
     }

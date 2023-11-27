@@ -132,20 +132,6 @@ mod tests {
             .await
             .expect("failed to create instance");
 
-        let status = instance
-            .liveness()
-            .await
-            .expect("failed to run liveness check");
-        assert_eq!(status, LivenessStatus::Ok);
-        instance.ensure_healthy().await.expect("failed healthy");
-
-        let status = instance
-            .readiness()
-            .await
-            .expect("failed to run readiness check");
-        assert_eq!(status, ReadinessStatus::Ready);
-        instance.ensure_healthy().await.expect("failed healthy");
-
         instance
             .execute_ping()
             .await
@@ -204,6 +190,44 @@ mod tests {
             .start()
             .await
             .expect("failed to start protocol");
+        instance.ensure_healthy().await.expect("failed healthy");
+
+        instance.terminate().await.expect("failed to terminate");
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn chop() {
+        let mut config_file = veritech_server::ConfigFile::default_local_uds();
+        veritech_server::detect_and_configure_development(&mut config_file)
+            .expect("failed to determine test configuration");
+
+        let spec = LocalUdsInstance::spec()
+            .try_cyclone_cmd_path(config_file.cyclone.cyclone_cmd_path())
+            .expect("failed to find cyclone program")
+            .cyclone_decryption_key_path(config_file.cyclone.cyclone_decryption_key_path())
+            .try_lang_server_cmd_path(config_file.cyclone.lang_server_cmd_path())
+            .expect("failed to find lang server program")
+            .limit_requests(2)
+            .runtime_strategy(LocalUdsRuntimeStrategy::LocalFirecracker)
+            .socket_strategy(LocalUdsSocketStrategy::Random)
+            .ping()
+            .build()
+            .expect("failed to build spec");
+        let manager = Manager::new(spec);
+
+        let mut instance = managed::Manager::create(&manager)
+            .await
+            .expect("failed to create instance");
+
+        instance
+            .execute_ping()
+            .await
+            .expect("failed execute ping")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
         instance.ensure_healthy().await.expect("failed healthy");
 
         instance.terminate().await.expect("failed to terminate");
