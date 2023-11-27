@@ -28,14 +28,12 @@ use crate::{
     impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
-    AttributePrototype, AttributePrototypeArgument, AttributePrototypeArgumentError,
-    AttributePrototypeError, AttributePrototypeId, AttributeReadContext, ComponentType, DalContext,
-    EdgeError, ExternalProvider, ExternalProviderError, ExternalProviderId, FixError, FixId, Func,
-    FuncBackendKind, FuncError, HistoryActor, HistoryEventError, InternalProvider,
-    InternalProviderId, Node, NodeError, PropError, PropId, RootPropChild, Schema, SchemaError,
-    SchemaId, Socket, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
-    UserPk, ValidationPrototypeError, ValidationResolverError, Visibility, WorkspaceError, WsEvent,
-    WsEventResult, WsPayload,
+    AttributePrototypeArgumentError, AttributePrototypeError, AttributePrototypeId,
+    AttributeReadContext, ComponentType, DalContext, EdgeError, ExternalProviderError, FixError,
+    FixId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError, Node, NodeError,
+    PropError, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, ValidationPrototypeError,
+    ValidationResolverError, Visibility, WorkspaceError, WsEvent, WsEventResult, WsPayload,
 };
 use crate::{AttributeValueId, QualificationError};
 use crate::{Edge, FixResolverError, NodeKind};
@@ -293,21 +291,18 @@ impl Component {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM component_create_v1($1, $2, $3, $4)",
+                "SELECT object FROM component_create_v1($1, $2, $3, $4, $5)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &actor_user_pk,
                     &schema.component_kind().as_ref(),
+                    schema_variant.id(),
                 ],
             )
             .await?;
 
         let component: Component = standard_model::finish_create_from_row(ctx, row).await?;
-        component.set_schema(ctx, schema.id()).await?;
-        component
-            .set_schema_variant(ctx, &schema_variant_id)
-            .await?;
 
         // Need to flesh out node so that the template data is also included in the node we
         // persist. But it isn't, - our node is anemic.
@@ -758,11 +753,23 @@ impl Component {
 
     /// Sets the field corresponding to "/root/si/type" for the [`Component`]. Possible values
     /// are limited to variants of [`ComponentType`](crate::ComponentType).
+    #[instrument(skip(ctx))]
     pub async fn set_type(
         &self,
         ctx: &DalContext,
         component_type: ComponentType,
     ) -> ComponentResult<()> {
+        // anytime a component_type is changed to a Configuration Frame,
+        // we delete all current edges that were configured for the previously
+        // set component_type (aka AggregationFrame and Component)
+        // The 2 other component_types can retain their edges.
+        if let ComponentType::ConfigurationFrame = component_type {
+            let edges = Edge::list_for_component(ctx, self.id).await?;
+            for mut edge in edges {
+                edge.delete_and_propagate(ctx).await?;
+            }
+        }
+
         let schema_variant_id = Self::schema_variant_id(ctx, self.id).await?;
         let type_attribute_value =
             Self::find_si_child_attribute_value(ctx, self.id, schema_variant_id, SiPropChild::Type)
@@ -794,175 +801,6 @@ impl Component {
             None,
         )
         .await?;
-
-        // Now that we've updated the field, we need to see if we need to do additional work.
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-        let external_providers =
-            ExternalProvider::list_for_schema_variant(ctx, *schema_variant.id()).await?;
-        let internal_providers =
-            InternalProvider::list_explicit_for_schema_variant(ctx, *schema_variant.id()).await?;
-
-        // We have some work to do for all component types, but the aggregation frames need a
-        // special look.
-        if let ComponentType::AggregationFrame = component_type {
-            let (func, func_binding, func_binding_return_value) =
-                Func::identity_with_binding_and_return_value(ctx).await?;
-            let func_id = *func.id();
-
-            for external_provider in external_providers {
-                let attribute_read_context = AttributeReadContext {
-                    prop_id: Some(PropId::NONE),
-                    internal_provider_id: Some(InternalProviderId::NONE),
-                    external_provider_id: Some(*external_provider.id()),
-                    component_id: Some(self.id),
-                };
-
-                let attribute_context =
-                    AttributeContextBuilder::from(attribute_read_context).to_context()?;
-
-                let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
-                    .await?
-                    .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                        attribute_read_context,
-                    ))?;
-
-                if attribute_value.context.is_component_unset() {
-                    AttributePrototype::new(
-                        ctx,
-                        func_id,
-                        *func_binding.id(),
-                        *func_binding_return_value.id(),
-                        attribute_context,
-                        None,
-                        None,
-                    )
-                    .await?;
-                } else {
-                    AttributePrototype::new_with_existing_value(
-                        ctx,
-                        func_id,
-                        attribute_context,
-                        None,
-                        None,
-                        *attribute_value.id(),
-                    )
-                    .await?;
-                };
-            }
-
-            for internal_provider in internal_providers {
-                let attribute_read_context = AttributeReadContext {
-                    prop_id: Some(PropId::NONE),
-                    internal_provider_id: Some(*internal_provider.id()),
-                    external_provider_id: Some(ExternalProviderId::NONE),
-                    component_id: Some(self.id),
-                };
-
-                let attr_write_context =
-                    AttributeContextBuilder::from(attribute_read_context).to_context()?;
-
-                let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
-                    .await?
-                    .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                        attribute_read_context,
-                    ))?;
-
-                let prototype =
-                    attribute_value
-                        .attribute_prototype(ctx)
-                        .await?
-                        .ok_or_else(|| {
-                            ComponentError::MissingAttributePrototype(*attribute_value.id())
-                        })?;
-
-                let arguments = AttributePrototypeArgument::find_by_attr(
-                    ctx,
-                    "attribute_prototype_id",
-                    prototype.id(),
-                )
-                .await?;
-
-                let new_prototype = if attribute_value.context.is_component_unset() {
-                    AttributePrototype::new(
-                        ctx,
-                        func_id,
-                        *func_binding.id(),
-                        *func_binding_return_value.id(),
-                        attr_write_context,
-                        None,
-                        None,
-                    )
-                    .await?
-                } else {
-                    AttributePrototype::new_with_existing_value(
-                        ctx,
-                        func_id,
-                        attr_write_context,
-                        None,
-                        None,
-                        *attribute_value.id(),
-                    )
-                    .await?
-                };
-
-                for argument in arguments {
-                    AttributePrototypeArgument::new_for_inter_component(
-                        ctx,
-                        *new_prototype.id(),
-                        argument.func_argument_id(),
-                        argument.head_component_id(),
-                        argument.tail_component_id(),
-                        argument.external_provider_id(),
-                    )
-                    .await?;
-                }
-            }
-        } else {
-            for external_provider in external_providers {
-                let attribute_read_context = AttributeReadContext {
-                    prop_id: Some(PropId::NONE),
-                    internal_provider_id: Some(InternalProviderId::NONE),
-                    external_provider_id: Some(*external_provider.id()),
-                    component_id: Some(self.id),
-                };
-
-                let mut attribute_value =
-                    AttributeValue::find_for_context(ctx, attribute_read_context)
-                        .await?
-                        .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                            attribute_read_context,
-                        ))?;
-
-                if !attribute_value.context.is_component_unset() {
-                    attribute_value.unset_attribute_prototype(ctx).await?;
-                    attribute_value.delete_by_id(ctx).await?;
-                }
-            }
-
-            for internal_provider in internal_providers {
-                let attribute_read_context = AttributeReadContext {
-                    prop_id: Some(PropId::NONE),
-                    internal_provider_id: Some(*internal_provider.id()),
-                    external_provider_id: Some(ExternalProviderId::NONE),
-                    component_id: Some(self.id),
-                };
-
-                let mut attribute_value =
-                    AttributeValue::find_for_context(ctx, attribute_read_context)
-                        .await?
-                        .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                            attribute_read_context,
-                        ))?;
-
-                if !attribute_value.context.is_component_unset() {
-                    attribute_value.unset_attribute_prototype(ctx).await?;
-                    attribute_value.delete_by_id(ctx).await?;
-                }
-            }
-        }
 
         Ok(())
     }

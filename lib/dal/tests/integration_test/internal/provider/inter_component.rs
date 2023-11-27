@@ -1,7 +1,8 @@
 use dal::{
     socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, Component, ComponentView, DalContext, Edge, ExternalProvider, InternalProvider,
-    Prop, PropId, PropKind, StandardModel,
+    AttributeValue, Component, ComponentView, DalContext, Edge, ExternalProvider,
+    ExternalProviderId, InternalProvider, InternalProviderId, Prop, PropId, PropKind,
+    StandardModel,
 };
 use dal_test::{
     helpers::{component_bag::ComponentBag, setup_identity_func},
@@ -12,13 +13,18 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn inter_component_identity_update(ctx: &DalContext) {
-    // Setup both components used for inter component identity update.
-    let (esp_bag, source_prop_id, intermediate_prop_id) = setup_esp(ctx).await;
-    let (swings_bag, destination_prop_id) = setup_swings(ctx).await;
+    let (
+        identity_func_id,
+        _identity_func_binding_id,
+        _identity_func_binding_return_value_id,
+        id_func_arg_id,
+    ) = setup_identity_func(ctx).await;
 
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
+    // Setup both components used for inter component identity update.
+    let (esp_bag, source_prop_id, intermediate_prop_id, esp_external_provider_id) =
+        setup_esp(ctx).await;
+    let (swings_bag, _destination_prop_id, swings_explicit_internal_provider_id) =
+        setup_swings(ctx).await;
 
     // Ensure setup went as expected.
     assert_eq!(
@@ -47,15 +53,6 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         }], // expected
         swings_bag.component_view_properties_raw(ctx).await // actual
     );
-
-    // Collect the identity func information we need.
-    let (
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
-        id_func_arg_id,
-    ) = setup_identity_func(ctx).await;
-
     // Setup the "esp" intra component update functionality from "source" to "intermediate".
     let intermediate_attribute_value = AttributeValue::find_for_context(
         ctx,
@@ -64,6 +61,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     .await
     .expect("cannot find attribute value")
     .expect("attribute value not found");
+
     let mut intermediate_attribute_prototype = intermediate_attribute_value
         .attribute_prototype(ctx)
         .await
@@ -123,79 +121,6 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         swings_bag.component_view_properties_raw(ctx).await // actual
     );
 
-    // Create the "esp" external provider for inter component connection.
-    let (esp_external_provider, _socket) = ExternalProvider::new_with_socket(
-        ctx,
-        esp_bag.schema_id,
-        esp_bag.schema_variant_id,
-        "output",
-        None,
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
-        SocketArity::Many,
-        false,
-    )
-    .await
-    .expect("could not create external provider");
-    let esp_intermediate_internal_provider =
-        InternalProvider::find_for_prop(ctx, intermediate_prop_id)
-            .await
-            .expect("could not get internal provider")
-            .expect("internal provider not found");
-    AttributePrototypeArgument::new_for_intra_component(
-        ctx,
-        *esp_external_provider
-            .attribute_prototype_id()
-            .expect("no attribute prototype id for external provider"),
-        id_func_arg_id,
-        *esp_intermediate_internal_provider.id(),
-    )
-    .await
-    .expect("could not create attribute prototype argument");
-
-    // Create the "swings" explicit internal provider for intra component connection.
-    let (swings_explicit_internal_provider, _socket) = InternalProvider::new_explicit_with_socket(
-        ctx,
-        swings_bag.schema_variant_id,
-        "swings",
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
-        SocketArity::Many,
-        false,
-    )
-    .await
-    .expect("could not create explicit internal provider");
-    let swings_destination_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        swings_bag.attribute_read_context_with_prop(destination_prop_id),
-    )
-    .await
-    .expect("cannot find attribute value")
-    .expect("attribute value not found");
-    let mut swings_destination_attribute_prototype = swings_destination_attribute_value
-        .attribute_prototype(ctx)
-        .await
-        .expect("could not find attribute prototype")
-        .expect("attribute prototype not found");
-    swings_destination_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
-        .await
-        .expect("could not set func id on attribute prototype");
-    AttributePrototypeArgument::new_for_intra_component(
-        ctx,
-        *swings_destination_attribute_prototype.id(),
-        id_func_arg_id,
-        *swings_explicit_internal_provider.id(),
-    )
-    .await
-    .expect("could not create attribute prototype argument");
-
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
-
     // Ensure that both components look as we expect when not "connected". The creation of both the
     // "esp" external provider and the "swings" implicit internal provider should not affect intra
     // component identity update working.
@@ -229,9 +154,9 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Connect the two components.
     Edge::connect_providers_for_components(
         ctx,
-        *swings_explicit_internal_provider.id(),
+        swings_explicit_internal_provider_id,
         swings_bag.component_id,
-        *esp_external_provider.id(),
+        esp_external_provider_id,
         esp_bag.component_id,
     )
     .await
@@ -311,7 +236,14 @@ async fn inter_component_identity_update(ctx: &DalContext) {
 }
 
 // 38.805354552534816, -77.05091482877533
-async fn setup_esp(ctx: &DalContext) -> (ComponentBag, PropId, PropId) {
+async fn setup_esp(ctx: &DalContext) -> (ComponentBag, PropId, PropId, ExternalProviderId) {
+    let (
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        id_func_arg_id,
+    ) = setup_identity_func(ctx).await;
+
     let mut schema = create_schema(ctx).await;
     let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
@@ -364,6 +296,38 @@ async fn setup_esp(ctx: &DalContext) -> (ComponentBag, PropId, PropId) {
         .await
         .expect("cannot finalize SchemaVariant");
 
+    // Create the "esp" external provider for inter component connection.
+    let (esp_external_provider, _socket) = ExternalProvider::new_with_socket(
+        ctx,
+        *schema.id(),
+        *schema_variant.id(),
+        "output",
+        None,
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        SocketArity::Many,
+        false,
+    )
+    .await
+    .expect("could not create external provider");
+
+    let esp_intermediate_internal_provider =
+        InternalProvider::find_for_prop(ctx, *intermediate_prop.id())
+            .await
+            .expect("could not get internal provider")
+            .expect("internal provider not found");
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *esp_external_provider
+            .attribute_prototype_id()
+            .expect("no attribute prototype id for external provider"),
+        id_func_arg_id,
+        *esp_intermediate_internal_provider.id(),
+    )
+    .await
+    .expect("could not create attribute prototype argument");
+
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
@@ -413,11 +377,23 @@ async fn setup_esp(ctx: &DalContext) -> (ComponentBag, PropId, PropId) {
         .expect("could not commit & run jobs");
 
     // Return the bag and prop(s) used for future updates.
-    (component_bag, *source_prop.id(), *intermediate_prop.id())
+    (
+        component_bag,
+        *source_prop.id(),
+        *intermediate_prop.id(),
+        *esp_external_provider.id(),
+    )
 }
 
 // 38.82091849697006, -77.05236860190759
-async fn setup_swings(ctx: &DalContext) -> (ComponentBag, PropId) {
+async fn setup_swings(ctx: &DalContext) -> (ComponentBag, PropId, InternalProviderId) {
+    let (
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        id_func_arg_id,
+    ) = setup_identity_func(ctx).await;
+
     let mut schema = create_schema(ctx).await;
     let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
@@ -445,6 +421,49 @@ async fn setup_swings(ctx: &DalContext) -> (ComponentBag, PropId) {
         .finalize(ctx, None)
         .await
         .expect("cannot finalize schema variant");
+
+    // Create the "swings" explicit internal provider for intra component connection.
+    let (swings_explicit_internal_provider, _socket) = InternalProvider::new_explicit_with_socket(
+        ctx,
+        *schema_variant.id(),
+        "swings",
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        SocketArity::Many,
+        false,
+    )
+    .await
+    .expect("could not create explicit internal provider");
+
+    let swings_destination_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*destination_prop.id()),
+            ..Default::default()
+        },
+    )
+    .await
+    .expect("cannot find attribute value")
+    .expect("attribute value not found");
+
+    let mut swings_destination_attribute_prototype = swings_destination_attribute_value
+        .attribute_prototype(ctx)
+        .await
+        .expect("could not find attribute prototype")
+        .expect("attribute prototype not found");
+    swings_destination_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await
+        .expect("could not set func id on attribute prototype");
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *swings_destination_attribute_prototype.id(),
+        id_func_arg_id,
+        *swings_explicit_internal_provider.id(),
+    )
+    .await
+    .expect("could not create attribute prototype argument");
 
     ctx.blocking_commit()
         .await
@@ -476,6 +495,7 @@ async fn setup_swings(ctx: &DalContext) -> (ComponentBag, PropId) {
             base_attribute_read_context,
         },
         *destination_prop.id(),
+        *swings_explicit_internal_provider.id(),
     )
 }
 

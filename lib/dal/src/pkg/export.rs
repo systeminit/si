@@ -1715,9 +1715,7 @@ pub async fn get_component_type(
 
     let type_av = AttributeValue::find_for_context(ctx, type_context)
         .await?
-        .ok_or(SchemaVariantError::AttributeValueNotFoundForContext(
-            type_context,
-        ))?;
+        .ok_or_else(|| SchemaVariantError::AttributeValueNotFoundForContext(type_context.into()))?;
 
     Ok(match type_av.get_value(ctx).await? {
         Some(type_value) => {

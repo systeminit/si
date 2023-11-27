@@ -31,7 +31,7 @@ pub enum ComponentViewError {
     #[error("json pointer not found: {1:?} at {0}")]
     JSONPointerNotFound(serde_json::Value, String),
     #[error("no attribute value found for context {0:?}")]
-    NoAttributeValue(AttributeReadContext),
+    NoAttributeValue(Box<AttributeReadContext>),
     #[error("no internal provider for prop {0}")]
     NoInternalProvider(PropId),
     #[error("no root prop found for schema variant {0}")]
@@ -99,7 +99,7 @@ impl ComponentView {
 
         let attribute_value = AttributeValue::find_for_context(ctx, value_context)
             .await?
-            .ok_or(ComponentViewError::NoAttributeValue(value_context))?;
+            .ok_or_else(|| ComponentViewError::NoAttributeValue(value_context.into()))?;
 
         let properties_func_binding_return_value =
             FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())

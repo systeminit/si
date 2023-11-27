@@ -141,15 +141,15 @@ impl DependentValuesUpdate {
             return Ok(());
         }
 
-        AttributeValue::create_dependent_values(ctx, &self.attribute_values)
-            .instrument(debug_span!("Creating dependent attribute values", job_id = ?self.job_id()))
-            .await?;
+        // AttributeValue::create_dependent_values(ctx, &self.attribute_values)
+        //     .instrument(debug_span!("Creating dependent attribute values", job_id = ?self.job_id()))
+        //     .await?;
 
         // Creating dependent values creates records in the database that need to be viewed by
         // other connections/txns so we commit
-        ctx.commit().await?;
+        // ctx.commit().await?;
 
-        debug!(job_id = ?self.job_id(), "Transaction committed");
+        // debug!(job_id = ?self.job_id(), "Transaction committed");
 
         council.finished_creating_values().await?;
         debug!(job_id = ?self.job_id(), "Finished creating values");
