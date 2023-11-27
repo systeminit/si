@@ -1,6 +1,7 @@
 use crate::key_management::get_user_email;
 use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
+use inquire::Confirm;
 
 impl AppState {
     pub async fn delete(&self, keep_images: bool) -> CliResult<()> {
@@ -16,6 +17,17 @@ impl AppState {
 async fn invoke(app: &AppState, is_preview: bool, keep_images: bool) -> CliResult<()> {
     app.check(true).await?;
     app.stop().await?;
+
+    let ans = Confirm::new(
+        "This will destroy your data! If you want to save current work, \
+    please export your workspace from within the WebUI. Proceed?",
+    )
+    .with_default(true)
+    .prompt();
+
+    if let Err(err) = ans {
+        println!("Error: Try again later!: {err}")
+    }
 
     if is_preview {
         println!("Deleted the following containers and associated images:");
