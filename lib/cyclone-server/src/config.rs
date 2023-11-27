@@ -132,6 +132,11 @@ impl ConfigBuilder {
     pub fn unix_domain_socket(&mut self, path: impl Into<PathBuf>) -> &mut Self {
         self.incoming_stream(IncomingStream::unix_domain_socket(path))
     }
+
+    #[cfg(target_os = "linux")]
+    pub fn vsock_socket(&mut self, addr: tokio_vsock::VsockAddr) -> &mut Self {
+        self.incoming_stream(IncomingStream::vsock_socket(addr))
+    }
 }
 
 #[remain::sorted]
@@ -139,6 +144,8 @@ impl ConfigBuilder {
 pub enum IncomingStream {
     HTTPSocket(SocketAddr),
     UnixDomainSocket(PathBuf),
+    #[cfg(target_os = "linux")]
+    VsockSocket(tokio_vsock::VsockAddr),
 }
 
 impl Default for IncomingStream {
@@ -160,5 +167,10 @@ impl IncomingStream {
     pub fn unix_domain_socket(path: impl Into<PathBuf>) -> Self {
         let pathbuf = path.into();
         Self::UnixDomainSocket(pathbuf)
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn vsock_socket(addr: tokio_vsock::VsockAddr) -> Self {
+        Self::VsockSocket(addr)
     }
 }

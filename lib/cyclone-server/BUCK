@@ -26,7 +26,12 @@ rust_library(
         "//third-party/rust:tokio-util",
         "//third-party/rust:tower",
         "//third-party/rust:tower-http",
-    ],
+    ] + select({
+        "DEFAULT": [],
+        "config//os:linux": [
+            "//third-party/rust:tokio-vsock",
+        ],
+    }),
     srcs = glob(["src/**/*.rs"]),
 )
 
