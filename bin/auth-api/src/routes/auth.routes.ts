@@ -52,7 +52,6 @@ router.get("/auth/login-callback", async (ctx) => {
   }
 
   const { profile } = await completeAuth0TokenExchange(reqQuery.code);
-
   const user = await createOrUpdateUserFromAuth0Details(profile);
   // TODO: create/update user, send to posthog, etc...
 

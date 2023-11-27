@@ -147,6 +147,31 @@
             <div
               class="m-lg p-lg dark:bg-neutral-800 bg-neutral-200 rounded-md"
             >
+              <!-- email verification warning w/ buttons to help resolve -->
+              <ErrorMessage v-if="user && !user?.emailVerified" class="mb-lg">
+                <Inline spacing="md" alignY="center">
+                  <p>Please verify your email address</p>
+
+                  <VButton
+                    tone="shade"
+                    variant="transparent"
+                    size="sm"
+                    :requestStatus="refreshAuth0Req"
+                    @click="authStore.REFRESH_AUTH0_PROFILE"
+                    >Already verified?</VButton
+                  >
+                  <VButton
+                    v-if="!resendEmailVerificationReq.isSuccess"
+                    tone="shade"
+                    variant="transparent"
+                    size="sm"
+                    :requestStatus="resendEmailVerificationReq"
+                    @click="authStore.RESEND_EMAIL_VERIFICATION"
+                    >Resend Email</VButton
+                  >
+                </Inline>
+              </ErrorMessage>
+
               <RouterView />
             </div>
           </div>
@@ -186,6 +211,8 @@ import {
   VButton,
   DropdownMenu,
   DropdownMenuItem,
+  ErrorMessage,
+  Inline,
 } from "@si/vue-lib/design-system";
 import "floating-vue/dist/style.css";
 
@@ -235,6 +262,11 @@ onMounted(() => {
 
 const authStore = useAuthStore();
 const checkAuthReq = authStore.getRequestStatus("CHECK_AUTH");
+
+const refreshAuth0Req = authStore.getRequestStatus("REFRESH_AUTH0_PROFILE");
+const resendEmailVerificationReq = authStore.getRequestStatus(
+  "RESEND_EMAIL_VERIFICATION",
+);
 
 const userIsLoggedIn = computed(() => authStore.userIsLoggedIn);
 const user = computed(() => authStore.user);

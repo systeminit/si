@@ -11,10 +11,10 @@ export const redis = new IORedis({
 }) as ExtendedIORedis;
 
 // add helper to get/set json objects without worrying about JSON serialization
-async function setJSON(
+async function setJSON<T extends { [key: string]: any } >(
   this: Redis,
   key: string,
-  payload: Record<string, any>,
+  payload: T,
   options?: { expiresIn?: number },
 ) {
   let args: string[] = [];
@@ -22,15 +22,16 @@ async function setJSON(
   if (options?.expiresIn) args = ['EX', options.expiresIn.toString()];
   return this.set(key, JSON.stringify(payload), ...args as any);
 }
-async function getJSON(
+async function getJSON<T extends { [key: string]: any } >(
   this: Redis,
   key: string,
   options?: { delete?: boolean },
-) {
+): Promise<T | null> {
   const result = await this.get(key);
-  if (!result) return result;
+  if (result === null) return result;
+  if (!result) return null; // treat empty strings as null
   if (options?.delete) await this.del(key);
-  return JSON.parse(result);
+  return JSON.parse(result) as T;
 }
 
 export type ExtendedIORedis = Redis & {

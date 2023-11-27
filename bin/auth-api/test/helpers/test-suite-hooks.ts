@@ -2,6 +2,9 @@ import chai from 'chai';
 import chaiSubset from 'chai-subset';
 // import chalk from 'chalk';
 import nock from 'nock';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import wtf from 'wtfnode';
+
 import { cleanupInMemoryCache } from '../../src/lib/cache';
 import { prisma } from '../../src/main';
 import { routesLoaded } from '../../src/routes';
@@ -28,6 +31,9 @@ export async function testSuiteAfter() {
   // TODO: might want this to be part of a more generic cleanup/shutdown system
   await prisma.$disconnect();
   cleanupInMemoryCache();
+
+  // uncomment this to help debug if the test suite doesnt exit
+  // wtf.dump();
 
   // nockAfterAll();
   // if (globalThis.gc) globalThis.gc();
