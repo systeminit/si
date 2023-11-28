@@ -77,6 +77,7 @@ rust_test(
         "//third-party/rust:yrs",
         "//third-party/rust:tower",
         "//third-party/rust:futures",
+        "//third-party/rust:futures-lite",
         ":sdf-server",
     ],
     crate_root = "tests/api.rs",

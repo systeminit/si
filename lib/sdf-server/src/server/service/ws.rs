@@ -1,7 +1,7 @@
 use axum::{
     http::StatusCode, response::IntoResponse, response::Response, routing::get, Json, Router,
 };
-use dal::TransactionsError;
+use dal::{TransactionsError, WsEventError};
 use si_data_pg::{PgError, PgPoolError};
 use thiserror::Error;
 
@@ -14,11 +14,15 @@ pub enum WsError {
     #[error(transparent)]
     Crdt(#[from] CrdtError),
     #[error(transparent)]
+    Nats(#[from] si_data_nats::Error),
+    #[error(transparent)]
     Pg(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error("wsevent error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub mod crdt;
