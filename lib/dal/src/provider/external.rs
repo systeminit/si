@@ -137,7 +137,7 @@ impl ExternalProvider {
             )?;
         }
 
-        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+        let attribute_prototype = AttributePrototype::new(ctx, func_id)?;
         {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
             workspace_snapshot.add_edge(

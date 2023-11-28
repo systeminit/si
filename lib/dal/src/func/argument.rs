@@ -37,6 +37,8 @@ pub enum FuncArgumentError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("intrinsic func {0} ({1}) missing func argument edge")]
+    IntrinsicMissingFuncArgumentEdge(String, FuncId),
     #[error(transparent)]
     NodeWeight(#[from] NodeWeightError),
     #[error("func argument not found with name {0} for Func {1}")]
@@ -238,6 +240,30 @@ impl FuncArgument {
             node_weight.get_content_node_weight_of_kind(ContentAddressDiscriminants::FuncArg)?;
 
         Ok(FuncArgument::assemble(&arg_node_weight, &inner))
+    }
+
+    pub fn list_ids_for_func(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> FuncArgumentResult<Vec<FuncArgumentId>> {
+        let mut func_args = vec![];
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id.into())?;
+
+        let func_arg_node_idxs = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind_by_index(
+                func_node_idx,
+                EdgeWeightKindDiscriminants::Use,
+            )?;
+
+        for idx in func_arg_node_idxs {
+            let node_weight = workspace_snapshot.get_node_weight(idx)?;
+            func_args.push(node_weight.id().into())
+        }
+
+        Ok(func_args)
     }
 
     /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId).

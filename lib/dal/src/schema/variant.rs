@@ -11,8 +11,12 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentError,
+};
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
+use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::prop::{PropError, PropPath};
@@ -26,8 +30,10 @@ use crate::workspace_snapshot::edge_weight::{
 };
 use crate::workspace_snapshot::graph::NodeIndex;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::workspace_snapshot::node_weight::{
+    FuncNodeWeight, NodeWeight, NodeWeightError, PropNodeWeight,
+};
+use crate::workspace_snapshot::{self, WorkspaceSnapshotError};
 use crate::{
     pk, AttributePrototype, AttributePrototypeId, DalContext, ExternalProvider, ExternalProviderId,
     Func, FuncId, InternalProvider, Prop, PropId, PropKind, SchemaId, SocketArity, StandardModel,
@@ -51,6 +57,8 @@ pub const SCHEMA_VARIANT_VERSION: SchemaVariantContentDiscriminants =
 pub enum SchemaVariantError {
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute argument prototype error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
@@ -59,12 +67,16 @@ pub enum SchemaVariantError {
     ExternalProvider(#[from] ExternalProviderError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("serde json error: {0}")]
+    Serde(#[from] serde_json::Error),
     #[error("store error: {0}")]
     Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
@@ -171,7 +183,7 @@ impl SchemaVariant {
 
         let schema_variant_id: SchemaVariantId = id.into();
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;
-        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
+        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)?;
 
         InternalProvider::new_explicit_with_socket(
             ctx,
@@ -312,7 +324,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<()> {
         info!("creating default prototypes");
         let change_set = ctx.change_set_pointer()?;
-        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
+        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset)?;
         let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
         let mut work_queue: VecDeque<PropNodeWeight> = VecDeque::from(vec![root_prop_node_weight]);
 
@@ -339,7 +351,7 @@ impl SchemaVariant {
             // Create the attribute prototype and appropriate edges if they do not exist.
             if found_attribute_prototype_id.is_none() {
                 // We did not find a prototype, so we must create one.
-                let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+                let attribute_prototype = AttributePrototype::new(ctx, func_id)?;
 
                 // New edge Prop --Prototype--> AttributePrototype.
                 let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
@@ -490,14 +502,30 @@ impl SchemaVariant {
         Ok(())
     }
 
-    pub async fn set_color(self, ctx: &DalContext, color: String) -> SchemaVariantResult<Self> {
+    /// Configures the "default" value for the
+    /// [`AttributePrototypeArgument`](crate::attribute::prototype::argument::AttributePrototypeArgument)
+    /// for the /root/si/color [`Prop`](crate::Prop). If a prototype already
+    /// exists pointing to a function other than
+    /// [`IntrinsicFunc::SetString`](`crate::func::intrinsics::IntrinsicFunc::SetString`)
+    /// we will remove that edge and replace it with one pointing to
+    /// `SetString`.
+    pub fn set_color(self, ctx: &DalContext, color: impl AsRef<str>) -> SchemaVariantResult<Self> {
         let color_prop_id =
             Prop::find_prop_id_by_path(ctx, self.id, PropPath::new(["root", "si", "color"]))?;
-        // find the AttributePrototype
-        // Check if the prototype points to Unset
-        // if so, point it to si:setString
-        // find the only APA, or create it pointing to the only func arg for the si:setString func
-        // point the PrototypeArgumentValue edge to a StaticArgumentValue of `color`
+
+        let prototype_id = Prop::prototype_id(ctx, color_prop_id)?;
+        let set_string_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::SetString)?;
+        let set_string_value_arg_id = *FuncArgument::list_ids_for_func(ctx, set_string_func_id)?
+            .get(0)
+            .ok_or(FuncArgumentError::IntrinsicMissingFuncArgumentEdge(
+                IntrinsicFunc::SetString.name().into(),
+                set_string_func_id,
+            ))?;
+
+        AttributePrototype::update_func_by_id(ctx, prototype_id, set_string_func_id)?;
+
+        AttributePrototypeArgument::new(ctx, prototype_id, set_string_value_arg_id)?
+            .set_value_from_static_value(ctx, serde_json::to_value(color.as_ref())?)?;
 
         Ok(self)
     }

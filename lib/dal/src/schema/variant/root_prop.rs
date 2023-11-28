@@ -303,8 +303,7 @@ impl RootProp {
             ctx,
             Validation::StringIsHexColor { value: None },
             color_prop.id(),
-        )
-        .await?;
+        )?;
 
         Ok(si_prop.id())
     }

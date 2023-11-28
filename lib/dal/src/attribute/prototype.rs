@@ -23,7 +23,9 @@ use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::graph::NodeIndex;
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::node_weight::{
+    NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, DalContext, FuncId, InternalProviderId, StandardModel, Timestamp, TransactionsError,
@@ -110,7 +112,7 @@ impl AttributePrototype {
     //   - an attribute value whose lineage comes from a component
     //   - a prop or provider whose lineage comes from a schema variant
     // Outgoing edges from an attribute prototype are used for intra and inter component relationships.
-    pub async fn new(ctx: &DalContext, func_id: FuncId) -> AttributePrototypeResult<Self> {
+    pub fn new(ctx: &DalContext, func_id: FuncId) -> AttributePrototypeResult<Self> {
         let timestamp = Timestamp::now();
 
         let content = AttributePrototypeContentV1 { timestamp };
@@ -136,6 +138,24 @@ impl AttributePrototype {
             AttributePrototypeId::from(id),
             &content,
         ))
+    }
+
+    pub fn func_id(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<FuncId> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        for node_index in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            prototype_id.into(),
+            EdgeWeightKindDiscriminants::Use,
+        )? {
+            let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+            if NodeWeightDiscriminants::Func == node_weight.into() {
+                return Ok(node_weight.id().into());
+            }
+        }
+
+        Err(AttributePrototypeError::MissingFunction(prototype_id))
     }
 
     pub fn update_func_by_id(

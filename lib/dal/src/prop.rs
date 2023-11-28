@@ -20,7 +20,9 @@ use crate::{
     label_list::ToLabelList, pk, property_editor::schema::WidgetKind, FuncId, StandardModel,
     Timestamp, TransactionsError,
 };
-use crate::{DalContext, FuncBackendResponseType, SchemaVariant, SchemaVariantId};
+use crate::{
+    AttributePrototypeId, DalContext, FuncBackendResponseType, SchemaVariant, SchemaVariantId,
+};
 
 pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
 
@@ -33,6 +35,8 @@ pub enum PropError {
     ChildPropNotFoundByName(NodeIndex, String),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("missing prototype for prop {0}")]
+    MissingPrototypeForProp(PropId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("store error: {0}")]
@@ -457,6 +461,22 @@ impl Prop {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         Ok(workspace_snapshot
             .get_node_weight(current_node_index)?
+            .id()
+            .into())
+    }
+
+    pub fn prototype_id(ctx: &DalContext, prop_id: PropId) -> PropResult<AttributePrototypeId> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let prototype_node_index = *workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                prop_id.into(),
+                EdgeWeightKindDiscriminants::Prototype,
+            )?
+            .get(0)
+            .ok_or(PropError::MissingPrototypeForProp(prop_id))?;
+
+        Ok(workspace_snapshot
+            .get_node_weight(prototype_node_index)?
             .id()
             .into())
     }

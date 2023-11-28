@@ -82,7 +82,7 @@ impl ValidationPrototype {
         }
     }
 
-    pub async fn new(
+    pub fn new(
         ctx: &DalContext,
         func_id: FuncId,
         args: serde_json::Value,
@@ -115,14 +115,14 @@ impl ValidationPrototype {
         Ok(Self::assemble(id.into(), content))
     }
 
-    pub async fn new_intrinsic(
+    pub fn new_intrinsic(
         ctx: &DalContext,
         validation: Validation,
         parent_prop_id: PropId,
     ) -> ValidationPrototypeResult<Self> {
-        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Validation).await?;
+        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Validation)?;
         let args = serde_json::to_value(FuncBackendValidationArgs::new(validation))?;
-        Self::new(ctx, func_id, args, parent_prop_id).await
+        Self::new(ctx, func_id, args, parent_prop_id)
     }
 }
 

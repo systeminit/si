@@ -126,10 +126,10 @@ impl AttributePrototypeArgument {
     }
 
     fn set_value_source(
-        &mut self,
+        self,
         ctx: &DalContext,
         value_id: Ulid,
-    ) -> AttributePrototypeArgumentResult<()> {
+    ) -> AttributePrototypeArgumentResult<Self> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         let change_set = ctx.change_set_pointer()?;
 
@@ -152,30 +152,30 @@ impl AttributePrototypeArgument {
             value_id.into(),
         )?;
 
-        Ok(())
+        Ok(self)
     }
 
     pub fn set_value_from_internal_provider_id(
-        &mut self,
+        self,
         ctx: &DalContext,
         internal_provider_id: InternalProviderId,
-    ) -> AttributePrototypeArgumentResult<()> {
+    ) -> AttributePrototypeArgumentResult<Self> {
         self.set_value_source(ctx, internal_provider_id.into())
     }
 
     pub fn set_value_from_static_value_id(
-        &mut self,
+        self,
         ctx: &DalContext,
         value_id: StaticArgumentValueId,
-    ) -> AttributePrototypeArgumentResult<()> {
+    ) -> AttributePrototypeArgumentResult<Self> {
         self.set_value_source(ctx, value_id.into())
     }
 
     pub fn set_value_from_static_value(
-        &mut self,
+        self,
         ctx: &DalContext,
         value: serde_json::Value,
-    ) -> AttributePrototypeArgumentResult<()> {
+    ) -> AttributePrototypeArgumentResult<Self> {
         let static_value = StaticArgumentValue::new(ctx, value)?;
 
         self.set_value_from_static_value_id(ctx, static_value.id())

@@ -209,8 +209,8 @@ impl InternalProvider {
             id
         };
 
-        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
-        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)?;
+        let attribute_prototype = AttributePrototype::new(ctx, func_id)?;
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         workspace_snapshot.add_edge(
             id,
@@ -256,7 +256,7 @@ impl InternalProvider {
             )?;
         }
 
-        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+        let attribute_prototype = AttributePrototype::new(ctx, func_id)?;
         {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
             workspace_snapshot.add_edge(
