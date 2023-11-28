@@ -108,10 +108,10 @@ execute_configuration_management() {
         curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/component/firecracker-base/prepare_jailer.sh > ./prepare_jailer.sh
 
         # Remainder of the binaries
-        wget -bcq https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/rootfs.ext4 -O ./rootfs.ext4
-        wget -bcq https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/image-kernel.bin -O ./image-kernel.bin
-        wget -bcq https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/firecracker -O ./firecracker
-        wget -bcq https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/jailer -O ./jailer
+        wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/rootfs.ext4 -O ./rootfs.ext4
+        wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/image-kernel.bin -O ./image-kernel.bin
+        wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/firecracker -O ./firecracker
+        wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/jailer -O ./jailer
 
         # TODO(johnrwatson): Currently not used but we could maybe make dynamic keys for each micro-vm (or use something like aws ssm/tailscale)
         # This is a bit of a poor attempt to setup a child key, but will do until we have this properly working
@@ -139,7 +139,7 @@ execute_configuration_management() {
         cp ./jailer /usr/bin/jailer
 
         # Load kernel module
-        modprobe kvm_intel || echo "loading AMD instead" && modprobe kvm_amd
+        modprobe kvm_intel || echo "loading AMD instead" || modprobe kvm_amd
 
         # TODO(johnrwatson): Can do better than this, needs review
         chmod 777 /dev/kvm
