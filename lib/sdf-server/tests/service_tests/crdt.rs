@@ -1,64 +1,80 @@
-use axum::{
-    extract::FromRef, extract::State, extract::WebSocketUpgrade, response::IntoResponse,
-    routing::get, Router,
-};
-use dal::WorkspacePk;
-use futures::{ready, SinkExt, Stream, StreamExt};
-use futures::{stream::SplitSink, stream::SplitStream, Sink};
 /// Adapted from: https://github.com/y-crdt/yrs-warp/blob/14a1abdf9085d71b6071e27c3e53ac5d0e07735d/src/ws.rs
-use sdf_server::server::service::{ws::crdt::crdt_inner, ws::crdt::BroadcastGroups, ws::WsError};
-use sdf_server::server::state::ShutdownBroadcast;
+use axum::extract::ws::Message;
+use dal::WorkspacePk;
+use futures::{Future, Sink, SinkExt, Stream};
+use futures_lite::future::FutureExt;
+use sdf_server::server::service::ws::crdt::{crdt_handle, BroadcastGroups, CrdtError};
 use si_data_nats::{NatsClient, NatsConfig};
-use std::{
-    collections::HashMap, net::SocketAddr, pin::Pin, str::FromStr, sync::Arc, task::Context,
-    task::Poll, time::Duration,
-};
+use std::{collections::HashMap, pin::Pin, sync::Arc, task::Context, task::Poll, time::Duration};
 use tokio::{
-    net::TcpStream, sync::broadcast, sync::Mutex, sync::Notify, sync::RwLock, task,
-    task::JoinHandle, time::sleep, time::timeout,
+    sync::broadcast, sync::Mutex, sync::Notify, sync::RwLock, task, task::JoinHandle,
+    time::timeout,
 };
-use tokio_tungstenite::{tungstenite::Message, MaybeTlsStream, WebSocketStream};
-use y_sync::{awareness::Awareness, net::BroadcastGroup, net::Connection, sync::Error};
+use y_sync::{awareness::Awareness, net::BroadcastGroup, net::Connection};
 use yrs::{updates::encoder::Encode, Doc, GetString, Text, Transact, UpdateSubscription};
 
-pub async fn crdt(
-    wsu: WebSocketUpgrade,
-    State(shutdown_broadcast): State<ShutdownBroadcast>,
-    State(broadcast_groups): State<BroadcastGroups>,
-    State(nats): State<NatsClient>,
-    State(workspace_pk): State<WorkspacePk>,
-) -> Result<impl IntoResponse, WsError> {
-    Ok(crdt_inner(
-        nats,
-        wsu,
-        workspace_pk,
-        "my-room".to_owned(),
-        shutdown_broadcast,
-        broadcast_groups,
-    )
-    .await?)
+struct Server {
+    nats: NatsClient,
+    channel_name: String,
+    workspace_pk: WorkspacePk,
+    id: String,
+    broadcast_groups: BroadcastGroups,
 }
 
-#[derive(Clone, FromRef)]
-pub struct AppState {
-    broadcast_groups: BroadcastGroups,
-    shutdown_broadcast: ShutdownBroadcast,
-    nats: NatsClient,
-    workspace_pk: WorkspacePk,
+struct Client {
+    _handle: JoinHandle<()>,
+    conn: Connection<TestSink, TestStream>,
+    shutdown_broadcast_tx: broadcast::Sender<()>,
+}
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        self.shutdown_broadcast_tx.send(()).expect("unable to drop client");
+    }
+}
+
+async fn client(doc: Doc, server: &Server) -> Result<Client, Box<dyn std::error::Error>> {
+    let (sink, stream) = broadcast::channel(1000000);
+    let sink = TestWsSink::new(sink);
+    let stream = TestWsStream::new(stream);
+
+    let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
+
+    let subscription = server.nats.subscribe(&server.channel_name).await?;
+    let ws_subscription = server.nats.subscribe(&server.channel_name).await?;
+    let _handle = tokio::spawn(crdt_handle(
+        sink.clone(),
+        stream.clone(),
+        server.nats.clone(),
+        server.broadcast_groups.clone(),
+        server.channel_name.clone(),
+        subscription,
+        ws_subscription,
+        server.workspace_pk,
+        server.id.clone(),
+        shutdown_broadcast_rx,
+    ));
+
+    let awareness = Arc::new(RwLock::new(Awareness::new(doc)));
+    let conn = Connection::new(awareness, TestSink::new(sink), TestStream::new(stream));
+    Ok(Client {
+        _handle,
+        conn,
+        shutdown_broadcast_tx,
+    })
 }
 
 async fn start_server(
-    addr: &str,
-    bcast: Arc<BroadcastGroup>,
-) -> Result<JoinHandle<()>, Box<dyn std::error::Error>> {
-    let addr = SocketAddr::from_str(addr)?;
+    awareness: Arc<RwLock<Awareness>>,
+) -> Result<Server, Box<dyn std::error::Error>> {
+    let id = "my-room".to_owned();
+    let bcast = Arc::new(BroadcastGroup::new(awareness.clone(), 10).await);
 
     let workspace_pk = WorkspacePk::generate();
 
     let mut map = HashMap::new();
-    map.insert(format!("{workspace_pk}-my-room"), bcast);
-
-    let (shutdown_broadcast_tx, _shutdown_broadcast_rx) = broadcast::channel(1);
+    map.insert(format!("{workspace_pk}-{id}"), bcast);
+    let broadcast_groups = Arc::new(Mutex::new(map));
 
     let mut config = NatsConfig::default();
 
@@ -67,93 +83,203 @@ async fn start_server(
         config.url = value;
     }
     let nats = NatsClient::new(&config).await?;
-    let state = AppState {
-        broadcast_groups: Arc::new(Mutex::new(map)),
-        shutdown_broadcast: ShutdownBroadcast::new(shutdown_broadcast_tx),
+
+    let channel_name = format!("crdt-{workspace_pk}-{id}");
+    Ok(Server {
         nats,
+        broadcast_groups,
+        channel_name,
         workspace_pk,
-    };
-
-    let routes = Router::new().route("/my-room", get(crdt)).with_state(state);
-
-    Ok(tokio::spawn(async move {
-        axum::Server::bind(&addr)
-            .serve(routes.into_make_service())
-            .await
-            .expect("unable to start axum test server");
-    }))
+        id,
+    })
 }
 
-struct TungsteniteSink(SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>);
+#[derive(Clone)]
+struct TestSink(TestWsSink);
 
-impl Sink<Vec<u8>> for TungsteniteSink {
-    type Error = Error;
+impl TestSink {
+    pub fn new(sink: TestWsSink) -> Self {
+        Self(sink)
+    }
+}
+
+impl Sink<Vec<u8>> for TestSink {
+    type Error = y_sync::sync::Error;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let sink = unsafe { Pin::new_unchecked(&mut self.0) };
-        let result = ready!(sink.poll_ready(cx));
-        match result {
-            Ok(_) => Poll::Ready(Ok(())),
-            Err(e) => Poll::Ready(Err(Error::Other(Box::new(e)))),
+        match Pin::new(&mut self.0).poll_ready(cx) {
+            Poll::Ready(Ok(msg)) => Poll::Ready(Ok(msg)),
+            Poll::Ready(Err(err)) => Poll::Ready(Err(y_sync::sync::Error::Other(err.into()))),
+            Poll::Pending => Poll::Pending,
         }
     }
 
-    fn start_send(mut self: Pin<&mut Self>, item: Vec<u8>) -> Result<(), Self::Error> {
-        let sink = unsafe { Pin::new_unchecked(&mut self.0) };
-        let result = sink.start_send(Message::binary(item));
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Error::Other(Box::new(e))),
+    fn start_send(mut self: Pin<&mut Self>, message: Vec<u8>) -> Result<(), Self::Error> {
+        match Pin::new(&mut self.0).start_send(Message::Binary(message)) {
+            Ok(msg) => Ok(msg),
+            Err(err) => Err(y_sync::sync::Error::Other(err.into())),
         }
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let sink = unsafe { Pin::new_unchecked(&mut self.0) };
-        let result = ready!(sink.poll_flush(cx));
-        match result {
-            Ok(_) => Poll::Ready(Ok(())),
-            Err(e) => Poll::Ready(Err(Error::Other(Box::new(e)))),
+        match Pin::new(&mut self.0).poll_flush(cx) {
+            Poll::Ready(Ok(msg)) => Poll::Ready(Ok(msg)),
+            Poll::Ready(Err(err)) => Poll::Ready(Err(y_sync::sync::Error::Other(err.into()))),
+            Poll::Pending => Poll::Pending,
         }
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let sink = unsafe { Pin::new_unchecked(&mut self.0) };
-        let result = ready!(sink.poll_close(cx));
-        match result {
-            Ok(_) => Poll::Ready(Ok(())),
-            Err(e) => Poll::Ready(Err(Error::Other(Box::new(e)))),
+        match Pin::new(&mut self.0).poll_close(cx) {
+            Poll::Ready(Ok(msg)) => Poll::Ready(Ok(msg)),
+            Poll::Ready(Err(err)) => Poll::Ready(Err(y_sync::sync::Error::Other(err.into()))),
+            Poll::Pending => Poll::Pending,
         }
     }
 }
 
-struct TungsteniteStream(SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>);
-impl Stream for TungsteniteStream {
-    type Item = Result<Vec<u8>, Error>;
+#[derive(Clone)]
+struct TestStream(TestWsStream);
+
+impl TestStream {
+    pub fn new(stream: TestWsStream) -> Self {
+        Self(stream)
+    }
+}
+
+impl Stream for TestStream {
+    type Item = Result<Vec<u8>, y_sync::sync::Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let stream = unsafe { Pin::new_unchecked(&mut self.0) };
-        let result = ready!(stream.poll_next(cx));
-        match result {
-            None => Poll::Ready(None),
-            Some(Ok(msg)) => Poll::Ready(Some(Ok(msg.into_data()))),
-            Some(Err(e)) => Poll::Ready(Some(Err(Error::Other(Box::new(e))))),
+        match Pin::new(&mut self.0).poll_next(cx) {
+            Poll::Ready(Some(Ok(Message::Binary(msg)))) => Poll::Ready(Some(Ok(msg))),
+            Poll::Ready(Some(Ok(_))) => Poll::Ready(None),
+            Poll::Ready(Some(Err(err))) => {
+                Poll::Ready(Some(Err(y_sync::sync::Error::Other(err.into()))))
+            }
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending,
         }
     }
 }
 
-async fn client(
-    addr: &str,
-    doc: Doc,
-) -> Result<Connection<TungsteniteSink, TungsteniteStream>, Box<dyn std::error::Error>> {
-    let (stream, _) = tokio_tungstenite::connect_async(addr).await?;
-    let (sink, stream) = stream.split();
-    let sink = TungsteniteSink(sink);
-    let stream = TungsteniteStream(stream);
-    Ok(Connection::new(
-        Arc::new(RwLock::new(Awareness::new(doc))),
-        sink,
-        stream,
-    ))
+struct TestWsSink {
+    id: u64,
+    sink: Option<broadcast::Sender<Message>>,
+}
+
+impl TestWsSink {
+    pub fn new(sender: broadcast::Sender<Message>) -> Self {
+        Self {
+            id: 0,
+            sink: Some(sender),
+        }
+    }
+}
+
+impl Clone for TestWsSink {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id + 1,
+            sink: self.sink.clone(),
+        }
+    }
+}
+
+impl Sink<Message> for TestWsSink {
+    type Error = CrdtError;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_flush(cx)
+    }
+
+    fn start_send(mut self: Pin<&mut Self>, payload: Message) -> Result<(), Self::Error> {
+        if let Some(sink) = &mut self.sink {
+            sink.send(payload)?;
+        }
+        Ok(())
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll_close(
+        mut self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        // Drops it which triggers the channel closure
+        self.sink.take();
+        Poll::Ready(Ok(()))
+    }
+}
+
+type BoxedResultFuture<T, E> = Box<dyn Future<Output = Result<T, E>> + Sync + Send>;
+
+struct TestWsStream {
+    id: u64,
+    stream: broadcast::Receiver<Message>,
+    future: Option<Pin<BoxedResultFuture<Message, axum::Error>>>,
+}
+
+impl Clone for TestWsStream {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id + 1,
+            stream: self.stream.resubscribe(),
+            future: None,
+        }
+    }
+}
+
+impl TestWsStream {
+    pub fn new(stream: broadcast::Receiver<Message>) -> Self {
+        Self {
+            id: 0,
+            stream,
+            future: None,
+        }
+    }
+}
+
+impl Stream for TestWsStream {
+    type Item = Result<Message, axum::Error>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        if self.future.is_none() {
+            let mut stream = self.stream.resubscribe();
+            let value = match self.stream.try_recv() {
+                Ok(msg) => Some(msg),
+                Err(broadcast::error::TryRecvError::Empty) => None,
+                Err(err @ broadcast::error::TryRecvError::Closed) => {
+                    return Poll::Ready(Some(Err(axum::Error::new(err))))
+                }
+                Err(broadcast::error::TryRecvError::Lagged(num)) => {
+                    panic!("Broadcast reader lagged behind {} messages", num)
+                }
+            };
+
+            if let Some(value) = value {
+                return Poll::Ready(Some(Ok(value)));
+            } else {
+                self.future = Some(Box::pin(async move {
+                    stream.recv().await.map_err(axum::Error::new)
+                }));
+            }
+        }
+
+        if let Some(mut future) = self.future.take() {
+            match future.poll(cx) {
+                Poll::Ready(msg) => Poll::Ready(Some(msg)),
+                Poll::Pending => {
+                    self.future = Some(future);
+                    Poll::Pending
+                }
+            }
+        } else {
+            Poll::Pending
+        }
+    }
 }
 
 fn create_notifier(doc: &Doc) -> (Arc<Notify>, UpdateSubscription) {
@@ -174,12 +300,11 @@ async fn change_introduced_by_server_reaches_subscribed_clients(
     let doc = Doc::with_client_id(1);
     let text = doc.get_or_insert_text("test");
     let awareness = Arc::new(RwLock::new(Awareness::new(doc)));
-    let bcast = BroadcastGroup::new(awareness.clone(), 10).await;
-    let _server = start_server("0.0.0.0:6600", Arc::new(bcast)).await?;
+    let server = start_server(awareness.clone()).await?;
 
     let doc = Doc::new();
     let (n, _sub) = create_notifier(&doc);
-    let c1 = client("ws://localhost:6600/my-room", doc).await?;
+    let c1 = client(doc, &server).await.expect("unable to make client");
 
     {
         let lock = awareness.write().await;
@@ -189,7 +314,7 @@ async fn change_introduced_by_server_reaches_subscribed_clients(
     timeout(TIMEOUT, n.notified()).await?;
 
     {
-        let awareness = c1.awareness().read().await;
+        let awareness = c1.conn.awareness().read().await;
         let doc = awareness.doc();
         let text = doc.get_or_insert_text("test");
         let str = text.get_string(&doc.transact());
@@ -207,17 +332,16 @@ async fn subscribed_client_fetches_initial_state() -> Result<(), Box<dyn std::er
     text.push(&mut doc.transact_mut(), "abc");
 
     let awareness = Arc::new(RwLock::new(Awareness::new(doc)));
-    let bcast = BroadcastGroup::new(awareness.clone(), 10).await;
-    let _server = start_server("0.0.0.0:6601", Arc::new(bcast)).await?;
+    let server = start_server(awareness).await?;
 
     let doc = Doc::new();
     let (n, _sub) = create_notifier(&doc);
-    let c1 = client("ws://localhost:6601/my-room", doc).await?;
+    let c1 = client(doc, &server).await.expect("unable to make client");
 
     timeout(TIMEOUT, n.notified()).await?;
 
     {
-        let awareness = c1.awareness().read().await;
+        let awareness = c1.conn.awareness().read().await;
         let doc = awareness.doc();
         let text = doc.get_or_insert_text("test");
         let str = text.get_string(&doc.transact());
@@ -233,15 +357,15 @@ async fn changes_from_one_client_reach_others() -> Result<(), Box<dyn std::error
     let _text = doc.get_or_insert_text("test");
 
     let awareness = Arc::new(RwLock::new(Awareness::new(doc)));
-    let bcast = BroadcastGroup::new(awareness.clone(), 10).await;
-    let _server = start_server("0.0.0.0:6602", Arc::new(bcast)).await?;
+    let server = start_server(awareness).await?;
 
     let d1 = Doc::with_client_id(2);
-    let c1 = client("ws://localhost:6602/my-room", d1).await?;
+    let c1 = client(d1, &server).await.expect("unable to make client");
+
     // by default changes made by document on the client side are not propagated automatically
     let _sub11 = {
-        let sink = c1.sink();
-        let a = c1.awareness().write().await;
+        let sink = c1.conn.sink();
+        let a = c1.conn.awareness().write().await;
         let doc = a.doc();
         doc.observe_update_v1(move |_txn, e| {
             let update = e.update.to_owned();
@@ -260,10 +384,10 @@ async fn changes_from_one_client_reach_others() -> Result<(), Box<dyn std::error
 
     let d2 = Doc::with_client_id(3);
     let (n2, _sub2) = create_notifier(&d2);
-    let c2 = client("ws://localhost:6602/my-room", d2).await?;
+    let c2 = client(d2, &server).await.expect("unable to make client");
 
     {
-        let a = c1.awareness().write().await;
+        let a = c1.conn.awareness().write().await;
         let doc = a.doc();
         let text = doc.get_or_insert_text("test");
         text.push(&mut doc.transact_mut(), "def");
@@ -272,7 +396,7 @@ async fn changes_from_one_client_reach_others() -> Result<(), Box<dyn std::error
     timeout(TIMEOUT, n2.notified()).await?;
 
     {
-        let awareness = c2.awareness().read().await;
+        let awareness = c2.conn.awareness().read().await;
         let doc = awareness.doc();
         let text = doc.get_or_insert_text("test");
         let str = text.get_string(&doc.transact());
@@ -286,17 +410,17 @@ async fn changes_from_one_client_reach_others() -> Result<(), Box<dyn std::error
 async fn client_failure_doesnt_affect_others() -> Result<(), Box<dyn std::error::Error>> {
     let doc = Doc::with_client_id(1);
     let _text = doc.get_or_insert_text("test");
-
     let awareness = Arc::new(RwLock::new(Awareness::new(doc)));
-    let bcast = BroadcastGroup::new(awareness.clone(), 10).await;
-    let _server = start_server("0.0.0.0:6603", Arc::new(bcast)).await?;
+
+    let server = start_server(awareness).await?;
 
     let d1 = Doc::with_client_id(2);
-    let c1 = client("ws://localhost:6603/my-room", d1).await?;
+    let c1 = client(d1, &server).await.expect("unable to make client");
+
     // by default changes made by document on the client side are not propagated automatically
     let _sub11 = {
-        let sink = c1.sink();
-        let a = c1.awareness().write().await;
+        let sink = c1.conn.sink();
+        let a = c1.conn.awareness().write().await;
         let doc = a.doc();
         doc.observe_update_v1(move |_txn, e| {
             let update = e.update.to_owned();
@@ -306,7 +430,9 @@ async fn client_failure_doesnt_affect_others() -> Result<(), Box<dyn std::error:
                         y_sync::sync::Message::Sync(y_sync::sync::SyncMessage::Update(update))
                             .encode_v1();
                     let mut sink = sink.lock().await;
-                    sink.send(msg).await.expect("unable to send msg to sink");
+                    sink.send(dbg!(msg))
+                        .await
+                        .expect("unable to send msg to sink");
                 });
             }
         })
@@ -315,33 +441,33 @@ async fn client_failure_doesnt_affect_others() -> Result<(), Box<dyn std::error:
 
     let d2 = Doc::with_client_id(3);
     let (n2, sub2) = create_notifier(&d2);
-    let c2 = client("ws://localhost:6603/my-room", d2).await?;
+    let c2 = client(d2, &server).await.expect("unable to make client");
 
     let d3 = Doc::with_client_id(4);
     let (n3, sub3) = create_notifier(&d3);
-    let c3 = client("ws://localhost:6603/my-room", d3).await?;
+    let c3 = client(d3, &server).await.expect("unable to make client");
 
     {
-        let a = c1.awareness().write().await;
+        let a = c1.conn.awareness().write().await;
         let doc = a.doc();
         let text = doc.get_or_insert_text("test");
         text.push(&mut doc.transact_mut(), "abc");
     }
 
     // on the first try both C2 and C3 should receive the update
-    //timeout(TIMEOUT, n2.notified()).await.unwrap();
-    //timeout(TIMEOUT, n3.notified()).await.unwrap();
-    sleep(TIMEOUT).await;
+    timeout(TIMEOUT, n2.notified()).await.unwrap();
+    // timeout(TIMEOUT, n2.notified()).await.unwrap();
 
     {
-        let awareness = c2.awareness().read().await;
+        let awareness = c2.conn.awareness().read().await;
         let doc = awareness.doc();
         let text = doc.get_or_insert_text("test");
         let str = text.get_string(&doc.transact());
         assert_eq!(str, "abc".to_string());
     }
+
     {
-        let awareness = c3.awareness().read().await;
+        let awareness = c3.conn.awareness().read().await;
         let doc = awareness.doc();
         let text = doc.get_or_insert_text("test");
         let str = text.get_string(&doc.transact());
@@ -357,13 +483,13 @@ async fn client_failure_doesnt_affect_others() -> Result<(), Box<dyn std::error:
     drop(sub2);
 
     let (n2, _sub2) = {
-        let a = c2.awareness().write().await;
+        let a = c2.conn.awareness().write().await;
         let doc = a.doc();
         create_notifier(doc)
     };
 
     {
-        let a = c1.awareness().write().await;
+        let a = c1.conn.awareness().write().await;
         let doc = a.doc();
         let text = doc.get_or_insert_text("test");
         text.push(&mut doc.transact_mut(), "def");
@@ -372,7 +498,7 @@ async fn client_failure_doesnt_affect_others() -> Result<(), Box<dyn std::error:
     timeout(TIMEOUT, n2.notified()).await.expect("timeout");
 
     {
-        let awareness = c2.awareness().read().await;
+        let awareness = c2.conn.awareness().read().await;
         let doc = awareness.doc();
         let text = doc.get_or_insert_text("test");
         let str = text.get_string(&doc.transact());
