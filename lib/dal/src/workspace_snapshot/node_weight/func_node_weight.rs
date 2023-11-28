@@ -3,6 +3,7 @@ use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::FuncBackendKind;
 use crate::{
@@ -130,89 +131,11 @@ impl FuncNodeWeight {
 
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
         let new_address = match &self.content_address {
-            ContentAddress::ActionPrototype(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "ActionPrototype".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::AttributePrototype(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "AttributePrototype".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::AttributeValue(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "AttributeValue".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::Component(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Component".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::ExternalProvider(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "ExternalProvider".to_string(),
-                    "Func".to_string(),
-                ));
-            }
             ContentAddress::Func(_) => ContentAddress::Func(content_hash),
-            ContentAddress::FuncArg(_) => {
+            other => {
                 return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "FuncArc".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::InternalProvider(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "InternalProvider".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::Node(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Node".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::Prop(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Prop".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::Root => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Root".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::Schema(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Schema".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::SchemaVariant(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "SchemaVariant".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::Socket(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Socket".to_string(),
-                    "Func".to_string(),
-                ));
-            }
-            ContentAddress::ValidationPrototype(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "ValidationPrototype".to_string(),
-                    "Func".to_string(),
+                    Into::<ContentAddressDiscriminants>::into(other).to_string(),
+                    ContentAddressDiscriminants::Func.to_string(),
                 ));
             }
         };

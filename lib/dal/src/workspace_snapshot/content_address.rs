@@ -3,13 +3,16 @@ use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 
 #[remain::sorted]
-#[derive(EnumDiscriminants, Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
+#[derive(
+    EnumDiscriminants, Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq, strum::Display,
+)]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 /// The type of the object, and the content-addressable-storage address (content hash)
 /// of the object itself.
 pub enum ContentAddress {
     ActionPrototype(ContentHash),
     AttributePrototype(ContentHash),
+    AttributePrototypeArgument(ContentHash),
     AttributeValue(ContentHash),
     Component(ContentHash),
     ExternalProvider(ContentHash),
@@ -22,6 +25,7 @@ pub enum ContentAddress {
     Schema(ContentHash),
     SchemaVariant(ContentHash),
     Socket(ContentHash),
+    StaticArgumentValue(ContentHash),
     ValidationPrototype(ContentHash),
 }
 
@@ -31,6 +35,7 @@ impl ContentAddress {
             ContentAddress::Root => None,
             ContentAddress::ActionPrototype(id)
             | ContentAddress::AttributePrototype(id)
+            | ContentAddress::AttributePrototypeArgument(id)
             | ContentAddress::AttributeValue(id)
             | ContentAddress::Component(id)
             | ContentAddress::ExternalProvider(id)
@@ -42,6 +47,7 @@ impl ContentAddress {
             | ContentAddress::Schema(id)
             | ContentAddress::SchemaVariant(id)
             | ContentAddress::Socket(id)
+            | ContentAddress::StaticArgumentValue(id)
             | ContentAddress::ValidationPrototype(id) => Some(*id),
         }
         .unwrap_or_default()

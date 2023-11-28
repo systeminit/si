@@ -1689,8 +1689,10 @@ impl WorkspaceSnapshotGraph {
                 .edges_connecting(node_index_to_update, neighbor_node)
             {
                 match connecting_edgeref.weight().kind() {
-                    // This is the name of the argument to the function.
-                    EdgeWeightKind::Argument(arg_name) => hasher.update(arg_name.as_bytes()),
+                    // This is kind of value for the prototype argument.
+                    EdgeWeightKind::PrototypeArgumentValue(kind) => {
+                        hasher.update(kind.to_string().as_bytes())
+                    }
                     // This is the key for an entry in a map.
                     EdgeWeightKind::Contain(Some(key)) => hasher.update(key.as_bytes()),
                     // This is the kind of the action.
@@ -1701,6 +1703,7 @@ impl WorkspaceSnapshotGraph {
                     // Nothing to do, as these EdgeWeightKind do not encode extra information
                     // in the edge itself.
                     EdgeWeightKind::Contain(None)
+                    | EdgeWeightKind::PrototypeArgument
                     | EdgeWeightKind::Provider
                     | EdgeWeightKind::Ordering
                     | EdgeWeightKind::Prop

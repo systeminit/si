@@ -124,6 +124,9 @@ impl ContentNodeWeight {
             ContentAddress::AttributePrototype(_) => {
                 ContentAddress::AttributePrototype(content_hash)
             }
+            ContentAddress::AttributePrototypeArgument(_) => {
+                ContentAddress::AttributePrototypeArgument(content_hash)
+            }
             ContentAddress::AttributeValue(_) => ContentAddress::AttributeValue(content_hash),
             ContentAddress::Component(_) => ContentAddress::Component(content_hash),
             ContentAddress::ExternalProvider(_) => ContentAddress::ExternalProvider(content_hash),
@@ -140,6 +143,9 @@ impl ContentNodeWeight {
             ContentAddress::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
             ContentAddress::Schema(_) => ContentAddress::Schema(content_hash),
             ContentAddress::SchemaVariant(_) => ContentAddress::SchemaVariant(content_hash),
+            ContentAddress::StaticArgumentValue(_) => {
+                ContentAddress::StaticArgumentValue(content_hash)
+            }
             ContentAddress::Socket(_) => ContentAddress::Socket(content_hash),
             ContentAddress::ValidationPrototype(_) => {
                 ContentAddress::ValidationPrototype(content_hash)

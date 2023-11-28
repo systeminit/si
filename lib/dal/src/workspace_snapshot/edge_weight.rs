@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::attribute::prototype::argument::PrototypeArgumentValueKind;
 use crate::change_set_pointer::ChangeSetPointer;
 use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError, VectorClockId};
 use crate::ActionKind;
@@ -24,9 +25,6 @@ pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 pub enum EdgeWeightKind {
     /// A function used by a [`SchemaVariant`] to perform an action that affects its resource
     ActionPrototype(ActionKind),
-    /// An argument to a function defined by an [`AttributePrototype`][crate::AttributePrototype],
-    /// including the name of the argument to the function.
-    Argument(String),
     /// An [`AttributeValue`] "contained" by another [`AttributeValue`], such as an entry in an
     /// array/map, or a field of an object. The optional [`String`] represents the key of the entry
     /// in a map.
@@ -36,6 +34,11 @@ pub enum EdgeWeightKind {
     /// Used to link an attribute value to the prop that it is for.
     Prop,
     Prototype,
+    /// An edge from an [`AttributePrototype`][crate::AttributePrototype] to an
+    /// [`AttributePrototypeArgument`][crate::AttributePrototypeArguemt]
+    PrototypeArgument,
+    /// An edge from an [`AttributePrototypeArgument`][crate::AttributePrototypeArgument] to the
+    PrototypeArgumentValue(PrototypeArgumentValueKind),
     /// Used when the target/destination of an edge is an [`InternalProvider`], or an
     /// [`ExternalProvider`].
     Provider,
