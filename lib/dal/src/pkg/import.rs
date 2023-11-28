@@ -481,6 +481,7 @@ async fn import_component(
             skips.push(skip);
         }
     }
+
     for attribute in component_spec.output_sockets()? {
         if let Some(skip) = import_component_attribute(
             ctx,
@@ -864,13 +865,27 @@ async fn update_prototype(
                 ))?;
 
             if let Some(ip_id) = get_ip_for_input(ctx, schema_variant_id, input).await? {
-                AttributePrototypeArgument::new_for_intra_component(
-                    ctx,
-                    *prototype.id(),
-                    *func_arg.id(),
-                    ip_id,
-                )
-                .await?;
+                match AttributePrototypeArgument::list_for_attribute_prototype(ctx, *prototype.id())
+                    .await?
+                    .iter()
+                    .find(|apa| apa.func_argument_id() == *func_arg.id())
+                {
+                    Some(apa) => {
+                        if apa.internal_provider_id() != ip_id {
+                            let mut apa = apa.to_owned();
+                            apa.set_internal_provider_id(ctx, ip_id).await?;
+                        }
+                    }
+                    None => {
+                        AttributePrototypeArgument::new_for_intra_component(
+                            ctx,
+                            *prototype.id(),
+                            *func_arg.id(),
+                            ip_id,
+                        )
+                        .await?;
+                    }
+                }
             }
         }
     }
