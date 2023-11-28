@@ -41,7 +41,7 @@ Let's start by choosing an officially supported platform.
 
 Install dependencies on your chosen platform.
 
-- **1)** [`nix` with flakes enabled](https://github.com/DeterminateSystems/nix-installer)
+- **1)** [`nix` with flakes enabled](https://github.com/DeterminateSystems/nix-installer) version `>= 2.18.1` installed
 - **2)** `docker` from [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Docker Engine](https://docs.docker.com/engine/)
 - **3a)** [`direnv`](https://direnv.net) version `>= 2.30` installed
 - **3b)** [`direnv` hooked into your shell](https://direnv.net/docs/hook.html)
