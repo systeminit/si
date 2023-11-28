@@ -15,7 +15,7 @@ use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
-use crate::prop::PropError;
+use crate::prop::{PropError, PropPath};
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::root_prop::RootProp;
@@ -30,7 +30,7 @@ use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNo
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, AttributePrototype, AttributePrototypeId, DalContext, ExternalProvider, ExternalProviderId,
-    Func, FuncId, InternalProvider, PropId, PropKind, SchemaId, SocketArity, StandardModel,
+    Func, FuncId, InternalProvider, Prop, PropId, PropKind, SchemaId, SocketArity, StandardModel,
     Timestamp, TransactionsError, WorkspaceSnapshot,
 };
 
@@ -94,9 +94,6 @@ pub struct SchemaVariant {
     link: Option<String>,
     finalized_once: bool,
     category: String,
-    // FIXME(nick): move this to the attribute tree once we have defaults for
-    // schema variants in place.
-    color: String,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -115,9 +112,6 @@ pub struct SchemaVariantContentV1 {
     pub link: Option<String>,
     pub finalized_once: bool,
     pub category: String,
-    // FIXME(nick): move this to the attribute tree once we have defaults for
-    // schema variants in place.
-    color: String,
 }
 
 impl SchemaVariant {
@@ -131,7 +125,6 @@ impl SchemaVariant {
             ui_hidden: inner.ui_hidden,
             finalized_once: inner.finalized_once,
             category: inner.category,
-            color: inner.color,
         }
     }
 
@@ -152,9 +145,9 @@ impl SchemaVariant {
             ui_hidden: false,
             finalized_once: false,
             category: category.into(),
-            color: color
-                .map(Into::into)
-                .unwrap_or(DEFAULT_SCHEMA_VARIANT_COLOR.into()),
+            // color: color
+            //     .map(Into::into)
+            //     .unwrap_or(DEFAULT_SCHEMA_VARIANT_COLOR.into()),
         };
         let hash = ctx
             .content_store()
@@ -289,10 +282,6 @@ impl SchemaVariant {
 
     pub fn category(&self) -> &str {
         &self.category
-    }
-
-    pub fn color(&self) -> &str {
-        &self.color
     }
 
     async fn get_root_prop_node_weight(
@@ -499,6 +488,18 @@ impl SchemaVariant {
         // set "/root/si/type" and "/root/si/protected".
 
         Ok(())
+    }
+
+    pub async fn set_color(self, ctx: &DalContext, color: String) -> SchemaVariantResult<Self> {
+        let color_prop_id =
+            Prop::find_prop_id_by_path(ctx, self.id, PropPath::new(["root", "si", "color"]))?;
+        // find the AttributePrototype
+        // Check if the prototype points to Unset
+        // if so, point it to si:setString
+        // find the only APA, or create it pointing to the only func arg for the si:setString func
+        // point the PrototypeArgumentValue edge to a StaticArgumentValue of `color`
+
+        Ok(self)
     }
 }
 

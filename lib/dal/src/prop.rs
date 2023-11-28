@@ -1,22 +1,26 @@
+use std::thread::current;
+
 use content_store::{ContentHash, Store};
+use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_pkg::PropSpecKind;
 use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
-use telemetry::prelude::info;
+use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
 use crate::change_set_pointer::ChangeSetPointerError;
-use crate::workspace_snapshot::edge_weight::EdgeWeightError;
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::workspace_snapshot::{self, WorkspaceSnapshotError};
 use crate::{
     label_list::ToLabelList, pk, property_editor::schema::WidgetKind, FuncId, StandardModel,
     Timestamp, TransactionsError,
 };
-use crate::{DalContext, FuncBackendResponseType, SchemaVariantId};
+use crate::{DalContext, FuncBackendResponseType, SchemaVariant, SchemaVariantId};
 
 pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
 
@@ -25,6 +29,8 @@ pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
 pub enum PropError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
+    #[error("child prop of {0:?} not found by name: {1}")]
+    ChildPropNotFoundByName(NodeIndex, String),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("node weight error: {0}")]
@@ -333,7 +339,7 @@ impl Prop {
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        let node_index = if ordered {
+        let _node_index = if ordered {
             // info!("began adding ordered node at: {:?}", start.elapsed());
             let ordered_node_index =
                 workspace_snapshot.add_ordered_node(change_set, node_weight)?;
@@ -381,6 +387,78 @@ impl Prop {
         };
 
         Ok(Self::assemble(id.into(), content))
+    }
+
+    pub async fn get_by_id(ctx: &DalContext, id: PropId) -> PropResult<Self> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let ulid: ulid::Ulid = id.into();
+        let node_index = workspace_snapshot.get_node_index_by_id(ulid)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        let content: PropContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let PropContent::V1(inner) = content;
+
+        Ok(Prop::assemble(id, inner))
+    }
+
+    pub fn find_child_prop_index_by_name(
+        ctx: &DalContext,
+        node_index: NodeIndex,
+        child_name: impl AsRef<str>,
+    ) -> PropResult<NodeIndex> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        for prop_node_index in workspace_snapshot.outgoing_targets_for_edge_weight_kind_by_index(
+            node_index,
+            EdgeWeightKindDiscriminants::Use,
+        )? {
+            if let NodeWeight::Prop(prop_inner) =
+                workspace_snapshot.get_node_weight(prop_node_index)?
+            {
+                if prop_inner.name() == child_name.as_ref() {
+                    return Ok(prop_node_index);
+                }
+            }
+        }
+
+        Err(PropError::ChildPropNotFoundByName(
+            node_index,
+            child_name.as_ref().to_string(),
+        ))
+    }
+
+    pub fn find_prop_id_by_path(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        path: PropPath,
+    ) -> PropResult<PropId> {
+        let schema_variant_node_index = {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+            workspace_snapshot.get_node_index_by_id(schema_variant_id.into())?
+        };
+
+        let path_parts = path.as_parts();
+
+        let mut current_node_index = schema_variant_node_index;
+        for part in path_parts {
+            current_node_index =
+                Self::find_child_prop_index_by_name(ctx, current_node_index, part)?;
+        }
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        Ok(workspace_snapshot
+            .get_node_weight(current_node_index)?
+            .id()
+            .into())
     }
 
     async fn get_content(

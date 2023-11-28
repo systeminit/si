@@ -178,7 +178,7 @@ impl AttributePrototype {
 // #[derive(Serialize, Deserialize, Debug)]
 // pub struct AttributePrototypeGroupByHeadComponentId {
 //     pub head_component_id: ComponentId,
-//     pub attribute_prototype: AttributePrototypeMathematics for Machine Learning,
+//     pub attribute_prototype: AttributePrototype,
 // }
 
 // impl AttributePrototype {

@@ -4,6 +4,7 @@
 //! context of the prototype.
 
 use content_store::Store;
+use petgraph::{visit::EdgeRef, Direction};
 use serde::{Deserialize, Serialize};
 use strum::{EnumDiscriminants, EnumString};
 use telemetry::prelude::*;
@@ -16,15 +17,18 @@ use crate::{
     pk,
     provider::internal::InternalProviderId,
     workspace_snapshot::{
+        self,
         content_address::{ContentAddress, ContentAddressDiscriminants},
-        edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
+        edge_weight::{
+            self, EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+        },
         node_weight::{NodeWeight, NodeWeightError},
         WorkspaceSnapshotError,
     },
     AttributePrototypeId, DalContext, Timestamp, TransactionsError,
 };
 
-use self::static_value::{StaticArgumentValue, StaticArgumentValueId};
+use self::static_value::{StaticArgumentValue, StaticArgumentValueContent, StaticArgumentValueId};
 
 pub mod static_value;
 
@@ -67,12 +71,6 @@ pub struct AttributePrototypeArgumentContentV1 {
     pub timestamp: Timestamp,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, EnumString, strum::Display, Hash)]
-pub enum PrototypeArgumentValueKind {
-    InternalProvider,
-    StaticValue,
-}
-
 impl AttributePrototypeArgument {
     pub fn assemble(
         id: AttributePrototypeArgumentId,
@@ -110,9 +108,6 @@ impl AttributePrototypeArgument {
         )?;
 
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        let content_node_weight = node_weight.get_content_node_weight_of_kind(
-            ContentAddressDiscriminants::AttributePrototypeArgument,
-        )?;
 
         workspace_snapshot.add_node(node_weight)?;
 
@@ -133,7 +128,6 @@ impl AttributePrototypeArgument {
     fn set_value_source(
         &mut self,
         ctx: &DalContext,
-        value_kind: PrototypeArgumentValueKind,
         value_id: Ulid,
     ) -> AttributePrototypeArgumentResult<()> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
@@ -154,10 +148,7 @@ impl AttributePrototypeArgument {
 
         workspace_snapshot.add_edge(
             self.id.into(),
-            EdgeWeight::new(
-                change_set,
-                EdgeWeightKind::PrototypeArgumentValue(value_kind),
-            )?,
+            EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgumentValue)?,
             value_id.into(),
         )?;
 
@@ -169,11 +160,7 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeArgumentResult<()> {
-        self.set_value_source(
-            ctx,
-            PrototypeArgumentValueKind::InternalProvider,
-            internal_provider_id.into(),
-        )
+        self.set_value_source(ctx, internal_provider_id.into())
     }
 
     pub fn set_value_from_static_value_id(
@@ -181,11 +168,7 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         value_id: StaticArgumentValueId,
     ) -> AttributePrototypeArgumentResult<()> {
-        self.set_value_source(
-            ctx,
-            PrototypeArgumentValueKind::StaticValue,
-            value_id.into(),
-        )
+        self.set_value_source(ctx, value_id.into())
     }
 
     pub fn set_value_from_static_value(

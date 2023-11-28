@@ -143,7 +143,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
 
     assert_eq!(2, args.len());
 
-    // Modify func argument 
+    // Modify func argument
     FuncArgument::modify_by_id(ctx, arg_1.id, |arg| {
         arg.name = "bargle argle".into();
 

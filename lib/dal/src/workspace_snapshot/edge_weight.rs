@@ -4,7 +4,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::PrototypeArgumentValueKind;
 use crate::change_set_pointer::ChangeSetPointer;
 use crate::workspace_snapshot::vector_clock::{VectorClock, VectorClockError, VectorClockId};
 use crate::ActionKind;
@@ -37,8 +36,10 @@ pub enum EdgeWeightKind {
     /// An edge from an [`AttributePrototype`][crate::AttributePrototype] to an
     /// [`AttributePrototypeArgument`][crate::AttributePrototypeArguemt]
     PrototypeArgument,
-    /// An edge from an [`AttributePrototypeArgument`][crate::AttributePrototypeArgument] to the
-    PrototypeArgumentValue(PrototypeArgumentValueKind),
+    /// An edge from an
+    /// [`AttributePrototypeArgument`][crate::AttributePrototypeArgument] to the
+    /// source for the value for this argument
+    PrototypeArgumentValue,
     /// Used when the target/destination of an edge is an [`InternalProvider`], or an
     /// [`ExternalProvider`].
     Provider,

@@ -82,4 +82,27 @@ impl StaticArgumentValue {
 
         Ok(StaticArgumentValue::assemble(id.into(), content))
     }
+
+    pub async fn get_by_id(
+        ctx: &DalContext,
+        id: StaticArgumentValueId,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let ulid: ulid::Ulid = id.into();
+        let node_index = workspace_snapshot.get_node_index_by_id(ulid)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        let content: StaticArgumentValueContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let StaticArgumentValueContent::V1(inner) = content;
+
+        Ok(StaticArgumentValue::assemble(id, inner))
+    }
 }
