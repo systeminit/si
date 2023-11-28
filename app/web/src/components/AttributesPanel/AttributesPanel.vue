@@ -25,20 +25,6 @@
         @blur="updateSiProp('name')"
         @keyup.enter="updateSiProp('name')"
       />
-      <div class="attributes-panel__type-dropdown">
-        <select v-model="siValues.type" @change="updateSiProp('type')">
-          <option value="component">Component</option>
-          <option value="configurationFrame">Configuration Frame</option>
-          <option value="aggregationFrame">Aggregation Frame</option>
-        </select>
-        <Icon name="chevron--down" />
-      </div>
-      <Icon
-        :name="siValues.protected ? 'lock' : 'lock-open'"
-        class="attributes-panel__protected-switch"
-        allowPointerEvents
-        @click="toggleProtectedHandler"
-      />
     </div>
 
     <LoadingMessage v-if="loadSchemaReqStatus.isPending && !domainTree">
@@ -108,7 +94,6 @@ import mitt, { Emitter } from "mitt";
 import {
   DropdownMenu,
   DropdownMenuItem,
-  Icon,
   JsonTreeExplorer,
   LoadingMessage,
 } from "@si/vue-lib/design-system";
@@ -150,10 +135,6 @@ const siProps = computed(() => attributesStore.siTreeByPropName);
 const siValuesFromStore = computed(() => ({
   name: (siProps.value?.name?.value?.value as string) || component.displayName,
   color: (siProps.value?.color?.value?.value as string) || component.color,
-  protected: (siProps.value?.protected?.value?.value as boolean) || false,
-  type:
-    (siProps.value?.type?.value?.value as typeof component.nodeType) ||
-    component.nodeType,
 }));
 const siValues = reactive(siValuesFromStore.value);
 
@@ -177,28 +158,15 @@ function updateSiProp(key: keyof typeof siValues) {
   const prop = siProps.value?.[key as string];
   if (!prop) return;
 
-  if (key === "type") {
-    // TODO: not sure why only this one gets a special handler...?
-    attributesStore.SET_COMPONENT_TYPE({
-      value: newVal,
+  attributesStore.UPDATE_PROPERTY_VALUE({
+    update: {
+      attributeValueId: prop.valueId,
+      parentAttributeValueId: prop.parentValueId,
+      propId: prop.propId,
       componentId: component.id,
-    });
-  } else {
-    attributesStore.UPDATE_PROPERTY_VALUE({
-      update: {
-        attributeValueId: prop.valueId,
-        parentAttributeValueId: prop.parentValueId,
-        propId: prop.propId,
-        componentId: component.id,
-        value: newVal,
-      },
-    });
-  }
-}
-
-function toggleProtectedHandler() {
-  siValues.protected = !siValues.protected;
-  updateSiProp("protected");
+      value: newVal,
+    },
+  });
 }
 
 // color picker
@@ -314,7 +282,7 @@ provide(AttributesPanelContextInjectionKey, {
   height: 40px;
   margin: @spacing-px[sm];
   margin-left: @spacing-px[md];
-  margin-right: 2px;
+  margin-right: 8px;
 
   input,
   select {
@@ -342,42 +310,5 @@ provide(AttributesPanelContextInjectionKey, {
   flex-grow: 1;
   flex-shrink: 1;
   min-width: 50px;
-}
-
-.attributes-panel__protected-switch {
-  width: 40px;
-  height: 40px;
-  padding: 8px;
-  height: inherit;
-  cursor: pointer;
-
-  body.light & {
-    color: @colors-neutral-700;
-  }
-
-  &:hover {
-    transform: scale(1.1);
-  }
-}
-.attributes-panel__type-dropdown {
-  position: relative;
-  height: inherit;
-  flex-grow: 1;
-  min-width: 120px;
-
-  select {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    padding-right: 30px;
-    text-overflow: ellipsis;
-  }
-  .icon {
-    position: absolute;
-    right: 4px;
-    top: 0;
-    height: inherit;
-    z-index: 3;
-  }
 }
 </style>

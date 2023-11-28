@@ -9,7 +9,7 @@
     "
     @click="clickHandler"
   >
-    <Icon :name="iconName" />
+    <StatusIndicatorIcon type="action" :status="action?.name" tone="inherit" />
     <Stack spacing="2xs">
       <div>{{ action?.displayName }}</div>
       <div class="text-xs text-neutral-300">{{ component?.displayName }}</div>
@@ -29,9 +29,10 @@
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { PropType, computed } from "vue";
-import { Icon, IconNames, Stack } from "@si/vue-lib/design-system";
+import { Icon, Stack } from "@si/vue-lib/design-system";
 import { ActionPrototypeId, useActionsStore } from "@/store/actions.store";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
+import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
@@ -56,15 +57,6 @@ const action = computed(() => {
 });
 
 const isActive = computed(() => !!action.value?.actionInstanceId);
-
-const iconName = computed<IconNames>(() => {
-  if (!action.value) return "help-circle";
-  if (action.value.name === "create") return "resource-create";
-  if (action.value.name === "delete") return "resource-delete";
-  if (action.value.name.trim() === "refresh") return "resource-refresh";
-  if (action.value.name === "other") return "resource-question";
-  return "help-circle";
-});
 
 function clickHandler() {
   if (!action.value) return;

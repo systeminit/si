@@ -151,6 +151,7 @@ import MinusHexOutline from "./custom-icons/minus-hex-outline.svg?raw";
 
 import RefreshHexOutline from "./custom-icons/refresh-hex-outline.svg?raw";
 import QuestionHexOutline from "./custom-icons/question-hex-outline.svg?raw";
+import TildeHexOutline from "./custom-icons/tilde-hex-outline.svg?raw";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -203,7 +204,6 @@ export const ICONS = Object.freeze({
   "git-commit": GitCommit,
   "git-merge": GitMerge,
   globe: Globe,
-  "help-circle": QuestionMarkCircle,
   hide: EyeOff,
   "input-type-number": InputTypeNumber,
   "input-type-select": InputTypeSelect,
@@ -235,14 +235,13 @@ export const ICONS = Object.freeze({
   "plus-hex": PlusHex,
   "plus-hex-outline": PlusHexOutline,
   "plus-square": PlusSquare,
+  "question-circle": QuestionMarkCircle,
+  "question-hex-outline": QuestionHexOutline,
   "read-only": PencilOff,
   refresh: Refresh,
   "refresh-active": Refresh,
+  "refresh-hex-outline": RefreshHexOutline,
   resize: Resize,
-  "resource-create": PlusHexOutline,
-  "resource-delete": MinusHexOutline,
-  "resource-question": QuestionHexOutline,
-  "resource-refresh": RefreshHexOutline,
   save: Save,
   search: Search,
   selector: Selector,
@@ -255,6 +254,7 @@ export const ICONS = Object.freeze({
   "thumbs-up": ThumbsUp,
   tilde: Tilde,
   "tilde-circle": TildeCircle,
+  "tilde-hex-outline": TildeHexOutline,
   "tilde-square": TildeSquare,
   tools: Tools,
   trash: Trash,
@@ -324,7 +324,7 @@ export function getIconByName(name: string): string | undefined {
       (ICONS as any)?.[nameWithoutModifiers] ||
       (LOGO_ICONS as any)?.[nameWithoutModifiers] ||
       (ICONS as any)[(ICON_NAME_ALIASES as any)?.[nameWithoutModifiers]] ||
-      ICONS["help-circle"];
+      ICONS["question-circle"];
     return icon;
   }
 }

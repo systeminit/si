@@ -13,8 +13,9 @@
         </div>
         <div v-else class="flex flex-col p-xs gap-xs">
           <div class="text-sm text-neutral-300">
-            Actions will be enacted upon click of the
-            <b>APPLY CHANGES</b> button in the right rail.
+            Actions will be enacted after this change set has been applied. To
+            do so, deselect this component and click the "Apply Changes" button
+            in the top right.
           </div>
           <ActionWidget
             v-for="action in actions"

@@ -32,10 +32,10 @@ const CONFIG = {
     notexists: { iconName: "x-hex", tone: "destructive" },
   },
   action: {
-    create: { iconName: "resource-create", tone: "success" },
-    delete: { iconName: "resource-delete", tone: "destructive" },
-    refresh: { iconName: "resource-refresh", tone: "action" },
-    other: { iconName: "resource-question", tone: "action" },
+    create: { iconName: "plus-hex-outline", tone: "success" },
+    delete: { iconName: "minus-hex-outline", tone: "destructive" },
+    refresh: { iconName: "refresh-hex-outline", tone: "action" },
+    other: { iconName: "tilde-hex-outline", tone: "action" },
   },
   actions: {
     show: { iconName: "chevron--right", tone: "neutral" },
@@ -46,7 +46,7 @@ const CONFIG = {
     failure: { iconName: "alert-triangle", tone: "destructive" },
     error: { iconName: "alert-triangle", tone: "destructive" },
     unknown: { iconName: "question-circle", tone: "warning" },
-    _default: { iconName: "help-circle", tone: "warning" },
+    _default: { iconName: "question-circle", tone: "warning" },
   },
 };
 
