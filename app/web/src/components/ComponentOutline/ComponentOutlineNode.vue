@@ -103,7 +103,11 @@
             />
 
             <!-- Resource Status -->
-            <StatusIndicatorIcon v-if="hasResource" type="resource" />
+            <StatusIndicatorIcon
+              v-if="hasResource"
+              type="resource"
+              status="exists"
+            />
             <Icon v-else name="none" />
 
             <!-- Actions Menu
