@@ -19,9 +19,11 @@
   >
     <div class="left-2 right-2 top-0 bottom-2 absolute">
       <AssetEditorTabs
-          :selectedAssetId="assetStore.selectedAssetId"
-          :selectedFuncId="assetStore.selectedFuncId"
+        :selectedAssetId="assetStore.selectedAssetId"
+        :selectedFuncId="assetStore.selectedFuncId"
+      />
     </div>
+  </div>
   <ResizablePanel
     ref="rightPanelRef"
     rememberSizeKey="func-details"
