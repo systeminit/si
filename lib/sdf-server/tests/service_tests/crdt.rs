@@ -7,8 +7,7 @@ use sdf_server::server::service::ws::crdt::{crdt_handle, BroadcastGroups, CrdtEr
 use si_data_nats::{NatsClient, NatsConfig};
 use std::{collections::HashMap, pin::Pin, sync::Arc, task::Context, task::Poll, time::Duration};
 use tokio::{
-    sync::broadcast, sync::Mutex, sync::Notify, sync::RwLock, task, task::JoinHandle,
-    time::timeout,
+    sync::broadcast, sync::Mutex, sync::Notify, sync::RwLock, task, task::JoinHandle, time::timeout,
 };
 use y_sync::{awareness::Awareness, net::BroadcastGroup, net::Connection};
 use yrs::{updates::encoder::Encode, Doc, GetString, Text, Transact, UpdateSubscription};
@@ -29,7 +28,9 @@ struct Client {
 
 impl Drop for Client {
     fn drop(&mut self) {
-        self.shutdown_broadcast_tx.send(()).expect("unable to drop client");
+        self.shutdown_broadcast_tx
+            .send(())
+            .expect("unable to drop client");
     }
 }
 
