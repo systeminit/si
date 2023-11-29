@@ -214,10 +214,7 @@ def compute_metadata(
 ) -> Dict[str, str]:
     created = git_info.get("committer_date_strict_iso8601")
     revision = git_info.get("commit_hash")
-    build_version = "{}-sha.{}".format(
-        git_info.get("cal_ver"),
-        git_info.get("abbreviated_commit_hash"),
-    )
+    canonical_version = git_info.get("canonical_version")
 
     commit_url = "{}/commit/{}".format(
         source_url.removesuffix(".git"),
@@ -225,21 +222,21 @@ def compute_metadata(
     )
 
     if git_info.get("is_dirty") and isinstance(revision, str) and isinstance(
-            build_version, str):
+            canonical_version, str):
         revision += "-dirty"
-        build_version += "-dirty"
+        canonical_version += "-dirty"
 
     image_url = ("https://hub.docker.com/r/{}/" +
                  "tags?page=1&ordering=last_updated&name={}-{}").format(
                      image_name,
-                     build_version,
+                     canonical_version,
                      architecture.value,
                  )
 
     metadata = {
         "name": image_name,
         "maintainer": author,
-        "org.opencontainers.image.version": build_version,
+        "org.opencontainers.image.version": canonical_version,
         "org.opencontainers.image.authors": author,
         "org.opencontainers.image.licenses": license,
         "org.opencontainers.image.source": source_url,
