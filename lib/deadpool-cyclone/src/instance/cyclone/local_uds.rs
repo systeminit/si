@@ -697,7 +697,7 @@ impl LocalFirecrackerRuntime {
         // over, ensuring that we do cleanup along the way
         // Obviously this has the potential to clash, but overall the risk here is fairly low
         // assuming that cleanup works as expected ;)
-        let vm_id: String = thread_rng().gen_range(0..5000).to_string();
+        let vm_id: String = thread_rng().gen_range(0..100).to_string();
         let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", vm_id));
 
         Ok(Box::new(LocalFirecrackerRuntime {
