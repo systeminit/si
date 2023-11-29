@@ -7,6 +7,7 @@ load(
 )
 load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
 load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
+load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
@@ -43,6 +44,11 @@ system_rust_toolchain(
     name = "rust",
     default_edition = "2021",
     clippy_toml = "root//:clippy.toml",
+    visibility = ["PUBLIC"],
+)
+
+build_context_toolchain(
+    name = "build_context",
     visibility = ["PUBLIC"],
 )
 

@@ -1,24 +1,38 @@
 load("@prelude//python:toolchain.bzl", "PythonToolchainInfo")
+load("//build_context:toolchain.bzl", "BuildContextToolchainInfo")
+load("//build_context.bzl", "BuildContext", _build_context = "build_context")
 load("//docker:toolchain.bzl", "DockerToolchainInfo")
 load("//git:toolchain.bzl", "GitToolchainInfo")
+load("//git.bzl", "GitInfo", _git_info = "git_info")
 
 DockerImageInfo = provider(fields = {
-    "tar_archive": provider_field(typing.Any, default = None),  # [Artifact]
-    "metadata": provider_field(typing.Any, default = None),  # [Artifact]
-    "tags": provider_field(typing.Any, default = None),  # [Artifact]
+    "artifact": provider_field(typing.Any, default = None),  # [Artifact]
+    "build_metadata": provider_field(typing.Any, default = None),  # [Artifact]
+    "label_metadata": provider_field(typing.Any, default = None),  # [Artifact]
+    "tag_metadata": provider_field(typing.Any, default = None),  # [Artifact]
 })
 
-def docker_image_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, DockerImageInfo]]:
-    docker_build_ctx = docker_build_context(ctx)
-    image_info = build_docker_image(ctx, docker_build_ctx)
+def docker_image_impl(ctx: AnalysisContext) -> list[[
+    DefaultInfo,
+    RunInfo,
+    DockerImageInfo,
+    GitInfo,
+]]:
+    srcs = {ctx.attrs.dockerfile: "."}
+    if ctx.attrs.srcs:
+        srcs.update(ctx.attrs.srcs)
+    build_context = _build_context(ctx, ctx.attrs.build_deps, srcs)
+    git_info = _git_info(ctx)
+    image_info = build_docker_image(ctx, build_context, git_info)
     run_args = docker_run_args(ctx, image_info)
 
     return [
         DefaultInfo(
-            default_output = image_info.tar_archive,
+            default_output = image_info.artifact,
         ),
         RunInfo(args = run_args),
         image_info,
+        git_info,
     ]
 
 docker_image = rule(
@@ -88,6 +102,10 @@ docker_image = rule(
             default = "toolchains//:python",
             providers = [PythonToolchainInfo],
         ),
+        "_build_context_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:build_context",
+            providers = [BuildContextToolchainInfo],
+        ),
         "_docker_toolchain": attrs.toolchain_dep(
             default = "toolchains//:docker",
             providers = [DockerToolchainInfo],
@@ -107,12 +125,12 @@ def docker_image_release_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInf
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         docker_toolchain.docker_image_push[DefaultInfo].default_outputs,
-        "--archive-file",
-        ctx.attrs.docker_image[DockerImageInfo].tar_archive,
-        "--tags-file",
-        ctx.attrs.docker_image[DockerImageInfo].tags,
-        "--metadata-file",
-        ctx.attrs.docker_image[DockerImageInfo].metadata,
+        "--artifact-file",
+        ctx.attrs.docker_image[DockerImageInfo].artifact,
+        "--tag-metadata-file",
+        ctx.attrs.docker_image[DockerImageInfo].tag_metadata,
+        "--label-metadata-file",
+        ctx.attrs.docker_image[DockerImageInfo].label_metadata,
     )
 
     ctx.actions.write(cli_args.as_output(), cmd)
@@ -195,40 +213,10 @@ docker_image_promote = rule(
     },
 )
 
-DockerBuildContext = record(
-    context_tree = field(Artifact),
-)
-
-def docker_build_context(ctx: AnalysisContext) -> DockerBuildContext:
-    context_tree = ctx.actions.declare_output("__docker_context")
-
-    docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
-
-    cmd = cmd_args(
-        ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
-        docker_toolchain.docker_build_context[DefaultInfo].default_outputs,
-        "--dockerfile",
-        ctx.attrs.dockerfile,
-        "--bxl-file",
-        docker_toolchain.docker_build_context_srcs_from_deps[DefaultInfo].default_outputs,
-        "--bxl-script",
-        "docker_build_context_srcs_from_deps",
-    )
-    for src, rel_path in ctx.attrs.srcs.items():
-        cmd.add("--src")
-        cmd.add(cmd_args(src, format = "{}=" + rel_path))
-    for dep in ctx.attrs.build_deps or []:
-        cmd.add("--dep")
-        cmd.add(dep.label.raw_target())
-    cmd.add(context_tree.as_output())
-
-    ctx.actions.run(cmd, category = "docker_build_context")
-
-    return DockerBuildContext(
-        context_tree = context_tree,
-    )
-
-def build_docker_image(ctx: AnalysisContext, docker_build_ctx: DockerBuildContext) -> DockerImageInfo:
+def build_docker_image(
+        ctx: AnalysisContext,
+        docker_build_ctx: BuildContext,
+        git_info: GitInfo) -> DockerImageInfo:
     if ctx.attrs.full_image_name:
         image_name = ctx.attrs.full_image_name
     elif ctx.attrs.organization:
@@ -236,26 +224,32 @@ def build_docker_image(ctx: AnalysisContext, docker_build_ctx: DockerBuildContex
     else:
         fail("Either full_image_name or organization must be provided")
 
-    tar_archive = ctx.actions.declare_output("{}.tar".format(image_name.replace("/", "--")))
-    tags = ctx.actions.declare_output("tags.json")
-    metadata = ctx.actions.declare_output("metadata.json")
+    git_info_file = git_info.file
+
+    tar_name_prefix = "{}".format(image_name.replace("/", "--"))
+
+    artifact = ctx.actions.declare_output("{}.tar".format(tar_name_prefix))
+    build_metadata = ctx.actions.declare_output("build_metadata.json")
+    tag_metadata = ctx.actions.declare_output("tag_metadata.json")
+    label_metadata = ctx.actions.declare_output("label_metadata.json")
 
     docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
-    git_toolchain = ctx.attrs._git_toolchain[GitToolchainInfo]
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         docker_toolchain.docker_image_build[DefaultInfo].default_outputs,
-        "--git-info-program",
-        git_toolchain.git_info[DefaultInfo].default_outputs,
-        "--archive-out-file",
-        tar_archive.as_output(),
-        "--metadata-out-file",
-        metadata.as_output(),
-        "--tags-out-file",
-        tags.as_output(),
+        "--git-info-json",
+        git_info.file,
+        "--artifact-out-file",
+        artifact.as_output(),
+        "--build-metadata-out-file",
+        build_metadata.as_output(),
+        "--label-metadata-out-file",
+        label_metadata.as_output(),
+        "--tag-metadata-out-file",
+        tag_metadata.as_output(),
         "--docker-context-dir",
-        docker_build_ctx.context_tree,
+        docker_build_ctx.root,
         "--image-name",
         image_name,
         "--author",
@@ -272,19 +266,20 @@ def build_docker_image(ctx: AnalysisContext, docker_build_ctx: DockerBuildContex
     ctx.actions.run(cmd, category = "docker_build")
 
     return DockerImageInfo(
-        tar_archive = tar_archive,
-        metadata = metadata,
-        tags = tags,
+        artifact = artifact,
+        build_metadata = build_metadata,
+        label_metadata = label_metadata,
+        tag_metadata = tag_metadata,
     )
 
-def docker_run_args(ctx: AnalysisContext, archive: DockerImageInfo) -> cmd_args:
+def docker_run_args(ctx: AnalysisContext, image_info: DockerImageInfo) -> cmd_args:
     docker_toolchain = ctx.attrs._docker_toolchain[DockerToolchainInfo]
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         docker_toolchain.docker_container_run[DefaultInfo].default_outputs,
         "--tags-file",
-        archive.tags,
+        image_info.tag_metadata,
     )
     cmd.add(ctx.attrs.run_docker_args)
     cmd.add("--")

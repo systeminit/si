@@ -12,19 +12,19 @@ from typing import Dict, List
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--archive-file",
+        "--artifact-file",
         required=True,
-        help="Path to the image archive file",
+        help="Path to the image artifact file",
     )
     parser.add_argument(
-        "--tags-file",
+        "--tag-metadata-file",
         required=True,
-        help="Path to the tags JSON file",
+        help="Path to the tag metadata JSON file",
     )
     parser.add_argument(
-        "--metadata-file",
+        "--label-metadata-file",
         required=True,
-        help="Path to the metadata JSON file",
+        help="Path to the label metadata JSON file",
     )
 
     return parser.parse_args()
@@ -33,28 +33,28 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    load_archive(args.archive_file)
-    tags = loads_tags(args.tags_file)
+    load_artifact(args.artifact_file)
+    tags = load_tag_metadata(args.tag_metadata_file)
     upload_image(tags)
-    report_metadata(args.metadata_file, tags)
+    report_metadata(args.label_metadata_file, tags)
 
     return 0
 
 
-def loads_tags(tags_file: str) -> List[str]:
-    with open(tags_file) as file:
+def load_tag_metadata(tag_metadata_file: str) -> List[str]:
+    with open(tag_metadata_file) as file:
         tags = json.load(file)
 
     return tags
 
 
-def load_archive(archive_file: str):
+def load_artifact(artifact_file: str):
     cmd = [
         "docker",
         "image",
         "load",
         "--input",
-        archive_file,
+        artifact_file,
     ]
     print("--- Loading image archive with: {}".format(" ".join(cmd)))
     subprocess.run(cmd).check_returncode()
@@ -74,8 +74,8 @@ def upload_image(tags: List[str]):
         subprocess.run(cmd).check_returncode()
 
 
-def report_metadata(metadata_file: str, tags: List[str]):
-    with open(metadata_file) as file:
+def report_metadata(label_metadata_file: str, tags: List[str]):
+    with open(label_metadata_file) as file:
         metadata: Dict[str, str] = json.load(file)
 
     print("\n--- Image released\n")

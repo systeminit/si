@@ -1,4 +1,4 @@
-def _docker_build_context_srcs_from_deps_impl(ctx):
+def _build_context_srcs_from_deps_impl(ctx):
     raw_paths = []
 
     for dep in ctx.cli_args.dep:
@@ -53,8 +53,8 @@ def _docker_build_context_srcs_from_deps_impl(ctx):
     for path in paths:
         ctx.output.print(path)
 
-docker_build_context_srcs_from_deps = bxl_main(
-    impl = _docker_build_context_srcs_from_deps_impl,
+build_context_srcs_from_deps = bxl_main(
+    impl = _build_context_srcs_from_deps_impl,
     cli_args = {
         "dep": cli_args.list(
             cli_args.string(),
