@@ -70,15 +70,12 @@ impl Server {
 
         let mut complete_graph = ChangeSetGraph::default();
         loop {
-            for (reply_channel, node_id) in complete_graph.fetch_all_available() {
-                info!(%reply_channel, %node_id, "Ok to process AttributeValue");
+            for (reply_channel, node_ids) in complete_graph.fetch_all_available() {
+                info!(%reply_channel, ?node_ids, "Ok to process AttributeValue");
                 self.nats
                     .publish(
                         reply_channel,
-                        serde_json::to_vec(&Response::OkToProcess {
-                            node_ids: vec![node_id],
-                        })
-                        .unwrap(),
+                        serde_json::to_vec(&Response::OkToProcess { node_ids }).unwrap(),
                     )
                     .await
                     .unwrap();
@@ -230,9 +227,9 @@ pub async fn job_processed_a_value(
     change_set_id: Id,
     node_id: Id,
 ) -> Result<(), Error> {
-    debug!(%reply_channel, %change_set_id, %node_id, "Job finished processing graph node");
+    info!(%reply_channel, %change_set_id, %node_id, "Job finished processing graph node");
     for reply_channel in
-        complete_graph.mark_node_as_processed(reply_channel, change_set_id, node_id)?
+        complete_graph.mark_node_as_processed(&reply_channel, change_set_id, node_id)?
     {
         info!(%reply_channel, ?node_id, "AttributeValue has been processed by a job");
         nats.publish(
