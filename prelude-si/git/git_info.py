@@ -11,11 +11,11 @@ from typing import Any, Dict
 
 ABBREVIATED_COMMIT_HASH = "abbreviated_commit_hash"
 CAL_VER = "cal_ver"
+ARTIFACT_VER = "artifact_ver"
 COMMITER_DATE_STRICT = "committer_date_strict_iso8601"
 COMMITER_DATE_TIMESTAMP = "committer_date_timestamp"
 COMMIT_HASH = "commit_hash"
 IS_DIRTY = "is_dirty"
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -95,6 +95,10 @@ def finalize(data: Dict[str, Any]):
             CAL_VER: dt_utc.strftime("%Y%m%d.%H%M%S.0"),
             COMMITER_DATE_STRICT: dt_utc.strftime("%Y%m%dT%H:%M:%SZ"),
             COMMITER_DATE_TIMESTAMP: round(dt_utc.timestamp()),
+        })
+
+        data.update({
+            ARTIFACT_VER: data["cal_ver"] + "-sha" + data["abbreviated_commit_hash"]
         })
 
 
