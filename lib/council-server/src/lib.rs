@@ -59,12 +59,10 @@ pub enum Request {
     Bye {
         change_set_id: Id,
     },
-    CreateValues,
     ProcessedValue {
         change_set_id: Id,
         node_id: Id,
     },
-    ValueCreationDone,
     ValueDependencyGraph {
         change_set_id: Id,
         dependency_graph: Graph,
@@ -81,7 +79,6 @@ pub enum Request {
 pub enum Response {
     BeenProcessed { node_id: Id },
     Failed { node_id: Id },
-    OkToCreate,
     OkToProcess { node_ids: Vec<Id> },
     Shutdown,
 }

@@ -3,7 +3,7 @@ use axum::{response::IntoResponse, Json};
 use dal::edge::EdgeKind;
 use dal::{
     job::definition::DependentValuesUpdate, node::NodeId, socket::SocketId, AttributeReadContext,
-    AttributeValue, ChangeSet, Connection, ExternalProvider, Node, Socket, StandardModel,
+    AttributeValue, ChangeSet, Connection, InternalProvider, Node, Socket, StandardModel,
     Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
@@ -99,22 +99,22 @@ pub async fn create_connection(
         .await?
         .ok_or(DiagramError::SocketNotFound)?;
 
-    let from_socket_external_provider =
-        ExternalProvider::find_for_socket(&ctx, request.from_socket_id)
+    let to_socket_internal_provider =
+        InternalProvider::find_explicit_for_socket(&ctx, request.to_socket_id)
             .await?
-            .ok_or(DiagramError::ExternalProviderNotFoundForSocket(
-                request.from_socket_id,
+            .ok_or(DiagramError::InternalProviderNotFoundForSocket(
+                request.to_socket_id,
             ))?;
 
-    let attribute_value_context = AttributeReadContext {
-        external_provider_id: Some(*from_socket_external_provider.id()),
-        component_id: Some(*from_component.id()),
+    let to_attribute_value_context = AttributeReadContext {
+        internal_provider_id: Some(*to_socket_internal_provider.id()),
+        component_id: Some(*to_component.id()),
         ..Default::default()
     };
-    let attribute_value = AttributeValue::find_for_context(&ctx, attribute_value_context)
+    let mut to_attribute_value = AttributeValue::find_for_context(&ctx, to_attribute_value_context)
         .await?
         .ok_or(DiagramError::AttributeValueNotFoundForContext(
-            attribute_value_context,
+            to_attribute_value_context,
         ))?;
 
     let change_set = ChangeSet::get_by_pk(&ctx, &ctx.visibility().change_set_pk)
@@ -122,10 +122,14 @@ pub async fn create_connection(
         .ok_or(DiagramError::ChangeSetNotFound)?;
     change_set.sort_actions(&ctx).await?;
 
+    to_attribute_value
+        .update_from_prototype_function(&ctx)
+        .await?;
+
     ctx.enqueue_job(DependentValuesUpdate::new(
         ctx.access_builder(),
         *ctx.visibility(),
-        vec![*attribute_value.id()],
+        vec![*to_attribute_value.id()],
     ))
     .await?;
 

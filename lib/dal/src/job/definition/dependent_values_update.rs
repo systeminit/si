@@ -131,29 +131,6 @@ impl DependentValuesUpdate {
         let ctx_builder = ctx.services_context().into_builder(ctx.blocking());
         let mut status_updater = StatusUpdater::initialize(ctx).await;
 
-        // Avoid lingering transaction while we wait to create attribute values
-        // Status updater reads from the database and uses its own connection from the pg_pool to
-        // do writes
-        ctx.rollback().await?;
-
-        debug!(job_id = ?self.job_id(), "Waiting to create AttributeValues");
-        if let council_server::client::State::Shutdown = council.wait_to_create_values().await? {
-            return Ok(());
-        }
-
-        // AttributeValue::create_dependent_values(ctx, &self.attribute_values)
-        //     .instrument(debug_span!("Creating dependent attribute values", job_id = ?self.job_id()))
-        //     .await?;
-
-        // Creating dependent values creates records in the database that need to be viewed by
-        // other connections/txns so we commit
-        // ctx.commit().await?;
-
-        // debug!(job_id = ?self.job_id(), "Transaction committed");
-
-        council.finished_creating_values().await?;
-        debug!(job_id = ?self.job_id(), "Finished creating values");
-
         let mut dependency_graph =
             AttributeValue::dependent_value_graph(ctx, &self.attribute_values).await?;
 
@@ -223,7 +200,9 @@ impl DependentValuesUpdate {
                             // from the pg_pool to do writes
                             ctx.rollback().await?;
 
-                            let task_ctx = ctx_builder.build(self.access_builder().build(self.visibility())).await?;
+                            let task_ctx = ctx_builder
+                                .build(self.access_builder().build(self.visibility()))
+                                .await?;
 
                             let attribute_value = AttributeValue::get_by_id(&task_ctx, &id)
                                 .await?
@@ -264,11 +243,6 @@ impl DependentValuesUpdate {
                         // the pg_pool to do writes
                         ctx.rollback().await?;
                     }
-                    // If we receive an OkToCreate here, it's because council is telling us that it's Ok to run
-                    // `AttributeValue::create_dependent_values` after it has already told us to do that, and after
-                    // we have told it that we've finished doing so. This should never be able to happen normally,
-                    // as it breaks the protocol contract we have with council.
-                    council_server::Response::OkToCreate => return Err(JobConsumerError::CouncilProtocol("Told to create values again after we've finished creating values. Multiple instances of council running?".to_string())),
                     council_server::Response::Shutdown => break,
                 },
                 // FIXME: reconnect
