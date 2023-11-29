@@ -2,7 +2,7 @@
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
 use chrono::{DateTime, Utc};
-use content_store::ContentHash;
+use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_nats::NatsError;
@@ -11,8 +11,18 @@ use strum::EnumDiscriminants;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::TryLockError;
 
-use crate::{pk, StandardModel, Timestamp};
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::schema::SchemaContentV1;
+use crate::workspace_snapshot::content_address::ContentAddress;
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::{WorkspaceSnapshotError, WorkspaceSnapshotResult};
+use crate::{
+    pk, DalContext, SchemaId, SchemaVariantId, StandardModel, Timestamp, TransactionsError,
+};
 
 // pub mod code;
 // pub mod diff;
@@ -23,6 +33,26 @@ use crate::{pk, StandardModel, Timestamp};
 // pub mod view;
 
 // pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
+
+#[derive(Debug, Error)]
+pub enum ComponentError {
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("store error: {0}")]
+    Store(#[from] StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("try lock error: {0}")]
+    TryLock(#[from] TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+pub type ComponentResult<T> = Result<T, ComponentError>;
 
 pk!(ComponentId);
 
@@ -59,6 +89,7 @@ pub struct Component {
     id: ComponentId,
     #[serde(flatten)]
     timestamp: Timestamp,
+    name: String,
     kind: ComponentKind,
     needs_destroy: bool,
 }
@@ -71,8 +102,70 @@ pub enum ComponentContent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ComponentContentV1 {
     pub timestamp: Timestamp,
+    pub name: String,
     pub kind: ComponentKind,
     pub needs_destroy: bool,
+}
+
+impl Component {
+    pub fn assemble(id: ComponentId, inner: ComponentContentV1) -> Self {
+        Self {
+            id,
+            timestamp: inner.timestamp,
+            name: inner.name,
+            kind: inner.kind,
+            needs_destroy: inner.needs_destroy,
+        }
+    }
+
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl Into<String>,
+        schema_variant_id: SchemaVariantId,
+        component_kind: Option<ComponentKind>,
+    ) -> ComponentResult<Self> {
+        let content = ComponentContentV1 {
+            timestamp: Timestamp::now(),
+            name: name.into(),
+            kind: match component_kind {
+                Some(provided_kind) => provided_kind,
+                None => ComponentKind::Standard,
+            },
+            needs_destroy: false,
+        };
+        let hash = ctx
+            .content_store()
+            .lock()
+            .await
+            .add(&ComponentContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight =
+            NodeWeight::new_content(&change_set, id, ContentAddress::Component(hash))?;
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.add_node(node_weight)?;
+
+            // Root --> Component Category --> Component (this)
+            let component_category_id =
+                workspace_snapshot.get_category(CategoryNodeKind::Component)?;
+            workspace_snapshot.add_edge(
+                component_category_id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                id,
+            )?;
+
+            // Component (this) --> Schema Variant
+            workspace_snapshot.add_edge(
+                id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                schema_variant_id.into(),
+            )?;
+        }
+
+        Ok(Self::assemble(id.into(), content))
+    }
 }
 
 // impl Component {

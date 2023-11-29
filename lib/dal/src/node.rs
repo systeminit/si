@@ -1,16 +1,36 @@
-use content_store::ContentHash;
+use content_store::{Store, StoreError};
 use rand::prelude::SliceRandom;
-
 use serde::{Deserialize, Serialize};
-
 use strum::EnumDiscriminants;
-use telemetry::prelude::*;
+use thiserror::Error;
+use tokio::sync::TryLockError;
 
+use crate::change_set_pointer::ChangeSetPointerError;
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{pk, StandardModel, Timestamp};
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{pk, ComponentId, DalContext, StandardModel, Timestamp, TransactionsError};
 
-// const LIST_FOR_KIND: &str = include_str!("queries/node/list_for_kind.sql");
-// const LIST_LIVE: &str = include_str!("queries/node/list_live.sql");
+#[derive(Debug, Error)]
+pub enum NodeError {
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("store error: {0}")]
+    Store(#[from] StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("try lock error: {0}")]
+    TryLock(#[from] TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+pub type NodeResult<T> = Result<T, NodeError>;
 
 pk!(NodeId);
 
@@ -50,60 +70,19 @@ pub struct Node {
     pub height: Option<String>,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct NodeGraphNode {
-    id: NodeId,
-    content_address: ContentAddress,
-    content: NodeContentV1,
-}
-
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
 pub enum NodeContent {
     V1(NodeContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NodeContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
     pub kind: NodeKind,
     pub x: String,
     pub y: String,
     pub width: Option<String>,
     pub height: Option<String>,
-}
-
-impl NodeGraphNode {
-    pub fn assemble(
-        id: impl Into<NodeId>,
-        content_hash: ContentHash,
-        content: NodeContentV1,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            content_address: ContentAddress::Node(content_hash),
-            content,
-        }
-    }
-}
-
-impl Node {
-    pub fn assemble(id: NodeId, inner: &NodeContentV1) -> Self {
-        Self {
-            id,
-            timestamp: inner.timestamp,
-            kind: inner.kind,
-            x: inner.x.clone(),
-            y: inner.y.clone(),
-            width: inner.width.clone(),
-            height: inner.height.clone(),
-        }
-    }
-
-    pub fn id(&self) -> NodeId {
-        self.id
-    }
 }
 
 impl From<Node> for NodeContentV1 {
@@ -117,6 +96,123 @@ impl From<Node> for NodeContentV1 {
             height: value.height,
         }
     }
+}
+
+impl Node {
+    pub fn assemble(id: NodeId, inner: NodeContentV1) -> Self {
+        Self {
+            id,
+            timestamp: inner.timestamp,
+            kind: inner.kind,
+            x: inner.x,
+            y: inner.y,
+            width: inner.width,
+            height: inner.height,
+        }
+    }
+
+    pub fn id(&self) -> NodeId {
+        self.id
+    }
+
+    pub async fn new(
+        ctx: &DalContext,
+        kind: Option<NodeKind>,
+        component_id: ComponentId,
+    ) -> NodeResult<Self> {
+        let content = NodeContentV1 {
+            timestamp: Timestamp::now(),
+            kind: match kind {
+                Some(provided_kind) => provided_kind,
+                None => NodeKind::Configuration,
+            },
+            x: "0".into(),
+            y: "0".into(),
+            width: None,
+            height: None,
+        };
+        let hash = ctx
+            .content_store()
+            .lock()
+            .await
+            .add(&NodeContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_content(&change_set, id, ContentAddress::Node(hash))?;
+
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.add_node(node_weight)?;
+
+            // Component --> Node (this)
+            workspace_snapshot.add_edge(
+                component_id.into(),
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                id,
+            )?;
+        }
+
+        Ok(Self::assemble(id.into(), content))
+    }
+
+    // TODO(nick): restore the ability to create geometry.
+    // async fn get_content(
+    //     &mut self,
+    //     ctx: &DalContext,
+    //     node_id: NodeId,
+    // ) -> WorkspaceSnapshotResult<(ContentHash, NodeContentV1)> {
+    //     let id: Ulid = node_id.into();
+    //     let node_index = self.working_copy()?.get_node_index_by_id(id)?;
+    //     let node_weight = self.working_copy()?.get_node_weight(node_index)?;
+    //     let hash = node_weight.content_hash();
+    //
+    //     let content: NodeContent = ctx
+    //         .content_store()
+    //         .lock()
+    //         .await
+    //         .get(&hash)
+    //         .await?
+    //         .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
+    //
+    //     // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+    //     let inner = match content {
+    //         NodeContentV1::V1(inner) => inner,
+    //     };
+    //
+    //     Ok((hash, inner))
+    // }
+    //
+    // pub async fn node_set_geometry(
+    //     &mut self,
+    //     ctx: &DalContext,
+    //     change_set: &ChangeSetPointer,
+    //     node_id: NodeId,
+    //     x: impl AsRef<str>,
+    //     y: impl AsRef<str>,
+    //     width: Option<impl AsRef<str>>,
+    //     height: Option<impl AsRef<str>>,
+    // ) -> WorkspaceSnapshotResult<()> {
+    //     let (_, inner) = self.node_get_content(ctx, node_id).await?;
+    //
+    //     let mut node = Node::assemble(node_id, &inner);
+    //     node.x = x;
+    //     node.y = y;
+    //     node.width = width;
+    //     node.height = height;
+    //     let updated = NodeContentV1::from(node);
+    //
+    //     let hash = ctx
+    //         .content_store()
+    //         .lock()
+    //         .await
+    //         .add(&NodeContent::V1(updated.clone()))?;
+    //
+    //     self.working_copy()?
+    //         .update_content(&change_set, node_id.into(), hash)?;
+    //
+    //     Ok(())
+    // }
 }
 
 // impl Node {

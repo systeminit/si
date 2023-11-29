@@ -97,7 +97,7 @@ impl Schema {
         Self {
             id,
             timestamp: inner.timestamp,
-            name: inner.name.clone(),
+            name: inner.name,
             ui_hidden: inner.ui_hidden,
             default_schema_variant_id: inner.default_schema_variant_id,
             component_kind: inner.component_kind,
