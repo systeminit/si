@@ -10,7 +10,7 @@ pub mod config;
 mod graph;
 pub use config::Config;
 
-use graph::{ChangeSetGraph, ValueCreationQueue};
+use graph::ChangeSetGraph;
 
 #[derive(Debug, Clone)]
 pub struct Server {
@@ -68,20 +68,8 @@ impl Server {
             }
         });
 
-        let mut value_create_queue = ValueCreationQueue::default();
         let mut complete_graph = ChangeSetGraph::default();
         loop {
-            if let Some(reply_channel) = value_create_queue.fetch_next() {
-                info!(%reply_channel, "OK to create AttributeValues");
-                self.nats
-                    .publish(
-                        reply_channel,
-                        serde_json::to_vec(&Response::OkToCreate).unwrap(),
-                    )
-                    .await
-                    .unwrap();
-            }
-
             for (reply_channel, node_id) in complete_graph.fetch_all_available() {
                 info!(%reply_channel, %node_id, "Ok to process AttributeValue");
                 self.nats
@@ -101,9 +89,6 @@ impl Server {
             // FIXME: handle timeouts
             let (reply_channel, request) = tokio::select! {
                 _ = &mut sleep => {
-                    if value_create_queue.is_busy() {
-                        warn!(?value_create_queue, "Council is waiting for a job to create values for at least 60 seconds");
-                    }
                     if !complete_graph.is_empty() {
                         warn!(?complete_graph, "Council has values in graph but has been waiting for messages for 60 seconds");
                     }
@@ -136,20 +121,6 @@ impl Server {
             };
 
             match request {
-                Request::CreateValues => {
-                    // Move to a falible wrapper
-                    job_would_like_to_create_attribute_values(
-                        &mut value_create_queue,
-                        reply_channel,
-                    )
-                    .await
-                    .unwrap();
-                }
-                Request::ValueCreationDone => {
-                    job_finished_value_creation(&mut value_create_queue, reply_channel)
-                        .await
-                        .unwrap();
-                }
                 Request::ValueDependencyGraph {
                     change_set_id,
                     dependency_graph,
@@ -178,14 +149,9 @@ impl Server {
                     .unwrap();
                 }
                 Request::Bye { change_set_id } => {
-                    job_is_going_away(
-                        &mut complete_graph,
-                        &mut value_create_queue,
-                        reply_channel,
-                        change_set_id,
-                    )
-                    .await
-                    .unwrap();
+                    job_is_going_away(&mut complete_graph, reply_channel, change_set_id)
+                        .await
+                        .unwrap();
                 }
                 Request::ValueProcessingFailed {
                     change_set_id,
@@ -213,11 +179,6 @@ impl Server {
 // | Pinga                                                                      | Council                                                                                                                                                                                                                        |
 // | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 // | Pull job from queue                                                        | N/A                                                                                 |
-// |                                                                            |                                                                                     |
-// | Inform Council it would like to attribute_value_create_dependent_values_v1 | Add Pinga job ID to create dependent values queue                                   |
-// |                                                                            |                                                                                     |
-// | Wait for "proceed to create values" message from Council                   | Pop job IDs off queue as "finished creating values" messages are received to inform |
-// |                                                                            | the popped ID it can proceed to create                                              |
 // |                                                                            |                                                                                     |
 // | Generate dependent values graph & send to council                          | Merge graph data into "global" state for change set ID                              |
 // |                                                                            |                                                                                     |
@@ -248,29 +209,6 @@ pub enum Error {
     UnexpectedJobId,
     #[error("Unknown NodeId")]
     UnknownNodeId,
-}
-
-#[instrument(level = "info")]
-pub async fn job_would_like_to_create_attribute_values(
-    value_create_queue: &mut ValueCreationQueue,
-    reply_channel: String,
-) -> Result<(), Error> {
-    debug!(
-        %reply_channel,
-        "Job would like to create new AttributeValues"
-    );
-    value_create_queue.push(reply_channel);
-
-    Ok(())
-}
-
-#[instrument(level = "info")]
-pub async fn job_finished_value_creation(
-    value_create_queue: &mut ValueCreationQueue,
-    reply_channel: String,
-) -> Result<(), Error> {
-    debug!(%reply_channel, "Job finished creating new AttributeValues");
-    value_create_queue.finished_processing(&reply_channel)
 }
 
 #[instrument(level = "info")]
@@ -338,14 +276,12 @@ pub async fn job_failed_processing_a_value(
 #[instrument(level = "info")]
 pub async fn job_is_going_away(
     complete_graph: &mut ChangeSetGraph,
-    value_create_queue: &mut ValueCreationQueue,
     reply_channel: String,
     change_set_id: Id,
 ) -> Result<(), Error> {
-    debug!(%reply_channel, %change_set_id, ?complete_graph, ?value_create_queue, "Job is going away");
-    value_create_queue.remove(&reply_channel);
+    debug!(%reply_channel, %change_set_id, ?complete_graph, "Job is going away");
     complete_graph.remove_channel(change_set_id, &reply_channel);
-    debug!(?complete_graph, ?value_create_queue);
+    debug!(?complete_graph);
 
     Ok(())
 }

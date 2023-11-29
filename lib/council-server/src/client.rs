@@ -21,14 +21,6 @@ pub struct PubClient {
 }
 
 impl PubClient {
-    pub async fn finished_creating_values(&self) -> Result<()> {
-        let message = serde_json::to_vec(&Request::ValueCreationDone)?;
-        self.nats
-            .publish_with_reply(&self.pub_channel, &self.reply_channel, message)
-            .await?;
-        Ok(())
-    }
-
     pub async fn register_dependency_graph(&self, dependency_graph: Graph) -> Result<()> {
         let message = serde_json::to_vec(&Request::ValueDependencyGraph {
             change_set_id: self.change_set_id,
@@ -133,23 +125,6 @@ impl Client {
             }
             None => Ok(None),
         }
-    }
-
-    pub async fn wait_to_create_values(&mut self) -> Result<State> {
-        let message = serde_json::to_vec(&Request::CreateValues)?;
-        self.nats
-            .publish_with_reply(&self.pub_channel, &self.reply_channel, message)
-            .await?;
-
-        match self.fetch_response().await? {
-            Some(Response::OkToCreate) => Ok(State::Continue),
-            Some(Response::Shutdown) => Ok(State::Shutdown),
-            resp => unreachable!("{:?}", resp),
-        }
-    }
-
-    pub async fn finished_creating_values(&self) -> Result<()> {
-        self.clone_into_pub().finished_creating_values().await
     }
 
     pub async fn register_dependency_graph(&self, dependency_graph: Graph) -> Result<()> {

@@ -6,47 +6,6 @@ mod node_metadata;
 use node_metadata::NodeMetadata;
 
 #[derive(Default, Debug)]
-pub struct ValueCreationQueue {
-    processing: Option<String>,
-    queue: VecDeque<String>,
-}
-
-impl ValueCreationQueue {
-    pub fn push(&mut self, reply_channel: String) {
-        self.queue.push_back(reply_channel);
-    }
-
-    pub fn is_busy(&self) -> bool {
-        self.processing.is_some()
-    }
-
-    pub fn fetch_next(&mut self) -> Option<String> {
-        if self.is_busy() {
-            return None;
-        }
-        let next_channel = self.queue.pop_front();
-        self.processing = next_channel.clone();
-
-        next_channel
-    }
-
-    pub fn finished_processing(&mut self, reply_channel: &str) -> Result<(), Error> {
-        if self.processing.as_deref() != Some(reply_channel) {
-            return Err(Error::UnexpectedJobId);
-        }
-
-        self.processing = None;
-
-        Ok(())
-    }
-
-    pub fn remove(&mut self, reply_channel: &str) {
-        self.processing = self.processing.take().filter(|el| *el != reply_channel);
-        self.queue.retain(|el| reply_channel != el);
-    }
-}
-
-#[derive(Default, Debug)]
 pub struct ChangeSetGraph {
     dependency_data: HashMap<Id, HashMap<Id, NodeMetadata>>,
 }
