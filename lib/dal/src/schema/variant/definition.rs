@@ -12,7 +12,7 @@ use thiserror::Error;
 use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::DEFAULT_SCHEMA_VARIANT_COLOR;
-use crate::schema::ComponentKind;
+use crate::ComponentKind;
 use crate::{pk, PropKind, SocketArity};
 
 #[remain::sorted]

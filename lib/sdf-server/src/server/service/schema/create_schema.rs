@@ -1,9 +1,10 @@
-use super::SchemaResult;
-use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
-use dal::schema::ComponentKind;
+use dal::ComponentKind;
 use dal::{Schema, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
+
+use super::SchemaResult;
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

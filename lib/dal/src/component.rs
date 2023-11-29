@@ -12,30 +12,7 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::value::AttributeValue;
-use crate::code_view::CodeViewError;
-use crate::func::binding::FuncBindingError;
-use crate::func::binding_return_value::{FuncBindingReturnValueError, FuncBindingReturnValueId};
-use crate::job::definition::DependentValuesUpdate;
-use crate::schema::variant::root_prop::SiPropChild;
-use crate::schema::variant::SchemaVariantId;
-use crate::schema::SchemaVariant;
-use crate::socket::SocketEdgeKind;
-use crate::standard_model::object_from_row;
-use crate::validation::ValidationConstructorError;
-use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::ws_event::WsEventError;
-use crate::{
-    impl_standard_model, node::NodeId, pk, standard_model, standard_model_accessor,
-    standard_model_belongs_to, standard_model_has_many, AttributePrototype, AttributePrototypeId,
-    ComponentType, DalContext, EdgeError, ExternalProvider, ExternalProviderId, FixError, FixId,
-    Func, FuncBackendKind, HistoryActor, HistoryEventError, InternalProvider, InternalProviderId,
-    Node, PropId, RootPropChild, Schema, SchemaId, Socket, StandardModel, StandardModelError,
-    Tenancy, Timestamp, TransactionsError, UserPk, ValidationResolverError, Visibility,
-    WorkspaceError, WsEvent, WsEventResult, WsPayload,
-};
-use crate::{AttributeValueId, QualificationError};
-use crate::{Edge, FixResolverError, NodeKind};
+use crate::{pk, StandardModel, Timestamp};
 
 // pub mod code;
 // pub mod diff;
@@ -46,20 +23,6 @@ use crate::{Edge, FixResolverError, NodeKind};
 // pub mod view;
 
 // pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
-
-// const FIND_FOR_NODE: &str = include_str!("queries/component/find_for_node.sql");
-// const FIND_SI_CHILD_PROP_ATTRIBUTE_VALUE: &str =
-//     include_str!("queries/component/find_si_child_attribute_value.sql");
-// const LIST_FOR_SCHEMA_VARIANT: &str = include_str!("queries/component/list_for_schema_variant.sql");
-// const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
-//     include_str!("queries/component/list_sockets_for_socket_edge_kind.sql");
-// const FIND_NAME: &str = include_str!("queries/component/find_name.sql");
-// const ROOT_CHILD_ATTRIBUTE_VALUE_FOR_COMPONENT: &str =
-//     include_str!("queries/component/root_child_attribute_value_for_component.sql");
-// const LIST_CONNECTED_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE: &str =
-//     include_str!("queries/component/list_connected_input_sockets_for_attribute_value.sql");
-// const COMPONENT_STATUS_UPDATE_BY_PK: &str =
-//     include_str!("queries/component/status_update_by_pk.sql");
 
 pk!(ComponentId);
 
@@ -100,39 +63,16 @@ pub struct Component {
     needs_destroy: bool,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct ComponentGraphNode {
-    id: ComponentId,
-    content_address: ContentAddress,
-    content: ComponentContentV1,
-}
-
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "version")]
 pub enum ComponentContent {
     V1(ComponentContentV1),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ComponentContentV1 {
-    #[serde(flatten)]
     pub timestamp: Timestamp,
     pub kind: ComponentKind,
     pub needs_destroy: bool,
-}
-
-impl ComponentGraphNode {
-    pub fn assemble(
-        id: impl Into<ComponentId>,
-        content_hash: ContentHash,
-        content: ComponentContentV1,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            content_address: ContentAddress::Component(content_hash),
-            content,
-        }
-    }
 }
 
 // impl Component {

@@ -214,7 +214,7 @@ impl InternalProvider {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         workspace_snapshot.add_edge(
             id,
-            EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype)?,
+            EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(None))?,
             attribute_prototype.id().into(),
         )?;
 
@@ -261,7 +261,7 @@ impl InternalProvider {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
             workspace_snapshot.add_edge(
                 id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Prototype)?,
+                EdgeWeight::new(change_set, EdgeWeightKind::Prototype(None))?,
                 attribute_prototype.id().into(),
             )?;
         }

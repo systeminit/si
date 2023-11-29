@@ -32,7 +32,7 @@ pub mod change_set;
 pub mod change_set_pointer;
 // pub mod change_status;
 // pub mod code_view;
-// pub mod component;
+pub mod component;
 pub mod context;
 pub mod cyclone_key_pair;
 // pub mod diagram;
@@ -85,6 +85,7 @@ pub use attribute::{
 };
 pub use builtins::{BuiltinsError, BuiltinsResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus};
+pub use component::ComponentKind;
 pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
     Transactions, TransactionsError,

@@ -32,9 +32,12 @@ pub enum EdgeWeightKind {
     Ordering,
     /// Used to link an attribute value to the prop that it is for.
     Prop,
-    Prototype,
+    /// An edge from a [`provider`](crate::provider) to an
+    /// [`AttributePrototype`](crate::AttributePrototype). The optional [`String`] is used for
+    /// maps, arrays and relevant container types to indicate which element the prototype is for.
+    Prototype(Option<String>),
     /// An edge from an [`AttributePrototype`][crate::AttributePrototype] to an
-    /// [`AttributePrototypeArgument`][crate::AttributePrototypeArguemt]
+    /// [`AttributePrototypeArgument`][crate::AttributePrototypeArgument].
     PrototypeArgument,
     /// An edge from an
     /// [`AttributePrototypeArgument`][crate::AttributePrototypeArgument] to the

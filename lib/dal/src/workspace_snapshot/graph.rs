@@ -1691,10 +1691,15 @@ impl WorkspaceSnapshotGraph {
                 match connecting_edgeref.weight().kind() {
                     // This is the key for an entry in a map.
                     EdgeWeightKind::Contain(Some(key)) => hasher.update(key.as_bytes()),
+
                     // This is the kind of the action.
                     EdgeWeightKind::ActionPrototype(kind) => {
                         hasher.update(kind.to_string().as_bytes())
                     }
+
+                    // This is the key representing an element in a container type corresponding
+                    // to an AttributePrototype
+                    EdgeWeightKind::Prototype(Some(key)) => hasher.update(key.as_bytes()),
 
                     // Nothing to do, as these EdgeWeightKind do not encode extra information
                     // in the edge itself.
@@ -1704,7 +1709,7 @@ impl WorkspaceSnapshotGraph {
                     | EdgeWeightKind::Provider
                     | EdgeWeightKind::Ordering
                     | EdgeWeightKind::Prop
-                    | EdgeWeightKind::Prototype
+                    | EdgeWeightKind::Prototype(None)
                     | EdgeWeightKind::Proxy
                     | EdgeWeightKind::Use => {}
                 }

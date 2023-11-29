@@ -14,7 +14,7 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, DalContext, Timestamp, TransactionsError};
+use crate::{pk, ComponentKind, DalContext, Timestamp, TransactionsError};
 
 pub use ui_menu::SchemaUiMenu;
 pub use variant::{SchemaVariant, SchemaVariantId};
@@ -59,15 +59,6 @@ pub struct Schema {
     // NOTE(nick): what is the difference between these two?
     pub category_name: String,
     pub category: String,
-}
-
-// FIXME(nick,zack,jacob): temporarily moved here.
-#[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Copy)]
-#[serde(rename_all = "camelCase")]
-pub enum ComponentKind {
-    Credential,
-    Standard,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
