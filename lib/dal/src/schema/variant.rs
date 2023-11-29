@@ -187,6 +187,8 @@ pub struct SchemaVariant {
     // NOTE(nick): we may want to replace this with a better solution. We use this to ensure
     // components are not created unless the variant has been finalized at least once.
     finalized_once: bool,
+    /// The category that the [`SchemaVariant`] should be placed in.
+    category: String,
 }
 
 impl_standard_model! {
@@ -205,6 +207,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_id: SchemaId,
         name: impl AsRef<str>,
+        category: impl AsRef<str>
     ) -> SchemaVariantResult<(Self, RootProp)> {
         let name = name.as_ref();
         let row = ctx
@@ -212,8 +215,8 @@ impl SchemaVariant {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM schema_variant_create_v1($1, $2, $3)",
-                &[ctx.tenancy(), ctx.visibility(), &name],
+                "SELECT object FROM schema_variant_create_v2($1, $2, $3, $4)",
+                &[ctx.tenancy(), ctx.visibility(), &name, &category],
             )
             .await?;
         let mut object: SchemaVariant = standard_model::finish_create_from_row(ctx, row).await?;
