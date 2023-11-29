@@ -5,8 +5,8 @@ use dal::job::definition::DependentValuesUpdate;
 use dal::socket::{SocketEdgeKind, SocketKind};
 use dal::{
     node::NodeId, AttributeReadContext, AttributeValue, ChangeSet, Component, Connection,
-    DalContext, Edge, EdgeError, ExternalProvider, InternalProvider, InternalProviderId, Node,
-    PropId, StandardModel, Visibility, WsEvent,
+    DalContext, Edge, EdgeError, ExternalProvider, InternalProvider, Node, StandardModel,
+    Visibility, WsEvent,
 };
 use dal::{ComponentType, Socket};
 use serde::{Deserialize, Serialize};
@@ -183,24 +183,33 @@ pub async fn connect_component_sockets_to_frame(
                         )
                         .await?;
 
-                        let attribute_read_context = AttributeReadContext {
-                            prop_id: Some(PropId::NONE),
-                            internal_provider_id: Some(InternalProviderId::NONE),
-                            external_provider_id: Some(*parent_provider.id()),
-                            component_id: Some(*parent_component.id()),
-                        };
+                        let child_socket_internal_provider =
+                            InternalProvider::find_explicit_for_socket(ctx, *child_socket.id())
+                                .await?
+                                .ok_or(DiagramError::InternalProviderNotFoundForSocket(
+                                    *child_socket.id(),
+                                ))?;
 
-                        let attribute_value =
-                            AttributeValue::find_for_context(ctx, attribute_read_context)
+                        let child_attribute_value_context = AttributeReadContext {
+                            internal_provider_id: Some(*child_socket_internal_provider.id()),
+                            component_id: Some(*child_component.id()),
+                            ..Default::default()
+                        };
+                        let mut child_attribute_value =
+                            AttributeValue::find_for_context(ctx, child_attribute_value_context)
                                 .await?
                                 .ok_or(DiagramError::AttributeValueNotFoundForContext(
-                                    attribute_read_context,
+                                    child_attribute_value_context,
                                 ))?;
+
+                        child_attribute_value
+                            .update_from_prototype_function(ctx)
+                            .await?;
 
                         ctx.enqueue_job(DependentValuesUpdate::new(
                             ctx.access_builder(),
                             *ctx.visibility(),
-                            vec![*attribute_value.id()],
+                            vec![*child_attribute_value.id()],
                         ))
                         .await?;
                     }
