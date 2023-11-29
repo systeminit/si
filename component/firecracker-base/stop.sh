@@ -8,7 +8,7 @@ JAILER_BINARY="/usr/bin/jailer"
 TAP_DEV="fc-${SB_ID}-tap0"
 
 # Kill the firecracker process
-ps aux | grep "firecracker --id $SB_ID" | awk '{ print $2 }' | xargs kill -9 || true
+ps aux | grep "firecracke[r] --id $SB_ID" | awk '{ print $2 }' | xargs kill -9 || true
 
 # Remove TAP device
 ip link del "$TAP_DEV" 2> /dev/null || true
