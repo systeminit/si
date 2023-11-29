@@ -222,6 +222,7 @@ prepare_jailers() {
     wait
   else
     echo "prepare_jailer.sh script not found, skipping jail creation."
+    exit 1
   fi
 }
 
