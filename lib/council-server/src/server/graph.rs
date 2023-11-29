@@ -15,12 +15,12 @@ impl ChangeSetGraph {
         self.dependency_data.is_empty()
     }
 
-    pub fn fetch_all_available(&mut self) -> Vec<(String, Id)> {
-        let mut result = Vec::new();
+    pub fn fetch_all_available(&mut self) -> HashMap<String, Vec<Id>> {
+        let mut result: HashMap<String, Vec<Id>> = HashMap::new();
         for graph in self.dependency_data.values_mut() {
             for (id, metadata) in graph.iter_mut() {
                 if let Some(reply_channel) = metadata.next_to_process() {
-                    result.push((reply_channel, *id));
+                    result.entry(reply_channel.clone()).or_default().push(*id);
                 }
             }
         }
@@ -68,7 +68,7 @@ impl ChangeSetGraph {
 
     pub fn mark_node_as_processed(
         &mut self,
-        reply_channel: String,
+        reply_channel: &str,
         change_set_id: Id,
         node_id: Id,
     ) -> Result<HashSet<String>, Error> {
@@ -76,7 +76,7 @@ impl ChangeSetGraph {
 
         let (ok_to_remove_node, wanted_by_reply_channels) =
             if let Some(node_metadata) = change_set_graph_data.get_mut(&node_id) {
-                node_metadata.mark_as_processed(&reply_channel)?
+                node_metadata.mark_as_processed(reply_channel)?
             } else {
                 return Err(Error::UnknownNodeId);
             };
