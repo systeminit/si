@@ -145,10 +145,9 @@ impl AttributePrototype {
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<FuncId> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        for node_index in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            prototype_id.into(),
-            EdgeWeightKindDiscriminants::Use,
-        )? {
+        for node_index in workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(prototype_id, EdgeWeightKindDiscriminants::Use)?
+        {
             let node_weight = workspace_snapshot.get_node_weight(node_index)?;
             if NodeWeightDiscriminants::Func == node_weight.into() {
                 return Ok(node_weight.id().into());

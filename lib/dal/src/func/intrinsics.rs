@@ -71,36 +71,80 @@ impl IntrinsicFunc {
                     .unique_id("51049a590fb64860f159972012ac2657c629479a244d6bcc4b1b73ba4b29f87f");
                 data_builder.backend_kind(FuncSpecBackendKind::Array);
                 data_builder.response_type(FuncSpecBackendResponseType::Array);
+                builder.argument(
+                    FuncArgumentSpec::builder()
+                        .name("value")
+                        .kind(FuncArgumentKind::Array)
+                        .element_kind(FuncArgumentKind::Any)
+                        .build()
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
+                );
             }
             Self::SetBoolean => {
                 builder
                     .unique_id("577a7deea25cfad0d4b2dd1e1f3d96b86b8b1578605137b8c4128d644c86964b");
                 data_builder.backend_kind(FuncSpecBackendKind::Boolean);
                 data_builder.response_type(FuncSpecBackendResponseType::Boolean);
+                builder.argument(
+                    FuncArgumentSpec::builder()
+                        .name("value")
+                        .kind(FuncArgumentKind::Boolean)
+                        .build()
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
+                );
             }
             Self::SetInteger => {
                 builder
                     .unique_id("7d384b237852f20b8dec2fbd2e644ffc6bde901d7dc937bd77f50a0d57e642a9");
                 data_builder.backend_kind(FuncSpecBackendKind::Integer);
                 data_builder.response_type(FuncSpecBackendResponseType::Integer);
+                builder.argument(
+                    FuncArgumentSpec::builder()
+                        .name("value")
+                        .kind(FuncArgumentKind::Integer)
+                        .build()
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
+                );
             }
             Self::SetMap => {
                 builder
                     .unique_id("dea5084fbf6e7fe8328ac725852b96f4b5869b14d0fe9dd63a285fa876772496");
                 data_builder.backend_kind(FuncSpecBackendKind::Map);
                 data_builder.response_type(FuncSpecBackendResponseType::Map);
+                builder.argument(
+                    FuncArgumentSpec::builder()
+                        .name("value")
+                        .kind(FuncArgumentKind::Map)
+                        .element_kind(FuncArgumentKind::Any)
+                        .build()
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
+                );
             }
             Self::SetObject => {
                 builder
                     .unique_id("cb9bf94739799f3a8b84bcb88495f93b27b47c31a341f8005a60ca39308909fd");
                 data_builder.backend_kind(FuncSpecBackendKind::Object);
                 data_builder.response_type(FuncSpecBackendResponseType::Object);
+                builder.argument(
+                    FuncArgumentSpec::builder()
+                        .name("value")
+                        .kind(FuncArgumentKind::Object)
+                        .build()
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
+                );
             }
             Self::SetString => {
                 builder
                     .unique_id("bbe86d1a2b92c3e34b72a407cca424878d3466d29ca60e56a251a52a0840bfbd");
                 data_builder.backend_kind(FuncSpecBackendKind::String);
                 data_builder.response_type(FuncSpecBackendResponseType::String);
+                builder.argument(
+                    FuncArgumentSpec::builder()
+                        .name("value")
+                        .kind(FuncArgumentKind::String)
+                        .build()
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
+                );
             }
             Self::Unset => {
                 builder
@@ -113,6 +157,13 @@ impl IntrinsicFunc {
                     .unique_id("039ff70bc7922338978ab52a39156992b7d8e3390f0ef7e99d5b6ffd43141d8a");
                 data_builder.backend_kind(FuncSpecBackendKind::Validation);
                 data_builder.response_type(FuncSpecBackendResponseType::Validation);
+                builder.argument(
+                    FuncArgumentSpec::builder()
+                        .name("value")
+                        .kind(FuncArgumentKind::Any)
+                        .build()
+                        .map_err(|e| FuncError::IntrinsicSpecCreation(e.to_string()))?,
+                );
             }
         };
 

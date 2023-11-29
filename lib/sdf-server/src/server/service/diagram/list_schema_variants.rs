@@ -124,8 +124,10 @@ pub async fn list_schema_variants(
                 name: schema_variant.name().to_owned(),
                 schema_id: schema.id(),
                 schema_name: schema.name.to_owned(),
-                color: "#000000".into(),
-                // color: schema_variant.color().to_owned(),
+                color: schema_variant
+                    .get_color(&ctx)
+                    .await?
+                    .unwrap_or("#0F0F0F".into()),
                 category: schema_variant.category().to_owned(),
                 // FIXME(nick): use the real value here
                 // color: schema_variant

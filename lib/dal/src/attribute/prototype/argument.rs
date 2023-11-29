@@ -43,6 +43,8 @@ pub enum AttributePrototypeArgumentError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("serde json error: {0}")]
+    Serde(#[from] serde_json::Error),
     #[error("store error: {0}")]
     Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
@@ -84,6 +86,41 @@ impl AttributePrototypeArgument {
 
     pub fn id(&self) -> AttributePrototypeArgumentId {
         self.id
+    }
+
+    pub async fn static_value_by_id(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<Option<StaticArgumentValue>> {
+        let mut static_value_id: Option<StaticArgumentValueId> = None;
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+            for node_idx in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+                apa_id,
+                EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+            )? {
+                match workspace_snapshot.get_node_weight(node_idx)? {
+                    NodeWeight::Content(inner) => {
+                        let inner_addr_discrim: ContentAddressDiscriminants =
+                            inner.content_address().into();
+
+                        if inner_addr_discrim == ContentAddressDiscriminants::StaticArgumentValue {
+                            static_value_id = Some(inner.id().into());
+                            break;
+                        }
+                    }
+                    _ => continue,
+                }
+            }
+        }
+
+        Ok(match static_value_id {
+            Some(static_value_id) => {
+                Some(StaticArgumentValue::get_by_id(ctx, static_value_id).await?)
+            }
+            None => None,
+        })
     }
 
     pub fn new(
@@ -134,7 +171,7 @@ impl AttributePrototypeArgument {
         let change_set = ctx.change_set_pointer()?;
 
         for existing_value_source in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            self.id.into(),
+            self.id,
             EdgeWeightKindDiscriminants::PrototypeArgumentValue,
         )? {
             let self_node_index = workspace_snapshot.get_node_index_by_id(self.id.into())?;
@@ -179,6 +216,26 @@ impl AttributePrototypeArgument {
         let static_value = StaticArgumentValue::new(ctx, value)?;
 
         self.set_value_from_static_value_id(ctx, static_value.id())
+    }
+
+    pub fn list_ids_for_prototype(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeArgumentResult<Vec<AttributePrototypeArgumentId>> {
+        let mut apas = vec![];
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let apa_node_idxs = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            prototype_id,
+            EdgeWeightKindDiscriminants::PrototypeArgument,
+        )?;
+
+        for idx in apa_node_idxs {
+            let node_weight = workspace_snapshot.get_node_weight(idx)?;
+            apas.push(node_weight.id().into())
+        }
+
+        Ok(apas)
     }
 }
 

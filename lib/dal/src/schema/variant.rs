@@ -502,6 +502,26 @@ impl SchemaVariant {
         Ok(())
     }
 
+    pub async fn get_color(&self, ctx: &DalContext) -> SchemaVariantResult<Option<String>> {
+        let color_prop_id =
+            Prop::find_prop_id_by_path(ctx, self.id, PropPath::new(["root", "si", "color"]))?;
+
+        let prototype_id = Prop::prototype_id(ctx, color_prop_id)?;
+
+        match AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id)?.get(0) {
+            None => Ok(None),
+            Some(apa_id) => {
+                match AttributePrototypeArgument::static_value_by_id(ctx, *apa_id).await? {
+                    Some(static_value) => {
+                        let color: String = serde_json::from_value(static_value.value)?;
+                        Ok(Some(color))
+                    }
+                    None => Ok(None),
+                }
+            }
+        }
+    }
+
     /// Configures the "default" value for the
     /// [`AttributePrototypeArgument`](crate::attribute::prototype::argument::AttributePrototypeArgument)
     /// for the /root/si/color [`Prop`](crate::Prop). If a prototype already

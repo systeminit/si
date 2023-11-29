@@ -468,10 +468,7 @@ impl Prop {
     pub fn prototype_id(ctx: &DalContext, prop_id: PropId) -> PropResult<AttributePrototypeId> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         let prototype_node_index = *workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                prop_id.into(),
-                EdgeWeightKindDiscriminants::Prototype,
-            )?
+            .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Prototype)?
             .get(0)
             .ok_or(PropError::MissingPrototypeForProp(prop_id))?;
 

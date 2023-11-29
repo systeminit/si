@@ -45,11 +45,11 @@ impl WorkspaceSnapshot {
 
     pub fn incoming_sources_for_edge_weight_kind(
         &mut self,
-        id: Ulid,
+        id: impl Into<Ulid>,
         edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<Vec<NodeIndex>> {
         Ok(self
-            .edges_directed(id, Direction::Incoming)?
+            .edges_directed(id.into(), Direction::Incoming)?
             .filter_map(|edge_ref| {
                 if edge_weight_kind_discrim == edge_ref.weight().kind().into() {
                     Some(edge_ref.source())
@@ -62,9 +62,10 @@ impl WorkspaceSnapshot {
 
     pub fn outgoing_targets_for_edge_weight_kind(
         &mut self,
-        id: Ulid,
+        id: impl Into<Ulid>,
         edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotResult<Vec<NodeIndex>> {
+        let id = id.into();
         Ok(self
             .edges_directed(id, Direction::Outgoing)?
             .filter_map(|edge_ref| {

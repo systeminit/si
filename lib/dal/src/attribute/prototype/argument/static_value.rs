@@ -34,7 +34,7 @@ pub struct StaticArgumentValue {
     pub value: serde_json::Value,
 }
 
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq, Debug)]
 pub enum StaticArgumentValueContent {
     V1(StaticArgumentValueContentV1),
 }
@@ -42,16 +42,19 @@ pub enum StaticArgumentValueContent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct StaticArgumentValueContentV1 {
     pub timestamp: Timestamp,
-    pub value: serde_json::Value,
+    pub value: String,
 }
 
 impl StaticArgumentValue {
-    pub fn assemble(id: StaticArgumentValueId, inner: StaticArgumentValueContentV1) -> Self {
-        Self {
+    pub fn assemble(
+        id: StaticArgumentValueId,
+        inner: StaticArgumentValueContentV1,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        Ok(Self {
             id,
             timestamp: inner.timestamp,
-            value: inner.value,
-        }
+            value: serde_json::from_str(inner.value.as_str())?,
+        })
     }
 
     pub fn id(&self) -> StaticArgumentValueId {
@@ -63,6 +66,7 @@ impl StaticArgumentValue {
         value: serde_json::Value,
     ) -> AttributePrototypeArgumentResult<Self> {
         let timestamp = Timestamp::now();
+        let value = serde_json::to_string(&value)?;
         let content = StaticArgumentValueContentV1 { timestamp, value };
 
         let hash = ctx
@@ -80,7 +84,7 @@ impl StaticArgumentValue {
             workspace_snapshot.add_node(node_weight)?;
         }
 
-        Ok(StaticArgumentValue::assemble(id.into(), content))
+        Ok(StaticArgumentValue::assemble(id.into(), content)?)
     }
 
     pub async fn get_by_id(
@@ -103,6 +107,6 @@ impl StaticArgumentValue {
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let StaticArgumentValueContent::V1(inner) = content;
 
-        Ok(StaticArgumentValue::assemble(id, inner))
+        Ok(StaticArgumentValue::assemble(id, inner)?)
     }
 }

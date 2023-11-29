@@ -2609,6 +2609,7 @@ async fn import_schema_variant(
                 },
                 None => schema_variant,
             };
+
             Some(schema_variant)
         } // TODO: this logic is for modifying only if there is a difference
           // between the changeset and head, should be restored when workspace

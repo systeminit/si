@@ -395,7 +395,6 @@ async fn install_builtins(
             }
         }
     }
-
     dal.commit().await?;
 
     let mut ctx = ctx.clone();

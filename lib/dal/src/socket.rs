@@ -261,7 +261,7 @@ impl Socket {
 
         // Look for all external and explicit internal providers that the schema variant uses.
         let maybe_provider_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            schema_variant_id.into(),
+            schema_variant_id,
             EdgeWeightKindDiscriminants::Use,
         )?;
 
@@ -302,10 +302,10 @@ impl Socket {
         // Collect all the sockets as well as what provider each socket belongs to.
         let mut socket_hashes = Vec::new();
         let mut provider_to_socket_map: HashMap<Ulid, (SocketId, ContentHash)> = HashMap::new();
-        for provder_seen in providers_seen {
+        for provider_seen in providers_seen {
             let maybe_output_socket_indices = workspace_snapshot
                 .outgoing_targets_for_edge_weight_kind(
-                    provder_seen.into(),
+                    provider_seen,
                     EdgeWeightKindDiscriminants::Use,
                 )?;
 
@@ -314,11 +314,10 @@ impl Socket {
                 if let Ok(socket_node_weight) =
                     node_weight.get_content_node_weight_of_kind(ContentAddressDiscriminants::Socket)
                 {
-                    dbg!("socket found");
                     socket_hashes.push(socket_node_weight.content_hash());
                     if provider_to_socket_map
                         .insert(
-                            provder_seen,
+                            provider_seen,
                             (
                                 socket_node_weight.id().into(),
                                 socket_node_weight.content_hash(),

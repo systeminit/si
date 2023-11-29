@@ -340,7 +340,7 @@ impl Func {
         let arg_node_idx = workspace_snapshot.get_node_index_by_id(id.into())?;
 
         let users = workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(id.into(), EdgeWeightKind::Use.into())?;
+            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKind::Use.into())?;
 
         let change_set = ctx.change_set_pointer()?;
         for user in users {
