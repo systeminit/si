@@ -237,13 +237,7 @@ const updateAsset = async () => {
   }
 };
 
-const disabled = computed(
-  () =>
-    !!(
-      (editingAsset.value?.hasComponents || editingAsset.value?.hasAttrFuncs) ??
-      false
-    ),
-);
+const disabled = computed(() => !!(editingAsset.value?.hasComponents ?? false));
 
 const disabledWarning = computed(() => {
   if (editingAsset.value?.hasComponents) {
