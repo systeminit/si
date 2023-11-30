@@ -10,6 +10,7 @@ load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
 load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
+load("@prelude-si//nix:toolchain.bzl", "nix_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
 load("@prelude-si//python:toolchain.bzl", "si_python_toolchain")
 load("@prelude-si//rust:toolchain.bzl", "si_rust_toolchain")
@@ -60,6 +61,11 @@ docker_toolchain(
 
 git_toolchain(
     name = "git",
+    visibility = ["PUBLIC"],
+)
+
+nix_toolchain(
+    name = "nix",
     visibility = ["PUBLIC"],
 )
 
