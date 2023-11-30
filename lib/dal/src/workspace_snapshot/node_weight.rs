@@ -318,6 +318,16 @@ impl NodeWeight {
         }
     }
 
+    pub fn get_ordering_node_weight(&self) -> NodeWeightResult<OrderingNodeWeight> {
+        match self {
+            NodeWeight::Ordering(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::Ordering,
+                other.into(),
+            )),
+        }
+    }
+
     pub fn get_content_node_weight_of_kind(
         &self,
         content_addr_discrim: ContentAddressDiscriminants,

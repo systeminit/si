@@ -24,6 +24,7 @@ use crate::{
         FuncError,
     },
     installed_pkg::InstalledPkgError,
+    prop::PropError,
     //prop_tree::PropTreeError,
     // schema::variant::definition::{SchemaVariantDefinitionError, SchemaVariantDefinitionId},
     socket::SocketEdgeKind,
@@ -198,8 +199,8 @@ pub enum PkgError {
     Pkg(#[from] SiPkgError),
     #[error(transparent)]
     PkgSpec(#[from] SpecError),
-    // #[error(transparent)]
-    // Prop(#[from] PropError),
+    #[error(transparent)]
+    Prop(#[from] PropError),
     // #[error("prop spec structure is invalid: {0}")]
     // PropSpecChildrenInvalid(String),
     // #[error(transparent)]

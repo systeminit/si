@@ -186,7 +186,7 @@ impl Component {
 
                 // AttributeValue (new) --> Provider (corresponding to an input or an output Socket)
                 let attribute_value_index =
-                    workspace_snapshot.get_node_index_by_id(attribute_value.id().into())?;
+                    workspace_snapshot.get_node_index_by_id(attribute_value.id())?;
                 workspace_snapshot.add_edge_unchecked(
                     attribute_value_index,
                     EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,

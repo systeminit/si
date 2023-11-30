@@ -307,7 +307,7 @@ impl Func {
         if func.name.as_str() != node_weight.name()
             || func.backend_kind != node_weight.backend_kind()
         {
-            let original_node_index = workspace_snapshot.get_node_index_by_id(func.id.into())?;
+            let original_node_index = workspace_snapshot.get_node_index_by_id(func.id)?;
 
             node_weight
                 .set_name(func.name.as_str())
@@ -337,7 +337,7 @@ impl Func {
 
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
-        let arg_node_idx = workspace_snapshot.get_node_index_by_id(id.into())?;
+        let arg_node_idx = workspace_snapshot.get_node_index_by_id(id)?;
 
         let users = workspace_snapshot
             .incoming_sources_for_edge_weight_kind(id, EdgeWeightKind::Use.into())?;

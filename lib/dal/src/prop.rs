@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::thread::current;
 
 use content_store::{ContentHash, Store};
@@ -14,7 +15,7 @@ use crate::change_set_pointer::ChangeSetPointerError;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::{self, WorkspaceSnapshotError};
 use crate::{
     label_list::ToLabelList, pk, property_editor::schema::WidgetKind, FuncId, StandardModel,
@@ -39,6 +40,10 @@ pub enum PropError {
     MissingPrototypeForProp(PropId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("prop {0} is orphaned")]
+    PropIsOrphan(PropId),
+    #[error("prop {0} has a non prop or schema variant parent")]
+    PropParentInvalid(PropId),
     #[error("store error: {0}")]
     Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
@@ -237,6 +242,15 @@ pub enum PropKind {
     String,
 }
 
+impl PropKind {
+    pub fn ordered(&self) -> bool {
+        match self {
+            PropKind::Array | PropKind::Map | PropKind::Object => true,
+            _ => false,
+        }
+    }
+}
+
 impl From<PropKind> for PropSpecKind {
     fn from(prop: PropKind) -> Self {
         match prop {
@@ -303,18 +317,63 @@ impl Prop {
         self.id
     }
 
+    pub fn parent_prop_id_by_id(ctx: &DalContext, prop_id: PropId) -> PropResult<Option<PropId>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let parent_node_idx = *workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Use)?
+            .get(0)
+            .ok_or(PropError::PropIsOrphan(prop_id))?;
+
+        Ok(match workspace_snapshot.get_node_weight(parent_node_idx)? {
+            NodeWeight::Prop(prop_inner) => Some(prop_inner.id().into()),
+            NodeWeight::Content(content_inner) => {
+                let content_addr_discrim: ContentAddressDiscriminants =
+                    content_inner.content_address().into();
+                match content_addr_discrim {
+                    ContentAddressDiscriminants::SchemaVariant => None,
+                    _ => return Err(PropError::PropParentInvalid(prop_id)),
+                }
+            }
+            _ => return Err(PropError::PropParentInvalid(prop_id)),
+        })
+    }
+
+    pub fn path(&self, ctx: &DalContext) -> PropResult<PropPath> {
+        let mut parts = vec![self.name.to_owned()];
+
+        let mut work_queue = VecDeque::from([self.id]);
+
+        while let Some(prop_id) = work_queue.pop_front() {
+            if let Some(prop_id) = Prop::parent_prop_id_by_id(ctx, prop_id)? {
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                let node_idx = workspace_snapshot.get_node_index_by_id(prop_id)?;
+
+                if let NodeWeight::Prop(inner) = workspace_snapshot.get_node_weight(node_idx)? {
+                    parts.push(inner.name().to_owned());
+                    work_queue.push_back(inner.id().into());
+                }
+            }
+        }
+
+        parts.reverse();
+        Ok(PropPath::new(&parts))
+    }
+
     /// Create a new [`Prop`]. A corresponding [`AttributePrototype`] and [`AttributeValue`] will be
     /// created when the provided [`SchemaVariant`](crate::SchemaVariant) is
     /// [`finalized`](crate::SchemaVariant::finalize).
-    pub async fn new(
+    pub fn new(
         ctx: &DalContext,
         name: impl Into<String>,
         kind: PropKind,
+        hidden: bool,
+        doc_link: Option<String>,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         prop_parent: PropParent,
-        ordered: bool,
     ) -> PropResult<Self> {
         let start = std::time::Instant::now();
+
+        let ordered = kind.ordered();
 
         let timestamp = Timestamp::now();
         let (widget_kind, widget_options) = match widget_kind_and_options {
@@ -329,8 +388,8 @@ impl Prop {
             kind,
             widget_kind,
             widget_options,
-            doc_link: None,
-            hidden: false,
+            doc_link,
+            hidden,
             refers_to_prop_id: None,
             diff_func_id: None,
         };
@@ -439,15 +498,29 @@ impl Prop {
         ))
     }
 
+    pub fn find_prop_id_by_path_opt(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        path: &PropPath,
+    ) -> PropResult<Option<PropId>> {
+        match Self::find_prop_id_by_path(ctx, schema_variant_id, path) {
+            Ok(prop_id) => Ok(Some(prop_id)),
+            Err(err) => match err {
+                PropError::ChildPropNotFoundByName(_, _) => Ok(None),
+                err => Err(err),
+            },
+        }
+    }
+
     pub fn find_prop_id_by_path(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-        path: PropPath,
+        path: &PropPath,
     ) -> PropResult<PropId> {
         let schema_variant_node_index = {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
-            workspace_snapshot.get_node_index_by_id(schema_variant_id.into())?
+            workspace_snapshot.get_node_index_by_id(schema_variant_id)?
         };
 
         let path_parts = path.as_parts();

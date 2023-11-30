@@ -152,7 +152,7 @@ impl Schema {
     pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Self> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
-        let node_index = workspace_snapshot.get_node_index_by_id(id.into())?;
+        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
         let node_weight = workspace_snapshot.get_node_weight(node_index)?;
         let hash = node_weight.content_hash();
 

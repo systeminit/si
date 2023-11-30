@@ -1235,7 +1235,13 @@ impl WorkspaceSnapshotGraph {
         Ok((conflicts, updates))
     }
 
-    pub(crate) fn get_node_index_by_id(&self, id: Ulid) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+    #[inline(always)]
+    pub(crate) fn get_node_index_by_id(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        let id = id.into();
+
         self.node_index_by_id
             .get(&id)
             .copied()

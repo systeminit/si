@@ -352,6 +352,14 @@ impl WorkspaceSnapshot {
             .replace_references(original_node_index, new_node_index)?)
     }
 
+    pub fn get_node_weight_by_id(
+        &mut self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<&NodeWeight> {
+        let node_idx = self.get_node_index_by_id(id)?;
+        Ok(self.working_copy()?.get_node_weight(node_idx)?)
+    }
+
     pub fn get_node_weight(
         &mut self,
         node_index: NodeIndex,
@@ -383,7 +391,11 @@ impl WorkspaceSnapshot {
             .tiny_dot_to_file();
     }
 
-    pub fn get_node_index_by_id(&mut self, id: Ulid) -> WorkspaceSnapshotResult<NodeIndex> {
+    #[inline(always)]
+    pub fn get_node_index_by_id(
+        &mut self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<NodeIndex> {
         Ok(self.working_copy()?.get_node_index_by_id(id)?)
     }
 
@@ -440,7 +452,7 @@ impl WorkspaceSnapshot {
 
     pub fn edges_directed(
         &mut self,
-        id: Ulid,
+        id: impl Into<Ulid>,
         direction: Direction,
     ) -> WorkspaceSnapshotResult<Edges<'_, EdgeWeight, Directed, u32>> {
         let node_index = self.working_copy()?.get_node_index_by_id(id)?;

@@ -164,10 +164,10 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<()> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         let attribute_prototype_idx =
-            workspace_snapshot.get_node_index_by_id(attribute_prototype_id.into())?;
+            workspace_snapshot.get_node_index_by_id(attribute_prototype_id)?;
 
         let current_func_node_idx = workspace_snapshot
-            .edges_directed(attribute_prototype_id.into(), Direction::Outgoing)?
+            .edges_directed(attribute_prototype_id, Direction::Outgoing)?
             .find(|edge_ref| edge_ref.weight().kind() == &EdgeWeightKind::Use)
             .map(|edge_ref| edge_ref.target())
             .ok_or(AttributePrototypeError::MissingFunction(

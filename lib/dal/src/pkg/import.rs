@@ -16,7 +16,6 @@ use si_pkg::{
     SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind, ValidationSpec,
 };
 
-use crate::schema::variant::definition::SchemaVariantDefinitionJson;
 use crate::ComponentKind;
 use crate::{
     func::{
@@ -39,6 +38,7 @@ use crate::{
     PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, Socket, StandardModel, Tenancy,
     UserPk, Workspace, WorkspacePk, WorkspaceSnapshot,
 };
+use crate::{prop::PropParent, schema::variant::definition::SchemaVariantDefinitionJson};
 
 use super::{PkgError, PkgResult};
 
@@ -51,7 +51,7 @@ enum Thing {
     Func(Func),
     FuncArgument(FuncArgument),
     Schema(Schema),
-    // SchemaVariant(SchemaVariant),
+    SchemaVariant(SchemaVariant),
     // Socket(Box<(Socket, Option<InternalProvider>, Option<ExternalProvider>)>),
     // Validation(ValidationPrototype),
 }
@@ -1888,13 +1888,6 @@ async fn import_schema(
             );
         }
 
-        // FIXME(nick): we only assemble this to get the color. Remove this once default values
-        // are possible for schema variants again.
-        let metadata =
-            SchemaVariantDefinitionJson::metadata_from_spec(schema_spec.to_spec().await?)
-                .expect("could not get metadata from spec");
-        let color = metadata.color.to_owned();
-
         let mut installed_schema_variant_ids = vec![];
         for variant_spec in &schema_spec.variants()? {
             let _variant = import_schema_variant(
@@ -1904,7 +1897,6 @@ async fn import_schema(
                 variant_spec,
                 installed_pkg_id,
                 thing_map,
-                color.clone(),
             )
             .await?;
 
@@ -2074,39 +2066,39 @@ async fn import_schema(
 //     Ok(())
 // }
 
-// #[derive(Clone, Debug)]
-// struct AttrFuncInfo {
-//     func_unique_id: String,
-//     prop_id: PropId,
-//     inputs: Vec<SiPkgAttrFuncInputView>,
-// }
+#[derive(Clone, Debug)]
+struct AttrFuncInfo {
+    func_unique_id: String,
+    prop_id: PropId,
+    inputs: Vec<SiPkgAttrFuncInputView>,
+}
 
-// #[remain::sorted]
-// #[derive(Clone, Debug)]
-// enum DefaultValueInfo {
-//     Boolean {
-//         prop_id: PropId,
-//         default_value: bool,
-//     },
-//     Number {
-//         prop_id: PropId,
-//         default_value: i64,
-//     },
-//     String {
-//         prop_id: PropId,
-//         default_value: String,
-//     },
-// }
+#[remain::sorted]
+#[derive(Clone, Debug)]
+enum DefaultValueInfo {
+    Boolean {
+        prop_id: PropId,
+        default_value: bool,
+    },
+    Number {
+        prop_id: PropId,
+        default_value: i64,
+    },
+    String {
+        prop_id: PropId,
+        default_value: String,
+    },
+}
 
-// struct PropVisitContext<'a> {
-//     pub ctx: &'a DalContext,
-//     pub schema_variant_id: SchemaVariantId,
-//     pub attr_funcs: Mutex<Vec<AttrFuncInfo>>,
-//     pub default_values: Mutex<Vec<DefaultValueInfo>>,
-//     pub map_key_funcs: Mutex<Vec<(String, AttrFuncInfo)>>,
-//     pub validations: Mutex<Vec<(PropId, ValidationSpec)>>,
-//     pub change_set_pk: Option<ChangeSetPk>,
-// }
+struct PropVisitContext<'a> {
+    pub ctx: &'a DalContext,
+    pub schema_variant_id: SchemaVariantId,
+    pub attr_funcs: Mutex<Vec<AttrFuncInfo>>,
+    pub default_values: Mutex<Vec<DefaultValueInfo>>,
+    pub map_key_funcs: Mutex<Vec<(String, AttrFuncInfo)>>,
+    pub validations: Mutex<Vec<(PropId, ValidationSpec)>>,
+    pub change_set_pk: Option<ChangeSetPk>,
+}
 
 // async fn import_leaf_function(
 //     ctx: &DalContext,
@@ -2404,66 +2396,68 @@ async fn import_schema(
 //     Ok(prototype)
 // }
 
-// #[derive(Default, Clone, Debug)]
-// struct CreatePropsSideEffects {
-//     attr_funcs: Vec<AttrFuncInfo>,
-//     default_values: Vec<DefaultValueInfo>,
-//     map_key_funcs: Vec<(String, AttrFuncInfo)>,
-//     validations: Vec<(PropId, ValidationSpec)>,
-// }
+#[derive(Default, Clone, Debug)]
+struct CreatePropsSideEffects {
+    attr_funcs: Vec<AttrFuncInfo>,
+    default_values: Vec<DefaultValueInfo>,
+    map_key_funcs: Vec<(String, AttrFuncInfo)>,
+    validations: Vec<(PropId, ValidationSpec)>,
+}
 
-// impl IntoIterator for CreatePropsSideEffects {
-//     type Item = CreatePropsSideEffects;
+impl IntoIterator for CreatePropsSideEffects {
+    type Item = CreatePropsSideEffects;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+    fn into_iter(self) -> Self::IntoIter {
+        vec![self].into_iter()
+    }
+}
 
-//     type IntoIter = std::vec::IntoIter<Self::Item>;
+impl Extend<CreatePropsSideEffects> for CreatePropsSideEffects {
+    fn extend<T: IntoIterator<Item = CreatePropsSideEffects>>(&mut self, iter: T) {
+        for element in iter {
+            self.attr_funcs.extend(element.attr_funcs);
+            self.default_values.extend(element.default_values);
+            self.map_key_funcs.extend(element.map_key_funcs);
+            self.validations.extend(element.validations);
+        }
+    }
+}
 
-//     fn into_iter(self) -> Self::IntoIter {
-//         vec![self].into_iter()
-//     }
-// }
+async fn create_props(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    variant_spec: &SiPkgSchemaVariant<'_>,
+    prop_root: SchemaVariantSpecPropRoot,
+    prop_root_prop_id: PropId,
+    schema_variant_id: SchemaVariantId,
+) -> PkgResult<CreatePropsSideEffects> {
+    let context = PropVisitContext {
+        ctx,
+        schema_variant_id,
+        attr_funcs: Mutex::new(vec![]),
+        default_values: Mutex::new(vec![]),
+        map_key_funcs: Mutex::new(vec![]),
+        validations: Mutex::new(vec![]),
+        change_set_pk,
+    };
 
-// impl Extend<CreatePropsSideEffects> for CreatePropsSideEffects {
-//     fn extend<T: IntoIterator<Item = CreatePropsSideEffects>>(&mut self, iter: T) {
-//         for element in iter {
-//             self.attr_funcs.extend(element.attr_funcs);
-//             self.default_values.extend(element.default_values);
-//             self.map_key_funcs.extend(element.map_key_funcs);
-//             self.validations.extend(element.validations);
-//         }
-//     }
-// }
+    let parent_info = ParentPropInfo {
+        prop_id: prop_root_prop_id,
+        path: PropPath::new(prop_root.path_parts()),
+        kind: PropKind::Object,
+    };
 
-// async fn create_props(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     variant_spec: &SiPkgSchemaVariant<'_>,
-//     prop_root: SchemaVariantSpecPropRoot,
-//     prop_root_prop_id: PropId,
-//     schema_variant_id: SchemaVariantId,
-// ) -> PkgResult<CreatePropsSideEffects> {
-//     let context = PropVisitContext {
-//         ctx,
-//         schema_variant_id,
-//         attr_funcs: Mutex::new(vec![]),
-//         default_values: Mutex::new(vec![]),
-//         map_key_funcs: Mutex::new(vec![]),
-//         validations: Mutex::new(vec![]),
-//         change_set_pk,
-//     };
+    variant_spec
+        .visit_prop_tree(prop_root, create_prop, Some(parent_info), &context)
+        .await?;
 
-//     let parent_info = (prop_root_prop_id, PropPath::new(prop_root.path_parts()));
-
-//     variant_spec
-//         .visit_prop_tree(prop_root, create_prop, Some(parent_info), &context)
-//         .await?;
-
-//     Ok(CreatePropsSideEffects {
-//         attr_funcs: context.attr_funcs.into_inner(),
-//         default_values: context.default_values.into_inner(),
-//         map_key_funcs: context.map_key_funcs.into_inner(),
-//         validations: context.validations.into_inner(),
-//     })
-// }
+    Ok(CreatePropsSideEffects {
+        attr_funcs: context.attr_funcs.into_inner(),
+        default_values: context.default_values.into_inner(),
+        map_key_funcs: context.map_key_funcs.into_inner(),
+        validations: context.validations.into_inner(),
+    })
+}
 
 // async fn update_schema_variant(
 //     ctx: &DalContext,
@@ -2495,9 +2489,6 @@ async fn import_schema_variant(
     variant_spec: &SiPkgSchemaVariant<'_>,
     installed_pkg_id: Option<InstalledPkgId>,
     thing_map: &mut ThingMap,
-    // FIXME(nick): move this to the attribute tree once we have defaults for
-    // schema variants in place.
-    color: String,
 ) -> PkgResult<Option<SchemaVariant>> {
     let mut schema_variant = match change_set_pk {
         None => {
@@ -2527,7 +2518,6 @@ async fn import_schema_variant(
                         schema.id(),
                         variant_spec.name(),
                         schema.category.clone(),
-                        Some(color),
                     )
                     .await?
                     .0,
@@ -2594,125 +2584,115 @@ async fn import_schema_variant(
     let schema_variant = match schema_variant {
         None => None,
         Some(schema_variant) => {
-            //     if let Some(unique_id) = variant_spec.unique_id() {
-            //         thing_map.insert(
-            //             change_set_pk,
-            //             unique_id.to_owned(),
-            //             Thing::SchemaVariant(schema_variant.to_owned()),
-            //         );
-            //     }
-            //
+            if let Some(unique_id) = variant_spec.unique_id() {
+                thing_map.insert(
+                    change_set_pk,
+                    unique_id.to_owned(),
+                    Thing::SchemaVariant(schema_variant.to_owned()),
+                );
+            }
+
             let schema_variant = match variant_spec.data() {
                 Some(data) => match data.color() {
-                    Some(color) => schema_variant.set_color(ctx, color)?,
+                    Some(color) => {
+                        let current_color = schema_variant.get_color(ctx).await?;
+                        if current_color.as_deref() != Some(color) {
+                            schema_variant.set_color(ctx, color)?
+                        } else {
+                            schema_variant
+                        }
+                    }
                     None => schema_variant,
                 },
                 None => schema_variant,
             };
 
-            Some(schema_variant)
-        } // TODO: this logic is for modifying only if there is a difference
-          // between the changeset and head, should be restored when workspace
-          // importing is supported
+            let mut side_effects = CreatePropsSideEffects::default();
 
-          // if let (Some(spec_color), current_color) =
-          //     (data.color(), schema_variant.color(ctx).await?)
-          // {
-          //     if current_color.is_none()
-          //         || spec_color
-          //             != current_color.expect("is none condition ensures this won't panic")
-          //     {
-          //         schema_variant.set_color(ctx, spec_color.to_owned()).await?;
-          //     }
-          // }
-          //
-          //     let mut side_effects = CreatePropsSideEffects::default();
-          //
-          //     let domain_prop_id = schema_variant
-          //         .find_prop(ctx, &["root", "domain"])
-          //         .await?
-          //         .id()
-          //         .to_owned();
-          //
-          //     side_effects.extend(
-          //         create_props(
-          //             ctx,
-          //             change_set_pk,
-          //             variant_spec,
-          //             SchemaVariantSpecPropRoot::Domain,
-          //             domain_prop_id,
-          //             *schema_variant.id(),
-          //         )
-          //         .await?,
-          //     );
-          //
-          //     let secrets_prop_id = schema_variant
-          //         .find_prop(ctx, &["root", "secrets"])
-          //         .await?
-          //         .id()
-          //         .to_owned();
-          //
-          //     side_effects.extend(
-          //         create_props(
-          //             ctx,
-          //             change_set_pk,
-          //             variant_spec,
-          //             SchemaVariantSpecPropRoot::Secrets,
-          //             secrets_prop_id,
-          //             *schema_variant.id(),
-          //         )
-          //         .await?,
-          //     );
-          //
-          //     if !variant_spec.secret_definitions()?.is_empty() {
-          //         let secret_definition_prop_id = *Prop::new(
-          //             ctx,
-          //             "secret_definition",
-          //             PropKind::Object,
-          //             None,
-          //             *schema_variant.id(),
-          //             Some(*schema_variant.find_prop(ctx, &["root"]).await?.id()),
-          //         )
-          //         .await?
-          //         .id();
-          //
-          //         side_effects.extend(
-          //             create_props(
-          //                 ctx,
-          //                 change_set_pk,
-          //                 variant_spec,
-          //                 SchemaVariantSpecPropRoot::SecretDefinition,
-          //                 secret_definition_prop_id,
-          //                 *schema_variant.id(),
-          //             )
-          //             .await?,
-          //         );
-          //     }
-          //
-          //     match schema_variant
-          //         .find_prop(ctx, &["root", "resource_value"])
-          //         .await
-          //     {
-          //         Ok(resource_value_prop) => {
-          //             side_effects.extend(
-          //                 create_props(
-          //                     ctx,
-          //                     change_set_pk,
-          //                     variant_spec,
-          //                     SchemaVariantSpecPropRoot::ResourceValue,
-          //                     *resource_value_prop.id(),
-          //                     *schema_variant.id(),
-          //                 )
-          //                 .await?,
-          //             );
-          //         }
-          //         Err(SchemaVariantError::PropNotFoundAtPath(_, _, _)) => {
-          //             warn!("Cannot find /root/resource_value prop, so skipping creating props under the resource value. If the /root/resource_value pr has been merged, this should be an error!");
-          //         }
-          //         Err(err) => Err(err)?,
-          //     };
-          //
-          //     if let Some(data) = variant_spec.data() {
+            let domain_prop_id = Prop::find_prop_id_by_path(
+                ctx,
+                schema_variant.id(),
+                &PropPath::new(["root", "domain"]),
+            )?;
+
+            side_effects.extend(
+                create_props(
+                    ctx,
+                    change_set_pk,
+                    variant_spec,
+                    SchemaVariantSpecPropRoot::Domain,
+                    domain_prop_id,
+                    schema_variant.id(),
+                )
+                .await?,
+            );
+
+            let resource_value_prop_id = Prop::find_prop_id_by_path(
+                ctx,
+                schema_variant.id(),
+                &PropPath::new(["root", "resource_value"]),
+            )?;
+
+            side_effects.extend(
+                create_props(
+                    ctx,
+                    change_set_pk,
+                    variant_spec,
+                    SchemaVariantSpecPropRoot::ResourceValue,
+                    resource_value_prop_id,
+                    schema_variant.id(),
+                )
+                .await?,
+            );
+
+            let secrets_prop_id = Prop::find_prop_id_by_path(
+                ctx,
+                schema_variant.id(),
+                &PropPath::new(["root", "secrets"]),
+            )?;
+
+            side_effects.extend(
+                create_props(
+                    ctx,
+                    change_set_pk,
+                    variant_spec,
+                    SchemaVariantSpecPropRoot::Secrets,
+                    secrets_prop_id,
+                    schema_variant.id(),
+                )
+                .await?,
+            );
+
+            if !variant_spec.secret_definitions()?.is_empty() {
+                let root_prop_id =
+                    Prop::find_prop_id_by_path(ctx, schema_variant.id(), &PropPath::new(["root"]))?;
+
+                let secret_definition_prop = Prop::new(
+                    ctx,
+                    "secret_definition",
+                    PropKind::Object,
+                    false,
+                    None,
+                    None,
+                    PropParent::OrderedProp(root_prop_id),
+                )?;
+                let secret_definition_prop_id = secret_definition_prop.id();
+
+                side_effects.extend(
+                    create_props(
+                        ctx,
+                        change_set_pk,
+                        variant_spec,
+                        SchemaVariantSpecPropRoot::SecretDefinition,
+                        secret_definition_prop_id,
+                        schema_variant.id(),
+                    )
+                    .await?,
+                );
+            }
+
+            Some(schema_variant)
+        } //     if let Some(data) = variant_spec.data() {
           //         schema_variant
           //             .finalize(ctx, Some(data.component_type().into()))
           //             .await?;
@@ -3447,171 +3427,189 @@ async fn import_schema_variant(
 //     Ok(())
 // }
 
-// fn prop_kind_for_pkg_prop(pkg_prop: &SiPkgProp<'_>) -> PropKind {
-//     match pkg_prop {
-//         SiPkgProp::Array { .. } => PropKind::Array,
-//         SiPkgProp::Boolean { .. } => PropKind::Boolean,
-//         SiPkgProp::Map { .. } => PropKind::Map,
-//         SiPkgProp::Number { .. } => PropKind::Integer,
-//         SiPkgProp::Object { .. } => PropKind::Object,
-//         SiPkgProp::String { .. } => PropKind::String,
-//     }
-// }
+fn prop_kind_for_pkg_prop(pkg_prop: &SiPkgProp<'_>) -> PropKind {
+    match pkg_prop {
+        SiPkgProp::Array { .. } => PropKind::Array,
+        SiPkgProp::Boolean { .. } => PropKind::Boolean,
+        SiPkgProp::Map { .. } => PropKind::Map,
+        SiPkgProp::Number { .. } => PropKind::Integer,
+        SiPkgProp::Object { .. } => PropKind::Object,
+        SiPkgProp::String { .. } => PropKind::String,
+    }
+}
 
-// async fn create_dal_prop(
-//     ctx: &DalContext,
-//     data: &SiPkgPropData,
-//     kind: PropKind,
-//     schema_variant_id: SchemaVariantId,
-//     parent_prop_id: Option<PropId>,
-// ) -> PkgResult<Prop> {
-//     let mut prop = Prop::new(
-//         ctx,
-//         &data.name,
-//         kind,
-//         Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
-//         schema_variant_id,
-//         parent_prop_id,
-//     )
-//     .await
-//     .map_err(SiPkgError::visit_prop)?;
+async fn create_dal_prop(
+    ctx: &DalContext,
+    data: &SiPkgPropData,
+    kind: PropKind,
+    schema_variant_id: SchemaVariantId,
+    parent_prop_info: Option<ParentPropInfo>,
+) -> PkgResult<Prop> {
+    let prop_parent = match parent_prop_info {
+        None => PropParent::SchemaVariant(schema_variant_id),
+        Some(parent_info) => {
+            if parent_info.kind.ordered() {
+                PropParent::OrderedProp(parent_info.prop_id)
+            } else {
+                PropParent::Prop(parent_info.prop_id)
+            }
+        }
+    };
 
-//     prop.set_hidden(ctx, data.hidden).await?;
-//     prop.set_doc_link(ctx, data.doc_link.as_ref().map(|l| l.to_string()))
-//         .await?;
+    let prop = Prop::new(
+        ctx,
+        &data.name,
+        kind,
+        data.hidden,
+        data.doc_link.as_ref().map(|l| l.to_string()),
+        Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
+        prop_parent,
+    )
+    .map_err(SiPkgError::visit_prop)?;
 
-//     Ok(prop)
-// }
+    Ok(prop)
+}
 
-// async fn create_prop(
-//     spec: SiPkgProp<'_>,
-//     parent_prop_info: Option<(PropId, PropPath)>,
-//     ctx: &PropVisitContext<'_>,
-// ) -> PkgResult<Option<(PropId, PropPath)>> {
-//     let prop = match ctx.change_set_pk {
-//         None => {
-//             let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
-//             create_dal_prop(
-//                 ctx.ctx,
-//                 data,
-//                 prop_kind_for_pkg_prop(&spec),
-//                 ctx.schema_variant_id,
-//                 parent_prop_info.map(|info| info.0),
-//             )
-//             .await?
-//         }
-//         Some(_) => {
-//             let parent_path = parent_prop_info
-//                 .as_ref()
-//                 .map(|info| info.1.to_owned())
-//                 .unwrap_or(PropPath::new(["root"]));
+#[derive(Debug, Clone)]
+struct ParentPropInfo {
+    prop_id: PropId,
+    path: PropPath,
+    kind: PropKind,
+}
 
-//             let path = parent_path.join(&PropPath::new([spec.name()]));
+async fn create_prop(
+    spec: SiPkgProp<'_>,
+    parent_prop_info: Option<ParentPropInfo>,
+    ctx: &PropVisitContext<'_>,
+) -> PkgResult<Option<ParentPropInfo>> {
+    let prop = match ctx.change_set_pk {
+        None => {
+            let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
+            create_dal_prop(
+                ctx.ctx,
+                data,
+                prop_kind_for_pkg_prop(&spec),
+                ctx.schema_variant_id,
+                parent_prop_info,
+            )
+            .await?
+        }
+        Some(_) => {
+            let parent_path = parent_prop_info
+                .as_ref()
+                .map(|info| info.path.to_owned())
+                .unwrap_or(PropPath::new(["root"]));
 
-//             match Prop::find_prop_by_path_opt(ctx.ctx, ctx.schema_variant_id, &path).await? {
-//                 None => {
-//                     let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
-//                     create_dal_prop(
-//                         ctx.ctx,
-//                         data,
-//                         prop_kind_for_pkg_prop(&spec),
-//                         ctx.schema_variant_id,
-//                         parent_prop_info.as_ref().map(|info| info.0.to_owned()),
-//                     )
-//                     .await?
-//                 }
-//                 Some(prop) => prop,
-//             }
-//         }
-//     };
+            let path = parent_path.join(&PropPath::new([spec.name()]));
 
-//     let prop_id = *prop.id();
+            match Prop::find_prop_id_by_path_opt(ctx.ctx, ctx.schema_variant_id, &path)? {
+                None => {
+                    let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
+                    create_dal_prop(
+                        ctx.ctx,
+                        data,
+                        prop_kind_for_pkg_prop(&spec),
+                        ctx.schema_variant_id,
+                        parent_prop_info,
+                    )
+                    .await?
+                }
+                Some(prop_id) => Prop::get_by_id(ctx.ctx, prop_id).await?,
+            }
+        }
+    };
 
-//     // Both attribute functions and default values have to be set *after* the schema variant is
-//     // "finalized", so we can't do until we construct the *entire* prop tree. Hence we push work
-//     // queues up to the outer context via the PropVisitContext, which uses Mutexes for interior
-//     // mutability (maybe there's a better type for that here?)
+    let prop_id = prop.id();
 
-//     if let Some(data) = spec.data() {
-//         if let Some(default_value_info) = match &spec {
-//             SiPkgProp::String { .. } => {
-//                 if let Some(serde_json::Value::String(default_value)) = &data.default_value {
-//                     Some(DefaultValueInfo::String {
-//                         prop_id,
-//                         default_value: default_value.to_owned(),
-//                     })
-//                 } else {
-//                     // Raise error here for type mismatch
-//                     None
-//                 }
-//             }
-//             SiPkgProp::Number { .. } => {
-//                 if let Some(serde_json::Value::Number(default_value_number)) = &data.default_value {
-//                     if default_value_number.is_i64() {
-//                         default_value_number
-//                             .as_i64()
-//                             .map(|dv_i64| DefaultValueInfo::Number {
-//                                 prop_id,
-//                                 default_value: dv_i64,
-//                             })
-//                     } else {
-//                         None
-//                     }
-//                 } else {
-//                     None
-//                 }
-//             }
-//             SiPkgProp::Boolean { .. } => {
-//                 if let Some(serde_json::Value::Bool(default_value)) = &data.default_value {
-//                     Some(DefaultValueInfo::Boolean {
-//                         prop_id,
-//                         default_value: *default_value,
-//                     })
-//                 } else {
-//                     None
-//                 }
-//             }
-//             // Default values for complex types are not yet supported in packages
-//             _ => None,
-//         } {
-//             ctx.default_values.lock().await.push(default_value_info);
-//         }
-//     }
+    // Both attribute functions and default values have to be set *after* the schema variant is
+    // "finalized", so we can't do until we construct the *entire* prop tree. Hence we push work
+    // queues up to the outer context via the PropVisitContext, which uses Mutexes for interior
+    // mutability (maybe there's a better type for that here?)
 
-//     if matches!(&spec, SiPkgProp::Map { .. }) {
-//         for map_key_func in spec.map_key_funcs()? {
-//             let key = map_key_func.key();
-//             let mut inputs = map_key_func.inputs()?;
-//             let func_unique_id = map_key_func.func_unique_id();
+    if let Some(data) = spec.data() {
+        if let Some(default_value_info) = match &spec {
+            SiPkgProp::String { .. } => {
+                if let Some(serde_json::Value::String(default_value)) = &data.default_value {
+                    Some(DefaultValueInfo::String {
+                        prop_id,
+                        default_value: default_value.to_owned(),
+                    })
+                } else {
+                    // Raise error here for type mismatch
+                    None
+                }
+            }
+            SiPkgProp::Number { .. } => {
+                if let Some(serde_json::Value::Number(default_value_number)) = &data.default_value {
+                    if default_value_number.is_i64() {
+                        default_value_number
+                            .as_i64()
+                            .map(|dv_i64| DefaultValueInfo::Number {
+                                prop_id,
+                                default_value: dv_i64,
+                            })
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            SiPkgProp::Boolean { .. } => {
+                if let Some(serde_json::Value::Bool(default_value)) = &data.default_value {
+                    Some(DefaultValueInfo::Boolean {
+                        prop_id,
+                        default_value: *default_value,
+                    })
+                } else {
+                    None
+                }
+            }
+            // Default values for complex types are not yet supported in packages
+            _ => None,
+        } {
+            ctx.default_values.lock().await.push(default_value_info);
+        }
+    }
 
-//             ctx.map_key_funcs.lock().await.push((
-//                 key.to_owned(),
-//                 AttrFuncInfo {
-//                     func_unique_id: func_unique_id.to_owned(),
-//                     prop_id,
-//                     inputs: inputs.drain(..).map(Into::into).collect(),
-//                 },
-//             ));
-//         }
-//     }
+    if matches!(&spec, SiPkgProp::Map { .. }) {
+        for map_key_func in spec.map_key_funcs()? {
+            let key = map_key_func.key();
+            let mut inputs = map_key_func.inputs()?;
+            let func_unique_id = map_key_func.func_unique_id();
 
-//     if let Some(func_unique_id) = spec.data().and_then(|data| data.func_unique_id.to_owned()) {
-//         let mut inputs = spec.inputs()?;
-//         ctx.attr_funcs.lock().await.push(AttrFuncInfo {
-//             func_unique_id,
-//             prop_id,
-//             inputs: inputs.drain(..).map(Into::into).collect(),
-//         });
-//     }
+            ctx.map_key_funcs.lock().await.push((
+                key.to_owned(),
+                AttrFuncInfo {
+                    func_unique_id: func_unique_id.to_owned(),
+                    prop_id,
+                    inputs: inputs.drain(..).map(Into::into).collect(),
+                },
+            ));
+        }
+    }
 
-//     for validation_pkg_spec in spec.validations()? {
-//         let validation_spec: ValidationSpec = validation_pkg_spec.try_into()?;
+    if let Some(func_unique_id) = spec.data().and_then(|data| data.func_unique_id.to_owned()) {
+        let mut inputs = spec.inputs()?;
+        ctx.attr_funcs.lock().await.push(AttrFuncInfo {
+            func_unique_id,
+            prop_id,
+            inputs: inputs.drain(..).map(Into::into).collect(),
+        });
+    }
 
-//         ctx.validations
-//             .lock()
-//             .await
-//             .push((*prop.id(), validation_spec));
-//     }
+    for validation_pkg_spec in spec.validations()? {
+        let validation_spec: ValidationSpec = validation_pkg_spec.try_into()?;
 
-//     Ok(Some((*prop.id(), prop.path())))
-// }
+        ctx.validations
+            .lock()
+            .await
+            .push((prop.id(), validation_spec));
+    }
+
+    Ok(Some(ParentPropInfo {
+        prop_id: prop.id(),
+        path: prop.path(ctx.ctx)?,
+        kind: prop.kind,
+    }))
+}

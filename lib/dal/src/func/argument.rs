@@ -250,7 +250,7 @@ impl FuncArgument {
 
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
-        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id.into())?;
+        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id)?;
 
         let func_arg_node_idxs = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind_by_index(
@@ -272,7 +272,7 @@ impl FuncArgument {
 
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
-        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id.into())?;
+        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id)?;
 
         let func_arg_node_idxs = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind_by_index(
@@ -363,7 +363,7 @@ impl FuncArgument {
 
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
-        let arg_node_idx = workspace_snapshot.get_node_index_by_id(id.into())?;
+        let arg_node_idx = workspace_snapshot.get_node_index_by_id(id)?;
 
         let users_of_arg = workspace_snapshot
             .incoming_sources_for_edge_weight_kind(id, EdgeWeightKind::Use.into())?;

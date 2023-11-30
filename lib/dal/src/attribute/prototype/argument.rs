@@ -174,7 +174,7 @@ impl AttributePrototypeArgument {
             self.id,
             EdgeWeightKindDiscriminants::PrototypeArgumentValue,
         )? {
-            let self_node_index = workspace_snapshot.get_node_index_by_id(self.id.into())?;
+            let self_node_index = workspace_snapshot.get_node_index_by_id(self.id)?;
             workspace_snapshot.remove_edge(
                 change_set,
                 self_node_index,

@@ -75,6 +75,10 @@ pub enum SchemaVariantError {
     NodeWeight(#[from] NodeWeightError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("found prop id {0} that is not a prop")]
+    PropIdNotAProp(PropId),
+    #[error("schema variant {0} has no root node")]
+    RootNodeMissing(SchemaVariantId),
     #[error("serde json error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("store error: {0}")]
@@ -100,8 +104,8 @@ pub struct SchemaVariant {
     timestamp: Timestamp,
     ui_hidden: bool,
     name: String,
-    /// The [`RootProp`](crate::RootProp) for [`self`](Self).
-    root_prop_id: Option<PropId>,
+    // The [`RootProp`](crate::RootProp) for [`self`](Self).
+    //root_prop_id: Option<PropId>,
     // schema_variant_definition_id: Option<SchemaVariantDefinitionId>,
     link: Option<String>,
     finalized_once: bool,
@@ -118,8 +122,8 @@ pub struct SchemaVariantContentV1 {
     pub timestamp: Timestamp,
     pub ui_hidden: bool,
     pub name: String,
-    /// The [`RootProp`](crate::RootProp) for [`self`](Self).
-    pub root_prop_id: Option<PropId>,
+    // The [`RootProp`](crate::RootProp) for [`self`](Self).
+    // pub root_prop_id: Option<PropId>,
     // pub schema_variant_definition_id: Option<SchemaVariantDefinitionId>,
     pub link: Option<String>,
     pub finalized_once: bool,
@@ -132,7 +136,6 @@ impl SchemaVariant {
             id,
             timestamp: inner.timestamp,
             name: inner.name,
-            root_prop_id: inner.root_prop_id,
             link: inner.link,
             ui_hidden: inner.ui_hidden,
             finalized_once: inner.finalized_once,
@@ -145,13 +148,11 @@ impl SchemaVariant {
         schema_id: SchemaId,
         name: impl Into<String>,
         category: impl Into<String>,
-        color: Option<impl Into<String>>,
     ) -> SchemaVariantResult<(Self, RootProp)> {
         info!("creating schema variant and root prop tree");
         let content = SchemaVariantContentV1 {
             timestamp: Timestamp::now(),
             name: name.into(),
-            root_prop_id: None,
             // schema_variant_definition_id: None,
             link: None,
             ui_hidden: false,
@@ -213,10 +214,54 @@ impl SchemaVariant {
         Ok((schema_variant, root_prop))
     }
 
+    pub fn dump_props_as_list(&self, ctx: &DalContext) -> SchemaVariantResult<Vec<PropPath>> {
+        let mut props = vec![];
+
+        let root_prop_id = Self::get_root_prop_id(ctx, self.id())?;
+        let mut work_queue = VecDeque::from([(root_prop_id, None::<PropPath>)]);
+
+        while let Some((prop_id, maybe_parent_path)) = work_queue.pop_front() {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let node_weight = workspace_snapshot.get_node_weight_by_id(prop_id)?;
+
+            match node_weight {
+                NodeWeight::Prop(prop_inner) => {
+                    let name = prop_inner.name();
+
+                    let path = match &maybe_parent_path {
+                        Some(parent_path) => parent_path.join(&PropPath::new([name])),
+                        None => PropPath::new([name]),
+                    };
+
+                    props.push(path.clone());
+
+                    if let Some(ordering_node_idx) = workspace_snapshot
+                        .outgoing_targets_for_edge_weight_kind(
+                            prop_id,
+                            EdgeWeightKindDiscriminants::Ordering,
+                        )?
+                        .get(0)
+                    {
+                        let ordering_node_weight = workspace_snapshot
+                            .get_node_weight(*ordering_node_idx)?
+                            .get_ordering_node_weight()?;
+
+                        for &id in ordering_node_weight.order() {
+                            work_queue.push_back((id.into(), Some(path.clone())));
+                        }
+                    }
+                }
+                _ => return Err(SchemaVariantError::PropIdNotAProp(prop_id)),
+            }
+        }
+
+        Ok(props)
+    }
+
     pub async fn get_by_id(ctx: &DalContext, id: SchemaVariantId) -> SchemaVariantResult<Self> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
-        let node_index = workspace_snapshot.get_node_index_by_id(id.into())?;
+        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
         let node_weight = workspace_snapshot.get_node_weight(node_index)?;
         let hash = node_weight.content_hash();
 
@@ -240,7 +285,7 @@ impl SchemaVariant {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
         let mut schema_variants = vec![];
-        let parent_index = workspace_snapshot.get_node_index_by_id(schema_id.into())?;
+        let parent_index = workspace_snapshot.get_node_index_by_id(schema_id)?;
 
         let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind_by_index(
             parent_index,
@@ -296,13 +341,21 @@ impl SchemaVariant {
         &self.category
     }
 
-    async fn get_root_prop_node_weight(
+    pub fn get_root_prop_id(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<PropId> {
+        let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id)?;
+        Ok(root_prop_node_weight.id().into())
+    }
+
+    fn get_root_prop_node_weight(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<PropNodeWeight> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         let edge_targets: Vec<NodeIndex> = workspace_snapshot
-            .edges_directed(schema_variant_id.into(), Direction::Outgoing)?
+            .edges_directed(schema_variant_id, Direction::Outgoing)?
             .map(|edge_ref| edge_ref.target())
             .collect();
 
@@ -315,7 +368,8 @@ impl SchemaVariant {
                 }
             }
         }
-        todo!("could not get root prop")
+
+        Err(SchemaVariantError::RootNodeMissing(schema_variant_id))
     }
 
     pub async fn create_default_prototypes(
@@ -325,7 +379,7 @@ impl SchemaVariant {
         info!("creating default prototypes");
         let change_set = ctx.change_set_pointer()?;
         let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset)?;
-        let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
+        let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id)?;
         let mut work_queue: VecDeque<PropNodeWeight> = VecDeque::from(vec![root_prop_node_weight]);
 
         while let Some(prop) = work_queue.pop_front() {
@@ -384,7 +438,7 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
         info!("creating implicit internal providers");
-        let root_prop = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
+        let root_prop = Self::get_root_prop_node_weight(ctx, schema_variant_id)?;
         let mut work_queue = VecDeque::new();
         work_queue.push_back(root_prop);
 
@@ -504,7 +558,7 @@ impl SchemaVariant {
 
     pub async fn get_color(&self, ctx: &DalContext) -> SchemaVariantResult<Option<String>> {
         let color_prop_id =
-            Prop::find_prop_id_by_path(ctx, self.id, PropPath::new(["root", "si", "color"]))?;
+            Prop::find_prop_id_by_path(ctx, self.id, &PropPath::new(["root", "si", "color"]))?;
 
         let prototype_id = Prop::prototype_id(ctx, color_prop_id)?;
 
@@ -531,7 +585,7 @@ impl SchemaVariant {
     /// `SetString`.
     pub fn set_color(self, ctx: &DalContext, color: impl AsRef<str>) -> SchemaVariantResult<Self> {
         let color_prop_id =
-            Prop::find_prop_id_by_path(ctx, self.id, PropPath::new(["root", "si", "color"]))?;
+            Prop::find_prop_id_by_path(ctx, self.id, &PropPath::new(["root", "si", "color"]))?;
 
         let prototype_id = Prop::prototype_id(ctx, color_prop_id)?;
         let set_string_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::SetString)?;
