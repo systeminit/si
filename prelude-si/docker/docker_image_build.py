@@ -8,7 +8,7 @@ import subprocess
 import json
 import sys
 from enum import Enum, EnumMeta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 
 # A slightly more Rust-y feeling enum
@@ -35,24 +35,29 @@ class DockerArchitecture(BaseEnum):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--git-info-program",
+        "--git-info-json",
         required=True,
-        help="Path to the `git_info.py` program",
+        help="Path to the Git metadata JSON file",
     )
     parser.add_argument(
-        "--archive-out-file",
+        "--artifact-out-file",
         required=True,
-        help="Path to write the image archive file",
+        help="Path to write the image artifact file",
     )
     parser.add_argument(
-        "--metadata-out-file",
+        "--build-metadata-out-file",
         required=True,
-        help="Path to write the metadata JSON file",
+        help="Path to write the build metadata JSON file",
     )
     parser.add_argument(
-        "--tags-out-file",
+        "--label-metadata-out-file",
         required=True,
-        help="Path to write the tags JSON file",
+        help="Path to write the label metadata JSON file",
+    )
+    parser.add_argument(
+        "--tag-metadata-out-file",
+        required=True,
+        help="Path to write the tag metadata JSON file",
     )
     parser.add_argument(
         "--docker-context-dir",
@@ -91,9 +96,9 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    git_info = load_git_info(args.git_info_program)
+    git_info = load_git_info(args.git_info_json)
     architecture = detect_architecture()
-    metadata = compute_metadata(
+    label_metadata = compute_label_metadata(
         git_info,
         architecture,
         args.image_name,
@@ -101,29 +106,23 @@ def main() -> int:
         args.source_url,
         args.license,
     )
-
-    tags = [
-        "{}:{}-{}".format(
-            metadata.get("name"),
-            metadata.get("org.opencontainers.image.version"),
-            architecture.value,
-        ),
-        "{}:sha-{}-{}".format(
-            metadata.get("name"),
-            metadata.get("org.opencontainers.image.revision"),
-            architecture.value,
-        ),
-    ]
+    tag_metadata = compute_tag_metadata(label_metadata, architecture)
 
     build_image(
         args.docker_context_dir,
-        metadata,
+        label_metadata,
         args.build_arg or [],
-        tags,
+        tag_metadata,
     )
-    write_metadata(args.metadata_out_file, metadata)
-    write_tags(args.tags_out_file, tags)
-    write_archive(args.archive_out_file, tags)
+    write_json(args.label_metadata_out_file, label_metadata)
+    write_json(args.tag_metadata_out_file, tag_metadata)
+
+    write_artifact(args.artifact_out_file, tag_metadata)
+
+    b3sum = compute_b3sum(args.artifact_out_file)
+    build_metadata = compute_build_metadata(label_metadata, architecture,
+                                            b3sum)
+    write_json(args.build_metadata_out_file, build_metadata)
 
     return 0
 
@@ -156,24 +155,19 @@ def build_image(
     subprocess.run(cmd, cwd=cwd).check_returncode()
 
 
-def write_metadata(output: str, metadata: Dict[str, str]):
+def write_json(output: str, metadata: Union[Dict[str, str], List[str]]):
     with open(output, "w") as file:
         json.dump(metadata, file, sort_keys=True)
 
 
-def write_tags(output: str, tags: List[str]):
-    with open(output, "w") as file:
-        json.dump(tags, file, sort_keys=True)
-
-
-def write_archive(output: str, tags: List[str]):
+def write_artifact(output: str, tag_metadata: List[str]):
     cmd = [
         "docker",
         "save",
         "--output",
         output,
     ]
-    cmd.extend(tags)
+    cmd.extend(tag_metadata)
 
     print("--- Creating image archive with: {}".format(" ".join(cmd)))
     subprocess.run(cmd).check_returncode()
@@ -198,13 +192,12 @@ def detect_architecture() -> DockerArchitecture:
         sys.exit(1)
 
 
-def load_git_info(git_info_program: str) -> Dict[str, str | int | bool]:
-    result = subprocess.run([git_info_program], capture_output=True)
-    result.check_returncode()
-    return json.loads(result.stdout)
+def load_git_info(git_info_file: str) -> Dict[str, str | int | bool]:
+    with open(git_info_file) as file:
+        return json.load(file)
 
 
-def compute_metadata(
+def compute_label_metadata(
     git_info: Dict[str, str | int | bool],
     architecture: DockerArchitecture,
     image_name: str,
@@ -214,10 +207,7 @@ def compute_metadata(
 ) -> Dict[str, str]:
     created = git_info.get("committer_date_strict_iso8601")
     revision = git_info.get("commit_hash")
-    build_version = "{}-sha.{}".format(
-        git_info.get("cal_ver"),
-        git_info.get("abbreviated_commit_hash"),
-    )
+    canonical_version = git_info.get("canonical_version")
 
     commit_url = "{}/commit/{}".format(
         source_url.removesuffix(".git"),
@@ -225,21 +215,21 @@ def compute_metadata(
     )
 
     if git_info.get("is_dirty") and isinstance(revision, str) and isinstance(
-            build_version, str):
+            canonical_version, str):
         revision += "-dirty"
-        build_version += "-dirty"
+        canonical_version += "-dirty"
 
     image_url = ("https://hub.docker.com/r/{}/" +
                  "tags?page=1&ordering=last_updated&name={}-{}").format(
                      image_name,
-                     build_version,
+                     canonical_version,
                      architecture.value,
                  )
 
     metadata = {
         "name": image_name,
         "maintainer": author,
-        "org.opencontainers.image.version": build_version,
+        "org.opencontainers.image.version": canonical_version,
         "org.opencontainers.image.authors": author,
         "org.opencontainers.image.licenses": license,
         "org.opencontainers.image.source": source_url,
@@ -248,6 +238,69 @@ def compute_metadata(
         "com.systeminit.image.architecture": architecture.value,
         "com.systeminit.image.image_url": image_url,
         "com.systeminit.image.commit_url": commit_url,
+    }
+
+    return metadata
+
+
+def compute_tag_metadata(
+    label_metadata: Dict[str, str],
+    architecture: DockerArchitecture,
+) -> List[str]:
+    metadata = [
+        "{}:{}-{}".format(
+            label_metadata.get("name"),
+            label_metadata.get("org.opencontainers.image.version"),
+            architecture.value,
+        ),
+        "{}:sha-{}-{}".format(
+            label_metadata.get("name"),
+            label_metadata.get("org.opencontainers.image.revision"),
+            architecture.value,
+        ),
+    ]
+
+    return metadata
+
+
+def compute_b3sum(artifact_file: str) -> str:
+    cmd = [
+        "b3sum",
+        "--no-names",
+        artifact_file,
+    ]
+    result = subprocess.run(cmd, capture_output=True)
+    # Print out stderr from process if it failed
+    if result.returncode != 0:
+        sys.stderr.write(result.stderr.decode("ascii"))
+    result.check_returncode()
+    b3sum = result.stdout.decode("ascii").rstrip()
+
+    return b3sum
+
+
+def compute_build_metadata(
+    label_metadata: Dict[str, str],
+    architecture: DockerArchitecture,
+    b3sum: str,
+) -> Dict[str, str]:
+    metadata = {
+        "kind":
+        "docker_image",
+        "name":
+        "{}--{}--{}.tar".format(
+            label_metadata.get("name", "UNKNOWN_NAME").replace("/", "--"),
+            label_metadata.get("org.opencontainers.image.version"),
+            architecture.value,
+        ),
+        "version":
+        label_metadata.get("org.opencontainers.image.version"),
+        "architecture":
+        architecture.value,
+        "commit":
+        label_metadata.get("org.opencontainers.image.revision"),
+        "b3sum":
+        b3sum,
     }
 
     return metadata

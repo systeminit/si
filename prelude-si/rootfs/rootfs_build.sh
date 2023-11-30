@@ -20,7 +20,7 @@ binary_inputs=("$@")
 
 echo "-------------------------------------"
 echo "Info: Initiating rootfs build"
-echo "Artifact Version: $(./${git_helper} | jq -r '.artifact_ver')"
+echo "Artifact Version: $(./${git_helper} | jq -r '.canonical_version')"
 echo "Output File: $output_file"
 echo "Input Binaries (list):"
 for binary_input in "${binary_inputs[@]}"; do

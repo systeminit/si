@@ -47,6 +47,7 @@
 
       buck2NativeBuildInputs = with pkgs;
         [
+          b3sum
           bash
           buck2
           cacert

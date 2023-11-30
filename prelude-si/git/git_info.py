@@ -11,11 +11,12 @@ from typing import Any, Dict
 
 ABBREVIATED_COMMIT_HASH = "abbreviated_commit_hash"
 CAL_VER = "cal_ver"
-ARTIFACT_VER = "artifact_ver"
+CANONICAL_VERSION = "canonical_version"
 COMMITER_DATE_STRICT = "committer_date_strict_iso8601"
 COMMITER_DATE_TIMESTAMP = "committer_date_timestamp"
 COMMIT_HASH = "commit_hash"
 IS_DIRTY = "is_dirty"
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -80,6 +81,10 @@ def parse_git_status() -> Dict[str, Any]:
 
 
 def finalize(data: Dict[str, Any]):
+    abbreviated_commit_hash = data.get(
+        ABBREVIATED_COMMIT_HASH,
+        "HASH-NOT-FOUND",
+    )
     dt_str = data.get(COMMITER_DATE_STRICT)
     is_dirty = data.get(IS_DIRTY)
 
@@ -91,14 +96,14 @@ def finalize(data: Dict[str, Any]):
             # Convert into UTC
             dt_utc = datetime.fromisoformat(dt_str).astimezone(timezone.utc)
 
-        data.update({
-            CAL_VER: dt_utc.strftime("%Y%m%d.%H%M%S.0"),
-            COMMITER_DATE_STRICT: dt_utc.strftime("%Y%m%dT%H:%M:%SZ"),
-            COMMITER_DATE_TIMESTAMP: round(dt_utc.timestamp()),
-        })
+        cal_ver = dt_utc.strftime("%Y%m%d.%H%M%S.0")
+        canonical_version = f"{cal_ver}-sha.{abbreviated_commit_hash}"
 
         data.update({
-            ARTIFACT_VER: data["cal_ver"] + "-sha" + data["abbreviated_commit_hash"]
+            CAL_VER: cal_ver,
+            CANONICAL_VERSION: canonical_version,
+            COMMITER_DATE_STRICT: dt_utc.strftime("%Y%m%dT%H:%M:%SZ"),
+            COMMITER_DATE_TIMESTAMP: round(dt_utc.timestamp()),
         })
 
 

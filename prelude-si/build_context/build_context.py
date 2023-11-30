@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Builds an isolated Docker context tree containing all sources needed to build
-the image.
+Builds an isolated context tree containing all sources needed to build a target
+with Buck2.
 """
 import argparse
 import os
@@ -13,11 +13,6 @@ import tempfile
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--dockerfile",
-        required=True,
-        help="Dockerfile to build",
-    )
     parser.add_argument(
         "--bxl-file",
         required=True,
@@ -86,17 +81,6 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory() as tempdir:
         root_dir = os.path.join(tempdir, "root")
-
-        dst = os.path.join(root_dir, "Dockerfile")
-        parent_dir = os.path.dirname(dst)
-        if parent_dir:
-            dst_dir = os.path.join(root_dir, parent_dir)
-            if not os.path.isdir(dst_dir):
-                os.makedirs(dst_dir, exist_ok=True)
-        shutil.copy(
-            args.dockerfile,
-            dst,
-        )
 
         for arg in srcs or []:
             src, dst = arg.split("=")
