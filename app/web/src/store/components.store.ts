@@ -111,7 +111,7 @@ export type MenuSchema = {
   color: string;
 };
 
-type NodeAddMenu = {
+export type NodeAddMenu = {
   displayName: string;
   schemas: MenuSchema[];
 }[];

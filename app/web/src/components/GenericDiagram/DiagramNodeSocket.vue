@@ -14,6 +14,34 @@
       @mouseover="onMouseOver"
       @mouseout="onMouseOut"
     />
+    <v-circle
+      v-if="isSingularArityInput"
+      :config="{
+        x,
+        y,
+        width: socketSize / 4,
+        height: socketSize / 4,
+        fill: colors.fillReverse,
+        listening: false,
+      }"
+    />
+
+    <!-- <v-text
+      v-if="isSingularArityInput"
+      :config="{
+        x,
+        y,
+        text: '1',
+        offsetX: socketSize / 2,
+        offsetY: socketSize / 2,
+        width: socketSize,
+        height: socketSize * 1.1,
+        verticalAlign: 'middle',
+        align: 'center',
+        fontSize: 9,
+        fill: colors.fillReverse,
+      }"
+    /> -->
     <v-text
       ref="socketLabelRef"
       :config="{
@@ -44,13 +72,10 @@ import { computed, PropType } from "vue";
 import tinycolor from "tinycolor2";
 import { useTheme } from "@si/vue-lib/design-system";
 import { useStatusStore } from "@/store/status.store";
-import {
-  DiagramDrawEdgeState,
-  DiagramEdgeData,
-  DiagramSocketData,
-} from "./diagram_types";
+import { DiagramEdgeData, DiagramSocketData } from "./diagram_types";
 
 import { SOCKET_SIZE, DIAGRAM_FONT_FAMILY } from "./diagram_constants";
+import { useDiagramContext } from "./GenericDiagram.vue";
 
 const { theme } = useTheme();
 
@@ -63,10 +88,6 @@ const props = defineProps({
     type: Array as PropType<DiagramEdgeData[]>,
     default: () => [],
   },
-  drawEdgeState: {
-    type: Object as PropType<DiagramDrawEdgeState>,
-    required: true,
-  },
   x: { type: Number, default: 0 },
   y: { type: Number, default: 0 },
   nodeWidth: { type: Number, required: true },
@@ -75,6 +96,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["hover:start", "hover:end"]);
+
+const diagramContext = useDiagramContext();
+const { drawEdgeState } = diagramContext;
 
 // TODO: do not use the stores here - we should keep the diagram as only generic "dumb" components
 const statusStore = useStatusStore();
@@ -98,13 +122,13 @@ const isConnected = computed(() => {
 });
 
 const state = computed(() => {
-  if (props.drawEdgeState.active) {
-    if (props.drawEdgeState.fromSocketKey === props.socket.uniqueKey)
+  if (drawEdgeState.value.active) {
+    if (drawEdgeState.value.fromSocketKey === props.socket.uniqueKey)
       return "draw_edge_from";
-    if (props.drawEdgeState.toSocketKey === props.socket.uniqueKey)
+    if (drawEdgeState.value.toSocketKey === props.socket.uniqueKey)
       return "draw_edge_to";
     if (
-      props.drawEdgeState.possibleTargetSocketKeys.includes(
+      drawEdgeState.value.possibleTargetSocketKeys.includes(
         props.socket.uniqueKey,
       )
     )
@@ -113,6 +137,12 @@ const state = computed(() => {
   }
   return isConnected.value ? "connected" : "empty";
 });
+
+const isSingularArityInput = computed(
+  () =>
+    props.socket.def.direction === "input" &&
+    props.socket.def.maxConnections === 1,
+);
 
 const socketSize = computed(() => {
   // change size / appearance
@@ -136,6 +166,7 @@ const colors = computed(() => {
   return {
     stroke: primaryColor.toRgbString(),
     fill: isFilled ? primaryColor.toRgbString() : noFillColor,
+    fillReverse: isFilled ? noFillColor : primaryColor.toRgbString(),
     labelText: theme.value === "dark" ? "#FFF" : "#000",
   };
 });

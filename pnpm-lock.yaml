@@ -63,8 +63,8 @@ importers:
         specifier: workspace:*
         version: link:../../lib/tsconfig
       '@types/lodash-es':
-        specifier: ^4.17.7
-        version: 4.17.7
+        specifier: ^4.17.12
+        version: 4.17.12
       '@types/node':
         specifier: ^18.15.11
         version: 18.15.11
@@ -298,8 +298,8 @@ importers:
         specifier: ^0.7.11
         version: 0.7.11
       '@types/lodash-es':
-        specifier: ^4.17.7
-        version: 4.17.7
+        specifier: ^4.17.12
+        version: 4.17.12
       '@types/node':
         specifier: ^18.15.11
         version: 18.15.11
@@ -729,8 +729,8 @@ importers:
         specifier: workspace:*
         version: link:../tsconfig
       '@types/lodash-es':
-        specifier: ^4.17.7
-        version: 4.17.7
+        specifier: ^4.17.12
+        version: 4.17.12
       autoprefixer:
         specifier: ^10.4.8
         version: 10.4.13(postcss@8.4.21)
@@ -4336,8 +4336,8 @@ packages:
     resolution: {integrity: sha512-8avZYJny690B6lFZQEDz4PEdCgC8D8qmGE/mhJBzCwzZvsqne61tCRbtJOhxsjYMItEZd3k4SoR4xKKLnI9Ztg==}
     dev: true
 
-  /@types/lodash-es@4.17.7:
-    resolution: {integrity: sha512-z0ptr6UI10VlU6l5MYhGwS4mC8DZyYer2mCoyysZtSF7p26zOX8UpbrV0YpNYLGS8K4PUFIyEr62IMFFjveSiQ==}
+  /@types/lodash-es@4.17.12:
+    resolution: {integrity: sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ==}
     dependencies:
       '@types/lodash': 4.14.197
     dev: true

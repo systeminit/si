@@ -24,9 +24,7 @@ overflow hidden */
       </div>
     </div>
     <DiagramControls
-      :zoomLevel="zoomLevel"
-      :displayMode="displayMode"
-      @update:displaymode="toggleDisplayMode"
+      @update:displaymode="toggleEdgeDisplayMode"
       @update:zoom="setZoom"
       @open:help="helpModalRef.open()"
     />
@@ -57,14 +55,13 @@ overflow hidden */
           :tempPosition="movedElementPositions[group.uniqueKey]"
           :tempSize="resizedElementSizes[group.uniqueKey]"
           :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
-          :drawEdgeState="drawEdgeState"
           :isHovered="elementIsHovered(group)"
           :isSelected="elementIsSelected(group)"
           @hover:start="(meta) => onElementHoverStart(group, meta)"
           @hover:end="onElementHoverEnd(group)"
           @resize="onNodeLayoutOrLocationChange(group)"
         />
-        <template v-if="displayMode === 'Edges Under'">
+        <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
           <DiagramEdge
             v-for="edge in edges"
             :key="edge.uniqueKey"
@@ -83,10 +80,8 @@ overflow hidden */
           :node="node"
           :tempPosition="movedElementPositions[node.uniqueKey]"
           :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
-          :drawEdgeState="drawEdgeState"
           :isHovered="elementIsHovered(node)"
           :isSelected="elementIsSelected(node)"
-          :displayMode="displayMode"
           @hover:start="(meta) => onElementHoverStart(node, meta)"
           @hover:end="(meta) => onElementHoverEnd(node)"
           @resize="onNodeLayoutOrLocationChange(node)"
@@ -96,7 +91,7 @@ overflow hidden */
           :key="mouseCursor.userId"
           :cursor="mouseCursor"
         />
-        <template v-if="displayMode === 'Edges Over'">
+        <template v-if="edgeDisplayMode === 'EDGES_OVER'">
           <DiagramEdge
             v-for="edge in edges"
             :key="edge.uniqueKey"
@@ -137,7 +132,7 @@ overflow hidden */
           />
           <DiagramIcon
             icon="loader"
-            :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
+            :color="getToneColorHex('info')"
             :size="60"
             :x="pendingInsert.position!.x"
             :y="pendingInsert.position!.y"
@@ -172,6 +167,23 @@ overflow hidden */
   </div>
 </template>
 
+<script lang="ts">
+type DiagramContext = {
+  zoomLevel: Ref<number>;
+  edgeDisplayMode: Ref<EdgeDisplayMode>;
+  drawEdgeState: ComputedRef<DiagramDrawEdgeState>;
+};
+
+const DIAGRAM_CONTEXT_INJECTION_KEY: InjectionKey<DiagramContext> =
+  Symbol("DIAGRAM_CONTEXT");
+
+export function useDiagramContext() {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return inject(DIAGRAM_CONTEXT_INJECTION_KEY)!;
+}
+</script>
+
+<!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
@@ -182,12 +194,18 @@ import {
   reactive,
   watch,
   PropType,
+  InjectionKey,
+  ComputedRef,
+  Ref,
+  provide,
+  inject,
 } from "vue";
 import { Stage as KonvaStage } from "konva/lib/Stage";
 import * as _ from "lodash-es";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
+import { getToneColorHex } from "@si/vue-lib/design-system";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/GenericDiagram/DiagramGroup.vue";
 import { useComponentsStore } from "@/store/components.store";
@@ -196,7 +214,6 @@ import { DiagramCursorDef } from "@/store/presence.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DeleteElementsEvent,
-  DiagramConfig,
   DiagramDrawEdgeState,
   DiagramEdgeDef,
   DiagramNodeDef,
@@ -221,14 +238,11 @@ import {
   SideAndCornerIdentifiers,
   ElementHoverMeta,
   MovePointerEvent,
+  EdgeDisplayMode,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramCursor from "./DiagramCursor.vue";
 import DiagramEdge from "./DiagramEdge.vue";
-import {
-  useDiagramConfigProvider,
-  useZoomLevelProvider,
-} from "./utils/use-diagram-context-provider";
 import {
   DRAG_DISTANCE_THRESHOLD,
   DRAG_EDGE_TRIGGER_SCROLL_WIDTH,
@@ -254,7 +268,6 @@ import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
 import DiagramControls from "./DiagramControls.vue";
 import DiagramHelpModal from "./DiagramHelpModal.vue";
-import { baseConfig } from "./diagram_base_config";
 import DiagramIcon from "./DiagramIcon.vue";
 import DiagramEmptyState from "./DiagramEmptyState.vue";
 
@@ -267,10 +280,6 @@ const props = defineProps({
   cursors: {
     type: Array as PropType<DiagramCursorDef[]>,
     default: () => [],
-  },
-  customConfig: {
-    type: Object as PropType<DiagramConfig>,
-    default: () => ({}),
   },
   nodes: {
     type: Array as PropType<DiagramNodeDef[]>,
@@ -286,13 +295,11 @@ const props = defineProps({
   controlsDisabled: { type: Boolean },
 });
 
-export type DisplayMode = "Edges Over" | "Edges Under";
+const edgeDisplayMode = ref<EdgeDisplayMode>("EDGES_OVER");
 
-const displayMode = ref("Edges Over" as DisplayMode);
-
-const toggleDisplayMode = () => {
-  if (displayMode.value === "Edges Over") displayMode.value = "Edges Under";
-  else displayMode.value = "Edges Over";
+const toggleEdgeDisplayMode = () => {
+  edgeDisplayMode.value =
+    edgeDisplayMode.value === "EDGES_OVER" ? "EDGES_UNDER" : "EDGES_OVER";
 };
 
 const emit = defineEmits<{
@@ -461,9 +468,9 @@ const isMounted = ref(false);
 onMounted(() => {
   resizeObserver.observe(containerRef.value!);
   isMounted.value = true;
-  const zoom = window.localStorage.getItem("si-diagram-zoom");
-  if (zoom) {
-    zoomLevel.value = Number(zoom);
+  const lastZoomValue = window.localStorage.getItem("si-diagram-zoom");
+  if (lastZoomValue) {
+    zoomLevel.value = Number(lastZoomValue);
   }
 });
 
@@ -1742,6 +1749,32 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
   });
   return _.map(possibleSockets, (s) => s.uniqueKey);
 });
+const drawEdgeWillDeleteEdges = computed(() => {
+  const fromSocket = drawEdgeFromSocket.value;
+  const toSocket = drawEdgeToSocket.value;
+  if (!drawEdgeActive.value || !fromSocket) return [];
+
+  // there will/should always be a fromSocket if draw edge is active
+
+  const edgesToDelete = [] as DiagramEdgeData[];
+  // currently we only care about arity of 1 or N - but this logic would need to change to support arity of a specific number
+  if (fromSocket.def.maxConnections !== null) {
+    edgesToDelete.push(
+      ...(connectedEdgesByElementKey.value[
+        fromSocket.uniqueKey
+      ] as DiagramEdgeData[]),
+    );
+  }
+
+  if (toSocket && toSocket.def.maxConnections !== null) {
+    edgesToDelete.push(
+      ...(connectedEdgesByElementKey.value[
+        toSocket.uniqueKey
+      ] as DiagramEdgeData[]),
+    );
+  }
+  return edgesToDelete;
+});
 
 const drawEdgeState = computed(() => {
   return {
@@ -1749,6 +1782,7 @@ const drawEdgeState = computed(() => {
     fromSocketKey: drawEdgeFromSocketKey.value,
     toSocketKey: drawEdgeToSocketKey.value,
     possibleTargetSocketKeys: drawEdgePossibleTargetSocketKeys.value,
+    edgeKeysToDelete: _.map(drawEdgeWillDeleteEdges.value, (e) => e.uniqueKey),
   } as DiagramDrawEdgeState;
 });
 
@@ -1961,13 +1995,7 @@ function recenter() {
   zoomLevel.value = 1;
 }
 
-const diagramConfig = computed(() => {
-  return _.merge(baseConfig, props.customConfig);
-});
-
-// set up provider so children can grab config without needing to pass down through many levels
-useDiagramConfigProvider(diagramConfig);
-useZoomLevelProvider(zoomLevel);
+const helpModalRef = ref();
 
 // functions exposed to outside world ///////////////////////////////////
 defineExpose({
@@ -1980,5 +2008,11 @@ defineExpose({
   endInsertElement,
 });
 
-const helpModalRef = ref();
+// this object gets provided to the children within the diagram that need it
+const context: DiagramContext = {
+  zoomLevel,
+  edgeDisplayMode,
+  drawEdgeState,
+};
+provide(DIAGRAM_CONTEXT_INJECTION_KEY, context);
 </script>

@@ -1,5 +1,8 @@
 <template>
-  <v-group v-if="shouldDraw && points && centerPoint">
+  <v-group
+    v-if="shouldDraw && points && centerPoint"
+    :config="{ opacity: willDeletedIfDrawEdgeCompleted ? 0.3 : 1 }"
+  >
     <v-line
       :config="{
         visible: isHovered || isSelected,
@@ -52,7 +55,7 @@
       <template v-if="isAdded">
         <DiagramIcon
           icon="plus-square"
-          :color="diagramConfig?.toneColors?.success"
+          :color="getToneColorHex('success')"
           :size="20"
           shadeBg
         />
@@ -61,7 +64,7 @@
         <DiagramIcon
           icon="minus-square"
           shadeBg
-          :color="diagramConfig?.toneColors?.destructive"
+          :color="getToneColorHex('destructive')"
           :size="20"
         />
       </template>
@@ -73,12 +76,16 @@
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
 import { computed, PropType } from "vue";
-import { COLOR_PALETTE, useTheme } from "@si/vue-lib/design-system";
+import {
+  COLOR_PALETTE,
+  useTheme,
+  getToneColorHex,
+} from "@si/vue-lib/design-system";
 import { SOCKET_SIZE, SELECTION_COLOR } from "./diagram_constants";
 import { DiagramEdgeData } from "./diagram_types";
 import { pointAlongLinePct, pointAlongLinePx } from "./utils/math";
 import DiagramIcon from "./DiagramIcon.vue";
-import { useDiagramConfig } from "./utils/use-diagram-context-provider";
+import { useDiagramContext } from "./GenericDiagram.vue";
 
 const isDevMode = import.meta.env.DEV;
 
@@ -100,12 +107,17 @@ const props = defineProps({
 
 const emit = defineEmits(["hover:start", "hover:end"]);
 
-const diagramConfig = useDiagramConfig();
-
 const { theme } = useTheme();
+
+const diagramContext = useDiagramContext();
+const { drawEdgeState } = diagramContext;
 
 const isDeleted = computed(() => props.edge.def.changeStatus === "deleted");
 const isAdded = computed(() => props.edge.def.changeStatus === "added");
+
+const willDeletedIfDrawEdgeCompleted = computed(() => {
+  return drawEdgeState.value.edgeKeysToDelete.includes(props.edge.uniqueKey);
+});
 
 const defaultStrokeColor = computed(() =>
   theme.value === "dark" ? COLOR_PALETTE.shade[0] : COLOR_PALETTE.shade[100],

@@ -25,7 +25,7 @@
     />
 
     <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
-      <template v-if="displayMode === 'Edges Under'">
+      <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
         <v-rect
           :config="{
             width: nodeWidth,
@@ -53,15 +53,16 @@
       <v-rect
         :config="{
           id: `${node.uniqueKey}--bg`,
-          width: nodeWidth + (displayMode === 'Edges Under' ? 2 : 0),
-          height: nodeHeight + (displayMode === 'Edges Under' ? 2 : 0),
-          x: -halfWidth + (displayMode === 'Edges Under' ? -1 : 0),
-          y: 0 + (displayMode === 'Edges Under' ? -1 : 0),
-          cornerRadius: CORNER_RADIUS + (displayMode === 'Edges Under' ? 1 : 0),
-          fill: displayMode === 'Edges Over' ? colors.bodyBg : null,
-          fillAfterStrokeEnabled: displayMode === 'Edges Over',
+          width: nodeWidth + (edgeDisplayMode === 'EDGES_UNDER' ? 2 : 0),
+          height: nodeHeight + (edgeDisplayMode === 'EDGES_UNDER' ? 2 : 0),
+          x: -halfWidth + (edgeDisplayMode === 'EDGES_UNDER' ? -1 : 0),
+          y: 0 + (edgeDisplayMode === 'EDGES_UNDER' ? -1 : 0),
+          cornerRadius:
+            CORNER_RADIUS + (edgeDisplayMode === 'EDGES_UNDER' ? 1 : 0),
+          fill: edgeDisplayMode === 'EDGES_OVER' ? colors.bodyBg : null,
+          fillAfterStrokeEnabled: edgeDisplayMode === 'EDGES_OVER',
           stroke: colors.border,
-          strokeWidth: displayMode === 'Edges Over' ? 4 : 2,
+          strokeWidth: edgeDisplayMode === 'EDGES_OVER' ? 4 : 2,
           shadowColor: 'black',
           shadowBlur: 8,
           shadowOffset: { x: 3, y: 3 },
@@ -141,7 +142,6 @@
           :socket="socket"
           :y="i * SOCKET_GAP"
           :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
-          :drawEdgeState="drawEdgeState"
           :nodeWidth="nodeWidth"
           @hover:start="onSocketHoverStart(socket)"
           @hover:end="onSocketHoverEnd(socket)"
@@ -164,7 +164,6 @@
           :socket="socket"
           :y="i * SOCKET_GAP"
           :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
-          :drawEdgeState="drawEdgeState"
           :nodeWidth="nodeWidth"
           @hover:start="onSocketHoverStart(socket)"
           @hover:end="onSocketHoverEnd(socket)"
@@ -182,7 +181,9 @@
           v-for="(statusIcon, i) in _.reverse(_.slice(node.def.statusIcons))"
           :key="`status-icon-${i}`"
           :icon="statusIcon.icon"
-          :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
+          :color="statusIcon.color || statusIcon.tone
+            ? getToneColorHex(statusIcon.tone!)
+            : getToneColorHex('neutral')"
           :size="24"
           :x="i * -26"
           origin="bottom-right"
@@ -212,7 +213,7 @@
         />
         <DiagramIcon
           icon="loader"
-          :color="diagramConfig?.toneColors?.info || '#AAA'"
+          :color="getToneColorHex('info')"
           :size="overlayIconSize"
           :x="halfWidth"
           :y="nodeBodyHeight / 2"
@@ -222,9 +223,7 @@
         v-if="isAdded || isModified"
         :icon="isAdded ? 'plus-square' : 'tilde-square'"
         :color="
-          isAdded
-            ? diagramConfig?.toneColors?.success
-            : diagramConfig?.toneColors?.warning
+          isAdded ? getToneColorHex('success') : getToneColorHex('warning')
         "
         :size="24"
         :x="halfWidth - 2 - 12"
@@ -239,7 +238,7 @@
       v-if="isDeleted"
       icon="minus-square"
       shadeBg
-      :color="diagramConfig?.toneColors?.destructive"
+      :color="getToneColorHex('destructive')"
       :size="DELETED_X_SIZE"
       :x="0"
       :y="nodeHeight / 2"
@@ -255,9 +254,8 @@ import tinycolor from "tinycolor2";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
-import { useTheme } from "@si/vue-lib/design-system";
+import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
 import {
-  DiagramDrawEdgeState,
   DiagramEdgeData,
   DiagramElementUniqueKey,
   DiagramNodeData,
@@ -278,8 +276,7 @@ import {
   SOCKET_SIZE,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
-import { useDiagramConfig } from "./utils/use-diagram-context-provider";
-import { DisplayMode } from "./GenericDiagram.vue";
+import { useDiagramContext } from "./GenericDiagram.vue";
 
 const props = defineProps({
   node: {
@@ -293,14 +290,8 @@ const props = defineProps({
     type: Object as PropType<DiagramEdgeData[]>,
     default: () => ({}),
   },
-  drawEdgeState: {
-    type: Object as PropType<DiagramDrawEdgeState>,
-    default: () => ({}),
-  },
   isHovered: Boolean,
   isSelected: Boolean,
-
-  displayMode: { type: String as PropType<DisplayMode>, default: "Edges Over" },
 });
 
 const emit = defineEmits<{
@@ -310,7 +301,9 @@ const emit = defineEmits<{
 }>();
 
 const { theme } = useTheme();
-const diagramConfig = useDiagramConfig();
+
+const diagramContext = useDiagramContext();
+const { edgeDisplayMode } = diagramContext;
 
 const isDeleted = computed(() => props.node.def.changeStatus === "deleted");
 const isModified = computed(() => props.node.def.changeStatus === "modified");

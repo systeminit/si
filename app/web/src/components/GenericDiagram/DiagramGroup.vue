@@ -122,7 +122,6 @@
         :socket="socket"
         :y="i * SOCKET_GAP"
         :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
-        :drawEdgeState="drawEdgeState"
         :nodeWidth="nodeWidth"
         @hover:start="onSocketHoverStart(socket)"
         @hover:end="onSocketHoverEnd(socket)"
@@ -144,7 +143,6 @@
         :socket="socket"
         :y="i * SOCKET_GAP"
         :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
-        :drawEdgeState="drawEdgeState"
         :nodeWidth="nodeWidth"
         @hover:start="onSocketHoverStart(socket)"
         @hover:end="onSocketHoverEnd(socket)"
@@ -238,7 +236,11 @@
         v-for="(statusIcon, i) in _.reverse(_.slice(group.def.statusIcons))"
         :key="`status-icon-${i}`"
         :icon="statusIcon.icon"
-        :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
+        :color="
+          statusIcon.color || statusIcon.tone
+            ? getToneColorHex(statusIcon.tone!)
+            : getToneColorHex('neutral')
+        "
         :size="24"
         :x="i * -26"
         :y="nodeBodyHeight - 5"
@@ -269,7 +271,7 @@
       />
       <DiagramIcon
         icon="loader"
-        :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
+        :color="getToneColorHex('info')"
         :size="overlayIconSize"
         :x="halfWidth"
         :y="nodeBodyHeight / 2"
@@ -280,11 +282,7 @@
     <DiagramIcon
       v-if="isAdded || isModified"
       :icon="isAdded ? 'plus-square' : 'tilde-square'"
-      :color="
-        isAdded
-          ? diagramConfig?.toneColors?.success
-          : diagramConfig?.toneColors?.warning
-      "
+      :color="isAdded ? getToneColorHex('success') : getToneColorHex('warning')"
       shadeBg
       :size="GROUP_HEADER_ICON_SIZE"
       :x="halfWidth - GROUP_HEADER_ICON_SIZE / 2"
@@ -306,7 +304,7 @@ import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
-import { useTheme } from "@si/vue-lib/design-system";
+import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
 import DiagramNodeSocket from "@/components/GenericDiagram/DiagramNodeSocket.vue";
 import {
   SOCKET_GAP,
@@ -332,7 +330,6 @@ import {
   ElementHoverMeta,
 } from "./diagram_types";
 import DiagramIcon from "./DiagramIcon.vue";
-import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 
 const props = defineProps({
   group: {
@@ -364,7 +361,6 @@ const emit = defineEmits<{
 }>();
 
 const { theme } = useTheme();
-const diagramConfig = useDiagramConfig();
 
 const titleTextRef = ref();
 const groupRef = ref();

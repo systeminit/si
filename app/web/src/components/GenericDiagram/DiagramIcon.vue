@@ -42,7 +42,6 @@ import {
   COLOR_PALETTE,
   useTheme,
 } from "@si/vue-lib/design-system";
-import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 import KonvaSvgImage from "./KonvaSvgImage.vue";
 
 const props = defineProps({
@@ -81,12 +80,8 @@ const offset = computed(() => {
   };
 });
 
-const diagramConfig = useDiagramConfig();
 const rawSvg = computed(() => {
   if (!props.icon) return;
-  const iconFromDiagramConfig = diagramConfig?.value.icons?.[props.icon];
-  // diagram config specific icons take precedence
-  // but then we look in our full icon set
-  return iconFromDiagramConfig || getIconByName(props.icon);
+  return getIconByName(props.icon);
 });
 </script>
