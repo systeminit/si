@@ -16,7 +16,6 @@ KERNEL_IMG="$DATA_DIR/$KERNEL"
 
 TAP_DEV="fc-${SB_ID}-tap0"
 FC_MAC="$(printf '02:FC:00:00:%02X:%02X' $((SB_ID / 256)) $((SB_ID % 256)))"
-VETH_DEV="veth-jailer$SB_ID"
 JAILER_NS="jailer-$SB_ID"
 
 ########## ############################# #########
@@ -50,25 +49,38 @@ touch $JAIL/metrics
 if test -f "$JAIL/$KERNEL"; then
   echo "Jailed kernel exists, skipping creation."
 else
-  echo "Copying kernel image..."
+  echo "Setting up  kernel image..."
   cp -v $KERNEL_IMG "$JAIL/$KERNEL"
+  # TODO(scott): make this work. First attempt yielded a
+  # kernel loader InvalidElfMagicNumber error
+  # OVERLAY="kernel-overlay-$SB_ID"
+  # OVERLAY_FILE=$JAIL/$OVERLAY
+  # touch $OVERLAY_FILE
+  # truncate --size=5368709120 $OVERLAY_FILE
+  # OVERLAY_LOOP=$(losetup --find --show $OVERLAY_FILE)
+  # OVERLAY_SZ=$(blockdev --getsz $OVERLAY_LOOP)
+  # echo "0 $OVERLAY_SZ snapshot /dev/mapper/rootfs $OVERLAY_LOOP P 8" | dmsetup create $OVERLAY
+  # touch $JAIL/$KERNEL
+  # mount --bind /dev/mapper/$OVERLAY $JAIL/$KERNEL
 fi
 
 if test -f "$JAIL/$ROOTFS"; then
   echo "Jailed rootfs exists, skipping creation."
 else
-  echo "Copying rootfs..."
-  cp -v $RO_DRIVE "$JAIL/$ROOTFS"
-  # using device mapper for CoW should be faster. Something like this?
-  # OVERLAY="$JAIL/$ROOTFS"
-  # touch $OVERLAY
-  # truncate --size=1073741824 $OVERLAY
-  # BASE_LOOP=$(losetup --find --show --read-only $RO_DRIVE)
-  # LOOP=$(losetup --find --show --read-only $OVERLAY)
-  # BASE_SZ=$(blockdev --getsz $RO_DRIVE)
-  # OVERLAY_SZ=$(blockdev --getsz $OVERLAY_LOOP)
-  # printf "0 $BASE_SZ linear $BASE_LOOP 0\n$BASE_SZ $OVERLAY_SZ zero"  | dmsetup create rootfsbase
-  # echo "0 $OVERLAY_SZ snapshot /dev/mapper/overlay_$SB_ID $LOOP P 8" | dmsetup create overlay_$SB_ID
+  echo "Setting up rootfs..."
+  # Here we create a device-per-jail to act as a unique
+  # CoW layer. These cannot be shared because we are required
+  # to bind mount these into the jail dir due to chroot shenanigans.
+  # Bind mounted permissions propagate, so jails would conflict.
+  OVERLAY="rootfs-overlay-$SB_ID"
+  OVERLAY_FILE=$JAIL/$OVERLAY
+  touch $OVERLAY_FILE
+  truncate --size=5368709120 $OVERLAY_FILE
+  OVERLAY_LOOP=$(losetup --find --show $OVERLAY_FILE)
+  OVERLAY_SZ=$(blockdev --getsz $OVERLAY_LOOP)
+  echo "0 $OVERLAY_SZ snapshot /dev/mapper/rootfs $OVERLAY_LOOP P 8" | dmsetup create $OVERLAY
+  touch $JAIL/$ROOTFS
+  mount --bind /dev/mapper/$OVERLAY $JAIL/$ROOTFS
 fi
 
 chown -R jailer-$SB_ID:jailer-$SB_ID $JAIL/
@@ -90,9 +102,10 @@ else
   TAP_IP="10.0.0.2" # more difficult & to simplify rootfs creation/configuration
   NET_LINK_MAIN_IP="$(printf '100.65.%s.%s' $(((4 * SB_ID + 1) / 256)) $(((4 * SB_ID + 1) % 256)))"
   NET_LINK_JAILER_IP="$(printf '100.65.%s.%s' $(((4 * SB_ID + 2) / 256)) $(((4 * SB_ID + 2) % 256)))"
+  VETH_DEV="veth-jailer$SB_ID"
 
   # Setup TAP device that uses proxy ARP
-  ip netns exec $JAILER_NS ip link del "$TAP_DEV" || true
+  ip netns exec $JAILER_NS ip link del "$TAP_DEV" 2> /dev/null || true
   ip netns exec $JAILER_NS ip tuntap add dev "$TAP_DEV" mode tap
 
   # Disable ipv6, enable Proxy ARP
@@ -134,8 +147,8 @@ cat << EOF > $JAIL/firecracker.conf
     {
       "drive_id": "1",
       "is_root_device": true,
-      "is_read_only": true,
-      "path_on_host": "./$ROOTFS"
+      "is_read_only": false,
+      "path_on_host": "./rootfs.ext4"
     }
   ],
   "machine-config": {
