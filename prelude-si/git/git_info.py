@@ -98,6 +98,11 @@ def finalize(data: Dict[str, Any]):
 
         cal_ver = dt_utc.strftime("%Y%m%d.%H%M%S.0")
         canonical_version = f"{cal_ver}-sha.{abbreviated_commit_hash}"
+        if is_dirty == True:
+            canonical_version += "-dirty"
+            data.update({
+                COMMIT_HASH: "{}-dirty".format(data.get(COMMIT_HASH)),
+            })
 
         data.update({
             CAL_VER: cal_ver,
