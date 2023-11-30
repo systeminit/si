@@ -396,7 +396,7 @@ export const useAssetStore = () => {
               detachedAttributePrototypes: DetachedAttributePrototype[];
               detachedValidationPrototypes: DetachedValidationPrototype[];
             },
-            AssetSaveRequest
+            AssetSaveRequest & { autoReattachFunctions?: true }
           >({
             method: "post",
             url: "/variant_def/exec_variant_def",
