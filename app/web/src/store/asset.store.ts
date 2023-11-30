@@ -402,6 +402,7 @@ export const useAssetStore = () => {
             url: "/variant_def/exec_variant_def",
             keyRequestStatusBy: assetId,
             params: {
+              autoReattachFunctions: true,
               ...visibility,
               ..._.omit(asset, [
                 "schemaVariantId",
