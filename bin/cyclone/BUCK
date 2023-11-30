@@ -1,6 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
     "docker_image",
+    "rootfs",
     "export_file",
     "rust_binary",
     "shellcheck",
@@ -24,7 +25,6 @@ test_suite(
         ":check-format-shell",
     ],
 )
-
 
 rust_binary(
     name = "cyclone",
@@ -60,5 +60,13 @@ docker_image(
         "//bin/cyclone:docker-entrypoint.sh",
         "//bin/cyclone:cyclone",
         "//bin/lang-js:bin",
+    ]
+)
+
+rootfs(
+    name = "rootfs",
+    build_deps = [
+        ":cyclone",
+        #":nix_store",
     ]
 )

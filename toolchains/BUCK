@@ -12,6 +12,7 @@ load("@prelude-si//git:toolchain.bzl", "git_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
 load("@prelude-si//rust:toolchain.bzl", "si_rust_toolchain")
 load("@prelude-si//shell:toolchain.bzl", "shell_toolchain")
+load("@prelude-si//rootfs:toolchain.bzl", "rootfs_toolchain")
 
 remote_test_execution_toolchain(
     name = "remote_test_execution",
@@ -70,5 +71,10 @@ si_rust_toolchain(
 shell_toolchain(
     name = "shell",
     editorconfig = "root//:.editorconfig",
+    visibility = ["PUBLIC"],
+)
+
+rootfs_toolchain(
+    name = "rootfs",
     visibility = ["PUBLIC"],
 )

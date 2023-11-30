@@ -19,6 +19,12 @@ load(
 docker_image = _docker_image
 
 load(
+    "@prelude-si//macros:rootfs.bzl",
+    _rootfs = "rootfs",
+)
+rootfs = _rootfs
+
+load(
     "@prelude-si//macros:nix.bzl",
     _nix_flake_lock = "nix_flake_lock",
 )
