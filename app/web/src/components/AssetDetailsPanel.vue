@@ -246,19 +246,11 @@ const disabled = computed(
 );
 
 const disabledWarning = computed(() => {
-  let byComponents = "";
   if (editingAsset.value?.hasComponents) {
-    byComponents = "by components";
+    return `This asset cannot be edited because it is in use by components.`;
   }
-  let byFuncs = "";
-  if (editingAsset.value?.hasAttrFuncs) {
-    byFuncs = "by attribute functions or custom validations";
-  }
-  const and =
-    editingAsset.value?.hasComponents && editingAsset.value?.hasAttrFuncs
-      ? " and "
-      : "";
-  return `This asset cannot be edited because it is in use ${byComponents}${and}${byFuncs}.`;
+
+  return "";
 });
 
 const detachedWarnings = ref<

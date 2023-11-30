@@ -64,10 +64,7 @@ const selectedAsset = computed(() =>
   props.assetId ? assetStore.assetsById[props.assetId] : undefined,
 );
 
-const isReadOnly = computed(
-  () =>
-    !!(selectedAsset.value?.hasComponents || selectedAsset.value?.hasAttrFuncs),
-);
+const isReadOnly = computed(() => !!selectedAsset.value?.hasComponents);
 
 const editingAsset = ref<string>(selectedAsset.value?.code ?? "");
 
