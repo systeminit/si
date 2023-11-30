@@ -3,6 +3,7 @@ use std::{
     str::FromStr,
 };
 
+use crate::node::auth_func::AuthFuncNode;
 use object_tree::{
     read_key_value_line, read_key_value_line_opt, write_key_value_line, GraphError, NameStr,
     ReadBytes, WriteBytes,
@@ -12,6 +13,7 @@ mod action_func;
 mod attr_func_input;
 mod attribute_value;
 mod attribute_value_child;
+mod auth_func;
 mod category;
 mod change_set;
 mod change_set_child;
@@ -63,6 +65,7 @@ pub(crate) use self::{
 };
 
 const NODE_KIND_ACTION_FUNC: &str = "action_func";
+const NODE_KIND_AUTH_FUNC: &str = "auth_func";
 const NODE_KIND_ATTRIBUTE_VALUE: &str = "attribute_value";
 const NODE_KIND_ATTRIBUTE_VALUE_CHILD: &str = "attribute_value_child";
 const NODE_KIND_ATTR_FUNC_INPUT: &str = "attr_func_input";
@@ -138,6 +141,7 @@ pub enum PkgNode {
     AttrFuncInput(AttrFuncInputNode),
     AttributeValue(AttributeValueNode),
     AttributeValueChild(AttributeValueChildNode),
+    AuthFunc(AuthFuncNode),
     Category(CategoryNode),
     ChangeSet(ChangeSetNode),
     ChangeSetChild(ChangeSetChildNode),
@@ -163,6 +167,7 @@ pub enum PkgNode {
 
 impl PkgNode {
     pub const ACTION_FUNC_KIND_STR: &str = NODE_KIND_ACTION_FUNC;
+    pub const AUTH_FUNC_KIND_STR: &str = NODE_KIND_AUTH_FUNC;
     pub const ATTR_FUNC_INPUT_KIND_STR: &str = NODE_KIND_ATTR_FUNC_INPUT;
     pub const ATTRIBUTE_VALUE_KIND_STR: &str = NODE_KIND_ATTRIBUTE_VALUE;
     pub const ATTRIBUTE_VALUE_CHILD_KIND_STR: &str = NODE_KIND_ATTRIBUTE_VALUE_CHILD;
@@ -215,6 +220,7 @@ impl PkgNode {
             Self::SiPropFunc(_) => NODE_KIND_SI_PROP_FUNC,
             Self::Socket(_) => NODE_KIND_SOCKET,
             Self::Validation(_) => NODE_KIND_VALIDATION,
+            Self::AuthFunc(_) => NODE_KIND_AUTH_FUNC,
         }
     }
 }
@@ -247,6 +253,7 @@ impl NameStr for PkgNode {
             Self::SiPropFunc(_) => NODE_KIND_SI_PROP_FUNC,
             Self::Socket(node) => node.name(),
             Self::Validation(_) => NODE_KIND_VALIDATION,
+            Self::AuthFunc(_) => NODE_KIND_AUTH_FUNC,
         }
     }
 }
@@ -257,6 +264,7 @@ impl WriteBytes for PkgNode {
 
         match self {
             Self::ActionFunc(node) => node.write_bytes(writer)?,
+            Self::AuthFunc(node) => node.write_bytes(writer)?,
             Self::AttrFuncInput(node) => node.write_bytes(writer)?,
             Self::AttributeValue(node) => node.write_bytes(writer)?,
             Self::AttributeValueChild(node) => node.write_bytes(writer)?,

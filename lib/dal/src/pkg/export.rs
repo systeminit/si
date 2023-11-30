@@ -4,16 +4,17 @@ use strum::IntoEnumIterator;
 
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, AttributeValuePath,
-    AttributeValueSpec, ChangeSetSpec, ComponentSpec, ComponentSpecVariant, EdgeSpec, EdgeSpecKind,
-    FuncArgumentSpec, FuncSpec, FuncSpecData, LeafFunctionSpec, MapKeyFuncSpec, PkgSpec,
-    PositionSpec, PropSpec, PropSpecBuilder, PropSpecKind, RootPropFuncSpec, SchemaSpec,
-    SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecBuilder, SchemaVariantSpecComponentType,
-    SchemaVariantSpecData, SchemaVariantSpecPropRoot, SiPkg, SiPkgKind, SiPropFuncSpec,
-    SiPropFuncSpecKind, SocketSpec, SocketSpecData, SocketSpecKind, SpecError, ValidationSpec,
-    ValidationSpecKind,
+    AttributeValueSpec, AuthenticationFuncSpec, ChangeSetSpec, ComponentSpec, ComponentSpecVariant,
+    EdgeSpec, EdgeSpecKind, FuncArgumentSpec, FuncSpec, FuncSpecData, LeafFunctionSpec,
+    MapKeyFuncSpec, PkgSpec, PositionSpec, PropSpec, PropSpecBuilder, PropSpecKind,
+    RootPropFuncSpec, SchemaSpec, SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecBuilder,
+    SchemaVariantSpecComponentType, SchemaVariantSpecData, SchemaVariantSpecPropRoot, SiPkg,
+    SiPkgKind, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec, SocketSpecData, SocketSpecKind,
+    SpecError, ValidationSpec, ValidationSpecKind,
 };
 use telemetry::prelude::*;
 
+use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeContext};
 use crate::{
     component::view::{AttributeDebugView, ComponentDebugView},
     edge::EdgeKind,
@@ -126,6 +127,7 @@ impl PkgExporter {
         }
 
         let pkg = self.export(ctx).await?;
+        // dbg!(pkg.clone());
 
         info!("Exporting as bytes");
 
@@ -332,6 +334,13 @@ impl PkgExporter {
             .drain(..)
             .for_each(|action_func_spec| {
                 variant_spec_builder.action_func(action_func_spec);
+            });
+
+        self.export_auth_funcs(ctx, change_set_pk, *variant.id())
+            .await?
+            .drain(..)
+            .for_each(|spec| {
+                variant_spec_builder.auth_func(spec);
             });
 
         self.export_si_prop_funcs(ctx, change_set_pk, variant)
@@ -632,17 +641,13 @@ impl PkgExporter {
         &self,
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
-        variant_id: SchemaVariantId,
+        schema_variant_id: SchemaVariantId,
     ) -> PkgResult<Vec<ActionFuncSpec>> {
         let mut specs = vec![];
 
-        let action_prototypes = ActionPrototype::find_for_context(
-            ctx,
-            ActionPrototypeContext {
-                schema_variant_id: variant_id,
-            },
-        )
-        .await?;
+        let action_prototypes =
+            ActionPrototype::find_for_context(ctx, ActionPrototypeContext { schema_variant_id })
+                .await?;
 
         for action_proto in action_prototypes {
             if !std_model_change_set_matches(change_set_pk, &action_proto) {
@@ -665,6 +670,47 @@ impl PkgExporter {
                     .kind(action_proto.kind())
                     .func_unique_id(&func_spec.unique_id)
                     .deleted(action_proto.visibility().is_deleted())
+                    .build()?,
+            )
+        }
+
+        Ok(specs)
+    }
+
+    async fn export_auth_funcs(
+        &self,
+        ctx: &DalContext,
+        change_set_pk: Option<ChangeSetPk>,
+        schema_variant_id: SchemaVariantId,
+    ) -> PkgResult<Vec<AuthenticationFuncSpec>> {
+        let mut specs = vec![];
+
+        let prototypes = AuthenticationPrototype::find_for_context(
+            ctx,
+            AuthenticationPrototypeContext { schema_variant_id },
+        )
+        .await?;
+
+        for prototype in prototypes {
+            if !std_model_change_set_matches(change_set_pk, &prototype) {
+                continue;
+            }
+
+            let func_spec = self
+                .func_map
+                .get(change_set_pk, &prototype.func_id())
+                .ok_or(PkgError::MissingExportedFunc(prototype.func_id()))?;
+
+            let mut builder = AuthenticationFuncSpec::builder();
+
+            if self.is_workspace_export {
+                builder.unique_id(prototype.id().to_string());
+            }
+
+            specs.push(
+                builder
+                    .func_unique_id(&func_spec.unique_id)
+                    .deleted(prototype.visibility().is_deleted())
                     .build()?,
             )
         }

@@ -1,21 +1,24 @@
-use chrono::Utc;
-use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
     str::FromStr,
 };
-use telemetry::prelude::*;
+
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
 use si_pkg::{
     AttributeValuePath, ComponentSpecVariant, EdgeSpecKind, SchemaVariantSpecPropRoot, SiPkg,
     SiPkgActionFunc, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgAttributeValue,
-    SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
-    SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData,
-    SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind, ValidationSpec,
+    SiPkgAuthFunc, SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument,
+    SiPkgFuncData, SiPkgKind, SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData,
+    SiPkgSchema, SiPkgSchemaData, SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
+    ValidationSpec,
 };
+use telemetry::prelude::*;
 
+use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeContext};
 use crate::{
     component::ComponentKind,
     edge::EdgeKind,
@@ -55,6 +58,7 @@ use super::{PkgError, PkgResult};
 #[derive(Clone, Debug)]
 enum Thing {
     ActionPrototype(ActionPrototype),
+    AuthPrototype(AuthenticationPrototype),
     AttributePrototypeArgument(AttributePrototypeArgument),
     Component((Component, Node)),
     Edge(Edge),
@@ -1850,7 +1854,7 @@ async fn import_socket(
     Ok(())
 }
 
-async fn create_action_protoype(
+async fn create_action_prototype(
     ctx: &DalContext,
     action_func_spec: &SiPkgActionFunc<'_>,
     func_id: FuncId,
@@ -1869,6 +1873,19 @@ async fn create_action_protoype(
     }
 
     Ok(proto)
+}
+
+async fn create_authentication_prototype(
+    ctx: &DalContext,
+    func_id: FuncId,
+    schema_variant_id: SchemaVariantId,
+) -> PkgResult<AuthenticationPrototype> {
+    Ok(AuthenticationPrototype::new(
+        ctx,
+        func_id,
+        AuthenticationPrototypeContext { schema_variant_id },
+    )
+    .await?)
 }
 
 async fn update_action_prototype(
@@ -1895,6 +1912,26 @@ async fn update_action_prototype(
     let kind: ActionKind = action_func_spec.kind().into();
     if *prototype.kind() != kind {
         prototype.set_kind(ctx, kind).await?;
+    }
+
+    Ok(())
+}
+
+async fn update_authentication_prototype(
+    ctx: &DalContext,
+    prototype: &mut AuthenticationPrototype,
+    func_spec: &SiPkgAuthFunc<'_>,
+    func_id: FuncId,
+    schema_variant_id: SchemaVariantId,
+) -> PkgResult<()> {
+    if prototype.schema_variant_id() != schema_variant_id {
+        prototype
+            .set_schema_variant_id(ctx, schema_variant_id)
+            .await?;
+    }
+
+    if prototype.func_id() != func_id {
+        prototype.set_func_id(ctx, func_id).await?;
     }
 
     Ok(())
@@ -1937,7 +1974,7 @@ async fn import_action_func(
                                 None
                             } else {
                                 Some(
-                                    create_action_protoype(
+                                    create_action_prototype(
                                         ctx,
                                         action_func_spec,
                                         func_id,
@@ -1950,7 +1987,7 @@ async fn import_action_func(
                     }
                 } else {
                     Some(
-                        create_action_protoype(ctx, action_func_spec, func_id, schema_variant_id)
+                        create_action_prototype(ctx, action_func_spec, func_id, schema_variant_id)
                             .await?,
                     )
                 }
@@ -1961,6 +1998,62 @@ async fn import_action_func(
                 ));
             }
         };
+
+    Ok(prototype)
+}
+
+async fn import_auth_func(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    func_spec: &SiPkgAuthFunc<'_>,
+    schema_variant_id: SchemaVariantId,
+    thing_map: &ThingMap,
+) -> PkgResult<Option<AuthenticationPrototype>> {
+    let prototype = match thing_map.get(change_set_pk, &func_spec.func_unique_id().to_owned()) {
+        Some(Thing::Func(func)) => {
+            let func_id = *func.id();
+
+            if let Some(unique_id) = func_spec.unique_id() {
+                match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+                    Some(Thing::AuthPrototype(prototype)) => {
+                        let mut prototype = prototype.to_owned();
+
+                        if func_spec.deleted() {
+                            prototype.delete_by_id(ctx).await?;
+                        } else {
+                            update_authentication_prototype(
+                                ctx,
+                                &mut prototype,
+                                func_spec,
+                                func_id,
+                                schema_variant_id,
+                            )
+                            .await?;
+                        }
+
+                        Some(prototype)
+                    }
+                    _ => {
+                        if func_spec.deleted() {
+                            None
+                        } else {
+                            Some(
+                                create_authentication_prototype(ctx, func_id, schema_variant_id)
+                                    .await?,
+                            )
+                        }
+                    }
+                }
+            } else {
+                Some(create_authentication_prototype(ctx, func_id, schema_variant_id).await?)
+            }
+        }
+        _ => {
+            return Err(PkgError::MissingFuncUniqueId(
+                func_spec.func_unique_id().into(),
+            ));
+        }
+    };
 
     Ok(prototype)
 }
@@ -2275,6 +2368,19 @@ async fn import_schema_variant(
                     change_set_pk,
                     unique_id.to_owned(),
                     Thing::ActionPrototype(prototype),
+                );
+            }
+        }
+
+        for func in &variant_spec.auth_funcs()? {
+            let prototype =
+                import_auth_func(ctx, change_set_pk, func, *schema_variant.id(), thing_map).await?;
+
+            if let (Some(prototype), Some(unique_id)) = (prototype, func.unique_id()) {
+                thing_map.insert(
+                    change_set_pk,
+                    unique_id.to_owned(),
+                    Thing::AuthPrototype(prototype),
                 );
             }
         }
