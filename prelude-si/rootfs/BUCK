@@ -1,0 +1,12 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+)
+
+export_file(
+    name = "rootfs_build.sh",
+)
+
+export_file(
+    name = "rootfs_promote.sh",
+)
