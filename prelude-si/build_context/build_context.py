@@ -84,6 +84,8 @@ def main() -> int:
 
         for arg in srcs or []:
             src, dst = arg.split("=")
+            if not dst:
+                dst = os.path.dirname(src) or "."
 
             os.makedirs(os.path.join(root_dir, dst), exist_ok=True)
 

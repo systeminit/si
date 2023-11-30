@@ -104,6 +104,5 @@ def report_metadata(label_metadata_file: str, tags: List[str]):
         ))
 
 
-
 if __name__ == "__main__":
     sys.exit(main())

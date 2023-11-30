@@ -196,8 +196,10 @@ def _filtered_promote_docker_targets(ctx: bxl.Context, targets: bxl.TargetSet) -
 
 # Computes a list of targets for all targets in the project.
 def _dependent_global_file_targets(ctx: bxl.Context) -> bxl.TargetSet:
-    query = "root//..."
-    results = ctx.uquery().eval(query)
+    results = utarget_set()
+
+    for universe in ctx.cli_args.rdeps_universe:
+      results = results + ctx.uquery().eval(universe)
 
     return results
 

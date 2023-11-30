@@ -332,6 +332,7 @@
               shfmt
               tilt
               typos
+              yapf
             ]
             # Directly add the build dependencies for the packages rather than
             # use: `inputsFrom = lib.attrValues packages;`.

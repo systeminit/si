@@ -1,9 +1,11 @@
 load(
     "@prelude-si//:macros.bzl",
     "alias",
+    "test_suite",
     "tilt_docker_compose_stop",
     "tilt_down",
     "tilt_up",
+    "yapf_check",
 )
 
 python_bootstrap_binary(
@@ -39,4 +41,16 @@ tilt_docker_compose_stop(
 # Bring down any remaining/running services
 tilt_down(
     name = "down",
+)
+
+yapf_check(
+    name = "check-format-python",
+    srcs = glob(["**/*.py"]),
+)
+
+test_suite(
+    name = "check-format",
+    tests = [
+        ":check-format-python",
+    ],
 )

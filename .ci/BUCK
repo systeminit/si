@@ -1,20 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
-    "export_file",
     "test_suite",
     "yapf_check",
-)
-
-export_file(
-    name = "build_context.py",
-)
-
-export_file(
-    name = "shellcheck.py",
-)
-
-export_file(
-    name = "shfmt_check.py",
 )
 
 yapf_check(

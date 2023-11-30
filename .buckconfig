@@ -13,7 +13,9 @@ fbcode = none
 fbsource = none
 
 [parser]
-target_platform_detector_spec = target:root//...->prelude//platforms:default
+target_platform_detector_spec = \
+  target:root//...->prelude//platforms:default \
+  target:prelude-si//...->prelude//platforms:default
 
 [project]
 ignore = \
