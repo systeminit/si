@@ -280,7 +280,8 @@ impl WorkspaceSnapshot {
             .add_edge(from_node_index, edge_weight, to_node_index)?)
     }
 
-    // NOTE(nick): this should only be used by the rebaser.
+    // NOTE(nick): this should only be used by the rebaser and in specific scenarios where the
+    // indices are definitely correct.
     pub fn add_edge_unchecked(
         &mut self,
         from_node_index: NodeIndex,

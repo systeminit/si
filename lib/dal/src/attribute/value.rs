@@ -117,6 +117,10 @@ impl AttributeValue {
         }
     }
 
+    pub fn id(&self) -> AttributeValueId {
+        self.id
+    }
+
     pub async fn new(ctx: &DalContext, ordered: bool) -> AttributeValueResult<Self> {
         let content = AttributeValueContentV1 {
             timestamp: Timestamp::now(),

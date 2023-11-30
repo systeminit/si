@@ -1,27 +1,25 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
-use chrono::{DateTime, Utc};
-use content_store::{ContentHash, Store, StoreError};
+use content_store::{Store, StoreError};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use si_data_nats::NatsError;
-use si_data_pg::PgError;
 use strum::EnumDiscriminants;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
+use crate::attribute::value::AttributeValueError;
 use crate::change_set_pointer::ChangeSetPointerError;
-use crate::schema::SchemaContentV1;
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::{WorkspaceSnapshotError, WorkspaceSnapshotResult};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, DalContext, SchemaId, SchemaVariantId, StandardModel, Timestamp, TransactionsError,
+    pk, AttributeValue, DalContext, SchemaVariantId, StandardModel, Timestamp, TransactionsError,
 };
 
 // pub mod code;
@@ -36,6 +34,8 @@ use crate::{
 
 #[derive(Debug, Error)]
 pub enum ComponentError {
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
@@ -143,7 +143,7 @@ impl Component {
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(&change_set, id, ContentAddress::Component(hash))?;
-        {
+        let provider_indices = {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
             workspace_snapshot.add_node(node_weight)?;
 
@@ -162,6 +162,37 @@ impl Component {
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                 schema_variant_id.into(),
             )?;
+
+            // Collect all providers corresponding to input and output sockets for the schema
+            // variant.
+            workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::Provider,
+            )?
+        };
+
+        // Create attribute values for all providers corresponding to input and output sockets.
+        for provider_index in provider_indices {
+            let attribute_value = AttributeValue::new(ctx, false).await?;
+            {
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+                // Component (this) --> AttributeValue (new)
+                workspace_snapshot.add_edge(
+                    id,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                    attribute_value.id().into(),
+                )?;
+
+                // AttributeValue (new) --> Provider (corresponding to an input or an output Socket)
+                let attribute_value_index =
+                    workspace_snapshot.get_node_index_by_id(attribute_value.id().into())?;
+                workspace_snapshot.add_edge_unchecked(
+                    attribute_value_index,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
+                    provider_index,
+                )?;
+            }
         }
 
         Ok(Self::assemble(id.into(), content))
