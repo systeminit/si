@@ -11,6 +11,7 @@ load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
+load("@prelude-si//python:toolchain.bzl", "si_python_toolchain")
 load("@prelude-si//rust:toolchain.bzl", "si_rust_toolchain")
 load("@prelude-si//shell:toolchain.bzl", "shell_toolchain")
 load("@prelude-si//rootfs:toolchain.bzl", "rootfs_toolchain")
@@ -65,6 +66,11 @@ git_toolchain(
 pnpm_toolchain(
     name = "pnpm",
     editorconfig = "root//:.editorconfig",
+    visibility = ["PUBLIC"],
+)
+
+si_python_toolchain(
+    name = "si_python",
     visibility = ["PUBLIC"],
 )
 

@@ -63,6 +63,12 @@ vite_app = _vite_app
 workspace_node_modules = _workspace_node_modules
 
 load(
+    "@prelude-si//macros:python.bzl",
+    _yapf_check = "yapf_check",
+)
+yapf_check = _yapf_check
+
+load(
     "@prelude-si//macros:rust.bzl",
     _rust_binary = "rust_binary",
     _rust_library = "rust_library",

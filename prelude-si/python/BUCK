@@ -6,15 +6,7 @@ load(
 )
 
 export_file(
-    name = "build_context.py",
-)
-
-export_file(
-    name = "shellcheck.py",
-)
-
-export_file(
-    name = "shfmt_check.py",
+    name = "yapf_check.py",
 )
 
 yapf_check(
