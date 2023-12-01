@@ -26,7 +26,6 @@ def sync_to_s3(localfile, url):
     subprocess.run(aws_cli_command, check=True)
     print(f'Successfully synced {localfile} to {url}')
 
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -49,6 +48,11 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="Variant of the artifact.",
     )
+    parser.add_argument(
+        "--destination",
+        required=True,
+        help="Variant of the artifact.",
+    )
     return parser.parse_args()
 
 
@@ -60,16 +64,14 @@ def load_json_file(json_file: str) -> Dict[str, str | int | bool]:
 def craft_url(bucket: str, metadata: Dict[str, str]):
     # This avoids having to remove the last / off the end of the path, even
     # though it's a bit awkward
-    crafted_url = "s3://" + bucket + "/" + metadata["family"] + "/" + metadata[
-        "os"] + "/" + metadata["architecture"] + "/" + metadata[
-            "variant"] + "/" + metadata["name"]
+
+    crafted_url = "/".join([bucket, metadata["family"], metadata["os"], metadata["architecture"], metadata["variant"],metadata["name"]])
     return crafted_url
 
 def main() -> int:
     args = parse_args()
     metadata = load_json_file(args.metadata_file)
-    bucket = "si-artifacts-prod"
-    url = craft_url(bucket, metadata)
+    url = craft_url(args.destination, metadata)
     sync_to_s3(args.artifact_file, url)
     return 0
 

@@ -24,6 +24,12 @@ def artifact_publish_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
         ctx.attrs.artifact[ArtifactInfo].family,
         "--variant",
         ctx.attrs.artifact[ArtifactInfo].variant,
+        # This S3 destination is our public artifacts portfolio
+        # we can parse s3:// variants off the front in the future.
+        # i.e. we could pass gcs://bucket-name or docker://reg name
+        # within the python
+        "--destination",
+        "s3://si-artifacts-prod"
     )
 
     ctx.actions.write(cli_args.as_output(), cmd)
