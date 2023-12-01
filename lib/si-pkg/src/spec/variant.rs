@@ -1,3 +1,4 @@
+use crate::spec::authentication_func::AuthenticationFuncSpec;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
@@ -123,6 +124,9 @@ pub struct SchemaVariantSpec {
 
     #[builder(setter(each(name = "action_func"), into), default)]
     pub action_funcs: Vec<ActionFuncSpec>,
+
+    #[builder(setter(each(name = "auth_func"), into), default)]
+    pub auth_funcs: Vec<AuthenticationFuncSpec>,
 
     #[builder(setter(each(name = "leaf_function"), into), default)]
     pub leaf_functions: Vec<LeafFunctionSpec>,

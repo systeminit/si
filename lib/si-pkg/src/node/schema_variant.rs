@@ -120,6 +120,8 @@ impl NodeChild for SchemaVariantSpec {
         let mut children = vec![
             Box::new(SchemaVariantChild::ActionFuncs(self.action_funcs.clone()))
                 as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+            Box::new(SchemaVariantChild::AuthFuncs(self.auth_funcs.clone()))
+                as Box<dyn NodeChild<NodeType = Self::NodeType>>,
             Box::new(SchemaVariantChild::Domain(self.domain.clone()))
                 as Box<dyn NodeChild<NodeType = Self::NodeType>>,
             Box::new(SchemaVariantChild::ResourceValue(

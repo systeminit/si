@@ -7,12 +7,14 @@ use object_tree::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ActionFuncSpec, LeafFunctionSpec, PropSpec, RootPropFuncSpec, SiPropFuncSpec, SocketSpec,
+    ActionFuncSpec, AuthenticationFuncSpec, LeafFunctionSpec, PropSpec, RootPropFuncSpec,
+    SiPropFuncSpec, SocketSpec,
 };
 
 use super::PkgNode;
 
 const VARIANT_CHILD_TYPE_ACTION_FUNCS: &str = "action_funcs";
+const VARIANT_CHILD_TYPE_AUTH_FUNCS: &str = "auth_funcs";
 const VARIANT_CHILD_TYPE_DOMAIN: &str = "domain";
 const VARIANT_CHILD_TYPE_LEAF_FUNCTIONS: &str = "leaf_functions";
 const VARIANT_CHILD_TYPE_RESOURCE_VALUE: &str = "resource_value";
@@ -29,6 +31,7 @@ const KEY_KIND_STR: &str = "kind";
 #[serde(rename_all = "camelCase")]
 pub enum SchemaVariantChild {
     ActionFuncs(Vec<ActionFuncSpec>),
+    AuthFuncs(Vec<AuthenticationFuncSpec>),
     Domain(PropSpec),
     LeafFunctions(Vec<LeafFunctionSpec>),
     ResourceValue(PropSpec),
@@ -43,6 +46,7 @@ pub enum SchemaVariantChild {
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub enum SchemaVariantChildNode {
     ActionFuncs,
+    AuthFuncs,
     Domain,
     LeafFunctions,
     ResourceValue,
@@ -57,6 +61,7 @@ impl SchemaVariantChildNode {
     pub fn kind_str(&self) -> &'static str {
         match self {
             Self::ActionFuncs => VARIANT_CHILD_TYPE_ACTION_FUNCS,
+            Self::AuthFuncs => VARIANT_CHILD_TYPE_AUTH_FUNCS,
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
             Self::ResourceValue => VARIANT_CHILD_TYPE_RESOURCE_VALUE,
@@ -73,6 +78,7 @@ impl NameStr for SchemaVariantChildNode {
     fn name(&self) -> &str {
         match self {
             Self::ActionFuncs => VARIANT_CHILD_TYPE_ACTION_FUNCS,
+            Self::AuthFuncs => VARIANT_CHILD_TYPE_AUTH_FUNCS,
             Self::Domain => VARIANT_CHILD_TYPE_DOMAIN,
             Self::LeafFunctions => VARIANT_CHILD_TYPE_LEAF_FUNCTIONS,
             Self::ResourceValue => VARIANT_CHILD_TYPE_RESOURCE_VALUE,
@@ -101,6 +107,7 @@ impl ReadBytes for SchemaVariantChildNode {
 
         let node = match kind_str.as_str() {
             VARIANT_CHILD_TYPE_ACTION_FUNCS => Self::ActionFuncs,
+            VARIANT_CHILD_TYPE_AUTH_FUNCS => Self::AuthFuncs,
             VARIANT_CHILD_TYPE_DOMAIN => Self::Domain,
             VARIANT_CHILD_TYPE_LEAF_FUNCTIONS => Self::LeafFunctions,
             VARIANT_CHILD_TYPE_RESOURCE_VALUE => Self::ResourceValue,
@@ -132,6 +139,16 @@ impl NodeChild for SchemaVariantChild {
                     .map(|action_func| {
                         Box::new(action_func.clone())
                             as Box<dyn NodeChild<NodeType = Self::NodeType>>
+                    })
+                    .collect(),
+            ),
+            Self::AuthFuncs(funcs) => NodeWithChildren::new(
+                NodeKind::Tree,
+                Self::NodeType::SchemaVariantChild(SchemaVariantChildNode::AuthFuncs),
+                funcs
+                    .iter()
+                    .map(|func| {
+                        Box::new(func.clone()) as Box<dyn NodeChild<NodeType = Self::NodeType>>
                     })
                     .collect(),
             ),

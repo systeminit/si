@@ -14,6 +14,7 @@ use thiserror::Error;
 mod action_func;
 mod attr_func_input;
 mod attribute_value;
+mod auth_func;
 mod change_set;
 mod component;
 mod edge;
@@ -30,9 +31,9 @@ mod validation;
 mod variant;
 
 pub use {
-    action_func::*, attr_func_input::*, attribute_value::*, change_set::*, component::*, edge::*,
-    func::*, leaf_function::*, map_key_func::*, position::*, prop::*, root_prop_func::*, schema::*,
-    si_prop_func::*, socket::*, validation::*, variant::*,
+    action_func::*, attr_func_input::*, attribute_value::*, auth_func::*, change_set::*,
+    component::*, edge::*, func::*, leaf_function::*, map_key_func::*, position::*, prop::*,
+    root_prop_func::*, schema::*, si_prop_func::*, socket::*, validation::*, variant::*,
 };
 
 use crate::{

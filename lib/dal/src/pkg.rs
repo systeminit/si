@@ -1,20 +1,18 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use thiserror::Error;
 use url::ParseError;
-
-mod export;
-mod import;
 
 pub use export::{get_component_type, PkgExporter};
 pub use import::{
     attach_resource_payload_to_value, import_pkg, import_pkg_from_pkg, ImportAttributeSkip,
     ImportEdgeSkip, ImportOptions, ImportSkips,
 };
-
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
 
+use crate::authentication_prototype::AuthenticationPrototypeError;
 use crate::{
     component::view::debug::ComponentDebugViewError,
     func::{
@@ -34,6 +32,9 @@ use crate::{
     SchemaVariantError, SchemaVariantId, StandardModelError, UserPk, ValidationPrototypeError,
     WorkspaceError, WorkspacePk, WsEvent, WsEventResult, WsPayload,
 };
+
+mod export;
+mod import;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -72,6 +73,8 @@ pub enum PkgError {
     AttributeValueSetToProxyButNoProxyFound,
     #[error("encountered an attribute value with a key or index but no parent")]
     AttributeValueWithKeyOrIndexButNoParent,
+    #[error("Auth func creation error: {0}")]
+    AuthFunc(#[from] AuthenticationPrototypeError),
     #[error(transparent)]
     ChangeSet(#[from] ChangeSetError),
     #[error("change set {0} not found")]

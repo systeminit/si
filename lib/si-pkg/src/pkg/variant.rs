@@ -15,7 +15,7 @@ use crate::{
     node::{PkgNode, PropChildNode, SchemaVariantChildNode},
     AttrFuncInputSpec, MapKeyFuncSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaVariantSpec,
     SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecData,
-    SchemaVariantSpecPropRoot, SiPkgRootPropFunc,
+    SchemaVariantSpecPropRoot, SiPkgAuthFunc, SiPkgRootPropFunc,
 };
 
 #[derive(Clone, Debug)]
@@ -157,6 +157,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
         SchemaVariantChildNode::ActionFuncs,
         SiPkgActionFunc
     );
+    impl_variant_children_from_graph!(auth_funcs, SchemaVariantChildNode::AuthFuncs, SiPkgAuthFunc);
     impl_variant_children_from_graph!(
         si_prop_funcs,
         SchemaVariantChildNode::SiPropFuncs,
