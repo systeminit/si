@@ -15,6 +15,7 @@ use thiserror::Error;
 
 use crate::{server::state::AppState, service::pkg::PkgError};
 
+pub mod abandon_change_set;
 pub mod add_action;
 pub mod apply_change_set;
 mod begin_approval_process;
@@ -103,6 +104,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/apply_change_set",
             post(apply_change_set::apply_change_set),
+        )
+        .route(
+            "/abandon_change_set",
+            post(abandon_change_set::abandon_change_set),
         )
         .route(
             "/update_selected_change_set",

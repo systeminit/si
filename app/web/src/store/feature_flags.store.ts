@@ -13,6 +13,7 @@ const FLAG_MAPPING = {
   WORKSPACE_BACKUPS: "workspaceBackups",
   COLLABORATORS: "collaborators",
   MUTLIPLAYER_CHANGESET_APPLY: "multiplayer_changeset_apply_flow",
+  ABANDON_CHANGESET: "abandon_changeset",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

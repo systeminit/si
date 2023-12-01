@@ -106,6 +106,19 @@ export function useChangeSetsStore() {
             },
           });
         },
+        async ABANDON_CHANGE_SET() {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          return new ApiRequest<{ changeSet: ChangeSet }>({
+            method: "post",
+            url: "change_set/abandon_change_set",
+            params: {
+              changeSetPk: this.selectedChangeSet.pk,
+            },
+            onSuccess: (response) => {
+              // this.changeSetsById[response.changeSet.pk] = response.changeSet;
+            },
+          });
+        },
         async APPLY_CHANGE_SET() {
           if (!this.selectedChangeSet) throw new Error("Select a change set");
           return new ApiRequest<{ changeSet: ChangeSet }>({

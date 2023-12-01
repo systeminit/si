@@ -21,6 +21,7 @@ const GET_ACTORS: &str = include_str!("queries/change_set/get_actors.sql");
 
 const BEGIN_MERGE_FLOW: &str = include_str!("queries/change_set/begin_merge_flow.sql");
 const CANCEL_MERGE_FLOW: &str = include_str!("queries/change_set/cancel_merge_flow.sql");
+const ABANDON_CHANGE_SET: &str = include_str!("queries/change_set/abandon_change_set.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -194,6 +195,20 @@ impl ChangeSet {
         Ok(())
     }
 
+    pub async fn abandon(&mut self, ctx: &mut DalContext) -> ChangeSetResult<()> {
+        let row = ctx
+            .pg_pool()
+            .get()
+            .await?
+            .query_one(ABANDON_CHANGE_SET, &[&self.pk])
+            .await?;
+        let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
+        self.timestamp.updated_at = updated_at;
+        self.status = ChangeSetStatus::Abandoned;
+
+        Ok(())
+    }
+
     #[instrument(skip_all)]
     pub async fn list_open(ctx: &DalContext) -> ChangeSetResult<Vec<Self>> {
         let rows = ctx
@@ -276,6 +291,21 @@ impl WsEvent {
         change_set_pk: ChangeSetPk,
     ) -> WsEventResult<Self> {
         WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set_pk)).await
+    }
+
+    pub async fn change_set_abandoned(
+        ctx: &DalContext,
+        change_set_pk: ChangeSetPk,
+        user_pk: Option<UserPk>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetAbandoned(ChangeSetActorPayload {
+                change_set_pk,
+                user_pk,
+            }),
+        )
+        .await
     }
 
     pub async fn change_set_applied(

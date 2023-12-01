@@ -46,6 +46,7 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[serde(tag = "kind", content = "data")]
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
+    ChangeSetAbandoned(ChangeSetActorPayload),
     ChangeSetApplied(ChangeSetActorPayload),
     ChangeSetBeginApprovalProcess(ChangeSetActorPayload),
     ChangeSetCancelApprovalProcess(ChangeSetActorPayload),

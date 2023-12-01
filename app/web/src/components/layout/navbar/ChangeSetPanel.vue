@@ -23,6 +23,18 @@
           :disabled="fixesStore.fixesAreInProgress"
           @click="openCreateModal"
         />
+
+        <VButton
+          v-if="featureFlagStore.ABANDON_CHANGESET"
+          tone="action"
+          variant="ghost"
+          icon="trash"
+          size="sm"
+          :disabled="fixesStore.fixesAreInProgress || !selectedChangeSetName"
+          :requestStatus="abandonChangeSetReqStatus"
+          loadingText="Abandoning Changeset..."
+          @click="abandonChangesetHandler"
+        />
       </div>
     </div>
 
@@ -102,6 +114,7 @@ import {
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useFixesStore } from "@/store/fixes.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import Wipe from "../../Wipe.vue";
 
 const dropdownRef = ref();
@@ -109,6 +122,7 @@ const dropdownRef = ref();
 const wipeRef = ref<InstanceType<typeof Wipe>>();
 
 const changeSetsStore = useChangeSetsStore();
+const featureFlagStore = useFeatureFlagsStore();
 const fixesStore = useFixesStore();
 const openChangeSets = computed(() => changeSetsStore.openChangeSets);
 const selectedChangeSetId = computed(() => changeSetsStore.selectedChangeSetId);
@@ -189,5 +203,24 @@ const changeSetMergeStatus =
 function openCreateModal() {
   createChangeSetName.value = changeSetsStore.getGeneratedChangesetName();
   createModalRef.value?.open();
+}
+
+const abandonChangeSetReqStatus =
+  changeSetsStore.getRequestStatus("ABANDON_CHANGE_SET");
+
+async function abandonChangesetHandler() {
+  await changeSetsStore.ABANDON_CHANGE_SET();
+
+  if (route.name) {
+    router.push({
+      name: route.name,
+      params: {
+        ...route.params,
+        changeSetId: "head",
+      },
+    });
+  }
+
+  await changeSetsStore.FETCH_CHANGE_SETS();
 }
 </script>
