@@ -41,7 +41,10 @@ rootfs = rule(
 
 def build_rootfs(ctx: AnalysisContext) -> RootfsInfo:
 
-    tar_archive = ctx.actions.declare_output("{}.tar".format("johns-rootfs"))
+    if ctx.attrs.rootfs_name:
+        tar_archive = ctx.actions.declare_output("{}.ext4".format(ctx.attrs.rootfs_name))
+    else:
+        tar_archive = ctx.actions.declare_output("{}.ext4".format(ctx.attrs.name))
 
     rootfs_toolchain = ctx.attrs._rootfs_toolchain[RootfsToolchainInfo]
     git_toolchain = ctx.attrs._git_toolchain[GitToolchainInfo]

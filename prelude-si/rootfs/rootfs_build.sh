@@ -39,16 +39,29 @@ INITSCRIPT="$PACKAGEDIR/init.sh"
 
 # create disk and mount to a known location
 mkdir -p $ROOTFSMOUNT
-dd if=/dev/zero of=$ROOTFS bs=1M count=1024
+dd if=/dev/zero of=$ROOTFS bs=1M count=2048
 mkfs.ext4 $ROOTFS
 sudo mount $ROOTFS $ROOTFSMOUNT
+
+# For each tar.gz, copy the contents into the rootfs into the rootfs partition we 
+# created above. This will cumulatively stack the content of each.
+for binary_input in "${binary_inputs[@]}"; do
+  sudo tar -xf $binary_input -C $ROOTFSMOUNT
+
+  # TODO(johnrwatson): This can never make it into Production
+  # We need to figure out how to pass these decryption keys at all for the services
+  # That need them, maybe we need another sub-service specifically for fetching these from
+  # a secret provider or similar. Only for cyclone pull the dev decryption key
+  if echo "$binary_input" | grep -q "cyclone"; then
+    sudo cp $GITROOT/lib/cyclone-server/src/dev.decryption.key $ROOTFSMOUNT/dev.decryption.key
+  fi
+done
 
 # create our script to add an init system to our container image
 cat << EOL > $INITSCRIPT
 apk update
 apk add openrc openssh
 
-apk add --no-cache runuser; \
 adduser -D app; \
 for dir in /run /etc /usr/local/etc /home/app/.config; do \
     mkdir -pv "$dir/$BIN"; \
@@ -65,7 +78,7 @@ rc-update add networking boot
 rc-update add sshd
 
 # Then, copy the newly configured system to the rootfs image:
-for d in bin dev etc lib root sbin usr nix; do tar c "/\${d}" | tar x -C ${GUESTDISK}; done
+for d in bin dev etc lib root sbin usr; do tar c "/\${d}" | tar x -C ${GUESTDISK}; done
 for dir in proc run sys var; do mkdir ${GUESTDISK}/\${dir}; done
 
 # autostart cyclone
@@ -80,14 +93,14 @@ command_args="--bind-vsock 3:52 --decryption-key /dev.decryption.key --lang-serv
 pidfile="/run/agent.pid"
 EOF
 
-chmod +x ${GUESTDISK}/usr/local/bin/cyclone
-chmod +x ${GUESTDISK}/usr/local/bin/lang-js
 chmod +x ${GUESTDISK}/etc/init.d/cyclone
 
 chroot ${GUESTDISK} rc-update add cyclone boot
 
-# networking bits
+# Set up DNS resolution
 echo "nameserver 8.8.8.8" > ${GUESTDISK}/etc/resolv.conf
+
+# Set up TAP device route/escape
 cat << EOZ >${GUESTDISK}/etc/network/interfaces
 auto lo
 iface lo inet loopback
@@ -97,6 +110,7 @@ iface eth0 inet static
         address 10.0.0.1/30
         gateway 10.0.0.2
 EOZ
+
 EOL
 
 # run the script, mounting the disk so we can create a rootfs
@@ -108,14 +122,9 @@ docker run \
   alpine:3.1  \
   /init.sh
 
-# TODO(johnrwatson): This can never make it into Production
-# We need to figure out how to pass these decryption keys at all for the services
-# That need them, maybe we need another sub-service specifically for fetching these from
-# a secret provider or similar. Only for cyclone pull the dev decryption key
-[[$(echo $binary_input | awk -F "/" '{print $NF}') == "cyclone" ]] && cp $GITROOT/lib/cyclone-server/src/dev.decryption.key $ROOTFSMOUNT
-
 # cleanup the PACKAGEDIR
 sudo umount $ROOTFSMOUNT
+
 rm -rf $ROOTFSMOUNT $INITSCRIPT
 
-mv $PACKAGEDIR/cyclone-rootfs.ext4 $output_file
+cp $ROOTFS $output_file
