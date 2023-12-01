@@ -68,11 +68,13 @@ def craft_url(bucket: str, metadata: Dict[str, str]):
     crafted_url = "/".join([bucket, metadata["family"], metadata["os"], metadata["architecture"], metadata["variant"],metadata["name"]])
     return crafted_url
 
+
 def main() -> int:
     args = parse_args()
     metadata = load_json_file(args.metadata_file)
     url = craft_url(args.destination, metadata)
     sync_to_s3(args.artifact_file, url)
+    sync_to_s3(args.metadata_file, url + ".metadata.json")
     return 0
 
 if __name__ == "__main__":
