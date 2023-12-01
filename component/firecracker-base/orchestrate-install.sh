@@ -95,7 +95,7 @@ execute_configuration_management() {
         # < limits here > - will do later
 
         # Update Process Limits
-        if ! grep -Fxq "jailer-shared" /etc/security/limits.conf; then
+        if grep -Fxq "jailer-shared" /etc/security/limits.conf; then
           echo -e "\jailer-shared soft nproc 16384\jailer-shared hard nproc 16384\n" | sudo tee -a /etc/security/limits.conf
         fi
 
@@ -108,10 +108,45 @@ execute_configuration_management() {
         curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/component/firecracker-base/prepare_jailer.sh > ./prepare_jailer.sh
 
         # Remainder of the binaries
+        # TODO(scott): perform some kind of check to decide if we should
+        # download these or not to avoid long downloads if we can.
         wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/rootfs.ext4 -O ./rootfs.ext4
         wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/image-kernel.bin -O ./image-kernel.bin
         wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/firecracker -O ./firecracker
         wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/jailer -O ./jailer
+
+        # Create a device mapped to the rootfs file of the size of the file.
+        # This lets us then create another device that is that size plus 5gb
+        # in order to create a copy-on-write layer. This is so we can avoid
+        # copying this rootfs around to each jail.
+        if ! dmsetup info rootfs; then
+          BASE_LOOP=$(losetup --find --show --read-only ./rootfs.ext4)
+          OVERLAY_FILE=./rootfs-overlay
+          touch $OVERLAY_FILE
+          truncate --size=5368709120 $OVERLAY_FILE
+          OVERLAY_LOOP=$(losetup --find --show $OVERLAY_FILE)
+          BASE_SZ=$(blockdev --getsz $BASE_LOOP)
+          OVERLAY_SZ=$(blockdev --getsz $OVERLAY_LOOP)
+          printf "0 $BASE_SZ linear $BASE_LOOP 0\n$BASE_SZ $OVERLAY_SZ zero"  | dmsetup create rootfs
+          echo "0 $OVERLAY_SZ snapshot /dev/mapper/rootfs $OVERLAY_LOOP P 8" | dmsetup create rootfs-overlay
+        fi
+
+        # TODO(scott): fix me.
+        # This will perform the same CoW layering for the kernel. First pass
+        # here caused issues. The kernel image is only 27mb, so I'm leaving
+        # this commented out until we decide we need that space back.
+        # if ! dmsetup info kernel; then
+        #   BASE_LOOP=$(losetup --find --show --read-only ./image-kernel.bin)
+        #   OVERLAY_FILE=./kernel-overlay
+        #   touch $OVERLAY_FILE
+        #   truncate --size=27721848 $OVERLAY_FILE
+        #   OVERLAY_LOOP=$(losetup --find --show $OVERLAY_FILE)
+        #   BASE_SZ=$(blockdev --getsz $BASE_LOOP)
+        #   OVERLAY_SZ=$(blockdev --getsz $OVERLAY_LOOP)
+        #   printf "0 $BASE_SZ linear $BASE_LOOP 0\n$BASE_SZ $OVERLAY_SZ zero"  | dmsetup create kernel
+        #   echo "0 $OVERLAY_SZ snapshot /dev/mapper/kernel $OVERLAY_LOOP P 8" | dmsetup create kernel-overlay
+        # fi
+
 
         # TODO(johnrwatson): Currently not used but we could maybe make dynamic keys for each micro-vm (or use something like aws ssm/tailscale)
         # This is a bit of a poor attempt to setup a child key, but will do until we have this properly working
@@ -156,7 +191,7 @@ execute_configuration_management() {
         sysctl -w net.ipv4.neigh.default.gc_thresh3=4096
 
         # Masquerade all external traffic as if it was wrong the external interface
-        iptables -t nat -A POSTROUTING -o enp4s0 -j MASQUERADE
+        iptables -t nat -A POSTROUTING -o $(ip route get 8.8.8.8 | awk -- '{printf $5}') -j MASQUERADE
 
         # Adjust MTU to make it consistent
         ip link set dev $(ip route get 8.8.8.8 | awk -- '{printf $5}') mtu 1500
@@ -213,7 +248,7 @@ execute_cleanup() {
 
 prepare_jailers() {
   if test -f "./prepare_jailer.sh"; then
-    ITERATIONS="${1:-100}" # Default to 100 jails
+    ITERATIONS="${1:-5000}" # Default to 5000 jails
     echo "Creating $ITERATIONS jails..."
     for (( iter=0; iter<$ITERATIONS; iter++ ))
     do

@@ -7,7 +7,7 @@ JAILER_BINARY="/usr/bin/jailer"
 JAILER_NS="jailer-$SB_ID"
 JAIL="/srv/jailer/firecracker/$SB_ID/root"
 
-if ! test -f "$JAIL/rootfs.ext4"; then
+if ! test -f "$JAIL/firecracker.conf"; then
   echo "Files missing from $JAIL. Has the machine configuration been completed?"
 else
   echo "Starting jailer $SB_ID..."
@@ -20,7 +20,8 @@ else
     --uid 10000$SB_ID \
     --gid 10000 \
     --netns /var/run/netns/$JAILER_NS \
-    --new-pid-ns \
     -- \
-    --config-file ./firecracker.conf
+    --config-file ./firecracker.conf &
+  # note: if you forget the & above, nothing will work and you will spend hours
+  # trying to figure out why.
 fi
