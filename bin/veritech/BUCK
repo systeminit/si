@@ -2,6 +2,7 @@ load(
     "@prelude-si//:macros.bzl",
     "docker_image",
     "export_file",
+    "nix_omnibus_pkg",
     "rust_binary",
     "shellcheck",
     "shfmt_check",
@@ -68,4 +69,10 @@ docker_image(
         "//bin/cyclone:cyclone",
         "//bin/lang-js:bin",
     ]
+)
+
+nix_omnibus_pkg(
+    name = "omnibus",
+    pkg_name = "veritech",
+    build_dep = "//bin/veritech:veritech",
 )

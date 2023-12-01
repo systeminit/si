@@ -3,6 +3,7 @@ load(
     "docker_image",
     "rootfs",
     "export_file",
+    "nix_omnibus_pkg",
     "rust_binary",
     "shellcheck",
     "shfmt_check",
@@ -61,6 +62,12 @@ docker_image(
         "//bin/cyclone:cyclone",
         "//bin/lang-js:bin",
     ]
+)
+
+nix_omnibus_pkg(
+    name = "omnibus",
+    pkg_name = "cyclone",
+    build_dep = "//bin/cyclone:cyclone",
 )
 
 rootfs(

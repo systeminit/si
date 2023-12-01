@@ -1,15 +1,16 @@
 load(
     "@prelude-si//:macros.bzl",
     "eslint",
-    "jest",
     "export_file",
+    "jest",
+    "nix_omnibus_pkg",
     "node_pkg_bin",
+    "package_node_modules",
     "prettier_check",
     "typescript_check",
     "typescript_dist",
     "typescript_runnable_dist",
     "typescript_runnable_dist_bin",
-    "package_node_modules",
 )
 
 export_file(
@@ -79,4 +80,10 @@ jest(
     srcs = [":src", ":test_src"] + glob(["jest.config.js"]),
     prod_deps_srcs = prod_deps_srcs,
     dev_deps_srcs = dev_deps_srcs,
+)
+
+nix_omnibus_pkg(
+    name = "omnibus",
+    pkg_name = "lang-js",
+    build_dep = "//bin/lang-js:bin",
 )
