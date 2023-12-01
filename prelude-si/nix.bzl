@@ -1,3 +1,4 @@
+
 load(
     "@prelude//python:toolchain.bzl",
     "PythonToolchainInfo",
@@ -23,6 +24,10 @@ load(
     "//git.bzl",
     "GitInfo",
     _git_info = "git_info",
+)
+load(
+    "//artifact.bzl",
+    "ArtifactInfo",
 )
 
 NixOmnibusPkgInfo = provider(fields = {
@@ -54,6 +59,7 @@ nix_flake_lock = rule(
 def nix_omnibus_pkg_impl(ctx: AnalysisContext) -> list[[
     DefaultInfo,
     NixOmnibusPkgInfo,
+    ArtifactInfo,
     GitInfo,
 ]]:
     if ctx.attrs.pkg_name:
@@ -103,6 +109,14 @@ def nix_omnibus_pkg_impl(ctx: AnalysisContext) -> list[[
             artifact = artifact,
             build_metadata = build_metadata,
             pkg_metadata = pkg_metadata,
+        ),
+        ArtifactInfo(
+            artifact = artifact,
+            metadata = build_metadata,
+            # TODO(johnrwatson): it would be better to calculate these fields
+            # or have some other manner or determining them. 
+            family = "nix_omnibus",
+            variant = "tar",
         ),
         git_info,
     ]

@@ -78,3 +78,13 @@ rootfs(
         "//bin/lang-js:omnibus"
     ]
 )
+
+load(
+    "@prelude-si//:artifact.bzl",
+    "artifact_publish"
+)
+
+artifact_publish(
+    name = "publish-omnibus",
+    artifact = ":omnibus",
+)
