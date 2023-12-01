@@ -108,6 +108,10 @@ impl Server {
 
                 let nats = connect_to_nats(&config).await?;
                 let manager = Manager::new(spec.clone());
+                manager
+                    .setup()
+                    .map_err(|err| ServerError::CycloneSpec(Box::new(err)))?;
+
                 let cyclone_pool = Pool::builder(manager)
                     .build()
                     .map_err(|err| ServerError::CycloneSpec(Box::new(err)))?;

@@ -198,6 +198,8 @@ pub enum CycloneConfig {
         resolver: bool,
         #[serde(default = "default_enable_endpoint")]
         action: bool,
+        #[serde(default)]
+        pool_size: u16,
     },
 }
 
@@ -222,12 +224,13 @@ impl CycloneConfig {
             cyclone_decryption_key_path: default_cyclone_decryption_key_path(),
             lang_server_cmd_path: default_lang_server_cmd_path(),
             socket_strategy: Default::default(),
-            runtime_strategy: Default::default(),
+            runtime_strategy: default_runtime_strategy(),
             watch_timeout: Default::default(),
             limit_requets: default_limit_requests(),
             ping: default_enable_endpoint(),
             resolver: default_enable_endpoint(),
             action: default_enable_endpoint(),
+            pool_size: default_pool_size(),
         }
     }
 
@@ -356,6 +359,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 ping,
                 resolver,
                 action,
+                pool_size,
             } => {
                 let mut builder = LocalUdsInstance::spec();
                 builder
@@ -380,6 +384,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 if action {
                     builder.action();
                 }
+                builder.pool_size(pool_size);
 
                 Ok(Self::LocalUds(
                     builder.build().map_err(ConfigError::cyclone_spec_build)?,
@@ -445,6 +450,14 @@ fn default_limit_requests() -> Option<u32> {
 
 fn default_enable_endpoint() -> bool {
     true
+}
+
+fn default_runtime_strategy() -> LocalUdsRuntimeStrategy {
+    LocalUdsRuntimeStrategy::default()
+}
+
+fn default_pool_size() -> u16 {
+    5000
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

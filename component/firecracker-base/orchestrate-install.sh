@@ -119,7 +119,7 @@ execute_configuration_management() {
         # This lets us then create another device that is that size plus 5gb
         # in order to create a copy-on-write layer. This is so we can avoid
         # copying this rootfs around to each jail.
-        if ! dmsetup info rootfs; then
+        if ! dmsetup info rootfs &> /dev/null; then
           BASE_LOOP=$(losetup --find --show --read-only ./rootfs.ext4)
           OVERLAY_FILE=./rootfs-overlay
           touch $OVERLAY_FILE
@@ -249,12 +249,17 @@ execute_cleanup() {
 prepare_jailers() {
   if test -f "./prepare_jailer.sh"; then
     ITERATIONS="${1:-5000}" # Default to 5000 jails
+    IN_PARALLEL=250
     echo "Creating $ITERATIONS jails..."
     for (( iter=0; iter<$ITERATIONS; iter++ ))
     do
+        # this ensures we only run n jobs in parallel at a time to avoid
+        # process locks. This is an unreliable hack.
+        if [ $(jobs -r | wc -l) -ge $IN_PARALLEL ]; then
+          wait $(jobs -r -p | head -1)
+        fi
         ./prepare_jailer.sh $iter &
     done
-    wait
   else
     echo "prepare_jailer.sh script not found, skipping jail creation."
     exit 1
