@@ -357,10 +357,12 @@ def compute_build_metadata(
     b3sum: str,
 ) -> Dict[str, str]:
     metadata = {
-        "kind":
-        "nix_omnibus",
+        "family":
+        name,
+        "variant":
+        "omnibus",
         "name":
-        "{}--{}--{}--{}.tar.gz".format(
+        "{}-{}-{}-{}.tar.gz".format(
             name,
             git_info.get("canonical_version"),
             os.value,
