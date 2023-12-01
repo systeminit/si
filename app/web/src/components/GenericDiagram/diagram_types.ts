@@ -1,13 +1,7 @@
 import { Vector2d } from "konva/lib/types";
-import { IconNames } from "@si/vue-lib/design-system";
+import { IconNames, Tones } from "@si/vue-lib/design-system";
 import { useComponentsStore, ComponentId } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
-
-export type DiagramConfig = {
-  // canNodesConnectToThemselves: boolean;
-  icons?: Record<string, string>;
-  toneColors?: Record<string, string>;
-};
 
 export type GridPoint = { x: number; y: number };
 export type Size2D = { width: number; height: number };
@@ -21,6 +15,7 @@ export type SideAndCornerIdentifiers =
   | "top-left"
   | "bottom-right"
   | "bottom-left";
+export type EdgeDisplayMode = "EDGES_OVER" | "EDGES_UNDER";
 
 export type DiagramElementTypes = "node" | "socket" | "edge";
 
@@ -153,14 +148,7 @@ export type DiagramStatusIcon = {
   /* name/id of icon (registered in diagram config) */
   icon: IconNames;
   /* tone of icon - gets mapped to some preset colors */
-  tone?:
-    | "success"
-    | "error"
-    | "destructive"
-    | "warning"
-    | "info"
-    | "action"
-    | "neutral";
+  tone?: Tones;
   /* set to override specific hex color */
   color?: string;
 };
@@ -261,6 +249,7 @@ export type DiagramDrawEdgeState = {
   fromSocketKey?: DiagramElementUniqueKey;
   toSocketKey?: DiagramElementUniqueKey;
   possibleTargetSocketKeys: DiagramElementUniqueKey[];
+  edgeKeysToDelete: DiagramElementUniqueKey[];
 };
 
 // Event payloads - emitted by generic diagram //////////////////////////////////

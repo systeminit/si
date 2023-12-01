@@ -31,7 +31,7 @@
       />
       <DiagramIcon
         icon="loader"
-        :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
+        :color="getToneColorHex('info')"
         :size="overlayIconSize"
         :x="halfWidth"
         :y="nodeBodyHeight / 2"
@@ -41,7 +41,7 @@
     <DiagramIcon
       v-if="isDeleted"
       icon="minus-square"
-      :color="diagramConfig?.toneColors?.destructive"
+      :color="getToneColorHex('destructive')"
       :size="deletedIconSize"
       :x="0"
       :y="nodeHeight / 2"
@@ -54,13 +54,13 @@ import { computed, nextTick, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
+import { getToneColorHex } from "@si/vue-lib/design-system";
 import {
   CORNER_RADIUS,
   GROUP_HEADER_BOTTOM_MARGIN,
 } from "@/components/GenericDiagram/diagram_constants";
 import { DiagramGroupData, Size2D } from "./diagram_types";
 import DiagramIcon from "./DiagramIcon.vue";
-import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 
 const props = defineProps({
   group: {
@@ -76,8 +76,6 @@ const props = defineProps({
   isHovered: Boolean,
   isSelected: Boolean,
 });
-
-const diagramConfig = useDiagramConfig();
 
 const titleTextRef = ref();
 const groupRef = ref();

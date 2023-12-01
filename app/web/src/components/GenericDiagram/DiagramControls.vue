@@ -51,7 +51,7 @@
       v-tooltip="displayModeTooltip"
       class="ml-4"
       :class="
-        displayMode === 'Edges Over'
+        edgeDisplayMode === 'EDGES_OVER'
           ? getButtonClasses(false)
           : getInvertedButtonClasses(false)
       "
@@ -63,7 +63,7 @@
 </template>
 
 <script lang="ts" setup>
-import { PropType, computed, ref } from "vue";
+import { computed, ref } from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { tw } from "@si/vue-lib";
@@ -73,17 +73,16 @@ import {
   Icon,
 } from "@si/vue-lib/design-system";
 import { MAX_ZOOM, MIN_ZOOM } from "./diagram_constants";
-import { DisplayMode } from "./GenericDiagram.vue";
+import { useDiagramContext } from "./GenericDiagram.vue";
 
 const ZOOM_LEVEL_OPTIONS = [25, 50, 100, 150, 200];
 
-const props = defineProps({
-  zoomLevel: { type: Number, required: true },
-  displayMode: { type: String as PropType<DisplayMode>, default: "Edges Over" },
-});
+const diagramContext = useDiagramContext();
+const { edgeDisplayMode, zoomLevel } = diagramContext;
 
 const displayModeTooltip = computed(() => ({
-  content: props.displayMode,
+  content:
+    edgeDisplayMode.value === "EDGES_OVER" ? "Edges Over" : "Edges Under",
   hideTriggers: ["hover", "focus", "touch"],
 }));
 
@@ -97,10 +96,10 @@ const zoomMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 function adjustZoom(direction: "up" | "down") {
   const mult = direction === "down" ? -1 : 1;
-  emit("update:zoom", props.zoomLevel + (10 / 100) * mult);
+  emit("update:zoom", zoomLevel.value + (10 / 100) * mult);
 }
 
-const roundedZoomPercent = computed(() => Math.round(props.zoomLevel * 100));
+const roundedZoomPercent = computed(() => Math.round(zoomLevel.value * 100));
 
 function getButtonClasses(isDisabled: boolean) {
   return clsx(

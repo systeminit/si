@@ -26,7 +26,6 @@
     <div class="relative flex-grow">
       <GenericDiagram
         ref="diagramRef"
-        :customConfig="customDiagramConfig"
         :nodes="nodes"
         :edges="edges"
         @update:zoom="onUpdateZoom"
@@ -68,10 +67,6 @@ const theme = ref<ThemeValue>("dark");
 useThemeContainer(theme.value);
 
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
-
-const customDiagramConfig = {
-  icons: {},
-};
 
 const getSockets = (_nodeId: string): DiagramSocketDef[] => [
   {

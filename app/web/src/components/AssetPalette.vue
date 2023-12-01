@@ -83,7 +83,11 @@ import { computed, onMounted, onBeforeUnmount, ref } from "vue";
 import { Collapsible, Icon, ScrollArea } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import SiNodeSprite from "@/components/SiNodeSprite.vue";
-import { useComponentsStore, MenuSchema } from "@/store/components.store";
+import {
+  useComponentsStore,
+  MenuSchema,
+  NodeAddMenu,
+} from "@/store/components.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch from "@/components/SiSearch.vue";
@@ -115,17 +119,31 @@ const addMenuData = computed(() => componentsStore.nodeAddMenu);
 
 const filteredComponents = computed(() => {
   if (!filterModeActive.value) return addMenuData.value;
-  // need a deep clone because of the complex object
-  return _.filter(_.cloneDeep(addMenuData.value), (c) => {
-    // if the string matches the group, return the whole thing
-    if (c.displayName.toLowerCase().includes(filterStringCleaned.value))
-      return true;
+
+  const filteredCategories = [] as NodeAddMenu;
+  _.each(addMenuData.value, (c) => {
+    // if the string matches the group, add the whole thing
+    if (c.displayName.toLowerCase().includes(filterStringCleaned.value)) {
+      filteredCategories.push(c);
+      return;
+    }
+
     // otherwise, filter out the individual assets that don't match
-    c.schemas = _.filter(c.schemas, (s) =>
-      s.displayName.toLowerCase().includes(filterStringCleaned.value),
-    );
-    return c.schemas.length > 0;
+    const matchingSchemas = _.filter(c.schemas, (s) => {
+      const categoryAndSchemaName = `${c.displayName} ${s.displayName}`;
+      return categoryAndSchemaName
+        .toLowerCase()
+        .includes(filterStringCleaned.value);
+    });
+
+    if (matchingSchemas.length > 0) {
+      filteredCategories.push({
+        displayName: c.displayName,
+        schemas: matchingSchemas,
+      });
+    }
   });
+  return filteredCategories;
 });
 
 const schemasById = computed(() => {
