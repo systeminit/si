@@ -304,6 +304,7 @@ impl ReadBytes for PkgNode {
 
         let node = match node_kind_str.as_str() {
             NODE_KIND_ACTION_FUNC => ActionFuncNode::read_bytes(reader)?.map(Self::ActionFunc),
+            NODE_KIND_AUTH_FUNC => AuthFuncNode::read_bytes(reader)?.map(Self::AuthFunc),
             NODE_KIND_ATTR_FUNC_INPUT => {
                 AttrFuncInputNode::read_bytes(reader)?.map(Self::AttrFuncInput)
             }

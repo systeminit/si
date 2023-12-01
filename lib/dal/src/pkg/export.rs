@@ -127,7 +127,6 @@ impl PkgExporter {
         }
 
         let pkg = self.export(ctx).await?;
-        // dbg!(pkg.clone());
 
         info!("Exporting as bytes");
 

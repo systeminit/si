@@ -1920,7 +1920,6 @@ async fn update_action_prototype(
 async fn update_authentication_prototype(
     ctx: &DalContext,
     prototype: &mut AuthenticationPrototype,
-    func_spec: &SiPkgAuthFunc<'_>,
     func_id: FuncId,
     schema_variant_id: SchemaVariantId,
 ) -> PkgResult<()> {
@@ -2024,7 +2023,6 @@ async fn import_auth_func(
                             update_authentication_prototype(
                                 ctx,
                                 &mut prototype,
-                                func_spec,
                                 func_id,
                                 schema_variant_id,
                             )
