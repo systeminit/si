@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-Promotes a multi-arch Docker image to a tag.
+Publishes an artifact to our Production S3 Bucket for mass Distribution
 """
 import argparse
 import subprocess
 import sys
+import os
+import json
 from enum import Enum, EnumMeta
-from typing import Any, List
-
+from typing import Any, Dict, List, Union
 
 # A slightly more Rust-y feeling enum
 # Thanks to: https://stackoverflow.com/a/65225753
 class MetaEnum(EnumMeta):
-
     def __contains__(self: type[Any], member: object) -> bool:
         try:
             self(member)
@@ -21,128 +21,57 @@ class MetaEnum(EnumMeta):
         return True
 
 
-class BaseEnum(Enum, metaclass=MetaEnum):
-    pass
-
-
-class DockerArchitecture(BaseEnum):
-    Amd64 = "amd64"
-    Arm64v8 = "arm64v8"
-
-
-DEFAULT_MULTI_ARCH = [
-    DockerArchitecture.Amd64.value,
-    DockerArchitecture.Arm64v8.value,
-]
-DEFAULT_STABLE_TAG = "stable"
+def sync_to_s3(localfile, url):
+    aws_cli_command = ['aws', 's3', 'cp', localfile, f'{url}']
+    subprocess.run(aws_cli_command, check=True)
+    print(f'Successfully synced {localfile} to {url}')
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--stable-tag",
-        default=DEFAULT_STABLE_TAG,
-        help="Stable tag name [default: '{}']".format(DEFAULT_STABLE_TAG),
+        "--artifact-file",
+        required=True,
+        help="Path to the artifact file to be actioned on.",
     )
     parser.add_argument(
-        "--update-stable-tag",
-        action="store_true",
-        help="Whether or not to update stable tag",
+        "--metadata-file",
+        required=True,
+        help="Path to the metadata of the artifact to be actioned on.",
     )
     parser.add_argument(
-        "--multi-arch",
-        action="append",
-        default=[],
-        help="""Specify the exact multi-arch platforms that are supported
-        [default: {}]""".format(DEFAULT_MULTI_ARCH),
+        "--family",
+        required=True,
+        help="Family of the artifact.",
     )
     parser.add_argument(
-        "image_name",
-        help="Docker image name, minus tag",
+        "--variant",
+        required=True,
+        help="Variant of the artifact.",
     )
-    parser.add_argument(
-        "src_tag",
-        help="Docker image tag to promote",
-    )
-
     return parser.parse_args()
 
 
+def load_json_file(json_file: str) -> Dict[str, str | int | bool]:
+    with open(json_file) as file:
+        return json.load(file)
+
+
+def craft_url(bucket: str, metadata: Dict[str, str]):
+    # This avoids having to remove the last / off the end of the path, even
+    # though it's a bit awkward
+    crafted_url = "s3://" + bucket + "/" + metadata["family"] + "/" + metadata[
+        "os"] + "/" + metadata["architecture"] + "/" + metadata[
+            "variant"] + "/" + metadata["name"]
+    return crafted_url
+
 def main() -> int:
     args = parse_args()
-
-    if len(args.multi_arch) == 0:
-        multi_arches = DEFAULT_MULTI_ARCH
-    else:
-        multi_arches = args.multi_arch
-
-    for multi_arch in multi_arches:
-        if not multi_arch in DockerArchitecture:
-            print(
-                f"xxx Multi-arch value is invalid: {multi_arch}",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-
-    src_prefix = "{}:{}".format(args.image_name, args.src_tag)
-    dst = src_prefix
-
-    promote(src_prefix, dst, multi_arches)
-
-    if args.update_stable_tag:
-        dst = "{}:{}".format(args.image_name, args.stable_tag)
-        promote(src_prefix, dst, multi_arches)
-
-    image_url = ("https://hub.docker.com/r/{}/" +
-                 "tags?page=1&ordering=last_updated&name={}").format(
-                     args.image_name,
-                     args.src_tag,
-                 )
-
-    print("\n--- Image promoted\n")
-    print(f"    Docker Hub Image URL : {image_url}")
-
-    if args.update_stable_tag:
-        image_url = ("https://hub.docker.com/r/{}/" +
-                     "tags?page=1&ordering=last_updated&name={}").format(
-                         args.image_name,
-                         args.stable_tag,
-                     )
-        print(f"    Docker Hub Stable Image URL : {image_url}")
-
+    metadata = load_json_file(args.metadata_file)
+    bucket = "si-artifacts-prod"
+    url = craft_url(bucket, metadata)
+    sync_to_s3(args.artifact_file, url)
     return 0
-
-
-def promote(src_prefix: str, dst: str, multi_arches: List[DockerArchitecture]):
-    srcs = list(map(lambda arch: f"{src_prefix}-{arch}", multi_arches))
-
-    print(f"--- Promoting '{src_prefix}-*' images to '{dst}'")
-
-    print(f"  - Creating manifest list '{dst}' for the following images:")
-    for src in srcs:
-        print(f"      - {src}")
-
-    manifest_create_cmd = [
-        "docker",
-        "manifest",
-        "create",
-        dst,
-    ]
-    for src in srcs:
-        manifest_create_cmd.append("--amend")
-        manifest_create_cmd.append(src)
-    subprocess.run(manifest_create_cmd).check_returncode()
-
-    print(f"  - Pushing manifest list to {dst}")
-    manifest_push_cmd = [
-        "docker",
-        "manifest",
-        "push",
-        "--purge",
-        dst,
-    ]
-    subprocess.run(manifest_push_cmd).check_returncode()
-
 
 if __name__ == "__main__":
     sys.exit(main())

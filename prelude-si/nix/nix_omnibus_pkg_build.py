@@ -358,11 +358,11 @@ def compute_build_metadata(
 ) -> Dict[str, str]:
     metadata = {
         "family":
-        "nix_omnibus",
+        name,
         "variant":
-        "tar",
+        "omnibus",
         "name":
-        "{}--{}--{}--{}.tar.gz".format(
+        "{}-{}-{}-{}.tar.gz".format(
             name,
             git_info.get("canonical_version"),
             os.value,
