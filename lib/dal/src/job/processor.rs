@@ -27,6 +27,7 @@ pub type JobQueueProcessorResult<T> = Result<T, JobQueueProcessorError>;
 
 #[async_trait]
 pub trait JobQueueProcessor: std::fmt::Debug + DynClone {
+    fn clone_with_new_queue(&self) -> Box<dyn JobQueueProcessor + Send + Sync>;
     async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>, ctx: &DalContext);
     async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult;
     async fn block_on_jobs(

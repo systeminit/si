@@ -1,8 +1,8 @@
-use super::{ChangeSetError, ChangeSetResult};
+use super::ChangeSetResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::{Json, OriginalUri};
-use dal::{Action, ActionPrototypeId, ChangeSet, ComponentId, StandardModel, Visibility, WsEvent};
+use dal::{Action, ActionPrototypeId, ComponentId, StandardModel, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -41,11 +41,6 @@ pub async fn add_action(
             "change_set_pk": ctx.visibility().change_set_pk,
         }),
     );
-
-    let change_set = ChangeSet::get_by_pk(&ctx, &ctx.visibility().change_set_pk)
-        .await?
-        .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    change_set.sort_actions(&ctx).await?;
 
     WsEvent::change_set_written(&ctx)
         .await?

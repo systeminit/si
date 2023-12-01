@@ -3,7 +3,7 @@
     class="flex flex-row gap-2 items-center text-sm relative min-w-0 w-full justify-end p-xs"
     @click="addAction"
   >
-    <StatusIndicatorIcon type="action" :status="action.name" tone="shade" />
+    <StatusIndicatorIcon type="action" :status="action.kind" tone="shade" />
     <div class="flex flex-col overflow-hidden">
       <div class="">{{ actionName }}</div>
       <div class="text-neutral-400 truncate">
@@ -15,7 +15,7 @@
       </div>
     </div>
     <VButton
-      v-if="props.action.actionInstanceId"
+      v-if="props.action.id"
       class="ml-auto"
       size="xs"
       tone="shade"
@@ -44,7 +44,7 @@ const props = defineProps<{
 }>();
 
 const actionName = computed(() => {
-  const name = (props.action.displayName || props.action.name).trim();
+  const name = (props.action.name || props.action.name).trim();
   return name.length ? name.slice(0, 1).toUpperCase() + name.slice(1) : "";
 });
 
@@ -55,15 +55,13 @@ const component = computed(
 );
 
 const addAction = (event: Event) => {
-  if (props.action.actionInstanceId || !changeSetStore.selectedChangeSet)
-    return;
+  if (props.action.id || !changeSetStore.selectedChangeSet) return;
   event.preventDefault();
   event.stopPropagation();
   emit("add");
 };
 const removeAction = () => {
-  if (!props.action.actionInstanceId || !changeSetStore.selectedChangeSet)
-    return;
+  if (!props.action.id || !changeSetStore.selectedChangeSet) return;
   emit("remove");
 };
 

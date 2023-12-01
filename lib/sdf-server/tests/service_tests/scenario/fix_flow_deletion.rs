@@ -75,7 +75,7 @@ async fn fix_flow_deletion(
     assert_eq!(
         expected, // expected
         actions
-            .iter()
+            .values()
             .map(|r| (r.component_id, r.name.as_str()))
             .collect::<Vec<_>>(), // actual
     );
@@ -180,7 +180,7 @@ async fn fix_flow_deletion(
     assert_eq!(
         expected, // expected
         actions
-            .iter()
+            .values()
             .map(|r| (r.component_id, r.name.as_str()))
             .collect::<Vec<_>>(), // actual
     );

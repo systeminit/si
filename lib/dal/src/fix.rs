@@ -13,11 +13,11 @@ use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::schema::SchemaUiMenu;
 use crate::{
     func::backend::js_action::ActionRunResult, impl_standard_model, pk, standard_model,
-    standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to, ActionKind,
-    ActionPrototype, ActionPrototypeError, ActionPrototypeId, Component, ComponentError,
-    ComponentId, DalContext, FixBatch, FixResolverError, Func, FuncError, HistoryEventError,
-    ResourceView, SchemaError, StandardModel, StandardModelError, Tenancy, Timestamp,
-    TransactionsError, Visibility, WsEvent, WsEventError, WsEventResult, WsPayload,
+    standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to, ActionId,
+    ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, Component,
+    ComponentError, ComponentId, DalContext, FixBatch, FixResolverError, Func, FuncError,
+    HistoryEventError, ResourceView, SchemaError, StandardModel, StandardModelError, Tenancy,
+    Timestamp, TransactionsError, Visibility, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 use veritech_client::ResourceStatus;
 
@@ -97,6 +97,10 @@ pub enum FixError {
     MissingStartedTimestampForFix(FixId),
     #[error("no fixes in batch: fix batch is empty")]
     NoFixesInBatch(FixBatchId),
+    #[error("not found: {0}")]
+    NotFound(FixId),
+    #[error("not found for action: {0}")]
+    NotFoundForAction(ActionId),
     #[error("cannot stamp batch or fix as finished since it has not yet been started")]
     NotYetStarted,
     #[error(transparent)]

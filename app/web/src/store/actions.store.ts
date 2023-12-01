@@ -4,12 +4,14 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { ComponentId, useComponentsStore } from "./components.store";
-import { useFixesStore } from "./fixes.store";
+import { ActionKind, useFixesStore } from "./fixes.store";
 
 export type ActionStatus = "failure" | "success";
 
 export type ActionPrototypeId = string;
 export type ActionInstanceId = string;
+
+export type ProposedAction = ActionInstance & { kind: ActionKind };
 
 export interface ActionPrototype {
   id: ActionPrototypeId;
@@ -32,6 +34,7 @@ export interface ActionInstance {
   name: string;
   componentId: ComponentId;
   actor?: string;
+  parents: ActionId[];
 }
 
 export type FullAction = {
@@ -41,17 +44,13 @@ export type FullAction = {
   actor?: string;
 } & Omit<ActionPrototype, "id">;
 
-export type ProposedAction = FullAction & {
-  actionInstanceId: ActionId;
-  componentId: ComponentId;
-};
-
 export const useActionsStore = () => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
 
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
+  const componentsStore = useComponentsStore();
 
   return addStoreHooks(
     defineStore(
@@ -60,18 +59,36 @@ export const useActionsStore = () => {
         state: () => ({}),
         getters: {
           proposedActions(): ProposedAction[] {
-            return _.compact(
-              _.map(changeSetsStore.selectedChangeSet?.actions, (a) => {
-                return _.find(
-                  this.actionsByComponentId[a.componentId],
-                  (pa) => a.actionPrototypeId === pa.actionPrototypeId,
-                );
-              }) as ProposedAction[],
-            );
-          },
+            const graph = changeSetsStore.selectedChangeSet?.actions ?? {};
+            const actions = [];
+            while (_.keys(graph).length) {
+              const removeIds = [];
 
+              const sortedEntries = _.entries(graph);
+              sortedEntries.sort(([a], [b]) => a.localeCompare(b));
+
+              for (const [id, action] of sortedEntries) {
+                if (action.parents.length === 0) {
+                  actions.push(action);
+                  removeIds.push(id);
+                }
+              }
+
+              for (const removeId of removeIds) {
+                delete graph[removeId];
+                for (const childAction of _.values(graph)) {
+                  const index = childAction.parents.findIndex(
+                    (parentId) => parentId === removeId,
+                  );
+                  if (index !== -1) {
+                    childAction.parents.splice(index);
+                  }
+                }
+              }
+            }
+            return actions;
+          },
           actionsByComponentId(): Record<ComponentId, FullAction[]> {
-            const componentsStore = useComponentsStore();
             return _.mapValues(
               componentsStore.componentsById,
               (component, componentId) => {
@@ -79,7 +96,7 @@ export const useActionsStore = () => {
                   _.map(component.actions, (actionPrototype) => {
                     if (actionPrototype.name === "refresh") return;
                     const actionInstance: ActionInstance | undefined = _.find(
-                      changeSetsStore.selectedChangeSet?.actions,
+                      _.values(changeSetsStore.selectedChangeSet?.actions),
                       (pa) =>
                         pa.componentId === componentId &&
                         pa.actionPrototypeId === actionPrototype.id,
@@ -95,37 +112,6 @@ export const useActionsStore = () => {
                   }),
                 );
               },
-            );
-          },
-
-          // Note(paulo): temporary hack, until we implement a better UI for reconciliation
-          requiredActionsByComponentId(): Record<
-            ComponentId,
-            ActionPrototype[]
-          > {
-            const componentsStore = useComponentsStore();
-            return _.mapValues(
-              componentsStore.componentsById,
-              (component, _componentId) => {
-                const actions = component.actions;
-
-                if (component && !component.resource.data) {
-                  return actions.filter((a) => a.name === "create");
-                } else if (component?.deletedInfo) {
-                  return actions.filter((a) => a.name === "delete");
-                } else {
-                  return [];
-                }
-              },
-            );
-          },
-
-          // TODO: this doesnt really make sense, but was just keeping the confirmations ui in place from actions
-          actionStatusByComponentId(): Record<ComponentId, ActionStatus> {
-            return _.mapValues(
-              this.requiredActionsByComponentId,
-              (requiredActions) =>
-                requiredActions.length ? "failure" : "success",
             );
           },
 

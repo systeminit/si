@@ -169,13 +169,10 @@
           <span class="text-center text-sm"
             >Pick which actions will be applied to the real world:</span
           >
-          <li
-            v-for="action in actionsStore.proposedActions"
-            :key="action.actionInstanceId"
-          >
+          <li v-for="action in actionsStore.proposedActions" :key="action.id">
             <ActionSprite
               :action="action"
-              @remove="actionsStore.REMOVE_ACTION(action.actionInstanceId)"
+              @remove="actionsStore.REMOVE_ACTION(action.id)"
             />
           </li>
         </template>

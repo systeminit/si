@@ -10,6 +10,7 @@ mod fix_flow_deletion;
 // Tests not reliant on "dev" routes:
 mod authoring_flow_asset;
 mod model_and_fix_flow_aws_key_pair;
+mod model_and_fix_flow_mocked_whiskers;
 mod model_and_fix_flow_whiskers;
 mod model_flow_fedora_coreos_ignition;
 

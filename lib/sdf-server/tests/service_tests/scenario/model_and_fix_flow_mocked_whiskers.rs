@@ -1,7 +1,7 @@
 use axum::Router;
 use dal::{
-    qualification::QualificationSubCheckStatus, ActionKind, Component, FixCompletionStatus, Func,
-    StandardModel,
+    qualification::QualificationSubCheckStatus, ActionKind, Component, ExternalProvider,
+    FixCompletionStatus, Func, Schema, SchemaVariant, SocketArity, StandardModel,
 };
 use dal_test::{sdf_test, AuthToken, DalContextHead};
 use pretty_assertions_sorted::assert_eq;
@@ -13,11 +13,10 @@ use crate::service_tests::scenario::ScenarioHarness;
 ///
 /// It is recommended to run this test with the following environment variable:
 /// ```shell
-/// SI_TEST_BUILTIN_SCHEMAS=aws region,aws ami,aws keypair,aws ec2,aws securitygroup,aws ingress,docker image,coreos butane
+/// SI_TEST_BUILTIN_SCHEMAS=target group,aws region,aws ami,aws keypair,aws ec2,aws securitygroup,aws ingress,docker image,coreos butane
 /// ```
 #[sdf_test]
-#[ignore]
-async fn model_and_fix_flow_whiskers(
+async fn model_and_fix_flow_mocked_whiskers(
     DalContextHead(mut ctx): DalContextHead,
     app: Router,
     AuthToken(auth_token): AuthToken,
@@ -36,6 +35,7 @@ async fn model_and_fix_flow_whiskers(
             "AMI",
             "Docker Image",
             "Butane",
+            "Target Group",
         ],
     )
     .await;
@@ -48,65 +48,421 @@ async fn model_and_fix_flow_whiskers(
         .create_change_set_and_update_ctx(&mut ctx, ScenarioHarness::generate_fake_name())
         .await;
 
-    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsEc2DeleteAction")
+    // Patches functions
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:qualificationAmiExists")
         .await
-        .expect("unable to find ec2 delete exists")
+        .expect("unable to find qualification ami exists")
         .pop()
-        .expect("unable to find one ec2 delete exists");
+        .expect("unable to find one qualification ami exists");
     func.set_code_plaintext(
         &ctx,
-    Some("async function deleteResource(component: Input): Promise < Output > {
-    const resource = component.properties.resource?.payload;
-
-    if (!resource.InstanceId)
-        return {
-            status: 'error',
-            payload: resource,
-            message: 'No EC2 instance id found',
-        };
-
-    const child = await siExec.waitUntilEnd('aws', [
-        'ec2',
-        'terminate-instances',
-        '--region',
-        component.properties.domain?.region,
-        '--instance-ids',
-        resource.InstanceId,
-    ]);
-
-    if (child.exitCode !== 0) {
-        console.error(child.stderr);
-        return {
-            status: 'error',
-            payload: resource,
-            message: `Unable to delete Ec2 Instance, AWS CLI 2 exited with non zero code: ${child.exitCode}`,
-        };
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000);
-
-    return {
-        payload: null,
-        status: 'ok'
-    };
-}"
+        Some(
+            "async function qualification(component: Input): Promise< Output > {
+      return {
+        result: 'success',
+        message: 'Image exists',
+      }
+    }",
         ),
     )
     .await
     .expect("unable to patch function");
 
-    ctx.commit().await.expect("unable to commit");
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:qualificationKeyPairCanCreate")
+        .await
+        .expect("unable to find qualification key pair exists")
+        .pop()
+        .expect("unable to find one qualification key pair exists");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function qualification(component: Input): Promise< Output > {
+      return {
+        result: 'success',
+        message: 'component qualified',
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsKeyPairRefreshAction")
+        .await
+        .expect("unable to find any key refresh action")
+        .pop()
+        .expect("unable to find one key refresh action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function refresh(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: component.properties?.resource?.payload,
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsKeyPairCreateAction")
+        .await
+        .expect("unable to find any key create action")
+        .pop()
+        .expect("unable to find one key create action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function create(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: { 'my-dummy-key': 1 },
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsKeyPairDeleteAction")
+        .await
+        .expect("unable to find any key delete action")
+        .pop()
+        .expect("unable to find one key delete action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function deleteResource(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: null,
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsIngressRefreshAction")
+        .await
+        .expect("unable to find any ingress refresh action")
+        .pop()
+        .expect("unable to find one ingress refresh action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function refresh(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: component.properties?.resource?.payload,
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:qualificationIngressCanCreate")
+        .await
+        .expect("unable to find qualification ingress exists")
+        .pop()
+        .expect("unable to find one qualification ingress exists");
+    func.set_code_plaintext(&ctx, Some("async function qualification(component: Input): Promise< Output > {
+      return {
+        result: 'success',
+        message: 'GroupId must be set. If a Security Group is connected to this component the id will be automatically set when the fix flow creates the security group after merging this change-set',
+      }
+    }")).await.expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsIngressCreateAction")
+        .await
+        .expect("unable to find any ingress create action")
+        .pop()
+        .expect("unable to find one ingress create action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function create(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: { 'my-dummy-ingress': 1 },
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsIngressDeleteAction")
+        .await
+        .expect("unable to find any ingress delete action")
+        .pop()
+        .expect("unable to find one ingress delete action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function deleteResource(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: null,
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsEc2RefreshAction")
+        .await
+        .expect("unable to find any ec2 refresh action")
+        .pop()
+        .expect("unable to find one ec2 refresh action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function refresh(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: component.properties?.resource?.payload,
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:qualificationEc2CanRun")
+        .await
+        .expect("unable to find qualification ec2 exists")
+        .pop()
+        .expect("unable to find one qualification ec2 exists");
+    func.set_code_plaintext(&ctx, Some("async function qualification(component: Input): Promise< Output > {
+      return {
+        result: 'warning',
+        message: 'Key Pair must exist. It will be created by the fix flow after merging this change-set',
+      }
+    }")).await.expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsEc2CreateAction")
+        .await
+        .expect("unable to find any ec2 create action")
+        .pop()
+        .expect("unable to find one ec2 create action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function create(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: { 'my-dummy-ec2': 1 },
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsEc2DeleteAction")
+        .await
+        .expect("unable to find any ec2 delete action")
+        .pop()
+        .expect("unable to find one ec2 delete action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function deleteResource(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: null,
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsSecurityGroupRefreshAction")
+        .await
+        .expect("unable to find any security group refresh action")
+        .pop()
+        .expect("unable to find one security group refresh action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function refresh(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: component.properties?.resource?.payload,
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:qualificationSecurityGroupCanCreate")
+        .await
+        .expect("unable to find qualification security group exists")
+        .pop()
+        .expect("unable to find one qualification security group exists");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function qualification(component: Input): Promise< Output > {
+      return {
+        result: 'success',
+        message: 'component qualified',
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsSecurityGroupCreateAction")
+        .await
+        .expect("unable to find any security group create action")
+        .pop()
+        .expect("unable to find one security group create action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function create(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: { 'GroupId': 'my-dummy-group-id' },
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsSecurityGroupDeleteAction")
+        .await
+        .expect("unable to find any security group delete action")
+        .pop()
+        .expect("unable to find one security group delete action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function deleteResource(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: null,
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsTargetGroupRefreshAction")
+        .await
+        .expect("unable to find any target group refresh action")
+        .pop()
+        .expect("unable to find one target group refresh action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function main(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: component.properties?.resource?.payload,
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsTargetGroupCreateAction")
+        .await
+        .expect("unable to find any target group create action")
+        .pop()
+        .expect("unable to find one target group create action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function main(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: { 'my-dummy-target-group': 1 },
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+
+    let mut func = Func::find_by_attr(&ctx, "name", &"si:awsTargetGroupDeleteAction")
+        .await
+        .expect("unable to find any target group delete action")
+        .pop()
+        .expect("unable to find one target group delete action");
+    func.set_code_plaintext(
+        &ctx,
+        Some(
+            "async function main(component: Input): Promise< Output > {
+      return {
+        status: 'ok',
+        payload: null,
+      }
+    }",
+        ),
+    )
+    .await
+    .expect("unable to patch function");
+    ctx.commit().await.expect("unable to commit func patches");
+
+    let schema = Schema::find_by_name(&ctx, "EC2 Instance")
+        .await
+        .expect("schema not found");
+    let schema_variant = SchemaVariant::get_by_id(
+        &ctx,
+        &schema
+            .default_schema_variant_id()
+            .copied()
+            .unwrap_or_default(),
+    )
+    .await
+    .expect("unable to find default schema variant")
+    .expect("no schema variant found");
+
+    // TODO: make value propagate from ec2 instance resource
+    let (identity_func, identity_func_binding, identity_fbrv) =
+        Func::identity_with_binding_and_return_value(&ctx)
+            .await
+            .expect("unable to find identity func");
+    ExternalProvider::new_with_socket(
+        &ctx,
+        *schema.id(),
+        *schema_variant.id(),
+        "Instance ID",
+        None,
+        *identity_func.id(),
+        *identity_func_binding.id(),
+        *identity_fbrv.id(),
+        SocketArity::Many,
+        false,
+    )
+    .await
+    .expect("unable to create external provider");
 
     // Create all AWS components.
     let region = harness.create_node(ctx.visibility(), "Region", None).await;
+    let ec2 = harness
+        .create_node(ctx.visibility(), "EC2 Instance", Some(region.node_id))
+        .await;
     let ami = harness
         .create_node(ctx.visibility(), "AMI", Some(region.node_id))
         .await;
     let key_pair = harness
         .create_node(ctx.visibility(), "Key Pair", Some(region.node_id))
         .await;
-    let ec2 = harness
-        .create_node(ctx.visibility(), "EC2 Instance", Some(region.node_id))
+    let target_group = harness
+        .create_node(ctx.visibility(), "Target Group", Some(region.node_id))
         .await;
     let security_group = harness
         .create_node(ctx.visibility(), "Security Group", Some(region.node_id))
@@ -122,6 +478,9 @@ async fn model_and_fix_flow_whiskers(
     let butane = harness.create_node(ctx.visibility(), "Butane", None).await;
 
     // Connect Docker and Butane to the relevant AWS components.
+    harness
+        .create_connection(&ctx, ec2.node_id, target_group.node_id, "Instance ID")
+        .await;
     harness
         .create_connection(&ctx, docker.node_id, butane.node_id, "Container Image")
         .await;
@@ -570,6 +929,11 @@ async fn model_and_fix_flow_whiskers(
                 (security_group.component_id, ActionKind::Create),
             ],
         ),
+        (
+            target_group.component_id,
+            ActionKind::Create,
+            vec![(ec2.component_id, ActionKind::Create)],
+        ),
     ];
     dbg!(&actions, &expected_actions_and_parents);
 
@@ -619,7 +983,7 @@ async fn model_and_fix_flow_whiskers(
         .await;
 
     // Check that they succeeded.
-    let mut fix_batch_history_views = harness.list_fixes(ctx.visibility()).await;
+    let mut fix_batch_history_views = dbg!(harness.list_fixes(ctx.visibility()).await);
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert_eq!(
         Some(FixCompletionStatus::Success), // expected
@@ -632,9 +996,7 @@ async fn model_and_fix_flow_whiskers(
         .await
         .expect("unable to get key pair")
         .expect("unable to get a key pair");
-    assert!(key_pair_comp
-        .resource(&ctx)
-        .await
+    assert!(dbg!(key_pair_comp.resource(&ctx).await)
         .expect("unable to get resource")
         .payload
         .is_some());
@@ -643,9 +1005,16 @@ async fn model_and_fix_flow_whiskers(
         .await
         .expect("unable to get ec2")
         .expect("unable to get a ec2");
-    assert!(ec2_comp
-        .resource(&ctx)
+    assert!(dbg!(ec2_comp.resource(&ctx).await)
+        .expect("unable to get resource")
+        .payload
+        .is_some());
+
+    let target_group_comp = Component::get_by_id(&ctx, &target_group.component_id)
         .await
+        .expect("unable to get target_group")
+        .expect("unable to get a target_group");
+    assert!(dbg!(target_group_comp.resource(&ctx).await)
         .expect("unable to get resource")
         .payload
         .is_some());
@@ -654,9 +1023,7 @@ async fn model_and_fix_flow_whiskers(
         .await
         .expect("unable to get security_group")
         .expect("unable to get a security_group");
-    assert!(security_group_comp
-        .resource(&ctx)
-        .await
+    assert!(dbg!(security_group_comp.resource(&ctx).await)
         .expect("unable to get resource")
         .payload
         .is_some());
@@ -665,9 +1032,7 @@ async fn model_and_fix_flow_whiskers(
         .await
         .expect("unable to get ingress")
         .expect("unable to get a ingress");
-    assert!(ingress_comp
-        .resource(&ctx)
-        .await
+    assert!(dbg!(ingress_comp.resource(&ctx).await)
         .expect("unable to get resource")
         .payload
         .is_some());
@@ -696,6 +1061,9 @@ async fn model_and_fix_flow_whiskers(
         .delete_component(ctx.visibility(), ec2.component_id)
         .await;
     harness
+        .delete_component(ctx.visibility(), target_group.component_id)
+        .await;
+    harness
         .delete_component(ctx.visibility(), security_group.component_id)
         .await;
     harness
@@ -719,7 +1087,12 @@ async fn model_and_fix_flow_whiskers(
             ],
         ),
         (ingress.component_id, ActionKind::Delete, Vec::new()),
-        (ec2.component_id, ActionKind::Delete, Vec::new()),
+        (
+            ec2.component_id,
+            ActionKind::Delete,
+            vec![(target_group.component_id, ActionKind::Delete)],
+        ),
+        (target_group.component_id, ActionKind::Delete, Vec::new()),
     ];
     dbg!(&actions, &expected_actions_and_parents);
 
@@ -757,7 +1130,6 @@ async fn model_and_fix_flow_whiskers(
             expected_actions_and_parents
         );
     }
-
     assert_eq!(actions.len(), expected_actions_and_parents.len());
 
     let num_of_fix_batch_history_views = harness.list_fixes(ctx.visibility()).await.len();
@@ -779,6 +1151,9 @@ async fn model_and_fix_flow_whiskers(
         fix_batch_history_view.status
     );
 
+    // TODO(nick): mix in creation and deletion actions as well as scenarios where not
+    // all fixes are ran all at once.
+
     ctx.rollback().await.expect("unable to rollback ctx");
 
     let deleted_ctx = &ctx.clone_with_delete_visibility();
@@ -794,6 +1169,12 @@ async fn model_and_fix_flow_whiskers(
         .expect("unable to get a ec2");
     assert!(ec2_comp.is_destroyed());
 
+    let target_group_comp = Component::get_by_id(deleted_ctx, &target_group.component_id)
+        .await
+        .expect("unable to get target_group")
+        .expect("unable to get a target_group");
+    assert!(target_group_comp.is_destroyed());
+
     let security_group_comp = Component::get_by_id(deleted_ctx, &security_group.component_id)
         .await
         .expect("unable to get security_group")
@@ -805,7 +1186,4 @@ async fn model_and_fix_flow_whiskers(
         .expect("unable to get ingress")
         .expect("unable to get a ingress");
     assert!(ingress_comp.is_destroyed());
-
-    // TODO(nick): mix in creation and deletion actions as well as scenarios where not
-    // all fixes are ran all at once.
 }

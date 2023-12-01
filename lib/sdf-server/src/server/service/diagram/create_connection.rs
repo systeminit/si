@@ -117,11 +117,6 @@ pub async fn create_connection(
             to_attribute_value_context,
         ))?;
 
-    let change_set = ChangeSet::get_by_pk(&ctx, &ctx.visibility().change_set_pk)
-        .await?
-        .ok_or(DiagramError::ChangeSetNotFound)?;
-    change_set.sort_actions(&ctx).await?;
-
     to_attribute_value
         .update_from_prototype_function(&ctx)
         .await?;

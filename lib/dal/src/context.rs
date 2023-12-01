@@ -67,6 +67,22 @@ impl ServicesContext {
         }
     }
 
+    // TODO(paulo): fix this, short term solution to ensure the queue is different across transactions
+    // We should only store connection data in ServiceContext, not the queue. The queue should be in the transactions.
+    // I've been tracking this bug down for an entire week and need a break from it so taking the short-cut. We should not live with this forever.
+    pub fn clone_with_new_job_queue(&self) -> Self {
+        Self {
+            pg_pool: self.pg_pool.clone(),
+            nats_conn: self.nats_conn.clone(),
+            job_processor: self.job_processor.clone_with_new_queue(),
+            veritech: self.veritech.clone(),
+            encryption_key: self.encryption_key.clone(),
+            pkgs_path: self.pkgs_path.clone(),
+            module_index_url: self.module_index_url.clone(),
+            symmetric_crypto_service: self.symmetric_crypto_service.clone(),
+        }
+    }
+
     /// Consumes and returns [`DalContextBuilder`].
     pub fn into_builder(self, blocking: bool) -> DalContextBuilder {
         DalContextBuilder {
@@ -220,7 +236,7 @@ pub struct DalContext {
     /// And also for SDF routes to block the HTTP request until the jobs get executed, so SDF tests don't race.
     blocking: bool,
     /// Determines if we should not enqueue dependent value update jobs for attribute updates in
-    /// this context
+    /// this context. Useful for builtin migrations, since we don't care about attribute values propagation then.
     no_dependent_values: bool,
 }
 
@@ -232,6 +248,14 @@ impl DalContext {
             services_context,
             blocking,
             no_dependent_values: false,
+        }
+    }
+
+    pub fn to_builder(&self) -> DalContextBuilder {
+        DalContextBuilder {
+            services_context: self.services_context.clone(),
+            blocking: self.blocking,
+            no_dependent_values: self.no_dependent_values,
         }
     }
 
@@ -603,9 +627,10 @@ pub struct DalContextBuilder {
 impl DalContextBuilder {
     /// Contructs and returns a new [`DalContext`] using a default [`RequestContext`].
     pub async fn build_default(&self) -> Result<DalContext, TransactionsError> {
-        let conns = self.connections().await?;
+        let services_context = self.services_context.clone_with_new_job_queue();
+        let conns = services_context.connections().await?;
         Ok(DalContext {
-            services_context: self.services_context.clone(),
+            services_context,
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: Tenancy::new_empty(),
@@ -620,9 +645,10 @@ impl DalContextBuilder {
         &self,
         access_builder: AccessBuilder,
     ) -> Result<DalContext, TransactionsError> {
-        let conns = self.connections().await?;
+        let services_context = self.services_context.clone_with_new_job_queue();
+        let conns = services_context.connections().await?;
         Ok(DalContext {
-            services_context: self.services_context.clone(),
+            services_context,
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: access_builder.tenancy,
@@ -637,9 +663,10 @@ impl DalContextBuilder {
         &self,
         request_context: RequestContext,
     ) -> Result<DalContext, TransactionsError> {
-        let conns = self.connections().await?;
+        let services_context = self.services_context.clone_with_new_job_queue();
+        let conns = services_context.connections().await?;
         Ok(DalContext {
-            services_context: self.services_context.clone(),
+            services_context,
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: request_context.tenancy,
@@ -657,15 +684,6 @@ impl DalContextBuilder {
     /// Gets a reference to the NATS connection.
     pub fn nats_conn(&self) -> &NatsClient {
         &self.services_context.nats_conn
-    }
-
-    pub fn job_processor(&self) -> Box<dyn JobQueueProcessor + Send + Sync> {
-        self.services_context.job_processor.clone()
-    }
-
-    /// Builds and returns a new [`Connections`].
-    pub async fn connections(&self) -> PgPoolResult<Connections> {
-        self.services_context.connections().await
     }
 
     /// Returns the location on disk where packages are stored (if one was provided)

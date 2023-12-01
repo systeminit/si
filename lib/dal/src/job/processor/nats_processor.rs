@@ -58,6 +58,14 @@ impl NatsProcessor {
 
 #[async_trait]
 impl JobQueueProcessor for NatsProcessor {
+    fn clone_with_new_queue(&self) -> Box<dyn JobQueueProcessor + Send + Sync> {
+        Box::new(Self {
+            client: self.client.clone(),
+            queue: JobQueue::new(),
+            pinga_subject: self.pinga_subject.clone(),
+        })
+    }
+
     async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>, _ctx: &DalContext) {
         self.queue.enqueue_job(job).await
     }

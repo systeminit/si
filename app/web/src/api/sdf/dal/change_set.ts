@@ -1,5 +1,4 @@
-// TODO: remove
-import { ActionInstance } from "@/store/actions.store";
+import { ProposedAction, ActionId } from "@/store/actions.store";
 import { UserId } from "@/store/auth.store";
 
 export enum ChangeSetStatus {
@@ -16,7 +15,7 @@ export interface ChangeSet {
   id: ChangeSetId;
   pk: ChangeSetId;
   name: string;
-  actions: ActionInstance[];
+  actions: Record<ActionId, ProposedAction>;
   status: ChangeSetStatus;
   appliedByUserId?: UserId;
   appliedAt?: IsoDateString;
