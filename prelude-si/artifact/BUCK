@@ -1,0 +1,8 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+)
+
+export_file(
+    name = "publish.py",
+)
