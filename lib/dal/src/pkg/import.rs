@@ -16,7 +16,7 @@ use si_pkg::{
     SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind, ValidationSpec,
 };
 
-use crate::{func::intrinsics::IntrinsicFunc, ComponentKind};
+use crate::{func::intrinsics::IntrinsicFunc, ComponentKind, ProviderKind};
 use crate::{
     func::{
         self,
@@ -34,9 +34,9 @@ use crate::{
     workspace_snapshot::{self, WorkspaceSnapshotError},
     ActionKind, ActionPrototype, ActionPrototypeContext, AttributePrototype, AttributePrototypeId,
     AttributeValue, ChangeSet, ChangeSetPk, ComponentId, DalContext, ExternalProvider,
-    ExternalProviderId, Func, FuncId, InternalProvider, InternalProviderId, Node, Prop, PropId,
-    PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, Socket, StandardModel, Tenancy,
-    UserPk, Workspace, WorkspacePk, WorkspaceSnapshot,
+    ExternalProviderId, Func, FuncId, InternalProvider, InternalProviderId, Prop, PropId, PropKind,
+    Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, Tenancy, UserPk, Workspace,
+    WorkspacePk, WorkspaceSnapshot,
 };
 use crate::{prop::PropParent, schema::variant::definition::SchemaVariantDefinitionJson};
 
@@ -52,7 +52,8 @@ enum Thing {
     FuncArgument(FuncArgument),
     Schema(Schema),
     SchemaVariant(SchemaVariant),
-    Socket(Box<(Socket, Option<InternalProvider>, Option<ExternalProvider>)>),
+    // TODO(nick): ask zack about this.
+    // Socket(Box<(Socket, Option<InternalProvider>, Option<ExternalProvider>)>),
     // Validation(ValidationPrototype),
 }
 
@@ -1890,7 +1891,7 @@ async fn import_schema(
 
         let mut installed_schema_variant_ids = vec![];
         for variant_spec in &schema_spec.variants()? {
-            let _variant = import_schema_variant(
+            let variant = import_schema_variant(
                 ctx,
                 change_set_pk,
                 &mut schema,
@@ -1911,41 +1912,42 @@ async fn import_schema(
             //     panic!();
             // }
 
-            // if let Some(variant) = variant {
-            //     installed_schema_variant_ids.push(*variant.id());
-            //
-            //     if let Some(variant_spec_data) = variant_spec.data() {
-            //         let func_unique_id = variant_spec_data.func_unique_id().to_owned();
-            //
-            //         set_default_schema_variant_id(
-            //             ctx,
-            //             change_set_pk,
-            //             &mut schema,
-            //             schema_spec
-            //                 .data()
-            //                 .as_ref()
-            //                 .and_then(|data| data.default_schema_variant()),
-            //             variant_spec.unique_id(),
-            //             *variant.id(),
-            //         )
-            //         .await?;
-            //
-            //         if let Thing::Func(asset_func) =
-            //             thing_map
-            //                 .get(change_set_pk, &func_unique_id)
-            //                 .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
-            //         {
-            //             create_schema_variant_definition(
-            //                 ctx,
-            //                 schema_spec.clone(),
-            //                 installed_pkg_id,
-            //                 *variant.id(),
-            //                 asset_func,
-            //             )
-            //             .await?;
-            //         }
-            //     }
-            // }
+            if let Some(variant) = variant {
+                installed_schema_variant_ids.push(variant.id());
+
+                if let Some(_variant_spec_data) = variant_spec.data() {
+                    schema = set_default_schema_variant_id(
+                        ctx,
+                        change_set_pk,
+                        schema,
+                        schema_spec
+                            .data()
+                            .as_ref()
+                            .and_then(|data| data.default_schema_variant()),
+                        variant_spec.unique_id(),
+                        variant.id(),
+                    )
+                    .await?;
+
+                    // TODO(nick): create the schema variant definition.
+                    // let func_unique_id = variant_spec_data.func_unique_id().to_owned();
+                    //
+                    // if let Thing::Func(asset_func) =
+                    //     thing_map
+                    //         .get(change_set_pk, &func_unique_id)
+                    //         .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
+                    // {
+                    //     create_schema_variant_definition(
+                    //         ctx,
+                    //         schema_spec.clone(),
+                    //         installed_pkg_id,
+                    //         *variant.id(),
+                    //         asset_func,
+                    //     )
+                    //     .await?;
+                    // }
+                }
+            }
         }
 
         Ok((Some(schema.id()), installed_schema_variant_ids))
@@ -1954,40 +1956,39 @@ async fn import_schema(
     }
 }
 
-// async fn set_default_schema_variant_id(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     schema: &mut Schema,
-//     spec_default_unique_id: Option<&str>,
-//     variant_unique_id: Option<&str>,
-//     variant_id: SchemaVariantId,
-// ) -> PkgResult<()> {
-//     match (change_set_pk, variant_unique_id, spec_default_unique_id) {
-//         (None, _, _) | (Some(_), None, _) | (_, Some(_), None) => {
-//             if schema.default_schema_variant_id().is_none() {
-//                 schema
-//                     .set_default_schema_variant_id(ctx, Some(variant_id))
-//                     .await?;
-//             }
-//         }
-//         (Some(_), Some(variant_unique_id), Some(spec_default_unique_id)) => {
-//             if variant_unique_id == spec_default_unique_id {
-//                 let current_default_variant_id = schema
-//                     .default_schema_variant_id()
-//                     .copied()
-//                     .unwrap_or(SchemaVariantId::NONE);
+async fn set_default_schema_variant_id(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    mut schema: Schema,
+    spec_default_unique_id: Option<&str>,
+    variant_unique_id: Option<&str>,
+    variant_id: SchemaVariantId,
+) -> PkgResult<Schema> {
+    match (change_set_pk, variant_unique_id, spec_default_unique_id) {
+        (None, _, _) | (Some(_), None, _) | (_, Some(_), None) => {
+            if schema.default_schema_variant_id().is_none() {
+                schema = schema
+                    .set_default_schema_variant_id(ctx, Some(variant_id))
+                    .await?;
+            }
+        }
+        (Some(_), Some(variant_unique_id), Some(spec_default_unique_id)) => {
+            if variant_unique_id == spec_default_unique_id {
+                let current_default_variant_id = schema
+                    .default_schema_variant_id()
+                    .unwrap_or(SchemaVariantId::NONE);
 
-//                 if variant_id != current_default_variant_id {
-//                     schema
-//                         .set_default_schema_variant_id(ctx, Some(variant_id))
-//                         .await?;
-//                 }
-//             }
-//         }
-//     }
+                if variant_id != current_default_variant_id {
+                    schema = schema
+                        .set_default_schema_variant_id(ctx, Some(variant_id))
+                        .await?;
+                }
+            }
+        }
+    }
 
-//     Ok(())
-// }
+    Ok(schema)
+}
 
 // async fn create_schema_variant_definition(
 //     ctx: &DalContext,
@@ -2135,48 +2136,48 @@ fn get_identity_func(ctx: &DalContext) -> PkgResult<FuncId> {
     Ok(id_func_id)
 }
 
-async fn create_socket(
-    ctx: &DalContext,
-    data: &SiPkgSocketData,
-    schema_variant_id: SchemaVariantId,
-) -> PkgResult<(Socket, Option<InternalProvider>, Option<ExternalProvider>)> {
-    let identity_func_id = get_identity_func(ctx)?;
-
-    let (mut socket, ip, ep) = match data.kind() {
-        SocketSpecKind::Input => {
-            let (ip, socket) = InternalProvider::new_explicit_with_socket(
-                ctx,
-                schema_variant_id,
-                data.name(),
-                identity_func_id,
-                data.arity().into(),
-                false,
-            )
-            .await?;
-
-            (socket, Some(ip), None)
-        }
-        SocketSpecKind::Output => {
-            let (ep, socket) = ExternalProvider::new_with_socket(
-                ctx,
-                schema_variant_id,
-                data.name(),
-                None,
-                identity_func_id,
-                data.arity().into(),
-                false,
-            )
-            .await?;
-
-            (socket, None, Some(ep))
-        }
-    };
-
-    // TODO: add modify_by_id to socket, ui hide frames
-    // socket.set_ui_hidden(ctx, data.ui_hidden()).await?;
-
-    Ok((socket, ip, ep))
-}
+// async fn create_socket(
+//     ctx: &DalContext,
+//     data: &SiPkgSocketData,
+//     schema_variant_id: SchemaVariantId,
+// ) -> PkgResult<(Option<InternalProvider>, Option<ExternalProvider>)> {
+//     let identity_func_id = get_identity_func(ctx)?;
+//
+//     let (mut socket, ip, ep) = match data.kind() {
+//         SocketSpecKind::Input => {
+//             let ip = InternalProvider::new_explicit(
+//                 ctx,
+//                 schema_variant_id,
+//                 data.name(),
+//                 identity_func_id,
+//                 data.arity().into(),
+//                 ProviderKind::Standard,
+//             )
+//             .await?;
+//
+//             (Some(ip), None)
+//         }
+//         SocketSpecKind::Output => {
+//             let ep = ExternalProvider::new(
+//                 ctx,
+//                 schema_variant_id,
+//                 data.name(),
+//                 None,
+//                 identity_func_id,
+//                 data.arity().into(),
+//                 ProviderKind::Standard,
+//             )
+//             .await?;
+//
+//             (None, Some(ep))
+//         }
+//     };
+//
+//     // TODO: add modify_by_id to socket, ui hide frames
+//     // socket.set_ui_hidden(ctx, data.ui_hidden()).await?;
+//
+//     Ok((ip, ep))
+// }
 
 async fn import_socket(
     ctx: &DalContext,
@@ -2185,13 +2186,13 @@ async fn import_socket(
     schema_variant_id: SchemaVariantId,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
-    let (socket, ip, ep) = match change_set_pk {
+    match change_set_pk {
         None => {
             let data = socket_spec
                 .data()
                 .ok_or(PkgError::DataNotFound(socket_spec.name().into()))?;
 
-            create_socket(ctx, data, schema_variant_id).await?
+            // create_socket(ctx, data, schema_variant_id).await?
         }
         Some(_) => {
             todo!("workspace backup imports");
@@ -2224,11 +2225,12 @@ async fn import_socket(
     };
 
     if let Some(unique_id) = socket_spec.unique_id() {
-        thing_map.insert(
-            change_set_pk,
-            unique_id.to_owned(),
-            Thing::Socket(Box::new((socket, ip.to_owned(), ep.to_owned()))),
-        );
+        // TODO(nick): ask zack about this.
+        // thing_map.insert(
+        //     change_set_pk,
+        //     unique_id.to_owned(),
+        //     Thing::Socket(Box::new((socket, ip.to_owned(), ep.to_owned()))),
+        // );
     }
 
     /*

@@ -20,27 +20,19 @@ use veritech_client::EncryptionKey;
 
 use crate::builtins::SelectedTestBuiltinSchemas;
 
-// FIXME(nick,zack,jacob): move this back to component.
-pk!(ComponentId);
-
-// pub mod action;
 pub mod action_prototype;
-// pub mod actor_view;
+pub mod actor_view;
 pub mod attribute;
 pub mod builtins;
 pub mod change_set;
 pub mod change_set_pointer;
-// pub mod change_status;
-// pub mod code_view;
+pub mod change_status;
 pub mod component;
 pub mod context;
 pub mod cyclone_key_pair;
-// pub mod diagram;
-// pub mod edge;
-// pub mod fix;
+pub mod diagram;
 pub mod func;
 pub mod history_event;
-// pub mod index_map;
 pub mod installed_pkg;
 pub mod job;
 pub mod job_failure;
@@ -48,25 +40,16 @@ pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
 pub mod node;
-// pub mod node_menu;
 pub mod pkg;
 pub mod prop;
-// pub mod prop_tree;
 pub mod property_editor;
-// pub mod prototype_context;
-// pub mod prototype_list_for_func;
 pub mod provider;
-// pub mod qualification;
-// pub mod reconciliation_prototype;
 pub mod schema;
-// pub mod secret;
 pub mod serde_impls;
 pub mod socket;
 pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;
-// pub mod status;
-// pub mod tasks;
 pub mod tenancy;
 pub mod timestamp;
 pub mod user;
@@ -75,6 +58,21 @@ pub mod visibility;
 pub mod workspace;
 pub mod workspace_snapshot;
 pub mod ws_event;
+
+// pub mod action;
+// pub mod code_view;
+// pub mod edge;
+// pub mod fix;
+// pub mod index_map;
+// pub mod node_menu;
+// pub mod prop_tree;
+// pub mod prototype_context;
+// pub mod prototype_list_for_func;
+// pub mod qualification;
+// pub mod reconciliation_prototype;
+// pub mod secret;
+// pub mod status;
+// pub mod tasks;
 
 pub use action_prototype::{
     ActionKind, ActionPrototype, ActionPrototypeContext, ActionPrototypeId,
@@ -85,6 +83,8 @@ pub use attribute::{
 };
 pub use builtins::{BuiltinsError, BuiltinsResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus};
+pub use component::Component;
+pub use component::ComponentId;
 pub use component::ComponentKind;
 pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
@@ -101,13 +101,13 @@ pub use job_failure::{JobFailure, JobFailureError, JobFailureResult};
 pub use jwt_key::JwtPublicSigningKey;
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
-pub use node::NodeId;
-pub use node::{Node, NodeKind};
 pub use prop::{Prop, PropId, PropKind};
 pub use provider::external::{ExternalProvider, ExternalProviderId};
 pub use provider::internal::{InternalProvider, InternalProviderId};
+pub use provider::ProviderArity;
+pub use provider::ProviderKind;
+pub use schema::variant::root_prop::component_type::ComponentType;
 pub use schema::{Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId};
-pub use socket::{Socket, SocketArity, SocketId};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};

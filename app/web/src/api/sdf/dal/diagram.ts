@@ -12,7 +12,6 @@ export interface DiagramOutputProvider {
 export interface DiagramOutputSocket {
   id: string;
   name: string;
-  diagramKind: DiagramKind;
   provider: DiagramOutputProvider;
 }
 
@@ -24,7 +23,6 @@ export interface DiagramInputProvider {
 export interface DiagramInputSocket {
   id: string;
   name: string;
-  diagramKind: DiagramKind;
   provider: DiagramInputProvider;
 }
 

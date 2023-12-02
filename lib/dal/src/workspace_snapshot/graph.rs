@@ -79,9 +79,11 @@ pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError
 #[derive(Default, Deserialize, Serialize, Clone)]
 pub struct WorkspaceSnapshotGraph {
     graph: StableDiGraph<NodeWeight, EdgeWeight>,
+    root_index: NodeIndex,
+
     node_index_by_id: HashMap<Ulid, NodeIndex>,
     node_indices_by_lineage_id: HashMap<LineageId, HashSet<NodeIndex>>,
-    root_index: NodeIndex,
+    category_nodes: HashMap<CategoryNodeKind, Ulid>,
 }
 
 impl std::fmt::Debug for WorkspaceSnapshotGraph {
@@ -174,6 +176,7 @@ impl WorkspaceSnapshotGraph {
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         let inner_weight = CategoryNodeWeight::new(change_set, kind)?;
+        self.category_nodes.insert(kind, inner_weight.id());
         let new_node_index = self.add_node(NodeWeight::Category(inner_weight))?;
         Ok(new_node_index)
     }
@@ -182,18 +185,13 @@ impl WorkspaceSnapshotGraph {
         &self,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotGraphResult<(Ulid, NodeIndex)> {
-        for edgeref in self.graph.edges_directed(self.root(), Outgoing) {
-            let node_weight = self
-                .graph
-                .node_weight(edgeref.target())
-                .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
-            if let NodeWeight::Category(inner_weight) = node_weight {
-                if inner_weight.kind() == kind {
-                    return Ok((inner_weight.id(), edgeref.target()));
-                }
+        match self.category_nodes.get(&kind) {
+            Some(id) => {
+                let index = self.get_node_index_by_id(*id)?;
+                Ok((*id, index))
             }
+            None => todo!("could not get category child"),
         }
-        todo!("could not get category child")
     }
 
     pub fn edges_directed(

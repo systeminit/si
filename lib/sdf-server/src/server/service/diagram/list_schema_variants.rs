@@ -1,8 +1,7 @@
 use axum::extract::{Json, Query};
 use dal::{
-    socket::{DiagramKind, SocketEdgeKind, SocketId},
     ExternalProviderId, InternalProviderId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
-    Socket, Visibility, Workspace, WorkspaceSnapshot,
+    Visibility, Workspace, WorkspaceSnapshot,
 };
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +17,7 @@ pub struct ListSchemaVariantsRequest {
 
 pub type ProviderMetadata = String;
 
+// TODO(nick): collapse this into the socket view.
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputProviderView {
@@ -28,12 +28,12 @@ pub struct OutputProviderView {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputSocketView {
-    id: SocketId,
+    id: ExternalProviderId,
     name: String,
-    diagram_kind: DiagramKind,
     provider: OutputProviderView,
 }
 
+// TODO(nick): collapse this into the socket view.
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InputProviderView {
@@ -44,9 +44,8 @@ pub struct InputProviderView {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InputSocketView {
-    id: SocketId,
+    id: InternalProviderId,
     name: String,
-    diagram_kind: DiagramKind,
     provider: InputProviderView,
 }
 
@@ -89,29 +88,31 @@ pub async fn list_schema_variants(
             let mut input_sockets = Vec::new();
             let mut output_sockets = Vec::new();
 
-            let (input_sockets_with_providers, output_sockets_with_providers) =
-                Socket::list_for_schema_variant(&ctx, schema_variant.id()).await?;
+            let (external_providers, explicit_internal_providers) =
+                SchemaVariant::list_external_providers_and_explicit_internal_providers(
+                    &ctx,
+                    schema_variant.id(),
+                )
+                .await?;
 
-            for (input_socket, internal_provider) in input_sockets_with_providers {
+            for explicit_internal_provider in explicit_internal_providers {
                 input_sockets.push(InputSocketView {
-                    id: input_socket.id(),
-                    name: input_socket.name().to_owned(),
-                    diagram_kind: input_socket.diagram_kind(),
+                    id: explicit_internal_provider.id(),
+                    name: explicit_internal_provider.name().to_owned(),
                     provider: InputProviderView {
-                        id: internal_provider.id(),
-                        ty: input_socket.name().to_owned(),
+                        id: explicit_internal_provider.id(),
+                        ty: explicit_internal_provider.name().to_owned(),
                     },
                 })
             }
 
-            for (output_socket, external_provider) in output_sockets_with_providers {
+            for external_provider in external_providers {
                 output_sockets.push(OutputSocketView {
-                    id: output_socket.id(),
-                    name: output_socket.name().to_owned(),
-                    diagram_kind: output_socket.diagram_kind(),
+                    id: external_provider.id(),
+                    name: external_provider.name().to_owned(),
                     provider: OutputProviderView {
                         id: external_provider.id(),
-                        ty: output_socket.name().to_owned(),
+                        ty: external_provider.name().to_owned(),
                     },
                 })
             }
@@ -129,11 +130,6 @@ pub async fn list_schema_variants(
                     .await?
                     .unwrap_or("#0F0F0F".into()),
                 category: schema_variant.category().to_owned(),
-                // FIXME(nick): use the real value here
-                // color: schema_variant
-                //     .color(&ctx)
-                //     .await?
-                //     .unwrap_or_else(|| "00b0bc".to_owned()),
                 input_sockets,
                 output_sockets,
             });

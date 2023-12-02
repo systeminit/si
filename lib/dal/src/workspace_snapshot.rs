@@ -399,20 +399,6 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy()?.get_node_index_by_id(id)?)
     }
 
-    pub fn add_edge_from_root(
-        &mut self,
-        change_set: &ChangeSetPointer,
-        destination: NodeIndex,
-    ) -> WorkspaceSnapshotResult<EdgeIndex> {
-        let root = self.working_copy()?.root();
-        let new_edge = self.working_copy()?.add_edge(
-            root,
-            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            destination,
-        )?;
-        Ok(new_edge)
-    }
-
     #[instrument(skip_all)]
     pub async fn find(
         ctx: &DalContext,

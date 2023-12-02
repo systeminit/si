@@ -3,9 +3,10 @@ use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
 
+use crate::component::ComponentCreatedPayload;
 use crate::{
-    pkg::ModuleImported, user::CursorPayload, ChangeSetPk, DalContext, PropId, SocketId,
-    StandardModelError, TransactionsError, WorkspacePk,
+    pkg::ModuleImported, user::CursorPayload, ChangeSetPk, DalContext, PropId, StandardModelError,
+    TransactionsError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -40,7 +41,7 @@ pub enum WsPayload {
     ChangeSetWritten(ChangeSetPk),
     // CheckedQualifications(QualificationCheckPayload),
     // CodeGenerated(CodeGeneratedPayload),
-    // ComponentCreated(ComponentCreatedPayload),
+    ComponentCreated(ComponentCreatedPayload),
     Cursor(CursorPayload),
     // FixBatchReturn(FixBatchReturn),
     // FixReturn(FixReturn),
@@ -57,9 +58,9 @@ pub enum WsPayload {
 pub enum StatusValueKind {
     Attribute(PropId),
     CodeGen,
-    InputSocket(SocketId),
+    // InputSocket(SocketId),
     Internal,
-    OutputSocket(SocketId),
+    // OutputSocket(SocketId),
     Qualification,
 }
 

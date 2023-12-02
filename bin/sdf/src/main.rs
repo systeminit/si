@@ -22,6 +22,8 @@ type JobProcessor = sdf_server::NatsProcessor;
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 10;
 
 fn main() -> Result<()> {
+    // FIXME(nick): remove sleep to wait for Postgres and RabbitMQ.
+    std::thread::sleep(std::time::Duration::from_secs(10));
     let thread_builder = ::std::thread::Builder::new().stack_size(RT_DEFAULT_THREAD_STACK_SIZE);
     let thread_handler = thread_builder.spawn(|| {
         tokio::runtime::Builder::new_multi_thread()

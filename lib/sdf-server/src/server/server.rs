@@ -366,7 +366,7 @@ async fn install_builtins(
     }
 
     let mut count: usize = 0;
-    while let Some(res) = join_set.join_next().await {
+    'outer: while let Some(res) = join_set.join_next().await {
         let (pkg_name, res) = res?;
         match res {
             Ok(pkg) => {
@@ -388,6 +388,10 @@ async fn install_builtins(
                     println!(
                          "Pkg {pkg_name} Install finished successfully. {count} of {total} installed.",
                      );
+
+                    // FIXME(nick): remove this!
+                    println!("Ejecting early for debugging's sake!");
+                    break 'outer;
                 }
             }
             Err(err) => {

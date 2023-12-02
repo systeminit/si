@@ -54,6 +54,7 @@ pub struct Schema {
     timestamp: Timestamp,
     pub name: String,
     pub ui_hidden: bool,
+    // NOTE(nick): maybe we should have a special edge for this instead.
     default_schema_variant_id: Option<SchemaVariantId>,
     component_kind: ComponentKind,
     // NOTE(nick): what is the difference between these two?
@@ -71,6 +72,7 @@ pub struct SchemaContentV1 {
     pub timestamp: Timestamp,
     pub name: String,
     pub ui_hidden: bool,
+    // NOTE(nick): maybe we should have a special edge for this instead.
     pub default_schema_variant_id: Option<SchemaVariantId>,
     pub component_kind: ComponentKind,
     // NOTE(nick): what is the difference between these two?
@@ -104,6 +106,18 @@ impl Schema {
             category_name: inner.category_name,
             category: inner.category,
         }
+    }
+
+    pub fn id(&self) -> SchemaId {
+        self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn default_schema_variant_id(&self) -> Option<SchemaVariantId> {
+        self.default_schema_variant_id
     }
 
     pub async fn new(
@@ -145,15 +159,14 @@ impl Schema {
         Ok(Self::assemble(id.into(), content))
     }
 
-    pub fn id(&self) -> SchemaId {
-        self.id
-    }
-
     pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Self> {
+        dbg!("gettting by id");
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
         let node_index = workspace_snapshot.get_node_index_by_id(id)?;
         let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        dbg!("got node index and weight");
+
         let hash = node_weight.content_hash();
 
         let content: SchemaContent = ctx
@@ -162,6 +175,7 @@ impl Schema {
             .get(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
+        dbg!("got content");
 
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let SchemaContent::V1(inner) = content;
@@ -234,6 +248,18 @@ impl Schema {
         }
 
         Ok(schemas)
+    }
+
+    pub async fn set_default_schema_variant_id(
+        self,
+        ctx: &DalContext,
+        default_schema_variant_id: Option<SchemaVariantId>,
+    ) -> SchemaResult<Self> {
+        self.modify(ctx, |s| {
+            s.default_schema_variant_id = default_schema_variant_id;
+            Ok(())
+        })
+        .await
     }
 }
 

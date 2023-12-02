@@ -10,12 +10,6 @@ use crate::{
 
 pk!(ComponentStatusPk);
 
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct HistoryActorTimestamp {
-    pub actor: HistoryActor,
-    pub timestamp: DateTime<Utc>,
-}
-
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ComponentStatus {
     pk: ComponentStatusPk,

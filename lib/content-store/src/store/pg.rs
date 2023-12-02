@@ -75,7 +75,7 @@ impl Store for PgStore {
     where
         T: Serialize + ?Sized,
     {
-        let value = postcard::to_stdvec(object)?;
+        let value = serde_json::to_vec(object)?;
         let key = ContentHash::new(value.as_slice());
         self.inner.insert(key, PgStoreItem::new(value));
         Ok(key)
@@ -86,11 +86,11 @@ impl Store for PgStore {
         T: DeserializeOwned,
     {
         let object = match self.inner.get(key) {
-            Some(item) => postcard::from_bytes(&item.value)?,
+            Some(item) => serde_json::from_slice(&item.value)?,
             None => match ContentPair::find(&self.pg_pool, key).await? {
                 Some(content_pair) => {
                     let encoded = content_pair.value();
-                    let decoded = postcard::from_bytes(encoded)?;
+                    let decoded = serde_json::from_slice(encoded)?;
                     self.add(encoded)?;
 
                     decoded
@@ -111,7 +111,7 @@ impl Store for PgStore {
         for key in keys {
             match self.inner.get(key) {
                 Some(item) => {
-                    result.insert(*key, postcard::from_bytes(&item.value)?);
+                    result.insert(*key, serde_json::from_slice(&item.value)?);
                 }
                 None => keys_to_fetch.push(*key),
             }
@@ -119,7 +119,7 @@ impl Store for PgStore {
 
         for pair in ContentPair::find_many(&self.pg_pool, keys_to_fetch.as_slice()).await? {
             let encoded = pair.value();
-            result.insert(pair.key()?, postcard::from_bytes(encoded)?);
+            result.insert(pair.key()?, serde_json::from_slice(encoded)?);
             self.add(encoded)?;
         }
         Ok(result)

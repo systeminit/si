@@ -375,9 +375,9 @@ const selectedComponent = computed(() => componentsStore.selectedComponent);
 const insertCallbacks: Record<string, () => void> = {};
 
 watch(
-  () => componentsStore.selectedInsertSchemaId,
+  () => componentsStore.selectedInsertSchemaVariantId,
   () => {
-    if (componentsStore.selectedInsertSchemaId) {
+    if (componentsStore.selectedInsertSchemaVariantId) {
       diagramRef.value?.beginInsertElement("node");
     } else {
       diagramRef.value?.endInsertElement();
@@ -424,11 +424,11 @@ async function onDrawEdge(newEdge: DrawEdgeEvent) {
 }
 
 async function onDiagramInsertElement(e: InsertElementEvent) {
-  if (!componentsStore.selectedInsertSchemaId)
+  if (!componentsStore.selectedInsertSchemaVariantId)
     throw new Error("missing insert selection metadata");
 
-  const schemaId = componentsStore.selectedInsertSchemaId;
-  componentsStore.selectedInsertSchemaId = null;
+  const schemaVariantId = componentsStore.selectedInsertSchemaVariantId;
+  componentsStore.selectedInsertSchemaVariantId = null;
 
   let parentId;
 
@@ -439,7 +439,7 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
     if (
       parentComponent &&
       (parentComponent.nodeType !== "aggregationFrame" ||
-        schemaId === parentComponent.schemaId)
+        schemaVariantId === parentComponent.schemaVariantId)
     ) {
       parentId = e.parent;
     }
@@ -447,7 +447,7 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
 
   // TODO These ids should be number from the start.
   const createReq = await componentsStore.CREATE_COMPONENT(
-    schemaId,
+    schemaVariantId,
     e.position,
     parentId,
   );
@@ -462,7 +462,7 @@ function onDiagramResizeElement(e: ResizeElementEvent) {
   if (!e.isFinal) return;
   if (e.element instanceof DiagramGroupData) {
     componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
-      e.element.def.id,
+      e.element.def.componentId,
       e.position,
       e.size,
     );
@@ -479,7 +479,7 @@ function onDiagramMoveElement(e: MoveElementEvent) {
     e.element instanceof DiagramGroupData
   ) {
     componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
-      e.element.def.id,
+      e.element.def.componentId,
       e.position,
     );
   }

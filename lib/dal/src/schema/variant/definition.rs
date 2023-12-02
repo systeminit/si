@@ -13,7 +13,7 @@ use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::DEFAULT_SCHEMA_VARIANT_COLOR;
 use crate::ComponentKind;
-use crate::{pk, PropKind, SocketArity};
+use crate::{pk, PropKind};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -399,16 +399,17 @@ pub struct SchemaVariantDefinitionJson {
     #[serde(default)]
     pub si_prop_value_froms: Vec<SiPropValueFrom>,
 
-    /// The input [`Sockets`](crate::Socket) and corresponding
-    /// explicit [`InternalProviders`](crate::InternalProvider) created for the
-    /// [`variant`](crate::SchemaVariant).
-    #[serde(default)]
-    pub input_sockets: Vec<SocketDefinition>,
-    /// The output [`Sockets`](crate::Socket) and corresponding
-    /// [`ExternalProviders`](crate::ExternalProvider) created for the
-    /// [`variant`](crate::SchemaVariant).
-    #[serde(default)]
-    pub output_sockets: Vec<SocketDefinition>,
+    // TODO(nick): replace these with providers.
+    // /// The input [`Sockets`](crate::Socket) and corresponding
+    // /// explicit [`InternalProviders`](crate::InternalProvider) created for the
+    // /// [`variant`](crate::SchemaVariant).
+    // #[serde(default)]
+    // pub input_sockets: Vec<SocketDefinition>,
+    // /// The output [`Sockets`](crate::Socket) and corresponding
+    // /// [`ExternalProviders`](crate::ExternalProvider) created for the
+    // /// [`variant`](crate::SchemaVariant).
+    // #[serde(default)]
+    // pub output_sockets: Vec<SocketDefinition>,
     /// A map of documentation links to reference. To reference links (values) specify the key via
     /// the "doc_link_ref" field for a [`PropDefinition`].
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -646,23 +647,23 @@ pub struct PropDefinition {
 //     }
 // }
 
-/// The definition for a [`Socket`](crate::Socket) in a [`SchemaVariant`](crate::SchemaVariant).
-/// A corresponding [`provider`](crate::provider) will be created as well.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SocketDefinition {
-    /// The name of the [`Socket`](crate::Socket) to be created.
-    pub name: String,
-    /// The [`arity`](https://en.wikipedia.org/wiki/Arity) of the [`Socket`](crate::Socket).
-    /// Defaults to [`SocketArity::Many`](crate::SocketArity::Many) if nothing is provided.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub arity: Option<SocketArity>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ui_hidden: Option<bool>,
-    // The source of the information for the socket
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub value_from: Option<ValueFrom>,
-}
+// /// The definition for a [`Socket`](crate::Socket) in a [`SchemaVariant`](crate::SchemaVariant).
+// /// A corresponding [`provider`](crate::provider) will be created as well.
+// #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+// #[serde(rename_all = "camelCase")]
+// pub struct SocketDefinition {
+//     /// The name of the [`Socket`](crate::Socket) to be created.
+//     pub name: String,
+//     /// The [`arity`](https://en.wikipedia.org/wiki/Arity) of the [`Socket`](crate::Socket).
+//     /// Defaults to [`SocketArity::Many`](crate::SocketArity::Many) if nothing is provided.
+//     #[serde(skip_serializing_if = "Option::is_none")]
+//     pub arity: Option<SocketArity>,
+//     #[serde(skip_serializing_if = "Option::is_none")]
+//     pub ui_hidden: Option<bool>,
+//     // The source of the information for the socket
+//     #[serde(skip_serializing_if = "Option::is_none")]
+//     pub value_from: Option<ValueFrom>,
+// }
 
 // impl SocketDefinition {
 //     pub fn to_spec(
