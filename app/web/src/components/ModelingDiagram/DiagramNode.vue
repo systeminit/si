@@ -276,7 +276,7 @@ import {
   SOCKET_SIZE,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
-import { useDiagramContext } from "./GenericDiagram.vue";
+import { useDiagramContext } from "./ModelingDiagram.vue";
 
 const props = defineProps({
   node: {

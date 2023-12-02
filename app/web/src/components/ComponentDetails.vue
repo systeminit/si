@@ -52,7 +52,7 @@
           :label="`Restore ${
             selectedComponent.nodeType === 'component' ? 'Component' : 'Frame'
           }`"
-          @click="emit('restore')"
+          @click="modelingEventBus.emit('restoreSelection')"
         />
       </Stack>
     </template>
@@ -190,12 +190,12 @@ import AssetDiffDetails from "./AssetDiffDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import AttributesPanel from "./AttributesPanel/AttributesPanel.vue";
 
-const emit = defineEmits(["delete", "restore"]);
-
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
 const changeSetStore = useChangeSetsStore();
 const actionsStore = useActionsStore();
+
+const modelingEventBus = componentsStore.eventBus;
 
 const selectedComponent = computed(() => componentsStore.selectedComponent);
 const selectedComponentId = computed(

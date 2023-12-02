@@ -305,7 +305,7 @@ import tinycolor from "tinycolor2";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
 import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
-import DiagramNodeSocket from "@/components/GenericDiagram/DiagramNodeSocket.vue";
+import DiagramNodeSocket from "@/components/ModelingDiagram/DiagramNodeSocket.vue";
 import {
   SOCKET_GAP,
   SOCKET_MARGIN_TOP,
@@ -317,7 +317,7 @@ import {
   GROUP_TITLE_FONT_SIZE,
   GROUP_RESIZE_HANDLE_SIZE,
   GROUP_HEADER_ICON_SIZE,
-} from "@/components/GenericDiagram/diagram_constants";
+} from "@/components/ModelingDiagram/diagram_constants";
 import { useComponentsStore } from "@/store/components.store";
 import {
   DiagramDrawEdgeState,

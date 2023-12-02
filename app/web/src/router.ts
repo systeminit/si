@@ -17,12 +17,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/pages/store_test/StoreTestPage.vue"),
   },
   {
-    path: "/diagram",
-    name: "diagram",
-    meta: { public: true },
-    component: () => import("@/components/GenericDiagram/DiagramDemoPage.vue"),
-  },
-  {
     path: "/",
     name: "home",
     component: () => import("@/pages/HomePage.vue"),

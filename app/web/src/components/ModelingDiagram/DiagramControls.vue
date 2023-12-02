@@ -73,7 +73,7 @@ import {
   Icon,
 } from "@si/vue-lib/design-system";
 import { MAX_ZOOM, MIN_ZOOM } from "./diagram_constants";
-import { useDiagramContext } from "./GenericDiagram.vue";
+import { useDiagramContext } from "./ModelingDiagram.vue";
 
 const ZOOM_LEVEL_OPTIONS = [25, 50, 100, 150, 200];
 

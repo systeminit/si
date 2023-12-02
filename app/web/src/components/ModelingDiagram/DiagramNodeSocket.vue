@@ -75,7 +75,7 @@ import { useStatusStore } from "@/store/status.store";
 import { DiagramEdgeData, DiagramSocketData } from "./diagram_types";
 
 import { SOCKET_SIZE, DIAGRAM_FONT_FAMILY } from "./diagram_constants";
-import { useDiagramContext } from "./GenericDiagram.vue";
+import { useDiagramContext } from "./ModelingDiagram.vue";
 
 const { theme } = useTheme();
 

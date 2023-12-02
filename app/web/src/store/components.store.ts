@@ -4,6 +4,7 @@ import { Vector2d } from "konva/lib/types";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
 
+import mitt from "mitt";
 import {
   DiagramEdgeDef,
   DiagramNodeDef,
@@ -11,7 +12,7 @@ import {
   DiagramStatusIcon,
   GridPoint,
   Size2D,
-} from "@/components/GenericDiagram/diagram_types";
+} from "@/components/ModelingDiagram/diagram_types";
 import { MenuItem } from "@/api/sdf/dal/menu";
 import {
   DiagramNode,
@@ -54,6 +55,7 @@ type RawComponent = {
   nodeType: "component" | "configurationFrame" | "aggregationFrame";
   parentNodeId?: ComponentNodeId;
   position: GridPoint;
+  size?: Size2D;
   resource: Resource;
   schemaCategory: string;
   schemaId: string; // TODO: probably want to move this to a different store and not load it all the time
@@ -173,6 +175,12 @@ export interface ComponentDebugView {
   outputSockets: AttributeDebugView[];
 }
 
+type EventBusEvents = {
+  deleteSelection: void;
+  restoreSelection: void;
+  refreshSelectionResource: void;
+};
+
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
@@ -200,6 +208,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/components`,
       {
         state: () => ({
+          // "global" modeling event bus - a bit weird that it lives in the store
+          // but we already have global access to it... and this way we can listen to events
+          eventBus: mitt<EventBusEvents>(),
+
           // components within this changeset
           // componentsById: {} as Record<ComponentId, Component>,
           // connectionsById: {} as Record<ConnectionId, Connection>,
@@ -333,6 +345,23 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           selectedEdge(): Edge | undefined {
             return this.edgesById[this.selectedEdgeId || 0];
           },
+          hoveredComponent(): FullComponent | undefined {
+            return this.componentsById[this.hoveredComponentId || 0];
+          },
+
+          deletableSelectedComponents(): FullComponent[] {
+            return _.reject(
+              this.selectedComponents,
+              (c) => c.changeStatus === "deleted",
+            );
+          },
+          restorableSelectedComponents(): FullComponent[] {
+            return _.filter(
+              this.selectedComponents,
+              (c) => c.changeStatus === "deleted",
+            );
+          },
+
           selectedComponentDiff(): ComponentDiff | undefined {
             return this.componentDiffsById[this.selectedComponentId || 0];
           },
@@ -377,9 +406,53 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               };
             });
           },
+          modelIsEmpty(): boolean {
+            return !this.diagramNodes.length;
+          },
 
           diagramEdges(): DiagramEdgeDef[] {
-            return this.allEdges;
+            // Note(victor): The code below checks whether was only created implicitly, through inheritance from an aggregation frame
+            // In the future, it would make more sense for these edges to not be returned from the backend
+            const validEdges = _.filter(this.allEdges, (edge) => {
+              return (
+                !!this.componentsByNodeId[edge.toNodeId] &&
+                !!this.componentsByNodeId[edge.fromNodeId]
+              );
+            });
+            const edgesWithInvisibleSet = _.map(validEdges, (rawEdge) => {
+              const edge = { ...rawEdge, invisible: false };
+
+              const toNodeParentId =
+                this.componentsByNodeId[edge.toNodeId]?.parentNodeId;
+
+              if (toNodeParentId) {
+                const toNodeParentComp =
+                  this.componentsByNodeId[toNodeParentId];
+
+                if (toNodeParentComp?.nodeType === "aggregationFrame") {
+                  if (edge.fromNodeId === toNodeParentComp.nodeId) {
+                    edge.isInvisible = true;
+                  }
+                }
+              }
+
+              const fromNodeParentId =
+                this.componentsByNodeId[edge.fromNodeId]?.parentNodeId;
+
+              if (fromNodeParentId) {
+                const fromParentComp =
+                  this.componentsByNodeId[fromNodeParentId];
+                if (fromParentComp?.nodeType === "aggregationFrame") {
+                  if (edge.toNodeId === fromParentComp.nodeId) {
+                    edge.isInvisible = true;
+                  }
+                }
+              }
+
+              return edge;
+            });
+
+            return edgesWithInvisibleSet;
           },
 
           edgesByFromNodeId(): Record<ComponentNodeId, Edge[]> {
@@ -438,7 +511,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           getDependentComponents: (state) => (componentId: ComponentId) => {
-            // TODO: this is ugly... much of this logic is duplicated in GenericDiagram
+            // TODO: this is ugly... much of this logic is duplicated in ModelingDiagram
 
             const connectedNodes: Record<ComponentId, ComponentId[]> = {};
             _.each(_.values(state.edgesById), (edge) => {
@@ -556,6 +629,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
+
+          setInsertSchema(schemaId: SchemaId) {
+            this.selectedInsertSchemaId = schemaId;
+            this.setSelectedComponentId(null);
+          },
+          cancelInsert() {
+            this.selectedInsertSchemaId = null;
+          },
+
           async CREATE_COMPONENT(
             schemaId: string,
             position: Vector2d,
@@ -1001,10 +1083,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         onActivated() {
           if (!changeSetId) return;
 
+          // trigger initial load
           this.FETCH_DIAGRAM_DATA();
           this.FETCH_AVAILABLE_SCHEMAS();
           this.FETCH_NODE_ADD_MENU();
 
+          // realtime subs
           const realtimeStore = useRealtimeStore();
 
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [

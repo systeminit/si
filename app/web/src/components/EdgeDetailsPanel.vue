@@ -31,7 +31,7 @@
           size="md"
           icon="trash-restore"
           label="Restore edge"
-          @click="emit('restore')"
+          @click="modelingEventBus.emit('restoreSelection')"
         />
       </Stack>
     </template>
@@ -52,11 +52,10 @@ import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import EdgeCard from "./EdgeCard.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 
-const emit = defineEmits(["delete", "restore"]);
-
 const DEV_MODE = import.meta.env.DEV;
 
 const componentsStore = useComponentsStore();
+const modelingEventBus = componentsStore.eventBus;
 
 const selectedEdge = computed(() => componentsStore.selectedEdge);
 </script>

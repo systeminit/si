@@ -237,7 +237,6 @@ export type DiagramEdgeDef = {
 
 // specific features... likely will move these as the diagram functionality gets broken up
 export type PendingInsertedElement = {
-  diagramElementType: DiagramElementTypes;
   // TODO: will likely need more info here if you can insert more specific subtypes of things, so we can vary display a bit
   insertedAt?: Date;
   position?: Vector2d;
@@ -256,11 +255,6 @@ export type DiagramDrawEdgeState = {
 export type ElementHoverMeta =
   | { type: "resize"; direction: SideAndCornerIdentifiers }
   | { type: "socket"; socket: DiagramSocketData };
-
-export type HoverElementEvent = {
-  element: DiagramElementData | null;
-  meta?: ElementHoverMeta;
-};
 
 export type MovePointerEvent = {
   x: number;
@@ -288,12 +282,6 @@ export type SelectElementEvent = {
 };
 export type DeleteElementsEvent = {
   elements: DiagramElementData[];
-};
-export type InsertElementEvent = {
-  diagramElementType: DiagramElementTypes;
-  position: Vector2d;
-  parent?: string;
-  onComplete: () => void;
 };
 
 export type RightClickElementEvent = {

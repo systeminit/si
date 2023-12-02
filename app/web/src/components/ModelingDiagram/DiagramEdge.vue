@@ -85,7 +85,7 @@ import { SOCKET_SIZE, SELECTION_COLOR } from "./diagram_constants";
 import { DiagramEdgeData } from "./diagram_types";
 import { pointAlongLinePct, pointAlongLinePx } from "./utils/math";
 import DiagramIcon from "./DiagramIcon.vue";
-import { useDiagramContext } from "./GenericDiagram.vue";
+import { useDiagramContext } from "./ModelingDiagram.vue";
 
 const isDevMode = import.meta.env.DEV;
 
