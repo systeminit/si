@@ -53,7 +53,6 @@ function user_prep() {
 }
 
 if ! id 10000$SB_ID >/dev/null 2>&1; then
-  echo "Creating user 10000$SB_ID"
   retry user_prep
 fi
 
@@ -68,7 +67,7 @@ touch $JAIL/logs
 touch $JAIL/metrics
 
 function kernel_prep() {
-  cp -v $KERNEL_IMG "$JAIL/$KERNEL"
+  cp $KERNEL_IMG "$JAIL/$KERNEL"
   # TODO(scott): make this work. First attempt yielded a
   # kernel loader InvalidElfMagicNumber error
   # OVERLAY="kernel-overlay-$SB_ID"

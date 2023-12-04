@@ -3,7 +3,7 @@
 # Call this function with:
 # ./orchestrate-install.sh <filepath to variables>
 
-set -eo pipefail
+set -eou pipefail
 
 check_params_set(){
 
@@ -167,7 +167,7 @@ execute_configuration_management() {
         # Set up correct permissions for the /firecracker-data/ folder
         chown -R jailer-shared:jailer-shared /firecracker-data/
         chmod a+x /firecracker-data/*{.sh,firecracker,jailer}
-        chmod 400 /firecracker-data/micro-vm-key
+        # chmod 400 /firecracker-data/micro-vm-key
 
         # Copy bins to /usr/bin/
         cp ./firecracker /usr/bin/firecracker
@@ -250,16 +250,22 @@ prepare_jailers() {
   if test -f "./prepare_jailer.sh"; then
     ITERATIONS="${1:-5000}" # Default to 5000 jails
     IN_PARALLEL=250
-    echo "Creating $ITERATIONS jails..."
+    SECONDS=0
     for (( iter=0; iter<$ITERATIONS; iter++ ))
     do
+      echo -ne "Validating jail $(($iter + 1 )) out of $ITERATIONS ... \r"
         # this ensures we only run n jobs in parallel at a time to avoid
         # process locks. This is an unreliable hack.
+        # TODO(scott): we need to walk through the processes called in this script
+        # and understand where locking could occur. Parallelization can be
+        # dangerous here, but testing implies that it works.
         if [ $(jobs -r | wc -l) -ge $IN_PARALLEL ]; then
-          wait $(jobs -r -p | head -1)
+         wait $(jobs -r -p | head -1)
         fi
         ./prepare_jailer.sh $iter &
     done
+    echo
+    echo "Elapsed: $(($SECONDS / 3600))hrs $((($SECONDS / 60) % 60))min $(($SECONDS % 60))sec"
   else
     echo "prepare_jailer.sh script not found, skipping jail creation."
     exit 1
