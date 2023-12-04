@@ -67,6 +67,9 @@ pub enum ManagerError<T> {
     /// An Instance error.
     #[error("instance error")]
     Instance(#[source] T),
+    /// A Setup Error.
+    #[error("setup error")]
+    SetupError(#[source] T),
 }
 
 /// [`Manager`] for creating and recycling generic [`Instance`]s.
@@ -75,10 +78,18 @@ pub struct Manager<S> {
     spec: S,
 }
 
-impl<S> Manager<S> {
+impl<S> Manager<S>
+where
+    S: Spec,
+{
     /// Creates a new [`Manager`] from the given instance specification.
     pub fn new(spec: S) -> Self {
         Self { spec }
+    }
+
+    /// Peforms any necessary setup work to ensure the host can run the pool members.
+    pub fn setup(&self) -> Result<(), S::Error> {
+        self.spec.setup()
     }
 }
 

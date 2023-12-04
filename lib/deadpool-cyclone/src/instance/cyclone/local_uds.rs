@@ -68,6 +68,9 @@ pub enum LocalUdsInstanceError {
     /// Instance has exhausted its predefined request count.
     #[error("no remaining requests, cyclone server is considered unhealthy")]
     NoRemainingRequests,
+    /// Failed to setup the host correctly.
+    #[error("failed to setup host")]
+    SetupFailed,
     /// Failed to create socket from temporary file.
     #[error("failed to create temp socket")]
     TempSocket(#[source] io::Error),
@@ -308,12 +311,24 @@ pub struct LocalUdsInstanceSpec {
     /// Enables the `action` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_action"), default = "false")]
     action: bool,
+
+    /// Size of the pool to configure for the spec.
+    #[builder(setter(into), default = "500")]
+    pool_size: u16,
 }
 
 #[async_trait]
 impl Spec for LocalUdsInstanceSpec {
     type Instance = LocalUdsInstance;
     type Error = LocalUdsInstanceError;
+
+    fn setup(&self) -> result::Result<(), Self::Error> {
+        match self.runtime_strategy {
+            LocalUdsRuntimeStrategy::LocalDocker => Ok(()),
+            LocalUdsRuntimeStrategy::LocalProcess => Ok(()),
+            LocalUdsRuntimeStrategy::LocalFirecracker => setup_firecracker(self),
+        }
+    }
 
     async fn spawn(&self) -> result::Result<Self::Instance, Self::Error> {
         let (temp_path, socket) = temp_path_and_socket_from(&self.socket_strategy)?;
@@ -691,13 +706,13 @@ struct LocalFirecrackerRuntime {
 }
 
 impl LocalFirecrackerRuntime {
-    async fn build() -> Result<Box<dyn LocalInstanceRuntime>> {
+    async fn build(spec: LocalUdsInstanceSpec) -> Result<Box<dyn LocalInstanceRuntime>> {
         // TODO(johnwatson): Run some checks against the ID to see if it's been used before
         // Calculate it instead of random? Or have an incrementing pool 1..5000 that we loop
         // over, ensuring that we do cleanup along the way
         // Obviously this has the potential to clash, but overall the risk here is fairly low
         // assuming that cleanup works as expected ;)
-        let vm_id: String = thread_rng().gen_range(0..5000).to_string();
+        let vm_id: String = thread_rng().gen_range(0..spec.pool_size).to_string();
         let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", vm_id));
 
         Ok(Box::new(LocalFirecrackerRuntime {
@@ -752,8 +767,25 @@ async fn runtime_instance_from_spec(
         LocalUdsRuntimeStrategy::LocalDocker => {
             LocalDockerRuntime::build(socket, spec.clone()).await
         }
-        LocalUdsRuntimeStrategy::LocalFirecracker => LocalFirecrackerRuntime::build().await,
+        LocalUdsRuntimeStrategy::LocalFirecracker => {
+            LocalFirecrackerRuntime::build(spec.clone()).await
+        }
     }
+}
+
+fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
+    let command = "/firecracker-data/orchestrate-install.sh ".to_owned()
+        + "/tmp/variables.txt "
+        + &spec.pool_size.to_string();
+
+    // Spawn the shell process
+    let _status = Command::new("sudo")
+        .arg("bash")
+        .arg("-c")
+        .arg(command)
+        .status();
+
+    Ok(())
 }
 
 async fn watch_task<Strm>(

@@ -2,6 +2,25 @@
 
 set -euo pipefail
 
+########## ############################# #########
+##########          Helper Funcs         #########
+########## ############################# #########
+
+# retry to passed command every 5 seconds for up to 30 seconds
+function retry() {
+  n=0
+  until [ "$n" -ge 30 ]
+  do
+     $1 && break
+     n=$((n+1))
+     sleep 5
+  done
+}
+
+########## ############################# #########
+##########              Vars             #########
+########## ############################# #########
+
 SB_ID="${1:-0}" # Default to sb_id=0
 
 DATA_DIR="/firecracker-data"
@@ -23,17 +42,19 @@ JAILER_NS="jailer-$SB_ID"
 ########## ############################# #########
 
 # Create a user and group to run the execution via for one micro-vm
-if id 10000$SB_ID >/dev/null 2>&1; then
-  echo "User 10000$SB_ID already exists, skipping creation"
-else
-  echo "Creating user 10000$SB_ID"
+function user_prep() {
   useradd -M -u 10000$SB_ID $JAILER_NS
   usermod -L $JAILER_NS
 
-  # This was created earlier on the machine provisioning
+  # This group was created earlier on the machine provisioning
   usermod -a -G jailer-processes $JAILER_NS
   usermod -a -G root $JAILER_NS
   usermod -a -G kvm $JAILER_NS
+}
+
+if ! id 10000$SB_ID >/dev/null 2>&1; then
+  echo "Creating user 10000$SB_ID"
+  retry user_prep
 fi
 
 ########## ############################# #########
@@ -46,10 +67,7 @@ mkdir -p "$JAIL/"
 touch $JAIL/logs
 touch $JAIL/metrics
 
-if test -f "$JAIL/$KERNEL"; then
-  echo "Jailed kernel exists, skipping creation."
-else
-  echo "Setting up  kernel image..."
+function kernel_prep() {
   cp -v $KERNEL_IMG "$JAIL/$KERNEL"
   # TODO(scott): make this work. First attempt yielded a
   # kernel loader InvalidElfMagicNumber error
@@ -62,17 +80,13 @@ else
   # echo "0 $OVERLAY_SZ snapshot /dev/mapper/rootfs $OVERLAY_LOOP P 8" | dmsetup create $OVERLAY
   # touch $JAIL/$KERNEL
   # mount --bind /dev/mapper/$OVERLAY $JAIL/$KERNEL
-fi
+}
 
-if test -f "$JAIL/$ROOTFS"; then
-  echo "Jailed rootfs exists, skipping creation."
-else
-  echo "Setting up rootfs..."
+function rootfs_prep() {
   # Here we create a device-per-jail to act as a unique
   # CoW layer. These cannot be shared because we are required
   # to bind mount these into the jail dir due to chroot shenanigans.
   # Bind mounted permissions propagate, so jails would conflict.
-  OVERLAY="rootfs-overlay-$SB_ID"
   OVERLAY_FILE=$JAIL/$OVERLAY
   touch $OVERLAY_FILE
   truncate --size=5368709120 $OVERLAY_FILE
@@ -81,6 +95,15 @@ else
   echo "0 $OVERLAY_SZ snapshot /dev/mapper/rootfs $OVERLAY_LOOP P 8" | dmsetup create $OVERLAY
   touch $JAIL/$ROOTFS
   mount --bind /dev/mapper/$OVERLAY $JAIL/$ROOTFS
+}
+
+if ! test -f "$JAIL/$KERNEL"; then
+  retry kernel_prep
+fi
+
+OVERLAY="rootfs-overlay-$SB_ID"
+if ! dmsetup info $OVERLAY &> /dev/null; then
+  retry rootfs_prep
 fi
 
 chown -R jailer-$SB_ID:jailer-$SB_ID $JAIL/
@@ -90,10 +113,7 @@ chown -R jailer-$SB_ID:jailer-$SB_ID $JAIL/
 ########## ############################# #########
 
 # Create network namespace for jailer incantation
-if test -f /run/netns/$JAILER_NS; then
-  echo "Network namespace $JAILER_NS already exists, skipping creation and configuration."
-else
-  echo "Creating and configuring network..."
+if ! test -f /run/netns/$JAILER_NS; then
   ip netns add $JAILER_NS
 
   MASK_LONG="255.255.255.252"
