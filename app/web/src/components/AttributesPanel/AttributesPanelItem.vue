@@ -343,7 +343,7 @@
 
 <script setup lang="ts">
 import * as _ from "lodash-es";
-import { PropType, computed, ref, watch } from "vue";
+import { computed, PropType, ref, watch } from "vue";
 
 import { Icon, IconNames, Modal } from "@si/vue-lib/design-system";
 import {
@@ -353,6 +353,7 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { Secret, useSecretsStore } from "@/store/secrets.store";
+import { PropertyEditorPropKind } from "@/api/sdf/dal/property_editor";
 import AttributesPanelItem from "./AttributesPanelItem.vue"; // eslint-disable-line import/no-self-import
 import { useAttributesPanelContext } from "./AttributesPanel.vue";
 import CodeEditor from "../CodeEditor.vue";
@@ -516,7 +517,8 @@ function updateValue() {
     newVal = newValueBoolean.value;
     // special handling for empty value + false
     if (newVal === false && !currentValue.value) skipUpdate = true;
-  } else if (widgetKind.value === "integer") {
+  } else if (propKind.value === PropertyEditorPropKind.Integer) {
+    // There is no such thing as an integer widget kind!
     newVal = newValueNumber.value;
   } else {
     // for now, we will always trim, but we need to be smarter about this
