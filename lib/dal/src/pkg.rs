@@ -25,6 +25,8 @@ use crate::{
     },
     installed_pkg::InstalledPkgError,
     prop::PropError,
+    provider::external::ExternalProviderError,
+    provider::internal::InternalProviderError,
     //prop_tree::PropTreeError,
     // schema::variant::definition::{SchemaVariantDefinitionError, SchemaVariantDefinitionId},
     socket::SocketEdgeKind,
@@ -123,8 +125,8 @@ pub enum PkgError {
     // EdgeRefersToMissingComponent(ComponentId),
     // #[error("Cannot find Socket for explicit InternalProvider {0}")]
     // ExplicitInternalProviderMissingSocket(InternalProviderId),
-    // #[error(transparent)]
-    // ExternalProvider(#[from] ExternalProviderError),
+    #[error(transparent)]
+    ExternalProvider(#[from] ExternalProviderError),
     // #[error("Cannot find Socket for ExternalProvider {0}")]
     // ExternalProviderMissingSocket(ExternalProviderId),
     #[error(transparent)]
@@ -145,8 +147,8 @@ pub enum PkgError {
     // InstalledSchemaVariantDefinitionMissing(SchemaVariantDefinitionId),
     // #[error("Installed schema variant {0} does not exist")]
     // InstalledSchemaVariantMissing(SchemaVariantId),
-    // #[error(transparent)]
-    // InternalProvider(#[from] InternalProviderError),
+    #[error(transparent)]
+    InternalProvider(#[from] InternalProviderError),
     // #[error("Missing Prop {1} for InternalProvider {1}")]
     // InternalProviderMissingProp(InternalProviderId, PropId),
     // #[error("Leaf Function {0} has invalid argument {1}")]

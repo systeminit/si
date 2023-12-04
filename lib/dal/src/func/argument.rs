@@ -370,7 +370,6 @@ impl FuncArgument {
 
         let change_set = ctx.change_set_pointer()?;
         for user_of_arg in users_of_arg {
-            info!("removing edge from {:?} to {:?}", user_of_arg, arg_node_idx);
             workspace_snapshot.remove_edge(
                 change_set,
                 user_of_arg,

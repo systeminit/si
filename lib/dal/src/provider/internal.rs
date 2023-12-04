@@ -228,7 +228,7 @@ impl InternalProvider {
         func_id: FuncId,
         arity: SocketArity,
         frame_socket: bool,
-    ) -> InternalProviderResult<Self> {
+    ) -> InternalProviderResult<(Self, Socket)> {
         info!("creating explicit internal provider");
         let name = name.into();
         let content = InternalProviderContentV1 {
@@ -266,7 +266,7 @@ impl InternalProvider {
             )?;
         }
 
-        Socket::new(
+        let socket = Socket::new(
             ctx,
             name,
             match frame_socket {
@@ -280,7 +280,7 @@ impl InternalProvider {
         )
         .await?;
 
-        Ok(Self::assemble(id.into(), content))
+        Ok((Self::assemble(id.into(), content), socket))
     }
 }
 

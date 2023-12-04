@@ -108,7 +108,7 @@ impl ExternalProvider {
         func_id: FuncId,
         arity: SocketArity,
         frame_socket: bool,
-    ) -> ExternalProviderResult<Self> {
+    ) -> ExternalProviderResult<(Self, Socket)> {
         info!("creating external provider");
         let name = name.into();
         let content = ExternalProviderContentV1 {
@@ -147,7 +147,7 @@ impl ExternalProvider {
             )?;
         }
 
-        Socket::new(
+        let socket = Socket::new(
             ctx,
             name,
             match frame_socket {
@@ -161,7 +161,7 @@ impl ExternalProvider {
         )
         .await?;
 
-        Ok(Self::assemble(id.into(), content))
+        Ok((Self::assemble(id.into(), content), socket))
     }
 }
 
