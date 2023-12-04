@@ -40,7 +40,8 @@ load(
 )
 load("@prelude//kotlin:kotlin_toolchain.bzl", "KotlinToolchainInfo")
 load("@prelude//kotlin:kotlin_utils.bzl", "get_kotlinc_compatible_target")
-load("@prelude//utils:utils.bzl", "expect", "map_idx")
+load("@prelude//utils:expect.bzl", "expect")
+load("@prelude//utils:utils.bzl", "map_idx")
 
 buckPaths = struct(
     configuredBuckOut = "buck-out/v2",
@@ -89,7 +90,10 @@ def create_jar_artifact_kotlincd(
     output_paths = define_output_paths(actions, actions_identifier, label)
     path_to_class_hashes_out = declare_prefixed_output(actions, actions_identifier, "classes.txt")
 
-    should_create_class_abi = not is_creating_subtarget and (actual_abi_generation_mode == AbiGenerationMode("class") or not is_building_android_binary)
+    should_create_class_abi = \
+        not is_creating_subtarget and \
+        (actual_abi_generation_mode == AbiGenerationMode("class") or not is_building_android_binary) and \
+        kotlin_toolchain.jvm_abi_gen_plugin != None
     if should_create_class_abi:
         class_abi_jar = declare_prefixed_output(actions, actions_identifier, "class-abi.jar")
         class_abi_output_dir = declare_prefixed_output(actions, actions_identifier, "class_abi_dir", dir = True)
@@ -102,6 +106,16 @@ def create_jar_artifact_kotlincd(
         should_use_jvm_abi_gen = False
 
     def encode_kotlin_extra_params(kotlin_compiler_plugins):
+        kosabiPluginOptionsMap = {}
+        if kotlin_toolchain.kosabi_stubs_gen_plugin != None:
+            kosabiPluginOptionsMap["kosabi_stubs_gen_plugin"] = kotlin_toolchain.kosabi_stubs_gen_plugin
+
+        if kotlin_toolchain.kosabi_applicability_plugin != None:
+            kosabiPluginOptionsMap["kosabi_applicability_plugin"] = kotlin_toolchain.kosabi_applicability_plugin
+
+        if kotlin_toolchain.kosabi_jvm_abi_gen_plugin != None:
+            kosabiPluginOptionsMap["kosabi_jvm_abi_gen_plugin"] = kotlin_toolchain.kosabi_jvm_abi_gen_plugin
+
         return struct(
             extraClassPaths = bootclasspath_entries,
             standardLibraryClassPath = kotlin_toolchain.kotlin_stdlib[JavaLibraryInfo].library_output.full_library,
@@ -110,11 +124,7 @@ def create_jar_artifact_kotlincd(
             qpldDotslash = kotlin_toolchain.qpld_dotslash,
             jvmAbiGenPlugin = kotlin_toolchain.jvm_abi_gen_plugin,
             kotlinCompilerPlugins = {plugin: {"params": plugin_options} if plugin_options else {} for plugin, plugin_options in kotlin_compiler_plugins.items()},
-            kosabiPluginOptions = struct(
-                kosabi_stubs_gen_plugin = kotlin_toolchain.kosabi_stubs_gen_plugin,
-                kosabi_applicability_plugin = kotlin_toolchain.kosabi_applicability_plugin,
-                kosabi_jvm_abi_gen_plugin = kotlin_toolchain.kosabi_jvm_abi_gen_plugin,
-            ),
+            kosabiPluginOptions = struct(**kosabiPluginOptionsMap),
             friendPaths = [friend_path.library_output.abi for friend_path in map_idx(JavaLibraryInfo, friend_paths) if friend_path.library_output],
             kotlinHomeLibraries = kotlin_toolchain.kotlin_home_libraries,
             jvmTarget = get_kotlinc_compatible_target(str(target_level)),

@@ -5,6 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//:paths.bzl", "paths")
 load(
     "@prelude//android:android_providers.bzl",
     "merge_android_packageable_info",
@@ -60,9 +61,9 @@ load(
     "@prelude//tests:re_utils.bzl",
     "get_re_executor_from_props",
 )
+load("@prelude//utils:expect.bzl", "expect")
 load(
     "@prelude//utils:utils.bzl",
-    "expect",
     "filter_and_map_idx",
     "value_or",
 )
@@ -243,15 +244,34 @@ def cxx_binary_impl(ctx: AnalysisContext) -> list[Provider]:
     if output.link_command_debug_output:
         extra_providers.append(LinkCommandDebugOutputInfo(debug_outputs = [output.link_command_debug_output]))
 
+    # When an executable is the output of a build, also materialize all the
+    # unpacked external debuginfo that goes with it. This makes `buck2 build
+    # :main` equivalent to `buck2 build :main :main[debuginfo]`.
+    #
+    # This is wasted work if we are building an executable together with its dwp
+    # subtarget (`buck2 build :main :main[dwp]`) in which case a large number of
+    # unpacked debuginfo files can end up being materialized redundantly. LLDB
+    # will ignore them and obtain debuginfo via the single packed debuginfo file
+    # instead.
+    #
+    # But materializing unpacked debuginfo is the right tradeoff because it
+    # means the output of `buck2 build :main` is always immediately usable in a
+    # debugger.
+    #
+    # External debuginfo is *not* materialized when an executable is depended on
+    # by another rule, such as by $(exe ...) or exec_dep.
+    other_outputs = output.runtime_files + output.external_debug_info_artifacts
+
     return [
         DefaultInfo(
             default_output = output.binary,
-            other_outputs = output.runtime_files,
+            other_outputs = other_outputs,
             sub_targets = output.sub_targets,
         ),
         RunInfo(args = cmd_args(output.binary).hidden(output.runtime_files)),
         output.compilation_db,
         output.xcode_data,
+        output.dist_info,
     ] + extra_providers
 
 def _prebuilt_item(
@@ -471,7 +491,7 @@ def prebuilt_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
 
                     # Provide a sub-target that always provides the shared lib
                     # using the soname.
-                    if soname and shared_lib.output.basename != soname:
+                    if soname and shared_lib.output.basename != paths.basename(soname):
                         soname_lib = ctx.actions.copy_file(soname, shared_lib.output)
                     else:
                         soname_lib = shared_lib.output

@@ -32,6 +32,10 @@ load(
     "cxx_use_bolt",
 )
 load(
+    "@prelude//dist:dist_info.bzl",
+    "DistInfo",
+)
+load(
     "@prelude//ide_integrations:xcode.bzl",
     "XCODE_DATA_SUB_TARGET",
     "XcodeDataInfo",
@@ -158,15 +162,19 @@ CxxExecutableOutput = record(
     unstripped_binary = Artifact,
     bitcode_bundle = field([Artifact, None], None),
     dwp = field([Artifact, None]),
-    # Files that will likely need to be included as .hidden() arguments
-    # when executing the executable (ex. RunInfo())
+    # Files that must be present for the executable to run successfully. These
+    # are always materialized, whether the executable is the output of a build
+    # or executed as a host tool. They become .hidden() arguments when executing
+    # the executable via RunInfo().
     runtime_files = list[ArgLike],
     sub_targets = dict[str, list[DefaultInfo]],
     # The LinkArgs used to create the final executable in 'binary'.
     link_args = list[LinkArgs],
     # External components needed to debug the executable.
     external_debug_info = field(ArtifactTSet, ArtifactTSet()),
-    # The projection of `external_debug_info`
+    # The projection of `external_debug_info`. These files need to be
+    # materialized when this executable is the output of a build, not when it is
+    # used by other rules. They become other_outputs on DefaultInfo.
     external_debug_info_artifacts = list[TransitiveSetArgsProjection],
     shared_libs = dict[str, LinkedObject],
     # All link group links that were generated in the executable.
@@ -175,6 +183,7 @@ CxxExecutableOutput = record(
     xcode_data = XcodeDataInfo,
     linker_map_data = [CxxLinkerMapData, None],
     link_command_debug_output = field([LinkCommandDebugOutput, None], None),
+    dist_info = DistInfo,
 )
 
 def cxx_executable(ctx: AnalysisContext, impl_params: CxxRuleConstructorParams, is_cxx_test: bool = False) -> CxxExecutableOutput:
@@ -419,27 +428,27 @@ def cxx_executable(ctx: AnalysisContext, impl_params: CxxRuleConstructorParams, 
 
     # Only setup a shared library symlink tree when shared linkage or link_groups is used
     gnu_use_link_groups = cxx_is_gnu(ctx) and link_group_mappings
+    shlib_deps = []
     if link_strategy == LinkStrategy("shared") or gnu_use_link_groups:
-        shlib_info = merge_shared_libraries(
-            ctx.actions,
-            deps = (
-                [d.shared_library_info for d in link_deps] +
-                [d.shared_library_info for d in impl_params.extra_link_roots]
-            ),
+        shlib_deps = (
+            [d.shared_library_info for d in link_deps] +
+            [d.shared_library_info for d in impl_params.extra_link_roots]
         )
 
-        link_group_ctx = LinkGroupContext(
-            link_group_mappings = link_group_mappings,
-            link_group_libs = link_group_libs,
-            link_group_preferred_linkage = link_group_preferred_linkage,
-            labels_to_links_map = labels_to_links_map,
-        )
+    shlib_info = merge_shared_libraries(ctx.actions, deps = shlib_deps)
 
-        def shlib_filter(_name, shared_lib):
-            return not gnu_use_link_groups or is_link_group_shlib(shared_lib.label, link_group_ctx)
+    link_group_ctx = LinkGroupContext(
+        link_group_mappings = link_group_mappings,
+        link_group_libs = link_group_libs,
+        link_group_preferred_linkage = link_group_preferred_linkage,
+        labels_to_links_map = labels_to_links_map,
+    )
 
-        for name, shared_lib in traverse_shared_library_info(shlib_info, filter_func = shlib_filter).items():
-            shared_libs[name] = shared_lib.lib
+    def shlib_filter(_name, shared_lib):
+        return not gnu_use_link_groups or is_link_group_shlib(shared_lib.label, link_group_ctx)
+
+    for name, shared_lib in traverse_shared_library_info(shlib_info, filter_func = shlib_filter).items():
+        shared_libs[name] = shared_lib.lib
 
     if gnu_use_link_groups:
         # When there are no matches for a pattern based link group,
@@ -570,13 +579,6 @@ def cxx_executable(ctx: AnalysisContext, impl_params: CxxRuleConstructorParams, 
             ),
         )]
 
-    # TODO(T110378140): We can't really enable this yet, as Python binaries
-    # consuming C++ binaries as resources don't know how to handle the
-    # extraneous debug paths and will crash.  We probably need to add a special
-    # exported resources provider and make sure we handle the workflows.
-    # Add any referenced debug paths to runtime files.
-    #runtime_files.extend(binary.external_debug_info)
-
     # If we have some resources, write it to the resources JSON file and add
     # it and all resources to "runtime_files" so that we make to materialize
     # them with the final binary.
@@ -592,9 +594,9 @@ def cxx_executable(ctx: AnalysisContext, impl_params: CxxRuleConstructorParams, 
             binary = binary.output,
             resources = resources,
         ))
-        for resource, other in resources.values():
-            runtime_files.append(resource)
-            runtime_files.extend(other)
+        for resource in resources.values():
+            runtime_files.append(resource.default_output)
+            runtime_files.extend(resource.other_outputs)
 
     if binary.dwp:
         # A `dwp` sub-target which generates the `.dwp` file for this binary.
@@ -634,7 +636,8 @@ def cxx_executable(ctx: AnalysisContext, impl_params: CxxRuleConstructorParams, 
             default_output = binary.index_argsfile,
         )]
 
-    # Provide a debug info target to make sure debug info is materialized.
+    # Provide a debug info target to make sure unpacked external debug info
+    # (dwo) is materialized.
     external_debug_info = make_artifact_tset(
         actions = ctx.actions,
         children = (
@@ -671,13 +674,23 @@ def cxx_executable(ctx: AnalysisContext, impl_params: CxxRuleConstructorParams, 
         xcode_data = xcode_data_info,
         linker_map_data = linker_map_data,
         link_command_debug_output = link_cmd_debug_output,
+        dist_info = DistInfo(
+            shared_libs = shlib_info.set,
+            nondebug_runtime_files = runtime_files,
+        ),
     )
 
 _CxxLinkExecutableResult = record(
     # The resulting executable
     exe = LinkedObject,
-    # List of files/directories that should be present for executable to be run successfully
+    # Files that must be present for the executable to run successfully. These
+    # are always materialized, whether the executable is the output of a build
+    # or executed as a host tool.
     runtime_files = list[ArgLike],
+    # Files needed to debug the executable. These need to be materialized when
+    # this executable is the output of a build, but not when it is used by other
+    # rules.
+    external_debug_info = list[TransitiveSetArgsProjection],
     # Optional shared libs symlink tree symlinked_dir action
     shared_libs_symlink_tree = [list[Artifact], Artifact, None],
     linker_map_data = [CxxLinkerMapData, None],
@@ -715,6 +728,7 @@ def _link_into_executable(
     return _CxxLinkExecutableResult(
         exe = link_result.linked_object,
         runtime_files = executable_args.runtime_files,
+        external_debug_info = executable_args.external_debug_info,
         shared_libs_symlink_tree = executable_args.shared_libs_symlink_tree,
         linker_map_data = link_result.linker_map_data,
     )

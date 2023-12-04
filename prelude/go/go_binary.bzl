@@ -5,13 +5,14 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//:artifacts.bzl", "single_artifact")
+load("@prelude//dist:dist_info.bzl", "DistInfo")
 load(
     "@prelude//linking:link_info.bzl",
     "LinkStyle",
 )
 load(
     "@prelude//utils:utils.bzl",
-    "expect",
     "map_val",
     "value_or",
 )
@@ -26,7 +27,7 @@ def go_binary_impl(ctx: AnalysisContext) -> list[Provider]:
         deps = ctx.attrs.deps,
         compile_flags = ctx.attrs.compiler_flags,
     )
-    (bin, runtime_files) = link(
+    (bin, runtime_files, external_debug_info) = link(
         ctx,
         lib,
         deps = ctx.attrs.deps,
@@ -35,29 +36,30 @@ def go_binary_impl(ctx: AnalysisContext) -> list[Provider]:
         link_mode = ctx.attrs.link_mode,
     )
 
-    hidden = []
-    for resource in ctx.attrs.resources:
-        if type(resource) == "artifact":
-            hidden.append(resource)
-        else:
-            # Otherwise, this is a dependency, so extract the resource and other
-            # resources from the `DefaultInfo` provider.
-            info = resource[DefaultInfo]
-            expect(
-                len(info.default_outputs) == 1,
-                "expected exactly one default output from {} ({})"
-                    .format(resource, info.default_outputs),
-            )
-            [resource] = info.default_outputs
-            other = info.other_outputs
+    # runtime_files are all the artifacts that must be present in order for this
+    # binary to be runnable. Notably, all of its shared library dependencies.
+    # This is materialized when a Go binary is executed as a genrule.
+    #
+    # other_outputs is a superset of runtime_files, adding external debuginfo
+    # which is necessary for a user to run this binary in a debugger. This is
+    # materialized when a Go binary is the end result of a build.
+    runtime_files = list(runtime_files)
+    other_outputs = runtime_files + external_debug_info
 
-            hidden.append(resource)
-            hidden.extend(other)
+    for resource in ctx.attrs.resources:
+        resource = single_artifact(resource)
+
+        runtime_files.append(resource.default_output)
+        runtime_files.extend(resource.nondebug_runtime_files)
+
+        other_outputs.append(resource.default_output)
+        other_outputs.extend(resource.other_outputs)
 
     return [
         DefaultInfo(
             default_output = bin,
-            other_outputs = hidden + runtime_files,
+            other_outputs = other_outputs,
         ),
-        RunInfo(args = cmd_args(bin).hidden(hidden + runtime_files)),
+        RunInfo(args = cmd_args(bin).hidden(other_outputs)),
+        DistInfo(nondebug_runtime_files = runtime_files),
     ]

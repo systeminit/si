@@ -17,8 +17,8 @@ load(
     "@prelude//java:java_providers.bzl",
     "JavaPackagingDep",  # @unused Used as type
 )
+load("@prelude//utils:expect.bzl", "expect")
 load("@prelude//utils:set.bzl", "set_type")  # @unused Used as a type
-load("@prelude//utils:utils.bzl", "expect")
 load("@prelude//decls/android_rules.bzl", "RType")
 
 _FilteredResourcesOutput = record(
@@ -219,8 +219,8 @@ def _maybe_filter_resources(
             string_files_res_dirs = [],
         )
 
-    res_info_to_out_res_dir = {}
-    voltron_res_info_to_out_res_dir = {}
+    res_to_out_res_dir = {}
+    voltron_res_to_out_res_dir = {}
     res_infos_with_no_res = []
     skip_crunch_pngs = getattr(ctx.attrs, "skip_crunch_pngs", None) or False
     is_voltron_language_pack_enabled = getattr(ctx.attrs, "is_voltron_language_pack_enabled", False)
@@ -229,36 +229,26 @@ def _maybe_filter_resources(
             res_infos_with_no_res.append(resource)
         else:
             filtered_res = ctx.actions.declare_output("filtered_res_{}".format(i), dir = True)
-            res_info_to_out_res_dir[resource] = filtered_res
+            res_to_out_res_dir[resource.res] = filtered_res
 
             if is_voltron_language_pack_enabled:
                 filtered_res_for_voltron = ctx.actions.declare_output("filtered_res_for_voltron_{}".format(i), dir = True)
-                voltron_res_info_to_out_res_dir[resource] = filtered_res_for_voltron
+                voltron_res_to_out_res_dir[resource.res] = filtered_res_for_voltron
 
     filter_resources_cmd = cmd_args(android_toolchain.filter_resources[RunInfo])
-    in_res_dir_to_out_res_dir_dict = {
-        in_res.res: out_res
-        for in_res, out_res in res_info_to_out_res_dir.items()
-    }
-    in_res_dir_to_out_res_dir_map = ctx.actions.write_json("in_res_dir_to_out_res_dir_map", {"res_dir_map": in_res_dir_to_out_res_dir_dict})
-    in_res_dirs = [in_res.res for in_res in res_info_to_out_res_dir.keys()]
+    in_res_dirs = res_to_out_res_dir.keys()
     filter_resources_cmd.hidden(in_res_dirs)
-    filter_resources_cmd.hidden([out_res.as_output() for out_res in res_info_to_out_res_dir.values()])
+    filter_resources_cmd.hidden([out_res.as_output() for out_res in res_to_out_res_dir.values()])
     filter_resources_cmd.add([
         "--in-res-dir-to-out-res-dir-map",
-        in_res_dir_to_out_res_dir_map,
+        ctx.actions.write_json("in_res_dir_to_out_res_dir_map", {"res_dir_map": res_to_out_res_dir}),
     ])
 
     if is_voltron_language_pack_enabled:
-        voltron_in_res_dir_to_out_res_dir_dict = {
-            in_res.res: out_res
-            for in_res, out_res in voltron_res_info_to_out_res_dir.items()
-        }
-        voltron_in_res_dir_to_out_res_dir_map = ctx.actions.write_json("voltron_in_res_dir_to_out_res_dir_map", {"res_dir_map": voltron_in_res_dir_to_out_res_dir_dict})
-        filter_resources_cmd.hidden([out_res.as_output() for out_res in voltron_res_info_to_out_res_dir.values()])
+        filter_resources_cmd.hidden([out_res.as_output() for out_res in voltron_res_to_out_res_dir.values()])
         filter_resources_cmd.add([
             "--voltron-in-res-dir-to-out-res-dir-map",
-            voltron_in_res_dir_to_out_res_dir_map,
+            ctx.actions.write_json("voltron_in_res_dir_to_out_res_dir_map", {"res_dir_map": voltron_res_to_out_res_dir}),
         ])
 
     if resources_filter:
@@ -292,6 +282,12 @@ def _maybe_filter_resources(
                 ctx.actions.write("not_filtered_string_dirs", not_filtered_string_dirs),
             ])
 
+        allowlisted_locales = {resource.res: resource.allowlisted_locales for resource in resources if resource.allowlisted_locales}
+        filter_resources_cmd.add([
+            "--allowlisted-locales",
+            ctx.actions.write_json("allowlisted_locales", allowlisted_locales),
+        ])
+
     if needs_resource_filtering_for_locales:
         filter_resources_cmd.add([
             "--locales",
@@ -319,7 +315,7 @@ def _maybe_filter_resources(
         if resource.res == None:
             continue
 
-        filtered_res = res_info_to_out_res_dir[resource]
+        filtered_res = res_to_out_res_dir[resource.res]
         filtered_aapt2_compile_output = aapt2_compile(
             ctx,
             filtered_res,
@@ -340,7 +336,7 @@ def _maybe_filter_resources(
 
     return _FilteredResourcesOutput(
         resource_infos = res_infos_with_no_res + filtered_resource_infos,
-        voltron_res = voltron_res_info_to_out_res_dir.values(),
+        voltron_res = voltron_res_to_out_res_dir.values(),
         override_symbols = override_symbols_artifact,
         string_files_list = all_strings_files_list,
         string_files_res_dirs = all_strings_files_res_dirs,
@@ -604,8 +600,8 @@ def get_cxx_resources(ctx: AnalysisContext, deps: list[Dependency], dir_name: st
     symlink_tree_dict = {}
     resource_maps = cxx_resources.values()
     for resource_map in resource_maps:
-        for name, (resource, _other) in resource_map.items():
-            symlink_tree_dict["cxx-resources/{}".format(name)] = resource
+        for name, resource in resource_map.items():
+            symlink_tree_dict["cxx-resources/{}".format(name)] = resource.default_output
 
     return ctx.actions.symlinked_dir(dir_name, symlink_tree_dict) if symlink_tree_dict else None
 

@@ -6,8 +6,9 @@
 # of this source tree.
 
 load("@prelude//:paths.bzl", "paths")
+load("@prelude//utils:expect.bzl", "expect")
 load("@prelude//utils:lazy.bzl", "lazy")
-load("@prelude//utils:utils.bzl", "expect", "from_named_set", "map_val", "value_or")
+load("@prelude//utils:utils.bzl", "from_named_set", "map_val", "value_or")
 load(":cxx_context.bzl", "get_cxx_toolchain_info")
 load(":platform.bzl", "cxx_by_platform")
 
@@ -165,10 +166,20 @@ def as_raw_headers(
     )
 
 def _header_mode(ctx: AnalysisContext) -> HeaderMode:
+    toolchain_header_mode = get_cxx_toolchain_info(ctx).header_mode
+
+    # If the toolchain disabled header maps, respect that since the compiler
+    # simply cannot accept anything else.
+    if toolchain_header_mode == HeaderMode("symlink_tree_only"):
+        return toolchain_header_mode
+
+    # If the target specifies a header mode, use that in case it needs
+    # a symlink tree (even with header maps)
     header_mode = map_val(HeaderMode, getattr(ctx.attrs, "header_mode", None))
     if header_mode != None:
         return header_mode
-    return get_cxx_toolchain_info(ctx).header_mode
+
+    return toolchain_header_mode
 
 def prepare_headers(ctx: AnalysisContext, srcs: dict[str, Artifact], name: str, project_root_file: [Artifact, None]) -> [Headers, None]:
     """
