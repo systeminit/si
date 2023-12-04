@@ -4,13 +4,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    # Pin awscli2 to version 2.13.25 until unstable channel has updated pkg
-    # resolving build error.
-    #
-    # References: https://github.com/NixOS/nixpkgs/issues/268737
-    # References: https://github.com/NixOS/nixpkgs/pull/268590
-    # See: https://lazamar.co.uk/nix-versions/?channel=nixpkgs-unstable&package=awscli2
-    awscli2-pin-pkgs.url = "https://github.com/NixOS/nixpkgs/archive/9957cd48326fe8dbd52fdc50dd2502307f188b0d.tar.gz";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs = {
@@ -24,7 +17,6 @@
     self,
     nixpkgs,
     flake-utils,
-    awscli2-pin-pkgs,
     rust-overlay,
     ...
   }:
@@ -38,7 +30,6 @@
       ];
 
       pkgs = import nixpkgs {inherit overlays system;};
-      awscli2-pin = import awscli2-pin-pkgs {inherit system;};
 
       rustVersion = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain;
       rust-toolchain = rustVersion.override {
@@ -98,7 +89,7 @@
         .${system};
 
       langJsExtraPkgs = with pkgs; [
-        awscli2-pin.awscli2
+        awscli2
         butane
         gh
         skopeo
