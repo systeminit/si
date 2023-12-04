@@ -144,11 +144,17 @@ def shared_libs_symlink_tree_name(output: Artifact) -> str:
     return "__{}__shared_libs_symlink_tree".format(output.short_path)
 
 ExecutableSharedLibArguments = record(
-    extra_link_args = list[ArgLike],
-    # Files/directories that should be present for executable to be run successfully.
-    runtime_files = list[ArgLike],
+    extra_link_args = field(list[ArgLike], []),
+    # Files that must be present for the executable to run successfully. These
+    # are always materialized, whether the executable is the output of a build
+    # or executed as a host tool.
+    runtime_files = field(list[ArgLike], []),
+    # Files needed to debug the executable. These need to be materialized when
+    # this executable is the output of a build, but not when it is used by other
+    # rules.
+    external_debug_info = field(list[TransitiveSetArgsProjection], []),
     # Optional shared libs symlink tree symlinked_dir action.
-    shared_libs_symlink_tree = [list[Artifact], Artifact, None],
+    shared_libs_symlink_tree = field(list[Artifact] | Artifact | None, None),
 )
 
 def executable_shared_lib_arguments(
@@ -160,13 +166,11 @@ def executable_shared_lib_arguments(
     runtime_files = []
     shared_libs_symlink_tree = None
 
-    # Add external debug paths to runtime files, so that they're
-    # materialized when the binary is built.
-    runtime_files.extend(
-        project_artifacts(
-            actions = actions,
-            tsets = [shlib.external_debug_info for shlib in shared_libs.values()],
-        ),
+    # External debug info is materialized only when the executable is the output
+    # of a build. Do not add to runtime_files.
+    external_debug_info = project_artifacts(
+        actions = actions,
+        tsets = [shlib.external_debug_info for shlib in shared_libs.values()],
     )
 
     linker_type = cxx_toolchain.linker_info.type
@@ -195,6 +199,7 @@ def executable_shared_lib_arguments(
     return ExecutableSharedLibArguments(
         extra_link_args = extra_link_args,
         runtime_files = runtime_files,
+        external_debug_info = external_debug_info,
         shared_libs_symlink_tree = shared_libs_symlink_tree,
     )
 

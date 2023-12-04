@@ -6,7 +6,8 @@
 # of this source tree.
 
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
-load("@prelude//utils:utils.bzl", "expect", "value_or")
+load("@prelude//utils:expect.bzl", "expect")
+load("@prelude//utils:utils.bzl", "value_or")
 load(":exec_deps.bzl", "HttpArchiveExecDeps")
 
 # Flags to apply to decompress the various types of archives.
@@ -77,6 +78,7 @@ def _unarchive_cmd(
             return cmd_args(
                 "tar",
                 "-x",
+                "-P",
                 "-f",
                 archive,
                 _tar_strip_prefix_flags(strip_prefix),
