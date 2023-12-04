@@ -39,6 +39,7 @@ load(
     "get_transitive_deps",
 )
 load("@prelude//utils:arglike.bzl", "ArgLike")
+load("@prelude//utils:expect.bzl", "expect")
 load(
     "@prelude//utils:graph_utils.bzl",
     "breadth_first_traversal_by",
@@ -50,7 +51,6 @@ load(
 )
 load(
     "@prelude//utils:utils.bzl",
-    "expect",
     "value_or",
 )
 load(":cxx_context.bzl", "get_cxx_toolchain_info")
@@ -172,7 +172,7 @@ def build_link_group_info(
         filtered_groups[group.name] = group
 
     mappings = compute_mappings(
-        groups = filtered_groups.values(),
+        groups_map = filtered_groups,
         graph_map = linkable_graph_node_map,
     )
 

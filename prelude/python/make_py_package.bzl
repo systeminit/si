@@ -32,9 +32,9 @@ load(":toolchain.bzl", "PackageStyle", "PythonToolchainInfo", "get_package_style
 # should also include bytecode from manifests.
 PexModules = record(
     manifests = field(PythonLibraryManifestsInterface),
-    extensions = field([ManifestInfo, None], None),
-    extra_manifests = field([ManifestInfo, None], None),
-    debuginfo_manifest = field([ManifestInfo, None], None),
+    extensions = field(ManifestInfo | None, None),
+    extra_manifests = field(ManifestInfo | None, None),
+    debuginfo_manifest = field(ManifestInfo | None, None),
     compile = field(bool, False),
 )
 
@@ -43,36 +43,19 @@ PexModules = record(
 PexProviders = record(
     default_output = field(Artifact),
     other_outputs = list[(ArgLike, str)],
-    other_outputs_prefix = [str, None],
+    other_outputs_prefix = str | None,
     hidden_resources = list[ArgLike],
     sub_targets = dict[str, list[Provider]],
     run_cmd = cmd_args,
 )
 
 def make_py_package_providers(
-        python_toolchain: PythonToolchainInfo,
         pex: PexProviders) -> list[Provider]:
     providers = [
         make_default_info(pex),
         make_run_info(pex),
     ]
-    if python_toolchain.installer != None:
-        providers.append(make_install_info(python_toolchain.installer, pex))
     return providers
-
-def make_install_info(installer: ArgLike, pex: PexProviders) -> Provider:
-    prefix = "{}/".format(pex.other_outputs_prefix) if pex.other_outputs_prefix != None else ""
-    files = {
-        "{}{}".format(prefix, path): artifact
-        for artifact, path in pex.other_outputs
-        if path != pex.other_outputs_prefix  # don't include prefix dir
-        if path != ""  # HACK: skip artifacts without a path
-    }
-    files[pex.default_output.basename] = pex.default_output
-    return InstallInfo(
-        installer = installer,
-        files = files,
-    )
 
 def make_default_info(pex: PexProviders) -> Provider:
     return DefaultInfo(
@@ -131,13 +114,13 @@ def make_py_package(
         ctx: AnalysisContext,
         python_toolchain: PythonToolchainInfo,
         # A rule-provided tool to use to build the PEX.
-        make_py_package_cmd: [RunInfo, None],
+        make_py_package_cmd: RunInfo | None,
         package_style: PackageStyle,
         build_args: list[ArgLike],
         pex_modules: PexModules,
         shared_libraries: dict[str, (LinkedObject, bool)],
         main: EntryPoint,
-        hidden_resources: [None, list[ArgLike]],
+        hidden_resources: list[ArgLike] | None,
         allow_cache_upload: bool) -> PexProviders:
     """
     Passes a standardized set of flags to a `make_py_package` binary to create a python
@@ -206,13 +189,13 @@ def make_py_package(
             output_suffix = "-{}".format(style),
             allow_cache_upload = allow_cache_upload,
         )
-        default.sub_targets[style] = make_py_package_providers(python_toolchain, pex_providers)
+        default.sub_targets[style] = make_py_package_providers(pex_providers)
     return default
 
 def _make_py_package_impl(
         ctx: AnalysisContext,
         python_toolchain: PythonToolchainInfo,
-        make_py_package_cmd: [RunInfo, None],
+        make_py_package_cmd: RunInfo | None,
         package_style: PackageStyle,
         build_args: list[ArgLike],
         shared_libraries: dict[str, (LinkedObject, bool)],
@@ -221,8 +204,8 @@ def _make_py_package_impl(
         dep_artifacts: list[(ArgLike, str)],
         debug_artifacts: list[(ArgLike, str)],
         main: EntryPoint,
-        hidden_resources: [None, list[ArgLike]],
-        manifest_module: [None, ArgLike],
+        hidden_resources: list[ArgLike] | None,
+        manifest_module: ArgLike | None,
         pex_modules: PexModules,
         output_suffix: str,
         allow_cache_upload: bool) -> PexProviders:
@@ -476,7 +459,7 @@ def _pex_modules_common_args(
         [lib.external_debug_info for lib in shared_libraries.values()],
     )
 
-    # HACK: exclude external_debug_info from InstallInfo by providing an empty path
+    # HACK: external_debug_info has an empty path
     debug_artifacts.extend([(d, "") for d in external_debug_info])
 
     return (cmd, deps, debug_artifacts)
@@ -486,8 +469,8 @@ def _pex_modules_args(
         common_args: cmd_args,
         dep_artifacts: list[(ArgLike, str)],
         debug_artifacts: list[(ArgLike, str)],
-        symlink_tree_path: [None, Artifact],
-        manifest_module: [ArgLike, None],
+        symlink_tree_path: Artifact | None,
+        manifest_module: ArgLike | None,
         pex_modules: PexModules,
         output_suffix: str) -> cmd_args:
     """
@@ -528,7 +511,7 @@ def _pex_modules_args(
 
     return cmd
 
-def _hidden_resources_error_message(current_target: Label, hidden_resources) -> str:
+def _hidden_resources_error_message(current_target: Label, hidden_resources: list[ArgLike] | None) -> str:
     """
     Friendlier error message about putting non-python resources into standalone bins
     """
@@ -564,7 +547,7 @@ def _hidden_resources_error_message(current_target: Label, hidden_resources) -> 
 def generate_manifest_module(
         ctx: AnalysisContext,
         python_toolchain: PythonToolchainInfo,
-        src_manifests: list[ArgLike]) -> [ArgLike, None]:
+        src_manifests: list[ArgLike]) -> ArgLike | None:
     """
     Generates a __manifest__.py module, and an extra entry to add to source manifests.
 

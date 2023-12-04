@@ -764,6 +764,23 @@ def expect_dedupe(v):
     expect(len(o) == len(v), "expected `{}` to be a list of unique items, but it wasn't. deduped list was `{}`.", v, o)
     return v
 
+# We can't merge a prebuilt shared (that has no archive) and must use it's original info.
+# Ideally this would probably be structured info on the linkablenode.
+def _is_prebuilt_shared(node_data: LinkableNode) -> bool:
+    shared_link_info = node_data.link_infos.get(LibOutputStyle("shared_lib"), None)
+    if not shared_link_info or not shared_link_info.default.linkables:
+        return False
+    pic_archive_info = node_data.link_infos.get(LibOutputStyle("pic_archive"), None)
+    if not pic_archive_info or not pic_archive_info.default.linkables:
+        return True
+    return False
+
+def _has_linkable(node_data: LinkableNode) -> bool:
+    for _, output in node_data.link_infos.items():
+        if output.default.linkables:
+            return True
+    return False
+
 def _get_merged_linkables(
         ctx: AnalysisContext,
         merged_data_by_platform: dict[str, LinkableMergeData]) -> MergedLinkables:
@@ -893,12 +910,6 @@ def _get_merged_linkables(
                 return platform + "/" + path
             return path
 
-        def has_linkable(node_data: LinkableNode) -> bool:
-            for _, output in node_data.link_infos.items():
-                if output.default.linkables:
-                    return True
-            return False
-
         def set_has_transitive_linkable_cache(target: Label, result: bool) -> bool:
             has_transitive_linkable_cache[target] = result
             return result
@@ -909,10 +920,10 @@ def _get_merged_linkables(
 
             target_node = linkable_nodes.get(target)
             for dep in target_node.deps:
-                if has_linkable(linkable_nodes.get(dep)) or transitive_has_linkable(dep):
+                if _has_linkable(linkable_nodes.get(dep)) or transitive_has_linkable(dep):
                     return set_has_transitive_linkable_cache(target, True)
             for dep in target_node.exported_deps:
-                if has_linkable(linkable_nodes.get(dep)) or transitive_has_linkable(dep):
+                if _has_linkable(linkable_nodes.get(dep)) or transitive_has_linkable(dep):
                     return set_has_transitive_linkable_cache(target, True)
 
             return set_has_transitive_linkable_cache(target, False)
@@ -929,7 +940,7 @@ def _get_merged_linkables(
                 node_data = linkable_nodes[target]
                 can_be_asset = node_data.can_be_asset
 
-                if node_data.preferred_linkage == Linkage("static") or not has_linkable(node_data):
+                if node_data.preferred_linkage == Linkage("static") or not _has_linkable(node_data):
                     debug_info.unmerged_statics.append(target)
                     link_group_linkable_nodes[group] = LinkGroupLinkableNode(
                         link = node_data.link_infos[archive_output_style].default,
@@ -940,18 +951,7 @@ def _get_merged_linkables(
                     )
                     continue
 
-                # We can't merge a prebuilt shared (that has no archive) and must use it's original info.
-                # Ideally this would probably be structured info on the linkablenode.
-                def is_prebuilt_shared(node_data: LinkableNode) -> bool:
-                    shared_link_info = node_data.link_infos.get(shlib_output_style, None)
-                    if not shared_link_info or not shared_link_info.default.linkables:
-                        return False
-                    pic_archive_info = node_data.link_infos.get(archive_output_style, None)
-                    if not pic_archive_info or not pic_archive_info.default.linkables:
-                        return True
-                    return False
-
-                if is_prebuilt_shared(node_data):
+                if _is_prebuilt_shared(node_data):
                     expect(
                         len(node_data.shared_libs) == 1,
                         "unexpected shared_libs length for somerge of {} ({})".format(target, node_data.shared_libs),

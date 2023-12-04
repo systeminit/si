@@ -6,11 +6,9 @@
 # of this source tree.
 
 load("@prelude//:paths.bzl", "paths")
+load("@prelude//dist:dist_info.bzl", "DistInfo")
 load("@prelude//utils:arglike.bzl", "ArgLike")  # @unused Used as a type
-load(
-    "@prelude//utils:utils.bzl",
-    "expect",
-)
+load("@prelude//utils:expect.bzl", "expect")
 
 # A group of artifacts.
 ArtifactGroupInfo = provider(
@@ -19,63 +17,109 @@ ArtifactGroupInfo = provider(
     },
 )
 
-def _from_default_info(dep: Dependency) -> (Artifact, list[ArgLike]):
-    info = dep[DefaultInfo]
-    expect(
-        len(info.default_outputs) == 1,
-        "expected exactly one default output from {} ({})"
-            .format(dep, info.default_outputs),
-    )
-    return (info.default_outputs[0], info.other_outputs)
+ArtifactOutputs = record(
+    # Single output. This is the artifact whose path would go into the resources
+    # JSON when this artifact is used as a resource.
+    default_output = field(Artifact),
 
-def unpack_artifacts(artifacts: list[[Artifact, Dependency]]) -> list[(Artifact, list[ArgLike])]:
+    # Other artifacts which need to be present in order to run the resource as
+    # an executable. This includes shared library dependencies and resources.
+    nondebug_runtime_files = field(list[ArgLike]),
+
+    # Other outputs that would be materialized if this artifact is the output of
+    # a build, or generally in any context where a user might run this artifact
+    # in a debugger.
+    #
+    # This is a superset of nondebug_runtime_files and also includes external
+    # debuginfo.
+    other_outputs = field(list[ArgLike]),
+)
+
+def single_artifact(dep: Artifact | Dependency) -> ArtifactOutputs:
+    if type(dep) == "artifact":
+        return ArtifactOutputs(
+            default_output = dep,
+            nondebug_runtime_files = [],
+            other_outputs = [],
+        )
+
+    if DefaultInfo in dep:
+        info = dep[DefaultInfo]
+        expect(
+            len(info.default_outputs) == 1,
+            "expected exactly one default output from {} ({})"
+                .format(dep, info.default_outputs),
+        )
+        default_output = info.default_outputs[0]
+        other_outputs = info.other_outputs
+
+        dist_info = dep.get(DistInfo)
+        nondebug_runtime_files = dist_info.nondebug_runtime_files if dist_info else other_outputs
+
+        return ArtifactOutputs(
+            default_output = default_output,
+            nondebug_runtime_files = nondebug_runtime_files,
+            other_outputs = other_outputs,
+        )
+
+    fail("unexpected dependency type: {}".format(type(dep)))
+
+def unpack_artifacts(artifacts: list[Artifact | Dependency]) -> list[ArtifactOutputs]:
     """
-    Unpack a list of `artifact` and `ArtifactGroupInfo` into a flattened list
-    of `artifact`s
+    Unpack a heterogeneous list of Artifact and ArtifactGroupInfo into a list
+    representing their outputs.
     """
 
     out = []
 
     for artifact in artifacts:
         if type(artifact) == "artifact":
-            out.append((artifact, []))
+            out.append(ArtifactOutputs(
+                default_output = artifact,
+                nondebug_runtime_files = [],
+                other_outputs = [],
+            ))
             continue
 
         if ArtifactGroupInfo in artifact:
             for artifact in artifact[ArtifactGroupInfo].artifacts:
-                out.append((artifact, []))
+                out.append(ArtifactOutputs(
+                    default_output = artifact,
+                    nondebug_runtime_files = [],
+                    other_outputs = [],
+                ))
             continue
 
-        if DefaultInfo in artifact:
-            out.append(_from_default_info(artifact))
-            continue
-
-        fail("unexpected dependency type: {}".format(type(artifact)))
+        out.append(single_artifact(artifact))
 
     return out
 
-def unpack_artifact_map(artifacts: dict[str, [Artifact, Dependency]]) -> dict[str, (Artifact, list[ArgLike])]:
+def unpack_artifact_map(artifacts: dict[str, Artifact | Dependency]) -> dict[str, ArtifactOutputs]:
     """
-    Unpack a list of `artifact` and `ArtifactGroupInfo` into a flattened list
-    of `artifact`s
+    Unpack a heterogeneous dict of Artifact and ArtifactGroupInfo into a dict
+    representing their outputs.
     """
 
     out = {}
 
     for name, artifact in artifacts.items():
         if type(artifact) == "artifact":
-            out[name] = (artifact, [])
+            out[name] = ArtifactOutputs(
+                default_output = artifact,
+                nondebug_runtime_files = [],
+                other_outputs = [],
+            )
             continue
 
         if ArtifactGroupInfo in artifact:
             for artifact in artifact[ArtifactGroupInfo].artifacts:
-                out[paths.join(name, artifact.short_path)] = (artifact, [])
+                out[paths.join(name, artifact.short_path)] = ArtifactOutputs(
+                    default_output = artifact,
+                    nondebug_runtime_files = [],
+                    other_outputs = [],
+                )
             continue
 
-        if DefaultInfo in artifact:
-            out[name] = _from_default_info(artifact)
-            continue
-
-        fail("unexpected dependency type: {}".format(type(artifact)))
+        out[name] = single_artifact(artifact)
 
     return out
