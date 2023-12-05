@@ -48,8 +48,8 @@
   <ResizablePanel
     rememberSizeKey="details-panel"
     side="right"
-    :defaultSize="380"
-    :minSize="350"
+    :defaultSize="430"
+    :minSize="430"
   >
     <div class="h-full overflow-hidden relative">
       <EdgeDetailsPanel v-if="selectedEdge" />

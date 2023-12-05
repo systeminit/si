@@ -10,18 +10,18 @@
     </template>
     <template v-else-if="fetchDebugReqStatus.isSuccess && debugData">
       <div class="border border-neutral-500 m-xs">
+        <!-- Component -->
         <Collapsible label="Component" defaultOpen textSize="lg">
-          <dl class="border-l-2 p-2">
-            <dt class="uppercase text-xs italic opacity-80">Id</dt>
-            <dd class="p-2 my-2 border-2 border-opacity-10">
-              <pre>{{ componentId }}</pre>
-            </dd>
-            <dt class="uppercase text-xs italic opacity-80">Variant Id</dt>
-            <dd class="p-2 my-2 border-2 border-opacity-10">
-              <pre>{{ debugData.schemaVariantId }}</pre>
-            </dd>
+          <dl class="border-l-2 p-xs">
+            <DebugViewItem title="Id" :data="componentId" />
+            <DebugViewItem
+              title="Variant Id"
+              :data="debugData.schemaVariantId"
+            />
           </dl>
         </Collapsible>
+
+        <!-- Attributes -->
         <Collapsible
           label="Attributes"
           :defaultOpen="false"
@@ -39,6 +39,8 @@
             <AttributeDebugView :data="attribute.debugData" />
           </Collapsible>
         </Collapsible>
+
+        <!-- Input Sockets -->
         <Collapsible
           label="Input Sockets"
           :defaultOpen="false"
@@ -56,6 +58,8 @@
             <AttributeDebugView :data="attribute.debugData" />
           </Collapsible>
         </Collapsible>
+
+        <!-- Output Sockets -->
         <Collapsible
           label="Output Sockets"
           :defaultOpen="false"
@@ -87,6 +91,7 @@ import {
 import { PropType, computed, onMounted } from "vue";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import AttributeDebugView from "./AttributeDebugView.vue";
+import DebugViewItem from "./DebugViewItem.vue";
 
 const componentsStore = useComponentsStore();
 

@@ -177,7 +177,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, onBeforeMount, ref, watch } from "vue";
+import { computed, watch, onBeforeMount, ref } from "vue";
 import {
   Icon,
   ErrorMessage,
@@ -205,6 +205,8 @@ import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import AssetDiffDetails from "./AssetDiffDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import AttributesPanel from "./AttributesPanel/AttributesPanel.vue";
+
+const emit = defineEmits(["delete", "restore"]);
 
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();

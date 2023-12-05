@@ -1,60 +1,39 @@
 <template>
-  <div class="overflow-x-scroll my-2 p-4 border-opacity-10 border-l-2">
+  <div class="overflow-hidden my-xs p-xs border-opacity-10 border-l-2">
     <dl>
-      <dt class="uppercase text-xs italic opacity-80">Attribute Value Id</dt>
-      <dd class="p-2 my-2 border-2 border-opacity-10">
-        <pre>{{ data.valueId }}</pre>
-      </dd>
-      <dt class="uppercase text-xs italic opacity-80">Type</dt>
-      <dd class="p-2 my-2 border-2 border-opacity-10">
-        <pre>{{ data.kind ?? "any" }}</pre>
-      </dd>
-      <dt class="uppercase text-xs italic opacity-80">Set By Function</dt>
-      <dd class="p-2 my-2 border-2 border-opacity-10">
-        <pre>{{ data.funcName }} {{ data.funcId }}</pre>
-      </dd>
-      <dt class="uppercase text-xs italic opacity-80">Input</dt>
-      <dd class="p-2 my-2 border-2 border-opacity-10 overflow-x-scroll">
-        <pre>{{ data.funcArgs ?? "NULL" }}</pre>
-      </dd>
-      <dt class="uppercase text-xs italic opacity-80">Input sources</dt>
-      <dd class="p-2 my-2 border-2 border-opacity-10 overflow-x-scroll">
-        <ul v-if="data.argSources && Object.keys(data.argSources).length">
-          <li v-for="[k, v] in Object.entries(data.argSources)" :key="k">
-            <strong>{{ k }}</strong>
-            : {{ v ?? "?" }}
-          </li>
-        </ul>
-        <p v-else>No input sources</p>
-      </dd>
-      <dt class="uppercase text-xs italic opacity-80">Value</dt>
-      <dd class="p-2 my-2 border-2 border-opacity-10 overflow-x-scroll">
-        <pre>{{ data.value ?? "NULL" }}</pre>
-      </dd>
-      <dt class="uppercase text-xs italic opacity-80">Prototype Id</dt>
-      <dd class="p-2 my-2 border-2 border-opacity-10">
-        <pre>{{ data.prototypeId }}</pre>
-      </dd>
-      <dt class="uppercase text-xs italic opacity-80">Prototype Context</dt>
-      <dd class="p-2 my-2 border-2 border-opacity-10">
-        <pre>{{ data.prototypeContext }}</pre>
-      </dd>
-      <dt class="uppercase text-xs italic opacity-80">
-        Implicit Attribute Value
-      </dt>
-      <dd class="p-2 my-2 border-2 border-opacity-10 overflow-x-scroll">
-        <pre>{{
-          typeof data.implicitValue === "undefined"
-            ? "none"
-            : data.implicitValue ?? "NULL"
-        }}</pre>
-      </dd>
-      <dt class="uppercase text-xs italic opacity-80">
-        Implicit Set By Function
-      </dt>
-      <dd class="p-2 my-2 border-2 border-opacity-10">
-        <pre>{{ data.implicitFuncName }} </pre>
-      </dd>
+      <DebugViewItem title="Attribute Value Id" :data="data.valueId" />
+      <DebugViewItem :data="data.kind ?? 'any'" title="Type" />
+      <DebugViewItem
+        :data="`${data.funcName} ${data.funcId}`"
+        title="Set By Function"
+      />
+      <DebugViewItem title="Input" :data="data.funcArgs ?? 'NULL'" />
+      <DebugViewItem title="Input sources">
+        <template #data>
+          <ul v-if="data.argSources && Object.keys(data.argSources).length">
+            <li v-for="[k, v] in Object.entries(data.argSources)" :key="k">
+              <strong>{{ k }}</strong>
+              : {{ v ?? "?" }}
+            </li>
+          </ul>
+          <p v-else>No input sources</p>
+        </template>
+      </DebugViewItem>
+      <DebugViewItem title="Value" :data="data.value ?? 'NULL'" />
+      <DebugViewItem title="Prototype Id" :data="data.prototypeId" />
+      <DebugViewItem title="Prototype Context" :data="data.prototypeContext" />
+      <DebugViewItem
+        title="Implicit Attribute Value"
+        :data="
+          typeof data.implicitValue === 'undefined'
+            ? 'none'
+            : data.implicitValue ?? 'NULL'
+        "
+      />
+      <DebugViewItem
+        title="Implicit Set By Function"
+        :data="data.implicitFuncName"
+      />
       <p class="text-2xs p-2 my-2 border-2 border-opacity-10">
         prototype in change set?
         {{ data.prototypeInChangeSet ? "y" : "n" }} value in change set?
@@ -66,6 +45,7 @@
 
 <script setup lang="ts">
 import { AttributeDebugData } from "@/store/components.store";
+import DebugViewItem from "./DebugViewItem.vue";
 
 defineProps<{ data: AttributeDebugData }>();
 </script>
