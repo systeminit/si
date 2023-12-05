@@ -202,7 +202,17 @@
           allowPointerEvents
           @click="unsetHandler"
         />
-        <template v-if="widgetKind === 'text'">
+        <template v-if="propKind === 'integer'">
+          <input
+            v-model="newValueNumber"
+            type="number"
+            spellcheck="false"
+            @focus="onFocus"
+            @blur="onBlur"
+            @keyup.enter="updateValue"
+          />
+        </template>
+        <template v-else-if="widgetKind === 'text'">
           <input
             v-model="newValueString"
             type="text"
@@ -353,7 +363,6 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { Secret, useSecretsStore } from "@/store/secrets.store";
-import { PropertyEditorPropKind } from "@/api/sdf/dal/property_editor";
 import AttributesPanelItem from "./AttributesPanelItem.vue"; // eslint-disable-line import/no-self-import
 import { useAttributesPanelContext } from "./AttributesPanel.vue";
 import CodeEditor from "../CodeEditor.vue";
@@ -438,6 +447,7 @@ const icon = computed((): IconNames => {
   if (propKind.value === "array") return "brackets-square";
   if (propKind.value === "map") return "brackets-curly";
   if (propKind.value === "object") return "bullet-list";
+  if (propKind.value === "integer") return "input-type-number";
   return WIDGET_ICON_LOOKUP[widgetKind.value] || "question-circle";
 });
 
@@ -517,7 +527,7 @@ function updateValue() {
     newVal = newValueBoolean.value;
     // special handling for empty value + false
     if (newVal === false && !currentValue.value) skipUpdate = true;
-  } else if (propKind.value === PropertyEditorPropKind.Integer) {
+  } else if (propKind.value === "integer") {
     // There is no such thing as an integer widget kind!
     newVal = newValueNumber.value;
   } else {
