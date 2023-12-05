@@ -98,6 +98,7 @@ impl<B, S, I, E> managed::Manager for Manager<S>
 where
     S: Spec<Error = E, Instance = I> + Send + Sync,
     I: Instance<SpecBuilder = B, Error = E> + Send,
+    E: Send,
 {
     type Type = I;
     type Error = E;
@@ -107,7 +108,13 @@ where
     }
 
     async fn recycle(&self, obj: &mut Self::Type) -> managed::RecycleResult<Self::Error> {
-        obj.ensure_healthy().await.map_err(Into::into)
+        match obj.ensure_healthy().await {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                obj.terminate().await?;
+                Result::map_err(Err(err), Into::into)
+            }
+        }
     }
 }
 

@@ -83,10 +83,7 @@ impl Instance for LocalHttpInstance {
     type SpecBuilder = LocalHttpInstanceSpecBuilder;
     type Error = LocalHttpInstanceError;
 
-    async fn terminate(mut self) -> result::Result<(), Self::Error> {
-        if !self.watch_shutdown_tx.is_closed() && self.watch_shutdown_tx.send(()).is_err() {
-            debug!("sent watch shutdown but receiver was already closed");
-        }
+    async fn terminate(&mut self) -> result::Result<(), Self::Error> {
         process::child_shutdown(&mut self.child, Some(process::Signal::SIGTERM), None).await?;
 
         Ok(())

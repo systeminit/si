@@ -33,7 +33,7 @@ use tokio::{
     sync::oneshot,
     time,
 };
-use tracing::{debug, trace, warn};
+use tracing::{trace, warn};
 
 use crate::instance::{Instance, Spec, SpecBuilder};
 
@@ -108,10 +108,7 @@ impl Instance for LocalUdsInstance {
     type SpecBuilder = LocalUdsInstanceSpecBuilder;
     type Error = LocalUdsInstanceError;
 
-    async fn terminate(mut self) -> result::Result<(), Self::Error> {
-        if !self.watch_shutdown_tx.is_closed() && self.watch_shutdown_tx.send(()).is_err() {
-            debug!("sent watch shutdown but receiver was already closed");
-        }
+    async fn terminate(&mut self) -> result::Result<(), Self::Error> {
         self.runtime.terminate().await
     }
 
@@ -743,15 +740,26 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
     }
 
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-        let command = "/firecracker-data/stop.sh ".to_owned() + &self.vm_id;
+        let stop_command = format!("/firecracker-data/stop.sh {}", &self.vm_id);
 
-        // Spawn the shell process
+        // Spawn the stop script
         let _status = Command::new("sudo")
             .arg("bash")
             .arg("-c")
-            .arg(command)
+            .arg(stop_command)
             .status()
             .await;
+
+        let prepare_command = format!("/firecracker-data/prepare_jailer.sh {}", &self.vm_id);
+
+        // Re-setup the jail so it can be resued
+        let _status = Command::new("sudo")
+            .arg("bash")
+            .arg("-c")
+            .arg(prepare_command)
+            .status()
+            .await;
+
         Ok(())
     }
 }
@@ -774,15 +782,17 @@ async fn runtime_instance_from_spec(
 }
 
 fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
-    let command = "/firecracker-data/orchestrate-install.sh ".to_owned()
-        + "/tmp/variables.txt "
-        + &spec.pool_size.to_string();
+    let command = "/firecracker-data/orchestrate-install.sh ";
 
     // Spawn the shell process
     let _status = Command::new("sudo")
         .arg("bash")
         .arg("-c")
         .arg(command)
+        .arg("-v")
+        .arg("/tmp/variables.txt")
+        .arg("-j")
+        .arg(&spec.pool_size.to_string())
         .status();
 
     Ok(())
