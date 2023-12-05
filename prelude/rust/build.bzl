@@ -66,6 +66,7 @@ load(
 load(
     ":link_info.bzl",
     "RustCxxLinkGroupInfo",  #@unused Used as a type
+    "RustDependency",
     "RustLinkInfo",
     "RustLinkStyleInfo",
     "attr_crate",
@@ -614,10 +615,12 @@ def rust_compile(
 # For native dependencies, we use -Clink-arg=@argsfile
 # Second element of result tuple is a list of files/directories that should be present for executable to be run successfully
 # Third return is the mapping from crate names back to targets (needed so that a deps linter knows what deps need fixing)
-def _dependency_args(
+#
+# The `compile_ctx` may be omitted if `is_check` is `True` and there are no dependencies with dynamic crate names
+def dependency_args(
         ctx: AnalysisContext,
-        compile_ctx: CompileContext,
-        dep_ctx: DepCollectionContext,
+        compile_ctx: CompileContext | None,
+        deps: list[RustDependency],
         subdir: str,
         crate_type: CrateType,
         dep_link_style: LinkStyle,
@@ -627,7 +630,7 @@ def _dependency_args(
     transitive_deps = {}
     crate_targets = []
     available_proc_macros = get_available_proc_macros(ctx)
-    for dep in resolve_rust_deps(ctx, dep_ctx):
+    for dep in deps:
         if dep.name:
             crate = CrateName(
                 simple = normalize_crate(dep.name),
@@ -797,10 +800,10 @@ def _compute_common_args(
 
     is_check = not emit_needs_codegen(emit)
 
-    dependency_args, crate_map = _dependency_args(
+    dep_args, crate_map = dependency_args(
         ctx = ctx,
         compile_ctx = compile_ctx,
-        dep_ctx = dep_ctx,
+        deps = resolve_rust_deps(ctx, dep_ctx),
         subdir = subdir,
         crate_type = crate_type,
         dep_link_style = dep_link_style,
@@ -809,12 +812,12 @@ def _compute_common_args(
     )
 
     if crate_type == CrateType("proc-macro"):
-        dependency_args.add("--extern=proc_macro")
+        dep_args.add("--extern=proc_macro")
 
     if crate_type == CrateType("cdylib") or crate_type == CrateType("dylib") and not is_check:
         linker_info = compile_ctx.cxx_toolchain_info.linker_info
         shlib_name = get_default_shared_library_name(linker_info, ctx.label)
-        dependency_args.add(cmd_args(
+        dep_args.add(cmd_args(
             get_shared_library_name_linker_flags(linker_info.type, shlib_name),
             format = "-Clink-arg={}",
         ))
@@ -878,7 +881,7 @@ def _compute_common_args(
         "--crate-type={}".format(crate_type.value),
         "-Crelocation-model={}".format(params.reloc_model.value),
         "--edition={}".format(edition),
-        "-Cmetadata={}".format(_metadata(ctx.label)[0]),
+        "-Cmetadata={}".format(_metadata(ctx.label, is_rustdoc_test)[0]),
         # Make diagnostics json with the option to extract rendered text
         ["--error-format=json", "--json=diagnostic-rendered-ansi"] if not is_rustdoc_test else [],
         ["-Cprefer-dynamic=yes"] if crate_type == CrateType("dylib") else [],
@@ -890,7 +893,7 @@ def _compute_common_args(
         _rustc_flags(toolchain_info.rustc_coverage_flags) if ctx.attrs.coverage else [],
         _rustc_flags(ctx.attrs.rustc_flags),
         cmd_args(ctx.attrs.features, format = '--cfg=feature="{}"'),
-        dependency_args,
+        dep_args,
     )
 
     common_args = CommonArgsInfo(
@@ -979,8 +982,10 @@ def _linker_args(
 # which provided the primary disambiguator for two otherwise identically named
 # crates. The hash is added to the filename to give them a lower likelihood of
 # duplicate names, but it doesn't matter if they collide.
-def _metadata(label: Label) -> (str, str):
+def _metadata(label: Label, is_rustdoc_test: bool) -> (str, str):
     label = str(label.raw_target())
+    if is_rustdoc_test:
+        label = "doctest/" + label
     h = hash(label)
     if h < 0:
         h = -h
@@ -1033,7 +1038,7 @@ def _rustc_emit(
     if emit in predeclared_outputs:
         emit_output = predeclared_outputs[emit]
     else:
-        extra_hash = "-" + _metadata(ctx.label)[1]
+        extra_hash = "-" + _metadata(ctx.label, False)[1]
         emit_args.add("-Cextra-filename={}".format(extra_hash))
         filename = subdir + "/" + output_filename(simple_crate, emit, params, extra_hash)
 

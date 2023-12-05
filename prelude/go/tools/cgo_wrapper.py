@@ -10,7 +10,6 @@
 
 import argparse
 import os
-import pipes
 import subprocess
 import sys
 import tempfile
@@ -43,11 +42,12 @@ def main(argv):
     cmd.append("--")
     # cmd.append(cxxCompilerFlags)
 
-    with tempfile.NamedTemporaryFile("w", delete=False) as argsfile:
-        for arg in args.cpp:
-            print(pipes.quote(arg), file=argsfile)
-            argsfile.flush()
-    cmd.append("@" + argsfile.name)
+    if args.cpp:
+        with tempfile.NamedTemporaryFile("w", delete=False) as argsfile:
+            for arg in args.cpp:
+                print(arg, file=argsfile)
+                argsfile.flush()
+        cmd.append("@" + argsfile.name)
 
     cmd.extend(args.srcs)
     return subprocess.call(cmd, env=env)
