@@ -93,12 +93,8 @@
                       {{ selectedComponentCode[0]?.message }}
                     </ErrorMessage>
                     <CodeViewer
-                      :code="
-                        selectedComponentCode[0]?.code ||
-                        '# No code generated yet'
-                      "
-                    >
-                    </CodeViewer>
+                      :code="formattedCode || '#No code generated yet'"
+                    />
                   </div>
                 </template>
               </TabGroupItem>
@@ -223,6 +219,17 @@ const selectedComponentFailingQualificationsCount = computed(
 const selectedComponentCode = computed(
   () => componentsStore.selectedComponentCode,
 );
+
+const formattedCode = computed(() => {
+  const compCode = componentsStore.selectedComponentCode;
+  if (compCode && compCode.length > 0) {
+    if (compCode[0]?.language === "json") {
+      return JSON.stringify(JSON.parse(compCode[0]?.code || ""), null, 2);
+    }
+    return compCode[0]?.code;
+  }
+  return "# No code generated yet";
+});
 
 const selectedComponentActionsCount = computed(() => {
   return _.filter(
