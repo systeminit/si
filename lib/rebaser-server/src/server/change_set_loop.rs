@@ -22,8 +22,6 @@ use tokio::time::Instant;
 enum ChangeSetLoopError {
     #[error("workspace snapshot error: {0}")]
     ChangeSetPointer(#[from] ChangeSetPointerError),
-    #[error("when performing updates, could not find the newly imported subgraph (may god have mercy on your soul)")]
-    DestinationNotUpdatedWhenImportingSubgraph,
     #[error("missing change set message \"reply_to\" field")]
     MissingChangeSetMessageReplyTo,
     #[error("missing change set pointer")]
@@ -170,14 +168,21 @@ async fn process_delivery(
     // Otherwise, we can perform updates and assemble a "success" reply message.
     let message: ChangeSetReplyMessage = if conflicts.is_empty() {
         // TODO(nick): store the offset with the change set.
-        perform_updates_and_write_out_and_update_pointer(
-            ctx,
-            &mut to_rebase_workspace_snapshot,
-            &mut to_rebase_change_set,
+        to_rebase_workspace_snapshot.perform_updates(
+            &to_rebase_change_set,
             &mut onto_workspace_snapshot,
-            &updates,
-        )
-        .await?;
+            updates.as_slice(),
+        )?;
+
+        // Once all updates have been performed, we can write out, mark everything as recently seen
+        // and update the pointer.
+        to_rebase_workspace_snapshot
+            .write(ctx, to_rebase_change_set.vector_clock_id())
+            .await?;
+        to_rebase_change_set
+            .update_pointer(ctx, to_rebase_workspace_snapshot.id())
+            .await?;
+
         ChangeSetReplyMessage::Success {
             updates_performed: serde_json::to_value(updates)?,
         }
@@ -210,126 +215,4 @@ async fn process_delivery(
     producer.close().await?;
 
     Ok(())
-}
-
-async fn perform_updates_and_write_out_and_update_pointer(
-    ctx: &DalContext,
-    to_rebase_workspace_snapshot: &mut WorkspaceSnapshot,
-    to_rebase_change_set: &mut ChangeSetPointer,
-    onto_workspace_snapshot: &mut WorkspaceSnapshot,
-    updates: &Vec<Update>,
-) -> ChangeSetLoopResult<()> {
-    let mut updated = HashMap::new();
-    for update in updates {
-        match update {
-            Update::NewEdge {
-                source,
-                destination,
-                edge_weight,
-            } => {
-                let updated_source = *updated.get(source).unwrap_or(source);
-                let destination = find_in_to_rebase_or_create_using_onto(
-                    *destination,
-                    &mut updated,
-                    onto_workspace_snapshot,
-                    to_rebase_workspace_snapshot,
-                )?;
-                let new_edge_index = to_rebase_workspace_snapshot.add_edge_unchecked(
-                    updated_source,
-                    edge_weight.clone(),
-                    destination,
-                )?;
-                let (new_source, _) =
-                    to_rebase_workspace_snapshot.edge_endpoints(new_edge_index)?;
-                updated.insert(*source, new_source);
-            }
-            Update::RemoveEdge {
-                source,
-                destination,
-                edge_kind,
-            } => {
-                let updated_source = *updated.get(source).unwrap_or(source);
-                let destination = *updated.get(destination).unwrap_or(destination);
-                updated.extend(to_rebase_workspace_snapshot.remove_edge(
-                    to_rebase_change_set,
-                    updated_source,
-                    destination,
-                    *edge_kind,
-                )?);
-            }
-            Update::ReplaceSubgraph { onto, to_rebase } => {
-                let updated_to_rebase = *updated.get(to_rebase).unwrap_or(to_rebase);
-                let new_subgraph_root = find_in_to_rebase_or_create_using_onto(
-                    *onto,
-                    &mut updated,
-                    onto_workspace_snapshot,
-                    to_rebase_workspace_snapshot,
-                )?;
-                updated.extend(
-                    to_rebase_workspace_snapshot
-                        .replace_references(updated_to_rebase, new_subgraph_root)?,
-                );
-            }
-        }
-    }
-
-    // Once all updates have been performed, we can write out, mark everything as recently seen
-    // and update the pointer.
-    to_rebase_workspace_snapshot
-        .write(ctx, to_rebase_change_set.vector_clock_id())
-        .await?;
-    to_rebase_change_set
-        .update_pointer(ctx, to_rebase_workspace_snapshot.id())
-        .await?;
-
-    Ok(())
-}
-
-fn find_in_to_rebase_or_create_using_onto(
-    unchecked: NodeIndex,
-    updated: &mut HashMap<NodeIndex, NodeIndex>,
-    onto_workspace_snapshot: &mut WorkspaceSnapshot,
-    to_rebase_workspace_snapshot: &mut WorkspaceSnapshot,
-) -> ChangeSetLoopResult<NodeIndex> {
-    let found_or_created = match updated.get(&unchecked) {
-        Some(found) => *found,
-        None => {
-            let unchecked_node_weight = onto_workspace_snapshot.get_node_weight(unchecked)?;
-            match to_rebase_workspace_snapshot.find_equivalent_node(
-                unchecked_node_weight.id(),
-                unchecked_node_weight.lineage_id(),
-            )? {
-                Some(found_equivalent_node) => {
-                    let found_equivalent_node_weight =
-                        to_rebase_workspace_snapshot.get_node_weight(found_equivalent_node)?;
-                    if found_equivalent_node_weight.merkle_tree_hash()
-                        != unchecked_node_weight.merkle_tree_hash()
-                    {
-                        updated.extend(
-                            to_rebase_workspace_snapshot
-                                .import_subgraph(onto_workspace_snapshot, unchecked)?,
-                        );
-
-                        *updated
-                            .get(&unchecked)
-                            .ok_or(ChangeSetLoopError::DestinationNotUpdatedWhenImportingSubgraph)?
-                    } else {
-                        updated.insert(unchecked, found_equivalent_node);
-
-                        found_equivalent_node
-                    }
-                }
-                None => {
-                    updated.extend(
-                        to_rebase_workspace_snapshot
-                            .import_subgraph(onto_workspace_snapshot, unchecked)?,
-                    );
-                    *updated
-                        .get(&unchecked)
-                        .ok_or(ChangeSetLoopError::DestinationNotUpdatedWhenImportingSubgraph)?
-                }
-            }
-        }
-    };
-    Ok(found_or_created)
 }

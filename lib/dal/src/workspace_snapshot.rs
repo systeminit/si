@@ -533,4 +533,19 @@ impl WorkspaceSnapshot {
             edge_kind,
         )?)
     }
+
+    /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshot) as the "to rebase" graph and
+    /// another [`snapshot`](WorkspaceSnapshot) as the "onto" graph.
+    pub fn perform_updates(
+        &mut self,
+        to_rebase_change_set: &ChangeSetPointer,
+        onto: &mut WorkspaceSnapshot,
+        updates: &[Update],
+    ) -> WorkspaceSnapshotResult<()> {
+        Ok(self.working_copy()?.perform_updates(
+            to_rebase_change_set,
+            onto.working_copy()?,
+            updates,
+        )?)
+    }
 }

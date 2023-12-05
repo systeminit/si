@@ -24,6 +24,7 @@ use crate::workspace_snapshot::{
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::CategoryNodeWeight;
 
+use crate::WorkspaceSnapshot;
 /// Ensure [`NodeIndex`] is usable by external crates.
 pub use petgraph::graph::NodeIndex;
 pub use petgraph::Direction;
@@ -44,6 +45,8 @@ pub enum WorkspaceSnapshotGraphError {
     ContentStore(#[from] StoreError),
     #[error("Action would create a graph cycle")]
     CreateGraphCycle,
+    #[error("could not find the newly imported subgraph when performing updates")]
+    DestinationNotUpdatedWhenImportingSubgraph,
     #[error("Edge does not exist for EdgeIndex: {0:?}")]
     EdgeDoesNotExist(EdgeIndex),
     #[error("EdgeWeight error: {0}")]
@@ -1729,6 +1732,107 @@ impl WorkspaceSnapshotGraph {
         new_node_weight.set_merkle_tree_hash(hasher.finalize());
 
         Ok(())
+    }
+
+    /// Perform [`Updates`](Update) using [`self`](WorkspaceSnapshotGraph) as the "to rebase" graph
+    /// and a provided graph as the "onto" graph.
+    pub fn perform_updates(
+        &mut self,
+        to_rebase_change_set: &ChangeSetPointer,
+        onto: &mut WorkspaceSnapshotGraph,
+        updates: &[Update],
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        let mut updated = HashMap::new();
+        for update in updates {
+            match update {
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight,
+                } => {
+                    let updated_source = *updated.get(source).unwrap_or(source);
+                    let destination =
+                        self.find_in_self_or_create_using_onto(*destination, &mut updated, onto)?;
+                    let new_edge_index =
+                        self.add_edge(updated_source, edge_weight.clone(), destination)?;
+                    let (new_source, _) = self.edge_endpoints(new_edge_index)?;
+                    updated.insert(*source, new_source);
+                }
+                Update::RemoveEdge {
+                    source,
+                    destination,
+                    edge_kind,
+                } => {
+                    let updated_source = *updated.get(source).unwrap_or(source);
+                    let destination = *updated.get(destination).unwrap_or(destination);
+                    updated.extend(self.remove_edge(
+                        to_rebase_change_set,
+                        updated_source,
+                        destination,
+                        *edge_kind,
+                    )?);
+                }
+                Update::ReplaceSubgraph {
+                    onto: onto_subgraph_root,
+                    to_rebase: to_rebase_subgraph_root,
+                } => {
+                    let updated_to_rebase = *updated
+                        .get(to_rebase_subgraph_root)
+                        .unwrap_or(to_rebase_subgraph_root);
+                    let new_subgraph_root = self.find_in_self_or_create_using_onto(
+                        *onto_subgraph_root,
+                        &mut updated,
+                        onto,
+                    )?;
+                    updated.extend(self.replace_references(updated_to_rebase, new_subgraph_root)?);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Find in self where self is the "to rebase" side or create using "onto".
+    fn find_in_self_or_create_using_onto(
+        &mut self,
+        unchecked: NodeIndex,
+        updated: &mut HashMap<NodeIndex, NodeIndex>,
+        onto: &mut WorkspaceSnapshotGraph,
+    ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        let found_or_created = match updated.get(&unchecked) {
+            Some(found) => *found,
+            None => {
+                let unchecked_node_weight = onto.get_node_weight(unchecked)?;
+                match self.find_equivalent_node(
+                    unchecked_node_weight.id(),
+                    unchecked_node_weight.lineage_id(),
+                )? {
+                    Some(found_equivalent_node) => {
+                        let found_equivalent_node_weight =
+                            self.get_node_weight(found_equivalent_node)?;
+                        if found_equivalent_node_weight.merkle_tree_hash()
+                            != unchecked_node_weight.merkle_tree_hash()
+                        {
+                            updated.extend(self.import_subgraph(onto, unchecked)?);
+
+                            *updated.get(&unchecked).ok_or(
+                                WorkspaceSnapshotGraphError::DestinationNotUpdatedWhenImportingSubgraph,
+                            )?
+                        } else {
+                            updated.insert(unchecked, found_equivalent_node);
+
+                            found_equivalent_node
+                        }
+                    }
+                    None => {
+                        updated.extend(self.import_subgraph(onto, unchecked)?);
+                        *updated.get(&unchecked).ok_or(
+                            WorkspaceSnapshotGraphError::DestinationNotUpdatedWhenImportingSubgraph,
+                        )?
+                    }
+                }
+            }
+        };
+        Ok(found_or_created)
     }
 }
 
