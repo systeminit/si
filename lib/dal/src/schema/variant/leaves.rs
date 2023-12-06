@@ -68,6 +68,8 @@ pub enum LeafInputLocation {
     Domain,
     /// The input location corresponding to "/root/resource".
     Resource,
+    /// The input location corresponding to "/root/secrets".
+    Secrets,
 }
 
 // We only want to allow converting an input location into a root prop child and root the other
@@ -80,6 +82,7 @@ impl Into<RootPropChild> for LeafInputLocation {
             LeafInputLocation::Domain => RootPropChild::Domain,
             LeafInputLocation::Resource => RootPropChild::Resource,
             LeafInputLocation::DeletedAt => RootPropChild::DeletedAt,
+            LeafInputLocation::Secrets => RootPropChild::Secrets,
         }
     }
 }
@@ -91,6 +94,7 @@ impl From<&PkgLeafInputLocation> for LeafInputLocation {
             PkgLeafInputLocation::Domain => Self::Domain,
             PkgLeafInputLocation::Resource => Self::Resource,
             PkgLeafInputLocation::DeletedAt => Self::DeletedAt,
+            PkgLeafInputLocation::Secrets => Self::Secrets,
         }
     }
 }
@@ -102,6 +106,7 @@ impl From<LeafInputLocation> for PkgLeafInputLocation {
             LeafInputLocation::Domain => Self::Domain,
             LeafInputLocation::Resource => Self::Resource,
             LeafInputLocation::DeletedAt => Self::DeletedAt,
+            LeafInputLocation::Secrets => Self::Secrets,
         }
     }
 }
@@ -119,6 +124,7 @@ impl LeafInputLocation {
             LeafInputLocation::Domain => "domain",
             LeafInputLocation::Resource => "resource",
             LeafInputLocation::DeletedAt => "deleted_at",
+            LeafInputLocation::Secrets => "secrets",
         }
     }
 
@@ -132,15 +138,17 @@ impl LeafInputLocation {
             "code" => LeafInputLocation::Code,
             "resource" => LeafInputLocation::Resource,
             "deleted_at" => LeafInputLocation::DeletedAt,
+            "secrets" => LeafInputLocation::Secrets,
             _ => return None,
         })
     }
 
     pub fn arg_kind(&self) -> FuncArgumentKind {
         match self {
-            LeafInputLocation::Code | LeafInputLocation::Domain | LeafInputLocation::Resource => {
-                FuncArgumentKind::Object
-            }
+            LeafInputLocation::Code
+            | LeafInputLocation::Domain
+            | LeafInputLocation::Resource
+            | LeafInputLocation::Secrets => FuncArgumentKind::Object,
             LeafInputLocation::DeletedAt => FuncArgumentKind::String,
         }
     }

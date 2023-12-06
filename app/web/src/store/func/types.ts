@@ -8,7 +8,12 @@ export interface ActionAssociations {
   kind?: ActionKind;
 }
 
-export type LeafInputLocation = "code" | "deletedAt" | "domain" | "resource";
+export type LeafInputLocation =
+  | "code"
+  | "deletedAt"
+  | "domain"
+  | "resource"
+  | "secrets";
 
 export interface AuthenticationAssociations {
   type: "authentication";
