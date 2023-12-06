@@ -31,6 +31,8 @@ pub enum RootPropChild {
     Qualification,
     /// Corresponds to the "/root/resource" subtree.
     Resource,
+    /// Corresponds to the "/root/secrets" subtree.
+    Secrets,
     /// Corresponds to the "/root/si" subtree.
     Si,
 }
@@ -44,6 +46,7 @@ impl RootPropChild {
             Self::Code => "code",
             Self::Qualification => "qualification",
             Self::DeletedAt => "deleted_at",
+            Self::Secrets => "secrets",
         }
     }
 }

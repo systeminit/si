@@ -44,6 +44,7 @@ pub enum LeafInputLocation {
     DeletedAt,
     Domain,
     Resource,
+    Secrets,
 }
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
