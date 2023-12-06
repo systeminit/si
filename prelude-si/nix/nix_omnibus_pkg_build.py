@@ -40,6 +40,9 @@ class PlatformOS(BaseEnum):
     Linux = "linux"
 
 
+VARIANT = "omnibus"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -351,29 +354,22 @@ def compute_b3sum(artifact_file: str) -> str:
 
 def compute_build_metadata(
     git_info: Dict[str, str | int | bool],
-    name: str,
-    architecture: PlatformArchitecture,
-    os: PlatformOS,
+    family: str,
+    platform_arch: PlatformArchitecture,
+    platform_os: PlatformOS,
     b3sum: str,
 ) -> Dict[str, str]:
     metadata = {
         "family":
-        name,
+        family,
         "variant":
-        "omnibus",
-        "name":
-        "{}-{}-{}-{}.tar.gz".format(
-            name,
-            git_info.get("canonical_version"),
-            os.value,
-            architecture.value,
-        ),
+        VARIANT,
         "version":
         git_info.get("canonical_version"),
-        "architecture":
-        architecture.value,
+        "arch":
+        platform_arch.value,
         "os":
-        os.value,
+        platform_os.value,
         "commit":
         git_info.get("commit_hash"),
         "b3sum":
