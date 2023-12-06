@@ -1,9 +1,9 @@
 load(
     "@prelude-si//:macros.bzl",
     "docker_image",
-    "rootfs",
     "export_file",
     "nix_omnibus_pkg",
+    "rootfs",
     "rust_binary",
     "shellcheck",
     "shfmt_check",
@@ -61,7 +61,7 @@ docker_image(
         "//bin/cyclone:docker-entrypoint.sh",
         "//bin/cyclone:cyclone",
         "//bin/lang-js:bin",
-    ]
+    ],
 )
 
 nix_omnibus_pkg(
@@ -75,16 +75,6 @@ rootfs(
     rootfs_name = "cyclone-rootfs",
     build_deps = [
         ":omnibus",
-        "//bin/lang-js:omnibus"
-    ]
-)
-
-load(
-    "@prelude-si//:artifact.bzl",
-    "artifact_publish"
-)
-
-artifact_publish(
-    name = "publish-omnibus",
-    artifact = ":omnibus",
+        "//bin/lang-js:omnibus",
+    ],
 )
