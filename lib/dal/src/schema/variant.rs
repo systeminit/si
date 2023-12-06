@@ -179,6 +179,7 @@ pub struct SchemaVariant {
     visibility: Visibility,
 
     ui_hidden: bool,
+    default_color: Option<String>,
     name: String,
     /// The [`RootProp`](crate::RootProp) for [`self`](Self).
     root_prop_id: Option<PropId>,
@@ -422,6 +423,7 @@ impl SchemaVariant {
         Ok(())
     }
 
+    standard_model_accessor!(default_color, Option<String>, SchemaVariantResult);
     standard_model_accessor!(ui_hidden, bool, SchemaVariantResult);
     standard_model_accessor!(name, String, SchemaVariantResult);
     standard_model_accessor!(root_prop_id, Option<Pk(PropId)>, SchemaVariantResult);
@@ -434,6 +436,10 @@ impl SchemaVariant {
     );
 
     pub async fn color(&self, ctx: &DalContext) -> SchemaVariantResult<Option<String>> {
+        if let Some(color) = self.default_color() {
+            return Ok(Some(color.to_owned()));
+        }
+
         let attribute_value = Component::find_si_child_attribute_value(
             ctx,
             ComponentId::NONE,
@@ -456,10 +462,17 @@ impl SchemaVariant {
             .cloned()
             .map(serde_json::from_value)
             .transpose()?;
+
+        if let Some(color) = color.clone() {
+            self.clone().set_default_color(ctx, Some(color)).await?;
+        }
+
         Ok(color)
     }
 
-    pub async fn set_color(&self, ctx: &DalContext, color: String) -> SchemaVariantResult<()> {
+    pub async fn set_color(&mut self, ctx: &DalContext, color: String) -> SchemaVariantResult<()> {
+        self.set_default_color(ctx, Some(color.clone())).await?;
+
         let attribute_value = Component::find_si_child_attribute_value(
             ctx,
             ComponentId::NONE,
