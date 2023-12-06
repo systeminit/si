@@ -188,6 +188,8 @@ def artifact_name(md: ArtifactMetadata) -> str:
     match md.variant:
         case Variant.Omnibus:
             return f"{prefix}.tar.gz"
+        case Variant.Rootfs:
+            return f"{prefix}.ext4"
         case _:
             raise TypeError(f"unsupport Variant type: {md.variant}")
 
