@@ -78,24 +78,3 @@ rootfs(
         "//bin/lang-js:omnibus",
     ],
 )
-
-load(
-    "@prelude-si//:artifact.bzl",
-    "artifact_promote",
-    "artifact_publish",
-)
-
-artifact_publish(
-    name = "publish-omnibus",
-    artifact = ":omnibus",
-    destination = "s3://si-artifacts-prod",
-    cname = "artifacts.systeminit.com",
-)
-
-artifact_promote(
-    name = "promote-omnibus",
-    family = "cyclone",
-    variant = "omnibus",
-    destination = "s3://si-artifacts-prod",
-    cname = "artifacts.systeminit.com",
-)
