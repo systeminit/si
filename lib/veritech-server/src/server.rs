@@ -110,6 +110,7 @@ impl Server {
                 let manager = Manager::new(spec.clone());
                 manager
                     .setup()
+                    .await
                     .map_err(|err| ServerError::CycloneSpec(Box::new(err)))?;
 
                 let cyclone_pool = Pool::builder(manager)

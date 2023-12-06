@@ -17,7 +17,7 @@ pub trait Spec {
     type Error;
 
     /// Performs setup activities to prepare the host to create [Instance]s.
-    fn setup(&self) -> result::Result<(), Self::Error>;
+    async fn setup(&self) -> result::Result<(), Self::Error>;
     /// Creates and launches an [`Instance`].
     ///
     /// NOTE: the method is non-consuming so that multiple Instances can be spawned from the same

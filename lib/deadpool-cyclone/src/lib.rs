@@ -88,8 +88,8 @@ where
     }
 
     /// Peforms any necessary setup work to ensure the host can run the pool members.
-    pub fn setup(&self) -> Result<(), S::Error> {
-        self.spec.setup()
+    pub async fn setup(&self) -> Result<(), S::Error> {
+        self.spec.setup().await
     }
 }
 

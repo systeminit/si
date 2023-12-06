@@ -21,6 +21,7 @@ tempfile = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+buck2-resources = { path = "../buck2-resources" }
 
 [dev-dependencies]
 buck2-resources = { path = "../buck2-resources" }
