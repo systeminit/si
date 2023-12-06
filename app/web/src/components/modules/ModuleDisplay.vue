@@ -125,7 +125,11 @@
       <!-- this else means the module does not exist locally -->
       <template v-else>
         <!-- deal with showing an error message if name is totally bogus -->
-        <template v-if="loadRemoteModulesReqStatus.isSuccess && !remoteSummary">
+        <template
+          v-if="
+            loadRemoteModulesReqStatus.isSuccess && !remoteSummary && moduleSlug
+          "
+        >
           <ErrorMessage>
             Could not find module with hash {{ moduleSlug }}
           </ErrorMessage>
