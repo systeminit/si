@@ -1,8 +1,8 @@
 use axum::extract::{Json, Query};
 use dal::{
     socket::{SocketEdgeKind, SocketId},
-    DiagramKind, ExternalProviderId, InternalProviderId, SchemaId, SchemaVariant, SchemaVariantId,
-    StandardModel, Visibility,
+    DiagramKind, ExternalProvider, ExternalProviderId, InternalProvider, InternalProviderId,
+    SchemaId, SchemaVariant, SchemaVariantId, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -72,6 +72,8 @@ pub async fn list_schema_variants(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let variants = SchemaVariant::list(&ctx).await?;
+    let external_provider_by_socket = ExternalProvider::by_socket(&ctx).await?;
+    let internal_provider_by_socket = InternalProvider::by_socket(&ctx).await?;
 
     let mut variants_view = Vec::with_capacity(variants.len());
     for variant in variants {
@@ -91,12 +93,16 @@ pub async fn list_schema_variants(
         let mut output_sockets = Vec::new();
 
         let sockets = variant.sockets(&ctx).await?;
+
         for socket in sockets {
             match socket.edge_kind() {
                 SocketEdgeKind::ConfigurationOutput => {
-                    let provider = socket.external_provider(&ctx).await?.ok_or_else(|| {
-                        DiagramError::ExternalProviderNotFoundForSocket(*socket.id())
-                    })?;
+                    let provider =
+                        external_provider_by_socket
+                            .get(socket.id())
+                            .ok_or_else(|| {
+                                DiagramError::ExternalProviderNotFoundForSocket(*socket.id())
+                            })?;
                     output_sockets.push(OutputSocketView {
                         id: *socket.id(),
                         name: socket.name().to_owned(),
@@ -108,9 +114,12 @@ pub async fn list_schema_variants(
                     })
                 }
                 SocketEdgeKind::ConfigurationInput => {
-                    let provider = socket.internal_provider(&ctx).await?.ok_or_else(|| {
-                        DiagramError::InternalProviderNotFoundForSocket(*socket.id())
-                    })?;
+                    let provider =
+                        internal_provider_by_socket
+                            .get(socket.id())
+                            .ok_or_else(|| {
+                                DiagramError::InternalProviderNotFoundForSocket(*socket.id())
+                            })?;
                     input_sockets.push(InputSocketView {
                         id: *socket.id(),
                         name: socket.name().to_owned(),
@@ -130,13 +139,14 @@ pub async fn list_schema_variants(
             name: variant.name().to_owned(),
             schema_id: *schema.id(),
             schema_name: schema.name().to_owned(),
+            input_sockets,
             color: variant
                 .color(&ctx)
                 .await?
                 .unwrap_or_else(|| "00b0bc".to_owned()),
-            input_sockets,
             output_sockets,
         });
     }
+
     Ok(Json(variants_view))
 }
