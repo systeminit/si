@@ -308,6 +308,15 @@ impl NodeWeight {
         }
     }
 
+    pub fn get_prop_node_weight(&self) -> NodeWeightResult<PropNodeWeight> {
+        match self {
+            NodeWeight::Prop(inner) => Ok(inner.to_owned()),
+            other => Err(NodeWeightError::UnexpectedNodeWeightVariant(
+                NodeWeightDiscriminants::Prop,
+                other.into(),
+            )),
+        }
+    }
     pub fn get_func_node_weight(&self) -> NodeWeightResult<FuncNodeWeight> {
         match self {
             NodeWeight::Func(inner) => Ok(inner.to_owned()),

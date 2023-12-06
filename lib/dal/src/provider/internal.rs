@@ -76,17 +76,20 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::value::AttributeValueResult;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::socket::{DiagramKind, SocketEdgeKind, SocketError, SocketKind, SocketParent};
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributePrototype, DalContext, Func, FuncId, SchemaVariantId, Socket, SocketArity,
-    StandardModel, Timestamp, TransactionsError,
+    pk, AttributePrototype, AttributePrototypeId, DalContext, Func, FuncId, PropId,
+    SchemaVariantId, Socket, SocketArity, StandardModel, Timestamp, TransactionsError,
 };
 
 #[remain::sorted]
@@ -102,6 +105,10 @@ pub enum InternalProviderError {
     Func(#[from] FuncError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("Prop {0} is missing an internal provider")]
+    PropMissingInternalProvider(PropId),
+    #[error("An internal provider for prop {0} already exists")]
+    ProviderAlreadyExists(PropId),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
     #[error("store error: {0}")]
@@ -171,6 +178,24 @@ impl InternalProvider {
         self.id
     }
 
+    pub fn find_for_prop_id(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> InternalProviderResult<Option<InternalProviderId>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        match workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Provider)?
+            .get(0)
+        {
+            None => Ok(None),
+            Some(provider_idx) => {
+                let node_weight = workspace_snapshot.get_node_weight(*provider_idx)?;
+                Ok(Some(node_weight.id().into()))
+            }
+        }
+    }
+
     pub async fn new_implicit(
         ctx: &DalContext,
         prop: &PropNodeWeight,
@@ -216,6 +241,73 @@ impl InternalProvider {
             id,
             EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(None))?,
             attribute_prototype.id().into(),
+        )?;
+
+        Ok(())
+    }
+
+    pub fn new_implicit_with_prototype_and_key(
+        ctx: &DalContext,
+        prop_id: PropId,
+        attribute_prototype_id: AttributePrototypeId,
+        key: &Option<String>,
+    ) -> InternalProviderResult<InternalProviderId> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        for edgeref in workspace_snapshot.edges_directed(prop_id, Direction::Outgoing)? {
+            if edgeref.weight().kind() == &EdgeWeightKind::Provider {
+                // It already exists!
+                return Err(InternalProviderError::ProviderAlreadyExists(prop_id));
+            }
+        }
+
+        let node_weight = workspace_snapshot.get_node_weight_by_id(prop_id)?;
+        let prop_node_weight = node_weight.get_prop_node_weight()?;
+
+        let content = InternalProviderContentV1 {
+            timestamp: Timestamp::now(),
+            name: prop_node_weight.name().to_owned(),
+            inbound_type_definition: None,
+            outbound_type_definition: None,
+        };
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&InternalProviderContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let ip_id = change_set.generate_ulid()?;
+        let node_weight =
+            NodeWeight::new_content(change_set, ip_id, ContentAddress::InternalProvider(hash))?;
+        workspace_snapshot.add_node(node_weight)?;
+        workspace_snapshot.add_edge(
+            prop_id.into(),
+            EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
+            ip_id,
+        )?;
+        workspace_snapshot.add_edge(
+            ip_id,
+            EdgeWeight::new(change_set, EdgeWeightKind::Prototype(key.to_owned()))?,
+            attribute_prototype_id.into(),
+        )?;
+
+        Ok(ip_id.into())
+    }
+
+    pub fn add_prototype_edge(
+        ctx: &DalContext,
+        internal_provider_id: InternalProviderId,
+        attribute_prototype_id: AttributePrototypeId,
+        key: &Option<String>,
+    ) -> InternalProviderResult<()> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        workspace_snapshot.add_edge(
+            internal_provider_id.into(),
+            EdgeWeight::new(
+                ctx.change_set_pointer()?,
+                EdgeWeightKind::Prototype(key.to_owned()),
+            )?,
+            attribute_prototype_id.into(),
         )?;
 
         Ok(())

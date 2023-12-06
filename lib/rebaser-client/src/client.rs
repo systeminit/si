@@ -14,7 +14,7 @@ use ulid::Ulid;
 
 use crate::{ClientError, ClientResult};
 
-const REPLY_TIMEOUT_SECONDS: u64 = 10;
+const REPLY_TIMEOUT_SECONDS: u64 = 30;
 
 /// A client for communicating with a running rebaser [`Server`](rebaser_server::Server).
 #[allow(missing_debug_implementations)]

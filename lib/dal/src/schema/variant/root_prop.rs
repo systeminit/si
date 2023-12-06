@@ -4,13 +4,13 @@
 use strum::{AsRefStr, Display as EnumDisplay, EnumIter, EnumString};
 use telemetry::prelude::*;
 
-use crate::prop::PropParent;
+use crate::prop::{PropParent, PropPath};
 use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::leaves::LeafKind;
 use crate::schema::variant::SchemaVariantResult;
 use crate::validation::prototype::ValidationPrototype;
 use crate::validation::Validation;
-use crate::{DalContext, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId, StandardModel};
+use crate::{DalContext, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId};
 
 pub mod component_type;
 
@@ -43,6 +43,10 @@ impl RootPropChild {
             Self::Qualification => "qualification",
             Self::DeletedAt => "deleted_at",
         }
+    }
+
+    pub fn prop_path(&self) -> PropPath {
+        PropPath::new(["root", self.as_str()])
     }
 }
 

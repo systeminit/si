@@ -18,7 +18,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::change_set_pointer::ChangeSetPointerError;
-use crate::workspace_snapshot::content_address::ContentAddress;
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
@@ -28,7 +28,7 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, DalContext, FuncId, InternalProviderId, StandardModel, Timestamp, TransactionsError,
+    pk, DalContext, FuncId, InternalProviderId, PropId, StandardModel, Timestamp, TransactionsError,
 };
 
 pub mod argument;
@@ -157,6 +157,37 @@ impl AttributePrototype {
         Err(AttributePrototypeError::MissingFunction(prototype_id))
     }
 
+    pub fn find_for_prop(
+        ctx: &DalContext,
+        prop_id: PropId,
+        key: &Option<String>,
+    ) -> AttributePrototypeResult<Option<AttributePrototypeId>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        if let Some(prototype_idx) = workspace_snapshot
+            .edges_directed(prop_id, Direction::Outgoing)?
+            .find(|edge_ref| {
+                if let EdgeWeightKind::Prototype(maybe_key) = edge_ref.weight().kind() {
+                    maybe_key == key
+                } else {
+                    false
+                }
+            })
+            .map(|edge_ref| edge_ref.target())
+        {
+            let node_weight = workspace_snapshot.get_node_weight(prototype_idx)?;
+
+            if matches!(
+                node_weight.content_address_discriminants(),
+                Some(ContentAddressDiscriminants::AttributePrototype)
+            ) {
+                return Ok(Some(node_weight.id().into()));
+            }
+        }
+
+        Ok(None)
+    }
+
     pub fn update_func_by_id(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
@@ -186,6 +217,21 @@ impl AttributePrototype {
             attribute_prototype_id.into(),
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
             func_id.into(),
+        )?;
+
+        Ok(())
+    }
+
+    pub fn remove(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<()> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        workspace_snapshot.remove_incoming_edges_of_kind(
+            ctx.change_set_pointer()?,
+            prototype_id,
+            EdgeWeightKindDiscriminants::Prototype,
         )?;
 
         Ok(())

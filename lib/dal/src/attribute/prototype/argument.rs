@@ -41,6 +41,8 @@ pub enum AttributePrototypeArgumentError {
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("attribute prototype argument {0} has no func argument")]
+    MissingFuncArgument(AttributePrototypeArgumentId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("serde json error: {0}")]
@@ -162,6 +164,30 @@ impl AttributePrototypeArgument {
         Ok(AttributePrototypeArgument::assemble(id.into(), &content))
     }
 
+    pub fn func_argument_id_by_id(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<FuncArgumentId> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        for target in workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(apa_id, EdgeWeightKindDiscriminants::Use)?
+        {
+            match workspace_snapshot
+                .get_node_weight(target)?
+                .get_content_node_weight_of_kind(ContentAddressDiscriminants::FuncArg)
+            {
+                Ok(content_node_weight) => {
+                    return Ok(content_node_weight.id().into());
+                }
+                Err(NodeWeightError::UnexpectedNodeWeightVariant(_, _)) => continue,
+                Err(e) => Err(e)?,
+            }
+        }
+
+        Err(AttributePrototypeArgumentError::MissingFuncArgument(apa_id))
+    }
+
     fn set_value_source(
         self,
         ctx: &DalContext,
@@ -236,6 +262,20 @@ impl AttributePrototypeArgument {
         }
 
         Ok(apas)
+    }
+
+    pub fn remove(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<()> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        workspace_snapshot.remove_incoming_edges_of_kind(
+            ctx.change_set_pointer()?,
+            apa_id,
+            EdgeWeightKindDiscriminants::PrototypeArgument,
+        )?;
+
+        Ok(())
     }
 }
 

@@ -519,6 +519,23 @@ impl WorkspaceSnapshot {
             .collect())
     }
 
+    pub fn remove_incoming_edges_of_kind(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        target_id: impl Into<Ulid>,
+        kind: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<()> {
+        let target_id = target_id.into();
+
+        let sources = self.incoming_sources_for_edge_weight_kind(target_id, kind)?;
+        for source_node_idx in sources {
+            let target_node_idx = self.get_node_index_by_id(target_id)?;
+            self.remove_edge(change_set, source_node_idx, target_node_idx, kind)?;
+        }
+
+        Ok(())
+    }
+
     pub fn remove_edge(
         &mut self,
         change_set: &ChangeSetPointer,

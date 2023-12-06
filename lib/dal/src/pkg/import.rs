@@ -28,7 +28,10 @@ use crate::{
         InstalledPkgId,
     },
     prop::PropPath,
-    schema::{variant::leaves::LeafInputLocation, SchemaUiMenu},
+    schema::{
+        variant::leaves::{LeafInputLocation, LeafKind},
+        SchemaUiMenu,
+    },
     socket::SocketEdgeKind,
     validation::{Validation, ValidationKind},
     workspace_snapshot::{self, WorkspaceSnapshotError},
@@ -2100,35 +2103,35 @@ struct PropVisitContext<'a> {
     pub change_set_pk: Option<ChangeSetPk>,
 }
 
-// async fn import_leaf_function(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     leaf_func: SiPkgLeafFunction<'_>,
-//     schema_variant_id: SchemaVariantId,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<()> {
-//     let inputs: Vec<LeafInputLocation> = leaf_func
-//         .inputs()
-//         .iter()
-//         .map(|input| input.into())
-//         .collect();
+async fn import_leaf_function(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    leaf_func: SiPkgLeafFunction<'_>,
+    schema_variant_id: SchemaVariantId,
+    thing_map: &mut ThingMap,
+) -> PkgResult<()> {
+    let inputs: Vec<LeafInputLocation> = leaf_func
+        .inputs()
+        .iter()
+        .map(|input| input.into())
+        .collect();
 
-//     let kind: LeafKind = leaf_func.leaf_kind().into();
+    let kind: LeafKind = leaf_func.leaf_kind().into();
 
-//     match thing_map.get(change_set_pk, &leaf_func.func_unique_id().to_owned()) {
-//         Some(Thing::Func(func)) => {
-//             SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, None, kind, &inputs, func)
-//                 .await?;
-//         }
-//         _ => {
-//             return Err(PkgError::MissingFuncUniqueId(
-//                 leaf_func.func_unique_id().to_string(),
-//             ));
-//         }
-//     }
+    match thing_map.get(change_set_pk, &leaf_func.func_unique_id().to_owned()) {
+        Some(Thing::Func(func)) => {
+            SchemaVariant::upsert_leaf_function(ctx, schema_variant_id, None, kind, &inputs, func)
+                .await?;
+        }
+        _ => {
+            return Err(PkgError::MissingFuncUniqueId(
+                leaf_func.func_unique_id().to_string(),
+            ));
+        }
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 fn get_identity_func(ctx: &DalContext) -> PkgResult<FuncId> {
     let id_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)?;
@@ -2697,17 +2700,18 @@ async fn import_schema_variant(
             //                }
             //            }
             //
-            //     for leaf_func in variant_spec.leaf_functions()? {
-            //         import_leaf_function(
-            //             ctx,
-            //             change_set_pk,
-            //             leaf_func,
-            //             *schema_variant.id(),
-            //             thing_map,
-            //         )
-            //         .await?;
-            //     }
-            //
+
+            for leaf_func in variant_spec.leaf_functions()? {
+                import_leaf_function(
+                    ctx,
+                    change_set_pk,
+                    leaf_func,
+                    schema_variant.id(),
+                    thing_map,
+                )
+                .await?;
+            }
+
             Some(schema_variant)
         } //
           //     // Default values must be set before attribute functions are configured so they don't

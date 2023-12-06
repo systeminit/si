@@ -35,10 +35,15 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::{self, WorkspaceSnapshotError};
 use crate::{
-    pk, AttributePrototype, AttributePrototypeId, DalContext, ExternalProvider, ExternalProviderId,
-    Func, FuncId, InternalProvider, Prop, PropId, PropKind, SchemaId, SocketArity, StandardModel,
-    Timestamp, TransactionsError, WorkspaceSnapshot,
+    pk,
+    schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
+    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProvider,
+    ExternalProviderId, Func, FuncId, InternalProvider, Prop, PropId, PropKind, SchemaId,
+    SocketArity, StandardModel, Timestamp, TransactionsError, WorkspaceSnapshot,
 };
+use crate::{FuncBackendResponseType, InternalProviderId};
+
+use self::root_prop::RootPropChild;
 
 // use self::leaves::{LeafInput, LeafInputLocation, LeafKind};
 
@@ -71,6 +76,12 @@ pub enum SchemaVariantError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
+    #[error("Func {0} of response type {1} cannot set leaf {2:?}")]
+    LeafFunctionMismatch(FuncId, FuncBackendResponseType, LeafKind),
+    #[error("func {0} not a JsAttribute func, required for leaf functions")]
+    LeafFunctionMustBeJsAttribute(FuncId),
+    #[error("Leaf map prop not found for item prop {0}")]
+    LeafMapPropNotFound(PropId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("prop error: {0}")]
@@ -272,10 +283,24 @@ impl SchemaVariant {
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
-        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here
         let SchemaVariantContent::V1(inner) = content;
 
         Ok(Self::assemble(id, inner))
+    }
+
+    pub fn find_root_child_implicit_internal_provider(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        root_prop_child: RootPropChild,
+    ) -> SchemaVariantResult<InternalProviderId> {
+        let root_prop_child_id =
+            Prop::find_prop_id_by_path(ctx, schema_variant_id, &root_prop_child.prop_path())?;
+        let ip_id = InternalProvider::find_for_prop_id(ctx, root_prop_child_id)?.ok_or(
+            InternalProviderError::PropMissingInternalProvider(root_prop_child_id),
+        )?;
+
+        Ok(ip_id)
     }
 
     pub async fn list_for_schema(
@@ -437,7 +462,6 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
-        info!("creating implicit internal providers");
         let root_prop = Self::get_root_prop_node_weight(ctx, schema_variant_id)?;
         let mut work_queue = VecDeque::new();
         work_queue.push_back(root_prop);
@@ -602,6 +626,137 @@ impl SchemaVariant {
             .set_value_from_static_value(ctx, serde_json::to_value(color.as_ref())?)?;
 
         Ok(self)
+    }
+
+    /// This method finds a [`leaf`](crate::schema::variant::leaves)'s entry
+    /// [`Prop`](crate::Prop) given a [`LeafKind`](crate::schema::variant::leaves::LeafKind).
+    pub async fn find_leaf_item_prop(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        leaf_kind: LeafKind,
+    ) -> SchemaVariantResult<PropId> {
+        let (leaf_map_prop_name, leaf_item_prop_name) = leaf_kind.prop_names();
+
+        Ok(Prop::find_prop_id_by_path(
+            ctx,
+            schema_variant_id,
+            &PropPath::new(["root", leaf_map_prop_name, leaf_item_prop_name]),
+        )?)
+    }
+
+    pub async fn upsert_leaf_function(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        component_id: Option<ComponentId>,
+        leaf_kind: LeafKind,
+        input_locations: &[LeafInputLocation],
+        func: &Func,
+    ) -> SchemaVariantResult<AttributePrototypeId> {
+        let leaf_item_prop_id =
+            SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
+
+        if component_id.is_some() {
+            unimplemented!("component context not supported for leaf functions");
+        }
+
+        let key = Some(func.name.to_owned());
+
+        let mut existing_args = FuncArgument::list_for_func(ctx, func.id).await?;
+        let mut inputs = vec![];
+        for location in input_locations {
+            let arg_name = location.arg_name();
+            let arg = match existing_args
+                .iter()
+                .find(|arg| arg.name.as_str() == arg_name)
+            {
+                Some(existing_arg) => existing_arg.clone(),
+                None => {
+                    FuncArgument::new(ctx, arg_name, location.arg_kind(), None, func.id).await?
+                }
+            };
+
+            inputs.push(LeafInput {
+                location: *location,
+                func_argument_id: arg.id,
+            });
+        }
+
+        for existing_arg in existing_args.drain(..) {
+            if !inputs.iter().any(
+                |&LeafInput {
+                     func_argument_id, ..
+                 }| func_argument_id == existing_arg.id,
+            ) {
+                FuncArgument::remove(ctx, existing_arg.id)?;
+            }
+        }
+
+        Ok(
+            match AttributePrototype::find_for_prop(ctx, leaf_item_prop_id, &key)? {
+                Some(existing_proto_id) => {
+                    let apas =
+                        AttributePrototypeArgument::list_ids_for_prototype(ctx, existing_proto_id)?;
+
+                    let mut apa_func_arg_ids = HashMap::new();
+                    for input in &inputs {
+                        let mut exisiting_func_arg = None;
+                        for apa_id in &apas {
+                            let func_arg_id =
+                                AttributePrototypeArgument::func_argument_id_by_id(ctx, *apa_id)?;
+                            apa_func_arg_ids.insert(apa_id, func_arg_id);
+
+                            if func_arg_id == input.func_argument_id {
+                                exisiting_func_arg = Some(func_arg_id);
+                            }
+                        }
+
+                        if exisiting_func_arg.is_none() {
+                            let input_internal_provider_id =
+                                Self::find_root_child_implicit_internal_provider(
+                                    ctx,
+                                    schema_variant_id,
+                                    input.location.into(),
+                                )?;
+
+                            let new_apa = AttributePrototypeArgument::new(
+                                ctx,
+                                existing_proto_id,
+                                input.func_argument_id,
+                            )?;
+                            new_apa.set_value_from_internal_provider_id(
+                                ctx,
+                                input_internal_provider_id,
+                            )?;
+                        }
+                    }
+
+                    for (apa_id, func_arg_id) in apa_func_arg_ids {
+                        if !inputs.iter().any(
+                            |&LeafInput {
+                                 func_argument_id, ..
+                             }| { func_argument_id == func_arg_id },
+                        ) {
+                            AttributePrototypeArgument::remove(ctx, *apa_id)?;
+                        }
+                    }
+
+                    existing_proto_id
+                }
+                None => {
+                    let (_, new_proto) = SchemaVariant::add_leaf(
+                        ctx,
+                        func.id,
+                        schema_variant_id,
+                        component_id,
+                        leaf_kind,
+                        inputs,
+                    )
+                    .await?;
+
+                    new_proto
+                }
+            },
+        )
     }
 }
 
@@ -859,121 +1014,6 @@ impl SchemaVariant {
 //             .await?;
 
 //         Ok(objects_from_rows(rows)?)
-//     }
-
-//     pub async fn upsert_leaf_function(
-//         ctx: &DalContext,
-//         schema_variant_id: SchemaVariantId,
-//         component_id: Option<ComponentId>,
-//         leaf_kind: LeafKind,
-//         input_locations: &[LeafInputLocation],
-//         func: &Func,
-//     ) -> SchemaVariantResult<AttributePrototype> {
-//         let leaf_prop =
-//             SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
-
-//         let context = match component_id {
-//             Some(component_id) => AttributeContextBuilder::new()
-//                 .set_prop_id(*leaf_prop.id())
-//                 .set_component_id(component_id)
-//                 .to_context()?,
-//             None => AttributeContextBuilder::new()
-//                 .set_prop_id(*leaf_prop.id())
-//                 .to_context()?,
-//         };
-
-//         let key = Some(func.name().to_string());
-//         let mut existing_args = FuncArgument::list_for_func(ctx, *func.id()).await?;
-//         let mut inputs = vec![];
-//         for location in input_locations {
-//             let arg_name = location.arg_name();
-//             let arg = match existing_args.iter().find(|arg| arg.name() == arg_name) {
-//                 Some(existing_arg) => existing_arg.clone(),
-//                 None => {
-//                     FuncArgument::new(ctx, arg_name, location.arg_kind(), None, *func.id()).await?
-//                 }
-//             };
-
-//             inputs.push(LeafInput {
-//                 location: *location,
-//                 func_argument_id: *arg.id(),
-//             });
-//         }
-
-//         for mut existing_arg in existing_args.drain(..) {
-//             if !inputs.iter().any(
-//                 |&LeafInput {
-//                      func_argument_id, ..
-//                  }| func_argument_id == *existing_arg.id(),
-//             ) {
-//                 existing_arg.delete_by_id(ctx).await?;
-//             }
-//         }
-
-//         Ok(
-//             match AttributePrototype::find_for_context_and_key(ctx, context, &key)
-//                 .await?
-//                 .pop()
-//             {
-//                 Some(existing_proto) => {
-//                     let mut apas = AttributePrototypeArgument::list_for_attribute_prototype(
-//                         ctx,
-//                         *existing_proto.id(),
-//                     )
-//                     .await?;
-
-//                     for input in &inputs {
-//                         if !apas
-//                             .iter()
-//                             .any(|apa| apa.func_argument_id() == input.func_argument_id)
-//                         {
-//                             let input_internal_provider =
-//                                 Self::find_root_child_implicit_internal_provider(
-//                                     ctx,
-//                                     schema_variant_id,
-//                                     input.location.into(),
-//                                 )
-//                                 .await?;
-
-//                             AttributePrototypeArgument::new_for_intra_component(
-//                                 ctx,
-//                                 *existing_proto.id(),
-//                                 input.func_argument_id,
-//                                 *input_internal_provider.id(),
-//                             )
-//                             .await?;
-//                         }
-//                     }
-
-//                     for mut apa in apas.drain(..) {
-//                         if !inputs.iter().any(
-//                             |&LeafInput {
-//                                  func_argument_id, ..
-//                              }| {
-//                                 func_argument_id == apa.func_argument_id()
-//                             },
-//                         ) {
-//                             apa.delete_by_id(ctx).await?;
-//                         }
-//                     }
-
-//                     existing_proto
-//                 }
-//                 None => {
-//                     let (_, new_proto) = SchemaVariant::add_leaf(
-//                         ctx,
-//                         *func.id(),
-//                         schema_variant_id,
-//                         component_id,
-//                         leaf_kind,
-//                         inputs,
-//                     )
-//                     .await?;
-
-//                     new_proto
-//                 }
-//             },
-//         )
 //     }
 
 //     /// This method finds all the functions for a particular
