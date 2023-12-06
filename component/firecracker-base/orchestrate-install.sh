@@ -14,6 +14,10 @@ check_params_set(){
     echo "VARIABLES_FILE=${VARIABLES_FILE:-/tmp/variables.txt}"
     cat ${VARIABLES_FILE:-/tmp/variables.txt}
     eval $(cat ${VARIABLES_FILE:-/tmp/variables.txt})
+    echo "DOWNLOAD_ROOTFS=$DOWNLOAD_ROOTFS"
+    echo "DOWNLOAD_KERNEL=$DOWNLOAD_KERNEL"
+    echo "JAILS_TO_CREATE=$JAILS_TO_CREATE"
+    echo "FORCE_CLEAN_JAILS=$FORCE_CLEAN_JAILS"
     echo "---------------------------------"
 
     [[ "$AUTOMATED" != "true" ]] && sleep 5 # Giving some time for real users to review the vars file
@@ -90,6 +94,8 @@ execute_configuration_management() {
     echo "Info: Installation folder set to /firecracker-data/"
 
     if [[ $CONFIGURATION_MANAGEMENT_TOOL == "shell" ]]; then
+        DOWNLOAD_ROOTFS="${1:-false}" # Default to false
+        DOWNLOAD_KERNEL="${2:-false}" # Default to false
 
         # TODO(johnrwatson): Set up cgroup and cpu time/memory limits for jailer.
         # < limits here > - will do later
@@ -110,8 +116,14 @@ execute_configuration_management() {
         # Remainder of the binaries
         # TODO(scott): perform some kind of check to decide if we should
         # download these or not to avoid long downloads if we can.
-        wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/rootfs.ext4 -O ./rootfs.ext4
-        wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/image-kernel.bin -O ./image-kernel.bin
+        if $DOWNLOAD_ROOTFS; then
+          wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/rootfs.ext4 -O ./rootfs.ext4
+        fi
+
+        if $DOWNLOAD_KERNEL; then
+          wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/image-kernel.bin -O ./image-kernel.bin
+        fi
+
         wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/firecracker -O ./firecracker
         wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/jailer -O ./jailer
 
@@ -191,7 +203,9 @@ execute_configuration_management() {
         sysctl -w net.ipv4.neigh.default.gc_thresh3=4096
 
         # Masquerade all external traffic as if it was wrong the external interface
-        iptables -t nat -A POSTROUTING -o $(ip route get 8.8.8.8 | awk -- '{printf $5}') -j MASQUERADE
+        if ! iptables -t nat -C POSTROUTING -o $(ip route get 8.8.8.8 | awk -- '{printf $5}') -j MASQUERADE; then
+          iptables -t nat -A POSTROUTING -o $(ip route get 8.8.8.8 | awk -- '{printf $5}') -j MASQUERADE
+        fi
 
         # Adjust MTU to make it consistent
         ip link set dev $(ip route get 8.8.8.8 | awk -- '{printf $5}') mtu 1500
@@ -247,7 +261,32 @@ execute_cleanup() {
 }
 
 prepare_jailers() {
-  if test -f "./prepare_jailer.sh"; then
+  ITERATIONS="${1:-1000}" # Default to 1000 jails
+  DOWNLOAD_ROOTFS="${2:-false}" # Default to false
+  DOWNLOAD_KERNEL="${3:-false}" # Default to false
+  FORCE_CLEAN_JAILS="${4:-false}" # Default to false
+
+  # we need to recreate jails if we get a new kernel or rootfs.
+  # This is heavy-handed and should be mnade more specific.
+  if $DOWNLOAD_ROOTFS || $DOWNLOAD_KERNEL || $FORCE_CLEAN_JAILS; then
+    echo "Force cleaning jails due to passed flags..."
+    IN_PARALLEL=250
+    SECONDS=0
+    for (( iter=0; iter<$ITERATIONS; iter++ ))
+    do
+      echo -ne "Cleaning jail $(($iter + 1 )) out of $ITERATIONS ... \r"
+        # this ensures we only run n jobs in parallel at a time to avoid
+        # process locks. This is an unreliable hack.
+        if [ $(jobs -r | wc -l) -ge $IN_PARALLEL ]; then
+         wait $(jobs -r -p | head -1)
+        fi
+        /firecracker-data/stop.sh $iter &> /dev/null &
+    done
+    echo
+    echo "Elapsed: $(($SECONDS / 3600))hrs $((($SECONDS / 60) % 60))min $(($SECONDS % 60))sec"
+  fi
+
+  if test -f "/firecracker-data/prepare_jailer.sh"; then
     ITERATIONS="${1:-5000}" # Default to 5000 jails
     IN_PARALLEL=250
     SECONDS=0
@@ -262,7 +301,7 @@ prepare_jailers() {
         if [ $(jobs -r | wc -l) -ge $IN_PARALLEL ]; then
          wait $(jobs -r -p | head -1)
         fi
-        ./prepare_jailer.sh $iter &
+        /firecracker-data/prepare_jailer.sh $iter &
     done
     echo
     echo "Elapsed: $(($SECONDS / 3600))hrs $((($SECONDS / 60) % 60))min $(($SECONDS % 60))sec"
@@ -273,13 +312,68 @@ prepare_jailers() {
 }
 
 # -----------------------------------------
+usage() {
+   echo "Usage: $0 [ -v /tmp/variables.txt ] [ -j 1000 ] [ -r ] [ -k ] [ -c ]" 1>&2
+   echo
+   echo "Examples:"
+   echo "$0 -v /tmp/variables.txt -j 100 -rk " 1>&2
+   echo "Download a new rootfs and kernel and then create 100 new jails."
+   echo
+   echo "$0 -v /tmp/variables.txt -j 10 -c" 1>&2
+   echo "Force clean the existing jails and then create 10 new ones."
+   echo
+   echo "Prepares a machine to be used with Firecracker."
+   echo
+   echo "options:"
+   echo "-h     Print this Help."
+   echo "-v     The path to the required vars file."
+   echo "-j     The number of jails to create. Defaults to 1000."
+   echo "-r     Whether to download a new rootfs."
+   echo "       This will force a recreation of all jails"
+   echo "-k     Whether to download a new kernel."
+   echo "       This will force a recreation of all jails."
+   echo "-c     Force clean the jails to recreate all of them."
+   echo
+}
 
-VARIABLES_FILE=$1
-JAILS_TO_CREATE=$2
+DOWNLOAD_ROOTFS=false
+DOWNLOAD_KERNEL=false
+JAILS_TO_CREATE=1000
+FORCE_CLEAN_JAILS=false
+
+while getopts "hv:j:rkc" flag;
+do
+ case $flag in
+   h) #
+     usage
+     exit 1
+   ;;
+   v) # Variables File
+   # Pass the vars file
+   VARIABLES_FILE=$OPTARG
+   ;;
+   j) # Number of jails to create. Defaults to 5k
+   JAILS_TO_CREATE=${OPTARG}
+   ;;
+   r) #  Whether to download a new rootfs
+   DOWNLOAD_ROOTFS=true
+   ;;
+   k) #  Whether to download a new kernel
+   DOWNLOAD_KERNEL=true
+   ;;
+   c) #  Whether to force clean created jails
+   FORCE_CLEAN_JAILS=true
+   ;;
+   \?)
+     usage
+     exit 1
+   ;;
+ esac
+done
 
 check_params_set && echo -e "Installation Values found to be:\n - $VARIABLES_FILE"
 check_os_release && echo -e "Operating System found to be:\n - $OS_VARIANT"
 install_pre_reqs
-execute_configuration_management
-prepare_jailers $JAILS_TO_CREATE
+execute_configuration_management $DOWNLOAD_ROOTFS $DOWNLOAD_KERNEL
+prepare_jailers $JAILS_TO_CREATE $DOWNLOAD_ROOTFS $DOWNLOAD_KERNEL $FORCE_CLEAN_JAILS
 execute_cleanup

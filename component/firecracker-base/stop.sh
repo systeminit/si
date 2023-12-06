@@ -29,10 +29,13 @@ ip netns del jailer-$SB_ID || true
 userdel jailer-$SB_ID || true
 
 # Remove directories and files
-umount /srv/jailer/firecracker/$SB_ID/root/image-kernel.bin || true
 umount /srv/jailer/firecracker/$SB_ID/root/rootfs.ext4 || true
 dmsetup remove rootfs-overlay-$SB_ID || true
-dmsetup remove kernel-overlay-$SB_ID || true
+
+# We are not currently creating these.
+# umount /srv/jailer/firecracker/$SB_ID/root/image-kernel.bin || true
+# dmsetup remove kernel-overlay-$SB_ID || true
+
 # TODO(scott): figure out a better way to do this.
 # this will only detach devices removed from device-mapper
 # but it still feels bad

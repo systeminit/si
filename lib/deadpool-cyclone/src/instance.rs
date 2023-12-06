@@ -310,7 +310,7 @@ pub trait Instance {
     /// # });
     /// # Ok::<(), TerminationError>(())
     /// ```
-    async fn terminate(mut self) -> result::Result<(), Self::Error>;
+    async fn terminate(&mut self) -> result::Result<(), Self::Error>;
 }
 
 // async fn spawn<B, E, I, S>(builder: &B) -> Result<impl Instance<Error = E>, E>
