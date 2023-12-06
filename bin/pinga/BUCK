@@ -2,6 +2,7 @@ load(
     "@prelude-si//:macros.bzl",
     "docker_image",
     "rust_binary",
+    "nix_omnibus_pkg",
 )
 
 rust_binary(
@@ -25,4 +26,10 @@ docker_image(
     image_name = "pinga",
     flake_lock = "//:flake.lock",
     build_deps = ["//bin/pinga:pinga"]
+)
+
+nix_omnibus_pkg(
+    name = "omnibus",
+    pkg_name = "pinga",
+    build_dep = "//bin/pinga:pinga",
 )

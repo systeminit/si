@@ -2,6 +2,7 @@ load(
     "@prelude-si//:macros.bzl",
     "docker_image",
     "rust_binary",
+    "nix_omnibus_pkg",
 )
 
 rust_binary(
@@ -26,4 +27,10 @@ docker_image(
     image_name = "module-index",
     flake_lock = "//:flake.lock",
     build_deps = ["//bin/module-index:module-index"]
+)
+
+nix_omnibus_pkg(
+    name = "omnibus",
+    pkg_name = "module-index",
+    build_dep = "//bin/module-index:module-index",
 )

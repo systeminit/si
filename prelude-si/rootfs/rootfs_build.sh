@@ -65,7 +65,7 @@ apk add openrc openssh
 
 adduser -D app; \
 for dir in /run /etc /usr/local/etc /home/app/.config; do \
-    mkdir -pv "dir/$BIN"; \
+    mkdir -pv "$dir/$BIN"; \
 done;
 
 ssh-keygen -A
