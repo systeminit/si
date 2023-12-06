@@ -293,7 +293,7 @@ impl Spec for LocalHttpInstanceSpec {
     type Instance = LocalHttpInstance;
     type Error = LocalHttpInstanceError;
 
-    fn setup(&self) -> result::Result<(), Self::Error> {
+    async fn setup(&self) -> result::Result<(), Self::Error> {
         Ok(())
     }
     async fn spawn(&self) -> result::Result<Self::Instance, Self::Error> {

@@ -1,4 +1,7 @@
+use std::env;
+
 use ::std::path::Path;
+use buck2_resources::{Buck2Resources, Buck2ResourcesError};
 use rand::distributions::Alphanumeric;
 use rand::thread_rng;
 use rand::Rng;
@@ -41,6 +44,9 @@ use crate::instance::{Instance, Spec, SpecBuilder};
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum LocalUdsInstanceError {
+    /// Failed to find a buck2 specific resource
+    #[error("buck2 resource not found")]
+    Buck2ResourceNotFound(#[from] Buck2ResourcesError),
     /// Spec builder error.
     #[error(transparent)]
     Builder(#[from] LocalUdsInstanceSpecBuilderError),
@@ -319,11 +325,11 @@ impl Spec for LocalUdsInstanceSpec {
     type Instance = LocalUdsInstance;
     type Error = LocalUdsInstanceError;
 
-    fn setup(&self) -> result::Result<(), Self::Error> {
+    async fn setup(&self) -> result::Result<(), Self::Error> {
         match self.runtime_strategy {
             LocalUdsRuntimeStrategy::LocalDocker => Ok(()),
             LocalUdsRuntimeStrategy::LocalProcess => Ok(()),
-            LocalUdsRuntimeStrategy::LocalFirecracker => setup_firecracker(self),
+            LocalUdsRuntimeStrategy::LocalFirecracker => setup_firecracker(self).await,
         }
     }
 
@@ -781,8 +787,15 @@ async fn runtime_instance_from_spec(
     }
 }
 
-fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
-    let command = "/firecracker-data/orchestrate-install.sh ";
+async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
+    let command = "/firecracker-data/orchestrate-install.sh";
+    let mut script = String::from("orchestrate-install.sh");
+    script = get_if_buck2_build(script).await?;
+
+    let _ = match std::fs::copy(script, command) {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err),
+    };
 
     // Spawn the shell process
     let _status = Command::new("sudo")
@@ -842,4 +855,16 @@ async fn watch_task<Strm>(
             }
         }
     }
+}
+
+#[allow(clippy::disallowed_methods)] // Used to determine if running in development
+async fn get_if_buck2_build(file: String) -> Result<String> {
+    if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
+        let resources = Buck2Resources::read()?
+            .get_ends_with(file)?
+            .to_string_lossy()
+            .to_string();
+        return Ok(resources);
+    }
+    Ok(file)
 }
