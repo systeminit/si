@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
+use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -17,6 +18,7 @@ use crate::{
     DalContext, SchemaId, SchemaVariantId,
 };
 
+const BY_SOCKET: &str = include_str!("../queries/external_provider/by_socket.sql");
 const LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_TAIL_COMPONENT_ID: &str = include_str!(
     "../queries/external_provider/list_for_attribute_prototype_with_tail_component_id.sql"
 );
@@ -53,6 +55,8 @@ pub enum ExternalProviderError {
     SchemaVariant(String),
     #[error("schema variant id mismatch: {0} (self) and {1} (provided)")]
     SchemaVariantMismatch(SchemaVariantId, SchemaVariantId),
+    #[error("serde: {0}")]
+    Serde(#[from] serde_json::Error),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
@@ -296,5 +300,26 @@ impl ExternalProvider {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    #[tracing::instrument(skip(ctx))]
+    pub async fn by_socket(ctx: &DalContext) -> ExternalProviderResult<HashMap<SocketId, Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(BY_SOCKET, &[ctx.tenancy(), ctx.visibility()])
+            .await?;
+
+        let mut objects: HashMap<SocketId, Self> = HashMap::new();
+        for row in rows.into_iter() {
+            let id: SocketId = row.try_get(0)?;
+
+            let object: serde_json::Value = row.try_get(1)?;
+            let object: Self = serde_json::from_value(object)?;
+
+            objects.insert(id, object);
+        }
+        Ok(objects)
     }
 }

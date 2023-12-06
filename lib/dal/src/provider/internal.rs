@@ -71,6 +71,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use si_data_pg::PgError;
+use std::collections::HashMap;
 use telemetry::prelude::*;
 
 use crate::attribute::context::AttributeContextBuilder;
@@ -92,6 +93,7 @@ use crate::{
 };
 use crate::{Component, ComponentId};
 
+const BY_SOCKET: &str = include_str!("../queries/internal_provider/by_socket.sql");
 const FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME: &str =
     include_str!("../queries/internal_provider/find_explicit_for_schema_variant_and_name.sql");
 const FIND_FOR_PROP: &str = include_str!("../queries/internal_provider/find_for_prop.sql");
@@ -635,5 +637,27 @@ impl InternalProvider {
             .query_opt(FIND_FOR_PROP, &[ctx.tenancy(), ctx.visibility(), &prop_id])
             .await?;
         Ok(object_option_from_row_option(row)?)
+    }
+
+    #[tracing::instrument(skip(ctx))]
+    pub async fn by_socket(ctx: &DalContext) -> InternalProviderResult<HashMap<SocketId, Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(BY_SOCKET, &[ctx.tenancy(), ctx.visibility()])
+            .await?;
+
+        let mut objects: HashMap<SocketId, Self> = HashMap::new();
+        for row in rows.into_iter() {
+            let id: SocketId = row.try_get(0)?;
+
+            let object: serde_json::Value = row.try_get(1)?;
+            let object: Self = serde_json::from_value(object)?;
+
+            objects.insert(id, object);
+        }
+
+        Ok(objects.into_iter().collect())
     }
 }
