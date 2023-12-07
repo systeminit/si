@@ -30,6 +30,7 @@ async fn invoke(_is_preview: bool, reconfigure: bool) -> CliResult<()> {
     println!("System Initiative needs some credentials in order to be able to interact with AWS and Docker.");
     println!("The credentials are never sent back to System Initiative and can be inspected at the location:");
     println!("{}\n", creds_path.display());
+    println!("After changing these credentials, restart System Initiative.");
 
     if prompt_everything || raw_creds.aws_access_key_id.is_empty() {
         let aws_access_key = Password::new("AWS Access Key ID")
@@ -66,6 +67,19 @@ async fn invoke(_is_preview: bool, reconfigure: bool) -> CliResult<()> {
             Err(_) => println!(
                 "An error happened when asking for your AWS Secret Access Key, try again later."
             ),
+        }
+    }
+
+    if prompt_everything {
+        let session_token = Text::new("Set an AWS Session Token").prompt();
+
+        match session_token {
+            Ok(token) => {
+                raw_creds.aws_session_token = Some(token);
+                requires_rewrite = true;
+            }
+            Err(inquire::InquireError::OperationInterrupted) => return Err(SiCliError::CtrlC),
+            Err(_) => println!("Not setting an AWS Session Token"),
         }
     }
 
