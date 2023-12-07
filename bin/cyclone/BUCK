@@ -72,6 +72,7 @@ nix_omnibus_pkg(
 
 rootfs(
     name = "rootfs",
+    pkg_name = "cyclone",
     rootfs_name = "cyclone-rootfs",
     build_deps = [
         ":omnibus",

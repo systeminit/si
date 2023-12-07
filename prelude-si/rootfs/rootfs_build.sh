@@ -8,11 +8,12 @@ set -eo pipefail
 # TODO(johnrwatson): We need to port this to python or similar, and check for OS-dependencies that are required. i.e.
 # docker and basic priviledged escalation for the mounts
 
-git_helper=$1   # i.e. ./${git_helper} | jq -r '.abbreviated_commit_hash' (it returns a json blob output via python)
-output_file=$2  # i.e. output the file ./johns_rootfs.tar
+git_metadata=$1        # i.e. ./${git_metadata} | jq -r '.abbreviated_commit_hash' (it returns a json blob output via python)
+build_metadata_out=$2  # i.e. ./metadata-out.json (a build metadata file containing contents of type etc)
+tar_file_out=$3        # i.e. output the file ./johns_rootfs.tar
 
 # Shift the parsed arguments off after assignment
-shift 2
+shift 3
 
 # The rest of the inputs are a list of input files or directories, to also include in the build
 # i.e. consume a binary ./johns_binary.bin for use within this script
@@ -20,8 +21,8 @@ binary_inputs=("$@")
 
 echo "-------------------------------------"
 echo "Info: Initiating rootfs build"
-echo "Artifact Version: $(./${git_helper} | jq -r '.canonical_version')"
-echo "Output File: $output_file"
+echo "Artifact Version: $(cat $git_metadata | jq -r '.canonical_version')"
+echo "Output File: $tar_file_out"
 echo "Input Binaries (list):"
 for binary_input in "${binary_inputs[@]}"; do
   echo "$(echo $binary_input | awk -F "/" '{print $NF}') Full Path: $binary_input"
@@ -127,4 +128,19 @@ sudo umount $ROOTFSMOUNT
 
 rm -rf $ROOTFSMOUNT $INITSCRIPT
 
-cp $ROOTFS $output_file
+cp $ROOTFS $tar_file_out
+
+# Then generate the build metadata
+# TODO(johnrwatson): family here needs adjusted to the service/component
+# name as this doesn't currently support services outside of cyclone.
+cat << EOF >$build_metadata_out
+{
+  "family":"cyclone",
+  "variant":"rootfs",
+  "version":"$(jq -r '.canonical_version' < $git_metadata)",
+  "arch":"$(uname -m | tr '[:upper:]' '[:lower:]')",
+  "os":"$(uname -s | tr '[:upper:]' '[:lower:]')",
+  "commit": "$(jq -r '.commit_hash' < $git_metadata)",
+  "b3sum": "$(b3sum --no-names $tar_file_out)"
+}
+EOF

@@ -15,3 +15,8 @@ test_suite(
         ":check-format-python",
     ],
 )
+
+sh_binary(
+    name = "generate-creds-from-iam-role",
+    main = "generate-creds-from-iam-role.sh",
+)
