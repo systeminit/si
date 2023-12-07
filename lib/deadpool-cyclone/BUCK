@@ -18,6 +18,7 @@ rust_library(
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tracing",
+        "//lib/buck2-resources:buck2-resources",
     ],
     srcs = glob(["src/**/*.rs"]),
     test_unit_deps = [
@@ -28,4 +29,10 @@ rust_library(
         "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
         "lang-js": "//bin/lang-js:bin",
     },
+)
+
+export_file(
+    name = "orchestrate-install.sh",
+    src = "src/orchestrate-install.sh",
+    visibility = ["PUBLIC"],
 )
