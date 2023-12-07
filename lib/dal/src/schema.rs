@@ -53,6 +53,7 @@ pub struct Schema {
     timestamp: Timestamp,
     pub name: String,
     pub ui_hidden: bool,
+    // NOTE(nick): maybe we should have a special edge for this instead or remove it altogether.
     default_schema_variant_id: Option<SchemaVariantId>,
     component_kind: ComponentKind,
     // NOTE(nick): what is the difference between these two?
@@ -70,6 +71,7 @@ pub struct SchemaContentV1 {
     pub timestamp: Timestamp,
     pub name: String,
     pub ui_hidden: bool,
+    // NOTE(nick): maybe we should have a special edge for this instead or remove it altogether.
     pub default_schema_variant_id: Option<SchemaVariantId>,
     pub component_kind: ComponentKind,
     // NOTE(nick): what is the difference between these two?
@@ -105,6 +107,14 @@ impl Schema {
         }
     }
 
+    pub fn id(&self) -> SchemaId {
+        self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     pub async fn new(
         ctx: &DalContext,
         name: impl Into<String>,
@@ -134,7 +144,8 @@ impl Schema {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         let _node_index = workspace_snapshot.add_node(node_weight)?;
 
-        let schema_category_index_id = workspace_snapshot.get_category(CategoryNodeKind::Schema)?;
+        let schema_category_index_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Schema)?;
         workspace_snapshot.add_edge(
             schema_category_index_id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
@@ -142,10 +153,6 @@ impl Schema {
         )?;
 
         Ok(Self::assemble(id.into(), content))
-    }
-
-    pub fn id(&self) -> SchemaId {
-        self.id
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Self> {
@@ -195,7 +202,8 @@ impl Schema {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
         let mut schemas = vec![];
-        let schema_category_index_id = workspace_snapshot.get_category(CategoryNodeKind::Schema)?;
+        let schema_category_index_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Schema)?;
 
         let schema_node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
             schema_category_index_id,

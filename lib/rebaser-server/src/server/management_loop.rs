@@ -30,6 +30,7 @@ pub(crate) async fn management_loop_infallible_wrapper(
     shutdown_watch_rx: watch::Receiver<()>,
     rabbitmq_config: SiRabbitMqConfig,
 ) {
+    info!("attempting to start management loop");
     if let Err(err) = management_loop(
         recreate_management_stream,
         pg_pool,
@@ -70,7 +71,7 @@ async fn management_loop(
         symmetric_crypto_service,
         rabbitmq_config.clone(),
     );
-    // let ctx_builder = DalContext::builder(services_context, false);
+    info!("created services context for management loop");
 
     // Meta: we can only have one rebaser instance right now due to https://github.com/rabbitmq/rabbitmq-stream-rust-client/issues/130
     //
@@ -90,8 +91,10 @@ async fn management_loop(
     let environment = Environment::new(&rabbitmq_config).await?;
     if recreate_management_stream {
         environment.delete_stream(&management_stream).await?;
+        info!("deleted management stream");
     }
     environment.create_stream(&management_stream).await?;
+    info!("created management stream");
 
     let management_consumer = Consumer::new(
         &environment,
@@ -107,6 +110,7 @@ async fn management_loop(
         .await?
         .take_until_if(Box::pin(shutdown_watch_rx.changed().map(|_| true)));
 
+    info!("consuming from management stream");
     while let Some(unprocessed_management_delivery) = inbound_management_stream.next().await {
         let management_delivery = Delivery::try_from(
             unprocessed_management_delivery.map_err(RabbitError::ConsumerDelivery)?,

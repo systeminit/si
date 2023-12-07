@@ -38,6 +38,8 @@ pub type LineageId = Ulid;
 pub enum WorkspaceSnapshotGraphError {
     #[error("Cannot compare ordering of container elements between ordered, and un-ordered container: {0:?}, {1:?}")]
     CannotCompareOrderedAndUnorderedContainers(NodeIndex, NodeIndex),
+    #[error("could not find category node used by node with index {0:?}")]
+    CategoryNodeNotFound(NodeIndex),
     #[error("ChangeSet error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("Unable to retrieve content for ContentHash")]
@@ -187,22 +189,35 @@ impl WorkspaceSnapshotGraph {
         Ok(new_node_index)
     }
 
-    pub fn get_category(
+    pub fn get_category_node(
         &self,
+        source: Option<Ulid>,
         kind: CategoryNodeKind,
     ) -> WorkspaceSnapshotGraphResult<(Ulid, NodeIndex)> {
-        for edgeref in self.graph.edges_directed(self.root(), Outgoing) {
-            let node_weight = self
+        let source_index = match source {
+            Some(provided_source) => self.get_node_index_by_id(provided_source)?,
+            None => self.root_index,
+        };
+
+        // TODO(nick): ensure that two target category nodes of the same kind don't exist for the
+        // same source node.
+        for edgeref in self.graph.edges_directed(source_index, Outgoing) {
+            let maybe_category_node_index = edgeref.target();
+            let maybe_category_node_weight = self
                 .graph
-                .node_weight(edgeref.target())
+                .node_weight(maybe_category_node_index)
                 .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
-            if let NodeWeight::Category(inner_weight) = node_weight {
-                if inner_weight.kind() == kind {
-                    return Ok((inner_weight.id(), edgeref.target()));
+
+            if let NodeWeight::Category(category_node_weight) = maybe_category_node_weight {
+                if category_node_weight.kind() == kind {
+                    return Ok((category_node_weight.id(), maybe_category_node_index));
                 }
             }
         }
-        todo!("could not get category child")
+
+        Err(WorkspaceSnapshotGraphError::CategoryNodeNotFound(
+            source_index,
+        ))
     }
 
     pub fn edges_directed(
@@ -567,22 +582,27 @@ impl WorkspaceSnapshotGraph {
                         .retain(|node_index| self.has_path_to_root(*node_index));
                     to_rebase_node_indexes.extend(potential_to_rebase_node_indexes);
 
-                    // Since category nodes may be created from scratch from a different workspace,
-                    // they may have different lineage ids. We still want to consider the same
-                    // category kind as an equivalent node, even though it might have a different
-                    // lineage id.
-                    if let NodeWeight::Category(onto_category_node_weight) = onto_node_weight {
-                        let category_node_kind = onto_category_node_weight.kind();
-                        let (_, to_rebase_category_node_index) =
-                            self.get_category(category_node_kind).map_err(|err| {
-                                error!(
-                                    "Unable to get to rebase Category node for kind {:?} from onto {:?}: {}",
-                                    onto_category_node_weight.kind(), onto, err,
-                                );
-                                event
-                            })?;
-                        to_rebase_node_indexes.insert(to_rebase_category_node_index);
-                    }
+                    // TODO(nick): detect category nodes with a different lineage. We will likely
+                    // need to check incoming edges in one graph and then look for outgoing edges in
+                    // the other graph.
+                    // // Since category nodes may be created from scratch from a different workspace,
+                    // // they may have different lineage ids. We still want to consider the same
+                    // // category kind as an equivalent node, even though it might have a different
+                    // // lineage id.
+                    // if let NodeWeight::Category(onto_category_node_weight) = onto_node_weight {
+                    //     onto_category_node_weight
+                    // }
+                    //     let category_node_kind = onto_category_node_weight.kind();
+                    //     let (_, to_rebase_category_node_index) =
+                    //         self.get_category_node(Some(onto_category_node_weight.id()), category_node_kind).map_err(|err| {
+                    //             error!(
+                    //                 "Unable to get to rebase Category node for kind {:?} from onto {:?}: {}",
+                    //                 onto_category_node_weight.kind(), onto, err,
+                    //             );
+                    //             event
+                    //         })?;
+                    //     to_rebase_node_indexes.insert(to_rebase_category_node_index);
+                    // }
                 }
 
                 // We'll lazily populate these, since we don't know if we'll need it at all, and
@@ -1293,17 +1313,24 @@ impl WorkspaceSnapshotGraph {
         other: &WorkspaceSnapshotGraph,
         root_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<HashMap<NodeIndex, NodeIndex>> {
-        let mut new_node_indexes = HashMap::new();
+        let mut updated = HashMap::new();
         let mut dfs = petgraph::visit::DfsPostOrder::new(&other.graph, root_index);
         while let Some(node_index_to_copy) = dfs.next(&other.graph) {
             let node_weight_copy = other.get_node_weight(node_index_to_copy)?.clone();
-            let new_node_index = self.add_node(node_weight_copy)?;
-            new_node_indexes.insert(node_index_to_copy, new_node_index);
+
+            // Find an equivalent node to the one in "other" or create it.
+            let node_index = match self
+                .find_equivalent_node(node_weight_copy.id(), node_weight_copy.lineage_id())?
+            {
+                Some(equivalent_node_index) => equivalent_node_index,
+                None => self.add_node(node_weight_copy)?,
+            };
+            updated.insert(node_index_to_copy, node_index);
 
             for edge in other.graph.edges_directed(node_index_to_copy, Outgoing) {
                 self.graph.update_edge(
-                    new_node_index,
-                    new_node_indexes
+                    node_index,
+                    updated
                         .get(&edge.target())
                         .copied()
                         .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?,
@@ -1311,7 +1338,7 @@ impl WorkspaceSnapshotGraph {
                 );
             }
         }
-        Ok(new_node_indexes)
+        Ok(updated)
     }
 
     #[allow(dead_code)]

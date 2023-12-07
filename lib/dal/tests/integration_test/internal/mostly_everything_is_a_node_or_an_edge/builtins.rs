@@ -2,9 +2,8 @@ use dal::{func::intrinsics::IntrinsicFunc, DalContext, Func, Schema, SchemaVaria
 use dal_test::test;
 use strum::IntoEnumIterator;
 
-// TODO(nick): restore dal_test::helpers module to ensure the macro works.
 #[test]
-async fn builtins(ctx: &DalContext) {
+async fn builtin_funcs_and_schemas_are_not_empty(ctx: &DalContext) {
     let funcs: Vec<String> = Func::list(ctx)
         .await
         .expect("list funcs should work")

@@ -37,7 +37,7 @@ use crate::{
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
     AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProvider,
     ExternalProviderId, Func, FuncId, InternalProvider, Prop, PropId, PropKind, ProviderArity,
-    ProviderKind, SchemaError, SchemaId, Timestamp, TransactionsError,
+    ProviderKind, Schema, SchemaError, SchemaId, Timestamp, TransactionsError,
 };
 use crate::{FuncBackendResponseType, InternalProviderId};
 
@@ -821,6 +821,40 @@ impl SchemaVariant {
         }
 
         Ok((external_providers, explicit_internal_providers))
+    }
+
+    pub async fn schema(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Schema> {
+        let schema_id = {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let maybe_schema_indices = workspace_snapshot.incoming_sources_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::Use,
+            )?;
+
+            let mut schema_id: Option<SchemaId> = None;
+            for index in maybe_schema_indices {
+                if let NodeWeight::Content(content) = workspace_snapshot.get_node_weight(index)? {
+                    let content_hash_discriminants: ContentAddressDiscriminants =
+                        content.content_address().into();
+                    if let ContentAddressDiscriminants::Schema = content_hash_discriminants {
+                        // TODO(nick): consider creating a new edge weight kind to make this easier.
+                        // We also should use a proper error here.
+                        schema_id = match schema_id {
+                            None => Some(content.id().into()),
+                            Some(_already_found_schema_id) => {
+                                panic!("already found a schema")
+                            }
+                        };
+                    }
+                }
+            }
+            schema_id.ok_or(SchemaVariantError::SchemaNotFound(schema_variant_id))?
+        };
+
+        Ok(Schema::get_by_id(ctx, schema_id).await?)
     }
 }
 
