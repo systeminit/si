@@ -7053,7 +7053,6 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":mime-0.3.17",
-        ":unicase-2.6.0",
         ":unicase-2.7.0",
     ],
 )
@@ -7066,7 +7065,6 @@ cargo.rust_binary(
     edition = "2015",
     visibility = [],
     deps = [
-        ":unicase-2.6.0",
         ":unicase-2.7.0",
     ],
 )
