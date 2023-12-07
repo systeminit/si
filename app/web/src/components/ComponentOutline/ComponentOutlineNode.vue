@@ -91,7 +91,11 @@
           <!-- other status icons -->
           <div :class="clsx('flex items-center mr-xs')">
             <!-- change status -->
-            <StatusIndicatorIcon type="change" :status="hasChanges" />
+            <StatusIndicatorIcon
+              type="change"
+              :status="hasChanges"
+              @click.stop="onClick($event, 'diff')"
+            />
 
             <!-- Qualification Status -->
             <!-- TODO: make click open details panel -->
@@ -100,13 +104,16 @@
               v-else
               type="qualification"
               :status="qualificationStatus || 'notexists'"
+              @click.stop="onClick($event, 'qualifications')"
             />
 
             <!-- Resource Status -->
+
             <StatusIndicatorIcon
               v-if="hasResource"
               type="resource"
               status="exists"
+              @click.stop="onClick($event, 'resource')"
             />
             <Icon v-else name="none" />
 
@@ -197,8 +204,8 @@ watch(
   { immediate: true },
 );
 
-function onClick(e: MouseEvent) {
-  rootCtx.itemClickHandler(e, props.componentId);
+function onClick(e: MouseEvent, tabSlug?: string) {
+  rootCtx.itemClickHandler(e, props.componentId, tabSlug);
 }
 
 const isHover = computed(

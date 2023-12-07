@@ -23,7 +23,7 @@
       v-if="menuCtx.isCheckable.value"
       :name="checked ? 'check' : 'none'"
       size="xs"
-      class="mr-2xs shrink-0"
+      class="mr-2xs shrink-0 pointer-events-none"
     />
     <slot name="icon">
       <Icon v-if="icon" :name="icon" size="sm" class="shrink-0" />

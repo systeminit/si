@@ -17,7 +17,6 @@
     :class="
       clsx(
         'block',
-        !allowPointerEvents && 'pointer-events-none',
         sizeClasses,
         toneColorClass,
         computedRotate && `--rotate-${computedRotate}`,
@@ -55,7 +54,6 @@ const props = defineProps({
   tone: {
     type: String as PropType<Tones>,
   },
-  allowPointerEvents: { type: Boolean },
 });
 
 const iconSvgRaw = computed(() => {

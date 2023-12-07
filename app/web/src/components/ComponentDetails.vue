@@ -59,7 +59,14 @@
 
     <template v-else>
       <div class="absolute inset-0">
-        <TabGroup trackingSlug="asset_details">
+        <TabGroup
+          ref="tabsRef"
+          trackingSlug="asset_details"
+          :startSelectedTabSlug="
+            componentsStore.detailsTabSlugs[0] || undefined
+          "
+          @update:selectedTab="onTabSelected"
+        >
           <TabGroupItem slug="component">
             <template #label>
               <Inline noWrap>
@@ -71,7 +78,15 @@
                 />
               </Inline>
             </template>
-            <TabGroup trackingSlug="asset_details/component" minimal>
+            <TabGroup
+              ref="componentSubTabsRef"
+              trackingSlug="asset_details/component"
+              minimal
+              :startSelectedTabSlug="
+                componentsStore.detailsTabSlugs[1] || undefined
+              "
+              @update:selectedTab="onTabSelected"
+            >
               <TabGroupItem label="Attributes" slug="attributes">
                 <AttributesPanel />
               </TabGroupItem>
@@ -118,6 +133,7 @@
                   <Inline noWrap alignY="center">
                     <span>Diff</span>
                     <StatusIndicatorIcon
+                      v-if="selectedComponent.changeStatus !== 'unmodified'"
                       type="change"
                       :status="selectedComponent.changeStatus"
                     />
@@ -140,7 +156,7 @@
             </template>
             <AssetActionsDetails :componentId="selectedComponentId" />
           </TabGroupItem>
-          <TabGroupItem slug="resources">
+          <TabGroupItem slug="resource">
             <template #label>
               <Inline noWrap>
                 <span>Resource</span>
@@ -161,7 +177,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, onBeforeMount } from "vue";
+import { computed, onBeforeMount, ref, watch } from "vue";
 import {
   Icon,
   ErrorMessage,
@@ -275,4 +291,24 @@ const onClickRefreshButton = () => {
     componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value.id);
   }
 };
+
+const tabsRef = ref<InstanceType<typeof TabGroup>>();
+const componentSubTabsRef = ref<InstanceType<typeof TabGroup>>();
+function onTabSelected(newTabSlug?: string) {
+  componentsStore.setComponentDetailsTab(newTabSlug || null);
+}
+
+watch(
+  () => componentsStore.selectedComponentDetailsTab,
+  (tabSlug) => {
+    if (tabSlug === "resource") {
+      tabsRef.value?.selectTab("resource");
+    } else if (tabSlug?.startsWith("actions")) {
+      tabsRef.value?.selectTab("actions");
+    } else {
+      tabsRef.value?.selectTab("component");
+      componentSubTabsRef.value?.selectTab(tabSlug || undefined);
+    }
+  },
+);
 </script>

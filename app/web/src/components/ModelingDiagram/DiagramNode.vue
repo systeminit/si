@@ -187,6 +187,7 @@
           :size="24"
           :x="i * -26"
           origin="bottom-right"
+          @click="statusIcon.tabSlug ? onClick(statusIcon.tabSlug) : _.noop"
         />
       </v-group>
 
@@ -229,6 +230,7 @@
         :x="halfWidth - 2 - 12"
         :y="nodeHeaderHeight / 2"
         origin="center"
+        @click="onClick('diff')"
       />
     </v-group>
 
@@ -255,6 +257,7 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
 import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
+import { useComponentsStore } from "@/store/components.store";
 import {
   DiagramEdgeData,
   DiagramElementUniqueKey,
@@ -446,5 +449,13 @@ function onSocketHoverStart(socket: DiagramSocketData) {
 
 function onSocketHoverEnd(_socket: DiagramSocketData) {
   emit("hover:end");
+}
+
+// TODO: not sure if want to communicate with the store here or send the message up to the diagram...
+const componentsStore = useComponentsStore();
+function onClick(detailsTabSlug: string) {
+  componentsStore.setSelectedComponentId(props.node.def.componentId, {
+    detailsTab: detailsTabSlug,
+  });
 }
 </script>

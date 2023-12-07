@@ -120,6 +120,7 @@ const rightClickMenuItems = computed(() => {
       label: "Refresh resource",
       icon: "refresh",
       onSelect: () => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         componentsStore.REFRESH_RESOURCE_INFO(selectedComponent.value!.id);
       },
       disabled,

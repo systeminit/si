@@ -1,7 +1,11 @@
 <template>
   <div class="h-full relative">
-    <TabGroup minimal>
-      <TabGroupItem label="Select" slug="action-selection">
+    <TabGroup
+      minimal
+      :startSelectedTabSlug="componentsStore.detailsTabSlugs[1] || undefined"
+      @update:selectedTab="onTabSelected"
+    >
+      <TabGroupItem label="Select" slug="actions-selection">
         <div
           v-if="actions.length === 0"
           class="flex flex-col items-center pt-lg h-full w-full text-neutral-400"
@@ -25,7 +29,7 @@
           />
         </div>
       </TabGroupItem>
-      <TabGroupItem slug="action-history">
+      <TabGroupItem slug="actions-history">
         <template #label>
           <Inline>
             <span>History</span>
@@ -57,12 +61,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType } from "vue";
+import { computed, PropType, ref, watch } from "vue";
 import * as _ from "lodash-es";
 
 import { Inline, TabGroup, TabGroupItem } from "@si/vue-lib/design-system";
 
-import { ComponentId } from "@/store/components.store";
+import { ComponentId, useComponentsStore } from "@/store/components.store";
 
 import { useFixesStore } from "@/store/fixes.store";
 
@@ -77,6 +81,7 @@ const props = defineProps({
 
 const fixesStore = useFixesStore();
 const actionsStore = useActionsStore();
+const componentsStore = useComponentsStore();
 
 const actions = computed(
   () => actionsStore.actionsByComponentId[props.componentId] || [],
@@ -91,5 +96,19 @@ const filteredBatches = computed(() =>
       fixes: batch.fixes.filter((fix) => fix.componentId === props.componentId),
     }))
     .filter((batch) => batch.fixes.length),
+);
+
+const tabsRef = ref<InstanceType<typeof TabGroup>>();
+function onTabSelected(newTabSlug?: string) {
+  componentsStore.setComponentDetailsTab(newTabSlug || null);
+}
+
+watch(
+  () => componentsStore.selectedComponentDetailsTab,
+  (tabSlug) => {
+    if (tabSlug?.startsWith("actions")) {
+      tabsRef.value?.selectTab(tabSlug);
+    }
+  },
 );
 </script>

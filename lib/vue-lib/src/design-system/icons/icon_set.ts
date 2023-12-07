@@ -91,6 +91,7 @@ import TreeParents from "~icons/fluent-mdl2/breadcrumb";
 import Docs from "~icons/fluent/book-question-mark-20-filled";
 import Password from "~icons/material-symbols-light/password";
 import Key from "~icons/material-symbols/key";
+import Scissors from "~icons/clarity/scissors-solid";
 
 import BracketsCurly from "~icons/ph/brackets-curly";
 import BracketsSquare from "~icons/ph/brackets-square";
@@ -243,6 +244,7 @@ export const ICONS = Object.freeze({
   "refresh-hex-outline": RefreshHexOutline,
   resize: Resize,
   save: Save,
+  scissors: Scissors,
   search: Search,
   selector: Selector,
   settings: Gear,

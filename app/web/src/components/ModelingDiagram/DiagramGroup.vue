@@ -245,6 +245,7 @@
         :x="i * -26"
         :y="nodeBodyHeight - 5"
         origin="bottom-right"
+        @click="statusIcon.tabSlug ? onClick(statusIcon.tabSlug) : _.noop"
       />
     </v-group>
 
@@ -293,6 +294,7 @@
         (nodeHeaderHeight - GROUP_HEADER_ICON_SIZE) / 2
       "
       origin="center"
+      @click="onClick('diff')"
     />
   </v-group>
 </template>
@@ -305,6 +307,7 @@ import tinycolor from "tinycolor2";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
 import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
+import { useComponentsStore } from "@/store/components.store";
 import DiagramNodeSocket from "@/components/ModelingDiagram/DiagramNodeSocket.vue";
 import {
   SOCKET_GAP,
@@ -318,7 +321,6 @@ import {
   GROUP_RESIZE_HANDLE_SIZE,
   GROUP_HEADER_ICON_SIZE,
 } from "@/components/ModelingDiagram/diagram_constants";
-import { useComponentsStore } from "@/store/components.store";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
@@ -499,5 +501,13 @@ function onSocketHoverEnd(_socket: DiagramSocketData) {
 
 function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
   emit("hover:end");
+}
+
+// TODO: not sure if want to communicate with the store here or send the message up to the diagram...
+const componentsStore = useComponentsStore();
+function onClick(detailsTabSlug: string) {
+  componentsStore.setSelectedComponentId(props.group.def.componentId, {
+    detailsTab: detailsTabSlug,
+  });
 }
 </script>

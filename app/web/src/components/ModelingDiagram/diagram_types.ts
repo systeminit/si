@@ -1,4 +1,3 @@
-import { Vector2d } from "konva/lib/types";
 import { IconNames, Tones } from "@si/vue-lib/design-system";
 import { useComponentsStore, ComponentId } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
@@ -151,6 +150,8 @@ export type DiagramStatusIcon = {
   tone?: Tones;
   /* set to override specific hex color */
   color?: string;
+  /* which details tab to link to */
+  tabSlug?: "qualifications" | "resource";
 };
 
 export type DiagramNodeDef = {
@@ -235,14 +236,6 @@ export type DiagramEdgeDef = {
   deletedAt?: Date;
 };
 
-// specific features... likely will move these as the diagram functionality gets broken up
-export type PendingInsertedElement = {
-  // TODO: will likely need more info here if you can insert more specific subtypes of things, so we can vary display a bit
-  insertedAt?: Date;
-  position?: Vector2d;
-  temporaryId?: string;
-};
-
 export type DiagramDrawEdgeState = {
   active: boolean;
   fromSocketKey?: DiagramElementUniqueKey;
@@ -256,40 +249,7 @@ export type ElementHoverMeta =
   | { type: "resize"; direction: SideAndCornerIdentifiers }
   | { type: "socket"; socket: DiagramSocketData };
 
-export type MovePointerEvent = {
-  x: number;
-  y: number;
-} | null;
-
-export type ResizeElementEvent = {
-  element: DiagramElementData;
-  position: Vector2d;
-  size: Size2D;
-  isFinal: boolean;
-};
-export type MoveElementEvent = {
-  element: DiagramElementData;
-  position: Vector2d;
-  size?: Vector2d;
-  isFinal: boolean;
-};
-export type DrawEdgeEvent = {
-  fromSocket: DiagramSocketData;
-  toSocket: DiagramSocketData;
-};
-export type SelectElementEvent = {
-  elements: DiagramElementData[];
-};
-export type DeleteElementsEvent = {
-  elements: DiagramElementData[];
-};
-
 export type RightClickElementEvent = {
   element: DiagramElementData;
   e: MouseEvent;
-};
-
-export type GroupEvent = {
-  group: DiagramGroupData;
-  elements: (DiagramNodeData | DiagramGroupData)[];
 };

@@ -1,5 +1,8 @@
 <template>
-  <Modal ref="modalRef" :title="deletionBlockedReason || 'Are you sure?'">
+  <Modal
+    ref="modalRef"
+    :title="deletionBlockedReason ? 'Cannot delete selection' : 'Are you sure?'"
+  >
     <template v-if="deletionBlockedReason">
       <Stack spacing="sm">
         <ErrorMessage :message="deletionBlockedReason" />
@@ -52,7 +55,7 @@ import {
   VButton,
   useModal,
 } from "@si/vue-lib/design-system";
-import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 import { useComponentsStore } from "@/store/components.store";
 import ComponentCard from "../ComponentCard.vue";

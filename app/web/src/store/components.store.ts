@@ -5,6 +5,7 @@ import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
 
 import mitt from "mitt";
+import { watch } from "vue";
 import {
   DiagramEdgeDef,
   DiagramNodeDef,
@@ -25,6 +26,7 @@ import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { nilId } from "@/utils/nilId";
+import router from "@/router";
 import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -181,6 +183,12 @@ type EventBusEvents = {
   refreshSelectionResource: void;
 };
 
+type PendingComponent = {
+  tempId: string;
+  position: Vector2d;
+  componentId?: ComponentId;
+};
+
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
@@ -221,6 +229,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           rawComponentsById: {} as Record<ComponentId, RawComponent>,
 
+          pendingInsertedComponents: {} as Record<string, PendingComponent>,
+
           edgesById: {} as Record<EdgeId, Edge>,
           schemaVariantsById: {} as Record<
             SchemaVariantId,
@@ -230,6 +240,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           selectedComponentIds: [] as ComponentId[],
           selectedEdgeId: null as EdgeId | null,
+          selectedComponentDetailsTab: null as string | null,
           hoveredComponentId: null as ComponentId | null,
           hoveredEdgeId: null as EdgeId | null,
 
@@ -382,12 +393,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 qualificationsStore.qualificationStatusByComponentId[
                   componentId
                 ];
+
+              // TODO: probably dont need this generic status icon setup anymore...
               const statusIcons: DiagramStatusIcon[] = _.compact([
-                qualificationStatusToIconMap[
-                  qualificationStatus ?? "notexists"
-                ],
+                {
+                  ...qualificationStatusToIconMap[
+                    qualificationStatus ?? "notexists"
+                  ],
+                  tabSlug: "qualifications",
+                },
                 component.resource.data
-                  ? { icon: "check-hex", tone: "success" }
+                  ? { icon: "check-hex", tone: "success", tabSlug: "resource" }
                   : { icon: "none" },
               ]);
 
@@ -536,6 +552,21 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             return connectedIds;
           },
+
+          detailsTabSlugs: (state) => {
+            const slug = state.selectedComponentDetailsTab;
+
+            // root level tabs
+            if (["resource", "actions", "component"].includes(slug || "")) {
+              return [slug, undefined];
+            }
+
+            // actions tabs are prefixed with "actions-"
+            if (slug?.startsWith("actions")) return ["actions", slug];
+
+            // all other subtabs (currently) are in the component tab
+            return ["component", slug];
+          },
         },
         actions: {
           // TODO: change these endpoints to return a more complete picture of component data in one call
@@ -554,6 +585,23 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               onSuccess: (response) => {
                 this.rawComponentsById = _.keyBy(response.components, "id");
                 this.edgesById = _.keyBy(response.edges, "id");
+
+                // find any pending inserts that we know the component id of
+                // and have now been loaded - and remove them from the pending inserts
+                const pendingInsertsByComponentId = _.keyBy(
+                  this.pendingInsertedComponents,
+                  (p) => p.componentId || "",
+                );
+                const pendingComponentIdsThatAreComplete = _.compact(
+                  _.intersection(
+                    _.map(this.pendingInsertedComponents, (p) => p.componentId),
+                    _.keys(this.rawComponentsById),
+                  ),
+                );
+                _.each(pendingComponentIdsThatAreComplete, (id) => {
+                  const tempId = pendingInsertsByComponentId[id]?.tempId;
+                  if (tempId) delete this.pendingInsertedComponents[tempId];
+                });
               },
             });
           },
@@ -648,6 +696,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             if (changeSetId === nilId())
               changeSetsStore.creatingChangeSet = true;
 
+            const tempInsertId = _.uniqueId("temp-insert-component");
+
             return new ApiRequest<{
               componentId: ComponentId;
               nodeId: ComponentNodeId;
@@ -662,8 +712,24 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 y: position.y.toString(),
                 ...visibilityParams,
               },
+              optimistic: () => {
+                this.pendingInsertedComponents[tempInsertId] = {
+                  tempId: tempInsertId,
+                  position,
+                };
+
+                return () => {
+                  delete this.pendingInsertedComponents[tempInsertId];
+                };
+              },
               onSuccess: (response) => {
-                // TODO: store component details rather than waiting for re-fetch
+                // we'll link up our temporary id to the actual ID
+                // so we can hide the spinning temporary insert placeholder when the data is loaded
+                const pendingInsert =
+                  this.pendingInsertedComponents[tempInsertId];
+                if (pendingInsert) {
+                  pendingInsert.componentId = response.componentId;
+                }
               },
             });
           },
@@ -1014,32 +1080,83 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
+          syncSelectionIntoUrl() {
+            let selectedIds: string[] = [];
+            if (this.selectedEdgeId) {
+              selectedIds = [`e_${this.selectedEdgeId}`];
+            } else if (this.selectedComponentIds.length) {
+              selectedIds = _.map(this.selectedComponentIds, (id) => `c_${id}`);
+            }
+
+            router.replace({
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              name: router.currentRoute.value.name!,
+              query: {
+                ...(selectedIds.length && { s: selectedIds.join("|") }),
+                ...(this.selectedComponentDetailsTab && {
+                  t: this.selectedComponentDetailsTab,
+                }),
+              },
+            });
+          },
+          syncUrlIntoSelection() {
+            const ids = (
+              (router.currentRoute.value.query?.s as string) || ""
+            ).split("|");
+            if (!ids.length) {
+              this.selectedComponentIds = [];
+              this.selectedEdgeId = null;
+            } else if (ids.length === 1 && ids[0]?.startsWith("e_")) {
+              this.selectedComponentIds = [];
+              this.selectedEdgeId = ids[0].substring(2);
+            } else {
+              this.selectedComponentIds = ids.map((id) => id.substring(2));
+              this.selectedEdgeId = null;
+            }
+
+            const tabSlug =
+              (router.currentRoute.value.query?.t as string) || null;
+            if (this.selectedComponentIds.length === 1) {
+              this.selectedComponentDetailsTab = tabSlug;
+            } else {
+              this.selectedComponentDetailsTab = null;
+            }
+          },
+
           setSelectedEdgeId(selection: EdgeId | null) {
             // clear component selection
             this.selectedComponentIds = [];
             this.selectedEdgeId = selection;
+            this.selectedComponentDetailsTab = null;
+            this.syncSelectionIntoUrl();
           },
           setSelectedComponentId(
             selection: ComponentId | ComponentId[] | null,
-            toggleMode = false,
+            opts?: { toggle?: boolean; detailsTab?: string },
           ) {
             this.selectedEdgeId = null;
             if (!selection || !selection.length) {
               this.selectedComponentIds = [];
-              return;
-            }
-            const validSelectionArray = _.reject(
-              _.isArray(selection) ? selection : [selection],
-              (id) => !this.componentsById[id],
-            );
-            if (toggleMode) {
-              this.selectedComponentIds = _.xor(
-                this.selectedComponentIds,
-                validSelectionArray,
-              );
+              // forget which details tab is active when selection is cleared
+              this.selectedComponentDetailsTab = null;
             } else {
-              this.selectedComponentIds = validSelectionArray;
+              const validSelectionArray = _.reject(
+                _.isArray(selection) ? selection : [selection],
+                (id) => !this.componentsById[id],
+              );
+              if (opts?.toggle) {
+                this.selectedComponentIds = _.xor(
+                  this.selectedComponentIds,
+                  validSelectionArray,
+                );
+              } else {
+                this.selectedComponentIds = validSelectionArray;
+              }
             }
+            if (opts?.detailsTab) {
+              this.selectedComponentDetailsTab = opts.detailsTab;
+            }
+            this.syncSelectionIntoUrl();
           },
           setHoveredComponentId(id: ComponentId | null) {
             this.hoveredComponentId = id;
@@ -1048,6 +1165,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           setHoveredEdgeId(id: ComponentId | null) {
             this.hoveredComponentId = null;
             this.hoveredEdgeId = id;
+          },
+          setComponentDetailsTab(tabSlug: string | null) {
+            // we ignore the top level "component" and "actions" tabs
+            // since we always need a child selected, and setting these
+            // would overwrite the child being selected
+            if (["component", "actions"].includes(tabSlug || "")) return;
+            this.selectedComponentDetailsTab = tabSlug;
+            this.syncSelectionIntoUrl();
           },
 
           async REFRESH_RESOURCE_INFO(componentId: ComponentId) {
@@ -1087,6 +1212,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           this.FETCH_DIAGRAM_DATA();
           this.FETCH_AVAILABLE_SCHEMAS();
           this.FETCH_NODE_ADD_MENU();
+
+          // TODO: prob want to take loading state into consideration as this will set it before its loaded
+          const stopWatchingUrl = watch(
+            router.currentRoute,
+            this.syncUrlIntoSelection,
+            {
+              immediate: true,
+            },
+          );
 
           // realtime subs
           const realtimeStore = useRealtimeStore();
@@ -1128,6 +1262,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           ]);
 
           return () => {
+            stopWatchingUrl();
             realtimeStore.unsubscribe(this.$id);
           };
         },

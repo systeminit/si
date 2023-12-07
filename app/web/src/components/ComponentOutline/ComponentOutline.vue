@@ -68,7 +68,7 @@
 <script lang="ts">
 type ComponentOutlineRootCtx = {
   filterModeActive: ComputedRef<boolean>;
-  itemClickHandler: (e: MouseEvent, id: ComponentId) => void;
+  itemClickHandler: (e: MouseEvent, id: ComponentId, tabSlug?: string) => void;
 };
 
 export const ComponentOutlineCtxInjectionKey: InjectionKey<ComponentOutlineRootCtx> =
@@ -167,7 +167,7 @@ function onSearchUpdated(newFilterString: string) {
   filterString.value = newFilterString;
 }
 
-function itemClickHandler(e: MouseEvent, id: ComponentId) {
+function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {
   const shiftKeyBehavior = () => {
     const selectedComponentIds = componentsStore.selectedComponentIds;
 
@@ -199,12 +199,12 @@ function itemClickHandler(e: MouseEvent, id: ComponentId) {
         const selection = components
           .slice(indexTo, indexFrom + 1)
           .map((component) => component.id);
-        componentsStore.setSelectedComponentId(selection, false);
+        componentsStore.setSelectedComponentId(selection);
       } else if (indexFrom < indexTo) {
         const selection = components
           .slice(indexFrom, indexTo + 1)
           .map((component) => component.id);
-        componentsStore.setSelectedComponentId(selection, false);
+        componentsStore.setSelectedComponentId(selection);
       } else {
         componentsStore.setSelectedComponentId(id);
       }
@@ -218,7 +218,7 @@ function itemClickHandler(e: MouseEvent, id: ComponentId) {
       shiftKeyBehavior();
     } else if (!componentsStore.selectedComponentIds.includes(id)) {
       if (e.metaKey) {
-        componentsStore.setSelectedComponentId(id, true); // true = toggle mode
+        componentsStore.setSelectedComponentId(id, { toggle: true });
       } else {
         componentsStore.setSelectedComponentId(id);
       }
@@ -229,12 +229,12 @@ function itemClickHandler(e: MouseEvent, id: ComponentId) {
     shiftKeyBehavior();
   } else if (e.metaKey) {
     e.preventDefault();
-    componentsStore.setSelectedComponentId(id, true); // true = toggle mode
+    componentsStore.setSelectedComponentId(id, { toggle: true });
   } else if (e.type === "dblclick") {
     // TODO: probably refactor this to call a fn on an event bus, but this is working for now
     componentsStore.panTargetComponentId = id;
   } else {
-    componentsStore.setSelectedComponentId(id);
+    componentsStore.setSelectedComponentId(id, { detailsTab: tabSlug });
   }
 }
 

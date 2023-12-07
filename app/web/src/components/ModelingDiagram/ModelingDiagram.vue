@@ -1,4 +1,4 @@
-Generic diagram component * NOTE - uses a resize observer to react to size
+Modeling diagram component * NOTE - uses a resize observer to react to size
 changes, so this must be placed in a container that is sized explicitly has
 overflow hidden */
 <template>
@@ -23,11 +23,7 @@ overflow hidden */
         {{ gridPointerPos?.x }}, {{ gridPointerPos?.y }}
       </div>
     </div>
-    <DiagramControls
-      @update:displaymode="toggleEdgeDisplayMode"
-      @update:zoom="setZoom"
-      @open:help="helpModalRef.open()"
-    />
+    <DiagramControls @open:help="helpModalRef.open()" />
     <v-stage
       v-if="customFontsLoaded && containerWidth > 0 && containerHeight > 0"
       ref="stageRef"
@@ -87,7 +83,7 @@ overflow hidden */
           @resize="onNodeLayoutOrLocationChange(node)"
         />
         <DiagramCursor
-          v-for="mouseCursor in props.cursors"
+          v-for="mouseCursor in presenceStore.diagramCursors"
           :key="mouseCursor.userId"
           :cursor="mouseCursor"
         />
@@ -115,7 +111,9 @@ overflow hidden */
 
         <!-- placeholders for new inserted elements still processing -->
         <template
-          v-for="(pendingInsert, pendingInsertId) in pendingInsertedElements"
+          v-for="(
+            pendingInsert, pendingInsertId
+          ) in componentsStore.pendingInsertedComponents"
           :key="pendingInsertId"
         >
           <v-rect
@@ -170,7 +168,9 @@ overflow hidden */
 <script lang="ts">
 type DiagramContext = {
   zoomLevel: Ref<number>;
+  setZoomLevel: (newZoom: number) => void;
   edgeDisplayMode: Ref<EdgeDisplayMode>;
+  toggleEdgeDisplayMode: () => void;
   drawEdgeState: ComputedRef<DiagramDrawEdgeState>;
 };
 
@@ -214,14 +214,12 @@ import {
   useComponentsStore,
 } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverlay.vue";
-import { DiagramCursorDef } from "@/store/presence.store";
+import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DiagramDrawEdgeState,
   DiagramNodeDef,
-  MoveElementEvent,
   Direction,
-  PendingInsertedElement,
   RightClickElementEvent,
   DiagramNodeData,
   DiagramGroupData,
@@ -229,11 +227,9 @@ import {
   DiagramSocketData,
   DiagramElementData,
   DiagramElementUniqueKey,
-  SelectElementEvent,
   Size2D,
   SideAndCornerIdentifiers,
   ElementHoverMeta,
-  MovePointerEvent,
   EdgeDisplayMode,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
@@ -285,10 +281,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits<{
-  (e: "update:zoom", newZoom: number): void;
-  (e: "update:pointer", newPointer: MovePointerEvent): void;
-  (e: "update:selection", newSelection: SelectElementEvent): void;
-  (e: "move-element", nodeMoveInfo: MoveElementEvent): void;
   (e: "right-click-element", elRightClickInfo: RightClickElementEvent): void;
 }>();
 
@@ -325,7 +317,7 @@ const gridOrigin = ref<Vector2d>({ x: 0, y: 0 });
 // I opted to track this internally rather than use v-model so the parent component isn't _forced_ to care about it
 // but there will often probably be some external controls, which can be done using exposed setZoom and update:zoom event
 const zoomLevel = ref(1);
-function setZoom(newZoomLevel: number) {
+function setZoomLevel(newZoomLevel: number) {
   if (newZoomLevel < MIN_ZOOM) zoomLevel.value = MIN_ZOOM;
   else if (newZoomLevel > MAX_ZOOM) zoomLevel.value = MAX_ZOOM;
   else zoomLevel.value = newZoomLevel;
@@ -336,9 +328,6 @@ function setZoom(newZoomLevel: number) {
     window.localStorage.setItem("si-diagram-zoom", `${zoomLevel.value}`);
   }
 }
-watch(zoomLevel, () => {
-  emit("update:zoom", zoomLevel.value);
-});
 
 // dimensions of our 2d grid space, all coordinates of things in the diagram are relative to this
 const gridWidth = computed(() => containerWidth.value / zoomLevel.value);
@@ -370,9 +359,14 @@ const gridPointerPos = computed(() => {
 });
 watch(gridPointerPos, (pos) => {
   if (!pos) return;
-  if (pointerIsWithinGrid.value) emit("update:pointer", { x: pos.x, y: pos.y });
-  else emit("update:pointer", null);
+  sendUpdatedPointerPos(pointerIsWithinGrid.value ? pos : undefined);
 });
+
+const presenceStore = usePresenceStore();
+function sendUpdatedPointerPos(pos?: Vector2d) {
+  presenceStore.updateCursor(pos ?? null);
+}
+
 const pointerIsWithinGrid = computed(() => {
   if (!gridPointerPos.value) return false;
   const { x, y } = gridPointerPos.value;
@@ -507,10 +501,10 @@ function onKeyDown(e: KeyboardEvent) {
 
   // handle zoom hotkeys
   if (e.key === "=" || e.key === "+") {
-    setZoom(zoomLevel.value + 0.1);
+    setZoomLevel(zoomLevel.value + 0.1);
   }
   if (e.key === "-" || e.key === "_") {
-    setZoom(zoomLevel.value - 0.1);
+    setZoomLevel(zoomLevel.value - 0.1);
   }
 
   // handle arrow keys - nudge and alignment
@@ -862,6 +856,7 @@ function setSelectionByKey(
 ) {
   if (!toSelect || !toSelect.length) {
     componentsStore.setSelectedComponentId(null);
+    return;
   }
 
   const els = _.compact(_.map(_.castArray(toSelect), getElementByKey));
@@ -885,7 +880,7 @@ function toggleSelectedByKey(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const elIds = _.map(els, (el) => (el.def as any).componentId);
   // second true enables "toggle" mode
-  componentsStore.setSelectedComponentId(elIds, true);
+  componentsStore.setSelectedComponentId(elIds, { toggle: true });
 }
 function clearSelection() {
   componentsStore.setSelectedComponentId(null);
@@ -1799,20 +1794,16 @@ const drawEdgeWillDeleteEdges = computed(() => {
   // currently we only care about arity of 1 or N - but this logic would need to change to support arity of a specific number
   if (fromSocket.def.maxConnections !== null) {
     edgesToDelete.push(
-      ...(connectedEdgesByElementKey.value[
-        fromSocket.uniqueKey
-      ] as DiagramEdgeData[]),
+      ...(connectedEdgesByElementKey.value[fromSocket.uniqueKey] || []),
     );
   }
 
   if (toSocket && toSocket.def.maxConnections !== null) {
     edgesToDelete.push(
-      ...(connectedEdgesByElementKey.value[
-        toSocket.uniqueKey
-      ] as DiagramEdgeData[]),
+      ...(connectedEdgesByElementKey.value[toSocket.uniqueKey] || []),
     );
   }
-  return edgesToDelete;
+  return _.reject(edgesToDelete, (e) => e.def.changeStatus === "deleted");
 });
 
 const drawEdgeState = computed(() => {
@@ -1898,14 +1889,9 @@ async function endDrawEdge() {
   }
 }
 // ELEMENT ADDITION
-const insertCallbacks: Record<string, () => void> = {};
-
 const insertElementActive = computed(
   () => !!componentsStore.selectedInsertSchemaId,
 );
-const pendingInsertedElements = reactive<
-  Record<string, PendingInsertedElement>
->({});
 
 async function triggerInsertElement() {
   if (!insertElementActive.value)
@@ -1918,16 +1904,6 @@ async function triggerInsertElement() {
   if (hoveredElement.value instanceof DiagramGroupData) {
     parentGroupId = hoveredElement.value.def.id;
   }
-
-  const insertId = _.uniqueId("insert-diagram-el");
-  pendingInsertedElements[insertId] = {
-    insertedAt: new Date(),
-    position: gridPointerPos.value,
-  };
-  // we need a way to know when the insert is complete
-  // ideally without trying to match up new data (nodes/etc) that comes in through props
-  // because in multiplayer mode we may have new stuff flowing in
-  // so we pass a callback for the parent to call when the insert is done
 
   if (!componentsStore.selectedInsertSchemaId)
     throw new Error("missing insert selection metadata");
@@ -1950,21 +1926,7 @@ async function triggerInsertElement() {
     }
   }
 
-  // TODO These ids should be number from the start.
-  const createReq = await componentsStore.CREATE_COMPONENT(
-    schemaId,
-    gridPointerPos.value,
-    parentId,
-  );
-
-  // TODO(nick,theo): consider what to do upon failure.
-  if (createReq.result.success) {
-    insertCallbacks[createReq.result.data.componentId] = () => {
-      delete pendingInsertedElements[insertId];
-    };
-  }
-
-  componentsStore.cancelInsert();
+  componentsStore.CREATE_COMPONENT(schemaId, gridPointerPos.value, parentId);
 }
 
 // LAYOUT REGISTRY + HELPERS ///////////////////////////////////////////////////////////
@@ -2107,7 +2069,9 @@ const helpModalRef = ref();
 // this object gets provided to the children within the diagram that need it
 const context: DiagramContext = {
   zoomLevel,
+  setZoomLevel,
   edgeDisplayMode,
+  toggleEdgeDisplayMode,
   drawEdgeState,
 };
 provide(DIAGRAM_CONTEXT_INJECTION_KEY, context);
