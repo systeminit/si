@@ -14,7 +14,6 @@
               v-tooltip="
                 'Drag the assets that you wish to include in your application into the canvas to the right.'
               "
-              allowPointerEvents
               name="question-circle"
             />
           </SidebarSubpanelTitle>
@@ -178,28 +177,24 @@ function onSelect(schemaId: string, fixesAreRunning: boolean) {
   }
 
   if (componentsStore.selectedInsertSchemaId === schemaId) {
-    componentsStore.selectedInsertSchemaId = null;
+    componentsStore.cancelInsert();
     selecting.value = false;
   } else {
-    componentsStore.selectedInsertSchemaId = schemaId;
+    componentsStore.setInsertSchema(schemaId);
     selecting.value = true;
   }
 }
 
-function onDeselect() {
-  componentsStore.selectedInsertSchemaId = null;
-}
-
 const onKeyDown = (e: KeyboardEvent) => {
   if (e.key === "Escape" || e.key === "Backspace") {
-    onDeselect();
+    componentsStore.cancelInsert();
   }
 };
 
 const onMouseDown = (e: MouseEvent) => {
   updateMouseNode(e);
   if (selecting.value) selecting.value = false;
-  else onDeselect();
+  else componentsStore.cancelInsert();
 };
 
 const onMouseMove = (e: MouseEvent) => {

@@ -157,7 +157,6 @@
           v-if="propName === 'region'"
           v-tooltip="'Some help info'"
           name="question-circle"
-          allowPointerEvents
           class="attributes-panel-item__help-icon"
         /> -->
         <a
@@ -167,11 +166,7 @@
           target="_blank"
           title="show docs"
         >
-          <Icon
-            allowPointerEvents
-            class="attributes-panel-item__help-icon"
-            name="docs"
-          />
+          <Icon class="attributes-panel-item__help-icon" name="docs" />
         </a>
 
         <div class="attributes-panel-item__action-icons">
@@ -186,7 +181,6 @@
           :name="icon"
           size="sm"
           class="attributes-panel-item__type-icon"
-          allowPointerEvents
         />
       </div>
 
@@ -199,7 +193,6 @@
           v-if="currentValue !== null"
           name="x-circle"
           class="attributes-panel-item__unset-button"
-          allowPointerEvents
           @click="unsetHandler"
         />
         <template v-if="propKind === 'integer'">
@@ -245,7 +238,6 @@
           <Icon
             name="external-link"
             class="attributes-panel-item__popout-edit-button"
-            allowPointerEvents
             title="Edit in popup"
             @click="editModalRef?.open()"
           />

@@ -25,7 +25,7 @@
           v-for="zoomOptionAmount in ZOOM_LEVEL_OPTIONS"
           :key="zoomOptionAmount"
           class="justify-end"
-          @select="emit('update:zoom', zoomOptionAmount / 100)"
+          @select="setZoomLevel(zoomOptionAmount / 100)"
         >
           {{ zoomOptionAmount }}%
         </DropdownMenuItem>
@@ -55,7 +55,7 @@
           ? getButtonClasses(false)
           : getInvertedButtonClasses(false)
       "
-      @click="emit('update:displaymode')"
+      @click="toggleEdgeDisplayMode"
     >
       <Icon name="eye" size="full" />
     </div>
@@ -73,12 +73,13 @@ import {
   Icon,
 } from "@si/vue-lib/design-system";
 import { MAX_ZOOM, MIN_ZOOM } from "./diagram_constants";
-import { useDiagramContext } from "./GenericDiagram.vue";
+import { useDiagramContext } from "./ModelingDiagram.vue";
 
 const ZOOM_LEVEL_OPTIONS = [25, 50, 100, 150, 200];
 
 const diagramContext = useDiagramContext();
-const { edgeDisplayMode, zoomLevel } = diagramContext;
+const { edgeDisplayMode, toggleEdgeDisplayMode, zoomLevel, setZoomLevel } =
+  diagramContext;
 
 const displayModeTooltip = computed(() => ({
   content:
@@ -87,16 +88,14 @@ const displayModeTooltip = computed(() => ({
 }));
 
 const emit = defineEmits<{
-  (e: "update:zoom", newZoom: number): void;
   (e: "open:help"): void;
-  (e: "update:displaymode"): void;
 }>();
 
 const zoomMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 function adjustZoom(direction: "up" | "down") {
   const mult = direction === "down" ? -1 : 1;
-  emit("update:zoom", zoomLevel.value + (10 / 100) * mult);
+  setZoomLevel(zoomLevel.value + (10 / 100) * mult);
 }
 
 const roundedZoomPercent = computed(() => Math.round(zoomLevel.value * 100));

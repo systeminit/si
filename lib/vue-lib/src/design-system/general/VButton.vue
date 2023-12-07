@@ -270,6 +270,7 @@ const computedClasses = computed(() => ({
   .vbutton__icon {
     flex-grow: 0;
     flex-shrink: 0;
+    pointer-events: none;
   }
 
   // &:focus {

@@ -1,8 +1,5 @@
 <template>
-  <v-group
-    v-if="shouldDraw && points && centerPoint"
-    :config="{ opacity: willDeletedIfDrawEdgeCompleted ? 0.3 : 1 }"
-  >
+  <v-group v-if="shouldDraw && points && centerPoint">
     <v-line
       :config="{
         visible: isHovered || isSelected,
@@ -32,7 +29,7 @@
         strokeWidth: 2,
         hitStrokeWidth: 10,
         listening: !edge.def.isInvisible,
-        opacity: isDeleted ? 0.75 : 1,
+        opacity: mainLineOpacity,
         dash: [10, 10],
         dashEnabled: isDeleted,
         shadowColor: '#000',
@@ -45,14 +42,21 @@
     />
 
     <v-group
-      v-if="isAdded || isDeleted"
+      v-if="isAdded || isDeleted || willDeleteIfPendingEdgeCreated"
       :config="{
         x: centerPoint.x,
         y: centerPoint.y,
         listening: false,
       }"
     >
-      <template v-if="isAdded">
+      <template v-if="willDeleteIfPendingEdgeCreated">
+        <DiagramIcon
+          icon="scissors"
+          :color="getToneColorHex('destructive')"
+          :size="20"
+        />
+      </template>
+      <template v-else-if="isAdded">
         <DiagramIcon
           icon="plus-square"
           :color="getToneColorHex('success')"
@@ -60,7 +64,7 @@
           shadeBg
         />
       </template>
-      <template v-else>
+      <template v-else-if="isDeleted">
         <DiagramIcon
           icon="minus-square"
           shadeBg
@@ -85,7 +89,7 @@ import { SOCKET_SIZE, SELECTION_COLOR } from "./diagram_constants";
 import { DiagramEdgeData } from "./diagram_types";
 import { pointAlongLinePct, pointAlongLinePx } from "./utils/math";
 import DiagramIcon from "./DiagramIcon.vue";
-import { useDiagramContext } from "./GenericDiagram.vue";
+import { useDiagramContext } from "./ModelingDiagram.vue";
 
 const isDevMode = import.meta.env.DEV;
 
@@ -115,7 +119,7 @@ const { drawEdgeState } = diagramContext;
 const isDeleted = computed(() => props.edge.def.changeStatus === "deleted");
 const isAdded = computed(() => props.edge.def.changeStatus === "added");
 
-const willDeletedIfDrawEdgeCompleted = computed(() => {
+const willDeleteIfPendingEdgeCreated = computed(() => {
   return drawEdgeState.value.edgeKeysToDelete.includes(props.edge.uniqueKey);
 });
 
@@ -156,6 +160,12 @@ const points = computed(() => {
 const centerPoint = computed(() => {
   if (!props.fromPoint || !props.toPoint) return;
   return pointAlongLinePct(props.fromPoint, props.toPoint, 0.5);
+});
+
+const mainLineOpacity = computed(() => {
+  if (willDeleteIfPendingEdgeCreated.value) return 0.3;
+  if (isDeleted.value) return 0.75;
+  return 1;
 });
 
 function onMouseOver(_e: KonvaEventObject<MouseEvent>) {

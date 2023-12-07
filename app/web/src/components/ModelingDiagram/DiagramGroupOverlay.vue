@@ -58,7 +58,7 @@ import { getToneColorHex } from "@si/vue-lib/design-system";
 import {
   CORNER_RADIUS,
   GROUP_HEADER_BOTTOM_MARGIN,
-} from "@/components/GenericDiagram/diagram_constants";
+} from "@/components/ModelingDiagram/diagram_constants";
 import { DiagramGroupData, Size2D } from "./diagram_types";
 import DiagramIcon from "./DiagramIcon.vue";
 

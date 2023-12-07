@@ -274,7 +274,7 @@ function tabExists(slug?: string) {
 
 const pendingTabSlug = ref<string | undefined>();
 const lastSelectedTabIndex = ref(0);
-function selectTab(slug?: string) {
+function selectTab(slug?: string | null) {
   if (unmounting.value) return;
   if (selectedTabSlug.value === slug) return;
 

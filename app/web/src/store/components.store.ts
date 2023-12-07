@@ -4,6 +4,8 @@ import { Vector2d } from "konva/lib/types";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
 
+import mitt from "mitt";
+import { watch } from "vue";
 import {
   DiagramEdgeDef,
   DiagramNodeDef,
@@ -11,7 +13,7 @@ import {
   DiagramStatusIcon,
   GridPoint,
   Size2D,
-} from "@/components/GenericDiagram/diagram_types";
+} from "@/components/ModelingDiagram/diagram_types";
 import { MenuItem } from "@/api/sdf/dal/menu";
 import {
   DiagramNode,
@@ -24,6 +26,7 @@ import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { nilId } from "@/utils/nilId";
+import router from "@/router";
 import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -54,6 +57,7 @@ type RawComponent = {
   nodeType: "component" | "configurationFrame" | "aggregationFrame";
   parentNodeId?: ComponentNodeId;
   position: GridPoint;
+  size?: Size2D;
   resource: Resource;
   schemaCategory: string;
   schemaId: string; // TODO: probably want to move this to a different store and not load it all the time
@@ -173,6 +177,18 @@ export interface ComponentDebugView {
   outputSockets: AttributeDebugView[];
 }
 
+type EventBusEvents = {
+  deleteSelection: void;
+  restoreSelection: void;
+  refreshSelectionResource: void;
+};
+
+type PendingComponent = {
+  tempId: string;
+  position: Vector2d;
+  componentId?: ComponentId;
+};
+
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
@@ -200,6 +216,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/components`,
       {
         state: () => ({
+          // "global" modeling event bus - a bit weird that it lives in the store
+          // but we already have global access to it... and this way we can listen to events
+          eventBus: mitt<EventBusEvents>(),
+
           // components within this changeset
           // componentsById: {} as Record<ComponentId, Component>,
           // connectionsById: {} as Record<ConnectionId, Connection>,
@@ -208,6 +228,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           componentDiffsById: {} as Record<ComponentId, ComponentDiff>,
 
           rawComponentsById: {} as Record<ComponentId, RawComponent>,
+
+          pendingInsertedComponents: {} as Record<string, PendingComponent>,
 
           edgesById: {} as Record<EdgeId, Edge>,
           schemaVariantsById: {} as Record<
@@ -218,6 +240,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           selectedComponentIds: [] as ComponentId[],
           selectedEdgeId: null as EdgeId | null,
+          selectedComponentDetailsTab: null as string | null,
           hoveredComponentId: null as ComponentId | null,
           hoveredEdgeId: null as EdgeId | null,
 
@@ -333,6 +356,23 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           selectedEdge(): Edge | undefined {
             return this.edgesById[this.selectedEdgeId || 0];
           },
+          hoveredComponent(): FullComponent | undefined {
+            return this.componentsById[this.hoveredComponentId || 0];
+          },
+
+          deletableSelectedComponents(): FullComponent[] {
+            return _.reject(
+              this.selectedComponents,
+              (c) => c.changeStatus === "deleted",
+            );
+          },
+          restorableSelectedComponents(): FullComponent[] {
+            return _.filter(
+              this.selectedComponents,
+              (c) => c.changeStatus === "deleted",
+            );
+          },
+
           selectedComponentDiff(): ComponentDiff | undefined {
             return this.componentDiffsById[this.selectedComponentId || 0];
           },
@@ -353,12 +393,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 qualificationsStore.qualificationStatusByComponentId[
                   componentId
                 ];
+
+              // TODO: probably dont need this generic status icon setup anymore...
               const statusIcons: DiagramStatusIcon[] = _.compact([
-                qualificationStatusToIconMap[
-                  qualificationStatus ?? "notexists"
-                ],
+                {
+                  ...qualificationStatusToIconMap[
+                    qualificationStatus ?? "notexists"
+                  ],
+                  tabSlug: "qualifications",
+                },
                 component.resource.data
-                  ? { icon: "check-hex", tone: "success" }
+                  ? { icon: "check-hex", tone: "success", tabSlug: "resource" }
                   : { icon: "none" },
               ]);
 
@@ -377,9 +422,53 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               };
             });
           },
+          modelIsEmpty(): boolean {
+            return !this.diagramNodes.length;
+          },
 
           diagramEdges(): DiagramEdgeDef[] {
-            return this.allEdges;
+            // Note(victor): The code below checks whether was only created implicitly, through inheritance from an aggregation frame
+            // In the future, it would make more sense for these edges to not be returned from the backend
+            const validEdges = _.filter(this.allEdges, (edge) => {
+              return (
+                !!this.componentsByNodeId[edge.toNodeId] &&
+                !!this.componentsByNodeId[edge.fromNodeId]
+              );
+            });
+            const edgesWithInvisibleSet = _.map(validEdges, (rawEdge) => {
+              const edge = { ...rawEdge, invisible: false };
+
+              const toNodeParentId =
+                this.componentsByNodeId[edge.toNodeId]?.parentNodeId;
+
+              if (toNodeParentId) {
+                const toNodeParentComp =
+                  this.componentsByNodeId[toNodeParentId];
+
+                if (toNodeParentComp?.nodeType === "aggregationFrame") {
+                  if (edge.fromNodeId === toNodeParentComp.nodeId) {
+                    edge.isInvisible = true;
+                  }
+                }
+              }
+
+              const fromNodeParentId =
+                this.componentsByNodeId[edge.fromNodeId]?.parentNodeId;
+
+              if (fromNodeParentId) {
+                const fromParentComp =
+                  this.componentsByNodeId[fromNodeParentId];
+                if (fromParentComp?.nodeType === "aggregationFrame") {
+                  if (edge.toNodeId === fromParentComp.nodeId) {
+                    edge.isInvisible = true;
+                  }
+                }
+              }
+
+              return edge;
+            });
+
+            return edgesWithInvisibleSet;
           },
 
           edgesByFromNodeId(): Record<ComponentNodeId, Edge[]> {
@@ -438,7 +527,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           getDependentComponents: (state) => (componentId: ComponentId) => {
-            // TODO: this is ugly... much of this logic is duplicated in GenericDiagram
+            // TODO: this is ugly... much of this logic is duplicated in ModelingDiagram
 
             const connectedNodes: Record<ComponentId, ComponentId[]> = {};
             _.each(_.values(state.edgesById), (edge) => {
@@ -463,6 +552,21 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             return connectedIds;
           },
+
+          detailsTabSlugs: (state) => {
+            const slug = state.selectedComponentDetailsTab;
+
+            // root level tabs
+            if (["resource", "actions", "component"].includes(slug || "")) {
+              return [slug, undefined];
+            }
+
+            // actions tabs are prefixed with "actions-"
+            if (slug?.startsWith("actions")) return ["actions", slug];
+
+            // all other subtabs (currently) are in the component tab
+            return ["component", slug];
+          },
         },
         actions: {
           // TODO: change these endpoints to return a more complete picture of component data in one call
@@ -481,6 +585,28 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               onSuccess: (response) => {
                 this.rawComponentsById = _.keyBy(response.components, "id");
                 this.edgesById = _.keyBy(response.edges, "id");
+
+                // find any pending inserts that we know the component id of
+                // and have now been loaded - and remove them from the pending inserts
+                const pendingInsertsByComponentId = _.keyBy(
+                  this.pendingInsertedComponents,
+                  (p) => p.componentId || "",
+                );
+                const pendingComponentIdsThatAreComplete = _.compact(
+                  _.intersection(
+                    _.map(this.pendingInsertedComponents, (p) => p.componentId),
+                    _.keys(this.rawComponentsById),
+                  ),
+                );
+                _.each(pendingComponentIdsThatAreComplete, (id) => {
+                  const tempId = pendingInsertsByComponentId[id]?.tempId;
+                  if (tempId) delete this.pendingInsertedComponents[tempId];
+                });
+                if (pendingComponentIdsThatAreComplete[0]) {
+                  this.setSelectedComponentId(
+                    pendingComponentIdsThatAreComplete[0],
+                  );
+                }
               },
             });
           },
@@ -556,6 +682,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
+
+          setInsertSchema(schemaId: SchemaId) {
+            this.selectedInsertSchemaId = schemaId;
+            this.setSelectedComponentId(null);
+          },
+          cancelInsert() {
+            this.selectedInsertSchemaId = null;
+          },
+
           async CREATE_COMPONENT(
             schemaId: string,
             position: Vector2d,
@@ -565,6 +700,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               throw new Error("race, wait until the change set is created");
             if (changeSetId === nilId())
               changeSetsStore.creatingChangeSet = true;
+
+            const tempInsertId = _.uniqueId("temp-insert-component");
 
             return new ApiRequest<{
               componentId: ComponentId;
@@ -580,8 +717,29 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 y: position.y.toString(),
                 ...visibilityParams,
               },
+              optimistic: () => {
+                this.pendingInsertedComponents[tempInsertId] = {
+                  tempId: tempInsertId,
+                  position,
+                };
+
+                return () => {
+                  delete this.pendingInsertedComponents[tempInsertId];
+                };
+              },
               onSuccess: (response) => {
-                // TODO: store component details rather than waiting for re-fetch
+                // we'll link up our temporary id to the actual ID
+                // so we can hide the spinning temporary insert placeholder when the data is loaded
+                const pendingInsert =
+                  this.pendingInsertedComponents[tempInsertId];
+                if (pendingInsert) {
+                  pendingInsert.componentId = response.componentId;
+                }
+
+                // TODO: ideally here we would set the selected component id, but the component doesn't exist in the store yet
+                // so we'll have to do it in the FETCH_DIAGRAM when we delete the pending insert
+                // in the future, we should probably return at least basic info about the component from the create call
+                // so we can select it right away and at least show a loading screen as more data is fetched
               },
             });
           },
@@ -932,32 +1090,83 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
+          syncSelectionIntoUrl() {
+            let selectedIds: string[] = [];
+            if (this.selectedEdgeId) {
+              selectedIds = [`e_${this.selectedEdgeId}`];
+            } else if (this.selectedComponentIds.length) {
+              selectedIds = _.map(this.selectedComponentIds, (id) => `c_${id}`);
+            }
+
+            router.replace({
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              name: router.currentRoute.value.name!,
+              query: {
+                ...(selectedIds.length && { s: selectedIds.join("|") }),
+                ...(this.selectedComponentDetailsTab && {
+                  t: this.selectedComponentDetailsTab,
+                }),
+              },
+            });
+          },
+          syncUrlIntoSelection() {
+            const ids = (
+              (router.currentRoute.value.query?.s as string) || ""
+            ).split("|");
+            if (!ids.length) {
+              this.selectedComponentIds = [];
+              this.selectedEdgeId = null;
+            } else if (ids.length === 1 && ids[0]?.startsWith("e_")) {
+              this.selectedComponentIds = [];
+              this.selectedEdgeId = ids[0].substring(2);
+            } else {
+              this.selectedComponentIds = ids.map((id) => id.substring(2));
+              this.selectedEdgeId = null;
+            }
+
+            const tabSlug =
+              (router.currentRoute.value.query?.t as string) || null;
+            if (this.selectedComponentIds.length === 1) {
+              this.selectedComponentDetailsTab = tabSlug;
+            } else {
+              this.selectedComponentDetailsTab = null;
+            }
+          },
+
           setSelectedEdgeId(selection: EdgeId | null) {
             // clear component selection
             this.selectedComponentIds = [];
             this.selectedEdgeId = selection;
+            this.selectedComponentDetailsTab = null;
+            this.syncSelectionIntoUrl();
           },
           setSelectedComponentId(
             selection: ComponentId | ComponentId[] | null,
-            toggleMode = false,
+            opts?: { toggle?: boolean; detailsTab?: string },
           ) {
             this.selectedEdgeId = null;
             if (!selection || !selection.length) {
               this.selectedComponentIds = [];
-              return;
-            }
-            const validSelectionArray = _.reject(
-              _.isArray(selection) ? selection : [selection],
-              (id) => !this.componentsById[id],
-            );
-            if (toggleMode) {
-              this.selectedComponentIds = _.xor(
-                this.selectedComponentIds,
-                validSelectionArray,
-              );
+              // forget which details tab is active when selection is cleared
+              this.selectedComponentDetailsTab = null;
             } else {
-              this.selectedComponentIds = validSelectionArray;
+              const validSelectionArray = _.reject(
+                _.isArray(selection) ? selection : [selection],
+                (id) => !this.componentsById[id],
+              );
+              if (opts?.toggle) {
+                this.selectedComponentIds = _.xor(
+                  this.selectedComponentIds,
+                  validSelectionArray,
+                );
+              } else {
+                this.selectedComponentIds = validSelectionArray;
+              }
             }
+            if (opts?.detailsTab) {
+              this.selectedComponentDetailsTab = opts.detailsTab;
+            }
+            this.syncSelectionIntoUrl();
           },
           setHoveredComponentId(id: ComponentId | null) {
             this.hoveredComponentId = id;
@@ -966,6 +1175,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           setHoveredEdgeId(id: ComponentId | null) {
             this.hoveredComponentId = null;
             this.hoveredEdgeId = id;
+          },
+          setComponentDetailsTab(tabSlug: string | null) {
+            // we ignore the top level "component" and "actions" tabs
+            // since we always need a child selected, and setting these
+            // would overwrite the child being selected
+            if (["component", "actions"].includes(tabSlug || "")) return;
+            this.selectedComponentDetailsTab = tabSlug;
+            this.syncSelectionIntoUrl();
           },
 
           async REFRESH_RESOURCE_INFO(componentId: ComponentId) {
@@ -1001,10 +1218,21 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         onActivated() {
           if (!changeSetId) return;
 
+          // trigger initial load
           this.FETCH_DIAGRAM_DATA();
           this.FETCH_AVAILABLE_SCHEMAS();
           this.FETCH_NODE_ADD_MENU();
 
+          // TODO: prob want to take loading state into consideration as this will set it before its loaded
+          const stopWatchingUrl = watch(
+            router.currentRoute,
+            this.syncUrlIntoSelection,
+            {
+              immediate: true,
+            },
+          );
+
+          // realtime subs
           const realtimeStore = useRealtimeStore();
 
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
@@ -1044,6 +1272,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           ]);
 
           return () => {
+            stopWatchingUrl();
             realtimeStore.unsubscribe(this.$id);
           };
         },

@@ -28,8 +28,12 @@
       </Stack>
 
       <!-- change status icon -->
-      <div class="ml-auto">
-        <StatusIndicatorIcon type="change" :status="component.changeStatus" />
+      <div class="ml-auto cursor-pointer">
+        <StatusIndicatorIcon
+          type="change"
+          :status="component.changeStatus"
+          @click="componentsStore.setComponentDetailsTab('diff')"
+        />
       </div>
     </div>
   </div>

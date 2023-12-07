@@ -95,6 +95,7 @@ const changeSetsReqStatus =
 // this page is the parent of many child routes so we watch the route rather than use mounted hooks
 watch([route, changeSetsReqStatus], handleUrlChange, { immediate: true });
 
+// TODO: this logic needs some work
 function handleUrlChange() {
   changeSetsStore.creatingChangeSet = false;
 
@@ -109,6 +110,7 @@ function handleUrlChange() {
         ...route.params,
         changeSetId: pk === false ? "head" : pk,
       },
+      query: { ...route.query },
     });
     return;
   }
@@ -133,6 +135,7 @@ function handleUrlChange() {
         ...route.params,
         changeSetId: "head",
       },
+      query: route.query,
     });
   }
 }

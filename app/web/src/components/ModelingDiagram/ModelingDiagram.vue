@@ -1,4 +1,4 @@
-Generic diagram component * NOTE - uses a resize observer to react to size
+Modeling diagram component * NOTE - uses a resize observer to react to size
 changes, so this must be placed in a container that is sized explicitly has
 overflow hidden */
 <template>
@@ -7,7 +7,7 @@ overflow hidden */
     class="absolute inset-0 overflow-hidden"
     :style="{ cursor }"
   >
-    <DiagramEmptyState v-if="props.nodes.length === 0" />
+    <DiagramEmptyState v-if="componentsStore.modelIsEmpty" />
     <div
       v-if="showDebugBar"
       class="absolute bg-black text-white flex space-x-10 z-10 opacity-50"
@@ -23,11 +23,7 @@ overflow hidden */
         {{ gridPointerPos?.x }}, {{ gridPointerPos?.y }}
       </div>
     </div>
-    <DiagramControls
-      @update:displaymode="toggleEdgeDisplayMode"
-      @update:zoom="setZoom"
-      @open:help="helpModalRef.open()"
-    />
+    <DiagramControls @open:help="helpModalRef.open()" />
     <v-stage
       v-if="customFontsLoaded && containerWidth > 0 && containerHeight > 0"
       ref="stageRef"
@@ -87,7 +83,7 @@ overflow hidden */
           @resize="onNodeLayoutOrLocationChange(node)"
         />
         <DiagramCursor
-          v-for="mouseCursor in props.cursors"
+          v-for="mouseCursor in presenceStore.diagramCursors"
           :key="mouseCursor.userId"
           :cursor="mouseCursor"
         />
@@ -115,7 +111,9 @@ overflow hidden */
 
         <!-- placeholders for new inserted elements still processing -->
         <template
-          v-for="(pendingInsert, pendingInsertId) in pendingInsertedElements"
+          v-for="(
+            pendingInsert, pendingInsertId
+          ) in componentsStore.pendingInsertedComponents"
           :key="pendingInsertId"
         >
           <v-rect
@@ -170,7 +168,9 @@ overflow hidden */
 <script lang="ts">
 type DiagramContext = {
   zoomLevel: Ref<number>;
+  setZoomLevel: (newZoom: number) => void;
   edgeDisplayMode: Ref<EdgeDisplayMode>;
+  toggleEdgeDisplayMode: () => void;
   drawEdgeState: ComputedRef<DiagramDrawEdgeState>;
 };
 
@@ -207,22 +207,19 @@ import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
 import { getToneColorHex } from "@si/vue-lib/design-system";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
-import DiagramGroup from "@/components/GenericDiagram/DiagramGroup.vue";
-import { useComponentsStore } from "@/store/components.store";
-import DiagramGroupOverlay from "@/components/GenericDiagram/DiagramGroupOverlay.vue";
-import { DiagramCursorDef } from "@/store/presence.store";
+import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
+import {
+  ComponentId,
+  EdgeId,
+  useComponentsStore,
+} from "@/store/components.store";
+import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverlay.vue";
+import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
-  DeleteElementsEvent,
   DiagramDrawEdgeState,
-  DiagramEdgeDef,
   DiagramNodeDef,
-  DrawEdgeEvent,
-  MoveElementEvent,
   Direction,
-  PendingInsertedElement,
-  DiagramElementTypes,
-  InsertElementEvent,
   RightClickElementEvent,
   DiagramNodeData,
   DiagramGroupData,
@@ -230,14 +227,9 @@ import {
   DiagramSocketData,
   DiagramElementData,
   DiagramElementUniqueKey,
-  SelectElementEvent,
-  GroupEvent,
   Size2D,
-  ResizeElementEvent,
-  HoverElementEvent,
   SideAndCornerIdentifiers,
   ElementHoverMeta,
-  MovePointerEvent,
   EdgeDisplayMode,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
@@ -263,6 +255,7 @@ import {
   checkRectanglesOverlap,
   rectContainsAnother,
   vectorBetween,
+  pointAlongLinePct,
 } from "./utils/math";
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
@@ -281,19 +274,18 @@ const props = defineProps({
     type: Array as PropType<DiagramCursorDef[]>,
     default: () => [],
   },
-  nodes: {
-    type: Array as PropType<DiagramNodeDef[]>,
-    default: () => [],
-  },
-  edges: {
-    type: Array as PropType<DiagramEdgeDef[]>,
-    default: () => [],
-  },
   // TODO: split this into controls for specific features rather than single toggle
   readOnly: { type: Boolean },
 
   controlsDisabled: { type: Boolean },
 });
+
+const emit = defineEmits<{
+  (e: "right-click-element", elRightClickInfo: RightClickElementEvent): void;
+}>();
+
+const componentsStore = useComponentsStore();
+const modelingEventBus = componentsStore.eventBus;
 
 const edgeDisplayMode = ref<EdgeDisplayMode>("EDGES_OVER");
 
@@ -301,20 +293,6 @@ const toggleEdgeDisplayMode = () => {
   edgeDisplayMode.value =
     edgeDisplayMode.value === "EDGES_OVER" ? "EDGES_UNDER" : "EDGES_OVER";
 };
-
-const emit = defineEmits<{
-  (e: "update:zoom", newZoom: number): void;
-  (e: "update:pointer", newPointer: MovePointerEvent): void;
-  (e: "update:selection", newSelection: SelectElementEvent): void;
-  (e: "move-element", nodeMoveInfo: MoveElementEvent): void;
-  (e: "hover-element", hoverInfo: HoverElementEvent): void;
-  (e: "resize-element", nodeResizeInfo: ResizeElementEvent): void;
-  (e: "delete-elements", deleteInfo: DeleteElementsEvent): void;
-  (e: "insert-element", insertInfo: InsertElementEvent): void;
-  (e: "draw-edge", drawEdgeInfo: DrawEdgeEvent): void;
-  (e: "right-click-element", elRightClickInfo: RightClickElementEvent): void;
-  (e: "group-elements", groupEvent: GroupEvent): void;
-}>();
 
 const showDebugBar = false;
 
@@ -339,7 +317,7 @@ const gridOrigin = ref<Vector2d>({ x: 0, y: 0 });
 // I opted to track this internally rather than use v-model so the parent component isn't _forced_ to care about it
 // but there will often probably be some external controls, which can be done using exposed setZoom and update:zoom event
 const zoomLevel = ref(1);
-function setZoom(newZoomLevel: number) {
+function setZoomLevel(newZoomLevel: number) {
   if (newZoomLevel < MIN_ZOOM) zoomLevel.value = MIN_ZOOM;
   else if (newZoomLevel > MAX_ZOOM) zoomLevel.value = MAX_ZOOM;
   else zoomLevel.value = newZoomLevel;
@@ -350,9 +328,6 @@ function setZoom(newZoomLevel: number) {
     window.localStorage.setItem("si-diagram-zoom", `${zoomLevel.value}`);
   }
 }
-watch(zoomLevel, () => {
-  emit("update:zoom", zoomLevel.value);
-});
 
 // dimensions of our 2d grid space, all coordinates of things in the diagram are relative to this
 const gridWidth = computed(() => containerWidth.value / zoomLevel.value);
@@ -384,9 +359,14 @@ const gridPointerPos = computed(() => {
 });
 watch(gridPointerPos, (pos) => {
   if (!pos) return;
-  if (pointerIsWithinGrid.value) emit("update:pointer", { x: pos.x, y: pos.y });
-  else emit("update:pointer", null);
+  sendUpdatedPointerPos(pointerIsWithinGrid.value ? pos : undefined);
 });
+
+const presenceStore = usePresenceStore();
+function sendUpdatedPointerPos(pos?: Vector2d) {
+  presenceStore.updateCursor(pos ?? null);
+}
+
 const pointerIsWithinGrid = computed(() => {
   if (!gridPointerPos.value) return false;
   const { x, y } = gridPointerPos.value;
@@ -521,10 +501,10 @@ function onKeyDown(e: KeyboardEvent) {
 
   // handle zoom hotkeys
   if (e.key === "=" || e.key === "+") {
-    setZoom(zoomLevel.value + 0.1);
+    setZoomLevel(zoomLevel.value + 0.1);
   }
   if (e.key === "-" || e.key === "_") {
-    setZoom(zoomLevel.value - 0.1);
+    setZoomLevel(zoomLevel.value - 0.1);
   }
 
   // handle arrow keys - nudge and alignment
@@ -546,11 +526,11 @@ function onKeyDown(e: KeyboardEvent) {
   // TODO: escape will probably have more complex behaviour
   if (e.key === "Escape") {
     clearSelection();
-    if (insertElementActive.value) endInsertElement();
+    if (insertElementActive.value) componentsStore.cancelInsert();
     if (dragSelectActive.value) endDragSelect(false);
   }
   if (!props.readOnly && (e.key === "Delete" || e.key === "Backspace")) {
-    deleteSelected();
+    modelingEventBus.emit("deleteSelection");
   }
 }
 function onKeyUp(e: KeyboardEvent) {
@@ -745,8 +725,17 @@ const cursor = computed(() => {
   return "auto";
 });
 
-// hovering behaviour
-const hoveredElementKey = ref<string>();
+// HOVERING LOGIC + BEHAVIOUR //////////////////////////////////////////
+const hoveredElementKey = computed(() => {
+  if (componentsStore.hoveredComponentId) {
+    return getDiagramElementKeyForComponentId(
+      componentsStore.hoveredComponentId,
+    );
+  } else if (componentsStore.hoveredEdgeId) {
+    return DiagramEdgeData.generateUniqueKey(componentsStore.hoveredEdgeId);
+  }
+  return undefined;
+});
 const hoveredElement = computed(() =>
   hoveredElementKey.value
     ? (allElementsByKey.value[hoveredElementKey.value] as
@@ -756,24 +745,25 @@ const hoveredElement = computed(() =>
     : undefined,
 );
 
-const hoveredElementMeta = ref<ElementHoverMeta>();
-
-function setHoveredByKey(newHoverElementKey?: DiagramElementUniqueKey) {
-  hoveredElementKey.value = newHoverElementKey;
-}
-
 // same event and handler is used for both hovering nodes and sockets
 // NOTE - we'll receive 2 events when hovering sockets, one for the node and one for the socket
 
+// keeping element hover meta (which contains socket vs resize) here for now
+// but will probably want to move into the store as well
+const hoveredElementMeta = ref<ElementHoverMeta>();
+
 function onElementHoverStart(el: DiagramElementData, meta?: ElementHoverMeta) {
-  hoveredElementKey.value = el.uniqueKey;
   hoveredElementMeta.value = meta;
-  emit("hover-element", { element: el });
+
+  if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
+    componentsStore.setHoveredComponentId(el.def.componentId);
+  } else if (el instanceof DiagramEdgeData) {
+    componentsStore.setHoveredEdgeId(el.def.id);
+  }
 }
 function onElementHoverEnd(_el: DiagramElementData) {
-  hoveredElementKey.value = undefined;
   hoveredElementMeta.value = undefined;
-  emit("hover-element", { element: null });
+  componentsStore.setHoveredComponentId(null);
 }
 
 const disableHoverEvents = computed(() => {
@@ -818,40 +808,40 @@ function endDragToPan() {
 }
 
 // AUTO PAN (pan using click and drag while space bar is held down) ////////////////////////////////////
-const panTarget = computed((_) => useComponentsStore().panTargetComponentId);
-watch(panTarget, () => {
-  if (!panTarget.value) return;
+watch(
+  () => componentsStore.panTargetComponentId,
+  () => {
+    if (!componentsStore.panTargetComponentId) return;
 
-  const node = props.nodes.find((n) => n.componentId === panTarget.value);
-  if (!node) return;
+    const panToComponent =
+      componentsStore.componentsById[componentsStore.panTargetComponentId];
+    if (!panToComponent) return;
 
-  const key =
-    node.nodeType === "component"
-      ? DiagramNodeData.generateUniqueKey(node.id)
-      : DiagramGroupData.generateUniqueKey(node.id);
+    const key =
+      panToComponent.nodeType === "component"
+        ? DiagramNodeData.generateUniqueKey(panToComponent.id)
+        : DiagramGroupData.generateUniqueKey(panToComponent.id);
 
-  const position = movedElementPositions[key] ?? _.clone(node.position);
-  if (node.nodeType !== "component" && node.size) {
-    position.y = node.position.y + node.size.height / 2;
-  }
-
-  gridOrigin.value = position;
-
-  useComponentsStore().panTargetComponentId = null;
-});
+    const el = getElementByKey(key);
+    if (el) recenterOnElement(el);
+    componentsStore.panTargetComponentId = null;
+  },
+);
 
 // ELEMENT SELECTION /////////////////////////////////////////////////////////////////////////////////
-const _rawSelectionKeys = ref<DiagramElementUniqueKey[]>([]);
-const currentSelectionKeys = computed({
-  get() {
-    return _rawSelectionKeys.value;
-  },
-  set(newSelection) {
-    const sortedDeduped = _.sortBy(_.uniq(newSelection));
-    // don't set the array if it's the same, helps us only care about actual changes
-    if (_.isEqual(currentSelectionKeys.value, sortedDeduped)) return;
-    _rawSelectionKeys.value = sortedDeduped;
-  },
+const currentSelectionKeys = computed(() => {
+  if (componentsStore.selectedEdgeId) {
+    return _.compact([
+      getDiagramElementKeyForEdgeId(componentsStore.selectedEdgeId),
+    ]);
+  } else {
+    return _.compact(
+      _.map(
+        componentsStore.selectedComponentIds,
+        getDiagramElementKeyForComponentId,
+      ),
+    );
+  }
 });
 const currentSelectionElements = computed(
   () =>
@@ -864,26 +854,38 @@ const currentSelectionElements = computed(
 function setSelectionByKey(
   toSelect?: DiagramElementUniqueKey | DiagramElementUniqueKey[],
 ) {
-  if (!toSelect) currentSelectionKeys.value = [];
-  else currentSelectionKeys.value = _.isArray(toSelect) ? toSelect : [toSelect];
+  if (!toSelect || !toSelect.length) {
+    componentsStore.setSelectedComponentId(null);
+    return;
+  }
+
+  const els = _.compact(_.map(_.castArray(toSelect), getElementByKey));
+
+  if (els.length === 1 && els[0] instanceof DiagramEdgeData) {
+    componentsStore.setSelectedEdgeId(els[0].def.id);
+  } else {
+    componentsStore.setSelectedComponentId(
+      // TODO: remove this any...
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _.map(els, (e) => (e.def as any).componentId),
+    );
+  }
 }
 
 // toggles selected items in the selection (used when shift clicking)
 function toggleSelectedByKey(
   toToggle: DiagramElementUniqueKey | DiagramElementUniqueKey[],
 ) {
-  const newval = _.xor(
-    currentSelectionKeys.value,
-    _.isArray(toToggle) ? toToggle : [toToggle],
-  );
-  currentSelectionKeys.value = newval;
+  const els = _.compact(_.map(_.castArray(toToggle), getElementByKey));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const elIds = _.map(els, (el) => (el.def as any).componentId);
+  // second true enables "toggle" mode
+  componentsStore.setSelectedComponentId(elIds, { toggle: true });
 }
 function clearSelection() {
-  currentSelectionKeys.value = [];
+  componentsStore.setSelectedComponentId(null);
 }
-watch(currentSelectionKeys, () => {
-  emit("update:selection", { elements: currentSelectionElements.value });
-});
+
 function elementIsHovered(el: DiagramElementData) {
   return !disableHoverEvents.value && hoveredElementKey.value === el.uniqueKey;
 }
@@ -1012,6 +1014,27 @@ const draggedElementsPositionsPreDrag = ref<
 >({});
 const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
+function sendMovedElementPosition(e: {
+  element: DiagramElementData;
+  position: Vector2d;
+  size?: Vector2d;
+  isFinal: boolean;
+}) {
+  // this gets called many times during a move, with e.isFinal telling you if the drag is in progress or complete
+  // eventually we will want to send those to the backend for realtime multiplayer
+  // But for now we just send off the final position
+  if (!e.isFinal) return;
+  if (
+    e.element instanceof DiagramNodeData ||
+    e.element instanceof DiagramGroupData
+  ) {
+    componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
+      e.element.def.id,
+      e.position,
+    );
+  }
+}
+
 function beginDragElements() {
   if (!lastMouseDownElement.value) return;
   dragElementsActive.value = true;
@@ -1067,10 +1090,27 @@ function endDragElements() {
         newContainingGroup &&
         el.def.parentNodeId !== newContainingGroup.def.id
       ) {
-        emit("group-elements", {
-          group: newContainingGroup,
-          elements: [el],
-        });
+        let elements = [el];
+
+        if (newContainingGroup.def.nodeType === "aggregationFrame") {
+          const groupSchemaId =
+            componentsStore.componentsByNodeId[newContainingGroup.def.id]
+              ?.schemaVariantId;
+          elements = _.filter(elements, (e) => {
+            const elementSchemaId =
+              componentsStore.componentsByNodeId[e.def.id]?.schemaVariantId;
+
+            return elementSchemaId === groupSchemaId;
+          });
+        }
+
+        for (const element of elements) {
+          componentsStore.CONNECT_COMPONENT_TO_FRAME(
+            element.def.id,
+            newContainingGroup.def.id,
+          );
+        }
+
         movedElementParent[el.uniqueKey] = newContainingGroup.def.id;
       }
     }
@@ -1078,7 +1118,7 @@ function endDragElements() {
     const movedElementPosition = movedElementPositions[el.uniqueKey];
     if (movedElementPosition) {
       // move the element itself
-      emit("move-element", {
+      sendMovedElementPosition({
         element: el,
         position: movedElementPosition,
         isFinal: true,
@@ -1093,7 +1133,7 @@ function endDragElements() {
         (n) => n.def.parentNodeId === el.def.id,
       );
       _.each(childEls, (childEl) => {
-        emit("move-element", {
+        sendMovedElementPosition({
           element: childEl,
           // Again, not sure how we should handle a possible missing element
           // position
@@ -1228,7 +1268,7 @@ function onDragElementsMove() {
         );
         // track the position locally, so we don't need to rely on parent to store the temporary position
         movedElementPositions[childEl.uniqueKey] = newChildPosition;
-        emit("move-element", {
+        sendMovedElementPosition({
           element: childEl,
           position: newChildPosition,
           isFinal: false,
@@ -1238,7 +1278,7 @@ function onDragElementsMove() {
 
     // track the position locally, so we don't need to rely on parent to store the temporary position
     movedElementPositions[el.uniqueKey] = newPosition;
-    emit("move-element", {
+    sendMovedElementPosition({
       element: el,
       position: newPosition,
       isFinal: false,
@@ -1338,7 +1378,7 @@ function alignSelection(direction: Direction) {
       y: alignedY === undefined ? el.def.position.y : alignedY,
     };
     movedElementPositions[el.uniqueKey] = newPosition;
-    emit("move-element", {
+    sendMovedElementPosition({
       element: el,
       position: newPosition,
       isFinal: true,
@@ -1358,7 +1398,7 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
   _.each(currentSelectionMovableElements.value, (el) => {
     const newPosition = vectorAdd(el.def.position, nudgeVector);
     movedElementPositions[el.uniqueKey] = newPosition;
-    emit("move-element", {
+    sendMovedElementPosition({
       element: el,
       position: newPosition,
       isFinal: true,
@@ -1465,19 +1505,18 @@ function beginResizeElement() {
     movedElementPositions[resizeTargetKey] || node.position;
 }
 function endResizeElement() {
-  if (!resizeElement.value) return;
-  const size = resizedElementSizes[resizeElement.value.uniqueKey];
-  const position = movedElementPositions[resizeElement.value.uniqueKey];
+  const el = resizeElement.value;
+  if (!el) return;
+  // currently only groups can be resized... this is mostly for TS
+  if (!(el instanceof DiagramGroupData)) return;
+
+  const size = resizedElementSizes[el.uniqueKey];
+  const position = movedElementPositions[el.uniqueKey];
   if (!size || !position) {
     return;
   }
 
-  emit("resize-element", {
-    element: resizeElement.value,
-    position,
-    size,
-    isFinal: true,
-  });
+  componentsStore.SET_COMPONENT_DIAGRAM_POSITION(el.def.id, position, size);
 
   resizeElement.value = undefined;
 }
@@ -1700,12 +1739,7 @@ function onResizeMove() {
 
   resizedElementSizes[resizeTargetKey] = newNodeSize;
   movedElementPositions[resizeTargetKey] = newNodePosition;
-  emit("resize-element", {
-    element: resizeElement.value,
-    position: newNodePosition,
-    size: newNodeSize,
-    isFinal: false,
-  });
+  // TODO: send updates to backend while dragging for multiplayer?
 }
 
 // DRAWING EDGES ///////////////////////////////////////////////////////////////////////
@@ -1760,20 +1794,16 @@ const drawEdgeWillDeleteEdges = computed(() => {
   // currently we only care about arity of 1 or N - but this logic would need to change to support arity of a specific number
   if (fromSocket.def.maxConnections !== null) {
     edgesToDelete.push(
-      ...(connectedEdgesByElementKey.value[
-        fromSocket.uniqueKey
-      ] as DiagramEdgeData[]),
+      ...(connectedEdgesByElementKey.value[fromSocket.uniqueKey] || []),
     );
   }
 
   if (toSocket && toSocket.def.maxConnections !== null) {
     edgesToDelete.push(
-      ...(connectedEdgesByElementKey.value[
-        toSocket.uniqueKey
-      ] as DiagramEdgeData[]),
+      ...(connectedEdgesByElementKey.value[toSocket.uniqueKey] || []),
     );
   }
-  return edgesToDelete;
+  return _.reject(edgesToDelete, (e) => e.def.changeStatus === "deleted");
 });
 
 const drawEdgeState = computed(() => {
@@ -1827,77 +1857,76 @@ async function endDrawEdge() {
     ? drawEdgeFromSocket.value
     : drawEdgeToSocket.value;
 
-  emit("draw-edge", {
-    fromSocket: adjustedFrom,
-    toSocket: adjustedTo,
-  });
+  const fromNodeId = adjustedFrom.parent.def.id;
+  const fromSocketId = adjustedFrom.def.id;
+  const toNodeId = adjustedTo.parent.def.id;
+  const toSocketId = adjustedTo.def.id;
+
+  const equivalentEdge = _.find(
+    edges.value,
+    (e) =>
+      e.def.fromNodeId === fromNodeId &&
+      e.def.fromSocketId === fromSocketId &&
+      e.def.toNodeId === toNodeId &&
+      e.def.toSocketId === toSocketId,
+  );
+
+  // TODO: probably move this to the store?
+  // and the backend should probably handle it correctly on the create edge route
+  if (equivalentEdge) {
+    await componentsStore.RESTORE_EDGE(equivalentEdge.def.id);
+  } else {
+    await componentsStore.CREATE_COMPONENT_CONNECTION(
+      {
+        nodeId: fromNodeId,
+        socketId: fromSocketId,
+      },
+      {
+        nodeId: toNodeId,
+        socketId: toSocketId,
+      },
+    );
+  }
 }
 // ELEMENT ADDITION
-const insertElementActive = ref(false);
-const insertElementType = ref<DiagramElementTypes>();
-const pendingInsertedElements = reactive<
-  Record<string, PendingInsertedElement>
->({});
-function beginInsertElement(elementType: DiagramElementTypes) {
-  clearSelection();
-  insertElementActive.value = true;
-  insertElementType.value = elementType;
-  // TODO: this will likely need more info as subtypes emerge
-  // ie inserting an X-node vs Y-node, or annotation of a specific type
-}
-function endInsertElement() {
-  insertElementActive.value = false;
-}
-function triggerInsertElement() {
-  if (!insertElementActive.value || !insertElementType.value)
+const insertElementActive = computed(
+  () => !!componentsStore.selectedInsertSchemaId,
+);
+
+async function triggerInsertElement() {
+  if (!insertElementActive.value)
     throw new Error("insert element mode must be active");
   if (!gridPointerPos.value)
     throw new Error("Cursor must be in grid to insert element");
 
-  let parentGroupId;
+  // TODO - move all of this logic to the store
+  let parentGroupId: string | undefined;
   if (hoveredElement.value instanceof DiagramGroupData) {
     parentGroupId = hoveredElement.value.def.id;
   }
 
-  const insertId = _.uniqueId("insert-diagram-el");
-  pendingInsertedElements[insertId] = {
-    diagramElementType: insertElementType.value,
-    insertedAt: new Date(),
-    position: gridPointerPos.value,
-  };
-  // we need a way to know when the insert is complete
-  // ideally without trying to match up new data (nodes/etc) that comes in through props
-  // because in multiplayer mode we may have new stuff flowing in
-  // so we pass a callback for the parent to call when the insert is done
-  emit("insert-element", {
-    diagramElementType: insertElementType.value,
-    position: gridPointerPos.value,
-    parent: parentGroupId,
-    onComplete: () => {
-      delete pendingInsertedElements[insertId];
-    },
-  });
-  endInsertElement();
-}
+  if (!componentsStore.selectedInsertSchemaId)
+    throw new Error("missing insert selection metadata");
 
-// ELEMENT DELETION ////////////////////////////////////////////////////////////////////
-function deleteSelected() {
-  if (!currentSelectionElements.value?.length) return;
-  const selected = currentSelectionElements.value;
-  if (!selected) {
-    return;
+  const schemaId = componentsStore.selectedInsertSchemaId;
+  componentsStore.selectedInsertSchemaId = null;
+
+  let parentId;
+
+  if (parentGroupId) {
+    const parentComponent = Object.values(componentsStore.componentsById).find(
+      (c) => c.nodeId === parentGroupId,
+    );
+    if (
+      parentComponent &&
+      (parentComponent.nodeType !== "aggregationFrame" ||
+        schemaId === parentComponent.schemaId)
+    ) {
+      parentId = parentGroupId;
+    }
   }
 
-  // previously we were deleting edges connected to nodes from here
-  // but we may want to handle this purely from the backend?
-  // // when deleting a node, we also have to delete any attached edges
-  // const additionalEdgesToDelete = _.flatMap(selected, (el) => {
-  //   if (el instanceof DiagramNodeData) return [];
-  //   return _.flatMap(connectedEdgesByElementKey.value[el.uniqueKey]);
-  // });
-  // // have to dedupe in case we are deleting both nodes connected to an edge
-  // const uniqueEdgesToDelete = _.uniq(additionalEdgesToDelete);
-  emit("delete-elements", { elements: selected as DiagramElementData[] });
+  componentsStore.CREATE_COMPONENT(schemaId, gridPointerPos.value, parentId);
 }
 
 // LAYOUT REGISTRY + HELPERS ///////////////////////////////////////////////////////////
@@ -1936,19 +1965,15 @@ function onNodeLayoutOrLocationChange(el: DiagramNodeData | DiagramGroupData) {
 
 // DIAGRAM CONTENTS HELPERS //////////////////////////////////////////////////
 
-// const nodes = ref([] as DiagramNode[]);
-// const sockets = ref([] as DiagramSocket[]);
-// const edges = ref([] as DiagramEdge[]);
-
 const nodes = computed(() =>
   _.map(
-    _.filter(props.nodes, (n) => n.nodeType === "component"),
+    _.filter(componentsStore.diagramNodes, (n) => n.nodeType === "component"),
     (nodeDef) => new DiagramNodeData(nodeDef),
   ),
 );
 const groups = computed(() =>
   _.map(
-    _.filter(props.nodes, (n) => n.nodeType !== "component"),
+    _.filter(componentsStore.diagramNodes, (n) => n.nodeType !== "component"),
     (groupDef) => new DiagramGroupData(groupDef),
   ),
 );
@@ -1956,7 +1981,10 @@ const sockets = computed(() =>
   _.compact(_.flatMap(_.concat(nodes.value, groups.value), (i) => i.sockets)),
 );
 const edges = computed(() =>
-  _.map(props.edges, (edgeDef) => new DiagramEdgeData(edgeDef)),
+  _.map(
+    componentsStore.diagramEdges,
+    (edgeDef) => new DiagramEdgeData(edgeDef),
+  ),
 );
 
 // quick ways to look up specific element data from a unique key
@@ -1975,6 +2003,22 @@ function getElementByKey(key?: DiagramElementUniqueKey) {
   return key ? allElementsByKey.value[key] : undefined;
 }
 
+function getDiagramElementKeyForComponentId(componentId?: ComponentId | null) {
+  if (!componentId) return;
+  const component = componentsStore.componentsById[componentId];
+  if (component) {
+    // TODO: get rid of node id!
+    if (component.isGroup) {
+      return DiagramGroupData.generateUniqueKey(component.nodeId);
+    }
+    return DiagramNodeData.generateUniqueKey(component.nodeId);
+  }
+}
+function getDiagramElementKeyForEdgeId(edgeId?: EdgeId | null) {
+  if (!edgeId) return;
+  return DiagramEdgeData.generateUniqueKey(edgeId);
+}
+
 const connectedEdgesByElementKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
   _.each(edgesByKey.value, (edge) => {
@@ -1990,28 +2034,44 @@ const connectedEdgesByElementKey = computed(() => {
   return lookup;
 });
 
-function recenter() {
-  gridOrigin.value = { x: 0, y: 0 };
-  zoomLevel.value = 1;
+// function recenter() {
+//   gridOrigin.value = { x: 0, y: 0 };
+//   zoomLevel.value = 1;
+// }
+function getCenterPointOfElement(el: DiagramElementData) {
+  if (el instanceof DiagramEdgeData) {
+    // TODO: this logic should live on DiagramEdge class
+    const fromPoint = getSocketLocationInfo(el.fromSocketKey)?.center;
+    const toPoint = getSocketLocationInfo(el.toSocketKey)?.center;
+    if (!fromPoint || !toPoint) return;
+    return pointAlongLinePct(fromPoint, toPoint, 0.5);
+  } else if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
+    // TODO: probably want nodes/groups to be able to return their correct center point
+    const position = _.clone(
+      movedElementPositions[el.uniqueKey] || el.def.position,
+    );
+    if (el.def.size) {
+      position.y += el.def.size.height / 2;
+    }
+    return position;
+  }
+}
+
+function recenterOnElement(panTarget: DiagramElementData) {
+  const centerOnPoint = getCenterPointOfElement(panTarget);
+  if (centerOnPoint) {
+    gridOrigin.value = centerOnPoint;
+  }
 }
 
 const helpModalRef = ref();
 
-// functions exposed to outside world ///////////////////////////////////
-defineExpose({
-  setZoom,
-  recenter,
-  setSelectionByKey,
-  setHoveredByKey,
-  clearSelection,
-  beginInsertElement,
-  endInsertElement,
-});
-
 // this object gets provided to the children within the diagram that need it
 const context: DiagramContext = {
   zoomLevel,
+  setZoomLevel,
   edgeDisplayMode,
+  toggleEdgeDisplayMode,
   drawEdgeState,
 };
 provide(DIAGRAM_CONTEXT_INJECTION_KEY, context);
