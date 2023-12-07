@@ -4,11 +4,25 @@ load(
     "shellcheck",
     "shfmt_check",
     "test_suite",
+    "yapf_check",
 )
 
 sh_binary(
-    name = "buck2-update-prelude",
+    name = "update-prelude",
     main = "buck2-update-prelude.sh",
+)
+
+python_bootstrap_binary(
+    name = "sync-cargo-deps",
+    main = "buck2-sync-cargo-deps.py",
+    visibility = ["PUBLIC"],
+)
+
+command_alias(
+    name = "check-cargo-deps",
+    exe = ":sync-cargo-deps",
+    args = ["--check"],
+    visibility = ["PUBLIC"],
 )
 
 shfmt_check(
@@ -21,10 +35,16 @@ shellcheck(
     srcs = glob(["**/*.sh"]),
 )
 
+yapf_check(
+    name = "check-format-python",
+    srcs = glob(["**/*.py"]),
+)
+
 test_suite(
     name = "check-format",
     tests = [
         ":check-format-shell",
+        ":check-format-python",
     ],
 )
 
