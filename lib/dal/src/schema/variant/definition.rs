@@ -12,8 +12,8 @@ use thiserror::Error;
 use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::DEFAULT_SCHEMA_VARIANT_COLOR;
-use crate::ComponentKind;
-use crate::{pk, PropKind, SocketArity};
+use crate::{pk, PropKind};
+use crate::{ComponentKind, ProviderArity};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -653,10 +653,11 @@ pub struct PropDefinition {
 pub struct SocketDefinition {
     /// The name of the [`Socket`](crate::Socket) to be created.
     pub name: String,
-    /// The [`arity`](https://en.wikipedia.org/wiki/Arity) of the [`Socket`](crate::Socket).
-    /// Defaults to [`SocketArity::Many`](crate::SocketArity::Many) if nothing is provided.
+    /// The [`arity`](https://en.wikipedia.org/wiki/Arity) of the socket (i.e. the
+    /// [`provider`](crate::provider)). Defaults to
+    /// [`ProviderArity::Many`](ProviderArity::Many) if nothing is provided.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub arity: Option<SocketArity>,
+    pub arity: Option<ProviderArity>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ui_hidden: Option<bool>,
     // The source of the information for the socket

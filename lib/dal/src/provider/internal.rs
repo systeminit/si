@@ -78,7 +78,7 @@ use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
-use crate::socket::{DiagramKind, SocketEdgeKind, SocketError, SocketKind, SocketParent};
+use crate::provider::{ProviderArity, ProviderKind};
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -87,7 +87,7 @@ use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNo
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, AttributePrototype, AttributePrototypeId, DalContext, Func, FuncId, PropId,
-    SchemaVariantId, Socket, SocketArity, Timestamp, TransactionsError,
+    SchemaVariantId, Timestamp, TransactionsError,
 };
 
 #[remain::sorted]
@@ -107,8 +107,6 @@ pub enum InternalProviderError {
     PropMissingInternalProvider(PropId),
     #[error("An internal provider for prop {0} already exists")]
     ProviderAlreadyExists(PropId),
-    #[error("socket error: {0}")]
-    Socket(#[from] SocketError),
     #[error("store error: {0}")]
     Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
@@ -143,6 +141,10 @@ pub struct InternalProvider {
     inbound_type_definition: Option<String>,
     /// Definition of the outbound type (e.g. "JSONSchema" or "Number").
     outbound_type_definition: Option<String>,
+    arity: ProviderArity,
+    kind: ProviderKind,
+    required: bool,
+    ui_hidden: bool,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -159,6 +161,10 @@ pub struct InternalProviderContentV1 {
     pub inbound_type_definition: Option<String>,
     /// Definition of the outbound type (e.g. "JSONSchema" or "Number").
     pub outbound_type_definition: Option<String>,
+    pub arity: ProviderArity,
+    pub kind: ProviderKind,
+    pub required: bool,
+    pub ui_hidden: bool,
 }
 
 impl InternalProvider {
@@ -169,6 +175,10 @@ impl InternalProvider {
             name: inner.name,
             inbound_type_definition: inner.inbound_type_definition,
             outbound_type_definition: inner.outbound_type_definition,
+            arity: inner.arity,
+            kind: inner.kind,
+            required: inner.required,
+            ui_hidden: inner.ui_hidden,
         }
     }
 
@@ -176,22 +186,20 @@ impl InternalProvider {
         self.id
     }
 
-    pub fn find_for_prop_id(
-        ctx: &DalContext,
-        prop_id: PropId,
-    ) -> InternalProviderResult<Option<InternalProviderId>> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 
-        match workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Provider)?
-            .get(0)
-        {
-            None => Ok(None),
-            Some(provider_idx) => {
-                let node_weight = workspace_snapshot.get_node_weight(*provider_idx)?;
-                Ok(Some(node_weight.id().into()))
-            }
-        }
+    pub fn arity(&self) -> ProviderArity {
+        self.arity
+    }
+
+    pub fn ui_hidden(&self) -> bool {
+        self.ui_hidden
+    }
+
+    pub fn required(&self) -> bool {
+        self.required
     }
 
     pub async fn new_implicit(
@@ -213,6 +221,10 @@ impl InternalProvider {
                 name: prop.name().to_string(),
                 inbound_type_definition: None,
                 outbound_type_definition: None,
+                arity: ProviderArity::One,
+                kind: ProviderKind::Standard,
+                required: false,
+                ui_hidden: false,
             };
             let hash = ctx
                 .content_store()
@@ -267,6 +279,12 @@ impl InternalProvider {
             name: prop_node_weight.name().to_owned(),
             inbound_type_definition: None,
             outbound_type_definition: None,
+            // FIXME(nick): should we not check the prototype for the arity? For regular implicit
+            // internal providers, this is fine, but for prototypes, it might not be.
+            arity: ProviderArity::One,
+            kind: ProviderKind::Standard,
+            required: false,
+            ui_hidden: false,
         };
         let hash = ctx
             .content_store()
@@ -292,6 +310,24 @@ impl InternalProvider {
         Ok(ip_id.into())
     }
 
+    pub fn find_for_prop_id(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> InternalProviderResult<Option<InternalProviderId>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        match workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Provider)?
+            .get(0)
+        {
+            None => Ok(None),
+            Some(provider_idx) => {
+                let node_weight = workspace_snapshot.get_node_weight(*provider_idx)?;
+                Ok(Some(node_weight.id().into()))
+            }
+        }
+    }
+
     pub fn add_prototype_edge(
         ctx: &DalContext,
         internal_provider_id: InternalProviderId,
@@ -311,14 +347,14 @@ impl InternalProvider {
         Ok(())
     }
 
-    pub async fn new_explicit_with_socket(
+    pub async fn new_explicit(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
         name: impl Into<String>,
         func_id: FuncId,
-        arity: SocketArity,
-        frame_socket: bool,
-    ) -> InternalProviderResult<(Self, Socket)> {
+        arity: ProviderArity,
+        kind: ProviderKind,
+    ) -> InternalProviderResult<Self> {
         info!("creating explicit internal provider");
         let name = name.into();
         let content = InternalProviderContentV1 {
@@ -326,6 +362,10 @@ impl InternalProvider {
             name: name.clone(),
             inbound_type_definition: None,
             outbound_type_definition: None,
+            arity,
+            kind,
+            required: false,
+            ui_hidden: false,
         };
         let hash = ctx
             .content_store()
@@ -356,21 +396,7 @@ impl InternalProvider {
             )?;
         }
 
-        let socket = Socket::new(
-            ctx,
-            name,
-            match frame_socket {
-                true => SocketKind::Frame,
-                false => SocketKind::Provider,
-            },
-            SocketEdgeKind::ConfigurationInput,
-            arity,
-            DiagramKind::Configuration,
-            SocketParent::ExplicitInternalProvider(id.into()),
-        )
-        .await?;
-
-        Ok((Self::assemble(id.into(), content), socket))
+        Ok(Self::assemble(id.into(), content))
     }
 }
 

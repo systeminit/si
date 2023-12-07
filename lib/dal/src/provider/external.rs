@@ -6,15 +6,13 @@ use thiserror::Error;
 
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
-use crate::socket::{DiagramKind, SocketEdgeKind, SocketError, SocketKind, SocketParent};
+use crate::provider::{ProviderArity, ProviderKind};
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{
-    pk, AttributePrototype, DalContext, FuncId, Socket, SocketArity, Timestamp, TransactionsError,
-};
-use crate::{AttributePrototypeId, SchemaVariantId};
+use crate::SchemaVariantId;
+use crate::{pk, AttributePrototype, DalContext, FuncId, Timestamp, TransactionsError};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -27,8 +25,6 @@ pub enum ExternalProviderError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
-    #[error("socket error: {0}")]
-    Socket(#[from] SocketError),
     #[error("store error: {0}")]
     Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
@@ -48,19 +44,16 @@ pk!(ExternalProviderId);
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ExternalProvider {
     id: ExternalProviderId,
-
     #[serde(flatten)]
     pub timestamp: Timestamp,
-
-    /// Indicates which [`SchemaVariant`](crate::SchemaVariant) this provider belongs to.
-    schema_variant_id: SchemaVariantId,
-    /// Indicates which transformation function should be used for "emit".
-    attribute_prototype_id: Option<AttributePrototypeId>,
-
     /// Name for [`Self`] that can be used for identification.
     name: String,
     /// Definition of the data type (e.g. "JSONSchema" or "Number").
     type_definition: Option<String>,
+    arity: ProviderArity,
+    kind: ProviderKind,
+    required: bool,
+    ui_hidden: bool,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -71,16 +64,14 @@ pub enum ExternalProviderContent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ExternalProviderContentV1 {
     pub timestamp: Timestamp,
-
-    /// Indicates which [`SchemaVariant`](crate::SchemaVariant) this provider belongs to.
-    pub schema_variant_id: SchemaVariantId,
-    /// Indicates which transformation function should be used for "emit".
-    pub attribute_prototype_id: Option<AttributePrototypeId>,
-
     /// Name for [`Self`] that can be used for identification.
     pub name: String,
     /// Definition of the data type (e.g. "JSONSchema" or "Number").
     pub type_definition: Option<String>,
+    pub arity: ProviderArity,
+    pub kind: ProviderKind,
+    pub required: bool,
+    pub ui_hidden: bool,
 }
 
 impl ExternalProvider {
@@ -88,10 +79,12 @@ impl ExternalProvider {
         Self {
             id,
             timestamp: inner.timestamp,
-            schema_variant_id: inner.schema_variant_id,
-            attribute_prototype_id: inner.attribute_prototype_id,
             name: inner.name,
             type_definition: inner.type_definition,
+            arity: inner.arity,
+            kind: inner.kind,
+            ui_hidden: inner.ui_hidden,
+            required: inner.required,
         }
     }
 
@@ -99,23 +92,41 @@ impl ExternalProvider {
         self.id
     }
 
-    pub async fn new_with_socket(
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn arity(&self) -> ProviderArity {
+        self.arity
+    }
+
+    pub fn ui_hidden(&self) -> bool {
+        self.ui_hidden
+    }
+
+    pub fn required(&self) -> bool {
+        self.required
+    }
+
+    pub async fn new(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
         name: impl Into<String>,
         type_definition: Option<String>,
         func_id: FuncId,
-        arity: SocketArity,
-        frame_socket: bool,
-    ) -> ExternalProviderResult<(Self, Socket)> {
+        arity: ProviderArity,
+        kind: ProviderKind,
+    ) -> ExternalProviderResult<Self> {
         info!("creating external provider");
         let name = name.into();
         let content = ExternalProviderContentV1 {
             timestamp: Timestamp::now(),
-            schema_variant_id,
-            attribute_prototype_id: None,
             name: name.clone(),
             type_definition,
+            arity,
+            kind,
+            required: false,
+            ui_hidden: false,
         };
         let hash = ctx
             .content_store()
@@ -146,21 +157,7 @@ impl ExternalProvider {
             )?;
         }
 
-        let socket = Socket::new(
-            ctx,
-            name,
-            match frame_socket {
-                true => SocketKind::Frame,
-                false => SocketKind::Provider,
-            },
-            SocketEdgeKind::ConfigurationOutput,
-            arity,
-            DiagramKind::Configuration,
-            SocketParent::ExternalProvider(id.into()),
-        )
-        .await?;
-
-        Ok((Self::assemble(id.into(), content), socket))
+        Ok(Self::assemble(id.into(), content))
     }
 }
 
