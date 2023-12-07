@@ -25,22 +25,13 @@ interface FuncScenario {
 
 const scenarios: FuncScenario[] = [
   {
-    kind: FunctionKind.ActionRun,
-    funcSpec: {
-      value: {},
-      handler: "workit",
-      codeBase64: "", // We rewrite this later
-    },
-    func: "actionRun.ts",
-  },
-  {
-    kind: FunctionKind.Validation,
+    kind: FunctionKind.SchemaVariantDefinition,
     funcSpec: {
       value: {},
       handler: "main",
       codeBase64: "", // We rewrite this later
     },
-    func: "validation.ts",
+    func: "schema-socket.ts",
   },
   {
     kind: FunctionKind.Validation,

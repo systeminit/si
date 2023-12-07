@@ -104,6 +104,7 @@ export type SocketDefinitionArityType = "many" | "one";
 export interface SocketDefinition {
   name: string;
   arity: SocketDefinitionArityType;
+  type: string;
   uiHidden?: boolean;
   valueFrom?: ValueFrom;
 }
@@ -112,6 +113,8 @@ export interface ISocketDefinitionBuilder {
   setName(name: string): this;
 
   setArity(arity: SocketDefinitionArityType): this;
+
+  setType(type: string): this;
 
   setUiHidden(hidden: boolean): this;
 
@@ -143,11 +146,21 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
    *  .build()
    */
   build(): SocketDefinition {
+    if (!this.socket.name) {
+      throw new Error("Name is required for socket");
+    }
+
+    if (!this.socket.type) {
+      this.socket.type = this.socket.name;
+    }
+
+    this.socket.type = this.socket.type.toLocaleLowerCase();
+
     return this.socket;
   }
 
   /**
-   * Specify the prop path if using a prop
+   * Specify the number of connections the socket can support
    *
    * @param {string} arity - [one | many]
    *
@@ -158,6 +171,53 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
    */
   setArity(arity: SocketDefinitionArityType): this {
     this.socket.arity = arity;
+    return this;
+  }
+
+  /**
+   * Specify the type of the socket. The input should be sequence of word chars
+   * (\w regex matcher), optionally followed by any `<identifier>`, which makes
+   * it a supertype of `identifier`. This can be repeated recursively as many
+   * times as necessary (see example). At socket connecting time an *input*
+   * socket can receive a connection of any *output* socket with its own type or
+   * any supertypes. e.g. An input socket of type `Port<string>` can receive a
+   * connection of an output socket of type `Docker<Port<string>>`, but not one
+   * of type `string`.
+   *
+   * If not set by the builder, the socket's name will be set as default value
+   * at build time.
+   *
+   * @param {string} type
+   *
+   * @returns this
+   *
+   * @example
+   *  .setType("EC2<IAM<string>>")
+   */
+  setType(type: string): this {
+    // TODO(victor): Move this validation to its own package so it can be reused by the frontend
+    {
+      let token = type;
+      const typeArray = [];
+
+      do {
+        const match = token.match(/^(\w+)(?:<(.+)>)?$/);
+
+        if (!match) {
+          throw new Error(`Couldn't parse socket type "${type}"`);
+        }
+
+        const [_, newType, tail] = match;
+
+        typeArray.push(newType);
+
+        if (tail == null) break;
+
+        token = tail;
+      } while (token != null);
+    }
+
+    this.socket.type = type;
     return this;
   }
 
@@ -1007,7 +1067,7 @@ export interface ISecretDefinitionBuilder {
  *
  * @example
  * const secretDefinition = new SecretDefinitionBuilder()
-*          .setName("DigitalOcean Token")
+ *          .setName("DigitalOcean Token")
  *         .addProp(
  *             new PropBuilder()
  *             .setKind("string")
