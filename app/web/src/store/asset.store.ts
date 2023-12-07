@@ -9,6 +9,7 @@ import { nilId } from "@/utils/nilId";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -122,6 +123,7 @@ export const useAssetStore = () => {
   const workspaceId = workspacesStore.selectedWorkspacePk;
 
   const funcsStore = useFuncStore();
+  const featureFlagsStore = useFeatureFlagsStore();
 
   let assetSaveDebouncer: ReturnType<typeof keyedDebouncer> | undefined;
 
@@ -351,10 +353,20 @@ export const useAssetStore = () => {
         },
 
         async LOAD_ASSET(assetId: AssetId) {
-          return new ApiRequest<Asset, Visibility & { id: AssetId }>({
+          return new ApiRequest<
+            Asset,
+            Visibility & {
+              id: AssetId;
+              hasSecretsEnabled: boolean;
+            }
+          >({
             url: "/variant_def/get_variant_def",
             keyRequestStatusBy: assetId,
-            params: { id: assetId, ...visibility },
+            params: {
+              id: assetId,
+              hasSecretsEnabled: featureFlagsStore.SECRETS,
+              ...visibility,
+            },
             onSuccess: (response) => {
               this.assetsById[response.id] = response;
             },
