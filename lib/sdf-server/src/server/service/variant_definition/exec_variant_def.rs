@@ -99,12 +99,7 @@ pub async fn exec_variant_def(
         leaf_funcs_to_migrate,
         attribute_prototypes,
         validation_prototypes,
-    ) = maybe_delete_schema_variant_connected_to_variant_def(
-        &ctx,
-        &mut variant_def,
-        request.auto_reattach_functions,
-    )
-    .await?;
+    ) = maybe_delete_schema_variant_connected_to_variant_def(&ctx, &mut variant_def).await?;
 
     let asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),

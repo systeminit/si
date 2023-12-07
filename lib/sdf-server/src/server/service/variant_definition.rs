@@ -22,12 +22,12 @@ use dal::{
     ActionPrototype, ActionPrototypeContext, ActionPrototypeError, AttributeContext,
     AttributeContextBuilderError, AttributeContextError, AttributePrototype,
     AttributePrototypeError, AttributePrototypeId, AttributeValueError, ChangeSetError, DalContext,
-    ExternalProvider, ExternalProviderError, Func, FuncBackendKind, FuncBackendResponseType,
-    FuncBinding, FuncBindingError, FuncError, FuncId, InternalProvider, InternalProviderError,
-    LeafInputLocation, LeafKind, Prop, PropError, PropKind, SchemaError, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, SocketId, StandardModel, StandardModelError, TenancyError,
-    TransactionsError, UserError, ValidationPrototype, ValidationPrototypeContext,
-    ValidationPrototypeError, ValidationPrototypeId, WsEventError,
+    ExternalProvider, ExternalProviderError, Func, FuncBinding, FuncBindingError, FuncError,
+    FuncId, InternalProvider, InternalProviderError, LeafInputLocation, LeafKind, Prop, PropError,
+    PropKind, SchemaError, SchemaVariant, SchemaVariantError, SchemaVariantId, SocketId,
+    StandardModel, StandardModelError, TenancyError, TransactionsError, UserError,
+    ValidationPrototype, ValidationPrototypeContext, ValidationPrototypeError,
+    ValidationPrototypeId, WsEventError,
 };
 use si_pkg::{SiPkgError, SpecError};
 
@@ -203,24 +203,8 @@ pub async fn save_variant_def(
 pub async fn is_variant_def_locked(
     ctx: &DalContext,
     variant_def: &SchemaVariantDefinition,
-) -> SchemaVariantDefinitionResult<(bool, bool)> {
-    let has_components = !variant_def.list_components(ctx).await?.is_empty();
-    let has_attr_funcs = if let Some(schema_variant_id) = variant_def.schema_variant_id().copied() {
-        SchemaVariant::all_funcs(ctx, schema_variant_id)
-            .await?
-            .iter()
-            .any(|func| {
-                func.backend_kind() == &FuncBackendKind::JsValidation
-                    || (func.backend_kind() == &FuncBackendKind::JsAttribute
-                        && func.name() != "si:resourcePayloadToValue"
-                        && func.backend_response_type() != &FuncBackendResponseType::CodeGeneration
-                        && func.backend_response_type() != &FuncBackendResponseType::Qualification)
-            })
-    } else {
-        false
-    };
-
-    Ok((has_components, has_attr_funcs))
+) -> SchemaVariantDefinitionResult<bool> {
+    Ok(!variant_def.list_components(ctx).await?.is_empty())
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -736,15 +720,14 @@ pub struct LeafFuncMigration {
 pub async fn maybe_delete_schema_variant_connected_to_variant_def(
     ctx: &DalContext,
     variant_def: &mut SchemaVariantDefinition,
-    auto_reattach: bool,
 ) -> SchemaVariantDefinitionResult<(
     Option<SchemaVariantId>,
     Vec<LeafFuncMigration>,
     Vec<AttributePrototypeDefinition>,
     Vec<ValidationPrototypeDefinition>,
 )> {
-    let (has_components, has_attr_funcs) = is_variant_def_locked(ctx, variant_def).await?;
-    if has_components || (has_attr_funcs && !auto_reattach) {
+    let has_components = is_variant_def_locked(ctx, variant_def).await?;
+    if has_components {
         return Err(SchemaVariantDefinitionError::VariantInUse);
     }
 

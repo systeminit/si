@@ -37,7 +37,6 @@ pub struct GetVariantDefResponse {
     pub funcs: Vec<ListedFuncView>,
     pub types: String,
     pub has_components: bool,
-    pub has_attr_funcs: bool,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
@@ -59,7 +58,6 @@ impl From<SchemaVariantDefinition> for GetVariantDefResponse {
             component_type: *def.component_type(),
             types: "".to_string(),
             has_components: false,
-            has_attr_funcs: false,
         }
     }
 }
@@ -81,7 +79,8 @@ pub async fn get_variant_def(
 
     let variant_id = variant_def.schema_variant_id().copied();
 
-    let (has_components, has_attr_funcs) = is_variant_def_locked(&ctx, &variant_def).await?;
+    let has_components = is_variant_def_locked(&ctx, &variant_def).await?;
+
     let asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
     )?;
@@ -89,7 +88,6 @@ pub async fn get_variant_def(
     let mut response: GetVariantDefResponse = variant_def.clone().into();
     response.schema_variant_id = variant_id;
     response.has_components = has_components;
-    response.has_attr_funcs = has_attr_funcs;
 
     response.code =
         asset_func
