@@ -2,6 +2,7 @@ use super::state::PosthogClient;
 use dal::{DalContext, HistoryActor};
 use si_posthog::FeatureFlag;
 
+#[allow(unused)]
 pub async fn feature_is_enabled(
     ctx: &DalContext,
     posthog_client: &PosthogClient,
