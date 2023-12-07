@@ -362,13 +362,17 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 pool_size,
             } => {
                 let mut builder = LocalUdsInstance::spec();
-                builder
-                    .try_cyclone_cmd_path(cyclone_cmd_path)
-                    .map_err(ConfigError::cyclone_spec_build)?;
-                builder.cyclone_decryption_key_path(cyclone_decryption_key_path);
-                builder
-                    .try_lang_server_cmd_path(lang_server_cmd_path)
-                    .map_err(ConfigError::cyclone_spec_build)?;
+                //we only need these if running local process. Maybe the builder should handle
+                //this?
+                if matches!(runtime_strategy, LocalUdsRuntimeStrategy::LocalProcess) {
+                    builder
+                        .try_cyclone_cmd_path(cyclone_cmd_path)
+                        .map_err(ConfigError::cyclone_spec_build)?;
+                    builder.cyclone_decryption_key_path(cyclone_decryption_key_path);
+                    builder
+                        .try_lang_server_cmd_path(lang_server_cmd_path)
+                        .map_err(ConfigError::cyclone_spec_build)?;
+                }
                 builder.socket_strategy(socket_strategy);
                 builder.runtime_strategy(runtime_strategy);
                 if let Some(watch_timeout) = watch_timeout {

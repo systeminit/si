@@ -1,0 +1,13 @@
+[Unit]
+Description=Veritech Server
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/veritech --cyclone-local-firecracker --cyclone-pool-size 1000
+Type=exec
+Restart=always
+
+
+[Install]
+WantedBy=default.target
+RequiredBy=network.target
