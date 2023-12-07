@@ -270,6 +270,7 @@ impl AttributePrototypeArgument {
             apa_id,
             EdgeWeightKindDiscriminants::PrototypeArgument,
         )?;
+        workspace_snapshot.remove_node_by_id(apa_id)?;
 
         Ok(())
     }
