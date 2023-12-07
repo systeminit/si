@@ -306,6 +306,7 @@ async fn setup_esp(ctx: &DalContext) -> (ComponentBag, PropId, PropId, ExternalP
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        "output",
         SocketArity::Many,
         false,
     )
@@ -430,6 +431,7 @@ async fn setup_swings(ctx: &DalContext) -> (ComponentBag, PropId, InternalProvid
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        "swings",
         SocketArity::Many,
         false,
     )
@@ -567,6 +569,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        "source_data",
         SocketArity::Many,
         false,
     )
@@ -674,6 +677,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        "destination_data",
         SocketArity::One,
         false,
     )

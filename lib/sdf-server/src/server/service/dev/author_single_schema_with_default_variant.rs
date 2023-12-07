@@ -92,6 +92,7 @@ impl AuthoringHelper {
                 identity_func_id,
                 identity_func_binding_id,
                 identity_func_binding_return_value_id,
+                "universal",
                 SocketArity::Many,
                 false,
             )
@@ -106,6 +107,7 @@ impl AuthoringHelper {
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
+            "universal",
             SocketArity::Many,
             false,
         )

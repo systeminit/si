@@ -14,6 +14,7 @@ use super::{read_unique_id, write_unique_id, PkgNode};
 
 const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";
+const KEY_TYPE_STRING_STR: &str = "type";
 const KEY_ARITY_STR: &str = "arity";
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";
 const KEY_UI_HIDDEN_STR: &str = "ui_hidden";
@@ -21,6 +22,7 @@ const KEY_UI_HIDDEN_STR: &str = "ui_hidden";
 #[derive(Clone, Debug)]
 pub struct SocketData {
     pub name: String,
+    pub type_string: String,
     pub kind: SocketSpecKind,
     pub arity: SocketSpecArity,
     pub func_unique_id: Option<String>,
@@ -45,7 +47,10 @@ impl WriteBytes for SocketNode {
         write_key_value_line(writer, KEY_NAME_STR, &self.name)?;
 
         if let Some(data) = &self.data {
+            // KEY_KIND_STR string should be the first data field to be serialized, since we
+            // use it to detect if the payload has a data field in read_bytes below
             write_key_value_line(writer, KEY_KIND_STR, data.kind)?;
+            write_key_value_line(writer, KEY_TYPE_STRING_STR, data.type_string.clone())?;
             write_key_value_line(writer, KEY_ARITY_STR, data.arity)?;
 
             write_key_value_line(
@@ -76,6 +81,12 @@ impl ReadBytes for SocketNode {
                 let arity_str = read_key_value_line(reader, KEY_ARITY_STR)?;
                 let arity = SocketSpecArity::from_str(&arity_str).map_err(GraphError::parse)?;
 
+                // We have to check if the type_string has been set for backwards compatibility
+                let type_string = match read_key_value_line_opt(reader, KEY_KIND_STR)? {
+                    None => name.to_owned(),
+                    Some(s) => s,
+                };
+
                 let func_unique_id_str = read_key_value_line(reader, KEY_FUNC_UNIQUE_ID_STR)?;
                 let func_unique_id = if func_unique_id_str.is_empty() {
                     None
@@ -88,6 +99,7 @@ impl ReadBytes for SocketNode {
 
                 Some(SocketData {
                     name: name.to_owned(),
+                    type_string,
                     kind,
                     arity,
                     func_unique_id,
@@ -116,6 +128,7 @@ impl NodeChild for SocketSpec {
                 name: self.name.to_owned(),
                 data: self.data.as_ref().map(|data| SocketData {
                     name: self.name.to_owned(),
+                    type_string: data.type_string.to_owned(),
                     kind: data.kind,
                     arity: data.arity,
                     func_unique_id: data.func_unique_id.to_owned(),

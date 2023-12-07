@@ -233,6 +233,7 @@ impl SchemaVariant {
             *identity_func.id(),
             *identity_func_binding.id(),
             *identity_func_binding_return_value.id(),
+            "Frame",
             SocketArity::Many,
             true,
         )
@@ -247,6 +248,7 @@ impl SchemaVariant {
             *identity_func.id(),
             *identity_func_binding.id(),
             *identity_func_binding_return_value.id(),
+            "Frame",
             SocketArity::Many,
             true,
         )

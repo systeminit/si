@@ -189,6 +189,7 @@ impl ConfigurationGraphConstructor {
                 identity_func_id,
                 identity_func_binding_id,
                 identity_func_binding_return_value_id,
+                "Input",
                 SocketArity::Many,
                 false,
             )
@@ -204,6 +205,7 @@ impl ConfigurationGraphConstructor {
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
+            "Output",
             SocketArity::Many,
             false,
         )

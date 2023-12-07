@@ -9,6 +9,7 @@ use crate::{node::PkgNode, SocketSpec, SocketSpecArity, SocketSpecKind};
 #[derive(Clone, Debug)]
 pub struct SiPkgSocketData {
     name: String,
+    type_string: String,
     func_unique_id: Option<String>,
     kind: SocketSpecKind,
     arity: SocketSpecArity,
@@ -66,6 +67,7 @@ impl<'a> SiPkgSocket<'a> {
             name: node.name,
             data: node.data.map(|data| SiPkgSocketData {
                 name: data.name,
+                type_string: data.type_string,
                 kind: data.kind,
                 func_unique_id: data.func_unique_id,
                 arity: data.arity,
@@ -130,6 +132,7 @@ impl<'a> TryFrom<SiPkgSocket<'a>> for SocketSpec {
             }
             data_builder
                 .name(&data.name)
+                .type_string(&data.type_string)
                 .kind(data.kind)
                 .arity(data.arity)
                 .ui_hidden(data.ui_hidden);

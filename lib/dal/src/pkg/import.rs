@@ -1749,6 +1749,7 @@ async fn create_socket(
                 *identity_func.id(),
                 *identity_func_binding.id(),
                 *identity_fbrv.id(),
+                data.name(),
                 data.arity().into(),
                 false,
             )
@@ -1766,6 +1767,7 @@ async fn create_socket(
                 *identity_func.id(),
                 *identity_func_binding.id(),
                 *identity_fbrv.id(),
+                data.name(),
                 data.arity().into(),
                 false,
             )

@@ -154,6 +154,7 @@ pub struct Socket {
     id: SocketId,
     name: String,
     human_name: Option<String>,
+    type_string: String,
     kind: SocketKind,
     edge_kind: SocketEdgeKind,
     diagram_kind: DiagramKind,
@@ -181,6 +182,7 @@ impl Socket {
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
+        type_string: impl AsRef<str>,
         kind: SocketKind,
         socket_edge_kind: &SocketEdgeKind,
         arity: &SocketArity,
@@ -188,16 +190,18 @@ impl Socket {
         schema_variant_id: Option<SchemaVariantId>,
     ) -> SocketResult<Self> {
         let name = name.as_ref();
+        let type_string = type_string.as_ref();
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM socket_create_v1($1, $2, $3, $4, $5, $6, $7)",
+                "SELECT object FROM socket_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &name,
+                    &type_string,
                     &kind.as_ref(),
                     &socket_edge_kind.as_ref(),
                     &arity.as_ref(),
@@ -223,6 +227,7 @@ impl Socket {
 
     standard_model_accessor!(human_name, Option<String>, SocketResult);
     standard_model_accessor!(name, String, SocketResult);
+    standard_model_accessor!(type_string, String, SocketResult);
     standard_model_accessor!(kind, Enum(SocketKind), SocketResult);
     standard_model_accessor!(edge_kind, Enum(SocketEdgeKind), SocketResult);
     standard_model_accessor!(arity, Enum(SocketArity), SocketResult);
