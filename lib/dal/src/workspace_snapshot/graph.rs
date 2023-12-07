@@ -156,6 +156,10 @@ impl WorkspaceSnapshotGraph {
         Ok(new_edge_index)
     }
 
+    pub(crate) fn remove_node_id(&mut self, id: impl Into<Ulid>) {
+        self.node_index_by_id.remove(&id.into());
+    }
+
     pub fn add_node(&mut self, node: NodeWeight) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         // Cache the node id and the lineage id;
         let node_id = node.id();
@@ -1412,6 +1416,10 @@ impl WorkspaceSnapshotGraph {
         Ok(prop_node_indexes.get(0).copied())
     }
 
+    pub(crate) fn remove_node(&mut self, node_index: NodeIndex) {
+        self.graph.remove_node(node_index);
+    }
+
     /// [`StableGraph`] guarantees the stability of [`NodeIndex`] across removals, however there
     /// are **NO** guarantees around the stability of [`EdgeIndex`] across removals. If
     /// [`Self::cleanup()`] has been called, then any [`EdgeIndex`] found before
@@ -1491,10 +1499,6 @@ impl WorkspaceSnapshotGraph {
                 work_queue.push_back(edge_ref.source());
             }
         }
-
-        // NOTE(nick,jacob): this is potentially expensive. We may want to be smarter about how
-        // we update the maps on self.
-        self.cleanup();
 
         Ok(updated)
     }

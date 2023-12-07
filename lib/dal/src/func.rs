@@ -345,6 +345,9 @@ impl Func {
             )?;
         }
 
+        // Removes the actual node from the graph
+        workspace_snapshot.remove_node_by_id(id)?;
+
         Ok(())
     }
 

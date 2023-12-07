@@ -362,6 +362,8 @@ impl FuncArgument {
             EdgeWeightKindDiscriminants::Use,
         )?;
 
+        workspace_snapshot.remove_node_by_id(id)?;
+
         // TODO: Note we must also delete the attribute prototype arguments that depend on this func
         // argument
 

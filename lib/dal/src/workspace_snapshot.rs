@@ -538,6 +538,15 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
+    pub fn remove_node_by_id(&mut self, id: impl Into<Ulid>) -> WorkspaceSnapshotResult<()> {
+        let id: Ulid = id.into();
+        let node_idx = self.get_node_index_by_id(id)?;
+        self.working_copy()?.remove_node(node_idx);
+        self.working_copy()?.remove_node_id(id);
+
+        Ok(())
+    }
+
     pub fn remove_edge(
         &mut self,
         change_set: &ChangeSetPointer,

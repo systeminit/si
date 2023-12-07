@@ -231,6 +231,8 @@ impl AttributePrototype {
             EdgeWeightKindDiscriminants::Prototype,
         )?;
 
+        workspace_snapshot.remove_node_by_id(prototype_id)?;
+
         Ok(())
     }
 }
