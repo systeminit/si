@@ -1,18 +1,70 @@
 load("//rootfs:toolchain.bzl", "RootfsToolchainInfo")
 load("//git:toolchain.bzl", "GitToolchainInfo")
+load(
+    "@prelude//python:toolchain.bzl",
+    "PythonToolchainInfo",
+)
+load(
+    "//artifact.bzl",
+    "ArtifactInfo",
+)
+load(
+    "//git.bzl",
+    "GitInfo",
+    _git_info = "git_info",
+)
+load(
+    "//git.bzl",
+    "GitInfo",
+    _git_info = "git_info",
+)
 
 RootfsInfo = provider(fields = {
     "tar_archive": provider_field(typing.Any, default = None),  # [Artifact]
 })
 
-def rootfs_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, RootfsInfo]]:
+def rootfs_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, RootfsInfo, ArtifactInfo, GitInfo]]:
 
-    rootfs_info = build_rootfs(ctx)
+    if ctx.attrs.rootfs_name:
+        tar_archive = ctx.actions.declare_output("{}.ext4".format(ctx.attrs.rootfs_name))
+    else:
+        tar_archive = ctx.actions.declare_output("{}.ext4".format(ctx.attrs.name))
+
+    build_metadata = ctx.actions.declare_output("build_metadata.json")
+
+    rootfs_toolchain = ctx.attrs._rootfs_toolchain[RootfsToolchainInfo]
+    git_toolchain = ctx.attrs._git_toolchain[GitToolchainInfo]
+
+    git_info = _git_info(ctx)
+    print(git_info)
+    cmd = cmd_args(
+        "/bin/bash",
+        rootfs_toolchain.rootfs_build[DefaultInfo].default_outputs,
+        git_info.file,
+        build_metadata.as_output(),
+        tar_archive.as_output()
+    )
+
+    # Add the dependent binary(s) to the build process
+    for dep in ctx.attrs.build_deps or []:
+        cmd.add(dep)
+
+    ctx.actions.run(cmd, category = "rootfs_build")
 
     return [
         DefaultInfo(
-            default_output = rootfs_info.tar_archive,
+            default_output = tar_archive,
         ),
+        RootfsInfo(
+            tar_archive = tar_archive,
+        ),
+        ArtifactInfo(
+            artifact = tar_archive,
+            metadata = build_metadata,
+            family = "rootfs",
+            variant = "tar",
+        ),
+        git_info
     ]
 
 rootfs = rule(
@@ -32,36 +84,13 @@ rootfs = rule(
             default = "toolchains//:rootfs",
             providers = [RootfsToolchainInfo],
         ),
+        "_python_toolchain": attrs.toolchain_dep(
+            default = "toolchains//:python",
+            providers = [PythonToolchainInfo],
+        ),
         "_git_toolchain": attrs.toolchain_dep(
             default = "toolchains//:git",
             providers = [GitToolchainInfo],
         ),
     },
 )
-
-def build_rootfs(ctx: AnalysisContext) -> RootfsInfo:
-
-    if ctx.attrs.rootfs_name:
-        tar_archive = ctx.actions.declare_output("{}.ext4".format(ctx.attrs.rootfs_name))
-    else:
-        tar_archive = ctx.actions.declare_output("{}.ext4".format(ctx.attrs.name))
-
-    rootfs_toolchain = ctx.attrs._rootfs_toolchain[RootfsToolchainInfo]
-    git_toolchain = ctx.attrs._git_toolchain[GitToolchainInfo]
-
-    cmd = cmd_args(
-        "/bin/bash",
-        rootfs_toolchain.rootfs_build[DefaultInfo].default_outputs,
-        git_toolchain.git_info[DefaultInfo].default_outputs,
-        tar_archive.as_output()
-    )
-
-    # Add the dependent binary(s) to the build process
-    for dep in ctx.attrs.build_deps or []:
-        cmd.add(dep)
-
-    ctx.actions.run(cmd, category = "rootfs_build")
-
-    return RootfsInfo(
-        tar_archive = tar_archive,
-    )
