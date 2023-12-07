@@ -198,7 +198,8 @@ impl Func {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         let _node_index = workspace_snapshot.add_node(node_weight.clone())?;
 
-        let func_category_id = workspace_snapshot.get_category(CategoryNodeKind::Func)?;
+        let func_category_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Func)?;
         workspace_snapshot.add_edge(
             func_category_id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
@@ -217,7 +218,8 @@ impl Func {
 
     pub fn find_by_name(ctx: &DalContext, name: impl AsRef<str>) -> FuncResult<Option<FuncId>> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        let func_category_id = workspace_snapshot.get_category(CategoryNodeKind::Func)?;
+        let func_category_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Func)?;
         let func_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
             func_category_id,
             EdgeWeightKindDiscriminants::Use,
@@ -357,7 +359,8 @@ impl Func {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
         let mut funcs = vec![];
-        let func_category_id = workspace_snapshot.get_category(CategoryNodeKind::Func)?;
+        let func_category_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Func)?;
 
         let func_node_indexes = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
             func_category_id,

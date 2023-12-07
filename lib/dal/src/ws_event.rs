@@ -3,6 +3,7 @@ use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
 
+use crate::component::ComponentCreatedPayload;
 use crate::{
     pkg::ModuleImported, user::CursorPayload, ChangeSetPk, DalContext, PropId, StandardModelError,
     TransactionsError, WorkspacePk,
@@ -40,7 +41,7 @@ pub enum WsPayload {
     ChangeSetWritten(ChangeSetPk),
     // CheckedQualifications(QualificationCheckPayload),
     // CodeGenerated(CodeGeneratedPayload),
-    // ComponentCreated(ComponentCreatedPayload),
+    ComponentCreated(ComponentCreatedPayload),
     Cursor(CursorPayload),
     // FixBatchReturn(FixBatchReturn),
     // FixReturn(FixReturn),

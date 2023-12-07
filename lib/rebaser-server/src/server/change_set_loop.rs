@@ -149,9 +149,9 @@ async fn process_delivery(
     let onto_vector_clock_id: VectorClockId = message.onto_vector_clock_id.into();
     let (conflicts, updates) = to_rebase_workspace_snapshot
         .detect_conflicts_and_updates(
-            dbg!(to_rebase_change_set.vector_clock_id()),
+            to_rebase_change_set.vector_clock_id(),
             &mut onto_workspace_snapshot,
-            dbg!(onto_vector_clock_id),
+            onto_vector_clock_id,
         )
         .await?;
     info!(

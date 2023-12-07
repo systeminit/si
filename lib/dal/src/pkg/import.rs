@@ -1885,17 +1885,6 @@ async fn import_schema(
             )
             .await?;
 
-            // NOTE(nick): keeping this debugging code because it's useful for seeing the graph
-            // when a single schema variant has been imported... it's not absolutely gigantic at
-            // this point.
-            // {
-            //     let mut snapshot = ctx.workspace_snapshot().unwrap().try_lock().unwrap();
-            //     dbg!("snapshot before panic");
-            //     snapshot.cleanup().unwrap();
-            //     snapshot.tiny_dot_to_file()
-            //     panic!();
-            // }
-
             // if let Some(variant) = variant {
             //     installed_schema_variant_ids.push(*variant.id());
             //

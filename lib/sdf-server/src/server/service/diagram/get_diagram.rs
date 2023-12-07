@@ -1,4 +1,5 @@
 use axum::{extract::Query, Json};
+use dal::diagram::Diagram;
 use dal::Visibility;
 use serde::{Deserialize, Serialize};
 
@@ -12,14 +13,6 @@ pub struct GetDiagramRequest {
     pub visibility: Visibility,
 }
 
-// FIXME(nick): this is a fake diagram! Replace this!
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct Diagram {
-    components: Vec<()>,
-    edges: Vec<()>,
-}
-
 pub type GetDiagramResponse = Diagram;
 
 pub async fn get_diagram(
@@ -27,13 +20,7 @@ pub async fn get_diagram(
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetDiagramRequest>,
 ) -> DiagramResult<Json<GetDiagramResponse>> {
-    let _ctx = builder.build(request_ctx.build(request.visibility)).await?;
-
-    // FIXME(nick): use a real response.
-    // let response = Diagram::assemble(&ctx).await?;
-    let response = Diagram {
-        components: Vec::new(),
-        edges: Vec::new(),
-    };
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let response = Diagram::assemble(&ctx).await?;
     Ok(Json(response))
 }

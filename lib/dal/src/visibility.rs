@@ -5,7 +5,7 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::change_set_pointer::{ChangeSetPointerId};
+use crate::change_set_pointer::ChangeSetPointerId;
 use serde_aux::field_attributes::deserialize_number_from_string;
 use ulid::Ulid;
 

@@ -7,36 +7,28 @@
       </div>
     </template>
     <template v-else-if="schemasReqStatus.isSuccess">
-      <ScrollArea class="">
-        <SiSearch
-          autoSearch
-          placeholder="search assets"
-          @search="onSearchUpdated"
-        />
+      <ScrollArea>
         <template #top>
-          <SidebarSubpanelTitle label="Assets" icon="component-plus" />
+          <SidebarSubpanelTitle label="Assets" icon="component-plus">
+            <Icon
+              v-tooltip="
+                'Drag the assets that you wish to include in your application into the canvas to the right.'
+              "
+              allowPointerEvents
+              name="help-circle"
+            />
+          </SidebarSubpanelTitle>
 
-          <div
-            ref="instructionsRef"
-            class="border-b-2 dark:border-neutral-600 text-sm leading-tight p-2.5 text-neutral-400 dark:text-neutral-300 flex flex-row items-center gap-2"
-          >
-            <!-- <a
-              href="#"
-              class="hover:text-neutral-600 dark:hover:text-neutral-400"
-              @click="hideInstructions"
-            >
-              <Icon name="x-circle" />
-            </a> -->
-            <div>
-              Drag the assets that you wish to include in your application into
-              the canvas to the right.
-            </div>
-          </div>
+          <SiSearch
+            autoSearch
+            placeholder="search assets"
+            @search="onSearchUpdated"
+          />
         </template>
 
         <ul class="overflow-y-auto">
           <Collapsible
-            v-for="(category, categoryIndex) in orderedFilteredComponents"
+            v-for="(category, categoryIndex) in filteredSchemas"
             :key="categoryIndex"
             :label="category.displayName"
             as="li"
@@ -58,12 +50,15 @@
                     fixesAreRunning
                       ? 'hover:cursor-progress'
                       : 'hover:border-action-500 dark:hover:border-action-300 dark:text-white hover:text-action-500 dark:hover:text-action-500 hover:cursor-pointer',
-                    componentsStore.selectedInsertSchemaId === schema.id
+                    componentsStore.selectedInsertSchemaVariantId ===
+                      schema.schemaVariantId
                       ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
                       : '',
                   )
                 "
-                @mousedown.left="onSelect(schema.id, fixesAreRunning)"
+                @mousedown.left="
+                  onSelect(schema.schemaVariantId, fixesAreRunning)
+                "
                 @click.right.prevent
               />
             </li>
@@ -72,13 +67,13 @@
       </ScrollArea>
     </template>
 
-    <template v-if="selectedSchema">
+    <template v-if="selectedSchemaVariant">
       <Teleport to="body">
         <div
           ref="mouseNode"
           class="fixed top-0 pointer-events-none translate-x-[-50%] translate-y-[-50%] z-100"
         >
-          <NodeSkeleton :color="selectedSchema.color" />
+          <NodeSkeleton :color="selectedSchemaVariant.color" />
         </div>
       </Teleport>
     </template>
@@ -91,25 +86,16 @@ import { computed, onMounted, onBeforeUnmount, ref } from "vue";
 import { Collapsible, Icon, ScrollArea } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import SiNodeSprite from "@/components/SiNodeSprite.vue";
-import { useComponentsStore, MenuSchema } from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch from "@/components/SiSearch.vue";
 
 defineProps<{ fixesAreRunning: boolean }>();
 
-const instructionsRef = ref();
-
-// const hideInstructions = () => {
-//   if (instructionsRef.value) {
-//     instructionsRef.value.classList.add("hidden");
-//   }
-// };
-
 const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used
 // otherwise we could trigger calls here
-
 const schemasReqStatus = componentsStore.getRequestStatus(
   "FETCH_AVAILABLE_SCHEMAS",
 );
@@ -123,46 +109,74 @@ const filterModeActive = computed(() => !!filterStringCleaned.value);
 function onSearchUpdated(newFilterString: string) {
   filterString.value = newFilterString;
 }
-const addMenuData = computed(() => componentsStore.nodeAddMenu);
 
-// TODO(nick): fold this into "filteredComponents" so that they are already sorted.
-// For context, TypeScript was super rusty (pun not intended) when I wrote this.
-const orderedFilteredComponents = computed(() => {
-  const orderedFilteredComponents = [];
-  for (const filteredComponent of filteredComponents.value) {
-    const schemas = filteredComponent.schemas;
-    filteredComponent.schemas = _.orderBy(schemas, "displayName");
-    orderedFilteredComponents.push(filteredComponent);
-  }
-  return _.orderBy(orderedFilteredComponents, "displayName");
+const categories = computed(() => {
+  const categories = _.compact(
+    _.map(
+      _.groupBy(componentsStore.schemaVariants, (s) => s.category),
+      (schemaVariants, displayName) => {
+        const schemas = _.compact(
+          _.map(schemaVariants, (schemaVariant) => {
+            return {
+              displayName: schemaVariant.schemaName,
+              schemaId: schemaVariant.schemaId,
+              schemaVariantId: schemaVariant.id,
+              color: schemaVariant?.color ?? "#777",
+            };
+          }),
+        );
+        return {
+          displayName,
+          schemas: _.orderBy(schemas, "displayName"),
+        };
+      },
+    ),
+  );
+  return _.orderBy(categories, "displayName");
 });
 
-const filteredComponents = computed(() => {
-  if (!filterModeActive.value) return addMenuData.value;
-  // need a deep clone because of the complex object
-  return _.filter(_.cloneDeep(addMenuData.value), (c) => {
-    // if the string matches the group, return the whole thing
-    if (c.displayName.toLowerCase().includes(filterStringCleaned.value))
-      return true;
+const filteredSchemas = computed(() => {
+  if (!filterModeActive.value) return categories.value;
+
+  const filteredCategories = [] as typeof categories.value;
+  _.each(categories.value, (c) => {
+    // if the string matches the group, add the whole thing
+    if (c.displayName.toLowerCase().includes(filterStringCleaned.value)) {
+      filteredCategories.push(c);
+      return;
+    }
+
     // otherwise, filter out the individual assets that don't match
-    c.schemas = _.filter(c.schemas, (s) =>
-      s.displayName.toLowerCase().includes(filterStringCleaned.value),
-    );
-    return c.schemas.length > 0;
+    const matchingSchemas = _.filter(c.schemas, (s) => {
+      const categoryAndSchemaName = `${c.displayName} ${s.displayName}`;
+      return categoryAndSchemaName
+        .toLowerCase()
+        .includes(filterStringCleaned.value);
+    });
+
+    if (matchingSchemas.length > 0) {
+      filteredCategories.push({
+        displayName: c.displayName,
+        schemas: matchingSchemas,
+      });
+    }
   });
+
+  // ensure they are ordered before returning
+  for (const filteredCategory of filteredCategories) {
+    filteredCategory.schemas = _.orderBy(
+      filteredCategory.schemas,
+      "displayName",
+    );
+  }
+  return _.orderBy(filteredCategories, "displayName");
 });
 
-const schemasById = computed(() => {
-  return addMenuData.value.reduce((p, c) => {
-    c.schemas.forEach((schema) => {
-      p[schema.id] = schema;
-    });
-    return p;
-  }, {} as Record<string, MenuSchema>);
-});
-const selectedSchema = computed(() => {
-  if (componentsStore.selectedInsertSchemaId)
-    return schemasById.value[componentsStore.selectedInsertSchemaId];
+const selectedSchemaVariant = computed(() => {
+  if (componentsStore.selectedInsertSchemaVariantId)
+    return componentsStore.schemaVariantsById[
+      componentsStore.selectedInsertSchemaVariantId
+    ];
   return undefined;
 });
 const selecting = ref(false);
@@ -177,18 +191,23 @@ const updateMouseNode = (e: MouseEvent) => {
   }
 };
 
-function onSelect(schemaId: string, fixesAreRunning: boolean) {
+function onSelect(schemaVariantId: string, fixesAreRunning: boolean) {
   if (fixesAreRunning) {
     // Prevent selection while fixes are running
     return;
   }
 
-  componentsStore.selectedInsertSchemaId = schemaId;
-  selecting.value = true;
+  if (componentsStore.selectedInsertSchemaVariantId === schemaVariantId) {
+    componentsStore.selectedInsertSchemaVariantId = null;
+    selecting.value = false;
+  } else {
+    componentsStore.selectedInsertSchemaVariantId = schemaVariantId;
+    selecting.value = true;
+  }
 }
 
 function onDeselect() {
-  componentsStore.selectedInsertSchemaId = null;
+  componentsStore.selectedInsertSchemaVariantId = null;
 }
 
 const onKeyDown = (e: KeyboardEvent) => {

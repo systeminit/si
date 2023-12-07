@@ -401,20 +401,6 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy()?.get_node_index_by_id(id)?)
     }
 
-    pub fn add_edge_from_root(
-        &mut self,
-        change_set: &ChangeSetPointer,
-        destination: NodeIndex,
-    ) -> WorkspaceSnapshotResult<EdgeIndex> {
-        let root = self.working_copy()?.root();
-        let new_edge = self.working_copy()?.add_edge(
-            root,
-            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            destination,
-        )?;
-        Ok(new_edge)
-    }
-
     #[instrument(skip_all)]
     pub async fn find(
         ctx: &DalContext,
@@ -446,9 +432,12 @@ impl WorkspaceSnapshot {
         Self::try_from(row)
     }
 
-    pub fn get_category(&mut self, kind: CategoryNodeKind) -> WorkspaceSnapshotResult<Ulid> {
-        // NOTE(nick): we should not expose the index.
-        let (category_node_id, _) = self.working_copy()?.get_category(kind)?;
+    pub fn get_category_node(
+        &mut self,
+        source: Option<Ulid>,
+        kind: CategoryNodeKind,
+    ) -> WorkspaceSnapshotResult<Ulid> {
+        let (category_node_id, _) = self.working_copy()?.get_category_node(source, kind)?;
         Ok(category_node_id)
     }
 

@@ -104,17 +104,6 @@ export type ComponentTreeNode = {
   statusIcons?: StatusIconsSet;
 } & FullComponent;
 
-export type MenuSchema = {
-  id: SchemaId;
-  displayName: string;
-  color: string;
-};
-
-type NodeAddMenu = {
-  displayName: string;
-  schemas: MenuSchema[];
-}[];
-
 const qualificationStatusToIconMap: Record<
   QualificationStatus | "notexists",
   DiagramStatusIcon
@@ -221,8 +210,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           panTargetComponentId: null as ComponentId | null,
 
-          // used by the diagram to track which schema is selected for insertion
-          selectedInsertSchemaId: null as SchemaId | null,
+          // used by the diagram to track which schema variant is selected for insertion
+          selectedInsertSchemaVariantId: null as SchemaVariantId | null,
 
           refreshingStatus: {} as Record<ComponentId, boolean>,
 
@@ -390,32 +379,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           schemaVariants: (state) => _.values(state.schemaVariantsById),
 
-          schemaVariantsByCategory(): Record<string, DiagramSchemaVariant[]> {
-            return _.groupBy(this.schemaVariants, (s) => s.category);
-          },
-
-          nodeAddMenu(): NodeAddMenu {
-            return _.compact(
-              _.map(
-                this.schemaVariantsByCategory,
-                (schemaVariants, displayName) => {
-                  return {
-                    displayName,
-                    schemas: _.compact(
-                      _.map(schemaVariants, (schemaVariant) => {
-                        return {
-                          displayName: schemaVariant.schemaName,
-                          id: schemaVariant.id,
-                          color: schemaVariant?.color ?? "#777",
-                        };
-                      }),
-                    ),
-                  };
-                },
-              ),
-            );
-          },
-
           changeStatsSummary(): Record<ChangeStatus | "total", number> {
             const allChanged = _.filter(
               this.allComponents,
@@ -508,7 +471,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async SET_COMPONENT_DIAGRAM_POSITION(
-            nodeId: ComponentNodeId,
+            componentId: ComponentId,
             position: Vector2d,
             size?: Size2D,
           ) {
@@ -521,14 +484,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             return new ApiRequest<{ componentStats: ComponentStats }>({
               method: "post",
-              url: "diagram/set_node_position",
+              url: "diagram/set_component_position",
               params: {
-                nodeId,
+                componentId,
                 x: Math.round(position.x).toString(),
                 y: Math.round(position.y).toString(),
                 width,
                 height,
-                diagramKind: "configuration",
                 ...visibilityParams,
               },
               onSuccess: (response) => {
@@ -537,7 +499,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
           async CREATE_COMPONENT(
-            schemaId: string,
+            schemaVariantId: string,
             position: Vector2d,
             parentNodeId?: string,
           ) {
@@ -548,13 +510,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             return new ApiRequest<{
               componentId: ComponentId;
-              nodeId: ComponentNodeId;
             }>({
               method: "post",
-              url: "diagram/create_node",
+              url: "diagram/create_component",
               headers: { accept: "application/json" },
               params: {
-                schemaId,
+                schemaVariantId,
                 parentId: parentNodeId,
                 x: position.x.toString(),
                 y: position.y.toString(),

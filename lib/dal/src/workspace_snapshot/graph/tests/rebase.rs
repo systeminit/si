@@ -124,11 +124,24 @@ mod test {
         )
         .expect("could not add edge");
 
-        // Detect conflicts and updates.
+        // Before cleanup, detect conflicts and updates.
+        let (before_cleanup_conflicts, before_cleanup_updates) = to_rebase
+            .detect_conflicts_and_updates(
+                to_rebase_change_set.vector_clock_id(),
+                &onto,
+                onto_change_set.vector_clock_id(),
+            )
+            .expect("could not detect conflicts and updates");
+
+        // Cleanup and check node count.
+        onto.cleanup();
+        to_rebase.cleanup();
         assert_eq!(
             6,                 // expected
             onto.node_count()  // actual
         );
+
+        // Detect conflicts and updates. Ensure cleanup did not affect the results.
         let (conflicts, updates) = to_rebase
             .detect_conflicts_and_updates(
                 to_rebase_change_set.vector_clock_id(),
@@ -140,6 +153,14 @@ mod test {
         assert_eq!(
             2,             // expected
             updates.len()  // actual
+        );
+        assert_eq!(
+            before_cleanup_conflicts, // expected
+            conflicts                 // actual
+        );
+        assert_eq!(
+            before_cleanup_updates, // expected
+            updates                 // actual
         );
 
         // Ensure that we do not have duplicate updates.
