@@ -1,18 +1,18 @@
-use super::{FuncResult, FuncVariant};
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
-use crate::server::tracking::track;
-use crate::service::func::FuncError;
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use base64::engine::general_purpose;
 use base64::Engine;
 use dal::change_set_pointer::ChangeSetPointerId;
 use dal::{
-    generate_name, ActionKind, ActionPrototype, ActionPrototypeContext, AttributePrototype,
-    ChangeSet, DalContext, ExternalProviderId, Func, FuncBackendResponseType, FuncId, PropId,
-    SchemaVariant, SchemaVariantId, StandardModel, Visibility, WsEvent,
+    generate_name, ActionKind, DalContext, ExternalProviderId, Func, FuncBackendResponseType,
+    FuncId, PropId, SchemaVariantId, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+
+use super::{FuncResult, FuncVariant};
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
+use crate::service::func::FuncError;
 
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -114,7 +114,7 @@ async fn create_func_stub(
 async fn create_validation_func(
     ctx: &DalContext,
     name: Option<String>,
-    options: Option<CreateFuncOptions>,
+    _options: Option<CreateFuncOptions>,
 ) -> FuncResult<Func> {
     let func = create_func_stub(
         ctx,
@@ -166,7 +166,7 @@ async fn create_validation_func(
 async fn create_action_func(
     ctx: &DalContext,
     name: Option<String>,
-    options: Option<CreateFuncOptions>,
+    _options: Option<CreateFuncOptions>,
 ) -> FuncResult<Func> {
     let func = create_func_stub(
         ctx,
@@ -229,7 +229,7 @@ async fn create_attribute_func(
     ctx: &DalContext,
     name: Option<String>,
     variant: FuncVariant,
-    options: Option<CreateFuncOptions>,
+    _options: Option<CreateFuncOptions>,
 ) -> FuncResult<Func> {
     let (code, handler, response_type) = match variant {
         FuncVariant::Attribute => (
@@ -323,7 +323,7 @@ pub async fn create_func(
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<CreateFuncRequest>,
 ) -> FuncResult<impl IntoResponse> {
-    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     if let Some(name) = request.name.as_deref() {
         if dal::func::is_intrinsic(name)
@@ -333,7 +333,7 @@ pub async fn create_func(
         }
     }
 
-    let mut force_changeset_pk: Option<ChangeSetPointerId> = None;
+    let force_changeset_pk: Option<ChangeSetPointerId> = None;
     //    if ctx.visibility().is_head() {
     //        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
     //

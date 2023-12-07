@@ -158,24 +158,24 @@ impl ChangeSetPointer {
             .workspace_pk()
             .ok_or(ChangeSetPointerError::NoTenancySet)?;
 
-        let workspace = Workspace::get_by_pk(&ctx, &workspace_pk)
+        let workspace = Workspace::get_by_pk(ctx, &workspace_pk)
             .await
             .map_err(|err| ChangeSetPointerError::Workspace(err.to_string()))?
             .ok_or(ChangeSetPointerError::WorkspaceNotFound(workspace_pk))?;
 
         let base_change_set_pointer =
-            ChangeSetPointer::find(&ctx, workspace.default_change_set_id())
+            ChangeSetPointer::find(ctx, workspace.default_change_set_id())
                 .await?
                 .ok_or(ChangeSetPointerError::DefaultChangeSetNotFound(
                     workspace.default_change_set_id(),
                 ))?;
 
         let mut change_set_pointer =
-            ChangeSetPointer::new(&ctx, name, Some(workspace.default_change_set_id())).await?;
+            ChangeSetPointer::new(ctx, name, Some(workspace.default_change_set_id())).await?;
 
         change_set_pointer
             .update_pointer(
-                &ctx,
+                ctx,
                 base_change_set_pointer.workspace_snapshot_id.ok_or(
                     ChangeSetPointerError::DefaultChangeSetNoWorkspaceSnapshotPointer(
                         workspace.default_change_set_id(),

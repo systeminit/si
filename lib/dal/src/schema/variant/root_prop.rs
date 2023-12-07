@@ -2,7 +2,6 @@
 //! to the database.
 
 use strum::{AsRefStr, Display as EnumDisplay, EnumIter, EnumString};
-use telemetry::prelude::*;
 
 use crate::prop::{PropParent, PropPath};
 use crate::property_editor::schema::WidgetKind;

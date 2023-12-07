@@ -1,6 +1,6 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{Schema, StandardModel, Visibility};
+use dal::{Schema, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::SchemaResult;

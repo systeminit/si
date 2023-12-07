@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::thread::current;
 
 use content_store::{ContentHash, Store};
 use petgraph::prelude::*;
@@ -15,15 +14,13 @@ use crate::change_set_pointer::ChangeSetPointerError;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
-use crate::workspace_snapshot::{self, WorkspaceSnapshotError};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    label_list::ToLabelList, pk, property_editor::schema::WidgetKind, FuncId, StandardModel,
-    Timestamp, TransactionsError,
+    label_list::ToLabelList, pk, property_editor::schema::WidgetKind, FuncId, Timestamp,
+    TransactionsError,
 };
-use crate::{
-    AttributePrototypeId, DalContext, FuncBackendResponseType, SchemaVariant, SchemaVariantId,
-};
+use crate::{AttributePrototypeId, DalContext, FuncBackendResponseType, SchemaVariantId};
 
 pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
 
@@ -244,10 +241,7 @@ pub enum PropKind {
 
 impl PropKind {
     pub fn ordered(&self) -> bool {
-        match self {
-            PropKind::Array | PropKind::Map | PropKind::Object => true,
-            _ => false,
-        }
+        matches!(self, PropKind::Array | PropKind::Map | PropKind::Object)
     }
 }
 
@@ -371,8 +365,6 @@ impl Prop {
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         prop_parent: PropParent,
     ) -> PropResult<Self> {
-        let start = std::time::Instant::now();
-
         let ordered = kind.ordered();
 
         let timestamp = Timestamp::now();
@@ -403,49 +395,33 @@ impl Prop {
         let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         let _node_index = if ordered {
-            // info!("began adding ordered node at: {:?}", start.elapsed());
-            let ordered_node_index =
-                workspace_snapshot.add_ordered_node(change_set, node_weight)?;
-            // info!("added ordered node: {:?}", start.elapsed());
-            ordered_node_index
+            workspace_snapshot.add_ordered_node(change_set, node_weight)?
         } else {
             workspace_snapshot.add_node(node_weight)?
         };
 
         match prop_parent {
             PropParent::OrderedProp(ordered_prop_id) => {
-                // info!(
-                //     "begin adding edge for ordered prop parent: {:?}",
-                //     start.elapsed()
-                // );
                 workspace_snapshot.add_ordered_edge(
                     change_set,
                     ordered_prop_id.into(),
                     EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                     id,
                 )?;
-                // info!("added edge for ordered prop parent: {:?}", start.elapsed());
             }
             PropParent::Prop(prop_id) => {
-                // info!("begin adding edge for prop parent: {:?}", start.elapsed());
                 workspace_snapshot.add_edge(
                     prop_id.into(),
                     EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                     id,
                 )?;
-                // info!("added edge for prop: {:?}", start.elapsed());
             }
             PropParent::SchemaVariant(schema_variant_id) => {
-                // info!(
-                //     "begin adding edge for schema variant parent: {:?}",
-                //     start.elapsed()
-                // );
                 workspace_snapshot.add_edge(
                     schema_variant_id.into(),
                     EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                     id,
                 )?;
-                // info!("added edge for schema variant: {:?}", start.elapsed());
             }
         };
 
@@ -551,6 +527,7 @@ impl Prop {
             .into())
     }
 
+    #[allow(dead_code)]
     async fn get_content(
         ctx: &DalContext,
         prop_id: PropId,

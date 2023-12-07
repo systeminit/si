@@ -9,7 +9,7 @@ use crate::attribute::prototype::argument::AttributePrototypeArgument;
 use crate::{
     AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncId, InternalProvider, Prop, PropId, SchemaVariant,
-    SchemaVariantId, StandardModel,
+    SchemaVariantId,
 };
 use si_pkg::{LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind};
 

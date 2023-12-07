@@ -1,12 +1,12 @@
 use chrono::Utc;
 use content_store::{ContentHash, Store, StoreError};
 use petgraph::stable_graph::Edges;
-use petgraph::{algo, prelude::*, visit::DfsEvent, EdgeDirection};
+use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::Write;
-use std::time::Instant;
+
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -28,7 +28,7 @@ use crate::workspace_snapshot::node_weight::CategoryNodeWeight;
 pub use petgraph::graph::NodeIndex;
 pub use petgraph::Direction;
 
-mod test;
+mod tests;
 
 pub type LineageId = Ulid;
 
@@ -220,7 +220,7 @@ impl WorkspaceSnapshotGraph {
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
-        let start = std::time::Instant::now();
+        let _start = std::time::Instant::now();
         // info!("begin adding edge: {:?}", start.elapsed());
         let new_edge_index = self.add_edge(from_node_index, edge_weight, to_node_index)?;
         // info!("added edge: {:?}", start.elapsed());
@@ -462,16 +462,16 @@ impl WorkspaceSnapshotGraph {
 
         // Cleanup the node index by id map.
         self.node_index_by_id
-            .retain(|id, index| remaining_node_ids.contains(id));
+            .retain(|id, _index| remaining_node_ids.contains(id));
 
         // Cleanup the node indices by lineage id map.
         self.node_indices_by_lineage_id
             .iter_mut()
-            .for_each(|(lineage_id, node_indices)| {
+            .for_each(|(_lineage_id, node_indices)| {
                 node_indices.retain(|node_index| remaining_node_indices.contains(node_index));
             });
         self.node_indices_by_lineage_id
-            .retain(|lineage_id, node_indices| !node_indices.is_empty());
+            .retain(|_lineage_id, node_indices| !node_indices.is_empty());
     }
 
     pub fn find_equivalent_node(
@@ -817,6 +817,7 @@ impl WorkspaceSnapshotGraph {
         println!("dot output stored in file (filename without extension: {filename_no_extension})");
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn find_ordered_container_membership_conflicts_and_updates(
         &self,
         to_rebase_vector_clock_id: VectorClockId,
@@ -1313,6 +1314,7 @@ impl WorkspaceSnapshotGraph {
         Ok(new_node_indexes)
     }
 
+    #[allow(dead_code)]
     fn is_acyclic_directed(&self) -> bool {
         // Using this because "is_cyclic_directed" is recursive.
         algo::toposort(&self.graph, None).is_ok()
@@ -1495,16 +1497,6 @@ impl WorkspaceSnapshotGraph {
         self.cleanup();
 
         Ok(updated)
-    }
-
-    pub(crate) fn get_edge_by_index_stableish(
-        &mut self,
-        edge_index: EdgeIndex,
-    ) -> WorkspaceSnapshotGraphResult<EdgeWeight> {
-        self.graph
-            .edge_weight(edge_index)
-            .cloned()
-            .ok_or(WorkspaceSnapshotGraphError::EdgeDoesNotExist(edge_index))
     }
 
     pub fn edge_endpoints(

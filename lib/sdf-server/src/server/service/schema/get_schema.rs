@@ -1,8 +1,8 @@
 use axum::{extract::Query, Json};
-use dal::{Schema, SchemaId, StandardModel, Visibility};
+use dal::{Schema, SchemaId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::{SchemaError, SchemaResult};
+use super::SchemaResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]

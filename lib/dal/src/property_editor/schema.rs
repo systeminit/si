@@ -8,7 +8,7 @@ use strum::{AsRefStr, Display, EnumString};
 
 use si_pkg::PropSpecWidgetKind;
 
-use crate::{PropKind, StandardModel};
+use crate::{PropKind};
 
 // const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
 //     include_str!("../queries/property_editor_schema_for_schema_variant.sql");

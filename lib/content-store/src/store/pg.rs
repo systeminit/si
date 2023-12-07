@@ -2,8 +2,6 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use si_data_pg::PgPool;
 use std::collections::HashMap;
-use std::time::Instant;
-use telemetry::prelude::*;
 
 use crate::hash::ContentHash;
 use crate::pair::ContentPair;

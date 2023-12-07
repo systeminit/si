@@ -5,39 +5,15 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use telemetry::prelude::*;
 
-// use super::ValidationPrototypeView;
-use super::{
-    /* AttributePrototypeArgumentView,*/ AttributePrototypeView, FuncArgumentView,
-    FuncAssociations, FuncError, FuncResult,
+use dal::FuncBackendResponseType;
+use dal::{
+    change_set_pointer::ChangeSetPointerId, func::argument::FuncArgument, DalContext, Func,
+    FuncBackendKind, FuncId, Visibility, WsEvent,
 };
+
+use super::{FuncArgumentView, FuncAssociations, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use dal::{
-    change_set_pointer::ChangeSetPointerId,
-    func::argument::FuncArgument,
-    schema::variant::leaves::{LeafInputLocation, LeafKind},
-    // validation::prototype::context::ValidationPrototypeContext,
-    ActionKind,
-    ActionPrototype,
-    ActionPrototypeContext,
-    AttributePrototype,
-    AttributePrototypeId,
-    AttributeValue,
-    ChangeSet,
-    ComponentId,
-    DalContext,
-    Func,
-    FuncBackendKind,
-    // FuncBinding,
-    FuncId,
-    InternalProviderId,
-    Prop,
-    SchemaVariantId,
-    StandardModel,
-    Visibility,
-    WsEvent,
-};
-use dal::{FuncBackendResponseType, PropKind, SchemaVariant};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -150,6 +126,7 @@ pub struct SaveFuncResponse {
 /// value using a builtin value function, like `si:setString`, etc.
 ///
 /// `RemovedPrototypeOp::Delete` deletes the prototype and its values.
+#[allow(dead_code)]
 #[remain::sorted]
 enum RemovedPrototypeOp {
     Delete,
@@ -610,6 +587,7 @@ pub async fn do_save_func(
     })
     .await?;
 
+    #[allow(clippy::single_match)]
     match func.backend_kind {
         //        FuncBackendKind::JsAction => {
         //            if let Some(FuncAssociations::Action {
@@ -664,7 +642,7 @@ pub async fn do_save_func(
             }
             _ => {
                 if let Some(FuncAssociations::Attribute {
-                    prototypes,
+                    prototypes: _,
                     arguments,
                 }) = request.associations
                 {
@@ -709,12 +687,12 @@ pub async fn save_func<'a>(
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<SaveFuncRequest>,
 ) -> FuncResult<impl IntoResponse> {
-    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     dbg!("save_func");
     dbg!(ctx.change_set_pointer()?);
 
-    let mut force_changeset_pk: Option<ChangeSetPointerId> = None;
+    let force_changeset_pk: Option<ChangeSetPointerId> = None;
     //    if ctx.visibility().is_head() {
     //        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
     //
@@ -731,7 +709,7 @@ pub async fn save_func<'a>(
     //    };
     //
     let request_id = request.id;
-    let request_associations = request.associations.clone();
+    let _request_associations = request.associations.clone();
     let (save_response, _) = do_save_func(&ctx, request).await?;
 
     let func = Func::get_by_id(&ctx, request_id).await?;

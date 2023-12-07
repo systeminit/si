@@ -1,11 +1,10 @@
-use std::time::Instant;
-
-use super::{FuncError, FuncResult, FuncVariant};
-use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::{Func, FuncBackendKind, FuncId, StandardModel, Visibility};
+use dal::{Func, FuncBackendKind, FuncId, Visibility};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
+
+use super::{FuncResult, FuncVariant};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -56,9 +55,9 @@ pub async fn list_funcs(
         .iter()
         .filter(|f| {
             if f.hidden {
-                return false;
+                false
             } else {
-                return customizable_backend_kinds.contains(&f.backend_kind);
+                customizable_backend_kinds.contains(&f.backend_kind)
             }
         })
         .map(|func| {

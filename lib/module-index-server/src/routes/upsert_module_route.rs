@@ -3,7 +3,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use chrono::{DateTime, FixedOffset, Offset, Utc};
+use chrono::{DateTime, Offset, Utc};
 use hyper::StatusCode;
 use module_index_client::{FuncMetadata, ModuleDetailsResponse};
 use s3::error::S3Error;
@@ -104,7 +104,7 @@ pub async fn upsert_module_route(
         owner_display_name: Set(Some(module_metadata.created_by().to_owned())),
         latest_hash: Set(module_metadata.hash().to_string()),
         // maybe use db's `CLOCK_TIMESTAMP()`?
-        latest_hash_created_at: Set(DateTime::<FixedOffset>::from_utc(
+        latest_hash_created_at: Set(DateTime::from_naive_utc_and_offset(
             Utc::now().naive_utc(),
             Utc.fix(),
         )),

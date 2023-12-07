@@ -1,19 +1,8 @@
 use base64::{engine::general_purpose, Engine};
-use content_store::ContentHash;
-use dal::change_set_pointer::ChangeSetPointer;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
-use dal::workspace_snapshot::conflict::Conflict;
-use dal::workspace_snapshot::content_address::ContentAddress;
-use dal::workspace_snapshot::node_weight::NodeWeight;
-use dal::workspace_snapshot::update::Update;
-use dal::{
-    DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncId, Tenancy, Visibility,
-    Workspace, WorkspacePk, WorkspaceSnapshot,
-};
+use dal::{DalContext, Func, FuncBackendKind, FuncBackendResponseType};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
-use rebaser_client::Client;
-use rebaser_core::ChangeSetReplyMessage;
 
 #[test]
 async fn modify_func_node(ctx: &mut DalContext) {

@@ -22,14 +22,11 @@ use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressD
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-use crate::workspace_snapshot::graph::NodeIndex;
 use crate::workspace_snapshot::node_weight::{
     NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{
-    pk, DalContext, FuncId, InternalProviderId, PropId, StandardModel, Timestamp, TransactionsError,
-};
+use crate::{pk, DalContext, FuncId, PropId, Timestamp, TransactionsError};
 
 pub mod argument;
 

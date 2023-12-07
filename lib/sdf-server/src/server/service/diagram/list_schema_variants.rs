@@ -1,12 +1,12 @@
 use axum::extract::{Json, Query};
 use dal::{
-    socket::{DiagramKind, SocketEdgeKind, SocketId},
+    socket::{DiagramKind, SocketId},
     ExternalProviderId, InternalProviderId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
-    Socket, Visibility, Workspace, WorkspaceSnapshot,
+    Socket, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
-use super::{DiagramError, DiagramResult};
+use super::{DiagramResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]

@@ -1,57 +1,40 @@
-use serde::{Deserialize, Serialize};
-use std::{
-    collections::{HashMap, HashSet},
-    path::Path,
-    str::FromStr,
-};
+use std::{collections::HashMap, path::Path};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
-use ulid::Ulid;
 
 use si_pkg::{
-    AttributeValuePath, ComponentSpecVariant, EdgeSpecKind, SchemaVariantSpecPropRoot, SiPkg,
-    SiPkgActionFunc, SiPkgAttrFuncInput, SiPkgAttrFuncInputView, SiPkgAttributeValue,
-    SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
-    SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData,
-    SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind, ValidationSpec,
+    SchemaVariantSpecPropRoot, SiPkg, SiPkgAttrFuncInputView, SiPkgComponent, SiPkgEdge,
+    SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind, SiPkgLeafFunction,
+    SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData, SiPkgSchemaVariant,
+    SiPkgSocket, SiPkgSocketData, SocketSpecKind, ValidationSpec,
 };
 
+use crate::prop::PropParent;
 use crate::{func::intrinsics::IntrinsicFunc, ComponentKind};
 use crate::{
-    func::{
-        self,
-        argument::{FuncArgument, FuncArgumentKind},
-        backend::validation::FuncBackendValidationArgs,
-    },
+    func::{self, argument::FuncArgument},
     installed_pkg::{
         InstalledPkg, InstalledPkgAsset, InstalledPkgAssetKind, InstalledPkgAssetTyped,
         InstalledPkgId,
     },
     prop::PropPath,
-    schema::{
-        variant::leaves::{LeafInputLocation, LeafKind},
-        SchemaUiMenu,
-    },
-    socket::SocketEdgeKind,
-    validation::{Validation, ValidationKind},
-    workspace_snapshot::{self, WorkspaceSnapshotError},
-    ActionKind, ActionPrototype, ActionPrototypeContext, AttributePrototype, AttributePrototypeId,
-    AttributeValue, ChangeSet, ChangeSetPk, ComponentId, DalContext, ExternalProvider,
-    ExternalProviderId, Func, FuncId, InternalProvider, InternalProviderId, Node, Prop, PropId,
-    PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, Socket, StandardModel, Tenancy,
-    UserPk, Workspace, WorkspacePk, WorkspaceSnapshot,
+    schema::variant::leaves::{LeafInputLocation, LeafKind},
+    ActionPrototype, ChangeSetPk, DalContext, ExternalProvider, Func, FuncId, InternalProvider,
+    Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, Socket,
+    StandardModel,
 };
-use crate::{prop::PropParent, schema::variant::definition::SchemaVariantDefinitionJson};
 
 use super::{PkgError, PkgResult};
 
 #[derive(Clone, Debug)]
 enum Thing {
+    #[allow(dead_code)]
     ActionPrototype(ActionPrototype),
     // AttributePrototypeArgument(AttributePrototypeArgument),
     // Component((Component, Node)),
     // Edge(Edge),
     Func(Func),
+    #[allow(dead_code)]
     FuncArgument(FuncArgument),
     Schema(Schema),
     SchemaVariant(SchemaVariant),
@@ -80,8 +63,8 @@ async fn import_change_set(
     metadata: &SiPkgMetadata,
     funcs: &[SiPkgFunc<'_>],
     schemas: &[SiPkgSchema<'_>],
-    components: &[SiPkgComponent<'_>],
-    edges: &[SiPkgEdge<'_>],
+    _components: &[SiPkgComponent<'_>],
+    _edges: &[SiPkgEdge<'_>],
     installed_pkg_id: Option<InstalledPkgId>,
     thing_map: &mut ThingMap,
     options: &ImportOptions,
@@ -1542,6 +1525,7 @@ async fn create_func(
     Ok(func)
 }
 
+#[allow(dead_code)]
 async fn update_func(
     ctx: &DalContext,
     func: Func,
@@ -1891,7 +1875,7 @@ async fn import_schema(
             );
         }
 
-        let mut installed_schema_variant_ids = vec![];
+        let installed_schema_variant_ids = vec![];
         for variant_spec in &schema_spec.variants()? {
             let _variant = import_schema_variant(
                 ctx,
@@ -2069,6 +2053,7 @@ async fn import_schema(
 //     Ok(())
 // }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 struct AttrFuncInfo {
     func_unique_id: String,
@@ -2076,6 +2061,7 @@ struct AttrFuncInfo {
     inputs: Vec<SiPkgAttrFuncInputView>,
 }
 
+#[allow(dead_code)]
 #[remain::sorted]
 #[derive(Clone, Debug)]
 enum DefaultValueInfo {
@@ -2145,7 +2131,7 @@ async fn create_socket(
 ) -> PkgResult<(Socket, Option<InternalProvider>, Option<ExternalProvider>)> {
     let identity_func_id = get_identity_func(ctx)?;
 
-    let (mut socket, ip, ep) = match data.kind() {
+    let (socket, ip, ep) = match data.kind() {
         SocketSpecKind::Input => {
             let (ip, socket) = InternalProvider::new_explicit_with_socket(
                 ctx,
@@ -2470,7 +2456,7 @@ async fn import_schema_variant(
     installed_pkg_id: Option<InstalledPkgId>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<Option<SchemaVariant>> {
-    let mut schema_variant = match change_set_pk {
+    let schema_variant = match change_set_pk {
         None => {
             let hash = variant_spec.hash().to_string();
             let existing_schema_variant = InstalledPkgAsset::list_for_kind_and_hash(

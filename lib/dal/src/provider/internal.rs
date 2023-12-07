@@ -67,16 +67,14 @@
 //! This design also lets us cache the view of a [`Prop`](crate::Prop) and its children rather
 //! than directly observing the real time values frequently.
 
-use content_store::{ContentHash, Store};
+use content_store::Store;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
-
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::value::AttributeValueResult;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
@@ -89,7 +87,7 @@ use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNo
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, AttributePrototype, AttributePrototypeId, DalContext, Func, FuncId, PropId,
-    SchemaVariantId, Socket, SocketArity, StandardModel, Timestamp, TransactionsError,
+    SchemaVariantId, Socket, SocketArity, Timestamp, TransactionsError,
 };
 
 #[remain::sorted]

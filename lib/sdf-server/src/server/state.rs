@@ -134,6 +134,7 @@ where
 pub struct ShutdownBroadcast(broadcast::Sender<()>);
 
 impl ShutdownBroadcast {
+    #[allow(dead_code)]
     pub fn subscribe(&self) -> broadcast::Receiver<()> {
         self.0.subscribe()
     }

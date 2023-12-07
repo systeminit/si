@@ -503,6 +503,7 @@ async fn execute_job(
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn record_job_failure(
     ctx_builder: DalContextBuilder,
     job: Box<dyn JobConsumer + Send + Sync>,

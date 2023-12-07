@@ -13,7 +13,7 @@ async fn builtins(ctx: &DalContext) {
         .collect();
 
     // Check that the funcs at least contain all intrinsics.
-    let mut intrinsics: Vec<String> = IntrinsicFunc::iter()
+    let intrinsics: Vec<String> = IntrinsicFunc::iter()
         .map(|intrinsic| intrinsic.name().to_owned())
         .collect();
     for intrinsic in intrinsics {
@@ -22,7 +22,7 @@ async fn builtins(ctx: &DalContext) {
 
     // Ensure that we have at least one schema variant for every schema and that we have at least
     // one schema.
-    let mut schemas: Vec<Schema> = Schema::list(ctx).await.expect("could not list schemas");
+    let schemas: Vec<Schema> = Schema::list(ctx).await.expect("could not list schemas");
     assert!(!schemas.is_empty());
     for schema in schemas {
         let schema_variants: Vec<SchemaVariant> = SchemaVariant::list_for_schema(ctx, schema.id())
