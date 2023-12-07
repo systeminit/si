@@ -24,6 +24,22 @@ pub(crate) struct Args {
     /// Disable OpenTelemetry on startup
     #[arg(long)]
     pub(crate) disable_opentelemetry: bool,
+
+    /// Cyclone runtime type: LocalProcess
+    #[arg(long)]
+    pub(crate) cyclone_local_process: bool,
+
+    /// Cyclone runtime type: LocalDocker
+    #[arg(long)]
+    pub(crate) cyclone_local_docker: bool,
+
+    /// Cyclone runtime type: LocalFirecracker
+    #[arg(long)]
+    pub(crate) cyclone_local_firecracker: bool,
+
+    /// Cyclone pool size
+    #[arg(long)]
+    pub(crate) cyclone_pool_size: Option<u16>,
 }
 
 impl TryFrom<Args> for Config {
@@ -33,6 +49,18 @@ impl TryFrom<Args> for Config {
         ConfigFile::layered_load(NAME, move |config_map| {
             if let Some(url) = args.nats_url {
                 config_map.set("nats.url", url);
+            }
+            if args.cyclone_local_firecracker {
+                config_map.set("cyclone.runtime_strategy", "LocalFirecracker");
+            }
+            if args.cyclone_local_docker {
+                config_map.set("cyclone.runtime_strategy", "LocalDocker");
+            }
+            if args.cyclone_local_process {
+                config_map.set("cyclone.runtime_strategy", "LocalProcess");
+            }
+            if let Some(size) = args.cyclone_pool_size {
+                config_map.set("cyclone.pool_size", size);
             }
         })?
         .try_into()

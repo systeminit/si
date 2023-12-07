@@ -195,7 +195,12 @@ impl Client<(), (), ()> {
         })
     }
 
-    pub fn uds(socket: impl Into<PathBuf>) -> Result<Client<UnixConnector, UnixStream, PathBuf>> {
+    // TODO(scott): firecracker connect here feels really flimsy. This likely needs an enum to
+    // select behavior over.
+    pub fn uds(
+        socket: impl Into<PathBuf>,
+        firecracker_connect: bool,
+    ) -> Result<Client<UnixConnector, UnixStream, PathBuf>> {
         let socket = socket.into();
         let connector = UnixConnector;
         let inner_client = hyper::Client::unix();
@@ -210,7 +215,10 @@ impl Client<(), (), ()> {
             .path_and_query("/")
             .build()
             .map_err(ClientError::ClientUri)?;
-        let config = Arc::new(ClientConfig::default());
+        let config = Arc::new(ClientConfig {
+            firecracker_connect,
+            ..ClientConfig::default()
+        });
 
         Ok(Client {
             config,
@@ -567,7 +575,7 @@ mod tests {
         let path = server.local_socket().clone();
         tokio::spawn(async move { server.run().await });
 
-        Client::uds(path).expect("failed to create uds client")
+        Client::uds(path, false).expect("failed to create uds client")
     }
 
     async fn http_server(

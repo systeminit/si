@@ -338,7 +338,13 @@ impl Spec for LocalUdsInstanceSpec {
         let mut runtime = runtime_instance_from_spec(self, &socket).await?;
 
         runtime.spawn().await?;
-        let mut client = Client::uds(runtime.socket())?;
+        //TODO(scott): Firecracker requires the client to add a special connection detail. We
+        //should find a better way to handle this.
+        let special_connect = matches!(
+            self.runtime_strategy,
+            LocalUdsRuntimeStrategy::LocalFirecracker
+        );
+        let mut client = Client::uds(runtime.socket(), special_connect)?;
 
         // Establish the client watch session. As the process may be booting, we will retry for a
         // period before giving up and assuming that the server instance has failed.
@@ -799,8 +805,6 @@ async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
 
     // Spawn the shell process
     let _status = Command::new("sudo")
-        .arg("bash")
-        .arg("-c")
         .arg(command)
         .arg("-v")
         .arg("/tmp/variables.txt")
