@@ -1,6 +1,6 @@
 # TLDR: This is the heart of what's powering our CI: Fletcher Nichol
 
-# It finds and filters targets in Buck2 and can be ran locally via:
+# It finds and then filters targets in Buck2 and can be ran locally via:
 #      bxl dependent_targets <flags>
 # e.g. bxl dependent_targets --publish_rootfs true --modified_file app/web/Dockerfile
 # it will list any applicable target of variant publish-rootfs when the file app/web/Dockerfile 
