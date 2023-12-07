@@ -1,3 +1,10 @@
+# TLDR: This is the heart of what's powering our CI: Fletcher Nichol
+
+# It finds and filters targets in Buck2 and can be ran locally via:
+#      bxl dependent_targets <flags>
+# e.g. bxl dependent_targets --publish_rootfs true --modified_file app/web/Dockerfile
+# it will list any applicable target of variant publish-rootfs when the file app/web/Dockerfile 
+
 def _dependent_targets_impl(ctx):
     targets = _compute_targets(ctx)
     filtered = _filter_targets(ctx, targets)
@@ -44,6 +51,14 @@ dependent_targets = bxl_main(
         "promote_docker": cli_args.bool(
             default = False,
             doc = """Filter targets to runnable docker promotions.""",
+        ),
+        "publish_omnibus": cli_args.bool(
+            default = False,
+            doc = """Filter targets to omnibus publish targets.""",
+        ),
+        "publish_rootfs": cli_args.bool(
+            default = False,
+            doc = """Filter targets to rootfs publish targets.""",
         ),
         "releasable_binary": cli_args.bool(
             default = False,
@@ -161,6 +176,12 @@ def _filter_targets(ctx: bxl.Context, targets: bxl.TargetSet) -> bxl.TargetSet:
     if ctx.cli_args.release_docker:
         has_filtered = True
         filtered = filtered + ctx.uquery().kind("docker_image_release", targets)
+    if ctx.cli_args.publish_omnibus:
+        has_filtered = True
+        filtered = filtered + ctx.uquery().attrregexfilter("name", "^publish-omnibus(-.+)?$", targets)
+    if ctx.cli_args.publish_rootfs:
+        has_filtered = True
+        filtered = filtered + ctx.uquery().attrregexfilter("name", "^publish-rootfs(-.+)?$", targets)
     if ctx.cli_args.releasable_binary:
         has_filtered = True
         filtered = filtered + ctx.uquery().attrfilter(
@@ -179,6 +200,22 @@ def _filter_targets(ctx: bxl.Context, targets: bxl.TargetSet) -> bxl.TargetSet:
     return filtered
 
 # Returns a filtered list of `promote-docker` targets
+#
+# Every relevant `:release` target should become a `:promote` target as the promotions are triggered
+# from merge to the main branch whereas the releases are triggered in the merge queue pipeline. In
+# other words, every necessary release has a 1:1 promotion that needs to happen later.
+def _filtered_promote_docker_targets(ctx: bxl.Context, targets: bxl.TargetSet) -> bxl.TargetSet:
+    release_targets = ctx.uquery().kind("docker_image_release", targets)
+
+    promote_target_strs = map(
+        lambda e: e.replace(":release", ":promote"),
+        map(lambda e: str(e.label), release_targets),
+    )
+    promote_targets = ctx.unconfigured_targets(promote_target_strs)
+
+    return promote_targets
+
+# Returns a filtered list of `omnibus` targets
 #
 # Every relevant `:release` target should become a `:promote` target as the promotions are triggered
 # from merge to the main branch whereas the releases are triggered in the merge queue pipeline. In
