@@ -1,12 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{HashMap, HashSet},
-    path::Path,
-    str::FromStr,
-};
+use std::{collections::HashMap, path::Path, str::FromStr};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
-use ulid::Ulid;
 
 use si_pkg::{
     AttributeValuePath, ComponentSpecVariant, EdgeSpecKind, SchemaVariantSpecPropRoot, SiPkg,
@@ -2470,7 +2465,7 @@ async fn import_schema_variant(
     installed_pkg_id: Option<InstalledPkgId>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<Option<SchemaVariant>> {
-    let mut schema_variant = match change_set_pk {
+    let schema_variant = match change_set_pk {
         None => {
             let hash = variant_spec.hash().to_string();
             let existing_schema_variant = InstalledPkgAsset::list_for_kind_and_hash(
@@ -2577,7 +2572,7 @@ async fn import_schema_variant(
                     Some(color) => {
                         let current_color = schema_variant.get_color(ctx).await?;
                         if current_color.as_deref() != Some(color) {
-                            schema_variant.set_color(ctx, color)?
+                            schema_variant.set_color(ctx, color).await?
                         } else {
                             schema_variant
                         }
@@ -2711,28 +2706,31 @@ async fn import_schema_variant(
                 )
                 .await?;
             }
+            // Default values must be set before attribute functions are configured so they don't
+            // override the prototypes set there
+            for default_value_info in side_effects.default_values {
+                set_default_value(ctx, default_value_info).await?;
+            }
+
+            // Set a default name value for all name props, this ensures region has a name before
+            // the function is executed
+            {
+                let name_prop_id = Prop::find_prop_id_by_path(
+                    ctx,
+                    schema_variant.id(),
+                    &PropPath::new(["root", "si", "name"]),
+                )?;
+                let name_default_value_info = DefaultValueInfo::String {
+                    prop_id: name_prop_id,
+                    default_value: schema.name.to_owned().to_lowercase(),
+                };
+
+                set_default_value(ctx, name_default_value_info).await?;
+            }
 
             Some(schema_variant)
         } //
-          //     // Default values must be set before attribute functions are configured so they don't
-          //     // override the prototypes set there
-          //     for default_value_info in side_effects.default_values {
-          //         set_default_value(ctx, default_value_info).await?;
-          //     }
           //
-          //     // Set a default name value for all name props, this ensures region has a name before
-          //     // the function is executed
-          //     {
-          //         let name_prop = schema_variant
-          //             .find_prop(ctx, &["root", "si", "name"])
-          //             .await?;
-          //         let name_default_value_info = DefaultValueInfo::String {
-          //             prop_id: *name_prop.id(),
-          //             default_value: schema.name().to_lowercase(),
-          //         };
-          //
-          //         set_default_value(ctx, name_default_value_info).await?;
-          //     }
           //
           //     for si_prop_func in variant_spec.si_prop_funcs()? {
           //         let prop = schema_variant
@@ -2829,32 +2827,30 @@ async fn import_schema_variant(
     Ok(schema_variant)
 }
 
-// async fn set_default_value(
-//     ctx: &DalContext,
-//     default_value_info: DefaultValueInfo,
-// ) -> PkgResult<()> {
-//     let prop = match &default_value_info {
-//         DefaultValueInfo::Number { prop_id, .. }
-//         | DefaultValueInfo::String { prop_id, .. }
-//         | DefaultValueInfo::Boolean { prop_id, .. } => Prop::get_by_id(ctx, prop_id)
-//             .await?
-//             .ok_or(PkgError::MissingProp(*prop_id))?,
-//     };
+async fn set_default_value(
+    ctx: &DalContext,
+    default_value_info: DefaultValueInfo,
+) -> PkgResult<()> {
+    let prop_id = match &default_value_info {
+        DefaultValueInfo::Number { prop_id, .. }
+        | DefaultValueInfo::String { prop_id, .. }
+        | DefaultValueInfo::Boolean { prop_id, .. } => *prop_id,
+    };
 
-//     match default_value_info {
-//         DefaultValueInfo::Boolean { default_value, .. } => {
-//             prop.set_default_value(ctx, default_value).await?
-//         }
-//         DefaultValueInfo::Number { default_value, .. } => {
-//             prop.set_default_value(ctx, default_value).await?
-//         }
-//         DefaultValueInfo::String { default_value, .. } => {
-//             prop.set_default_value(ctx, default_value).await?
-//         }
-//     }
+    match default_value_info {
+        DefaultValueInfo::Boolean { default_value, .. } => {
+            Prop::set_default_value(ctx, prop_id, default_value).await?
+        }
+        DefaultValueInfo::Number { default_value, .. } => {
+            Prop::set_default_value(ctx, prop_id, default_value).await?
+        }
+        DefaultValueInfo::String { default_value, .. } => {
+            Prop::set_default_value(ctx, prop_id, default_value).await?
+        }
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 // async fn import_attr_func_for_prop(
 //     ctx: &DalContext,

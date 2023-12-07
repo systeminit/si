@@ -607,23 +607,15 @@ impl SchemaVariant {
     /// [`IntrinsicFunc::SetString`](`crate::func::intrinsics::IntrinsicFunc::SetString`)
     /// we will remove that edge and replace it with one pointing to
     /// `SetString`.
-    pub fn set_color(self, ctx: &DalContext, color: impl AsRef<str>) -> SchemaVariantResult<Self> {
+    pub async fn set_color(
+        self,
+        ctx: &DalContext,
+        color: impl AsRef<str>,
+    ) -> SchemaVariantResult<Self> {
         let color_prop_id =
             Prop::find_prop_id_by_path(ctx, self.id, &PropPath::new(["root", "si", "color"]))?;
 
-        let prototype_id = Prop::prototype_id(ctx, color_prop_id)?;
-        let set_string_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::SetString)?;
-        let set_string_value_arg_id = *FuncArgument::list_ids_for_func(ctx, set_string_func_id)?
-            .get(0)
-            .ok_or(FuncArgumentError::IntrinsicMissingFuncArgumentEdge(
-                IntrinsicFunc::SetString.name().into(),
-                set_string_func_id,
-            ))?;
-
-        AttributePrototype::update_func_by_id(ctx, prototype_id, set_string_func_id)?;
-
-        AttributePrototypeArgument::new(ctx, prototype_id, set_string_value_arg_id)?
-            .set_value_from_static_value(ctx, serde_json::to_value(color.as_ref())?)?;
+        Prop::set_default_value(ctx, color_prop_id, color.as_ref()).await?;
 
         Ok(self)
     }

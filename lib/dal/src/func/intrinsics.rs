@@ -3,6 +3,8 @@ use si_pkg::{
     FuncSpecData, PkgSpec,
 };
 
+use crate::PropKind;
+
 use super::{FuncError, FuncResult};
 use chrono::DateTime;
 use strum::{AsRefStr, Display, EnumIter, EnumString, IntoEnumIterator};
@@ -206,5 +208,18 @@ impl IntrinsicFunc {
                 return None;
             }
         })
+    }
+}
+
+impl From<PropKind> for IntrinsicFunc {
+    fn from(value: PropKind) -> Self {
+        match value {
+            PropKind::Array => IntrinsicFunc::SetArray,
+            PropKind::Boolean => IntrinsicFunc::SetBoolean,
+            PropKind::Integer => IntrinsicFunc::SetInteger,
+            PropKind::Map => IntrinsicFunc::SetMap,
+            PropKind::Object => IntrinsicFunc::SetObject,
+            PropKind::String => IntrinsicFunc::SetString,
+        }
     }
 }

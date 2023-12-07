@@ -11,18 +11,26 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentError,
+};
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
+use crate::func::argument::{FuncArgument, FuncArgumentError};
+use crate::func::intrinsics::IntrinsicFunc;
+use crate::func::FuncError;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightError, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
-use crate::workspace_snapshot::{self, WorkspaceSnapshotError};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     label_list::ToLabelList, pk, property_editor::schema::WidgetKind, FuncId, StandardModel,
     Timestamp, TransactionsError,
 };
 use crate::{
-    AttributePrototypeId, DalContext, FuncBackendResponseType, SchemaVariant, SchemaVariantId,
+    AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendResponseType,
+    SchemaVariantId,
 };
 
 pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
@@ -30,12 +38,20 @@ pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PropError {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("child prop of {0:?} not found by name: {1}")]
     ChildPropNotFoundByName(NodeIndex, String),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
     #[error("missing prototype for prop {0}")]
     MissingPrototypeForProp(PropId),
     #[error("node weight error: {0}")]
@@ -44,6 +60,10 @@ pub enum PropError {
     PropIsOrphan(PropId),
     #[error("prop {0} has a non prop or schema variant parent")]
     PropParentInvalid(PropId),
+    #[error("serde error: {0}")]
+    Serde(#[from] serde_json::Error),
+    #[error("can only set default values for scalars (string, integer, boolean), prop {0} is {1}")]
+    SetDefaultForNonScalar(PropId, PropKind),
     #[error("store error: {0}")]
     Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
@@ -549,6 +569,38 @@ impl Prop {
             .get_node_weight(prototype_node_index)?
             .id()
             .into())
+    }
+
+    pub async fn set_default_value<T: Serialize>(
+        ctx: &DalContext,
+        prop_id: PropId,
+        value: T,
+    ) -> PropResult<()> {
+        let value = serde_json::to_value(value)?;
+
+        let prop = Prop::get_by_id(ctx, prop_id).await?;
+        if !matches!(
+            prop.kind,
+            PropKind::String | PropKind::Boolean | PropKind::Integer
+        ) {
+            return Err(PropError::SetDefaultForNonScalar(prop_id, prop.kind));
+        }
+
+        let prototype_id = Prop::prototype_id(ctx, prop_id)?;
+        let intrinsic: IntrinsicFunc = prop.kind.into();
+        let intrinsic_id = Func::find_intrinsic(ctx, intrinsic)?;
+        let value_arg_id = *FuncArgument::list_ids_for_func(ctx, intrinsic_id)?
+            .get(0)
+            .ok_or(FuncArgumentError::IntrinsicMissingFuncArgumentEdge(
+                intrinsic.name().into(),
+                intrinsic_id,
+            ))?;
+
+        AttributePrototype::update_func_by_id(ctx, prototype_id, intrinsic_id)?;
+        AttributePrototypeArgument::new(ctx, prototype_id, value_arg_id)?
+            .set_value_from_static_value(ctx, value)?;
+
+        Ok(())
     }
 
     async fn get_content(
