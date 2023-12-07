@@ -425,6 +425,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           modelIsEmpty(): boolean {
             return !this.diagramNodes.length;
           },
+          diagramIsEmpty(): boolean {
+            return (
+              this.modelIsEmpty && _.isEmpty(this.pendingInsertedComponents)
+            );
+          },
 
           diagramEdges(): DiagramEdgeDef[] {
             // Note(victor): The code below checks whether was only created implicitly, through inheritance from an aggregation frame
