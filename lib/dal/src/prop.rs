@@ -73,6 +73,17 @@ pub type PropResult<T> = Result<T, PropError>;
 
 pk!(PropId);
 
+// TODO: currently we only have string values in all widget_options but we should extend this to
+// support other types. However, we cannot use serde_json::Value since postcard will not
+// deserialize into a serde_json::Value.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct WidgetOption {
+    label: String,
+    value: String,
+}
+
+type WidgetOptions = Vec<WidgetOption>;
+
 /// An individual "field" within the tree of a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Prop {
@@ -86,7 +97,7 @@ pub struct Prop {
     /// The kind of "widget" that should be used for this [`Prop`].
     pub widget_kind: WidgetKind,
     /// The configuration of the "widget".
-    pub widget_options: Option<Value>,
+    pub widget_options: Option<WidgetOptions>,
     /// A link to external documentation for working with this specific [`Prop`].
     pub doc_link: Option<String>,
     /// A toggle for whether or not the [`Prop`] should be visually hidden.
@@ -113,7 +124,7 @@ pub struct PropContentV1 {
     /// The kind of "widget" that should be used for this [`Prop`].
     pub widget_kind: WidgetKind,
     /// The configuration of the "widget".
-    pub widget_options: Option<Value>,
+    pub widget_options: Option<WidgetOptions>,
     /// A link to external documentation for working with this specific [`Prop`].
     pub doc_link: Option<String>,
     /// A toggle for whether or not the [`Prop`] should be visually hidden.
@@ -384,13 +395,24 @@ impl Prop {
         prop_parent: PropParent,
     ) -> PropResult<Self> {
         let ordered = kind.ordered();
+        let name = name.into();
+
+        if let Some((_, Some(options))) = &widget_kind_and_options {
+            info!("{}: {:?}", &name, options);
+        }
 
         let timestamp = Timestamp::now();
-        let (widget_kind, widget_options) = match widget_kind_and_options {
-            Some((kind, options)) => (kind, options),
-            None => (WidgetKind::from(kind), None),
-        };
-        let name = name.into();
+        let (widget_kind, widget_options): (WidgetKind, Option<WidgetOptions>) =
+            match widget_kind_and_options {
+                Some((kind, options)) => (
+                    kind,
+                    match options {
+                        Some(options) => Some(serde_json::from_value(options)?),
+                        None => None,
+                    },
+                ),
+                None => (WidgetKind::from(kind), None),
+            };
 
         let content = PropContentV1 {
             timestamp,
@@ -453,6 +475,7 @@ impl Prop {
         let node_weight = workspace_snapshot.get_node_weight(node_index)?;
         let hash = node_weight.content_hash();
 
+        info!("fetching prop content");
         let content: PropContent = ctx
             .content_store()
             .try_lock()?
@@ -552,6 +575,7 @@ impl Prop {
     ) -> PropResult<()> {
         let value = serde_json::to_value(value)?;
 
+        info!("fetching prop: {}", prop_id);
         let prop = Prop::get_by_id(ctx, prop_id).await?;
         if !matches!(
             prop.kind,
@@ -559,6 +583,12 @@ impl Prop {
         ) {
             return Err(PropError::SetDefaultForNonScalar(prop_id, prop.kind));
         }
+
+        info!(
+            "setting default value for {:?}, {}",
+            prop.path(ctx)?,
+            &value
+        );
 
         let prototype_id = Prop::prototype_id(ctx, prop_id)?;
         let intrinsic: IntrinsicFunc = prop.kind.into();
@@ -571,6 +601,7 @@ impl Prop {
             ))?;
 
         AttributePrototype::update_func_by_id(ctx, prototype_id, intrinsic_id)?;
+        info!("setting static value: {}", &value);
         AttributePrototypeArgument::new(ctx, prototype_id, value_arg_id)?
             .set_value_from_static_value(ctx, value)?;
 

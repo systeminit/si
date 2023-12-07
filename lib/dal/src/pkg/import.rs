@@ -2660,6 +2660,9 @@ async fn import_schema_variant(
                 import_socket(ctx, change_set_pk, socket, schema_variant.id(), thing_map).await?;
             }
 
+            info!("finalizing");
+            SchemaVariant::finalize(ctx, schema_variant.id()).await?;
+
             //     if let Some(data) = variant_spec.data() {
             //         schema_variant
             //             .finalize(ctx, Some(data.component_type().into()))
@@ -2696,6 +2699,7 @@ async fn import_schema_variant(
                 )
                 .await?;
             }
+
             // Default values must be set before attribute functions are configured so they don't
             // override the prototypes set there
             for default_value_info in side_effects.default_values {
