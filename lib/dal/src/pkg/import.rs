@@ -9,7 +9,7 @@ use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
 use crate::prop::PropParent;
-use crate::{func::intrinsics::IntrinsicFunc, ComponentKind};
+use crate::{func::intrinsics::IntrinsicFunc, ComponentKind, ProviderKind};
 use crate::{
     func::{self, argument::FuncArgument},
     installed_pkg::{
@@ -19,8 +19,7 @@ use crate::{
     prop::PropPath,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
     ActionPrototype, ChangeSetPk, DalContext, ExternalProvider, Func, FuncId, InternalProvider,
-    Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, Socket,
-    StandardModel,
+    Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
 };
 
 use super::{PkgError, PkgResult};
@@ -37,7 +36,7 @@ enum Thing {
     FuncArgument(FuncArgument),
     Schema(Schema),
     SchemaVariant(SchemaVariant),
-    Socket(Box<(Socket, Option<InternalProvider>, Option<ExternalProvider>)>),
+    Socket(Box<(Option<InternalProvider>, Option<ExternalProvider>)>),
     // Validation(ValidationPrototype),
 }
 
@@ -2127,43 +2126,43 @@ async fn create_socket(
     ctx: &DalContext,
     data: &SiPkgSocketData,
     schema_variant_id: SchemaVariantId,
-) -> PkgResult<(Socket, Option<InternalProvider>, Option<ExternalProvider>)> {
+) -> PkgResult<(Option<InternalProvider>, Option<ExternalProvider>)> {
     let identity_func_id = get_identity_func(ctx)?;
 
-    let (socket, ip, ep) = match data.kind() {
+    let (ip, ep) = match data.kind() {
         SocketSpecKind::Input => {
-            let (ip, socket) = InternalProvider::new_explicit_with_socket(
+            let ip = InternalProvider::new_explicit(
                 ctx,
                 schema_variant_id,
                 data.name(),
                 identity_func_id,
                 data.arity().into(),
-                false,
+                ProviderKind::Standard,
             )
             .await?;
 
-            (socket, Some(ip), None)
+            (Some(ip), None)
         }
         SocketSpecKind::Output => {
-            let (ep, socket) = ExternalProvider::new_with_socket(
+            let ep = ExternalProvider::new(
                 ctx,
                 schema_variant_id,
                 data.name(),
                 None,
                 identity_func_id,
                 data.arity().into(),
-                false,
+                ProviderKind::Standard,
             )
             .await?;
 
-            (socket, None, Some(ep))
+            (None, Some(ep))
         }
     };
 
     // TODO: add modify_by_id to socket, ui hide frames
     // socket.set_ui_hidden(ctx, data.ui_hidden()).await?;
 
-    Ok((socket, ip, ep))
+    Ok((ip, ep))
 }
 
 async fn import_socket(
@@ -2173,7 +2172,7 @@ async fn import_socket(
     schema_variant_id: SchemaVariantId,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
-    let (socket, ip, ep) = match change_set_pk {
+    let (ip, ep) = match change_set_pk {
         None => {
             let data = socket_spec
                 .data()
@@ -2215,7 +2214,7 @@ async fn import_socket(
         thing_map.insert(
             change_set_pk,
             unique_id.to_owned(),
-            Thing::Socket(Box::new((socket, ip.to_owned(), ep.to_owned()))),
+            Thing::Socket(Box::new((ip.to_owned(), ep.to_owned()))),
         );
     }
 

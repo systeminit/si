@@ -3,7 +3,6 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Json;
 use axum::Router;
-use dal::socket::SocketId;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::WsEventError;
 use dal::{
@@ -13,13 +12,14 @@ use thiserror::Error;
 
 use crate::server::state::AppState;
 
+pub mod get_diagram;
+pub mod list_schema_variants;
+
 // mod connect_component_to_frame;
 // pub mod create_connection;
 // pub mod create_node;
 // pub mod delete_component;
 // pub mod delete_connection;
-pub mod get_diagram;
-pub mod list_schema_variants;
 // mod restore_component;
 // pub mod restore_connection;
 // pub mod set_node_position;
@@ -39,20 +39,14 @@ pub enum DiagramError {
     DalSchema(#[from] dal::SchemaError),
     #[error("dal schema variant error: {0}")]
     DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
-    #[error("dal socket error: {0}")]
-    DalSocket(#[from] dal::socket::SocketError),
     #[error("edge not found")]
     EdgeNotFound,
-    #[error("external provider not found for socket id: {0}")]
-    ExternalProviderNotFoundForSocket(SocketId),
     #[error("frame internal provider not found for schema variant id: {0}")]
     FrameInternalProviderNotFoundForSchemaVariant(SchemaVariantId),
     #[error("frame socket not found for schema variant id: {0}")]
     FrameSocketNotFound(SchemaVariantId),
     #[error("invalid header name {0}")]
     Hyper(#[from] hyper::http::Error),
-    #[error("internal provider not found for socket id: {0}")]
-    InternalProviderNotFoundForSocket(SocketId),
     #[error("invalid parent node kind {0:?}")]
     InvalidParentNode(NodeKind),
     #[error("invalid request")]

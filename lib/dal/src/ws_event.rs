@@ -4,8 +4,8 @@ use si_data_pg::PgError;
 use thiserror::Error;
 
 use crate::{
-    pkg::ModuleImported, user::CursorPayload, ChangeSetPk, DalContext, PropId, SocketId,
-    StandardModelError, TransactionsError, WorkspacePk,
+    pkg::ModuleImported, user::CursorPayload, ChangeSetPk, DalContext, PropId, StandardModelError,
+    TransactionsError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -57,9 +57,11 @@ pub enum WsPayload {
 pub enum StatusValueKind {
     Attribute(PropId),
     CodeGen,
-    InputSocket(SocketId),
+    // TODO(nick): sockets are no more, so replace this with the provider id.
+    // InputSocket(SocketId),
     Internal,
-    OutputSocket(SocketId),
+    // TODO(nick): sockets are no more, so replace this with the provider id.
+    // OutputSocket(SocketId),
     Qualification,
 }
 

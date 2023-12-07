@@ -20,8 +20,8 @@ use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::prop::{PropError, PropPath};
-use crate::provider::external::ExternalProviderError;
-use crate::provider::internal::InternalProviderError;
+use crate::provider::external::{ExternalProviderContent, ExternalProviderError};
+use crate::provider::internal::{InternalProviderContent, InternalProviderError};
 use crate::schema::variant::root_prop::RootProp;
 use crate::validation::prototype::ValidationPrototypeError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
@@ -35,9 +35,9 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProvider, Func,
-    FuncId, InternalProvider, Prop, PropId, PropKind, SchemaId, SocketArity, Timestamp,
-    TransactionsError,
+    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProvider,
+    ExternalProviderId, Func, FuncId, InternalProvider, Prop, PropId, PropKind, ProviderArity,
+    ProviderKind, SchemaError, SchemaId, Timestamp, TransactionsError,
 };
 use crate::{FuncBackendResponseType, InternalProviderId};
 
@@ -88,6 +88,10 @@ pub enum SchemaVariantError {
     PropIdNotAProp(PropId),
     #[error("schema variant {0} has no root node")]
     RootNodeMissing(SchemaVariantId),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
+    #[error("schema not found for schema variant: {0}")]
+    SchemaNotFound(SchemaVariantId),
     #[error("serde json error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("store error: {0}")]
@@ -162,14 +166,10 @@ impl SchemaVariant {
         let content = SchemaVariantContentV1 {
             timestamp: Timestamp::now(),
             name: name.into(),
-            // schema_variant_definition_id: None,
             link: None,
             ui_hidden: false,
             finalized_once: false,
             category: category.into(),
-            // color: color
-            //     .map(Into::into)
-            //     .unwrap_or(DEFAULT_SCHEMA_VARIANT_COLOR.into()),
         };
         let hash = ctx
             .content_store()
@@ -184,6 +184,7 @@ impl SchemaVariant {
                 NodeWeight::new_content(change_set, id, ContentAddress::SchemaVariant(hash))?;
             let _node_index = workspace_snapshot.add_node(node_weight)?;
 
+            // Schema --Use--> SchemaVariant (this)
             workspace_snapshot.add_edge(
                 schema_id.into(),
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
@@ -195,23 +196,23 @@ impl SchemaVariant {
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;
         let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)?;
 
-        InternalProvider::new_explicit_with_socket(
+        InternalProvider::new_explicit(
             ctx,
             schema_variant_id,
             "Frame",
             func_id,
-            SocketArity::Many,
-            true,
+            ProviderArity::Many,
+            ProviderKind::Frame,
         )
         .await?;
-        ExternalProvider::new_with_socket(
+        ExternalProvider::new(
             ctx,
             schema_variant_id,
             "Frame",
             None,
             func_id,
-            SocketArity::One,
-            true,
+            ProviderArity::One,
+            ProviderKind::Frame,
         )
         .await?;
 
@@ -524,33 +525,6 @@ impl SchemaVariant {
         Ok((hash, inner))
     }
 
-    pub async fn schema_variant_list(
-        &mut self,
-        _ctx: &DalContext,
-    ) -> SchemaVariantResult<Vec<SchemaVariant>> {
-        // let schema_category_index = self.get_category(CategoryNodeKind::Schema)?;
-        // let schema_indices = self.outgoing_targets_for_edge_weight_kind_by_index(
-        //     schema_category_index,
-        //     EdgeWeightKindDiscriminants::Use,
-        // )?;
-        //
-        // // TODO(nick,zack,jacob,wendy): start here!
-        // let mut unchecked_node_weights = Vec::new();
-        // for schema_index in schema_indices {
-        //     unchecked_node_weights.push(self.get_node_weight(schema_index)?);
-        // }
-        // let mut schemas = Vec::new();
-        // for unchecked_node_weight in unchecked_node_weights {
-        //     if let NodeWeight::Content(content_node_weight) = unchecked_node_weight {
-        //         let (_, content) = self
-        //             .schema_get_content(ctx, content_node_weight.id().into())
-        //             .await?;
-        //         schemas.push(Schema::assemble(content_node_weight.id().into(), &content));
-        //     }
-        // }
-        Ok(vec![])
-    }
-
     /// This _idempotent_ function "finalizes" a [`SchemaVariant`].
     ///
     /// Once a [`SchemaVariant`] has had all of its [`Props`](crate::Prop) created, there are a few
@@ -746,6 +720,107 @@ impl SchemaVariant {
                 }
             },
         )
+    }
+
+    pub async fn list_external_providers_and_explicit_internal_providers(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<(Vec<ExternalProvider>, Vec<InternalProvider>)> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        // Look for all external and explicit internal providers that the schema variant uses.
+        let maybe_provider_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            schema_variant_id,
+            EdgeWeightKindDiscriminants::Use,
+        )?;
+
+        // Collect the external and the explicit internal providers separately.
+        let mut external_provider_hashes: Vec<(ExternalProviderId, ContentHash)> = Vec::new();
+        let mut explicit_internal_provider_hashes: Vec<(InternalProviderId, ContentHash)> =
+            Vec::new();
+
+        for maybe_provider_index in maybe_provider_indices {
+            let node_weight = workspace_snapshot.get_node_weight(maybe_provider_index)?;
+            if let NodeWeight::Content(content_node_weight) = node_weight {
+                match content_node_weight.content_address() {
+                    ContentAddress::ExternalProvider(external_provider_content_hash) => {
+                        dbg!("external provider found");
+                        external_provider_hashes.push((
+                            content_node_weight.id().into(),
+                            external_provider_content_hash,
+                        ));
+                    }
+                    ContentAddress::InternalProvider(internal_provider_content_hash) => {
+                        dbg!("explicit internal provider found");
+                        explicit_internal_provider_hashes.push((
+                            content_node_weight.id().into(),
+                            internal_provider_content_hash,
+                        ));
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        // Grab all the contents in bulk from the content store.
+        let external_provider_hashes_only: Vec<ContentHash> =
+            external_provider_hashes.iter().map(|(_, h)| *h).collect();
+        let external_provider_content_map: HashMap<ContentHash, ExternalProviderContent> = ctx
+            .content_store()
+            .try_lock()?
+            .get_bulk(external_provider_hashes_only.as_slice())
+            .await?;
+        let explicit_internal_provider_hashes_only: Vec<ContentHash> =
+            explicit_internal_provider_hashes
+                .iter()
+                .map(|(_, h)| *h)
+                .collect();
+        let internal_provider_content_map: HashMap<ContentHash, InternalProviderContent> = ctx
+            .content_store()
+            .try_lock()?
+            .get_bulk(explicit_internal_provider_hashes_only.as_slice())
+            .await?;
+
+        // Assemble all external providers.
+        let mut external_providers = Vec::with_capacity(external_provider_hashes.len());
+        for (external_provider_id, external_provider_hash) in external_provider_hashes {
+            let external_provider_content = external_provider_content_map
+                .get(&external_provider_hash)
+                .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
+                    external_provider_id.into(),
+                ))?;
+
+            // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+            let ExternalProviderContent::V1(external_provider_content_inner) =
+                external_provider_content;
+
+            external_providers.push(ExternalProvider::assemble(
+                external_provider_id,
+                external_provider_content_inner.to_owned(),
+            ));
+        }
+
+        // Assemble all explicit internal providers.
+        let mut explicit_internal_providers =
+            Vec::with_capacity(explicit_internal_provider_hashes.len());
+        for (internal_provider_id, internal_provider_hash) in explicit_internal_provider_hashes {
+            let internal_provider_content = internal_provider_content_map
+                .get(&internal_provider_hash)
+                .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
+                    internal_provider_id.into(),
+                ))?;
+
+            // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+            let InternalProviderContent::V1(internal_provider_content_inner) =
+                internal_provider_content;
+
+            explicit_internal_providers.push(InternalProvider::assemble(
+                internal_provider_id,
+                internal_provider_content_inner.to_owned(),
+            ));
+        }
+
+        Ok((external_providers, explicit_internal_providers))
     }
 }
 
