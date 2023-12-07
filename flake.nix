@@ -71,7 +71,7 @@
           darwin.apple_sdk.frameworks.SystemConfiguration
         ];
 
-      # This isn't an exact science, but confirming the system interpreter by
+      # This isn't an exact science, but confirmed the system interpreter by
       # running `ldd /bin/sh` in Docker containers running:
       # - debian:9-slim
       # - ubuntu:rolling
