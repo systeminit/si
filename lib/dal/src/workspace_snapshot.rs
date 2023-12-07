@@ -55,7 +55,7 @@ use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
 };
-use crate::{AttributePrototypeId, AttributeValueId, PropId, PropKind};
+use crate::{AttributeValueId, PropId, PropKind};
 
 const FIND_FOR_CHANGE_SET: &str =
     include_str!("queries/workspace_snapshot/find_for_change_set.sql");
@@ -137,6 +137,7 @@ impl TryFrom<PgRow> for WorkspaceSnapshot {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn serde_value_to_string_type(value: &serde_json::Value) -> String {
     match value {
         serde_json::Value::Array(_) => "array",
@@ -376,7 +377,8 @@ impl WorkspaceSnapshot {
     }
 
     pub fn cleanup(&mut self) -> WorkspaceSnapshotResult<()> {
-        Ok(self.working_copy()?.cleanup())
+        self.working_copy()?.cleanup();
+        Ok(())
     }
 
     pub fn dot(&mut self) {

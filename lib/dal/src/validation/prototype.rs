@@ -1,4 +1,4 @@
-use content_store::{ContentHash, Store};
+use content_store::Store;
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
@@ -13,9 +13,7 @@ use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{
-    func::FuncId, pk, DalContext, Func, PropId, StandardModel, Timestamp, TransactionsError,
-};
+use crate::{func::FuncId, pk, DalContext, Func, PropId, Timestamp, TransactionsError};
 
 // pub mod context;
 

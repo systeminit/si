@@ -1,13 +1,8 @@
-use base64::engine::general_purpose;
-use base64::Engine;
-use serde::{Deserialize, Serialize};
 use si_pkg::SiPkg;
-use telemetry::prelude::*;
 
 use crate::{
     func::intrinsics::IntrinsicFunc, installed_pkg::InstalledPkg, pkg::import_pkg_from_pkg,
-    BuiltinsError, BuiltinsResult, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    StandardModel,
+    BuiltinsResult, DalContext,
 };
 
 // #[derive(Deserialize, Serialize, Debug)]
@@ -35,12 +30,14 @@ use crate::{
 /// in memory.
 ///
 /// The instances of this end up in a magic `ASSETS` array const.
+#[allow(dead_code)]
 #[iftree::include_file_tree("paths = '/src/builtins/func/**'")]
 pub struct FuncBuiltin {
     relative_path: &'static str,
     contents_str: &'static str,
 }
 
+#[allow(dead_code)]
 static FUNC_BUILTIN_BY_PATH: once_cell::sync::Lazy<std::collections::HashMap<&str, &FuncBuiltin>> =
     once_cell::sync::Lazy::new(|| {
         ASSETS

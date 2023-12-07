@@ -1,14 +1,10 @@
-use std::default::Default;
-
 use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
+use si_pkg::ActionFuncSpecKind;
 use strum::{AsRefStr, Display, EnumDiscriminants};
 
-use si_pkg::ActionFuncSpecKind;
-use telemetry::prelude::*;
-
 use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{pk, SchemaVariantId, StandardModel, Timestamp};
+use crate::{pk, SchemaVariantId, Timestamp};
 
 // const FIND_FOR_CONTEXT: &str = include_str!("./queries/action_prototype/find_for_context.sql");
 // const FIND_FOR_CONTEXT_AND_KIND: &str =

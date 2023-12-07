@@ -50,7 +50,7 @@ use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::EdgeWeightError;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, DalContext, StandardModel, Timestamp, TransactionsError};
+use crate::{pk, DalContext, Timestamp, TransactionsError};
 
 pub mod view;
 

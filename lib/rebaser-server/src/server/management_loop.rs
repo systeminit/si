@@ -18,6 +18,7 @@ use ulid::Ulid;
 
 use crate::server::{change_set_loop, ServerError, ServerResult};
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn management_loop_infallible_wrapper(
     recreate_management_stream: bool,
     pg_pool: PgPool,
@@ -46,6 +47,7 @@ pub(crate) async fn management_loop_infallible_wrapper(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn management_loop(
     recreate_management_stream: bool,
     pg_pool: PgPool,
@@ -91,7 +93,7 @@ async fn management_loop(
     }
     environment.create_stream(&management_stream).await?;
 
-    let mut management_consumer = Consumer::new(
+    let management_consumer = Consumer::new(
         &environment,
         &management_stream,
         ConsumerOffsetSpecification::Next,

@@ -1,6 +1,5 @@
 use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
-use serde_json::error::Category;
 use std::collections::HashMap;
 use strum::EnumDiscriminants;
 use thiserror::Error;

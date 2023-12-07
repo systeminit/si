@@ -135,7 +135,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 jwt_public_signing_key,
                 posthog_client,
             )?;
-            let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
+            let _second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
             // Server::start_resource_refresh_scheduler(
             //     services_context.clone(),
@@ -155,7 +155,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 posthog_client,
             )
             .await?;
-            let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
+            let _second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
             // Server::start_resource_refresh_scheduler(
             //     services_context.clone(),

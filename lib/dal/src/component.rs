@@ -18,9 +18,7 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{
-    pk, AttributeValue, DalContext, SchemaVariantId, StandardModel, Timestamp, TransactionsError,
-};
+use crate::{pk, AttributeValue, DalContext, SchemaVariantId, Timestamp, TransactionsError};
 
 // pub mod code;
 // pub mod diff;
@@ -141,8 +139,7 @@ impl Component {
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
-        let node_weight =
-            NodeWeight::new_content(&change_set, id, ContentAddress::Component(hash))?;
+        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Component(hash))?;
         let provider_indices = {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
             workspace_snapshot.add_node(node_weight)?;

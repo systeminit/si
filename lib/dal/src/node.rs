@@ -1,5 +1,4 @@
 use content_store::{Store, StoreError};
-use rand::prelude::SliceRandom;
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 use thiserror::Error;
@@ -10,7 +9,7 @@ use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, ComponentId, DalContext, StandardModel, Timestamp, TransactionsError};
+use crate::{pk, ComponentId, DalContext, Timestamp, TransactionsError};
 
 #[derive(Debug, Error)]
 pub enum NodeError {
@@ -139,7 +138,7 @@ impl Node {
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_content(&change_set, id, ContentAddress::Node(hash))?;
+        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Node(hash))?;
 
         {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;

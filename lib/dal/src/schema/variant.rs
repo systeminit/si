@@ -29,17 +29,15 @@ use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::graph::NodeIndex;
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{
-    FuncNodeWeight, NodeWeight, NodeWeightError, PropNodeWeight,
-};
-use crate::workspace_snapshot::{self, WorkspaceSnapshotError};
+
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProvider,
-    ExternalProviderId, Func, FuncId, InternalProvider, Prop, PropId, PropKind, SchemaId,
-    SocketArity, StandardModel, Timestamp, TransactionsError, WorkspaceSnapshot,
+    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProvider, Func,
+    FuncId, InternalProvider, Prop, PropId, PropKind, SchemaId, SocketArity, Timestamp,
+    TransactionsError,
 };
 use crate::{FuncBackendResponseType, InternalProviderId};
 
@@ -53,7 +51,7 @@ pub mod root_prop;
 
 // FIXME(nick,theo): colors should be required for all schema variants.
 // There should be no default in the backend as there should always be a color.
-pub const DEFAULT_SCHEMA_VARIANT_COLOR: &'static str = "00b0bc";
+pub const DEFAULT_SCHEMA_VARIANT_COLOR: &str = "00b0bc";
 pub const SCHEMA_VARIANT_VERSION: SchemaVariantContentDiscriminants =
     SchemaVariantContentDiscriminants::V1;
 
@@ -418,11 +416,11 @@ impl SchemaVariant {
                 )?;
                 for target in targets {
                     let node_weight = workspace_snapshot.get_node_weight(target)?;
-                    if let Some(discriminants) = node_weight.content_address_discriminants() {
-                        if let ContentAddressDiscriminants::AttributePrototype = discriminants {
-                            found_attribute_prototype_id = Some(node_weight.id().into());
-                            break;
-                        }
+                    if let Some(ContentAddressDiscriminants::AttributePrototype) =
+                        node_weight.content_address_discriminants()
+                    {
+                        found_attribute_prototype_id = Some(node_weight.id().into());
+                        break;
                     }
                 }
             }
@@ -502,6 +500,7 @@ impl SchemaVariant {
         Ok(())
     }
 
+    #[allow(dead_code)]
     async fn get_content(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -520,9 +519,7 @@ impl SchemaVariant {
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
 
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-        let inner = match content {
-            SchemaVariantContent::V1(inner) => inner,
-        };
+        let SchemaVariantContent::V1(inner) = content;
 
         Ok((hash, inner))
     }

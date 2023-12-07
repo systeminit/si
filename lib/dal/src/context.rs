@@ -22,7 +22,7 @@ use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
 use crate::Workspace;
 use crate::{
-    change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId},
+    change_set_pointer::{ChangeSetPointer, ChangeSetPointerId},
     job::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
@@ -349,7 +349,7 @@ impl DalContext {
             onto_workspace_snapshot_id,
             // the vector clock id of the current change set is just the id
             // of the current change set
-            to_rebase_change_set_id: self.change_set_id().into(),
+            to_rebase_change_set_id: self.change_set_id(),
             onto_vector_clock_id: vector_clock_id,
         })
     }
@@ -434,7 +434,7 @@ impl DalContext {
                 .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?,
         );
 
-        Ok(self.change_set_pointer()?)
+        self.change_set_pointer()
     }
 
     pub fn set_workspace_snapshot(&mut self, workspace_snapshot: WorkspaceSnapshot) {
@@ -446,7 +446,7 @@ impl DalContext {
         &self,
     ) -> Result<&Arc<Mutex<WorkspaceSnapshot>>, WorkspaceSnapshotError> {
         match &self.workspace_snapshot {
-            Some(workspace_snapshot) => Ok(&workspace_snapshot),
+            Some(workspace_snapshot) => Ok(workspace_snapshot),
             None => Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched),
         }
     }
@@ -475,7 +475,7 @@ impl DalContext {
             None => None,
         };
 
-        Ok(self.blocking_commit_internal(rebase_request).await?)
+        self.blocking_commit_internal(rebase_request).await
     }
 
     /// Rolls all inner transactions back, discarding all changes made within them.

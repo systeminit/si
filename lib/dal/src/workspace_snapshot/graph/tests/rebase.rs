@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod test {
     use content_store::ContentHash;
-    use content_store::Store;
     use pretty_assertions_sorted::assert_eq;
 
     use crate::change_set_pointer::ChangeSetPointer;
@@ -154,7 +153,7 @@ mod test {
         // Perform the updates. In the future, we may want to see if the onto and resulting to
         // rebase graphs are logically equivalent after updates are performed.
         to_rebase
-            .perform_updates(&to_rebase_change_set, &onto, &updates)
+            .perform_updates(to_rebase_change_set, &onto, &updates)
             .expect("could not perform updates");
     }
 }

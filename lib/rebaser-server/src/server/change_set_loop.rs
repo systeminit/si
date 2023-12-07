@@ -1,6 +1,4 @@
 use dal::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
-use dal::workspace_snapshot::graph::NodeIndex;
-use dal::workspace_snapshot::update::Update;
 use dal::workspace_snapshot::vector_clock::VectorClockId;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::{
@@ -11,7 +9,6 @@ use rebaser_core::{ChangeSetMessage, ChangeSetReplyMessage};
 use si_rabbitmq::{
     Config as SiRabbitMqConfig, Consumer, Delivery, Environment, Producer, RabbitError,
 };
-use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::Instant;
@@ -84,7 +81,7 @@ async fn process_delivery_infallible_wrapper(
                 process_delivery(ctx, environment, inbound_stream, delivery, reply_to).await
             {
                 error!(error = ?err, "processing delivery failed, attempting to reply");
-                match Producer::new(&environment, reply_to).await {
+                match Producer::new(environment, reply_to).await {
                     Ok(mut producer) => {
                         if let Err(err) = producer
                             .send_single(
@@ -204,7 +201,7 @@ async fn process_delivery(
     info!(
         "processed delivery from \"{inbound_stream}\", committed transaction and sending reply to \"{reply_to_stream}\"",
     );
-    let mut producer = Producer::new(&environment, reply_to_stream).await?;
+    let mut producer = Producer::new(environment, reply_to_stream).await?;
     producer
         .send_single(serde_json::to_value(message)?, None)
         .await?;

@@ -1,10 +1,10 @@
-use super::{FuncAssociations, FuncError, FuncResult, FuncVariant};
-use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-//use dal::func::execution::{FuncExecution, FuncExecutionState};
-use dal::{Func, FuncId, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
-use veritech_client::{FunctionResultFailure, OutputStream};
+
+use dal::{Func, FuncId, Visibility};
+
+use super::{FuncAssociations, FuncResult, FuncVariant};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

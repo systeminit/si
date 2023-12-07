@@ -10,8 +10,8 @@ use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeS
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, standard_model, standard_model_accessor_ro, ChangeSetPk, DalContext, HistoryActor,
-    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, StandardModelError, Tenancy, Timestamp,
-    TransactionsError, User, UserError, UserPk, Visibility, WorkspaceSnapshot,
+    HistoryEvent, HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, UserError, Visibility, WorkspaceSnapshot,
 };
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");

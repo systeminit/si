@@ -1,15 +1,12 @@
-use std::collections::HashMap;
-
 use content_store::{ContentHash, Store, StoreError};
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
+use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
+use std::collections::HashMap;
 use strum::EnumDiscriminants;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-
-use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
 use ulid::Ulid;
 
 use crate::change_set_pointer::ChangeSetPointerError;
@@ -18,14 +15,11 @@ use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-use crate::workspace_snapshot::node_weight::{
-    self, ContentNodeWeight, NodeWeight, NodeWeightError,
-};
+use crate::workspace_snapshot::node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, AttributePrototypeId,
-    DalContext, FuncId, HistoryEventError, PropKind, StandardModel, StandardModelError, Tenancy,
-    Timestamp, TransactionsError, Visibility,
+    pk, DalContext, FuncId, HistoryEventError, PropKind, StandardModelError, Timestamp,
+    TransactionsError,
 };
 
 #[remain::sorted]

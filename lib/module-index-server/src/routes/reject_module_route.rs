@@ -2,7 +2,7 @@ use axum::extract::{Multipart, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::{extract::Path, Json};
-use chrono::{DateTime, FixedOffset, Offset, Utc};
+use chrono::{DateTime, Offset, Utc};
 use module_index_client::ModuleDetailsResponse;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DbErr, EntityTrait};
@@ -83,7 +83,7 @@ pub async fn reject_module(
         latest_hash: Set(module.latest_hash),
         latest_hash_created_at: Set(module.latest_hash_created_at),
         created_at: Set(module.created_at),
-        rejected_at: Set(Some(DateTime::<FixedOffset>::from_utc(
+        rejected_at: Set(Some(DateTime::from_naive_utc_and_offset(
             Utc::now().naive_utc(),
             Utc.fix(),
         ))),

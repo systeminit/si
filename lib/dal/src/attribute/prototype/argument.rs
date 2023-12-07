@@ -4,9 +4,8 @@
 //! context of the prototype.
 
 use content_store::Store;
-use petgraph::{visit::EdgeRef, Direction};
 use serde::{Deserialize, Serialize};
-use strum::{EnumDiscriminants, EnumString};
+use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -17,18 +16,15 @@ use crate::{
     pk,
     provider::internal::InternalProviderId,
     workspace_snapshot::{
-        self,
         content_address::{ContentAddress, ContentAddressDiscriminants},
-        edge_weight::{
-            self, EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
-        },
+        edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
         node_weight::{NodeWeight, NodeWeightError},
         WorkspaceSnapshotError,
     },
     AttributePrototypeId, DalContext, Timestamp, TransactionsError,
 };
 
-use self::static_value::{StaticArgumentValue, StaticArgumentValueContent, StaticArgumentValueId};
+use self::static_value::{StaticArgumentValue, StaticArgumentValueId};
 
 pub mod static_value;
 
@@ -153,10 +149,10 @@ impl AttributePrototypeArgument {
         workspace_snapshot.add_edge(
             prototype_id.into(),
             EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgument)?,
-            id.into(),
+            id,
         )?;
         workspace_snapshot.add_edge(
-            id.into(),
+            id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
             arg_id.into(),
         )?;
@@ -212,7 +208,7 @@ impl AttributePrototypeArgument {
         workspace_snapshot.add_edge(
             self.id.into(),
             EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgumentValue)?,
-            value_id.into(),
+            value_id,
         )?;
 
         Ok(self)

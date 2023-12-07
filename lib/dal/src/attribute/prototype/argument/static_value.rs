@@ -1,29 +1,16 @@
 use content_store::Store;
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
-use telemetry::prelude::*;
-use thiserror::Error;
-use ulid::Ulid;
 
 use crate::{
-    change_set_pointer::ChangeSetPointerError,
-    func::argument::FuncArgumentId,
-    impl_standard_model, pk,
-    provider::internal::InternalProviderId,
-    standard_model, standard_model_accessor,
+    pk,
     workspace_snapshot::{
-        content_address::{ContentAddress, ContentAddressDiscriminants},
-        edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
-        node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError},
-        WorkspaceSnapshotError,
+        content_address::ContentAddress, node_weight::NodeWeight, WorkspaceSnapshotError,
     },
-    AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, HistoryEventError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
+    DalContext, Timestamp,
 };
 
-use super::{
-    AttributePrototypeArgumentError, AttributePrototypeArgumentId, AttributePrototypeArgumentResult,
-};
+use super::AttributePrototypeArgumentResult;
 
 pk!(StaticArgumentValueId);
 
@@ -84,7 +71,7 @@ impl StaticArgumentValue {
             workspace_snapshot.add_node(node_weight)?;
         }
 
-        Ok(StaticArgumentValue::assemble(id.into(), content)?)
+        StaticArgumentValue::assemble(id.into(), content)
     }
 
     pub async fn get_by_id(
@@ -107,6 +94,6 @@ impl StaticArgumentValue {
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let StaticArgumentValueContent::V1(inner) = content;
 
-        Ok(StaticArgumentValue::assemble(id, inner)?)
+        StaticArgumentValue::assemble(id, inner)
     }
 }

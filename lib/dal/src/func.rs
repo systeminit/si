@@ -1,9 +1,5 @@
 use base64::{engine::general_purpose, Engine};
 use content_store::{ContentHash, Store, StoreError};
-use petgraph::data::DataMap;
-use petgraph::prelude::EdgeRef;
-use petgraph::stable_graph::Edges;
-use petgraph::{Directed, Outgoing};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
@@ -17,12 +13,8 @@ use crate::func::intrinsics::IntrinsicFunc;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-use crate::workspace_snapshot::graph::NodeIndex;
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{
-    func_node_weight, FuncNodeWeight, NodeWeight, NodeWeightError,
-};
+use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{pk, DalContext, Timestamp, TransactionsError};
 
@@ -161,6 +153,7 @@ impl Func {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         name: impl Into<String>,

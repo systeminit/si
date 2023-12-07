@@ -1,10 +1,7 @@
-use blake3::hash;
 use content_store::{ContentHash, Store};
-use object_tree::TarReadError::Hash;
 use serde::{Deserialize, Serialize};
 use si_pkg::SocketSpecArity;
 use std::collections::HashMap;
-use std::process::id;
 use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
 use telemetry::prelude::info;
 use thiserror::Error;
@@ -20,9 +17,8 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    label_list::ToLabelList, pk, socket, DalContext, ExternalProvider, ExternalProviderId,
-    InternalProvider, InternalProviderId, SchemaVariantId, StandardModel, Timestamp,
-    TransactionsError,
+    label_list::ToLabelList, pk, DalContext, ExternalProvider, ExternalProviderId,
+    InternalProvider, InternalProviderId, SchemaVariantId, Timestamp, TransactionsError,
 };
 
 #[remain::sorted]

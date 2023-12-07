@@ -10,18 +10,16 @@ mod test {
     use pretty_assertions_sorted::assert_eq;
     use std::collections::HashSet;
 
-    use super::*;
     use crate::change_set_pointer::ChangeSetPointer;
     use crate::workspace_snapshot::conflict::Conflict;
     use crate::workspace_snapshot::content_address::ContentAddress;
     use crate::workspace_snapshot::edge_weight::{
         EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
     };
-    use crate::workspace_snapshot::node_weight::FuncNodeWeight;
     use crate::workspace_snapshot::node_weight::NodeWeight;
     use crate::workspace_snapshot::update::Update;
     use crate::WorkspaceSnapshotGraph;
-    use crate::{ComponentId, FuncId, PropId, PropKind, SchemaId, SchemaVariantId, WorkspacePk};
+    use crate::{ComponentId, FuncId, PropId, PropKind, SchemaId, SchemaVariantId};
 
     #[derive(Debug, PartialEq)]
     struct ConflictsAndUpdates {
@@ -388,7 +386,7 @@ mod test {
 
         let updated_content_hash = ContentHash::from("new_content");
         graph
-            .update_content(change_set, component_id.into(), updated_content_hash)
+            .update_content(change_set, component_id, updated_content_hash)
             .expect("Unable to update Component content hash");
 
         let post_update_root_node_merkle_tree_hash: ContentHash =

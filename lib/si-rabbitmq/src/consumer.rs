@@ -5,13 +5,6 @@ use rabbitmq_stream_client::types::OffsetSpecification;
 use rabbitmq_stream_client::{
     Consumer as UpstreamConsumer, ConsumerHandle as UpstreamConsumerHandle,
 };
-use std::future::Future;
-use std::iter::Map;
-use std::pin::Pin;
-use telemetry::prelude::*;
-use tokio::sync::watch;
-use tokio::sync::watch::error::RecvError;
-use tokio::task;
 
 use crate::Delivery;
 use crate::Environment;

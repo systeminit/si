@@ -1,4 +1,4 @@
-use content_store::{ContentHash, Store};
+use content_store::Store;
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
@@ -12,8 +12,7 @@ use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWe
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributePrototype, DalContext, FuncId, Socket, SocketArity, StandardModel, Timestamp,
-    TransactionsError,
+    pk, AttributePrototype, DalContext, FuncId, Socket, SocketArity, Timestamp, TransactionsError,
 };
 use crate::{AttributePrototypeId, SchemaVariantId};
 
