@@ -50,11 +50,11 @@
         </div>
       </template>
     </CodeViewer>
-    <div
-      v-else
-      class="w-full text-center text-lg mt-5 dark:text-neutral-50 text-neutral-900"
-    >
-      This component does not have a resource associated with it yet
+    <div v-else class="flex flex-col items-center p-sm">
+      <div class="w-64"><EmptyStateIcon name="no-changes" /></div>
+      <div class="w-full text-center text-xl text-neutral-400">
+        This component does not have a resource associated with it yet
+      </div>
     </div>
   </div>
 </template>
@@ -66,6 +66,7 @@ import { useComponentsStore } from "@/store/components.store";
 import CodeViewer from "./CodeViewer.vue";
 import FixDetails from "./FixDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
+import EmptyStateIcon from "./EmptyStateIcon.vue";
 
 const componentsStore = useComponentsStore();
 const selectedComponent = computed(() => componentsStore.selectedComponent);

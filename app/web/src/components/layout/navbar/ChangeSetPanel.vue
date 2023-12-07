@@ -31,9 +31,7 @@
           icon="trash"
           size="sm"
           :disabled="fixesStore.fixesAreInProgress || !selectedChangeSetName"
-          :requestStatus="abandonChangeSetReqStatus"
-          loadingText="Abandoning Changeset..."
-          @click="abandonChangesetHandler"
+          @click="abandonConfirmationModalRef.open"
         />
       </div>
     </div>
@@ -71,6 +69,37 @@
           </div>
         </Stack>
       </form>
+    </Modal>
+
+    <Modal ref="abandonConfirmationModalRef" title="Abandon Change Set?">
+      <div class="flex flex-col gap-sm">
+        <div class="text-md">
+          Are you sure that you want to abandon change set
+          <span class="italic font-bold">"{{ selectedChangeSetName }}"</span>
+          and return to HEAD?
+        </div>
+        <div class="text-md">
+          Once abandoned, a change set cannot be recovered.
+        </div>
+        <div class="flex flex-row items-center gap-sm">
+          <VButton
+            class="flex-grow"
+            label="Confirm"
+            tone="action"
+            icon="trash"
+            :requestStatus="abandonChangeSetReqStatus"
+            loadingText="Abandoning Changeset..."
+            @click="abandonChangesetHandler"
+          />
+          <VButton
+            class="flex-grow"
+            label="Cancel"
+            tone="destructive"
+            icon="x"
+            @click="abandonConfirmationModalRef.close"
+          />
+        </div>
+      </div>
     </Modal>
 
     <Wipe ref="wipeRef">
@@ -118,7 +147,7 @@ import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import Wipe from "../../Wipe.vue";
 
 const dropdownRef = ref();
-
+const abandonConfirmationModalRef = ref();
 const wipeRef = ref<InstanceType<typeof Wipe>>();
 
 const changeSetsStore = useChangeSetsStore();
@@ -211,6 +240,8 @@ const abandonChangeSetReqStatus =
 async function abandonChangesetHandler() {
   await changeSetsStore.ABANDON_CHANGE_SET();
 
+  abandonConfirmationModalRef.value.close();
+
   if (route.name) {
     router.push({
       name: route.name,
@@ -222,5 +253,9 @@ async function abandonChangesetHandler() {
   }
 
   await changeSetsStore.FETCH_CHANGE_SETS();
+
+  // TODO(Wendy) - a temporary fix until we figure out and fix the bug where components from the abandoned changeset do not disappear from the diagram
+  // eslint-disable-next-line no-restricted-globals
+  location.reload();
 }
 </script>

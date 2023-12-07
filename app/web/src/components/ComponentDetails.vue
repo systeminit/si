@@ -91,27 +91,7 @@
                 <AttributesPanel />
               </TabGroupItem>
               <TabGroupItem label="Code" slug="code">
-                <template v-if="codeReqStatus.isPending">
-                  Loading code...</template
-                >
-                <template v-else-if="codeReqStatus.isError">
-                  <ErrorMessage :requestStatus="codeReqStatus" />
-                </template>
-                <template
-                  v-else-if="codeReqStatus.isSuccess && selectedComponentCode"
-                >
-                  <div class="absolute inset-xs">
-                    <ErrorMessage
-                      v-if="selectedComponentCode[0]?.message"
-                      class="mx-1 mb-2"
-                    >
-                      {{ selectedComponentCode[0]?.message }}
-                    </ErrorMessage>
-                    <CodeViewer
-                      :code="formattedCode || '#No code generated yet'"
-                    />
-                  </div>
-                </template>
+                <ComponentDetailsCode />
               </TabGroupItem>
               <TabGroupItem slug="qualifications">
                 <template #label>
@@ -192,7 +172,6 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useStatusStore } from "@/store/status.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import CodeViewer from "@/components/CodeViewer.vue";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useActionsStore } from "@/store/actions.store";
 import ComponentCard from "./ComponentCard.vue";
@@ -205,6 +184,7 @@ import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import AssetDiffDetails from "./AssetDiffDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import AttributesPanel from "./AttributesPanel/AttributesPanel.vue";
+import ComponentDetailsCode from "./ComponentDetailsCode.vue";
 
 const emit = defineEmits(["delete", "restore"]);
 
@@ -234,21 +214,6 @@ const selectedComponentFailingQualificationsCount = computed(
     ]?.failed || 0,
 );
 
-const selectedComponentCode = computed(
-  () => componentsStore.selectedComponentCode,
-);
-
-const formattedCode = computed(() => {
-  const compCode = componentsStore.selectedComponentCode;
-  if (compCode && compCode.length > 0) {
-    if (compCode[0]?.language === "json") {
-      return JSON.stringify(JSON.parse(compCode[0]?.code || ""), null, 2);
-    }
-    return compCode[0]?.code;
-  }
-  return "# No code generated yet";
-});
-
 const selectedComponentActionsCount = computed(() => {
   return _.filter(
     actionsStore.actionsByComponentId[selectedComponentId.value],
@@ -266,11 +231,6 @@ onBeforeMount(() => {
     componentsStore.FETCH_COMPONENT_CODE(selectedComponentId.value);
   }
 });
-
-const codeReqStatus = componentsStore.getRequestStatus(
-  "FETCH_COMPONENT_CODE",
-  selectedComponentId,
-);
 
 const statusStore = useStatusStore();
 const currentStatus = computed(() =>
