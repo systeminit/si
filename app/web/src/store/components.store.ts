@@ -602,6 +602,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   const tempId = pendingInsertsByComponentId[id]?.tempId;
                   if (tempId) delete this.pendingInsertedComponents[tempId];
                 });
+                if (pendingComponentIdsThatAreComplete[0]) {
+                  this.setSelectedComponentId(
+                    pendingComponentIdsThatAreComplete[0],
+                  );
+                }
               },
             });
           },
@@ -730,6 +735,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (pendingInsert) {
                   pendingInsert.componentId = response.componentId;
                 }
+
+                // TODO: ideally here we would set the selected component id, but the component doesn't exist in the store yet
+                // so we'll have to do it in the FETCH_DIAGRAM when we delete the pending insert
+                // in the future, we should probably return at least basic info about the component from the create call
+                // so we can select it right away and at least show a loading screen as more data is fetched
               },
             });
           },
