@@ -92,20 +92,12 @@ export interface VariantDef extends ListedVariantDef {
   code: string;
   types?: string;
   hasComponents: boolean;
-  hasAttrFuncs: boolean;
 }
 
 export type Asset = VariantDef;
 export type AssetListEntry = ListedVariantDef;
 export type AssetSaveRequest = Visibility &
-  Omit<
-    Asset,
-    | "createdAt"
-    | "updatedAt"
-    | "variantExists"
-    | "hasComponents"
-    | "hasAttrFuncs"
-  >;
+  Omit<Asset, "createdAt" | "updatedAt" | "variantExists" | "hasComponents">;
 export type AssetCreateRequest = Omit<
   AssetSaveRequest,
   "id" | "definition" | "variantExists"
@@ -257,7 +249,6 @@ export const useAssetStore = () => {
             updatedAt: new Date().toISOString(),
             schemaVariantId: undefined,
             hasComponents: false,
-            hasAttrFuncs: false,
           };
         },
 
@@ -278,7 +269,6 @@ export const useAssetStore = () => {
                 "id",
                 "schemaVariantId",
                 "hasComponents",
-                "hasAttrFuncs",
                 "createdAt",
                 "updatedAt",
               ]),
@@ -353,7 +343,6 @@ export const useAssetStore = () => {
               ..._.omit(asset, [
                 "schemaVariantId",
                 "hasComponents",
-                "hasAttrFuncs",
                 "createdAt",
                 "updatedAt",
               ]),
@@ -396,18 +385,16 @@ export const useAssetStore = () => {
               detachedAttributePrototypes: DetachedAttributePrototype[];
               detachedValidationPrototypes: DetachedValidationPrototype[];
             },
-            AssetSaveRequest & { autoReattachFunctions?: true }
+            AssetSaveRequest
           >({
             method: "post",
             url: "/variant_def/exec_variant_def",
             keyRequestStatusBy: assetId,
             params: {
-              autoReattachFunctions: true,
               ...visibility,
               ..._.omit(asset, [
                 "schemaVariantId",
                 "hasComponents",
-                "hasAttrFuncs",
                 "createdAt",
                 "updatedAt",
               ]),
