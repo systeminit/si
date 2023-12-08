@@ -1,5 +1,5 @@
 {
-  description = "System Initiative development environment";
+  description = "System Initiative build and development environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
