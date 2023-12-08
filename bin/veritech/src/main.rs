@@ -46,3 +46,4 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     Ok(())
 }
+
