@@ -574,8 +574,10 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   // so we ignore the bare event
   if (!ke.evt) return;
   const e = ke.evt;
-  // we only care here about left click - might change this later...
-  if (e.button !== 0) return;
+
+  // we dont care about right click here
+  if (e.button === 2) return;
+
   // if the user is holding the control key their mouse click will be processed as a right click
   if (e.ctrlKey) return;
 
@@ -592,14 +594,14 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   // for drag to pan, we start dragging right away since the user has enabled it by holding the space bar
   // for all other interactions, we watch to see if the user drags past some small threshold to begin the "drag"
   // in order to ignore clicks with a tiny bit of movement
-  if (dragToPanArmed.value) beginDragToPan();
+  if (dragToPanArmed.value || e.button === 1) beginDragToPan();
   else if (insertElementActive.value) triggerInsertElement();
   else handleMouseDownSelection();
 }
 function onMouseUp(e: MouseEvent) {
   if (props.controlsDisabled) return;
-  // we only care here about left click - might change this later...
-  if (e.button !== 0) return;
+  // we dont care about right click
+  if (e.button === 2) return;
   mouseIsDown.value = false;
   if (dragToPanActive.value) endDragToPan();
   else if (dragElementsActive.value) endDragElements();
