@@ -306,6 +306,22 @@ impl FuncArgument {
         Ok(func_args)
     }
 
+    pub async fn find_by_name_for_func(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        func_id: FuncId,
+    ) -> FuncArgumentResult<Option<Self>> {
+        let name = name.as_ref();
+
+        for arg in FuncArgument::list_for_func(ctx, func_id).await? {
+            if arg.name.as_str() == name {
+                return Ok(Some(arg));
+            }
+        }
+
+        Ok(None)
+    }
+
     pub async fn modify_by_id<L>(
         ctx: &DalContext,
         id: FuncArgumentId,

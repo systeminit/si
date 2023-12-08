@@ -8,6 +8,9 @@ use std::{collections::HashMap, path::Path};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentId,
+};
 use crate::prop::PropParent;
 use crate::{func::intrinsics::IntrinsicFunc, ComponentKind, ProviderKind};
 use crate::{
@@ -21,6 +24,7 @@ use crate::{
     ActionPrototype, ChangeSetPk, DalContext, ExternalProvider, Func, FuncId, InternalProvider,
     Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
 };
+use crate::{AttributePrototype, AttributePrototypeId};
 
 use super::{PkgError, PkgResult};
 
@@ -2710,77 +2714,78 @@ async fn import_schema_variant(
                 set_default_value(ctx, name_default_value_info).await?;
             }
 
+            for si_prop_func in variant_spec.si_prop_funcs()? {
+                let prop_id = Prop::find_prop_id_by_path(
+                    ctx,
+                    schema_variant.id(),
+                    &PropPath::new(si_prop_func.kind().prop_path()),
+                )?;
+                import_attr_func_for_prop(
+                    ctx,
+                    change_set_pk,
+                    schema_variant.id(),
+                    AttrFuncInfo {
+                        func_unique_id: si_prop_func.func_unique_id().to_owned(),
+                        prop_id,
+                        inputs: si_prop_func
+                            .inputs()?
+                            .iter()
+                            .map(|input| input.to_owned().into())
+                            .collect(),
+                    },
+                    None,
+                    thing_map,
+                )
+                .await?;
+            }
+
+            let mut _has_resource_value_func = false;
+            for root_prop_func in variant_spec.root_prop_funcs()? {
+                if root_prop_func.prop() == SchemaVariantSpecPropRoot::ResourceValue {
+                    _has_resource_value_func = true;
+                }
+
+                let prop_id = Prop::find_prop_id_by_path(
+                    ctx,
+                    schema_variant.id(),
+                    &PropPath::new(root_prop_func.prop().path_parts()),
+                )?;
+                import_attr_func_for_prop(
+                    ctx,
+                    change_set_pk,
+                    schema_variant.id(),
+                    AttrFuncInfo {
+                        func_unique_id: root_prop_func.func_unique_id().to_owned(),
+                        prop_id,
+                        inputs: root_prop_func
+                            .inputs()?
+                            .iter()
+                            .map(|input| input.to_owned().into())
+                            .collect(),
+                    },
+                    None,
+                    thing_map,
+                )
+                .await?;
+            }
+            //if !has_resource_value_func {
+            //attach_resource_payload_to_value(ctx, *schema_variant.id()).await?;
+            //}
+
+            for attr_func in side_effects.attr_funcs {
+                import_attr_func_for_prop(
+                    ctx,
+                    change_set_pk,
+                    schema_variant.id(),
+                    attr_func,
+                    None,
+                    thing_map,
+                )
+                .await?;
+            }
+
             Some(schema_variant)
-        } //
-          //
-          //
-          //     for si_prop_func in variant_spec.si_prop_funcs()? {
-          //         let prop = schema_variant
-          //             .find_prop(ctx, &si_prop_func.kind().prop_path())
-          //             .await?;
-          //         import_attr_func_for_prop(
-          //             ctx,
-          //             change_set_pk,
-          //             *schema_variant.id(),
-          //             AttrFuncInfo {
-          //                 func_unique_id: si_prop_func.func_unique_id().to_owned(),
-          //                 prop_id: *prop.id(),
-          //                 inputs: si_prop_func
-          //                     .inputs()?
-          //                     .iter()
-          //                     .map(|input| input.to_owned().into())
-          //                     .collect(),
-          //             },
-          //             None,
-          //             thing_map,
-          //         )
-          //         .await?;
-          //     }
-          //
-          //     let mut has_resource_value_func = false;
-          //     for root_prop_func in variant_spec.root_prop_funcs()? {
-          //         if root_prop_func.prop() == SchemaVariantSpecPropRoot::ResourceValue {
-          //             has_resource_value_func = true;
-          //         }
-          //
-          //         let prop = schema_variant
-          //             .find_prop(ctx, root_prop_func.prop().path_parts())
-          //             .await?;
-          //         import_attr_func_for_prop(
-          //             ctx,
-          //             change_set_pk,
-          //             *schema_variant.id(),
-          //             AttrFuncInfo {
-          //                 func_unique_id: root_prop_func.func_unique_id().to_owned(),
-          //                 prop_id: *prop.id(),
-          //                 inputs: root_prop_func
-          //                     .inputs()?
-          //                     .iter()
-          //                     .map(|input| input.to_owned().into())
-          //                     .collect(),
-          //             },
-          //             None,
-          //             thing_map,
-          //         )
-          //         .await?;
-          //     }
-          //     if !has_resource_value_func {
-          //         attach_resource_payload_to_value(ctx, *schema_variant.id()).await?;
-          //     }
-          //
-          //     for attr_func in side_effects.attr_funcs {
-          //         import_attr_func_for_prop(
-          //             ctx,
-          //             change_set_pk,
-          //             *schema_variant.id(),
-          //             attr_func,
-          //             None,
-          //             thing_map,
-          //         )
-          //         .await?;
-          //     }
-          //
-          //     for (key, map_key_func) in side_effects.map_key_funcs {
+        } //     for (key, map_key_func) in side_effects.map_key_funcs {
           //         import_attr_func_for_prop(
           //             ctx,
           //             change_set_pk,
@@ -2834,40 +2839,37 @@ async fn set_default_value(
     Ok(())
 }
 
-// async fn import_attr_func_for_prop(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     schema_variant_id: SchemaVariantId,
-//     AttrFuncInfo {
-//         func_unique_id,
-//         prop_id,
-//         inputs,
-//     }: AttrFuncInfo,
-//     key: Option<String>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<()> {
-//     match thing_map.get(change_set_pk, &func_unique_id.to_owned()) {
-//         Some(Thing::Func(func)) => {
-//             import_attr_func(
-//                 ctx,
-//                 change_set_pk,
-//                 AttributeReadContext {
-//                     prop_id: Some(prop_id),
-//                     ..Default::default()
-//                 },
-//                 key,
-//                 schema_variant_id,
-//                 *func.id(),
-//                 inputs,
-//                 thing_map,
-//             )
-//             .await?;
-//         }
-//         _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_string())),
-//     }
+async fn import_attr_func_for_prop(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    schema_variant_id: SchemaVariantId,
+    AttrFuncInfo {
+        func_unique_id,
+        prop_id,
+        inputs,
+    }: AttrFuncInfo,
+    key: Option<String>,
+    thing_map: &mut ThingMap,
+) -> PkgResult<()> {
+    match thing_map.get(change_set_pk, &func_unique_id.to_owned()) {
+        Some(Thing::Func(func)) => {
+            import_attr_func(
+                ctx,
+                change_set_pk,
+                AttrFuncContext::Prop(prop_id),
+                key,
+                schema_variant_id,
+                func.id,
+                inputs,
+                thing_map,
+            )
+            .await?;
+        }
+        _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_string())),
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 // async fn import_attr_func_for_output_socket(
 //     ctx: &DalContext,
@@ -2901,139 +2903,91 @@ async fn set_default_value(
 //     Ok(())
 // }
 
-// async fn get_prototype_for_context(
-//     ctx: &DalContext,
-//     context: AttributeReadContext,
-//     key: Option<String>,
-// ) -> PkgResult<AttributePrototype> {
-//     let value = AttributeValue::find_for_context(ctx, context)
-//         .await?
-//         .ok_or(AttributeValueError::Missing)?;
+async fn get_prototype_for_context(
+    ctx: &DalContext,
+    context: AttrFuncContext,
+    key: Option<String>,
+) -> PkgResult<AttributePrototypeId> {
+    if let Some(key) = key {
+        let map_prop_id = match context {
+            AttrFuncContext::Prop(prop_id) => prop_id,
+            //            _ => Err(PkgError::AttributeFuncForKeyMissingProp(
+            //                context,
+            //                key.to_owned(),
+            //            ))?,
+        };
+        let map_prop = Prop::get_by_id(ctx, map_prop_id).await?;
 
-//     let real_value = if let Some(key) = key {
-//         let parent_prop_id = context
-//             .prop_id()
-//             .ok_or(PkgError::AttributeFuncForKeyMissingProp(
-//                 context,
-//                 key.to_owned(),
-//             ))?;
+        if map_prop.kind != PropKind::Map {
+            return Err(PkgError::AttributeFuncForKeySetOnWrongKind(
+                map_prop_id,
+                key,
+                map_prop.kind,
+            ));
+        }
 
-//         let parent_prop = Prop::get_by_id(ctx, &parent_prop_id)
-//             .await?
-//             .ok_or(PkgError::MissingProp(parent_prop_id))?;
+        let element_prop_id = map_prop.element_prop_id(ctx)?;
+        let _prototype_id = AttributePrototype::find_for_prop(ctx, element_prop_id, &Some(key))?;
+        todo!();
+    } else {
+        Ok(match context {
+            AttrFuncContext::Prop(prop_id) => {
+                AttributePrototype::find_for_prop(ctx, prop_id, &None)?
+                    .ok_or(PkgError::PropMissingPrototype(prop_id))?
+            }
+        })
+    }
+}
 
-//         if *parent_prop.kind() != PropKind::Map {
-//             return Err(PkgError::AttributeFuncForKeySetOnWrongKind(
-//                 parent_prop_id,
-//                 key,
-//                 *parent_prop.kind(),
-//             ));
-//         }
+async fn create_attr_proto_arg(
+    ctx: &DalContext,
+    prototype_id: AttributePrototypeId,
+    input: &SiPkgAttrFuncInputView,
+    func_id: FuncId,
+    schema_variant_id: SchemaVariantId,
+) -> PkgResult<AttributePrototypeArgumentId> {
+    let arg = match &input {
+        SiPkgAttrFuncInputView::Prop { name, .. }
+        | SiPkgAttrFuncInputView::InputSocket { name, .. }
+        | SiPkgAttrFuncInputView::OutputSocket { name, .. } => {
+            FuncArgument::find_by_name_for_func(ctx, name, func_id)
+                .await?
+                .ok_or(PkgError::MissingFuncArgument(name.to_owned(), func_id))?
+        }
+    };
 
-//         match parent_prop.child_props(ctx).await?.pop() {
-//             Some(item_prop) => {
-//                 let item_write_context = AttributeContextBuilder::new()
-//                     .set_prop_id(*item_prop.id())
-//                     .to_context()?;
+    Ok(match input {
+        SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
+            let prop_id = Prop::find_prop_id_by_path(ctx, schema_variant_id, &prop_path.into())?;
+            let prop_ip_id = InternalProvider::find_for_prop_id(ctx, prop_id)?
+                .ok_or(PkgError::MissingInternalProviderForProp(prop_id))?;
 
-//                 let item_read_context: AttributeReadContext = item_write_context.to_owned().into();
+            let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id)?;
+            let apa_id = apa.id();
 
-//                 match AttributeValue::find_with_parent_and_key_for_context(
-//                     ctx,
-//                     Some(*value.id()),
-//                     Some(key.to_owned()),
-//                     item_read_context,
-//                 )
-//                 .await?
-//                 {
-//                     Some(item_av) => item_av,
-//                     None => {
-//                         let item_id = AttributeValue::insert_for_context(
-//                             ctx,
-//                             item_write_context,
-//                             *value.id(),
-//                             None,
-//                             Some(key),
-//                         )
-//                         .await?;
+            apa.set_value_from_internal_provider_id(ctx, prop_ip_id)?;
 
-//                         AttributeValue::get_by_id(ctx, &item_id)
-//                             .await?
-//                             .ok_or(AttributeValueError::MissingForId(item_id))?
-//                     }
-//                 }
-//             }
-//             None => {
-//                 return Err(PkgError::MissingItemPropForMapProp(parent_prop_id));
-//             }
-//         }
-//     } else {
-//         value
-//     };
+            apa_id
+        }
+        SiPkgAttrFuncInputView::InputSocket { socket_name, .. } => {
+            let explicit_ip =
+                InternalProvider::find_explicit_with_name(ctx, socket_name, schema_variant_id)
+                    .await?
+                    .ok_or(PkgError::MissingInternalProviderForSocketName(
+                        socket_name.to_owned(),
+                    ))?;
+            let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id)?;
+            let apa_id = apa.id();
 
-//     Ok(real_value
-//         .attribute_prototype(ctx)
-//         .await?
-//         .ok_or(AttributeValueError::MissingAttributePrototype)?)
-// }
-
-// async fn create_attr_proto_arg(
-//     ctx: &DalContext,
-//     prototype_id: AttributePrototypeId,
-//     input: &SiPkgAttrFuncInputView,
-//     func_id: FuncId,
-//     schema_variant_id: SchemaVariantId,
-// ) -> PkgResult<AttributePrototypeArgument> {
-//     let arg = match &input {
-//         SiPkgAttrFuncInputView::Prop { name, .. }
-//         | SiPkgAttrFuncInputView::InputSocket { name, .. }
-//         | SiPkgAttrFuncInputView::OutputSocket { name, .. } => {
-//             FuncArgument::find_by_name_for_func(ctx, name, func_id)
-//                 .await?
-//                 .ok_or(PkgError::MissingFuncArgument(name.to_owned(), func_id))?
-//         }
-//     };
-
-//     Ok(match input {
-//         SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
-//             let prop = Prop::find_prop_by_path(ctx, schema_variant_id, &prop_path.into()).await?;
-//             let prop_ip = InternalProvider::find_for_prop(ctx, *prop.id())
-//                 .await?
-//                 .ok_or(PkgError::MissingInternalProviderForProp(*prop.id()))?;
-
-//             AttributePrototypeArgument::new_for_intra_component(
-//                 ctx,
-//                 prototype_id,
-//                 *arg.id(),
-//                 *prop_ip.id(),
-//             )
-//             .await?
-//         }
-//         SiPkgAttrFuncInputView::InputSocket { socket_name, .. } => {
-//             let explicit_ip = InternalProvider::find_explicit_for_schema_variant_and_name(
-//                 ctx,
-//                 schema_variant_id,
-//                 &socket_name,
-//             )
-//             .await?
-//             .ok_or(PkgError::MissingInternalProviderForSocketName(
-//                 socket_name.to_owned(),
-//             ))?;
-
-//             AttributePrototypeArgument::new_for_intra_component(
-//                 ctx,
-//                 prototype_id,
-//                 *arg.id(),
-//                 *explicit_ip.id(),
-//             )
-//             .await?
-//         }
-//         _ => {
-//             // xxx: make this an error
-//             panic!("unsupported taking external provider as input for prop");
-//         }
-//     })
-// }
+            apa.set_value_from_internal_provider_id(ctx, explicit_ip.id())?;
+            apa_id
+        }
+        _ => {
+            // xxx: make this an error
+            panic!("unsupported taking external provider as input for prop");
+        }
+    })
+}
 
 // async fn update_attr_proto_arg(
 //     ctx: &DalContext,
@@ -3091,97 +3045,104 @@ async fn set_default_value(
 //     Ok(())
 // }
 
-// #[allow(clippy::too_many_arguments)]
-// async fn import_attr_func(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     context: AttributeReadContext,
-//     key: Option<String>,
-//     schema_variant_id: SchemaVariantId,
-//     func_id: FuncId,
-//     inputs: Vec<SiPkgAttrFuncInputView>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<()> {
-//     let mut prototype = get_prototype_for_context(ctx, context, key).await?;
+#[derive(Debug, Clone)]
+pub enum AttrFuncContext {
+    Prop(PropId),
+}
 
-//     if prototype.func_id() != func_id {
-//         prototype.set_func_id(ctx, &func_id).await?;
-//     }
+#[allow(clippy::too_many_arguments)]
+async fn import_attr_func(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    context: AttrFuncContext,
+    key: Option<String>,
+    schema_variant_id: SchemaVariantId,
+    func_id: FuncId,
+    inputs: Vec<SiPkgAttrFuncInputView>,
+    _thing_map: &mut ThingMap,
+) -> PkgResult<()> {
+    let prototype_id = get_prototype_for_context(ctx, context, key).await?;
 
-//     for input in &inputs {
-//         match change_set_pk {
-//             None => {
-//                 create_attr_proto_arg(ctx, *prototype.id(), input, func_id, schema_variant_id)
-//                     .await?;
-//             }
-//             Some(_) => {
-//                 let (unique_id, deleted) = match input {
-//                     SiPkgAttrFuncInputView::Prop {
-//                         unique_id, deleted, ..
-//                     }
-//                     | SiPkgAttrFuncInputView::InputSocket {
-//                         unique_id, deleted, ..
-//                     }
-//                     | SiPkgAttrFuncInputView::OutputSocket {
-//                         unique_id, deleted, ..
-//                     } => (
-//                         unique_id
-//                             .as_deref()
-//                             .ok_or(PkgError::MissingUniqueIdForNode("attr-func-input".into()))?,
-//                         *deleted,
-//                     ),
-//                 };
+    let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id)?;
 
-//                 let apa = match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-//                     Some(Thing::AttributePrototypeArgument(apa)) => {
-//                         let mut apa = apa.to_owned();
-//                         if deleted {
-//                             apa.delete_by_id(ctx).await?;
-//                         } else {
-//                             update_attr_proto_arg(
-//                                 ctx,
-//                                 &mut apa,
-//                                 *prototype.id(),
-//                                 input,
-//                                 func_id,
-//                                 schema_variant_id,
-//                             )
-//                             .await?;
-//                         }
+    if prototype_func_id != func_id {
+        AttributePrototype::update_func_by_id(ctx, prototype_id, func_id)?;
+    }
 
-//                         Some(apa)
-//                     }
-//                     _ => {
-//                         if deleted {
-//                             None
-//                         } else {
-//                             Some(
-//                                 create_attr_proto_arg(
-//                                     ctx,
-//                                     *prototype.id(),
-//                                     input,
-//                                     func_id,
-//                                     schema_variant_id,
-//                                 )
-//                                 .await?,
-//                             )
-//                         }
-//                     }
-//                 };
+    for input in &inputs {
+        match change_set_pk {
+            None => {
+                create_attr_proto_arg(ctx, prototype_id, input, func_id, schema_variant_id).await?;
+            }
+            Some(_) => {
+                todo!();
+                //                let (unique_id, deleted) = match input {
+                //                    SiPkgAttrFuncInputView::Prop {
+                //                        unique_id, deleted, ..
+                //                    }
+                //                    | SiPkgAttrFuncInputView::InputSocket {
+                //                        unique_id, deleted, ..
+                //                    }
+                //                    | SiPkgAttrFuncInputView::OutputSocket {
+                //                        unique_id, deleted, ..
+                //                    } => (
+                //                        unique_id
+                //                            .as_deref()
+                //                            .ok_or(PkgError::MissingUniqueIdForNode("attr-func-input".into()))?,
+                //                        *deleted,
+                //                    ),
+                //                };
+                //
+                //                let apa = match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+                //                    Some(Thing::AttributePrototypeArgument(apa)) => {
+                //                        let mut apa = apa.to_owned();
+                //                        if deleted {
+                //                            apa.delete_by_id(ctx).await?;
+                //                        } else {
+                //                            update_attr_proto_arg(
+                //                                ctx,
+                //                                &mut apa,
+                //                                *prototype.id(),
+                //                                input,
+                //                                func_id,
+                //                                schema_variant_id,
+                //                            )
+                //                            .await?;
+                //                        }
+                //
+                //                        Some(apa)
+                //                    }
+                //                    _ => {
+                //                        if deleted {
+                //                            None
+                //                        } else {
+                //                            Some(
+                //                                create_attr_proto_arg(
+                //                                    ctx,
+                //                                    *prototype.id(),
+                //                                    input,
+                //                                    func_id,
+                //                                    schema_variant_id,
+                //                                )
+                //                                .await?,
+                //                            )
+                //                        }
+                // }
+                //                };
 
-//                 if let Some(apa) = apa {
-//                     thing_map.insert(
-//                         change_set_pk,
-//                         unique_id.to_owned(),
-//                         Thing::AttributePrototypeArgument(apa),
-//                     );
-//                 }
-//             }
-//         }
-//     }
+                //                if let Some(apa) = apa {
+                //                    thing_map.insert(
+                //                        change_set_pk,
+                //                        unique_id.to_owned(),
+                //                        Thing::AttributePrototypeArgument(apa),
+                //                    );
+                //                }
+            }
+        }
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 // async fn create_validation(
 //     ctx: &DalContext,

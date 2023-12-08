@@ -79,7 +79,7 @@ use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::provider::{ProviderArity, ProviderKind};
-use crate::workspace_snapshot::content_address::ContentAddress;
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
@@ -200,6 +200,24 @@ impl InternalProvider {
 
     pub fn required(&self) -> bool {
         self.required
+    }
+
+    async fn get_from_node_weight(
+        ctx: &DalContext,
+        node_weight: &NodeWeight,
+    ) -> InternalProviderResult<Self> {
+        let content: InternalProviderContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&node_weight.content_hash())
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
+                node_weight.id(),
+            ))?;
+
+        let InternalProviderContent::V1(inner) = content;
+
+        Ok(Self::assemble(node_weight.id().into(), inner))
     }
 
     pub async fn new_implicit(
@@ -345,6 +363,35 @@ impl InternalProvider {
         )?;
 
         Ok(())
+    }
+
+    pub async fn find_explicit_with_name(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        schema_variant_id: SchemaVariantId,
+    ) -> InternalProviderResult<Option<Self>> {
+        let name = name.as_ref();
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        for provider_idx in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            schema_variant_id,
+            EdgeWeightKindDiscriminants::Provider,
+        )? {
+            let node_weight = workspace_snapshot.get_node_weight(provider_idx)?;
+            if let NodeWeight::Content(content_inner) = node_weight {
+                if ContentAddressDiscriminants::InternalProvider
+                    == content_inner.content_address().into()
+                {
+                    let ip = Self::get_from_node_weight(ctx, node_weight).await?;
+                    if ip.name() == name {
+                        return Ok(Some(ip));
+                    }
+                }
+            }
+        }
+
+        Ok(None)
     }
 
     pub async fn new_explicit(

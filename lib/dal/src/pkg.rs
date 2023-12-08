@@ -3,6 +3,8 @@ use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecE
 use std::collections::HashMap;
 use thiserror::Error;
 
+use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
     change_set_pointer::ChangeSetPointerError,
@@ -15,6 +17,7 @@ use crate::{
     ChangeSetPk, DalContext, FuncBackendKind, FuncBackendResponseType, SchemaError,
     SchemaVariantId, WorkspacePk, WsEvent, WsEventResult, WsPayload,
 };
+use crate::{FuncId, PropId, PropKind};
 
 pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
 
@@ -29,14 +32,14 @@ pub enum PkgError {
     // Action(#[from] ActionPrototypeError),
     // #[error(transparent)]
     // AttributeContextBuilder(#[from] AttributeContextBuilderError),
-    // #[error("attribute function for context {0:?} has key {1} but is not setting a prop value")]
-    // AttributeFuncForKeyMissingProp(AttributeReadContext, String),
-    // #[error("attribute function for prop {0} has a key {1} but prop kind is {2} not a map)")]
-    // AttributeFuncForKeySetOnWrongKind(PropId, String, PropKind),
-    // #[error(transparent)]
-    // AttributePrototype(#[from] AttributePrototypeError),
-    // #[error(transparent)]
-    // AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("attribute function for context {0:?} has key {1} but is not setting a prop value")]
+    AttributeFuncForKeyMissingProp(import::AttrFuncContext, String),
+    #[error("attribute function for prop {0} has a key {1} but prop kind is {2} not a map)")]
+    AttributeFuncForKeySetOnWrongKind(PropId, String, PropKind),
+    #[error(transparent)]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attrbute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     // #[error("Missing ExternalProvider {1} for AttributePrototypeArgument {1}")]
     // AttributePrototypeArgumentMissingExternalProvider(
     //     AttributePrototypeArgumentId,
@@ -133,16 +136,16 @@ pub enum PkgError {
     // MissingComponentForEdge(String, String, String),
     // #[error("Func {0} missing from exported funcs")]
     // MissingExportedFunc(FuncId),
-    // #[error("Cannot find FuncArgument {0} for Func {1}")]
-    // MissingFuncArgument(String, FuncId),
+    #[error("Cannot find FuncArgument {0} for Func {1}")]
+    MissingFuncArgument(String, FuncId),
     // #[error("Cannot find FuncArgument {0}")]
     // MissingFuncArgumentById(FuncArgumentId),
     #[error("Package asked for a function with the unique id {0} but none could be found")]
     MissingFuncUniqueId(String),
-    // #[error("Cannot find InternalProvider for Prop {0}")]
-    // MissingInternalProviderForProp(PropId),
-    // #[error("Cannot find InternalProvider for Socket named {0}")]
-    // MissingInternalProviderForSocketName(String),
+    #[error("Cannot find InternalProvider for Prop {0}")]
+    MissingInternalProviderForProp(PropId),
+    #[error("Cannot find InternalProvider for Socket named {0}")]
+    MissingInternalProviderForSocketName(String),
     // #[error("Intrinsic function {0} not found")]
     // MissingIntrinsicFunc(String),
     // #[error("Intrinsic function (0) argument {1} not found")]
@@ -169,6 +172,8 @@ pub enum PkgError {
     PkgSpec(#[from] SpecError),
     #[error(transparent)]
     Prop(#[from] PropError),
+    #[error("prop {0} missing attribute prototype")]
+    PropMissingPrototype(PropId),
     // #[error("prop spec structure is invalid: {0}")]
     // PropSpecChildrenInvalid(String),
     // #[error(transparent)]

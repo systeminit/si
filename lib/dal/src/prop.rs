@@ -43,10 +43,14 @@ pub enum PropError {
     ChildPropNotFoundByName(NodeIndex, String),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("prop {0} of kind {1} does not have an element prop")]
+    ElementPropNotOnKind(PropId, PropKind),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("map or array {0} missing element prop")]
+    MapOrArrayMissingElementProp(PropId),
     #[error("missing prototype for prop {0}")]
     MissingPrototypeForProp(PropId),
     #[error("node weight error: {0}")]
@@ -489,6 +493,25 @@ impl Prop {
         Ok(Prop::assemble(id, inner))
     }
 
+    pub fn element_prop_id(&self, ctx: &DalContext) -> PropResult<PropId> {
+        if !matches!(self.kind, PropKind::Array | PropKind::Map) {
+            return Err(PropError::ElementPropNotOnKind(self.id, self.kind));
+        }
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        for maybe_elem_node_idx in workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)?
+        {
+            if let NodeWeight::Prop(prop_inner) =
+                workspace_snapshot.get_node_weight(maybe_elem_node_idx)?
+            {
+                return Ok(prop_inner.id().into());
+            }
+        }
+
+        Err(PropError::MapOrArrayMissingElementProp(self.id))
+    }
+
     pub fn find_child_prop_index_by_name(
         ctx: &DalContext,
         node_index: NodeIndex,
@@ -575,7 +598,6 @@ impl Prop {
     ) -> PropResult<()> {
         let value = serde_json::to_value(value)?;
 
-        info!("fetching prop: {}", prop_id);
         let prop = Prop::get_by_id(ctx, prop_id).await?;
         if !matches!(
             prop.kind,
@@ -583,12 +605,6 @@ impl Prop {
         ) {
             return Err(PropError::SetDefaultForNonScalar(prop_id, prop.kind));
         }
-
-        info!(
-            "setting default value for {:?}, {}",
-            prop.path(ctx)?,
-            &value
-        );
 
         let prototype_id = Prop::prototype_id(ctx, prop_id)?;
         let intrinsic: IntrinsicFunc = prop.kind.into();
@@ -601,7 +617,6 @@ impl Prop {
             ))?;
 
         AttributePrototype::update_func_by_id(ctx, prototype_id, intrinsic_id)?;
-        info!("setting static value: {}", &value);
         AttributePrototypeArgument::new(ctx, prototype_id, value_arg_id)?
             .set_value_from_static_value(ctx, value)?;
 
