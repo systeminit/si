@@ -14,6 +14,7 @@
               v-tooltip="
                 'Drag the assets that you wish to include in your application into the canvas to the right.'
               "
+              class="cursor-pointer"
               name="question-circle"
             />
           </SidebarSubpanelTitle>
