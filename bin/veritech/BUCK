@@ -77,3 +77,4 @@ nix_omnibus_pkg(
     pkg_name = "veritech",
     build_dep = "//bin/veritech:veritech",
 )
+
