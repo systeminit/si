@@ -20,7 +20,7 @@ write_aws_credentials() {
 	aws_access_key_id = ${AWS_ACCESS_KEY_ID:-}
 	aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY:-}
 	EOF
-  if [ -z ${AWS_SESSION_TOKEN:-} ]; then echo "aws_session_token = ${AWS_SESSION_TOKEN:-}" >>"$HOME/.aws/credentials"; fi
+  if [ -n "${AWS_SESSION_TOKEN:-}" ]; then echo "aws_session_token = ${AWS_SESSION_TOKEN:-}" >>"$HOME/.aws/credentials"; fi
   chmod 0600 "$HOME/.aws/credentials"
 
   # Remove environment variables from veritech's environment
