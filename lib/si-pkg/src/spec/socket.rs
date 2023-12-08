@@ -60,8 +60,7 @@ pub struct SocketSpecData {
     pub name: String,
 
     #[builder(setter(into), default)]
-    #[serde(rename = "type")]
-    pub type_string: String,
+    pub connection_annotations: String,
 
     #[builder(setter(into), default)]
     pub arity: SocketSpecArity,

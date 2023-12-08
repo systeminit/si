@@ -8,7 +8,7 @@ CREATE TABLE sockets
     created_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                     text                     NOT NULL,
-    type_string              text                     NOT NULL,
+    connection_annotations   text                     NOT NULL,
     kind                     text                     NOT NULL,
     edge_kind                text                     NOT NULL,
     arity                    text                     NOT NULL,
@@ -27,7 +27,7 @@ CREATE OR REPLACE FUNCTION socket_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_name text,
-    this_type_string text,
+    this_connection_annotations text,
     this_kind text,
     this_edge_kind text,
     this_arity text,
@@ -44,10 +44,10 @@ BEGIN
 
     INSERT INTO sockets (tenancy_workspace_pk,
                          visibility_change_set_pk, name,
-                         type_string, kind, edge_kind, arity, diagram_kind)
+                         connection_annotations, kind, edge_kind, arity, diagram_kind)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk, this_name,
-            this_type_string, this_kind, this_edge_kind, this_arity, this_diagram_kind)
+            this_connection_annotations, this_kind, this_edge_kind, this_arity, this_diagram_kind)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

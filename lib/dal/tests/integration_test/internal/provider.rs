@@ -28,7 +28,7 @@ async fn new_external(ctx: &DalContext) {
         func_id,
         func_binding_id,
         func_binding_return_value_id,
-        "poop",
+        serde_json::to_string(&vec!["poop"])?,
         SocketArity::Many,
         false,
     )
@@ -64,7 +64,7 @@ async fn new_implicit_internal(ctx: &DalContext) {
         func_id,
         func_binding_id,
         func_binding_return_value_id,
-        "poop",
+        serde_json::to_string(&vec!["poop"])?,
         SocketArity::Many,
         false,
     )

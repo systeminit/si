@@ -104,7 +104,7 @@ export type SocketDefinitionArityType = "many" | "one";
 export interface SocketDefinition {
   name: string;
   arity: SocketDefinitionArityType;
-  type: string;
+  connectionAnnotations: string;
   uiHidden?: boolean;
   valueFrom?: ValueFrom;
 }
@@ -114,7 +114,7 @@ export interface ISocketDefinitionBuilder {
 
   setArity(arity: SocketDefinitionArityType): this;
 
-  setType(type: string): this;
+  setConnectionAnnotation(annotation: string): this;
 
   setUiHidden(hidden: boolean): this;
 
@@ -134,6 +134,7 @@ export interface ISocketDefinitionBuilder {
  */
 export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
   socket = <SocketDefinition>{};
+  connectionAnnotations: string[] = [];
 
   constructor() {
     this.socket = <SocketDefinition>{};
@@ -150,11 +151,11 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
       throw new Error("Name is required for socket");
     }
 
-    if (!this.socket.type) {
-      this.socket.type = this.socket.name;
-    }
+    this.connectionAnnotations.push(this.socket.name.toLowerCase());
 
-    this.socket.type = this.socket.type.toLocaleLowerCase();
+    this.socket.connectionAnnotations = JSON.stringify(
+      this.connectionAnnotations.map((a) => a.toLowerCase().trim()),
+    );
 
     return this.socket;
   }
@@ -187,29 +188,30 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
    * If not set by the builder, the socket's name will be set as default value
    * at build time.
    *
-   * @param {string} type
+   * @param {string} annotation
    *
    * @returns this
    *
    * @example
    *  .setType("EC2<IAM<string>>")
    */
-  setType(type: string): this {
+  setConnectionAnnotation(annotation: string): this {
     // TODO(victor): Move this validation to its own package so it can be reused by the frontend
     {
-      let token = type;
+      let token: string = annotation;
       const typeArray = [];
 
       do {
-        const match = token.match(/^(\w+)(?:<(.+)>)?$/);
+        const match = token.match(/^([\w ]+)(?:<(.+)>)?$/);
 
         if (!match) {
-          throw new Error(`Couldn't parse socket type "${type}"`);
+          throw new Error(`Couldn't parse connection annotation "${annotation}"`);
         }
 
-        const [_, newType, tail] = match;
+        const [_, newAnnotation, tail] = match;
 
-        typeArray.push(newType);
+        // newAnnotation will never be undefined since the group is non-optional
+        typeArray.push(newAnnotation);
 
         if (tail == null) break;
 
@@ -217,7 +219,7 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
       } while (token != null);
     }
 
-    this.socket.type = type;
+    this.connectionAnnotations.push(annotation);
     return this;
   }
 

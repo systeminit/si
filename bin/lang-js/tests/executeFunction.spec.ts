@@ -34,6 +34,15 @@ const scenarios: FuncScenario[] = [
     func: "schema-socket.ts",
   },
   {
+    kind: FunctionKind.ActionRun,
+    funcSpec: {
+      value: {},
+      handler: "workit",
+      codeBase64: "", // We rewrite this later
+    },
+    func: "actionRun.ts",
+  },
+  {
     kind: FunctionKind.Validation,
     funcSpec: {
       value: {},

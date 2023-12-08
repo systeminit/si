@@ -2,10 +2,11 @@
 //! [`Component`](crate::Component).
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use telemetry::prelude::*;
-use thiserror::Error;
 
 use crate::attribute::context::AttributeContextBuilder;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
@@ -233,7 +234,7 @@ impl SchemaVariant {
             *identity_func.id(),
             *identity_func_binding.id(),
             *identity_func_binding_return_value.id(),
-            "Frame",
+            serde_json::to_string(&vec!["Frame"])?,
             SocketArity::Many,
             true,
         )
@@ -248,7 +249,7 @@ impl SchemaVariant {
             *identity_func.id(),
             *identity_func_binding.id(),
             *identity_func_binding_return_value.id(),
-            "Frame",
+            serde_json::to_string(&vec!["Frame"])?,
             SocketArity::Many,
             true,
         )

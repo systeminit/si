@@ -670,8 +670,7 @@ pub struct SocketDefinition {
     /// The name of the [`Socket`](crate::Socket) to be created.
     pub name: String,
     /// The type identifier of the [`Socket`](crate::Socket) to be created.
-    #[serde(rename = "type")]
-    pub type_string: String,
+    pub connection_annotations: String,
     /// The [`arity`](https://en.wikipedia.org/wiki/Arity) of the [`Socket`](crate::Socket).
     /// Defaults to [`SocketArity::Many`](crate::SocketArity::Many) if nothing is provided.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -693,7 +692,7 @@ impl SocketDefinition {
         let mut data_builder = SocketSpecData::builder();
         builder.name(&self.name);
         data_builder.name(&self.name);
-        data_builder.type_string(&self.type_string);
+        data_builder.connection_annotations(&self.connection_annotations);
         if is_input {
             data_builder.kind(SocketSpecKind::Input);
         } else {

@@ -2,25 +2,26 @@
 
 function main() {
   const implicitTypeSocket = new SocketDefinitionBuilder()
-    .setName("A Ports")
+    .setName("ARN A")
     .setArity("many")
     .build();
 
   const explicitTypeSocket = new SocketDefinitionBuilder()
-    .setName("B Ports")
+    .setName("ARN B")
     .setArity("many")
-    .setType("port")
+    .setConnectionAnnotation("ARN")
     .build();
 
   const nestedTypeSocket = new SocketDefinitionBuilder()
-    .setName("C Ports")
+    .setName("ARN C")
     .setArity("many")
-    .setType("Docker<Port<string>>")
+    .setConnectionAnnotation("ARN<string>")
+    .setConnectionAnnotation("Amazon Resource Name<string>")
     .build();
 
   return new AssetBuilder()
     .addOutputSocket(implicitTypeSocket)
     .addOutputSocket(explicitTypeSocket)
-    .addOutputSocket(nestedTypeSocket)
+    .addInputSocket(nestedTypeSocket)
     .build();
 }

@@ -277,7 +277,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
-        "Cooling",
+        serde_json::to_string(&vec!["cooling"])?,
         SocketArity::Many,
         false,
     )
@@ -307,7 +307,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
-        "Cooling",
+        serde_json::to_string(&vec!["cooling"])?,
         SocketArity::Many,
         false,
     )

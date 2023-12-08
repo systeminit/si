@@ -92,7 +92,7 @@ impl AuthoringHelper {
                 identity_func_id,
                 identity_func_binding_id,
                 identity_func_binding_return_value_id,
-                "universal",
+                serde_json::to_string(&vec!["universal"]).expect("Should serialize constant"),
                 SocketArity::Many,
                 false,
             )
@@ -107,7 +107,7 @@ impl AuthoringHelper {
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
-            "universal",
+            serde_json::to_string(&vec!["universal"]).expect("Should serialize constant"),
             SocketArity::Many,
             false,
         )
