@@ -176,24 +176,26 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
   }
 
   /**
-   * Specify the type of the socket. The input should be sequence of word chars
-   * (\w regex matcher), optionally followed by any `<identifier>`, which makes
-   * it a supertype of `identifier`. This can be repeated recursively as many
-   * times as necessary (see example). At socket connecting time an *input*
-   * socket can receive a connection of any *output* socket with its own type or
-   * any supertypes. e.g. An input socket of type `Port<string>` can receive a
-   * connection of an output socket of type `Docker<Port<string>>`, but not one
-   * of type `string`.
+   * Add a field to the connection annotations array for the socket.
+   * The input should be sequence of word chars (\w regex matcher), optionally
+   * followed by any `<identifier>`, which makes it a supertype of `identifier`.
+   * This can be repeated recursively as many times as necessary (see example).
+   * At socket connecting time an *input* socket can receive a connection of any
+   * *output* socket that has a compatible connection annotation.
    *
-   * If not set by the builder, the socket's name will be set as default value
-   * at build time.
+   * e.g. An input socket with the `Port<string>` connection
+   * annotation can receive a
+   * connection from an output socket with the `Docker<Port<string>>` annotation,
+   * but not one with just `string`.
+   *
+   * The socket's name is always one of the connection annotations.
    *
    * @param {string} annotation
    *
    * @returns this
    *
    * @example
-   *  .setType("EC2<IAM<string>>")
+   *  .setConnectionAnnotation("EC2<IAM<string>>")
    */
   setConnectionAnnotation(annotation: string): this {
     // TODO(victor): Move this validation to its own package so it can be reused by the frontend
