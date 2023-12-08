@@ -31,7 +31,7 @@
           icon="trash"
           size="sm"
           :disabled="fixesStore.fixesAreInProgress || !selectedChangeSetName"
-          @click="abandonConfirmationModalRef.open"
+          @click="abandonConfirmationModalRef.open()"
         />
       </div>
     </div>
