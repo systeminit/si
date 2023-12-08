@@ -38,10 +38,10 @@ pub mod resource;
 
 // pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
 
-pub const DEFAULT_COMPONENT_X_POSITION: &'static str = "0";
-pub const DEFAULT_COMPONENT_Y_POSITION: &'static str = "0";
-pub const DEFAULT_COMPONENT_WIDTH: &'static str = "500";
-pub const DEFAULT_COMPONENT_HEIGHT: &'static str = "500";
+pub const DEFAULT_COMPONENT_X_POSITION: &str = "0";
+pub const DEFAULT_COMPONENT_Y_POSITION: &str = "0";
+pub const DEFAULT_COMPONENT_WIDTH: &str = "500";
+pub const DEFAULT_COMPONENT_HEIGHT: &str = "500";
 
 #[derive(Debug, Error)]
 pub enum ComponentError {

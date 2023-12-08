@@ -56,9 +56,6 @@ pub struct Schema {
     // NOTE(nick): maybe we should have a special edge for this instead or remove it altogether.
     default_schema_variant_id: Option<SchemaVariantId>,
     component_kind: ComponentKind,
-    // NOTE(nick): what is the difference between these two?
-    pub category_name: String,
-    pub category: String,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -74,9 +71,6 @@ pub struct SchemaContentV1 {
     // NOTE(nick): maybe we should have a special edge for this instead or remove it altogether.
     pub default_schema_variant_id: Option<SchemaVariantId>,
     pub component_kind: ComponentKind,
-    // NOTE(nick): what is the difference between these two?
-    pub category_name: String,
-    pub category: String,
 }
 
 impl From<Schema> for SchemaContentV1 {
@@ -87,8 +81,6 @@ impl From<Schema> for SchemaContentV1 {
             ui_hidden: value.ui_hidden,
             default_schema_variant_id: value.default_schema_variant_id,
             component_kind: value.component_kind,
-            category_name: value.category_name,
-            category: value.category,
         }
     }
 }
@@ -102,8 +94,6 @@ impl Schema {
             ui_hidden: inner.ui_hidden,
             default_schema_variant_id: inner.default_schema_variant_id,
             component_kind: inner.component_kind,
-            category_name: inner.category_name,
-            category: inner.category,
         }
     }
 
@@ -119,8 +109,6 @@ impl Schema {
         ctx: &DalContext,
         name: impl Into<String>,
         component_kind: ComponentKind,
-        category_name: impl Into<String>,
-        category: impl Into<String>,
     ) -> SchemaResult<Self> {
         let content = SchemaContentV1 {
             timestamp: Timestamp::now(),
@@ -128,8 +116,6 @@ impl Schema {
             ui_hidden: false,
             default_schema_variant_id: None,
             component_kind,
-            category_name: category_name.into(),
-            category: category.into(),
         };
 
         let hash = ctx

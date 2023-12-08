@@ -12,7 +12,7 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
     let schema = schemas.pop().expect("schemas are empty");
 
     // Ensure we can get it by id.
-    let found_schema = Schema::get_by_id(&ctx, schema.id())
+    let found_schema = Schema::get_by_id(ctx, schema.id())
         .await
         .expect("could not get schema by id");
     assert_eq!(
@@ -29,12 +29,12 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
 
     // Create a component and set geometry.
     let name = "fsu not top four";
-    let component = Component::new(&ctx, name, schema_variant_id, None)
+    let component = Component::new(ctx, name, schema_variant_id, None)
         .await
         .expect("could not create component");
     let component = component
         .set_geometry(
-            &ctx,
+            ctx,
             "1",
             "-1",
             Some(DEFAULT_COMPONENT_WIDTH),

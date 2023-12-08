@@ -1729,21 +1729,13 @@ async fn import_func_arguments(
 }
 
 async fn create_schema(ctx: &DalContext, schema_spec_data: &SiPkgSchemaData) -> PkgResult<Schema> {
-    let schema = Schema::new(
-        ctx,
-        schema_spec_data.name(),
-        ComponentKind::Standard,
-        schema_spec_data
-            .category_name()
-            .unwrap_or_else(|| schema_spec_data.name()),
-        schema_spec_data.category(),
-    )
-    .await?
-    .modify(ctx, |schema| {
-        schema.ui_hidden = schema_spec_data.ui_hidden();
-        Ok(())
-    })
-    .await?;
+    let schema = Schema::new(ctx, schema_spec_data.name(), ComponentKind::Standard)
+        .await?
+        .modify(ctx, |schema| {
+            schema.ui_hidden = schema_spec_data.ui_hidden();
+            Ok(())
+        })
+        .await?;
     Ok(schema)
 }
 
@@ -1783,7 +1775,7 @@ async fn import_schema(
     installed_pkg_id: Option<InstalledPkgId>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
-    let schema = match change_set_pk {
+    let schema_and_category = match change_set_pk {
         None => {
             let hash = schema_spec.hash().to_string();
             let existing_schema = InstalledPkgAsset::list_for_kind_and_hash(
@@ -1794,13 +1786,16 @@ async fn import_schema(
             .await?
             .pop();
 
+            let data = schema_spec
+                .data()
+                .ok_or(PkgError::DataNotFound("schema".into()))?;
+
+            // NOTE(nick): with the new engine, the category moves to the schema variant, so we need
+            // to pull it off here, even if we find an existing schema.
+            let category = data.category.clone();
+
             let schema = match existing_schema {
-                None => {
-                    let data = schema_spec
-                        .data()
-                        .ok_or(PkgError::DataNotFound("schema".into()))?;
-                    create_schema(ctx, data).await?
-                }
+                None => create_schema(ctx, data).await?,
                 Some(installed_schema_record) => {
                     match installed_schema_record.as_installed_schema()? {
                         InstalledPkgAssetTyped::Schema { id, .. } => {
@@ -1821,7 +1816,7 @@ async fn import_schema(
                 .await?;
             }
 
-            Some(schema)
+            Some((schema, category))
         }
         Some(_) => {
             unimplemented!("workspace import not yet implemented")
@@ -1868,7 +1863,7 @@ async fn import_schema(
         }
     };
 
-    if let Some(mut schema) = schema {
+    if let Some((mut schema, category)) = schema_and_category {
         if let Some(unique_id) = schema_spec.unique_id() {
             thing_map.insert(
                 change_set_pk,
@@ -1883,6 +1878,7 @@ async fn import_schema(
                 ctx,
                 change_set_pk,
                 &mut schema,
+                category.clone(),
                 variant_spec,
                 installed_pkg_id,
                 thing_map,
@@ -2443,6 +2439,7 @@ async fn import_schema_variant(
     ctx: &DalContext,
     change_set_pk: Option<ChangeSetPk>,
     schema: &mut Schema,
+    category: String,
     variant_spec: &SiPkgSchemaVariant<'_>,
     installed_pkg_id: Option<InstalledPkgId>,
     thing_map: &mut ThingMap,
@@ -2470,14 +2467,9 @@ async fn import_schema_variant(
                 None => (
                     // FIXME(nick): move category, color, and all metadata to variant or somewhere
                     // else. It should not be on schema.
-                    SchemaVariant::new(
-                        ctx,
-                        schema.id(),
-                        variant_spec.name(),
-                        schema.category.clone(),
-                    )
-                    .await?
-                    .0,
+                    SchemaVariant::new(ctx, schema.id(), variant_spec.name(), category)
+                        .await?
+                        .0,
                     true,
                 ),
             };
@@ -2909,6 +2901,7 @@ async fn get_prototype_for_context(
     key: Option<String>,
 ) -> PkgResult<AttributePrototypeId> {
     if let Some(key) = key {
+        #[allow(clippy::infallible_destructuring_match)]
         let map_prop_id = match context {
             AttrFuncContext::Prop(prop_id) => prop_id,
             //            _ => Err(PkgError::AttributeFuncForKeyMissingProp(

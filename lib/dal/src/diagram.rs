@@ -219,7 +219,7 @@ impl Diagram {
                 ctx,
                 // TODO(nick): handle deleted.
                 // ctx_with_deleted,
-                &component,
+                component,
                 parent_component_id,
                 child_component_ids,
                 is_modified,

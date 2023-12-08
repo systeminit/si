@@ -8,13 +8,13 @@ use dal_test::test;
 async fn list_schema_variant_views(ctx: &DalContext) {
     let mut schema_variant_views: Vec<SchemaVariantView> = Vec::new();
 
-    let schemas = Schema::list(&ctx).await.expect("could not list schemas");
+    let schemas = Schema::list(ctx).await.expect("could not list schemas");
     for schema in schemas {
         if schema.ui_hidden {
             continue;
         }
 
-        let schema_variants = SchemaVariant::list_for_schema(&ctx, schema.id())
+        let schema_variants = SchemaVariant::list_for_schema(ctx, schema.id())
             .await
             .expect("could not list schema variants for schema");
         for schema_variant in schema_variants {
@@ -27,7 +27,7 @@ async fn list_schema_variant_views(ctx: &DalContext) {
 
             let (external_providers, explicit_internal_providers) =
                 SchemaVariant::list_external_providers_and_explicit_internal_providers(
-                    &ctx,
+                    ctx,
                     schema_variant.id(),
                 )
                 .await
@@ -51,12 +51,12 @@ async fn list_schema_variant_views(ctx: &DalContext) {
                 id: schema_variant.id(),
                 // FIXME(nick): use the real value here
                 builtin: true,
-                // builtin: schema_variant.is_builtin(&ctx).await?,
+                // builtin: schema_variant.is_builtin(ctx).await?,
                 name: schema_variant.name().to_owned(),
                 schema_id: schema.id(),
                 schema_name: schema.name.to_owned(),
                 color: schema_variant
-                    .get_color(&ctx)
+                    .get_color(ctx)
                     .await
                     .expect("could not get color")
                     .unwrap_or("#0F0F0F".into()),
