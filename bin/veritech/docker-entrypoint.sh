@@ -24,7 +24,8 @@ write_aws_credentials() {
   chmod 0600 "$HOME/.aws/credentials"
 
   # Remove environment variables from veritech's environment
-  unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+  # AWS_SESSION_TOKEN is optional, but `unset` returns 0 for any variable, whether it exists or not
+  unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 }
 
 write_docker_credentials() {
