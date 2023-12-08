@@ -13,6 +13,7 @@ use std::{fs, io};
 pub struct Credentials {
     pub aws_access_key_id: String,
     pub aws_secret_access_key: String,
+    pub aws_session_token: Option<String>,
     pub aws_endpoint_url: Option<String>,
     pub docker_hub_user_name: Option<String>,
     pub docker_hub_credential: Option<String>,
@@ -117,10 +118,12 @@ pub async fn format_credentials_for_veritech() -> CliResult<Vec<String>> {
         raw_creds.aws_secret_access_key
     ));
 
-    if raw_creds.aws_endpoint_url.is_some() {
-        if let Some(url) = raw_creds.aws_endpoint_url {
-            creds.push(format!("AWS_ENDPOINT_URL={}", url));
-        }
+    if let Some(url) = raw_creds.aws_endpoint_url {
+        creds.push(format!("AWS_ENDPOINT_URL={}", url));
+    }
+
+    if let Some(token) = raw_creds.aws_session_token {
+        creds.push(format!("AWS_SESSION_TOKEN={}", token))
     }
 
     if raw_creds.docker_hub_user_name.is_some() && raw_creds.docker_hub_credential.is_some() {

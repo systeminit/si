@@ -29,3 +29,4 @@ We contributors to System Initiative:
 * Luca Palmieri (@LukeMathWalker)
 * Sakshi Umredkar (@saakshii12)
 * Justin Carter (@bodymindarts)
+* Ryan Benasutti (@Octogonapus)
