@@ -2,6 +2,7 @@ pub mod change_set;
 pub mod component;
 pub mod diagram;
 pub mod func;
+pub mod graphviz;
 pub mod schema;
 pub mod session;
 pub mod ws;

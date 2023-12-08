@@ -233,6 +233,27 @@ impl WorkspaceSnapshotGraph {
         self.graph.edges_directed(node_index, direction)
     }
 
+    pub fn nodes(&self) -> impl Iterator<Item = (&NodeWeight, NodeIndex)> {
+        self.graph.node_indices().filter_map(|node_idx| {
+            self.graph
+                .node_weight(node_idx)
+                .map(|weight| (weight, node_idx))
+        })
+    }
+
+    pub fn edges(&self) -> impl Iterator<Item = (&EdgeWeight, NodeIndex, NodeIndex)> {
+        self.graph.edge_indices().filter_map(|edge_idx| {
+            self.graph
+                .edge_weight(edge_idx)
+                .map(|weight| {
+                    self.graph
+                        .edge_endpoints(edge_idx)
+                        .map(|(source, target)| (weight, source, target))
+                })
+                .flatten()
+        })
+    }
+
     pub fn add_ordered_edge(
         &mut self,
         change_set: &ChangeSetPointer,
