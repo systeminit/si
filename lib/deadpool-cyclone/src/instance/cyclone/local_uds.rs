@@ -276,15 +276,15 @@ impl LocalUdsInstance {
 #[derive(Builder, Clone, Debug)]
 pub struct LocalUdsInstanceSpec {
     /// Canonical path to the `cyclone` program.
-    #[builder(try_setter, setter(into))]
+    #[builder(try_setter, setter(into), default)]
     cyclone_cmd_path: CanonicalCommand,
 
     /// Canonical path to Cyclone's secret key file.
-    #[builder(setter(into))]
+    #[builder(setter(into), default)]
     cyclone_decryption_key_path: String,
 
     /// Canonical path to the language server program.
-    #[builder(try_setter, setter(into))]
+    #[builder(try_setter, setter(into), default)]
     lang_server_cmd_path: CanonicalCommand,
 
     /// Socket strategy for a spawned Cyclone server.
