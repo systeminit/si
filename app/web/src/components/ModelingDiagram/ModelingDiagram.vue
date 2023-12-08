@@ -7,7 +7,7 @@ overflow hidden */
     class="absolute inset-0 overflow-hidden"
     :style="{ cursor }"
   >
-    <DiagramEmptyState v-if="componentsStore.modelIsEmpty" />
+    <DiagramEmptyState v-if="componentsStore.diagramIsEmpty" />
     <div
       v-if="showDebugBar"
       class="absolute bg-black text-white flex space-x-10 z-10 opacity-50"
@@ -264,8 +264,6 @@ import DiagramHelpModal from "./DiagramHelpModal.vue";
 import DiagramIcon from "./DiagramIcon.vue";
 import DiagramEmptyState from "./DiagramEmptyState.vue";
 
-// zoom config - zoom value of 1 is 100% zoom level
-const ZOOM_SCROLL_FACTOR = 0.001; // scroll delta multiplied by this while zooming
 // scroll pan multiplied by this and zoom level when panning
 const ZOOM_PAN_FACTOR = 0.5;
 
@@ -380,41 +378,50 @@ function onMouseWheel(e: KonvaEventObject<WheelEvent>) {
   e.evt.preventDefault();
   if (props.controlsDisabled) return;
 
+  // is it a mouse wheel or a trackpad pinch to zoom?
+  const isTrackpadPinch = !_.isInteger(e.evt.deltaY);
   // if CMD key, treat wheel as zoom, otherwise pan
-  if (e.evt.metaKey) {
-    // e.evt.metaKey
-    // zoom
-    let newZoomLevel = zoomLevel.value - e.evt.deltaY * ZOOM_SCROLL_FACTOR;
-    if (newZoomLevel < MIN_ZOOM) newZoomLevel = MIN_ZOOM;
-    if (newZoomLevel > MAX_ZOOM) newZoomLevel = MAX_ZOOM;
-
+  if (e.evt.metaKey || (e.evt.ctrlKey && isTrackpadPinch)) {
     // need to move origin to zoom centered on pointer position
     if (containerPointerPos.value && gridPointerPos.value) {
       // this a little confusing, but we're recreating the same calculations as above, but but at the new zoom level
       // so we know where the pointer _would_ move and then offset the pointer position stays constant
-      const newGridWidth = containerWidth.value / newZoomLevel;
-      const newMinX = gridOrigin.value.x - newGridWidth / 2;
-      const newGridHeight = containerHeight.value / newZoomLevel;
-      const newMinY = gridOrigin.value.y - newGridHeight / 2;
-      const pointerXAtNewZoom =
-        newMinX + containerPointerPos.value.x / newZoomLevel;
-      const pointerYAtNewZoom =
-        newMinY + containerPointerPos.value.y / newZoomLevel;
-
-      gridOrigin.value = {
-        x: gridOrigin.value.x - (pointerXAtNewZoom - gridPointerPos.value.x),
-        y: gridOrigin.value.y - (pointerYAtNewZoom - gridPointerPos.value.y),
-      };
+      zoomAtPoint(e.evt.deltaY, containerPointerPos.value, isTrackpadPinch);
     }
-    zoomLevel.value = newZoomLevel;
   } else {
     // pan
-    const panFactor = zoomLevel.value * ZOOM_PAN_FACTOR;
+    const panFactor = ZOOM_PAN_FACTOR / zoomLevel.value;
     gridOrigin.value = {
       x: gridOrigin.value.x + e.evt.deltaX * panFactor,
       y: gridOrigin.value.y + e.evt.deltaY * panFactor,
     };
   }
+}
+
+function zoomAtPoint(delta: number, zoomPos: Vector2d, isPinchToZoom = false) {
+  // e.evt.metaKey
+  // zoom
+  if (!gridPointerPos.value) return;
+
+  const panSpeed = 0.001 * (isPinchToZoom ? 20 : 1) * zoomLevel.value;
+
+  let newZoomLevel = zoomLevel.value - delta * panSpeed;
+  if (newZoomLevel < MIN_ZOOM) newZoomLevel = MIN_ZOOM;
+  if (newZoomLevel > MAX_ZOOM) newZoomLevel = MAX_ZOOM;
+
+  const newGridWidth = containerWidth.value / newZoomLevel;
+  const newMinX = gridOrigin.value.x - newGridWidth / 2;
+  const newGridHeight = containerHeight.value / newZoomLevel;
+  const newMinY = gridOrigin.value.y - newGridHeight / 2;
+  const pointerXAtNewZoom = newMinX + zoomPos.x / newZoomLevel;
+  const pointerYAtNewZoom = newMinY + zoomPos.y / newZoomLevel;
+
+  gridOrigin.value = {
+    x: gridOrigin.value.x - (pointerXAtNewZoom - gridPointerPos.value.x),
+    y: gridOrigin.value.y - (pointerYAtNewZoom - gridPointerPos.value.y),
+  };
+
+  zoomLevel.value = newZoomLevel;
 }
 
 // not sure why but TS couldnt quite find the ResizeObserverCallback type...
@@ -468,6 +475,12 @@ function onMountedAndReady() {
   window.addEventListener("mouseup", onMouseUp);
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
+  // window.addEventListener("pointerdown", onPointerDown);
+  // window.addEventListener("pointermove", onPointerMove);
+  // window.addEventListener("pointerup", onPointerUp);
+  // window.addEventListener("pointercancel", onPointerUp);
+  // window.addEventListener("pointerout", onPointerUp);
+  // window.addEventListener("pointerleave", onPointerUp);
 }
 
 onBeforeUnmount(() => {
@@ -476,6 +489,12 @@ onBeforeUnmount(() => {
   window.removeEventListener("mouseup", onMouseUp);
   window.removeEventListener("keydown", onKeyDown);
   window.removeEventListener("keyup", onKeyUp);
+  // window.removeEventListener("pointerdown", onPointerDown);
+  // window.removeEventListener("pointermove", onPointerMove);
+  // window.removeEventListener("pointerup", onPointerUp);
+  // window.removeEventListener("pointercancel", onPointerUp);
+  // window.removeEventListener("pointerout", onPointerUp);
+  // window.removeEventListener("pointerleave", onPointerUp);
   resizeObserver.unobserve(containerRef.value!);
 });
 
@@ -658,7 +677,7 @@ function checkIfDragStarted(_e: MouseEvent) {
   } else if (lastMouseDownElement.value instanceof DiagramEdgeData) {
     // not sure what dragging an edge means... maybe nothing?
     /* eslint-disable-next-line no-console */
-    console.log("dragging edge ?");
+    // console.log("dragging edge ?");
   } else if (
     lastMouseDownElement.value instanceof DiagramNodeData ||
     lastMouseDownElement.value instanceof DiagramGroupData
@@ -677,6 +696,41 @@ function checkIfDragStarted(_e: MouseEvent) {
     }
   }
 }
+
+// Pointer events (for touch screens)
+// const pointerEventCache = {} as Record<number, PointerEvent>;
+// let previousPointerDiff: number | undefined;
+
+// function onPointerDown(e: PointerEvent) {
+//   pointerEventCache[e.pointerId] = e;
+// }
+
+// function onPointerMove(e: PointerEvent) {
+//   const events = _.values(pointerEventCache);
+//   if (events.length === 2 && events[0] && events[1]) {
+//     // time to zoom!
+//     const point1 = { x: events[0].clientX, y: events[0].clientY };
+//     const point2 = { x: events[1].clientX, y: events[1].clientY };
+//     const zoomCenter = pointAlongLinePct(point1, point2, 0.5);
+//     const newPointerDiff = vectorDistance(point1, point2);
+
+//     if (!previousPointerDiff) {
+//       previousPointerDiff = newPointerDiff;
+//     } else {
+//       const delta = newPointerDiff - previousPointerDiff;
+//       zoomAtPoint(delta, zoomCenter);
+//     }
+//     previousPointerDiff = newPointerDiff;
+//   }
+// }
+
+// function onPointerUp(e: PointerEvent) {
+//   delete pointerEventCache[e.pointerId];
+
+//   if (_.values(pointerEventCache).length < 2) {
+//     previousPointerDiff = undefined;
+//   }
+// }
 
 // Mode and cursor
 const cursor = computed(() => {

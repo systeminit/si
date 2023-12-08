@@ -10,7 +10,7 @@
           <AssetFuncAttachDropdown
             v-if="assetStore.selectedAssetId"
             :disabled="!assetStore.selectedAsset?.schemaVariantId"
-            label="Attach Function"
+            label="Attach"
             @selected-attach-type="openAttachFuncModal"
           />
         </SidebarSubpanelTitle>
