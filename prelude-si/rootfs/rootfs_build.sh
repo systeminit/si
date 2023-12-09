@@ -1,22 +1,30 @@
 #!/bin/bash
 
-# TODO(johnrwatson): In theory we should be able to run this task for any of the components we need rootfs' for 
-# but there are some cyclone-specifics bits that will cause us problems
+# TODO(johnrwatson): In theory we should be able to run this task for any of the
+# components we need rootfs' for but there are some cyclone-specifics bits that
+# will cause us problems
 
 set -eo pipefail
 
-# TODO(johnrwatson): We need to port this to python or similar, and check for OS-dependencies that are required. i.e.
-# docker and basic priviledged escalation for the mounts
+# TODO(johnrwatson): We need to port this to python or similar, and check for
+# OS-dependencies that are required. i.e. docker and basic priviledged
+# escalation for the mounts
 
-git_metadata=$1        # i.e. ./${git_metadata} | jq -r '.abbreviated_commit_hash' (it returns a json blob output via python)
-build_metadata_out=$2  # i.e. ./metadata-out.json (a build metadata file containing contents of type etc)
-tar_file_out=$3        # i.e. output the file ./johns_rootfs.tar
+# i.e. ./${git_metadata} | jq -r '.abbreviated_commit_hash' (it returns a json
+# blob output via python)
+git_metadata=$1
+# i.e. ./metadata-out.json (a build metadata file containing contents of type
+# etc)
+build_metadata_out=$2
+# i.e. output the file ./johns_rootfs.tar
+tar_file_out=$3
 
 # Shift the parsed arguments off after assignment
 shift 3
 
-# The rest of the inputs are a list of input files or directories, to also include in the build
-# i.e. consume a binary ./johns_binary.bin for use within this script
+# The rest of the inputs are a list of input files or directories, to also
+# include in the build i.e. consume a binary ./johns_binary.bin for use within
+# this script
 binary_inputs=("$@")
 
 echo "-------------------------------------"
@@ -44,14 +52,14 @@ dd if=/dev/zero of=$ROOTFS bs=1M count=2048
 mkfs.ext4 $ROOTFS
 sudo mount $ROOTFS $ROOTFSMOUNT
 
-# For each tar.gz, copy the contents into the rootfs into the rootfs partition we 
-# created above. This will cumulatively stack the content of each.
+# For each tar.gz, copy the contents into the rootfs into the rootfs partition
+# we created above. This will cumulatively stack the content of each.
 for binary_input in "${binary_inputs[@]}"; do
   sudo tar -xf $binary_input -C $ROOTFSMOUNT
 
-  # TODO(johnrwatson): This can never make it into Production
-  # We need to figure out how to pass these decryption keys at all for the services
-  # That need them, maybe we need another sub-service specifically for fetching these from
+  # TODO(johnrwatson): This can never make it into Production We need to figure
+  # out how to pass these decryption keys at all for the services That need
+  # them, maybe we need another sub-service specifically for fetching these from
   # a secret provider or similar. Only for cyclone pull the dev decryption key
   if echo "$binary_input" | grep -q "cyclone"; then
     sudo cp $GITROOT/lib/cyclone-server/src/dev.decryption.key $ROOTFSMOUNT/dev.decryption.key
@@ -59,7 +67,7 @@ for binary_input in "${binary_inputs[@]}"; do
 done
 
 # create our script to add an init system to our container image
-cat << EOL > $INITSCRIPT
+cat <<EOL >$INITSCRIPT
 apk update
 apk add openrc openssh
 
@@ -120,7 +128,7 @@ docker run \
   -v $(pwd)/$INITSCRIPT:/init.sh \
   --rm \
   --entrypoint sh \
-  alpine:3.1  \
+  alpine:3.1 \
   /init.sh
 
 # cleanup the PACKAGEDIR
@@ -131,16 +139,17 @@ rm -rf $ROOTFSMOUNT $INITSCRIPT
 cp $ROOTFS $tar_file_out
 
 # Then generate the build metadata
-# TODO(johnrwatson): family here needs adjusted to the service/component
-# name as this doesn't currently support services outside of cyclone.
-cat << EOF >$build_metadata_out
+#
+# TODO(johnrwatson): family here needs adjusted to the service/component name as
+# this doesn't currently support services outside of cyclone.
+cat <<EOF >$build_metadata_out
 {
   "family":"cyclone",
   "variant":"rootfs",
-  "version":"$(jq -r '.canonical_version' < $git_metadata)",
+  "version":"$(jq -r '.canonical_version' <$git_metadata)",
   "arch":"$(uname -m | tr '[:upper:]' '[:lower:]')",
   "os":"$(uname -s | tr '[:upper:]' '[:lower:]')",
-  "commit": "$(jq -r '.commit_hash' < $git_metadata)",
+  "commit": "$(jq -r '.commit_hash' <$git_metadata)",
   "b3sum": "$(b3sum --no-names $tar_file_out)"
 }
 EOF
