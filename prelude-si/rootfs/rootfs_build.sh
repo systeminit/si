@@ -50,11 +50,37 @@ ROOTFSMOUNT="$PACKAGEDIR/rootfs"
 GUESTDISK="/rootfs"
 INITSCRIPT="$PACKAGEDIR/init.sh"
 
+# Vendored from https://github.com/fnichol/libsh/blob/main/lib/setup_traps.sh
+setup_traps() {
+  local _sig
+  for _sig in HUP INT QUIT ALRM TERM; do
+    trap "
+      $1
+      trap - $_sig EXIT
+      kill -s $_sig "'"$$"' "$_sig"
+  done
+  # shellcheck disable=SC2064
+  trap "$1" EXIT
+
+  unset _sig
+}
+
+cleanup() {
+  set +e
+
+  # cleanup the PACKAGEDIR
+  sudo umount -fv "$ROOTFSMOUNT"
+
+  rm -rfv "$ROOTFSMOUNT" "$INITSCRIPT"
+}
+
 # create disk and mount to a known location
 mkdir -pv "$ROOTFSMOUNT"
 dd if=/dev/zero of="$ROOTFS" bs=1M count=2048
 mkfs.ext4 -v "$ROOTFS"
 sudo mount -v "$ROOTFS" "$ROOTFSMOUNT"
+
+setup_traps cleanup
 
 cyclone_args=(
   --bind-vsock 3:52
@@ -154,11 +180,6 @@ for binary_input in "${binary_inputs[@]}"; do
       "$ROOTFSMOUNT/run/cyclone/decryption.key"
   fi
 done
-
-# cleanup the PACKAGEDIR
-sudo umount -fv "$ROOTFSMOUNT"
-
-rm -rf "$ROOTFSMOUNT" "$INITSCRIPT"
 
 cp -v "$ROOTFS" "$tar_file_out"
 
