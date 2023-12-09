@@ -7,7 +7,13 @@ overflow hidden */
     class="absolute inset-0 overflow-hidden"
     :style="{ cursor }"
   >
-    <DiagramEmptyState v-if="componentsStore.diagramIsEmpty" />
+    <div
+      v-if="fetchDiagramReqStatus.isFirstLoad"
+      class="w-full h-full flex items-center bg-[rgba(0,0,0,.1)]"
+    >
+      <LoadingMessage message="Loading change set" />
+    </div>
+    <DiagramEmptyState v-else-if="componentsStore.diagramIsEmpty" />
     <div
       v-if="showDebugBar"
       class="absolute bg-black text-white flex space-x-10 z-10 opacity-50"
@@ -205,7 +211,7 @@ import * as _ from "lodash-es";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
-import { getToneColorHex } from "@si/vue-lib/design-system";
+import { LoadingMessage, getToneColorHex } from "@si/vue-lib/design-system";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
@@ -256,6 +262,8 @@ import {
   rectContainsAnother,
   vectorBetween,
   pointAlongLinePct,
+  getRectCenter,
+  getAdjustmentRectToContainAnother,
 } from "./utils/math";
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
@@ -291,6 +299,9 @@ const toggleEdgeDisplayMode = () => {
   edgeDisplayMode.value =
     edgeDisplayMode.value === "EDGES_OVER" ? "EDGES_UNDER" : "EDGES_OVER";
 };
+
+const fetchDiagramReqStatus =
+  componentsStore.getRequestStatus("FETCH_DIAGRAM_DATA");
 
 const showDebugBar = false;
 
@@ -335,6 +346,13 @@ const gridMinX = computed(() => gridOrigin.value.x - gridWidth.value / 2);
 const gridMaxX = computed(() => gridOrigin.value.x + gridWidth.value / 2);
 const gridMinY = computed(() => gridOrigin.value.y - gridHeight.value / 2);
 const gridMaxY = computed(() => gridOrigin.value.y + gridHeight.value / 2);
+
+const gridRect = computed(() => ({
+  x: gridMinX.value,
+  y: gridMinY.value,
+  width: gridWidth.value,
+  height: gridHeight.value,
+}));
 
 function convertContainerCoordsToGridCoords(v: Vector2d): Vector2d {
   return {
@@ -884,6 +902,41 @@ watch(
   },
 );
 
+// TODO: handle multiple components?
+function panToComponent(payload: {
+  componentId: ComponentId;
+  center?: boolean;
+}) {
+  const key = getDiagramElementKeyForComponentId(payload.componentId);
+  if (!key) return;
+  const el = allElementsByKey.value[key];
+  if (!el) return;
+
+  const nodeLocation = nodesLocationInfo[el.uniqueKey];
+  if (!nodeLocation) return;
+  const nodeRect = {
+    x: nodeLocation.topLeft.x,
+    y: nodeLocation.topLeft.y,
+    width: nodeLocation.width,
+    height: nodeLocation.height,
+  };
+
+  if (payload.center) {
+    // TODO: if element doesnt fit on screen, need to zoom out
+    gridOrigin.value = getRectCenter(nodeRect);
+  } else if (!rectContainsAnother(gridRect.value, nodeRect)) {
+    // current behaviour will adjust the grid so the component is just moved onscreen plus some small buffer
+    // we could also decide to recenter if its totally off screen, and just move slightly otherwise?
+    // also could explore animating that change so you can see where it was?
+    const adjustmentVector = getAdjustmentRectToContainAnother(
+      gridRect.value,
+      nodeRect,
+    );
+    gridOrigin.value.x += adjustmentVector.x;
+    gridOrigin.value.y += adjustmentVector.y;
+  }
+}
+
 // ELEMENT SELECTION /////////////////////////////////////////////////////////////////////////////////
 const currentSelectionKeys = computed(() => {
   if (componentsStore.selectedEdgeId) {
@@ -1140,7 +1193,7 @@ function endDragElements() {
           height: groupShape.height(),
         };
 
-        return rectContainsAnother(elRect, groupRect);
+        return rectContainsAnother(groupRect, elRect);
       });
       if (
         newContainingGroup &&
@@ -2121,6 +2174,13 @@ function recenterOnElement(panTarget: DiagramElementData) {
 }
 
 const helpModalRef = ref();
+
+onMounted(() => {
+  componentsStore.eventBus.on("panToComponent", panToComponent);
+});
+onBeforeUnmount(() => {
+  componentsStore.eventBus.off("panToComponent", panToComponent);
+});
 
 // this object gets provided to the children within the diagram that need it
 const context: DiagramContext = {

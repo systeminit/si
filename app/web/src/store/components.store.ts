@@ -181,6 +181,7 @@ type EventBusEvents = {
   deleteSelection: void;
   restoreSelection: void;
   refreshSelectionResource: void;
+  panToComponent: { componentId: ComponentId; center?: boolean };
 };
 
 type PendingComponent = {
@@ -607,6 +608,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   const tempId = pendingInsertsByComponentId[id]?.tempId;
                   if (tempId) delete this.pendingInsertedComponents[tempId];
                 });
+                // and set the selection to the new component
                 if (pendingComponentIdsThatAreComplete[0]) {
                   this.setSelectedComponentId(
                     pendingComponentIdsThatAreComplete[0],
