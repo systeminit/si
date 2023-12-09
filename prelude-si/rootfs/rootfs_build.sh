@@ -76,8 +76,8 @@ apk update
 apk add openrc openssh
 
 adduser -D app
-for dir in /run /etc /usr/local/etc /home/app/.config; do
-    mkdir -pv "\$dir/$BIN"
+for dir in run etc usr/local/etc home/app/.config; do
+    mkdir -pv "${GUESTDISK}/\$dir/$BIN"
 done
 
 ssh-keygen -A
@@ -92,10 +92,10 @@ rc-update add sshd
 
 # Then, copy the newly configured system to the rootfs image:
 for dir in bin dev etc lib root sbin usr; do
-  tar c "/\${dir}" | tar x -C "${GUESTDISK}"
+  tar cp "/\${dir}" | tar xp -C "${GUESTDISK}"
 done
 for dir in proc run sys var; do
-  mkdir "${GUESTDISK}/\${dir}"
+  mkdir -pv "${GUESTDISK}/\${dir}"
 done
 
 # autostart cyclone
@@ -142,7 +142,7 @@ docker run \
 # For each tar.gz, copy the contents into the rootfs into the rootfs partition
 # we created above. This will cumulatively stack the content of each.
 for binary_input in "${binary_inputs[@]}"; do
-  sudo tar -xf "$binary_input" -C "$ROOTFSMOUNT"
+  sudo tar -xpf "$binary_input" -C "$ROOTFSMOUNT"
 
   # TODO(johnrwatson): This can never make it into Production We need to figure
   # out how to pass these decryption keys at all for the services That need
@@ -177,3 +177,5 @@ cat <<EOF >"$build_metadata_out"
   "b3sum": "$(b3sum --no-names "$tar_file_out")"
 }
 EOF
+
+echo "--- rootfs build complete."
