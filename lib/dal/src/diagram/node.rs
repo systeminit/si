@@ -60,8 +60,7 @@ pub enum NodeSide {
 pub struct SocketView {
     pub id: String,
     pub label: String,
-    #[serde(rename = "type")]
-    pub ty: String,
+    pub connection_annotations: Vec<String>,
     pub direction: SocketDirection,
     pub max_connections: Option<usize>,
     pub is_required: Option<bool>,
@@ -78,24 +77,30 @@ impl SocketView {
             .await?
             .into_iter()
             .filter_map(|socket| {
-                (!socket.ui_hidden()).then(|| Self {
-                    id: socket.id().to_string(),
-                    label: socket.human_name().unwrap_or(socket.name()).to_owned(),
-                    ty: socket.name().to_owned(),
-                    // Note: it's not clear if this mapping is correct, and there is no backend support for bidirectional sockets for now
-                    direction: match socket.edge_kind() {
-                        SocketEdgeKind::ConfigurationOutput => SocketDirection::Output,
-                        _ => SocketDirection::Input,
-                    },
-                    max_connections: match socket.arity() {
-                        SocketArity::Many => None,
-                        SocketArity::One => Some(1),
-                    },
-                    is_required: Some(socket.required()),
-                    node_side: match socket.edge_kind() {
-                        SocketEdgeKind::ConfigurationOutput => NodeSide::Right,
-                        _ => NodeSide::Left,
-                    },
+                (!socket.ui_hidden()).then(|| {
+                    let connection_annotations =
+                        serde_json::from_str(socket.connection_annotations())
+                            .unwrap_or(vec![socket.name().to_owned()]);
+
+                    Self {
+                        id: socket.id().to_string(),
+                        label: socket.human_name().unwrap_or(socket.name()).to_owned(),
+                        connection_annotations,
+                        // Note: it's not clear if this mapping is correct, and there is no backend support for bidirectional sockets for now
+                        direction: match socket.edge_kind() {
+                            SocketEdgeKind::ConfigurationOutput => SocketDirection::Output,
+                            _ => SocketDirection::Input,
+                        },
+                        max_connections: match socket.arity() {
+                            SocketArity::Many => None,
+                            SocketArity::One => Some(1),
+                        },
+                        is_required: Some(socket.required()),
+                        node_side: match socket.edge_kind() {
+                            SocketEdgeKind::ConfigurationOutput => NodeSide::Right,
+                            _ => NodeSide::Left,
+                        },
+                    }
                 })
             })
             .collect())
