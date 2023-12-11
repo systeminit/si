@@ -2776,19 +2776,20 @@ async fn import_schema_variant(
                 .await?;
             }
 
+            for (key, map_key_func) in side_effects.map_key_funcs {
+                import_attr_func_for_prop(
+                    ctx,
+                    change_set_pk,
+                    schema_variant.id(),
+                    map_key_func,
+                    Some(key),
+                    thing_map,
+                )
+                .await?;
+            }
+
             Some(schema_variant)
-        } //     for (key, map_key_func) in side_effects.map_key_funcs {
-          //         import_attr_func_for_prop(
-          //             ctx,
-          //             change_set_pk,
-          //             *schema_variant.id(),
-          //             map_key_func,
-          //             Some(key),
-          //             thing_map,
-          //         )
-          //         .await?;
-          //     }
-          //
+        } //
           //     for (prop_id, validation_spec) in side_effects.validations {
           //         import_prop_validation(
           //             ctx,
@@ -2900,7 +2901,7 @@ async fn get_prototype_for_context(
     context: AttrFuncContext,
     key: Option<String>,
 ) -> PkgResult<AttributePrototypeId> {
-    if let Some(key) = key {
+    if key.is_some() {
         #[allow(clippy::infallible_destructuring_match)]
         let map_prop_id = match context {
             AttrFuncContext::Prop(prop_id) => prop_id,
@@ -2914,14 +2915,28 @@ async fn get_prototype_for_context(
         if map_prop.kind != PropKind::Map {
             return Err(PkgError::AttributeFuncForKeySetOnWrongKind(
                 map_prop_id,
-                key,
+                key.expect("check above ensures this is some"),
                 map_prop.kind,
             ));
         }
 
         let element_prop_id = map_prop.element_prop_id(ctx)?;
-        let _prototype_id = AttributePrototype::find_for_prop(ctx, element_prop_id, &Some(key))?;
-        todo!();
+        Ok(
+            match AttributePrototype::find_for_prop(ctx, element_prop_id, &key)? {
+                None => {
+                    let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset)?;
+                    let prototype_id = AttributePrototype::new(ctx, unset_func_id)?.id();
+                    InternalProvider::new_implicit_with_prototype_and_key(
+                        ctx,
+                        element_prop_id,
+                        prototype_id,
+                        &key,
+                    )?;
+                    prototype_id
+                }
+                Some(prototype_id) => prototype_id,
+            },
+        )
     } else {
         Ok(match context {
             AttrFuncContext::Prop(prop_id) => {

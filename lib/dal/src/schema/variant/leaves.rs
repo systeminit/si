@@ -222,7 +222,7 @@ impl SchemaVariant {
             AttributePrototype::remove(ctx, prototype_id)?;
         }
         let attribute_protoype_id = AttributePrototype::new(ctx, func_id)?.id();
-        match InternalProvider::find_for_prop_id(ctx, map_prop_id)? {
+        match InternalProvider::find_for_prop_id(ctx, item_prop_id)? {
             Some(internal_provider_id) => {
                 InternalProvider::add_prototype_edge(
                     ctx,
