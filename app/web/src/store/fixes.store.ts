@@ -104,7 +104,8 @@ export const useFixesStore = () => {
             onSuccess: (response) => {
               this.fixBatches = response;
               this.runningFixBatch = response.find(
-                (batch) => !["success", "failure"].includes(batch.status ?? ""),
+                (batch) =>
+                  !["success", "failure", "error"].includes(batch.status ?? ""),
               )?.id;
             },
           });
