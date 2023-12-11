@@ -262,11 +262,18 @@ permissions and limitations under the License.
     function object2hrefvirt(bucket, key) {
         var enckey = key.split('/').map(function(x) { return encodeURIComponent(x); }).join('/');
 
-        if (AWS.config.region === "us-east-1") {
-            return document.location.protocol + '//' + bucket + '.s3.amazonaws.com/' + enckey;
+        // If it's a folder, return the nested folder key as the html a ref
+        if (key.endsWith("/")) {
+            if (AWS.config.region === "us-east-1") {
+                return document.location.protocol + '//' + bucket + '.s3.amazonaws.com/' + enckey;
+            } else {
+                return document.location.protocol + '//' + bucket + '.s3-' + AWS.config.region + '.amazonaws.com/' + enckey;
+            }
         } else {
-            return document.location.protocol + '//' + bucket + '.s3-' + AWS.config.region + '.amazonaws.com/' + enckey;
+            // Otherwise return the CDN link to the artifact for better cache performance
+            return 'https://artifacts.systeminit.com/' + enckey;
         }
+
     }
 
     function object2hrefpath(bucket, key) {
