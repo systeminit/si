@@ -179,13 +179,11 @@ impl Node {
         Ok(node_ids)
     }
 
-    /// List all [`Nodes`](Self) of kind [`configuration`](NodeKind::Configuration) in
-    /// [`topological`](https://en.wikipedia.org/wiki/Topological_sorting) order. The order will
-    /// be also be stable.
-    pub async fn list_topologically_sorted_configuration_nodes_with_stable_ordering(
+    // Returns map of node id -> parent node ids
+    pub async fn build_graph(
         ctx: &DalContext,
         shuffle_edges: bool,
-    ) -> NodeResult<Vec<NodeId>> {
+    ) -> NodeResult<HashMap<NodeId, HashSet<NodeId>>> {
         let total_start = std::time::Instant::now();
         let ctx_with_deleted = &ctx.clone_with_delete_visibility();
 
@@ -205,14 +203,8 @@ impl Node {
         for edge in edges {
             nodes
                 .entry(edge.head_node_id())
-                .and_modify(|set| {
-                    set.insert(edge.tail_node_id());
-                })
-                .or_insert_with(|| {
-                    let mut set = HashSet::new();
-                    set.insert(edge.tail_node_id());
-                    set
-                });
+                .or_default()
+                .insert(edge.tail_node_id());
         }
 
         // Add all floating nodes (those without edges).
@@ -223,6 +215,24 @@ impl Node {
                 nodes.insert(potential_floating_node, HashSet::new());
             }
         }
+
+        debug!(
+            "listing topologically sorted configuration nodes with stable ordering took {:?}",
+            total_start.elapsed()
+        );
+        Ok(nodes)
+    }
+
+    /// List all [`Nodes`](Self) of kind [`configuration`](NodeKind::Configuration) in
+    /// [`topological`](https://en.wikipedia.org/wiki/Topological_sorting) order. The order will
+    /// be also be stable.
+    pub async fn list_topologically_sorted_configuration_nodes_with_stable_ordering(
+        ctx: &DalContext,
+        shuffle_edges: bool,
+    ) -> NodeResult<Vec<NodeId>> {
+        let total_start = std::time::Instant::now();
+
+        let mut nodes = Self::build_graph(ctx, shuffle_edges).await?;
 
         // Gather all results based on the nodes and their "depends_on" sets. This is a topological
         // sort with stable ordering.

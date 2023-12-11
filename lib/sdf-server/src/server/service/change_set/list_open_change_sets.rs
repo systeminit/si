@@ -2,19 +2,22 @@ use super::ChangeSetResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    history_event, ActionId, ActionKind, ActionPrototypeId, ActorView, ChangeSet, ChangeSetPk,
-    ChangeSetStatus, ComponentId, Func, StandardModel, Visibility,
+    action::ActionBag, history_event, ActionId, ActionKind, ActionPrototypeId, ActorView,
+    ChangeSet, ChangeSetPk, ChangeSetStatus, ComponentId, Func, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ActionView {
     pub id: ActionId,
     pub action_prototype_id: ActionPrototypeId,
+    pub kind: ActionKind,
     pub name: String,
     pub component_id: ComponentId,
     pub actor: Option<String>,
+    pub parents: Vec<ActionId>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -22,7 +25,7 @@ pub struct ChangeSetView {
     pub pk: ChangeSetPk,
     pub name: String,
     pub status: ChangeSetStatus,
-    pub actions: Vec<ActionView>,
+    pub actions: HashMap<ActionId, ActionView>,
 }
 
 pub type ListOpenChangeSetsResponse = Vec<ChangeSetView>;
@@ -38,9 +41,16 @@ pub async fn list_open_change_sets(
     for cs in list {
         let ctx =
             ctx.clone_with_new_visibility(Visibility::new(cs.pk, ctx.visibility().deleted_at));
-        let a = cs.actions(&ctx).await?;
-        let mut actions = Vec::with_capacity(a.len());
-        for action in a {
+        let mut actions = HashMap::new();
+        for (
+            _,
+            ActionBag {
+                action,
+                parents,
+                kind,
+            },
+        ) in cs.actions(&ctx).await?
+        {
             let mut display_name = None;
             let prototype = action.prototype(&ctx).await?;
             let func_details = Func::get_by_id(&ctx, &prototype.func_id()).await?;
@@ -68,18 +78,23 @@ pub async fn list_open_change_sets(
                 }
             }
 
-            actions.push(ActionView {
-                id: *action.id(),
-                action_prototype_id: *prototype.id(),
-                name: display_name.unwrap_or_else(|| match prototype.kind() {
-                    ActionKind::Create => "create".to_owned(),
-                    ActionKind::Delete => "delete".to_owned(),
-                    ActionKind::Other => "other".to_owned(),
-                    ActionKind::Refresh => "refresh".to_owned(),
-                }),
-                component_id: *action.component_id(),
-                actor: actor_email,
-            });
+            actions.insert(
+                *action.id(),
+                ActionView {
+                    id: *action.id(),
+                    action_prototype_id: *prototype.id(),
+                    kind,
+                    name: display_name.unwrap_or_else(|| match kind {
+                        ActionKind::Create => "create".to_owned(),
+                        ActionKind::Delete => "delete".to_owned(),
+                        ActionKind::Other => "other".to_owned(),
+                        ActionKind::Refresh => "refresh".to_owned(),
+                    }),
+                    component_id: *action.component_id(),
+                    actor: actor_email,
+                    parents,
+                },
+            );
         }
 
         view.push(ChangeSetView {

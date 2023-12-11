@@ -1,19 +1,25 @@
-use std::convert::TryFrom;
+use std::{collections::HashMap, collections::VecDeque, convert::TryFrom};
 
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
+use futures::{stream::FuturesUnordered, StreamExt};
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
+use veritech_client::ResourceStatus;
 
 use crate::{
     fix::FixError,
+    func::backend::js_action::ActionRunResult,
     job::{
         consumer::{
             JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
         },
         producer::{JobProducer, JobProducerResult},
     },
+    standard_model::{self, TypeHint},
     AccessBuilder, ActionKind, ActionPrototype, ActionPrototypeId, Component, ComponentId,
-    DalContext, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, StandardModel,
-    Visibility, WsEvent,
+    DalContext, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, RootPropChild,
+    StandardModel, Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,11 +27,12 @@ pub struct FixItem {
     pub id: FixId,
     pub action_prototype_id: ActionPrototypeId,
     pub component_id: ComponentId,
+    pub parents: Vec<FixId>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct FixesJobArgs {
-    fixes: Vec<FixItem>,
+    fixes: HashMap<FixId, FixItem>,
     batch_id: FixBatchId,
     started: bool,
 }
@@ -42,7 +49,7 @@ impl From<FixesJob> for FixesJobArgs {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct FixesJob {
-    fixes: Vec<FixItem>,
+    fixes: HashMap<FixId, FixItem>,
     started: bool,
     batch_id: FixBatchId,
     access_builder: AccessBuilder,
@@ -51,18 +58,26 @@ pub struct FixesJob {
 }
 
 impl FixesJob {
-    pub fn new(ctx: &DalContext, fixes: Vec<FixItem>, batch_id: FixBatchId) -> Box<Self> {
+    pub fn new(
+        ctx: &DalContext,
+        fixes: HashMap<FixId, FixItem>,
+        batch_id: FixBatchId,
+    ) -> Box<Self> {
         Self::new_raw(ctx, fixes, batch_id, false)
     }
 
     /// Used for creating another fix job in a "fixes" sequence.
-    fn new_iteration(ctx: &DalContext, fixes: Vec<FixItem>, batch_id: FixBatchId) -> Box<Self> {
+    fn new_iteration(
+        ctx: &DalContext,
+        fixes: HashMap<FixId, FixItem>,
+        batch_id: FixBatchId,
+    ) -> Box<Self> {
         Self::new_raw(ctx, fixes, batch_id, true)
     }
 
     fn new_raw(
         ctx: &DalContext,
-        fixes: Vec<FixItem>,
+        fixes: HashMap<FixId, FixItem>,
         batch_id: FixBatchId,
         started: bool,
     ) -> Box<Self> {
@@ -103,6 +118,8 @@ impl JobConsumerMetadata for FixesJob {
 #[async_trait]
 impl JobConsumer for FixesJob {
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
+        let mut fixes = dbg!(self.fixes.clone());
+
         // Mark the batch as started if it has not been yet.
         if !self.started {
             let mut batch = FixBatch::get_by_id(ctx, &self.batch_id)
@@ -111,86 +128,170 @@ impl JobConsumer for FixesJob {
             batch.stamp_started(ctx).await?;
         }
 
-        if self.fixes.is_empty() {
+        if fixes.is_empty() {
             return finish_batch(ctx, self.batch_id).await;
         }
-        let fix_item = &self.fixes[0];
 
-        let deleted_ctx = &ctx.clone_with_delete_visibility();
-        // Get the workflow for the action we need to run.
-        let component = Component::get_by_id(deleted_ctx, &fix_item.component_id)
-            .await?
-            .ok_or(JobConsumerError::ComponentNotFound(fix_item.component_id))?;
-        if component.is_destroyed() {
-            return Err(JobConsumerError::ComponentIsDestroyed(*component.id()));
+        let mut fix_items = Vec::new();
+        for item in fixes.values() {
+            if item.parents.is_empty() {
+                fix_items.push(item.clone());
+            }
         }
 
-        let action = ActionPrototype::get_by_id(ctx, &fix_item.action_prototype_id)
-            .await?
-            .ok_or_else(|| {
-                JobConsumerError::ActionPrototypeNotFound(fix_item.action_prototype_id)
-            })?;
+        let mut handles = FuturesUnordered::new();
 
-        // Run the fix (via the action prototype).
-        let mut fix = Fix::get_by_id(ctx, &fix_item.id)
-            .await?
-            .ok_or(FixError::MissingFix(fix_item.id))?;
-        let resource = fix.run(ctx, &action).await?;
-        let completion_status: FixCompletionStatus = *fix
-            .completion_status()
-            .ok_or(FixError::EmptyCompletionStatus)?;
-
-        // Upsert the fix resolver.
-        FixResolver::upsert(
-            ctx,
-            *action.id(),
-            Some(matches!(completion_status, FixCompletionStatus::Success)),
-            *fix.id(),
-        )
-        .await?;
-
-        let logs: Vec<_> = match resource {
-            Some(r) => r
-                .logs
-                .iter()
-                .flat_map(|l| l.split('\n'))
-                .map(|l| l.to_owned())
-                .collect(),
-            None => vec![],
-        };
-
-        // Commit progress so far, and wait for dependent values propagation so we can run
-        // consecutive fixes that depend on the /root/resource from the previous fix.
-        // `blocking_commit()` will wait for any jobs that have ben created through
-        // `enqueue_job(...)` to finish before moving on.
+        // So we don't keep an open transaction while the tasks run, each task has its own transaction
+        // Block just in case
         ctx.blocking_commit().await?;
 
-        component.act(ctx, ActionKind::Refresh).await?;
+        for fix_item in fix_items {
+            let task_ctx = ctx
+                .to_builder()
+                .build(self.access_builder().build(self.visibility()))
+                .await?;
+            handles.push(async move {
+                let id = fix_item.id;
+                let res = tokio::task::spawn(fix_task(task_ctx, self.batch_id, fix_item)).await;
+                (id, res)
+            });
+        }
 
-        ctx.blocking_commit().await?;
+        let mut failed_fixes = VecDeque::new();
 
-        WsEvent::fix_return(
-            ctx,
-            *fix.id(),
-            self.batch_id,
-            *action.kind(),
-            completion_status,
-            logs,
-        )
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
+        while let Some((id, future_result)) = handles.next().await {
+            match future_result {
+                Ok(Ok((fix, logs))) => {
+                    let completion_status: FixCompletionStatus = *fix
+                        .completion_status()
+                        .ok_or(FixError::EmptyCompletionStatus)?;
+                    if !matches!(completion_status, FixCompletionStatus::Success) {
+                        failed_fixes.push_back((
+                            id,
+                            fix.completion_message()
+                                .map(ToOwned::to_owned)
+                                .unwrap_or_else(|| {
+                                    format!("Action failed with unknown error: {completion_status}")
+                                }),
+                            logs,
+                        ));
+                        continue;
+                    }
 
-        if self.fixes.len() == 1 {
+                    fixes.remove(&id);
+
+                    for fix in fixes.values_mut() {
+                        fix.parents.retain(|parent_id| *parent_id != id);
+                    }
+                }
+                Ok(Err(err)) => {
+                    error!("Unable to finish fix {id}: {err}");
+
+                    failed_fixes.push_back((id, format!("Action failed: {err}"), Vec::new()));
+                }
+                Err(err) => {
+                    failed_fixes.push_back((id, format!("Action failed: {err}"), Vec::new()));
+                    match err.try_into_panic() {
+                        Ok(panic) => {
+                            std::panic::resume_unwind(panic);
+                        }
+                        Err(err) => {
+                            if err.is_cancelled() {
+                                warn!("Fix Task {id} was cancelled: {err}");
+                            } else {
+                                error!("Unknown failure in fix task {id}: {err}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        while let Some((id, err, logs)) = failed_fixes.pop_front() {
+            fixes.remove(&id);
+
+            if let Some(mut fix) = Fix::get_by_id(ctx, &id).await? {
+                let deleted_ctx = &ctx.clone_with_delete_visibility();
+                let mut component = Component::get_by_id(deleted_ctx, fix.component_id())
+                    .await?
+                    .ok_or_else(|| JobConsumerError::ComponentNotFound(*fix.component_id()))?;
+                if component.visibility().deleted_at.is_some() {
+                    component.set_deleted_at(deleted_ctx, None).await?;
+                    component.set_needs_destroy(deleted_ctx, false).await?;
+                    standard_model::update(
+                        deleted_ctx,
+                        "components",
+                        "visibility_deleted_at",
+                        component.id(),
+                        None::<DateTime<Utc>>,
+                        TypeHint::TimestampWithTimeZone,
+                    )
+                    .await?;
+                }
+
+                if fix.started_at().is_none() {
+                    fix.stamp_started(ctx).await?;
+                }
+
+                if fix.finished_at().is_none() {
+                    let resource = ActionRunResult {
+                        status: ResourceStatus::Error,
+                        payload: fix.resource().cloned(),
+                        message: Some(err.clone()),
+                        logs: logs.clone(),
+                        last_synced: None,
+                    };
+
+                    fix.stamp_finished(
+                        ctx,
+                        FixCompletionStatus::Error,
+                        Some(err.clone()),
+                        Some(resource),
+                    )
+                    .await?;
+                }
+
+                let action = ActionPrototype::get_by_id(ctx, fix.action_prototype_id())
+                    .await?
+                    .ok_or_else(|| {
+                        JobConsumerError::ActionPrototypeNotFound(*fix.action_prototype_id())
+                    })?;
+
+                FixResolver::upsert(ctx, *action.id(), Some(false), *fix.id()).await?;
+
+                WsEvent::fix_return(
+                    ctx,
+                    *fix.id(),
+                    self.batch_id,
+                    *action.kind(),
+                    FixCompletionStatus::Error,
+                    logs,
+                )
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
+            }
+
+            for fix in fixes.values() {
+                if fix.parents.contains(&id) {
+                    failed_fixes.push_back((
+                        fix.id,
+                        format!("Action depends on another action that failed: {err}"),
+                        Vec::new(),
+                    ));
+                }
+            }
+            ctx.blocking_commit().await?;
+        }
+
+        if fixes.is_empty() {
             finish_batch(ctx, self.batch_id).await?;
         } else {
-            ctx.enqueue_job(FixesJob::new_iteration(
-                ctx,
-                self.fixes.iter().skip(1).cloned().collect(),
-                self.batch_id,
-            ))
-            .await?;
+            ctx.enqueue_job(FixesJob::new_iteration(ctx, fixes, self.batch_id))
+                .await?;
         }
+
+        ctx.commit().await?;
 
         Ok(())
     }
@@ -224,4 +325,135 @@ async fn finish_batch(ctx: &DalContext, id: FixBatchId) -> JobConsumerResult<()>
         .publish_on_commit(ctx)
         .await?;
     Ok(())
+}
+
+async fn fix_task(
+    ctx: DalContext,
+    batch_id: FixBatchId,
+    fix_item: FixItem,
+) -> JobConsumerResult<(Fix, Vec<String>)> {
+    let deleted_ctx = &ctx.clone_with_delete_visibility();
+    // Get the workflow for the action we need to run.
+    let component = Component::get_by_id(deleted_ctx, &fix_item.component_id)
+        .await?
+        .ok_or(JobConsumerError::ComponentNotFound(fix_item.component_id))?;
+    if component.is_destroyed() {
+        return Err(JobConsumerError::ComponentIsDestroyed(*component.id()));
+    }
+
+    let action = ActionPrototype::get_by_id(&ctx, &fix_item.action_prototype_id)
+        .await?
+        .ok_or_else(|| JobConsumerError::ActionPrototypeNotFound(fix_item.action_prototype_id))?;
+
+    // Run the fix (via the action prototype).
+    let mut fix = Fix::get_by_id(&ctx, &fix_item.id)
+        .await?
+        .ok_or(FixError::MissingFix(fix_item.id))?;
+    let resource = fix.run(&ctx, &action).await?;
+    let completion_status: FixCompletionStatus = *fix
+        .completion_status()
+        .ok_or(FixError::EmptyCompletionStatus)?;
+
+    FixResolver::upsert(
+        &ctx,
+        *action.id(),
+        Some(matches!(completion_status, FixCompletionStatus::Success)),
+        *fix.id(),
+    )
+    .await?;
+
+    let logs: Vec<_> = match resource {
+        Some(r) => r
+            .logs
+            .iter()
+            .flat_map(|l| l.split('\n'))
+            .map(|l| l.to_owned())
+            .collect(),
+        None => vec![],
+    };
+
+    WsEvent::fix_return(
+        &ctx,
+        *fix.id(),
+        batch_id,
+        *action.kind(),
+        completion_status,
+        logs.clone(),
+    )
+    .await?
+    .publish_on_commit(&ctx)
+    .await?;
+
+    // Commit progress so far, and wait for dependent values propagation so we can run
+    // consecutive fixes that depend on the /root/resource from the previous fix.
+    // `blocking_commit()` will wait for any jobs that have ben created through
+    // `enqueue_job(...)` to finish before moving on.
+    let attribute_value = Component::resource_attribute_value_by_id(&ctx, *component.id()).await?;
+    let resource_attribute_value = Component::root_prop_child_attribute_value_for_component(
+        &ctx,
+        *component.id(),
+        RootPropChild::Resource,
+    )
+    .await?;
+    dbg!(
+        &action,
+        &component,
+        &fix,
+        &attribute_value,
+        attribute_value.get_value(&ctx).await.expect("aaa"),
+        &resource_attribute_value,
+        &resource_attribute_value
+            .get_unprocessed_value(&ctx)
+            .await
+            .expect("bbb")
+    );
+
+    ctx.blocking_commit().await?;
+
+    assert_eq!(
+        attribute_value.id(),
+        Component::resource_attribute_value_by_id(&ctx, *component.id())
+            .await?
+            .id()
+    );
+    assert_eq!(
+        resource_attribute_value.id(),
+        Component::root_prop_child_attribute_value_for_component(
+            &ctx,
+            *component.id(),
+            RootPropChild::Resource,
+        )
+        .await?
+        .id(),
+    );
+
+    let attribute_value = Component::resource_attribute_value_by_id(&ctx, *component.id()).await?;
+    let resource_attribute_value = Component::root_prop_child_attribute_value_for_component(
+        &ctx,
+        *component.id(),
+        RootPropChild::Resource,
+    )
+    .await?;
+    dbg!(
+        &action,
+        &component,
+        &fix,
+        &attribute_value,
+        attribute_value.get_value(&ctx).await.expect("aaa"),
+        &resource_attribute_value,
+        &resource_attribute_value
+            .get_unprocessed_value(&ctx)
+            .await
+            .expect("bbb")
+    );
+    if matches!(completion_status, FixCompletionStatus::Success) {
+        if let Err(err) = dbg!(component.act(&ctx, ActionKind::Refresh).await) {
+            error!("Unable to refresh component: {err}");
+        }
+        if let Err(err) = ctx.blocking_commit().await {
+            error!("Unable to blocking commit after component refresh: {err}");
+        }
+    }
+
+    Ok((fix, logs))
 }

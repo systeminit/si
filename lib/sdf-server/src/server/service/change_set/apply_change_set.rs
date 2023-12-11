@@ -5,8 +5,12 @@ use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::job::definition::{FixItem, FixesJob};
-use dal::{ChangeSet, ChangeSetPk, Fix, FixBatch, HistoryActor, StandardModel, User};
+use dal::{
+    action::ActionBag, ActionId, ChangeSet, ChangeSetPk, Fix, FixBatch, FixId, HistoryActor,
+    StandardModel, User,
+};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, VecDeque};
 //use telemetry::tracing::{info_span, Instrument, log::warn};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -60,22 +64,45 @@ pub async fn apply_change_set(
     if !actions.is_empty() {
         let actors_delimited_string = actors.join(",");
         let batch = FixBatch::new(&ctx, user.email(), &actors_delimited_string).await?;
-        let mut fixes = Vec::with_capacity(actions.len());
+        let mut fixes: HashMap<FixId, FixItem> = HashMap::new();
+        let mut fixes_by_action: HashMap<ActionId, FixId> = HashMap::new();
 
-        for action in actions {
+        let mut values: Vec<ActionBag> = actions.values().cloned().collect();
+        values.sort_by_key(|a| *a.action.id());
+
+        let mut values: VecDeque<ActionBag> = values.into_iter().collect();
+
+        // Fixes have to be created in the order we want to display them in the fix history panel
+        // So we do extra work here to ensure the order is the execution order
+        'outer: while let Some(bag) = values.pop_front() {
+            let mut parents = Vec::new();
+            for parent_id in bag.parents.clone() {
+                if let Some(parent_id) = fixes_by_action.get(&parent_id) {
+                    parents.push(*parent_id);
+                } else {
+                    values.push_back(bag);
+                    continue 'outer;
+                }
+            }
+
             let fix = Fix::new(
                 &ctx,
                 *batch.id(),
-                *action.component_id(),
-                *action.action_prototype_id(),
+                *bag.action.component_id(),
+                *bag.action.action_prototype_id(),
             )
             .await?;
+            fixes_by_action.insert(*bag.action.id(), *fix.id());
 
-            fixes.push(FixItem {
-                id: *fix.id(),
-                component_id: *action.component_id(),
-                action_prototype_id: *action.action_prototype_id(),
-            });
+            fixes.insert(
+                *fix.id(),
+                FixItem {
+                    id: *fix.id(),
+                    component_id: *bag.action.component_id(),
+                    action_prototype_id: *bag.action.action_prototype_id(),
+                    parents,
+                },
+            );
         }
 
         track(

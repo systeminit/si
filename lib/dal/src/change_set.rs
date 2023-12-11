@@ -3,15 +3,16 @@ use postgres_types::ToSql;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgPoolError};
+use std::collections::HashMap;
 use strum::{Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::standard_model::{object_option_from_row_option, objects_from_rows};
 use crate::{
-    pk, Action, ActionError, HistoryActor, HistoryEvent, HistoryEventError, LabelListError,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, User, UserError, UserPk, Visibility,
-    WsEvent, WsEventError, WsPayload,
+    action::ActionBag, pk, Action, ActionError, ActionId, HistoryActor, HistoryEvent,
+    HistoryEventError, LabelListError, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    User, UserError, UserPk, Visibility, WsEvent, WsEventError, WsPayload,
 };
 use crate::{ComponentError, DalContext, WsEventResult};
 
@@ -236,16 +237,10 @@ impl ChangeSet {
         Ok(change_set)
     }
 
-    pub async fn sort_actions(&self, ctx: &DalContext) -> ChangeSetResult<()> {
+    pub async fn actions(&self, ctx: &DalContext) -> ChangeSetResult<HashMap<ActionId, ActionBag>> {
         let ctx =
             ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
-        Ok(Action::sort_of_change_set(&ctx).await?)
-    }
-
-    pub async fn actions(&self, ctx: &DalContext) -> ChangeSetResult<Vec<Action>> {
-        let ctx =
-            ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
-        Ok(Action::find_for_change_set(&ctx).await?)
+        Ok(Action::order(&ctx).await?)
     }
 
     pub async fn actors(&self, ctx: &DalContext) -> ChangeSetResult<Vec<String>> {

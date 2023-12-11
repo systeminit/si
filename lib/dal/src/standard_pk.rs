@@ -27,6 +27,12 @@ macro_rules! pk {
             }
         }
 
+        impl Default for $name {
+            fn default() -> Self {
+                Self::NONE
+            }
+        }
+
         impl $name {
             /// An unset id value.
             pub const NONE: Self = Self(ulid::Ulid::nil());

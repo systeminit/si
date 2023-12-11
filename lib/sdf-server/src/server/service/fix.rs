@@ -1,7 +1,7 @@
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::get,
     Json, Router,
 };
 use thiserror::Error;
@@ -16,7 +16,6 @@ use dal::{
 use crate::server::state::AppState;
 
 pub mod list;
-pub mod run;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -64,7 +63,5 @@ impl IntoResponse for FixError {
 }
 
 pub fn routes() -> Router<AppState> {
-    Router::new()
-        .route("/list", get(list::list))
-        .route("/run", post(run::run))
+    Router::new().route("/list", get(list::list))
 }

@@ -53,7 +53,10 @@ pub async fn list(
         };
 
         let mut fix_views = Vec::new();
-        for fix in batch.fixes(&ctx).await? {
+        let mut fixes = batch.fixes(&ctx).await?;
+        fixes.sort_by_key(|f| *f.id());
+
+        for fix in fixes {
             if let Some(history_view) = fix.history_view(&ctx, batch_timed_out).await? {
                 fix_views.push(history_view)
             }

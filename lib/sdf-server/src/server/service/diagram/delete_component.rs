@@ -77,11 +77,6 @@ async fn delete_single_component(
                 }),
             );
         }
-
-        let change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
-            .await?
-            .ok_or(DiagramError::ChangeSetNotFound)?;
-        change_set.sort_actions(ctx).await?;
     }
 
     comp.delete_and_propagate(ctx).await?;
