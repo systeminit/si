@@ -3,7 +3,7 @@ Description=Veritech Server
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/veritech --cyclone-local-firecracker --cyclone-pool-size 1000
+ExecStart=/usr/local/bin/veritech --cyclone-local-firecracker --cyclone-pool-size 100 --nats-url $SI_NATS_URL
 Type=exec
 Restart=always
 

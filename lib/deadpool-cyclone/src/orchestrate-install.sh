@@ -261,7 +261,7 @@ execute_cleanup() {
 }
 
 prepare_jailers() {
-  ITERATIONS="${1:-1000}" # Default to 1000 jails
+  ITERATIONS="${1:-100}" # Default to 1000 jails
   DOWNLOAD_ROOTFS="${2:-false}" # Default to false
   DOWNLOAD_KERNEL="${3:-false}" # Default to false
   FORCE_CLEAN_JAILS="${4:-false}" # Default to false
@@ -327,7 +327,7 @@ usage() {
    echo "options:"
    echo "-h     Print this Help."
    echo "-v     The path to the required vars file."
-   echo "-j     The number of jails to create. Defaults to 1000."
+   echo "-j     The number of jails to create. Defaults to 100."
    echo "-r     Whether to download a new rootfs."
    echo "       This will force a recreation of all jails"
    echo "-k     Whether to download a new kernel."
@@ -338,7 +338,7 @@ usage() {
 
 DOWNLOAD_ROOTFS=false
 DOWNLOAD_KERNEL=false
-JAILS_TO_CREATE=1000
+JAILS_TO_CREATE=100
 FORCE_CLEAN_JAILS=false
 
 while getopts "hv:j:rkc" flag;
