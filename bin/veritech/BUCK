@@ -42,12 +42,17 @@ rust_binary(
         "dev.decryption.key": "//lib/cyclone-server:dev.decryption.key",
         "lang-js": "//bin/lang-js:bin",
         "orchestrate-install.sh": "//lib/deadpool-cyclone:orchestrate-install.sh",
+        "veritech.service": "//bin/veritech:veritech.service",
     },
     visibility = ["PUBLIC"],
 )
 
 export_file(
     name = "docker-entrypoint.sh",
+)
+
+export_file(
+    name = "veritech.service",
 )
 
 shfmt_check(
