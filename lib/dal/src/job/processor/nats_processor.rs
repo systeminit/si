@@ -4,13 +4,10 @@ use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use tokio::task::JoinSet;
 
-use crate::{
-    job::{
-        consumer::JobInfo,
-        producer::{BlockingJobError, BlockingJobResult, JobProducer, JobProducerError},
-        queue::JobQueue,
-    },
-    DalContext,
+use crate::job::{
+    consumer::JobInfo,
+    producer::{BlockingJobError, BlockingJobResult, JobProducer, JobProducerError},
+    queue::JobQueue,
 };
 
 use super::{JobQueueProcessor, JobQueueProcessorError, JobQueueProcessorResult};
@@ -20,7 +17,6 @@ const NATS_JOB_QUEUE: &str = "pinga-jobs";
 #[derive(Clone, Debug)]
 pub struct NatsProcessor {
     client: NatsClient,
-    queue: JobQueue,
     pinga_subject: String,
 }
 
@@ -34,13 +30,12 @@ impl NatsProcessor {
 
         Self {
             client,
-            queue: JobQueue::new(),
             pinga_subject,
         }
     }
 
-    async fn push_all_jobs(&self) -> JobQueueProcessorResult<()> {
-        while let Some(element) = self.queue.fetch_job().await {
+    async fn push_all_jobs(&self, queue: JobQueue) -> JobQueueProcessorResult<()> {
+        while let Some(element) = queue.fetch_job().await {
             let job_info = JobInfo::new(element)?;
 
             if let Err(err) = self
@@ -58,18 +53,6 @@ impl NatsProcessor {
 
 #[async_trait]
 impl JobQueueProcessor for NatsProcessor {
-    fn clone_with_new_queue(&self) -> Box<dyn JobQueueProcessor + Send + Sync> {
-        Box::new(Self {
-            client: self.client.clone(),
-            queue: JobQueue::new(),
-            pinga_subject: self.pinga_subject.clone(),
-        })
-    }
-
-    async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>, _ctx: &DalContext) {
-        self.queue.enqueue_job(job).await
-    }
-
     async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult {
         let mut job_info = JobInfo::new_blocking(job)
             .map_err(|e: JobProducerError| BlockingJobError::JobProducer(e.to_string()))?;
@@ -142,10 +125,10 @@ impl JobQueueProcessor for NatsProcessor {
         }
     }
 
-    async fn process_queue(&self) -> JobQueueProcessorResult<()> {
+    async fn process_queue(&self, queue: JobQueue) -> JobQueueProcessorResult<()> {
         let processor = self.clone();
         tokio::spawn(async move {
-            if let Err(err) = processor.push_all_jobs().await {
+            if let Err(err) = processor.push_all_jobs(queue).await {
                 error!("Unable to push jobs to nats: {err}");
             }
         });
@@ -153,8 +136,8 @@ impl JobQueueProcessor for NatsProcessor {
         Ok(())
     }
 
-    async fn blocking_process_queue(&self) -> JobQueueProcessorResult<()> {
-        self.block_on_jobs(self.queue.drain().await).await?;
+    async fn blocking_process_queue(&self, queue: JobQueue) -> JobQueueProcessorResult<()> {
+        self.block_on_jobs(queue.drain().await).await?;
 
         Ok(())
     }

@@ -14,6 +14,7 @@ use crate::{
     job::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
+        queue::JobQueue,
     },
     HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
 };
@@ -64,22 +65,6 @@ impl ServicesContext {
             pkgs_path,
             module_index_url,
             symmetric_crypto_service,
-        }
-    }
-
-    // TODO(paulo): fix this, short term solution to ensure the queue is different across transactions
-    // We should only store connection data in ServiceContext, not the queue. The queue should be in the transactions.
-    // I've been tracking this bug down for an entire week and need a break from it so taking the short-cut. We should not live with this forever.
-    pub fn clone_with_new_job_queue(&self) -> Self {
-        Self {
-            pg_pool: self.pg_pool.clone(),
-            nats_conn: self.nats_conn.clone(),
-            job_processor: self.job_processor.clone_with_new_queue(),
-            veritech: self.veritech.clone(),
-            encryption_key: self.encryption_key.clone(),
-            pkgs_path: self.pkgs_path.clone(),
-            module_index_url: self.module_index_url.clone(),
-            symmetric_crypto_service: self.symmetric_crypto_service.clone(),
         }
     }
 
@@ -423,11 +408,7 @@ impl DalContext {
         &self,
         job: Box<dyn JobProducer + Send + Sync>,
     ) -> Result<(), TransactionsError> {
-        self.txns()
-            .await?
-            .job_processor
-            .enqueue_job(job, self)
-            .await;
+        self.txns().await?.job_queue.enqueue_job(job).await;
         Ok(())
     }
 
@@ -627,10 +608,9 @@ pub struct DalContextBuilder {
 impl DalContextBuilder {
     /// Contructs and returns a new [`DalContext`] using a default [`RequestContext`].
     pub async fn build_default(&self) -> Result<DalContext, TransactionsError> {
-        let services_context = self.services_context.clone_with_new_job_queue();
-        let conns = services_context.connections().await?;
+        let conns = self.services_context.connections().await?;
         Ok(DalContext {
-            services_context,
+            services_context: self.services_context.clone(),
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: Tenancy::new_empty(),
@@ -645,10 +625,9 @@ impl DalContextBuilder {
         &self,
         access_builder: AccessBuilder,
     ) -> Result<DalContext, TransactionsError> {
-        let services_context = self.services_context.clone_with_new_job_queue();
-        let conns = services_context.connections().await?;
+        let conns = self.services_context.connections().await?;
         Ok(DalContext {
-            services_context,
+            services_context: self.services_context.clone(),
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: access_builder.tenancy,
@@ -663,10 +642,9 @@ impl DalContextBuilder {
         &self,
         request_context: RequestContext,
     ) -> Result<DalContext, TransactionsError> {
-        let services_context = self.services_context.clone_with_new_job_queue();
-        let conns = services_context.connections().await?;
+        let conns = self.services_context.connections().await?;
         Ok(DalContext {
-            services_context,
+            services_context: self.services_context.clone(),
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
             tenancy: request_context.tenancy,
@@ -783,6 +761,7 @@ pub struct Transactions {
     /// A NATS transaction.
     nats_txn: NatsTxn,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    job_queue: JobQueue,
 }
 
 impl Transactions {
@@ -796,6 +775,7 @@ impl Transactions {
             pg_txn,
             nats_txn,
             job_processor,
+            job_queue: JobQueue::new(),
         }
     }
 
@@ -814,7 +794,7 @@ impl Transactions {
     pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
-        self.job_processor.process_queue().await?;
+        self.job_processor.process_queue(self.job_queue).await?;
         let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
 
         Ok(conns)
@@ -825,7 +805,9 @@ impl Transactions {
     pub async fn blocking_commit_into_conns(self) -> Result<Connections, TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
-        self.job_processor.blocking_process_queue().await?;
+        self.job_processor
+            .blocking_process_queue(self.job_queue)
+            .await?;
         let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
 
         Ok(conns)
