@@ -227,7 +227,7 @@ const props = defineProps({
   },
   type: { type: String as PropType<InputTypes>, default: "text" },
 
-  size: { type: String as PropType<"sm" | "md">, default: "md" },
+  size: { type: String as PropType<"xs" | "sm" | "md">, default: "md" },
 
   // label, placeholder, additional text instructions
   label: { type: String },
@@ -743,6 +743,10 @@ defineExpose({
   font: inherit;
   background-color: var(--bg-color);
 
+  .vorm-input.--size-xs & {
+    padding: 2px 10px;
+    height: 32px;
+  }
   .vorm-input.--size-sm & {
     padding: 4px 10px;
     height: 32px;

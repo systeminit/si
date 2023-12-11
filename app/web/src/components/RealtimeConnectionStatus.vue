@@ -26,7 +26,7 @@ const status = computed(() => realtimeStore.connectionStatus);
   height: 3px;
   border-radius: 100%;
   position: absolute;
-  top: 5px;
+  bottom: 5px;
   left: 5px;
   z-index: 9999;
 }

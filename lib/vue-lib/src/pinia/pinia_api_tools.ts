@@ -176,6 +176,7 @@ export type ApiRequestDescription<
 type RawApiRequestStatus = {
   requestedAt: Date;
   receivedAt?: Date;
+  completedAt?: Date;
   lastSuccessAt?: Date;
   payload?: any;
   error?: any;
@@ -185,6 +186,7 @@ type RawApiRequestStatus = {
 export type ApiRequestStatus = Partial<RawApiRequestStatus> & {
   isRequested: boolean;
   isPending: boolean;
+  isFirstLoad: boolean;
   isError: boolean;
   isSuccess: boolean;
   errorMessage?: string;
@@ -331,6 +333,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         // but there are cases where its useful to be able to get it from the return value
         // like redirecting to a newly created ID, so we return the api response
       } catch (err: any) {
+        store.$patch((state) => {
+          state.apiRequestStatuses[trackingKey].receivedAt = new Date();
+        });
+
         /* eslint-disable-next-line no-console */
         console.log(err);
         // TODO: trigger global error hook that can be added on plugin init (or split by api)
@@ -352,8 +358,6 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
 
         // mark the request as failure and store the error info
         store.$patch((state) => {
-          state.apiRequestStatuses[trackingKey].receivedAt = new Date();
-
           if (err.response) {
             state.apiRequestStatuses[trackingKey].error = err.response;
           } else {
@@ -449,6 +453,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         if (!rawStatus?.requestedAt) {
           return {
             isRequested: false,
+            isFirstLoad: false,
             isPending: false,
             isError: false,
             isSuccess: false,
@@ -458,6 +463,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           ...rawStatus,
           isRequested: true,
           isPending: !rawStatus.receivedAt,
+          isFirstLoad: !rawStatus.receivedAt && !rawStatus.lastSuccessAt,
           isSuccess: !!rawStatus.receivedAt && !rawStatus.error,
           isError: !!rawStatus.error,
           ...(rawStatus.error && {
@@ -511,6 +517,7 @@ export function getCombinedRequestStatus(
   return computed<ApiRequestStatus>(() => {
     return {
       isRequested: _.every(statuses, { isRequested: true }),
+      isFirstLoad: _.some(statuses, { isFirstLoad: true }),
       isPending: _.some(statuses, { isPending: true }),
       isSuccess: _.every(statuses, { isSuccess: true }),
       isError: _.some(statuses, { isError: true }),

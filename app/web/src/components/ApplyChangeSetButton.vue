@@ -265,16 +265,17 @@ const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 
-const changeSetAppliedRef = ref();
-const rejectedWorkflow = ref<boolean>();
-const canCloseModal = ref<boolean>();
-const successfullyVoted = ref<boolean>();
-const allUsersVoted = ref<boolean>();
-
 const hasActions = computed(() => actionsStore.proposedActions.length > 0);
 const requiresVoting = computed(
   () => presenceStore.usersInChangeset.length > 0,
 );
+
+const changeSetAppliedRef = ref();
+// TODO: make these all computed
+const rejectedWorkflow = ref<boolean>();
+const successfullyVoted = ref<boolean>();
+const allUsersVoted = ref<boolean>();
+const canCloseModal = ref<boolean>(requiresVoting.value);
 
 function openModalHandler() {
   changeSetAppliedRef.value.close();

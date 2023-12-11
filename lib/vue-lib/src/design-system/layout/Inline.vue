@@ -31,6 +31,7 @@ const propsDefinition = {
     default: false,
   },
   noWrap: Boolean,
+  fullWidth: Boolean,
 } as const;
 
 function flipAlignIfReversed(
@@ -90,6 +91,7 @@ const Inline = (
     }),
 
     "--no-wrap": props.noWrap,
+    "--full-width": props.fullWidth,
   };
 
   const wrappedChildren = [] as VNode[];
@@ -118,7 +120,7 @@ Inline.props = propsDefinition;
 export default Inline;
 </script>
 
-<style lang="less" scoped>
+<style lang="less">
 // avoiding the class name "inline" to not conflict with tailwind
 .ui-inline {
   display: flex;
@@ -130,6 +132,17 @@ export default Inline;
   list-style: none;
   margin: 0;
   padding: 0;
+
+  &.--full-width {
+    > .inline__item {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      > .vbutton {
+        flex-grow: 1;
+      }
+    }
+  }
 
   &.--reverse {
     flex-direction: row-reverse;

@@ -77,7 +77,7 @@ export function pointAlongLinePct(
 /**
  * Returns whether a rect contains another one
  */
-export function rectContainsAnother(object: IRect, container: IRect) {
+export function rectContainsAnother(container: IRect, object: IRect) {
   const insideX =
     object.x >= container.x &&
     object.x + object.width <= container.x + container.width;
@@ -86,7 +86,42 @@ export function rectContainsAnother(object: IRect, container: IRect) {
     object.y >= container.y &&
     object.y + object.height <= container.y + container.height;
 
-  const isInsideFrame = insideX && insideY;
+  return insideX && insideY;
+}
+export function getRectCenter(rect: IRect) {
+  return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+}
+export function getAdjustmentRectToContainAnother(
+  container: IRect,
+  object: IRect,
+) {
+  const cMinX = container.x;
+  const cMaxX = container.x + container.width;
+  const cMinY = container.y;
+  const cMaxY = container.y + container.height;
 
-  return isInsideFrame;
+  const oMinX = object.x;
+  const oMaxX = object.x + object.width;
+  const oMinY = object.y;
+  const oMaxY = object.y + object.height;
+
+  let moveX = 0;
+  let moveY = 0;
+
+  if (oMinX < cMinX) {
+    moveX = oMinX - cMinX - container.width * 0.05;
+  } else if (oMaxX > cMaxX) {
+    moveX = oMaxX - cMaxX + container.width * 0.05;
+  }
+
+  if (oMinY < cMinY) {
+    moveY = oMinY - cMinY - container.width * 0.05;
+  } else if (oMaxY > cMaxY) {
+    moveY = oMaxY - cMaxY + container.height * 0.05;
+  }
+
+  return {
+    x: moveX,
+    y: moveY,
+  };
 }
