@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::{
     job::producer::{BlockingJobError, BlockingJobResult, JobProducer, JobProducerError},
-    DalContext,
+    job::queue::JobQueue,
 };
 
 mod nats_processor;
@@ -27,15 +27,13 @@ pub type JobQueueProcessorResult<T> = Result<T, JobQueueProcessorError>;
 
 #[async_trait]
 pub trait JobQueueProcessor: std::fmt::Debug + DynClone {
-    fn clone_with_new_queue(&self) -> Box<dyn JobQueueProcessor + Send + Sync>;
-    async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>, ctx: &DalContext);
     async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult;
     async fn block_on_jobs(
         &self,
         jobs: Vec<Box<dyn JobProducer + Send + Sync>>,
     ) -> BlockingJobResult;
-    async fn process_queue(&self) -> JobQueueProcessorResult<()>;
-    async fn blocking_process_queue(&self) -> JobQueueProcessorResult<()>;
+    async fn process_queue(&self, queue: JobQueue) -> JobQueueProcessorResult<()>;
+    async fn blocking_process_queue(&self, queue: JobQueue) -> JobQueueProcessorResult<()>;
 }
 
 dyn_clone::clone_trait_object!(JobQueueProcessor);
