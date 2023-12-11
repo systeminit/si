@@ -7,7 +7,14 @@ set -eou pipefail
 
 check_params_set(){
 
-    test -f ${VARIABLES_FILE:-/tmp/variables.txt} || (echo "Error: Could not find VARIABLES_FILE: $VARIABLES_FILE file to drive installation" && exit 1); [ "$?" -eq 1 ] && exit 1
+    test -f ${VARIABLES_FILE:-/tmp/variables.txt} || (echo "Error: Could not find VARIABLES_FILE: $VARIABLES_FILE file to drive installation, creating with defaults");
+
+    cat <<EOF > /tmp/variables.txt
+CONFIGURATION_MANAGEMENT_TOOL="shell"
+CONFIGURATION_MANAGEMENT_BRANCH="main"
+AUTOMATED="true"
+EOF
+
 
     echo "---------------------------------"
     echo "Values passed as inputs:"
@@ -288,7 +295,7 @@ prepare_jailers() {
 
   if test -f "/firecracker-data/prepare_jailer.sh"; then
     ITERATIONS="${1:-5000}" # Default to 5000 jails
-    IN_PARALLEL=250
+    IN_PARALLEL=1
     SECONDS=0
     for (( iter=0; iter<$ITERATIONS; iter++ ))
     do

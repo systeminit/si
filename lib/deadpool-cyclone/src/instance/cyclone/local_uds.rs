@@ -68,6 +68,9 @@ pub enum LocalUdsInstanceError {
     /// Error when shutting down a container.
     #[error(transparent)]
     ContainerShutdown(#[from] Error),
+    /// Failed to copy orchestrate file.
+    #[error("failed to copy orchestrate file")]
+    CopyOrchestrate(#[source] io::Error),
     /// Docker api not found
     #[error("no docker api")]
     DockerAPINotFound,
@@ -798,10 +801,7 @@ async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
     let mut script = String::from("orchestrate-install.sh");
     script = get_if_buck2_build(script).await?;
 
-    let _ = match std::fs::copy(script, command) {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err),
-    };
+    std::fs::copy(script, command).map_err(LocalUdsInstanceError::CopyOrchestrate)?;
 
     // Spawn the shell process
     let _status = Command::new("sudo")
@@ -810,6 +810,7 @@ async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
         .arg("/tmp/variables.txt")
         .arg("-j")
         .arg(&spec.pool_size.to_string())
+        .arg("-rk")
         .status();
 
     Ok(())
