@@ -1371,14 +1371,17 @@ impl WorkspaceSnapshotGraph {
         let mut dfs = petgraph::visit::DfsPostOrder::new(&other.graph, root_index);
         while let Some(node_index_to_copy) = dfs.next(&other.graph) {
             let node_weight_copy = other.get_node_weight(node_index_to_copy)?.clone();
+            let node_weight_id = node_weight_copy.id();
+            let node_weight_lineage_id = node_weight_copy.lineage_id();
+            let node_index = self.add_node(node_weight_copy)?;
 
-            // Find an equivalent node to the one in "other" or create it.
-            let node_index = match self
-                .find_equivalent_node(node_weight_copy.id(), node_weight_copy.lineage_id())?
+            // If we find an equivalent node to the one in question, ensure we replace all connections to it
+            if let Some(equivalent_node_index) =
+                self.find_equivalent_node(node_weight_id, node_weight_lineage_id)?
             {
-                Some(equivalent_node_index) => equivalent_node_index,
-                None => self.add_node(node_weight_copy)?,
-            };
+                self.replace_references(equivalent_node_index, node_index)?;
+            }
+
             updated.insert(node_index_to_copy, node_index);
 
             for edge in other.graph.edges_directed(node_index_to_copy, Outgoing) {
