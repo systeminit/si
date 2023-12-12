@@ -4,7 +4,6 @@ use ::std::path::Path;
 use rand::distributions::Alphanumeric;
 use rand::thread_rng;
 use rand::Rng;
-use std::io::Write;
 use std::{io, path::PathBuf, result, time::Duration};
 
 use bollard::container::{
@@ -68,18 +67,18 @@ pub enum LocalUdsInstanceError {
     /// Docker api not found
     #[error("no docker api")]
     DockerAPINotFound,
+    /// Failed to create firecracker-setup file.
+    #[error("failed to create firecracker-setup file")]
+    FirecrackerSetupCreate(#[source] io::Error),
+    /// Failed to set permissions on the firecracker-setup file.
+    #[error("failed to set permissions on the firecracker-setup file")]
+    FirecrackerSetupPermissions(#[source] io::Error),
+    /// Failed to write to firecracker-setup file.
+    #[error("failed to write to firecracker-setup file")]
+    FirecrackerSetupWrite(#[source] io::Error),
     /// Instance has exhausted its predefined request count.
     #[error("no remaining requests, cyclone server is considered unhealthy")]
     NoRemainingRequests,
-    /// Failed to create orchestrate file.
-    #[error("failed to create orchestrate file")]
-    OrchestrateCreate(#[source] io::Error),
-    /// Failed to set permissions on the orchestrate file.
-    #[error("failed to set permissions on the orchestrate file")]
-    OrchestratePermissions(#[source] io::Error),
-    /// Failed to write to orchestrate file.
-    #[error("failed to write to orchestrate file")]
-    OrchestrateWrite(#[source] io::Error),
     /// Failed to setup the host correctly.
     #[error("failed to setup host")]
     SetupFailed,
@@ -800,23 +799,23 @@ async fn runtime_instance_from_spec(
 }
 
 async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
-    let script_bytes = include_bytes!("orchestrate-install.sh");
-    let command = "/firecracker-data/orchestrate-install.sh";
+    let script_bytes = include_bytes!("firecracker-setup.sh");
+    let command = Path::new("/firecracker-data/firecracker-setup.sh");
 
     // we need to ensure the file is in the correct location with the correct permissions
-    std::fs::File::create(command)
-        .map_err(LocalUdsInstanceError::OrchestrateCreate)?
-        .write(script_bytes)
-        .map_err(LocalUdsInstanceError::OrchestrateWrite)?;
-
+    std::fs::create_dir_all(
+        command
+            .parent()
+            .expect("This should never happen. Did you remove the path from the string above?"),
+    )
+    .map_err(LocalUdsInstanceError::FirecrackerSetupCreate)?;
+    std::fs::write(command, script_bytes).map_err(LocalUdsInstanceError::FirecrackerSetupWrite)?;
     std::fs::set_permissions(command, std::fs::Permissions::from_mode(0o755))
-        .map_err(LocalUdsInstanceError::OrchestratePermissions)?;
+        .map_err(LocalUdsInstanceError::FirecrackerSetupPermissions)?;
 
     // Spawn the shell process
     let _status = Command::new("sudo")
         .arg(command)
-        .arg("-v")
-        .arg("/tmp/variables.txt")
         .arg("-j")
         .arg(&spec.pool_size.to_string())
         .arg("-rk")
