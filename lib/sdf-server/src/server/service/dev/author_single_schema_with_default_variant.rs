@@ -8,6 +8,7 @@ use dal::{
     FuncBackendResponseType, FuncBinding, InternalProvider, Schema, SchemaId, SchemaVariant,
     SchemaVariantId, SocketArity, StandardModel,
 };
+use dal_test::connection_annotation_string;
 use serde::{Deserialize, Serialize};
 
 use super::DevResult;
@@ -92,7 +93,7 @@ impl AuthoringHelper {
                 identity_func_id,
                 identity_func_binding_id,
                 identity_func_binding_return_value_id,
-                serde_json::to_string(&vec!["universal"]).expect("Should serialize constant"),
+                connection_annotation_string!("universal"),
                 SocketArity::Many,
                 false,
             )
@@ -107,7 +108,7 @@ impl AuthoringHelper {
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
-            serde_json::to_string(&vec!["universal"]).expect("Should serialize constant"),
+            connection_annotation_string!("universal"),
             SocketArity::Many,
             false,
         )

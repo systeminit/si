@@ -9,7 +9,7 @@ use dal::{
     SchemaVariantId, SocketArity, SocketId, StandardModel,
 };
 use dal_test::helpers::setup_identity_func;
-use dal_test::test;
+use dal_test::{connection_annotation_string, test};
 use pretty_assertions_sorted::assert_eq;
 use std::collections::BTreeMap;
 
@@ -189,7 +189,7 @@ impl ConfigurationGraphConstructor {
                 identity_func_id,
                 identity_func_binding_id,
                 identity_func_binding_return_value_id,
-                serde_json::to_string(&vec!["input"])?,
+                connection_annotation_string!("input"),
                 SocketArity::Many,
                 false,
             )
@@ -205,7 +205,7 @@ impl ConfigurationGraphConstructor {
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
-            serde_json::to_string(&vec!["output"])?,
+            connection_annotation_string!("output"),
             SocketArity::Many,
             false,
         )

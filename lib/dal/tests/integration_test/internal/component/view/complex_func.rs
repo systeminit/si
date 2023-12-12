@@ -7,7 +7,7 @@ use dal::{
 };
 use dal_test::helpers::setup_identity_func;
 use dal_test::{
-    test,
+    connection_annotation_string, test,
     test_harness::{create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
@@ -69,6 +69,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        connection_annotation_string!("kratos"),
         SocketArity::Many,
         false,
     )
@@ -519,6 +520,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
         canoe_from_second_func_id,
         *canoe_from_second_func_binding.id(),
         *canoe_from_second_func_binding_return_value.id(),
+        connection_annotation_string!("second-canoe"),
         SocketArity::Many,
         false,
     )

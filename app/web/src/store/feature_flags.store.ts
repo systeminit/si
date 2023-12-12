@@ -37,12 +37,6 @@ export function useFeatureFlagsStore() {
               this[storeFlagKey as FeatureFlags] = true;
             }
           });
-          console.log(this);
-          this.SECRETS = true;
-          this.MODULES_TAB = true;
-          this.WORKSPACE_BACKUPS = true;
-          this.SECRETS_MANAGEMENT = true;
-          this.CONNECTION_ANNOTATIONS = true;
         });
       },
     }),
