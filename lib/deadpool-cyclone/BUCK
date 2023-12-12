@@ -20,7 +20,7 @@ rust_library(
         "//third-party/rust:tracing",
         "//lib/buck2-resources:buck2-resources",
     ],
-    srcs = glob(["src/**/*.rs"]),
+    srcs = glob(["src/**/*.rs", "src/instance/cyclone/orchestrate-install.sh"]),
     test_unit_deps = [
         "//lib/veritech-server:veritech-server",
     ],
@@ -33,6 +33,6 @@ rust_library(
 
 export_file(
     name = "orchestrate-install.sh",
-    src = "src/orchestrate-install.sh",
+    src = "src/instance/cyclone/orchestrate-install.sh",
     visibility = ["PUBLIC"],
 )

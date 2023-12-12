@@ -1,11 +1,10 @@
-use std::env;
 use std::os::unix::fs::PermissionsExt;
 
 use ::std::path::Path;
-use buck2_resources::{Buck2Resources, Buck2ResourcesError};
 use rand::distributions::Alphanumeric;
 use rand::thread_rng;
 use rand::Rng;
+use std::io::Write;
 use std::{io, path::PathBuf, result, time::Duration};
 
 use bollard::container::{
@@ -45,9 +44,6 @@ use crate::instance::{Instance, Spec, SpecBuilder};
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum LocalUdsInstanceError {
-    /// Failed to find a buck2 specific resource
-    #[error("buck2 resource not found")]
-    Buck2ResourceNotFound(#[from] Buck2ResourcesError),
     /// Spec builder error.
     #[error(transparent)]
     Builder(#[from] LocalUdsInstanceSpecBuilderError),
@@ -75,12 +71,15 @@ pub enum LocalUdsInstanceError {
     /// Instance has exhausted its predefined request count.
     #[error("no remaining requests, cyclone server is considered unhealthy")]
     NoRemainingRequests,
-    /// Failed to copy orchestrate file.
-    #[error("failed to copy orchestrate file")]
-    OrchestrateCopy(#[source] io::Error),
+    /// Failed to create orchestrate file.
+    #[error("failed to create orchestrate file")]
+    OrchestrateCreate(#[source] io::Error),
     /// Failed to set permissions on the orchestrate file.
     #[error("failed to set permissions on the orchestrate file")]
     OrchestratePermissions(#[source] io::Error),
+    /// Failed to write to orchestrate file.
+    #[error("failed to write to orchestrate file")]
+    OrchestrateWrite(#[source] io::Error),
     /// Failed to setup the host correctly.
     #[error("failed to setup host")]
     SetupFailed,
@@ -801,12 +800,15 @@ async fn runtime_instance_from_spec(
 }
 
 async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
+    let script_bytes = include_bytes!("orchestrate-install.sh");
     let command = "/firecracker-data/orchestrate-install.sh";
-    let mut script = String::from("orchestrate-install.sh");
-    script = get_if_buck2_build(script).await?;
 
     // we need to ensure the file is in the correct location with the correct permissions
-    std::fs::copy(script, command).map_err(LocalUdsInstanceError::OrchestrateCopy)?;
+    std::fs::File::create(command)
+        .map_err(LocalUdsInstanceError::OrchestrateCreate)?
+        .write(script_bytes)
+        .map_err(LocalUdsInstanceError::OrchestrateWrite)?;
+
     std::fs::set_permissions(command, std::fs::Permissions::from_mode(0o755))
         .map_err(LocalUdsInstanceError::OrchestratePermissions)?;
 
@@ -867,16 +869,4 @@ async fn watch_task<Strm>(
             }
         }
     }
-}
-
-#[allow(clippy::disallowed_methods)] // Used to determine if running in development
-async fn get_if_buck2_build(file: String) -> Result<String> {
-    if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
-        let resources = Buck2Resources::read()?
-            .get_ends_with(file)?
-            .to_string_lossy()
-            .to_string();
-        return Ok(resources);
-    }
-    Ok(file)
 }
