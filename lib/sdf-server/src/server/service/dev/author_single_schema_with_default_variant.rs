@@ -8,7 +8,6 @@ use dal::{
     FuncBackendResponseType, FuncBinding, InternalProvider, Schema, SchemaId, SchemaVariant,
     SchemaVariantId, SocketArity, StandardModel,
 };
-use dal_test::connection_annotation_string;
 use serde::{Deserialize, Serialize};
 
 use super::DevResult;
@@ -93,7 +92,8 @@ impl AuthoringHelper {
                 identity_func_id,
                 identity_func_binding_id,
                 identity_func_binding_return_value_id,
-                connection_annotation_string!("universal"),
+                serde_json::to_string(&vec!["universal"])
+                    .expect("Unable to parse annotation string"),
                 SocketArity::Many,
                 false,
             )
@@ -108,7 +108,7 @@ impl AuthoringHelper {
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
-            connection_annotation_string!("universal"),
+            serde_json::to_string(&vec!["universal"]).expect("Unable to parse annotation string"),
             SocketArity::Many,
             false,
         )
