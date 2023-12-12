@@ -1,4 +1,5 @@
 use std::env;
+use std::os::unix::fs::PermissionsExt;
 
 use ::std::path::Path;
 use buck2_resources::{Buck2Resources, Buck2ResourcesError};
@@ -68,15 +69,18 @@ pub enum LocalUdsInstanceError {
     /// Error when shutting down a container.
     #[error(transparent)]
     ContainerShutdown(#[from] Error),
-    /// Failed to copy orchestrate file.
-    #[error("failed to copy orchestrate file")]
-    CopyOrchestrate(#[source] io::Error),
     /// Docker api not found
     #[error("no docker api")]
     DockerAPINotFound,
     /// Instance has exhausted its predefined request count.
     #[error("no remaining requests, cyclone server is considered unhealthy")]
     NoRemainingRequests,
+    /// Failed to copy orchestrate file.
+    #[error("failed to copy orchestrate file")]
+    OrchestrateCopy(#[source] io::Error),
+    /// Failed to set permissions on the orchestrate file.
+    #[error("failed to set permissions on the orchestrate file")]
+    OrchestratePermissions(#[source] io::Error),
     /// Failed to setup the host correctly.
     #[error("failed to setup host")]
     SetupFailed,
@@ -801,7 +805,10 @@ async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
     let mut script = String::from("orchestrate-install.sh");
     script = get_if_buck2_build(script).await?;
 
-    std::fs::copy(script, command).map_err(LocalUdsInstanceError::CopyOrchestrate)?;
+    // we need to ensure the file is in the correct location with the correct permissions
+    std::fs::copy(script, command).map_err(LocalUdsInstanceError::OrchestrateCopy)?;
+    std::fs::set_permissions(command, std::fs::Permissions::from_mode(0o755))
+        .map_err(LocalUdsInstanceError::OrchestratePermissions)?;
 
     // Spawn the shell process
     let _status = Command::new("sudo")
