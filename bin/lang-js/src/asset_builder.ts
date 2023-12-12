@@ -213,7 +213,7 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
         const [_, newAnnotation, tail] = match;
 
         // newAnnotation will never be undefined since the group is non-optional
-        typeArray.push(newAnnotation);
+        typeArray.push(newAnnotation?.toLowerCase().trim());
 
         if (tail == null) break;
 

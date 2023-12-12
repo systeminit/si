@@ -14,6 +14,7 @@ const FLAG_MAPPING = {
   COLLABORATORS: "collaborators",
   MUTLIPLAYER_CHANGESET_APPLY: "multiplayer_changeset_apply_flow",
   ABANDON_CHANGESET: "abandon_changeset",
+  CONNECTION_ANNOTATIONS: "socket_connection_annotations",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
@@ -36,6 +37,12 @@ export function useFeatureFlagsStore() {
               this[storeFlagKey as FeatureFlags] = true;
             }
           });
+          console.log(this);
+          this.SECRETS = true;
+          this.MODULES_TAB = true;
+          this.WORKSPACE_BACKUPS = true;
+          this.SECRETS_MANAGEMENT = true;
+          this.CONNECTION_ANNOTATIONS = true;
         });
       },
     }),

@@ -1931,10 +1931,16 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
           fromSocket.def.direction === "input" ? [fromCA, toCA] : [toCA, fromCA]
         ).map(_.toLower);
 
-        console.log(`${outputCA} should fit in ${inputCA}`);
+        const output = parseCA(outputCA ?? "");
+        const input = parseCA(inputCA ?? "");
 
-        // TODO Use correct algorithm to calculate annotation fitness
-        if (inputCA === outputCA) return true;
+        // check if input fits output
+        if (
+          output.length >= input.length &&
+          _.isEqual(output.slice(-input.length), input)
+        ) {
+          return true;
+        }
       }
     }
 
@@ -1942,6 +1948,32 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
   });
   return _.map(possibleSockets, (s) => s.uniqueKey);
 });
+
+// TODO(victor): Move this code to its own package so it can be reused by the frontend and lang-js
+function parseCA(annotation: string) {
+  let token = annotation;
+  const typeArray = [];
+
+  do {
+    const match = token.match(/^([\w ]+)(?:<(.+)>)?$/);
+
+    if (!match) {
+      throw new Error(`Couldn't parse connection annotation "${annotation}"`);
+    }
+
+    const [_, newAnnotation, tail] = match;
+
+    // newAnnotation will never be undefined since the group is non-optional
+    typeArray.push(newAnnotation?.toLowerCase().trim());
+
+    if (tail == null) break;
+
+    token = tail;
+  } while (token != null);
+
+  return typeArray;
+}
+
 const drawEdgeWillDeleteEdges = computed(() => {
   const fromSocket = drawEdgeFromSocket.value;
   const toSocket = drawEdgeToSocket.value;
