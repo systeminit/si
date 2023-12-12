@@ -1163,65 +1163,65 @@ function endDragElements() {
 
     const parentId =
       movedElementParent[el.uniqueKey] || el.def.parentNodeId || undefined;
-    if (parentId === undefined) {
-      // handle dragging items into a group
-      const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
-      const elPos = elShape.getAbsolutePosition(kStage);
 
-      const elRect = {
-        x: elPos.x,
-        y: elPos.y,
-        width: elShape.width(),
-        height: elShape.height(),
+    // handle dragging items into a group
+    const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
+    const elPos = elShape.getAbsolutePosition(kStage);
+
+    const elRect = {
+      x: elPos.x,
+      y: elPos.y,
+      width: elShape.width(),
+      height: elShape.height(),
+    };
+
+    const groupOrderedByZIndex = _.sortBy(groups.value, (g) => {
+      const groupShape = kStage.findOne(`#${g.uniqueKey}--bg`);
+      return -(groupShape?.getAbsoluteZIndex() ?? -Infinity);
+    });
+
+    const newContainingGroup = groupOrderedByZIndex.find((group) => {
+      if (group.uniqueKey === el.uniqueKey) return false;
+
+      const groupShape = kStage.findOne(`#${group.uniqueKey}--bg`);
+      const groupPos = groupShape.getAbsolutePosition(kStage);
+
+      const groupRect = {
+        x: groupPos.x,
+        y: groupPos.y,
+        width: groupShape.width(),
+        height: groupShape.height(),
       };
 
-      const groupOrderedByZIndex = _.sortBy(groups.value, (g) => {
-        const groupShape = kStage.findOne(`#${g.uniqueKey}--bg`);
-        return -(groupShape?.getAbsoluteZIndex() ?? -Infinity);
-      });
+      return rectContainsAnother(elRect, groupRect);
+    });
 
-      const newContainingGroup = groupOrderedByZIndex.find((group) => {
-        if (group.uniqueKey === el.uniqueKey) return false;
+    if (
+      newContainingGroup &&
+      el.def.parentNodeId !== newContainingGroup.def.id
+    ) {
+      let elements = [el];
 
-        const groupShape = kStage.findOne(`#${group.uniqueKey}--bg`);
-        const groupPos = groupShape.getAbsolutePosition(kStage);
+      if (newContainingGroup.def.nodeType === "aggregationFrame") {
+        const groupSchemaId =
+          componentsStore.componentsByNodeId[newContainingGroup.def.id]
+            ?.schemaVariantId;
+        elements = _.filter(elements, (e) => {
+          const elementSchemaId =
+            componentsStore.componentsByNodeId[e.def.id]?.schemaVariantId;
 
-        const groupRect = {
-          x: groupPos.x,
-          y: groupPos.y,
-          width: groupShape.width(),
-          height: groupShape.height(),
-        };
-
-        return rectContainsAnother(groupRect, elRect);
-      });
-      if (
-        newContainingGroup &&
-        el.def.parentNodeId !== newContainingGroup.def.id
-      ) {
-        let elements = [el];
-
-        if (newContainingGroup.def.nodeType === "aggregationFrame") {
-          const groupSchemaId =
-            componentsStore.componentsByNodeId[newContainingGroup.def.id]
-              ?.schemaVariantId;
-          elements = _.filter(elements, (e) => {
-            const elementSchemaId =
-              componentsStore.componentsByNodeId[e.def.id]?.schemaVariantId;
-
-            return elementSchemaId === groupSchemaId;
-          });
-        }
-
-        for (const element of elements) {
-          componentsStore.CONNECT_COMPONENT_TO_FRAME(
-            element.def.id,
-            newContainingGroup.def.id,
-          );
-        }
-
-        movedElementParent[el.uniqueKey] = newContainingGroup.def.id;
+          return elementSchemaId === groupSchemaId;
+        });
       }
+
+      for (const element of elements) {
+        componentsStore.CONNECT_COMPONENT_TO_FRAME(
+          element.def.id,
+          newContainingGroup.def.id,
+        );
+      }
+
+      movedElementParent[el.uniqueKey] = newContainingGroup.def.id;
     }
 
     const movedElementPosition = movedElementPositions[el.uniqueKey];

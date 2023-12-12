@@ -1,15 +1,18 @@
+use async_recursion::async_recursion;
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::edge::{EdgeKind, EdgeObjectId, VertexObjectKind};
 use dal::job::definition::DependentValuesUpdate;
 use dal::socket::{SocketEdgeKind, SocketKind};
 use dal::{
-    node::NodeId, AttributeReadContext, AttributeValue, ChangeSet, Component, Connection,
-    DalContext, Edge, EdgeError, ExternalProvider, InternalProvider, Node, StandardModel,
-    Visibility, WsEvent,
+    node::NodeId, AttributeReadContext, AttributeValue, ChangeSet, Component, ComponentError,
+    Connection, DalContext, Edge, EdgeError, ExternalProvider, InternalProvider, SocketId,
+    StandardModel, Visibility, WsEvent,
 };
 use dal::{ComponentType, Socket};
+use hyper::http::Uri;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -37,10 +40,58 @@ pub async fn connect_component_sockets_to_frame(
     ctx: &DalContext,
     parent_node_id: NodeId,
     child_node_id: NodeId,
-) -> DiagramResult<impl IntoResponse> {
+    original_uri: &Uri,
+    posthog_client: &crate::server::state::PosthogClient,
+) -> DiagramResult<()> {
+    connect_component_sockets_to_frame_inner(
+        ctx,
+        parent_node_id,
+        child_node_id,
+        original_uri,
+        posthog_client,
+        &mut HashMap::new(),
+    )
+    .await
+}
+
+#[async_recursion]
+async fn connect_component_sockets_to_frame_inner(
+    ctx: &DalContext,
+    parent_node_id: NodeId,
+    child_node_id: NodeId,
+    original_uri: &Uri,
+    posthog_client: &crate::server::state::PosthogClient,
+    tree: &mut HashMap<NodeId, Vec<SocketId>>,
+) -> DiagramResult<()> {
+    if tree.contains_key(&parent_node_id) {
+        return Ok(());
+    }
+
+    tree.entry(child_node_id).or_default();
+    tree.entry(parent_node_id).or_default();
+
+    let from_socket =
+        Socket::find_frame_socket_for_node(ctx, child_node_id, SocketEdgeKind::ConfigurationOutput)
+            .await?;
+
+    let to_socket =
+        Socket::find_frame_socket_for_node(ctx, parent_node_id, SocketEdgeKind::ConfigurationInput)
+            .await?;
+
+    Connection::new(
+        ctx,
+        child_node_id,
+        *from_socket.id(),
+        parent_node_id,
+        *to_socket.id(),
+        EdgeKind::Symbolic,
+    )
+    .await?;
+
     let parent_component = Component::find_for_node(ctx, parent_node_id)
         .await?
         .ok_or(DiagramError::NodeNotFound(parent_node_id))?;
+
     let parent_sockets = Socket::list_for_component(ctx, *parent_component.id()).await?;
 
     let child_component = Component::find_for_node(ctx, child_node_id)
@@ -169,10 +220,23 @@ pub async fn connect_component_sockets_to_frame(
                     continue;
                 }
 
+                let used_socket = tree
+                    .get(&child_node_id)
+                    .into_iter()
+                    .flatten()
+                    .any(|socket_id| child_socket.id() == socket_id);
+                if used_socket {
+                    continue;
+                }
+
                 if let Some(child_provider) = child_socket.internal_provider(ctx).await? {
                     // TODO(nick): once type definitions used for providers, we should not
                     // match on name.
                     if parent_provider.name() == child_provider.name() {
+                        tree.entry(child_node_id)
+                            .or_default()
+                            .push(*child_socket.id());
+
                         Connection::new(
                             ctx,
                             parent_node_id,
@@ -218,6 +282,61 @@ pub async fn connect_component_sockets_to_frame(
         }
     }
 
+    let grandparents = Edge::list_parents_for_component(ctx, *parent_component.id()).await?;
+    for grandparent_id in grandparents {
+        let grandparent = Component::get_by_id(ctx, &grandparent_id)
+            .await?
+            .ok_or(ComponentError::NotFound(grandparent_id))?;
+        let ty = grandparent.get_type(ctx).await?;
+
+        let grandparent = grandparent
+            .node(ctx)
+            .await?
+            .pop()
+            .ok_or(ComponentError::NodeNotFoundForComponent(grandparent_id))?;
+        match ty {
+            ComponentType::Component => {}
+            ComponentType::ConfigurationFrame => {
+                connect_component_sockets_to_frame(
+                    ctx,
+                    *grandparent.id(),
+                    child_node_id,
+                    original_uri,
+                    posthog_client,
+                )
+                .await?
+            }
+            ComponentType::AggregationFrame => unimplemented!(),
+        }
+    }
+
+    let child_schema = child_component
+        .schema(ctx)
+        .await?
+        .ok_or(DiagramError::SchemaNotFound)?;
+
+    let parent_schema = parent_component
+        .schema(ctx)
+        .await?
+        .ok_or(DiagramError::SchemaNotFound)?;
+
+    track(
+        posthog_client,
+        ctx,
+        original_uri,
+        "component_connected_to_frame",
+        serde_json::json!({
+                    "parent_component_id": parent_component.id(),
+                    "parent_component_schema_name": parent_schema.name(),
+                    "parent_socket_id": to_socket.id(),
+                    "parent_socket_name": to_socket.name(),
+                    "child_component_id": child_component.id(),
+                    "child_component_schema_name": child_schema.name(),
+                    "child_socket_id": from_socket.id(),
+                    "child_socket_name": from_socket.name(),
+        }),
+    );
+
     Ok(())
 }
 
@@ -250,71 +369,14 @@ pub async fn connect_component_to_frame(
     };
 
     // Connect children to parent through frame edge
-    let from_socket = Socket::find_frame_socket_for_node(
-        &ctx,
-        request.child_node_id,
-        SocketEdgeKind::ConfigurationOutput,
-    )
-    .await?;
-    let to_socket = Socket::find_frame_socket_for_node(
+    connect_component_sockets_to_frame(
         &ctx,
         request.parent_node_id,
-        SocketEdgeKind::ConfigurationInput,
-    )
-    .await?;
-
-    let connection = Connection::new(
-        &ctx,
         request.child_node_id,
-        *from_socket.id(),
-        request.parent_node_id,
-        *to_socket.id(),
-        EdgeKind::Symbolic,
-    )
-    .await?;
-
-    connect_component_sockets_to_frame(&ctx, request.parent_node_id, request.child_node_id).await?;
-
-    let child_comp = Node::get_by_id(&ctx, &request.child_node_id)
-        .await?
-        .ok_or(DiagramError::NodeNotFound(request.child_node_id))?
-        .component(&ctx)
-        .await?
-        .ok_or(DiagramError::ComponentNotFound)?;
-
-    let child_schema = child_comp
-        .schema(&ctx)
-        .await?
-        .ok_or(DiagramError::SchemaNotFound)?;
-
-    let parent_comp = Node::get_by_id(&ctx, &request.parent_node_id)
-        .await?
-        .ok_or(DiagramError::NodeNotFound(request.parent_node_id))?
-        .component(&ctx)
-        .await?
-        .ok_or(DiagramError::ComponentNotFound)?;
-
-    let parent_schema = parent_comp
-        .schema(&ctx)
-        .await?
-        .ok_or(DiagramError::SchemaNotFound)?;
-
-    track(
-        &posthog_client,
-        &ctx,
         &original_uri,
-        "component_connected_to_frame",
-        serde_json::json!({
-                    "parent_component_id": parent_comp.id(),
-                    "parent_component_schema_name": parent_schema.name(),
-                    "parent_socket_id": to_socket.id(),
-                    "parent_socket_name": to_socket.name(),
-                    "child_component_id": child_comp.id(),
-                    "child_component_schema_name": child_schema.name(),
-                    "child_socket_id": from_socket.id(),
-                    "child_socket_name": from_socket.name(),
-        }),
-    );
+        &posthog_client,
+    )
+    .await?;
 
     WsEvent::change_set_written(&ctx)
         .await?
@@ -329,7 +391,5 @@ pub async fn connect_component_to_frame(
     }
     Ok(response
         .header("content-type", "application/json")
-        .body(serde_json::to_string(&CreateFrameConnectionResponse {
-            connection,
-        })?)?)
+        .body("{}".to_owned())?)
 }

@@ -6,7 +6,10 @@ use crate::change_status::ChangeStatus;
 use crate::diagram::node::HistoryEventMetadata;
 use crate::diagram::DiagramResult;
 use crate::socket::SocketId;
-use crate::{node::NodeId, ActorView, DalContext, DiagramError, HistoryActor, StandardModel, User};
+use crate::{
+    node::NodeId, ActorView, Component, ComponentError, DalContext, DiagramError, HistoryActor,
+    Socket, SocketArity, StandardModel, User,
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -36,6 +39,21 @@ impl Connection {
         to_socket_id: SocketId,
         edge_kind: EdgeKind,
     ) -> DiagramResult<Self> {
+        let to_socket = Socket::get_by_id(ctx, &to_socket_id)
+            .await?
+            .ok_or(DiagramError::SocketNotFound)?;
+        if *to_socket.arity() == SocketArity::One {
+            let component = Component::find_for_node(ctx, to_node_id)
+                .await?
+                .ok_or(ComponentError::NotFoundForNode(to_node_id))?;
+            let edges = Edge::list_for_component(ctx, *component.id()).await?;
+            for mut edge in edges {
+                if edge.tail_socket_id() == to_socket_id {
+                    edge.delete_and_propagate(ctx).await?;
+                }
+            }
+        }
+
         let edge = Edge::new_for_connection(
             ctx,
             to_node_id,

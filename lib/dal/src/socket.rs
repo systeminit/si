@@ -79,7 +79,17 @@ pub enum SocketKind {
 
 #[remain::sorted]
 #[derive(
-    AsRefStr, Clone, Debug, Deserialize, Display, EnumIter, EnumString, Eq, PartialEq, Serialize,
+    AsRefStr,
+    Clone,
+    Debug,
+    Deserialize,
+    Display,
+    EnumIter,
+    EnumString,
+    Eq,
+    PartialEq,
+    Serialize,
+    Copy,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]

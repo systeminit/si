@@ -71,7 +71,7 @@
         />
       </div>
       <div
-        v-if="!actionsStore.proposedActions?.length"
+        v-if="!actionsStore.proposedActions.length"
         class="p-4 italic !delay-0 !duration-0 hidden first:block"
       >
         <div class="pb-sm">No actions were chosen at this time.</div>

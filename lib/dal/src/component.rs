@@ -140,6 +140,8 @@ pub enum ComponentError {
     NoSchemaVariant(ComponentId),
     #[error("component not found: {0}")]
     NotFound(ComponentId),
+    #[error("not found for node: {0}")]
+    NotFoundForNode(NodeId),
     /// A parent [`AttributeValue`](crate::AttributeValue) was not found for the specified
     /// [`AttributeValueId`](crate::AttributeValue).
     #[error("parent attribute value not found for attribute value: {0}")]
