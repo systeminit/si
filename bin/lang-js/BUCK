@@ -37,6 +37,7 @@ filegroup(
 )
 
 prod_deps_srcs = {
+    "lib/ts-lib": "//lib/ts-lib:src",
 }
 
 dev_deps_srcs = {

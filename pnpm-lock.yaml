@@ -514,6 +514,9 @@ importers:
 
   bin/lang-js:
     dependencies:
+      '@si/ts-lib':
+        specifier: workspace:*
+        version: link:../../lib/ts-lib
       '@typescript/vfs':
         specifier: ^1.4.0
         version: 1.4.0
@@ -637,6 +640,10 @@ importers:
         version: 4.9.5
 
   lib/ts-lib:
+    dependencies:
+      lodash-es:
+        specifier: ^4.17.21
+        version: 4.17.21
     devDependencies:
       '@si/eslint-config':
         specifier: workspace:*
@@ -644,6 +651,9 @@ importers:
       '@si/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@types/lodash-es':
+        specifier: ^4.17.12
+        version: 4.17.12
       eslint:
         specifier: ^8.36.0
         version: 8.36.0

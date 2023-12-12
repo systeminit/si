@@ -1,3 +1,7 @@
+import {
+  parseConnectionAnnotation,
+} from "@si/ts-lib/src/connection-annotations";
+
 export type ValueFromKind = "inputSocket" | "outputSocket" | "prop";
 
 export interface ValueFrom {
@@ -198,28 +202,8 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
    *  .setConnectionAnnotation("EC2<IAM<string>>")
    */
   setConnectionAnnotation(annotation: string): this {
-    // TODO(victor): Move this validation to its own package so it can be reused by the frontend
-    {
-      let token: string = annotation;
-      const typeArray = [];
-
-      do {
-        const match = token.match(/^([\w ]+)(?:<(.+)>)?$/);
-
-        if (!match) {
-          throw new Error(`Couldn't parse connection annotation "${annotation}"`);
-        }
-
-        const [_, newAnnotation, tail] = match;
-
-        // newAnnotation will never be undefined since the group is non-optional
-        typeArray.push(newAnnotation?.toLowerCase().trim());
-
-        if (tail == null) break;
-
-        token = tail;
-      } while (token != null);
-    }
+    // Throws if not able to match annotation
+    parseConnectionAnnotation(annotation);
 
     this.connectionAnnotations.push(annotation);
     return this;

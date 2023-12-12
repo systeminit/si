@@ -212,6 +212,10 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
 import { LoadingMessage, getToneColorHex } from "@si/vue-lib/design-system";
+import {
+  connectionAnnotationFitsReference,
+  parseConnectionAnnotation,
+} from "@si/ts-lib/src/connection-annotations";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
@@ -1921,24 +1925,24 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
     if (fromSocket.def.direction === possibleToSocket.def.direction)
       return false;
 
+    const [outputCAs, inputCAs] =
+      fromSocket.def.direction === "output"
+        ? [
+            fromSocket.def.connectionAnnotations,
+            possibleToSocket.def.connectionAnnotations,
+          ]
+        : [
+            possibleToSocket.def.connectionAnnotations,
+            fromSocket.def.connectionAnnotations,
+          ];
+
     // check socket connection annotations compatibility
-    for (const fromCA of fromSocket.def.connectionAnnotations) {
-      for (const toCA of possibleToSocket.def.connectionAnnotations) {
-        // a fitting output socket annotation is either the same as an input one or a supertype thereof
+    for (const outputCA of outputCAs) {
+      for (const inputCA of inputCAs) {
+        const output = parseConnectionAnnotation(outputCA);
+        const input = parseConnectionAnnotation(inputCA);
 
-        // Since direction matters, we reassign here based on that
-        const [inputCA, outputCA] = (
-          fromSocket.def.direction === "input" ? [fromCA, toCA] : [toCA, fromCA]
-        ).map(_.toLower);
-
-        const output = parseCA(outputCA ?? "");
-        const input = parseCA(inputCA ?? "");
-
-        // check if input fits output
-        if (
-          output.length >= input.length &&
-          _.isEqual(output.slice(-input.length), input)
-        ) {
+        if (connectionAnnotationFitsReference(output, input)) {
           return true;
         }
       }
@@ -1948,31 +1952,6 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
   });
   return _.map(possibleSockets, (s) => s.uniqueKey);
 });
-
-// TODO(victor): Move this code to its own package so it can be reused by the frontend and lang-js
-function parseCA(annotation: string) {
-  let token = annotation;
-  const typeArray = [];
-
-  do {
-    const match = token.match(/^([\w ]+)(?:<(.+)>)?$/);
-
-    if (!match) {
-      throw new Error(`Couldn't parse connection annotation "${annotation}"`);
-    }
-
-    const [_, newAnnotation, tail] = match;
-
-    // newAnnotation will never be undefined since the group is non-optional
-    typeArray.push(newAnnotation?.toLowerCase().trim());
-
-    if (tail == null) break;
-
-    token = tail;
-  } while (token != null);
-
-  return typeArray;
-}
 
 const drawEdgeWillDeleteEdges = computed(() => {
   const fromSocket = drawEdgeFromSocket.value;
