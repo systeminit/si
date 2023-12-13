@@ -1,6 +1,4 @@
-import {
-  parseConnectionAnnotation,
-} from "@si/ts-lib/src/connection-annotations";
+import { parseConnectionAnnotation } from "@si/ts-lib";
 
 export type ValueFromKind = "inputSocket" | "outputSocket" | "prop";
 

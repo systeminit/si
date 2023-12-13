@@ -1,4 +1,4 @@
-import * as _ from "lodash";
+import * as _ from "lodash-es";
 import { Debugger } from "debug";
 import { NodeVM } from "vm2";
 import { base64ToJs } from "./base64";

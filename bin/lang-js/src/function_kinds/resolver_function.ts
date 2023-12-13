@@ -1,5 +1,5 @@
 import Debug from "debug";
-import * as _ from "lodash";
+import * as _ from "lodash-es";
 import { NodeVM } from "vm2";
 import {
   failureExecution,

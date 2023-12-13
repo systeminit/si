@@ -1,6 +1,6 @@
 import Debug from "debug";
 import { NodeVM } from "vm2";
-import * as _ from "lodash";
+import * as _ from "lodash-es";
 import {
   failureExecution,
   Func,
@@ -62,7 +62,7 @@ async function execute(
         error: {
           kind: "ActionFieldWrongType",
           message:
-            'The status field type must be either "ok", "warning" or "error"',
+            "The status field type must be either \"ok\", \"warning\" or \"error\"",
         },
       };
     }
@@ -78,7 +78,7 @@ async function execute(
         error: {
           kind: "ActionFieldWrongType",
           message:
-            'The message field type must be undefined when status is "ok"',
+            "The message field type must be undefined when status is \"ok\"",
         },
       };
     }
@@ -94,7 +94,7 @@ async function execute(
         error: {
           kind: "ActionFieldWrongType",
           message:
-            'The message field type must be string when status is either "warning" or "error"',
+            "The message field type must be string when status is either \"warning\" or \"error\"",
         },
       };
     }

@@ -1,4 +1,5 @@
 import { VM, VMScript } from "vm2";
+import { describe, expect, test } from "vitest";
 import { compileCode, createVm } from "../src/vm";
 import { createSandbox } from "../src/sandbox";
 
