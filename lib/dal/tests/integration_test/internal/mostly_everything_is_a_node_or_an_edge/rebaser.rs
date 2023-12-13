@@ -19,12 +19,12 @@ async fn modify_func_node(ctx: &mut DalContext) {
         FuncBackendKind::JsAttribute,
         FuncBackendResponseType::Boolean,
         None::<String>,
-        Some(code_base64),
+        Some(code_base64.clone()),
     )
     .await
     .expect("able to make a func");
 
-    ctx.commit().await.expect("unable to commit");
+    ctx.blocking_commit().await.expect("unable to commit");
 
     ctx.update_snapshot_to_visibility()
         .await
@@ -33,6 +33,8 @@ async fn modify_func_node(ctx: &mut DalContext) {
     Func::get_by_id(ctx, func.id)
         .await
         .expect("able to get func by id");
+
+    assert_eq!(Some(code_base64), func.code_base64);
 
     let new_code_base64 = general_purpose::STANDARD_NO_PAD.encode("this is new code");
 
@@ -45,13 +47,15 @@ async fn modify_func_node(ctx: &mut DalContext) {
         .await
         .expect("able to modify func");
 
-    let conflicts = ctx.commit().await.expect("unable to commit");
+    dbg!(ctx.workspace_snapshot().unwrap().try_lock().unwrap().id());
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
     assert!(matches!(conflicts, None));
 
     ctx.update_snapshot_to_visibility()
         .await
-        .expect("unable to update snapshot to visiblity again");
+        .expect("unable to update snapshot to visibility again");
 
+    dbg!(ctx.workspace_snapshot().unwrap().try_lock().unwrap().id());
     let modified_func = Func::get_by_id(ctx, func.id)
         .await
         .expect("able to get func by id again");

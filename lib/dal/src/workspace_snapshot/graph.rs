@@ -1374,17 +1374,29 @@ impl WorkspaceSnapshotGraph {
         let mut updated = HashMap::new();
         let mut dfs = petgraph::visit::DfsPostOrder::new(&other.graph, root_index);
         while let Some(node_index_to_copy) = dfs.next(&other.graph) {
-            let node_weight_copy = other.get_node_weight(node_index_to_copy)?.clone();
-            let node_weight_id = node_weight_copy.id();
-            let node_weight_lineage_id = node_weight_copy.lineage_id();
-            let node_index = self.add_node(node_weight_copy)?;
+            let node_weight_to_copy = other.get_node_weight(node_index_to_copy)?.clone();
+            let node_weight_id = node_weight_to_copy.id();
+            let node_weight_lineage_id = node_weight_to_copy.lineage_id();
 
-            // If we find an equivalent node to the one in question, ensure we replace all connections to it
-            if let Some(equivalent_node_index) =
+            // The following assumes there are no conflicts between "self" and "other". If there
+            // are conflicts between them, we shouldn't be running updates.
+            let node_index = if let Some(equivalent_node_index) =
                 self.find_equivalent_node(node_weight_id, node_weight_lineage_id)?
             {
-                self.replace_references(equivalent_node_index, node_index)?;
-            }
+                let equivalent_node_weight = self.get_node_weight(equivalent_node_index)?;
+                if equivalent_node_weight
+                    .vector_clock_write()
+                    .is_newer_than(node_weight_to_copy.vector_clock_write())
+                {
+                    equivalent_node_index
+                } else {
+                    let new_node_index = self.add_node(node_weight_to_copy)?;
+                    self.replace_references(equivalent_node_index, new_node_index)?;
+                    new_node_index
+                }
+            } else {
+                self.add_node(node_weight_to_copy)?
+            };
 
             updated.insert(node_index_to_copy, node_index);
 
