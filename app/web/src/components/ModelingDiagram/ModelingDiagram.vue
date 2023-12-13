@@ -258,6 +258,7 @@ import {
   GROUP_HEADER_ICON_SIZE,
   GROUP_HEADER_BOTTOM_MARGIN,
   GROUP_BOTTOM_INTERNAL_PADDING,
+  GROUP_INNER_Y_BOUNDARY_OFFSET,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -1599,6 +1600,11 @@ watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
         height: elShape.height(),
       };
 
+      if (child instanceof DiagramGroupData) {
+        geometry.y -= GROUP_INNER_Y_BOUNDARY_OFFSET;
+        geometry.height += GROUP_INNER_Y_BOUNDARY_OFFSET;
+      }
+
       if (!top || geometry.y < top) top = geometry.y;
 
       const thisLeft = geometry.x - geometry.width / 2;
@@ -1719,6 +1725,17 @@ function onResizeMove() {
         }
       }
       break;
+    case "top":
+      {
+        sizeDelta.x = 0;
+        sizeDelta.y = -sizeDelta.y;
+        const minDelta = minNodeDimension - presentSize.height;
+        if (sizeDelta.y < minDelta) {
+          sizeDelta.y = minDelta;
+        }
+        positionDelta.y = -sizeDelta.y;
+      }
+      break;
     case "left":
       {
         sizeDelta.y = 0;
@@ -1768,6 +1785,39 @@ function onResizeMove() {
         positionDelta.x = sizeDelta.x;
       }
       break;
+    case "top-left":
+      {
+        sizeDelta.y = -sizeDelta.y;
+        const minYDelta = minNodeDimension - presentSize.height;
+        if (sizeDelta.y < minYDelta) {
+          sizeDelta.y = minYDelta;
+        }
+        positionDelta.y = -sizeDelta.y;
+
+        sizeDelta.x = -sizeDelta.x;
+        const minXDelta = minNodeDimension - presentSize.width;
+        if (sizeDelta.x < minXDelta) {
+          sizeDelta.x = minXDelta;
+        }
+        positionDelta.x = -sizeDelta.x;
+      }
+      break;
+    case "top-right":
+      {
+        sizeDelta.y = -sizeDelta.y;
+        const minYDelta = minNodeDimension - presentSize.height;
+        if (sizeDelta.y < minYDelta) {
+          sizeDelta.y = minYDelta;
+        }
+        positionDelta.y = -sizeDelta.y;
+
+        const minXDelta = minNodeDimension - presentSize.width;
+        if (sizeDelta.x < minXDelta) {
+          sizeDelta.x = minXDelta;
+        }
+        positionDelta.x = sizeDelta.x;
+      }
+      break;
     default:
       break;
   }
@@ -1801,6 +1851,13 @@ function onResizeMove() {
       newNodeRect.height = Math.round(
         Math.max(newNodeSize.height, minimumAcceptedHeight),
       );
+
+      // handle resizing from the top
+      if (newNodeRect.y > contentsBox.y) {
+        newNodeRect.y = contentsBox.y;
+        newNodeRect.height =
+          presentPosition.y + presentSize.height - contentsBox.y;
+      }
     }
 
     // Check right collision
@@ -1856,6 +1913,16 @@ function onResizeMove() {
           GROUP_INTERNAL_PADDING -
           GROUP_BOTTOM_INTERNAL_PADDING,
       };
+
+      // Top Collision
+      if (parentContentRect.y > newNodeRect.y - GROUP_INNER_Y_BOUNDARY_OFFSET) {
+        newNodeRect.y = parentContentRect.y + GROUP_INNER_Y_BOUNDARY_OFFSET;
+        newNodeRect.height =
+          presentPosition.y +
+          presentSize.height -
+          parentContentRect.y -
+          GROUP_INNER_Y_BOUNDARY_OFFSET;
+      }
 
       // Bottom collision
       const bottom = parentContentRect.y + parentContentRect.height;
