@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 
 use crate::edge::{Edge, EdgeId, EdgeKind};
 
@@ -39,17 +40,50 @@ impl Connection {
         to_socket_id: SocketId,
         edge_kind: EdgeKind,
     ) -> DiagramResult<Self> {
+        let from_component = Component::find_for_node(ctx, from_node_id)
+            .await?
+            .ok_or(ComponentError::NotFoundForNode(from_node_id))?;
+        let from_socket = Socket::get_by_id(ctx, &from_socket_id)
+            .await?
+            .ok_or(DiagramError::SocketNotFound)?;
+
+        let to_component = Component::find_for_node(ctx, to_node_id)
+            .await?
+            .ok_or(ComponentError::NotFoundForNode(to_node_id))?;
         let to_socket = Socket::get_by_id(ctx, &to_socket_id)
             .await?
             .ok_or(DiagramError::SocketNotFound)?;
+        info!(
+            "Connect: {}({}) -> {}({})",
+            from_component.name(ctx).await?,
+            from_socket.name(),
+            to_component.name(ctx).await?,
+            to_socket.name()
+        );
+
         if *to_socket.arity() == SocketArity::One {
-            let component = Component::find_for_node(ctx, to_node_id)
-                .await?
-                .ok_or(ComponentError::NotFoundForNode(to_node_id))?;
-            let edges = Edge::list_for_component(ctx, *component.id()).await?;
-            for mut edge in edges {
-                if edge.tail_socket_id() == to_socket_id {
-                    edge.delete_and_propagate(ctx).await?;
+            // Removes all connections for origin node since we are replacing it
+            let edges = Edge::list_for_component(ctx, *to_component.id()).await?;
+
+            let replaced_edges = edges
+                .iter()
+                .filter(|edge| edge.head_socket_id() == to_socket_id);
+
+            for replaced_edge in replaced_edges {
+                for edge in &edges {
+                    if edge.tail_node_id() == replaced_edge.head_node_id()
+                        || edge.head_node_id() == replaced_edge.head_node_id()
+                    {
+                        let socket = Socket::get_by_id(ctx, &edge.head_socket_id())
+                            .await?
+                            .ok_or(DiagramError::SocketNotFound)?;
+                        dbg!(socket.name());
+                        if socket.name() == "Frame" {
+                            dbg!(edge.clone().delete_by_id(ctx).await)?;
+                        } else {
+                            dbg!(edge.clone().delete_and_propagate(ctx).await)?;
+                        }
+                    }
                 }
             }
         }
@@ -63,6 +97,12 @@ impl Connection {
             edge_kind,
         )
         .await?;
+
+        let component = Component::find_for_node(ctx, to_node_id)
+            .await?
+            .ok_or(ComponentError::NotFoundForNode(to_node_id))?;
+        let edges = Edge::list_for_component(ctx, *component.id()).await?;
+
         Ok(Connection::from_edge(&edge))
     }
 

@@ -1164,15 +1164,14 @@ function endDragElements() {
     const parentId =
       movedElementParent[el.uniqueKey] || el.def.parentNodeId || undefined;
 
-    // handle dragging items into a group
-    const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
-    const elPos = elShape.getAbsolutePosition(kStage);
+    const elPos = nodesLocationInfo[el.uniqueKey];
 
+    if (!elPos) return;
     const elRect = {
-      x: elPos.x,
-      y: elPos.y,
-      width: elShape.width(),
-      height: elShape.height(),
+      x: elPos.topLeft.x,
+      y: elPos.topLeft.y,
+      width: elPos.width,
+      height: elPos.height,
     };
 
     const groupOrderedByZIndex = _.sortBy(groups.value, (g) => {
@@ -1183,17 +1182,17 @@ function endDragElements() {
     const newContainingGroup = groupOrderedByZIndex.find((group) => {
       if (group.uniqueKey === el.uniqueKey) return false;
 
-      const groupShape = kStage.findOne(`#${group.uniqueKey}--bg`);
-      const groupPos = groupShape.getAbsolutePosition(kStage);
+      const groupPos = nodesLocationInfo[group.uniqueKey];
 
+      if (!groupPos) return;
       const groupRect = {
-        x: groupPos.x,
-        y: groupPos.y,
-        width: groupShape.width(),
-        height: groupShape.height(),
+        x: groupPos.topLeft.x,
+        y: groupPos.topLeft.y,
+        width: groupPos.width,
+        height: groupPos.height,
       };
 
-      return rectContainsAnother(elRect, groupRect);
+      return rectContainsAnother(groupRect, elRect);
     });
 
     if (
@@ -1215,6 +1214,15 @@ function endDragElements() {
       }
 
       for (const element of elements) {
+        if (element.def.parentNodeId === newContainingGroup.def.id) {
+          console.error(
+            "Recursive connection:",
+            element.def.parentNodeId,
+            newContainingGroup.def.id,
+          );
+          continue;
+        }
+
         componentsStore.CONNECT_COMPONENT_TO_FRAME(
           element.def.id,
           newContainingGroup.def.id,
@@ -1336,14 +1344,18 @@ function onDragElementsMove() {
 
     if (el instanceof DiagramGroupData) {
       const includedGroups: DiagramNodeData[] & DiagramGroupData[] = [];
+      const cycleCheck = new Set();
       const queue = [el];
       while (queue.length > 0) {
+        cycleCheck.add(el.def.id);
+
         const parent = queue.shift();
         const x = _.filter(
           groups.value,
           (n) => n.def.parentNodeId === parent?.def.id,
         );
         _.each(x, (childGroup) => {
+          if (cycleCheck.has(childGroup.def.id)) return;
           queue.push(childGroup);
           includedGroups.push(childGroup);
         });

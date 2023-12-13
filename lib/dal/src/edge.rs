@@ -27,6 +27,8 @@ use crate::{
 
 const LIST_PARENTS_FOR_COMPONENT: &str =
     include_str!("queries/edge/list_parents_for_component.sql");
+const LIST_CHILDREN_FOR_COMPONENT: &str =
+    include_str!("queries/edge/list_children_for_component.sql");
 const LIST_FOR_COMPONENT: &str = include_str!("queries/edge/list_for_component.sql");
 const LIST_FOR_KIND: &str = include_str!("queries/edge/list_for_kind.sql");
 const FIND_DELETED_EQUIVALENT: &str = include_str!("queries/edge/find_deleted_equivalent.sql");
@@ -320,6 +322,26 @@ impl Edge {
     standard_model_accessor!(creation_user_pk, Option<Pk(UserPk)>, EdgeResult);
     standard_model_accessor!(deletion_user_pk, Option<Pk(UserPk)>, EdgeResult);
     standard_model_accessor!(deleted_implicitly, bool, EdgeResult);
+
+    pub async fn list_children_for_component(
+        ctx: &DalContext,
+        tail_component_id: ComponentId,
+    ) -> EdgeResult<Vec<ComponentId>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                LIST_CHILDREN_FOR_COMPONENT,
+                &[ctx.tenancy(), ctx.visibility(), &tail_component_id],
+            )
+            .await?;
+        let objects = rows
+            .into_iter()
+            .map(|row| row.get("head_object_id"))
+            .collect();
+        Ok(objects)
+    }
 
     pub async fn list_parents_for_component(
         ctx: &DalContext,
