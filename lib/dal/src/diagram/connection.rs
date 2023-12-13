@@ -53,6 +53,19 @@ impl Connection {
         let to_socket = Socket::get_by_id(ctx, &to_socket_id)
             .await?
             .ok_or(DiagramError::SocketNotFound)?;
+
+        // Ignores connection if it already exists
+        let edges = Edge::list_for_component(ctx, *to_component.id()).await?;
+        for edge in &edges {
+            let same_sockets =
+                edge.tail_socket_id() == from_socket_id && edge.head_socket_id() == to_socket_id;
+            let same_nodes =
+                edge.tail_node_id() == from_node_id && edge.head_node_id() == to_node_id;
+            if same_sockets && same_nodes {
+                return Ok(Connection::from_edge(edge));
+            }
+        }
+
         info!(
             "Connect: {}({}:{}) -> {}({}:{})",
             from_component.name(ctx).await?,
@@ -65,7 +78,6 @@ impl Connection {
 
         if *to_socket.arity() == SocketArity::One {
             // Removes all connections for origin node since we are replacing it
-            let edges = Edge::list_for_component(ctx, *to_component.id()).await?;
 
             let replaced_edges = edges
                 .iter()

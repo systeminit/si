@@ -12,7 +12,7 @@ use dal::{
 use dal::{ComponentType, Socket};
 use hyper::http::Uri;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -51,7 +51,37 @@ pub async fn connect_component_sockets_to_frame(
         posthog_client,
         &mut HashMap::new(),
     )
-    .await
+    .await?;
+
+    // Now we have to propagate the children of child_node_id
+    let mut sorted_children: VecDeque<(NodeId, NodeId)> =
+        Edge::list_children_for_node(ctx, child_node_id)
+            .await?
+            .into_iter()
+            .map(|grandchild_node_id| (child_node_id, grandchild_node_id))
+            .collect();
+
+    // Follows children in order to reconnect all of them, since the grand-parents changed
+    while let Some((parent_node_id, child_node_id)) = sorted_children.pop_front() {
+        connect_component_sockets_to_frame_inner(
+            ctx,
+            parent_node_id,
+            child_node_id,
+            original_uri,
+            posthog_client,
+            &mut HashMap::new(),
+        )
+        .await?;
+
+        sorted_children.extend(
+            Edge::list_children_for_node(ctx, child_node_id)
+                .await?
+                .into_iter()
+                .map(|grandchild_node_id| (child_node_id, grandchild_node_id)),
+        );
+    }
+
+    Ok(())
 }
 
 #[async_recursion]

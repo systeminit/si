@@ -1215,6 +1215,7 @@ function endDragElements() {
 
       for (const element of elements) {
         if (element.def.parentNodeId === newContainingGroup.def.id) {
+          /* eslint-disable-next-line no-console */
           console.error(
             "Recursive connection:",
             element.def.parentNodeId,
