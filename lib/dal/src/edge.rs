@@ -159,13 +159,13 @@ pk!(EdgeObjectId);
 
 impl From<EdgeObjectId> for ComponentId {
     fn from(id: EdgeObjectId) -> Self {
-        Self::from(id.0)
+        Self::from(id.into_inner())
     }
 }
 
 impl From<ComponentId> for EdgeObjectId {
     fn from(id: ComponentId) -> Self {
-        Self::from(ulid::Ulid::from(id))
+        Self::from(id.into_inner())
     }
 }
 
@@ -768,5 +768,13 @@ impl Edge {
         )
         .await?;
         Ok(())
+    }
+
+    pub fn head_component_id(&self) -> ComponentId {
+        self.head_object_id().into()
+    }
+
+    pub fn tail_component_id(&self) -> ComponentId {
+        self.tail_object_id().into()
     }
 }

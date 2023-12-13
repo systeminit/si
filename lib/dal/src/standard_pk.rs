@@ -51,6 +51,11 @@ macro_rules! pk {
             pub fn generate() -> Self {
                 Self(ulid::Ulid::new())
             }
+
+            /// Converts type into inner Ulid
+            pub fn into_inner(self) -> ::ulid::Ulid {
+                self.0
+            }
         }
 
         impl From<Option<$name>> for $name {
