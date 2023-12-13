@@ -160,12 +160,10 @@ def typescript_check(
     )
 
 def typescript_dist(
-        tsc = ":tsc",
         package_node_modules = ":node_modules",
         visibility = ["PUBLIC"],
         **kwargs):
     _typescript_dist(
-        tsc = tsc,
         package_node_modules = package_node_modules,
         visibility = visibility,
         **kwargs

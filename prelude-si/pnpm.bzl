@@ -31,6 +31,10 @@ load(
     "PnpmToolchainInfo",
 )
 
+TypescriptDistInfo = provider(fields = {
+    "index_file": provider_field(str, default = "index.js"),  # [str]
+})
+
 TypescriptRunnableDistInfo = provider(fields = {
     "runnable_dist": provider_field(typing.Any, default = None),  # [Artifact]
     "bin": provider_field(typing.Any, default = None),  # [str]
@@ -578,8 +582,19 @@ pnpm_workspace = rule(
     },
 )
 
-def typescript_dist_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
+def typescript_dist_impl(ctx: AnalysisContext) -> list[[DefaultInfo, TypescriptDistInfo]]:
     out = ctx.actions.declare_output("dist", dir = True)
+
+    if ctx.attrs.tsc and ctx.attrs.tsup:
+        fail("Only one of `tsc` or `tsup` must be set")
+    elif ctx.attrs.tsc:
+        ts_compiler = ctx.attrs.tsc[RunInfo]
+        index_file = "index.js"
+    elif ctx.attrs.tsup:
+        ts_compiler = ctx.attrs.tsup[RunInfo]
+        index_file = "index.cjs"
+    else:
+        fail("Either `tsc` or `tsup` attribute is required")
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
     package_build_ctx = package_build_context(ctx)
@@ -590,10 +605,14 @@ def typescript_dist_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
         "--cwd",
         cmd_args([package_build_ctx.srcs_tree, ctx.label.package], delimiter = "/"),
         "--",
-        cmd_args(ctx.attrs.tsc[RunInfo], format = "{}::abspath"),
-        "--outDir",
-        cmd_args(out.as_output(), format = "{}::relpath"),
+        cmd_args(ts_compiler, format = "{}::abspath"),
     )
+    if ctx.attrs.tsup:
+        cmd.add("--out-dir")
+    else:
+        cmd.add("--outDir")
+    cmd.add(cmd_args(out.as_output(), format = "{}::relpath"))
+
     if ctx.attrs.args:
         cmd.append(ctx.attrs.args)
 
@@ -601,14 +620,21 @@ def typescript_dist_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
 
     return [
         DefaultInfo(default_output = out),
+        TypescriptDistInfo(index_file = index_file),
     ]
 
 typescript_dist = rule(
     impl = typescript_dist_impl,
     attrs = {
-        "tsc": attrs.dep(
-            providers = [RunInfo],
+        "tsc": attrs.option(
+            attrs.dep(providers = [RunInfo]),
+            default = None,
             doc = """TypeScript compiler dependency.""",
+        ),
+        "tsup": attrs.option(
+            attrs.dep(providers = [RunInfo]),
+            default = None,
+            doc = """tsup compiler dependency.""",
         ),
         "srcs": attrs.list(
             attrs.source(),
@@ -679,6 +705,7 @@ typescript_runnable_dist = rule(
     impl = typescript_runnable_dist_impl,
     attrs = {
         "typescript_dist": attrs.dep(
+            providers = [TypescriptDistInfo],
             doc = """Target which builds the Typescript dist artifact.""",
         ),
         "package_node_modules_prod": attrs.dep(
@@ -970,6 +997,8 @@ def package_runnable_dist_context(
         ctx.attrs.package_node_modules_prod[DefaultInfo].default_outputs[0],
         "--dist-path",
         dist_path,
+        "--index-file",
+        ctx.attrs.typescript_dist[TypescriptDistInfo].index_file,
     )
     cmd.add(out.as_output())
 

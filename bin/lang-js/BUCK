@@ -5,6 +5,7 @@ load(
     "jest",
     "nix_omnibus_pkg",
     "node_pkg_bin",
+    "npm_bin",
     "package_node_modules",
     "prettier_check",
     "typescript_check",
@@ -45,9 +46,14 @@ dev_deps_srcs = {
     "lib/tsconfig": "//lib/tsconfig:src",
 }
 
+npm_bin(
+    name = "tsup",
+)
+
 typescript_dist(
     name = "dist",
     srcs = [":src"],
+    tsup = ":tsup",
     prod_deps_srcs = prod_deps_srcs,
     dev_deps_srcs = dev_deps_srcs,
 )

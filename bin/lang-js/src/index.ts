@@ -1,4 +1,4 @@
-#!/usr/bin/env tsc
+#!/usr/bin/env node
 
 import fs from "fs";
 import { Command } from "commander";
