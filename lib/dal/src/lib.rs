@@ -30,7 +30,6 @@ pub mod change_set_pointer;
 pub mod change_status;
 pub mod component;
 pub mod context;
-pub mod cyclone_key_pair;
 pub mod diagram;
 pub mod func;
 pub mod history_event;

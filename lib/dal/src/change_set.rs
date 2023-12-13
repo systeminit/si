@@ -17,7 +17,7 @@ use crate::{DalContext, WsEventResult};
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("queries/change_set/open_list.sql");
 const CHANGE_SET_GET_BY_PK: &str = include_str!("queries/change_set/get_by_pk.sql");
-const GET_ACTORS: &str = include_str!("queries/change_set/get_actors.sql");
+// const GET_ACTORS: &str = include_str!("queries/change_set/get_actors.sql");
 
 const BEGIN_MERGE_FLOW: &str = include_str!("queries/change_set/begin_merge_flow.sql");
 const CANCEL_MERGE_FLOW: &str = include_str!("queries/change_set/cancel_merge_flow.sql");

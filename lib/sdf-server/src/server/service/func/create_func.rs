@@ -3,10 +3,9 @@ use axum::{response::IntoResponse, Json};
 use base64::engine::general_purpose;
 use base64::Engine;
 use dal::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeContext};
-use dal::change_set_pointer::ChangeSetPointerId;
 use dal::{
-    generate_name, ActionKind, DalContext, ExternalProviderId, Func, FuncBackendResponseType,
-    FuncId, PropId, SchemaVariantId, Visibility, WsEvent,
+    generate_name, ActionKind, ChangeSetPk, DalContext, ExternalProviderId, Func,
+    FuncBackendResponseType, FuncId, PropId, SchemaVariantId, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -338,34 +337,7 @@ async fn create_authentication_func(
     if let Some(CreateFuncOptions::AuthenticationOptions { schema_variant_id }) = options {
         AuthenticationPrototype::new(
             ctx,
-            *func.id(),
-            AuthenticationPrototypeContext { schema_variant_id },
-        )
-        .await?;
-    }
-
-    Ok(func)
-}
-
-async fn create_authentication_func(
-    ctx: &DalContext,
-    name: Option<String>,
-    options: Option<CreateFuncOptions>,
-) -> FuncResult<Func> {
-    let func = create_func_stub(
-        ctx,
-        name,
-        FuncVariant::Authentication,
-        FuncBackendResponseType::Void,
-        DEFAULT_AUTHENTICATION_CODE,
-        DEFAULT_CODE_HANDLER,
-    )
-    .await?;
-
-    if let Some(CreateFuncOptions::AuthenticationOptions { schema_variant_id }) = options {
-        AuthenticationPrototype::new(
-            ctx,
-            *func.id(),
+            func.id,
             AuthenticationPrototypeContext { schema_variant_id },
         )
         .await?;
@@ -392,7 +364,7 @@ pub async fn create_func(
     }
 
     // let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
-    let force_changeset_pk = None;
+    let force_changeset_pk: Option<ChangeSetPk> = None;
 
     let func = match request.variant {
         FuncVariant::Attribute => {

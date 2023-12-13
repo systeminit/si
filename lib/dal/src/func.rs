@@ -3,12 +3,10 @@ use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
-use std::string::FromUtf8Error;
 use strum::{EnumDiscriminants, IntoEnumIterator};
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
-use veritech_client::CycloneValueEncryptError;
 
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::intrinsics::IntrinsicFunc;

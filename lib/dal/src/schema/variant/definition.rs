@@ -100,33 +100,33 @@ pub type SchemaVariantDefinitionResult<T> = Result<T, SchemaVariantDefinitionErr
 
 pk!(SchemaVariantDefinitionId);
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub struct SchemaVariantDefinition {
-    pk: SchemaVariantDefinitionPk,
-    id: SchemaVariantDefinitionId,
-    #[serde(flatten)]
-    tenancy: Tenancy,
-    #[serde(flatten)]
-    timestamp: Timestamp,
-    #[serde(flatten)]
-    visibility: Visibility,
-
-    /// Name for this variant. Actually, this is the name for this [`Schema`](crate::Schema), we're
-    /// punting on the issue of multiple variants for the moment.
-    name: String,
-    /// Override for the UI name for this schema
-    menu_name: Option<String>,
-    /// The category this schema variant belongs to
-    category: String,
-    /// The color for the component on the component diagram as a hex string
-    color: String,
-    component_kind: ComponentKind,
-    component_type: ComponentType,
-    link: Option<String>,
-    func_id: FuncId,
-    description: Option<String>,
-    schema_variant_id: Option<SchemaVariantId>,
-}
+// #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+// pub struct SchemaVariantDefinition {
+//     pk: SchemaVariantDefinitionPk,
+//     id: SchemaVariantDefinitionId,
+//     #[serde(flatten)]
+//     tenancy: Tenancy,
+//     #[serde(flatten)]
+//     timestamp: Timestamp,
+//     #[serde(flatten)]
+//     visibility: Visibility,
+//
+//     /// Name for this variant. Actually, this is the name for this [`Schema`](crate::Schema), we're
+//     /// punting on the issue of multiple variants for the moment.
+//     name: String,
+//     /// Override for the UI name for this schema
+//     menu_name: Option<String>,
+//     /// The category this schema variant belongs to
+//     category: String,
+//     /// The color for the component on the component diagram as a hex string
+//     color: String,
+//     component_kind: ComponentKind,
+//     component_type: ComponentType,
+//     link: Option<String>,
+//     func_id: FuncId,
+//     description: Option<String>,
+//     schema_variant_id: Option<SchemaVariantId>,
+// }
 
 // impl_standard_model! {
 //     model: SchemaVariantDefinition,

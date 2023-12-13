@@ -41,7 +41,7 @@ pub async fn list_open_change_sets(
         // let ctx =
         //     ctx.clone_with_new_visibility(Visibility::new(cs.pk, ctx.visibility().deleted_at));
 
-        let mut actions = Vec::new();
+        let actions = Vec::new();
 
         view.push(ChangeSetView {
             // TODO: remove change sets entirely!

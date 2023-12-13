@@ -1,5 +1,4 @@
 use axum::extract::{Json, Query};
-use dal::socket::DiagramKind;
 use dal::{
     ExternalProviderId, InternalProviderId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
     Visibility,

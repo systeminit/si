@@ -1625,55 +1625,57 @@ impl WorkspaceSnapshotGraph {
         }
 
         while let Some(old_node_index) = work_queue.pop_front() {
-            if self.has_path_to_root(old_node_index) {
-                // First, check if we have incoming edges and push them to the back to ensure we
-                // continue to perform post order traversal.
-                for edgeref in self.edges_directed(old_node_index, Direction::Incoming) {
-                    work_queue.push_back(edgeref.source());
-                }
-
-                // Copy the node if we have not seen it or grab it if we have. Only the first node in DFS post order
-                // traversal should already exist since it was created before we entered `replace_references`, and
-                // is the reason we're updating things in the first place.
-                let new_node_index = match old_to_new_node_indices.get(&old_node_index) {
-                    Some(found_new_node_index) => *found_new_node_index,
-                    None => {
-                        let new_node_index = self.copy_node_by_index(old_node_index)?;
-                        old_to_new_node_indices.insert(old_node_index, new_node_index);
-                        new_node_index
-                    }
-                };
-
-                // Find all outgoing edges weights and find the edge targets.
-                let mut edges_to_create: Vec<(EdgeWeight, NodeIndex)> = Vec::new();
-                for edge_reference in self.graph.edges_directed(old_node_index, Outgoing) {
-                    edges_to_create
-                        .push((edge_reference.weight().clone(), edge_reference.target()));
-                }
-
-                // Make copies of these edges where the source is the new node index and the
-                // destination is one of the following...
-                // - If an entry exists in `old_to_new_node_indicies` for the destination node index,
-                //   use the value of the entry (the destination was affected by the replacement,
-                //   and needs to use the new node index to reflect this).
-                // - There is no entry in `old_to_new_node_indicies`; use the same destination node
-                //   index as the old edge (the destination was *NOT* affected by the replacemnt,
-                //   and does not have any new information to reflect).
-                for (edge_weight, destination_node_index) in edges_to_create {
-                    // Need to directly add the edge, without going through `self.add_edge` to avoid
-                    // infinite recursion, and because we're the place doing all the book keeping
-                    // that we'd be interested in happening from `self.add_edge`.
-                    self.graph.update_edge(
-                        new_node_index,
-                        *old_to_new_node_indices
-                            .get(&destination_node_index)
-                            .unwrap_or(&destination_node_index),
-                        edge_weight,
-                    );
-                }
-
-                self.update_merkle_tree_hash(new_node_index)?;
+            // Only process nodes that have a path to root.
+            if !self.has_path_to_root(old_node_index) {
+                continue;
             }
+
+            // Check if we have incoming edges and push them to the back to ensure we
+            // continue to perform post order traversal.
+            for edgeref in self.edges_directed(old_node_index, Direction::Incoming) {
+                work_queue.push_back(edgeref.source());
+            }
+
+            // Copy the node if we have not seen it or grab it if we have. Only the first node in DFS post order
+            // traversal should already exist since it was created before we entered `replace_references`, and
+            // is the reason we're updating things in the first place.
+            let new_node_index = match old_to_new_node_indices.get(&old_node_index) {
+                Some(found_new_node_index) => *found_new_node_index,
+                None => {
+                    let new_node_index = self.copy_node_by_index(old_node_index)?;
+                    old_to_new_node_indices.insert(old_node_index, new_node_index);
+                    new_node_index
+                }
+            };
+
+            // Find all outgoing edges weights and find the edge targets.
+            let mut edges_to_create: Vec<(EdgeWeight, NodeIndex)> = Vec::new();
+            for edge_reference in self.graph.edges_directed(old_node_index, Outgoing) {
+                edges_to_create.push((edge_reference.weight().clone(), edge_reference.target()));
+            }
+
+            // Make copies of these edges where the source is the new node index and the
+            // destination is one of the following...
+            // - If an entry exists in `old_to_new_node_indices` for the destination node index,
+            //   use the value of the entry (the destination was affected by the replacement,
+            //   and needs to use the new node index to reflect this).
+            // - There is no entry in `old_to_new_node_indices`; use the same destination node
+            //   index as the old edge (the destination was *NOT* affected by the replacement,
+            //   and does not have any new information to reflect).
+            for (edge_weight, destination_node_index) in edges_to_create {
+                // Need to directly add the edge, without going through `self.add_edge` to avoid
+                // infinite recursion, and because we're the place doing all the book keeping
+                // that we'd be interested in happening from `self.add_edge`.
+                self.graph.update_edge(
+                    new_node_index,
+                    *old_to_new_node_indices
+                        .get(&destination_node_index)
+                        .unwrap_or(&destination_node_index),
+                    edge_weight,
+                );
+            }
+
+            self.update_merkle_tree_hash(new_node_index)?;
         }
 
         // Use the new version of the old root node as our root node.

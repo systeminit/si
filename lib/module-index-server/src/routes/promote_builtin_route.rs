@@ -2,7 +2,7 @@ use axum::extract::{Multipart, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::{extract::Path, Json};
-use chrono::{DateTime, Offset, Utc};
+use chrono::{DateTime, FixedOffset, Offset, Utc};
 use module_index_client::ModuleDetailsResponse;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DbErr, EntityTrait};
@@ -86,7 +86,7 @@ pub async fn promote_builtin_route(
         rejected_at: Set(None),
         rejected_by_display_name: Set(None),
         kind: Set(module.kind),
-        is_builtin_at: Set(Some(DateTime::from_naive_utc_and_offset(
+        is_builtin_at: Set(Some(DateTime::<FixedOffset>::from_utc(
             Utc::now().naive_utc(),
             Utc.fix(),
         ))),

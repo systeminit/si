@@ -16,7 +16,6 @@ si-rabbitmq = { path = "../../lib/si-rabbitmq" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-test-macros = { path = "../../lib/si-test-macros" }
-stream-cancel = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 veritech-client = { path = "../../lib/veritech-client" }
 

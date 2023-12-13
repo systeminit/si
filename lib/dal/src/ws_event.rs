@@ -3,10 +3,12 @@ use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
 
+use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::ComponentCreatedPayload;
+use crate::user::OnlinePayload;
 use crate::{
-    pkg::ModuleImported, user::CursorPayload, ChangeSetPk, DalContext, PropId, StandardModelError,
-    TransactionsError, WorkspacePk,
+    pkg::ModuleImportedPayload, user::CursorPayload, ChangeSetPk, DalContext, PropId,
+    StandardModelError, TransactionsError, WorkspacePk,
 };
 
 #[remain::sorted]

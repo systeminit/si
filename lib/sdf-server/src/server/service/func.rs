@@ -3,6 +3,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use dal::authentication_prototype::AuthenticationPrototypeError;
 use dal::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
 use dal::WsEventError;
 use dal::{
@@ -61,6 +62,8 @@ pub enum FuncError {
     //     AttributePrototypeMissingSchemaVariant(AttributePrototypeId),
     //     #[error("attribute value error: {0}")]
     //     AttributeValue(#[from] AttributeValueError),
+    #[error("authentication prototype error: {0}")]
+    AuthenticationPrototype(#[from] AuthenticationPrototypeError),
     //     #[error("attribute value missing")]
     //     AttributeValueMissing,
     //     #[error("change set error: {0}")]
@@ -124,8 +127,8 @@ pub enum FuncError {
     //     Join(#[from] JoinError),
     //     #[error("Missing required options for creating a function")]
     //     MissingOptions,
-    //     #[error("Function is read-only")]
-    //     NotWritable,
+    #[error("Function is read-only")]
+    NotWritable,
     //     #[error(transparent)]
     //     Pg(#[from] si_data_pg::PgError),
     // #[error(transparent)]

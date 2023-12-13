@@ -1,14 +1,17 @@
 use axum::routing::IntoMakeService;
 use axum::Router;
+use dal::ServicesContext;
 use dal::{
     builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
     Workspace, WorkspaceError,
 };
-use dal::{cyclone_key_pair::CycloneKeyPairError, ServicesContext};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use module_index_client::types::BuiltinsDetailsResponse;
 use module_index_client::{IndexClient, ModuleDetailsResponse};
-use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig};
+use si_crypto::{
+    CycloneEncryptionKey, CycloneEncryptionKeyError, CycloneKeyPairError, SymmetricCryptoError,
+    SymmetricCryptoService, SymmetricCryptoServiceConfig,
+};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
 use si_pkg::{SiPkg, SiPkgError};
@@ -28,7 +31,7 @@ use tokio::{
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use ulid::Ulid;
-use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyError};
+use veritech_client::Client as VeritechClient;
 
 use super::state::AppState;
 use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};

@@ -20,7 +20,6 @@ use tokio::{
         oneshot, watch,
     },
 };
-use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey, CycloneEncryptionKeyError};
 
 use crate::Config;

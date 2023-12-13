@@ -1,7 +1,5 @@
 use content_store::Store;
 use serde::{Deserialize, Serialize};
-use si_data_pg::PgError;
-use std::collections::HashMap;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;

@@ -111,7 +111,8 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/abandon_change_set",
             params: {
-              changeSetPk: this.selectedChangeSet.pk,
+              // TODO(nick,zack): ensure the backend knows that this is an id now.
+              changeSetPk: this.selectedChangeSet.id,
             },
             onSuccess: (response) => {
               // this.changeSetsById[response.changeSet.pk] = response.changeSet;

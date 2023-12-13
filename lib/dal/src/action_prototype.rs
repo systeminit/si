@@ -1,7 +1,6 @@
 use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
 use si_pkg::ActionFuncSpecKind;
-use std::default::Default;
 use strum::{AsRefStr, Display, EnumDiscriminants};
 
 use crate::workspace_snapshot::content_address::ContentAddress;
