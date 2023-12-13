@@ -45,6 +45,14 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) nats_url: Option<String>,
 
+    /// NATS credentials string
+    #[arg(long, allow_hyphen_values = true)]
+    pub(crate) nats_creds: Option<String>,
+
+    /// NATS credentials file
+    #[arg(long)]
+    pub(crate) nats_creds_file: Option<String>,
+
     /// Disable OpenTelemetry on startup
     #[arg(long)]
     pub(crate) disable_opentelemetry: bool,
@@ -87,6 +95,12 @@ impl TryFrom<Args> for Config {
             }
             if let Some(url) = args.nats_url {
                 config_map.set("nats.url", url);
+            }
+            if let Some(creds) = args.nats_creds {
+                config_map.set("nats.creds", creds);
+            }
+            if let Some(creds_file) = args.nats_creds_file {
+                config_map.set("nats.creds_file", creds_file);
             }
             if let Some(cyclone_encyption_key_path) = args.cyclone_encryption_key_path {
                 config_map.set("cyclone_encryption_key_path", cyclone_encyption_key_path);
