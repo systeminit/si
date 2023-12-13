@@ -42,6 +42,11 @@ impl IndexMap {
         self.order.retain(|x| order_set.insert(*x));
     }
 
+    pub fn delete(&mut self, attribute_value_id: AttributeValueId) {
+        self.order.retain(|av| attribute_value_id != *av);
+        self.key_map.remove(&attribute_value_id);
+    }
+
     /// Returns the order of attribute resolvers for this index map as
     /// array; it does not include the keys.
     pub fn order(&self) -> &[AttributeValueId] {
