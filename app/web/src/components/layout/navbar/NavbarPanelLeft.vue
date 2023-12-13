@@ -1,23 +1,26 @@
 <template>
-  <div class="flex items-center h-full flex-1">
-    <SiLogo class="block h-10 w-10 my-2 mr-2 flex-none" />
+  <div class="flex flex-1 items-center">
+    <SiLogo class="block h-[44px] w-[44px] ml-[12px] mr-[12px] flex-none" />
 
-    <div class="flex flex-col gap-1 ml-4 max-w-[50%]">
-      <div class="text-xs font-medium capsize">WORKSPACE:</div>
-
+    <label>
+      <div
+        class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300"
+      >
+        WORKSPACE:
+      </div>
       <VormInput
         v-model="selectedWorkspacePk"
         class="flex-grow font-bold"
-        size="sm"
+        size="xs"
         type="dropdown"
         noLabel
         :options="workspaceDropdownOptions"
         placeholder="-- select a workspace --"
         @change="updateRoute"
       />
-    </div>
+    </label>
 
-    <Icon name="slash" size="2xl" tone="neutral" />
+    <Icon name="chevron--right" size="xs" tone="neutral" class="mt-[14px]" />
 
     <ChangeSetPanel class="max-w-[50%]" />
   </div>

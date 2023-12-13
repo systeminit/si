@@ -28,7 +28,7 @@
           {{
             1 +
             diffs.length +
-            (changeSetStore.selectedChangeSet?.actions?.length ?? 0)
+            _.keys(changeSetStore.selectedChangeSet?.actions).length
           }}
         </strong>
       </div>

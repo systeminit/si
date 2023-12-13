@@ -26,6 +26,7 @@ use crate::{
     job::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
+        queue::JobQueue,
     },
     workspace_snapshot::WorkspaceSnapshotError,
     HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk, WorkspaceSnapshot,
@@ -257,7 +258,7 @@ pub struct DalContext {
     /// And also for SDF routes to block the HTTP request until the jobs get executed, so SDF tests don't race.
     blocking: bool,
     /// Determines if we should not enqueue dependent value update jobs for attribute updates in
-    /// this context
+    /// this context. Useful for builtin migrations, since we don't care about attribute values propagation then.
     no_dependent_values: bool,
     /// The content-addressable [`store`](content_store::Store) used by the "dal".
     ///
@@ -382,6 +383,14 @@ impl DalContext {
 
         Ok(conflicts)
     }
+
+    // pub fn to_builder(&self) -> DalContextBuilder {
+    //     DalContextBuilder {
+    //         services_context: self.services_context.clone(),
+    //         blocking: self.blocking,
+    //         no_dependent_values: self.no_dependent_values,
+    //     }
+    // }
 
     /// Consumes all inner transactions and committing all changes made within them.
     pub async fn commit(&self) -> Result<Option<Conflicts>, TransactionsError> {
@@ -604,11 +613,7 @@ impl DalContext {
         &self,
         job: Box<dyn JobProducer + Send + Sync>,
     ) -> Result<(), TransactionsError> {
-        self.txns()
-            .await?
-            .job_processor
-            .enqueue_job(job, self)
-            .await;
+        self.txns().await?.job_queue.enqueue_job(job).await;
         Ok(())
     }
 
@@ -828,7 +833,7 @@ pub struct DalContextBuilder {
 impl DalContextBuilder {
     /// Constructs and returns a new [`DalContext`] using a default [`RequestContext`].
     pub async fn build_default(&self) -> Result<DalContext, TransactionsError> {
-        let conns = self.connections().await?;
+        let conns = self.services_context.connections().await?;
         let raw_content_store = match &self.content_store {
             Some(found_content_store) => found_content_store.clone(),
             None => PgStore::new_production().await?,
@@ -854,7 +859,7 @@ impl DalContextBuilder {
         &self,
         content_store: PgStore,
     ) -> Result<DalContext, TransactionsError> {
-        let conns = self.connections().await?;
+        let conns = self.services_context.connections().await?;
         Ok(DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
@@ -874,7 +879,7 @@ impl DalContextBuilder {
         &self,
         access_builder: AccessBuilder,
     ) -> Result<DalContext, TransactionsError> {
-        let conns = self.connections().await?;
+        let conns = self.services_context.connections().await?;
         let raw_content_store = match &self.content_store {
             Some(found_content_store) => found_content_store.clone(),
             None => PgStore::new_production().await?,
@@ -899,7 +904,7 @@ impl DalContextBuilder {
         &self,
         request_context: RequestContext,
     ) -> Result<DalContext, TransactionsError> {
-        let conns = self.connections().await?;
+        let conns = self.services_context.connections().await?;
         let raw_content_store = match &self.content_store {
             Some(found_content_store) => found_content_store.clone(),
             None => PgStore::new_production().await?,
@@ -931,16 +936,6 @@ impl DalContextBuilder {
     /// Gets a reference to the NATS connection.
     pub fn nats_conn(&self) -> &NatsClient {
         &self.services_context.nats_conn
-    }
-
-    /// Gets a clone of the job queue processor.
-    pub fn job_processor(&self) -> Box<dyn JobQueueProcessor + Send + Sync> {
-        self.services_context.job_processor.clone()
-    }
-
-    /// Builds and returns a new [`Connections`].
-    pub async fn connections(&self) -> PgPoolResult<Connections> {
-        self.services_context.connections().await
     }
 
     /// Returns the location on disk where packages are stored (if one was provided)
@@ -1067,6 +1062,7 @@ pub struct Transactions {
     /// Rebaser client
     rebaser_config: RebaserClientConfig,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    job_queue: JobQueue,
 }
 
 #[derive(Clone, Debug)]
@@ -1138,6 +1134,7 @@ impl Transactions {
             nats_txn,
             rebaser_config,
             job_processor,
+            job_queue: JobQueue::new(),
         }
     }
 
@@ -1169,7 +1166,7 @@ impl Transactions {
             None
         };
 
-        self.job_processor.process_queue().await?;
+        self.job_processor.process_queue(self.job_queue).await?;
         let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
 
         Ok((conns, conflicts))
@@ -1190,7 +1187,9 @@ impl Transactions {
             None
         };
 
-        self.job_processor.blocking_process_queue().await?;
+        self.job_processor
+            .blocking_process_queue(self.job_queue)
+            .await?;
         let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
 
         Ok((conns, conflicts))

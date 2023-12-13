@@ -4,7 +4,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use dal::{change_status::ChangeStatusError, component::ComponentViewError};
+use dal::{change_status::ChangeStatusError, component::ComponentViewError, PropError};
 use dal::{
     component::view::debug::ComponentDebugViewError, node::NodeError,
     property_editor::PropertyEditorError, AttributeContextBuilderError,
@@ -19,6 +19,7 @@ use crate::{server::state::AppState, service::schema::SchemaError};
 
 pub mod alter_simulation;
 pub mod debug;
+pub mod delete_property_editor_value;
 pub mod get_code;
 pub mod get_components_metadata;
 pub mod get_diff;
@@ -85,18 +86,24 @@ pub enum ComponentError {
     InvalidRequest,
     #[error("invalid visibility")]
     InvalidVisibility,
+    #[error("property value key not found")]
+    KeyNotFound,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
     #[error("node error: {0}")]
     Node(#[from] NodeError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
+    #[error(transparent)]
+    Prop(#[from] PropError),
     #[error("property editor error: {0}")]
     PropertyEditor(#[from] PropertyEditorError),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
     #[error("reconciliation prototype: {0}")]
     ReconciliationPrototype(#[from] ReconciliationPrototypeError),
+    #[error("can't delete attribute value for root prop")]
+    RootPropAttributeValue,
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema not found")]
@@ -161,6 +168,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/insert_property_editor_value",
             post(insert_property_editor_value::insert_property_editor_value),
+        )
+        .route(
+            "/delete_property_editor_value",
+            post(delete_property_editor_value::delete_property_editor_value),
         )
         .route(
             "/get_property_editor_validations",

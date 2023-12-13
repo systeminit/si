@@ -1,7 +1,6 @@
-use std::env;
+use std::os::unix::fs::PermissionsExt;
 
 use ::std::path::Path;
-use buck2_resources::{Buck2Resources, Buck2ResourcesError};
 use rand::distributions::Alphanumeric;
 use rand::thread_rng;
 use rand::Rng;
@@ -44,9 +43,6 @@ use crate::instance::{Instance, Spec, SpecBuilder};
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum LocalUdsInstanceError {
-    /// Failed to find a buck2 specific resource
-    #[error("buck2 resource not found")]
-    Buck2ResourceNotFound(#[from] Buck2ResourcesError),
     /// Spec builder error.
     #[error(transparent)]
     Builder(#[from] LocalUdsInstanceSpecBuilderError),
@@ -71,6 +67,15 @@ pub enum LocalUdsInstanceError {
     /// Docker api not found
     #[error("no docker api")]
     DockerAPINotFound,
+    /// Failed to create firecracker-setup file.
+    #[error("failed to create firecracker-setup file")]
+    FirecrackerSetupCreate(#[source] io::Error),
+    /// Failed to set permissions on the firecracker-setup file.
+    #[error("failed to set permissions on the firecracker-setup file")]
+    FirecrackerSetupPermissions(#[source] io::Error),
+    /// Failed to write to firecracker-setup file.
+    #[error("failed to write to firecracker-setup file")]
+    FirecrackerSetupWrite(#[source] io::Error),
     /// Instance has exhausted its predefined request count.
     #[error("no remaining requests, cyclone server is considered unhealthy")]
     NoRemainingRequests,
@@ -794,22 +799,26 @@ async fn runtime_instance_from_spec(
 }
 
 async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
-    let command = "/firecracker-data/orchestrate-install.sh";
-    let mut script = String::from("orchestrate-install.sh");
-    script = get_if_buck2_build(script).await?;
+    let script_bytes = include_bytes!("firecracker-setup.sh");
+    let command = Path::new("/firecracker-data/firecracker-setup.sh");
 
-    let _ = match std::fs::copy(script, command) {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err),
-    };
+    // we need to ensure the file is in the correct location with the correct permissions
+    std::fs::create_dir_all(
+        command
+            .parent()
+            .expect("This should never happen. Did you remove the path from the string above?"),
+    )
+    .map_err(LocalUdsInstanceError::FirecrackerSetupCreate)?;
+    std::fs::write(command, script_bytes).map_err(LocalUdsInstanceError::FirecrackerSetupWrite)?;
+    std::fs::set_permissions(command, std::fs::Permissions::from_mode(0o755))
+        .map_err(LocalUdsInstanceError::FirecrackerSetupPermissions)?;
 
     // Spawn the shell process
     let _status = Command::new("sudo")
         .arg(command)
-        .arg("-v")
-        .arg("/tmp/variables.txt")
         .arg("-j")
         .arg(&spec.pool_size.to_string())
+        .arg("-rk")
         .status();
 
     Ok(())
@@ -859,16 +868,4 @@ async fn watch_task<Strm>(
             }
         }
     }
-}
-
-#[allow(clippy::disallowed_methods)] // Used to determine if running in development
-async fn get_if_buck2_build(file: String) -> Result<String> {
-    if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
-        let resources = Buck2Resources::read()?
-            .get_ends_with(file)?
-            .to_string_lossy()
-            .to_string();
-        return Ok(resources);
-    }
-    Ok(file)
 }

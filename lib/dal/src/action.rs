@@ -1,10 +1,11 @@
+use crate::pk;
 // use serde::{Deserialize, Serialize};
 // use std::collections::HashMap;
 // use thiserror::Error;
-
+//
 // use si_data_pg::PgError;
 // use telemetry::prelude::*;
-
+//
 // use crate::{
 //     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
 //     ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, ChangeSetPk, Component,
@@ -14,18 +15,24 @@
 // };
 //
 // const FIND_FOR_CHANGE_SET: &str = include_str!("./queries/action/find_for_change_set.sql");
-
+//
 // #[remain::sorted]
 // #[derive(Error, Debug)]
 // pub enum ActionError {
 //     #[error("action prototype error: {0}")]
 //     ActionPrototype(#[from] ActionPrototypeError),
+//     #[error(transparent)]
+//     Component(#[from] ComponentError),
 //     #[error("component not found: {0}")]
 //     ComponentNotFound(ComponentId),
 //     #[error("history event: {0}")]
 //     HistoryEvent(#[from] HistoryEventError),
 //     #[error("in head")]
 //     InHead,
+//     #[error(transparent)]
+//     Node(#[from] NodeError),
+//     #[error("action not found: {0}")]
+//     NotFound(ActionId),
 //     #[error("pg error: {0}")]
 //     Pg(#[from] PgError),
 //     #[error("action prototype not found: {0}")]
@@ -37,12 +44,12 @@
 //     #[error(transparent)]
 //     WsEvent(#[from] WsEventError),
 // }
-
-// pub type ActionResult<T> = Result<T, ActionError>;
-
-// pk!(ActionPk);
-// pk!(ActionId);
 //
+// pub type ActionResult<T> = Result<T, ActionError>;
+//
+// pk!(ActionPk);
+pk!(ActionId);
+
 // // An Action joins an `ActionPrototype` to a `ComponentId` in a `ChangeSetPk`
 // #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 // pub struct Action {
@@ -110,10 +117,10 @@
 //             .await?
 //             .publish_on_commit(ctx)
 //             .await?;
-
+//
 //         Ok(object)
 //     }
-
+//
 //     pub async fn find_for_change_set(ctx: &DalContext) -> ActionResult<Vec<Self>> {
 //         let rows = ctx
 //             .txns()
@@ -128,120 +135,223 @@
 //                 ],
 //             )
 //             .await?;
-
+//
 //         Ok(standard_model::objects_from_rows(rows)?)
 //     }
-
+//
 //     pub async fn prototype(&self, ctx: &DalContext) -> ActionResult<ActionPrototype> {
 //         ActionPrototype::get_by_id(ctx, self.action_prototype_id())
 //             .await?
 //             .ok_or(ActionError::PrototypeNotFound(*self.action_prototype_id()))
 //     }
-
+//
 //     pub async fn component(&self, ctx: &DalContext) -> ActionResult<Component> {
 //         Component::get_by_id(ctx, self.component_id())
 //             .await?
 //             .ok_or(ActionError::ComponentNotFound(*self.component_id()))
 //     }
-
-//     pub async fn sort_of_change_set(ctx: &DalContext) -> ActionResult<()> {
-//         let actions = Self::find_for_change_set(ctx).await?;
-
+//
+//     pub async fn order(ctx: &DalContext) -> ActionResult<HashMap<ActionId, ActionBag>> {
+//         let actions_by_id: HashMap<ActionId, Action> = Self::find_for_change_set(ctx)
+//             .await?
+//             .into_iter()
+//             .map(|a| (*a.id(), a))
+//             .collect();
+//
 //         let mut actions_by_component: HashMap<ComponentId, Vec<Action>> = HashMap::new();
-//         for action in actions {
+//         for action in actions_by_id.values() {
 //             actions_by_component
 //                 .entry(*action.component_id())
 //                 .or_default()
-//                 .push(action);
+//                 .push(action.clone());
 //         }
-
-//         let mut initial_deletions = Vec::new();
-//         let mut initial_others = Vec::new();
-//         let mut creations = Vec::new();
-//         let mut final_others = Vec::new();
-//         let mut final_deletions = Vec::new();
-
-//         let sorted_node_ids =
-//             Node::list_topologically_sorted_configuration_nodes_with_stable_ordering(ctx, false)
-//                 .await?;
-
+//
 //         let ctx_with_deleted = &ctx.clone_with_delete_visibility();
-//         for sorted_node_id in sorted_node_ids {
-//             let sorted_node = Node::get_by_id(ctx_with_deleted, &sorted_node_id)
+//
+//         let nodes_graph = Node::build_graph(ctx, false).await?;
+//         let mut actions_graph: HashMap<ActionId, (ActionKind, Vec<ActionId>)> = HashMap::new();
+//
+//         for (node_id, parent_ids) in nodes_graph {
+//             let node = Node::get_by_id(ctx_with_deleted, &node_id)
 //                 .await?
-//                 .ok_or(NodeError::NotFound(sorted_node_id))?;
-//             let component = sorted_node
+//                 .ok_or(NodeError::NotFound(node_id))?;
+//             let component = node
 //                 .component(ctx_with_deleted)
 //                 .await?
 //                 .ok_or(NodeError::ComponentIsNone)?;
-
+//
 //             if component.is_destroyed() {
 //                 continue;
 //             }
-
-//             let mut actions =
-//                 if let Some(actions) = actions_by_component.get(component.id()).cloned() {
-//                     actions
-//                 } else {
-//                     continue;
-//                 };
-
-//             // Make them stable
-//             actions.sort_by_key(|a| *a.action_prototype_id());
-
+//
+//             let actions = actions_by_component
+//                 .get(component.id())
+//                 .cloned()
+//                 .unwrap_or_default();
+//             let mut actions_by_kind: HashMap<ActionKind, Vec<Action>> = HashMap::new();
 //             for action in actions {
 //                 let prototype = action.prototype(ctx).await?;
-//                 match prototype.kind() {
-//                     ActionKind::Create => {
-//                         creations.push(action);
-//                     }
-//                     ActionKind::Delete => {
-//                         if component.resource(ctx).await?.payload.is_some() {
-//                             initial_deletions.push(action);
-//                         } else {
-//                             final_deletions.push(action);
+//                 actions_by_kind
+//                     .entry(*prototype.kind())
+//                     .or_default()
+//                     .push(action);
+//             }
+//
+//             let action_ids_by_kind = |kind: ActionKind| {
+//                 actions_by_kind
+//                     .get(&kind)
+//                     .cloned()
+//                     .into_iter()
+//                     .flatten()
+//                     .map(|a| *a.id())
+//             };
+//             let resource = component.resource(ctx).await?.payload;
+//
+//             // Figure out internal dependencies for actions of this component
+//             //
+//             //
+//             // Note (FIXME/TODO): we assume actions of the same kind in the same component
+//             // are parallelizable, we should have some way to enable serialization and infer
+//             // order since they may be dependent on eachother, but there is nothing exposed about it
+//             for (kind, actions) in &actions_by_kind {
+//                 for action in actions {
+//                     actions_graph
+//                         .entry(*action.id())
+//                         .or_insert_with(|| (*kind, Vec::new()));
+//
+//                     // Action kind order is Initial Deletion -> Creation -> Others -> Final Deletion
+//                     // Initial deletions happen if there is a resource and a create action, so it deletes before creating
+//                     match kind {
+//                         ActionKind::Create => {
+//                             if resource.is_some() {
+//                                 let ids = action_ids_by_kind(ActionKind::Delete);
+//                                 actions_graph
+//                                     .entry(*action.id())
+//                                     .or_insert_with(|| (*kind, Vec::new()))
+//                                     .1
+//                                     .extend(ids);
+//                             }
+//                         }
+//                         ActionKind::Delete => {
+//                             // If there is a resource and a create, this is a initial deletion, so no parent
+//                             if resource.is_none()
+//                                 || action_ids_by_kind(ActionKind::Create).count() == 0
+//                             {
+//                                 // Every other action kind is a parent
+//                                 let ids = actions_by_kind
+//                                     .iter()
+//                                     .filter(|(k, _)| **k != ActionKind::Delete)
+//                                     .flat_map(|(_, a)| a)
+//                                     .map(|a| *a.id());
+//                                 actions_graph
+//                                     .entry(*action.id())
+//                                     .or_insert_with(|| (*kind, Vec::new()))
+//                                     .1
+//                                     .extend(ids);
+//                             }
+//                         }
+//                         ActionKind::Refresh | ActionKind::Other => {
+//                             // If there is a resource and a create, delete actions will be initial, so our parent
+//                             if resource.is_some()
+//                                 && action_ids_by_kind(ActionKind::Create).count() > 0
+//                             {
+//                                 let ids = action_ids_by_kind(ActionKind::Delete);
+//                                 actions_graph
+//                                     .entry(*action.id())
+//                                     .or_insert_with(|| (*kind, Vec::new()))
+//                                     .1
+//                                     .extend(ids);
+//                             }
+//
+//                             let ids = action_ids_by_kind(ActionKind::Create);
+//                             actions_graph
+//                                 .entry(*action.id())
+//                                 .or_insert_with(|| (*kind, Vec::new()))
+//                                 .1
+//                                 .extend(ids);
 //                         }
 //                     }
-//                     ActionKind::Refresh | ActionKind::Other => {
-//                         if component.resource(ctx).await?.payload.is_some() {
-//                             initial_others.push(action);
-//                         } else {
-//                             final_others.push(action);
+//                 }
+//             }
+//
+//             for parent_node_id in parent_ids {
+//                 let parent_node = Node::get_by_id(ctx_with_deleted, &parent_node_id)
+//                     .await?
+//                     .ok_or(NodeError::NotFound(parent_node_id))?;
+//                 let parent_component = parent_node
+//                     .component(ctx_with_deleted)
+//                     .await?
+//                     .ok_or(NodeError::ComponentIsNone)?;
+//
+//                 if parent_component.is_destroyed() {
+//                     continue;
+//                 }
+//
+//                 let parent_actions = actions_by_component
+//                     .get(parent_component.id())
+//                     .cloned()
+//                     .unwrap_or_default();
+//                 for (kind, actions) in &actions_by_kind {
+//                     for action in actions {
+//                         actions_graph
+//                             .entry(*action.id())
+//                             .or_insert_with(|| (*kind, Vec::new()))
+//                             .1
+//                             .extend(parent_actions.iter().map(|a| *a.id()));
+//                     }
+//                 }
+//             }
+//         }
+//
+//         let mut actions_bag_graph: HashMap<ActionId, ActionBag> = HashMap::new();
+//         for (id, (kind, parents)) in actions_graph {
+//             actions_bag_graph.insert(
+//                 id,
+//                 ActionBag {
+//                     kind,
+//                     action: actions_by_id
+//                         .get(&id)
+//                         .ok_or(ActionError::NotFound(id))?
+//                         .clone(),
+//                     parents,
+//                 },
+//             );
+//         }
+//
+//         // Deletions require the reverse order
+//         let mut reversed_parents: HashMap<ActionId, Vec<ActionId>> = HashMap::new();
+//
+//         for bag in actions_bag_graph.values() {
+//             if bag.kind == ActionKind::Delete {
+//                 for parent_id in &bag.parents {
+//                     if let Some(parent) = actions_by_id.get(parent_id) {
+//                         if parent.component_id != bag.action.component_id {
+//                             reversed_parents
+//                                 .entry(*parent_id)
+//                                 .or_default()
+//                                 .push(*bag.action.id());
 //                         }
 //                     }
 //                 }
 //             }
 //         }
-
-//         initial_deletions.reverse();
-//         final_deletions.reverse();
-
-//         let mut actions = Vec::with_capacity(
-//             initial_deletions.len()
-//                 + creations.len()
-//                 + initial_others.len()
-//                 + final_others.len()
-//                 + final_deletions.len(),
-//         );
-//         actions.extend(initial_deletions);
-//         actions.extend(initial_others);
-//         actions.extend(creations);
-//         actions.extend(final_others);
-//         actions.extend(final_deletions);
-
-//         for (index, mut action) in actions.into_iter().enumerate() {
-//             action.set_index(ctx, index as i16).await?;
+//
+//         for bag in actions_bag_graph.values_mut() {
+//             if bag.kind == ActionKind::Delete {
+//                 bag.parents.clear();
+//             }
+//
+//             bag.parents.extend(
+//                 reversed_parents
+//                     .get(bag.action.id())
+//                     .cloned()
+//                     .unwrap_or_default(),
+//             );
 //         }
-
-//         WsEvent::change_set_written(ctx)
-//             .await?
-//             .publish_on_commit(ctx)
-//             .await?;
-
-//         Ok(())
+//
+//         Ok(actions_bag_graph)
 //     }
-
-//     standard_model_accessor!(index, i16, ActionResult);
+//
 //     standard_model_accessor_ro!(action_prototype_id, ActionPrototypeId);
 //     standard_model_accessor_ro!(change_set_pk, ChangeSetPk);
 //     standard_model_accessor_ro!(component_id, ComponentId);

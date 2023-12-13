@@ -57,7 +57,7 @@
 
       <div
         v-for="action in actionsStore.proposedActions"
-        :key="action.actionInstanceId"
+        :key="action.id"
         :class="
           clsx(
             'border-b',
@@ -67,7 +67,7 @@
       >
         <ActionSprite
           :action="action"
-          @remove="actionsStore.REMOVE_ACTION(action.actionInstanceId)"
+          @remove="actionsStore.REMOVE_ACTION(action.id)"
         />
       </div>
       <div

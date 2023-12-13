@@ -95,17 +95,6 @@ impl FixResolver {
         success: Option<bool>,
         last_fix_id: FixId,
     ) -> FixResolverResult<Self> {
-        // TODO: fix this, we should have the action id instead of attribute value id
-        /*
-        if let Some(mut resolver) = todo!() {
-            resolver
-                .set_action_prototype_id(ctx, action_prototype_id)
-                .await?;
-            resolver.set_success(ctx, success).await?;
-            resolver.set_last_fix_id(ctx, last_fix_id).await?;
-            return Ok(resolver)
-        }
-        */
         Self::new(ctx, action_prototype_id, success, last_fix_id).await
     }
 

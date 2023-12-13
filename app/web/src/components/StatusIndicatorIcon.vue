@@ -23,6 +23,7 @@ const CONFIG = {
   },
   fix: {
     success: { iconName: "check2", tone: "success" },
+    error: { iconName: "alert-triangle", tone: "destructive" },
     failure: { iconName: "alert-triangle", tone: "destructive" },
     unstarted: { iconName: "loader", tone: "neutral" },
     running: { iconName: "loader", tone: "action" },

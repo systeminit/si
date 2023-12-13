@@ -938,19 +938,19 @@ impl AttributeValue {
 //         self.index_map.as_mut()
 //     }
 
-//     /// Returns the *unprocessed* [`serde_json::Value`] within the [`FuncBindingReturnValue`](crate::FuncBindingReturnValue)
-//     /// corresponding to the field on [`Self`].
-//     pub async fn get_unprocessed_value(
-//         &self,
-//         ctx: &DalContext,
-//     ) -> AttributeValueResult<Option<serde_json::Value>> {
-//         match FuncBindingReturnValue::get_by_id(ctx, &self.func_binding_return_value_id).await? {
-//             Some(func_binding_return_value) => {
-//                 Ok(func_binding_return_value.unprocessed_value().cloned())
-//             }
-//             None => Err(AttributeValueError::MissingFuncBindingReturnValue),
+// /// Returns the *unprocessed* [`serde_json::Value`] within the [`FuncBindingReturnValue`](crate::FuncBindingReturnValue)
+// /// corresponding to the field on [`Self`].
+// pub async fn get_unprocessed_value(
+//     &self,
+//     ctx: &DalContext,
+// ) -> AttributeValueResult<Option<serde_json::Value>> {
+//     match FuncBindingReturnValue::get_by_id(ctx, &self.func_binding_return_value_id).await? {
+//         Some(func_binding_return_value) => {
+//             Ok(func_binding_return_value.unprocessed_value().cloned())
 //         }
+//         None => Err(AttributeValueError::MissingFuncBindingReturnValue),
 //     }
+// }
 
 //     /// Returns the [`serde_json::Value`] within the [`FuncBindingReturnValue`](crate::FuncBindingReturnValue)
 //     /// corresponding to the field on [`Self`].
@@ -1348,22 +1348,22 @@ impl AttributeValue {
 //         // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
 //         let ctx = &ctx.clone_without_deleted_visibility();
 
-//         let row = ctx.txns()
-//             .await?
-//             .pg()
-//             .query_one(
-//                 "SELECT new_attribute_value_id FROM attribute_value_update_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7, $8)",
-//             &[
-//                 ctx.tenancy(),
-//                 ctx.visibility(),
-//                 &attribute_value_id,
-//                 &parent_attribute_value_id,
-//                 &context,
-//                 &value,
-//                 &key,
-//                 &create_child_proxies,
-//             ],
-//             ).await?;
+// let row = ctx.txns()
+//     .await?
+//     .pg()
+//     .query_one(
+//         "SELECT new_attribute_value_id FROM attribute_value_update_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+//     &[
+//         ctx.tenancy(),
+//         ctx.visibility(),
+//         &attribute_value_id,
+//         &parent_attribute_value_id,
+//         &context,
+//         &value,
+//         &key,
+//         &create_child_proxies,
+//     ],
+//     ).await?;
 
 //         let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
 
@@ -1588,66 +1588,66 @@ impl AttributeValue {
 //         Ok(result)
 //     }
 
-//     pub async fn vivify_value_and_parent_values(
-//         &self,
-//         ctx: &DalContext,
-//     ) -> AttributeValueResult<AttributeValueId> {
-//         let row = ctx.txns().await?.pg().query_one(
-//             "SELECT new_attribute_value_id FROM attribute_value_vivify_value_and_parent_values_raw_v1($1, $2, $3, $4, $5)",
-//         &[
-//             ctx.tenancy(),
-//             ctx.visibility(),
-//             &self.context,
-//             &self.id,
-//             &true
-//         ]).await?;
+// pub async fn vivify_value_and_parent_values(
+//     &self,
+//     ctx: &DalContext,
+// ) -> AttributeValueResult<AttributeValueId> {
+//     let row = ctx.txns().await?.pg().query_one(
+//         "SELECT new_attribute_value_id FROM attribute_value_vivify_value_and_parent_values_raw_v1($1, $2, $3, $4, $5)",
+//     &[
+//         ctx.tenancy(),
+//         ctx.visibility(),
+//         &self.context,
+//         &self.id,
+//         &true
+//     ]).await?;
 
 //         Ok(row.try_get("new_attribute_value_id")?)
 //     }
 
-//     /// Re-evaluates the current `AttributeValue`'s `AttributePrototype` to update the
-//     /// `FuncBinding`, and `FuncBindingReturnValue`, reflecting the current inputs to
-//     /// the function.
-//     ///
-//     /// If the `AttributeValue` represents the `InternalProvider` for a `Prop` that
-//     /// does not have a parent `Prop` (this is typically the `InternalProvider` for
-//     /// the "root" `Prop` of a `SchemaVariant`), then it will also enqueue a
-//     /// `CodeGeneration` job for the `Component`.
-//     #[instrument(
-//         name = "attribute_value.update_from_prototype_function",
-//         skip_all,
-//         level = "debug",
-//         fields(
-//             attribute_value.id = %self.id,
-//             change_set_pk = %ctx.visibility().change_set_pk,
-//         )
-//     )]
-//     pub async fn update_from_prototype_function(
-//         &mut self,
-//         ctx: &DalContext,
-//     ) -> AttributeValueResult<()> {
-//         // Check if this AttributeValue is for an implicit InternalProvider as they have special behavior that doesn't involve
-//         // AttributePrototype and AttributePrototypeArguments.
-//         if self
-//             .context
-//             .is_least_specific_field_kind_internal_provider()?
-//         {
-//             let internal_provider =
-//                 InternalProvider::get_by_id(ctx, &self.context.internal_provider_id())
-//                     .await?
-//                     .ok_or_else(|| {
-//                         AttributeValueError::InternalProviderNotFound(
-//                             self.context.internal_provider_id(),
-//                         )
-//                     })?;
-//             if internal_provider.is_internal_consumer() {
-//                 // We don't care about the AttributeValue that comes back from implicit_emit, since we should already be
-//                 // operating on an AttributeValue that has the correct AttributeContext, which means that a new one should
-//                 // not need to be created.
-//                 internal_provider
-//                     .implicit_emit(ctx, self)
-//                     .await
-//                     .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
+// /// Re-evaluates the current `AttributeValue`'s `AttributePrototype` to update the
+// /// `FuncBinding`, and `FuncBindingReturnValue`, reflecting the current inputs to
+// /// the function.
+// ///
+// /// If the `AttributeValue` represents the `InternalProvider` for a `Prop` that
+// /// does not have a parent `Prop` (this is typically the `InternalProvider` for
+// /// the "root" `Prop` of a `SchemaVariant`), then it will also enqueue a
+// /// `CodeGeneration` job for the `Component`.
+// #[instrument(
+//     name = "attribute_value.update_from_prototype_function",
+//     skip_all,
+//     level = "debug",
+//     fields(
+//         attribute_value.id = %self.id,
+//         change_set_pk = %ctx.visibility().change_set_pk,
+//     )
+// )]
+// pub async fn update_from_prototype_function(
+//     &mut self,
+//     ctx: &DalContext,
+// ) -> AttributeValueResult<()> {
+//     // Check if this AttributeValue is for an implicit InternalProvider as they have special behavior that doesn't involve
+//     // AttributePrototype and AttributePrototypeArguments.
+//     if self
+//         .context
+//         .is_least_specific_field_kind_internal_provider()?
+//     {
+//         let internal_provider =
+//             InternalProvider::get_by_id(ctx, &self.context.internal_provider_id())
+//                 .await?
+//                 .ok_or_else(|| {
+//                     AttributeValueError::InternalProviderNotFound(
+//                         self.context.internal_provider_id(),
+//                     )
+//                 })?;
+//         if internal_provider.is_internal_consumer() {
+//             // We don't care about the AttributeValue that comes back from implicit_emit, since we should already be
+//             // operating on an AttributeValue that has the correct AttributeContext, which means that a new one should
+//             // not need to be created.
+//             internal_provider
+//                 .implicit_emit(ctx, self)
+//                 .await
+//                 .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
 
 //                 debug!("InternalProvider is internal consumer");
 
@@ -1823,22 +1823,22 @@ impl AttributeValue {
 //         Ok(())
 //     }
 
-//     pub async fn populate_child_proxies_for_value(
-//         &self,
-//         ctx: &DalContext,
-//         less_specific_attribute_value_id: AttributeValueId,
-//         more_specific_context: AttributeContext,
-//     ) -> AttributeValueResult<Option<Vec<AttributeValueId>>> {
-//         let row = ctx.txns().await?.pg().query_one(
-//             "SELECT new_proxy_value_ids FROM attribute_value_populate_child_proxies_for_value_v1($1, $2, $3, $4, $5)",
-//             &[
-//                 ctx.tenancy(),
-//                 ctx.visibility(),
-//                 &less_specific_attribute_value_id,
-//                 &more_specific_context,
-//                 self.id(),
-//             ]
-//         ).await?;
+// pub async fn populate_child_proxies_for_value(
+//     &self,
+//     ctx: &DalContext,
+//     less_specific_attribute_value_id: AttributeValueId,
+//     more_specific_context: AttributeContext,
+// ) -> AttributeValueResult<Option<Vec<AttributeValueId>>> {
+//     let row = ctx.txns().await?.pg().query_one(
+//         "SELECT new_proxy_value_ids FROM attribute_value_populate_child_proxies_for_value_v1($1, $2, $3, $4, $5)",
+//         &[
+//             ctx.tenancy(),
+//             ctx.visibility(),
+//             &less_specific_attribute_value_id,
+//             &more_specific_context,
+//             self.id(),
+//         ]
+//     ).await?;
 
 //         // Are we part of a map or array? Be sure to update the index map
 //         if self.key.is_some() {

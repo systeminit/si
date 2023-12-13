@@ -20,8 +20,8 @@
         // backgroundColor: bodyBg,
       }"
       @click="onClick"
-      @click.right="onClick"
       @dblclick="onClick"
+      @contextmenu="onClick"
       @mouseenter="onHoverStart"
       @mouseleave="onHoverEnd"
     >
@@ -135,7 +135,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType, ref, watch } from "vue";
+import { computed, PropType, ref } from "vue";
 import * as _ from "lodash-es";
 
 import clsx from "clsx";
@@ -143,7 +143,6 @@ import { themeClasses, Icon, VButton } from "@si/vue-lib/design-system";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 
-import { useChangeSetsStore } from "@/store/change_sets.store";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 
@@ -162,7 +161,6 @@ const isOpen = ref(true);
 
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();
-const changeSetsStore = useChangeSetsStore();
 
 const component = computed(
   () => componentsStore.componentsById[props.componentId],
@@ -191,17 +189,6 @@ const enableGroupToggle = computed(
 
 const qualificationStatus = computed(
   () => qualificationsStore.qualificationStatusByComponentId[props.componentId],
-);
-
-watch(
-  [
-    () => changeSetsStore.selectedChangeSetWritten,
-    () => qualificationsStore.checkedQualificationsAt,
-  ],
-  () => {
-    qualificationsStore.FETCH_COMPONENT_QUALIFICATIONS(props.componentId);
-  },
-  { immediate: true },
 );
 
 function onClick(e: MouseEvent, tabSlug?: string) {

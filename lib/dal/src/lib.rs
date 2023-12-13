@@ -20,6 +20,7 @@ use veritech_client::CycloneEncryptionKey;
 
 use crate::builtins::SelectedTestBuiltinSchemas;
 
+pub mod action;
 pub mod action_prototype;
 pub mod actor_view;
 pub mod attribute;
@@ -39,7 +40,6 @@ pub mod job_failure;
 pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
-pub mod node;
 pub mod pkg;
 pub mod prop;
 pub mod property_editor;
@@ -59,7 +59,9 @@ pub mod workspace;
 pub mod workspace_snapshot;
 pub mod ws_event;
 
-// pub mod action;
+// TODO(nick,jacob): this should self-destruct once the new engine is in place.
+// pub mod node;
+
 // pub mod code_view;
 // pub mod edge;
 // pub mod fix;

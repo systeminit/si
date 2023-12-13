@@ -1,39 +1,43 @@
 <template>
   <div>
-    <div class="flex flex-col gap-1">
-      <div class="text-xs font-medium capsize">CHANGE SET:</div>
-
-      <div class="flex-grow flex gap-2.5">
+    <div class="flex gap-xs items-end">
+      <label>
+        <div
+          class="text-[11px] mt-[1px] mb-[5px] capsize font-medium text-neutral-300"
+        >
+          CHANGE&nbsp;SET:
+        </div>
         <VormInput
           ref="dropdownRef"
-          class="flex-grow font-bold"
-          size="sm"
+          class="flex-grow font-bold mb-[-1px]"
+          size="xs"
           type="dropdown"
           noLabel
+          placeholder="-- select a workspace --"
           :modelValue="selectedChangeSetId"
           :options="changeSetDropdownOptions"
           @update:model-value="onSelectChangeSet"
         />
+      </label>
 
-        <VButton
-          tone="action"
-          variant="ghost"
-          icon="git-branch-plus"
-          size="sm"
-          :disabled="fixesStore.fixesAreInProgress"
-          @click="openCreateModal"
-        />
+      <VButton
+        tone="action"
+        variant="ghost"
+        icon="git-branch-plus"
+        size="sm"
+        :disabled="fixesStore.fixesAreInProgress"
+        @click="openCreateModal"
+      />
 
-        <VButton
-          v-if="featureFlagStore.ABANDON_CHANGESET"
-          tone="action"
-          variant="ghost"
-          icon="trash"
-          size="sm"
-          :disabled="fixesStore.fixesAreInProgress || !selectedChangeSetName"
-          @click="abandonConfirmationModalRef.open()"
-        />
-      </div>
+      <VButton
+        v-if="featureFlagStore.ABANDON_CHANGESET"
+        tone="action"
+        variant="ghost"
+        icon="trash"
+        size="sm"
+        :disabled="fixesStore.fixesAreInProgress || !selectedChangeSetName"
+        @click="abandonConfirmationModalRef.open()"
+      />
     </div>
 
     <Modal ref="createModalRef" title="Create Change Set">
@@ -72,34 +76,31 @@
     </Modal>
 
     <Modal ref="abandonConfirmationModalRef" title="Abandon Change Set?">
-      <div class="flex flex-col gap-sm">
-        <div class="text-md">
+      <Stack>
+        <p>
           Are you sure that you want to abandon change set
           <span class="italic font-bold">"{{ selectedChangeSetName }}"</span>
           and return to HEAD?
-        </div>
-        <div class="text-md">
-          Once abandoned, a change set cannot be recovered.
-        </div>
-        <div class="flex flex-row items-center gap-sm">
+        </p>
+        <p>Once abandoned, a change set cannot be recovered.</p>
+        <Inline fullWidth>
           <VButton
-            class="flex-grow"
-            label="Confirm"
-            tone="action"
+            label="Cancel"
+            tone="shade"
+            variant="ghost"
+            icon="x"
+            @click="abandonConfirmationModalRef.close"
+          />
+          <VButton
+            label="Yes - Abandon change set"
+            tone="destructive"
             icon="trash"
             :requestStatus="abandonChangeSetReqStatus"
             loadingText="Abandoning Changeset..."
             @click="abandonChangesetHandler"
           />
-          <VButton
-            class="flex-grow"
-            label="Cancel"
-            tone="destructive"
-            icon="x"
-            @click="abandonConfirmationModalRef.close"
-          />
-        </div>
-      </div>
+        </Inline>
+      </Stack>
     </Modal>
 
     <Wipe ref="wipeRef">
@@ -139,6 +140,7 @@ import {
   Stack,
   Modal,
   useValidatedInputGroup,
+  Inline,
 } from "@si/vue-lib/design-system";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "@/store/change_sets.store";
@@ -160,12 +162,11 @@ const selectedChangeSetName = computed(
 );
 
 const changeSetDropdownOptions = computed(() => {
-  const cs: { value: string; label: string }[] = _.map(
-    openChangeSets.value ?? [],
-    (cs) => ({ value: cs.id, label: cs.name }),
-  );
-  // cs.unshift({ value: nilId(), label: "head" });
-  return cs;
+  return [
+    { value: nilId(), label: "head" },
+    ..._.map(openChangeSets.value, (cs) => ({ value: cs.id, label: cs.name })),
+    { value: "NEW", label: "+ Create new change set" },
+  ];
 });
 
 const router = useRouter();
@@ -196,6 +197,11 @@ const createChangeSetName = ref(changeSetsStore.getGeneratedChangesetName());
 const { validationState, validationMethods } = useValidatedInputGroup();
 
 function onSelectChangeSet(newVal: string) {
+  if (newVal === "NEW") {
+    createModalRef.value?.open();
+    return;
+  }
+
   if (newVal && route.name) {
     router.push({
       name: route.name,

@@ -36,7 +36,6 @@ def rootfs_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, RootfsInfo,
     git_toolchain = ctx.attrs._git_toolchain[GitToolchainInfo]
 
     git_info = _git_info(ctx)
-    print(git_info)
     cmd = cmd_args(
         "/bin/bash",
         rootfs_toolchain.rootfs_build[DefaultInfo].default_outputs,

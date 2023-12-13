@@ -149,9 +149,9 @@ export const useQualificationsStore = () => {
 
           async FETCH_COMPONENT_QUALIFICATIONS(componentId: ComponentId) {
             // Do not fetch qualifications for a deleted component
-            const componentsStore = useComponentsStore();
-            const component = componentsStore.componentsById[componentId];
-            if (component?.changeStatus === "deleted") return;
+            // const componentsStore = useComponentsStore();
+            // const component = componentsStore.componentsById[componentId];
+            // if (component?.changeStatus === "deleted") return;
 
             return new ApiRequest<Qualification[]>({
               url: "component/list_qualifications",
@@ -184,19 +184,19 @@ export const useQualificationsStore = () => {
 
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-            {
-              eventType: "CheckedQualifications",
-              callback: () => {
-                this.checkedQualificationsAt = new Date();
-                this.FETCH_QUALIFICATIONS_SUMMARY();
-              },
-            },
-            {
-              eventType: "ComponentCreated",
-              callback: () => {
-                this.FETCH_QUALIFICATIONS_SUMMARY();
-              },
-            },
+            // Doesnt seem to actually do anything
+            // {
+            //   eventType: "CheckedQualifications",
+            //   callback: ({ componentId }) => {
+            //     this.FETCH_COMPONENT_QUALIFICATIONS(componentId);
+            //   },
+            // },
+            // {
+            //   eventType: "ComponentCreated",
+            //   callback: () => {
+            //     this.FETCH_QUALIFICATIONS_SUMMARY();
+            //   },
+            // },
             {
               // TODO(nick,theo,fletcher,wendy): replace this someday.
               eventType: "ChangeSetWritten",

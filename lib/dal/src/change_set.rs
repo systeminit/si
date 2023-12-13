@@ -232,16 +232,10 @@ impl ChangeSet {
         Ok(change_set)
     }
 
-    // pub async fn sort_actions(&self, ctx: &DalContext) -> ChangeSetResult<()> {
+    // pub async fn actions(&self, ctx: &DalContext) -> ChangeSetResult<HashMap<ActionId, ActionBag>> {
     //     let ctx =
     //         ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
-    //     Ok(Action::sort_of_change_set(&ctx).await?)
-    // }
-
-    // pub async fn actions(&self, ctx: &DalContext) -> ChangeSetResult<Vec<Action>> {
-    //     let ctx =
-    //         ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
-    //     Ok(Action::find_for_change_set(&ctx).await?)
+    //     Ok(Action::order(&ctx).await?)
     // }
 
     // pub async fn actors(&self, ctx: &DalContext) -> ChangeSetResult<Vec<String>> {

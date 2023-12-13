@@ -1,13 +1,17 @@
 #!/bin/bash
 
-# Call this function with:
-# ./orchestrate-install.sh <filepath to variables>
-
 set -eou pipefail
 
 check_params_set(){
 
-    test -f ${VARIABLES_FILE:-/tmp/variables.txt} || (echo "Error: Could not find VARIABLES_FILE: $VARIABLES_FILE file to drive installation" && exit 1); [ "$?" -eq 1 ] && exit 1
+   if ! test -f ${VARIABLES_FILE:-/tmp/variables.txt}; then
+     echo "Error: Could not find var file to drive installation, creating with defaults"
+    cat <<EOF > /tmp/variables.txt
+      CONFIGURATION_MANAGEMENT_TOOL="shell"
+      CONFIGURATION_MANAGEMENT_BRANCH="main"
+      AUTOMATED="true"
+EOF
+   fi
 
     echo "---------------------------------"
     echo "Values passed as inputs:"
@@ -109,9 +113,9 @@ execute_configuration_management() {
         mkdir -p /firecracker-data/output/ && cd /firecracker-data/
 
         # Helper Scripts
-        curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/component/firecracker-base/start.sh > ./start.sh
-        curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/component/firecracker-base/stop.sh > ./stop.sh
-        curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/component/firecracker-base/prepare_jailer.sh > ./prepare_jailer.sh
+        curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/bin/veritech/scripts/start.sh > ./start.sh
+        curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/bin/veritech/scripts/stop.sh > ./stop.sh
+        curl https://raw.githubusercontent.com/systeminit/si/${CONFIGURATION_MANAGEMENT_BRANCH:-main}/bin/veritech/scripts/prepare_jailer.sh > ./prepare_jailer.sh
 
         # Remainder of the binaries
         # TODO(scott): perform some kind of check to decide if we should
@@ -288,7 +292,7 @@ prepare_jailers() {
 
   if test -f "/firecracker-data/prepare_jailer.sh"; then
     ITERATIONS="${1:-5000}" # Default to 5000 jails
-    IN_PARALLEL=250
+    IN_PARALLEL=1
     SECONDS=0
     for (( iter=0; iter<$ITERATIONS; iter++ ))
     do

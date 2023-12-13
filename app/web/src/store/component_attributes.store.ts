@@ -33,6 +33,14 @@ export interface InsertPropertyEditorValueArgs {
   key?: string;
 }
 
+export interface DeletePropertyEditorValueArgs {
+  attributeValueId: string;
+  propId: string;
+  componentId: string;
+  value?: unknown;
+  key?: string;
+}
+
 export interface SetTypeArgs {
   componentId: string;
   value?: unknown;
@@ -46,6 +54,7 @@ export type AttributeTreeItem = {
   parentValueId: string;
   propId: string;
   mapKey?: string;
+  arrayKey?: string;
   arrayIndex?: number;
   validations: PropertyEditorValidation[] | undefined;
   isValid: boolean;
@@ -109,6 +118,8 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 | undefined;
               const failingValidation = _.find(validations, (v) => !v.valid);
 
+              // console.log("HERE", value);
+
               return {
                 propDef,
                 value,
@@ -119,6 +130,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                   !_.isNil(value.key) && { mapKey: value.key }),
                 ...(indexInParentArray !== undefined && {
                   arrayIndex: indexInParentArray,
+                  arrayKey: value.key,
                 }),
                 propId: value.propId,
                 validations,
@@ -238,6 +250,24 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             this.FETCH_PROPERTY_EDITOR_SCHEMA();
             this.FETCH_PROPERTY_EDITOR_VALUES();
             this.FETCH_PROPERTY_EDITOR_VALIDATIONS();
+          },
+
+          async REMOVE_PROPERTY_VALUE(
+            removePayload: DeletePropertyEditorValueArgs,
+          ) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
+            return new ApiRequest<{ success: true }>({
+              method: "post",
+              url: "component/delete_property_editor_value",
+              params: {
+                ...removePayload,
+                ...visibilityParams,
+              },
+            });
           },
 
           // combined these 2 api endpoints so they will get tracked under the same key, can revisit this later...

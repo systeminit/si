@@ -108,13 +108,11 @@ impl JobConsumer for DependentValuesUpdate {
         .await?;
         let pub_council = council.clone_into_pub();
 
-        match self.inner_run(ctx, &mut council, pub_council).await {
-            Ok(res) => Ok(res),
-            Err(e) => {
-                council.bye().await?;
-                Err(e)
-            }
-        }
+        let res = self.inner_run(ctx, &mut council, pub_council).await;
+
+        council.bye().await?;
+
+        res
     }
 }
 
@@ -128,7 +126,7 @@ impl DependentValuesUpdate {
         // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
         ctx.update_without_deleted_visibility();
 
-        let ctx_builder = ctx.services_context().into_builder(ctx.blocking());
+        let ctx_builder = ctx.to_builder();
         let mut status_updater = StatusUpdater::initialize(ctx).await;
 
         let mut dependency_graph =
@@ -276,16 +274,12 @@ impl DependentValuesUpdate {
                     // There was an error (with our code) when updating the value
                     Ok(Err(err)) => {
                         warn!(error = ?err, "error updating value");
-
-                        council.bye().await?;
                         return Err(err);
                     }
                     // There was a Tokio JoinSet error when joining the task back (i.e. likely
                     // I/O error)
                     Err(err) => {
                         warn!(error = ?err, "error when joining update task");
-
-                        council.bye().await?;
                         return Err(err.into());
                     }
                 }
@@ -311,7 +305,7 @@ impl DependentValuesUpdate {
             error!("could not publish status receiver request: {:?}", e);
         }
 
-        council.bye().await?;
+        ctx.commit().await?;
 
         Ok(())
     }

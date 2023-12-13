@@ -151,7 +151,14 @@
           <i>{{ propLabelParts[0] }}</i
           >{{ propLabelParts[1] }}
         </div>
-
+        <div v-if="isChildOfMap || isChildOfArray">
+          <button
+            class="attributes-panel-item__delete-child-button"
+            @click="removeChildHandler"
+          >
+            <Icon name="trash" size="none" />
+          </button>
+        </div>
         <!-- TODO - enable tooltip help info -->
         <!-- <Icon
           v-if="propName === 'region'"
@@ -480,6 +487,23 @@ const newMapChildKeyIsValid = computed(() => {
   if (!newMapChildKey.value.trim().length) return false;
   return true;
 });
+
+function removeChildHandler() {
+  if (!isChildOfArray.value && !isChildOfMap.value) return;
+
+  attributesStore.REMOVE_PROPERTY_VALUE({
+    attributeValueId: props.attributeDef.valueId,
+    propId: props.attributeDef.propId,
+    componentId,
+    key: getKey(),
+  });
+}
+
+function getKey() {
+  if (isChildOfMap.value) return props.attributeDef?.mapKey;
+
+  return props.attributeDef?.arrayKey;
+}
 
 function addChildHandler() {
   const isAddingMapChild = propKind.value === "map";

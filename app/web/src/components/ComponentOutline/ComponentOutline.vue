@@ -212,7 +212,7 @@ function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {
   };
 
   // right click
-  if (e.button === 2) {
+  if (e.button === 2 || e.ctrlKey) {
     e.preventDefault();
     if (e.shiftKey) {
       shiftKeyBehavior();
@@ -231,10 +231,15 @@ function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {
     e.preventDefault();
     componentsStore.setSelectedComponentId(id, { toggle: true });
   } else if (e.type === "dblclick") {
-    // TODO: probably refactor this to call a fn on an event bus, but this is working for now
-    componentsStore.panTargetComponentId = id;
+    componentsStore.eventBus.emit("panToComponent", {
+      componentId: id,
+      center: true,
+    });
   } else {
     componentsStore.setSelectedComponentId(id, { detailsTab: tabSlug });
+    componentsStore.eventBus.emit("panToComponent", {
+      componentId: id,
+    });
   }
 }
 

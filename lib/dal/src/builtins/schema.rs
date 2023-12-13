@@ -85,17 +85,18 @@ impl BuiltinSchema {
 //                 (false, true, HashSet::new())
 //             }
 //         };
-//
+
 //     // Once we know what to migrate, create the driver.
 //     let driver = MigrationDriver::new(ctx).await?;
 //     ctx.blocking_commit().await?;
-//
+
 //     if migrate_all {
 //         migrate_pkg(ctx, super::SI_AWS_PKG, None).await?;
 //         migrate_pkg(ctx, super::SI_AWS_EC2_PKG, None).await?;
 //         migrate_pkg(ctx, super::SI_COREOS_PKG, None).await?;
 //         migrate_pkg(ctx, super::SI_DOCKER_IMAGE_PKG, None).await?;
 //         migrate_pkg(ctx, super::SI_GENERIC_FRAME_PKG, None).await?;
+//         migrate_pkg(ctx, super::SI_AWS_LB_TARGET_GROUP_PKG, None).await?;
 //         for test_schema in [BuiltinSchema::Starfield, BuiltinSchema::Fallout] {
 //             migrate_schema(ctx, test_schema, &driver).await?;
 //             ctx.blocking_commit().await?;
@@ -118,6 +119,12 @@ impl BuiltinSchema {
 //         migrate_pkg(ctx, super::SI_COREOS_PKG, Some(schemas.to_owned())).await?;
 //         migrate_pkg(ctx, super::SI_DOCKER_IMAGE_PKG, Some(schemas.to_owned())).await?;
 //         migrate_pkg(ctx, super::SI_GENERIC_FRAME_PKG, Some(schemas.to_owned())).await?;
+//         migrate_pkg(
+//             ctx,
+//             super::SI_AWS_LB_TARGET_GROUP_PKG,
+//             Some(schemas.to_owned()),
+//         )
+//         .await?;
 //         for test_schema in [BuiltinSchema::Starfield, BuiltinSchema::Fallout] {
 //             if specific_builtin_schemas.contains(test_schema.real_schema_name()) {
 //                 migrate_schema(ctx, test_schema, &driver).await?;
@@ -125,7 +132,7 @@ impl BuiltinSchema {
 //             }
 //         }
 //     }
-//
+
 //     Ok(())
 // }
 
