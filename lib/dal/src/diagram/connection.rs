@@ -54,11 +54,13 @@ impl Connection {
             .await?
             .ok_or(DiagramError::SocketNotFound)?;
         info!(
-            "Connect: {}({}) -> {}({})",
+            "Connect: {}({}:{}) -> {}({}:{})",
             from_component.name(ctx).await?,
             from_socket.name(),
+            from_socket.arity(),
             to_component.name(ctx).await?,
-            to_socket.name()
+            to_socket.name(),
+            to_socket.arity(),
         );
 
         if *to_socket.arity() == SocketArity::One {
@@ -71,17 +73,16 @@ impl Connection {
 
             for replaced_edge in replaced_edges {
                 for edge in &edges {
-                    if edge.tail_node_id() == replaced_edge.head_node_id()
-                        || edge.head_node_id() == replaced_edge.head_node_id()
+                    if edge.tail_node_id() == replaced_edge.tail_node_id()
+                        || edge.head_node_id() == replaced_edge.tail_node_id()
                     {
                         let socket = Socket::get_by_id(ctx, &edge.head_socket_id())
                             .await?
                             .ok_or(DiagramError::SocketNotFound)?;
-                        dbg!(socket.name());
                         if socket.name() == "Frame" {
-                            dbg!(edge.clone().delete_by_id(ctx).await)?;
+                            edge.clone().delete_by_id(ctx).await?;
                         } else {
-                            dbg!(edge.clone().delete_and_propagate(ctx).await)?;
+                            edge.clone().delete_and_propagate(ctx).await?;
                         }
                     }
                 }
@@ -97,11 +98,6 @@ impl Connection {
             edge_kind,
         )
         .await?;
-
-        let component = Component::find_for_node(ctx, to_node_id)
-            .await?
-            .ok_or(ComponentError::NotFoundForNode(to_node_id))?;
-        let edges = Edge::list_for_component(ctx, *component.id()).await?;
 
         Ok(Connection::from_edge(&edge))
     }

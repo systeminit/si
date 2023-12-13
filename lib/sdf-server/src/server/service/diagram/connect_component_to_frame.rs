@@ -97,6 +97,7 @@ async fn connect_component_sockets_to_frame_inner(
     let child_component = Component::find_for_node(ctx, child_node_id)
         .await?
         .ok_or(DiagramError::NodeNotFound(child_node_id))?;
+
     let child_sockets = Socket::list_for_component(ctx, *child_component.id()).await?;
 
     let aggregation_frame = match parent_component.get_type(ctx).await? {
