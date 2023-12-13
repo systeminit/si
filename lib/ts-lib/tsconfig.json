@@ -1,6 +1,6 @@
 {
   // not sure if this should be browser or not?
-  "extends": "@si/tsconfig/tsconfig.node.json",
+  "extends": "@si/tsconfig/tsconfig.browser.json",
   "compilerOptions": {
     "composite": true
   },
