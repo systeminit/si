@@ -359,6 +359,13 @@ impl AttributeValue {
         }
     }
 
+    // pub async fn save_index_map(
+    //     &self,
+    //     ctx: &DalContext,
+    //     index_map: IndexMap,
+    // ) -> AttributeValueResult<()> {
+    // }
+
     /// Returns the [`serde_json::Value`] within the [`FuncBindingReturnValue`](crate::FuncBindingReturnValue)
     /// corresponding to the field on [`Self`].
     pub async fn get_value(
@@ -760,16 +767,16 @@ impl AttributeValue {
             .pg()
             .query_one(
                 "SELECT new_attribute_value_id FROM attribute_value_update_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7, $8)",
-            &[
-                ctx.tenancy(),
-                ctx.visibility(),
-                &attribute_value_id,
-                &parent_attribute_value_id,
-                &context,
-                &value,
-                &key,
-                &create_child_proxies,
-            ],
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &attribute_value_id,
+                    &parent_attribute_value_id,
+                    &context,
+                    &value,
+                    &key,
+                    &create_child_proxies,
+                ],
             ).await?;
 
         let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
@@ -1001,13 +1008,13 @@ impl AttributeValue {
     ) -> AttributeValueResult<AttributeValueId> {
         let row = ctx.txns().await?.pg().query_one(
             "SELECT new_attribute_value_id FROM attribute_value_vivify_value_and_parent_values_raw_v1($1, $2, $3, $4, $5)",
-        &[
-            ctx.tenancy(),
-            ctx.visibility(),
-            &self.context,
-            &self.id,
-            &true
-        ]).await?;
+            &[
+                ctx.tenancy(),
+                ctx.visibility(),
+                &self.context,
+                &self.id,
+                &true
+            ]).await?;
 
         Ok(row.try_get("new_attribute_value_id")?)
     }
@@ -1021,13 +1028,13 @@ impl AttributeValue {
     /// the "root" `Prop` of a `SchemaVariant`), then it will also enqueue a
     /// `CodeGeneration` job for the `Component`.
     #[instrument(
-        name = "attribute_value.update_from_prototype_function",
-        skip_all,
-        level = "debug",
-        fields(
-            attribute_value.id = %self.id,
-            change_set_pk = %ctx.visibility().change_set_pk,
-        )
+    name = "attribute_value.update_from_prototype_function",
+    skip_all,
+    level = "debug",
+    fields(
+    attribute_value.id = % self.id,
+    change_set_pk = % ctx.visibility().change_set_pk,
+    )
     )]
     pub async fn update_from_prototype_function(
         &mut self,
@@ -1153,7 +1160,7 @@ impl AttributeValue {
                     kind,
                     message,
                     backend,
-                })
+                });
             }
             Err(err) => Err(err)?,
         };
@@ -1244,7 +1251,7 @@ impl AttributeValue {
                 &less_specific_attribute_value_id,
                 &more_specific_context,
                 self.id(),
-            ]
+            ],
         ).await?;
 
         // Are we part of a map or array? Be sure to update the index map
