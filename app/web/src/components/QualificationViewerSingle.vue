@@ -28,12 +28,53 @@
         <p>{{ qualification.description }}</p>
       </div>
 
-      <div class="text-right">
-        <button
-          class="underline text-action-400"
-          @click="detailsModalRef?.open()"
+      <div v-if="showDetails && !displayDetailsInModal">
+        <div v-if="qualification.description" class="my-2">
+          <b>Description: </b>
+          <p>{{ qualification.description }}</p>
+        </div>
+
+        <div
+          v-if="failedSubchecks.length"
+          class="flex flex-col my-2 p-2 border border-destructive-600 text-destructive-500 rounded"
         >
-          View Details
+          <b>Qualification Failures:</b>
+          <ul>
+            <li
+              v-for="(subCheck, idx) in failedSubchecks"
+              :key="idx"
+              class="p-2"
+            >
+              {{ subCheck.description }}
+            </li>
+          </ul>
+        </div>
+
+        <div
+          v-if="qualification.output?.length"
+          class="flex flex-col my-xs p-xs border border-warning-600 text-warning-500 rounded"
+        >
+          <b>Raw Output:</b>
+          <p
+            v-for="(output, index) in qualification.output"
+            :key="index"
+            class="text-sm break-all"
+          >
+            {{ output.line }}
+          </p>
+        </div>
+      </div>
+
+      <div
+        v-if="
+          qualification.description ||
+          failedSubchecks.length ||
+          qualification.output?.length
+        "
+        class="text-right"
+      >
+        <button class="underline text-action-400" @click="toggleHidden">
+          {{ showDetails ? "Hide" : "View" }} Details
         </button>
       </div>
     </div>
@@ -96,7 +137,11 @@ import { trackEvent } from "@/utils/tracking";
 const props = defineProps<{
   qualification: Qualification;
   componentId: string;
+  displayDetailsInModal?: boolean;
 }>();
+
+const showDetails = ref(false);
+const detailsModalRef = ref();
 
 const qualification = toRef(props, "qualification");
 
@@ -127,8 +172,6 @@ watch(
   { immediate: true },
 );
 
-const detailsModalRef = ref<InstanceType<typeof Modal>>();
-
 const titleFailedSubchecks = computed(() => {
   return failedSubchecks.value.length
     ? failedSubchecks.value.map((c) => c.description).join(" ")
@@ -143,4 +186,12 @@ const truncatedFailedSubchecks = computed(() => {
   if (message.length <= maxLength + 3) return message;
   return `${message.slice(0, maxLength)}...`;
 });
+
+const toggleHidden = () => {
+  if (props.displayDetailsInModal) {
+    detailsModalRef.value.open();
+  } else {
+    showDetails.value = !showDetails.value;
+  }
+};
 </script>
