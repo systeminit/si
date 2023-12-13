@@ -180,7 +180,7 @@ eslint = rule(
     } | re_test_common.test_args() | inject_test_env.args(),
 )
 
-def jest_impl(ctx: AnalysisContext) -> list[[
+def ts_test_impl(ctx: AnalysisContext) -> list[[
     DefaultInfo,
     RunInfo,
     ExternalRunnerTestInfo,
@@ -190,13 +190,13 @@ def jest_impl(ctx: AnalysisContext) -> list[[
 
     return _npm_test_impl(
         ctx,
-        ctx.attrs.jest[RunInfo],
+        ctx.attrs.program[RunInfo],
         args,
-        "jest",
+        "ts_test",
     )
 
-jest = rule(
-    impl = jest_impl,
+ts_test = rule(
+    impl = ts_test_impl,
     attrs = {
         "srcs": attrs.list(
             attrs.source(),
@@ -215,14 +215,14 @@ jest = rule(
             default = {},
             doc = """Mapping of dependent dev package paths to source files from to track.""",
         ),
-        "jest": attrs.dep(
+        "program": attrs.dep(
             providers = [RunInfo],
-            doc = """jest dependency.""",
+            doc = """test program to run.""",
         ),
         "args": attrs.list(
             attrs.string(),
             default = [],
-            doc = """Extra arguments passed to jest.""",
+            doc = """Extra arguments passed to test program.""",
         ),
         "package_node_modules": attrs.source(
             doc = """Target which builds package `node_modules`.""",

@@ -1,7 +1,7 @@
 load(
     "@prelude-si//:pnpm.bzl",
     _eslint = "eslint",
-    _jest = "jest",
+    _ts_test = "ts_test",
     _node_pkg_bin = "node_pkg_bin",
     _npm_bin = "npm_bin",
     _package_node_modules = "package_node_modules",
@@ -37,21 +37,24 @@ def eslint(
         **kwargs
     )
 
-def jest(
-        jest_bin = "jest",
-        jest = ":jest",
+def ts_test(
+        program = ":vitest",
+        args = ["run"],
         package_node_modules = ":node_modules",
         visibility = ["PUBLIC"],
         **kwargs):
-    if not rule_exists(jest_bin):
+
+    npm_bin_name = program.replace(":","")
+    if not rule_exists(npm_bin_name):
         _npm_bin(
-            name = jest_bin,
+            name = npm_bin_name,
             node_modules = package_node_modules,
             visibility = visibility,
         )
 
-    _jest(
-        jest = ":{}".format(jest_bin),
+    _ts_test(
+        program = program,
+        args = args,
         package_node_modules = package_node_modules,
         visibility = visibility,
         **kwargs
