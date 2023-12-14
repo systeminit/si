@@ -247,7 +247,7 @@ impl SchemaVariant {
             *identity_func.id(),
             *identity_func_binding.id(),
             *identity_func_binding_return_value.id(),
-            SocketArity::One,
+            SocketArity::Many,
             true,
         )
         .await?;

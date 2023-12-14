@@ -1163,65 +1163,74 @@ function endDragElements() {
 
     const parentId =
       movedElementParent[el.uniqueKey] || el.def.parentNodeId || undefined;
-    if (parentId === undefined) {
-      // handle dragging items into a group
-      const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
-      const elPos = elShape.getAbsolutePosition(kStage);
 
-      const elRect = {
-        x: elPos.x,
-        y: elPos.y,
-        width: elShape.width(),
-        height: elShape.height(),
+    const elPos = nodesLocationInfo[el.uniqueKey];
+
+    if (!elPos) return;
+    const elRect = {
+      x: elPos.topLeft.x,
+      y: elPos.topLeft.y,
+      width: elPos.width,
+      height: elPos.height,
+    };
+
+    const groupOrderedByZIndex = _.sortBy(groups.value, (g) => {
+      const groupShape = kStage.findOne(`#${g.uniqueKey}--bg`);
+      return -(groupShape?.getAbsoluteZIndex() ?? -Infinity);
+    });
+
+    const newContainingGroup = groupOrderedByZIndex.find((group) => {
+      if (group.uniqueKey === el.uniqueKey) return false;
+
+      const groupPos = nodesLocationInfo[group.uniqueKey];
+
+      if (!groupPos) return;
+      const groupRect = {
+        x: groupPos.topLeft.x,
+        y: groupPos.topLeft.y,
+        width: groupPos.width,
+        height: groupPos.height,
       };
 
-      const groupOrderedByZIndex = _.sortBy(groups.value, (g) => {
-        const groupShape = kStage.findOne(`#${g.uniqueKey}--bg`);
-        return -(groupShape?.getAbsoluteZIndex() ?? -Infinity);
-      });
+      return rectContainsAnother(groupRect, elRect);
+    });
 
-      const newContainingGroup = groupOrderedByZIndex.find((group) => {
-        if (group.uniqueKey === el.uniqueKey) return false;
+    if (
+      newContainingGroup &&
+      el.def.parentNodeId !== newContainingGroup.def.id
+    ) {
+      let elements = [el];
 
-        const groupShape = kStage.findOne(`#${group.uniqueKey}--bg`);
-        const groupPos = groupShape.getAbsolutePosition(kStage);
+      if (newContainingGroup.def.nodeType === "aggregationFrame") {
+        const groupSchemaId =
+          componentsStore.componentsByNodeId[newContainingGroup.def.id]
+            ?.schemaVariantId;
+        elements = _.filter(elements, (e) => {
+          const elementSchemaId =
+            componentsStore.componentsByNodeId[e.def.id]?.schemaVariantId;
 
-        const groupRect = {
-          x: groupPos.x,
-          y: groupPos.y,
-          width: groupShape.width(),
-          height: groupShape.height(),
-        };
+          return elementSchemaId === groupSchemaId;
+        });
+      }
 
-        return rectContainsAnother(groupRect, elRect);
-      });
-      if (
-        newContainingGroup &&
-        el.def.parentNodeId !== newContainingGroup.def.id
-      ) {
-        let elements = [el];
-
-        if (newContainingGroup.def.nodeType === "aggregationFrame") {
-          const groupSchemaId =
-            componentsStore.componentsByNodeId[newContainingGroup.def.id]
-              ?.schemaVariantId;
-          elements = _.filter(elements, (e) => {
-            const elementSchemaId =
-              componentsStore.componentsByNodeId[e.def.id]?.schemaVariantId;
-
-            return elementSchemaId === groupSchemaId;
-          });
-        }
-
-        for (const element of elements) {
-          componentsStore.CONNECT_COMPONENT_TO_FRAME(
-            element.def.id,
+      for (const element of elements) {
+        if (element.def.parentNodeId === newContainingGroup.def.id) {
+          /* eslint-disable-next-line no-console */
+          console.error(
+            "Recursive connection:",
+            element.def.parentNodeId,
             newContainingGroup.def.id,
           );
+          continue;
         }
 
-        movedElementParent[el.uniqueKey] = newContainingGroup.def.id;
+        componentsStore.CONNECT_COMPONENT_TO_FRAME(
+          element.def.id,
+          newContainingGroup.def.id,
+        );
       }
+
+      movedElementParent[el.uniqueKey] = newContainingGroup.def.id;
     }
 
     const movedElementPosition = movedElementPositions[el.uniqueKey];
@@ -1336,14 +1345,18 @@ function onDragElementsMove() {
 
     if (el instanceof DiagramGroupData) {
       const includedGroups: DiagramNodeData[] & DiagramGroupData[] = [];
+      const cycleCheck = new Set();
       const queue = [el];
       while (queue.length > 0) {
+        cycleCheck.add(el.def.id);
+
         const parent = queue.shift();
         const x = _.filter(
           groups.value,
           (n) => n.def.parentNodeId === parent?.def.id,
         );
         _.each(x, (childGroup) => {
+          if (cycleCheck.has(childGroup.def.id)) return;
           queue.push(childGroup);
           includedGroups.push(childGroup);
         });

@@ -202,7 +202,7 @@ impl Diagram {
             let edges_with_deleted =
                 Edge::list_for_component(ctx_with_deleted, *component.id()).await?;
 
-            let mut parent_node_id = None;
+            let mut parent_node_ids = Vec::new();
 
             if let Some(socket_to_parent) = maybe_socket_to_parent {
                 for edge in &edges_with_deleted {
@@ -210,11 +210,17 @@ impl Diagram {
                         && edge.tail_socket_id().to_string() == socket_to_parent.id
                         && (edge.visibility().deleted_at.is_none() || edge.deleted_implicitly())
                     {
-                        parent_node_id = Some(edge.head_node_id());
-                        break;
+                        let parents =
+                            Edge::list_parents_for_component(ctx, edge.head_component_id()).await?;
+                        parent_node_ids.push((edge.head_node_id(), parents.len()));
                     }
                 }
             };
+
+            let parent_node_id = parent_node_ids
+                .into_iter()
+                .max_by_key(|(_, parents)| *parents)
+                .map(|(id, _)| id);
 
             // Get Child Ids
             let maybe_socket_from_children = sockets.iter().find(|socket| {
