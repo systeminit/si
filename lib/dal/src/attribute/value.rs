@@ -1084,18 +1084,12 @@ impl AttributeValue {
         // We detect if they're set as dependencies and later fetch before functions to execute
         // This is so secret values still trigger the dependent values system,
         // and before functions are only called when necessary
-        let mut has_secrets_as_arg = false;
         let mut func_binding_args: HashMap<String, Option<serde_json::Value>> = HashMap::new();
         for mut argument_data in attribute_prototype
             .argument_values(ctx, self.context)
             .await
             .map_err(|e| AttributeValueError::AttributePrototype(e.to_string()))?
         {
-            if argument_data.argument_name == "secrets" {
-                has_secrets_as_arg = true;
-                continue;
-            }
-
             match argument_data.values.len() {
                 1 => {
                     let argument = argument_data.values.pop().ok_or_else(|| {
@@ -1127,15 +1121,10 @@ impl AttributeValue {
 
         let func_id = attribute_prototype.func_id();
 
-        let before = if has_secrets_as_arg {
-            // We need the associated [`ComponentId`] for this function--this is how we resolve and
-            // prepare before functions
-            let associated_component_id = self.context.component_id();
-
-            before_funcs_for_component(ctx, &associated_component_id).await?
-        } else {
-            vec![]
-        };
+        // We need the associated [`ComponentId`] for this function--this is how we resolve and
+        // prepare before functions
+        let associated_component_id = self.context.component_id();
+        let before = before_funcs_for_component(ctx, &associated_component_id).await?;
 
         let (func_binding, mut func_binding_return_value) = match FuncBinding::create_and_execute(
             ctx,
