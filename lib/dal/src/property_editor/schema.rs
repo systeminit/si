@@ -1,109 +1,123 @@
 //! This module contains the ability to construct a [`schema`](PropertyEditorSchema) for a
-//! [`Component`](crate::Component)'s properties.
+//! [`SchemaVariant`](crate::SchemaVariant)'s properties.
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-
+use si_pkg::PropSpecWidgetKind;
+use std::collections::{HashMap, VecDeque};
 use strum::{AsRefStr, Display, EnumString};
 
-use si_pkg::PropSpecWidgetKind;
+use crate::prop::{PropPath, WidgetOptions};
+use crate::property_editor::{PropertyEditorPropId, PropertyEditorResult};
+use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
+use crate::workspace_snapshot::node_weight::NodeWeight;
+use crate::{DalContext, Prop, PropId, PropKind, SchemaVariantId};
 
-use crate::PropKind;
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropertyEditorSchema {
+    pub root_prop_id: PropertyEditorPropId,
+    pub props: HashMap<PropertyEditorPropId, PropertyEditorProp>,
+    pub child_props: HashMap<PropertyEditorPropId, Vec<PropertyEditorPropId>>,
+}
 
-// const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
-//     include_str!("../queries/property_editor_schema_for_schema_variant.sql");
+impl PropertyEditorSchema {
+    pub async fn assemble(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropertyEditorResult<Self> {
+        let mut props = HashMap::new();
+        let mut child_props = HashMap::new();
 
-// #[derive(Clone, Debug, Serialize, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct PropertyEditorSchema {
-//     pub root_prop_id: PropertyEditorPropId,
-//     pub props: HashMap<PropertyEditorPropId, PropertyEditorProp>,
-//     pub child_props: HashMap<PropertyEditorPropId, Vec<PropertyEditorPropId>>,
-// }
+        // Get the root prop and load it into the work queue.
+        let root_prop_id =
+            Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"]))?;
+        let root_prop = Prop::get_by_id(ctx, root_prop_id).await?;
+        let root_property_editor_prop = PropertyEditorProp::new(root_prop);
+        let root_property_editor_prop_id = root_property_editor_prop.id;
+        props.insert(root_property_editor_prop_id, root_property_editor_prop);
 
-// impl PropertyEditorSchema {
-//     pub async fn for_schema_variant(
-//         ctx: &DalContext,
-//         schema_variant_id: SchemaVariantId,
-//     ) -> PropertyEditorResult<Self> {
-//         let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
-//             .await?
-//             .ok_or(PropertyEditorError::SchemaVariantNotFound(
-//                 schema_variant_id,
-//             ))?;
-//         let mut props: HashMap<PropertyEditorPropId, PropertyEditorProp> = HashMap::new();
-//         let mut child_props: HashMap<PropertyEditorPropId, Vec<PropertyEditorPropId>> =
-//             HashMap::new();
+        let mut work_queue = VecDeque::from([(root_prop_id, root_property_editor_prop_id)]);
+        while let Some((prop_id, property_editor_prop_id)) = work_queue.pop_front() {
+            // Collect all child props.
+            let mut cache = Vec::new();
+            {
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                for child_prop_node_index in workspace_snapshot
+                    .outgoing_targets_for_edge_weight_kind(
+                        prop_id,
+                        EdgeWeightKindDiscriminants::Use,
+                    )?
+                {
+                    if let NodeWeight::Prop(child_prop_weight) =
+                        workspace_snapshot.get_node_weight(child_prop_node_index)?
+                    {
+                        let child_prop_id: PropId = child_prop_weight.id().into();
 
-//         let rows = ctx
-//             .txns()
-//             .await?
-//             .pg()
-//             .query(
-//                 PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT,
-//                 &[ctx.tenancy(), ctx.visibility(), &schema_variant.id()],
-//             )
-//             .await?;
+                        // Skip anything at and under "/root/secret_definition"
+                        if prop_id == root_prop_id
+                            && child_prop_weight.name() == "secret_definition"
+                        {
+                            continue;
+                        }
+                        cache.push(child_prop_id);
+                    }
+                }
+            }
 
-//         for row in rows {
-//             let json: Value = row.try_get("object")?;
-//             let prop: Prop = serde_json::from_value(json)?;
-//             // Omit any secret definition props in the result
-//             if prop
-//                 .json_pointer(ctx)
-//                 .await?
-//                 .starts_with("/root/secret_definition")
-//             {
-//                 continue;
-//             }
-//             let property_editor_prop = PropertyEditorProp::new(prop);
+            // Now that we have the child props, prepare the property editor props and load the work queue.
+            let mut child_property_editor_prop_ids = Vec::new();
+            for child_prop_id in cache {
+                // NOTE(nick): we already have the node weight, but I believe we still want to use "get_by_id" to
+                // get the content from the store. Perhaps, there's a more efficient way that we can do this.
+                let child_prop = Prop::get_by_id(ctx, child_prop_id).await?;
+                let child_property_editor_prop = PropertyEditorProp::new(child_prop);
 
-//             let maybe_child_prop_ids: Option<Vec<PropertyEditorPropId>> =
-//                 row.try_get("child_prop_ids")?;
-//             if let Some(child_prop_ids) = maybe_child_prop_ids {
-//                 child_props.insert(property_editor_prop.id, child_prop_ids);
-//             }
+                // Load the work queue with the child prop.
+                work_queue.push_back((child_prop_id, child_property_editor_prop.id));
 
-//             props.insert(property_editor_prop.id, property_editor_prop);
-//         }
+                // Cache the child property editor props to eventually insert into the child property editor props map.
+                child_property_editor_prop_ids.push(child_property_editor_prop.id);
 
-//         let root_prop_id = schema_variant
-//             .root_prop_id()
-//             .ok_or(PropertyEditorError::RootPropNotFound)?;
-//         Ok(PropertyEditorSchema {
-//             root_prop_id: (*root_prop_id).into(),
-//             props,
-//             child_props,
-//         })
-//     }
-// }
+                // Insert the child property editor prop into the props map.
+                props.insert(child_property_editor_prop.id, child_property_editor_prop);
+            }
+            child_props.insert(property_editor_prop_id, child_property_editor_prop_ids);
+        }
 
-// #[derive(Clone, Debug, Serialize, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct PropertyEditorProp {
-//     pub id: PropertyEditorPropId,
-//     pub name: String,
-//     pub kind: PropertyEditorPropKind,
-//     pub widget_kind: PropertyEditorPropWidgetKind,
-//     pub doc_link: Option<String>,
-//     pub documentation: Option<String>,
-// }
+        Ok(PropertyEditorSchema {
+            root_prop_id: root_prop_id.into(),
+            props,
+            child_props,
+        })
+    }
+}
 
-// impl PropertyEditorProp {
-//     pub fn new(prop: Prop) -> PropertyEditorProp {
-//         PropertyEditorProp {
-//             id: (*prop.id()).into(),
-//             name: prop.name().into(),
-//             kind: prop.kind().into(),
-//             widget_kind: PropertyEditorPropWidgetKind::new(
-//                 *prop.widget_kind(),
-//                 prop.widget_options().map(|v| v.to_owned()),
-//             ),
-//             doc_link: prop.doc_link().map(Into::into),
-//             documentation: prop.documentation().map(Into::into),
-//         }
-//     }
-// }
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropertyEditorProp {
+    pub id: PropertyEditorPropId,
+    pub name: String,
+    pub kind: PropertyEditorPropKind,
+    pub widget_kind: PropertyEditorPropWidgetKind,
+    pub doc_link: Option<String>,
+    pub documentation: Option<String>,
+}
+
+impl PropertyEditorProp {
+    pub fn new(prop: Prop) -> PropertyEditorProp {
+        PropertyEditorProp {
+            id: prop.id.into(),
+            name: prop.name,
+            kind: prop.kind.into(),
+            widget_kind: PropertyEditorPropWidgetKind::new(
+                prop.widget_kind,
+                prop.widget_options.map(|v| v.to_owned()),
+            ),
+            doc_link: prop.doc_link.map(Into::into),
+            documentation: prop.documentation.map(Into::into),
+        }
+    }
+}
 
 #[remain::sorted]
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -117,8 +131,8 @@ pub enum PropertyEditorPropKind {
     String,
 }
 
-impl From<&PropKind> for PropertyEditorPropKind {
-    fn from(prop_kind: &PropKind) -> Self {
+impl From<PropKind> for PropertyEditorPropKind {
+    fn from(prop_kind: PropKind) -> Self {
         match prop_kind {
             PropKind::Array => Self::Array,
             PropKind::Boolean => Self::Boolean,
@@ -139,12 +153,12 @@ pub enum PropertyEditorPropWidgetKind {
     Checkbox,
     CodeEditor,
     Color,
-    ComboBox { options: Option<Value> },
+    ComboBox { options: Option<WidgetOptions> },
     Header,
     Map,
     Password,
-    Secret { options: Option<Value> },
-    Select { options: Option<Value> },
+    Secret { options: Option<WidgetOptions> },
+    Select { options: Option<WidgetOptions> },
     Text,
     TextArea,
 }
@@ -215,7 +229,7 @@ impl From<&PropSpecWidgetKind> for WidgetKind {
 }
 
 impl PropertyEditorPropWidgetKind {
-    pub fn new(widget_kind: WidgetKind, widget_options: Option<Value>) -> Self {
+    pub fn new(widget_kind: WidgetKind, widget_options: Option<WidgetOptions>) -> Self {
         match widget_kind {
             WidgetKind::Array => Self::Array,
             WidgetKind::Checkbox => Self::Checkbox,

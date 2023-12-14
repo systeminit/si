@@ -837,6 +837,7 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKindDiscriminants::Provider => "red",
                     EdgeWeightKindDiscriminants::Proxy => "gray",
                     EdgeWeightKindDiscriminants::Use => "black",
+                    EdgeWeightKindDiscriminants::Root => "black",
                 };
                 format!("label = \"{discrim:?}\"\nfontcolor = {color}\ncolor = {color}")
             },
@@ -1821,6 +1822,7 @@ impl WorkspaceSnapshotGraph {
                     | EdgeWeightKind::Prop
                     | EdgeWeightKind::Prototype(None)
                     | EdgeWeightKind::Proxy
+                    | EdgeWeightKind::Root
                     | EdgeWeightKind::Use => {}
                 }
             }

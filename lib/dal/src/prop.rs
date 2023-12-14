@@ -86,7 +86,7 @@ pub struct WidgetOption {
     value: String,
 }
 
-type WidgetOptions = Vec<WidgetOption>;
+pub type WidgetOptions = Vec<WidgetOption>;
 
 /// An individual "field" within the tree of a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -104,6 +104,8 @@ pub struct Prop {
     pub widget_options: Option<WidgetOptions>,
     /// A link to external documentation for working with this specific [`Prop`].
     pub doc_link: Option<String>,
+    /// Embedded documentation for working with this specific [`Prop`].
+    pub documentation: Option<String>,
     /// A toggle for whether or not the [`Prop`] should be visually hidden.
     pub hidden: bool,
     /// Props can be connected to eachother to signify that they should contain the same value
@@ -131,6 +133,8 @@ pub struct PropContentV1 {
     pub widget_options: Option<WidgetOptions>,
     /// A link to external documentation for working with this specific [`Prop`].
     pub doc_link: Option<String>,
+    /// Embedded documentation for working with this specific [`Prop`].
+    pub documentation: Option<String>,
     /// A toggle for whether or not the [`Prop`] should be visually hidden.
     pub hidden: bool,
     /// Props can be connected to eachother to signify that they should contain the same value
@@ -149,6 +153,7 @@ impl From<Prop> for PropContentV1 {
             widget_kind: value.widget_kind,
             widget_options: value.widget_options,
             doc_link: value.doc_link,
+            documentation: value.documentation,
             hidden: value.hidden,
             refers_to_prop_id: value.refers_to_prop_id,
             diff_func_id: value.diff_func_id,
@@ -334,6 +339,7 @@ impl Prop {
             widget_kind: inner.widget_kind,
             widget_options: inner.widget_options,
             doc_link: inner.doc_link,
+            documentation: inner.documentation,
             hidden: inner.hidden,
             refers_to_prop_id: inner.refers_to_prop_id,
             diff_func_id: inner.diff_func_id,
@@ -421,6 +427,7 @@ impl Prop {
             widget_kind,
             widget_options,
             doc_link,
+            documentation: None,
             hidden,
             refers_to_prop_id: None,
             diff_func_id: None,

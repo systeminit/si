@@ -47,6 +47,11 @@ pub enum EdgeWeightKind {
     /// [`ExternalProvider`].
     Provider,
     Proxy,
+    /// Indicates the "root" [`AttributeValue`](crate::AttributeValue) for a [`Component`](crate::Component).
+    ///
+    /// TODO(nick): in the future, this should be used for the "root" [`Prop`](crate::Prop) for a
+    /// [`SchemaVariant`](crate::SchemaVariant) as well.
+    Root,
     /// Workspaces "use" functions, modules, schemas. Schemas "use" schema variants.
     /// Schema variants "use" props. Props "use" functions, and other props. Modules
     /// "use" functions, schemas, and eventually(?) components.

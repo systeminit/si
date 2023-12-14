@@ -1,16 +1,18 @@
 //! This module contains the ability to construct values reflecting the latest state of a
 //! [`Component`](crate::Component)'s properties.
 
+use petgraph::prelude::{EdgeRef, NodeIndex};
+use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
-use crate::property_editor::{PropertyEditorError, PropertyEditorResult};
+use crate::property_editor::PropertyEditorResult;
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
-use crate::{
-    AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentId, DalContext,
-    Prop, PropId, StandardModel,
-};
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
+use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
+
+use crate::{AttributeValue, AttributeValueId, Component, ComponentId, DalContext, Prop, PropId};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,83 +23,101 @@ pub struct PropertyEditorValues {
 }
 
 impl PropertyEditorValues {
-    pub async fn for_component(
+    pub async fn assemble(
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> PropertyEditorResult<Self> {
-        let mut root_value_id = None;
         let mut values = HashMap::new();
-        let mut child_values: HashMap<PropertyEditorValueId, Vec<PropertyEditorValueId>> =
-            HashMap::new();
-        let mut work_queue = AttributeValue::list_payload_for_read_context(
-            ctx,
-            AttributeReadContext {
-                prop_id: None,
-                component_id: Some(component_id),
-                ..AttributeReadContext::default()
+        let mut child_values = HashMap::new();
+
+        // Get the root attribute value and load it into the work queue.
+        let root_attribute_value_id = Component::root_attribute_value_id(ctx, component_id)?;
+        let root_property_editor_value_id = PropertyEditorValueId::from(root_attribute_value_id);
+        let root_prop_id = AttributeValue::prop(ctx, root_attribute_value_id)?;
+        let root_attribute_value = AttributeValue::get_by_id(ctx, root_attribute_value_id).await?;
+
+        values.insert(
+            root_property_editor_value_id,
+            PropertyEditorValue {
+                id: root_property_editor_value_id,
+                prop_id: root_prop_id.into(),
+                key: None,
+                value: root_attribute_value.value.unwrap_or(Value::Null),
+                // TODO(nick): restore how this boolean was detected.
+                is_from_external_source: false,
             },
-        )
-        .await?;
+        );
 
-        // We sort the work queue according to the order of every nested IndexMap. This ensures that
-        // when we reconstruct the final properties data, we don't have to worry about the order things
-        // appear in - they are certain to be the right order.
-        let attribute_value_order: Vec<AttributeValueId> = work_queue
-            .iter()
-            .filter_map(|avp| avp.attribute_value.index_map())
-            .flat_map(|index_map| index_map.order())
-            .copied()
-            .collect();
-        work_queue.sort_by_cached_key(|avp| {
-            attribute_value_order
-                .iter()
-                .position(|attribute_value_id| attribute_value_id == avp.attribute_value.id())
-                .unwrap_or(0)
-        });
+        let mut work_queue =
+            VecDeque::from([(root_attribute_value_id, root_property_editor_value_id)]);
+        while let Some((attribute_value_id, property_editor_value_id)) = work_queue.pop_front() {
+            // Collect all child attribute values.
+            let mut cache: Vec<(AttributeValueId, Option<String>)> = Vec::new();
+            {
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
-        for work in work_queue {
-            let work_attribute_value_id = *work.attribute_value.id();
+                let child_attribute_values_with_keys: Vec<(NodeIndex, Option<String>)> =
+                    workspace_snapshot
+                        .edges_directed(attribute_value_id, Direction::Outgoing)?
+                        .filter_map(|edge_ref| {
+                            if let EdgeWeightKind::Contain(key) = edge_ref.weight().kind() {
+                                Some((edge_ref.target(), key.to_owned()))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
 
-            let sockets = Component::list_connected_input_sockets_for_attribute_value(
-                ctx,
-                work_attribute_value_id,
-                component_id,
-            )
-            .await?;
-            let is_from_external_source = !sockets.is_empty();
-
-            values.insert(
-                work_attribute_value_id.into(),
-                PropertyEditorValue {
-                    id: work_attribute_value_id.into(),
-                    prop_id: (*work.prop.id()).into(),
-                    key: work.attribute_value.key().map(Into::into),
-                    value: work
-                        .func_binding_return_value
-                        .and_then(|f| f.value().cloned())
-                        .unwrap_or(Value::Null),
-                    is_from_external_source,
-                },
-            );
-            if let Some(parent_id) = work.parent_attribute_value_id {
-                child_values
-                    .entry(parent_id.into())
-                    .or_default()
-                    .push(work_attribute_value_id.into());
-            } else {
-                root_value_id = Some(work_attribute_value_id.into());
+                // NOTE(nick): this entire function is likely wasteful. Zack and Jacob, have mercy on me.
+                for (child_attribute_value_node_index, key) in child_attribute_values_with_keys {
+                    let child_attribute_value_node_weight =
+                        workspace_snapshot.get_node_weight(child_attribute_value_node_index)?;
+                    let content = child_attribute_value_node_weight
+                        .get_content_node_weight_of_kind(
+                            ContentAddressDiscriminants::AttributeValue,
+                        )?;
+                    cache.push((content.id().into(), key));
+                }
             }
+
+            // Now that we have the child props, prepare the property editor props and load the work queue.
+            let mut child_property_editor_value_ids = Vec::new();
+            for (child_attribute_value_id, key) in cache {
+                // NOTE(nick): we already have the node weight, but I believe we still want to use "get_by_id" to
+                // get the content from the store. Perhaps, there's a more efficient way that we can do this.
+                let child_attribute_value =
+                    AttributeValue::get_by_id(ctx, child_attribute_value_id).await?;
+                let prop_id_for_child_attribute_value =
+                    AttributeValue::prop(ctx, child_attribute_value_id)?;
+                let child_property_editor_value_id =
+                    PropertyEditorValueId::from(child_attribute_value_id);
+
+                let child_property_editor_value = PropertyEditorValue {
+                    id: child_property_editor_value_id,
+                    prop_id: prop_id_for_child_attribute_value.into(),
+                    key,
+                    value: child_attribute_value.value.unwrap_or(Value::Null),
+                    // TODO(nick): restore how this boolean was detected.
+                    is_from_external_source: false,
+                };
+
+                // Load the work queue with the child attribute value.
+                work_queue.push_back((child_attribute_value_id, child_property_editor_value.id));
+
+                // Cache the child property editor values to eventually insert into the child property editor values map.
+                child_property_editor_value_ids.push(child_property_editor_value.id);
+
+                // Insert the child property editor value into the values map.
+                values.insert(child_property_editor_value.id, child_property_editor_value);
+            }
+            child_values.insert(property_editor_value_id, child_property_editor_value_ids);
         }
 
-        if let Some(root_value_id) = root_value_id {
-            Ok(PropertyEditorValues {
-                root_value_id,
-                child_values,
-                values,
-            })
-        } else {
-            Err(PropertyEditorError::RootPropNotFound)
-        }
+        Ok(PropertyEditorValues {
+            root_value_id: root_property_editor_value_id,
+            child_values,
+            values,
+        })
     }
 }
 
@@ -126,9 +146,7 @@ impl PropertyEditorValue {
 
     /// Returns the [`Prop`](crate::Prop) corresponding to the "prop_id" field.
     pub async fn prop(&self, ctx: &DalContext) -> PropertyEditorResult<Prop> {
-        let prop = Prop::get_by_id(ctx, &self.prop_id.into())
-            .await?
-            .ok_or_else(|| PropertyEditorError::PropNotFound(self.prop_id.into()))?;
+        let prop = Prop::get_by_id(ctx, self.prop_id.into()).await?;
         Ok(prop)
     }
 }
