@@ -123,7 +123,11 @@ onBeforeUnmount(() => {
 });
 
 const onKeyDown = async (e: KeyboardEvent) => {
-  if (e.key === "Enter" && !deletionBlockedReason.value) {
+  if (
+    e.key === "Enter" &&
+    !deletionBlockedReason.value &&
+    modalRef.value?.isOpen
+  ) {
     onConfirmDelete();
   }
 };

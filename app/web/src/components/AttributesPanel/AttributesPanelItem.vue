@@ -151,14 +151,13 @@
           <i>{{ propLabelParts[0] }}</i
           >{{ propLabelParts[1] }}
         </div>
-        <div v-if="isChildOfMap || isChildOfArray">
-          <button
-            class="attributes-panel-item__delete-child-button"
-            @click="removeChildHandler"
-          >
-            <Icon name="trash" size="none" />
-          </button>
-        </div>
+        <button
+          v-if="isChildOfMap || isChildOfArray"
+          class="attributes-panel-item__delete-child-button hover:text-destructive-500"
+          @click="removeChildHandler"
+        >
+          <Icon name="trash" size="none" />
+        </button>
         <!-- TODO - enable tooltip help info -->
         <!-- <Icon
           v-if="propName === 'region'"
