@@ -53,7 +53,7 @@
     <div v-else class="flex flex-col items-center p-sm">
       <div class="w-64"><EmptyStateIcon name="no-changes" /></div>
       <div class="w-full text-center text-xl text-neutral-400">
-        This component does not have a resource associated with it yet
+        This component does not have a resource associated with it
       </div>
     </div>
   </div>

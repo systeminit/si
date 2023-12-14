@@ -155,45 +155,55 @@
       </template>
       <template v-if="changeSet.status === ChangeSetStatus.Open">
         <template v-if="!hasActions">
-          <span class="text-center text-sm"
-            >Applying this change set may have side-effects.</span
-          >
-          <span class="text-center text-sm mb-3"
-            >Are you sure you want to apply this change set?</span
-          >
+          <div class="text-center text-sm">
+            Applying this change set may have side-effects.
+          </div>
+          <div class="text-center text-sm mb-sm">
+            Are you sure you want to apply this change set?
+          </div>
         </template>
         <template v-if="hasActions">
-          <span class="text-center text-sm"
-            >Applying this change set may have side-effects.</span
-          >
-          <span class="text-center text-sm"
-            >Pick which actions will be applied to the real world:</span
-          >
-          <li v-for="action in actionsStore.proposedActions" :key="action.id">
-            <ActionSprite
-              :action="action"
-              @remove="actionsStore.REMOVE_ACTION(action.id)"
-            />
-          </li>
+          <div class="text-center text-sm">
+            Applying this change set may have side-effects.
+          </div>
+          <div class="text-center text-sm mb-sm">
+            Pick which actions will be applied to the real world:
+          </div>
+          <ul class="mb-sm">
+            <li v-for="action in actionsStore.proposedActions" :key="action.id">
+              <ActionSprite
+                :action="action"
+                @remove="actionsStore.REMOVE_ACTION(action.id)"
+              />
+            </li>
+          </ul>
         </template>
-        <VButton
-          v-if="!changeSetsStore.headSelected"
-          ref="applyButtonRef"
-          icon="tools"
-          size="sm"
-          tone="success"
-          :loadingText="
-            requiresVoting ? 'Beginning Approval Flow' : 'Applying Changes'
-          "
-          :label="requiresVoting ? 'Begin Approval Flow' : 'Apply Changes'"
-          :requestStatus="
-            requiresVoting
-              ? beginMergeApprovalReqStatus
-              : applyChangeSetReqStatus
-          "
-          :disabled="statusStoreUpdating"
-          @click="requiresVoting ? beginMergeApproval() : applyChangeSet()"
-        />
+        <div class="flex flex-row items-center w-full gap-sm">
+          <VButton
+            v-if="!changeSetsStore.headSelected"
+            ref="applyButtonRef"
+            class="flex-grow"
+            icon="tools"
+            tone="success"
+            :loadingText="
+              requiresVoting ? 'Beginning Approval Flow' : 'Applying Changes'
+            "
+            :label="requiresVoting ? 'Begin Approval Flow' : 'Apply Changes'"
+            :requestStatus="
+              requiresVoting
+                ? beginMergeApprovalReqStatus
+                : applyChangeSetReqStatus
+            "
+            :disabled="statusStoreUpdating"
+            @click="requiresVoting ? beginMergeApproval() : applyChangeSet()"
+          />
+          <VButton
+            tone="destructive"
+            icon="x"
+            label="Cancel"
+            @click="applyModalRef?.close"
+          />
+        </div>
       </template>
       <template v-if="rejectedWorkflow && appliedByYou">
         <span class="text-sm pb-2"
