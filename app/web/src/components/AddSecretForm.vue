@@ -112,8 +112,8 @@
               v-model="secretFormData.value[field.name]"
               :type="fieldInputType(field)"
               :label="field.name"
-              :required="!editingSecret || replacingSecret"
             />
+            <!--:required="!editingSecret || replacingSecret"-->
           </div>
         </div>
       </div>
