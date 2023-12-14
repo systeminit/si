@@ -51,10 +51,14 @@ pub enum ComponentError {
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("found multiple root attribute values ({0} and {1}, at minimum) for component: {2}")]
+    MultipleRootAttributeValuesFound(AttributeValueId, AttributeValueId, ComponentId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("found prop id ({0}) that is not a prop")]
     PropIdNotAProp(PropId),
+    #[error("root attribute value not found for component: {0}")]
+    RootAttributeValueNotFound(ComponentId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found for component: {0}")]
@@ -287,8 +291,8 @@ impl Component {
                 prop_id,
             )?;
 
-            // If it is the root prop, the component should use it. Otherwise, it should be used
-            // by the parent prop.
+            // If it is the root prop, the component should use it, which should only happen once. Otherwise, it should
+            // be used by the parent prop.
             match maybe_parent_attribute_value_id {
                 Some(parent_attribute_value_id) => {
                     // AttributeValue (Parent) --Contain--> AttributeValue
@@ -302,7 +306,7 @@ impl Component {
                     // Component --Use--> AttributeValue
                     workspace_snapshot.add_edge(
                         id,
-                        EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                        EdgeWeight::new(change_set, EdgeWeightKind::Root)?,
                         attribute_value.id(),
                     )?;
                 }
@@ -495,6 +499,39 @@ impl Component {
     // TODO(nick): use the prop tree here.
     pub async fn get_type(&self, _ctx: &DalContext) -> ComponentResult<ComponentType> {
         Ok(ComponentType::Component)
+    }
+
+    pub fn root_attribute_value_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<AttributeValueId> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let mut maybe_root_attribute_value_id = None;
+        for target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            component_id,
+            EdgeWeightKindDiscriminants::Root,
+        )? {
+            let target_node_weight = workspace_snapshot.get_node_weight(target)?;
+            if let NodeWeight::Content(content_node_weight) = target_node_weight {
+                let discrim: ContentAddressDiscriminants =
+                    content_node_weight.content_address().into();
+                if ContentAddressDiscriminants::AttributeValue == discrim {
+                    maybe_root_attribute_value_id = match maybe_root_attribute_value_id {
+                        Some(already_found_root_attribute_value_id) => {
+                            return Err(ComponentError::MultipleRootAttributeValuesFound(
+                                target_node_weight.id().into(),
+                                already_found_root_attribute_value_id,
+                                component_id,
+                            ));
+                        }
+                        None => Some(target_node_weight.id().into()),
+                    };
+                }
+            }
+        }
+        maybe_root_attribute_value_id
+            .ok_or(ComponentError::RootAttributeValueNotFound(component_id))
     }
 }
 

@@ -6,27 +6,39 @@ use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use thiserror::Error;
 
-use crate::{pk, AttributeValueId, PropId, SchemaVariantId, StandardModelError, TransactionsError};
+use crate::attribute::value::AttributeValueError;
+use crate::prop::PropError;
+use crate::workspace_snapshot::node_weight::NodeWeightError;
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{
+    pk, AttributeValueId, ComponentError, PropId, SchemaVariantId, StandardModelError,
+    TransactionsError,
+};
 
 pub mod schema;
+pub mod values;
+
 // pub mod validations;
-// pub mod values;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum PropertyEditorError {
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("invalid AttributeReadContext: {0}")]
     BadAttributeReadContext(String),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error("component not found")]
     ComponentNotFound,
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
     #[error("no value(s) found for property editor prop id: {0}")]
     NoValuesFoundForPropertyEditorProp(PropertyEditorPropId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("prop not found for id: {0}")]
-    PropNotFound(PropId),
-    #[error("root prop not found for schema variant")]
-    RootPropNotFound,
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("schema variant not found: {0}")]
     SchemaVariantNotFound(SchemaVariantId),
     #[error("error serializing/deserializing json: {0}")]
@@ -37,6 +49,10 @@ pub enum PropertyEditorError {
     TooManyValuesFoundForPropertyEditorProp(PropertyEditorPropId),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;

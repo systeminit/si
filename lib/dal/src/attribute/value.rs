@@ -87,6 +87,8 @@ pub enum AttributeValueError {
     MissingPropEdge(AttributeValueId),
     #[error("missing prototype for attribute value {0}")]
     MissingPrototype(AttributeValueId),
+    #[error("found multiple props ({0} and {1}, at minimum) for attribute value: {2}")]
+    MultiplePropsFound(PropId, PropId, AttributeValueId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight mismatch, expected {0:?} to be {1:?}")]
@@ -95,6 +97,8 @@ pub enum AttributeValueError {
     PropMissingElementProp(PropId),
     #[error("array or map prop has more than one child prop: {0}")]
     PropMoreThanOneChild(PropId),
+    #[error("prop not found for attribute value: {0}")]
+    PropNotFound(AttributeValueId),
     #[error("store error: {0}")]
     Store(#[from] StoreError),
     #[error("transactions error: {0}")]
@@ -1035,6 +1039,43 @@ impl AttributeValue {
         let AttributeValueContent::V1(inner) = content;
 
         Ok((hash, inner))
+    }
+
+    // TODO(nick): make this more efficient by splicing out the inner bits.
+    pub async fn get_by_id(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Self> {
+        let (_, content) = Self::get_content(ctx, attribute_value_id).await?;
+        Ok(Self::assemble(attribute_value_id, content))
+    }
+
+    pub fn prop(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<PropId> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let mut maybe_prop_id = None;
+        for target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            attribute_value_id,
+            EdgeWeightKindDiscriminants::Prop,
+        )? {
+            let target_node_weight = workspace_snapshot.get_node_weight(target)?;
+            if let NodeWeight::Prop(prop_node_weight) = target_node_weight {
+                maybe_prop_id = match maybe_prop_id {
+                    Some(already_found_prop_id) => {
+                        return Err(AttributeValueError::MultiplePropsFound(
+                            prop_node_weight.id().into(),
+                            already_found_prop_id,
+                            attribute_value_id,
+                        ));
+                    }
+                    None => Some(target_node_weight.id().into()),
+                };
+            }
+        }
+        maybe_prop_id.ok_or(AttributeValueError::PropNotFound(attribute_value_id))
     }
 }
 
