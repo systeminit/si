@@ -2144,12 +2144,31 @@ const nodes = computed(() =>
     (nodeDef) => new DiagramNodeData(nodeDef),
   ),
 );
-const groups = computed(() =>
-  _.map(
+const groups = computed(() => {
+  const allGroups = _.map(
     _.filter(componentsStore.diagramNodes, (n) => n.nodeType !== "component"),
     (groupDef) => new DiagramGroupData(groupDef),
-  ),
-);
+  );
+  const orderedGroups = _.orderBy(allGroups, (g) => {
+    // order by "depth" in frames
+    let zIndex = g.def.ancestorIds?.length || 0;
+
+    // if being dragged (or ancestor being dragged), bump up to front, but maintain order within that frame
+    if (dragElementsActive.value) {
+      if (
+        _.intersection(
+          [g.def.componentId, ...(g.def.ancestorIds || [])],
+          componentsStore.selectedComponentIds,
+        ).length
+      ) {
+        zIndex += 1000;
+      }
+    }
+    return zIndex;
+  });
+
+  return orderedGroups;
+});
 const sockets = computed(() =>
   _.compact(_.flatMap(_.concat(nodes.value, groups.value), (i) => i.sockets)),
 );

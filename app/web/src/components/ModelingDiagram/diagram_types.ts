@@ -162,6 +162,8 @@ export type DiagramNodeDef = {
   componentId: ComponentId;
   /** parent frame (or whatever) id */
   parentNodeId?: DiagramElementId;
+  /** list of ancestor component ids */
+  ancestorIds?: ComponentId[];
   /** node type within the context of the diagram */
   type?: string | null;
   /** category of diagram node */
