@@ -144,11 +144,11 @@ impl From<Prop> for PropContentV1 {
     fn from(value: Prop) -> Self {
         Self {
             timestamp: value.timestamp,
-            name: value.name.clone(),
+            name: value.name,
             kind: value.kind,
             widget_kind: value.widget_kind,
-            widget_options: value.widget_options.clone(),
-            doc_link: value.doc_link.clone(),
+            widget_options: value.widget_options,
+            doc_link: value.doc_link,
             hidden: value.hidden,
             refers_to_prop_id: value.refers_to_prop_id,
             diff_func_id: value.diff_func_id,

@@ -52,7 +52,7 @@ pub async fn create_component(
     // };
 
     let name = generate_name();
-    let component = Component::new(&ctx, &name, request.schema_variant_id, None).await?;
+    let component = Component::new(&ctx, &name, request.schema_variant_id, None)?;
 
     // TODO(nick): restore the action prototype usage here.
     // for prototype in ActionPrototype::find_for_context_and_kind(

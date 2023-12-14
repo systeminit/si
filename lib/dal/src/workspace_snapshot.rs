@@ -55,7 +55,6 @@ use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
 };
-use crate::{AttributeValueId, PropId, PropKind};
 
 const FIND_FOR_CHANGE_SET: &str =
     include_str!("queries/workspace_snapshot/find_for_change_set.sql");
@@ -63,34 +62,20 @@ const FIND_FOR_CHANGE_SET: &str =
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
-    #[error("attribute value {0} missing prop edge when one was expected")]
-    AttributeValueMissingPropEdge(AttributeValueId),
-    #[error("attribute value {0} missing prototype")]
-    AttributeValueMissingPrototype(AttributeValueId),
     #[error("change set pointer error: {0}")]
     ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
-    #[error("cannot insert for prop kind: {0}")]
-    InsertionForInvalidPropKind(PropKind),
     #[error("missing content from store for id: {0}")]
     MissingContentFromStore(Ulid),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("NodeWeight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
-    #[error("NodeWeight mismatch, expected {0:?} to be {1}")]
-    NodeWeightMismatch(NodeIndex, String),
     #[error("si_data_pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("poison error: {0}")]
-    Poison(String),
     #[error("postcard error: {0}")]
     Postcard(#[from] postcard::Error),
-    #[error("Array or map prop missing element prop: {0}")]
-    PropMissingElementProp(PropId),
-    #[error("Array or map prop has more than one child prop: {0}")]
-    PropMoreThanOneChild(PropId),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("store error: {0}")]
@@ -99,10 +84,6 @@ pub enum WorkspaceSnapshotError {
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
-    #[error("Type mismatch, expected prop kind {0} got {1}")]
-    TypeMismatch(PropKind, String),
-    #[error("unexpected graph layout: {0}")]
-    UnexpectedGraphLayout(&'static str),
     #[error("WorkspaceSnapshotGraph error: {0}")]
     WorkspaceSnapshotGraph(#[from] WorkspaceSnapshotGraphError),
     #[error("workspace snapshot graph missing")]

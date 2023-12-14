@@ -182,7 +182,7 @@ impl Component {
         self.height.as_deref()
     }
 
-    pub async fn new(
+    pub fn new(
         ctx: &DalContext,
         name: impl Into<String>,
         schema_variant_id: SchemaVariantId,
@@ -203,8 +203,7 @@ impl Component {
         };
         let hash = ctx
             .content_store()
-            .lock()
-            .await
+            .try_lock()?
             .add(&ComponentContent::V1(content.clone()))?;
 
         let change_set = ctx.change_set_pointer()?;
@@ -240,7 +239,7 @@ impl Component {
 
         // Create attribute values for all providers corresponding to input and output sockets.
         for provider_index in provider_indices {
-            let attribute_value = AttributeValue::new(ctx, false).await?;
+            let attribute_value = AttributeValue::new(ctx, false)?;
             {
                 let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
@@ -278,7 +277,7 @@ impl Component {
             };
 
             // Create an attribute value for the prop.
-            let attribute_value = AttributeValue::new(ctx, false).await?;
+            let attribute_value = AttributeValue::new(ctx, false)?;
 
             // AttributeValue --Prop--> Prop
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
