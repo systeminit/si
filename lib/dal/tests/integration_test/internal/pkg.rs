@@ -1,5 +1,4 @@
 use base64::{engine::general_purpose, Engine};
-use dal::BuiltinsResult;
 use dal::{
     func::{
         argument::FuncArgumentKind, backend::validation::FuncBackendValidationArgs,
@@ -13,6 +12,7 @@ use dal::{
     ActionKind, ChangeSet, ChangeSetPk, DalContext, ExternalProvider, Func, InternalProvider,
     PropKind, Schema, SchemaVariant, StandardModel, ValidationPrototype,
 };
+use dal::{BuiltinsResult, ComponentType};
 use dal_test::{test, DalContextHeadRef};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
@@ -75,7 +75,7 @@ async fn make_stellarfield(ctx: &DalContext) -> BuiltinsResult<()> {
         .build()?;
 
     let fallout_entries_to_galaxies_transform_code =
-            "async function falloutEntriesToGalaxies(input: Input): Promise<Output> {
+        "async function falloutEntriesToGalaxies(input: Input): Promise<Output> {
           let galaxies = [];
           let entries = input.entries;
 
@@ -499,6 +499,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                     SchemaVariantSpecData::builder()
                         .name("Pig Bodine")
                         .color("baddad")
+                        .component_type(ComponentType::Component)
                         .func_unique_id(&scaffold_func_spec_a.unique_id)
                         .build()
                         .expect("pig bodine"),

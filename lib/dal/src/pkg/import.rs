@@ -1583,7 +1583,7 @@ async fn create_schema_variant_definition(
                     let spec = schema_spec.to_spec().await?;
                     let metadata = SchemaVariantDefinitionJson::metadata_from_spec(spec)?;
 
-                    SchemaVariantDefinition::new(
+                    let mut svd = SchemaVariantDefinition::new(
                         ctx,
                         metadata.name,
                         metadata.menu_name,
@@ -1594,7 +1594,10 @@ async fn create_schema_variant_definition(
                         metadata.description,
                         *asset_func.id(),
                     )
-                    .await?
+                    .await?;
+
+                    svd.set_component_type(ctx, metadata.component_type).await?;
+                    svd
                 }
                 Some(schema_variant_definition) => schema_variant_definition,
             };
