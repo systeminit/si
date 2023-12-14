@@ -49,6 +49,10 @@ pub enum AttributePrototypeArgumentError {
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
+    #[error(
+        "PrototypeArgument {0} ArgumentValue edge pointing to unexpected node weight kind: {1:?}"
+    )]
+    UnexpectedValueSource(AttributePrototypeArgumentId, ContentAddressDiscriminants),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -69,6 +73,11 @@ pub enum AttributePrototypeArgumentContent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct AttributePrototypeArgumentContentV1 {
     pub timestamp: Timestamp,
+}
+
+pub enum AttributePrototypeArgumentValueSource {
+    InternalProvider(InternalProviderId),
+    StaticArgumentValue(StaticArgumentValueId),
 }
 
 impl AttributePrototypeArgument {
@@ -121,6 +130,28 @@ impl AttributePrototypeArgument {
         })
     }
 
+    pub async fn get_by_id(
+        ctx: &DalContext,
+        id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        let content: AttributePrototypeArgumentContent = ctx
+            .content_store()
+            .try_lock()?
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let AttributePrototypeArgumentContent::V1(inner) = content;
+
+        Ok(AttributePrototypeArgument::assemble(id, &inner))
+    }
+
     pub fn new(
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
@@ -147,14 +178,14 @@ impl AttributePrototypeArgument {
         workspace_snapshot.add_node(node_weight)?;
 
         workspace_snapshot.add_edge(
-            prototype_id.into(),
+            prototype_id,
             EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgument)?,
             id,
         )?;
         workspace_snapshot.add_edge(
             id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            arg_id.into(),
+            arg_id,
         )?;
 
         Ok(AttributePrototypeArgument::assemble(id.into(), &content))
@@ -184,6 +215,39 @@ impl AttributePrototypeArgument {
         Err(AttributePrototypeArgumentError::MissingFuncArgument(apa_id))
     }
 
+    pub fn value_source_by_id(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<Option<AttributePrototypeArgumentValueSource>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        for target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            apa_id,
+            EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+        )? {
+            if let NodeWeight::Content(inner) = workspace_snapshot.get_node_weight(target)? {
+                let discrim: ContentAddressDiscriminants = inner.content_address().into();
+                return Ok(Some(match discrim {
+                    ContentAddressDiscriminants::InternalProvider => {
+                        AttributePrototypeArgumentValueSource::InternalProvider(inner.id().into())
+                    }
+                    ContentAddressDiscriminants::StaticArgumentValue => {
+                        AttributePrototypeArgumentValueSource::StaticArgumentValue(
+                            inner.id().into(),
+                        )
+                    }
+                    other => {
+                        return Err(AttributePrototypeArgumentError::UnexpectedValueSource(
+                            apa_id, other,
+                        ))
+                    }
+                }));
+            }
+        }
+
+        Ok(None)
+    }
+
     fn set_value_source(
         self,
         ctx: &DalContext,
@@ -206,7 +270,7 @@ impl AttributePrototypeArgument {
         }
 
         workspace_snapshot.add_edge(
-            self.id.into(),
+            self.id,
             EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgumentValue)?,
             value_id,
         )?;

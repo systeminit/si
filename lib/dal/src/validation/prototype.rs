@@ -65,31 +65,34 @@ pub enum ValidationPrototypeContent {
 pub struct ValidationPrototypeContentV1 {
     pub timestamp: Timestamp,
     pub func_id: FuncId,
-    pub args: serde_json::Value,
+    pub args: String,
     pub link: Option<String>,
 }
 
 impl ValidationPrototype {
-    pub fn assemble(id: ValidationPrototypeId, inner: ValidationPrototypeContentV1) -> Self {
-        Self {
+    pub fn assemble(
+        id: ValidationPrototypeId,
+        inner: ValidationPrototypeContentV1,
+    ) -> ValidationPrototypeResult<Self> {
+        Ok(Self {
             id,
             timestamp: inner.timestamp,
             func_id: inner.func_id,
-            args: inner.args,
+            args: serde_json::to_value(&inner.args)?,
             link: inner.link,
-        }
+        })
     }
 
     pub fn new(
         ctx: &DalContext,
         func_id: FuncId,
         args: serde_json::Value,
-        parent_prop_id: PropId,
+        prop_id: PropId,
     ) -> ValidationPrototypeResult<Self> {
         let content = ValidationPrototypeContentV1 {
             timestamp: Timestamp::now(),
             func_id,
-            args,
+            args: serde_json::to_string(&args)?,
             link: None,
         };
         let hash = ctx
@@ -105,22 +108,22 @@ impl ValidationPrototype {
         let _node_index = workspace_snapshot.add_node(node_weight)?;
 
         workspace_snapshot.add_edge(
-            parent_prop_id.into(),
+            prop_id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
             id,
         )?;
 
-        Ok(Self::assemble(id.into(), content))
+        Self::assemble(id.into(), content)
     }
 
     pub fn new_intrinsic(
         ctx: &DalContext,
         validation: Validation,
-        parent_prop_id: PropId,
+        prop_id: PropId,
     ) -> ValidationPrototypeResult<Self> {
         let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Validation)?;
         let args = serde_json::to_value(FuncBackendValidationArgs::new(validation))?;
-        Self::new(ctx, func_id, args, parent_prop_id)
+        Self::new(ctx, func_id, args, prop_id)
     }
 }
 

@@ -141,7 +141,7 @@ impl ExternalProvider {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
             let _node_index = workspace_snapshot.add_node(node_weight)?;
             workspace_snapshot.add_edge(
-                schema_variant_id.into(),
+                schema_variant_id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
                 id,
             )?;
@@ -153,7 +153,7 @@ impl ExternalProvider {
             workspace_snapshot.add_edge(
                 id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Prototype(None))?,
-                attribute_prototype.id().into(),
+                attribute_prototype.id(),
             )?;
         }
 

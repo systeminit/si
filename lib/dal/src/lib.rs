@@ -76,9 +76,7 @@ pub mod ws_event;
 // pub mod status;
 // pub mod tasks;
 
-pub use action_prototype::{
-    ActionKind, ActionPrototype, ActionPrototypeContext, ActionPrototypeId,
-};
+pub use action_prototype::{ActionKind, ActionPrototype, ActionPrototypeId};
 pub use attribute::{
     prototype::{AttributePrototype, AttributePrototypeId},
     value::{AttributeValue, AttributeValueId},

@@ -401,10 +401,6 @@ impl Prop {
         let ordered = kind.ordered();
         let name = name.into();
 
-        if let Some((_, Some(options))) = &widget_kind_and_options {
-            info!("{}: {:?}", &name, options);
-        }
-
         let timestamp = Timestamp::now();
         let (widget_kind, widget_options): (WidgetKind, Option<WidgetOptions>) =
             match widget_kind_and_options {
@@ -448,21 +444,21 @@ impl Prop {
             PropParent::OrderedProp(ordered_prop_id) => {
                 workspace_snapshot.add_ordered_edge(
                     change_set,
-                    ordered_prop_id.into(),
+                    ordered_prop_id,
                     EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                     id,
                 )?;
             }
             PropParent::Prop(prop_id) => {
                 workspace_snapshot.add_edge(
-                    prop_id.into(),
+                    prop_id,
                     EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                     id,
                 )?;
             }
             PropParent::SchemaVariant(schema_variant_id) => {
                 workspace_snapshot.add_edge(
-                    schema_variant_id.into(),
+                    schema_variant_id,
                     EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                     id,
                 )?;
@@ -479,7 +475,6 @@ impl Prop {
         let node_weight = workspace_snapshot.get_node_weight(node_index)?;
         let hash = node_weight.content_hash();
 
-        info!("fetching prop content");
         let content: PropContent = ctx
             .content_store()
             .try_lock()?

@@ -1,17 +1,15 @@
-use content_store::ContentHash;
+use content_store::{Store, StoreError};
 use serde::{Deserialize, Serialize};
 use si_pkg::ActionFuncSpecKind;
 use strum::{AsRefStr, Display, EnumDiscriminants};
+use thiserror::Error;
 
-use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::{pk, SchemaVariantId, Timestamp};
-
-// const FIND_FOR_CONTEXT: &str = include_str!("./queries/action_prototype/find_for_context.sql");
-// const FIND_FOR_CONTEXT_AND_KIND: &str =
-//     include_str!("./queries/action_prototype/find_for_context_and_kind.sql");
-// const FIND_FOR_FUNC: &str = include_str!("./queries/action_prototype/find_for_func.sql");
-// const FIND_FOR_CONTEXT_AND_FUNC: &str =
-//     include_str!("./queries/action_prototype/find_for_context_and_func.sql");
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{pk, DalContext, FuncId, SchemaVariantId, Timestamp, TransactionsError};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -47,51 +45,56 @@ pub struct ActionPrototypeView {
 //     }
 // }
 
-// #[remain::sorted]
-// #[derive(Error, Debug)]
-// pub enum ActionPrototypeError {
-//     #[error("component error: {0}")]
-//     Component(String),
-//     #[error("component not found: {0}")]
-//     ComponentNotFound(ComponentId),
-//     #[error(transparent)]
-//     ComponentView(#[from] ComponentViewError),
-//     #[error(transparent)]
-//     FuncBinding(#[from] FuncBindingError),
-//     #[error(transparent)]
-//     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
-//     #[error("action Func {0} not found for ActionPrototype {1}")]
-//     FuncNotFound(FuncId, ActionPrototypeId),
-//     #[error("history event error: {0}")]
-//     HistoryEvent(#[from] HistoryEventError),
-//     #[error("this asset already has an action of this kind")]
-//     MultipleOfSameKind,
-//     #[error("nats txn error: {0}")]
-//     Nats(#[from] NatsError),
-//     #[error("not found with kind {0} for context {1:?}")]
-//     NotFoundByKindAndContext(ActionKind, ActionPrototypeContext),
-//     #[error("pg error: {0}")]
-//     Pg(#[from] PgError),
-//     #[error("schema not found")]
-//     SchemaNotFound,
-//     #[error("schema variant not found")]
-//     SchemaVariantNotFound,
-//     #[error("error serializing/deserializing json: {0}")]
-//     SerdeJson(#[from] serde_json::Error),
-//     #[error("standard model error: {0}")]
-//     StandardModelError(#[from] StandardModelError),
-//     #[error("transactions error: {0}")]
-//     Transactions(#[from] TransactionsError),
-//     #[error(transparent)]
-//     WsEvent(#[from] WsEventError),
-// }
-
-// pub type ActionPrototypeResult<T> = Result<T, ActionPrototypeError>;
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Copy)]
-pub struct ActionPrototypeContext {
-    pub schema_variant_id: SchemaVariantId,
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum ActionPrototypeError {
+    #[error(transparent)]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
+    //     #[error("component error: {0}")]
+    //     Component(String),
+    //     #[error("component not found: {0}")]
+    //     ComponentNotFound(ComponentId),
+    //     #[error(transparent)]
+    //     ComponentView(#[from] ComponentViewError),
+    //     #[error(transparent)]
+    //     FuncBinding(#[from] FuncBindingError),
+    //     #[error(transparent)]
+    //     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    //     #[error("action Func {0} not found for ActionPrototype {1}")]
+    //     FuncNotFound(FuncId, ActionPrototypeId),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
+    //     #[error("history event error: {0}")]
+    //     HistoryEvent(#[from] HistoryEventError),
+    //     #[error("this asset already has an action of this kind")]
+    //     MultipleOfSameKind,
+    //     #[error("nats txn error: {0}")]
+    //     Nats(#[from] NatsError),
+    //     #[error("not found with kind {0} for context {1:?}")]
+    //     NotFoundByKindAndContext(ActionKind, ActionPrototypeContext),
+    //     #[error("pg error: {0}")]
+    //     Pg(#[from] PgError),
+    //     #[error("schema not found")]
+    //     SchemaNotFound,
+    //     #[error("schema variant not found")]
+    //     SchemaVariantNotFound,
+    //     #[error("error serializing/deserializing json: {0}")]
+    //     SerdeJson(#[from] serde_json::Error),
+    //     #[error("standard model error: {0}")]
+    //     StandardModelError(#[from] StandardModelError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
+    #[error("store error: {0}")]
+    Store(#[from] StoreError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
+
+pub type ActionPrototypeResult<T> = Result<T, ActionPrototypeError>;
 
 /// Describes how an [`Action`](ActionPrototype) affects the world.
 #[remain::sorted]
@@ -143,13 +146,6 @@ pub struct ActionPrototype {
     timestamp: Timestamp,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct ActionPrototypeGraphNode {
-    id: ActionPrototypeId,
-    content_address: ContentAddress,
-    content: ActionPrototypeContentV1,
-}
-
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "version")]
 pub enum ActionPrototypeContent {
@@ -160,21 +156,64 @@ pub enum ActionPrototypeContent {
 pub struct ActionPrototypeContentV1 {
     kind: ActionKind,
     name: Option<String>,
-    #[serde(flatten)]
     timestamp: Timestamp,
 }
 
-impl ActionPrototypeGraphNode {
-    pub fn assemble(
-        id: impl Into<ActionPrototypeId>,
-        content_hash: ContentHash,
-        content: ActionPrototypeContentV1,
-    ) -> Self {
+impl ActionPrototype {
+    pub fn assemble(node_weight: &ContentNodeWeight, content: &ActionPrototypeContentV1) -> Self {
+        let content = content.to_owned();
+
         Self {
-            id: id.into(),
-            content_address: ContentAddress::ActionPrototype(content_hash),
-            content,
+            id: node_weight.id().into(),
+            name: content.name,
+            kind: content.kind,
+            timestamp: content.timestamp,
         }
+    }
+
+    pub fn new(
+        ctx: &DalContext,
+        name: Option<impl Into<String>>,
+        kind: ActionKind,
+        schema_variant_id: SchemaVariantId,
+        func_id: FuncId,
+    ) -> ActionPrototypeResult<Self> {
+        let timestamp = Timestamp::now();
+
+        let content = ActionPrototypeContentV1 {
+            kind,
+            timestamp,
+            name: name.map(Into::into),
+        };
+
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&ActionPrototypeContent::V1(content.to_owned()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight =
+            NodeWeight::new_content(change_set, id, ContentAddress::ActionPrototype(hash))?;
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        workspace_snapshot.add_node(node_weight.to_owned())?;
+        workspace_snapshot.add_edge(
+            schema_variant_id,
+            EdgeWeight::new(change_set, EdgeWeightKind::ActionPrototype(kind))?,
+            id,
+        )?;
+        workspace_snapshot.add_edge(
+            id,
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            func_id,
+        )?;
+
+        let content_node_weight = node_weight
+            .get_content_node_weight_of_kind(ContentAddressDiscriminants::ActionPrototype)?;
+
+        Ok(ActionPrototype::assemble(&content_node_weight, &content))
     }
 }
 

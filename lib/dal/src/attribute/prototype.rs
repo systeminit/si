@@ -26,7 +26,7 @@ use crate::workspace_snapshot::node_weight::{
     NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, DalContext, FuncId, PropId, Timestamp, TransactionsError};
+use crate::{pk, DalContext, ExternalProviderId, FuncId, PropId, Timestamp, TransactionsError};
 
 pub mod argument;
 
@@ -128,7 +128,7 @@ impl AttributePrototype {
         workspace_snapshot.add_edge(
             id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            func_id.into(),
+            func_id,
         )?;
 
         Ok(AttributePrototype::assemble(
@@ -185,6 +185,32 @@ impl AttributePrototype {
         Ok(None)
     }
 
+    pub fn find_for_external_provider(
+        ctx: &DalContext,
+        external_provider_id: ExternalProviderId,
+    ) -> AttributePrototypeResult<Option<AttributePrototypeId>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        if let Some(prototype_idx) = workspace_snapshot
+            .edges_directed(external_provider_id, Direction::Outgoing)?
+            .find(|edge_ref| {
+                EdgeWeightKindDiscriminants::Prototype == edge_ref.weight().kind().into()
+            })
+            .map(|edge_ref| edge_ref.target())
+        {
+            let node_weight = workspace_snapshot.get_node_weight(prototype_idx)?;
+
+            if matches!(
+                node_weight.content_address_discriminants(),
+                Some(ContentAddressDiscriminants::AttributePrototype)
+            ) {
+                return Ok(Some(node_weight.id().into()));
+            }
+        }
+
+        Ok(None)
+    }
+
     pub fn update_func_by_id(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
@@ -211,9 +237,9 @@ impl AttributePrototype {
         )?;
 
         workspace_snapshot.add_edge(
-            attribute_prototype_id.into(),
+            attribute_prototype_id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            func_id.into(),
+            func_id,
         )?;
 
         Ok(())

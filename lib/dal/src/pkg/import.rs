@@ -1,17 +1,20 @@
 use si_pkg::{
-    SchemaVariantSpecPropRoot, SiPkg, SiPkgAttrFuncInputView, SiPkgComponent, SiPkgEdge,
-    SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind, SiPkgLeafFunction,
-    SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData, SiPkgSchemaVariant,
-    SiPkgSocket, SiPkgSocketData, SocketSpecKind, ValidationSpec,
+    SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView, SiPkgComponent,
+    SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
+    SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData,
+    SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind, ValidationSpec,
 };
 use std::{collections::HashMap, path::Path};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
 use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentId,
+    AttributePrototypeArgument, AttributePrototypeArgumentId, AttributePrototypeArgumentValueSource,
 };
+use crate::func::backend::validation::FuncBackendValidationArgs;
 use crate::prop::PropParent;
+use crate::validation::prototype::ValidationPrototype;
+use crate::validation::ValidationKind;
 use crate::{func::intrinsics::IntrinsicFunc, ComponentKind, ProviderKind};
 use crate::{
     func::{self, argument::FuncArgument},
@@ -21,8 +24,10 @@ use crate::{
     },
     prop::PropPath,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    ActionPrototype, ChangeSetPk, DalContext, ExternalProvider, Func, FuncId, InternalProvider,
-    Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
+    validation::Validation,
+    ActionPrototype, ChangeSetPk, DalContext, ExternalProvider, ExternalProviderId, Func, FuncId,
+    InternalProvider, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    StandardModel,
 };
 use crate::{AttributePrototype, AttributePrototypeId};
 
@@ -41,7 +46,8 @@ enum Thing {
     Schema(Schema),
     SchemaVariant(SchemaVariant),
     Socket(Box<(Option<InternalProvider>, Option<ExternalProvider>)>),
-    // Validation(ValidationPrototype),
+    #[allow(dead_code)]
+    Validation(ValidationPrototype),
 }
 
 type ThingMap = super::ChangeSetThingMap<String, Thing>;
@@ -2208,7 +2214,6 @@ async fn import_socket(
         );
     }
 
-    /*
     match (
         socket_spec.data().and_then(|data| data.func_unique_id()),
         ep,
@@ -2219,7 +2224,7 @@ async fn import_socket(
                 ctx,
                 change_set_pk,
                 schema_variant_id,
-                *ep.id(),
+                ep.id(),
                 func_unique_id,
                 socket_spec.inputs()?.drain(..).map(Into::into).collect(),
                 thing_map,
@@ -2229,31 +2234,26 @@ async fn import_socket(
         (Some(_), _, Some(_)) => {}
         _ => {}
     }
-        */
 
     Ok(())
 }
 
-// async fn create_action_protoype(
-//     ctx: &DalContext,
-//     action_func_spec: &SiPkgActionFunc<'_>,
-//     func_id: FuncId,
-//     schema_variant_id: SchemaVariantId,
-// ) -> PkgResult<ActionPrototype> {
-//     let mut proto = ActionPrototype::new(
-//         ctx,
-//         func_id,
-//         action_func_spec.kind().into(),
-//         ActionPrototypeContext { schema_variant_id },
-//     )
-//     .await?;
+async fn create_action_protoype(
+    ctx: &DalContext,
+    action_func_spec: &SiPkgActionFunc<'_>,
+    func_id: FuncId,
+    schema_variant_id: SchemaVariantId,
+) -> PkgResult<ActionPrototype> {
+    let proto = ActionPrototype::new(
+        ctx,
+        action_func_spec.name(),
+        action_func_spec.kind().into(),
+        schema_variant_id,
+        func_id,
+    )?;
 
-//     if let Some(name) = action_func_spec.name() {
-//         proto.set_name(ctx, Some(name)).await?;
-//     }
-
-//     Ok(proto)
-// }
+    Ok(proto)
+}
 
 // async fn update_action_prototype(
 //     ctx: &DalContext,
@@ -2284,71 +2284,71 @@ async fn import_socket(
 //     Ok(())
 // }
 
-//async fn import_action_func(
-//    ctx: &DalContext,
-//    change_set_pk: Option<ChangeSetPk>,
-//    action_func_spec: &SiPkgActionFunc<'_>,
-//    schema_variant_id: SchemaVariantId,
-//    thing_map: &ThingMap,
-//) -> PkgResult<Option<ActionPrototype>> {
-//    let prototype =
-//        match thing_map.get(change_set_pk, &action_func_spec.func_unique_id().to_owned()) {
-//            Some(Thing::Func(func)) => {
-//                let func_id = func.id();
-//
-//                if let Some(unique_id) = action_func_spec.unique_id() {
-//                    match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-//                        Some(Thing::ActionPrototype(prototype)) => {
-//                            todo!("workspace import paths not yet implemented");
-//                            //                            let mut prototype = prototype.to_owned();
-//                            //
-//                            //                            if action_func_spec.deleted() {
-//                            //                                prototype.delete_by_id(ctx).await?;
-//                            //                            } else {
-//                            //                                update_action_prototype(
-//                            //                                    ctx,
-//                            //                                    &mut prototype,
-//                            //                                    action_func_spec,
-//                            //                                    func_id,
-//                            //                                    schema_variant_id,
-//                            //                                )
-//                            //                                .await?;
-//                            //                            }
-//                            //
-//                            //                            Some(prototype)
-//                        }
-//                        _ => {
-//                            if action_func_spec.deleted() {
-//                                None
-//                            } else {
-//                                Some(
-//                                    create_action_protoype(
-//                                        ctx,
-//                                        action_func_spec,
-//                                        func_id,
-//                                        schema_variant_id,
-//                                    )
-//                                    .await?,
-//                                )
-//                            }
-//                        }
-//                    }
-//                } else {
-//                    Some(
-//                        create_action_protoype(ctx, action_func_spec, func_id, schema_variant_id)
-//                            .await?,
-//                    )
-//                }
-//            }
-//            _ => {
-//                return Err(PkgError::MissingFuncUniqueId(
-//                    action_func_spec.func_unique_id().into(),
-//                ));
-//            }
-//        };
-//
-//    Ok(prototype)
-//}
+async fn import_action_func(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    action_func_spec: &SiPkgActionFunc<'_>,
+    schema_variant_id: SchemaVariantId,
+    thing_map: &ThingMap,
+) -> PkgResult<Option<ActionPrototype>> {
+    let prototype =
+        match thing_map.get(change_set_pk, &action_func_spec.func_unique_id().to_owned()) {
+            Some(Thing::Func(func)) => {
+                let func_id = func.id;
+
+                if let Some(unique_id) = action_func_spec.unique_id() {
+                    match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+                        Some(Thing::ActionPrototype(_prototype)) => {
+                            todo!("workspace import paths not yet implemented");
+                            //                            let mut prototype = prototype.to_owned();
+                            //
+                            //                            if action_func_spec.deleted() {
+                            //                                prototype.delete_by_id(ctx).await?;
+                            //                            } else {
+                            //                                update_action_prototype(
+                            //                                    ctx,
+                            //                                    &mut prototype,
+                            //                                    action_func_spec,
+                            //                                    func_id,
+                            //                                    schema_variant_id,
+                            //                                )
+                            //                                .await?;
+                            //                            }
+                            //
+                            //                            Some(prototype)
+                        }
+                        _ => {
+                            if action_func_spec.deleted() {
+                                None
+                            } else {
+                                Some(
+                                    create_action_protoype(
+                                        ctx,
+                                        action_func_spec,
+                                        func_id,
+                                        schema_variant_id,
+                                    )
+                                    .await?,
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Some(
+                        create_action_protoype(ctx, action_func_spec, func_id, schema_variant_id)
+                            .await?,
+                    )
+                }
+            }
+            _ => {
+                return Err(PkgError::MissingFuncUniqueId(
+                    action_func_spec.func_unique_id().into(),
+                ));
+            }
+        };
+
+    Ok(prototype)
+}
 
 #[derive(Default, Clone, Debug)]
 struct CreatePropsSideEffects {
@@ -2641,38 +2641,31 @@ async fn import_schema_variant(
                 );
             }
 
+            info!("finalizing");
+            SchemaVariant::finalize(ctx, schema_variant.id()).await?;
+
             for socket in variant_spec.sockets()? {
                 import_socket(ctx, change_set_pk, socket, schema_variant.id(), thing_map).await?;
             }
 
-            info!("finalizing");
-            SchemaVariant::finalize(ctx, schema_variant.id()).await?;
+            for action_func in &variant_spec.action_funcs()? {
+                let prototype = import_action_func(
+                    ctx,
+                    change_set_pk,
+                    action_func,
+                    schema_variant.id(),
+                    thing_map,
+                )
+                .await?;
 
-            //     if let Some(data) = variant_spec.data() {
-            //         schema_variant
-            //             .finalize(ctx, Some(data.component_type().into()))
-            //             .await?;
-            //     }
-            //
-            //            for action_func in &variant_spec.action_funcs()? {
-            //                let prototype = import_action_func(
-            //                    ctx,
-            //                    change_set_pk,
-            //                    action_func,
-            //                    *schema_variant.id(),
-            //                    thing_map,
-            //                )
-            //                .await?;
-            //
-            //                if let (Some(prototype), Some(unique_id)) = (prototype, action_func.unique_id()) {
-            //                    thing_map.insert(
-            //                        change_set_pk,
-            //                        unique_id.to_owned(),
-            //                        Thing::ActionPrototype(prototype),
-            //                    );
-            //                }
-            //            }
-            //
+                if let (Some(prototype), Some(unique_id)) = (prototype, action_func.unique_id()) {
+                    thing_map.insert(
+                        change_set_pk,
+                        unique_id.to_owned(),
+                        Thing::ActionPrototype(prototype),
+                    );
+                }
+            }
 
             for leaf_func in variant_spec.leaf_functions()? {
                 import_leaf_function(
@@ -2732,10 +2725,10 @@ async fn import_schema_variant(
                 .await?;
             }
 
-            let mut _has_resource_value_func = false;
+            let mut has_resource_value_func = false;
             for root_prop_func in variant_spec.root_prop_funcs()? {
                 if root_prop_func.prop() == SchemaVariantSpecPropRoot::ResourceValue {
-                    _has_resource_value_func = true;
+                    has_resource_value_func = true;
                 }
 
                 let prop_id = Prop::find_prop_id_by_path(
@@ -2761,9 +2754,9 @@ async fn import_schema_variant(
                 )
                 .await?;
             }
-            //if !has_resource_value_func {
-            //attach_resource_payload_to_value(ctx, *schema_variant.id()).await?;
-            //}
+            if !has_resource_value_func {
+                attach_resource_payload_to_value(ctx, schema_variant.id()).await?;
+            }
 
             for attr_func in side_effects.attr_funcs {
                 import_attr_func_for_prop(
@@ -2789,20 +2782,13 @@ async fn import_schema_variant(
                 .await?;
             }
 
+            for (prop_id, validation_spec) in side_effects.validations {
+                import_prop_validation(ctx, change_set_pk, validation_spec, prop_id, thing_map)
+                    .await?;
+            }
+
             Some(schema_variant)
-        } //
-          //     for (prop_id, validation_spec) in side_effects.validations {
-          //         import_prop_validation(
-          //             ctx,
-          //             change_set_pk,
-          //             validation_spec,
-          //             *schema.id(),
-          //             *schema_variant.id(),
-          //             prop_id,
-          //             thing_map,
-          //         )
-          //         .await?;
-          //     }
+        }
     };
 
     Ok(schema_variant)
@@ -2865,37 +2851,34 @@ async fn import_attr_func_for_prop(
     Ok(())
 }
 
-// async fn import_attr_func_for_output_socket(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     schema_variant_id: SchemaVariantId,
-//     external_provider_id: ExternalProviderId,
-//     func_unique_id: &str,
-//     inputs: Vec<SiPkgAttrFuncInputView>,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<()> {
-//     match thing_map.get(change_set_pk, &func_unique_id.to_owned()) {
-//         Some(Thing::Func(func)) => {
-//             import_attr_func(
-//                 ctx,
-//                 change_set_pk,
-//                 AttributeReadContext {
-//                     external_provider_id: Some(external_provider_id),
-//                     ..Default::default()
-//                 },
-//                 None,
-//                 schema_variant_id,
-//                 *func.id(),
-//                 inputs,
-//                 thing_map,
-//             )
-//             .await?;
-//         }
-//         _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_string())),
-//     }
+async fn import_attr_func_for_output_socket(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    schema_variant_id: SchemaVariantId,
+    external_provider_id: ExternalProviderId,
+    func_unique_id: &str,
+    inputs: Vec<SiPkgAttrFuncInputView>,
+    thing_map: &mut ThingMap,
+) -> PkgResult<()> {
+    match thing_map.get(change_set_pk, &func_unique_id.to_owned()) {
+        Some(Thing::Func(func)) => {
+            import_attr_func(
+                ctx,
+                change_set_pk,
+                AttrFuncContext::ExternalProvider(external_provider_id),
+                None,
+                schema_variant_id,
+                func.id,
+                inputs,
+                thing_map,
+            )
+            .await?;
+        }
+        _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_string())),
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 async fn get_prototype_for_context(
     ctx: &DalContext,
@@ -2906,17 +2889,17 @@ async fn get_prototype_for_context(
         #[allow(clippy::infallible_destructuring_match)]
         let map_prop_id = match context {
             AttrFuncContext::Prop(prop_id) => prop_id,
-            //            _ => Err(PkgError::AttributeFuncForKeyMissingProp(
-            //                context,
-            //                key.to_owned(),
-            //            ))?,
+            _ => Err(PkgError::AttributeFuncForKeyMissingProp(
+                context,
+                key.to_owned().expect("check above ensures this is some"),
+            ))?,
         };
         let map_prop = Prop::get_by_id(ctx, map_prop_id).await?;
 
         if map_prop.kind != PropKind::Map {
             return Err(PkgError::AttributeFuncForKeySetOnWrongKind(
                 map_prop_id,
-                key.expect("check above ensures this is some"),
+                key.to_owned().expect("check above ensures this is some"),
                 map_prop.kind,
             ));
         }
@@ -2944,6 +2927,11 @@ async fn get_prototype_for_context(
                 AttributePrototype::find_for_prop(ctx, prop_id, &None)?
                     .ok_or(PkgError::PropMissingPrototype(prop_id))?
             }
+            AttrFuncContext::ExternalProvider(external_provider_id) => {
+                AttributePrototype::find_for_external_provider(ctx, external_provider_id)?.ok_or(
+                    PkgError::ExternalProviderMissingPrototype(external_provider_id),
+                )?
+            }
         })
     }
 }
@@ -2968,8 +2956,9 @@ async fn create_attr_proto_arg(
     Ok(match input {
         SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
             let prop_id = Prop::find_prop_id_by_path(ctx, schema_variant_id, &prop_path.into())?;
-            let prop_ip_id = InternalProvider::find_for_prop_id(ctx, prop_id)?
-                .ok_or(PkgError::MissingInternalProviderForProp(prop_id))?;
+            let prop_ip_id = InternalProvider::find_for_prop_id(ctx, prop_id)?.ok_or(
+                PkgError::MissingInternalProviderForProp(prop_id, prop_path.to_owned()),
+            )?;
 
             let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id)?;
             let apa_id = apa.id();
@@ -3057,6 +3046,7 @@ async fn create_attr_proto_arg(
 #[derive(Debug, Clone)]
 pub enum AttrFuncContext {
     Prop(PropId),
+    ExternalProvider(ExternalProviderId),
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -3153,36 +3143,28 @@ async fn import_attr_func(
     Ok(())
 }
 
-// async fn create_validation(
-//     ctx: &DalContext,
-//     validation_kind: ValidationKind,
-//     builtin_func_id: FuncId,
-//     prop_id: PropId,
-//     schema_id: SchemaId,
-//     schema_variant_id: SchemaVariantId,
-// ) -> PkgResult<ValidationPrototype> {
-//     let (validation_func_id, validation_args) = match validation_kind {
-//         ValidationKind::Builtin(validation) => (
-//             builtin_func_id,
-//             serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
-//         ),
+async fn create_validation(
+    ctx: &DalContext,
+    validation_kind: ValidationKind,
+    builtin_func_id: FuncId,
+    prop_id: PropId,
+) -> PkgResult<ValidationPrototype> {
+    let (validation_func_id, validation_args) = match validation_kind {
+        ValidationKind::Builtin(validation) => (
+            builtin_func_id,
+            serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
+        ),
 
-//         ValidationKind::Custom(func_id) => (func_id, serde_json::json!(null)),
-//     };
-//     let mut builder = ValidationPrototypeContext::builder();
-//     builder
-//         .set_prop_id(prop_id)
-//         .set_schema_id(schema_id)
-//         .set_schema_variant_id(schema_variant_id);
+        ValidationKind::Custom(func_id) => (func_id, serde_json::json!(null)),
+    };
 
-//     Ok(ValidationPrototype::new(
-//         ctx,
-//         validation_func_id,
-//         validation_args,
-//         builder.to_context(ctx).await?,
-//     )
-//     .await?)
-// }
+    Ok(ValidationPrototype::new(
+        ctx,
+        validation_func_id,
+        validation_args,
+        prop_id,
+    )?)
+}
 
 // async fn update_validation(
 //     ctx: &DalContext,
@@ -3213,141 +3195,129 @@ async fn import_attr_func(
 //     Ok(())
 // }
 
-// async fn import_prop_validation(
-//     ctx: &DalContext,
-//     change_set_pk: Option<ChangeSetPk>,
-//     spec: ValidationSpec,
-//     schema_id: SchemaId,
-//     schema_variant_id: SchemaVariantId,
-//     prop_id: PropId,
-//     thing_map: &mut ThingMap,
-// ) -> PkgResult<()> {
-//     let builtin_validation_func = Func::find_by_attr(ctx, "name", &"si:validation")
-//         .await?
-//         .pop()
-//         .ok_or(FuncError::NotFoundByName("si:validation".to_string()))?;
+async fn import_prop_validation(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    spec: ValidationSpec,
+    prop_id: PropId,
+    thing_map: &mut ThingMap,
+) -> PkgResult<()> {
+    let builtin_validation_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Validation)?;
 
-//     let validation_kind = match &spec {
-//         ValidationSpec::IntegerIsBetweenTwoIntegers {
-//             lower_bound,
-//             upper_bound,
-//             ..
-//         } => ValidationKind::Builtin(Validation::IntegerIsBetweenTwoIntegers {
-//             value: None,
-//             lower_bound: *lower_bound,
-//             upper_bound: *upper_bound,
-//         }),
-//         ValidationSpec::IntegerIsNotEmpty { .. } => {
-//             ValidationKind::Builtin(Validation::IntegerIsNotEmpty { value: None })
-//         }
-//         ValidationSpec::StringEquals { expected, .. } => {
-//             ValidationKind::Builtin(Validation::StringEquals {
-//                 value: None,
-//                 expected: expected.to_owned(),
-//             })
-//         }
-//         ValidationSpec::StringHasPrefix { expected, .. } => {
-//             ValidationKind::Builtin(Validation::StringHasPrefix {
-//                 value: None,
-//                 expected: expected.to_owned(),
-//             })
-//         }
-//         ValidationSpec::StringInStringArray {
-//             expected,
-//             display_expected,
-//             ..
-//         } => ValidationKind::Builtin(Validation::StringInStringArray {
-//             value: None,
-//             expected: expected.to_owned(),
-//             display_expected: *display_expected,
-//         }),
-//         ValidationSpec::StringIsHexColor { .. } => {
-//             ValidationKind::Builtin(Validation::StringIsHexColor { value: None })
-//         }
-//         ValidationSpec::StringIsNotEmpty { .. } => {
-//             ValidationKind::Builtin(Validation::StringIsNotEmpty { value: None })
-//         }
-//         ValidationSpec::StringIsValidIpAddr { .. } => {
-//             ValidationKind::Builtin(Validation::StringIsValidIpAddr { value: None })
-//         }
-//         ValidationSpec::CustomValidation { func_unique_id, .. } => {
-//             ValidationKind::Custom(match thing_map.get(None, func_unique_id) {
-//                 Some(Thing::Func(func)) => *func.id(),
-//                 _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_owned())),
-//             })
-//         }
-//     };
+    let validation_kind = match &spec {
+        ValidationSpec::IntegerIsBetweenTwoIntegers {
+            lower_bound,
+            upper_bound,
+            ..
+        } => ValidationKind::Builtin(Validation::IntegerIsBetweenTwoIntegers {
+            value: None,
+            lower_bound: *lower_bound,
+            upper_bound: *upper_bound,
+        }),
+        ValidationSpec::IntegerIsNotEmpty { .. } => {
+            ValidationKind::Builtin(Validation::IntegerIsNotEmpty { value: None })
+        }
+        ValidationSpec::StringEquals { expected, .. } => {
+            ValidationKind::Builtin(Validation::StringEquals {
+                value: None,
+                expected: expected.to_owned(),
+            })
+        }
+        ValidationSpec::StringHasPrefix { expected, .. } => {
+            ValidationKind::Builtin(Validation::StringHasPrefix {
+                value: None,
+                expected: expected.to_owned(),
+            })
+        }
+        ValidationSpec::StringInStringArray {
+            expected,
+            display_expected,
+            ..
+        } => ValidationKind::Builtin(Validation::StringInStringArray {
+            value: None,
+            expected: expected.to_owned(),
+            display_expected: *display_expected,
+        }),
+        ValidationSpec::StringIsHexColor { .. } => {
+            ValidationKind::Builtin(Validation::StringIsHexColor { value: None })
+        }
+        ValidationSpec::StringIsNotEmpty { .. } => {
+            ValidationKind::Builtin(Validation::StringIsNotEmpty { value: None })
+        }
+        ValidationSpec::StringIsValidIpAddr { .. } => {
+            ValidationKind::Builtin(Validation::StringIsValidIpAddr { value: None })
+        }
+        ValidationSpec::CustomValidation { func_unique_id, .. } => {
+            ValidationKind::Custom(match thing_map.get(None, func_unique_id) {
+                Some(Thing::Func(func)) => func.id,
+                _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_owned())),
+            })
+        }
+    };
 
-//     match change_set_pk {
-//         None => {
-//             create_validation(
-//                 ctx,
-//                 validation_kind,
-//                 *builtin_validation_func.id(),
-//                 prop_id,
-//                 schema_id,
-//                 schema_variant_id,
-//             )
-//             .await?;
-//         }
-//         Some(_) => {
-//             let unique_id = spec
-//                 .unique_id()
-//                 .ok_or(PkgError::MissingUniqueIdForNode("validation".into()))?;
-//             let deleted = spec.deleted();
+    match change_set_pk {
+        None => {
+            create_validation(ctx, validation_kind, builtin_validation_func_id, prop_id).await?;
+        }
+        Some(_) => {
+            todo!("workspace import not yet implemented");
+            // let unique_id = spec
+            //     .unique_id()
+            //     .ok_or(PkgError::MissingUniqueIdForNode("validation".into()))?;
+            // let deleted = spec.deleted();
 
-//             let validation_prototype = match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-//                 Some(Thing::Validation(prototype)) => {
-//                     let mut prototype = prototype.to_owned();
+            // let validation_prototype = match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+            //     Some(Thing::Validation(prototype)) => {
+            //         let mut prototype = prototype.to_owned();
 
-//                     if deleted {
-//                         prototype.delete_by_id(ctx).await?;
-//                     } else {
-//                         update_validation(
-//                             ctx,
-//                             &mut prototype,
-//                             validation_kind,
-//                             *builtin_validation_func.id(),
-//                             prop_id,
-//                             schema_id,
-//                             schema_variant_id,
-//                         )
-//                         .await?;
-//                     }
+            //         if deleted {
+            //             prototype.delete_by_id(ctx).await?;
+            //         } else {
+            //             update_validation(
+            //                 ctx,
+            //                 &mut prototype,
+            //                 validation_kind,
+            //                 *builtin_validation_func.id(),
+            //                 prop_id,
+            //                 schema_id,
+            //                 schema_variant_id,
+            //             )
+            //             .await?;
+            //         }
 
-//                     Some(prototype)
-//                 }
-//                 _ => {
-//                     if deleted {
-//                         None
-//                     } else {
-//                         Some(
-//                             create_validation(
-//                                 ctx,
-//                                 validation_kind,
-//                                 *builtin_validation_func.id(),
-//                                 prop_id,
-//                                 schema_id,
-//                                 schema_variant_id,
-//                             )
-//                             .await?,
-//                         )
-//                     }
-//                 }
-//             };
+            //         Some(prototype)
+            //     }
+            //     _ => {
+            //         if deleted {
+            //             None
+            //         } else {
+            //             Some(
+            //                 create_validation(
+            //                     ctx,
+            //                     validation_kind,
+            //                     *builtin_validation_func.id(),
+            //                     prop_id,
+            //                     schema_id,
+            //                     schema_variant_id,
+            //                 )
+            //                 .await?,
+            //             )
+            //         }
+            //     }
+            // };
 
-//             if let Some(prototype) = validation_prototype {
-//                 thing_map.insert(
-//                     change_set_pk,
-//                     unique_id.to_owned(),
-//                     Thing::Validation(prototype),
-//                 );
-//             }
-//         }
-//     }
+            // if let Some(prototype) = validation_prototype {
+            //     thing_map.insert(
+            //         change_set_pk,
+            //         unique_id.to_owned(),
+            //         Thing::Validation(prototype),
+            //     );
+            // }
+        }
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 fn prop_kind_for_pkg_prop(pkg_prop: &SiPkgProp<'_>) -> PropKind {
     match pkg_prop {
@@ -3534,4 +3504,79 @@ async fn create_prop(
         path: prop.path(ctx.ctx)?,
         kind: prop.kind,
     }))
+}
+
+pub async fn attach_resource_payload_to_value(
+    ctx: &DalContext,
+    schema_variant_id: SchemaVariantId,
+) -> PkgResult<()> {
+    let func_id = Func::find_by_name(ctx, "si:resourcePayloadToValue")?.ok_or(
+        PkgError::FuncNotFoundByName("si:resourcePayloadToValue".into()),
+    )?;
+
+    let func_argument_id = FuncArgument::find_by_name_for_func(ctx, "payload", func_id)
+        .await?
+        .ok_or(PkgError::FuncArgumentNotFoundByName(
+            func_id,
+            "payload".into(),
+        ))?
+        .id;
+
+    let source_id = {
+        let prop_id = Prop::find_prop_id_by_path(
+            ctx,
+            schema_variant_id,
+            &PropPath::new(["root", "resource", "payload"]),
+        )?;
+
+        InternalProvider::find_for_prop_id(ctx, prop_id)?
+            .ok_or(PkgError::InternalProviderNotFoundForProp(prop_id))?
+    };
+
+    let target_id = {
+        let resource_value_prop_id = Prop::find_prop_id_by_path(
+            ctx,
+            schema_variant_id,
+            &PropPath::new(["root", "resource_value"]),
+        )?;
+
+        let prototype_id =
+            get_prototype_for_context(ctx, AttrFuncContext::Prop(resource_value_prop_id), None)
+                .await?;
+
+        AttributePrototype::update_func_by_id(ctx, prototype_id, func_id)?;
+
+        prototype_id
+    };
+
+    let mut rv_input_apa_id = None;
+    for apa_id in AttributePrototypeArgument::list_ids_for_prototype(ctx, target_id)? {
+        if func_argument_id == AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id)? {
+            rv_input_apa_id = Some(apa_id);
+            break;
+        }
+    }
+
+    match rv_input_apa_id {
+        Some(apa_id) => {
+            if !{
+                if let Some(AttributePrototypeArgumentValueSource::InternalProvider(ip_id)) =
+                    AttributePrototypeArgument::value_source_by_id(ctx, apa_id)?
+                {
+                    ip_id == source_id
+                } else {
+                    false
+                }
+            } {
+                let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
+                apa.set_value_from_internal_provider_id(ctx, source_id)?;
+            }
+        }
+        None => {
+            let apa = AttributePrototypeArgument::new(ctx, target_id, func_argument_id)?;
+            apa.set_value_from_internal_provider_id(ctx, source_id)?;
+        }
+    }
+
+    Ok(())
 }

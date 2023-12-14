@@ -268,7 +268,7 @@ impl InternalProvider {
         workspace_snapshot.add_edge(
             id,
             EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(None))?,
-            attribute_prototype.id().into(),
+            attribute_prototype.id(),
         )?;
 
         Ok(())
@@ -315,14 +315,14 @@ impl InternalProvider {
             NodeWeight::new_content(change_set, ip_id, ContentAddress::InternalProvider(hash))?;
         workspace_snapshot.add_node(node_weight)?;
         workspace_snapshot.add_edge(
-            prop_id.into(),
+            prop_id,
             EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
             ip_id,
         )?;
         workspace_snapshot.add_edge(
             ip_id,
             EdgeWeight::new(change_set, EdgeWeightKind::Prototype(key.to_owned()))?,
-            attribute_prototype_id.into(),
+            attribute_prototype_id,
         )?;
 
         Ok(ip_id.into())
@@ -354,12 +354,12 @@ impl InternalProvider {
     ) -> InternalProviderResult<()> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         workspace_snapshot.add_edge(
-            internal_provider_id.into(),
+            internal_provider_id,
             EdgeWeight::new(
                 ctx.change_set_pointer()?,
                 EdgeWeightKind::Prototype(key.to_owned()),
             )?,
-            attribute_prototype_id.into(),
+            attribute_prototype_id,
         )?;
 
         Ok(())
@@ -427,7 +427,7 @@ impl InternalProvider {
                 NodeWeight::new_content(change_set, id, ContentAddress::InternalProvider(hash))?;
             let _node_index = workspace_snapshot.add_node(node_weight)?;
             workspace_snapshot.add_edge(
-                schema_variant_id.into(),
+                schema_variant_id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
                 id,
             )?;
@@ -439,7 +439,7 @@ impl InternalProvider {
             workspace_snapshot.add_edge(
                 id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Prototype(None))?,
-                attribute_prototype.id().into(),
+                attribute_prototype.id(),
             )?;
         }
 

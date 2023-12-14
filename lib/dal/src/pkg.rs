@@ -3,9 +3,11 @@ use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecE
 use std::collections::HashMap;
 use thiserror::Error;
 
+use crate::action_prototype::ActionPrototypeError;
 use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::schema::variant::SchemaVariantError;
+use crate::validation::prototype::ValidationPrototypeError;
 use crate::{
     change_set_pointer::ChangeSetPointerError,
     func::{argument::FuncArgumentError, FuncError},
@@ -14,7 +16,8 @@ use crate::{
     provider::external::ExternalProviderError,
     provider::internal::InternalProviderError,
     workspace_snapshot::WorkspaceSnapshotError,
-    ChangeSetPk, FuncBackendKind, FuncBackendResponseType, SchemaError, SchemaVariantId,
+    ChangeSetPk, ExternalProviderId, FuncBackendKind, FuncBackendResponseType, SchemaError,
+    SchemaVariantId,
 };
 use crate::{FuncId, PropId, PropKind};
 
@@ -27,8 +30,8 @@ mod import;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum PkgError {
-    // #[error("Action creation error: {0}")]
-    // Action(#[from] ActionPrototypeError),
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     // #[error(transparent)]
     // AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute function for context {0:?} has key {1} but is not setting a prop value")]
@@ -77,12 +80,18 @@ pub enum PkgError {
     // ExplicitInternalProviderMissingSocket(InternalProviderId),
     #[error(transparent)]
     ExternalProvider(#[from] ExternalProviderError),
+    #[error("external provider {0} missing attribute prototype")]
+    ExternalProviderMissingPrototype(ExternalProviderId),
     // #[error("Cannot find Socket for ExternalProvider {0}")]
     // ExternalProviderMissingSocket(ExternalProviderId),
     #[error(transparent)]
     Func(#[from] FuncError),
     #[error(transparent)]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("func argument for {0} not found with name {1}")]
+    FuncArgumentNotFoundByName(FuncId, String),
+    #[error("func {0} could not be found by name")]
+    FuncNotFoundByName(String),
     // #[error(transparent)]
     // FuncBinding(#[from] FuncBindingError),
     // #[error(transparent)]
@@ -99,8 +108,8 @@ pub enum PkgError {
     // InstalledSchemaVariantMissing(SchemaVariantId),
     #[error(transparent)]
     InternalProvider(#[from] InternalProviderError),
-    // #[error("Missing Prop {1} for InternalProvider {1}")]
-    // InternalProviderMissingProp(InternalProviderId, PropId),
+    #[error("InternalProvider not found for prop {0}")]
+    InternalProviderNotFoundForProp(PropId),
     // #[error("Leaf Function {0} has invalid argument {1}")]
     // InvalidLeafArgument(FuncId, String),
     // #[error("Missing AttributePrototype {0} for explicit InternalProvider {1}")]
@@ -123,8 +132,8 @@ pub enum PkgError {
     // MissingFuncArgumentById(FuncArgumentId),
     #[error("Package asked for a function with the unique id {0} but none could be found")]
     MissingFuncUniqueId(String),
-    #[error("Cannot find InternalProvider for Prop {0}")]
-    MissingInternalProviderForProp(PropId),
+    #[error("Cannot find InternalProvider for Prop {0} ({1})")]
+    MissingInternalProviderForProp(PropId, String),
     #[error("Cannot find InternalProvider for Socket named {0}")]
     MissingInternalProviderForSocketName(String),
     // #[error("Intrinsic function {0} not found")]
@@ -167,8 +176,8 @@ pub enum PkgError {
     // SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
     // #[error("schema variant not found: {0}")]
     // SchemaVariantNotFound(SchemaVariantId),
-    // #[error("json serialization error: {0}")]
-    // SerdeJson(#[from] serde_json::Error),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     // #[error(transparent)]
     // Socket(#[from] SocketError),
     // #[error(transparent)]
@@ -181,8 +190,8 @@ pub enum PkgError {
     // UlidDecode(#[from] ulid::DecodeError),
     // #[error(transparent)]
     // UrlParse(#[from] ParseError),
-    // #[error("Validation creation error: {0}")]
-    // Validation(#[from] ValidationPrototypeError),
+    #[error("Validation creation error: {0}")]
+    Validation(#[from] ValidationPrototypeError),
     // #[error(transparent)]
     // Workspace(#[from] WorkspaceError),
     // #[error("Cannot find default change set \"{0}\" in workspace backup")]

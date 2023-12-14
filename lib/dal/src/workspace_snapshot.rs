@@ -270,9 +270,9 @@ impl WorkspaceSnapshot {
 
     pub fn add_edge(
         &mut self,
-        from_node_id: Ulid,
+        from_node_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
-        to_node_id: Ulid,
+        to_node_id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<EdgeIndex> {
         let from_node_index = self.working_copy()?.get_node_index_by_id(from_node_id)?;
         let to_node_index = self.working_copy()?.get_node_index_by_id(to_node_id)?;
@@ -297,9 +297,9 @@ impl WorkspaceSnapshot {
     pub fn add_ordered_edge(
         &mut self,
         change_set: &ChangeSetPointer,
-        from_node_id: Ulid,
+        from_node_id: impl Into<Ulid>,
         edge_weight: EdgeWeight,
-        to_node_id: Ulid,
+        to_node_id: impl Into<Ulid>,
     ) -> WorkspaceSnapshotResult<EdgeIndex> {
         let from_node_index = self.working_copy()?.get_node_index_by_id(from_node_id)?;
         let to_node_index = self.working_copy()?.get_node_index_by_id(to_node_id)?;

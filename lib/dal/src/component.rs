@@ -227,7 +227,7 @@ impl Component {
             workspace_snapshot.add_edge(
                 id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-                schema_variant_id.into(),
+                schema_variant_id,
             )?;
 
             // Collect all providers corresponding to input and output sockets for the schema
@@ -248,7 +248,7 @@ impl Component {
                 workspace_snapshot.add_edge(
                     id,
                     EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-                    attribute_value.id().into(),
+                    attribute_value.id(),
                 )?;
 
                 // AttributeValue (new) --> Provider (corresponding to an input or an output Socket)
@@ -283,9 +283,9 @@ impl Component {
             // AttributeValue --Prop--> Prop
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
             workspace_snapshot.add_edge(
-                attribute_value.id().into(),
+                attribute_value.id(),
                 EdgeWeight::new(change_set, EdgeWeightKind::Prop)?,
-                prop_id.into(),
+                prop_id,
             )?;
 
             // If it is the root prop, the component should use it. Otherwise, it should be used
@@ -294,9 +294,9 @@ impl Component {
                 Some(parent_attribute_value_id) => {
                     // AttributeValue (Parent) --Contain--> AttributeValue
                     workspace_snapshot.add_edge(
-                        parent_attribute_value_id.into(),
+                        parent_attribute_value_id,
                         EdgeWeight::new(change_set, EdgeWeightKind::Contain(None))?,
-                        attribute_value.id().into(),
+                        attribute_value.id(),
                     )?;
                 }
                 None => {
@@ -304,7 +304,7 @@ impl Component {
                     workspace_snapshot.add_edge(
                         id,
                         EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-                        attribute_value.id().into(),
+                        attribute_value.id(),
                     )?;
                 }
             }

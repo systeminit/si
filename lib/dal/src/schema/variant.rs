@@ -186,7 +186,7 @@ impl SchemaVariant {
 
             // Schema --Use--> SchemaVariant (this)
             workspace_snapshot.add_edge(
-                schema_id.into(),
+                schema_id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                 id,
             )?;
@@ -436,7 +436,7 @@ impl SchemaVariant {
                 workspace_snapshot.add_edge(
                     prop.id(),
                     EdgeWeight::new(change_set, EdgeWeightKind::Prototype(None))?,
-                    attribute_prototype.id().into(),
+                    attribute_prototype.id(),
                 )?;
             }
 
@@ -494,9 +494,9 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<()> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
         workspace_snapshot.add_edge(
-            schema_variant_id.into(),
+            schema_variant_id,
             EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Use)?,
-            func_id.into(),
+            func_id,
         )?;
         Ok(())
     }

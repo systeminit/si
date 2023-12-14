@@ -60,7 +60,18 @@ async fn modify_func_node(ctx: &mut DalContext) {
         .await
         .expect("able to get func by id again");
 
-    assert_eq!(Some(new_code_base64), modified_func.code_base64);
+    assert_eq!(
+        Some(new_code_base64.as_str()),
+        modified_func.code_base64.as_deref()
+    );
+
+    let funcs = Func::list(ctx).await.expect("able to list funcs");
+    let modified_func_again = funcs
+        .iter()
+        .find(|f| f.id == modified_func.id)
+        .expect("func should be in list");
+
+    assert_eq!(Some(new_code_base64), modified_func_again.code_base64);
 }
 
 #[test]

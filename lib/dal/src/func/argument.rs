@@ -33,7 +33,7 @@ pub enum FuncArgumentError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("intrinsic func {0} ({1}) missing func argument edge")]
     IntrinsicMissingFuncArgumentEdge(String, FuncId),
-    #[error(transparent)]
+    #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("func argument not found with name {0} for Func {1}")]
     NotFoundByNameForFunc(String, FuncId),
@@ -43,7 +43,7 @@ pub enum FuncArgumentError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
-    #[error(transparent)]
+    #[error("store error: {0}")]
     Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
@@ -202,7 +202,7 @@ impl FuncArgument {
         let _func_arg_node_index = workspace_snapshot.add_node(node_weight.clone())?;
 
         workspace_snapshot.add_edge(
-            func_id.into(),
+            func_id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
             id,
         )?;
