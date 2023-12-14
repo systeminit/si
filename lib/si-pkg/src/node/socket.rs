@@ -50,12 +50,12 @@ impl WriteBytes for SocketNode {
             // KEY_KIND_STR string should be the first data field to be serialized,
             // since we use it to detect if the payload has a data field in read_bytes below
             write_key_value_line(writer, KEY_KIND_STR, data.kind)?;
+            write_key_value_line(writer, KEY_ARITY_STR, data.arity)?;
             write_key_value_line(
                 writer,
                 KEY_CONNECTION_ANNOTATIONS_STR,
                 data.connection_annotations.clone(),
             )?;
-            write_key_value_line(writer, KEY_ARITY_STR, data.arity)?;
 
             write_key_value_line(
                 writer,
@@ -77,6 +77,7 @@ impl ReadBytes for SocketNode {
         Self: std::marker::Sized,
     {
         let name = read_key_value_line(reader, KEY_NAME_STR)?;
+
         let data = match read_key_value_line_opt(reader, KEY_KIND_STR)? {
             None => None,
             Some(kind_str) => {
