@@ -3,7 +3,7 @@ use dal::{
     Component, DalContext, DiagramKind, SchemaVariant, SocketId, StandardModel,
 };
 use dal_test::test_harness::create_schema;
-use dal_test::{helpers::generate_fake_name, test};
+use dal_test::{connection_annotation_string, helpers::generate_fake_name, test};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -11,6 +11,7 @@ async fn new(ctx: &DalContext) {
     let socket = Socket::new(
         ctx,
         "jane",
+        connection_annotation_string!("jane"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
@@ -26,9 +27,12 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn set_required(ctx: &DalContext) {
+    let name = generate_fake_name();
+
     let mut socket = Socket::new(
         ctx,
-        generate_fake_name(),
+        name.clone(),
+        connection_annotation_string!(name),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationInput,
         &SocketArity::One,
@@ -116,6 +120,7 @@ async fn list_for_component(ctx: &DalContext) {
     let output_socket = Socket::new(
         ctx,
         "output",
+        connection_annotation_string!("output"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
@@ -127,6 +132,7 @@ async fn list_for_component(ctx: &DalContext) {
     let input_socket = Socket::new(
         ctx,
         "input",
+        connection_annotation_string!("input"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationInput,
         &SocketArity::Many,
@@ -180,6 +186,7 @@ async fn find_by_name_for_edge_kind_and_node(ctx: &DalContext) {
     let output_socket = Socket::new(
         ctx,
         "output",
+        connection_annotation_string!("output"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
@@ -191,6 +198,7 @@ async fn find_by_name_for_edge_kind_and_node(ctx: &DalContext) {
     let input_socket = Socket::new(
         ctx,
         "input",
+        connection_annotation_string!("input"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationInput,
         &SocketArity::Many,

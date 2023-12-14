@@ -126,7 +126,7 @@ where
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         if self.lang_server_debugging {
-            command.env("DEBUG", "*").env("DEBUG_DEPTH", "5");
+            command.env("SI_LANG_JS_LOG", "*");
         }
         debug!(cmd = ?command, "spawning child process");
         let mut child = command

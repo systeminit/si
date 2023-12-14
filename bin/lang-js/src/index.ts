@@ -1,16 +1,16 @@
-#!/usr/bin/env tsc
+#!/usr/bin/env node
 
-import * as fs from "fs";
+import fs from "fs";
 import { Command } from "commander";
-import Debug from "debug";
+import { makeConsole } from "./sandbox/console";
+import { Request } from "./request";
 import {
   executeFunction,
   failureExecution,
   FunctionKind,
   functionKinds,
 } from "./function";
-import { makeConsole } from "./sandbox/console";
-import { Request } from "./request";
+import { Debug } from "./debug";
 
 const debug = Debug("langJs");
 const STDIN_FD = 0;

@@ -212,6 +212,10 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
 import { LoadingMessage, getToneColorHex } from "@si/vue-lib/design-system";
+import {
+  connectionAnnotationFitsReference,
+  parseConnectionAnnotation,
+} from "@si/ts-lib/src/connection-annotations";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
@@ -326,6 +330,7 @@ const gridOrigin = ref<Vector2d>({ x: 0, y: 0 });
 // I opted to track this internally rather than use v-model so the parent component isn't _forced_ to care about it
 // but there will often probably be some external controls, which can be done using exposed setZoom and update:zoom event
 const zoomLevel = ref(1);
+
 function setZoomLevel(newZoomLevel: number) {
   if (newZoomLevel < MIN_ZOOM) zoomLevel.value = MIN_ZOOM;
   else if (newZoomLevel > MAX_ZOOM) zoomLevel.value = MAX_ZOOM;
@@ -379,6 +384,7 @@ watch(gridPointerPos, (pos) => {
 });
 
 const presenceStore = usePresenceStore();
+
 function sendUpdatedPointerPos(pos?: Vector2d) {
   presenceStore.updateCursor(pos ?? null);
 }
@@ -570,6 +576,7 @@ function onKeyDown(e: KeyboardEvent) {
     modelingEventBus.emit("deleteSelection");
   }
 }
+
 function onKeyUp(e: KeyboardEvent) {
   if (e.key === " ") spaceKeyIsDown.value = false;
   if (e.key === "Shift") shiftKeyIsDown.value = false;
@@ -586,6 +593,7 @@ const lastMouseDownElement = computed(() =>
     ? allElementsByKey.value[lastMouseDownElementKey.value]
     : undefined,
 );
+
 function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   if (props.controlsDisabled) return;
   // not sure why, but this is being called twice, once with the konva event, and once with the bare event
@@ -616,6 +624,7 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   else if (insertElementActive.value) triggerInsertElement();
   else handleMouseDownSelection();
 }
+
 function onMouseUp(e: MouseEvent) {
   if (props.controlsDisabled) return;
   // we dont care about right click
@@ -632,6 +641,7 @@ function onMouseUp(e: MouseEvent) {
     triggerInsertElement();
   else handleMouseUpSelection();
 }
+
 function onMouseMove(e: MouseEvent) {
   if (props.controlsDisabled) return;
   // update pointer location relative to container, which is used throughout
@@ -656,6 +666,7 @@ function onMouseMove(e: MouseEvent) {
     }
   }
 }
+
 function onRightClick(ke: KonvaEventObject<MouseEvent>) {
   if (props.controlsDisabled) return;
   const e = ke.evt;
@@ -835,6 +846,7 @@ function onElementHoverStart(el: DiagramElementData, meta?: ElementHoverMeta) {
     componentsStore.setHoveredEdgeId(el.def.id);
   }
 }
+
 function onElementHoverEnd(_el: DiagramElementData) {
   hoveredElementMeta.value = undefined;
   componentsStore.setHoveredComponentId(null);
@@ -855,11 +867,13 @@ const dragToPanArmed = computed(() => spaceKeyIsDown.value); // hold space to en
 const dragToPanActive = ref(false); // then click to start dragging
 
 const beginDragOrigin = ref<Vector2d | null>(null);
+
 function beginDragToPan() {
   if (!containerPointerPos.value) return;
   dragToPanActive.value = true;
   beginDragOrigin.value = gridOrigin.value;
 }
+
 function onDragToPanMove() {
   if (!beginDragOrigin.value || !lastMouseDownContainerPointerPos.value) return;
   if (!containerPointerPos.value) return;
@@ -877,6 +891,7 @@ function onDragToPanMove() {
         zoomLevel.value,
   };
 }
+
 function endDragToPan() {
   dragToPanActive.value = false;
 }
@@ -991,6 +1006,7 @@ function toggleSelectedByKey(
   // second true enables "toggle" mode
   componentsStore.setSelectedComponentId(elIds, { toggle: true });
 }
+
 function clearSelection() {
   componentsStore.setSelectedComponentId(null);
 }
@@ -998,6 +1014,7 @@ function clearSelection() {
 function elementIsHovered(el: DiagramElementData) {
   return !disableHoverEvents.value && hoveredElementKey.value === el.uniqueKey;
 }
+
 function elementIsSelected(el: DiagramElementData) {
   if (dragSelectActive.value) {
     return dragSelectPreviewKeys.value.includes(el.uniqueKey);
@@ -1007,6 +1024,7 @@ function elementIsSelected(el: DiagramElementData) {
 }
 
 const handleSelectionOnMouseUp = ref(false);
+
 function handleMouseDownSelection() {
   handleSelectionOnMouseUp.value = false;
 
@@ -1060,6 +1078,7 @@ const dragSelectPreviewKeys = ref<DiagramElementUniqueKey[]>([]);
 const SELECTION_BOX_INNER_COLOR = tinycolor(SELECTION_COLOR)
   .setAlpha(0.4)
   .toRgbString();
+
 function beginDragSelect() {
   if (!containerPointerPos.value) return;
   dragSelectPreviewKeys.value = [];
@@ -1070,6 +1089,7 @@ function beginDragSelect() {
   );
   dragSelectEndPos.value = undefined;
 }
+
 function onDragSelectMove() {
   dragSelectEndPos.value = gridPointerPos.value;
 
@@ -1097,6 +1117,7 @@ function onDragSelectMove() {
     dragSelectPreviewKeys.value = selectedInBoxKeys;
   }
 }
+
 function endDragSelect(doSelection = true) {
   dragSelectActive.value = false;
   if (doSelection) setSelectionByKey(dragSelectPreviewKeys.value);
@@ -1155,6 +1176,7 @@ function beginDragElements() {
     (el) => movedElementPositions[el.uniqueKey] || _.get(el.def, "position"),
   );
 }
+
 function endDragElements() {
   dragElementsActive.value = false;
   // fire off final move event, might want to clean up how this is done...
@@ -1264,6 +1286,7 @@ function endDragElements() {
 }
 
 let dragToEdgeScrollInterval: ReturnType<typeof setInterval> | undefined;
+
 function onDragElementsMove() {
   if (!containerPointerPos.value) return;
   if (!lastMouseDownContainerPointerPos.value) return;
@@ -1424,6 +1447,7 @@ function onDragElementsMove() {
     dragToEdgeScrollInterval = undefined;
   }
 }
+
 function triggerDragToEdgeScrolling() {
   if (!containerPointerPos.value) return;
   const pointerX = containerPointerPos.value.x;
@@ -1508,6 +1532,7 @@ function alignSelection(direction: Direction) {
   });
   // TODO: move viewport to show selection
 }
+
 function nudgeSelection(direction: Direction, largeNudge: boolean) {
   if (!currentSelectionMovableElements.value.length) return;
   const nudgeSize = largeNudge ? 10 : 1;
@@ -1626,6 +1651,7 @@ function beginResizeElement() {
   draggedElementsPositionsPreDrag.value[resizeTargetKey] =
     movedElementPositions[resizeTargetKey] || node.position;
 }
+
 function endResizeElement() {
   const el = resizeElement.value;
   if (!el) return;
@@ -1899,12 +1925,34 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
     if (fromSocket.def.direction === possibleToSocket.def.direction)
       return false;
 
-    // now check socket "types"
-    // TODO: probably will rework this - maybe use same type, or use edge types?
-    return fromSocket.def.type === possibleToSocket.def.type;
+    const [outputCAs, inputCAs] =
+      fromSocket.def.direction === "output"
+        ? [
+            fromSocket.def.connectionAnnotations,
+            possibleToSocket.def.connectionAnnotations,
+          ]
+        : [
+            possibleToSocket.def.connectionAnnotations,
+            fromSocket.def.connectionAnnotations,
+          ];
+
+    // check socket connection annotations compatibility
+    for (const outputCA of outputCAs) {
+      for (const inputCA of inputCAs) {
+        const output = parseConnectionAnnotation(outputCA);
+        const input = parseConnectionAnnotation(inputCA);
+
+        if (connectionAnnotationFitsReference(output, input)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   });
   return _.map(possibleSockets, (s) => s.uniqueKey);
 });
+
 const drawEdgeWillDeleteEdges = computed(() => {
   const fromSocket = drawEdgeFromSocket.value;
   const toSocket = drawEdgeToSocket.value;
@@ -1943,6 +1991,7 @@ function beginDrawEdge(fromSocket: DiagramSocketData) {
   drawEdgeFromSocketKey.value = fromSocket.uniqueKey;
   drawEdgeToSocketKey.value = undefined;
 }
+
 function onDrawEdgeMove() {
   if (!gridPointerPos.value) return;
   // look through the possible target sockets, and find distances to the pointer
@@ -1966,6 +2015,7 @@ function onDrawEdgeMove() {
     drawEdgeToSocketKey.value = undefined;
   }
 }
+
 async function endDrawEdge() {
   drawEdgeActive.value = false;
   if (!drawEdgeFromSocket.value || !drawEdgeToSocket.value) return;
@@ -2010,6 +2060,7 @@ async function endDrawEdge() {
     );
   }
 }
+
 // ELEMENT ADDITION
 const insertElementActive = computed(
   () => !!componentsStore.selectedInsertSchemaId,
@@ -2136,6 +2187,7 @@ function getDiagramElementKeyForComponentId(componentId?: ComponentId | null) {
     return DiagramNodeData.generateUniqueKey(component.nodeId);
   }
 }
+
 function getDiagramElementKeyForEdgeId(edgeId?: EdgeId | null) {
   if (!edgeId) return;
   return DiagramEdgeData.generateUniqueKey(edgeId);

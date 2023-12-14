@@ -290,7 +290,7 @@ impl InternalProvider {
 
     /// This function will also create an _input_ [`Socket`](crate::Socket).
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(ctx, name))]
+    #[tracing::instrument(skip(ctx, name, connection_annotations))]
     pub async fn new_explicit_with_socket(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -298,6 +298,7 @@ impl InternalProvider {
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
+        connection_annotations: impl AsRef<str>,
         arity: SocketArity,
         frame_socket: bool,
     ) -> InternalProviderResult<(Self, Socket)> {
@@ -348,6 +349,7 @@ impl InternalProvider {
         let socket = Socket::new(
             ctx,
             name,
+            connection_annotations.as_ref(),
             match frame_socket {
                 true => SocketKind::Frame,
                 false => SocketKind::Provider,

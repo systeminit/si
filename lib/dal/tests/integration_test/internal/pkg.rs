@@ -13,7 +13,7 @@ use dal::{
     PropKind, Schema, SchemaVariant, StandardModel, ValidationPrototype,
 };
 use dal::{BuiltinsResult, ComponentType};
-use dal_test::{test, DalContextHeadRef};
+use dal_test::{connection_annotation_string, test, DalContextHeadRef};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
     FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, LeafFunctionSpec,
@@ -273,6 +273,7 @@ async fn make_stellarfield(ctx: &DalContext) -> BuiltinsResult<()> {
                             SocketSpecData::builder()
                                 .name("bethesda")
                                 .kind(SocketSpecKind::Input)
+                                .connection_annotations(serde_json::to_string(&vec!["bethesda"])?)
                                 .build()?,
                         )
                         .build()?,
@@ -284,6 +285,7 @@ async fn make_stellarfield(ctx: &DalContext) -> BuiltinsResult<()> {
                             SocketSpecData::builder()
                                 .name("fallout")
                                 .kind(SocketSpecKind::Input)
+                                .connection_annotations(serde_json::to_string(&vec!["fallout"])?)
                                 .build()?,
                         )
                         .build()?,
@@ -592,6 +594,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                         .data(
                             SocketSpecData::builder()
                                 .name("AC Power")
+                                .connection_annotations(connection_annotation_string!("ac power"))
                                 .ui_hidden(false)
                                 .kind(SocketSpecKind::Input)
                                 .arity(SocketSpecArity::One)
@@ -607,6 +610,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                         .data(
                             SocketSpecData::builder()
                                 .name("Light")
+                                .connection_annotations(connection_annotation_string!("light"))
                                 .kind(SocketSpecKind::Output)
                                 .arity(SocketSpecArity::Many)
                                 .ui_hidden(false)

@@ -15,6 +15,13 @@ pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
 }
 
+#[macro_export]
+macro_rules! connection_annotation_string {
+    ($str:expr) => {
+        serde_json::to_string(&vec![$str]).expect("Unable to parse annotation string")
+    };
+}
+
 pub async fn create_change_set(ctx: &DalContext) -> ChangeSet {
     let name = generate_fake_name();
     ChangeSet::new(ctx, &name, None)
@@ -80,6 +87,7 @@ pub async fn create_schema_variant_with_root(
     let _input_socket = Socket::new(
         ctx,
         "input",
+        connection_annotation_string!("input"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationInput,
         &SocketArity::Many,
@@ -92,6 +100,7 @@ pub async fn create_schema_variant_with_root(
     let _output_socket = Socket::new(
         ctx,
         "output",
+        connection_annotation_string!("output"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,

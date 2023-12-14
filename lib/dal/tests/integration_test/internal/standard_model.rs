@@ -4,7 +4,7 @@ use dal::{
     SchemaVariant, SchemaVariantId, Socket, SocketArity, SocketId, StandardModel,
 };
 use dal_test::{
-    test,
+    connection_annotation_string, test,
     test_harness::{create_func, create_schema, create_schema_variant, create_visibility_head},
 };
 use itertools::Itertools;
@@ -334,6 +334,7 @@ async fn associate_many_to_many(ctx: &DalContext) {
     let socket_one = Socket::new(
         ctx,
         "socket_one",
+        connection_annotation_string!("socket_one"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
@@ -345,6 +346,7 @@ async fn associate_many_to_many(ctx: &DalContext) {
     let socket_two = Socket::new(
         ctx,
         "socket_two",
+        connection_annotation_string!("socket_two"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationInput,
         &SocketArity::Many,
@@ -398,6 +400,7 @@ async fn disassociate_many_to_many(ctx: &DalContext) {
     let socket_one = Socket::new(
         ctx,
         "socket_one",
+        connection_annotation_string!("socket_one"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
@@ -442,6 +445,7 @@ async fn disassociate_all_many_to_many(ctx: &DalContext) {
     let socket_one = Socket::new(
         ctx,
         "socket_one",
+        connection_annotation_string!("socket_one"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
@@ -485,6 +489,7 @@ async fn many_to_many(ctx: &DalContext) {
     let socket_one = Socket::new(
         ctx,
         "socket_one",
+        connection_annotation_string!("socket_one"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
@@ -496,6 +501,7 @@ async fn many_to_many(ctx: &DalContext) {
     let socket_two = Socket::new(
         ctx,
         "socket_two",
+        connection_annotation_string!("socket_two"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationInput,
         &SocketArity::Many,
@@ -641,6 +647,7 @@ async fn associate_many_to_many_no_repeat_entries(ctx: &DalContext) {
     let socket_one = Socket::new(
         ctx,
         "socket_one",
+        connection_annotation_string!("socket_one"),
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,

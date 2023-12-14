@@ -1,3 +1,5 @@
+import { parseConnectionAnnotation } from "@si/ts-lib";
+
 export type ValueFromKind = "inputSocket" | "outputSocket" | "prop";
 
 export interface ValueFrom {
@@ -104,6 +106,7 @@ export type SocketDefinitionArityType = "many" | "one";
 export interface SocketDefinition {
   name: string;
   arity: SocketDefinitionArityType;
+  connectionAnnotations: string;
   uiHidden?: boolean;
   valueFrom?: ValueFrom;
 }
@@ -112,6 +115,8 @@ export interface ISocketDefinitionBuilder {
   setName(name: string): this;
 
   setArity(arity: SocketDefinitionArityType): this;
+
+  setConnectionAnnotation(annotation: string): this;
 
   setUiHidden(hidden: boolean): this;
 
@@ -131,6 +136,7 @@ export interface ISocketDefinitionBuilder {
  */
 export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
   socket = <SocketDefinition>{};
+  connectionAnnotations: string[] = [];
 
   constructor() {
     this.socket = <SocketDefinition>{};
@@ -143,11 +149,21 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
    *  .build()
    */
   build(): SocketDefinition {
+    if (!this.socket.name) {
+      throw new Error("Name is required for socket");
+    }
+
+    this.connectionAnnotations.push(this.socket.name.toLowerCase());
+
+    this.socket.connectionAnnotations = JSON.stringify(
+      this.connectionAnnotations.map((a) => a.toLowerCase().trim()),
+    );
+
     return this.socket;
   }
 
   /**
-   * Specify the prop path if using a prop
+   * Specify the number of connections the socket can support
    *
    * @param {string} arity - [one | many]
    *
@@ -158,6 +174,36 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
    */
   setArity(arity: SocketDefinitionArityType): this {
     this.socket.arity = arity;
+    return this;
+  }
+
+  /**
+   * Add a field to the connection annotations array for the socket.
+   * The input should be sequence of word chars (\w regex matcher), optionally
+   * followed by any `<identifier>`, which makes it a supertype of `identifier`.
+   * This can be repeated recursively as many times as necessary (see example).
+   * At socket connecting time an *input* socket can receive a connection of any
+   * *output* socket that has a compatible connection annotation.
+   *
+   * e.g. An input socket with the `Port<string>` connection
+   * annotation can receive a
+   * connection from an output socket with the `Docker<Port<string>>` annotation,
+   * but not one with just `string`.
+   *
+   * The socket's name is always one of the connection annotations.
+   *
+   * @param {string} annotation
+   *
+   * @returns this
+   *
+   * @example
+   *  .setConnectionAnnotation("EC2<IAM<string>>")
+   */
+  setConnectionAnnotation(annotation: string): this {
+    // Throws if not able to match annotation
+    parseConnectionAnnotation(annotation);
+
+    this.connectionAnnotations.push(annotation);
     return this;
   }
 
@@ -1007,7 +1053,7 @@ export interface ISecretDefinitionBuilder {
  *
  * @example
  * const secretDefinition = new SecretDefinitionBuilder()
-*          .setName("DigitalOcean Token")
+ *          .setName("DigitalOcean Token")
  *         .addProp(
  *             new PropBuilder()
  *             .setKind("string")

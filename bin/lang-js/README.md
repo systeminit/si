@@ -7,7 +7,7 @@ This directory contains `lang-js`.
 Here is an example of testing `lang-js` locally:
 
 ```bash
-DEBUG=* buck2 run :lang-js -- ${CHECK_NAME} < examples/${FILE_NAME}
+SI_LANG_JS_LOG=* buck2 run :lang-js -- ${CHECK_NAME} < examples/${FILE_NAME}
 ```
 
 ## Encoding the Code
@@ -28,7 +28,7 @@ First, let's author a function and save it to the [examples](./examples) directo
 
 ```js
 function fail() {
-    throw new Error("wheeeeeeeeeeeeeeee");
+  throw new Error("wheeeeeeeeeeeeeeee");
 }
 ```
 
@@ -42,9 +42,9 @@ Then, we can create a `json` file in the same directory that's in a format that 
 
 ```json
 {
-    "executionId": "fail",
-    "handler": "fail",
-    "codeBase64": "ZnVuY3Rpb24gZmFpbCgpIHsKICAgIHRocm93IG5ldyBFcnJvcigid2hlZWVlZWVlZWVlZWVlZWVlIik7Cn0K"
+  "executionId": "fail",
+  "handler": "fail",
+  "codeBase64": "ZnVuY3Rpb24gZmFpbCgpIHsKICAgIHRocm93IG5ldyBFcnJvcigid2hlZWVlZWVlZWVlZWVlZWVlIik7Cn0K"
 }
 ```
 
@@ -53,5 +53,5 @@ Finally, we can run our function in `lang-js` directly.
 When we run our function in `lang-js`, let's set the debug flag to see what's going on!
 
 ```bash
-cat examples/commandRunFail.json | DEBUG=* buck2 run :lang-js -- commandRun
+cat examples/commandRunFail.json | SI_LANG_JS_LOG=* buck2 run :lang-js -- commandRun
 ```

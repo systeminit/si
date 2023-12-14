@@ -1,3 +1,4 @@
+import { describe, expect, test } from "vitest";
 import { makeExec } from "../src/sandbox/exec";
 
 describe("exec", () => {

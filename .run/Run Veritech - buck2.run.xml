@@ -12,7 +12,7 @@
     <option name="EXECUTE_IN_TERMINAL" value="false" />
     <option name="EXECUTE_SCRIPT_FILE" value="false" />
     <envs>
-      <env name="DEBUG" value="*" />
+      <env name="SI_LANG_JS_LOG=" value="*" />
     </envs>
     <method v="2" />
   </configuration>

@@ -65,6 +65,9 @@ pub enum GraphError {
     /// When a line failed to parse as a key/value line while parsing a serialize node
     #[error("could not parse line as 'key=value': '{0}'")]
     ParseLineKeyValueFormat(String),
+    /// When an error is returned trying to serialize a value to json
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     /// When a child node is missing a hash value while computing a hashing tree
     #[error("unhashed child node for '{0}' with name: {1}")]
     UnhashedChild(String, String),

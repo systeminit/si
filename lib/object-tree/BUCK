@@ -8,6 +8,7 @@ rust_library(
         "//third-party/rust:petgraph",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
         "//third-party/rust:strum",
         "//third-party/rust:tar",
         "//third-party/rust:tempfile",

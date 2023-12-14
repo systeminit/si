@@ -261,6 +261,9 @@ impl MigrationDriver {
                             .data(
                                 SocketSpecData::builder()
                                     .name("bethesda")
+                                    .connection_annotations(serde_json::to_string(&vec![
+                                        "bethesda",
+                                    ])?)
                                     .kind(SocketSpecKind::Input)
                                     .build()?,
                             )
@@ -272,6 +275,9 @@ impl MigrationDriver {
                             .data(
                                 SocketSpecData::builder()
                                     .name("fallout")
+                                    .connection_annotations(serde_json::to_string(&vec![
+                                        "fallout",
+                                    ])?)
                                     .kind(SocketSpecKind::Input)
                                     .build()?,
                             )

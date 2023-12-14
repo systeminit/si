@@ -1,5 +1,6 @@
 use dal::{socket::SocketArity, DalContext, ExternalProvider, InternalProvider, StandardModel};
 use dal_test::{
+    connection_annotation_string,
     helpers::setup_identity_func,
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
@@ -28,6 +29,7 @@ async fn new_external(ctx: &DalContext) {
         func_id,
         func_binding_id,
         func_binding_return_value_id,
+        connection_annotation_string!("poop"),
         SocketArity::Many,
         false,
     )
@@ -63,6 +65,7 @@ async fn new_implicit_internal(ctx: &DalContext) {
         func_id,
         func_binding_id,
         func_binding_return_value_id,
+        connection_annotation_string!("poop"),
         SocketArity::Many,
         false,
     )

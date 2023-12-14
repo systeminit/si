@@ -108,7 +108,7 @@ pub struct ExternalProvider {
 impl ExternalProvider {
     /// This function will also create an _output_ [`Socket`](crate::Socket).
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(ctx, name))]
+    #[tracing::instrument(skip(ctx, name, connection_annotations))]
     pub async fn new_with_socket(
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -118,10 +118,10 @@ impl ExternalProvider {
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
+        connection_annotations: impl AsRef<str>,
         arity: SocketArity,
         frame_socket: bool,
     ) -> ExternalProviderResult<(Self, Socket)> {
-        let name = name.as_ref();
         let row = ctx
             .txns()
             .await?
@@ -133,7 +133,7 @@ impl ExternalProvider {
                     ctx.visibility(),
                     &schema_id,
                     &schema_variant_id,
-                    &name,
+                    &name.as_ref(),
                     &type_definition,
                 ],
             )
@@ -162,6 +162,7 @@ impl ExternalProvider {
         let socket = Socket::new(
             ctx,
             name,
+            connection_annotations.as_ref(),
             match frame_socket {
                 true => SocketKind::Frame,
                 false => SocketKind::Provider,

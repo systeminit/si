@@ -1,5 +1,5 @@
-import Debug from "debug";
 import { NodeVM } from "vm2";
+import { Debug } from "../debug";
 
 import {
   failureExecution,
@@ -12,7 +12,7 @@ import { RequestCtx } from "../request";
 const debug = Debug("langJs:before");
 
 export interface BeforeFunc extends Func {
-  arg: unknown
+  arg: unknown;
 }
 
 export type BeforeResultSuccess = ResultSuccess;

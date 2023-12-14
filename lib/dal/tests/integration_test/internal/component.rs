@@ -9,6 +9,7 @@ use dal::{
 };
 use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::{
+    connection_annotation_string,
     helpers::setup_identity_func,
     test,
     test_harness::{
@@ -277,6 +278,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        connection_annotation_string!("cooling"),
         SocketArity::Many,
         false,
     )
@@ -306,6 +308,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        connection_annotation_string!("cooling"),
         SocketArity::Many,
         false,
     )

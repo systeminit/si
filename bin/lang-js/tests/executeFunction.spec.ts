@@ -1,9 +1,12 @@
 import * as fs from "fs/promises";
+import {
+  describe, expect, test, vi,
+} from "vitest";
 import { executeFunction, FunctionKind } from "../src/function";
 import { AnyFunction, RequestCtx } from "../src/request";
 
 let lastLog = "";
-const consoleSpy = jest.spyOn(console, "log").mockImplementation((msg) => {
+const consoleSpy = vi.spyOn(console, "log").mockImplementation((msg) => {
   console.dir(msg);
   lastLog = msg;
 });
@@ -13,6 +16,7 @@ const FUNCS_FOLDER = "./tests/functions/";
 type FuncOrFuncLocation = string | (() => unknown);
 
 interface FuncScenario {
+  name: string;
   kind: FunctionKind;
   funcSpec: AnyFunction;
   func: FuncOrFuncLocation;
@@ -25,6 +29,17 @@ interface FuncScenario {
 
 const scenarios: FuncScenario[] = [
   {
+    name: "Schema Variant with connection annotations",
+    kind: FunctionKind.SchemaVariantDefinition,
+    funcSpec: {
+      value: {},
+      handler: "main",
+      codeBase64: "", // We rewrite this later
+    },
+    func: "schema-socket.ts",
+  },
+  {
+    name: "Action Run",
     kind: FunctionKind.ActionRun,
     funcSpec: {
       value: {},
@@ -34,15 +49,7 @@ const scenarios: FuncScenario[] = [
     func: "actionRun.ts",
   },
   {
-    kind: FunctionKind.Validation,
-    funcSpec: {
-      value: {},
-      handler: "main",
-      codeBase64: "", // We rewrite this later
-    },
-    func: "validation.ts",
-  },
-  {
+    name: "Before funcs",
     kind: FunctionKind.Validation,
     funcSpec: {
       value: {},
@@ -66,8 +73,9 @@ const scenarios: FuncScenario[] = [
 ];
 
 describe("executeFunction", () => {
-  scenarios.forEach((scenario, i) => {
-    test(`Scenario ${i}`, async () => {
+  test.each(scenarios)(
+    "$name",
+    async (scenario) => {
       consoleSpy.mockClear();
       lastLog = "";
       let codeBase64: string;
@@ -123,10 +131,11 @@ describe("executeFunction", () => {
         protocol: "result",
         status: "success",
       });
-    });
-  });
+    },
+  );
 });
 
 async function base64FromFile(path: string) {
-  return (await fs.readFile(path)).toString("base64");
+  const buffer = await fs.readFile(path);
+  return (buffer).toString("base64");
 }
