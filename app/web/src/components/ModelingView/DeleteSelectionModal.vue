@@ -34,11 +34,16 @@
         this change set will be deleted immediately.
       </p>
 
-      <div class="flex space-x-sm justify-end">
+      <div class="flex gap-sm">
         <VButton icon="x" tone="shade" variant="ghost" @click="close">
           Cancel
         </VButton>
-        <VButton icon="trash" tone="destructive" @click="onConfirmDelete">
+        <VButton
+          icon="trash"
+          tone="destructive"
+          class="flex-grow"
+          @click="onConfirmDelete"
+        >
           Confirm
         </VButton>
       </div>
@@ -96,6 +101,7 @@ function open() {
 }
 
 async function onConfirmDelete() {
+  close();
   if (componentsStore.selectedEdgeId) {
     await componentsStore.DELETE_EDGE(componentsStore.selectedEdgeId);
   } else if (componentsStore.selectedComponentIds) {
@@ -104,16 +110,23 @@ async function onConfirmDelete() {
     );
   }
   componentsStore.setSelectedComponentId(null);
-  close();
 }
 
 const modelingEventBus = componentsStore.eventBus;
 onMounted(() => {
   modelingEventBus.on("deleteSelection", open);
+  window.addEventListener("keydown", onKeyDown);
 });
 onBeforeUnmount(() => {
   modelingEventBus.off("deleteSelection", open);
+  window.removeEventListener("keydown", onKeyDown);
 });
+
+const onKeyDown = async (e: KeyboardEvent) => {
+  if (e.key === "Enter" && !deletionBlockedReason.value) {
+    onConfirmDelete();
+  }
+};
 
 defineExpose({ open, close });
 </script>

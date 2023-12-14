@@ -170,7 +170,11 @@
             Pick which actions will be applied to the real world:
           </div>
           <ul class="mb-sm">
-            <li v-for="action in actionsStore.proposedActions" :key="action.id">
+            <li
+              v-for="action in actionsStore.proposedActions"
+              :key="action.id"
+              class="list-none"
+            >
               <ActionSprite
                 :action="action"
                 @remove="actionsStore.REMOVE_ACTION(action.id)"
@@ -179,6 +183,13 @@
           </ul>
         </template>
         <div class="flex flex-row items-center w-full gap-sm">
+          <VButton
+            tone="shade"
+            variant="ghost"
+            icon="x"
+            label="Cancel"
+            @click="applyModalRef?.close"
+          />
           <VButton
             v-if="!changeSetsStore.headSelected"
             ref="applyButtonRef"
@@ -196,12 +207,6 @@
             "
             :disabled="statusStoreUpdating"
             @click="requiresVoting ? beginMergeApproval() : applyChangeSet()"
-          />
-          <VButton
-            tone="destructive"
-            icon="x"
-            label="Cancel"
-            @click="applyModalRef?.close"
           />
         </div>
       </template>
@@ -249,7 +254,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, computed, ref, watch } from "vue";
+import { onMounted, computed, ref, watch, onBeforeUnmount } from "vue";
 import * as _ from "lodash-es";
 import { useRouter, useRoute } from "vue-router";
 import { VButton, Modal, Icon } from "@si/vue-lib/design-system";
@@ -275,6 +280,9 @@ const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+const changeSet = computed(() => changeSetsStore.selectedChangeSet!);
+
 const hasActions = computed(() => actionsStore.proposedActions.length > 0);
 const requiresVoting = computed(
   () => presenceStore.usersInChangeset.length > 0,
@@ -285,10 +293,12 @@ const changeSetAppliedRef = ref();
 const rejectedWorkflow = ref<boolean>();
 const successfullyVoted = ref<boolean>();
 const allUsersVoted = ref<boolean>();
-const canCloseModal = ref<boolean>(requiresVoting.value);
+const canCloseModal = ref<boolean>(
+  requiresVoting.value || changeSet.value.status === ChangeSetStatus.Open,
+);
 
 function openModalHandler() {
-  changeSetAppliedRef.value.close();
+  changeSetAppliedRef.value?.close();
   applyModalRef.value?.open();
   resetState();
 }
@@ -312,7 +322,26 @@ onMounted(() => {
     canvas:
       (document.getElementById("confetti") as HTMLCanvasElement) || undefined,
   });
+  window.addEventListener("keydown", onKeyDown);
 });
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeyDown);
+});
+
+const onKeyDown = async (e: KeyboardEvent) => {
+  if (
+    e.key === "Enter" &&
+    applyModalRef.value?.isOpen &&
+    changeSet.value.status === ChangeSetStatus.Open
+  ) {
+    if (requiresVoting.value) {
+      await beginMergeApproval();
+    } else {
+      await applyChangeSet();
+    }
+  }
+};
 
 const applyChangeSetReqStatus =
   changeSetsStore.getRequestStatus("APPLY_CHANGE_SET");
@@ -356,8 +385,6 @@ async function cancelApprovalProcess() {
   canCloseModal.value = true;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-const changeSet = computed(() => changeSetsStore.selectedChangeSet!);
 const appliedByYou = computed(
   () =>
     changeSetsStore.selectedChangeSet?.mergeRequestedByUserId ===
@@ -470,9 +497,3 @@ const appliedByUser = computed(() => {
   return presenceStore.usersById[changeSetsStore.postApplyActor!];
 });
 </script>
-
-<style lang="less" scoped>
-li {
-  list-style-type: none;
-}
-</style>

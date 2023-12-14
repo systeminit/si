@@ -130,7 +130,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, computed, ref, watch } from "vue";
+import { onMounted, onBeforeUnmount, computed, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { useRoute, useRouter } from "vue-router";
 import {
@@ -188,7 +188,21 @@ const checkFirstLoad = () => {
 };
 
 watch([changeSetsReqStatus], checkFirstLoad);
-onMounted(checkFirstLoad);
+
+onMounted(() => {
+  checkFirstLoad();
+  window.addEventListener("keydown", onKeyDown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeyDown);
+});
+
+const onKeyDown = async (e: KeyboardEvent) => {
+  if (e.key === "Enter" && abandonConfirmationModalRef.value?.isOpen) {
+    abandonChangesetHandler();
+  }
+};
 
 // The name for a new change set
 const createChangeSetName = ref(changeSetsStore.getGeneratedChangesetName());
