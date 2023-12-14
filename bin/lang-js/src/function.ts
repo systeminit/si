@@ -1,5 +1,4 @@
 import * as _ from "lodash-es";
-import { Debugger } from "debug";
 import { NodeVM } from "vm2";
 import { base64ToJs } from "./base64";
 import { createNodeVm } from "./vm";
@@ -18,6 +17,7 @@ import schema_variant_definition, {
 import action_run, { ActionRunFunc } from "./function_kinds/action_run";
 import before from "./function_kinds/before";
 import { rawStorageRequest } from "./sandbox/requestStorage";
+import { Debugger } from "./debug";
 
 export enum FunctionKind {
   ActionRun = "actionRun",

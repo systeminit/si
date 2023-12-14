@@ -1,6 +1,6 @@
 import { setTimeout } from "timers/promises";
 import execa, { ExecaReturnValue, Options } from "execa";
-import Debug from "debug";
+import { Debug } from "../debug";
 
 export interface WatchArgs {
   cmd: string;

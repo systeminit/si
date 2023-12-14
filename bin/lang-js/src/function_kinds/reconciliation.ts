@@ -1,6 +1,6 @@
-import Debug from "debug";
 import { NodeVM } from "vm2";
 import * as _ from "lodash-es";
+import { Debug } from "../debug";
 import {
   failureExecution,
   Func,
