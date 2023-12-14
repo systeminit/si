@@ -82,23 +82,6 @@ sudo mount -v "$ROOTFS" "$ROOTFSMOUNT"
 
 setup_traps cleanup
 
-# For each tar.gz, copy the contents into the rootfs into the rootfs partition
-# we created above. This will cumulatively stack the content of each.
-for binary_input in "${binary_inputs[@]}"; do
-  sudo tar -xpf "$binary_input" -C "$ROOTFSMOUNT"
-
-  # TODO(johnrwatson): This can never make it into Production We need to figure
-  # out how to pass these decryption keys at all for the services That need
-  # them, maybe we need another sub-service specifically for fetching these from
-  # a secret provider or similar. Only for cyclone pull the dev decryption key
-  if echo "$binary_input" | grep -q "cyclone"; then
-    sudo mkdir -pv "$ROOTFSMOUNT/run/cyclone"
-    sudo cp -v \
-      "$GITROOT/lib/cyclone-server/src/dev.decryption.key" \
-      "$ROOTFSMOUNT/run/cyclone/decryption.key"
-  fi
-done
-
 cyclone_args=(
   --bind-vsock 3:52
   --decryption-key /run/cyclone/decryption.key
@@ -181,6 +164,26 @@ docker run \
   --entrypoint sh \
   alpine:3.19 \
   /init.sh
+
+# For each tar.gz, copy the contents into the rootfs into the rootfs partition
+# we created above. This will cumulatively stack the content of each.
+
+# This must happen `after` the docker build or the rootfs will be missing a lot
+# of the filesystem /etc /var, etc.
+for binary_input in "${binary_inputs[@]}"; do
+  sudo tar -xpf "$binary_input" -C "$ROOTFSMOUNT"
+
+  # TODO(johnrwatson): This can never make it into Production We need to figure
+  # out how to pass these decryption keys at all for the services That need
+  # them, maybe we need another sub-service specifically for fetching these from
+  # a secret provider or similar. Only for cyclone pull the dev decryption key
+  if echo "$binary_input" | grep -q "cyclone"; then
+    sudo mkdir -pv "$ROOTFSMOUNT/run/cyclone"
+    sudo cp -v \
+      "$GITROOT/lib/cyclone-server/src/dev.decryption.key" \
+      "$ROOTFSMOUNT/run/cyclone/decryption.key"
+  fi
+done
 
 cp -v "$ROOTFS" "$tar_file_out"
 
