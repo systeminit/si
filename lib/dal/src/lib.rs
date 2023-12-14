@@ -46,7 +46,6 @@ pub mod property_editor;
 pub mod provider;
 pub mod schema;
 pub mod serde_impls;
-pub mod socket;
 pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;
@@ -61,6 +60,7 @@ pub mod ws_event;
 
 // TODO(nick,jacob): this should self-destruct once the new engine is in place.
 // pub mod node;
+// pub mod socket;
 
 // pub mod code_view;
 // pub mod edge;

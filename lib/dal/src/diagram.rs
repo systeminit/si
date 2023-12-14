@@ -141,29 +141,35 @@ impl Diagram {
             // let maybe_socket_to_parent = sockets.iter().find(|socket| {
             //     socket.label == "Frame" && socket.direction == SocketDirection::Output
             // });
-            //
+
             // let edges_with_deleted =
             //     Edge::list_for_component(ctx_with_deleted, *component.id()).await?;
-            //
-            // let mut parent_node_id = None;
-            //
+
+            // let mut parent_node_ids = Vec::new();
+
             // if let Some(socket_to_parent) = maybe_socket_to_parent {
             //     for edge in &edges_with_deleted {
             //         if edge.tail_node_id() == *node.id()
             //             && edge.tail_socket_id().to_string() == socket_to_parent.id
             //             && (edge.visibility().deleted_at.is_none() || edge.deleted_implicitly())
             //         {
-            //             parent_node_id = Some(edge.head_node_id());
-            //             break;
+            //             let parents =
+            //                 Edge::list_parents_for_component(ctx, edge.head_component_id()).await?;
+            //             parent_node_ids.push((edge.head_node_id(), parents.len()));
             //         }
             //     }
             // };
-            //
+
+            // let parent_node_id = parent_node_ids
+            //     .into_iter()
+            //     .max_by_key(|(_, parents)| *parents)
+            //     .map(|(id, _)| id);
+
             // // Get Child Ids
             // let maybe_socket_from_children = sockets.iter().find(|socket| {
             //     socket.label == "Frame" && socket.direction == SocketDirection::Input
             // });
-            //
+
             // let mut child_node_ids = vec![];
             // if let Some(socket_from_children) = maybe_socket_from_children {
             //     for edge in &edges_with_deleted {
@@ -175,7 +181,7 @@ impl Diagram {
             //             let child_node = Node::get_by_id(ctx_with_deleted, &edge.tail_node_id())
             //                 .await?
             //                 .ok_or(DiagramError::NodeNotFound)?;
-            //
+
             //             // This is a node in the current changeset and it is not deleted
             //             if child_node.visibility().in_change_set()
             //                 && child_node.visibility().deleted_at.is_none()
@@ -183,7 +189,7 @@ impl Diagram {
             //                 child_node_ids.push(edge.tail_node_id());
             //                 continue;
             //             }
-            //
+
             //             // this is a node in the current changeset that has been marked as deleted
             //             // now we need to check to see if it is exists in head
             //             // if it does, then it's a ghosted node and should be included as a child
@@ -197,7 +203,7 @@ impl Diagram {
             //                     continue;
             //                 }
             //             }
-            //
+
             //             // if the node is in head, doesn't exist directly on the changeset
             //             // and not marked as deleted in head, then it's also a valid child
             //             // *Remember*: a node won't exist in the changeset until a change is

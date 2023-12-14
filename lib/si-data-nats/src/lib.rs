@@ -55,6 +55,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub struct NatsConfig {
     pub url: String,
     pub subject_prefix: Option<String>,
+    pub creds: Option<String>,
+    pub creds_file: Option<String>,
 }
 
 impl Default for NatsConfig {
@@ -62,6 +64,8 @@ impl Default for NatsConfig {
         Self {
             url: "localhost".to_string(),
             subject_prefix: None,
+            creds: None,
+            creds_file: None,
         }
     }
 }
@@ -94,12 +98,15 @@ pub struct Client {
 impl Client {
     #[instrument(name = "client::new", skip_all, level = "debug")]
     pub async fn new(config: &NatsConfig) -> Result<Self> {
-        Self::connect_with_options(
-            &config.url,
-            config.subject_prefix.clone(),
-            ConnectOptions::default(),
-        )
-        .await
+        let mut options = ConnectOptions::default();
+
+        if let Some(creds) = &config.creds {
+            options = options.credentials(creds)?;
+        }
+        if let Some(creds_file) = &config.creds_file {
+            options = options.credentials_file(creds_file.into()).await?;
+        }
+        Self::connect_with_options(&config.url, config.subject_prefix.clone(), options).await
     }
 
     /// Returns last received info from the server.

@@ -211,7 +211,7 @@ impl SchemaVariant {
             "Frame",
             None,
             func_id,
-            ProviderArity::One,
+            ProviderArity::Many,
             ProviderKind::Frame,
         )
         .await?;

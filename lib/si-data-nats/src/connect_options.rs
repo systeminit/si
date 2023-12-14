@@ -205,6 +205,25 @@ impl ConnectOptions {
             .into())
     }
 
+    /// Use a builder to authenticate with NATS using a `.creds` file.
+    /// Open the provided file, load its creds,
+    /// and perform the desired authentication
+    ///
+    /// # Example
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// let nc = si_data_nats::ConnectOptions::new()
+    ///     .credentials("path/to/my.creds".into())
+    ///     .await?
+    ///     .connect("connect.ngs.global")
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn credentials_file(self, path: PathBuf) -> Result<Self> {
+        Ok(self.inner.credentials_file(path).await?.into())
+    }
     /// Authenticate with NATS using a credential str, in the creds file format.
     ///
     /// # Example
