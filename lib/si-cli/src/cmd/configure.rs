@@ -32,57 +32,6 @@ async fn invoke(_is_preview: bool, reconfigure: bool) -> CliResult<()> {
     println!("{}\n", creds_path.display());
     println!("After changing these credentials, restart System Initiative.");
 
-    if prompt_everything || raw_creds.aws_access_key_id.is_empty() {
-        let aws_access_key = Password::new("AWS Access Key ID")
-            .with_display_toggle_enabled()
-            .without_confirmation()
-            .with_display_mode(PasswordDisplayMode::Full)
-            .prompt();
-
-        match aws_access_key {
-            Ok(aws_access_key) => {
-                raw_creds.aws_access_key_id = aws_access_key;
-                requires_rewrite = true;
-            }
-            Err(inquire::InquireError::OperationInterrupted) => return Err(SiCliError::CtrlC),
-            Err(_) => {
-                println!("An error happened when asking for your AWS Access Key, try again later.")
-            }
-        }
-    }
-
-    if prompt_everything || raw_creds.aws_secret_access_key.is_empty() {
-        let aws_secret_access_key = Password::new("AWS Secret Access Key")
-            .with_display_toggle_enabled()
-            .without_confirmation()
-            .with_display_mode(PasswordDisplayMode::Masked)
-            .prompt();
-
-        match aws_secret_access_key {
-            Ok(aws_secret_access_key) => {
-                raw_creds.aws_secret_access_key = aws_secret_access_key;
-                requires_rewrite = true;
-            }
-            Err(inquire::InquireError::OperationInterrupted) => return Err(SiCliError::CtrlC),
-            Err(_) => println!(
-                "An error happened when asking for your AWS Secret Access Key, try again later."
-            ),
-        }
-    }
-
-    if prompt_everything {
-        let session_token = Text::new("Set an AWS Session Token").prompt();
-
-        match session_token {
-            Ok(token) => {
-                raw_creds.aws_session_token = Some(token);
-                requires_rewrite = true;
-            }
-            Err(inquire::InquireError::OperationInterrupted) => return Err(SiCliError::CtrlC),
-            Err(_) => println!("Not setting an AWS Session Token"),
-        }
-    }
-
     if prompt_everything {
         let endpoint_url = Text::new("Set a Custom AWS Endpoint (e.g. Localstack)").prompt();
 
