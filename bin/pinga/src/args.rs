@@ -111,7 +111,7 @@ impl TryFrom<Args> for Config {
             if let Some(instance_id) = args.instance_id {
                 config_map.set("instance_id", instance_id);
             }
-
+            config_map.set("nats.connection_name", NAME);
             config_map.set("pg.application_name", NAME);
         })?
         .try_into()

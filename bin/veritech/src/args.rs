@@ -76,6 +76,7 @@ impl TryFrom<Args> for Config {
             if let Some(size) = args.cyclone_pool_size {
                 config_map.set("cyclone.pool_size", size);
             }
+            config_map.set("nats.connection_name", NAME);
         })?
         .try_into()
     }

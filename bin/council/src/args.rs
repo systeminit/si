@@ -50,6 +50,7 @@ impl TryFrom<Args> for Config {
             if let Some(creds_file) = args.nats_creds_file {
                 config_map.set("nats.creds_file", creds_file);
             }
+            config_map.set("nats.connection_name", NAME);
         })?
         .try_into()
     }

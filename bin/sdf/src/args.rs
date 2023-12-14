@@ -129,6 +129,7 @@ impl TryFrom<Args> for Config {
                 config_map.set("module_index_url", module_index_url);
             }
 
+            config_map.set("nats.connection_name", NAME);
             config_map.set("pg.application_name", NAME);
         })?
         .try_into()
