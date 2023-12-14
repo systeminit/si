@@ -824,7 +824,10 @@ impl Component {
             .await?;
             let connected_children = frame_edges
                 .into_iter()
-                .filter(|edge| edge.head_socket_id() == *frame_socket.id())
+                .filter(|edge| {
+                    edge.head_node_id() == *frame_node.id()
+                        && edge.head_socket_id() == *frame_socket.id()
+                })
                 .count();
             if connected_children > 0 {
                 return Err(ComponentError::FrameHasAttachedComponents);
