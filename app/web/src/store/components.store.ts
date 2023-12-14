@@ -70,12 +70,15 @@ type RawComponent = {
 
 export type FullComponent = RawComponent & {
   parentNodeId?: ComponentNodeId;
+  // direct parent ID
   parentId?: ComponentId;
+  // array of parent IDs
+  ancestorIds?: ComponentId[];
   childNodeIds?: ComponentNodeId[];
   childIds?: ComponentId[];
-  isGroup: boolean;
   matchesFilter: boolean;
   icon: IconNames;
+  isGroup: false;
 };
 
 type Edge = {
@@ -268,6 +271,25 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               _.keyBy(this.rawComponentsById, (c) => c.nodeId),
               (c) => c.id,
             );
+
+            const getAncestorIds = (
+              componentId: ComponentId,
+              idsArray = [] as ComponentId[],
+            ): ComponentId[] => {
+              const c = this.rawComponentsById[componentId];
+
+              if (!c) throw new Error("what?");
+              const parentId = c.parentNodeId
+                ? nodeIdToComponentId[c.parentNodeId]
+                : undefined;
+
+              if (parentId) {
+                return getAncestorIds(parentId, [parentId, ...idsArray]);
+              } else {
+                return idsArray;
+              }
+            };
+
             return _.mapValues(this.rawComponentsById, (rc) => {
               // these categories should probably have a name and a different displayName (ie "aws" vs "Amazon AWS")
               // and eventually can just assume the icon is `logo-${name}`
@@ -280,12 +302,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   Kubernetes: "logo-k8s",
                 }[rc?.schemaCategory || ""] || "logo-si"; // fallback to SI logo
 
+              const ancestorIds = getAncestorIds(rc.id);
+
               return {
                 ...rc,
                 // convert "node" ids back to component ids, so we can use that in a few places
-                parentId: rc.parentNodeId
-                  ? nodeIdToComponentId[rc.parentNodeId]
-                  : undefined,
+                ancestorIds,
+                parentId: _.last(ancestorIds),
                 childIds: _.map(
                   rc.childNodeIds,
                   (nodeId) => nodeIdToComponentId[nodeId],
