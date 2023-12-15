@@ -84,7 +84,7 @@ setup_traps cleanup
 
 cyclone_args=(
   --bind-vsock 3:52
-  --decryption-key /run/cyclone/decryption.key
+  --decryption-key /cyclone/decryption.key
   --lang-server /usr/local/bin/lang-js
   --enable-watch
   --limit-requests 1
@@ -94,15 +94,30 @@ cyclone_args=(
   --enable-action-run
 )
 
+for binary_input in "${binary_inputs[@]}"; do
+  sudo tar -xpf "$binary_input" -C "$ROOTFSMOUNT"
+
+  # TODO(johnrwatson): This can never make it into Production We need to figure
+  # out how to pass these decryption keys at all for the services That need
+  # them, maybe we need another sub-service specifically for fetching these from
+  # a secret provider or similar. Only for cyclone pull the dev decryption key
+  if echo "$binary_input" | grep -q "cyclone"; then
+    sudo mkdir -pv "$ROOTFSMOUNT/cyclone"
+    sudo cp -v \
+      "$GITROOT/lib/cyclone-server/src/dev.decryption.key" \
+      "$ROOTFSMOUNT/cyclone/decryption.key"
+  fi
+done
+
 # create our script to add an init system to our container image
 cat <<EOL >"$INITSCRIPT"
 set -e
 
 apk update
-apk add openrc openssh
+apk add openrc openssh mingetty runuser
 
 adduser -D app
-for dir in run etc usr/local/etc home/app/.config; do
+for dir in / run etc usr/local/etc home/app/.config; do
     mkdir -pv "${GUESTDISK}/\$dir/$BIN"
 done
 
@@ -112,8 +127,8 @@ ssh-keygen -A
 rc-update add devfs boot
 rc-update add procfs boot
 rc-update add sysfs boot
-rc-update add local default
 rc-update add networking boot
+rc-update add local default
 rc-update add sshd
 
 # Then, copy the newly configured system to the rootfs image:
@@ -124,6 +139,10 @@ for dir in proc run sys var; do
   mkdir -pv "${GUESTDISK}/\${dir}"
 done
 
+# autologin
+echo "ttyS0::respawn:/sbin/mingetty --autologin root --noclear ttyS0" >> ${GUESTDISK}/etc/inittab
+sed -i 's/root:*::0:::::/root:::0:::::/g' $GUESTDISK/etc/shadow
+
 # autostart cyclone
 cat <<EOF >"${GUESTDISK}/etc/init.d/cyclone"
 #!/sbin/openrc-run
@@ -133,7 +152,7 @@ description="Cyclone"
 supervisor="supervise-daemon"
 command="cyclone"
 command_args="${cyclone_args[*]}"
-pidfile="/run/agent.pid"
+pidfile="/cyclone/agent.pid"
 EOF
 
 chmod +x "${GUESTDISK}/etc/init.d/cyclone"
@@ -162,30 +181,15 @@ docker run \
   -v "$(pwd)/$INITSCRIPT:/init.sh" \
   --rm \
   --entrypoint sh \
-  alpine:3.19 \
+  alpine:3.18 \
   /init.sh
 
 # For each tar.gz, copy the contents into the rootfs into the rootfs partition
 # we created above. This will cumulatively stack the content of each.
-
-# This must happen `after` the docker build or the rootfs will be missing a lot
-# of the filesystem /etc /var, etc.
-for binary_input in "${binary_inputs[@]}"; do
-  sudo tar -xpf "$binary_input" -C "$ROOTFSMOUNT"
-
-  # TODO(johnrwatson): This can never make it into Production We need to figure
-  # out how to pass these decryption keys at all for the services That need
-  # them, maybe we need another sub-service specifically for fetching these from
-  # a secret provider or similar. Only for cyclone pull the dev decryption key
-  if echo "$binary_input" | grep -q "cyclone"; then
-    sudo mkdir -pv "$ROOTFSMOUNT/run/cyclone"
-    sudo cp -v \
-      "$GITROOT/lib/cyclone-server/src/dev.decryption.key" \
-      "$ROOTFSMOUNT/run/cyclone/decryption.key"
-  fi
-done
-
-cp -v "$ROOTFS" "$tar_file_out"
+# Must be unmounted then moved with sudo or permission issues will prevent all directories
+# from copying over for some mysterious reason.
+sudo umount -fv "$ROOTFSMOUNT"
+sudo mv -v "$ROOTFS" "$tar_file_out"
 
 # Then generate the build metadata
 #
