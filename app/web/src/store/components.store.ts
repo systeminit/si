@@ -201,7 +201,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
-  let changeSetId: ChangeSetId | null;
+  let changeSetId: ChangeSetId | undefined;
   if (forceChangeSetId) {
     changeSetId = forceChangeSetId;
   } else {

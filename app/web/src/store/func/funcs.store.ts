@@ -87,7 +87,7 @@ export type OutputSockets = { [key: string]: OutputSocket[] };
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
   const changeSetStore = useChangeSetsStore();
-  const selectedChangeSetId = changeSetStore.selectedChangeSetId;
+  const selectedChangeSetId = changeSetStore.selectedChangeSet?.id;
   const visibility: Visibility = {
     visibility_change_set_pk: selectedChangeSetId ?? nilId(),
   };

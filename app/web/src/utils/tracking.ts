@@ -9,7 +9,7 @@ export function trackEvent(
   const changeSetStore = useChangeSetsStore();
   posthog.capture(`wa-${eventName}`, {
     workspace_id: changeSetStore.selectedWorkspacePk,
-    changeset_id: changeSetStore.selectedChangeSetId,
+    changeset_id: changeSetStore.selectedChangeSet?.id,
     ...properties,
   });
 }

@@ -14,7 +14,9 @@
       </div>
     </template>
 
-    <template v-else-if="workspacePk && !selectedWorkspace">
+    <template
+      v-else-if="workspacesStore.urlSelectedWorkspaceId && !selectedWorkspace"
+    >
       <div class="flex-grow p-lg flex flex-col items-center">
         <ErrorMessage
           >Bad workspace id - please select a workspace from the
@@ -41,6 +43,16 @@
           <ErrorMessage>Error loading change sets</ErrorMessage>
         </div>
       </template>
+      <template
+        v-else-if="changeSetsStore.urlSelectedChangeSetId && !selectedChangeSet"
+      >
+        <div class="flex-grow p-lg flex flex-col items-center">
+          <ErrorMessage
+            >Change set not found -
+            {{ changeSetsStore.urlSelectedChangeSetId }}</ErrorMessage
+          >
+        </div>
+      </template>
 
       <!-- all good - either no change set (fix/view) or we have a selected and valid change set -->
       <template v-else>
@@ -53,9 +65,12 @@
           </div>
         </div>
         <div class="w-full h-full flex flex-row relative overflow-hidden">
-          <router-view :key="changeSetId" />
+          <router-view :key="changeSetsStore.selectedChangeSet?.id" />
         </div>
-        <StatusBar :key="changeSetId" class="flex-none" />
+        <StatusBar
+          :key="changeSetsStore.urlSelectedChangeSetId"
+          class="flex-none"
+        />
       </template>
     </template>
   </AppLayout>
@@ -68,13 +83,11 @@ import * as _ from "lodash-es";
 import { ErrorMessage, Icon, LoadingMessage } from "@si/vue-lib/design-system";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { nilId } from "@/utils/nilId";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import Navbar from "@/components/layout/navbar/Navbar.vue";
 import StatusBar from "@/components/StatusBar/StatusBar.vue";
 
 const props = defineProps({
-  workspacePk: { type: String, required: true },
   changeSetId: { type: String as PropType<string | "auto"> },
 });
 
@@ -88,6 +101,7 @@ const workspacesReqStatus = workspacesStore.getRequestStatus(
   "FETCH_USER_WORKSPACES",
 );
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
+const selectedChangeSet = computed(() => changeSetsStore.selectedChangeSet);
 
 const changeSetsReqStatus =
   changeSetsStore.getRequestStatus("FETCH_CHANGE_SETS");
@@ -113,12 +127,6 @@ function handleUrlChange() {
       query: { ...route.query },
     });
     return;
-  }
-
-  if ([nilId(), "head"].includes(changeSetId ?? "")) {
-    changeSetsStore.selectedChangeSetId = nilId();
-  } else if (changeSetId) {
-    changeSetsStore.selectedChangeSetId = changeSetId;
   }
 
   window.localStorage.setItem("tab_group_proposed_right", "actions_proposed");

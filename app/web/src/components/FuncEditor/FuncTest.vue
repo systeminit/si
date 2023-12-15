@@ -496,7 +496,7 @@ const startTest = async () => {
 
   const executionKey = new Date().toString() + _.random();
 
-  const selectedChangeSetId = changeSetStore.selectedChangeSetId;
+  const selectedChangeSetId = changeSetStore.selectedChangeSet?.id;
 
   realtimeStore.subscribe(executionKey, `changeset/${selectedChangeSetId}`, [
     {

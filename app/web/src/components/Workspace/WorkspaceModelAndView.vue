@@ -77,6 +77,7 @@ import { useFixesStore } from "@/store/fixes.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import FixProgressOverlay from "@/components/FixProgressOverlay.vue";
 import { usePresenceStore } from "@/store/presence.store";
+import { useSecretsStore } from "@/store/secrets.store";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import { RightClickElementEvent } from "../ModelingDiagram/diagram_types";
@@ -92,6 +93,7 @@ const changeSetStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 const fixesStore = useFixesStore();
 const presenceStore = usePresenceStore();
+const _secretsStore = useSecretsStore(); // adding this so we fetch once
 
 const fixesAreRunning = computed(
   () =>

@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 
 import { useAuthStore } from "@/store/auth.store";
-import { useChangeSetsStore, ChangeSetId } from "@/store/change_sets.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { encryptMessage } from "@/utils/messageEncryption";
 import { PropertyEditorPropWidgetKind } from "@/api/sdf/dal/property_editor";
@@ -108,7 +108,7 @@ export function useSecretsStore() {
 
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
-  const changeSetId: ChangeSetId | null = changeSetsStore.selectedChangeSetId;
+  const changeSetId = changeSetsStore.selectedChangeSetId;
 
   // TODO: probably these should be passed in automatically
   // and need to make sure it's done consistently (right now some endpoints vary slightly)
