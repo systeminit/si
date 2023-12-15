@@ -123,7 +123,7 @@ impl Connection {
     pub fn from_edge(edge: &Edge) -> Self {
         Self {
             id: *edge.id(),
-            classification: edge.kind().clone(),
+            classification: *edge.kind(),
             source: Vertex {
                 node_id: edge.tail_node_id(),
                 socket_id: edge.tail_socket_id(),

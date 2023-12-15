@@ -12,11 +12,13 @@ import { computed, ref } from "vue";
 import plur from "plur";
 import { useComponentsStore } from "@/store/components.store";
 import { useFixesStore } from "@/store/fixes.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const componentsStore = useComponentsStore();
 const fixesStore = useFixesStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const {
   selectedComponentId,
@@ -69,6 +71,15 @@ const rightClickMenuItems = computed(() => {
       });
     }
   } else if (selectedComponentId.value && selectedComponent.value) {
+    if (featureFlagsStore.COPY_PASTE) {
+      items.push({
+        label: `Copy`,
+        icon: "clipboard-copy",
+        onSelect: triggerCopySelection,
+        disabled,
+      });
+    }
+
     // single selected component
     if (selectedComponent.value.changeStatus === "deleted") {
       items.push({
@@ -90,6 +101,15 @@ const rightClickMenuItems = computed(() => {
       });
     }
   } else if (selectedComponentIds.value.length) {
+    if (featureFlagsStore.COPY_PASTE) {
+      items.push({
+        label: `Copy ${selectedComponentIds.value.length} Components`,
+        icon: "clipboard-copy",
+        onSelect: triggerCopySelection,
+        disabled,
+      });
+    }
+
     // Multiple selected components
     if (deletableSelectedComponents.value.length > 0) {
       items.push({
@@ -129,15 +149,28 @@ const rightClickMenuItems = computed(() => {
   return items;
 });
 
+function triggerCopySelection() {
+  componentsStore.copyingFrom = elementPos.value;
+  elementPos.value = null;
+}
+
 const modelingEventBus = componentsStore.eventBus;
 function triggerDeleteSelection() {
   modelingEventBus.emit("deleteSelection");
+  elementPos.value = null;
 }
 function triggerRestoreSelection() {
   modelingEventBus.emit("restoreSelection");
+  elementPos.value = null;
 }
 
-function open(e?: MouseEvent, anchorToMouse?: boolean) {
+const elementPos = ref<{ x: number; y: number } | null>(null);
+function open(
+  e: MouseEvent,
+  anchorToMouse: boolean,
+  elementPosition?: { x: number; y: number },
+) {
+  if (elementPosition) elementPos.value = elementPosition;
   contextMenuRef.value?.open(e, anchorToMouse);
 }
 defineExpose({ open });

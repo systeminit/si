@@ -117,7 +117,10 @@ const emit = defineEmits<{
   // while we've avoided events for most things (selection, panning, etc)
   // we still have an emit for this one because the parent (WorkspaceModelAndView) owns the right click menu
   // and needs the raw MouseEvent
-  (e: "right-click-item", ev: MouseEvent): void;
+  (
+    e: "right-click-item",
+    ev: { mouse: MouseEvent; component: FullComponent },
+  ): void;
 }>();
 
 const componentsStore = useComponentsStore();
@@ -168,6 +171,9 @@ function onSearchUpdated(newFilterString: string) {
 }
 
 function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {
+  const component = componentsStore.componentsById[id];
+  if (!component) throw new Error("component not found");
+
   const shiftKeyBehavior = () => {
     const selectedComponentIds = componentsStore.selectedComponentIds;
 
@@ -223,7 +229,7 @@ function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {
         componentsStore.setSelectedComponentId(id);
       }
     }
-    emit("right-click-item", e);
+    emit("right-click-item", { mouse: e, component });
   } else if (e.shiftKey) {
     e.preventDefault();
     shiftKeyBehavior();

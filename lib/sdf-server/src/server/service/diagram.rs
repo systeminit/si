@@ -6,13 +6,14 @@ use axum::Router;
 use dal::provider::external::ExternalProviderError as DalExternalProviderError;
 use dal::socket::{SocketError, SocketId};
 use dal::{
-    node::NodeId, schema::variant::SchemaVariantError, ActionError, ActionPrototypeError,
-    AttributeValueError, ChangeSetError, ComponentError, ComponentType,
-    DiagramError as DalDiagramError, EdgeError, InternalProviderError, NodeError, NodeKind,
-    NodeMenuError, SchemaError as DalSchemaError, SchemaVariantId, StandardModelError,
-    TransactionsError,
+    component::ComponentViewError, node::NodeId, schema::variant::SchemaVariantError, ActionError,
+    ActionPrototypeError, AttributeContextBuilderError, AttributeValueError, ChangeSetError,
+    ComponentError, ComponentType, DiagramError as DalDiagramError, EdgeError,
+    InternalProviderError, NodeError, NodeKind, NodeMenuError, SchemaError as DalSchemaError,
+    SchemaVariantId, StandardModelError, TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
+use std::num::ParseFloatError;
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -26,6 +27,7 @@ pub mod delete_connection;
 pub mod get_diagram;
 pub mod get_node_add_menu;
 pub mod list_schema_variants;
+pub mod paste_component;
 mod restore_component;
 pub mod restore_connection;
 pub mod set_node_position;
@@ -37,6 +39,8 @@ pub enum DiagramError {
     ActionError(#[from] ActionError),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error("attribute context builder: {0}")]
+    AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value not found for context: {0:?}")]
@@ -49,6 +53,8 @@ pub enum DiagramError {
     Component(#[from] ComponentError),
     #[error("component not found")]
     ComponentNotFound,
+    #[error("component view error: {0}")]
+    ComponentView(#[from] ComponentViewError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error("dal schema error: {0}")]
@@ -93,6 +99,8 @@ pub enum DiagramError {
     NotAuthorized,
     #[error("parent node not found {0}")]
     ParentNodeNotFound(NodeId),
+    #[error("parse int: {0}")]
+    ParseFloat(#[from] ParseFloatError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
@@ -166,6 +174,7 @@ pub fn routes() -> Router<AppState> {
             "/delete_components",
             post(delete_component::delete_components),
         )
+        .route("/paste_components", post(paste_component::paste_components))
         .route(
             "/restore_component",
             post(restore_component::restore_component),

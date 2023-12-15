@@ -570,6 +570,7 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.key === "Escape") {
     clearSelection();
     if (insertElementActive.value) componentsStore.cancelInsert();
+    componentsStore.copyingFrom = null;
     if (dragSelectActive.value) endDragSelect(false);
   }
   if (!props.readOnly && (e.key === "Delete" || e.key === "Backspace")) {
@@ -622,6 +623,7 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   // in order to ignore clicks with a tiny bit of movement
   if (dragToPanArmed.value || e.button === 1) beginDragToPan();
   else if (insertElementActive.value) triggerInsertElement();
+  else if (pasteElementsActive.value) triggerPasteElements();
   else handleMouseDownSelection();
 }
 
@@ -639,6 +641,8 @@ function onMouseUp(e: MouseEvent) {
   // TODO: probably change this - its a bit hacky...
   else if (insertElementActive.value && pointerIsWithinGrid.value)
     triggerInsertElement();
+  else if (pasteElementsActive.value && pointerIsWithinGrid.value)
+    triggerPasteElements();
   else handleMouseUpSelection();
 }
 
@@ -779,6 +783,7 @@ const cursor = computed(() => {
   if (drawEdgeActive.value) return "cell";
   if (dragElementsActive.value) return "move";
   if (insertElementActive.value) return "copy"; // not sure about this...
+  if (pasteElementsActive.value) return "copy";
   if (
     resizeElementActive.value ||
     hoveredElementMeta.value?.type === "resize"
@@ -2061,6 +2066,27 @@ async function endDrawEdge() {
   }
 }
 
+const pasteElementsActive = computed(() => {
+  return (
+    componentsStore.copyingFrom &&
+    componentsStore.selectedComponentIds.length > 0
+  );
+});
+async function triggerPasteElements() {
+  if (!pasteElementsActive.value)
+    throw new Error("paste element mode must be active");
+  if (!gridPointerPos.value)
+    throw new Error("Cursor must be in grid to paste element");
+  if (!componentsStore.copyingFrom)
+    throw new Error("Copy cursor must be in grid to paste element");
+
+  componentsStore.PASTE_COMPONENTS(componentsStore.selectedComponentIds, {
+    x: gridPointerPos.value.x - componentsStore.copyingFrom.x,
+    y: gridPointerPos.value.y - componentsStore.copyingFrom.y,
+  });
+  componentsStore.copyingFrom = null;
+}
+
 // ELEMENT ADDITION
 const insertElementActive = computed(
   () => !!componentsStore.selectedInsertSchemaId,
@@ -2260,6 +2286,7 @@ function recenterOnElement(panTarget: DiagramElementData) {
 const helpModalRef = ref();
 
 onMounted(() => {
+  componentsStore.copyingFrom = null;
   componentsStore.eventBus.on("panToComponent", panToComponent);
 });
 onBeforeUnmount(() => {

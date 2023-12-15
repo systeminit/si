@@ -95,9 +95,18 @@ impl Component {
         ctx: &DalContext,
         result: ActionRunResult,
     ) -> ComponentResult<bool> {
+        self.set_resource_raw(ctx, result, true).await
+    }
+
+    pub async fn set_resource_raw(
+        &self,
+        ctx: &DalContext,
+        result: ActionRunResult,
+        check_change_set: bool,
+    ) -> ComponentResult<bool> {
         let ctx = &ctx.clone_without_deleted_visibility();
 
-        if !ctx.visibility().is_head() {
+        if check_change_set && !ctx.visibility().is_head() {
             return Err(ComponentError::CannotUpdateResourceTreeInChangeSet);
         }
 

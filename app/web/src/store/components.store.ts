@@ -242,6 +242,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           >,
           rawNodeAddMenu: [] as MenuItem[],
 
+          copyingFrom: null as { x: number; y: number } | null,
           selectedComponentIds: [] as ComponentId[],
           selectedEdgeId: null as EdgeId | null,
           selectedComponentDetailsTab: null as string | null,
@@ -1046,6 +1047,29 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               onSuccess: (response) => {
                 // this.componentDiffsById[componentId] = response.componentDiff;
               },
+            });
+          },
+
+          async PASTE_COMPONENTS(
+            componentIds: ComponentId[],
+            offset: { x: number; y: number },
+          ) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
+            return new ApiRequest({
+              method: "post",
+              url: "diagram/paste_components",
+              keyRequestStatusBy: componentIds,
+              params: {
+                componentIds,
+                offsetX: offset.x,
+                offsetY: offset.y,
+                ...visibilityParams,
+              },
+              onSuccess: (response) => {},
             });
           },
 

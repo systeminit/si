@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use std::collections::HashMap;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -28,12 +29,13 @@ use crate::{
     impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
-    AttributePrototypeArgumentError, AttributePrototypeError, AttributePrototypeId,
-    AttributeReadContext, ComponentType, DalContext, EdgeError, ExternalProviderError, FixError,
-    FixId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError, Node, NodeError,
-    PropError, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, ValidationPrototypeError,
-    ValidationResolverError, Visibility, WorkspaceError, WsEvent, WsEventResult, WsPayload,
+    AttributePrototype, AttributePrototypeArgumentError, AttributePrototypeError,
+    AttributePrototypeId, AttributeReadContext, ComponentType, DalContext, EdgeError,
+    ExternalProviderError, FixError, FixId, Func, FuncBackendKind, FuncError, HistoryActor,
+    HistoryEventError, IndexMap, Node, NodeError, PropError, RootPropChild, Schema, SchemaError,
+    SchemaId, Socket, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    UserPk, ValidationPrototypeError, ValidationResolverError, Visibility, WorkspaceError, WsEvent,
+    WsEventResult, WsPayload,
 };
 use crate::{AttributeValueId, QualificationError};
 use crate::{Edge, FixResolverError, NodeKind};
@@ -62,8 +64,12 @@ pub enum ComponentError {
     /// Found an [`AttributePrototypeArgumentError`](crate::AttributePrototypeArgumentError).
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("attribute prototype not found")]
+    AttributePrototypeNotFound,
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("attribute value not found")]
+    AttributeValueNotFound,
     #[error("attribute value not found for context: {0:?}")]
     AttributeValueNotFoundForContext(AttributeReadContext),
     #[error("cannot update the resource tree when in a change set")]
@@ -977,6 +983,227 @@ impl Component {
     /// Check if the [`Component`] has been fully destroyed.
     pub fn is_destroyed(&self) -> bool {
         self.visibility.deleted_at.is_some() && !self.needs_destroy()
+    }
+
+    pub async fn clone_attributes_from(
+        &self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<()> {
+        let attribute_values =
+            AttributeValue::find_by_attr(ctx, "attribute_context_component_id", &component_id)
+                .await?;
+
+        let mut pasted_attribute_values_by_original = HashMap::new();
+        for copied_av in &attribute_values {
+            let context = AttributeContextBuilder::from(copied_av.context)
+                .set_component_id(*self.id())
+                .to_context()?;
+
+            // TODO: should we clone the fb and fbrv?
+            let mut pasted_av = if let Some(mut av) =
+                AttributeValue::find_for_context(ctx, context.into()).await?
+            {
+                av.set_func_binding_id(ctx, copied_av.func_binding_id())
+                    .await?;
+                av.set_func_binding_return_value_id(ctx, copied_av.func_binding_return_value_id())
+                    .await?;
+                av.set_key(ctx, copied_av.key()).await?;
+                av
+            } else {
+                dbg!(
+                    AttributeValue::new(
+                        ctx,
+                        copied_av.func_binding_id(),
+                        copied_av.func_binding_return_value_id(),
+                        context,
+                        copied_av.key(),
+                    )
+                    .await
+                )?
+            };
+
+            pasted_av
+                .set_proxy_for_attribute_value_id(ctx, copied_av.proxy_for_attribute_value_id())
+                .await?;
+            pasted_av
+                .set_sealed_proxy(ctx, copied_av.sealed_proxy())
+                .await?;
+
+            pasted_attribute_values_by_original.insert(*copied_av.id(), *pasted_av.id());
+        }
+
+        for copied_av in &attribute_values {
+            if let Some(copied_index_map) = copied_av.index_map() {
+                let pasted_id = pasted_attribute_values_by_original
+                    .get(copied_av.id())
+                    .ok_or(ComponentError::AttributeValueNotFound)?;
+
+                let mut index_map = IndexMap::new();
+                for (key, copied_id) in copied_index_map.order_as_map() {
+                    let pasted_id = *pasted_attribute_values_by_original
+                        .get(&copied_id)
+                        .ok_or(ComponentError::AttributeValueNotFound)?;
+                    index_map.push(pasted_id, Some(key));
+                }
+
+                ctx.txns()
+                    .await?
+                    .pg()
+                    .query(
+                        "UPDATE attribute_values_v1($1, $2) SET index_map = $3 WHERE id = $4",
+                        &[
+                            ctx.tenancy(),
+                            ctx.visibility(),
+                            &serde_json::to_value(&index_map)?,
+                            &pasted_id,
+                        ],
+                    )
+                    .await?;
+            }
+        }
+
+        let attribute_prototypes =
+            AttributePrototype::find_by_attr(ctx, "attribute_context_component_id", &component_id)
+                .await?;
+
+        let mut pasted_attribute_prototypes_by_original = HashMap::new();
+        for copied_ap in &attribute_prototypes {
+            let context = AttributeContextBuilder::from(copied_ap.context)
+                .set_component_id(*self.id())
+                .to_context()?;
+
+            let id = if let Some(mut ap) = AttributePrototype::find_for_context_and_key(
+                ctx,
+                context,
+                &copied_ap.key().map(ToOwned::to_owned),
+            )
+            .await?
+            .pop()
+            {
+                ap.set_func_id(ctx, copied_ap.func_id()).await?;
+                ap.set_key(ctx, copied_ap.key()).await?;
+                *ap.id()
+            } else {
+                let row = ctx
+                    .txns()
+                    .await?
+                    .pg()
+                    .query_one(
+                        "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5) AS ap",
+                        &[
+                            ctx.tenancy(),
+                            ctx.visibility(),
+                            &serde_json::to_value(context)?,
+                            &copied_ap.func_id(),
+                            &copied_ap.key(),
+                        ],
+                    )
+                    .await?;
+                let object: AttributePrototype = standard_model::object_from_row(row)?;
+                *object.id()
+            };
+
+            pasted_attribute_prototypes_by_original.insert(*copied_ap.id(), id);
+        }
+
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT object_id, belongs_to_id
+                 FROM attribute_value_belongs_to_attribute_value_v1($1, $2)
+                 WHERE object_id = ANY($3) AND belongs_to_id = ANY($3)",
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &attribute_values
+                        .iter()
+                        .map(|av| *av.id())
+                        .collect::<Vec<AttributeValueId>>(),
+                ],
+            )
+            .await?;
+
+        for row in rows {
+            let original_object_id: AttributeValueId = row.try_get("object_id")?;
+            let original_belongs_to_id: AttributeValueId = row.try_get("belongs_to_id")?;
+
+            let object_id = pasted_attribute_values_by_original
+                .get(&original_object_id)
+                .ok_or(ComponentError::AttributeValueNotFound)?;
+            let belongs_to_id = pasted_attribute_values_by_original
+                .get(&original_belongs_to_id)
+                .ok_or(ComponentError::AttributeValueNotFound)?;
+
+            ctx
+                .txns()
+                .await?
+                .pg()
+                .query("INSERT INTO attribute_value_belongs_to_attribute_value
+                        (object_id, belongs_to_id, tenancy_workspace_pk, visibility_change_set_pk)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (object_id, tenancy_workspace_pk, visibility_change_set_pk) DO NOTHING",
+                    &[
+                        &object_id,
+                        &belongs_to_id,
+                        &ctx.tenancy().workspace_pk(),
+                        &ctx.visibility().change_set_pk,
+                    ],
+                ).await?;
+        }
+
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT object_id, belongs_to_id
+                 FROM attribute_value_belongs_to_attribute_prototype_v1($1, $2)
+                 WHERE object_id = ANY($3) AND belongs_to_id = ANY($4)",
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &attribute_values
+                        .iter()
+                        .map(|av| *av.id())
+                        .collect::<Vec<AttributeValueId>>(),
+                    &attribute_prototypes
+                        .iter()
+                        .map(|av| *av.id())
+                        .collect::<Vec<AttributePrototypeId>>(),
+                ],
+            )
+            .await?;
+        for row in rows {
+            let original_object_id: AttributeValueId = row.try_get("object_id")?;
+            let original_belongs_to_id: AttributePrototypeId = row.try_get("belongs_to_id")?;
+
+            let object_id = pasted_attribute_values_by_original
+                .get(&original_object_id)
+                .ok_or(ComponentError::AttributeValueNotFound)?;
+            let belongs_to_id = pasted_attribute_prototypes_by_original
+                .get(&original_belongs_to_id)
+                .ok_or(ComponentError::AttributePrototypeNotFound)?;
+
+            ctx
+                .txns()
+                .await?
+                .pg()
+                .query("INSERT INTO attribute_value_belongs_to_attribute_prototype
+                        (object_id, belongs_to_id, tenancy_workspace_pk, visibility_change_set_pk)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (object_id, tenancy_workspace_pk, visibility_change_set_pk) DO NOTHING",
+                    &[
+                        &object_id,
+                        &belongs_to_id,
+                        &ctx.tenancy().workspace_pk(),
+                        &ctx.visibility().change_set_pk,
+                    ],
+                ).await?;
+        }
+        Ok(())
     }
 }
 
