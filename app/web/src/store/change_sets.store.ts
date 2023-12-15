@@ -8,15 +8,15 @@ import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import router from "@/router";
 import { UserId } from "@/store/auth.store";
+import { nilId } from "@/utils/nilId";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useFeatureFlagsStore } from "./feature_flags.store";
+import { useRouterStore } from "./router.store";
 
 export type ChangeSetId = string;
 
-export function changeSetIdNil(): string {
-  return "00000000000000000000000000";
-}
+const HEAD_ID = nilId();
 
 export function useChangeSetsStore() {
   const featureFlagsStore = useFeatureFlagsStore();
@@ -27,7 +27,6 @@ export function useChangeSetsStore() {
     defineStore(`w${workspacePk || "NONE"}/change-sets`, {
       state: () => ({
         changeSetsById: {} as Record<ChangeSetId, ChangeSet>,
-        selectedChangeSetId: null as ChangeSetId | null,
         changeSetsWrittenAtById: {} as Record<ChangeSetId, Date>,
         creatingChangeSet: false as boolean,
         postApplyActor: null as string | null,
@@ -42,16 +41,28 @@ export function useChangeSetsStore() {
             ),
           );
         },
-        selectedChangeSet: (state) =>
-          state.selectedChangeSetId
-            ? state.changeSetsById[state.selectedChangeSetId] ?? null
-            : null,
-        headSelected: (state) => state.selectedChangeSetId === changeSetIdNil(),
+        urlSelectedChangeSetId: () => {
+          const route = useRouterStore().currentRoute;
+          const id = route?.params?.changeSetId as ChangeSetId | undefined;
+          return id === "head" ? HEAD_ID : id;
+        },
+        selectedChangeSet(): ChangeSet | null {
+          return this.changeSetsById[this.urlSelectedChangeSetId || ""] || null;
+        },
+        headSelected(): boolean {
+          return this.urlSelectedChangeSetId === HEAD_ID;
+        },
 
-        selectedChangeSetWritten: (state) =>
-          state.selectedChangeSetId
-            ? state.changeSetsWrittenAtById[state.selectedChangeSetId] ?? null
-            : null,
+        selectedChangeSetLastWrittenAt(): Date | null {
+          return (
+            this.changeSetsWrittenAtById[this.selectedChangeSet?.id || ""] ??
+            null
+          );
+        },
+
+        selectedChangeSetId(): ChangeSetId | undefined {
+          return this.selectedChangeSet?.id;
+        },
 
         // expose here so other stores can get it without needing to call useWorkspaceStore directly
         selectedWorkspacePk: () => workspacePk,
@@ -80,17 +91,22 @@ export function useChangeSetsStore() {
             // this endpoint currently returns dropdown-y data, should just return the change set data itself
             url: "change_set/list_open_change_sets",
             onSuccess: (response) => {
-              this.changeSetsById = {};
-
-              for (const changeSet of response) {
-                this.changeSetsById[changeSet.pk] = {
-                  id: changeSet.pk,
-                  pk: changeSet.pk,
-                  name: changeSet.name,
-                  actions: changeSet.actions,
-                  status: changeSet.status,
-                };
-              }
+              const changeSets = _.map(response, (rawChangeSet) => ({
+                ...rawChangeSet,
+                id: rawChangeSet.pk,
+              }));
+              // add our "head" changeset...
+              // should simplify logic elsewhere to not treat head as special
+              this.changeSetsById = {
+                [HEAD_ID]: {
+                  id: HEAD_ID,
+                  pk: HEAD_ID,
+                  name: "head",
+                  status: ChangeSetStatus.Open,
+                  actions: {},
+                },
+                ..._.keyBy(changeSets, "id"),
+              };
             },
           });
         },
@@ -140,7 +156,7 @@ export function useChangeSetsStore() {
             url: "change_set/merge_vote",
             params: {
               vote,
-              visibility_change_set_pk: this.selectedChangeSetId,
+              visibility_change_set_pk: this.selectedChangeSet.pk,
             },
           });
         },
@@ -150,7 +166,7 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/begin_approval_process",
             params: {
-              visibility_change_set_pk: this.selectedChangeSetId,
+              visibility_change_set_pk: this.selectedChangeSet.pk,
             },
           });
         },
@@ -160,7 +176,7 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/cancel_approval_process",
             params: {
-              visibility_change_set_pk: this.selectedChangeSetId,
+              visibility_change_set_pk: this.selectedChangeSet.pk,
             },
           });
         },
@@ -243,7 +259,7 @@ export function useChangeSetsStore() {
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Applied;
                 if (
-                  this.selectedChangeSetId === changeSetPk &&
+                  this.selectedChangeSet?.pk === changeSetPk &&
                   featureFlagsStore.MUTLIPLAYER_CHANGESET_APPLY
                 ) {
                   this.postApplyActor = userPk;
@@ -255,7 +271,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetBeginApprovalProcess",
             callback: (data) => {
-              if (this.selectedChangeSetId === data.changeSetPk) {
+              if (this.selectedChangeSet?.pk === data.changeSetPk) {
                 this.changeSetApprovals = {};
               }
               const changeSet = this.changeSetsById[data.changeSetPk];
@@ -269,7 +285,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetCancelApprovalProcess",
             callback: (data) => {
-              if (this.selectedChangeSetId === data.changeSetPk) {
+              if (this.selectedChangeSet?.pk === data.changeSetPk) {
                 this.changeSetApprovals = {};
               }
               const changeSet = this.changeSetsById[data.changeSetPk];
@@ -292,7 +308,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetMergeVote",
             callback: (data) => {
-              if (this.selectedChangeSetId === data.changeSetPk) {
+              if (this.selectedChangeSet?.pk === data.changeSetPk) {
                 this.changeSetApprovals[data.userPk] = data.vote;
               }
             },

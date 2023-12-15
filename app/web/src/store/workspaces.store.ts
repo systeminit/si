@@ -73,8 +73,10 @@ export const useWorkspacesStore = () => {
       },
 
       actions: {
-        getLastSelectedWorkspacePk() {
-          return storage.getItem(LOCAL_STORAGE_LAST_WORKSPACE_PK) || undefined;
+        getAutoSelectedWorkspacePk() {
+          const lastSelected = storage.getItem(LOCAL_STORAGE_LAST_WORKSPACE_PK);
+          // here we can inject extra logic for auto selection...
+          return lastSelected || this.allWorkspaces[0]?.pk;
         },
 
         async FETCH_USER_WORKSPACES() {

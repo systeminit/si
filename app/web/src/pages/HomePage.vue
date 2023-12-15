@@ -40,8 +40,7 @@ const workspacesReqStatus = workspacesStore.getRequestStatus(
 function autoSelectWorkspace() {
   if (workspacesStore.selectedWorkspace) return;
 
-  let workspacePk = workspacesStore.getLastSelectedWorkspacePk();
-  if (!workspacePk) workspacePk = workspacesStore.allWorkspaces[0]?.pk;
+  const workspacePk = workspacesStore.getAutoSelectedWorkspacePk();
   if (!workspacePk) return;
 
   router.push({

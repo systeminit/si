@@ -13,7 +13,7 @@
           size="xs"
           type="dropdown"
           noLabel
-          placeholder="-- select a workspace --"
+          placeholder="-- select a change set --"
           :modelValue="selectedChangeSetId"
           :options="changeSetDropdownOptions"
           @update:model-value="onSelectChangeSet"
@@ -163,7 +163,6 @@ const selectedChangeSetName = computed(
 
 const changeSetDropdownOptions = computed(() => {
   return [
-    { value: nilId(), label: "head" },
     ..._.map(openChangeSets.value, (cs) => ({ value: cs.id, label: cs.name })),
     { value: "NEW", label: "+ Create new change set" },
   ];

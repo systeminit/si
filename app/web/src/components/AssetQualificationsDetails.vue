@@ -50,7 +50,7 @@ const qualificationDetailsReqStatus = qualificationsStore.getRequestStatus(
 
 // TODO: this logic probably shouldnt live here... and more targeted updates should be sent
 watch(
-  [() => changeSetsStore.selectedChangeSetWritten],
+  [() => changeSetsStore.selectedChangeSetLastWrittenAt],
   () => {
     qualificationsStore.FETCH_COMPONENT_QUALIFICATIONS(props.componentId);
   },

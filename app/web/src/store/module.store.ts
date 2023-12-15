@@ -365,6 +365,8 @@ export const useModuleStore = () => {
           },
         },
         onActivated() {
+          if (!changeSetId) return;
+
           this.LOAD_LOCAL_MODULES();
           this.LIST_BUILTINS();
 

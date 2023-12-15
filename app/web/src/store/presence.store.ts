@@ -116,7 +116,7 @@ export const usePresenceStore = () => {
               name: authStore.user.name,
               pictureUrl: authStore.user.picture_url ?? null,
               idle: this.isIdle,
-              changeSetPk: changeSetsStore.selectedChangeSetId,
+              changeSetPk: changeSetsStore.selectedChangeSetId ?? null,
             },
           });
         },
@@ -128,7 +128,7 @@ export const usePresenceStore = () => {
               data: {
                 userName: authStore.user.name,
                 userPk: authStore.user.pk,
-                changeSetPk: changeSetsStore.selectedChangeSetId,
+                changeSetPk: changeSetsStore.selectedChangeSetId ?? null,
                 container: null,
                 containerKey: null,
                 x: x !== null ? x.toString() : null,

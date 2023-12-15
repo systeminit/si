@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "clean": "rm -rf ./dist ./lib ./target",
+    "clean": "rm -rf ./dist ./lib ./target && pnpm vite:clean",
     "build": "vite build",
     "build:check": "vue-tsc --noEmit",
     "build:clean": "pnpm run clean && npm run build",
@@ -22,7 +22,7 @@
     "start": "vite",
     "serve": "vite preview --port 8080",
     "test": "echo 'Sorry, no tests yet!'",
-    "vite:clean": "./script/clean-vite-cache.sh",
+    "vite:clean": "rm -rf ./node_modules/.vite",
     "cypress:run": "cypress run",
     "cypress:open": "cypress open"
   },
