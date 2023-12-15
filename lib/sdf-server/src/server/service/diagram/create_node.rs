@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use dal::node::NodeId;
 use dal::{
-    action_prototype::ActionPrototypeContextField, generate_name, Action, ActionKind,
-    ActionPrototype, ActionPrototypeContext, ChangeSet, Component, ComponentId, Schema, SchemaId,
-    StandardModel, Visibility, WsEvent,
+    action_prototype::ActionPrototypeContextField, generate_name_from_schema_name, Action,
+    ActionKind, ActionPrototype, ActionPrototypeContext, ChangeSet, Component, ComponentId, Schema,
+    SchemaId, StandardModel, Visibility, WsEvent,
 };
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
@@ -57,10 +57,10 @@ pub async fn create_node(
             .await?;
     };
 
-    let name = generate_name();
     let schema = Schema::get_by_id(&ctx, &request.schema_id)
         .await?
         .ok_or(DiagramError::SchemaNotFound)?;
+    let name = generate_name_from_schema_name(schema.name());
 
     let schema_variant_id = schema
         .default_schema_variant_id()
