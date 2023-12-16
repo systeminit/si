@@ -17,7 +17,7 @@
           }[textSize],
         )
       "
-      @click="toggleIsOpen"
+      @click="toggleIsOpen()"
     >
       <slot name="prefix" />
       <Icon
@@ -81,9 +81,13 @@ const props = defineProps({
 
 const isOpen = ref(props.defaultOpen);
 
-function toggleIsOpen() {
-  isOpen.value = !isOpen.value;
+function toggleIsOpen(open?: boolean) {
+  if (open === undefined) {
+    isOpen.value = !isOpen.value;
+  } else {
+    isOpen.value = open;
+  }
 }
 
-defineExpose({ isOpen });
+defineExpose({ isOpen, toggleIsOpen });
 </script>

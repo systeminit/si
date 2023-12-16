@@ -17,31 +17,31 @@
       title="Apply Change Set"
       :noExit="!canCloseModal"
     >
-      <template v-if="changeSet.status === ChangeSetStatus.NeedsApproval">
-        <div
-          :class="
-            clsx(
-              'p-sm flex items-center gap-3',
-              !appliedByYou && 'border-b dark:border-neutral-500',
-            )
-          "
-        >
-          <UserIcon :user="applyUser" />
-          <div>
-            <template v-if="appliedByYou">You have</template>
-            <template v-else>
-              <span class="italic">{{ applyUser?.name }}</span> has
-            </template>
-            clicked the Apply Changes button to apply all of the changes in this
-            change set to Head.<template v-if="appliedByYou">
-              There are other users online in this change set, so they will get
-              the chance to cancel your apply.
-            </template>
+      <div class="max-h-[80vh] overflow-hidden flex flex-col">
+        <template v-if="changeSet.status === ChangeSetStatus.NeedsApproval">
+          <div
+            :class="
+              clsx(
+                'p-sm flex items-center gap-3',
+                !appliedByYou && 'border-b dark:border-neutral-500',
+              )
+            "
+          >
+            <UserIcon :user="applyUser" />
+            <div>
+              <template v-if="appliedByYou">You have</template>
+              <template v-else>
+                <span class="italic">{{ applyUser?.name }}</span> has
+              </template>
+              clicked the Apply Changes button to apply all of the changes in
+              this change set to Head.<template v-if="appliedByYou">
+                There are other users online in this change set, so they will
+                get the chance to cancel your apply.
+              </template>
+            </div>
           </div>
-        </div>
-        <div>
-          <template v-if="appliedByYou">
-            <div class="flex w-full justify-center pb-2">
+          <template v-if="appliedByYou || true">
+            <div class="flex w-full justify-center pb-xs">
               <VButton
                 icon="tools"
                 size="sm"
@@ -60,9 +60,11 @@
                 >Waiting on other users in the changeset to vote.</template
               >
             </div>
-            <div class="pt-2">
+            <div
+              class="pt-xs overflow-y-auto flex-grow border border-neutral-300 dark:border-neutral-700 mb-xs"
+            >
               <div
-                v-for="(user, index) in presenceStore.usersInChangeset"
+                v-for="(user, index) in usersInChangeset"
                 :key="index"
                 class="flex items-center pr-sm justify-center gap-4"
               >
@@ -151,81 +153,93 @@
               </div>
             </template>
           </template>
-        </div>
-      </template>
-      <template v-if="changeSet.status === ChangeSetStatus.Open">
-        <template v-if="!hasActions">
-          <div class="text-center text-sm">
-            Applying this change set may have side-effects.
-          </div>
-          <div class="text-center text-sm mb-sm">
-            Are you sure you want to apply this change set?
-          </div>
         </template>
-        <template v-if="hasActions">
-          <div class="text-center text-sm">
-            Applying this change set may have side-effects.
-          </div>
-          <div class="text-center text-sm mb-sm">
-            Pick which actions will be applied to the real world:
-          </div>
-          <ul class="mb-sm">
-            <li
-              v-for="action in actionsStore.proposedActions"
-              :key="action.id"
-              class="list-none"
+        <template v-else-if="changeSet.status === ChangeSetStatus.Open">
+          <template v-if="!hasActions">
+            <div class="text-center text-md mb-xs">
+              Applying this change set may create, modify, or destroy real
+              resources in the cloud.
+            </div>
+            <div class="text-center text-sm mb-sm">
+              Are you sure you want to apply this change set?
+            </div>
+          </template>
+          <template v-if="hasActions">
+            <div class="text-center text-md mb-xs">
+              Applying this change set may create, modify, or destroy real
+              resources in the cloud.
+            </div>
+            <div class="text-center text-sm mb-sm">
+              Pick which actions will be applied to the real world:
+            </div>
+            <div
+              class="flex-grow overflow-y-auto mb-sm border border-neutral-300 dark:border-neutral-700"
             >
-              <ActionSprite
-                :action="action"
-                @remove="actionsStore.REMOVE_ACTION(action.id)"
-              />
-            </li>
-          </ul>
+              <ul>
+                <li
+                  v-for="(action, index) in actionsStore.proposedActions"
+                  :key="action.id"
+                  :class="
+                    clsx(
+                      'list-none',
+                      index !== actionsStore.proposedActions.length - 1 &&
+                        'border-b border-neutral-300 dark:border-neutral-700',
+                    )
+                  "
+                >
+                  <ActionSprite
+                    :action="action"
+                    @remove="actionsStore.REMOVE_ACTION(action.id)"
+                  />
+                </li>
+              </ul>
+            </div>
+          </template>
+          <div class="flex flex-row items-center w-full gap-sm">
+            <VButton
+              tone="shade"
+              variant="ghost"
+              icon="x"
+              label="Cancel"
+              @click="applyModalRef?.close"
+            />
+            <VButton
+              v-if="!changeSetsStore.headSelected"
+              ref="applyButtonRef"
+              class="flex-grow"
+              icon="tools"
+              tone="success"
+              :loadingText="
+                requiresVoting ? 'Beginning Approval Flow' : 'Applying Changes'
+              "
+              :label="requiresVoting ? 'Begin Approval Flow' : 'Apply Changes'"
+              :requestStatus="
+                requiresVoting
+                  ? beginMergeApprovalReqStatus
+                  : applyChangeSetReqStatus
+              "
+              :disabled="statusStoreUpdating"
+              @click="requiresVoting ? beginMergeApproval() : applyChangeSet()"
+            />
+          </div>
         </template>
-        <div class="flex flex-row items-center w-full gap-sm">
+        <template v-if="rejectedWorkflow && appliedByYou">
+          <div class="text-sm py-xs">
+            One of the users in this changeset has rejected the merge. You can
+            either override and merge the changeset, above or 'Cancel' the merge
+            flow.
+          </div>
           <VButton
-            tone="shade"
+            label="Cancel Merge Flow"
             variant="ghost"
-            icon="x"
-            label="Cancel"
-            @click="applyModalRef?.close"
+            size="sm"
+            tone="warning"
+            loadingText="Cancelling Merge Flow"
+            ruquestStatus="cancelMergeApprovalReqStatus"
+            @click="cancelMergeHandler"
           />
-          <VButton
-            v-if="!changeSetsStore.headSelected"
-            ref="applyButtonRef"
-            class="flex-grow"
-            icon="tools"
-            tone="success"
-            :loadingText="
-              requiresVoting ? 'Beginning Approval Flow' : 'Applying Changes'
-            "
-            :label="requiresVoting ? 'Begin Approval Flow' : 'Apply Changes'"
-            :requestStatus="
-              requiresVoting
-                ? beginMergeApprovalReqStatus
-                : applyChangeSetReqStatus
-            "
-            :disabled="statusStoreUpdating"
-            @click="requiresVoting ? beginMergeApproval() : applyChangeSet()"
-          />
-        </div>
-      </template>
-      <template v-if="rejectedWorkflow && appliedByYou">
-        <span class="text-sm pb-2"
-          >One of the users in this changeset has rejected the merge. You can
-          either override and merge the changeset, above or 'Cancel' the merge
-          flow</span
-        >
-        <VButton
-          label="Cancel Merge Flow"
-          variant="ghost"
-          size="sm"
-          tone="warning"
-          loadingText="Cancelling Merge Flow"
-          ruquestStatus="cancelMergeApprovalReqStatus"
-          @click="cancelMergeHandler"
-        />
-      </template>
+        </template>
+      </div>
     </Modal>
     <Modal ref="changeSetAppliedRef" title="Change Set Has Been Merged" noExit>
       <div
@@ -279,6 +293,8 @@ const actionsStore = useActionsStore();
 const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
+
+const usersInChangeset = computed(() => presenceStore.usersInChangeset);
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const changeSet = computed(() => changeSetsStore.selectedChangeSet!);
@@ -447,7 +463,7 @@ watch(
     if (!appliedByYou.value) return;
     if (
       _.values(changeSetsStore.changeSetApprovals).length !==
-      presenceStore.usersInChangeset.length + 1
+      usersInChangeset.value.length + 1
       // This is the number of other users + the person who triggered the merge
     )
       return;

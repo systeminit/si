@@ -3,51 +3,58 @@
     ref="modalRef"
     :title="deletionBlockedReason ? 'Cannot delete selection' : 'Are you sure?'"
   >
-    <template v-if="deletionBlockedReason">
-      <Stack spacing="sm">
-        <ErrorMessage :message="deletionBlockedReason" />
+    <div class="max-h-[80vh] overflow-hidden flex flex-col">
+      <template v-if="deletionBlockedReason">
+        <Stack spacing="sm">
+          <ErrorMessage :message="deletionBlockedReason" />
 
-        <VButton icon="x" tone="shade" variant="ghost" @click="close">
-          Cancel
-        </VButton>
-      </Stack>
-    </template>
-
-    <Stack spacing="sm">
-      <template v-if="selectedEdge">
-        <p>You're about to delete the following edge:</p>
-        <EdgeCard :edgeId="selectedEdge.id" />
-      </template>
-      <template v-else>
-        <p>You're about to delete the following component(s):</p>
-        <Stack spacing="xs">
-          <ComponentCard
-            v-for="component in componentsStore.deletableSelectedComponents"
-            :key="component.id"
-            :componentId="component.id"
-          />
+          <VButton icon="x" tone="shade" variant="ghost" @click="close">
+            Cancel
+          </VButton>
         </Stack>
       </template>
-      <p>
-        Items that exist on HEAD will be marked for deletion, and removed from
-        the model when this change set is merged. Items that were created in
-        this change set will be deleted immediately.
-      </p>
+      <template v-else>
+        <template v-if="selectedEdge">
+          <p>You're about to delete the following edge:</p>
+          <EdgeCard :edgeId="selectedEdge.id" />
+        </template>
+        <template v-else>
+          <div class="pb-xs">
+            You're about to delete the following component(s):
+          </div>
+          <div
+            class="flex-grow overflow-y-auto border border-neutral-300 dark:border-neutral-700 p-xs"
+          >
+            <Stack spacing="xs">
+              <ComponentCard
+                v-for="component in componentsStore.deletableSelectedComponents"
+                :key="component.id"
+                :componentId="component.id"
+              />
+            </Stack>
+          </div>
+        </template>
+        <div class="py-xs">
+          Items that exist on HEAD will be marked for deletion, and removed from
+          the model when this change set is merged. Items that were created in
+          this change set will be deleted immediately.
+        </div>
 
-      <div class="flex gap-sm">
-        <VButton icon="x" tone="shade" variant="ghost" @click="close">
-          Cancel
-        </VButton>
-        <VButton
-          icon="trash"
-          tone="destructive"
-          class="flex-grow"
-          @click="onConfirmDelete"
-        >
-          Confirm
-        </VButton>
-      </div>
-    </Stack>
+        <div class="flex gap-sm">
+          <VButton icon="x" tone="shade" variant="ghost" @click="close">
+            Cancel
+          </VButton>
+          <VButton
+            icon="trash"
+            tone="destructive"
+            class="flex-grow"
+            @click="onConfirmDelete"
+          >
+            Confirm
+          </VButton>
+        </div>
+      </template>
+    </div>
   </Modal>
 </template>
 
