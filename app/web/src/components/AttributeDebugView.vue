@@ -1,6 +1,6 @@
 <template>
   <div class="overflow-hidden my-xs p-xs border-opacity-10 border-l-2">
-    <dl>
+    <dl class="flex flex-col gap-xs">
       <DebugViewItem title="Attribute Value Id" :data="data.valueId" />
       <DebugViewItem :data="data.kind ?? 'any'" title="Type" />
       <DebugViewItem
@@ -34,7 +34,7 @@
         title="Implicit Set By Function"
         :data="data.implicitFuncName"
       />
-      <p class="text-2xs p-2 my-2 border-2 border-opacity-10">
+      <p class="text-2xs p-2 my-2 border border-opacity-10">
         prototype in change set?
         {{ data.prototypeInChangeSet ? "y" : "n" }} value in change set?
         {{ data.valueInChangeSet ? "y" : "n" }}

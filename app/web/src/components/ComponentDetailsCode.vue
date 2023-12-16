@@ -27,7 +27,7 @@
         v-else
         class="flex flex-row items-center justify-center p-md text-lg italic text-neutral-500 dark:text-neutral-400"
       >
-        No code generated yet
+        No code generated
       </div>
     </template>
   </div>

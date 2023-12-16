@@ -30,6 +30,9 @@ app.use(FloatingVue, {
       instantMove: true,
       html: true,
     },
+    "w-380": {
+      $extend: "tooltip",
+    },
   },
 });
 

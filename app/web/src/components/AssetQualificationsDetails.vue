@@ -9,7 +9,7 @@
     </template>
     <template v-else>
       <div
-        v-for="(qualification, index) in componentQualifications"
+        v-for="(qualification, index) in componentQualificationsSorted"
         :key="index"
         class="basis-full lg:basis-1/2 xl:basis-1/3 overflow-hidden pb-xs"
       >
@@ -41,6 +41,10 @@ const qualificationsStore = useQualificationsStore();
 
 const componentQualifications = computed(
   () => qualificationsStore.qualificationsByComponentId[props.componentId],
+);
+
+const componentQualificationsSorted = computed(() =>
+  _.sortBy(componentQualifications.value, "title"),
 );
 
 const qualificationDetailsReqStatus = qualificationsStore.getRequestStatus(

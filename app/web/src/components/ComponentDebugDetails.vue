@@ -11,8 +11,13 @@
     <template v-else-if="fetchDebugReqStatus.isSuccess && debugData">
       <div class="border border-neutral-500 m-xs">
         <!-- Component -->
-        <Collapsible label="Component" defaultOpen textSize="lg">
-          <dl class="border-l-2 p-xs">
+        <Collapsible
+          label="Component"
+          defaultOpen
+          textSize="lg"
+          extraBorderAtBottomOfContent
+        >
+          <dl class="border-l-2 p-xs flex flex-col gap-xs">
             <DebugViewItem title="Id" :data="componentId" />
             <DebugViewItem
               title="Variant Id"
@@ -31,10 +36,12 @@
           <Collapsible
             v-for="attribute in debugData.attributes"
             :key="attribute.path"
-            class="m-2"
             :label="attribute.path"
             :defaultOpen="false"
             as="li"
+            xPadding="double"
+            contentClasses="px-sm"
+            extraBorderAtBottomOfContent
           >
             <AttributeDebugView :data="attribute.debugData" />
           </Collapsible>
@@ -50,7 +57,9 @@
           <Collapsible
             v-for="attribute in debugData.inputSockets"
             :key="attribute.name"
-            class="m-2"
+            xPadding="double"
+            contentClasses="px-sm"
+            extraBorderAtBottomOfContent
             :label="attribute.name"
             :defaultOpen="false"
             as="li"
@@ -69,7 +78,9 @@
           <Collapsible
             v-for="attribute in debugData.outputSockets"
             :key="attribute.name"
-            class="m-2"
+            xPadding="double"
+            contentClasses="px-sm"
+            extraBorderAtBottomOfContent
             :label="attribute.name"
             :defaultOpen="false"
             as="li"
