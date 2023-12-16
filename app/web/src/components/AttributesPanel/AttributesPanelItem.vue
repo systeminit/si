@@ -288,6 +288,11 @@
           <div class="attributes-panel-item__input-value">
             {{ currentValue }}
           </div>
+          <Icon
+            name="input-type-select"
+            class="absolute right-1 top-1 text-neutral-400 dark:text-neutral-600"
+            size="sm"
+          />
         </template>
         <template v-else-if="widgetKind === 'secret'">
           <div
@@ -315,7 +320,6 @@
             />
           </Popover>
         </template>
-
         <template v-else>
           <div class="py-[4px] px-[8px] text-sm">
             {{ widgetKind }}
