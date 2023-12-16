@@ -59,7 +59,11 @@ export const useActionsStore = () => {
         state: () => ({}),
         getters: {
           proposedActions(): ProposedAction[] {
-            const graph = changeSetsStore.selectedChangeSet?.actions ?? {};
+            // TODO: this code was altering the actual store data, so we had to add a cloneDeep
+            // probably want to clean up and avoid the while loop if possible too
+            const graph = _.cloneDeep(
+              changeSetsStore.selectedChangeSet?.actions ?? {},
+            );
             const actions = [];
             while (_.keys(graph).length) {
               const removeIds = [];
@@ -95,6 +99,7 @@ export const useActionsStore = () => {
                 return _.compact(
                   _.map(component.actions, (actionPrototype) => {
                     if (actionPrototype.name === "refresh") return;
+
                     const actionInstance: ActionInstance | undefined = _.find(
                       _.values(changeSetsStore.selectedChangeSet?.actions),
                       (pa) =>
