@@ -121,7 +121,14 @@
             v-model="newMapChildKey"
             type="text"
             placeholder="key"
-            class="attributes-panel-item__new-child-key-input"
+            :class="
+              clsx(
+                'attributes-panel-item__new-child-key-input',
+                isMapKeyError &&
+                  'attributes-panel-item__new-child-key-input__error',
+              )
+            "
+            @blur="clearKeyError"
             @keyup.enter="addChildHandler"
           />
 
@@ -132,6 +139,13 @@
             <Icon name="plus" size="none" />
             {{ isArray ? "Add array item" : "Add map item" }}
           </button>
+        </div>
+        <div
+          v-if="isMap && isMapKeyError"
+          :style="{ marginLeft: indentPx }"
+          class="attributes-panel-item__map-key-error text-destructive-500 pl-8 italic pb-xs"
+        >
+          You must enter a valid key.
         </div>
       </div>
     </div>
@@ -356,7 +370,7 @@
 <script setup lang="ts">
 import * as _ from "lodash-es";
 import { computed, PropType, ref, watch } from "vue";
-
+import clsx from "clsx";
 import { Icon, IconNames, Modal } from "@si/vue-lib/design-system";
 import {
   AttributeTreeItem,
@@ -418,6 +432,10 @@ const propLabel = computed(() => propLabelParts.value.join(""));
 
 const isArray = computed(() => propKind.value === "array");
 const isMap = computed(() => propKind.value === "map");
+const isMapKeyError = ref(false);
+const clearKeyError = () => {
+  isMapKeyError.value = false;
+};
 const isChildOfArray = computed(
   () => props.attributeDef.arrayIndex !== undefined,
 );
@@ -510,7 +528,10 @@ function getKey() {
 
 function addChildHandler() {
   const isAddingMapChild = propKind.value === "map";
-  if (isAddingMapChild && !newMapChildKeyIsValid.value) return;
+  if (isAddingMapChild && !newMapChildKeyIsValid.value) {
+    isMapKeyError.value = true;
+    return;
+  }
 
   attributesStore.UPDATE_PROPERTY_VALUE({
     insert: {
@@ -656,6 +677,10 @@ function secretSelectedHandler(newSecret: Secret) {
       --header-text-color: @colors-black;
     }
   }
+}
+
+.attributes-panel-item__children > *:last-child {
+  border-bottom: 1px solid var(--header-bg-color);
 }
 
 .attributes-panel-item__section-header-wrap {
@@ -947,6 +972,14 @@ function secretSelectedHandler(newSecret: Secret) {
   &:focus {
     border-color: var(--input-focus-border-color);
     background: var(--input-focus-bg-color);
+  }
+}
+
+.attributes-panel-item__new-child-key-input__error {
+  border-color: #ef4444;
+
+  &:focus {
+    border-color: #ef4444;
   }
 }
 

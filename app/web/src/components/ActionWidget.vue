@@ -3,7 +3,9 @@
     v-if="action"
     :class="
       clsx(
-        'flex items-center gap-xs p-2xs rounded-md cursor-pointer border',
+        'flex items-center gap-xs p-2xs cursor-pointer border-x border-b',
+        themeClasses('border-neutral-200', 'border-neutral-600'),
+        'hover:outline-blue-300 hover:outline hover:z-10 -outline-offset-1',
         isActive ? 'bg-action-500 border-action-500 text-white' : '',
       )
     "
@@ -11,8 +13,10 @@
   >
     <StatusIndicatorIcon type="action" :status="action?.name" tone="inherit" />
     <Stack spacing="2xs">
-      <div>{{ action?.displayName }}</div>
-      <div class="text-xs text-neutral-300">{{ component?.displayName }}</div>
+      <div class="font-bold">{{ action?.displayName }}</div>
+      <div class="text-xs dark:text-neutral-300 italic">
+        {{ component?.displayName }}
+      </div>
     </Stack>
 
     <Icon
@@ -21,7 +25,20 @@
       class="ml-auto"
       size="sm"
     />
-    <Icon v-else-if="isActive" name="x" class="ml-auto" size="sm" />
+    <Icon
+      v-else-if="isActive"
+      v-tooltip="{ content: 'This action will run.' }"
+      name="check"
+      class="ml-auto"
+      size="sm"
+    />
+    <Icon
+      v-else
+      v-tooltip="{ content: 'This action will not run.' }"
+      name="circle-slash"
+      class="ml-auto"
+      size="sm"
+    />
   </div>
 </template>
 
@@ -29,7 +46,7 @@
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { PropType, computed } from "vue";
-import { Icon, Stack } from "@si/vue-lib/design-system";
+import { Icon, Stack, themeClasses } from "@si/vue-lib/design-system";
 import { ActionPrototypeId, useActionsStore } from "@/store/actions.store";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";

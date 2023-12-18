@@ -331,7 +331,7 @@
       :icon="isAdded ? 'plus-square' : 'tilde-square'"
       :color="isAdded ? getToneColorHex('success') : getToneColorHex('warning')"
       shadeBg
-      :size="GROUP_HEADER_ICON_SIZE"
+      :size="GROUP_HEADER_ICON_SIZE + (diffIconHover ? 8 : 0)"
       :x="halfWidth - GROUP_HEADER_ICON_SIZE / 2"
       :y="
         -nodeHeaderHeight +
@@ -341,6 +341,8 @@
       "
       origin="center"
       @click="onClick('diff')"
+      @mouseover="diffIconHover = true"
+      @mouseout="diffIconHover = false"
     />
   </v-group>
 </template>
@@ -401,6 +403,8 @@ const props = defineProps({
   isHovered: Boolean,
   isSelected: Boolean,
 });
+
+const diffIconHover = ref(false);
 
 const emit = defineEmits<{
   (e: "hover:start", meta?: ElementHoverMeta): void;
