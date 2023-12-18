@@ -1,5 +1,5 @@
 <template>
-  <Collapsible v-if="fixBatch" hideBottomBorder>
+  <Collapsible v-if="fixBatch" :defaultOpen="!props.collapse" hideBottomBorder>
     <template #label>
       <div class="flex flex-row flex-wrap items-center gap-1">
         <div class="font-bold flex flex-row items-center">
@@ -73,7 +73,6 @@
           <Timestamp size="long" :date="new Date(fixBatch.finishedAt)" />
         </div>
       </div>
-
       <ul class="pl-5 mt-2">
         <Collapsible
           v-for="(fix, fix_index) of fixBatch.fixes"
@@ -170,7 +169,10 @@ import CodeViewer from "./CodeViewer.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import FixDetails from "./FixDetails.vue";
 
-const props = defineProps<{ fixBatch: FixBatch }>();
+const props = defineProps<{
+  fixBatch: FixBatch;
+  collapse: boolean;
+}>();
 
 const hasCollaborators = computed(
   () => props.fixBatch.actors && props.fixBatch.actors.length > 0,

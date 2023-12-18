@@ -52,7 +52,7 @@
             :key="index"
             class="bg-black p-xs"
           >
-            <ApplyHistoryItem :fixBatch="fixBatch" />
+            <ApplyHistoryItem :fixBatch="fixBatch" :collapse="false" />
           </li>
         </ul>
       </TabGroupItem>

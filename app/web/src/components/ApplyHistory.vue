@@ -19,6 +19,7 @@
       v-for="(fixBatch, index) in fixBatches"
       :key="index"
       :fixBatch="fixBatch"
+      :collapse="index !== 0"
     />
   </ScrollArea>
 </template>
