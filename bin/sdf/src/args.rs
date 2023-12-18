@@ -53,7 +53,7 @@ pub(crate) struct Args {
 
     /// NATS credentials file
     #[arg(long)]
-    pub(crate) nats_creds_file: Option<String>,
+    pub(crate) nats_creds_path: Option<String>,
 
     /// Database migration mode on startup
     #[arg(long, value_parser = PossibleValuesParser::new(MigrationMode::variants()))]
@@ -66,6 +66,10 @@ pub(crate) struct Args {
     /// Cyclone encryption key file location [default: /run/sdf/cyclone_encryption.key]
     #[arg(long)]
     pub(crate) cyclone_encryption_key_path: Option<String>,
+
+    /// Cyclone encryption key file contents
+    #[arg(long)]
+    pub(crate) cyclone_encryption_key_base64: Option<String>,
 
     /// Generates cyclone secret key file (does not run server)
     ///
@@ -116,11 +120,14 @@ impl TryFrom<Args> for Config {
             if let Some(creds) = args.nats_creds {
                 config_map.set("nats.creds", creds);
             }
-            if let Some(creds_file) = args.nats_creds_file {
+            if let Some(creds_file) = args.nats_creds_path {
                 config_map.set("nats.creds_file", creds_file);
             }
-            if let Some(cyclone_encyption_key_path) = args.cyclone_encryption_key_path {
-                config_map.set("cyclone_encryption_key_path", cyclone_encyption_key_path);
+            if let Some(cyclone_encryption_key_file) = args.cyclone_encryption_key_path {
+                config_map.set("crypto.encryption_key_file", cyclone_encryption_key_file);
+            }
+            if let Some(cyclone_encryption_key_base64) = args.cyclone_encryption_key_base64 {
+                config_map.set("crypto.encryption_key_base64", cyclone_encryption_key_base64);
             }
             if let Some(pkgs_path) = args.pkgs_path {
                 config_map.set("pkgs_path", pkgs_path);
