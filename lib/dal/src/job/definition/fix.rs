@@ -18,8 +18,8 @@ use crate::{
     },
     standard_model::{self, TypeHint},
     AccessBuilder, ActionKind, ActionPrototype, ActionPrototypeId, Component, ComponentId,
-    DalContext, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, RootPropChild,
-    StandardModel, Visibility, WsEvent,
+    DalContext, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, StandardModel,
+    Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -388,66 +388,10 @@ async fn fix_task(
     // consecutive fixes that depend on the /root/resource from the previous fix.
     // `blocking_commit()` will wait for any jobs that have ben created through
     // `enqueue_job(...)` to finish before moving on.
-    let attribute_value = Component::resource_attribute_value_by_id(&ctx, *component.id()).await?;
-    let resource_attribute_value = Component::root_prop_child_attribute_value_for_component(
-        &ctx,
-        *component.id(),
-        RootPropChild::Resource,
-    )
-    .await?;
-    dbg!(
-        &action,
-        &component,
-        &fix,
-        &attribute_value,
-        attribute_value.get_value(&ctx).await.expect("aaa"),
-        &resource_attribute_value,
-        &resource_attribute_value
-            .get_unprocessed_value(&ctx)
-            .await
-            .expect("bbb")
-    );
-
     ctx.blocking_commit().await?;
 
-    assert_eq!(
-        attribute_value.id(),
-        Component::resource_attribute_value_by_id(&ctx, *component.id())
-            .await?
-            .id()
-    );
-    assert_eq!(
-        resource_attribute_value.id(),
-        Component::root_prop_child_attribute_value_for_component(
-            &ctx,
-            *component.id(),
-            RootPropChild::Resource,
-        )
-        .await?
-        .id(),
-    );
-
-    let attribute_value = Component::resource_attribute_value_by_id(&ctx, *component.id()).await?;
-    let resource_attribute_value = Component::root_prop_child_attribute_value_for_component(
-        &ctx,
-        *component.id(),
-        RootPropChild::Resource,
-    )
-    .await?;
-    dbg!(
-        &action,
-        &component,
-        &fix,
-        &attribute_value,
-        attribute_value.get_value(&ctx).await.expect("aaa"),
-        &resource_attribute_value,
-        &resource_attribute_value
-            .get_unprocessed_value(&ctx)
-            .await
-            .expect("bbb")
-    );
     if matches!(completion_status, FixCompletionStatus::Success) {
-        if let Err(err) = dbg!(component.act(&ctx, ActionKind::Refresh).await) {
+        if let Err(err) = component.act(&ctx, ActionKind::Refresh).await {
             error!("Unable to refresh component: {err}");
         }
         if let Err(err) = ctx.blocking_commit().await {
