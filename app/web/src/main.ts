@@ -3,7 +3,7 @@ import FloatingVue from "floating-vue";
 import VueKonva from "vue-konva";
 import { createHead } from "@vueuse/head";
 import VueSafeTeleport from "vue-safe-teleport";
-import Toast, { PluginOptions } from "vue-toastification";
+import Toast from "vue-toastification";
 import "vue-toastification/dist/index.css";
 
 import "@si/vue-lib/tailwind/main.css";
@@ -30,14 +30,13 @@ app.use(FloatingVue, {
       instantMove: true,
       html: true,
     },
+    "w-380": {
+      $extend: "tooltip",
+    },
   },
 });
 
-const toastOptions: PluginOptions = {
-  // TODO(Wendy) - any options we want to configure for vue-toastification go here
-};
-
-app.use(Toast, toastOptions);
+app.use(Toast); // see https://vue-toastification.maronato.dev/ for some optoins we can set
 
 // unfortunately, vue-konva only works as a global plugin, so we must register it here
 // TODO: fork the lib and set it up so we can import individual components

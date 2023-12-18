@@ -1,3 +1,4 @@
+import { describe, expect, test } from "vitest";
 import { FunctionKind } from "../src/function";
 import { createSandbox } from "../src/sandbox";
 

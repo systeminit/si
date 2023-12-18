@@ -59,8 +59,7 @@ pub enum NodeSide {
 pub struct SocketView {
     pub id: String,
     pub label: String,
-    #[serde(rename = "type")]
-    pub ty: String,
+    pub connection_annotations: Vec<String>,
     pub direction: SocketDirection,
     pub max_connections: Option<usize>,
     pub is_required: Option<bool>,
@@ -85,7 +84,8 @@ impl SocketView {
                 socket_views.push(Self {
                     id: external_provider.id().to_string(),
                     label: external_provider.name().to_owned(),
-                    ty: external_provider.name().to_owned(),
+                    // todo: implement connection annotations in graph work
+                    connection_annotations: vec![external_provider.name().to_owned()],
                     direction: SocketDirection::Output,
                     max_connections: match external_provider.arity() {
                         ProviderArity::Many => None,
@@ -102,7 +102,8 @@ impl SocketView {
                 socket_views.push(Self {
                     id: explicit_internal_provider.id().to_string(),
                     label: explicit_internal_provider.name().to_owned(),
-                    ty: explicit_internal_provider.name().to_owned(),
+                    // todo: implement connection annotations in graph work
+                    connection_annotations: vec![explicit_internal_provider.name().to_owned()],
                     direction: SocketDirection::Input,
                     max_connections: match explicit_internal_provider.arity() {
                         ProviderArity::Many => None,

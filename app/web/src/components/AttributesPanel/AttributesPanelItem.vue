@@ -151,14 +151,13 @@
           <i>{{ propLabelParts[0] }}</i
           >{{ propLabelParts[1] }}
         </div>
-        <div v-if="isChildOfMap || isChildOfArray">
-          <button
-            class="attributes-panel-item__delete-child-button"
-            @click="removeChildHandler"
-          >
-            <Icon name="trash" size="none" />
-          </button>
-        </div>
+        <button
+          v-if="isChildOfMap || isChildOfArray"
+          class="attributes-panel-item__delete-child-button hover:text-destructive-500"
+          @click="removeChildHandler"
+        >
+          <Icon name="trash" size="none" />
+        </button>
         <!-- TODO - enable tooltip help info -->
         <!-- <Icon
           v-if="propName === 'region'"
@@ -289,6 +288,11 @@
           <div class="attributes-panel-item__input-value">
             {{ currentValue }}
           </div>
+          <Icon
+            name="input-type-select"
+            class="absolute right-1 top-1 text-neutral-400 dark:text-neutral-600"
+            size="sm"
+          />
         </template>
         <template v-else-if="widgetKind === 'secret'">
           <div
@@ -316,7 +320,6 @@
             />
           </Popover>
         </template>
-
         <template v-else>
           <div class="py-[4px] px-[8px] text-sm">
             {{ widgetKind }}

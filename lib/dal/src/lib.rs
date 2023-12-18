@@ -253,6 +253,12 @@ pub fn generate_unique_id(length: usize) -> String {
         .collect()
 }
 
+pub fn generate_name_from_schema_name(schema_name: impl AsRef<str>) -> String {
+    let unique_id = generate_unique_id(4);
+    let schema_name = schema_name.as_ref();
+    format!("{schema_name} {unique_id}")
+}
+
 pub fn generate_name() -> String {
     let unique_id = generate_unique_id(4);
     format!("si-{unique_id}")

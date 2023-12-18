@@ -53,19 +53,21 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NatsConfig {
-    pub url: String,
-    pub subject_prefix: Option<String>,
+    pub connection_name: Option<String>,
     pub creds: Option<String>,
     pub creds_file: Option<String>,
+    pub subject_prefix: Option<String>,
+    pub url: String,
 }
 
 impl Default for NatsConfig {
     fn default() -> Self {
         Self {
-            url: "localhost".to_string(),
-            subject_prefix: None,
+            connection_name: None,
             creds: None,
             creds_file: None,
+            subject_prefix: None,
+            url: "localhost".to_string(),
         }
     }
 }
@@ -105,6 +107,9 @@ impl Client {
         }
         if let Some(creds_file) = &config.creds_file {
             options = options.credentials_file(creds_file.into()).await?;
+        }
+        if let Some(connection_name) = &config.connection_name {
+            options = options.name(connection_name);
         }
         Self::connect_with_options(&config.url, config.subject_prefix.clone(), options).await
     }

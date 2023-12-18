@@ -269,7 +269,7 @@ def _dependent_modified_file_targets(ctx: bxl.Context) -> bxl.TargetSet:
         _normalize_target_str,
         filter(lambda e: ctx.fs.is_file(e), ctx.cli_args.modified_file),
     )
-    query = "owner(%s)"
+    query = "owner('%s')"
     results_set = ctx.uquery().eval(query, query_args = modified_files)
 
     targets = utarget_set()

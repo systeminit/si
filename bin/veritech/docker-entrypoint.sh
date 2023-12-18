@@ -3,29 +3,9 @@
 set -eu
 
 main() {
-  write_aws_credentials
   write_docker_credentials
 
   exec /usr/local/bin/.veritech "$@"
-}
-
-write_aws_credentials() {
-  ensure_env_var AWS_ACCESS_KEY_ID "${AWS_ACCESS_KEY_ID:-}"
-  ensure_env_var AWS_SECRET_ACCESS_KEY "${AWS_SECRET_ACCESS_KEY:-}"
-
-  mkdir -p "$HOME/.aws"
-  chmod 0755 "$HOME/.aws"
-  cat <<-EOF >"$HOME/.aws/credentials"
-	[default]
-	aws_access_key_id = ${AWS_ACCESS_KEY_ID:-}
-	aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY:-}
-	EOF
-  if [ -n "${AWS_SESSION_TOKEN:-}" ]; then echo "aws_session_token = ${AWS_SESSION_TOKEN:-}" >>"$HOME/.aws/credentials"; fi
-  chmod 0600 "$HOME/.aws/credentials"
-
-  # Remove environment variables from veritech's environment
-  # AWS_SESSION_TOKEN is optional, but `unset` returns 0 for any variable, whether it exists or not
-  unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 }
 
 write_docker_credentials() {

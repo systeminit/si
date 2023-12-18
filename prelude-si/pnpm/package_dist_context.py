@@ -13,15 +13,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--package-dir",
+        required=True,
         help="Path to the workspace member package",
     )
     parser.add_argument(
         "--package-node-modules-path",
+        required=True,
         help="Path to package `node_modules`",
     )
     parser.add_argument(
         "--dist-path",
+        required=True,
         help="Path to `dist` scripts",
+    )
+    parser.add_argument(
+        "--index-file",
+        required=True,
+        help="Entrypoint JavaScript file to run",
     )
     parser.add_argument(
         "out_path",
@@ -52,7 +60,14 @@ if __name__ == "__main__":
             symlinks=True,
         )
 
-        js_path = '${0%/*}/../lib/' + args.package_dir + '/dist/index.js'
+        js_path = os.path.join(
+            '${0%/*}',
+            "..",
+            "lib",
+            args.package_dir,
+            "dist",
+            args.index_file,
+        )
         binary_content = [
             "#!/usr/bin/env sh",
             f"exec node \"{js_path}\" \"$@\"",

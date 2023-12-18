@@ -1,10 +1,18 @@
 <template>
-  <div>
+  <div
+    :class="
+      clsx(
+        isOpen && extraBorderAtBottomOfContent && 'border-b',
+        themeClasses('border-neutral-200', 'border-neutral-600'),
+      )
+    "
+  >
     <div
       :class="
         clsx(
           buttonClasses,
-          'flex w-full px-2 py-2 text-left font-medium focus:outline-none items-center cursor-pointer',
+          'flex w-full py-xs text-left font-medium focus:outline-none items-center cursor-pointer',
+          xPaddingClass,
           !hideBottomBorder &&
             !(hideBottomBorderWhenOpen && isOpen) && [
               'border-b',
@@ -17,7 +25,7 @@
           }[textSize],
         )
       "
-      @click="toggleIsOpen"
+      @click="toggleIsOpen()"
     >
       <slot name="prefix" />
       <Icon
@@ -57,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { PropType, ref } from "vue";
+import { PropType, ref, computed } from "vue";
 import clsx from "clsx";
 import { Icon, themeClasses } from "..";
 
@@ -75,15 +83,30 @@ const props = defineProps({
   },
   hideBottomBorderWhenOpen: { type: Boolean, default: false },
   hideBottomBorder: { type: Boolean, default: false },
+  extraBorderAtBottomOfContent: { type: Boolean, default: false },
   useDifferentLabelWhenOpen: { type: Boolean },
   openLabel: { type: String },
+  xPadding: {
+    type: String as PropType<"none" | "standard" | "double">,
+    default: "standard",
+  },
+});
+
+const xPaddingClass = computed(() => {
+  if (props.xPadding === "standard") return "px-xs";
+  else if (props.xPadding === "double") return "px-sm";
+  else return "";
 });
 
 const isOpen = ref(props.defaultOpen);
 
-function toggleIsOpen() {
-  isOpen.value = !isOpen.value;
+function toggleIsOpen(open?: boolean) {
+  if (open === undefined) {
+    isOpen.value = !isOpen.value;
+  } else {
+    isOpen.value = open;
+  }
 }
 
-defineExpose({ isOpen });
+defineExpose({ isOpen, toggleIsOpen });
 </script>

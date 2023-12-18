@@ -112,18 +112,9 @@ pub async fn get_user_email() -> CliResult<String> {
 pub async fn format_credentials_for_veritech() -> CliResult<Vec<String>> {
     let raw_creds = get_credentials().await?;
     let mut creds = Vec::new();
-    creds.push(format!("AWS_ACCESS_KEY_ID={}", raw_creds.aws_access_key_id));
-    creds.push(format!(
-        "AWS_SECRET_ACCESS_KEY={}",
-        raw_creds.aws_secret_access_key
-    ));
 
     if let Some(url) = raw_creds.aws_endpoint_url {
         creds.push(format!("AWS_ENDPOINT_URL={}", url));
-    }
-
-    if let Some(token) = raw_creds.aws_session_token {
-        creds.push(format!("AWS_SESSION_TOKEN={}", token))
     }
 
     if raw_creds.docker_hub_user_name.is_some() && raw_creds.docker_hub_credential.is_some() {

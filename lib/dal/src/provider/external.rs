@@ -116,6 +116,7 @@ impl ExternalProvider {
         func_id: FuncId,
         arity: ProviderArity,
         kind: ProviderKind,
+        // todo: connection_annotation
     ) -> ExternalProviderResult<Self> {
         info!("creating external provider");
         let name = name.into();

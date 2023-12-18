@@ -401,6 +401,7 @@ impl InternalProvider {
         func_id: FuncId,
         arity: ProviderArity,
         kind: ProviderKind,
+        // todo: connection_annotation
     ) -> InternalProviderResult<Self> {
         info!("creating explicit internal provider");
         let name = name.into();

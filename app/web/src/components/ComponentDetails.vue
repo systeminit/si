@@ -157,7 +157,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, watch, onBeforeMount, ref } from "vue";
+import { computed, watch, ref } from "vue";
 import {
   Icon,
   ErrorMessage,
@@ -219,17 +219,6 @@ const selectedComponentActionsCount = computed(() => {
     actionsStore.actionsByComponentId[selectedComponentId.value],
     (a) => !!a.actionInstanceId,
   ).length;
-});
-
-// this component has a :key so a new instance will be re-mounted when the selected component changes
-// so we can use mounted hooks to trigger fetching data
-onBeforeMount(() => {
-  if (
-    selectedComponentId.value &&
-    selectedComponent.value?.changeStatus !== "deleted"
-  ) {
-    componentsStore.FETCH_COMPONENT_CODE(selectedComponentId.value);
-  }
 });
 
 const statusStore = useStatusStore();

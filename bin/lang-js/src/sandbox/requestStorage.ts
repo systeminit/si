@@ -1,4 +1,4 @@
-import * as _ from "lodash";
+import * as _ from "lodash-es";
 import { makeConsole } from "./console";
 
 // Since a lang-js process only lasts for a single function request, this

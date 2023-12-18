@@ -92,6 +92,8 @@ impl AuthoringHelper {
                 identity_func_id,
                 identity_func_binding_id,
                 identity_func_binding_return_value_id,
+                serde_json::to_string(&vec!["universal"])
+                    .expect("Unable to parse annotation string"),
                 SocketArity::Many,
                 false,
             )
@@ -106,6 +108,7 @@ impl AuthoringHelper {
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
+            serde_json::to_string(&vec!["universal"]).expect("Unable to parse annotation string"),
             SocketArity::Many,
             false,
         )

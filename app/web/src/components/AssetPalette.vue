@@ -11,9 +11,11 @@
         <template #top>
           <SidebarSubpanelTitle label="Assets" icon="component-plus">
             <Icon
-              v-tooltip="
-                'Drag the assets that you wish to include in your application into the canvas to the right.'
-              "
+              v-tooltip="{
+                content:
+                  'Drag the assets that you wish to include in your application into the canvas to the right.',
+                theme: 'w-380',
+              }"
               class="cursor-pointer"
               name="question-circle"
             />
@@ -29,11 +31,11 @@
         <ul class="overflow-y-auto">
           <Collapsible
             v-for="(category, categoryIndex) in filteredSchemas"
+            ref="collapsibleRefs"
             :key="categoryIndex"
             :label="category.displayName"
             as="li"
             contentAs="ul"
-            defaultOpen
             class="select-none"
           >
             <li
@@ -100,6 +102,8 @@ const schemasReqStatus = componentsStore.getRequestStatus(
   "FETCH_AVAILABLE_SCHEMAS",
 );
 
+const collapsibleRefs = ref<InstanceType<typeof Collapsible>[]>([]);
+
 const filterString = ref("");
 const filterStringCleaned = computed(() =>
   filterString.value.trim().toLowerCase(),
@@ -108,6 +112,9 @@ const filterModeActive = computed(() => !!filterStringCleaned.value);
 
 function onSearchUpdated(newFilterString: string) {
   filterString.value = newFilterString;
+  collapsibleRefs.value.forEach((c) => {
+    c.toggleIsOpen(true);
+  });
 }
 
 const categories = computed(() => {

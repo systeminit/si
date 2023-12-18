@@ -4,7 +4,7 @@ import path from "path";
 import zlib from "zlib";
 import fetch from "node-fetch";
 
-import * as _ from "lodash";
+import * as _ from "lodash-es";
 import * as yaml from "js-yaml";
 
 import { FunctionKind } from "./function";

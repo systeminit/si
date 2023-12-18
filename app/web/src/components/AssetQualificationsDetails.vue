@@ -9,7 +9,7 @@
     </template>
     <template v-else>
       <div
-        v-for="(qualification, index) in componentQualifications"
+        v-for="(qualification, index) in componentQualificationsSorted"
         :key="index"
         class="basis-full lg:basis-1/2 xl:basis-1/3 overflow-hidden pb-xs"
       >
@@ -43,6 +43,10 @@ const componentQualifications = computed(
   () => qualificationsStore.qualificationsByComponentId[props.componentId],
 );
 
+const componentQualificationsSorted = computed(() =>
+  _.sortBy(componentQualifications.value, "title"),
+);
+
 const qualificationDetailsReqStatus = qualificationsStore.getRequestStatus(
   "FETCH_COMPONENT_QUALIFICATIONS",
   props.componentId,
@@ -50,7 +54,7 @@ const qualificationDetailsReqStatus = qualificationsStore.getRequestStatus(
 
 // TODO: this logic probably shouldnt live here... and more targeted updates should be sent
 watch(
-  [() => changeSetsStore.selectedChangeSetWritten],
+  [() => changeSetsStore.selectedChangeSetLastWrittenAt],
   () => {
     qualificationsStore.FETCH_COMPONENT_QUALIFICATIONS(props.componentId);
   },

@@ -57,7 +57,7 @@ const diffReqStatus = componentsStore.getRequestStatus(
 );
 
 watch(
-  [selectedComponentId, () => changeSetsStore.selectedChangeSetWritten],
+  [selectedComponentId, () => changeSetsStore.selectedChangeSetLastWrittenAt],
   () => {
     if (!selectedComponentId.value) return;
     componentsStore.FETCH_COMPONENT_DIFF(selectedComponentId.value);

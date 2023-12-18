@@ -27,18 +27,20 @@
         v-else
         class="flex flex-row items-center justify-center p-md text-lg italic text-neutral-500 dark:text-neutral-400"
       >
-        No code generated yet
+        No code generated
       </div>
     </template>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { ErrorMessage } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeViewer from "./CodeViewer.vue";
 
+const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 
 const selectedComponentId = computed(
@@ -53,5 +55,18 @@ const codeReqStatus = componentsStore.getRequestStatus(
 
 const selectedComponentCode = computed(
   () => componentsStore.selectedComponentCode,
+);
+
+watch(
+  [() => changeSetsStore.selectedChangeSetLastWrittenAt],
+  () => {
+    if (
+      componentsStore.selectedComponent &&
+      componentsStore.selectedComponent.changeStatus !== "deleted"
+    ) {
+      componentsStore.FETCH_COMPONENT_CODE(selectedComponentId.value);
+    }
+  },
+  { immediate: true },
 );
 </script>

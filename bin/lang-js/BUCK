@@ -2,9 +2,10 @@ load(
     "@prelude-si//:macros.bzl",
     "eslint",
     "export_file",
-    "jest",
+    "ts_test",
     "nix_omnibus_pkg",
     "node_pkg_bin",
+    "npm_bin",
     "package_node_modules",
     "prettier_check",
     "typescript_check",
@@ -37,6 +38,7 @@ filegroup(
 )
 
 prod_deps_srcs = {
+    "lib/ts-lib": "//lib/ts-lib:src",
 }
 
 dev_deps_srcs = {
@@ -44,9 +46,14 @@ dev_deps_srcs = {
     "lib/tsconfig": "//lib/tsconfig:src",
 }
 
+npm_bin(
+    name = "tsup",
+)
+
 typescript_dist(
     name = "dist",
     srcs = [":src"],
+    tsup = ":tsup",
     prod_deps_srcs = prod_deps_srcs,
     dev_deps_srcs = dev_deps_srcs,
 )
@@ -75,9 +82,9 @@ typescript_check(
     dev_deps_srcs = dev_deps_srcs,
 )
 
-jest(
+ts_test(
     name = "test-unit",
-    srcs = [":src", ":test_src"] + glob(["jest.config.js"]),
+    srcs = [":src", ":test_src"],
     prod_deps_srcs = prod_deps_srcs,
     dev_deps_srcs = dev_deps_srcs,
 )

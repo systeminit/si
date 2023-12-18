@@ -150,6 +150,8 @@ if ! test -f /run/netns/$JAILER_NS; then
   ip netns exec $JAILER_NS iptables -t nat -A POSTROUTING -o $VETH_DEV -j MASQUERADE
   ip netns exec $JAILER_NS iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
   ip netns exec $JAILER_NS iptables -A FORWARD -i $TAP_DEV -o $VETH_DEV -j ACCEPT
+  ip netns exec $JAILER_NS iptables -A OUTPUT -d 169.254.169.254 -j DROP
+
 fi
 
 ########## ############################# #########

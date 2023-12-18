@@ -1,4 +1,3 @@
-import Debug from "debug";
 import { NodeVM } from "vm2";
 
 import {
@@ -8,6 +7,7 @@ import {
   ResultSuccess,
 } from "../function";
 import { RequestCtx } from "../request";
+import { Debug } from "../debug";
 
 const debug = Debug("langJs:schemaVariantDefinition");
 

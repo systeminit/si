@@ -1086,29 +1086,32 @@ impl Component {
 //         Ok(())
 //     }
 
-//     pub async fn delete_and_propagate(&mut self, ctx: &DalContext) -> ComponentResult<()> {
-//         // Block deletion of frames with children
-//         if self.get_type(ctx).await? != ComponentType::Component {
-//             let frame_edges = Edge::list_for_component(ctx, self.id).await?;
-//             let frame_node = self
-//                 .node(ctx)
-//                 .await?
-//                 .pop()
-//                 .ok_or(ComponentError::NodeNotFoundForComponent(self.id))?;
-//             let frame_socket = Socket::find_frame_socket_for_node(
-//                 ctx,
-//                 *frame_node.id(),
-//                 SocketEdgeKind::ConfigurationInput,
-//             )
-//             .await?;
-//             let connected_children = frame_edges
-//                 .into_iter()
-//                 .filter(|edge| edge.head_socket_id() == *frame_socket.id())
-//                 .count();
-//             if connected_children > 0 {
-//                 return Err(ComponentError::FrameHasAttachedComponents);
-//             }
+// pub async fn delete_and_propagate(&mut self, ctx: &DalContext) -> ComponentResult<()> {
+//     // Block deletion of frames with children
+//     if self.get_type(ctx).await? != ComponentType::Component {
+//         let frame_edges = Edge::list_for_component(ctx, self.id).await?;
+//         let frame_node = self
+//             .node(ctx)
+//             .await?
+//             .pop()
+//             .ok_or(ComponentError::NodeNotFoundForComponent(self.id))?;
+//         let frame_socket = Socket::find_frame_socket_for_node(
+//             ctx,
+//             *frame_node.id(),
+//             SocketEdgeKind::ConfigurationInput,
+//         )
+//         .await?;
+//         let connected_children = frame_edges
+//             .into_iter()
+//             .filter(|edge| {
+//                 edge.head_node_id() == *frame_node.id()
+//                     && edge.head_socket_id() == *frame_socket.id()
+//             })
+//             .count();
+//         if connected_children > 0 {
+//             return Err(ComponentError::FrameHasAttachedComponents);
 //         }
+//     }
 
 //         self.set_deleted_at(ctx, Some(Utc::now())).await?;
 

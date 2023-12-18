@@ -1,5 +1,4 @@
 use base64::{engine::general_purpose, Engine};
-use dal::BuiltinsResult;
 use dal::{
     func::{
         argument::FuncArgumentKind, backend::validation::FuncBackendValidationArgs,
@@ -13,7 +12,8 @@ use dal::{
     ActionKind, ChangeSet, ChangeSetPk, DalContext, ExternalProvider, Func, InternalProvider,
     PropKind, Schema, SchemaVariant, StandardModel, ValidationPrototype,
 };
-use dal_test::{test, DalContextHeadRef};
+use dal::{BuiltinsResult, ComponentType};
+use dal_test::{connection_annotation_string, test, DalContextHeadRef};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
     FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, LeafFunctionSpec,
@@ -75,7 +75,7 @@ async fn make_stellarfield(ctx: &DalContext) -> BuiltinsResult<()> {
         .build()?;
 
     let fallout_entries_to_galaxies_transform_code =
-            "async function falloutEntriesToGalaxies(input: Input): Promise<Output> {
+        "async function falloutEntriesToGalaxies(input: Input): Promise<Output> {
           let galaxies = [];
           let entries = input.entries;
 
@@ -273,6 +273,7 @@ async fn make_stellarfield(ctx: &DalContext) -> BuiltinsResult<()> {
                             SocketSpecData::builder()
                                 .name("bethesda")
                                 .kind(SocketSpecKind::Input)
+                                .connection_annotations(serde_json::to_string(&vec!["bethesda"])?)
                                 .build()?,
                         )
                         .build()?,
@@ -284,6 +285,7 @@ async fn make_stellarfield(ctx: &DalContext) -> BuiltinsResult<()> {
                             SocketSpecData::builder()
                                 .name("fallout")
                                 .kind(SocketSpecKind::Input)
+                                .connection_annotations(serde_json::to_string(&vec!["fallout"])?)
                                 .build()?,
                         )
                         .build()?,
@@ -499,6 +501,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                     SchemaVariantSpecData::builder()
                         .name("Pig Bodine")
                         .color("baddad")
+                        .component_type(ComponentType::Component)
                         .func_unique_id(&scaffold_func_spec_a.unique_id)
                         .build()
                         .expect("pig bodine"),
@@ -591,6 +594,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                         .data(
                             SocketSpecData::builder()
                                 .name("AC Power")
+                                .connection_annotations(connection_annotation_string!("ac power"))
                                 .ui_hidden(false)
                                 .kind(SocketSpecKind::Input)
                                 .arity(SocketSpecArity::One)
@@ -606,6 +610,7 @@ async fn test_install_pkg(ctx: &DalContext) {
                         .data(
                             SocketSpecData::builder()
                                 .name("Light")
+                                .connection_annotations(connection_annotation_string!("light"))
                                 .kind(SocketSpecKind::Output)
                                 .arity(SocketSpecArity::Many)
                                 .ui_hidden(false)

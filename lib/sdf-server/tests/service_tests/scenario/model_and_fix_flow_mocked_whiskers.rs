@@ -3,7 +3,7 @@ use dal::{
     qualification::QualificationSubCheckStatus, ActionKind, Component, ExternalProvider,
     FixCompletionStatus, Func, Schema, SchemaVariant, SocketArity, StandardModel,
 };
-use dal_test::{sdf_test, AuthToken, DalContextHead};
+use dal_test::{connection_annotation_string, sdf_test, AuthToken, DalContextHead};
 use pretty_assertions_sorted::assert_eq;
 
 use crate::service_tests::scenario::ScenarioHarness;
@@ -444,6 +444,7 @@ async fn model_and_fix_flow_mocked_whiskers(
         *identity_func.id(),
         *identity_func_binding.id(),
         *identity_fbrv.id(),
+        connection_annotation_string!("Instance ID"),
         SocketArity::Many,
         false,
     )

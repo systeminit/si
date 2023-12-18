@@ -1,5 +1,5 @@
-import Debug from "debug";
 import { NodeVM } from "vm2";
+import { Debug } from "../debug";
 
 import {
   failureExecution,

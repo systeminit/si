@@ -547,6 +547,7 @@ impl PkgExporter {
 
             data_builder
                 .name(input_socket_ip.name())
+                .connection_annotations(socket.connection_annotations())
                 .kind(SocketSpecKind::Input)
                 .arity(socket.arity())
                 .ui_hidden(socket.ui_hidden());
@@ -601,6 +602,7 @@ impl PkgExporter {
             let mut data_builder = SocketSpecData::builder();
             data_builder
                 .name(output_socket_ep.name())
+                .connection_annotations(socket.connection_annotations())
                 .kind(SocketSpecKind::Output)
                 .arity(socket.arity())
                 .ui_hidden(socket.ui_hidden());

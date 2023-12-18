@@ -461,7 +461,7 @@ fn default_runtime_strategy() -> LocalUdsRuntimeStrategy {
 }
 
 fn default_pool_size() -> u16 {
-    1000
+    100
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

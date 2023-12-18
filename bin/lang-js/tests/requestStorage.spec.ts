@@ -1,3 +1,6 @@
+import {
+  beforeAll, describe, expect, test,
+} from "vitest";
 import { makeBeforeRequestStorage } from "../src/sandbox/requestStorage";
 
 describe("requestStorage", () => {

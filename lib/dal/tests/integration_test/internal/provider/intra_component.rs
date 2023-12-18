@@ -8,6 +8,7 @@ use dal::{
     Prop, PropKind, SocketArity, StandardModel,
 };
 use dal_test::{
+    connection_annotation_string,
     helpers::setup_identity_func,
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
@@ -356,6 +357,7 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        connection_annotation_string!("freya"),
         SocketArity::Many,
         false,
     )
@@ -511,7 +513,7 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
     )
     .await
     .expect("could not create func");
-    let code = "function odin(_args) { 
+    let code = "function odin(_args) {
         return 'odin';
     }";
     func.set_code_plaintext(ctx, Some(code))

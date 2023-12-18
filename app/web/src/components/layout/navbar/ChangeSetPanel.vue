@@ -13,7 +13,7 @@
           size="xs"
           type="dropdown"
           noLabel
-          placeholder="-- select a workspace --"
+          placeholder="-- select a change set --"
           :modelValue="selectedChangeSetId"
           :options="changeSetDropdownOptions"
           @update:model-value="onSelectChangeSet"
@@ -130,7 +130,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, computed, ref, watch } from "vue";
+import { onMounted, onBeforeUnmount, computed, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { useRoute, useRouter } from "vue-router";
 import {
@@ -163,7 +163,6 @@ const selectedChangeSetName = computed(
 
 const changeSetDropdownOptions = computed(() => {
   return [
-    { value: nilId(), label: "head" },
     ..._.map(openChangeSets.value, (cs) => ({ value: cs.id, label: cs.name })),
     { value: "NEW", label: "+ Create new change set" },
   ];
@@ -189,7 +188,21 @@ const checkFirstLoad = () => {
 };
 
 watch([changeSetsReqStatus], checkFirstLoad);
-onMounted(checkFirstLoad);
+
+onMounted(() => {
+  checkFirstLoad();
+  window.addEventListener("keydown", onKeyDown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeyDown);
+});
+
+const onKeyDown = async (e: KeyboardEvent) => {
+  if (e.key === "Enter" && abandonConfirmationModalRef.value?.isOpen) {
+    abandonChangesetHandler();
+  }
+};
 
 // The name for a new change set
 const createChangeSetName = ref(changeSetsStore.getGeneratedChangesetName());

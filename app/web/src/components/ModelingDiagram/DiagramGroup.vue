@@ -62,7 +62,12 @@
     <!--  left side handle  -->
     <v-line
       :config="{
-        points: [-nodeWidth / 2, 0, -nodeWidth / 2, nodeBodyHeight],
+        points: [
+          -nodeWidth / 2,
+          -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+          -nodeWidth / 2,
+          nodeBodyHeight,
+        ],
         hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
       }"
       @mouseover="onResizeHover('left', $event)"
@@ -71,7 +76,12 @@
     <!-- right side handle   -->
     <v-line
       :config="{
-        points: [nodeWidth / 2, 0, nodeWidth / 2, nodeBodyHeight],
+        points: [
+          nodeWidth / 2,
+          -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+          nodeWidth / 2,
+          nodeBodyHeight,
+        ],
         hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
       }"
       @mouseover="onResizeHover('right', $event)"
@@ -106,6 +116,42 @@
         y: nodeBodyHeight,
       }"
       @mouseover="onResizeHover('bottom-right', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Top Handle -->
+    <v-line
+      :config="{
+        points: [
+          -nodeWidth / 2,
+          -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+          nodeWidth / 2,
+          -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+        ],
+        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
+      }"
+      @mouseover="onResizeHover('top', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Top Left Handle -->
+    <v-circle
+      :config="{
+        width: GROUP_RESIZE_HANDLE_SIZE,
+        height: GROUP_RESIZE_HANDLE_SIZE,
+        x: -nodeWidth / 2,
+        y: -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+      }"
+      @mouseover="onResizeHover('top-left', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Top Right Handle -->
+    <v-circle
+      :config="{
+        width: GROUP_RESIZE_HANDLE_SIZE,
+        height: GROUP_RESIZE_HANDLE_SIZE,
+        x: nodeWidth / 2,
+        y: -(nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN),
+      }"
+      @mouseover="onResizeHover('top-right', $event)"
       @mouseout="onMouseOut"
     />
 

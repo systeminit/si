@@ -45,3 +45,6 @@ export const SELECTION_COLOR = COLOR_PALETTE.action[300];
 
 export const MIN_ZOOM = 0.1; // 10%
 export const MAX_ZOOM = 10; // 1000%
+
+// TODO (Wendy) - this constant should be derived from the frame header and internal padding
+export const GROUP_INNER_Y_BOUNDARY_OFFSET = 59;

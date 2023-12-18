@@ -1,5 +1,5 @@
 import { IconNames, Tones } from "@si/vue-lib/design-system";
-import { useComponentsStore, ComponentId } from "@/store/components.store";
+import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 
 export type GridPoint = { x: number; y: number };
@@ -22,6 +22,7 @@ export type DiagramElementUniqueKey = string;
 
 export abstract class DiagramElementData {
   abstract get def(): DiagramNodeDef | DiagramSocketDef | DiagramEdgeDef;
+
   abstract get uniqueKey(): DiagramElementUniqueKey;
 }
 
@@ -161,6 +162,8 @@ export type DiagramNodeDef = {
   componentId: ComponentId;
   /** parent frame (or whatever) id */
   parentNodeId?: DiagramElementId;
+  /** list of ancestor component ids */
+  ancestorIds?: ComponentId[];
   /** node type within the context of the diagram */
   type?: string | null;
   /** category of diagram node */
@@ -198,8 +201,8 @@ export type DiagramSocketDef = {
   id: DiagramElementId;
   /** label displayed with the socket */
   label: string;
-  /** type - will only connect to sockets of the same type */
-  type: string;
+  /** socket can only connect with sockets with compatible annotations */
+  connectionAnnotations: string[];
   /** direction of data flow from this socket */
   direction: "input" | "output" | "bidirectional";
   /** arity / max number of connections - null = no limit (most will likely be either 1 or null) */

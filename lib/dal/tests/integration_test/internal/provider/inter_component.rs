@@ -5,6 +5,7 @@ use dal::{
     StandardModel,
 };
 use dal_test::{
+    connection_annotation_string,
     helpers::{component_bag::ComponentBag, setup_identity_func},
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
@@ -306,6 +307,7 @@ async fn setup_esp(ctx: &DalContext) -> (ComponentBag, PropId, PropId, ExternalP
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        connection_annotation_string!("output"),
         SocketArity::Many,
         false,
     )
@@ -430,6 +432,7 @@ async fn setup_swings(ctx: &DalContext) -> (ComponentBag, PropId, InternalProvid
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        connection_annotation_string!("swings"),
         SocketArity::Many,
         false,
     )
@@ -567,6 +570,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        connection_annotation_string!("source_data"),
         SocketArity::Many,
         false,
     )
@@ -674,6 +678,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        connection_annotation_string!("destination_data"),
         SocketArity::One,
         false,
     )

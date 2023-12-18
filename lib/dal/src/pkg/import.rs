@@ -1995,21 +1995,24 @@ async fn import_schema(
 //                     let spec = schema_spec.to_spec().await?;
 //                     let metadata = SchemaVariantDefinitionJson::metadata_from_spec(spec)?;
 
-//                     SchemaVariantDefinition::new(
-//                         ctx,
-//                         metadata.name,
-//                         metadata.menu_name,
-//                         metadata.category,
-//                         metadata.link,
-//                         metadata.color,
-//                         metadata.component_kind,
-//                         metadata.description,
-//                         *asset_func.id(),
-//                     )
-//                     .await?
-//                 }
-//                 Some(schema_variant_definition) => schema_variant_definition,
-//             };
+//         let mut svd = SchemaVariantDefinition::new(
+//             ctx,
+//             metadata.name,
+//             metadata.menu_name,
+//             metadata.category,
+//             metadata.link,
+//             metadata.color,
+//             metadata.component_kind,
+//             metadata.description,
+//             *asset_func.id(),
+//         )
+//         .await?;
+
+//         svd.set_component_type(ctx, metadata.component_type).await?;
+//         svd
+//     }
+//     Some(schema_variant_definition) => schema_variant_definition,
+// };
 
 //             schema_variant_definition
 //                 .set_schema_variant_id(ctx, Some(schema_variant_id))

@@ -121,7 +121,7 @@ execute_configuration_management() {
         # TODO(scott): perform some kind of check to decide if we should
         # download these or not to avoid long downloads if we can.
         if $DOWNLOAD_ROOTFS; then
-          wget https://si-tools-prod-ec2-firecracker-config.s3.amazonaws.com/firecracker/latest/rootfs.ext4 -O ./rootfs.ext4
+          wget https://artifacts.systeminit.com/cyclone/stable/rootfs/linux/$(uname -m)/cyclone-stable-rootfs-linux-$(uname -m).ext4 -O ./rootfs.ext4
         fi
 
         if $DOWNLOAD_KERNEL; then
@@ -210,6 +210,10 @@ execute_configuration_management() {
         if ! iptables -t nat -C POSTROUTING -o $(ip route get 8.8.8.8 | awk -- '{printf $5}') -j MASQUERADE; then
           iptables -t nat -A POSTROUTING -o $(ip route get 8.8.8.8 | awk -- '{printf $5}') -j MASQUERADE
         fi
+        # Block calls to AWS Metadata not coming from the primary network
+        if ! iptables -C FORWARD -d 169.254.169.254 -j DROP; then
+          iptables -A FORWARD -d 169.254.169.254 -j DROP
+        fi
 
         # Adjust MTU to make it consistent
         ip link set dev $(ip route get 8.8.8.8 | awk -- '{printf $5}') mtu 1500
@@ -265,7 +269,7 @@ execute_cleanup() {
 }
 
 prepare_jailers() {
-  ITERATIONS="${1:-1000}" # Default to 1000 jails
+  ITERATIONS="${1:-100}" # Default to 100 jails
   DOWNLOAD_ROOTFS="${2:-false}" # Default to false
   DOWNLOAD_KERNEL="${3:-false}" # Default to false
   FORCE_CLEAN_JAILS="${4:-false}" # Default to false
@@ -274,7 +278,7 @@ prepare_jailers() {
   # This is heavy-handed and should be mnade more specific.
   if $DOWNLOAD_ROOTFS || $DOWNLOAD_KERNEL || $FORCE_CLEAN_JAILS; then
     echo "Force cleaning jails due to passed flags..."
-    IN_PARALLEL=250
+    IN_PARALLEL=1
     SECONDS=0
     for (( iter=0; iter<$ITERATIONS; iter++ ))
     do
@@ -291,7 +295,6 @@ prepare_jailers() {
   fi
 
   if test -f "/firecracker-data/prepare_jailer.sh"; then
-    ITERATIONS="${1:-5000}" # Default to 5000 jails
     IN_PARALLEL=1
     SECONDS=0
     for (( iter=0; iter<$ITERATIONS; iter++ ))
@@ -342,7 +345,7 @@ usage() {
 
 DOWNLOAD_ROOTFS=false
 DOWNLOAD_KERNEL=false
-JAILS_TO_CREATE=1000
+JAILS_TO_CREATE=100
 FORCE_CLEAN_JAILS=false
 
 while getopts "hv:j:rkc" flag;

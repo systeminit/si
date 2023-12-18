@@ -1,6 +1,7 @@
 {
   "name": "lang-js",
   "private": true,
+  "type": "module",
   "version": "0.1.0",
   "description": "Inference for Entities",
   "main": "dist/index.js",
@@ -19,12 +20,10 @@
   },
   "scripts": {
     "clean": "rm -rf ./dist ./target",
-    "build": "tsc",
-    "build:check": "tsc --noEmit --skipLibCheck",
+    "build": "tsup",
+    "build:check": "tsup --noEmit --skipLibCheck",
     "build:clean": "npm run clean && npm run build",
-    "build:watch": "npm run clean && tsc --watch",
-    "package": "pnpm run build && pkg . --output ./target/lang-js",
-    "package:nobuild": "pkg . --output ./target/lang-js",
+    "build:watch": "npm run clean && tsup --watch",
     "generate": "OUTDIR=\"$(git rev-parse --show-toplevel)/lib/sdf-server/src/server/service/ts_types/\" && tsc --emitDeclarationOnly --declaration --target es2020 --moduleResolution node --outDir $OUTDIR ./src/asset_builder.ts && sed 's/export //g' -i $OUTDIR/asset_builder.d.ts",
     "watch": "npm run build:watch",
     "lint": "eslint --ext .ts,.js --ignore-path .gitignore src",
@@ -33,10 +32,10 @@
     "fmt:check": "npm run lint",
     "check": "npm run lint && npm run build:check && npm run fmt:check",
     "dev": "npm run start",
-    "start": "npm run build && node ./dist/index.js",
-    "start:nobuild": "node ./dist/index.js",
-    "test": "jest",
-    "test:watch": "jest --watch --forceExit",
+    "start": "pnpm build && node ./dist/index.js",
+    "start:nobuild": "node ./dist/src/index.js",
+    "test": "vitest",
+    "test:watch": "vitest --watch --forceExit",
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand"
   },
   "author": "System Initiative, Inc.",
@@ -47,26 +46,37 @@
     "@types/debug": "^4.1.7",
     "@types/jest": "^27.4.1",
     "@types/js-yaml": "^4.0.5",
-    "@types/lodash": "^4.14.182",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^18.15.11",
     "@types/node-fetch": "^2.6.1",
     "eslint": "^8.14.0",
-    "jest": "^27.0.0",
-    "pkg": "^5.6.0",
-    "ts-jest": "^27.1.4"
+    "tsup": "^8.0.1",
+    "vitest": "^1.0.4"
   },
   "dependencies": {
+    "@si/ts-lib": "workspace:*",
     "@typescript/vfs": "^1.4.0",
     "commander": "^9.2.0",
-    "debug": "^4.3.4",
     "execa": "^5.1.1",
     "js-yaml": "^4.1.0",
-    "lodash": "^4.17.21",
+    "lodash-es": "^4.17.21",
     "node-fetch": "^2",
     "typescript": "^4.9.5",
     "vm2": "^3.9.11"
   },
   "volta": {
     "extends": "../../package.json"
+  },
+  "tsup": {
+    "entry": [
+      "src/index.ts"
+    ],
+    "splitting": false,
+    "sourcemap": true,
+    "clean": true,
+    "noExternal": [
+      "@si/ts-lib",
+      "lodash-es"
+    ]
   }
 }

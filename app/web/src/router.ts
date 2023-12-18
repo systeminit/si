@@ -37,7 +37,6 @@ const routes: RouteRecordRaw[] = [
         params: { ...to.params, changeSetId: "auto" },
       };
     },
-    props: true,
     children: [
       {
         path: ":changeSetId",

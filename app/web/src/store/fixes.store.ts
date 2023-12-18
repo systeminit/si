@@ -5,7 +5,6 @@ import { nilId } from "@/utils/nilId";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ComponentId } from "@/store/components.store";
 import { Resource } from "@/api/sdf/dal/resource";
-import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { AttributeValueId } from "./status.store";
 import { trackEvent } from "../utils/tracking";
@@ -53,14 +52,12 @@ export type FixBatch = {
 };
 
 export const useFixesStore = () => {
-  const changeSetStore = useChangeSetsStore();
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
-  const changeSetId = useChangeSetsStore().selectedChangeSetId;
-  const name = `w${workspacePk || "NONE"}/cs${changeSetId || "NONE"}/fixes`;
 
   return addStoreHooks(
-    defineStore(name, {
+    // currently this store is only dealing with fix history on head, so no need to involve a changeset
+    defineStore(`w${workspacePk || "NONE"}/fixes`, {
       state: () => ({
         fixBatches: [] as Array<FixBatch>,
         runningFixBatch: undefined as FixBatchId | undefined,
@@ -112,50 +109,45 @@ export const useFixesStore = () => {
         },
       },
       async onActivated() {
+        if (!workspacePk) return;
+
         this.LOAD_FIX_BATCHES();
 
         const realtimeStore = useRealtimeStore();
-        realtimeStore.subscribe(
-          this.$id,
-          `workspace/${workspacePk}/${
-            changeSetStore.selectedChangeSetId ?? "head"
-          }`,
-          [
-            {
-              eventType: "ChangeSetWritten",
-              callback: (writtenChangeSetId) => {
-                if (writtenChangeSetId !== changeSetStore.selectedChangeSetId)
-                  return;
-                this.LOAD_FIX_BATCHES();
-              },
+        realtimeStore.subscribe(this.$id, `workspace/${workspacePk}`, [
+          {
+            eventType: "ChangeSetWritten",
+            callback: (writtenChangeSetId) => {
+              if (writtenChangeSetId !== nilId()) return;
+              this.LOAD_FIX_BATCHES();
             },
-            {
-              eventType: "FixReturn",
-              callback: (update) => {
-                trackEvent("fix_return", {
-                  fix_action: update.action,
-                  fix_status: update.status,
-                  fix_id: update.id,
-                  fix_batch_id: update.batchId,
-                });
+          },
+          {
+            eventType: "FixReturn",
+            callback: (update) => {
+              trackEvent("fix_return", {
+                fix_action: update.action,
+                fix_status: update.status,
+                fix_id: update.id,
+                fix_batch_id: update.batchId,
+              });
 
-                this.LOAD_FIX_BATCHES();
-              },
+              this.LOAD_FIX_BATCHES();
             },
-            {
-              eventType: "FixBatchReturn",
-              callback: (update) => {
-                this.runningFixBatch = undefined;
-                trackEvent("fix_batch_return", {
-                  batch_status: update.status,
-                  batch_id: update.id,
-                });
+          },
+          {
+            eventType: "FixBatchReturn",
+            callback: (update) => {
+              this.runningFixBatch = undefined;
+              trackEvent("fix_batch_return", {
+                batch_status: update.status,
+                batch_id: update.id,
+              });
 
-                this.LOAD_FIX_BATCHES();
-              },
+              this.LOAD_FIX_BATCHES();
             },
-          ],
-        );
+          },
+        ]);
 
         return () => {
           realtimeStore.unsubscribe(this.$id);

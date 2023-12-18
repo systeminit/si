@@ -65,6 +65,8 @@ export const piniaHooksPlugin: PiniaPlugin = ({
     // bail if already tracked - which can happen when stores are using each other in getters
     if (store._trackedStoreUsers[trackedComponentId]) return;
 
+    // console.log("track store use", trackedComponentId);
+
     store._trackedStoreUsers[trackedComponentId] = true;
 
     if (!store._initHookCalled && storeOptions.onInit) {
