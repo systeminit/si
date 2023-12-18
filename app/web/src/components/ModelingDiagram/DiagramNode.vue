@@ -220,18 +220,37 @@
           :y="nodeBodyHeight / 2"
         />
       </v-group>
+
+      <!-- added/modified indicator -->
       <DiagramIcon
         v-if="isAdded || isModified"
         :icon="isAdded ? 'plus-square' : 'tilde-square'"
         :color="
           isAdded ? getToneColorHex('success') : getToneColorHex('warning')
         "
-        :size="24"
+        :size="24 + (diffIconHover ? 4 : 0)"
         :x="halfWidth - 2 - 12"
         :y="nodeHeaderHeight / 2"
         origin="center"
         @click="onClick('diff')"
+        @mouseover="diffIconHover = true"
+        @mouseout="diffIconHover = false"
       />
+
+      <!-- added/modified icon hover -->
+      <!-- <v-rect
+        v-if="diffIconHover && (isAdded || isModified)"
+        :config="{
+          width: 24,
+          height: 24,
+          x: halfWidth - 2 - 24,
+          y: nodeHeaderHeight / 2 - 12,
+          cornerRadius: CORNER_RADIUS + 3,
+          stroke: SELECTION_COLOR,
+          strokeWidth: 2,
+          listening: false,
+        }"
+      /> -->
     </v-group>
 
     <!-- change status indicators -->
@@ -302,6 +321,8 @@ const emit = defineEmits<{
   (e: "hover:end"): void;
   (e: "resize"): void;
 }>();
+
+const diffIconHover = ref(false);
 
 const { theme } = useTheme();
 

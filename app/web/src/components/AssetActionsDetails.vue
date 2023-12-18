@@ -15,11 +15,13 @@
           </div>
           <span class="text-xl">No Actions available</span>
         </div>
-        <div v-else class="flex flex-col p-xs gap-xs">
-          <div class="text-sm text-neutral-300">
-            Actions will be enacted after this change set has been applied. To
-            do so, deselect this component and click the "Apply Changes" button
-            in the top right.
+        <div v-else class="flex flex-col">
+          <div
+            class="text-sm text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600"
+          >
+            Select the actions you want to run below. Actions will be enacted
+            after this change set has been applied. To do so, deselect this
+            component and click the "Apply Changes" button in the top right.
           </div>
           <ActionWidget
             v-for="action in actions"
