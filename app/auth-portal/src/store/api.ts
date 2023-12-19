@@ -19,7 +19,7 @@ const api = Axios.create({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-if (window) (window as any).api = api;
+if (typeof window !== "undefined") (window as any).api = api;
 
 // // add axios interceptors to add auth headers, handle logout errors, etc...
 // api.interceptors.request.use((config) => {

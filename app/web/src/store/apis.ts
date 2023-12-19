@@ -57,7 +57,7 @@ async function handleProxyTimeouts(response: AxiosResponse) {
     trackEvent("api_404_timeout");
     // redirect to oops page after short timeout so we give tracker a chance to send event
     setTimeout(() => {
-      if (window) window.location.href = "/oops";
+      if (typeof window !== "undefined") window.location.href = "/oops";
     }, 500);
   }
   return response;

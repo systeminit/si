@@ -103,7 +103,7 @@
               variant="transparent"
               tone="shade"
               @mousedown.prevent
-              @click.prevent="profileMenuRef?.open"
+              @click.prevent="profileMenuRef?.open || _.noop"
             >
               <div class="mr-xs">Hi {{ authStore.bestUserLabel }}!</div>
               <template #iconRight>
@@ -203,6 +203,7 @@
 </template>
 
 <script setup lang="ts">
+import * as _ from "lodash-es";
 import { tw } from "@si/vue-lib";
 import {
   Icon,
