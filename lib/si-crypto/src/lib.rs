@@ -16,6 +16,9 @@
     clippy::module_name_repetitions
 )]
 
+use serde::{Deserialize, Serialize};
+use si_std::CanonicalFile;
+
 mod cyclone;
 mod symmetric;
 
@@ -27,3 +30,21 @@ pub use symmetric::{
     SymmetricCryptoError, SymmetricCryptoResult, SymmetricCryptoService,
     SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile, SymmetricKey, SymmetricNonce,
 };
+
+/// Configuration for how to load the key for [`CryptoConfig`].
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CryptoConfig {
+    /// Key file encoded as a base64 string
+    pub encryption_key_base64: Option<String>,
+    /// Key file on disk
+    pub encryption_key_file: Option<CanonicalFile>,
+}
+
+impl Default for CryptoConfig {
+    fn default() -> Self {
+        Self {
+            encryption_key_base64: None,
+            encryption_key_file: None,
+        }
+    }
+}

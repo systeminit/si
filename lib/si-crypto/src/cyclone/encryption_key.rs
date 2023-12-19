@@ -7,10 +7,15 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{fs::File, io::AsyncReadExt};
 
+use crate::CryptoConfig;
+
 /// An error that can be returned when working with a [`CycloneEncryptionKey`].
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum CycloneEncryptionKeyError {
+    /// When a base64 encoded key fails to be decoded.
+    #[error("failed to decode base64 encoded key")]
+    Base64Decode(#[source] base64::DecodeError),
     /// When a key fails to be parsed from bytes
     #[error("failed to load key from bytes")]
     KeyParse,
@@ -27,6 +32,27 @@ pub struct CycloneEncryptionKey {
 }
 
 impl CycloneEncryptionKey {
+    /// Creates an instance of [`CycloneEncryptionKey`] based on the
+    /// supplied configuration.
+    ///
+    /// # Errors
+    ///
+    /// Return `Err` if:
+    ///
+    /// - A key file was not readable (i.e. incorrect permission and/or ownership)
+    /// - A key file could not be successfuly parsed
+    /// - A key string could not be successfully parsed
+    pub async fn from_config(config: CryptoConfig) -> Result<Self, CycloneEncryptionKeyError> {
+        if let Some(path) = config.encryption_key_file {
+            Self::load(path.as_path()).await
+
+        } else if let Some(encoded_string) = config.encryption_key_base64 {
+            Self::decode(encoded_string).await
+        } else {
+            todo!()
+        }
+
+    }
     /// Loads a [`CycloneEncryptionKey`] from a file path.
     ///
     /// # Errors
@@ -49,6 +75,30 @@ impl CycloneEncryptionKey {
         file.read_to_end(&mut buf)
             .await
             .map_err(CycloneEncryptionKeyError::LoadKeyIO)?;
+        let public_key = PublicKey::from_slice(&buf).ok_or(CycloneEncryptionKeyError::KeyParse)?;
+
+        let key_hash = Hash::new(public_key.as_ref());
+
+        Ok(Self {
+            public_key,
+            key_hash,
+        })
+    }
+
+    /// Loads a [`CycloneEncryptionKey`] from a base64 encoded string.
+    ///
+    /// # Errors
+    ///
+    /// Return `Err` if:
+    ///
+    /// - A key string could not be successfully parsed
+    pub async fn decode(
+        encryption_key_string: String
+    ) -> Result<Self, CycloneEncryptionKeyError> {
+        trace!(
+            "loading cyclone encryption key from base64 string {}", encryption_key_string
+        );
+        let buf = general_purpose::STANDARD.decode(encryption_key_string).map_err(CycloneEncryptionKeyError::Base64Decode)?;
         let public_key = PublicKey::from_slice(&buf).ok_or(CycloneEncryptionKeyError::KeyParse)?;
 
         let key_hash = Hash::new(public_key.as_ref());
