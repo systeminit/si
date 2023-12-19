@@ -45,10 +45,10 @@ members = [
 ]
 
 [workspace.dependencies]
-async-nats = "0.31.0"
+async-nats = "0.33.0"
 async-recursion = "1.0.4"
 async-trait = "0.1.68"
-axum = { version = "0.6.18", features = ["macros", "multipart", "ws"] }
+axum = { version = "0.6.18", features = ["macros", "multipart", "ws"] } # todo: upgrade this alongside hyper/http/tokio-tungstenite
 base64 = "0.21.0"
 blake3 = "1.3.3"
 bollard = "0.15.0"
@@ -59,42 +59,43 @@ clap = { version = "4.2.7", features = ["derive", "color", "env", "wrap_help"] }
 color-eyre = "0.6.2"
 colored = "2.0.4"
 comfy-table = { version = "7.0.1", features = ["crossterm", "tty", "custom_styling"] }
-config = { version = "0.13.3", default-features = false, features = ["toml"] }
+config = { version = "0.13.4", default-features = false, features = ["toml"] }
 console = "0.15.7"
 convert_case = "0.6.0"
 crossbeam-channel = "0.5.8"
-deadpool = { version = "0.9.5", features = ["rt_tokio_1"] }
-deadpool-postgres = "0.10.5"
+deadpool = { version = "0.10.0", features = ["rt_tokio_1"] }
+deadpool-postgres = "0.12.1"
 derive_builder = "0.12.0"
 derive_more = "0.99.17"
 diff = "0.1.13"
 directories = "5.0.1"
-docker-api = { "git" = "https://github.com/vv9k/docker-api-rs.git", rev = "b1f1891d1d17cb522cc20212452c8c039c5e0810" }
+docker-api = "0.14.0"
 dyn-clone = "1.0.11"
 flate2 = "1.0.26"
 futures = "0.3.28"
-futures-lite = "1.13.0"
+futures-lite = "2.1.0"
 hex = "0.4.3"
-http = "0.2.9"
-hyper = { version = "0.14.26", features = ["client", "http1", "runtime", "server"] }
-hyperlocal = { version = "0.8.0", default-features = false, features = ["client"] }
+http = "0.2.9" # todo: upgrade this alongside hyper/axum/tokio-tungstenite/tower-http
+hyper = { version = "0.14.26", features = ["client", "http1", "runtime", "server"] } # todo: upgrade this alongside http/axum/tokio-tungstenite/tower-http
+hyperlocal = { version = "0.8.0", default-features = false, features = ["client"] } # todo: using the very latest of hyper client 1.x, we _may_ be able to phase this crate
 iftree = "1.0.4"
 indicatif = "0.17.5"
 indoc = "2.0.1"
 inquire = "0.6.2"
-itertools = "0.10.5"
-jwt-simple = "0.11.5"
+itertools = "0.12.0"
+jwt-simple = { version = "0.12.6", default-features = false, features = ["pure-rust"] }
 lazy_static = "1.4.0"
 names = { version = "0.14.0", default-features = false }
-nix = "0.26.2"
-nkeys = "0.2.0"
+nix = { version = "0.27.1", features = ["process", "signal"] }
+nkeys = "0.4.0"
 num_cpus = "1.15.0"
 once_cell = "1.17.1"
 open = "5.0.0"
-opentelemetry = { version = "~0.18.0", features = ["rt-tokio", "trace"] } # pinned, pending new release of tracing-opentelemetry, 0.18
-opentelemetry-otlp = "~0.11.0" # pinned, pending new release of tracing-opentelemetry, post 0.18
-opentelemetry-semantic-conventions = "~0.10.0" # pinned, pending new release of tracing-opentelemetry, post 0.18
-ouroboros = "0.15.6"
+opentelemetry = { version = "0.21.0", features = ["trace"] }
+opentelemetry-otlp = "0.14.0"
+opentelemetry-semantic-conventions = "0.13.0"
+opentelemetry_sdk = { version = "0.21.1", features = ["rt-tokio"] }
+ouroboros = "0.18.1"
 paste = "1.0.12"
 pathdiff = "0.2.1"
 petgraph = { version = "0.6.3", features = ["serde-1"] }
@@ -109,10 +110,10 @@ refinery = { version = "0.8.9", features = ["tokio-postgres"] }
 regex = "1.8.1"
 remain = "0.2.8"
 reqwest = { version = "0.11.17", default-features = false, features = ["rustls-tls", "json", "multipart"] }
-rust-s3 = { version = "0.33.0", default-features = false, features = ["tokio-rustls-tls"] }
-rustls = "0.21.6" # pinned, pending update from tokio-rustls for async-nats
-sea-orm = { version = "0.11", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"] }
-self-replace = "1.3.5"
+ring = "=0.17.5" # Upgrading this is possible, but a pain, so we don't want to pick up every new minor version (see: https://github.com/facebook/buck2/commit/91af40b66960d003067c3d241595fb53d1e636c8)
+rust-s3 = { version = "0.34.0-rc4", default-features = false, features = ["tokio-rustls-tls"] }
+sea-orm = { version = "0.12.0", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"] }
+self-replace = "1.3.7"
 serde = { version = "1.0.160", features = ["derive", "rc"] }
 serde-aux = "4.2.0"
 serde_json = { version = "1.0.96", features = ["preserve_order"] }
@@ -121,7 +122,7 @@ serde_with = "3.0.0"
 serde_yaml = "0.9.21"
 sodiumoxide = "0.2.7"
 stream-cancel = "0.8.1"
-strum = { version = "0.24.1", features = ["derive"] }
+strum = { version = "0.25.0", features = ["derive"] }
 syn = { version = "2.0.15", features = ["full", "extra-traits"] }
 tar = "0.4.38"
 tempfile = "3.5.0"
@@ -132,27 +133,32 @@ tokio-postgres = { version = "0.7.8", features = ["runtime", "with-chrono-0_4", 
 tokio-serde = { version = "0.8.0", features = ["json"] }
 tokio-stream = "0.1.14"
 tokio-test = "0.4.2"
-tokio-tungstenite = "0.18.0"
+tokio-tungstenite = "0.20.1" # todo: pinning back from 0.21.0, upgrade this alongside hyper/http/axum/tokio-tungstenite,tower-http
 tokio-util = { version = "0.7.8", features = ["codec"] }
 tokio-vsock = { version = "0.4.0"}
-toml = { version = "0.7.6" }
+toml = { version = "0.8.8" }
 tower = "0.4.13"
-tower-http = { version = "0.4", features = ["cors", "trace", "compression-br", "compression-deflate", "compression-gzip"] }
+tower-http = { version = "0.4", features = ["compression-br", "compression-deflate", "compression-gzip", "cors", "trace"] } # todo: pinning back to 0.4.4, upgrade this alongside hyper/http/axum/tokio-tungstenite
 tracing = { version = "0.1" }
-tracing-opentelemetry = "0.18.0"
-tracing-subscriber = { version = "0.3.17", features = ["env-filter", "std"] }
+tracing-opentelemetry = "0.22.0"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "std"] }
 ulid = { version = "1.0.0", features = ["serde"] }
 url = { version = "2.3.1", features = ["serde"] }
 uuid = { version = "1.3.2", features = ["serde", "v4"] }
-vfs = "0.9.0"
+vfs = "0.10.0"
 vfs-tar = { version = "0.4.0", features = ["mmap"] }
-y-sync = { version = "0.3.1", features = ["net"] }
-yrs = { version = "0.16" }
+y-sync = { version = "0.4.0", features = ["net"] }
+yrs = { version = "0.17.2" }
 
 [patch.crates-io]
 # pending a potential merge and release of
 # https://github.com/softprops/hyperlocal/pull/53
 hyperlocal = { git = "https://github.com/fnichol/hyperlocal.git", branch = "pub-unix-stream" }
 # pending a potential merge and release of
-# https://github.com/mitsuhiko/self-replace/pull/18
-self-replace = { git = "https://github.com/systeminit/self-replace.git", branch = "unix-current-exe-read-link" }
+# https://github.com/vv9k/docker-api-rs/issues/69
+# See: https://github.com/systeminit/si/pull/2903
+docker-api = { git = "https://github.com/vv9k/docker-api-rs.git", branch = "master" }
+# pending a potential merge and release of
+# https://github.com/durch/rust-s3/pull/372
+# Note that this helps us to narrow down the number of `ring`/`rustls` versions to 1 each
+rust-s3 = { git = "https://github.com/ScuffleTV/rust-s3.git", branch = "troy/rustls" }
