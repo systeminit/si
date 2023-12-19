@@ -316,6 +316,7 @@ impl Component {
         // persist. But it isn't, - our node is anemic.
         let node = Node::new(ctx, &NodeKind::Configuration).await?;
         node.set_component(ctx, component.id()).await?;
+
         component.set_name(ctx, Some(name.as_ref())).await?;
 
         Ok((component, node))
@@ -993,34 +994,36 @@ impl Component {
         let attribute_values =
             AttributeValue::find_by_attr(ctx, "attribute_context_component_id", &component_id)
                 .await?;
+        let mut my_attribute_values =
+            AttributeValue::find_by_attr(ctx, "attribute_context_component_id", self.id()).await?;
 
         let mut pasted_attribute_values_by_original = HashMap::new();
+
         for copied_av in &attribute_values {
             let context = AttributeContextBuilder::from(copied_av.context)
                 .set_component_id(*self.id())
                 .to_context()?;
 
             // TODO: should we clone the fb and fbrv?
-            let mut pasted_av = if let Some(mut av) =
-                AttributeValue::find_for_context(ctx, context.into()).await?
+            let mut pasted_av = if let Some(av) = my_attribute_values
+                .iter_mut()
+                .find(|av| context.check(av.context))
             {
                 av.set_func_binding_id(ctx, copied_av.func_binding_id())
                     .await?;
                 av.set_func_binding_return_value_id(ctx, copied_av.func_binding_return_value_id())
                     .await?;
                 av.set_key(ctx, copied_av.key()).await?;
-                av
+                av.clone()
             } else {
-                dbg!(
-                    AttributeValue::new(
-                        ctx,
-                        copied_av.func_binding_id(),
-                        copied_av.func_binding_return_value_id(),
-                        context,
-                        copied_av.key(),
-                    )
-                    .await
-                )?
+                AttributeValue::new(
+                    ctx,
+                    copied_av.func_binding_id(),
+                    copied_av.func_binding_return_value_id(),
+                    context,
+                    copied_av.key(),
+                )
+                .await?
             };
 
             pasted_av
@@ -1066,6 +1069,9 @@ impl Component {
         let attribute_prototypes =
             AttributePrototype::find_by_attr(ctx, "attribute_context_component_id", &component_id)
                 .await?;
+        let mut my_attribute_prototypes =
+            AttributePrototype::find_by_attr(ctx, "attribute_context_component_id", self.id())
+                .await?;
 
         let mut pasted_attribute_prototypes_by_original = HashMap::new();
         for copied_ap in &attribute_prototypes {
@@ -1073,13 +1079,9 @@ impl Component {
                 .set_component_id(*self.id())
                 .to_context()?;
 
-            let id = if let Some(mut ap) = AttributePrototype::find_for_context_and_key(
-                ctx,
-                context,
-                &copied_ap.key().map(ToOwned::to_owned),
-            )
-            .await?
-            .pop()
+            let id = if let Some(ap) = my_attribute_prototypes
+                .iter_mut()
+                .find(|av| context.check(av.context) && av.key.as_deref() == copied_ap.key())
             {
                 ap.set_func_id(ctx, copied_ap.func_id()).await?;
                 ap.set_key(ctx, copied_ap.key()).await?;
@@ -1137,21 +1139,23 @@ impl Component {
                 .get(&original_belongs_to_id)
                 .ok_or(ComponentError::AttributeValueNotFound)?;
 
-            ctx
-                .txns()
+            ctx.txns()
                 .await?
                 .pg()
-                .query("INSERT INTO attribute_value_belongs_to_attribute_value
+                .query(
+                    "INSERT INTO attribute_value_belongs_to_attribute_value
                         (object_id, belongs_to_id, tenancy_workspace_pk, visibility_change_set_pk)
                         VALUES ($1, $2, $3, $4)
-                        ON CONFLICT (object_id, tenancy_workspace_pk, visibility_change_set_pk) DO NOTHING",
+                        ON CONFLICT (object_id, tenancy_workspace_pk, visibility_change_set_pk)
+                        DO NOTHING",
                     &[
                         &object_id,
                         &belongs_to_id,
                         &ctx.tenancy().workspace_pk(),
                         &ctx.visibility().change_set_pk,
                     ],
-                ).await?;
+                )
+                .await?;
         }
 
         let rows = ctx
@@ -1176,6 +1180,7 @@ impl Component {
                 ],
             )
             .await?;
+
         for row in rows {
             let original_object_id: AttributeValueId = row.try_get("object_id")?;
             let original_belongs_to_id: AttributePrototypeId = row.try_get("belongs_to_id")?;
@@ -1203,6 +1208,7 @@ impl Component {
                     ],
                 ).await?;
         }
+
         Ok(())
     }
 }
