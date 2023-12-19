@@ -86,7 +86,7 @@ pub async fn promote_builtin_route(
         rejected_at: Set(None),
         rejected_by_display_name: Set(None),
         kind: Set(module.kind),
-        is_builtin_at: Set(Some(DateTime::<FixedOffset>::from_utc(
+        is_builtin_at: Set(Some(DateTime::<FixedOffset>::from_naive_utc_and_offset(
             Utc::now().naive_utc(),
             Utc.fix(),
         ))),
