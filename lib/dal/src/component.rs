@@ -291,8 +291,9 @@ impl Component {
                 prop_id,
             )?;
 
-            // If it is the root prop, the component should use it, which should only happen once. Otherwise, it should
-            // be used by the parent prop.
+            // If it is the root prop, the component should use it, which should
+            // only happen once. Otherwise, it should be used by the parent
+            // prop.
             match maybe_parent_attribute_value_id {
                 Some(parent_attribute_value_id) => {
                     // AttributeValue (Parent) --Contain--> AttributeValue

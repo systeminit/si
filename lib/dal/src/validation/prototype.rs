@@ -65,22 +65,19 @@ pub enum ValidationPrototypeContent {
 pub struct ValidationPrototypeContentV1 {
     pub timestamp: Timestamp,
     pub func_id: FuncId,
-    pub args: String,
+    pub args: content_store::Value,
     pub link: Option<String>,
 }
 
 impl ValidationPrototype {
-    pub fn assemble(
-        id: ValidationPrototypeId,
-        inner: ValidationPrototypeContentV1,
-    ) -> ValidationPrototypeResult<Self> {
-        Ok(Self {
+    pub fn assemble(id: ValidationPrototypeId, inner: ValidationPrototypeContentV1) -> Self {
+        Self {
             id,
             timestamp: inner.timestamp,
             func_id: inner.func_id,
-            args: serde_json::to_value(&inner.args)?,
+            args: inner.args.into(),
             link: inner.link,
-        })
+        }
     }
 
     pub fn new(
@@ -92,7 +89,7 @@ impl ValidationPrototype {
         let content = ValidationPrototypeContentV1 {
             timestamp: Timestamp::now(),
             func_id,
-            args: serde_json::to_string(&args)?,
+            args: args.into(),
             link: None,
         };
         let hash = ctx
@@ -113,7 +110,7 @@ impl ValidationPrototype {
             id,
         )?;
 
-        Self::assemble(id.into(), content)
+        Ok(Self::assemble(id.into(), content))
     }
 
     pub fn new_intrinsic(

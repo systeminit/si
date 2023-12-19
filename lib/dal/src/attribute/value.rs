@@ -55,14 +55,14 @@ use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
-use crate::workspace_snapshot::content_address::ContentAddress;
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::{
     NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
-use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
+use crate::workspace_snapshot::{self, serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
     pk, AttributePrototype, AttributePrototypeId, DalContext, Func, FuncId, PropId, PropKind,
     Timestamp, TransactionsError,
@@ -142,18 +142,18 @@ pub struct AttributeValueContentV1 {
     /// The unprocessed return value is the "real" result, unprocessed for any other behavior.
     /// This is potentially-maybe-only-kinda-sort-of(?) useful for non-scalar values.
     /// Example: a populated array.
-    pub unprocessed_value: Option<serde_json::Value>,
+    pub unprocessed_value: Option<content_store::Value>,
     /// The processed return value.
     /// Example: empty array.
-    pub value: Option<serde_json::Value>,
+    pub value: Option<content_store::Value>,
 }
 
 impl From<AttributeValue> for AttributeValueContentV1 {
     fn from(value: AttributeValue) -> Self {
         Self {
             timestamp: value.timestamp,
-            unprocessed_value: value.unprocessed_value,
-            value: value.value,
+            unprocessed_value: value.unprocessed_value.map(Into::into),
+            value: value.value.map(Into::into),
         }
     }
 }
@@ -163,8 +163,8 @@ impl AttributeValue {
         Self {
             id,
             timestamp: inner.timestamp,
-            value: inner.value,
-            unprocessed_value: inner.unprocessed_value,
+            value: inner.value.map(Into::into),
+            unprocessed_value: inner.unprocessed_value.map(Into::into),
         }
     }
 
@@ -314,6 +314,7 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<()> {
+        dbg!("vivify");
         // determine if the value is for a prop, or for an internal provider. if it is for an
         // internal provider we want to find if it is an internal provider for a prop (since we
         // want to use the function for that prop kind), or if it is an explicit internal  or
@@ -772,6 +773,29 @@ impl AttributeValue {
         Ok(work_queue_extension)
     }
 
+    pub fn prototype_id(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Option<AttributePrototypeId>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        for target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            attribute_value_id,
+            EdgeWeightKindDiscriminants::Use,
+        )? {
+            let maybe_prototype_weight = workspace_snapshot.get_node_weight(target)?;
+            if let NodeWeight::Content(content_inner) = maybe_prototype_weight {
+                if ContentAddressDiscriminants::AttributePrototype
+                    == content_inner.content_address().into()
+                {
+                    return Ok(Some(content_inner.id().into()));
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
     async fn process_populate_nested_values_for_map(
         ctx: &DalContext,
         prop_id: PropId,
@@ -851,126 +875,98 @@ impl AttributeValue {
         Ok(work_queue_extension)
     }
 
+    pub fn set_prototype_id(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+        attribute_prototype_id: AttributePrototypeId,
+    ) -> AttributeValueResult<()> {
+        let maybe_existing_prototype_id = Self::prototype_id(ctx, attribute_value_id)?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        if let Some(exsiting_prototype_id) = maybe_existing_prototype_id {
+            let attribute_value_node_index =
+                workspace_snapshot.get_node_index_by_id(attribute_value_id)?;
+            let attribute_prototype_node_index =
+                workspace_snapshot.get_node_index_by_id(exsiting_prototype_id)?;
+
+            workspace_snapshot.remove_edge(
+                ctx.change_set_pointer()?,
+                attribute_value_node_index,
+                attribute_prototype_node_index,
+                EdgeWeightKindDiscriminants::Use,
+            )?;
+        }
+
+        workspace_snapshot.add_edge(
+            attribute_value_id,
+            EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Use)?,
+            attribute_prototype_id,
+        )?;
+
+        Ok(())
+    }
+
     async fn set_value(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
     ) -> AttributeValueResult<()> {
-        let mut maybe_prop_node_index = None;
-        let mut maybe_prototype_node_index = None;
-        let mut prop_direction = Direction::Outgoing;
+        dbg!("set value");
+        let prop_node_idx = {
+            let mut maybe_prop_node_idx = None;
 
-        let (intrinsic_func, attribute_prototype_id) = {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
             for edge_ref in
                 workspace_snapshot.edges_directed(attribute_value_id, Direction::Outgoing)?
             {
                 if edge_ref.weight().kind() == &EdgeWeightKind::Prop {
-                    maybe_prop_node_index = Some(edge_ref.target());
-                    prop_direction = Direction::Outgoing;
-                }
-                let discrim: EdgeWeightKindDiscriminants = edge_ref.weight().kind().into();
-                if discrim == EdgeWeightKindDiscriminants::Prototype {
-                    maybe_prototype_node_index = Some(edge_ref.target());
+                    maybe_prop_node_idx = Some(edge_ref.target());
                 }
             }
 
-            let prototype_node_index = maybe_prototype_node_index
-                .ok_or(AttributeValueError::MissingPrototype(attribute_value_id))?;
+            maybe_prop_node_idx.ok_or(AttributeValueError::MissingPropEdge(attribute_value_id))?
+        };
 
-            let prototype_id = AttributePrototypeId::from(
-                workspace_snapshot
-                    .get_node_weight(prototype_node_index)?
-                    .id(),
-            );
+        let intrinsic_func = {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
-            if maybe_prop_node_index.is_none() {
-                for edge_ref in
-                    workspace_snapshot.edges_directed(attribute_value_id, Direction::Incoming)?
-                {
-                    if edge_ref.weight().kind() == &EdgeWeightKind::Prop {
-                        maybe_prop_node_index = Some(edge_ref.target());
-                        prop_direction = Direction::Incoming;
+            if let NodeWeight::Prop(prop_inner) =
+                workspace_snapshot.get_node_weight(prop_node_idx)?
+            {
+                // None for the value means there is no value, so we use unset, but if it's a
+                // literal serde_json::Value::Null it means the value is set, but to null
+                if value.is_none() {
+                    IntrinsicFunc::Unset
+                } else {
+                    match prop_inner.kind() {
+                        PropKind::Array => IntrinsicFunc::SetArray,
+                        PropKind::Boolean => IntrinsicFunc::SetBoolean,
+                        PropKind::Integer => IntrinsicFunc::SetInteger,
+                        PropKind::Map => IntrinsicFunc::SetMap,
+                        PropKind::Object => IntrinsicFunc::SetObject,
+                        PropKind::String => IntrinsicFunc::SetString,
                     }
                 }
+            } else {
+                Err(AttributeValueError::NodeWeightMismatch(
+                    prop_node_idx,
+                    NodeWeightDiscriminants::Prop,
+                ))?
             }
-
-            let intrinsic_func = match maybe_prop_node_index {
-                Some(prop_node_index) => {
-                    if let NodeWeight::Prop(prop_inner) =
-                        workspace_snapshot.get_node_weight(prop_node_index)?
-                    {
-                        // None for the value means there is no value, so we use unset, but if it's a
-                        // literal serde_json::Value::Null it means the value is set, but to null
-                        if value.is_none() {
-                            IntrinsicFunc::Unset
-                        } else {
-                            match prop_inner.kind() {
-                                PropKind::Array => IntrinsicFunc::SetArray,
-                                PropKind::Boolean => IntrinsicFunc::SetBoolean,
-                                PropKind::Integer => IntrinsicFunc::SetInteger,
-                                PropKind::Map => IntrinsicFunc::SetMap,
-                                PropKind::Object => IntrinsicFunc::SetObject,
-                                PropKind::String => IntrinsicFunc::SetString,
-                            }
-                        }
-                    } else {
-                        Err(AttributeValueError::NodeWeightMismatch(
-                            prop_node_index,
-                            NodeWeightDiscriminants::Prop,
-                        ))?
-                    }
-                }
-                None => match value {
-                    None | Some(serde_json::Value::Null) => IntrinsicFunc::Unset,
-                    Some(serde_json::Value::Array(_)) => IntrinsicFunc::SetArray,
-                    Some(serde_json::Value::Bool(_)) => IntrinsicFunc::SetBoolean,
-                    Some(serde_json::Value::Number(_)) => IntrinsicFunc::SetInteger,
-                    Some(serde_json::Value::Object(_)) => IntrinsicFunc::SetObject,
-                    Some(serde_json::Value::String(_)) => IntrinsicFunc::SetString,
-                },
-            };
-
-            (intrinsic_func, prototype_id)
         };
 
         let func_id = Func::find_intrinsic(ctx, intrinsic_func)?;
+        let prototype = AttributePrototype::new(ctx, func_id)?;
 
-        // If we have a prop, then we need to know if the edge to it was incoming or outgoing (found
-        // above). If the edge is outgoing, we need to break the link from the value to the prototype
-        // and create a new one. If the edge is incoming, we need to update the prototype directly.
-        if maybe_prop_node_index.is_some() {
-            match prop_direction {
-                Direction::Outgoing => {
-                    {
-                        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-                        let attribute_value_node_index =
-                            workspace_snapshot.get_node_index_by_id(attribute_value_id)?;
-                        let attribute_prototype_node_index =
-                            workspace_snapshot.get_node_index_by_id(attribute_prototype_id)?;
-
-                        workspace_snapshot.remove_edge(
-                            ctx.change_set_pointer()?,
-                            attribute_value_node_index,
-                            attribute_prototype_node_index,
-                            EdgeWeightKindDiscriminants::Use,
-                        )?;
-                    }
-
-                    AttributePrototype::new(ctx, func_id)?;
-                }
-                Direction::Incoming => {
-                    AttributePrototype::update_func_by_id(ctx, attribute_prototype_id, func_id)?;
-                }
-            }
-        }
+        Self::set_prototype_id(ctx, attribute_value_id, prototype.id())?;
 
         let processed = match &value {
             Some(Value::Object(_)) => Some(serde_json::json![{}]),
             Some(Value::Array(_)) => Some(serde_json::json![[]]),
             value => value.to_owned(),
         };
+
         Self::set_real_values(ctx, attribute_value_id, processed, value).await?;
         Ok(())
     }

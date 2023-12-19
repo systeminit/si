@@ -25,6 +25,7 @@
 mod hash;
 mod pair;
 mod store;
+mod value;
 
 pub use hash::ContentHash;
 pub use store::local::LocalStore;
@@ -32,3 +33,4 @@ pub use store::pg::tools::PgStoreTools;
 pub use store::pg::PgStore;
 pub use store::Store;
 pub use store::StoreError;
+pub use value::Value;

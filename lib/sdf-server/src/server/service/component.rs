@@ -1,9 +1,11 @@
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
+use dal::attribute::value::AttributeValueError;
+use dal::component::ComponentId;
 use dal::property_editor::PropertyEditorError;
 use dal::ComponentError as DalComponentError;
 use dal::TransactionsError;
@@ -28,7 +30,7 @@ pub mod get_property_editor_values;
 // pub mod refresh;
 // pub mod resource_domain_diff;
 // pub mod set_type;
-// pub mod update_property_editor_value;
+pub mod update_property_editor_value;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -41,8 +43,8 @@ pub enum ComponentError {
     // AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     // #[error("attribute prototype not found")]
     // AttributePrototypeNotFound,
-    // #[error("attribute value error: {0}")]
-    // AttributeValue(#[from] AttributeValueError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     // #[error("attribute value not found")]
     // AttributeValueNotFound,
     // #[error("change set error: {0}")]
@@ -55,8 +57,8 @@ pub enum ComponentError {
     // ComponentDebugView(#[from] ComponentDebugViewError),
     // #[error("component name not found")]
     // ComponentNameNotFound,
-    // #[error("component not found for id: {0}")]
-    // ComponentNotFound(ComponentId),
+    #[error("component not found for id: {0}")]
+    ComponentNotFound(ComponentId),
     // #[error("component view error: {0}")]
     // ComponentView(#[from] ComponentViewError),
     #[error("dal component error: {0}")]
@@ -71,8 +73,8 @@ pub enum ComponentError {
     // Func(#[from] FuncError),
     // #[error("func binding error: {0}")]
     // FuncBinding(#[from] FuncBindingError),
-    // #[error("hyper error: {0}")]
-    // Http(#[from] axum::http::Error),
+    #[error("hyper error: {0}")]
+    Http(#[from] axum::http::Error),
     // #[error("identity func not found")]
     // IdentityFuncNotFound,
     // #[error("internal provider error: {0}")]
@@ -149,21 +151,21 @@ pub fn routes() -> Router<AppState> {
             "/get_property_editor_validations",
             get(get_property_editor_validations::get_property_editor_validations),
         )
-    // .route(
-    //     "/get_components_metadata",
-    //     get(get_components_metadata::get_components_metadata),
-    // )
-    // .route(
-    //     "/list_qualifications",
-    //     get(list_qualifications::list_qualifications),
-    // )
-    // .route("/list_resources", get(list_resources::list_resources))
-    // .route("/get_code", get(get_code::get_code))
-    // .route("/get_diff", get(get_diff::get_diff))
-    // .route(
-    //     "/update_property_editor_value",
-    //     post(update_property_editor_value::update_property_editor_value),
-    // )
+        // .route(
+        //     "/get_components_metadata",
+        //     get(get_components_metadata::get_components_metadata),
+        // )
+        // .route(
+        //     "/list_qualifications",
+        //     get(list_qualifications::list_qualifications),
+        // )
+        // .route("/list_resources", get(list_resources::list_resources))
+        // .route("/get_code", get(get_code::get_code))
+        // .route("/get_diff", get(get_diff::get_diff))
+        .route(
+            "/update_property_editor_value",
+            post(update_property_editor_value::update_property_editor_value),
+        )
     // .route(
     //     "/insert_property_editor_value",
     //     post(insert_property_editor_value::insert_property_editor_value),
