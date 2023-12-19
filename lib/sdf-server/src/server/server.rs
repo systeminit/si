@@ -1,5 +1,6 @@
+use si_crypto::CryptoConfig;
 use std::time::Duration;
-use std::{io, net::SocketAddr, path::Path, path::PathBuf};
+use std::{io, net::SocketAddr, path::Path, path::PathBuf, sync::Arc};
 
 use axum::routing::IntoMakeService;
 use axum::Router;
@@ -219,8 +220,12 @@ impl Server<(), ()> {
     }
 
     #[instrument(name = "sdf.init.load_encryption_key", skip_all)]
-    pub async fn load_encryption_key(path: impl AsRef<Path>) -> Result<CycloneEncryptionKey> {
-        Ok(CycloneEncryptionKey::load(path).await?)
+    pub async fn load_encryption_key(
+        crypto_config: CryptoConfig,
+    ) -> Result<Arc<CycloneEncryptionKey>> {
+        Ok(Arc::new(
+            CycloneEncryptionKey::from_config(crypto_config).await?,
+        ))
     }
 
     #[instrument(name = "sdf.init.migrate_database", skip_all)]
