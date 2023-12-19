@@ -338,26 +338,6 @@ impl ConnectOptions {
         self.inner.require_tls(is_required).into()
     }
 
-    /// Sets the interval for flushing. NATS connection will send buffered data to the NATS Server
-    /// whenever buffer limit is reached, but it is also necessary to flush once in a while if
-    /// client is sending rarely and small messages. Flush interval allows to modify that interval.
-    ///
-    /// # Examples
-    /// ```no_run
-    /// # use tokio::time::Duration;
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// si_data_nats::ConnectOptions::new()
-    ///     .flush_interval(Duration::from_millis(100))
-    ///     .connect("demo.nats.io")
-    ///     .await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn flush_interval(self, flush_interval: Duration) -> ConnectOptions {
-        self.inner.flush_interval(flush_interval).into()
-    }
-
     /// Sets how often Client sends PING message to the server.
     ///
     /// # Examples
