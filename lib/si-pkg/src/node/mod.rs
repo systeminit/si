@@ -166,32 +166,32 @@ pub enum PkgNode {
 }
 
 impl PkgNode {
-    pub const ACTION_FUNC_KIND_STR: &str = NODE_KIND_ACTION_FUNC;
-    pub const AUTH_FUNC_KIND_STR: &str = NODE_KIND_AUTH_FUNC;
-    pub const ATTR_FUNC_INPUT_KIND_STR: &str = NODE_KIND_ATTR_FUNC_INPUT;
-    pub const ATTRIBUTE_VALUE_KIND_STR: &str = NODE_KIND_ATTRIBUTE_VALUE;
-    pub const ATTRIBUTE_VALUE_CHILD_KIND_STR: &str = NODE_KIND_ATTRIBUTE_VALUE_CHILD;
-    pub const CATEGORY_KIND_STR: &str = NODE_KIND_CATEGORY;
-    pub const CHANGE_SET_KIND_STR: &str = NODE_KIND_CHANGE_SET;
-    pub const CHANGE_SET_CHILD_KIND_STR: &str = NODE_KIND_CHANGE_SET_CHILD;
-    pub const COMPONENT_KIND_STR: &str = NODE_KIND_COMPONENT;
-    pub const COMPONENT_CHILD_KIND_STR: &str = NODE_KIND_COMPONENT_CHILD;
-    pub const NODE_KIND_EDGE_STR: &str = NODE_KIND_EDGE;
-    pub const FUNC_KIND_STR: &str = NODE_KIND_FUNC;
-    pub const FUNC_ARGUMENT_KIND_STR: &str = NODE_KIND_FUNC_ARGUMENT;
-    pub const LEAF_FUNCTION_KIND_STR: &str = NODE_KIND_LEAF_FUNCTION;
-    pub const MAP_KEY_FUNC_KIND_STR: &str = NODE_KIND_MAP_KEY_FUNC;
-    pub const PACKAGE_KIND_STR: &str = NODE_KIND_PACKAGE;
-    pub const POSTITION_KIND_STR: &str = NODE_KIND_POSITION;
-    pub const PROP_KIND_STR: &str = NODE_KIND_PROP;
-    pub const PROP_CHILD_KIND_STR: &str = NODE_KIND_PROP_CHILD;
-    pub const ROOT_PROP_FUNC_KIND_STR: &str = NODE_KIND_ROOT_PROP_FUNC;
-    pub const SCHEMA_KIND_STR: &str = NODE_KIND_SCHEMA;
-    pub const SCHEMA_VARIANT_KIND_STR: &str = NODE_KIND_SCHEMA_VARIANT;
-    pub const SCHEMA_VARIANT_KIND_CHILD_STR: &str = NODE_KIND_SCHEMA_VARIANT_CHILD;
-    pub const SOCKET_KIND_STR: &str = NODE_KIND_SOCKET;
-    pub const SI_PROP_FUNC_KIND_STR: &str = NODE_KIND_SI_PROP_FUNC;
-    pub const VALIDATION_KIND_STR: &str = NODE_KIND_VALIDATION;
+    pub const ACTION_FUNC_KIND_STR: &'static str = NODE_KIND_ACTION_FUNC;
+    pub const AUTH_FUNC_KIND_STR: &'static str = NODE_KIND_AUTH_FUNC;
+    pub const ATTR_FUNC_INPUT_KIND_STR: &'static str = NODE_KIND_ATTR_FUNC_INPUT;
+    pub const ATTRIBUTE_VALUE_KIND_STR: &'static str = NODE_KIND_ATTRIBUTE_VALUE;
+    pub const ATTRIBUTE_VALUE_CHILD_KIND_STR: &'static str = NODE_KIND_ATTRIBUTE_VALUE_CHILD;
+    pub const CATEGORY_KIND_STR: &'static str = NODE_KIND_CATEGORY;
+    pub const CHANGE_SET_KIND_STR: &'static str = NODE_KIND_CHANGE_SET;
+    pub const CHANGE_SET_CHILD_KIND_STR: &'static str = NODE_KIND_CHANGE_SET_CHILD;
+    pub const COMPONENT_KIND_STR: &'static str = NODE_KIND_COMPONENT;
+    pub const COMPONENT_CHILD_KIND_STR: &'static str = NODE_KIND_COMPONENT_CHILD;
+    pub const NODE_KIND_EDGE_STR: &'static str = NODE_KIND_EDGE;
+    pub const FUNC_KIND_STR: &'static str = NODE_KIND_FUNC;
+    pub const FUNC_ARGUMENT_KIND_STR: &'static str = NODE_KIND_FUNC_ARGUMENT;
+    pub const LEAF_FUNCTION_KIND_STR: &'static str = NODE_KIND_LEAF_FUNCTION;
+    pub const MAP_KEY_FUNC_KIND_STR: &'static str = NODE_KIND_MAP_KEY_FUNC;
+    pub const PACKAGE_KIND_STR: &'static str = NODE_KIND_PACKAGE;
+    pub const POSTITION_KIND_STR: &'static str = NODE_KIND_POSITION;
+    pub const PROP_KIND_STR: &'static str = NODE_KIND_PROP;
+    pub const PROP_CHILD_KIND_STR: &'static str = NODE_KIND_PROP_CHILD;
+    pub const ROOT_PROP_FUNC_KIND_STR: &'static str = NODE_KIND_ROOT_PROP_FUNC;
+    pub const SCHEMA_KIND_STR: &'static str = NODE_KIND_SCHEMA;
+    pub const SCHEMA_VARIANT_KIND_STR: &'static str = NODE_KIND_SCHEMA_VARIANT;
+    pub const SCHEMA_VARIANT_KIND_CHILD_STR: &'static str = NODE_KIND_SCHEMA_VARIANT_CHILD;
+    pub const SOCKET_KIND_STR: &'static str = NODE_KIND_SOCKET;
+    pub const SI_PROP_FUNC_KIND_STR: &'static str = NODE_KIND_SI_PROP_FUNC;
+    pub const VALIDATION_KIND_STR: &'static str = NODE_KIND_VALIDATION;
 
     pub fn node_kind_str(&self) -> &'static str {
         match self {
