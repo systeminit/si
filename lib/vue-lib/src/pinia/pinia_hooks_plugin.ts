@@ -51,6 +51,9 @@ export const piniaHooksPlugin: PiniaPlugin = ({
   store._trackedStoreUsersCount = computed(
     () => Object.keys(store._trackedStoreUsers).length,
   );
+
+  // TODO: handle reset logic - see https://pinia.vuejs.org/core-concepts/plugins.html#Resetting-state-added-in-plugins
+
   // expose this info to devtools
   // TODO: determine the best way to safely check in both vite and webpack setups
   if (import.meta.env.DEV /* || process.env.NODE_ENV === "development" */) {
