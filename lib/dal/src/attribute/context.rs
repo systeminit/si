@@ -278,6 +278,20 @@ impl AttributeContext {
     ) -> AttributeContextResult<Option<crate::ExternalProvider>> {
         Ok(crate::ExternalProvider::get_by_id(ctx, &self.external_provider_id()).await?)
     }
+
+    pub fn check(&self, context: Self) -> bool {
+        let prop = self.prop_id == context.prop_id
+            && context.internal_provider_id.is_none()
+            && context.external_provider_id.is_none();
+        let internal_provider = context.prop_id.is_none()
+            && self.internal_provider_id == context.internal_provider_id
+            && context.external_provider_id.is_none();
+        let external_provider = context.prop_id.is_none()
+            && context.internal_provider_id.is_none()
+            && self.external_provider_id == context.external_provider_id;
+        let component = self.component_id == context.component_id || self.component_id.is_none();
+        (prop || internal_provider || external_provider) && component
+    }
 }
 
 #[remain::sorted]

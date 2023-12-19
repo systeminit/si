@@ -4,61 +4,68 @@ use chrono::Utc;
 use dal::{
     action_prototype::ActionPrototypeContextField, func::backend::js_action::ActionRunResult,
     Action, ActionKind, ActionPrototype, ActionPrototypeContext, ChangeSet, Component,
-    ComponentError, ComponentId, Connection, DalContext, Edge, Node, StandardModel, Visibility,
-    WsEvent,
+    ComponentError, ComponentId, Connection, DalContextBuilder, Edge, Node, StandardModel,
+    Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use telemetry::prelude::*;
+use tokio::task::JoinSet;
 use veritech_client::ResourceStatus;
 
 use super::{DiagramError, DiagramResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 
+#[allow(clippy::too_many_arguments)]
 async fn paste_single_component(
-    ctx: &DalContext,
+    ctx_builder: DalContextBuilder,
+    request_ctx: dal::context::AccessBuilder,
+    visibility: Visibility,
     component_id: ComponentId,
     offset_x: f64,
     offset_y: f64,
     original_uri: &Uri,
     PosthogClient(posthog_client): &PosthogClient,
 ) -> DiagramResult<Node> {
-    let original_comp = Component::get_by_id(ctx, &component_id)
+    let ctx = ctx_builder.build(request_ctx.build(visibility)).await?;
+
+    let original_comp = Component::get_by_id(&ctx, &component_id)
         .await?
         .ok_or(DiagramError::ComponentNotFound)?;
     let original_node = original_comp
-        .node(ctx)
+        .node(&ctx)
         .await?
         .pop()
         .ok_or(ComponentError::NodeNotFoundForComponent(component_id))?;
 
     let schema_variant = original_comp
-        .schema_variant(ctx)
+        .schema_variant(&ctx)
         .await?
         .ok_or(DiagramError::SchemaNotFound)?;
 
     let (pasted_comp, mut pasted_node) =
-        Component::new(ctx, original_comp.name(ctx).await?, *schema_variant.id()).await?;
-
+        Component::new(&ctx, original_comp.name(&ctx).await?, *schema_variant.id()).await?;
     let x: f64 = original_node.x().parse()?;
     let y: f64 = original_node.y().parse()?;
     pasted_node
         .set_geometry(
-            ctx,
+            &ctx,
             (x + offset_x).to_string(),
             (y + offset_y).to_string(),
             original_node.width(),
             original_node.height(),
         )
         .await?;
+    ctx.commit().await?;
 
     pasted_comp
-        .clone_attributes_from(ctx, *original_comp.id())
+        .clone_attributes_from(&ctx, *original_comp.id())
         .await?;
 
     pasted_comp
         .set_resource_raw(
-            ctx,
+            &ctx,
             ActionRunResult {
                 status: ResourceStatus::Ok,
                 payload: None,
@@ -70,8 +77,10 @@ async fn paste_single_component(
         )
         .await?;
 
+    ctx.commit().await?;
+
     for prototype in ActionPrototype::find_for_context_and_kind(
-        ctx,
+        &ctx,
         ActionKind::Create,
         ActionPrototypeContext::new_for_context_field(ActionPrototypeContextField::SchemaVariant(
             *schema_variant.id(),
@@ -79,12 +88,12 @@ async fn paste_single_component(
     )
     .await?
     {
-        let action = Action::new(ctx, *prototype.id(), *pasted_comp.id()).await?;
-        let prototype = action.prototype(ctx).await?;
+        let action = Action::new(&ctx, *prototype.id(), *pasted_comp.id()).await?;
+        let prototype = action.prototype(&ctx).await?;
 
         track(
             posthog_client,
-            ctx,
+            &ctx,
             original_uri,
             "create_action",
             serde_json::json!({
@@ -92,19 +101,19 @@ async fn paste_single_component(
                 "prototype_id": prototype.id(),
                 "prototype_kind": prototype.kind(),
                 "component_id": pasted_comp.id(),
-                "component_name": pasted_comp.name(ctx).await?,
+                "component_name": pasted_comp.name(&ctx).await?,
                 "change_set_pk": ctx.visibility().change_set_pk,
             }),
         );
     }
 
     let schema = pasted_comp
-        .schema(ctx)
+        .schema(&ctx)
         .await?
         .ok_or(DiagramError::SchemaNotFound)?;
     track(
         posthog_client,
-        ctx,
+        &ctx,
         original_uri,
         "paste_component",
         serde_json::json!({
@@ -113,10 +122,12 @@ async fn paste_single_component(
         }),
     );
 
-    WsEvent::change_set_written(ctx)
+    WsEvent::change_set_written(&ctx)
         .await?
-        .publish_on_commit(ctx)
+        .publish_on_commit(&ctx)
         .await?;
+
+    ctx.commit().await?;
 
     Ok(pasted_node)
 }
@@ -135,7 +146,7 @@ pub struct PasteComponentsRequest {
 pub async fn paste_components(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    posthog_client: PosthogClient,
+    PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<PasteComponentsRequest>,
 ) -> DiagramResult<impl IntoResponse> {
@@ -156,19 +167,54 @@ pub async fn paste_components(
             .publish_on_commit(&ctx)
             .await?;
     };
+    ctx.commit().await?;
+
+    let mut tasks = JoinSet::new();
 
     let mut pasted_components_by_original = HashMap::new();
     for component_id in &request.component_ids {
-        let pasted_node_id = paste_single_component(
-            &ctx,
-            *component_id,
-            request.offset_x,
-            request.offset_y,
-            &original_uri,
-            &posthog_client,
-        )
-        .await?;
-        pasted_components_by_original.insert(*component_id, pasted_node_id);
+        let ctx_builder = ctx.to_builder();
+        let (visibility, component_id) = (request.visibility, *component_id);
+        let (offset_x, offset_y) = (request.offset_x, request.offset_y);
+        let (original_uri, posthog_client) =
+            (original_uri.clone(), PosthogClient(posthog_client.clone()));
+        tasks.spawn(async move {
+            let pasted_node = paste_single_component(
+                ctx_builder,
+                request_ctx,
+                visibility,
+                component_id,
+                offset_x,
+                offset_y,
+                &original_uri,
+                &posthog_client,
+            )
+            .await?;
+
+            Ok::<_, DiagramError>((component_id, pasted_node))
+        });
+    }
+
+    while let Some(result) = tasks.join_next().await {
+        match result {
+            Ok(Ok((component_id, pasted_node))) => {
+                pasted_components_by_original.insert(component_id, pasted_node);
+            }
+            Ok(Err(err)) => return Err(err)?,
+            // Task panicked, let's propagate it
+            Err(err) => match err.try_into_panic() {
+                Ok(panic) => {
+                    std::panic::resume_unwind(panic);
+                }
+                Err(err) => {
+                    if err.is_cancelled() {
+                        warn!("Paste Componetn was cancelled: {err}");
+                    } else {
+                        error!("Unknown failure in component paste: {err}");
+                    }
+                }
+            },
+        }
     }
 
     for component_id in &request.component_ids {
