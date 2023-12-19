@@ -643,8 +643,8 @@ impl LocalDockerRuntime {
             .expect("unable to unpack path");
         let mounts = vec![
             Mount {
-                source: Some(String::from(socket_dir.clone())),
-                target: Some(String::from(socket_dir.clone())),
+                source: Some(String::from(socket_dir)),
+                target: Some(String::from(socket_dir)),
                 typ: Some(MountTypeEnum::BIND),
                 ..Default::default()
             },

@@ -315,7 +315,7 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
                 let mut needs_recreated = false;
                 if let Some(ports) = existing.ports {
                     if !ports.is_empty() {
-                        let port = ports.first().unwrap().clone();
+                        let port = ports.first().unwrap();
                         let public_port = port.public_port.unwrap_or(0);
                         let ip = port.ip.clone().unwrap_or("".to_string());
 
@@ -394,7 +394,7 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
                 let mut needs_recreated = false;
                 if let Some(ports) = existing.ports {
                     if !ports.is_empty() {
-                        let port = ports.first().unwrap().clone();
+                        let port = ports.first().unwrap();
                         let public_port = port.public_port.unwrap_or(0);
                         let ip = port.ip.clone().unwrap_or("".to_string());
 
