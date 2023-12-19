@@ -1,4 +1,4 @@
-use std::{io, path::Path, sync::Arc};
+use std::{io, sync::Arc};
 
 use dal::{
     job::{
@@ -11,7 +11,9 @@ use dal::{
 };
 use futures::{FutureExt, Stream, StreamExt};
 use nats_subscriber::{Request, SubscriberError};
-use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig};
+use si_crypto::{
+    CryptoConfig, SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig,
+};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use stream_cancel::StreamExt as StreamCancelStreamExt;
@@ -99,8 +101,7 @@ impl Server {
     pub async fn from_config(config: Config) -> Result<Self> {
         dal::init()?;
 
-        let encryption_key =
-            Self::load_encryption_key(config.cyclone_encryption_key_path()).await?;
+        let encryption_key = Self::load_encryption_key(config.crypto().clone()).await?;
         let nats = Self::connect_to_nats(config.nats()).await?;
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
@@ -194,8 +195,10 @@ impl Server {
     }
 
     #[instrument(name = "pinga.init.load_encryption_key", skip_all)]
-    async fn load_encryption_key(path: impl AsRef<Path>) -> Result<Arc<CycloneEncryptionKey>> {
-        Ok(Arc::new(CycloneEncryptionKey::load(path).await?))
+    async fn load_encryption_key(crypto_config: CryptoConfig) -> Result<Arc<CycloneEncryptionKey>> {
+        Ok(Arc::new(
+            CycloneEncryptionKey::from_config(crypto_config).await?,
+        ))
     }
 
     #[instrument(name = "pinga.init.connect_to_nats", skip_all)]
