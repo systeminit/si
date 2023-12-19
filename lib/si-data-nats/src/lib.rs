@@ -9,6 +9,7 @@
 
 use std::{fmt::Debug, io, sync::Arc};
 
+use async_nats::subject::ToSubject;
 use crossbeam_channel::RecvError;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -19,7 +20,7 @@ mod connect_options;
 mod message;
 mod subscriber;
 
-pub use async_nats::{header::HeaderMap, rustls};
+pub use async_nats::{header::HeaderMap, rustls, Subject};
 pub use connect_options::ConnectOptions;
 pub use message::Message;
 pub use subscriber::Subscriber;
@@ -270,10 +271,10 @@ impl Client {
             otel.status_message = Empty,
         )
     )]
-    pub async fn subscribe(&self, subject: impl Into<String>) -> Result<Subscriber> {
+    pub async fn subscribe(&self, subject: impl ToSubject) -> Result<Subscriber> {
         let span = Span::current();
 
-        let subject = subject.into();
+        let subject = subject.to_subject();
         span.record("messaging.destination", subject.as_str());
         span.record("otel.name", format!("{} receive", &subject).as_str());
         let sub_subject = subject.clone();
@@ -285,7 +286,7 @@ impl Client {
 
         Ok(Subscriber::new(
             sub,
-            subject,
+            &subject,
             self.metadata.clone(),
             current_span_for_debug!(),
         ))
@@ -330,12 +331,12 @@ impl Client {
     )]
     pub async fn queue_subscribe(
         &self,
-        subject: impl Into<String>,
+        subject: impl ToSubject,
         queue: impl Into<String>,
     ) -> Result<Subscriber> {
         let span = Span::current();
 
-        let subject = subject.into();
+        let subject = subject.to_subject();
         let queue = queue.into();
         span.record("messaging.destination", subject.as_str());
         span.record("messaging.subscriber.queue", queue.as_str());
@@ -349,7 +350,7 @@ impl Client {
 
         Ok(Subscriber::new(
             sub,
-            subject,
+            &subject,
             self.metadata.clone(),
             current_span_for_debug!(),
         ))
@@ -368,10 +369,10 @@ impl Client {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn publish(&self, subject: impl Into<String>, msg: impl Into<Vec<u8>>) -> Result<()> {
+    pub async fn publish(&self, subject: impl ToSubject, msg: impl Into<Vec<u8>>) -> Result<()> {
         let span = Span::current();
 
-        let subject = subject.into();
+        let subject = subject.to_subject();
         let msg = msg.into();
         span.record("messaging.destination", subject.as_str());
         span.record("otel.name", format!("{} send", &subject).as_str());
@@ -433,12 +434,12 @@ impl Client {
     )]
     pub async fn request(
         &self,
-        subject: impl Into<String>,
+        subject: impl ToSubject,
         msg: impl Into<Vec<u8>>,
     ) -> Result<Message> {
         let span = Span::current();
 
-        let subject = subject.into();
+        let subject = subject.to_subject();
         let msg = msg.into();
         span.record("messaging.destination", subject.as_str());
         span.record("otel.name", format!("{} send", &subject).as_str());
@@ -530,18 +531,18 @@ impl Client {
     )]
     pub async fn publish_with_reply(
         &self,
-        subject: impl Into<String>,
-        reply: impl Into<String>,
+        subject: impl ToSubject,
+        reply: impl ToSubject,
         msg: impl Into<Vec<u8>>,
     ) -> Result<()> {
         let span = Span::current();
 
-        let subject = subject.into();
+        let subject = subject.to_subject();
         let msg = msg.into();
         span.record("messaging.destination", subject.as_str());
         span.record("otel.name", format!("{} send", &subject).as_str());
         self.inner
-            .publish_with_reply(subject, reply.into(), msg.into())
+            .publish_with_reply(subject, reply, msg.into())
             .await
             .map_err(|err| span.record_err(Error::NatsPublish(err)))?;
 
@@ -588,13 +589,13 @@ impl Client {
     )]
     pub async fn publish_with_headers(
         &self,
-        subject: impl Into<String>,
+        subject: impl ToSubject,
         headers: HeaderMap,
         msg: impl Into<Vec<u8>>,
     ) -> Result<()> {
         let span = Span::current();
 
-        let subject = subject.into();
+        let subject = subject.to_subject();
         let msg = msg.into();
         span.record("messaging.destination", subject.as_str());
         span.record("otel.name", format!("{} send", &subject).as_str());
@@ -652,7 +653,7 @@ impl ConnectionMetadata {
 #[derive(Clone, Debug)]
 pub struct NatsTxn {
     client: Client,
-    pending_publish: Arc<Mutex<Vec<(String, serde_json::Value)>>>,
+    pending_publish: Arc<Mutex<Vec<(Subject, serde_json::Value)>>>,
     metadata: Arc<ConnectionMetadata>,
     tx_span: Span,
 }
@@ -678,14 +679,14 @@ impl NatsTxn {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn publish<T>(&self, subject: impl Into<String>, object: &T) -> Result<()>
+    pub async fn publish<T>(&self, subject: impl ToSubject, object: &T) -> Result<()>
     where
         T: Serialize + Debug,
     {
         let span = Span::current();
         span.follows_from(&self.tx_span);
 
-        let subject = subject.into();
+        let subject = subject.to_subject();
         let json: serde_json::Value = serde_json::to_value(object)
             .map_err(|err| span.record_err(self.tx_span.record_err(Error::Serialize(err))))?;
         let mut pending_publish = self.pending_publish.lock().await;

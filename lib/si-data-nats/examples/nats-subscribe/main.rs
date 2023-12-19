@@ -47,7 +47,7 @@ async fn run() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     let config = NatsConfig::default();
     let nats = NatsClient::new(&config).await?;
 
-    let mut subscriber = nats.subscribe(&subject).await?;
+    let mut subscriber = nats.subscribe(subject).await?;
 
     let mut count = 0;
     while let Some(message) = subscriber.next().await {

@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use si_data_nats::{NatsClient, Subscriber};
+use si_data_nats::{NatsClient, Subject, Subscriber};
 use std::time::Duration;
 use telemetry::prelude::*;
 
@@ -15,8 +15,8 @@ pub enum State {
 #[derive(Debug, Clone)]
 pub struct PubClient {
     change_set_id: Id,
-    pub_channel: String,
-    reply_channel: String,
+    pub_channel: Subject,
+    reply_channel: Subject,
     nats: NatsClient,
 }
 
@@ -27,7 +27,11 @@ impl PubClient {
             dependency_graph,
         })?;
         self.nats
-            .publish_with_reply(&self.pub_channel, &self.reply_channel, message)
+            .publish_with_reply(
+                self.pub_channel.clone(),
+                self.reply_channel.clone(),
+                message,
+            )
             .await?;
         Ok(())
     }
@@ -38,7 +42,11 @@ impl PubClient {
             node_id,
         })?;
         self.nats
-            .publish_with_reply(&self.pub_channel, &self.reply_channel, message)
+            .publish_with_reply(
+                self.pub_channel.clone(),
+                self.reply_channel.clone(),
+                message,
+            )
             .await?;
         Ok(())
     }
@@ -49,7 +57,11 @@ impl PubClient {
             node_id,
         })?;
         self.nats
-            .publish_with_reply(&self.pub_channel, &self.reply_channel, message)
+            .publish_with_reply(
+                self.pub_channel.clone(),
+                self.reply_channel.clone(),
+                message,
+            )
             .await?;
         Ok(())
     }
@@ -59,7 +71,11 @@ impl PubClient {
             change_set_id: self.change_set_id,
         })?;
         self.nats
-            .publish_with_reply(&self.pub_channel, &self.reply_channel, message)
+            .publish_with_reply(
+                self.pub_channel.clone(),
+                self.reply_channel.clone(),
+                message,
+            )
             .await?;
         Ok(())
     }
@@ -68,8 +84,8 @@ impl PubClient {
 #[derive(Debug)]
 pub struct Client {
     change_set_id: Id,
-    pub_channel: String,
-    reply_channel: String,
+    pub_channel: Subject,
+    reply_channel: Subject,
     subscriber: Subscriber,
     nats: NatsClient,
 }
@@ -84,10 +100,10 @@ impl Client {
         let pub_channel = format!("{subject_prefix}.{id}");
         let reply_channel = format!("{pub_channel}.reply");
         Ok(Self {
-            pub_channel,
+            pub_channel: pub_channel.into(),
             change_set_id,
-            subscriber: nats.subscribe(&reply_channel).await?,
-            reply_channel,
+            subscriber: nats.subscribe(reply_channel.clone()).await?,
+            reply_channel: reply_channel.into(),
             nats,
         })
     }

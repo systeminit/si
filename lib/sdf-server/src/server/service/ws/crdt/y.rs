@@ -1,7 +1,7 @@
 /// Adapted from: https://github.com/y-crdt/yrs-warp/blob/14a1abdf9085d71b6071e27c3e53ac5d0e07735d/src/ws.rs
 use futures::{Future, Sink, Stream};
 use futures_lite::FutureExt;
-use si_data_nats::{NatsClient, Subscriber};
+use si_data_nats::{NatsClient, Subject, Subscriber};
 use std::{pin::Pin, task::Context, task::Poll};
 use y_sync::sync::Error;
 
@@ -10,12 +10,12 @@ type BoxedResultFuture<T> = Box<dyn Future<Output = Result<T>> + Sync + Send>;
 
 pub struct YSink {
     nats: NatsClient,
-    channel: String,
+    channel: Subject,
     future: Option<Pin<BoxedResultFuture<()>>>,
 }
 
 impl YSink {
-    pub fn new(nats: NatsClient, channel: String) -> Self {
+    pub fn new(nats: NatsClient, channel: Subject) -> Self {
         Self {
             nats,
             channel,
