@@ -1,6 +1,7 @@
 //! This module contains [`ComponentDiff`].
 
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use crate::component::ComponentResult;
 use crate::{
@@ -67,7 +68,9 @@ impl ComponentDiff {
         }
 
         // Find the "diffs" given the head dal context only if the component exists on head.
-        let diffs: Vec<CodeView> = if Component::get_by_id(&head_ctx, &component_id)
+        let mut is_new_component = false;
+        let prev_json: String;
+        if Component::get_by_id(&head_ctx, &component_id)
             .await?
             .is_some()
         {
@@ -83,28 +86,37 @@ impl ComponentDiff {
             let mut prev_component_view = ComponentViewProperties::try_from(prev_component_view)?;
             prev_component_view.drop_private();
 
-            let prev_json = serde_json::to_string_pretty(&prev_component_view)?;
+            prev_json = serde_json::to_string_pretty(&prev_component_view)?;
+        } else {
+            is_new_component = true;
+            prev_json = serde_json::to_string_pretty(&json!(null))?;
+        };
 
-            let mut lines = Vec::new();
-            for diff_object in diff::lines(&prev_json, &curr_json) {
-                let line = match diff_object {
-                    diff::Result::Left(left) => format!("-{left}"),
-                    diff::Result::Both(unchanged, _) => format!(" {unchanged}"),
-                    diff::Result::Right(right) => format!("+{right}"),
-                };
+        let mut lines = Vec::new();
+        for diff_object in diff::lines(&prev_json, &curr_json) {
+            let line = match diff_object {
+                diff::Result::Left(left) => format!("-{left}"),
+                diff::Result::Both(unchanged, _) => format!(" {unchanged}"),
+                diff::Result::Right(right) => format!("+{right}"),
+            };
+            if line != "-null" {
                 lines.push(line);
             }
-
-            // FIXME(nick): generate multiple code views if there are multiple code views.
-            let diff = CodeView::new(CodeLanguage::Diff, Some(lines.join(NEWLINE)), None);
-            vec![diff]
-        } else {
-            vec![]
-        };
+        }
+        let diff = CodeView::new(CodeLanguage::Diff, Some(lines.join(NEWLINE)), None);
+        let diffs: Vec<CodeView> = vec![diff];
 
         Ok(Self {
             component_id,
-            current: CodeView::new(CodeLanguage::Json, Some(curr_json), None),
+            current: CodeView::new(
+                CodeLanguage::Json,
+                if is_new_component {
+                    Some(curr_json)
+                } else {
+                    None
+                },
+                None,
+            ),
             diffs,
         })
     }
