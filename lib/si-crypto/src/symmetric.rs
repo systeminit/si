@@ -1,6 +1,8 @@
 //! Symmetric key cryptography.
+use telemetry::prelude::*;
 
-use std::{collections::HashMap, fs::File, path::PathBuf, sync::Arc};
+use base64::{engine::general_purpose, Engine};
+use std::{collections::HashMap, fs::File, io::Cursor, path::PathBuf, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use si_hash::Hash;
@@ -15,15 +17,21 @@ pub use sodiumoxide::crypto::secretbox::Nonce as SymmetricNonce;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SymmetricCryptoError {
+    /// When a base64 encoded key fails to be decoded.
+    #[error("failed to decode base64 encoded key")]
+    Base64Decode(#[source] base64::DecodeError),
     /// When a file fails to be canonicalized
     #[error(transparent)]
     CanonicalFile(#[from] CanonicalFileError),
     /// When a cipertext fails to decrypt
     #[error("error when decrypting ciphertext")]
     DecryptionFailed,
-    /// When deserializing from a key file format fails
-    #[error("error deserializing key file: {0}")]
+    /// When deserializing from a key format fails
+    #[error("error deserializing key : {0}")]
     Deserialize(#[from] ciborium::de::Error<std::io::Error>),
+    /// When failing to supply appropriate values to form_config
+    #[error("error loading from_config, must supply a filepath or base64 string")]
+    FromConfig,
     /// When an error is returned while reading or writing to a key file
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
@@ -55,11 +63,12 @@ pub struct SymmetricCryptoService {
 /// loaded key. In this way the service can take an arbitrary number of keys which is useful in
 /// operations such as key rotation where at least 2 keys are needed (the new key and the old
 /// keys).
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SymmetricCryptoServiceConfig {
     /// The path to the active key file which will be used for all encryption.
-    pub active_key: CanonicalFile,
-
+    pub active_key: Option<CanonicalFile>,
+    /// The base64 representation of the active key file which will be used for all encryption.
+    pub active_key_base64: Option<String>,
     /// Extra keys which can be used when decrypting data.
     pub extra_keys: Vec<CanonicalFile>,
 }
@@ -68,8 +77,9 @@ pub struct SymmetricCryptoServiceConfig {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SymmetricCryptoServiceConfigFile {
     /// The path to the active key file which will be used for all encryption.
-    pub active_key: String,
-
+    pub active_key: Option<String>,
+    /// The base64 representation of the active key file which will be used for all encryption.
+    pub active_key_base64: Option<String>,
     /// Extra keys which can be used when decrypting data.
     pub extra_keys: Vec<String>,
 }
@@ -78,8 +88,14 @@ impl TryFrom<SymmetricCryptoServiceConfigFile> for SymmetricCryptoServiceConfig 
     type Error = CanonicalFileError;
 
     fn try_from(value: SymmetricCryptoServiceConfigFile) -> Result<Self, Self::Error> {
-        let active_key = value.active_key.try_into()?;
-
+        let mut active_key: Option<CanonicalFile> = None;
+        let mut active_key_base64: Option<String> = None;
+        if let Some(key) = value.active_key {
+            active_key = Some(key.try_into()?);
+        }
+        if let Some(key) = value.active_key_base64 {
+            active_key_base64 = Some(key);
+        }
         let mut extra_keys = Vec::new();
         for extra_key_str in value.extra_keys {
             extra_keys.push(extra_key_str.try_into()?);
@@ -88,6 +104,7 @@ impl TryFrom<SymmetricCryptoServiceConfigFile> for SymmetricCryptoServiceConfig 
         Ok(Self {
             active_key,
             extra_keys,
+            active_key_base64,
         })
     }
 }
@@ -120,8 +137,11 @@ impl SymmetricCryptoService {
     /// - A key file could not be successfully parsed
     /// - The [`SymmetricKey`] could not be successfully resolved from loading the key file
     pub async fn from_config(config: &SymmetricCryptoServiceConfig) -> SymmetricCryptoResult<Self> {
-        let active_key = SymmetricKey::load(&config.active_key).await?;
-
+        let active_key = match (&config.active_key, &config.active_key_base64) {
+            (Some(key), None) => Ok(SymmetricKey::load(key).await?),
+            (None, Some(b64_string)) => Ok(SymmetricKey::decode(b64_string.to_string()).await?),
+            _ => Err(SymmetricCryptoError::FromConfig),
+        }?;
         let mut extra_keys = vec![];
 
         for key_path in config.extra_keys.iter() {
@@ -213,6 +233,18 @@ impl SymmetricKey {
     pub async fn load(path: impl Into<PathBuf>) -> SymmetricCryptoResult<Self> {
         Ok(SymmetricKeyFile::load(path).await?.into())
     }
+
+    /// Load a key from a base64 string.
+    ///
+    /// # Errors
+    ///
+    /// Return `Err` if:
+    ///
+    /// - The key string could not be successfully parsed
+    /// - The [`SymmetricKey`] could not be successfully resolved
+    pub async fn decode(key_string: String) -> SymmetricCryptoResult<Self> {
+        Ok(SymmetricKeyFile::decode(key_string).await?.into())
+    }
 }
 
 impl From<SymmetricKeyFile> for SymmetricKey {
@@ -238,6 +270,13 @@ impl SymmetricKeyFile {
         })
         .await?
         .map_err(Into::into)
+    }
+
+    async fn decode(key_string: String) -> SymmetricCryptoResult<Self> {
+        let buf = general_purpose::STANDARD
+            .decode(key_string)
+            .map_err(SymmetricCryptoError::Base64Decode)?;
+        ciborium::from_reader(Cursor::new(&buf)).map_err(Into::into)
     }
 
     async fn load(path: impl Into<PathBuf>) -> SymmetricCryptoResult<Self> {

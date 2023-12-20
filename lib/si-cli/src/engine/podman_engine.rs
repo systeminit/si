@@ -605,6 +605,10 @@ impl ContainerEngine for PodmanEngine {
                 ),
                 ("SI_PINGA__NATS__URL", "nats"),
                 ("SI_PINGA__PG__HOSTNAME", "postgres"),
+                (
+                    "SI_PINGA__SYMMETRIC_CRYPTO_SERVICE__ACTIVE_KEY",
+                    "/run/pinga/donkey.key",
+                ),
                 ("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otelcol:4317"),
             ]))
             .mounts(vec![ContainerMount {
@@ -657,6 +661,10 @@ impl ContainerEngine for PodmanEngine {
                 ),
                 ("SI_SDF__NATS__URL", "nats"),
                 ("SI_SDF__PG__HOSTNAME", "postgres"),
+                (
+                    "SI_SDF__SYMMETRIC_CRYPTO_SERVICE__ACTIVE_KEY",
+                    "/run/sdf/donkey.key",
+                ),
                 ("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otelcol:4317"),
             ]))
             .portmappings(vec![PortMapping {
