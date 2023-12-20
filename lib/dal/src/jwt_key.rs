@@ -1,5 +1,7 @@
-use std::{path::Path, pin::Pin, sync::Arc};
+use si_std::CanonicalFile;
+use std::{io::Cursor, path::Path, pin::Pin, sync::Arc};
 
+use base64::{engine::general_purpose, Engine};
 use jwt_simple::{
     algorithms::RS256PublicKey,
     prelude::{JWTClaims, RSAPublicKeyLike},
@@ -27,6 +29,8 @@ pub enum JwtKeyError {
     BearerToken,
     #[error("failed to decrypt secret data")]
     Decrypt,
+    #[error("error creating jwt from config")]
+    FromConfig,
     #[error("error generating new keypair")]
     GenerateKeyPair,
     #[error("io error: {0}")]
@@ -59,6 +63,12 @@ pub enum JwtKeyError {
 
 pub type JwtKeyResult<T> = Result<T, JwtKeyError>;
 
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct JwtConfig {
+    pub key_file: Option<CanonicalFile>,
+    pub key_base64: Option<String>,
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 pub struct SiClaims {
     pub user_pk: UserPk,
@@ -71,6 +81,14 @@ pub struct JwtPublicSigningKey {
 }
 
 impl JwtPublicSigningKey {
+    pub async fn from_config(config: JwtConfig) -> JwtKeyResult<Self> {
+        match (config.key_file, config.key_base64) {
+            (Some(path), None) => Self::load(path).await,
+            (None, Some(b64_string)) => Self::decode(b64_string).await,
+            _ => Err(JwtKeyError::FromConfig),
+        }
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub async fn load(path: impl AsRef<Path>) -> JwtKeyResult<Self> {
         trace!(
@@ -79,6 +97,13 @@ impl JwtPublicSigningKey {
         );
         let mut file = fs::File::open(path).await?;
         Self::from_reader(Pin::new(&mut file)).await
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub async fn decode(key_string: String) -> JwtKeyResult<Self> {
+        let buf = general_purpose::STANDARD.decode(key_string)?;
+
+        Self::from_reader(Pin::new(&mut Cursor::new(&buf))).await
     }
 
     async fn from_reader(mut reader: Pin<&mut impl AsyncRead>) -> JwtKeyResult<Self> {

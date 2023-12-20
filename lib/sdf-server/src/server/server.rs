@@ -1,3 +1,4 @@
+use dal::jwt_key::JwtConfig;
 use si_crypto::CryptoConfig;
 use std::time::Duration;
 use std::{io, net::SocketAddr, path::Path, path::PathBuf, sync::Arc};
@@ -213,10 +214,13 @@ impl Server<(), ()> {
     }
 
     #[instrument(name = "sdf.init.load_jwt_public_signing_key", skip_all)]
-    pub async fn load_jwt_public_signing_key(
-        path: impl AsRef<Path>,
-    ) -> Result<JwtPublicSigningKey> {
-        Ok(JwtPublicSigningKey::load(path).await?)
+    pub async fn load_jwt_public_signing_key(config: JwtConfig) -> Result<JwtPublicSigningKey> {
+        Ok(JwtPublicSigningKey::from_config(config).await?)
+    }
+
+    #[instrument(name = "sdf.init.decode_jwt_public_signing_key", skip_all)]
+    pub async fn decode_jwt_public_signing_key(key_string: String) -> Result<JwtPublicSigningKey> {
+        Ok(JwtPublicSigningKey::decode(key_string).await?)
     }
 
     #[instrument(name = "sdf.init.load_encryption_key", skip_all)]
