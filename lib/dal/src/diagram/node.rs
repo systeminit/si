@@ -7,9 +7,8 @@ use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
 use crate::{
-    history_event, ActionKind, ActionPrototype, ActionPrototypeContext, ActionPrototypeView,
-    ActorView, Component, ComponentId, ComponentStatus, ComponentType, DalContext, DiagramError,
-    HistoryActorTimestamp, Node, NodeId, ResourceView, SchemaVariant, StandardModel,
+    history_event, ActorView, Component, ComponentId, ComponentStatus, ComponentType, DalContext,
+    DiagramError, HistoryActorTimestamp, Node, NodeId, SchemaVariant, StandardModel,
 };
 
 #[remain::sorted]
@@ -156,16 +155,13 @@ pub struct DiagramComponentView {
     schema_variant_name: String,
     schema_category: Option<String>,
 
-    actions: Vec<ActionPrototypeView>,
-
     sockets: Option<Vec<SocketView>>,
     position: GridPoint,
     size: Option<Size2D>,
     color: Option<String>,
     node_type: ComponentType,
     change_status: ChangeStatus,
-    resource: ResourceView,
-
+    has_resource: bool,
     created_info: HistoryEventMetadata,
     updated_info: HistoryEventMetadata,
 
@@ -242,25 +238,7 @@ impl DiagramComponentView {
             }
         }
 
-        // TODO(theo): probably dont want to fetch this here and load totally separately, but we inherited from existing endpoints
-        let resource = ResourceView::new(component.resource(ctx).await?);
-
-        let action_prototypes = ActionPrototype::find_for_context(
-            ctx,
-            ActionPrototypeContext {
-                schema_variant_id: *schema_variant.id(),
-            },
-        )
-        .await?;
-        let mut action_views: Vec<ActionPrototypeView> = Vec::new();
-        for action_prototype in action_prototypes {
-            if *action_prototype.kind() == ActionKind::Refresh {
-                continue;
-            }
-
-            let view = ActionPrototypeView::new(ctx, action_prototype).await?;
-            action_views.push(view);
-        }
+        let resource_exists = component.resource(ctx).await?.payload.is_some();
 
         Ok(Self {
             id: *component.id(),
@@ -282,8 +260,7 @@ impl DiagramComponentView {
             color: component.color(ctx).await?,
             node_type: component.get_type(ctx).await?,
             change_status,
-            resource,
-            actions: action_views,
+            has_resource: resource_exists,
             created_info,
             updated_info,
             deleted_info,
@@ -306,8 +283,8 @@ impl DiagramComponentView {
         &self.size
     }
 
-    pub fn resource(&self) -> &ResourceView {
-        &self.resource
+    pub fn has_resource(&self) -> bool {
+        self.has_resource
     }
 }
 

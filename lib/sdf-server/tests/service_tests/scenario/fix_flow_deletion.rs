@@ -111,11 +111,9 @@ async fn fix_flow_deletion(
     // Ensure the resource exists after creation.
     let diagram = harness.get_diagram(ctx.visibility()).await;
     for component in diagram.components() {
-        let maybe_data_raw = component.resource().data.clone().expect("data is empty");
-        let data = serde_json::to_string(&maybe_data_raw).expect("could not deserialize data");
         assert_eq!(
-            "\"poop\"", // expected
-            &data       // actual
+            true,                     // expected
+            component.has_resource()  // actual
         );
     }
 
@@ -139,11 +137,9 @@ async fn fix_flow_deletion(
     // Ensure the resource continues to exist after refresh.
     let diagram = harness.get_diagram(ctx.visibility()).await;
     for component in diagram.components() {
-        let maybe_data_raw = component.resource().data.clone().expect("data is empty");
-        let data = serde_json::to_string(&maybe_data_raw).expect("could not deserialize data");
         assert_eq!(
-            "\"poop\"", // expected
-            &data       // actual
+            true,                     // expected
+            component.has_resource()  // actual
         );
     }
 
