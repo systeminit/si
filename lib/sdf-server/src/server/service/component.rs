@@ -26,6 +26,7 @@ pub mod get_diff;
 pub mod get_property_editor_schema;
 pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
+pub mod get_resource;
 pub mod insert_property_editor_value;
 pub mod json;
 pub mod list_qualifications;
@@ -152,6 +153,7 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/list_resources", get(list_resources::list_resources))
         .route("/get_code", get(get_code::get_code))
+        .route("/get_resource", get(get_resource::get_resource))
         .route("/get_diff", get(get_diff::get_diff))
         .route(
             "/get_property_editor_schema",

@@ -135,7 +135,7 @@ const rightClickMenuItems = computed(() => {
     }
   }
 
-  if (selectedComponent.value?.resource.data) {
+  if (selectedComponent.value?.hasResource) {
     items.push({
       label: "Refresh resource",
       icon: "refresh",

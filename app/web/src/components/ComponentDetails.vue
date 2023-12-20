@@ -23,7 +23,7 @@
         />
         <div class="pr-xs shrink-0">
           <VButton
-            v-if="selectedComponent.resource.data"
+            v-if="selectedComponent.hasResource"
             icon="refresh"
             size="sm"
             variant="ghost"
@@ -141,7 +141,7 @@
               <Inline noWrap>
                 <span>Resource</span>
                 <StatusIndicatorIcon
-                  v-if="selectedComponent.resource.data"
+                  v-if="selectedComponent.hasResource"
                   type="resource"
                   status="exists"
                 />

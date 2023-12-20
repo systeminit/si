@@ -58,7 +58,7 @@ type RawComponent = {
   parentNodeId?: ComponentNodeId;
   position: GridPoint;
   size?: Size2D;
-  resource: Resource;
+  hasResource: boolean;
   schemaCategory: string;
   schemaId: string; // TODO: probably want to move this to a different store and not load it all the time
   schemaName: string;
@@ -229,6 +229,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // connectionsById: {} as Record<ConnectionId, Connection>,
 
           componentCodeViewsById: {} as Record<ComponentId, CodeView[]>,
+          componentResourceById: {} as Record<ComponentId, Resource>,
           componentDiffsById: {} as Record<ComponentId, ComponentDiff>,
 
           rawComponentsById: {} as Record<ComponentId, RawComponent>,
@@ -404,6 +405,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           selectedComponentCode(): CodeView[] | undefined {
             return this.componentCodeViewsById[this.selectedComponentId || 0];
           },
+          selectedComponentResource(): Resource | undefined {
+            return this.componentResourceById[this.selectedComponentId || 0];
+          },
 
           diagramNodes(): DiagramNodeDef[] {
             const qualificationsStore = useQualificationsStore();
@@ -427,7 +431,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   ],
                   tabSlug: "qualifications",
                 },
-                component.resource.data
+                component.hasResource
                   ? { icon: "check-hex", tone: "success", tabSlug: "resource" }
                   : { icon: "none" },
               ]);
@@ -867,6 +871,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
               onSuccess: (response) => {
                 this.componentCodeViewsById[componentId] = response.codeViews;
+              },
+            });
+          },
+
+          async FETCH_COMPONENT_RESOURCE(componentId: ComponentId) {
+            return new ApiRequest<{ resource: Resource }>({
+              url: "component/get_resource",
+              keyRequestStatusBy: componentId,
+              params: {
+                componentId,
+                ...visibilityParams,
+              },
+              onSuccess: (response) => {
+                this.componentResourceById[componentId] = response.resource;
               },
             });
           },

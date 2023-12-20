@@ -80,7 +80,7 @@
           <!-- refresh resource button -->
           <div class="pr-xs group-hover:block hidden">
             <VButton
-              v-if="component.resource.data"
+              v-if="component.hasResource"
               icon="refresh"
               size="xs"
               variant="ghost"
@@ -110,7 +110,7 @@
             <!-- Resource Status -->
 
             <StatusIndicatorIcon
-              v-if="hasResource"
+              v-if="component.hasResource"
               type="resource"
               status="exists"
               @click.stop="onClick($event, 'resource')"
@@ -165,8 +165,6 @@ const qualificationsStore = useQualificationsStore();
 const component = computed(
   () => componentsStore.componentsById[props.componentId],
 );
-
-const hasResource = computed(() => component.value?.resource.data !== null);
 
 const hasChanges = computed(() => component.value?.changeStatus);
 

@@ -9,7 +9,7 @@ use crate::socket::{SocketArity, SocketEdgeKind};
 use crate::{
     history_event, ActionKind, ActionPrototype, ActionPrototypeContext, ActionPrototypeView,
     ActorView, Component, ComponentId, ComponentStatus, ComponentType, DalContext, DiagramError,
-    HistoryActorTimestamp, Node, NodeId, ResourceView, SchemaVariant, StandardModel,
+    HistoryActorTimestamp, Node, NodeId, SchemaVariant, StandardModel,
 };
 
 #[remain::sorted]
@@ -164,8 +164,7 @@ pub struct DiagramComponentView {
     color: Option<String>,
     node_type: ComponentType,
     change_status: ChangeStatus,
-    resource: ResourceView,
-
+    has_resource: bool,
     created_info: HistoryEventMetadata,
     updated_info: HistoryEventMetadata,
 
@@ -242,8 +241,7 @@ impl DiagramComponentView {
             }
         }
 
-        // TODO(theo): probably dont want to fetch this here and load totally separately, but we inherited from existing endpoints
-        let resource = ResourceView::new(component.resource(ctx).await?);
+        let resource_exists = component.resource(ctx).await?.payload.is_some();
 
         let action_prototypes = ActionPrototype::find_for_context(
             ctx,
@@ -282,7 +280,7 @@ impl DiagramComponentView {
             color: component.color(ctx).await?,
             node_type: component.get_type(ctx).await?,
             change_status,
-            resource,
+            has_resource: resource_exists,
             actions: action_views,
             created_info,
             updated_info,
@@ -304,10 +302,6 @@ impl DiagramComponentView {
 
     pub fn size(&self) -> &Option<Size2D> {
         &self.size
-    }
-
-    pub fn resource(&self) -> &ResourceView {
-        &self.resource
     }
 }
 
