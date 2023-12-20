@@ -78,6 +78,7 @@ export const useReconciliationsStore = () => {
         realtimeStore.subscribe(this.$id, `workspace/${workspacePk}/head`, [
           {
             eventType: "ChangeSetWritten",
+            debounce: true,
             callback: (writtenChangeSetId) => {
               if (writtenChangeSetId !== nilId()) return;
               this.LOAD_RECONCILIATIONS();

@@ -1306,14 +1306,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           const realtimeStore = useRealtimeStore();
 
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-            {
-              eventType: "ComponentCreated",
-              callback: (_update) => {
-                this.FETCH_DIAGRAM_DATA();
-              },
-            },
+            // dont need to do anything here as we will also get a ChangeSetWritten event
+            // {
+            //   eventType: "ComponentCreated",
+            //   callback: (_update) => {
+            //     this.FETCH_DIAGRAM_DATA();
+            //   },
+            // },
             {
               eventType: "ChangeSetWritten",
+              debounce: true,
               callback: (writtenChangeSetId) => {
                 // ideally we wouldn't have to check this - since the topic subscription
                 // would mean we only receive the event for this changeset already...
@@ -1327,7 +1329,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             {
               eventType: "CodeGenerated",
               callback: (codeGeneratedEvent) => {
-                this.FETCH_COMPONENT_CODE(codeGeneratedEvent.componentId);
+                if (
+                  this.selectedComponentId === codeGeneratedEvent.componentId
+                ) {
+                  this.FETCH_COMPONENT_CODE(codeGeneratedEvent.componentId);
+                }
               },
             },
             {

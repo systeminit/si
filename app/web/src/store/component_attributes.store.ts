@@ -324,6 +324,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
               eventType: "ChangeSetWritten",
+              debounce: true,
               callback: (writtenChangeSetId) => {
                 if (writtenChangeSetId !== changeSetId) return;
                 this.reloadPropertyEditorData();

@@ -200,6 +200,7 @@ export const useQualificationsStore = () => {
             {
               // TODO(nick,theo,fletcher,wendy): replace this someday.
               eventType: "ChangeSetWritten",
+              debounce: true,
               callback: () => {
                 this.FETCH_QUALIFICATIONS_SUMMARY();
               },
