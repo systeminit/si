@@ -3305,6 +3305,8 @@ dependencies = [
  "percent-encoding",
  "rand 0.8.5",
  "thiserror",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
@@ -5536,6 +5538,7 @@ dependencies = [
  "derive_builder",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
+ "opentelemetry_sdk",
  "remain",
  "telemetry",
  "thiserror",

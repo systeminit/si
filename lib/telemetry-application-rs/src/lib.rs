@@ -11,19 +11,16 @@
 use std::{borrow::Cow, env, io, ops::Deref, time::Duration};
 
 use derive_builder::Builder;
-use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::{
+    propagation::TraceContextPropagator,
+    resource::{EnvResourceDetector, OsResourceDetector, ProcessResourceDetector},
+    runtime,
+    trace::{self, Tracer},
+    Resource,
+};
 use opentelemetry_semantic_conventions::resource;
 use telemetry::{
-    opentelemetry::{
-        self, global,
-        sdk::{
-            propagation::TraceContextPropagator,
-            resource::{EnvResourceDetector, OsResourceDetector, ProcessResourceDetector},
-            trace::{self, Tracer},
-            Resource,
-        },
-        trace::TraceError,
-    },
+    opentelemetry::{global, trace::TraceError},
     tracing::{debug, info, trace, warn, Subscriber},
     TracingLevel, UpdateOpenTelemetry, Verbosity,
 };
@@ -321,9 +318,9 @@ fn tracing_subscriber(
 fn try_tracer(config: &TelemetryConfig) -> std::result::Result<Tracer, TraceError> {
     opentelemetry_otlp::new_pipeline()
         .tracing()
-        .with_exporter(opentelemetry_otlp::new_exporter().tonic().with_env())
+        .with_exporter(opentelemetry_otlp::new_exporter().tonic())
         .with_trace_config(trace::config().with_resource(telemetry_resource(config)))
-        .install_batch(opentelemetry::runtime::Tokio)
+        .install_batch(runtime::Tokio)
 }
 
 fn telemetry_resource(config: &TelemetryConfig) -> Resource {
