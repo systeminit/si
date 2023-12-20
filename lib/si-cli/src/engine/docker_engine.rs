@@ -422,6 +422,7 @@ impl ContainerEngine for DockerEngine {
                 "SI_PINGA__CRYPTO__ENCRYPTION_KEY_FILE=/run/pinga/cyclone_encryption.key",
                 "SI_PINGA__NATS__URL=nats",
                 "SI_PINGA__PG__HOSTNAME=postgres",
+                "SI_PINGA__SYMMETRIC_CRYPTO_SERVICE__ACTIVE_KEY=/run/pinga/donkey.key",
                 "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
             ])
             .volumes([format!("{}:/run/pinga:z", data_dir.display())])
@@ -452,6 +453,7 @@ impl ContainerEngine for DockerEngine {
                 "SI_SDF__CRYPTO__ENCRYPTION_KEY_FILE=/run/sdf/cyclone_encryption.key",
                 "SI_SDF__NATS__URL=nats",
                 "SI_SDF__PG__HOSTNAME=postgres",
+                "SI_SDF__SYMMETRIC_CRYPTO_SERVICE__ACTIVE_KEY=/run/sdf/donkey.key",
                 "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317",
             ])
             .network_mode("bridge")

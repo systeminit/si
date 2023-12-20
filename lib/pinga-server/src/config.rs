@@ -54,6 +54,7 @@ pub struct Config {
     #[builder(default = "random_instance_id()")]
     instance_id: String,
 
+    #[builder(default = "SymmetricCryptoServiceConfig::default()")]
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
 }
 
@@ -156,7 +157,8 @@ fn random_instance_id() -> String {
 
 fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
     SymmetricCryptoServiceConfigFile {
-        active_key: "/run/pinga/donkey.key".into(),
+        active_key: None,
+        active_key_base64: None,
         extra_keys: vec![],
     }
 }
@@ -198,7 +200,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 
     config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
-        active_key: symmetric_crypto_service_key,
+        active_key: Some(symmetric_crypto_service_key),
+        active_key_base64: None,
         extra_keys: vec![],
     };
 
@@ -223,7 +226,8 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
 
     config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
-        active_key: symmetric_crypto_service_key,
+        active_key: Some(symmetric_crypto_service_key),
+        active_key_base64: None,
         extra_keys: vec![],
     };
 
