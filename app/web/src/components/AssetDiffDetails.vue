@@ -12,6 +12,7 @@
             v-if="selectedComponentDiff.current.code"
             :code="selectedComponentDiff.current.code"
             :codeLanguage="selectedComponentDiff.current.language"
+            :allowCopy="false"
           >
             <template #title>
               <span class="text-lg">Current</span>
@@ -27,6 +28,7 @@
             v-if="selectedComponentDiff.diffs[0]?.code"
             :code="selectedComponentDiff.diffs[0]?.code"
             :codeLanguage="selectedComponentDiff.diffs[0]?.language"
+            :allowCopy="false"
           >
             <template #title>
               <span class="text-lg">Diff</span>
