@@ -74,7 +74,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let encryption_key = Server::load_encryption_key(config.crypto().clone()).await?;
     let jwt_public_signing_key =
-        Server::load_jwt_public_signing_key(config.jwt_signing_public_key_path()).await?;
+        Server::load_jwt_public_signing_key(config.jwt_signing_public_key().clone()).await?;
 
     let nats_conn = Server::connect_to_nats(config.nats()).await?;
 
