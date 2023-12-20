@@ -599,6 +599,10 @@ impl ContainerEngine for PodmanEngine {
                 },
             )]))
             .env(HashMap::from([
+                (
+                    "SI_PINGA__CRYPTO__ENCRYPTION_KEY_FILE",
+                    "/run/pinga/cyclone_encryption.key",
+                ),
                 ("SI_PINGA__NATS__URL", "nats"),
                 ("SI_PINGA__PG__HOSTNAME", "postgres"),
                 ("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otelcol:4317"),
@@ -647,6 +651,10 @@ impl ContainerEngine for PodmanEngine {
                 },
             )]))
             .env(HashMap::from([
+                (
+                    "SI_SDF__CRYPTO__ENCRYPTION_KEY_FILE",
+                    "/run/sdf/cyclone_encryption.key",
+                ),
                 ("SI_SDF__NATS__URL", "nats"),
                 ("SI_SDF__PG__HOSTNAME", "postgres"),
                 ("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otelcol:4317"),
