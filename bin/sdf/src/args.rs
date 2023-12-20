@@ -71,6 +71,10 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) cyclone_encryption_key_base64: Option<String>,
 
+    /// Cyclone secret key as base64 string
+    #[arg(long)]
+    pub(crate) cyclone_secret_key_base64: Option<String>,
+
     /// Generates cyclone secret key file (does not run server)
     ///
     /// Will error if set when `generate_cyclone_public_key_path` is not set
@@ -131,6 +135,9 @@ impl TryFrom<Args> for Config {
                     "crypto.encryption_key_base64",
                     cyclone_encryption_key_base64,
                 );
+            }
+            if let Some(secret_string) = args.cyclone_secret_key_base64 {
+                config_map.set("symmetric_crypto_service.active_key_base64", secret_string);
             }
             if let Some(pkgs_path) = args.pkgs_path {
                 config_map.set("pkgs_path", pkgs_path);

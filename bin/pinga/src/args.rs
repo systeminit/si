@@ -65,6 +65,10 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) cyclone_encryption_key_base64: Option<String>,
 
+    /// Cyclone secret key as base64 string
+    #[arg(long)]
+    pub(crate) cyclone_secret_key_base64: Option<String>,
+
     /// The number of concurrent jobs that can be processed [default: 10]
     #[arg(long)]
     pub(crate) concurrency: Option<u32>,
@@ -114,6 +118,9 @@ impl TryFrom<Args> for Config {
                     "crypto.encryption_key_base64",
                     cyclone_encryption_key_base64,
                 );
+            }
+            if let Some(secret_string) = args.cyclone_secret_key_base64 {
+                config_map.set("symmetric_crypto_service.active_key_base64", secret_string);
             }
             if let Some(concurrency) = args.concurrency {
                 config_map.set("concurrency_limit", i64::from(concurrency));

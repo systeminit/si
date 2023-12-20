@@ -65,6 +65,7 @@ pub struct Config {
     #[builder(default = "PosthogConfig::default()")]
     posthog: PosthogConfig,
 
+    #[builder(default = "SymmetricCryptoServiceConfig::default()")]
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
 
     #[builder(default = "MigrationMode::default()")]
@@ -268,7 +269,8 @@ fn default_pkgs_path() -> String {
 
 fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
     SymmetricCryptoServiceConfigFile {
-        active_key: "/run/sdf/donkey.key".into(),
+        active_key: None,
+        active_key_base64: None,
         extra_keys: vec![],
     }
 }
@@ -335,7 +337,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     config.jwt_signing_public_key_path = jwt_signing_public_key_path;
     config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
-        active_key: symmetric_crypto_service_key,
+        active_key: Some(symmetric_crypto_service_key),
+        active_key_base64: None,
         extra_keys: vec![],
     };
     config.pkgs_path = pkgs_path;
@@ -383,7 +386,8 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     config.jwt_signing_public_key_path = jwt_signing_public_key_path;
     config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
-        active_key: symmetric_crypto_service_key,
+        active_key: Some(symmetric_crypto_service_key),
+        active_key_base64: None,
         extra_keys: vec![],
     };
     config.pkgs_path = pkgs_path;

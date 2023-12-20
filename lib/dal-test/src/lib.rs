@@ -679,7 +679,8 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
     builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
     builder.symmetric_crypto_service_config(
         SymmetricCryptoServiceConfigFile {
-            active_key: symmetric_crypto_service_key,
+            active_key: Some(symmetric_crypto_service_key),
+            active_key_base64: None,
             extra_keys: vec![],
         }
         .try_into()?,
@@ -725,7 +726,8 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
     builder.jwt_signing_private_key_path(jwt_signing_private_key_path);
     builder.symmetric_crypto_service_config(
         SymmetricCryptoServiceConfigFile {
-            active_key: symmetric_crypto_service_key,
+            active_key: Some(symmetric_crypto_service_key),
+            active_key_base64: None,
             extra_keys: vec![],
         }
         .try_into()?,
