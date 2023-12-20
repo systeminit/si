@@ -151,7 +151,7 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
     );
 
     // Ensure the code view looks as we expect it to.
-    let mut code_views = Component::list_code_generated(ctx, *component.id())
+    let (mut code_views, _) = Component::list_code_generated(ctx, *component.id())
         .await
         .expect("could not list code generated for component");
     let code_view = code_views.pop().expect("code views are empty");

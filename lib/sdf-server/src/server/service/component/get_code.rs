@@ -17,6 +17,7 @@ pub struct GetCodeRequest {
 #[serde(rename_all = "camelCase")]
 pub struct GetCodeResponse {
     pub code_views: Vec<CodeView>,
+    pub has_code: bool,
 }
 
 pub async fn get_code(
@@ -26,7 +27,10 @@ pub async fn get_code(
 ) -> ComponentResult<Json<GetCodeResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let code_views = Component::list_code_generated(&ctx, request.component_id).await?;
+    let (code_views, has_code) = Component::list_code_generated(&ctx, request.component_id).await?;
 
-    Ok(Json(GetCodeResponse { code_views }))
+    Ok(Json(GetCodeResponse {
+        code_views,
+        has_code,
+    }))
 }
