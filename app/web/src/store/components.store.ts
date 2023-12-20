@@ -35,7 +35,6 @@ import {
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useStatusStore } from "./status.store";
-import { ActionPrototype } from "./actions.store";
 
 export type ComponentId = string;
 export type ComponentNodeId = string;
@@ -45,7 +44,6 @@ type SchemaId = string;
 type SchemaVariantId = string;
 
 type RawComponent = {
-  actions: ActionPrototype[];
   changeStatus: ChangeStatus;
   childNodeIds: ComponentNodeId[];
   color: string;

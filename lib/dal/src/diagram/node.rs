@@ -7,9 +7,8 @@ use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
 use crate::{
-    history_event, ActionKind, ActionPrototype, ActionPrototypeContext, ActionPrototypeView,
-    ActorView, Component, ComponentId, ComponentStatus, ComponentType, DalContext, DiagramError,
-    HistoryActorTimestamp, Node, NodeId, SchemaVariant, StandardModel,
+    history_event, ActorView, Component, ComponentId, ComponentStatus, ComponentType, DalContext,
+    DiagramError, HistoryActorTimestamp, Node, NodeId, SchemaVariant, StandardModel,
 };
 
 #[remain::sorted]
@@ -156,8 +155,6 @@ pub struct DiagramComponentView {
     schema_variant_name: String,
     schema_category: Option<String>,
 
-    actions: Vec<ActionPrototypeView>,
-
     sockets: Option<Vec<SocketView>>,
     position: GridPoint,
     size: Option<Size2D>,
@@ -243,23 +240,6 @@ impl DiagramComponentView {
 
         let resource_exists = component.resource(ctx).await?.payload.is_some();
 
-        let action_prototypes = ActionPrototype::find_for_context(
-            ctx,
-            ActionPrototypeContext {
-                schema_variant_id: *schema_variant.id(),
-            },
-        )
-        .await?;
-        let mut action_views: Vec<ActionPrototypeView> = Vec::new();
-        for action_prototype in action_prototypes {
-            if *action_prototype.kind() == ActionKind::Refresh {
-                continue;
-            }
-
-            let view = ActionPrototypeView::new(ctx, action_prototype).await?;
-            action_views.push(view);
-        }
-
         Ok(Self {
             id: *component.id(),
             node_id: *node.id(),
@@ -281,7 +261,6 @@ impl DiagramComponentView {
             node_type: component.get_type(ctx).await?,
             change_status,
             has_resource: resource_exists,
-            actions: action_views,
             created_info,
             updated_info,
             deleted_info,
@@ -302,6 +281,10 @@ impl DiagramComponentView {
 
     pub fn size(&self) -> &Option<Size2D> {
         &self.size
+    }
+
+    pub fn has_resource(&self) -> bool {
+        self.has_resource
     }
 }
 

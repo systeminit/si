@@ -3,7 +3,7 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "./change_sets.store";
-import { ComponentId, useComponentsStore } from "./components.store";
+import { ComponentId } from "./components.store";
 import { ActionKind, useFixesStore } from "./fixes.store";
 
 export type ActionStatus = "failure" | "success";
@@ -50,13 +50,14 @@ export const useActionsStore = () => {
 
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
-  const componentsStore = useComponentsStore();
 
   return addStoreHooks(
     defineStore(
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/actions`,
       {
-        state: () => ({}),
+        state: () => ({
+          rawActionsByComponentId: {} as Record<ComponentId, ActionPrototype[]>,
+        }),
         getters: {
           proposedActions(): ProposedAction[] {
             // TODO: this code was altering the actual store data, so we had to add a cloneDeep
@@ -94,10 +95,10 @@ export const useActionsStore = () => {
           },
           actionsByComponentId(): Record<ComponentId, FullAction[]> {
             return _.mapValues(
-              componentsStore.componentsById,
-              (component, componentId) => {
+              this.rawActionsByComponentId,
+              (actions, componentId) => {
                 return _.compact(
-                  _.map(component.actions, (actionPrototype) => {
+                  _.map(actions, (actionPrototype) => {
                     if (actionPrototype.name === "refresh") return;
 
                     const actionInstance: ActionInstance | undefined = _.find(
@@ -153,6 +154,19 @@ export const useActionsStore = () => {
               params: {
                 id,
                 visibility_change_set_pk: changeSetId,
+              },
+            });
+          },
+          async FETCH_COMPONENT_ACTIONS(componentId: ComponentId) {
+            return new ApiRequest<{ actions: ActionPrototype[] }>({
+              url: "component/get_actions",
+              keyRequestStatusBy: componentId,
+              params: {
+                componentId,
+                visibility_change_set_pk: changeSetId,
+              },
+              onSuccess: (response) => {
+                this.rawActionsByComponentId[componentId] = response.actions;
               },
             });
           },

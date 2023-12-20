@@ -4,7 +4,10 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use dal::{change_status::ChangeStatusError, component::ComponentViewError, PropError};
+use dal::{
+    change_status::ChangeStatusError, component::ComponentViewError, ActionPrototypeError,
+    PropError,
+};
 use dal::{
     component::view::debug::ComponentDebugViewError, node::NodeError,
     property_editor::PropertyEditorError, AttributeContextBuilderError,
@@ -20,6 +23,7 @@ use crate::{server::state::AppState, service::schema::SchemaError};
 pub mod alter_simulation;
 pub mod debug;
 pub mod delete_property_editor_value;
+pub mod get_actions;
 pub mod get_code;
 pub mod get_components_metadata;
 pub mod get_diff;
@@ -39,6 +43,8 @@ pub mod update_property_editor_value;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ComponentError {
+    #[error("action prototype error")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute context builder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype error: {0}")]
@@ -154,6 +160,7 @@ pub fn routes() -> Router<AppState> {
         .route("/list_resources", get(list_resources::list_resources))
         .route("/get_code", get(get_code::get_code))
         .route("/get_resource", get(get_resource::get_resource))
+        .route("/get_actions", get(get_actions::get_actions))
         .route("/get_diff", get(get_diff::get_diff))
         .route(
             "/get_property_editor_schema",
