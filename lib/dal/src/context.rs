@@ -355,6 +355,17 @@ impl DalContext {
         })
     }
 
+    pub async fn do_rebase_request(
+        &self,
+        rebase_request: RebaseRequest,
+    ) -> Result<Option<Conflicts>, TransactionsError> {
+        rebase(
+            self.services_context().rebaser_config.clone(),
+            rebase_request,
+        )
+        .await
+    }
+
     async fn commit_internal(
         &self,
         rebase_request: Option<RebaseRequest>,
@@ -1067,9 +1078,9 @@ pub struct Transactions {
 
 #[derive(Clone, Debug)]
 pub struct RebaseRequest {
-    to_rebase_change_set_id: ChangeSetPointerId,
-    onto_workspace_snapshot_id: WorkspaceSnapshotId,
-    onto_vector_clock_id: VectorClockId,
+    pub to_rebase_change_set_id: ChangeSetPointerId,
+    pub onto_workspace_snapshot_id: WorkspaceSnapshotId,
+    pub onto_vector_clock_id: VectorClockId,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

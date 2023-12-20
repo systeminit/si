@@ -9,6 +9,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::{Generator, Ulid};
 
+use crate::context::RebaseRequest;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
 use crate::{pk, ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspacePk};
@@ -28,8 +29,12 @@ pub enum ChangeSetPointerError {
     Monotonic(#[from] ulid::MonotonicError),
     #[error("mutex error: {0}")]
     Mutex(String),
+    #[error("Changeset {0} does not have a base change set")]
+    NoBaseChangeSet(ChangeSetPointerId),
     #[error("no tenancy set in context")]
     NoTenancySet,
+    #[error("Changeset {0} does not have a workspace snapshot")]
+    NoWorkspaceSnapshot(ChangeSetPointerId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("serde json error: {0}")]
@@ -304,6 +309,23 @@ impl ChangeSetPointer {
         }
 
         Ok(result)
+    }
+
+    pub async fn apply_to_base_change_set(&self, ctx: &DalContext) -> ChangeSetPointerResult<()> {
+        let to_rebase_change_set_id = self
+            .base_change_set_id
+            .ok_or(ChangeSetPointerError::NoBaseChangeSet(self.id))?;
+        let onto_workspace_snapshot_id = self
+            .workspace_snapshot_id
+            .ok_or(ChangeSetPointerError::NoWorkspaceSnapshot(self.id))?;
+        let rebase_request = RebaseRequest {
+            onto_workspace_snapshot_id,
+            onto_vector_clock_id: self.vector_clock_id(),
+            to_rebase_change_set_id,
+        };
+        ctx.do_rebase_request(rebase_request).await?;
+
+        Ok(())
     }
 }
 

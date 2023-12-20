@@ -17,7 +17,7 @@ use crate::server::state::AppState;
 
 // pub mod abandon_change_set;
 // pub mod add_action;
-// pub mod apply_change_set;
+pub mod apply_change_set;
 // mod begin_approval_process;
 pub mod create_change_set;
 // pub mod get_change_set;
@@ -110,12 +110,12 @@ pub fn routes() -> Router<AppState> {
             "/create_change_set",
             post(create_change_set::create_change_set),
         )
-    // .route("/get_change_set", get(get_change_set::get_change_set))
-    // .route("/get_stats", get(get_stats::get_stats))
-    // .route(
-    //     "/apply_change_set",
-    //     post(apply_change_set::apply_change_set),
-    // )
+        // .route("/get_change_set", get(get_change_set::get_change_set))
+        // .route("/get_stats", get(get_stats::get_stats))
+        .route(
+            "/apply_change_set",
+            post(apply_change_set::apply_change_set),
+        )
     // .route(
     //     "/abandon_change_set",
     //     post(abandon_change_set::abandon_change_set),
