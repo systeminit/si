@@ -103,7 +103,6 @@ export function useChangeSetsStore() {
                   pk: HEAD_ID,
                   name: "head",
                   status: ChangeSetStatus.Open,
-                  actions: {},
                 },
                 ..._.keyBy(changeSets, "id"),
               };
@@ -301,8 +300,6 @@ export function useChangeSetsStore() {
               // hopefully with more targeted realtime updates we won't need this, but could be useful for now
               this.changeSetsWrittenAtById[cs] = new Date();
               this.FETCH_CHANGE_SETS();
-
-              // could refetch the change sets here, but not useful right now since no interesting metadata exists on the changeset itself
             },
           },
           {
