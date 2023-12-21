@@ -1069,11 +1069,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async PASTE_COMPONENTS(
             componentIds: ComponentId[],
             offset: { x: number; y: number },
+            position: { x: number; y: number },
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
             if (changeSetId === nilId())
               changeSetsStore.creatingChangeSet = true;
+
+            const tempInsertId = _.uniqueId("temp-insert-component");
 
             return new ApiRequest({
               method: "post",
@@ -1085,7 +1088,19 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 offsetY: offset.y,
                 ...visibilityParams,
               },
-              onSuccess: (response) => {},
+              optimistic: () => {
+                this.pendingInsertedComponents[tempInsertId] = {
+                  tempId: tempInsertId,
+                  position,
+                };
+
+                return () => {
+                  delete this.pendingInsertedComponents[tempInsertId];
+                };
+              },
+              onSuccess: (response) => {
+                delete this.pendingInsertedComponents[tempInsertId];
+              },
             });
           },
 
