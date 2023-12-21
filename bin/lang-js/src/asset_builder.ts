@@ -1,4 +1,8 @@
 import { parseConnectionAnnotation } from "@si/ts-lib";
+import Joi from "joi";
+import { Debug } from "./debug";
+
+const debug = Debug("langJs:asset_builder");
 
 export type ValueFromKind = "inputSocket" | "outputSocket" | "prop";
 
@@ -37,7 +41,7 @@ export class ValueFromBuilder implements IValueFromBuilder {
   /**
    * The type of the builder
    *
-   * @param {string} kind [inputSocket | outputSocket | prop]
+   * @param kind {string} [inputSocket | outputSocket | prop]
    *
    * @returns this
    *
@@ -368,7 +372,7 @@ export class ValidationBuilder implements IValidationBuilder {
   /**
    * The type of validation
    *
-   * @param {string} kind [customValidation | integerIsBetweenTwoIntegers | integerIsNotEmpty  | stringEquals  | stringHasPrefix  | stringInStringArray  | stringIsHexColor  | stringIsNotEmpty  | stringIsValidIpAddr]
+   * @param kind {string} [customValidation | integerIsBetweenTwoIntegers | integerIsNotEmpty  | stringEquals  | stringHasPrefix  | stringInStringArray  | stringIsHexColor  | stringIsNotEmpty  | stringIsValidIpAddr]
    *
    * @returns this
    *
@@ -442,7 +446,7 @@ implements IPropWidgetDefinitionBuilder {
   /**
    * The type of widget
    *
-   * @param {string} kind [array | checkbox | color | comboBox | header | map | select | text | textArea | codeEditor | password]
+   * @param kind {PropWidgetDefinitionKind} [array | checkbox | color | comboBox | header | map | select | text | textArea | codeEditor | password]
    *
    * @returns this
    *
@@ -630,6 +634,7 @@ export interface PropDefinition {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   defaultValue?: any;
   validations?: Validation[];
+  validationFormat: Joi.Description;
   mapKeyFuncs?: MapKeyFunc[];
 }
 
@@ -659,6 +664,8 @@ export interface IPropBuilder {
 
   addValidation(validation: Validation): this;
 
+  setValidationFormat(format: Joi.Schema): this;
+
   addMapKeyFunc(func: MapKeyFunc): this;
 
   build(): PropDefinition;
@@ -679,7 +686,9 @@ export class PropBuilder implements IPropBuilder {
   prop = <PropDefinition>{};
 
   constructor() {
-    this.prop = <PropDefinition>{};
+    this.prop = <PropDefinition>{
+      validationFormat: Joi.any().describe(),
+    };
   }
 
   /**
@@ -775,6 +784,29 @@ export class PropBuilder implements IPropBuilder {
   }
 
   /**
+   * Add joi validation schema to this prop
+   *
+   *
+   * @returns this
+   *
+   * @example
+   * .setValidationFormat(Joi.string().required())
+   * @param format
+   */
+  setValidationFormat(format: Joi.Schema): this {
+    this.prop.validationFormat = format.describe();
+
+    try {
+      this.prop.validationFormat = format.describe();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "unknown";
+      throw Error(`Error compiling schema description: ${message}`);
+    }
+
+    return this;
+  }
+
+  /**
    * Build the object
    *
    * @example
@@ -853,7 +885,7 @@ export class PropBuilder implements IPropBuilder {
   /**
    * The type of the prop
    *
-   * @param {string} kind [array | boolean | integer | map | object | string]
+   * @param kind {PropDefinitionKind} [array | boolean | integer | map | object | string]
    *
    * @returns this
    *
@@ -981,12 +1013,12 @@ export class SecretPropBuilder implements ISecretPropBuilder {
   /**
    * The type of the secret - relates to the Secret Definition Name
    *
-   * @param {any} value
    *
    * @returns this
    *
    * @example
    * .setSecretKind("DigitalOcean Credential")
+   * @param kind {string}
    */
   setSecretKind(kind: string): this {
     this.prop.widget?.options.push({ label: "secretKind", value: kind });
@@ -1045,6 +1077,8 @@ export interface SecretDefinition {
 export interface ISecretDefinitionBuilder {
   addProp(prop: PropDefinition): this;
 
+  setName(name: string): this;
+
   build(): SecretDefinition;
 }
 
@@ -1094,7 +1128,7 @@ export class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
   /**
    * Adds a Prop to the secret definition. These define the form fields for the secret input
    *
-   * @param {PropDefinition} child
+   * @param prop {PropDefinition}
    *
    * @returns this
    *
@@ -1134,6 +1168,7 @@ export interface Asset {
   inputSockets: SocketDefinition[];
   outputSockets: SocketDefinition[];
   docLinks: Record<string, string>;
+  validationFormat: string; // A JSON.stringify()-ed Joi.Descriptor
 }
 
 export interface IAssetBuilder {
@@ -1270,6 +1305,21 @@ export class AssetBuilder implements IAssetBuilder {
   }
 
   build() {
+    // Join prop validation formats
+    {
+      const validationFormats = <Record<string, Joi.Schema>>{};
+
+      for (const prop of this.asset.props ?? []) {
+        validationFormats[prop.name] = Joi.build(prop.validationFormat);
+      }
+
+      try {
+        this.asset.validationFormat = JSON.stringify(Joi.object(validationFormats).describe());
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "unknown";
+        throw Error(`Error compiling schema description: ${message}`);
+      }
+    }
     if (this.asset.secretDefinition && this.asset.secretProps?.length !== 1) {
       throw new Error(
         "Secret defining schema shouldn't define any extra secret props",
