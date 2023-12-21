@@ -674,6 +674,7 @@ export const useFuncStore = () => {
         realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [
           {
             eventType: "ChangeSetWritten",
+            debounce: true,
             callback: (writtenChangeSetId) => {
               if (writtenChangeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();

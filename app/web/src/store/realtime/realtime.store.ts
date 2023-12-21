@@ -19,6 +19,7 @@ type SubscriptionTopic = string;
 type EventTypeAndCallback = {
   [K in keyof WsEventPayloadMap]: {
     eventType: K;
+    debounce?: boolean | number;
     callback: (
       payload: WsEventPayloadMap[K],
       metadata: RealtimeEventMetadata,
@@ -125,11 +126,19 @@ export const useRealtimeStore = defineStore("realtime", () => {
       subCounter++,
     ].join("%");
 
+    const debounceMs =
+      typeAndCallback.debounce === true ? 500 : typeAndCallback.debounce || 0;
+    const wrappedCallback = debounceMs
+      ? _.debounce(typeAndCallback.callback, debounceMs)
+      : typeAndCallback.callback;
+
     subscriptions[subscriptionId] = {
       id: subscriptionId,
       subscriberId,
       topic,
       ...typeAndCallback,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      callback: wrappedCallback as any,
     };
 
     return subscriptionId;

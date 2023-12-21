@@ -295,10 +295,11 @@ export function useChangeSetsStore() {
           },
           {
             eventType: "ChangeSetWritten",
-            callback: (cs) => {
+            debounce: true,
+            callback: (changeSetId) => {
               // we'll update a timestamp here so individual components can watch this to trigger something if necessary
               // hopefully with more targeted realtime updates we won't need this, but could be useful for now
-              this.changeSetsWrittenAtById[cs] = new Date();
+              this.changeSetsWrittenAtById[changeSetId] = new Date();
               this.FETCH_CHANGE_SETS();
             },
           },

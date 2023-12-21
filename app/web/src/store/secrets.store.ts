@@ -456,6 +456,7 @@ export function useSecretsStore() {
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
             eventType: "ChangeSetWritten",
+            debounce: true,
             callback: (writtenChangeSetId) => {
               // ideally we wouldn't have to check this - since the topic subscription
               // would mean we only receive the event for this changeset already...
