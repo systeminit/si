@@ -77,6 +77,13 @@ async fn paste_single_component(
         )
         .await?;
 
+    pasted_comp
+        .set_name(
+            &ctx,
+            Some(format!("{} - Copy", original_comp.name(&ctx).await?)),
+        )
+        .await?;
+
     ctx.commit().await?;
 
     for prototype in ActionPrototype::find_for_context_and_kind(
