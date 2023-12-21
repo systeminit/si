@@ -229,16 +229,30 @@ pub async fn paste_components(
         for edge in edges {
             let tail_node = pasted_components_by_original.get(&edge.tail_component_id());
             let head_node = pasted_components_by_original.get(&edge.head_component_id());
-            if let (Some(tail_node), Some(head_node)) = (tail_node, head_node) {
-                Connection::new(
-                    &ctx,
-                    *tail_node.id(),
-                    edge.tail_socket_id(),
-                    *head_node.id(),
-                    edge.head_socket_id(),
-                    *edge.kind(),
-                )
-                .await?;
+            match (tail_node, head_node) {
+                (Some(tail_node), Some(head_node)) => {
+                    Connection::new(
+                        &ctx,
+                        *tail_node.id(),
+                        edge.tail_socket_id(),
+                        *head_node.id(),
+                        edge.head_socket_id(),
+                        *edge.kind(),
+                    )
+                    .await?;
+                }
+                (None, Some(head_node)) => {
+                    Connection::new(
+                        &ctx,
+                        edge.tail_node_id(),
+                        edge.tail_socket_id(),
+                        *head_node.id(),
+                        edge.head_socket_id(),
+                        *edge.kind(),
+                    )
+                    .await?;
+                }
+                _ => {}
             }
         }
     }
