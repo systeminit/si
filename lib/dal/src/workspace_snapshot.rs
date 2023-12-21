@@ -215,6 +215,10 @@ impl WorkspaceSnapshot {
         self.id
     }
 
+    pub fn root(&mut self) -> WorkspaceSnapshotResult<NodeIndex> {
+        Ok(self.working_copy()?.root())
+    }
+
     fn working_copy(&mut self) -> WorkspaceSnapshotResult<&mut WorkspaceSnapshotGraph> {
         if self.working_copy.is_none() {
             self.working_copy = Some(postcard::from_bytes(&self.snapshot)?);
@@ -362,6 +366,18 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
+    pub fn nodes(
+        &mut self,
+    ) -> WorkspaceSnapshotResult<impl Iterator<Item = (&NodeWeight, NodeIndex)>> {
+        Ok(self.working_copy()?.nodes())
+    }
+
+    pub fn edges(
+        &mut self,
+    ) -> WorkspaceSnapshotResult<impl Iterator<Item = (&EdgeWeight, NodeIndex, NodeIndex)>> {
+        Ok(self.working_copy()?.edges())
+    }
+
     pub fn dot(&mut self) {
         self.working_copy()
             .expect("failed on accessing or creating a working copy")
@@ -489,6 +505,42 @@ impl WorkspaceSnapshot {
                 }
             })
             .collect())
+    }
+
+    pub fn all_outgoing_targets(
+        &mut self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
+        let mut result = vec![];
+        let target_idxs: Vec<NodeIndex> = self
+            .edges_directed(id, Direction::Outgoing)?
+            .map(|edge_ref| edge_ref.target())
+            .collect();
+
+        for target_idx in target_idxs {
+            let node_weight = self.get_node_weight(target_idx)?;
+            result.push(node_weight.to_owned());
+        }
+
+        Ok(result)
+    }
+
+    pub fn all_incoming_sources(
+        &mut self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<Vec<NodeWeight>> {
+        let mut result = vec![];
+        let source_idxs: Vec<NodeIndex> = self
+            .edges_directed(id, Direction::Incoming)?
+            .map(|edge_ref| edge_ref.source())
+            .collect();
+
+        for source_idx in source_idxs {
+            let node_weight = self.get_node_weight(source_idx)?;
+            result.push(node_weight.to_owned());
+        }
+
+        Ok(result)
     }
 
     pub fn remove_incoming_edges_of_kind(
