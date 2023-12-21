@@ -86,6 +86,7 @@ import { useWorkspacesStore } from "@/store/workspaces.store";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import Navbar from "@/components/layout/navbar/Navbar.vue";
 import StatusBar from "@/components/StatusBar/StatusBar.vue";
+import { nilId } from "@/utils/nilId";
 
 const props = defineProps({
   changeSetId: { type: String as PropType<string | "auto"> },
@@ -122,7 +123,7 @@ function handleUrlChange() {
       name: route.name, // eslint-disable-line @typescript-eslint/no-non-null-assertion
       params: {
         ...route.params,
-        changeSetId: pk === false ? "head" : pk,
+        changeSetId: pk === false || pk === nilId() ? "head" : pk,
       },
       query: { ...route.query },
     });
