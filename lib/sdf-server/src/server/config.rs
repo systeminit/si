@@ -1,3 +1,4 @@
+use dal::jwt_key::JwtConfig;
 use si_crypto::CryptoConfig;
 use std::{
     env,
@@ -74,7 +75,8 @@ pub struct Config {
     #[builder(default = "CryptoConfig::default()")]
     crypto: CryptoConfig,
 
-    jwt_signing_public_key_path: CanonicalFile,
+    #[builder(default = "JwtConfig::default()")]
+    jwt_signing_public_key: JwtConfig,
 
     signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
@@ -109,10 +111,10 @@ impl Config {
         &self.nats
     }
 
-    /// Gets a reference to the config's jwt signing public key path.
+    /// Gets a reference to the config's jwt signing public config.
     #[must_use]
-    pub fn jwt_signing_public_key_path(&self) -> &Path {
-        self.jwt_signing_public_key_path.as_path()
+    pub fn jwt_signing_public_key(&self) -> &JwtConfig {
+        &self.jwt_signing_public_key
     }
 
     /// Gets a reference to the config's cyclone public key path.
@@ -168,8 +170,8 @@ pub struct ConfigFile {
     pub nats: NatsConfig,
     #[serde(default)]
     pub migration_mode: MigrationMode,
-    #[serde(default = "default_jwt_signing_public_key_path")]
-    pub jwt_signing_public_key_path: String,
+    #[serde(default)]
+    pub jwt_signing_public_key: JwtConfig,
     #[serde(default)]
     pub crypto: CryptoConfig,
     #[serde(default = "default_signup_secret")]
@@ -190,7 +192,7 @@ impl Default for ConfigFile {
             pg: Default::default(),
             nats: Default::default(),
             migration_mode: Default::default(),
-            jwt_signing_public_key_path: default_jwt_signing_public_key_path(),
+            jwt_signing_public_key: Default::default(),
             crypto: Default::default(),
             signup_secret: default_signup_secret(),
             pkgs_path: default_pkgs_path(),
@@ -215,7 +217,7 @@ impl TryFrom<ConfigFile> for Config {
         config.pg_pool(value.pg);
         config.nats(value.nats);
         config.migration_mode(value.migration_mode);
-        config.jwt_signing_public_key_path(value.jwt_signing_public_key_path.try_into()?);
+        config.jwt_signing_public_key(value.jwt_signing_public_key);
         config.crypto(value.crypto);
         config.signup_secret(value.signup_secret);
         config.pkgs_path(value.pkgs_path.try_into()?);
@@ -253,10 +255,6 @@ impl IncomingStream {
         let pathbuf = path.into();
         Self::UnixDomainSocket(pathbuf)
     }
-}
-
-fn default_jwt_signing_public_key_path() -> String {
-    "/run/sdf/jwt_signing_public_key.pem".to_string()
 }
 
 fn default_signup_secret() -> SensitiveString {
@@ -334,7 +332,10 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         "detected development run",
     );
 
-    config.jwt_signing_public_key_path = jwt_signing_public_key_path;
+    config.jwt_signing_public_key = JwtConfig {
+        key_file: Some(jwt_signing_public_key_path.try_into()?),
+        key_base64: None,
+    };
     config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
         active_key: Some(symmetric_crypto_service_key),
@@ -383,7 +384,10 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         "detected development run",
     );
 
-    config.jwt_signing_public_key_path = jwt_signing_public_key_path;
+    config.jwt_signing_public_key = JwtConfig {
+        key_file: Some(jwt_signing_public_key_path.try_into()?),
+        key_base64: None,
+    };
     config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
         active_key: Some(symmetric_crypto_service_key),

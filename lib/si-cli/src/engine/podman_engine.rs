@@ -659,6 +659,10 @@ impl ContainerEngine for PodmanEngine {
                     "SI_SDF__CRYPTO__ENCRYPTION_KEY_FILE",
                     "/run/sdf/cyclone_encryption.key",
                 ),
+                (
+                    "SI_SDF__JWT_SIGNING_PUBLIC_KEY__KEY_FILE",
+                    "/sdf/jwt_signing_public_key.pem",
+                ),
                 ("SI_SDF__NATS__URL", "nats"),
                 ("SI_SDF__PG__HOSTNAME", "postgres"),
                 (
