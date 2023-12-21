@@ -30,12 +30,12 @@ pub async fn apply_change_set(
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<ApplyChangeSetRequest>,
 ) -> ChangeSetResult<Json<ApplyChangeSetResponse>> {
-    let mut ctx = builder.build_head(access_builder).await?;
+    let ctx = builder.build_head(access_builder).await?;
 
     let mut change_set = ChangeSetPointer::find(&ctx, request.change_set_pk)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    change_set.apply_to_base_change_set(&mut ctx).await?;
+    change_set.apply_to_base_change_set(&ctx).await?;
     change_set
         .update_status(&ctx, ChangeSetStatus::Applied)
         .await?;

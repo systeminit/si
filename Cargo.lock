@@ -1363,6 +1363,7 @@ dependencies = [
  "si-data-pg",
  "si-hash",
  "si-pkg",
+ "si-std",
  "sodiumoxide",
  "strum 0.24.1",
  "telemetry",

@@ -35,7 +35,11 @@
         variant="ghost"
         icon="trash"
         size="sm"
-        :disabled="fixesStore.fixesAreInProgress || !selectedChangeSetName"
+        :disabled="
+          fixesStore.fixesAreInProgress ||
+          !selectedChangeSetName ||
+          changeSetsStore.headSelected
+        "
         @click="abandonConfirmationModalRef.open()"
       />
     </div>
@@ -57,6 +61,8 @@
             v-model="createChangeSetName"
             label="Change set name"
             required
+            :regex="CHANGE_SET_NAME_REGEX"
+            regexMessage="You cannot name a change set 'HEAD' - please choose another name."
             requiredMessage="Please choose a name for your change set!"
           />
           <div class="flex flex-row-reverse gap-sm">
@@ -147,6 +153,8 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useFixesStore } from "@/store/fixes.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import Wipe from "../../Wipe.vue";
+
+const CHANGE_SET_NAME_REGEX = /^(?!head).*$/i;
 
 const dropdownRef = ref();
 const abandonConfirmationModalRef = ref();

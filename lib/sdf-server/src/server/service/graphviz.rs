@@ -4,7 +4,6 @@ use axum::{extract::Query, response::Response, routing::get, Json, Router};
 use dal::{
     schema::variant::SchemaVariantError,
     workspace_snapshot::{
-        self,
         content_address::ContentAddressDiscriminants,
         edge_weight::EdgeWeightKindDiscriminants,
         node_weight::{NodeWeight, NodeWeightDiscriminants},

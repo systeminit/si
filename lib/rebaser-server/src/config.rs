@@ -160,7 +160,8 @@ fn default_recreate_management_stream() -> bool {
 
 fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
     SymmetricCryptoServiceConfigFile {
-        active_key: "/run/rebaser/donkey.key".into(),
+        active_key: Some("/run/rebaser/donkey.key".to_owned()),
+        active_key_base64: None,
         extra_keys: vec![],
     }
 }
@@ -200,7 +201,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 
     config.cyclone_encryption_key_path = cyclone_encryption_key_path;
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
-        active_key: symmetric_crypto_service_key,
+        active_key: Some(symmetric_crypto_service_key),
+        active_key_base64: None,
         extra_keys: vec![],
     };
 
@@ -225,7 +227,8 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
 
     config.cyclone_encryption_key_path = cyclone_encryption_key_path;
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
-        active_key: symmetric_crypto_service_key,
+        active_key: Some(symmetric_crypto_service_key),
+        active_key_base64: None,
         extra_keys: vec![],
     };
 

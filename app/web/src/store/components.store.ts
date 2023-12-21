@@ -34,7 +34,6 @@ import {
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useStatusStore } from "./status.store";
-import { ActionPrototype } from "./actions.store";
 
 export type ComponentId = string;
 export type ComponentNodeId = string;
@@ -44,7 +43,6 @@ type SchemaId = string;
 type SchemaVariantId = string;
 
 type RawComponent = {
-  actions: ActionPrototype[];
   changeStatus: ChangeStatus;
   childNodeIds: ComponentNodeId[];
   color: string;
@@ -57,7 +55,7 @@ type RawComponent = {
   parentNodeId?: ComponentNodeId;
   position: GridPoint;
   size?: Size2D;
-  resource: Resource;
+  hasResource: boolean;
   schemaCategory: string;
   schemaId: string; // TODO: probably want to move this to a different store and not load it all the time
   schemaName: string;
@@ -217,6 +215,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // connectionsById: {} as Record<ConnectionId, Connection>,
 
           componentCodeViewsById: {} as Record<ComponentId, CodeView[]>,
+          componentResourceById: {} as Record<ComponentId, Resource>,
           componentDiffsById: {} as Record<ComponentId, ComponentDiff>,
 
           rawComponentsById: {} as Record<ComponentId, RawComponent>,
@@ -229,6 +228,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             DiagramSchemaVariant
           >,
 
+          copyingFrom: null as { x: number; y: number } | null,
           selectedComponentIds: [] as ComponentId[],
           selectedEdgeId: null as EdgeId | null,
           selectedComponentDetailsTab: null as string | null,
@@ -390,6 +390,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           selectedComponentCode(): CodeView[] | undefined {
             return this.componentCodeViewsById[this.selectedComponentId || 0];
           },
+          selectedComponentResource(): Resource | undefined {
+            return this.componentResourceById[this.selectedComponentId || 0];
+          },
 
           diagramNodes(): DiagramNodeDef[] {
             const qualificationsStore = useQualificationsStore();
@@ -413,7 +416,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   ],
                   tabSlug: "qualifications",
                 },
-                component.resource.data
+                component.hasResource
                   ? { icon: "check-hex", tone: "success", tabSlug: "resource" }
                   : { icon: "none" },
               ]);
@@ -811,6 +814,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
+          async FETCH_COMPONENT_RESOURCE(componentId: ComponentId) {
+            return new ApiRequest<{ resource: Resource }>({
+              url: "component/get_resource",
+              keyRequestStatusBy: componentId,
+              params: {
+                componentId,
+                ...visibilityParams,
+              },
+              onSuccess: (response) => {
+                this.componentResourceById[componentId] = response.resource;
+              },
+            });
+          },
+
           async FETCH_COMPONENT_DIFF(componentId: ComponentId) {
             return new ApiRequest<{ componentDiff: ComponentDiff }>({
               url: "component/get_diff",
@@ -987,6 +1004,29 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               onSuccess: (response) => {
                 // this.componentDiffsById[componentId] = response.componentDiff;
               },
+            });
+          },
+
+          async PASTE_COMPONENTS(
+            componentIds: ComponentId[],
+            offset: { x: number; y: number },
+          ) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
+            return new ApiRequest({
+              method: "post",
+              url: "diagram/paste_components",
+              keyRequestStatusBy: componentIds,
+              params: {
+                componentIds,
+                offsetX: offset.x,
+                offsetY: offset.y,
+                ...visibilityParams,
+              },
+              onSuccess: (response) => {},
             });
           },
 

@@ -105,7 +105,9 @@ pub enum VertexObjectKind {
 /// The kind of an [`Edge`](Edge). This provides the ability to categorize [`Edges`](Edge)
 /// and create [`EdgeKind`](Self)-specific graphs.
 #[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Display, EnumString, AsRefStr)]
+#[derive(
+    Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Display, EnumString, AsRefStr, Copy,
+)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum EdgeKind {

@@ -45,6 +45,9 @@ export default defineConfig({
         },
       }),
 
+    // https://github.com/btd/rollup-plugin-visualizer/issues/176
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     !!process.env.RUN_BUILD_ANALYZER &&
       VisualizerPlugin({
         open: true,

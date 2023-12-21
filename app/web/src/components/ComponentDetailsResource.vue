@@ -1,73 +1,108 @@
 <template>
-  <div v-if="selectedComponent">
-    <CodeViewer
-      v-if="selectedComponent.resource.data !== null"
-      :code="
-        selectedComponent.resource.data
-          ? JSON.stringify(selectedComponent.resource.data, null, 2)
-          : ''
-      "
-      class="dark:text-neutral-50 text-neutral-900 pt-4"
+  <div>
+    <template v-if="resourceReqStatus.isPending"> Loading resource...</template>
+    <template v-else-if="resourceReqStatus.isError">
+      <ErrorMessage :requestStatus="resourceReqStatus" />
+    </template>
+    <template
+      v-else-if="resourceReqStatus.isSuccess && selectedComponentResource"
     >
-      <template #title>
-        <StatusIndicatorIcon
-          type="resource"
-          :status="selectedComponent.resource.status"
-        />
-        <div class="pl-sm grow overflow-hidden">
-          <div class="font-bold line-clamp-2 break-all">
-            {{
-              selectedComponent.resource.message
-                ? selectedComponent.resource.message
-                : `Health ${selectedComponent.resource.status}`
-            }}
+      <CodeViewer
+        v-if="selectedComponentResource.data !== null"
+        :code="
+          selectedComponentResource.data
+            ? JSON.stringify(selectedComponentResource.data, null, 2)
+            : ''
+        "
+        class="dark:text-neutral-50 text-neutral-900 pt-4"
+      >
+        <template #title>
+          <StatusIndicatorIcon
+            type="resource"
+            :status="selectedComponentResource.status"
+          />
+          <div class="pl-sm grow overflow-hidden">
+            <div class="font-bold line-clamp-2 break-all">
+              {{
+                selectedComponentResource.message
+                  ? selectedComponentResource.message
+                  : `Health ${selectedComponentResource.status}`
+              }}
+            </div>
+            <div
+              v-if="selectedComponentResource.lastSynced"
+              class="text-xs italic truncate"
+            >
+              Last synced:
+              <Timestamp
+                :date="new Date(selectedComponentResource.lastSynced)"
+                size="long"
+              />
+            </div>
           </div>
-          <div
-            v-if="selectedComponent.resource.lastSynced"
-            class="text-xs italic truncate"
-          >
-            Last synced:
-            <Timestamp
-              :date="new Date(selectedComponent.resource.lastSynced)"
-              size="long"
+          <div class="pr-sm">
+            <FixDetails
+              v-if="
+                selectedComponentResource.logs &&
+                selectedComponentResource.logs.length > 0
+              "
+              :health="selectedComponentResource.status"
+              :message="
+                [selectedComponentResource.message ?? ''].filter(
+                  (f) => f.length > 0,
+                )
+              "
+              :details="selectedComponentResource.logs"
             />
           </div>
+        </template>
+      </CodeViewer>
+      <div v-else class="flex flex-col items-center p-sm">
+        <div class="w-64"><EmptyStateIcon name="no-changes" /></div>
+        <div class="w-full text-center text-xl text-neutral-400">
+          This component does not have a resource associated with it
         </div>
-        <div class="pr-sm">
-          <FixDetails
-            v-if="
-              selectedComponent.resource.logs &&
-              selectedComponent.resource.logs.length > 0
-            "
-            :health="selectedComponent.resource.status"
-            :message="
-              [selectedComponent.resource.message ?? ''].filter(
-                (f) => f.length > 0,
-              )
-            "
-            :details="selectedComponent.resource.logs"
-          />
-        </div>
-      </template>
-    </CodeViewer>
-    <div v-else class="flex flex-col items-center p-sm">
-      <div class="w-64"><EmptyStateIcon name="no-changes" /></div>
-      <div class="w-full text-center text-xl text-neutral-400">
-        This component does not have a resource associated with it
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
-import { Timestamp } from "@si/vue-lib/design-system";
+import { computed, watch } from "vue";
+import { ErrorMessage, Timestamp } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeViewer from "./CodeViewer.vue";
 import FixDetails from "./FixDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import EmptyStateIcon from "./EmptyStateIcon.vue";
 
+const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
-const selectedComponent = computed(() => componentsStore.selectedComponent);
+const selectedComponentId = computed(
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  () => componentsStore.selectedComponentId!,
+);
+
+const resourceReqStatus = componentsStore.getRequestStatus(
+  "FETCH_COMPONENT_RESOURCE",
+  selectedComponentId,
+);
+
+const selectedComponentResource = computed(
+  () => componentsStore.selectedComponentResource,
+);
+
+watch(
+  [() => changeSetsStore.selectedChangeSetLastWrittenAt],
+  () => {
+    if (
+      componentsStore.selectedComponent &&
+      componentsStore.selectedComponent.changeStatus !== "deleted"
+    ) {
+      componentsStore.FETCH_COMPONENT_RESOURCE(selectedComponentId.value);
+    }
+  },
+  { immediate: true },
+);
 </script>

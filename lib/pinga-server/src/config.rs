@@ -3,10 +3,10 @@ use std::{env, path::Path};
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
+use si_crypto::{CryptoConfig, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
-use si_std::{CanonicalFile, CanonicalFileError};
+use si_std::CanonicalFileError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -45,7 +45,8 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
-    cyclone_encryption_key_path: CanonicalFile,
+    #[builder(default = "CryptoConfig::default()")]
+    crypto: CryptoConfig,
 
     #[builder(default = "default_concurrency_limit()")]
     concurrency: usize,
@@ -53,6 +54,7 @@ pub struct Config {
     #[builder(default = "random_instance_id()")]
     instance_id: String,
 
+    #[builder(default = "SymmetricCryptoServiceConfig::default()")]
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
 }
 
@@ -78,10 +80,10 @@ impl Config {
         self.nats.subject_prefix.as_deref()
     }
 
-    /// Gets a reference to the config's cyclone public key path.
+    /// Gets a reference to the config's crypto config.
     #[must_use]
-    pub fn cyclone_encryption_key_path(&self) -> &Path {
-        self.cyclone_encryption_key_path.as_path()
+    pub fn crypto(&self) -> &CryptoConfig {
+        &self.crypto
     }
 
     pub fn symmetric_crypto_service(&self) -> &SymmetricCryptoServiceConfig {
@@ -105,8 +107,8 @@ pub struct ConfigFile {
     pg: PgPoolConfig,
     #[serde(default)]
     nats: NatsConfig,
-    #[serde(default = "default_cyclone_encryption_key_path")]
-    cyclone_encryption_key_path: String,
+    #[serde(default)]
+    crypto: CryptoConfig,
     #[serde(default = "default_concurrency_limit")]
     concurrency_limit: usize,
     #[serde(default = "random_instance_id")]
@@ -120,8 +122,8 @@ impl Default for ConfigFile {
         Self {
             pg: Default::default(),
             nats: Default::default(),
-            cyclone_encryption_key_path: default_cyclone_encryption_key_path(),
             concurrency_limit: default_concurrency_limit(),
+            crypto: Default::default(),
             instance_id: random_instance_id(),
             symmetric_crypto_service: default_symmetric_crypto_config(),
         }
@@ -141,7 +143,7 @@ impl TryFrom<ConfigFile> for Config {
         let mut config = Config::builder();
         config.pg_pool(value.pg);
         config.nats(value.nats);
-        config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
+        config.crypto(value.crypto);
         config.concurrency(value.concurrency_limit);
         config.instance_id(value.instance_id);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
@@ -153,13 +155,10 @@ fn random_instance_id() -> String {
     Ulid::new().to_string()
 }
 
-fn default_cyclone_encryption_key_path() -> String {
-    "/run/pinga/cyclone_encryption.key".to_string()
-}
-
 fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {
     SymmetricCryptoServiceConfigFile {
-        active_key: "/run/pinga/donkey.key".into(),
+        active_key: None,
+        active_key_base64: None,
         extra_keys: vec![],
     }
 }
@@ -199,9 +198,10 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         "detected development run",
     );
 
-    config.cyclone_encryption_key_path = cyclone_encryption_key_path;
+    config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
-        active_key: symmetric_crypto_service_key,
+        active_key: Some(symmetric_crypto_service_key),
+        active_key_base64: None,
         extra_keys: vec![],
     };
 
@@ -224,9 +224,10 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         "detected development run",
     );
 
-    config.cyclone_encryption_key_path = cyclone_encryption_key_path;
+    config.crypto.encryption_key_file = cyclone_encryption_key_path.parse().ok();
     config.symmetric_crypto_service = SymmetricCryptoServiceConfigFile {
-        active_key: symmetric_crypto_service_key,
+        active_key: Some(symmetric_crypto_service_key),
+        active_key_base64: None,
         extra_keys: vec![],
     };
 

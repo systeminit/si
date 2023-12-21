@@ -19,6 +19,7 @@
 mod cyclone;
 mod symmetric;
 
+pub use cyclone::config::CryptoConfig;
 pub use cyclone::decryption_key::{CycloneDecryptionKey, CycloneDecryptionKeyError};
 pub use cyclone::encryption_key::{CycloneEncryptionKey, CycloneEncryptionKeyError};
 pub use cyclone::key_pair::{CycloneKeyPair, CycloneKeyPairError};

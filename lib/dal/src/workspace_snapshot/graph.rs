@@ -243,14 +243,11 @@ impl WorkspaceSnapshotGraph {
 
     pub fn edges(&self) -> impl Iterator<Item = (&EdgeWeight, NodeIndex, NodeIndex)> {
         self.graph.edge_indices().filter_map(|edge_idx| {
-            self.graph
-                .edge_weight(edge_idx)
-                .map(|weight| {
-                    self.graph
-                        .edge_endpoints(edge_idx)
-                        .map(|(source, target)| (weight, source, target))
-                })
-                .flatten()
+            self.graph.edge_weight(edge_idx).and_then(|weight| {
+                self.graph
+                    .edge_endpoints(edge_idx)
+                    .map(|(source, target)| (weight, source, target))
+            })
         })
     }
 

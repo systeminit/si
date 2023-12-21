@@ -342,8 +342,8 @@ impl ActionPrototype {
 //     component_id: ComponentId,
 // ) -> ActionPrototypeResult<Option<ActionRunResult>> {
 //     let component_view = ComponentView::new(ctx, component_id).await?;
-
-//     let before = before_funcs_for_component(ctx, &component_id).await?;
+//     let deleted_ctx = ctx.clone_with_delete_visibility();
+//     let before = before_funcs_for_component(&deleted_ctx, &component_id).await?;
 
 //     let (_, return_value) = FuncBinding::create_and_execute(
 //         ctx,

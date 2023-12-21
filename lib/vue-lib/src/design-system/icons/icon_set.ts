@@ -113,6 +113,7 @@ import Tools from "~icons/octicon/tools";
 import ExternalLink from "~icons/octicon/link-external";
 import Globe from "~icons/octicon/globe-24";
 import Check2 from "~icons/octicon/check-16";
+import CircleSlash from "~icons/octicon/circle-slash";
 
 // 3p logos
 import AwsLogo from "~icons/cib/amazon-aws";
@@ -178,6 +179,7 @@ export const ICONS = Object.freeze({
   "check-hex-outline": CheckHexOutline,
   "check-square": CheckSquare,
   check2: Check2,
+  "circle-slash": CircleSlash,
   "clipboard-copy": ClipboardCopy,
   clock: Clock,
   "cloud-download": CloudDownload,

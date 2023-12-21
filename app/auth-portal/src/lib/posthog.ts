@@ -6,7 +6,7 @@ if (!import.meta.env.SSR && import.meta.env.VITE_POSTHOG_PUBLIC_KEY) {
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (window) (window as any).posthog = posthog;
+  if (typeof window !== "undefined") (window as any).posthog = posthog;
 }
 
 // small wrapper makes it easier to swap things later,

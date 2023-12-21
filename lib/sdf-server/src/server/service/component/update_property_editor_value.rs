@@ -1,15 +1,10 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
-use dal::{
-    AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, Prop, PropId,
-    StandardModel, Visibility, WsEvent,
-};
+use dal::{AttributeValue, AttributeValueId, ComponentId, PropId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
-use crate::server::tracking::track;
-use crate::service::component::ComponentError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -27,11 +22,11 @@ pub struct UpdatePropertyEditorValueRequest {
 pub async fn update_property_editor_value(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(posthog_client): PosthogClient,
-    OriginalUri(original_uri): OriginalUri,
+    PosthogClient(_posthog_client): PosthogClient,
+    OriginalUri(_original_uri): OriginalUri,
     Json(request): Json<UpdatePropertyEditorValueRequest>,
 ) -> ComponentResult<impl IntoResponse> {
-    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     // let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
@@ -82,7 +77,7 @@ pub async fn update_property_editor_value(
     //
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
+    let response = axum::response::Response::builder();
     //if let Some(force_changeset_pk) = force_changeset_pk {
     //   response = response.header("force_changeset_pk", force_changeset_pk.to_string());
     //}

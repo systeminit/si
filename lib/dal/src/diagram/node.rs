@@ -1,11 +1,8 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
-use veritech_client::ResourceStatus;
 
-use crate::action_prototype::ActionPrototypeView;
 use crate::change_status::ChangeStatus;
-use crate::component::resource::ResourceView;
 use crate::diagram::DiagramResult;
 use crate::history_event::{HistoryActorTimestamp, HistoryEventMetadata};
 use crate::schema::variant::root_prop::component_type::ComponentType;
@@ -167,16 +164,13 @@ pub struct DiagramComponentView {
     schema_variant_name: String,
     schema_category: Option<String>,
 
-    actions: Vec<ActionPrototypeView>,
-
     sockets: Option<Vec<SocketView>>,
     position: GridPoint,
     size: Option<Size2D>,
     color: Option<String>,
     node_type: ComponentType,
     change_status: ChangeStatus,
-    resource: ResourceView,
-
+    has_resource: bool,
     created_info: HistoryEventMetadata,
     updated_info: HistoryEventMetadata,
 
@@ -294,14 +288,7 @@ impl DiagramComponentView {
             color: component.color(ctx).await?,
             node_type: component.get_type(ctx).await?,
             change_status: ChangeStatus::Added,
-            resource: ResourceView {
-                status: ResourceStatus::Ok,
-                message: None,
-                data: None,
-                logs: vec![],
-                last_synced: None,
-            },
-            actions: Vec::new(),
+            has_resource: false,
             created_info: dummy_metadata.clone(),
             updated_info: dummy_metadata,
             deleted_info: None,
@@ -318,9 +305,5 @@ impl DiagramComponentView {
 
     pub fn size(&self) -> &Option<Size2D> {
         &self.size
-    }
-
-    pub fn resource(&self) -> &ResourceView {
-        &self.resource
     }
 }

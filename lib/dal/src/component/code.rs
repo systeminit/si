@@ -26,7 +26,7 @@ impl Component {
     pub async fn list_code_generated(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<CodeView>> {
+    ) -> ComponentResult<(Vec<CodeView>, bool)> {
         let component = Self::get_by_id(ctx, &component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
@@ -92,8 +92,10 @@ impl Component {
 
                 code_views.push(CodeView::new(language, code, message));
             }
+        } else {
+            return Ok((vec![], false));
         }
-        Ok(code_views)
+        Ok((code_views, true))
     }
 
     // TODO(nick): big query potential.

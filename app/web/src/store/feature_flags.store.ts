@@ -15,6 +15,7 @@ const FLAG_MAPPING = {
   MUTLIPLAYER_CHANGESET_APPLY: "multiplayer_changeset_apply_flow",
   ABANDON_CHANGESET: "abandon_changeset",
   CONNECTION_ANNOTATIONS: "socket_connection_annotations",
+  COPY_PASTE: "copy_paste",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

@@ -119,7 +119,8 @@ async fn main() -> Result<()> {
 
 //     SymmetricCryptoService::from_config(
 //         &SymmetricCryptoServiceConfigFile {
-//             active_key: active_key.to_string_lossy().into_owned(),
+//             active_key: Some(active_key.to_string_lossy().into_owned()),
+//             active_key_base64: None,
 //             extra_keys: Default::default(),
 //         }
 //         .try_into()?,

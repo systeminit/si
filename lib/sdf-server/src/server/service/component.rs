@@ -16,6 +16,7 @@ use crate::server::state::AppState;
 pub mod get_property_editor_schema;
 pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
+pub mod update_property_editor_value;
 
 // pub mod alter_simulation;
 // pub mod debug;
@@ -23,6 +24,7 @@ pub mod get_property_editor_values;
 // pub mod get_code;
 // pub mod get_components_metadata;
 // pub mod get_diff;
+// pub mod get_resource;
 // pub mod insert_property_editor_value;
 // pub mod json;
 // pub mod list_qualifications;
@@ -30,7 +32,6 @@ pub mod get_property_editor_values;
 // pub mod refresh;
 // pub mod resource_domain_diff;
 // pub mod set_type;
-pub mod update_property_editor_value;
 
 #[remain::sorted]
 #[derive(Debug, Error)]

@@ -9,24 +9,34 @@
       <div class="absolute inset-xs">
         <template v-if="selectedComponent.changeStatus === 'unmodified'">
           <CodeViewer
-            :code="selectedComponentDiff.current.code || 'No code'"
+            v-if="selectedComponentDiff.current.code"
+            :code="selectedComponentDiff.current.code"
             :codeLanguage="selectedComponentDiff.current.language"
+            :allowCopy="false"
           >
             <template #title>
               <span class="text-lg">Current</span>
             </template>
           </CodeViewer>
+          <div v-else class="w-full text-center text-xl text-neutral-400 p-sm">
+            No Code
+          </div>
         </template>
         <template v-else>
           <!-- what to do about multiple diffs? -->
           <CodeViewer
-            :code="selectedComponentDiff.diffs[0]?.code || 'No code'"
+            v-if="selectedComponentDiff.diffs[0]?.code"
+            :code="selectedComponentDiff.diffs[0]?.code"
             :codeLanguage="selectedComponentDiff.diffs[0]?.language"
+            :allowCopy="false"
           >
             <template #title>
               <span class="text-lg">Diff</span>
             </template>
           </CodeViewer>
+          <div v-else class="w-full text-center text-xl text-neutral-400 p-sm">
+            No Code
+          </div>
         </template>
       </div>
     </template>

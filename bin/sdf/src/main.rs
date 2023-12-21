@@ -1,7 +1,6 @@
 #![recursion_limit = "256"]
 
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use color_eyre::Result;
 use sdf_server::{
@@ -75,9 +74,9 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let config = Config::try_from(args)?;
 
-    let encryption_key = Server::load_encryption_key(config.cyclone_encryption_key_path()).await?;
+    let encryption_key = Server::load_encryption_key(config.crypto().clone()).await?;
     let jwt_public_signing_key =
-        Server::load_jwt_public_signing_key(config.jwt_signing_public_key_path()).await?;
+        Server::load_jwt_public_signing_key(config.jwt_signing_public_key().clone()).await?;
 
     let nats_conn = Server::connect_to_nats(config.nats()).await?;
 
@@ -103,7 +102,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         nats_conn,
         job_processor,
         veritech,
-        Arc::from(encryption_key),
+        encryption_key,
         Some(pkgs_path),
         Some(module_index_url),
         symmetric_crypto_service,

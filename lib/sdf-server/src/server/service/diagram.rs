@@ -20,6 +20,7 @@ pub mod set_component_position;
 // pub mod create_connection;
 // pub mod delete_component;
 // pub mod delete_connection;
+// pub mod paste_component;
 // mod restore_component;
 // pub mod restore_connection;
 

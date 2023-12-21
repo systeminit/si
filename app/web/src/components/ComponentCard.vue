@@ -28,7 +28,10 @@
       </Stack>
 
       <!-- change status icon -->
-      <div class="ml-auto cursor-pointer">
+      <div
+        v-if="component.changeStatus !== 'unmodified'"
+        class="ml-auto cursor-pointer rounded hover:scale-125"
+      >
         <StatusIndicatorIcon
           type="change"
           :status="component.changeStatus"

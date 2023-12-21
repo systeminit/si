@@ -62,7 +62,7 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::{
     NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
-use crate::workspace_snapshot::{self, serde_value_to_string_type, WorkspaceSnapshotError};
+use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
     pk, AttributePrototype, AttributePrototypeId, DalContext, Func, FuncId, PropId, PropKind,
     Timestamp, TransactionsError,

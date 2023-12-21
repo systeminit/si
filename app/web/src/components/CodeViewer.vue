@@ -11,6 +11,7 @@
 
       <div class="flex">
         <SiButtonIcon
+          v-if="allowCopy"
           tooltipText="Copy code to clipboard"
           ignoreTextColor
           icon="clipboard-copy"
@@ -21,7 +22,7 @@
       </div>
     </div>
     <SiButtonIcon
-      v-if="!showTitle"
+      v-if="!showTitle && allowCopy"
       tooltipText="Copy code to clipboard"
       ignoreTextColor
       icon="clipboard-copy"
@@ -89,6 +90,7 @@ const props = defineProps({
   // // Format: "0.0px" or "0%"
   height: { type: String },
   showTitle: { type: Boolean },
+  allowCopy: { type: Boolean, default: true },
   title: { type: String },
   titleClasses: { type: String, default: "h-10" },
   border: { type: Boolean, default: false },

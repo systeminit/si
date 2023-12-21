@@ -27,7 +27,7 @@ pub(crate) struct Args {
 
     /// NATS credentials file
     #[arg(long)]
-    pub(crate) nats_creds_file: Option<String>,
+    pub(crate) nats_creds_path: Option<String>,
 
     /// Disable OpenTelemetry on startup
     #[arg(long)]
@@ -61,7 +61,7 @@ impl TryFrom<Args> for Config {
             if let Some(creds) = args.nats_creds {
                 config_map.set("nats.creds", creds);
             }
-            if let Some(creds_file) = args.nats_creds_file {
+            if let Some(creds_file) = args.nats_creds_path {
                 config_map.set("nats.creds_file", creds_file);
             }
             if args.cyclone_local_firecracker {

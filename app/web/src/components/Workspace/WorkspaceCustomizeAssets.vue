@@ -44,7 +44,7 @@
           singleModelScreen
           testPanelEnabled
           @detached="onDetach"
-          @expand-panel="rightPanelRef.maximize"
+          @expand-panel="rightPanelRef?.maximize()"
         />
         <!-- the key here is to force remounting so we get the proper asset
         request statuses -->
@@ -82,7 +82,7 @@ const funcStore = useFuncStore();
 const assetStore = useAssetStore();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 
-const rightPanelRef = ref();
+const rightPanelRef = ref<InstanceType<typeof ResizablePanel>>();
 
 watch(
   [

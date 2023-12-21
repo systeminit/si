@@ -1258,6 +1258,232 @@ impl Component {
 //     pub fn is_destroyed(&self) -> bool {
 //         self.visibility.deleted_at.is_some() && !self.needs_destroy()
 //     }
+//
+// pub async fn clone_attributes_from(
+//     &self,
+//     ctx: &DalContext,
+//     component_id: ComponentId,
+// ) -> ComponentResult<()> {
+//     let attribute_values =
+//         AttributeValue::find_by_attr(ctx, "attribute_context_component_id", &component_id)
+//             .await?;
+//     let mut my_attribute_values =
+//         AttributeValue::find_by_attr(ctx, "attribute_context_component_id", self.id()).await?;
+
+//     let mut pasted_attribute_values_by_original = HashMap::new();
+
+//     for copied_av in &attribute_values {
+//         let context = AttributeContextBuilder::from(copied_av.context)
+//             .set_component_id(*self.id())
+//             .to_context()?;
+
+//         // TODO: should we clone the fb and fbrv?
+//         let mut pasted_av = if let Some(av) = my_attribute_values
+//             .iter_mut()
+//             .find(|av| context.check(av.context))
+//         {
+//             av.set_func_binding_id(ctx, copied_av.func_binding_id())
+//                 .await?;
+//             av.set_func_binding_return_value_id(ctx, copied_av.func_binding_return_value_id())
+//                 .await?;
+//             av.set_key(ctx, copied_av.key()).await?;
+//             av.clone()
+//         } else {
+//             AttributeValue::new(
+//                 ctx,
+//                 copied_av.func_binding_id(),
+//                 copied_av.func_binding_return_value_id(),
+//                 context,
+//                 copied_av.key(),
+//             )
+//             .await?
+//         };
+
+//         pasted_av
+//             .set_proxy_for_attribute_value_id(ctx, copied_av.proxy_for_attribute_value_id())
+//             .await?;
+//         pasted_av
+//             .set_sealed_proxy(ctx, copied_av.sealed_proxy())
+//             .await?;
+
+//         pasted_attribute_values_by_original.insert(*copied_av.id(), *pasted_av.id());
+//     }
+
+//     for copied_av in &attribute_values {
+//         if let Some(copied_index_map) = copied_av.index_map() {
+//             let pasted_id = pasted_attribute_values_by_original
+//                 .get(copied_av.id())
+//                 .ok_or(ComponentError::AttributeValueNotFound)?;
+
+//             let mut index_map = IndexMap::new();
+//             for (key, copied_id) in copied_index_map.order_as_map() {
+//                 let pasted_id = *pasted_attribute_values_by_original
+//                     .get(&copied_id)
+//                     .ok_or(ComponentError::AttributeValueNotFound)?;
+//                 index_map.push(pasted_id, Some(key));
+//             }
+
+//             ctx.txns()
+//                 .await?
+//                 .pg()
+//                 .query(
+//                     "UPDATE attribute_values_v1($1, $2) SET index_map = $3 WHERE id = $4",
+//                     &[
+//                         ctx.tenancy(),
+//                         ctx.visibility(),
+//                         &serde_json::to_value(&index_map)?,
+//                         &pasted_id,
+//                     ],
+//                 )
+//                 .await?;
+//         }
+//     }
+
+//     let attribute_prototypes =
+//         AttributePrototype::find_by_attr(ctx, "attribute_context_component_id", &component_id)
+//             .await?;
+//     let mut my_attribute_prototypes =
+//         AttributePrototype::find_by_attr(ctx, "attribute_context_component_id", self.id())
+//             .await?;
+
+//     let mut pasted_attribute_prototypes_by_original = HashMap::new();
+//     for copied_ap in &attribute_prototypes {
+//         let context = AttributeContextBuilder::from(copied_ap.context)
+//             .set_component_id(*self.id())
+//             .to_context()?;
+
+//         let id = if let Some(ap) = my_attribute_prototypes
+//             .iter_mut()
+//             .find(|av| context.check(av.context) && av.key.as_deref() == copied_ap.key())
+//         {
+//             ap.set_func_id(ctx, copied_ap.func_id()).await?;
+//             ap.set_key(ctx, copied_ap.key()).await?;
+//             *ap.id()
+//         } else {
+//             let row = ctx
+//                 .txns()
+//                 .await?
+//                 .pg()
+//                 .query_one(
+//                     "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5) AS ap",
+//                     &[
+//                         ctx.tenancy(),
+//                         ctx.visibility(),
+//                         &serde_json::to_value(context)?,
+//                         &copied_ap.func_id(),
+//                         &copied_ap.key(),
+//                     ],
+//                 )
+//                 .await?;
+//             let object: AttributePrototype = standard_model::object_from_row(row)?;
+//             *object.id()
+//         };
+
+//         pasted_attribute_prototypes_by_original.insert(*copied_ap.id(), id);
+//     }
+
+//     let rows = ctx
+//         .txns()
+//         .await?
+//         .pg()
+//         .query(
+//             "SELECT object_id, belongs_to_id
+//              FROM attribute_value_belongs_to_attribute_value_v1($1, $2)
+//              WHERE object_id = ANY($3) AND belongs_to_id = ANY($3)",
+//             &[
+//                 ctx.tenancy(),
+//                 ctx.visibility(),
+//                 &attribute_values
+//                     .iter()
+//                     .map(|av| *av.id())
+//                     .collect::<Vec<AttributeValueId>>(),
+//             ],
+//         )
+//         .await?;
+
+//     for row in rows {
+//         let original_object_id: AttributeValueId = row.try_get("object_id")?;
+//         let original_belongs_to_id: AttributeValueId = row.try_get("belongs_to_id")?;
+
+//         let object_id = pasted_attribute_values_by_original
+//             .get(&original_object_id)
+//             .ok_or(ComponentError::AttributeValueNotFound)?;
+//         let belongs_to_id = pasted_attribute_values_by_original
+//             .get(&original_belongs_to_id)
+//             .ok_or(ComponentError::AttributeValueNotFound)?;
+
+//         ctx.txns()
+//             .await?
+//             .pg()
+//             .query(
+//                 "INSERT INTO attribute_value_belongs_to_attribute_value
+//                     (object_id, belongs_to_id, tenancy_workspace_pk, visibility_change_set_pk)
+//                     VALUES ($1, $2, $3, $4)
+//                     ON CONFLICT (object_id, tenancy_workspace_pk, visibility_change_set_pk)
+//                     DO NOTHING",
+//                 &[
+//                     &object_id,
+//                     &belongs_to_id,
+//                     &ctx.tenancy().workspace_pk(),
+//                     &ctx.visibility().change_set_pk,
+//                 ],
+//             )
+//             .await?;
+//     }
+
+//     let rows = ctx
+//         .txns()
+//         .await?
+//         .pg()
+//         .query(
+//             "SELECT object_id, belongs_to_id
+//              FROM attribute_value_belongs_to_attribute_prototype_v1($1, $2)
+//              WHERE object_id = ANY($3) AND belongs_to_id = ANY($4)",
+//             &[
+//                 ctx.tenancy(),
+//                 ctx.visibility(),
+//                 &attribute_values
+//                     .iter()
+//                     .map(|av| *av.id())
+//                     .collect::<Vec<AttributeValueId>>(),
+//                 &attribute_prototypes
+//                     .iter()
+//                     .map(|av| *av.id())
+//                     .collect::<Vec<AttributePrototypeId>>(),
+//             ],
+//         )
+//         .await?;
+
+//     for row in rows {
+//         let original_object_id: AttributeValueId = row.try_get("object_id")?;
+//         let original_belongs_to_id: AttributePrototypeId = row.try_get("belongs_to_id")?;
+
+//         let object_id = pasted_attribute_values_by_original
+//             .get(&original_object_id)
+//             .ok_or(ComponentError::AttributeValueNotFound)?;
+//         let belongs_to_id = pasted_attribute_prototypes_by_original
+//             .get(&original_belongs_to_id)
+//             .ok_or(ComponentError::AttributePrototypeNotFound)?;
+
+//         ctx
+//             .txns()
+//             .await?
+//             .pg()
+//             .query("INSERT INTO attribute_value_belongs_to_attribute_prototype
+//                     (object_id, belongs_to_id, tenancy_workspace_pk, visibility_change_set_pk)
+//                     VALUES ($1, $2, $3, $4)
+//                     ON CONFLICT (object_id, tenancy_workspace_pk, visibility_change_set_pk) DO NOTHING",
+//                 &[
+//                     &object_id,
+//                     &belongs_to_id,
+//                     &ctx.tenancy().workspace_pk(),
+//                     &ctx.visibility().change_set_pk,
+//                 ],
+//             ).await?;
+//     }
+
+//     Ok(())
+// }
 // }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
