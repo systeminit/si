@@ -23,6 +23,7 @@ pub mod create_change_set;
 pub mod get_change_set;
 pub mod get_stats;
 pub mod list_open_change_sets;
+pub mod list_queued_actions;
 mod merge_vote;
 pub mod remove_action;
 pub mod update_selected_change_set;
@@ -92,6 +93,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/list_open_change_sets",
             get(list_open_change_sets::list_open_change_sets),
+        )
+        .route(
+            "/list_queued_actions",
+            get(list_queued_actions::list_queued_actions),
         )
         .route("/remove_action", post(remove_action::remove_action))
         .route("/add_action", post(add_action::add_action))

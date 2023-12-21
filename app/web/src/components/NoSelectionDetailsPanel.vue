@@ -25,11 +25,7 @@
         <strong
           class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
         >
-          {{
-            1 +
-            diffs.length +
-            _.keys(changeSetStore.selectedChangeSet?.actions).length
-          }}
+          {{ 1 + diffs.length + _.keys(actionsStore.proposedActions).length }}
         </strong>
       </div>
     </template>
@@ -77,6 +73,7 @@ import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { useActionsStore } from "@/store/actions.store";
 import EmptyStateIcon from "./EmptyStateIcon.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import ChangesPanel from "./ChangesPanel.vue";
@@ -85,6 +82,7 @@ import SecretsPanel from "./SecretsPanel.vue";
 const changeSetStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 const featureFlagsStore = useFeatureFlagsStore();
+const actionsStore = useActionsStore();
 
 const diffs = computed(() => {
   const arr = Object.values(componentsStore.componentsById)

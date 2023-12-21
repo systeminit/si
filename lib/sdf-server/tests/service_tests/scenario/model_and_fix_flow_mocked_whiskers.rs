@@ -912,7 +912,10 @@ async fn model_and_fix_flow_mocked_whiskers(
             .expect("could not convert to value"), // actual
     );
 
-    let actions = harness.find_change_set(&ctx).await.actions;
+    let actions = harness
+        .list_actions_for_changeset(ctx.visibility())
+        .await
+        .actions;
 
     let expected_actions_and_parents = [
         (key_pair.component_id, ActionKind::Create, Vec::new()),
@@ -1071,7 +1074,10 @@ async fn model_and_fix_flow_mocked_whiskers(
         .delete_component(ctx.visibility(), ingress.component_id)
         .await;
 
-    let actions = harness.find_change_set(&ctx).await.actions;
+    let actions = harness
+        .list_actions_for_changeset(ctx.visibility())
+        .await
+        .actions;
 
     let expected_actions_and_parents = [
         (

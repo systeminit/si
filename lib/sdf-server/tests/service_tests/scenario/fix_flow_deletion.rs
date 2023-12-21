@@ -63,7 +63,10 @@ async fn fix_flow_deletion(
         .create_connection(&ctx, alfajer.node_id, chronicle.node_id, "universal")
         .await;
 
-    let actions = harness.find_change_set(&ctx).await.actions;
+    let actions = harness
+        .list_actions_for_changeset(ctx.visibility())
+        .await
+        .actions;
 
     let expected = vec![
         (derke.component_id, "create"),
@@ -101,7 +104,10 @@ async fn fix_flow_deletion(
         .create_change_set_and_update_ctx(&mut ctx, "poop3")
         .await;
 
-    let actions = harness.find_change_set(&ctx).await.actions;
+    let actions = harness
+        .list_actions_for_changeset(ctx.visibility())
+        .await
+        .actions;
     assert!(actions.is_empty());
 
     harness
@@ -164,7 +170,10 @@ async fn fix_flow_deletion(
         .delete_component(ctx.visibility(), alfajer.component_id)
         .await;
 
-    let actions = harness.find_change_set(&ctx).await.actions;
+    let actions = harness
+        .list_actions_for_changeset(ctx.visibility())
+        .await
+        .actions;
 
     let expected = vec![
         (leo.component_id, "delete"),
@@ -208,7 +217,10 @@ async fn fix_flow_deletion(
         .create_change_set_and_update_ctx(&mut ctx, "poop5")
         .await;
 
-    let actions = harness.find_change_set(&ctx).await.actions;
+    let actions = harness
+        .list_actions_for_changeset(ctx.visibility())
+        .await
+        .actions;
     assert!(actions.is_empty());
 
     harness

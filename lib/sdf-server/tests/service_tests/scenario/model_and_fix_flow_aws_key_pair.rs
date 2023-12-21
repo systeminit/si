@@ -112,7 +112,10 @@ async fn model_and_fix_flow_aws_key_pair(
             .expect("could not convert to value"), // actual
     );
 
-    let actions = harness.find_change_set(&ctx).await.actions;
+    let actions = harness
+        .list_actions_for_changeset(ctx.visibility())
+        .await
+        .actions;
     assert!(actions.is_empty());
 
     let fix_batch_history_views = harness.list_fixes(ctx.visibility()).await;

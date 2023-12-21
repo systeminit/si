@@ -5,6 +5,7 @@ import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { ComponentId } from "./components.store";
 import { ActionKind, useFixesStore } from "./fixes.store";
+import { useRealtimeStore } from "./realtime/realtime.store";
 
 export type ActionStatus = "failure" | "success";
 
@@ -57,14 +58,14 @@ export const useActionsStore = () => {
       {
         state: () => ({
           rawActionsByComponentId: {} as Record<ComponentId, ActionPrototype[]>,
+          rawProposedActionsById: {} as Record<ActionId, ProposedAction>,
         }),
         getters: {
+          rawProposedActions: (state) => _.values(state.rawProposedActionsById),
           proposedActions(): ProposedAction[] {
             // TODO: this code was altering the actual store data, so we had to add a cloneDeep
             // probably want to clean up and avoid the while loop if possible too
-            const graph = _.cloneDeep(
-              changeSetsStore.selectedChangeSet?.actions ?? {},
-            );
+            const graph = _.cloneDeep(this.rawProposedActionsById);
             const actions = [];
             while (_.keys(graph).length) {
               const removeIds = [];
@@ -102,7 +103,7 @@ export const useActionsStore = () => {
                     if (actionPrototype.name === "refresh") return;
 
                     const actionInstance: ActionInstance | undefined = _.find(
-                      _.values(changeSetsStore.selectedChangeSet?.actions),
+                      this.rawProposedActions,
                       (pa) =>
                         pa.componentId === componentId &&
                         pa.actionPrototypeId === actionPrototype.id,
@@ -131,6 +132,20 @@ export const useActionsStore = () => {
           },
         },
         actions: {
+          async FETCH_QUEUED_ACTIONS() {
+            return new ApiRequest<{
+              actions: Record<ActionId, ProposedAction>;
+            }>({
+              method: "get",
+              url: "change_set/list_queued_actions",
+              params: {
+                visibility_change_set_pk: changeSetId,
+              },
+              onSuccess: (response) => {
+                this.rawProposedActionsById = response.actions;
+              },
+            });
+          },
           async ADD_ACTION(
             componentId: ComponentId,
             actionPrototypeId: ActionPrototypeId,
@@ -173,6 +188,25 @@ export const useActionsStore = () => {
         },
         onActivated() {
           if (!changeSetId) return;
+          this.FETCH_QUEUED_ACTIONS();
+
+          const realtimeStore = useRealtimeStore();
+          realtimeStore.subscribe(
+            this.$id,
+            `workspace/${workspaceId}/${changeSetId}`,
+            [
+              {
+                eventType: "ChangeSetWritten",
+                callback: () => {
+                  this.FETCH_QUEUED_ACTIONS();
+                },
+              },
+            ],
+          );
+
+          return () => {
+            realtimeStore.unsubscribe(this.$id);
+          };
         },
       },
     ),
