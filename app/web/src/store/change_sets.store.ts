@@ -186,11 +186,14 @@ export function useChangeSetsStore() {
         // - change_set/update_selected_change_set (was just fetching the change set info)
 
         getAutoSelectedChangeSetId() {
+          // we now include "head" in open change sets
+          // so this logic is a little off... but should be fine
           // returning `false` means we cannot auto select
           if (!this.openChangeSets?.length) return false; // no open change sets
-          if (this.openChangeSets.length === 1) {
+          if (this.openChangeSets.length <= 2) {
+            // will select the single open change set or head if thats all that exists
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            return this.openChangeSets[0]!.pk; // only 1 change set - will auto select it
+            return _.last(this.openChangeSets)!.pk;
           }
           // TODO: add logic to for auto-selecting when multiple change sets open
           // - select one created by you
