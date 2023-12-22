@@ -19,6 +19,7 @@ pub struct SiPkgPropData {
     pub doc_link: Option<Url>,
     pub hidden: bool,
     pub documentation: Option<String>,
+    pub validation_format: Option<String>,
 }
 
 #[remain::sorted]
@@ -171,6 +172,7 @@ impl<'a> SiPkgProp<'a> {
                          hidden,
                          doc_link,
                          documentation,
+                         validation_format,
                      }| SiPkgPropData {
                         name,
                         default_value,
@@ -180,6 +182,7 @@ impl<'a> SiPkgProp<'a> {
                         hidden,
                         doc_link,
                         documentation,
+                        validation_format,
                     },
                 ),
                 unique_id.to_owned(),

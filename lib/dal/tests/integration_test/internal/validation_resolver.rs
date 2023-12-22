@@ -20,17 +20,14 @@ async fn new(ctx: &DalContext) {
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let prop = Prop::new(
+    let prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "glaive",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
 
     let func = Func::new(
         ctx,

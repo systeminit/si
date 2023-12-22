@@ -1,3 +1,5 @@
+use pretty_assertions_sorted::assert_eq;
+
 use dal::{
     socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
     AttributeValue, Component, ComponentView, DalContext, Edge, ExternalProvider,
@@ -10,7 +12,6 @@ use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
 };
-use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn inter_component_identity_update(ctx: &DalContext) {
@@ -258,39 +259,30 @@ async fn setup_esp(ctx: &DalContext) -> (ComponentBag, PropId, PropId, ExternalP
     // └─ object: Object
     //    ├─ source: String
     //    └─ intermediate: String
-    let object_prop = Prop::new(
+    let object_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "object",
         PropKind::Object,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let source_prop = Prop::new(
+    .await;
+    let source_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "source",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let intermediate_prop = Prop::new(
+    .await;
+    let intermediate_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "intermediate",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
 
     schema_variant
         .finalize(ctx, None)
@@ -407,17 +399,14 @@ async fn setup_swings(ctx: &DalContext) -> (ComponentBag, PropId, InternalProvid
     // "swings"
     // domain: Object
     // └─ destination: string
-    let destination_prop = Prop::new(
+    let destination_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "destination",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
 
     schema_variant
         .finalize(ctx, None)
@@ -519,39 +508,30 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let source_object_prop = Prop::new(
+    let source_object_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "base_object",
         PropKind::Object,
-        None,
         *source_schema_variant.id(),
         Some(source_root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let source_foo_prop = Prop::new(
+    .await;
+    let source_foo_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "foo_string",
         PropKind::String,
-        None,
         *source_schema_variant.id(),
         Some(*source_object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let source_bar_prop = Prop::new(
+    .await;
+    let source_bar_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "bar_string",
         PropKind::String,
-        None,
         *source_schema_variant.id(),
         Some(*source_object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     source_schema_variant
         .finalize(ctx, None)
         .await
@@ -599,50 +579,38 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let destination_parent_object_prop = Prop::new(
+    let destination_parent_object_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "parent_object",
         PropKind::Object,
-        None,
         *destination_schema_variant.id(),
         Some(destination_root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let destination_object_prop = Prop::new(
+    .await;
+    let destination_object_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "base_object",
         PropKind::Object,
-        None,
         *destination_schema_variant.id(),
         Some(*destination_parent_object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let destination_foo_prop = Prop::new(
+    .await;
+    let destination_foo_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "foo_string",
         PropKind::String,
-        None,
         *destination_schema_variant.id(),
         Some(*destination_object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let _destination_bar_prop = Prop::new(
+    .await;
+    dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "bar_string",
         PropKind::String,
-        None,
         *destination_schema_variant.id(),
         Some(*destination_object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     destination_schema_variant
         .finalize(ctx, None)
         .await

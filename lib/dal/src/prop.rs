@@ -276,6 +276,8 @@ pub struct Prop {
     refers_to_prop_id: Option<PropId>,
     /// Connected props may need a custom diff function
     diff_func_id: Option<FuncId>,
+    /// A serialized validation format JSON object for the prop
+    validation_format: Option<String>,
 }
 
 impl_standard_model! {
@@ -296,10 +298,11 @@ impl Prop {
         ctx: &DalContext,
         name: impl AsRef<str>,
         kind: PropKind,
-        widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         schema_variant_id: SchemaVariantId,
         parent_prop_id: Option<PropId>,
+        widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         documentation: Option<String>,
+        validation_format: Option<String>,
     ) -> PropResult<Self> {
         let name = name.as_ref();
         let (widget_kind, widget_options) = match widget_kind_and_options {
@@ -312,7 +315,7 @@ impl Prop {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM prop_create_v2($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                "SELECT object FROM prop_create_v3($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -323,12 +326,32 @@ impl Prop {
                     &schema_variant_id,
                     &parent_prop_id,
                     &documentation,
+                    &validation_format,
                 ],
             )
             .await?;
         Ok(finish_create_from_row(ctx, row).await?)
     }
 
+    pub async fn new_without_ui_optionals(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        kind: PropKind,
+        schema_variant_id: SchemaVariantId,
+        parent_prop_id: Option<PropId>,
+    ) -> PropResult<Self> {
+        Self::new(
+            ctx,
+            name,
+            kind,
+            schema_variant_id,
+            parent_prop_id,
+            None,
+            None,
+            None,
+        )
+        .await
+    }
     standard_model_accessor!(name, String, PropResult);
     standard_model_accessor!(kind, Enum(PropKind), PropResult);
     standard_model_accessor!(widget_kind, Enum(WidgetKind), PropResult);
@@ -339,6 +362,7 @@ impl Prop {
     standard_model_accessor!(refers_to_prop_id, Option<Pk(PropId)>, PropResult);
     standard_model_accessor!(diff_func_id, Option<Pk(FuncId)>, PropResult);
     standard_model_accessor!(schema_variant_id, Pk(SchemaVariantId), PropResult);
+    standard_model_accessor!(validation_format, Option<String>, PropResult);
 
     pub fn path(&self) -> PropPath {
         self.path.to_owned().into()

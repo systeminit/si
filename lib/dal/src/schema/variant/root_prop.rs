@@ -114,7 +114,8 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaVariantResult<RootProp> {
-        let root_prop = Prop::new(ctx, "root", PropKind::Object, None, self.id, None, None).await?;
+        let root_prop =
+            Prop::new_without_ui_optionals(ctx, "root", PropKind::Object, self.id, None).await?;
         let root_prop_id = *root_prop.id();
         self.set_root_prop_id(ctx, Some(root_prop_id)).await?;
 
@@ -123,25 +124,21 @@ impl SchemaVariant {
         // can be moved back to its original location with the other prop tree creation methods.
         let si_prop_id = Self::setup_si(ctx, root_prop_id, schema_id, self.id).await?;
 
-        let domain_prop = Prop::new(
+        let domain_prop = Prop::new_without_ui_optionals(
             ctx,
             "domain",
             PropKind::Object,
-            None,
             self.id,
             Some(root_prop_id),
-            None,
         )
         .await?;
 
-        let secrets_prop_id = *Prop::new(
+        let secrets_prop_id = *Prop::new_without_ui_optionals(
             ctx,
             "secrets",
             PropKind::Object,
-            None,
             self.id,
             Some(root_prop_id),
-            None,
         )
         .await?
         .id();
@@ -177,26 +174,22 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<(PropId, PropId)> {
         let (leaf_prop_name, leaf_item_prop_name) = leaf_kind.prop_names();
 
-        let mut leaf_prop = Prop::new(
+        let mut leaf_prop = Prop::new_without_ui_optionals(
             ctx,
             leaf_prop_name,
             PropKind::Map,
-            None,
             schema_variant_id,
             Some(root_prop_id),
-            None,
         )
         .await?;
         leaf_prop.set_hidden(ctx, true).await?;
 
-        let mut leaf_item_prop = Prop::new(
+        let mut leaf_item_prop = Prop::new_without_ui_optionals(
             ctx,
             leaf_item_prop_name,
             PropKind::Object,
-            None,
             schema_variant_id,
             Some(*leaf_prop.id()),
-            None,
         )
         .await?;
         leaf_item_prop.set_hidden(ctx, true).await?;
@@ -237,47 +230,43 @@ impl SchemaVariant {
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<PropId> {
-        let si_prop = Prop::new(
+        let si_prop = Prop::new_without_ui_optionals(
             ctx,
             "si",
             PropKind::Object,
-            None,
             schema_variant_id,
             Some(root_prop_id),
-            None,
         )
         .await?;
         let si_prop_id = *si_prop.id();
-        let _si_name_prop = Prop::new(
+        let _si_name_prop = Prop::new_without_ui_optionals(
             ctx,
             "name",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(si_prop_id),
-            None,
         )
         .await?;
 
         // The protected prop ensures a component cannot be deleted in the configuration diagram.
-        let _protected_prop = Prop::new(
+        let _protected_prop = Prop::new_without_ui_optionals(
             ctx,
             "protected",
             PropKind::Boolean,
-            None,
             schema_variant_id,
             Some(si_prop_id),
-            None,
         )
         .await?;
 
         // The type prop controls the type of the configuration node. The default type can be
         // determined by the schema variant author. The widget options correspond to the component
         // type enumeration.
-        let _type_prop = Prop::new(
+        Prop::new(
             ctx,
             "type",
             PropKind::String,
+            schema_variant_id,
+            Some(si_prop_id),
             Some((
                 WidgetKind::Select,
                 Some(serde_json::json!([
@@ -295,21 +284,18 @@ impl SchemaVariant {
                     },
                 ])),
             )),
-            schema_variant_id,
-            Some(si_prop_id),
+            None,
             None,
         )
         .await?;
 
         // Override the schema variant color for nodes on the diagram.
-        let mut color_prop = Prop::new(
+        let mut color_prop = Prop::new_without_ui_optionals(
             ctx,
             "color",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(si_prop_id),
-            None,
         )
         .await?;
         color_prop.set_widget_kind(ctx, WidgetKind::Color).await?;
@@ -331,14 +317,12 @@ impl SchemaVariant {
         schema_variant: &mut SchemaVariant,
     ) -> SchemaVariantResult<PropId> {
         let schema_variant_id = *schema_variant.id();
-        let mut resource_value_prop = Prop::new(
+        let mut resource_value_prop = Prop::new_without_ui_optionals(
             ctx,
             "resource_value",
             PropKind::Object,
-            None,
             schema_variant_id,
             Some(root_prop_id),
-            None,
         )
         .await?;
         resource_value_prop.set_hidden(ctx, true).await?;
@@ -368,87 +352,73 @@ impl SchemaVariant {
         root_prop_id: PropId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<PropId> {
-        let mut resource_prop = Prop::new(
+        let mut resource_prop = Prop::new_without_ui_optionals(
             ctx,
             "resource",
             PropKind::Object,
-            None,
             schema_variant_id,
             Some(root_prop_id),
-            None,
         )
         .await?;
         resource_prop.set_hidden(ctx, true).await?;
         let resource_prop_id = *resource_prop.id();
 
-        let mut resource_status_prop = Prop::new(
+        let mut resource_status_prop = Prop::new_without_ui_optionals(
             ctx,
             "status",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(resource_prop_id),
-            None,
         )
         .await?;
         resource_status_prop.set_hidden(ctx, true).await?;
 
-        let mut resource_message_prop = Prop::new(
+        let mut resource_message_prop = Prop::new_without_ui_optionals(
             ctx,
             "message",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(resource_prop_id),
-            None,
         )
         .await?;
         resource_message_prop.set_hidden(ctx, true).await?;
 
-        let mut resource_logs_prop = Prop::new(
+        let mut resource_logs_prop = Prop::new_without_ui_optionals(
             ctx,
             "logs",
             PropKind::Array,
-            None,
             schema_variant_id,
             Some(resource_prop_id),
-            None,
         )
         .await?;
         resource_logs_prop.set_hidden(ctx, true).await?;
 
-        let mut resource_logs_log_prop = Prop::new(
+        let mut resource_logs_log_prop = Prop::new_without_ui_optionals(
             ctx,
             "log",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(*resource_logs_prop.id()),
-            None,
         )
         .await?;
         resource_logs_log_prop.set_hidden(ctx, true).await?;
 
-        let mut resource_payload_prop = Prop::new(
+        let mut resource_payload_prop = Prop::new_without_ui_optionals(
             ctx,
             "payload",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(resource_prop_id),
-            None,
         )
         .await?;
         resource_payload_prop.set_hidden(ctx, true).await?;
 
-        let mut resource_last_synced_prop = Prop::new(
+        let mut resource_last_synced_prop = Prop::new_without_ui_optionals(
             ctx,
             "last_synced",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(resource_prop_id),
-            None,
         )
         .await?;
         resource_last_synced_prop.set_hidden(ctx, true).await?;
@@ -469,38 +439,32 @@ impl SchemaVariant {
         )
         .await?;
 
-        let mut child_code_prop = Prop::new(
+        let mut child_code_prop = Prop::new_without_ui_optionals(
             ctx,
             "code",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(code_map_item_prop_id),
-            None,
         )
         .await?;
         child_code_prop.set_hidden(ctx, true).await?;
 
-        let mut child_message_prop = Prop::new(
+        let mut child_message_prop = Prop::new_without_ui_optionals(
             ctx,
             "message",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(code_map_item_prop_id),
-            None,
         )
         .await?;
         child_message_prop.set_hidden(ctx, true).await?;
 
-        let mut child_format_prop = Prop::new(
+        let mut child_format_prop = Prop::new_without_ui_optionals(
             ctx,
             "format",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(code_map_item_prop_id),
-            None,
         )
         .await?;
         child_format_prop.set_hidden(ctx, true).await?;
@@ -521,26 +485,22 @@ impl SchemaVariant {
         )
         .await?;
 
-        let mut child_qualified_prop = Prop::new(
+        let mut child_qualified_prop = Prop::new_without_ui_optionals(
             ctx,
             "result",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(qualification_map_item_prop_id),
-            None,
         )
         .await?;
         child_qualified_prop.set_hidden(ctx, true).await?;
 
-        let mut child_message_prop = Prop::new(
+        let mut child_message_prop = Prop::new_without_ui_optionals(
             ctx,
             "message",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(qualification_map_item_prop_id),
-            None,
         )
         .await?;
         child_message_prop.set_hidden(ctx, true).await?;
@@ -554,14 +514,12 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<PropId> {
         // This is a new prop that we will use to determine if we want to run a delete workflow
-        let mut deleted_at = Prop::new(
+        let mut deleted_at = Prop::new_without_ui_optionals(
             ctx,
             "deleted_at",
             PropKind::String,
-            None,
             schema_variant_id,
             Some(root_prop_id),
-            None,
         )
         .await?;
         deleted_at.set_hidden(ctx, true).await?;

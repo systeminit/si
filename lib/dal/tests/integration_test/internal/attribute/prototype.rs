@@ -75,39 +75,30 @@ async fn list_for_context_with_a_hash(ctx: &DalContext) {
     //     { String: String, },
     //   ]
     // }
-    let albums_prop = Prop::new(
+    let albums_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "albums_array",
         PropKind::Array,
-        None,
         schema_variant_id,
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let album_prop = Prop::new(
+    .await;
+    let album_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "album_object",
         PropKind::Map,
-        None,
         schema_variant_id,
         Some(*albums_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let hash_key_prop = Prop::new(
+    .await;
+    let hash_key_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "album_hash_key",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*album_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await
@@ -342,18 +333,14 @@ async fn remove_least_specific(ctx: &DalContext) {
     let domain_prop = SchemaVariant::find_prop_in_tree(ctx, schema_variant_id, &["root", "domain"])
         .await
         .expect("could not find prop");
-    let prop = Prop::new(
+    let prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "toddhoward",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*domain_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-
+    .await;
     let context = AttributeContextBuilder::new()
         .set_prop_id(*prop.id())
         .to_context()
@@ -385,17 +372,14 @@ async fn remove_component_specific(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let prop = Prop::new(
+    let prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "god",
         PropKind::String,
-        None,
         *schema_variant.id(),
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await

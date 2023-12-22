@@ -14,17 +14,14 @@ async fn new(ctx: &DalContext) {
     let domain_prop = SchemaVariant::find_prop_in_tree(ctx, schema_variant_id, &["root", "domain"])
         .await
         .expect("could not find prop");
-    let prop = Prop::new(
+    let prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "coolness",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*domain_prop.id()),
-        None,
     )
-    .await
-    .expect("cannot create prop");
+    .await;
     assert_eq!(prop.name(), "coolness");
     assert_eq!(prop.kind(), &PropKind::String);
 }
@@ -41,28 +38,24 @@ async fn parent_props(ctx: &DalContext) {
         .await
         .expect("could not find prop");
 
-    let parent_prop = Prop::new(
+    let parent_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         generate_fake_name(),
         PropKind::Object,
-        None,
         schema_variant_id,
         Some(*domain_prop.id()),
-        None,
     )
-    .await
-    .expect("cannot create prop");
-    let child_prop = Prop::new(
+    .await;
+
+    let child_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         generate_fake_name(),
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*parent_prop.id()),
-        None,
     )
-    .await
-    .expect("cannot create prop");
+    .await;
+
     let retrieved_parent_prop = child_prop
         .parent_prop(ctx)
         .await
@@ -90,26 +83,23 @@ async fn parent_props_wrong_prop_kinds(ctx: &DalContext) {
         .root_prop_id()
         .expect("could not get root prop id");
 
-    let parent_prop = Prop::new(
+    let parent_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         generate_fake_name(),
         PropKind::String,
-        None,
         *schema_variant.id(),
         Some(*root_prop_id),
-        None,
     )
-    .await
-    .expect("cannot create prop");
-    let result = Prop::new(
+    .await;
+
+    let result = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         generate_fake_name(),
         PropKind::Object,
-        None,
         *schema_variant.id(),
         Some(*parent_prop.id()),
-        None,
     )
     .await;
+
     result.expect_err("should have errored, and it did not");
 }

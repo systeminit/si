@@ -1,3 +1,5 @@
+use pretty_assertions_sorted::assert_eq;
+
 use dal::{
     attribute::context::AttributeContextBuilder, component::view::ComponentView, generate_name,
     AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, Prop, PropKind,
@@ -8,7 +10,6 @@ use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
 };
-use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn update_for_context_simple(ctx: &DalContext) {
@@ -20,17 +21,14 @@ async fn update_for_context_simple(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let name_prop = Prop::new(
+    let name_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "name_prop",
         PropKind::String,
-        None,
         *schema_variant.id(),
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await
@@ -177,28 +175,22 @@ async fn insert_for_context_simple(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let array_prop = Prop::new(
+    let array_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "array_prop",
         PropKind::Array,
-        None,
         *schema_variant.id(),
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let array_element = Prop::new(
+    .await;
+    let array_element = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "array_element",
         PropKind::String,
-        None,
         *schema_variant.id(),
         Some(*array_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await
@@ -289,83 +281,62 @@ async fn update_for_context_object(ctx: &DalContext) {
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let address_prop = Prop::new(
+    let address_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "address",
         PropKind::Object,
-        None,
         schema_variant_id,
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let streets_prop = Prop::new(
+    .await;
+    let streets_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "streets",
         PropKind::Array,
-        None,
         schema_variant_id,
         Some(*address_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let _streets_child_prop = Prop::new(
+    .await;
+    let _streets_child_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "street",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*streets_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let _city_prop = Prop::new(
+    .await;
+    let _city_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "city",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*address_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let _country_prop = Prop::new(
+    .await;
+    let _country_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "country",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*address_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let tags_prop = Prop::new(
+    .await;
+    let tags_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "tags",
         PropKind::Map,
-        None,
         schema_variant_id,
         Some(*address_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let _tags_child_prop = Prop::new(
+    .await;
+    let _tags_child_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "tag",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*tags_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await
@@ -560,28 +531,22 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let array_prop = Prop::new(
+    let array_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "array_prop",
         PropKind::Array,
-        None,
         schema_variant_id,
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let array_element = Prop::new(
+    .await;
+    let array_element = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "array_element",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*array_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await

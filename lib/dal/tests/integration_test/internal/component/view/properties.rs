@@ -25,17 +25,14 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let poop_prop = Prop::new(
+    let poop_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "poop",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
 
     // Create a fake code gen func.
     let mut code_generation_func = Func::new(

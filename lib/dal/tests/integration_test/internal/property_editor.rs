@@ -18,39 +18,30 @@ async fn property_editor_schema(ctx: &DalContext) {
     let schema_variant_id = *schema_variant.id();
 
     // Create a docker-image-ish schema variant.
-    let _poop_prop = Prop::new(
+    dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "poop",
         PropKind::Boolean,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let exposed_ports_prop = Prop::new(
+    .await;
+    let exposed_ports_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "ExposedPorts",
         PropKind::Array,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let _exposed_port_prop = Prop::new(
+    .await;
+    dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "ExposedPort",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*exposed_ports_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     let mut qualification_func = Func::new(
         ctx,
         "test:qualification",

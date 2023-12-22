@@ -240,17 +240,15 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
     let noctua_schema = create_schema(ctx).await;
     let (mut noctua_schema_variant, noctua_root_prop) =
         create_schema_variant_with_root(ctx, *noctua_schema.id()).await;
-    let u12a_prop = Prop::new(
+    let u12a_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "u12a",
         PropKind::String,
-        None,
         *noctua_schema_variant.id(),
         Some(noctua_root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
+
     noctua_schema_variant
         .finalize(ctx, None)
         .await

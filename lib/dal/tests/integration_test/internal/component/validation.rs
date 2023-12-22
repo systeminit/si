@@ -1,3 +1,8 @@
+use std::collections::HashMap;
+
+use pretty_assertions_sorted::assert_eq;
+use serde_json::Value;
+
 use dal::{
     attribute::context::AttributeContextBuilder,
     func::backend::validation::FuncBackendValidationArgs,
@@ -12,9 +17,6 @@ use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
 };
-use pretty_assertions_sorted::assert_eq;
-use serde_json::Value;
-use std::collections::HashMap;
 
 #[test]
 async fn check_validations_for_component(ctx: &DalContext) {
@@ -27,29 +29,22 @@ async fn check_validations_for_component(ctx: &DalContext) {
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let gecs_prop = Prop::new(
+    let gecs_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "thousand_gecs",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let prefix_prop = Prop::new(
+    .await;
+    let prefix_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "the_tree_of_clues",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-
+    .await;
     // Gather what we need to create validations
     let mut builder = ValidationPrototypeContext::builder();
     builder.set_schema_id(*schema.id());
@@ -334,18 +329,14 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let prop = Prop::new(
+    let prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "Tamarian",
         PropKind::String,
-        None,
         *schema_variant.id(),
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-
+    .await;
     let mut func = Func::new(
         ctx,
         "test:jsValidation",
