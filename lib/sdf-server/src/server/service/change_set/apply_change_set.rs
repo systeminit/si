@@ -6,8 +6,8 @@ use axum::extract::OriginalUri;
 use axum::Json;
 use dal::job::definition::{FixItem, FixesJob};
 use dal::{
-    action::ActionBag, ActionId, ChangeSet, ChangeSetPk, Fix, FixBatch, FixId, HistoryActor,
-    StandardModel, User,
+    action::ActionBag, ActionId, ChangeSet, ChangeSetPk, Component, ComponentError, Fix, FixBatch,
+    FixId, HistoryActor, StandardModel, User,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -85,10 +85,17 @@ pub async fn apply_change_set(
                 }
             }
 
+            let component = Component::get_by_id(
+                &ctx.clone_with_delete_visibility(),
+                bag.action.component_id(),
+            )
+            .await?
+            .ok_or_else(|| ComponentError::NotFound(*bag.action.component_id()))?;
             let fix = Fix::new(
                 &ctx,
                 *batch.id(),
                 *bag.action.component_id(),
+                component.name(&ctx).await?,
                 *bag.action.action_prototype_id(),
             )
             .await?;

@@ -3,7 +3,6 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use std::collections::HashMap;
@@ -590,15 +589,27 @@ impl Component {
     /// Return the name of the [`Component`](Self) for the provided [`ComponentId`](Self).
     #[instrument(skip_all)]
     pub async fn find_name(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<String> {
-        let row = ctx
-            .txns()
+        let component_name = ComponentView::new(ctx, component_id)
             .await?
-            .pg()
-            .query_one(FIND_NAME, &[ctx.tenancy(), ctx.visibility(), &component_id])
-            .await?;
-        let component_name: Value = row.try_get("component_name")?;
+            .properties
+            .pointer("/si/name")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+
         let component_name: Option<String> = serde_json::from_value(component_name)?;
-        let component_name = component_name.ok_or(ComponentError::NameIsUnset(component_id))?;
+        let component_name = if let Some(name) = component_name {
+            name
+        } else {
+            let row = ctx
+                .txns()
+                .await?
+                .pg()
+                .query_one(FIND_NAME, &[ctx.tenancy(), ctx.visibility(), &component_id])
+                .await?;
+            let component_name: serde_json::Value = row.try_get("component_name")?;
+            let component_name: Option<String> = serde_json::from_value(component_name)?;
+            component_name.ok_or(ComponentError::NameIsUnset(component_id))?
+        };
         Ok(component_name)
     }
 
