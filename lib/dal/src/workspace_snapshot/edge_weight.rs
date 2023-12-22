@@ -28,6 +28,9 @@ pub enum EdgeWeightKind {
     /// array/map, or a field of an object. The optional [`String`] represents the key of the entry
     /// in a map.
     Contain(Option<String>),
+    /// An edge from an [`ExternalProvider`](crate::ExternalProvider) to an inter-[`Component`](crate::Component)
+    /// [`AttributePrototypeArgument`][crate::AttributePrototypeArgument].
+    InterComponent,
     /// Used to record the order that the elements of a container should be presented in.
     Ordering,
     /// Used to link an attribute value to the prop that it is for.

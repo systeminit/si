@@ -731,7 +731,7 @@ impl SchemaVariant {
         // Look for all external and explicit internal providers that the schema variant uses.
         let maybe_provider_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
             schema_variant_id,
-            EdgeWeightKindDiscriminants::Use,
+            EdgeWeightKindDiscriminants::Provider,
         )?;
 
         // Collect the external and the explicit internal providers separately.
@@ -744,14 +744,12 @@ impl SchemaVariant {
             if let NodeWeight::Content(content_node_weight) = node_weight {
                 match content_node_weight.content_address() {
                     ContentAddress::ExternalProvider(external_provider_content_hash) => {
-                        dbg!("external provider found");
                         external_provider_hashes.push((
                             content_node_weight.id().into(),
                             external_provider_content_hash,
                         ));
                     }
                     ContentAddress::InternalProvider(internal_provider_content_hash) => {
-                        dbg!("explicit internal provider found");
                         explicit_internal_provider_hashes.push((
                             content_node_weight.id().into(),
                             internal_provider_content_hash,

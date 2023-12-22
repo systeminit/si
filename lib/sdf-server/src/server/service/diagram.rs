@@ -12,12 +12,12 @@ use thiserror::Error;
 use crate::server::state::AppState;
 
 pub mod create_component;
+pub mod create_connection;
 pub mod get_diagram;
 pub mod list_schema_variants;
 pub mod set_component_position;
 
 // mod connect_component_to_frame;
-// pub mod create_connection;
 // pub mod delete_component;
 // pub mod delete_connection;
 // pub mod paste_component;
@@ -99,10 +99,6 @@ impl IntoResponse for DiagramError {
 pub fn routes() -> Router<AppState> {
     Router::new()
         // .route(
-        //     "/create_connection",
-        //     post(create_connection::create_connection),
-        // )
-        // .route(
         //     "/delete_connection",
         //     post(delete_connection::delete_connection),
         // )
@@ -130,6 +126,10 @@ pub fn routes() -> Router<AppState> {
         //     "/connect_component_to_frame",
         //     post(connect_component_to_frame::connect_component_to_frame),
         // )
+        .route(
+            "/create_connection",
+            post(create_connection::create_connection),
+        )
         .route(
             "/create_component",
             post(create_component::create_component),

@@ -68,8 +68,12 @@ overflow hidden */
             v-for="edge in edges"
             :key="edge.uniqueKey"
             :edge="edge"
-            :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
-            :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
+            :fromPoint="
+              getSocketLocationInfo(edge.fromExternalProviderKey)?.center
+            "
+            :toPoint="
+              getSocketLocationInfo(edge.toExplicitInternalProviderKey)?.center
+            "
             :isHovered="elementIsHovered(edge)"
             :isSelected="elementIsSelected(edge)"
             @hover:start="onElementHoverStart(edge)"
@@ -98,8 +102,12 @@ overflow hidden */
             v-for="edge in edges"
             :key="edge.uniqueKey"
             :edge="edge"
-            :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
-            :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
+            :fromPoint="
+              getSocketLocationInfo(edge.fromExternalProviderKey)?.center
+            "
+            :toPoint="
+              getSocketLocationInfo(edge.toExplicitInternalProviderKey)?.center
+            "
             :isHovered="elementIsHovered(edge)"
             :isSelected="elementIsSelected(edge)"
             @hover:start="onElementHoverStart(edge)"
@@ -847,7 +855,7 @@ function onElementHoverStart(el: DiagramElementData, meta?: ElementHoverMeta) {
   hoveredElementMeta.value = meta;
 
   if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
-    componentsStore.setHoveredComponentId(el.def.componentId);
+    componentsStore.setHoveredComponentId(el.def.id);
   } else if (el instanceof DiagramEdgeData) {
     componentsStore.setHoveredEdgeId(el.def.id);
   }
@@ -1165,7 +1173,7 @@ function sendMovedElementPosition(e: {
     e.element instanceof DiagramGroupData
   ) {
     componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
-      e.element.def.componentId,
+      e.element.def.id,
       e.position,
     );
   }
@@ -1190,7 +1198,7 @@ function endDragElements() {
     if (!movedElementPositions[el.uniqueKey]) return;
 
     const parentId =
-      movedElementParent[el.uniqueKey] || el.def.parentNodeId || undefined;
+      movedElementParent[el.uniqueKey] || el.def.parentComponentId || undefined;
 
     const elPos = nodesLocationInfo[el.uniqueKey];
 
@@ -1225,28 +1233,28 @@ function endDragElements() {
 
     if (
       newContainingGroup &&
-      el.def.parentNodeId !== newContainingGroup.def.id
+      el.def.parentComponentId !== newContainingGroup.def.id
     ) {
       let elements = [el];
 
       if (newContainingGroup.def.nodeType === "aggregationFrame") {
         const groupSchemaId =
-          componentsStore.componentsByNodeId[newContainingGroup.def.id]
+          componentsStore.componentsById[newContainingGroup.def.id]
             ?.schemaVariantId;
         elements = _.filter(elements, (e) => {
           const elementSchemaId =
-            componentsStore.componentsByNodeId[e.def.id]?.schemaVariantId;
+            componentsStore.componentsById[e.def.id]?.schemaVariantId;
 
           return elementSchemaId === groupSchemaId;
         });
       }
 
       for (const element of elements) {
-        if (element.def.parentNodeId === newContainingGroup.def.id) {
+        if (element.def.parentComponentId === newContainingGroup.def.id) {
           /* eslint-disable-next-line no-console */
           console.error(
             "Recursive connection:",
-            element.def.parentNodeId,
+            element.def.parentComponentId,
             newContainingGroup.def.id,
           );
           continue;
@@ -1276,7 +1284,7 @@ function endDragElements() {
       // for now only dealing with nodes... will be fixed later
       const childEls = _.filter(
         nodes.value,
-        (n) => n.def.parentNodeId === el.def.id,
+        (n) => n.def.parentComponentId === el.def.id,
       );
       _.each(childEls, (childEl) => {
         sendMovedElementPosition({
@@ -1326,9 +1334,9 @@ function onDragElementsMove() {
     );
 
     // block moving components outside of their group
-    if (el.def.parentNodeId) {
+    if (el.def.parentComponentId) {
       const parentGroup = getElementByKey(
-        DiagramGroupData.generateUniqueKey(el.def.parentNodeId),
+        DiagramGroupData.generateUniqueKey(el.def.parentComponentId),
       );
       if (!parentGroup) throw new Error("parent group not found");
 
@@ -1382,7 +1390,7 @@ function onDragElementsMove() {
         const parent = queue.shift();
         const x = _.filter(
           groups.value,
-          (n) => n.def.parentNodeId === parent?.def.id,
+          (n) => n.def.parentComponentId === parent?.def.id,
         );
         _.each(x, (childGroup) => {
           if (cycleCheck.has(childGroup.def.id)) return;
@@ -1394,12 +1402,14 @@ function onDragElementsMove() {
       const nodeChildrenOfGroups = _.filter(
         nodes.value,
         (n) =>
-          _.find(includedGroups, (g) => g.def.id === n.def.parentNodeId) !==
-          undefined,
+          _.find(
+            includedGroups,
+            (g) => g.def.id === n.def.parentComponentId,
+          ) !== undefined,
       );
 
       const childEls = _.concat(
-        _.filter(nodes.value, (n) => n.def.parentNodeId === el.def.id),
+        _.filter(nodes.value, (n) => n.def.parentComponentId === el.def.id),
         includedGroups,
         nodeChildrenOfGroups,
       );
@@ -1580,7 +1590,7 @@ watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
   const boxDictionary: Record<string, IRect> = {};
 
   for (const group of groups.value) {
-    const childIds = group.def.childNodeIds;
+    const childIds = group.def.childComponentIds;
     if (!childIds) continue;
 
     let top;
@@ -1675,11 +1685,7 @@ function endResizeElement() {
     return;
   }
 
-  componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
-    el.def.componentId,
-    position,
-    size,
-  );
+  componentsStore.SET_COMPONENT_DIAGRAM_POSITION(el.def.id, position, size);
 
   resizeElement.value = undefined;
 }
@@ -1897,7 +1903,8 @@ function onResizeMove() {
   }
 
   // Make sure the frame doesn't get larger than parent
-  const parentId = movedElementParent[resizeTargetKey] || node.parentNodeId;
+  const parentId =
+    movedElementParent[resizeTargetKey] || node.parentComponentId;
 
   if (parentId) {
     // Resized element with top-left corner xy coordinates instead of top-center
@@ -1987,9 +1994,9 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
     (e) => e.def.changeStatus === "deleted",
   );
   const existingConnectedSocketKeys = _.map(actualExistingEdges, (edge) =>
-    edge.fromSocketKey === fromSocket.uniqueKey
-      ? edge.toSocketKey
-      : edge.fromSocketKey,
+    edge.fromExternalProviderKey === fromSocket.uniqueKey
+      ? edge.toExplicitInternalProviderKey
+      : edge.fromExternalProviderKey,
   );
   const possibleSockets = _.filter(sockets.value, (possibleToSocket) => {
     // cannot connect sockets to other sockets on same node (at least not currently)
@@ -2105,18 +2112,18 @@ async function endDrawEdge() {
     ? drawEdgeFromSocket.value
     : drawEdgeToSocket.value;
 
-  const fromNodeId = adjustedFrom.parent.def.id;
-  const fromSocketId = adjustedFrom.def.id;
-  const toNodeId = adjustedTo.parent.def.id;
-  const toSocketId = adjustedTo.def.id;
+  const fromComponentId = adjustedFrom.parent.def.id;
+  const fromExternalProviderId = adjustedFrom.def.id;
+  const toComponentId = adjustedTo.parent.def.id;
+  const toExplicitInternalProviderId = adjustedTo.def.id;
 
   const equivalentEdge = _.find(
     edges.value,
     (e) =>
-      e.def.fromNodeId === fromNodeId &&
-      e.def.fromSocketId === fromSocketId &&
-      e.def.toNodeId === toNodeId &&
-      e.def.toSocketId === toSocketId,
+      e.def.fromComponentId === fromComponentId &&
+      e.def.fromExternalProviderId === fromExternalProviderId &&
+      e.def.toComponentId === toComponentId &&
+      e.def.toExplicitInternalProviderId === toExplicitInternalProviderId,
   );
 
   // TODO: probably move this to the store?
@@ -2126,12 +2133,12 @@ async function endDrawEdge() {
   } else {
     await componentsStore.CREATE_COMPONENT_CONNECTION(
       {
-        nodeId: fromNodeId,
-        socketId: fromSocketId,
+        componentId: fromComponentId,
+        externalProviderId: fromExternalProviderId,
       },
       {
-        nodeId: toNodeId,
-        socketId: toSocketId,
+        componentId: toComponentId,
+        explicitInternalProviderId: toExplicitInternalProviderId,
       },
     );
   }
@@ -2258,7 +2265,7 @@ const groups = computed(() => {
     if (dragElementsActive.value) {
       if (
         _.intersection(
-          [g.def.componentId, ...(g.def.ancestorIds || [])],
+          [g.def.id, ...(g.def.ancestorIds || [])],
           componentsStore.selectedComponentIds,
         ).length
       ) {
@@ -2300,11 +2307,7 @@ function getDiagramElementKeyForComponentId(componentId?: ComponentId | null) {
   if (!componentId) return;
   const component = componentsStore.componentsById[componentId];
   if (component) {
-    // TODO: get rid of node id!
-    if (component.isGroup) {
-      return DiagramGroupData.generateUniqueKey(component.nodeId);
-    }
-    return DiagramNodeData.generateUniqueKey(component.nodeId);
+    return DiagramNodeData.generateUniqueKey(component.id);
   }
 }
 
@@ -2316,14 +2319,14 @@ function getDiagramElementKeyForEdgeId(edgeId?: EdgeId | null) {
 const connectedEdgesByElementKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
   _.each(edgesByKey.value, (edge) => {
-    lookup[edge.fromNodeKey] ||= [];
-    lookup[edge.fromNodeKey]!.push(edge);
-    lookup[edge.toNodeKey] ||= [];
-    lookup[edge.toNodeKey]!.push(edge);
-    lookup[edge.fromSocketKey] ||= [];
-    lookup[edge.fromSocketKey]!.push(edge);
-    lookup[edge.toSocketKey] ||= [];
-    lookup[edge.toSocketKey]!.push(edge);
+    lookup[edge.fromComponentKey] ||= [];
+    lookup[edge.fromComponentKey]!.push(edge);
+    lookup[edge.toComponentKey] ||= [];
+    lookup[edge.toComponentKey]!.push(edge);
+    lookup[edge.fromExternalProviderKey] ||= [];
+    lookup[edge.fromExternalProviderKey]!.push(edge);
+    lookup[edge.toExplicitInternalProviderKey] ||= [];
+    lookup[edge.toExplicitInternalProviderKey]!.push(edge);
   });
   return lookup;
 });
@@ -2335,8 +2338,10 @@ const connectedEdgesByElementKey = computed(() => {
 function getCenterPointOfElement(el: DiagramElementData) {
   if (el instanceof DiagramEdgeData) {
     // TODO: this logic should live on DiagramEdge class
-    const fromPoint = getSocketLocationInfo(el.fromSocketKey)?.center;
-    const toPoint = getSocketLocationInfo(el.toSocketKey)?.center;
+    const fromPoint = getSocketLocationInfo(el.fromExternalProviderKey)?.center;
+    const toPoint = getSocketLocationInfo(
+      el.toExplicitInternalProviderKey,
+    )?.center;
     if (!fromPoint || !toPoint) return;
     return pointAlongLinePct(fromPoint, toPoint, 0.5);
   } else if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {

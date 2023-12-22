@@ -19,12 +19,13 @@ use crate::{Component, ComponentId, DalContext, ProviderArity, SchemaVariant, Sc
     EnumIter,
     EnumString,
     Eq,
+    Hash,
     PartialEq,
     Serialize,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
-pub enum SocketDirection {
+pub enum DiagramSocketDirection {
     Bidirectional,
     Input,
     Output,
@@ -46,24 +47,24 @@ pub enum SocketDirection {
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
-pub enum NodeSide {
+pub enum DiagramNodeSide {
     Left,
     Right,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct SocketView {
+pub struct DiagramSocketView {
     pub id: String,
     pub label: String,
     pub connection_annotations: Vec<String>,
-    pub direction: SocketDirection,
+    pub direction: DiagramSocketDirection,
     pub max_connections: Option<usize>,
     pub is_required: Option<bool>,
-    pub node_side: NodeSide,
+    pub node_side: DiagramNodeSide,
 }
 
-impl SocketView {
+impl DiagramSocketView {
     pub async fn list(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -83,13 +84,13 @@ impl SocketView {
                     label: external_provider.name().to_owned(),
                     // todo: implement connection annotations in graph work
                     connection_annotations: vec![external_provider.name().to_owned()],
-                    direction: SocketDirection::Output,
+                    direction: DiagramSocketDirection::Output,
                     max_connections: match external_provider.arity() {
                         ProviderArity::Many => None,
                         ProviderArity::One => Some(1),
                     },
                     is_required: Some(external_provider.required()),
-                    node_side: NodeSide::Right,
+                    node_side: DiagramNodeSide::Right,
                 });
             }
         }
@@ -101,13 +102,13 @@ impl SocketView {
                     label: explicit_internal_provider.name().to_owned(),
                     // todo: implement connection annotations in graph work
                     connection_annotations: vec![explicit_internal_provider.name().to_owned()],
-                    direction: SocketDirection::Input,
+                    direction: DiagramSocketDirection::Input,
                     max_connections: match explicit_internal_provider.arity() {
                         ProviderArity::Many => None,
                         ProviderArity::One => Some(1),
                     },
                     is_required: Some(explicit_internal_provider.required()),
-                    node_side: NodeSide::Left,
+                    node_side: DiagramNodeSide::Left,
                 });
             }
         }
@@ -164,7 +165,7 @@ pub struct DiagramComponentView {
     schema_variant_name: String,
     schema_category: Option<String>,
 
-    sockets: Option<Vec<SocketView>>,
+    sockets: Option<Vec<DiagramSocketView>>,
     position: GridPoint,
     size: Option<Size2D>,
     color: Option<String>,
@@ -279,7 +280,7 @@ impl DiagramComponentView {
             schema_id: schema.id().to_string(),
             schema_variant_id: schema_variant.id().to_string(),
             schema_category: Some(schema_variant.category().to_owned()),
-            sockets: Some(SocketView::list(ctx, schema_variant.id()).await?),
+            sockets: Some(DiagramSocketView::list(ctx, schema_variant.id()).await?),
             position: GridPoint {
                 x: x.round() as isize,
                 y: y.round() as isize,

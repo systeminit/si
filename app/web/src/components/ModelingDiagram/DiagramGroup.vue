@@ -427,8 +427,8 @@ const isAdded = computed(() => props.group.def.changeStatus === "added");
 
 const childCount = computed(() => {
   const mappedChildren = _.map(
-    props.group.def.childNodeIds,
-    (child) => useComponentsStore().componentsByNodeId[child],
+    props.group.def.childComponentIds,
+    (child) => useComponentsStore().componentsById[child],
   );
 
   const undeletedChildren = _.filter(mappedChildren, (child) =>
@@ -465,10 +465,10 @@ const rightSockets = computed(() =>
 const connectedEdgesBySocketKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
   _.each(props.connectedEdges, (edge) => {
-    lookup[edge.fromSocketKey] ||= [];
-    lookup[edge.fromSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    lookup[edge.toSocketKey] ||= [];
-    lookup[edge.toSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    lookup[edge.fromExternalProviderKey] ||= [];
+    lookup[edge.fromExternalProviderKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    lookup[edge.toExplicitInternalProviderKey] ||= [];
+    lookup[edge.toExplicitInternalProviderKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
   });
   return lookup;
 });
@@ -556,7 +556,7 @@ function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
 // TODO: not sure if want to communicate with the store here or send the message up to the diagram...
 const componentsStore = useComponentsStore();
 function onClick(detailsTabSlug: string) {
-  componentsStore.setSelectedComponentId(props.group.def.componentId, {
+  componentsStore.setSelectedComponentId(props.group.def.id, {
     detailsTab: detailsTabSlug,
   });
 }

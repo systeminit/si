@@ -82,8 +82,8 @@ const { open: openModal, close } = useModal(modalRef);
 const deletionBlockedReason = computed(() => {
   const deletionSubjectHasChildren =
     componentsStore.selectedComponents?.filter((el) => {
-      const activeChildren = el.childNodeIds.filter((childId) => {
-        const child = componentsStore.componentsByNodeId[childId];
+      const activeChildren = el.childComponentIds.filter((childId) => {
+        const child = componentsStore.componentsById[childId];
         return _.isNil(child?.deletedInfo);
       });
       return activeChildren.length > 0;

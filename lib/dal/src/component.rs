@@ -12,7 +12,7 @@ use tokio::sync::TryLockError;
 use ulid::Ulid;
 
 use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError,
+    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
 use crate::attribute::value::AttributeValueError;
 use crate::change_set_pointer::ChangeSetPointerError;
@@ -551,7 +551,7 @@ impl Component {
         source_external_provider_id: ExternalProviderId,
         destination_component_id: ComponentId,
         destination_explicit_internal_provider_id: InternalProviderId,
-    ) -> ComponentResult<()> {
+    ) -> ComponentResult<AttributePrototypeArgumentId> {
         let destination_attribute_value_id =
             AttributeValue::find_for_component_and_explicit_internal_provider(
                 ctx,
@@ -573,7 +573,7 @@ impl Component {
                 )?
             };
 
-        AttributePrototypeArgument::new_inter_component(
+        let attribute_prototype_argument = AttributePrototypeArgument::new_inter_component(
             ctx,
             source_component_id,
             source_external_provider_id,
@@ -581,7 +581,7 @@ impl Component {
             destination_prototype_id,
         )?;
 
-        Ok(())
+        Ok(attribute_prototype_argument.id())
     }
 }
 

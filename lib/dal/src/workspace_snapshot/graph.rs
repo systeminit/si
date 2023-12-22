@@ -849,6 +849,7 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKindDiscriminants::ActionPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
                     EdgeWeightKindDiscriminants::Ordering => "gray",
+                    EdgeWeightKindDiscriminants::InterComponent => "green",
                     EdgeWeightKindDiscriminants::Prop => "orange",
                     EdgeWeightKindDiscriminants::Prototype => "green",
                     EdgeWeightKindDiscriminants::PrototypeArgument => "green",
@@ -1836,6 +1837,7 @@ impl WorkspaceSnapshotGraph {
                     // Nothing to do, as these EdgeWeightKind do not encode extra information
                     // in the edge itself.
                     EdgeWeightKind::Contain(None)
+                    | EdgeWeightKind::InterComponent
                     | EdgeWeightKind::PrototypeArgument
                     | EdgeWeightKind::PrototypeArgumentValue
                     | EdgeWeightKind::Provider

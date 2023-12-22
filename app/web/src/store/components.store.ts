@@ -36,42 +36,38 @@ import { useWorkspacesStore } from "./workspaces.store";
 import { useStatusStore } from "./status.store";
 
 export type ComponentId = string;
-export type ComponentNodeId = string;
 export type EdgeId = string;
-export type SocketId = string;
-type SchemaId = string;
+export type ProviderId = string;
+
 type SchemaVariantId = string;
 
 type RawComponent = {
   changeStatus: ChangeStatus;
-  childNodeIds: ComponentNodeId[];
+  childComponentIds: ComponentId[];
   color: string;
   createdInfo: ActorAndTimestamp;
   deletedInfo?: ActorAndTimestamp;
   displayName: string;
-  id: ComponentId;
-  nodeId: ComponentNodeId;
-  nodeType: "component" | "configurationFrame" | "aggregationFrame";
-  parentNodeId?: ComponentNodeId;
-  position: GridPoint;
-  size?: Size2D;
   hasResource: boolean;
+  id: ComponentId;
+  nodeType: "component" | "configurationFrame" | "aggregationFrame";
+  parentComponentId?: ComponentId;
+  position: GridPoint;
   schemaCategory: string;
   schemaId: string; // TODO: probably want to move this to a different store and not load it all the time
   schemaName: string;
   schemaVariantId: string;
   schemaVariantName: string;
+  size?: Size2D;
   sockets: DiagramSocketDef[];
   updatedInfo: ActorAndTimestamp;
 };
 
 export type FullComponent = RawComponent & {
-  parentNodeId?: ComponentNodeId;
   // direct parent ID
   parentId?: ComponentId;
   // array of parent IDs
   ancestorIds?: ComponentId[];
-  childNodeIds?: ComponentNodeId[];
   childIds?: ComponentId[];
   matchesFilter: boolean;
   icon: IconNames;
@@ -80,10 +76,10 @@ export type FullComponent = RawComponent & {
 
 type Edge = {
   id: EdgeId;
-  fromNodeId: ComponentNodeId;
-  fromSocketId: SocketId;
-  toNodeId: ComponentNodeId;
-  toSocketId: SocketId;
+  fromComponentId: ComponentId;
+  fromExternalProviderId: ProviderId;
+  toComponentId: ComponentId;
+  toExplicitInternalProviderId: ProviderId;
   isInvisible?: boolean;
   /** change status of edge in relation to head */
   changeStatus?: ChangeStatus;
@@ -255,7 +251,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
           componentsById(): Record<ComponentId, FullComponent> {
             const nodeIdToComponentId = _.mapValues(
-              _.keyBy(this.rawComponentsById, (c) => c.nodeId),
+              _.keyBy(this.rawComponentsById, (c) => c.id),
               (c) => c.id,
             );
 
@@ -266,9 +262,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               const c = this.rawComponentsById[componentId];
 
               if (!c) throw new Error("what?");
-              const parentId = c.parentNodeId
-                ? nodeIdToComponentId[c.parentNodeId]
-                : undefined;
+              const parentId = c.parentComponentId;
 
               if (parentId) {
                 return getAncestorIds(parentId, [parentId, ...idsArray]);
@@ -293,11 +287,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
               return {
                 ...rc,
-                // convert "node" ids back to component ids, so we can use that in a few places
                 ancestorIds,
                 parentId: _.last(ancestorIds),
                 childIds: _.map(
-                  rc.childNodeIds,
+                  rc.childComponentIds,
                   (nodeId) => nodeIdToComponentId[nodeId],
                 ),
                 icon: typeIcon,
@@ -306,12 +299,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
           componentsByParentId(): Record<ComponentId, FullComponent[]> {
-            return _.groupBy(this.allComponents, (c) =>
-              // remapping to component id... PLEASE LETS KILL NODE ID!
-              c.parentNodeId
-                ? this.componentsByNodeId[c.parentNodeId]?.id
-                : "root",
-            );
+            return _.groupBy(this.allComponents, (c) => c.parentComponentId);
           },
           parentIdPathByComponentId(): Record<ComponentId, ComponentId[]> {
             const parentsLookup: Record<ComponentId, ComponentId[]> = {};
@@ -332,10 +320,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               processList(this.componentsByParentId.root, []);
             }
             return parentsLookup;
-          },
-
-          componentsByNodeId(): Record<ComponentNodeId, FullComponent> {
-            return _.keyBy(_.values(this.componentsById), (c) => c.nodeId);
           },
           allComponents(): FullComponent[] {
             return _.values(this.componentsById);
@@ -423,10 +407,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
               return {
                 ...component,
-                // swapping "id" to be node id and passing along component id separately for the diagram
-                // this is gross and needs to go, but will happen later
-                id: component.nodeId,
-                componentId: component.id,
+                id: component.id,
                 title: component.displayName,
                 subtitle: component.schemaName,
                 isLoading:
@@ -450,35 +431,35 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             // In the future, it would make more sense for these edges to not be returned from the backend
             const validEdges = _.filter(this.allEdges, (edge) => {
               return (
-                !!this.componentsByNodeId[edge.toNodeId] &&
-                !!this.componentsByNodeId[edge.fromNodeId]
+                !!this.componentsById[edge.toComponentId] &&
+                !!this.componentsById[edge.fromComponentId]
               );
             });
             const edgesWithInvisibleSet = _.map(validEdges, (rawEdge) => {
               const edge = { ...rawEdge, invisible: false };
 
-              const toNodeParentId =
-                this.componentsByNodeId[edge.toNodeId]?.parentNodeId;
+              const toComponentParentId =
+                this.componentsById[edge.toComponentId]?.parentComponentId;
 
-              if (toNodeParentId) {
-                const toNodeParentComp =
-                  this.componentsByNodeId[toNodeParentId];
+              if (toComponentParentId) {
+                const toComponentParent =
+                  this.componentsById[toComponentParentId];
 
-                if (toNodeParentComp?.nodeType === "aggregationFrame") {
-                  if (edge.fromNodeId === toNodeParentComp.nodeId) {
+                if (toComponentParent?.nodeType === "aggregationFrame") {
+                  if (edge.fromComponentId === toComponentParent.id) {
                     edge.isInvisible = true;
                   }
                 }
               }
 
-              const fromNodeParentId =
-                this.componentsByNodeId[edge.fromNodeId]?.parentNodeId;
+              const fromComponentParentId =
+                this.componentsById[edge.fromComponentId]?.parentComponentId;
 
-              if (fromNodeParentId) {
+              if (fromComponentParentId) {
                 const fromParentComp =
-                  this.componentsByNodeId[fromNodeParentId];
+                  this.componentsById[fromComponentParentId];
                 if (fromParentComp?.nodeType === "aggregationFrame") {
-                  if (edge.toNodeId === fromParentComp.nodeId) {
+                  if (edge.toComponentId === fromParentComp.id) {
                     edge.isInvisible = true;
                   }
                 }
@@ -488,14 +469,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
 
             return edgesWithInvisibleSet;
-          },
-
-          edgesByFromNodeId(): Record<ComponentNodeId, Edge[]> {
-            return _.groupBy(this.allEdges, (e) => e.fromNodeId);
-          },
-
-          edgesByToNodeId(): Record<ComponentNodeId, Edge[]> {
-            return _.groupBy(this.allEdges, (e) => e.toNodeId);
           },
 
           schemaVariants: (state) => _.values(state.schemaVariantsById),
@@ -518,18 +491,18 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           getDependentComponents: (state) => (componentId: ComponentId) => {
             // TODO: this is ugly... much of this logic is duplicated in ModelingDiagram
 
-            const connectedNodes: Record<ComponentId, ComponentId[]> = {};
+            const connectedComponents: Record<ComponentId, ComponentId[]> = {};
             _.each(_.values(state.edgesById), (edge) => {
-              const fromNodeId = edge.fromNodeId;
-              const toNodeId = edge.toNodeId;
-              connectedNodes[fromNodeId] ||= [];
-              connectedNodes[fromNodeId]!.push(toNodeId); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+              const fromComponentId = edge.fromComponentId;
+              const toComponentId = edge.toComponentId;
+              connectedComponents[fromComponentId] ||= [];
+              connectedComponents[fromComponentId]!.push(toComponentId); // eslint-disable-line @typescript-eslint/no-non-null-assertion
             });
 
             const connectedIds: ComponentId[] = [componentId];
 
             function walkGraph(id: ComponentId) {
-              const nextIds = connectedNodes[id];
+              const nextIds = connectedComponents[id];
               nextIds?.forEach((nid) => {
                 if (connectedIds.includes(nid)) return;
                 connectedIds.push(nid);
@@ -718,8 +691,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
           async CREATE_COMPONENT_CONNECTION(
-            from: { nodeId: ComponentNodeId; socketId: SocketId },
-            to: { nodeId: ComponentNodeId; socketId: SocketId },
+            from: { componentId: ComponentId; externalProviderId: ProviderId },
+            to: {
+              componentId: ComponentId;
+              explicitInternalProviderId: ProviderId;
+            },
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -731,19 +707,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             return new ApiRequest<{
               connection: {
                 id: string;
-                classification: "configuration";
-                destination: { nodeId: string; socketId: string };
-                source: { nodeId: string; socketId: string };
               };
               forceChangesetPk?: string;
             }>({
               method: "post",
               url: "diagram/create_connection",
               params: {
-                fromNodeId: from.nodeId,
-                fromSocketId: from.socketId,
-                toNodeId: to.nodeId,
-                toSocketId: to.socketId,
+                fromComponentId: from.componentId,
+                fromExternalProviderId: from.externalProviderId,
+                toComponentId: to.componentId,
+                toExplicitInternalProviderId: to.explicitInternalProviderId,
                 ...visibilityParams,
               },
               onSuccess: (response) => {
@@ -761,10 +734,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 const nowTs = new Date().toISOString();
                 this.edgesById[tempId] = {
                   id: tempId,
-                  fromNodeId: from.nodeId,
-                  fromSocketId: from.socketId,
-                  toNodeId: to.nodeId,
-                  toSocketId: to.socketId,
+                  fromComponentId: from.componentId,
+                  fromExternalProviderId: from.externalProviderId,
+                  toComponentId: to.componentId,
+                  toExplicitInternalProviderId: to.explicitInternalProviderId,
                   changeStatus: "added",
                   createdInfo: {
                     timestamp: nowTs,
@@ -778,8 +751,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
           async CONNECT_COMPONENT_TO_FRAME(
-            childNodeId: ComponentNodeId,
-            parentNodeId: ComponentNodeId,
+            childId: ComponentId,
+            parentId: ComponentId,
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -790,8 +763,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               method: "post",
               url: "diagram/connect_component_to_frame",
               params: {
-                childNodeId,
-                parentNodeId,
+                childId,
+                parentId,
                 ...visibilityParams,
               },
               onSuccess: (response) => {
