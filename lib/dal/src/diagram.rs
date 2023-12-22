@@ -3,18 +3,31 @@ use si_data_pg::PgError;
 use std::num::{ParseFloatError, ParseIntError};
 use thiserror::Error;
 
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+};
 use crate::component::ComponentError;
+use crate::diagram::edge::DiagramEdgeView;
 use crate::diagram::node::DiagramComponentView;
+use crate::provider::external::ExternalProviderError;
 use crate::schema::variant::SchemaVariantError;
-use crate::{Component, ComponentId, DalContext, HistoryEventError, StandardModelError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{
+    AttributePrototypeId, Component, ComponentId, DalContext, ExternalProviderId,
+    HistoryEventError, StandardModelError,
+};
 
+pub mod edge;
 pub mod node;
 
+// TODO(nick): this module eventually goes the way of the dinosaur.
 // pub mod connection;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum DiagramError {
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute prototype not found")]
     AttributePrototypeNotFound,
     #[error("attribute value not found")]
@@ -27,10 +40,18 @@ pub enum DiagramError {
     ComponentStatusNotFound(ComponentId),
     #[error("deletion timestamp not found")]
     DeletionTimeStamp,
+    #[error("destination attribute prototype not found for inter component attribute prototype argument: {0}")]
+    DestinationAttributePrototypeNotFound(AttributePrototypeArgumentId),
+    #[error("destination explicit internal provider not found for attribute prototype ({0}) and inter component attribute prototype argument ({1})")]
+    DestinationExplicitInternalProviderNotFound(AttributePrototypeId, AttributePrototypeArgumentId),
     #[error("edge not found")]
     EdgeNotFound,
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] ExternalProviderError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("inter component metadata not found for attribute prototype argument ({0}) found via external provider: {1}")]
+    InterComponentMetadataNotFound(AttributePrototypeArgumentId, ExternalProviderId),
     #[error("node not found")]
     NodeNotFound,
     #[error(transparent)]
@@ -51,6 +72,10 @@ pub enum DiagramError {
     SocketNotFound,
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 pub type DiagramResult<T> = Result<T, DiagramError>;
@@ -59,9 +84,7 @@ pub type DiagramResult<T> = Result<T, DiagramError>;
 #[serde(rename_all = "camelCase")]
 pub struct Diagram {
     pub components: Vec<DiagramComponentView>,
-    // TODO(nick): restore edges in the diagram.
-    // edges: Vec<DiagramEdgeView>,
-    pub edges: Vec<()>,
+    pub edges: Vec<DiagramEdgeView>,
 }
 
 impl Diagram {
@@ -75,23 +98,6 @@ impl Diagram {
         // let modified = ComponentChangeStatus::list_modified(ctx).await?;
         // debug!("modified component change status: {modified:#?}");
 
-        // TODO(nick): restore returning edges.
-        // let mut diagram_edges = Vec::new();
-        // let edges = Edge::list(ctx).await?;
-        // for edge in &edges {
-        //     if *edge.kind() == EdgeKind::Configuration {
-        //         let change_status = match edge.visibility().change_set_pk {
-        //             ChangeSetPk::NONE => ChangeStatus::Unmodified,
-        //             _ => ChangeStatus::Added,
-        //         };
-        //         let conn = Connection::from_edge(edge);
-        //         let mut diagram_edge_view =
-        //             DiagramEdgeView::from_with_change_status(conn, change_status);
-        //         diagram_edge_view.set_actor_details(ctx, edge).await?;
-        //         diagram_edges.push(diagram_edge_view);
-        //     }
-        // }
-        //
         // let deleted_edges: Vec<Edge> = EdgeChangeStatus::list_deleted(ctx).await?;
         //
         // let deleted_diagram_edges = ctx
@@ -237,7 +243,7 @@ impl Diagram {
 
         // TODO(nick): restore the ability to show edges.
         Ok(Self {
-            edges: Vec::new(),
+            edges: DiagramEdgeView::list(ctx).await?,
             components: component_views,
         })
     }

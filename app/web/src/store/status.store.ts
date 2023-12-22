@@ -5,8 +5,7 @@ import { ActorView } from "@/api/sdf/dal/history_actor";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-
-import { ComponentId, SocketId, useComponentsStore } from "./components.store";
+import { ComponentId, useComponentsStore } from "./components.store";
 
 // NOTE - some uncertainty around transition from update finished state ("5/5 update complete") back to idle ("Model is up to date")
 export type GlobalUpdateStatus = {
@@ -111,7 +110,8 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
         }),
         getters: {
           getSocketStatus:
-            (state) => (componentId: ComponentId, socketId: SocketId) => {
+            // TODO(nick): figure out what this does
+            (state) => (componentId: ComponentId, socketId: string) => {
               const valueId = _.findKey(
                 state.rawStatusesByValueId,
                 (valueMetadata) =>

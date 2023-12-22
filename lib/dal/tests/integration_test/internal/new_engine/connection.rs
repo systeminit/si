@@ -1,3 +1,4 @@
+use dal::diagram::Diagram;
 use dal::{Component, DalContext, ExternalProvider, InternalProvider, Schema, SchemaVariant};
 use dal_test::test;
 
@@ -60,7 +61,7 @@ async fn connect_components_simple(ctx: &DalContext) {
         .expect("could not create component");
 
     // Connect the components!
-    Component::connect(
+    let inter_component_attribute_prototype_argument_id = Component::connect(
         ctx,
         oysters_component.id(),
         external_provider.id(),
@@ -68,4 +69,31 @@ async fn connect_components_simple(ctx: &DalContext) {
         explicit_internal_provider.id(),
     )
     .expect("could not connect components");
+
+    // Assemble the diagram and check the edges.
+    let mut diagram = Diagram::assemble(ctx)
+        .await
+        .expect("could not assemble the diagram");
+    let diagram_edge = diagram.edges.pop().expect("diagram edges are empty");
+    assert!(diagram.edges.is_empty());
+    assert_eq!(
+        inter_component_attribute_prototype_argument_id.to_string(), // expected
+        diagram_edge.id                                              // actual
+    );
+    assert_eq!(
+        oysters_component.id().to_string(), // expected
+        diagram_edge.from_component_id      // actual
+    );
+    assert_eq!(
+        external_provider.id().to_string(),     // expected
+        diagram_edge.from_external_provider_id  // actual
+    );
+    assert_eq!(
+        royel_component.id().to_string(), // expected
+        diagram_edge.to_component_id      // actual
+    );
+    assert_eq!(
+        explicit_internal_provider.id().to_string(),   // expected
+        diagram_edge.to_explicit_internal_provider_id  // actual
+    );
 }

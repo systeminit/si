@@ -61,7 +61,7 @@ pub enum AttributePrototypeArgumentError {
 pub type AttributePrototypeArgumentResult<T> = Result<T, AttributePrototypeArgumentError>;
 
 /// Side effect metadata for inter-[`Component`](crate::Component) connections.
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InterComponentMetadata {
     pub source_component_id: ComponentId,
     pub destination_component_id: ComponentId,
@@ -107,6 +107,10 @@ impl AttributePrototypeArgument {
 
     pub fn id(&self) -> AttributePrototypeArgumentId {
         self.id
+    }
+
+    pub fn inter_component_metadata(&self) -> Option<InterComponentMetadata> {
+        self.inter_component_metadata
     }
 
     pub async fn static_value_by_id(

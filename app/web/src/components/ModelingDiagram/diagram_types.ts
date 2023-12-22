@@ -97,47 +97,47 @@ export class DiagramEdgeData extends DiagramElementData {
   }
 
   // helpers to get the unique key of the node and sockets this edge is connected to
-  get fromNodeKey() {
-    const comp = useComponentsStore().componentsByNodeId[this.def.fromNodeId];
+  get fromComponentKey() {
+    const comp = useComponentsStore().componentsById[this.def.fromComponentId];
     if (comp?.isGroup) {
-      return DiagramGroupData.generateUniqueKey(this.def.fromNodeId);
+      return DiagramGroupData.generateUniqueKey(this.def.fromComponentId);
     }
-    return DiagramNodeData.generateUniqueKey(this.def.fromNodeId);
+    return DiagramNodeData.generateUniqueKey(this.def.fromComponentId);
   }
 
-  get toNodeKey() {
-    const comp = useComponentsStore().componentsByNodeId[this.def.toNodeId];
+  get toComponentKey() {
+    const comp = useComponentsStore().componentsById[this.def.toComponentId];
     if (comp?.isGroup) {
-      return DiagramGroupData.generateUniqueKey(this.def.toNodeId);
+      return DiagramGroupData.generateUniqueKey(this.def.toComponentId);
     }
-    return DiagramNodeData.generateUniqueKey(this.def.toNodeId);
+    return DiagramNodeData.generateUniqueKey(this.def.toComponentId);
   }
 
-  get fromSocketKey() {
-    const comp = useComponentsStore().componentsByNodeId[this.def.fromNodeId];
+  get fromExternalProviderKey() {
+    const comp = useComponentsStore().componentsById[this.def.fromComponentId];
     if (comp?.isGroup) {
       return DiagramSocketData.generateUniqueKey(
-        DiagramGroupData.generateUniqueKey(this.def.fromNodeId),
-        this.def.fromSocketId,
+        DiagramGroupData.generateUniqueKey(this.def.fromComponentId),
+        this.def.fromExternalProviderId,
       );
     }
     return DiagramSocketData.generateUniqueKey(
-      DiagramNodeData.generateUniqueKey(this.def.fromNodeId),
-      this.def.fromSocketId,
+      DiagramNodeData.generateUniqueKey(this.def.fromComponentId),
+      this.def.fromExternalProviderId,
     );
   }
 
-  get toSocketKey() {
-    const comp = useComponentsStore().componentsByNodeId[this.def.toNodeId];
+  get toExplicitInternalProviderKey() {
+    const comp = useComponentsStore().componentsById[this.def.toComponentId];
     if (comp?.isGroup) {
       return DiagramSocketData.generateUniqueKey(
-        DiagramGroupData.generateUniqueKey(this.def.toNodeId),
-        this.def.toSocketId,
+        DiagramGroupData.generateUniqueKey(this.def.toComponentId),
+        this.def.toExplicitInternalProviderId,
       );
     }
     return DiagramSocketData.generateUniqueKey(
-      DiagramNodeData.generateUniqueKey(this.def.toNodeId),
-      this.def.toSocketId,
+      DiagramNodeData.generateUniqueKey(this.def.toComponentId),
+      this.def.toExplicitInternalProviderId,
     );
   }
 }
@@ -158,10 +158,8 @@ export type DiagramStatusIcon = {
 export type DiagramNodeDef = {
   /** unique id of the node */
   id: DiagramElementId;
-  /** unique id of the node's component */
-  componentId: ComponentId;
   /** parent frame (or whatever) id */
-  parentNodeId?: DiagramElementId;
+  parentComponentId?: DiagramElementId;
   /** list of ancestor component ids */
   ancestorIds?: ComponentId[];
   /** node type within the context of the diagram */
@@ -191,7 +189,7 @@ export type DiagramNodeDef = {
   /** if true, node shows the `loading` overlay */
   isLoading: boolean;
   /** the list of childIds related to the node */
-  childNodeIds?: DiagramElementId[];
+  childComponentIds?: DiagramElementId[];
   /** change status of component in relation to head */
   changeStatus?: ChangeStatus;
 };
@@ -225,10 +223,10 @@ export type DiagramEdgeDef = {
   id: DiagramElementId;
   type?: string;
   name?: string;
-  fromNodeId: DiagramElementId;
-  fromSocketId: DiagramElementId;
-  toNodeId: DiagramElementId;
-  toSocketId: DiagramElementId;
+  fromComponentId: DiagramElementId;
+  fromExternalProviderId: DiagramElementId;
+  toComponentId: DiagramElementId;
+  toExplicitInternalProviderId: DiagramElementId;
   isBidirectional?: boolean;
   // color
   // thickness

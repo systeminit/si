@@ -6,6 +6,7 @@
 mod builtins;
 mod component;
 mod connection;
+mod diagram;
 mod property_editor;
 mod rebaser;
 mod sdf_mock;
