@@ -50,11 +50,7 @@ impl PropertyEditorSchema {
             let json: Value = row.try_get("object")?;
             let prop: Prop = serde_json::from_value(json)?;
             // Omit any secret definition props in the result
-            if prop
-                .json_pointer(ctx)
-                .await?
-                .starts_with("/root/secret_definition")
-            {
+            if prop.json_pointer().starts_with("/root/secret_definition") {
                 continue;
             }
             let property_editor_prop = PropertyEditorProp::new(prop);
