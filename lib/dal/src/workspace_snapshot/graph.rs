@@ -1901,21 +1901,17 @@ impl WorkspaceSnapshotGraph {
                 }
                 Update::ReplaceSubgraph {
                     onto: onto_subgraph_root,
-                    ..
+                    to_rebase: to_rebase_subgraph_root,
                 } => {
-                    // let updated_to_rebase = *updated
-                    //     .get(to_rebase_subgraph_root)
-                    //     .unwrap_or(to_rebase_subgraph_root);
-                    let _new_subgraph_root = self.find_in_self_or_create_using_onto(
+                    let updated_to_rebase = *updated
+                        .get(to_rebase_subgraph_root)
+                        .unwrap_or(to_rebase_subgraph_root);
+                    let new_subgraph_root = self.find_in_self_or_create_using_onto(
                         *onto_subgraph_root,
                         &mut updated,
                         onto,
                     )?;
-                    // This replace references call seems unnecessary since
-                    // import_subgraph will do so if necessary (and means lots
-                    // of graph walks). Leaving it in commented out for now,
-                    // however I'm not sure if we need it at all -zack
-                    // updated.extend(self.replace_references(updated_to_rebase, new_subgraph_root)?);
+                    updated.extend(self.replace_references(updated_to_rebase, new_subgraph_root)?);
                 }
             }
         }
