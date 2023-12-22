@@ -35,21 +35,22 @@ impl DockerEngine {
             std::path::Path::new("/var/run/docker.sock").to_path_buf(),
         ];
 
-        let docker: Docker;
-        if let "" = docker_sock.as_str() {
+        let docker = if docker_sock.is_empty() {
             let socket = docker_socket_candidates
                 .iter()
                 .find(|candidate| candidate.exists())
                 .ok_or(eyre!(
-            "failed to determine Docker socket location. Set a custom location using `--docker-sock` \
-            or `SI_DOCKER_SOCK`; candidates={docker_socket_candidates:?}"
-        ))?;
-            docker = Docker::unix(socket)
+                    "failed to determine Docker socket location. Set a custom location using \
+                    `--docker-sock` or `SI_DOCKER_SOCK`; candidates={docker_socket_candidates:?}"
+                ))?;
+
+            Docker::unix(socket)
         } else {
             println!("Checking for user supplied docker.sock");
             let path = std::path::Path::new(docker_sock.as_str()).to_path_buf();
-            docker = Docker::unix(path);
-        }
+
+            Docker::unix(path)
+        };
 
         Ok(Box::new(DockerEngine { docker }))
     }

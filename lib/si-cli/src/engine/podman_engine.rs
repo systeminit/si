@@ -61,21 +61,22 @@ impl PodmanEngine {
 
         podman_socket_candidates.push(std::path::Path::new("/var/run/podman.sock").to_path_buf());
 
-        let podman: Podman;
-        if let "" = podman_sock.as_str() {
+        let podman = if podman_sock.is_empty() {
             let socket = podman_socket_candidates
                 .iter()
                 .find(|candidate| candidate.exists())
                 .ok_or(eyre!(
-            "failed to determine podman socket location. Set a custom location using `--podman-sock` \
-            or `SI_PODMAN_SOCK`; candidates={podman_socket_candidates:?}"
-        ))?;
-            podman = Podman::unix(socket)
+                    "failed to determine podman socket location. Set a custom location using \
+                    `--podman-sock` or `SI_PODMAN_SOCK`; candidates={podman_socket_candidates:?}"
+                ))?;
+
+            Podman::unix(socket)
         } else {
             println!("Checking for user supplied podman.sock");
             let path = std::path::Path::new(podman_sock.as_str()).to_path_buf();
-            podman = Podman::unix(path);
-        }
+
+            Podman::unix(path)
+        };
 
         Ok(Box::new(PodmanEngine {
             podman,
