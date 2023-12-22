@@ -10,7 +10,6 @@ use thiserror::Error;
 
 use crate::fix::batch::FixBatchId;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
-use crate::schema::SchemaUiMenu;
 use crate::{
     func::backend::js_action::ActionRunResult, impl_standard_model, pk, standard_model,
     standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to, ActionId,
@@ -136,6 +135,7 @@ pub struct Fix {
 
     /// The [`Component`](crate::Component) being fixed.
     component_id: ComponentId,
+    component_name: String,
     /// The [`ActionPrototype`](crate::action_prototype::ActionPrototype) that runs the action for
     /// this fix.
     action_prototype_id: ActionPrototypeId,
@@ -177,6 +177,7 @@ impl Fix {
         ctx: &DalContext,
         fix_batch_id: FixBatchId,
         component_id: ComponentId,
+        component_name: String,
         action_prototype_id: ActionPrototypeId,
     ) -> FixResult<Self> {
         let row = ctx
@@ -184,11 +185,12 @@ impl Fix {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM fix_create_v1($1, $2, $3, $4)",
+                "SELECT object FROM fix_create_v2($1, $2, $3, $4, $5)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &component_id,
+                    &component_name,
                     &action_prototype_id,
                 ],
             )
@@ -199,6 +201,7 @@ impl Fix {
     }
 
     standard_model_accessor_ro!(component_id, ComponentId);
+    standard_model_accessor_ro!(component_name, String);
     standard_model_accessor_ro!(action_prototype_id, ActionPrototypeId);
     standard_model_accessor_ro!(action_kind, ActionKind);
     standard_model_accessor!(started_at, Option<String>, FixResult);
@@ -356,11 +359,20 @@ impl Fix {
             }
         };
         // Gather component-related information, even if the component has been deleted.
-        let (component_name, schema_name, category) =
-            Self::component_details_for_history_view(ctx, self.component_id).await?;
+        let component =
+            Component::get_by_id(&ctx.clone_with_delete_visibility(), self.component_id())
+                .await?
+                .ok_or_else(|| ComponentError::NotFound(*self.component_id()))?;
+        let schema_name = component
+            .schema(&ctx.clone_with_delete_visibility())
+            .await?
+            .ok_or_else(|| ComponentError::NoSchema(*self.component_id()))?
+            .name()
+            .to_owned();
 
         let mut display_name = self.action_kind().clone().to_string();
         let action_prototype = ActionPrototype::get_by_id(ctx, self.action_prototype_id()).await?;
+
         if let Some(ap) = action_prototype {
             let func_details = Func::get_by_id(ctx, &ap.func_id()).await?;
             if let Some(func) = func_details {
@@ -382,44 +394,12 @@ impl Fix {
             action_kind: *self.action_kind(),
             display_name,
             schema_name,
-            component_name,
+            component_name: self.component_name().to_owned(),
             component_id: self.component_id,
-            provider: category,
             resource: resource.map(ResourceView::new),
             started_at: self.started_at().map(|s| s.to_string()),
             finished_at: self.finished_at().map(|s| s.to_string()),
         }))
-    }
-
-    /// Gather details related to the [`Component`](crate::Component) for assembling a
-    /// [`FixHistoryView`].
-    ///
-    /// This private method should only be called by [`Self::history_view`].
-    async fn component_details_for_history_view(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> FixResult<(String, String, Option<String>)> {
-        // For the component-related information, we want to ensure that we can gather the
-        // fix history view if the component has been deleted. This is helpful if deletion fixes
-        // fail and the component still needs to be deleted.
-        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
-
-        let component = Component::get_by_id(ctx_with_deleted, &component_id)
-            .await?
-            .ok_or_else(|| ComponentError::NotFound(component_id))?;
-        let schema = component
-            .schema(ctx_with_deleted)
-            .await?
-            .ok_or_else(|| ComponentError::NoSchema(component_id))?;
-        let category = SchemaUiMenu::find_for_schema(ctx_with_deleted, *schema.id())
-            .await?
-            .map(|um| um.category().to_string());
-
-        Ok((
-            component.name(ctx_with_deleted).await?,
-            schema.name().to_owned(),
-            category,
-        ))
     }
 }
 
@@ -433,7 +413,6 @@ pub struct FixHistoryView {
     schema_name: String,
     component_name: String,
     component_id: ComponentId,
-    provider: Option<String>,
     started_at: Option<String>,
     finished_at: Option<String>,
     resource: Option<ResourceView>,

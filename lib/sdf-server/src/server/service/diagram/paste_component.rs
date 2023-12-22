@@ -181,7 +181,7 @@ pub async fn paste_components(
     let mut pasted_components_by_original = HashMap::new();
     for component_id in &request.component_ids {
         let ctx_builder = ctx.to_builder();
-        let (visibility, component_id) = (request.visibility, *component_id);
+        let (visibility, component_id) = (*ctx.visibility(), *component_id);
         let (offset_x, offset_y) = (request.offset_x, request.offset_y);
         let (original_uri, posthog_client) =
             (original_uri.clone(), PosthogClient(posthog_client.clone()));

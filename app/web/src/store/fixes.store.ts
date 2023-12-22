@@ -32,7 +32,6 @@ export type Fix = {
   componentName: string;
   componentId: ComponentId;
   attributeValueId: AttributeValueId;
-  provider?: string;
   resource?: Resource | null;
   startedAt?: string;
   finishedAt?: string;
