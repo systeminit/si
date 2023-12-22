@@ -64,8 +64,8 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
-    pk, AttributePrototype, AttributePrototypeId, DalContext, Func, FuncId, PropId, PropKind,
-    Timestamp, TransactionsError,
+    pk, AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncId,
+    InternalProviderId, PropId, PropKind, Timestamp, TransactionsError,
 };
 
 pub mod view;
@@ -93,6 +93,8 @@ pub enum AttributeValueError {
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight mismatch, expected {0:?} to be {1:?}")]
     NodeWeightMismatch(NodeIndex, NodeWeightDiscriminants),
+    #[error("attribute value not found for component ({0}) and explicit internal provider ({1})")]
+    NotFoundForComponentAndExplicitInternalProvider(ComponentId, InternalProviderId),
     #[error("array or map prop missing element prop: {0}")]
     PropMissingElementProp(PropId),
     #[error("array or map prop has more than one child prop: {0}")]
@@ -1072,6 +1074,65 @@ impl AttributeValue {
             }
         }
         maybe_prop_id.ok_or(AttributeValueError::PropNotFound(attribute_value_id))
+    }
+
+    pub fn find_for_component_and_explicit_internal_provider(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        explicit_internal_provider_id: InternalProviderId,
+    ) -> AttributeValueResult<AttributeValueId> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        // Collect all attribute value ids that correspond to external providers and explicit internal providers.
+        let mut attribute_value_ids: Vec<AttributeValueId> = Vec::new();
+        let maybe_attribute_value_node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                component_id,
+                EdgeWeightKindDiscriminants::Use,
+            )?;
+        for maybe_attribute_value_node_index in maybe_attribute_value_node_indices {
+            let maybe_attribute_value_node_weight =
+                workspace_snapshot.get_node_weight(maybe_attribute_value_node_index)?;
+            if let Some(discrim) = maybe_attribute_value_node_weight.content_address_discriminants()
+            {
+                if ContentAddressDiscriminants::AttributeValue == discrim {
+                    attribute_value_ids.push(maybe_attribute_value_node_weight.id().into());
+                }
+            }
+        }
+
+        // Find the attribute value for the provided explicit internal provider. This is a greedy algorithm, so we are
+        // not checking if there are accidentally two explicit internal providers for a given attribute value. Good luck.
+        for attribute_value_id in attribute_value_ids {
+            let maybe_explicit_internal_provider_node_indices = workspace_snapshot
+                .outgoing_targets_for_edge_weight_kind(
+                    attribute_value_id,
+                    EdgeWeightKindDiscriminants::Provider,
+                )?;
+            for maybe_explicit_internal_provider_node_index in
+                maybe_explicit_internal_provider_node_indices
+            {
+                let maybe_explicit_internal_provider_node_weight = workspace_snapshot
+                    .get_node_weight(maybe_explicit_internal_provider_node_index)?;
+                if let Some(discrim) =
+                    maybe_explicit_internal_provider_node_weight.content_address_discriminants()
+                {
+                    if ContentAddressDiscriminants::InternalProvider == discrim
+                        && maybe_explicit_internal_provider_node_weight.id()
+                            == explicit_internal_provider_id.into()
+                    {
+                        return Ok(attribute_value_id);
+                    }
+                }
+            }
+        }
+
+        Err(
+            AttributeValueError::NotFoundForComponentAndExplicitInternalProvider(
+                component_id,
+                explicit_internal_provider_id,
+            ),
+        )
     }
 }
 

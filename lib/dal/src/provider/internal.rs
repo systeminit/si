@@ -67,9 +67,10 @@
 //! This design also lets us cache the view of a [`Prop`](crate::Prop) and its children rather
 //! than directly observing the real time values frequently.
 
-use content_store::Store;
+use content_store::{ContentHash, Store};
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -86,8 +87,8 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributePrototype, AttributePrototypeId, DalContext, Func, FuncId, PropId,
-    SchemaVariantId, Timestamp, TransactionsError,
+    pk, AttributePrototype, AttributePrototypeId, AttributeValueId, DalContext, Func, FuncId,
+    PropId, SchemaVariantId, Timestamp, TransactionsError,
 };
 
 #[remain::sorted]
@@ -101,6 +102,10 @@ pub enum InternalProviderError {
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("missing attribute prototype for explicit internal provider: {0}")]
+    MissingAttributePrototypeExplicit(InternalProviderId),
+    #[error("missing attribute value for explicit internal provider: {0}")]
+    MissingAttributeValueExplicit(InternalProviderId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("Prop {0} is missing an internal provider")]
@@ -445,6 +450,94 @@ impl InternalProvider {
         }
 
         Ok(Self::assemble(id.into(), content))
+    }
+
+    pub fn prototype_id_for_explicit(
+        ctx: &DalContext,
+        explicit_internal_provider_id: InternalProviderId,
+    ) -> InternalProviderResult<AttributePrototypeId> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let prototype_node_index = *workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                explicit_internal_provider_id,
+                EdgeWeightKindDiscriminants::Prototype,
+            )?
+            .get(0)
+            .ok_or(InternalProviderError::MissingAttributePrototypeExplicit(
+                explicit_internal_provider_id,
+            ))?;
+        Ok(workspace_snapshot
+            .get_node_weight(prototype_node_index)?
+            .id()
+            .into())
+    }
+
+    pub fn attribute_value_id_for_explicit(
+        ctx: &DalContext,
+        explicit_internal_provider_id: InternalProviderId,
+    ) -> InternalProviderResult<AttributeValueId> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let attribute_value_node_index = *workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                explicit_internal_provider_id,
+                EdgeWeightKindDiscriminants::Provider,
+            )?
+            .get(0)
+            .ok_or(InternalProviderError::MissingAttributeValueExplicit(
+                explicit_internal_provider_id,
+            ))?;
+        Ok(workspace_snapshot
+            .get_node_weight(attribute_value_node_index)?
+            .id()
+            .into())
+    }
+
+    pub async fn list_explicit(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> InternalProviderResult<Vec<Self>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            schema_variant_id,
+            EdgeWeightKindDiscriminants::Provider,
+        )?;
+
+        let mut content_hashes = Vec::new();
+        let mut node_weights = Vec::new();
+        for node_index in node_indices {
+            let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+            if let Some(content_node_weight) = node_weight.get_option_content_node_weight_of_kind(
+                ContentAddressDiscriminants::InternalProvider,
+            ) {
+                content_hashes.push(content_node_weight.content_hash());
+                node_weights.push(content_node_weight);
+            }
+        }
+
+        let content_map: HashMap<ContentHash, InternalProviderContent> = ctx
+            .content_store()
+            .try_lock()?
+            .get_bulk(content_hashes.as_slice())
+            .await?;
+
+        let mut internal_providers = Vec::new();
+        for node_weight in node_weights {
+            match content_map.get(&node_weight.content_hash()) {
+                Some(content) => {
+                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+                    let InternalProviderContent::V1(inner) = content;
+
+                    internal_providers
+                        .push(Self::assemble(node_weight.id().into(), inner.to_owned()));
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
+            }
+        }
+
+        Ok(internal_providers)
     }
 }
 

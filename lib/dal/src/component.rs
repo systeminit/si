@@ -11,8 +11,12 @@ use thiserror::Error;
 use tokio::sync::TryLockError;
 use ulid::Ulid;
 
+use crate::attribute::prototype::argument::{
+    AttributePrototypeArgument, AttributePrototypeArgumentError,
+};
 use crate::attribute::value::AttributeValueError;
 use crate::change_set_pointer::ChangeSetPointerError;
+use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::SchemaVariantError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
@@ -23,8 +27,9 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributeValue, AttributeValueId, DalContext, PropId, PropKind, SchemaVariant,
-    SchemaVariantId, Timestamp, TransactionsError, WsEvent, WsEventResult, WsPayload,
+    pk, AttributeValue, AttributeValueId, DalContext, ExternalProviderId, InternalProvider,
+    InternalProviderId, PropId, PropKind, SchemaVariant, SchemaVariantId, Timestamp,
+    TransactionsError, WsEvent, WsEventResult, WsPayload,
 };
 
 pub mod resource;
@@ -43,14 +48,19 @@ pub const DEFAULT_COMPONENT_Y_POSITION: &str = "0";
 pub const DEFAULT_COMPONENT_WIDTH: &str = "500";
 pub const DEFAULT_COMPONENT_HEIGHT: &str = "500";
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ComponentError {
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
     #[error("found multiple root attribute values ({0} and {1}, at minimum) for component: {2}")]
     MultipleRootAttributeValuesFound(AttributeValueId, AttributeValueId, ComponentId),
     #[error("node weight error: {0}")]
@@ -533,6 +543,45 @@ impl Component {
         }
         maybe_root_attribute_value_id
             .ok_or(ComponentError::RootAttributeValueNotFound(component_id))
+    }
+
+    pub fn connect(
+        ctx: &DalContext,
+        source_component_id: ComponentId,
+        source_external_provider_id: ExternalProviderId,
+        destination_component_id: ComponentId,
+        destination_explicit_internal_provider_id: InternalProviderId,
+    ) -> ComponentResult<()> {
+        let destination_attribute_value_id =
+            AttributeValue::find_for_component_and_explicit_internal_provider(
+                ctx,
+                destination_component_id,
+                destination_explicit_internal_provider_id,
+            )?;
+
+        // Use the attribute prototype from the attribute value, if one exists. Otherwise, use the default attribute
+        // prototype from the schema variant.
+        let destination_prototype_id =
+            if let Some(found_attribute_prototype_id_for_attribute_value) =
+                AttributeValue::prototype_id(ctx, destination_attribute_value_id)?
+            {
+                found_attribute_prototype_id_for_attribute_value
+            } else {
+                InternalProvider::prototype_id_for_explicit(
+                    ctx,
+                    destination_explicit_internal_provider_id,
+                )?
+            };
+
+        AttributePrototypeArgument::new_inter_component(
+            ctx,
+            source_component_id,
+            source_external_provider_id,
+            destination_component_id,
+            destination_prototype_id,
+        )?;
+
+        Ok(())
     }
 }
 

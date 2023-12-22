@@ -339,7 +339,22 @@ impl NodeWeight {
         }
     }
 
-    // NOTE(nick): individual node weight funcs below.
+    pub fn get_option_content_node_weight_of_kind(
+        &self,
+        content_addr_discrim: ContentAddressDiscriminants,
+    ) -> Option<ContentNodeWeight> {
+        match self {
+            NodeWeight::Content(inner) => {
+                let inner_addr_discrim: ContentAddressDiscriminants =
+                    inner.content_address().into();
+                if inner_addr_discrim != content_addr_discrim {
+                    return None;
+                }
+                Some(inner.to_owned())
+            }
+            _other => None,
+        }
+    }
 
     pub fn new_content(
         change_set: &ChangeSetPointer,
