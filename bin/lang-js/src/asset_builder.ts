@@ -634,7 +634,7 @@ export interface PropDefinition {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   defaultValue?: any;
   validations?: Validation[];
-  validationFormat: Joi.Description;
+  validationFormat: string; // A JSON.stringify()-ed Joi.Descriptor
   mapKeyFuncs?: MapKeyFunc[];
 }
 
@@ -687,7 +687,7 @@ export class PropBuilder implements IPropBuilder {
 
   constructor() {
     this.prop = <PropDefinition>{
-      validationFormat: Joi.any().describe(),
+      validationFormat: JSON.stringify(Joi.any().describe()),
     };
   }
 
@@ -786,21 +786,18 @@ export class PropBuilder implements IPropBuilder {
   /**
    * Add joi validation schema to this prop
    *
-   *
    * @returns this
    *
    * @example
    * .setValidationFormat(Joi.string().required())
-   * @param format
+   * @param format {Joi.Schema} - A joi schema object
    */
   setValidationFormat(format: Joi.Schema): this {
-    this.prop.validationFormat = format.describe();
-
     try {
-      this.prop.validationFormat = format.describe();
+      this.prop.validationFormat = JSON.stringify(format.describe());
     } catch (e) {
       const message = e instanceof Error ? e.message : "unknown";
-      throw Error(`Error compiling schema description: ${message}`);
+      throw Error(`Error compiling validation format: ${message}`);
     }
 
     return this;
@@ -1168,7 +1165,6 @@ export interface Asset {
   inputSockets: SocketDefinition[];
   outputSockets: SocketDefinition[];
   docLinks: Record<string, string>;
-  validationFormat: string; // A JSON.stringify()-ed Joi.Descriptor
 }
 
 export interface IAssetBuilder {
@@ -1305,21 +1301,6 @@ export class AssetBuilder implements IAssetBuilder {
   }
 
   build() {
-    // Join prop validation formats
-    {
-      const validationFormats = <Record<string, Joi.Schema>>{};
-
-      for (const prop of this.asset.props ?? []) {
-        validationFormats[prop.name] = Joi.build(prop.validationFormat);
-      }
-
-      try {
-        this.asset.validationFormat = JSON.stringify(Joi.object(validationFormats).describe());
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "unknown";
-        throw Error(`Error compiling schema description: ${message}`);
-      }
-    }
     if (this.asset.secretDefinition && this.asset.secretProps?.length !== 1) {
       throw new Error(
         "Secret defining schema shouldn't define any extra secret props",
