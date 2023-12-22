@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 import { ComponentId } from "./components.store";
 import { ActionKind, useFixesStore } from "./fixes.store";
@@ -133,6 +134,7 @@ export const useActionsStore = () => {
         },
         actions: {
           async FETCH_QUEUED_ACTIONS() {
+            if (changeSetId === nilId()) return ApiRequest.noop;
             return new ApiRequest<{
               actions: Record<ActionId, ProposedAction>;
             }>({

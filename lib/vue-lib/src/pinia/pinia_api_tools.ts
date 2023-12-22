@@ -43,7 +43,7 @@ type ApiRequestActionsOnly<A> = SubType<
   A,
   (
     ...args: any
-  ) => Promise<ApiRequest<unknown, unknown>> | ApiRequest<unknown, unknown>
+  ) => Promise<ApiRequest<unknown, unknown> | typeof ApiRequest.noop>
 >;
 
 // augment pinia TS types for our plugin - see https://pinia.vuejs.org/core-concepts/plugins.html#typescript
@@ -130,6 +130,8 @@ export class ApiRequest<
     }
     if (!this.requestSpec.method) this.requestSpec.method = "get";
   }
+
+  static noop = Symbol("API_REQUEST_NOOP");
 }
 
 export function registerApi(axiosInstance: AxiosInstance) {
