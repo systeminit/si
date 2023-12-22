@@ -49,6 +49,8 @@ pub enum ChangeSetError {
     DalPkg(#[from] dal::pkg::PkgError),
     #[error(transparent)]
     Fix(#[from] FixError),
+    #[error("invalid header name {0}")]
+    Hyper(#[from] hyper::http::Error),
     #[error(transparent)]
     IndexClient(#[from] IndexClientError),
     #[error("invalid user {0}")]
