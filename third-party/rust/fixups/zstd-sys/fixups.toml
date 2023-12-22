@@ -1,0 +1,19 @@
+omit_targets = []
+extra_srcs = []
+omit_srcs = []
+rustc_flags = []
+cfgs = []
+features = []
+omit_features = []
+extra_deps = []
+omit_deps = []
+cargo_env = false
+
+[env]
+
+[[buildscript]]
+unresolved = "Unresolved build script at ../../../../.cargo/registry/src/index.crates.io-6f17d22bba15001f/zstd-sys-2.0.9+zstd.1.5.5/build.rs."
+
+[extra_mapped_srcs]
+
+[platform_fixup]

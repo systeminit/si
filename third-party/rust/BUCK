@@ -229,6 +229,41 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "alloc-no-stdlib-2.0.4.crate",
+    sha256 = "cc7bb162ec39d46ab1ca8c77bf72e890535becd1751bb45f64c597edb4c8c6b3",
+    strip_prefix = "alloc-no-stdlib-2.0.4",
+    urls = ["https://crates.io/api/v1/crates/alloc-no-stdlib/2.0.4/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "alloc-no-stdlib-2.0.4",
+    srcs = [":alloc-no-stdlib-2.0.4.crate"],
+    crate = "alloc_no_stdlib",
+    crate_root = "alloc-no-stdlib-2.0.4.crate/src/lib.rs",
+    edition = "2015",
+    visibility = [],
+)
+
+http_archive(
+    name = "alloc-stdlib-0.2.2.crate",
+    sha256 = "94fb8275041c72129eb51b7d0322c29b8387a0386127718b096429201a5d6ece",
+    strip_prefix = "alloc-stdlib-0.2.2",
+    urls = ["https://crates.io/api/v1/crates/alloc-stdlib/0.2.2/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "alloc-stdlib-0.2.2",
+    srcs = [":alloc-stdlib-0.2.2.crate"],
+    crate = "alloc_stdlib",
+    crate_root = "alloc-stdlib-0.2.2.crate/src/lib.rs",
+    edition = "2015",
+    visibility = [],
+    deps = [":alloc-no-stdlib-2.0.4"],
+)
+
+http_archive(
     name = "allocator-api2-0.2.16.crate",
     sha256 = "0942ffc6dcaadf03badf6e6a2d0228460359d5e34b57ccdc720b7382dfbd5ec5",
     strip_prefix = "allocator-api2-0.2.16",
@@ -432,6 +467,38 @@ cargo.rust_library(
     edition = "2018",
     features = ["std"],
     visibility = [],
+)
+
+http_archive(
+    name = "async-compression-0.4.5.crate",
+    sha256 = "bc2d0cfb2a7388d34f590e76686704c494ed7aaceed62ee1ba35cbf363abc2a5",
+    strip_prefix = "async-compression-0.4.5",
+    urls = ["https://crates.io/api/v1/crates/async-compression/0.4.5/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "async-compression-0.4.5",
+    srcs = [":async-compression-0.4.5.crate"],
+    crate = "async_compression",
+    crate_root = "async-compression-0.4.5.crate/src/lib.rs",
+    edition = "2018",
+    features = [
+        "brotli",
+        "flate2",
+        "gzip",
+        "tokio",
+        "zlib",
+    ],
+    visibility = [],
+    deps = [
+        ":brotli-3.4.0",
+        ":flate2-1.0.27",
+        ":futures-core-0.3.29",
+        ":memchr-2.5.0",
+        ":pin-project-lite-0.2.12",
+        ":tokio-1.32.0",
+    ],
 )
 
 alias(
@@ -1582,6 +1649,57 @@ cargo.rust_library(
         ":proc-macro2-1.0.66",
         ":quote-1.0.33",
         ":syn-1.0.109",
+    ],
+)
+
+http_archive(
+    name = "brotli-3.4.0.crate",
+    sha256 = "516074a47ef4bce09577a3b379392300159ce5b1ba2e501ff1c819950066100f",
+    strip_prefix = "brotli-3.4.0",
+    urls = ["https://crates.io/api/v1/crates/brotli/3.4.0/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "brotli-3.4.0",
+    srcs = [":brotli-3.4.0.crate"],
+    crate = "brotli",
+    crate_root = "brotli-3.4.0.crate/src/lib.rs",
+    edition = "2015",
+    features = [
+        "alloc-stdlib",
+        "std",
+    ],
+    visibility = [],
+    deps = [
+        ":alloc-no-stdlib-2.0.4",
+        ":alloc-stdlib-0.2.2",
+        ":brotli-decompressor-2.5.1",
+    ],
+)
+
+http_archive(
+    name = "brotli-decompressor-2.5.1.crate",
+    sha256 = "4e2e4afe60d7dd600fdd3de8d0f08c2b7ec039712e3b6137ff98b7004e82de4f",
+    strip_prefix = "brotli-decompressor-2.5.1",
+    urls = ["https://crates.io/api/v1/crates/brotli-decompressor/2.5.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "brotli-decompressor-2.5.1",
+    srcs = [":brotli-decompressor-2.5.1.crate"],
+    crate = "brotli_decompressor",
+    crate_root = "brotli-decompressor-2.5.1.crate/src/lib.rs",
+    edition = "2015",
+    features = [
+        "alloc-stdlib",
+        "std",
+    ],
+    visibility = [],
+    deps = [
+        ":alloc-no-stdlib-2.0.4",
+        ":alloc-stdlib-0.2.2",
     ],
 )
 
@@ -7064,9 +7182,7 @@ cargo.rust_binary(
     crate_root = "mime_guess-2.0.4.crate/build.rs",
     edition = "2015",
     visibility = [],
-    deps = [
-        ":unicase-2.7.0",
-    ],
+    deps = [":unicase-2.7.0"],
 )
 
 buildscript_run(
@@ -15138,13 +15254,20 @@ cargo.rust_library(
     crate_root = "tower-http-0.4.3.crate/src/lib.rs",
     edition = "2018",
     features = [
+        "async-compression",
+        "compression-br",
+        "compression-deflate",
+        "compression-gzip",
         "cors",
         "default",
+        "tokio",
+        "tokio-util",
         "trace",
         "tracing",
     ],
     visibility = [],
     deps = [
+        ":async-compression-0.4.5",
         ":bitflags-2.4.0",
         ":bytes-1.4.0",
         ":futures-core-0.3.29",
@@ -15153,6 +15276,8 @@ cargo.rust_library(
         ":http-body-0.4.5",
         ":http-range-header-0.3.1",
         ":pin-project-lite-0.2.12",
+        ":tokio-1.32.0",
+        ":tokio-util-0.7.8",
         ":tower-layer-0.3.2",
         ":tower-service-0.3.2",
         ":tracing-0.1.37",

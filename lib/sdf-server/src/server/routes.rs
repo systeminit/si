@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
+use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 
 use super::{server::ServerError, state::AppState};
@@ -47,7 +48,8 @@ pub fn routes(state: AppState) -> Router {
             "/api/variant_def",
             crate::server::service::variant_definition::routes(),
         )
-        .nest("/api/ws", crate::server::service::ws::routes());
+        .nest("/api/ws", crate::server::service::ws::routes())
+        .layer(CompressionLayer::new());
 
     // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).
     router = dev_routes(router);

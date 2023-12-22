@@ -9,6 +9,7 @@ use hyper::StatusCode;
 use serde_json::{json, Value};
 use si_data_pg::PgError;
 use thiserror::Error;
+use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 
 mod download_builtin_route;
@@ -54,7 +55,8 @@ pub fn routes(state: AppState) -> Router {
             post(reject_module_route::reject_module),
         )
         .layer(CorsLayer::permissive())
-        .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES));
+        .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES))
+        .layer(CompressionLayer::new());
 
     router.with_state(state)
 }
