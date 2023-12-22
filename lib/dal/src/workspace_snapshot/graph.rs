@@ -31,6 +31,7 @@ pub use petgraph::Direction;
 
 mod tests;
 
+pub type NodeIndexMap = HashMap<NodeIndex, NodeIndex>;
 pub type LineageId = Ulid;
 
 #[allow(clippy::large_enum_variant)]
@@ -1410,7 +1411,8 @@ impl WorkspaceSnapshotGraph {
                     equivalent_node_index
                 } else {
                     let new_node_index = self.add_node(node_weight_to_copy)?;
-                    self.replace_references(equivalent_node_index, new_node_index)?;
+                    updated.extend(self.replace_references(equivalent_node_index, new_node_index)?);
+
                     new_node_index
                 }
             } else {
@@ -1546,7 +1548,7 @@ impl WorkspaceSnapshotGraph {
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotGraphResult<HashMap<NodeIndex, NodeIndex>> {
-        let mut updated = HashMap::new();
+        let mut updated = NodeIndexMap::new();
 
         let mut edges_to_remove = Vec::new();
         let new_source_node_index = self.copy_node_by_index(source_node_index)?;
@@ -1699,9 +1701,10 @@ impl WorkspaceSnapshotGraph {
                 // that we'd be interested in happening from `self.add_edge`.
                 self.graph.update_edge(
                     new_node_index,
-                    *old_to_new_node_indices
+                    old_to_new_node_indices
                         .get(&destination_node_index)
-                        .unwrap_or(&destination_node_index),
+                        .copied()
+                        .unwrap_or(destination_node_index),
                     edge_weight,
                 );
             }
@@ -1863,7 +1866,7 @@ impl WorkspaceSnapshotGraph {
         onto: &WorkspaceSnapshotGraph,
         updates: &[Update],
     ) -> WorkspaceSnapshotGraphResult<()> {
-        let mut updated = HashMap::new();
+        let mut updated = NodeIndexMap::new();
         for update in updates {
             match update {
                 Update::NewEdge {
@@ -1892,20 +1895,27 @@ impl WorkspaceSnapshotGraph {
                         destination,
                         *edge_kind,
                     )?);
+                    if let Some(source_remapped) = updated.get(&updated_source).copied() {
+                        updated.insert(*source, source_remapped);
+                    }
                 }
                 Update::ReplaceSubgraph {
                     onto: onto_subgraph_root,
-                    to_rebase: to_rebase_subgraph_root,
+                    ..
                 } => {
-                    let updated_to_rebase = *updated
-                        .get(to_rebase_subgraph_root)
-                        .unwrap_or(to_rebase_subgraph_root);
-                    let new_subgraph_root = self.find_in_self_or_create_using_onto(
+                    // let updated_to_rebase = *updated
+                    //     .get(to_rebase_subgraph_root)
+                    //     .unwrap_or(to_rebase_subgraph_root);
+                    let _new_subgraph_root = self.find_in_self_or_create_using_onto(
                         *onto_subgraph_root,
                         &mut updated,
                         onto,
                     )?;
-                    updated.extend(self.replace_references(updated_to_rebase, new_subgraph_root)?);
+                    // This replace references call seems unnecessary since
+                    // import_subgraph will do so if necessary (and means lots
+                    // of graph walks). Leaving it in commented out for now,
+                    // however I'm not sure if we need it at all -zack
+                    // updated.extend(self.replace_references(updated_to_rebase, new_subgraph_root)?);
                 }
             }
         }
@@ -1916,7 +1926,7 @@ impl WorkspaceSnapshotGraph {
     fn find_in_self_or_create_using_onto(
         &mut self,
         unchecked: NodeIndex,
-        updated: &mut HashMap<NodeIndex, NodeIndex>,
+        updated: &mut NodeIndexMap,
         onto: &WorkspaceSnapshotGraph,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         let found_or_created = match updated.get(&unchecked) {

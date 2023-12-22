@@ -213,9 +213,9 @@ impl AttributeValue {
     pub async fn insert(
         ctx: &DalContext,
         parent_attribute_value_id: AttributeValueId,
-        key: Option<String>,
         value: Option<serde_json::Value>,
-    ) -> AttributeValueResult<()> {
+        key: Option<String>,
+    ) -> AttributeValueResult<AttributeValueId> {
         let element_prop_node_weight = {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
@@ -242,7 +242,7 @@ impl AttributeValue {
 
             // Ensure it actually is an array or map prop.
             if prop_node_weight.kind() != PropKind::Array
-                || prop_node_weight.kind() != PropKind::Map
+                && prop_node_weight.kind() != PropKind::Map
             {
                 return Err(AttributeValueError::InsertionForInvalidPropKind(
                     prop_node_weight.kind(),
@@ -307,14 +307,15 @@ impl AttributeValue {
         AttributePrototype::new(ctx, func_id)?;
 
         // The element has been created an inserted. Now, we can update it with the provided value.
-        Self::update(ctx, new_attribute_value.id, value).await
+        Self::update(ctx, new_attribute_value.id, value).await?;
+
+        Ok(new_attribute_value.id())
     }
 
     async fn vivify_value_and_parent_values(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<()> {
-        dbg!("vivify");
         // determine if the value is for a prop, or for an internal provider. if it is for an
         // internal provider we want to find if it is an internal provider for a prop (since we
         // want to use the function for that prop kind), or if it is an explicit internal  or
@@ -911,7 +912,6 @@ impl AttributeValue {
         attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
     ) -> AttributeValueResult<()> {
-        dbg!("set value");
         let prop_node_idx = {
             let mut maybe_prop_node_idx = None;
 

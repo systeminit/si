@@ -25,7 +25,7 @@ pub mod update_property_editor_value;
 // pub mod get_components_metadata;
 // pub mod get_diff;
 // pub mod get_resource;
-// pub mod insert_property_editor_value;
+pub mod insert_property_editor_value;
 // pub mod json;
 // pub mod list_qualifications;
 // pub mod list_resources;
@@ -167,10 +167,10 @@ pub fn routes() -> Router<AppState> {
             "/update_property_editor_value",
             post(update_property_editor_value::update_property_editor_value),
         )
-    // .route(
-    //     "/insert_property_editor_value",
-    //     post(insert_property_editor_value::insert_property_editor_value),
-    // )
+        .route(
+            "/insert_property_editor_value",
+            post(insert_property_editor_value::insert_property_editor_value),
+        )
     // .route(
     //     "/delete_property_editor_value",
     //     post(delete_property_editor_value::delete_property_editor_value),
