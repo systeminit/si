@@ -34,7 +34,7 @@ export function useChangeSetsStore() {
       }),
       getters: {
         allChangeSets: (state) => _.values(state.changeSetsById),
-        openChangeSets(): ChangeSet[] | null {
+        openChangeSets(): ChangeSet[] {
           return _.filter(this.allChangeSets, (cs) =>
             [ChangeSetStatus.Open, ChangeSetStatus.NeedsApproval].includes(
               cs.status,
@@ -186,28 +186,25 @@ export function useChangeSetsStore() {
         // - change_set/update_selected_change_set (was just fetching the change set info)
 
         getAutoSelectedChangeSetId() {
-          // we now include "head" in open change sets
-          // so this logic is a little off... but should be fine
-          // returning `false` means we cannot auto select
-          if (!this.openChangeSets?.length) return false; // no open change sets
-          if (this.openChangeSets.length <= 2) {
+          const lastChangeSetId = storage.getItem(
+            `SI:LAST_CHANGE_SET/${workspacePk}`,
+          );
+          if (
+            lastChangeSetId &&
+            this.changeSetsById[lastChangeSetId]?.status ===
+              ChangeSetStatus.Open
+          ) {
+            return lastChangeSetId;
+          }
+
+          if (this.openChangeSets?.length <= 2) {
             // will select the single open change set or head if thats all that exists
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             return _.last(this.openChangeSets)!.pk;
           }
-          // TODO: add logic to for auto-selecting when multiple change sets open
-          // - select one created by you
-          // - track last selected in localstorage and select that one...
-          const lastChangeSetId = storage.getItem(
-            `SI:LAST_CHANGE_SET/${workspacePk}`,
-          );
-          if (!lastChangeSetId) return false;
-          if (
-            this.changeSetsById[lastChangeSetId]?.status ===
-            ChangeSetStatus.Open
-          ) {
-            return lastChangeSetId;
-          }
+
+          // can add more logic to auto select eventually...
+
           return false;
         },
         getGeneratedChangesetName() {
