@@ -406,10 +406,7 @@ impl DalContext {
     /// Consumes all inner transactions and committing all changes made within them.
     pub async fn commit(&self) -> Result<Option<Conflicts>, TransactionsError> {
         let rebase_request = match self.write_snapshot().await? {
-            Some(workspace_snapshot_id) => {
-                dbg!(workspace_snapshot_id);
-                Some(self.get_rebase_request(workspace_snapshot_id)?)
-            }
+            Some(workspace_snapshot_id) => Some(self.get_rebase_request(workspace_snapshot_id)?),
             None => None,
         };
 

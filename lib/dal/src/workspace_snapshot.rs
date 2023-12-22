@@ -36,7 +36,6 @@ use petgraph::prelude::*;
 use petgraph::stable_graph::Edges;
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgRow};
-use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -55,6 +54,8 @@ use crate::{
     workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
 };
+
+use self::graph::NodeIndexMap;
 
 const FIND_FOR_CHANGE_SET: &str =
     include_str!("queries/workspace_snapshot/find_for_change_set.sql");
@@ -321,7 +322,7 @@ impl WorkspaceSnapshot {
         &mut self,
         other: &mut Self,
         root_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<HashMap<NodeIndex, NodeIndex>> {
+    ) -> WorkspaceSnapshotResult<NodeIndexMap> {
         let updated_indices = self
             .working_copy()?
             .import_subgraph(other.working_copy()?, root_index)?;
@@ -332,7 +333,7 @@ impl WorkspaceSnapshot {
         &mut self,
         original_node_index: NodeIndex,
         new_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<HashMap<NodeIndex, NodeIndex>> {
+    ) -> WorkspaceSnapshotResult<NodeIndexMap> {
         Ok(self
             .working_copy()?
             .replace_references(original_node_index, new_node_index)?)
@@ -575,7 +576,7 @@ impl WorkspaceSnapshot {
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<HashMap<NodeIndex, NodeIndex>> {
+    ) -> WorkspaceSnapshotResult<NodeIndexMap> {
         Ok(self.working_copy()?.remove_edge(
             change_set,
             source_node_index,

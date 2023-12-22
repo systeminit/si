@@ -8,8 +8,10 @@
       :options="schemaVariantOptions"
     />
 
-    <WorkspaceVizSchemaVariant :schemaVariantId="selectedSchemaVariant"
-      :key="selectedSchemaVariant" />
+    <WorkspaceVizSchemaVariant
+      :key="selectedSchemaVariant"
+      :schemaVariantId="selectedSchemaVariant"
+    />
   </Stack>
 </template>
 
