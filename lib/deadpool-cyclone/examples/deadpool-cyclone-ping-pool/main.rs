@@ -50,22 +50,17 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
             result
         });
 
-    loop {
-        tokio::select! {
-            _ = &mut ctrl_c => {
-                info!("received ctrl-c signal, shutting down");
-                break
-            }
-            result = concurrent_pings => {
-                match result {
-                    Ok(_) => {
-                        info!("finished pings");
-                        break
-                    }
-                    Err(err) => {
-                        error!(error = ?err, "found error in ping stream");
-                        break
-                    }
+    tokio::select! {
+        _ = &mut ctrl_c => {
+            info!("received ctrl-c signal, shutting down");
+        }
+        result = concurrent_pings => {
+            match result {
+                Ok(_) => {
+                    info!("finished pings");
+                }
+                Err(err) => {
+                    error!(error = ?err, "found error in ping stream");
                 }
             }
         }

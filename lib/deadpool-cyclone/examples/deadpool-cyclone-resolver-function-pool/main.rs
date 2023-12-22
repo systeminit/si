@@ -56,22 +56,17 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
             result
         });
 
-    loop {
-        tokio::select! {
-            _ = &mut ctrl_c => {
-                info!("received ctrl-c signal, shutting down");
-                break
-            }
-            result = concurrent_executions => {
-                match result {
-                    Ok(_) => {
-                        info!("finished executions");
-                        break
-                    }
-                    Err(err) => {
-                        error!(error = ?err, "found error in execution stream");
-                        break
-                    }
+    tokio::select! {
+        _ = &mut ctrl_c => {
+            info!("received ctrl-c signal, shutting down");
+        }
+        result = concurrent_executions => {
+            match result {
+                Ok(_) => {
+                    info!("finished executions");
+                }
+                Err(err) => {
+                    error!(error = ?err, "found error in execution stream");
                 }
             }
         }
