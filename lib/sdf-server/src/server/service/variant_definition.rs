@@ -9,6 +9,9 @@ use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use dal::authentication_prototype::{
+    AuthenticationPrototype, AuthenticationPrototypeContext, AuthenticationPrototypeError,
+};
 use dal::{
     attribute::prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
     func::argument::{FuncArgumentError, FuncArgumentId},
@@ -60,6 +63,8 @@ pub enum SchemaVariantDefinitionError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error(transparent)]
     AttributeValue(#[from] AttributeValueError),
+    #[error(transparent)]
+    AuthenticationPrototype(#[from] AuthenticationPrototypeError),
     #[error(transparent)]
     ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
@@ -514,6 +519,28 @@ pub async fn migrate_actions_to_new_schema_variant(
 
     for mut action in actions.drain(..) {
         action
+            .set_schema_variant_id(ctx, new_schema_variant_id)
+            .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn migrate_authentication_funcs_to_new_schema_variant(
+    ctx: &DalContext,
+    previous_schema_variant_id: SchemaVariantId,
+    new_schema_variant_id: SchemaVariantId,
+) -> SchemaVariantDefinitionResult<()> {
+    let mut auth_funcs = AuthenticationPrototype::find_for_context(
+        ctx,
+        AuthenticationPrototypeContext {
+            schema_variant_id: previous_schema_variant_id,
+        },
+    )
+    .await?;
+
+    for mut auth_func in auth_funcs.drain(..) {
+        auth_func
             .set_schema_variant_id(ctx, new_schema_variant_id)
             .await?;
     }
