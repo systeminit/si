@@ -81,7 +81,7 @@ impl WriteBytes for ValidationNode {
                 write_key_value_line(
                     writer,
                     KEY_EXPECTED_STRING_ARRAY_STR,
-                    serde_json::to_string(&self.expected_string_array.clone().unwrap_or(vec![]))
+                    serde_json::to_string(&self.expected_string_array.clone().unwrap_or_default())
                         .map_err(GraphError::parse)?,
                 )?;
                 write_key_value_line(
