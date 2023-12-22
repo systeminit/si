@@ -261,7 +261,7 @@ impl LocalUdsInstance {
 
     fn has_remaining_requests(&self) -> bool {
         match self.limit_requests {
-            Some(remaining) if remaining == 0 => false,
+            Some(0) => false,
             Some(_) | None => true,
         }
     }
