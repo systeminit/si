@@ -4,6 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use async_nats::Subject;
 use futures::Stream;
 use telemetry::prelude::*;
 
@@ -32,16 +33,16 @@ pub struct Subscriber {
 impl Subscriber {
     pub(crate) fn new(
         inner: async_nats::Subscriber,
-        subject: String,
+        subject: &Subject,
         connection_metadata: Arc<ConnectionMetadata>,
         sub_span: Span,
     ) -> Self {
         let metadata = SubscriberMessageMetadata {
             connection_metadata,
-            messaging_destination: subject.clone(),
+            messaging_destination: subject.to_string(),
             messaging_destination_kind: "topic",
             messaging_operation: "process",
-            messaging_subject: subject.clone(),
+            messaging_subject: subject.to_string(),
             process_otel_kind: FormattedSpanKind(SpanKind::Consumer).to_string(),
             process_otel_name: format!("{subject} process"),
         };

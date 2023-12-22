@@ -39,6 +39,16 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
+    cargo_lock_updated = update_cargo_lock(
+        Path("Cargo.toml"),
+        Path("Cargo.lock"),
+        args.check,
+    )
+    if cargo_lock_updated and args.check:
+        print("xxx Rust Cargo.lock is not in sync with Cargo.toml")
+        print(REMEDIATE_MSG)
+        return 1
+
     cargo_toml_updated = update_third_party_rust_cargo_toml(
         Path("Cargo.toml"),
         Path("third-party/rust/Cargo.toml"),
@@ -79,6 +89,86 @@ def main() -> int:
         print("    Nothing to do!")
 
     return 0
+
+
+def update_cargo_lock(
+    cargo_toml_file: Path,
+    cargo_lock_file: Path,
+    check_mode: bool,
+) -> bool:
+    if check_mode:
+        print("--- Checking {} in sync with {}".format(
+            cargo_lock_file,
+            cargo_toml_file,
+        ))
+    else:
+        print("--- Updating {} from {}".format(
+            cargo_lock_file,
+            cargo_toml_file,
+        ))
+
+    with tempfile.NamedTemporaryFile(mode="w+") as backup_lock:
+        # Make backup of Cargo.lock file
+        with open(
+                cargo_lock_file,
+                encoding="utf-8",
+        ) as src:
+            shutil.copyfileobj(src, backup_lock)
+            backup_lock.flush()
+            backup_lock.seek(0)
+
+        cmd = [
+            "cargo",
+            "generate-lockfile",
+        ]
+        result = subprocess.run(cmd)
+        if result.returncode != 0:
+            # Restore Cargo.lock file from backup
+            with open(
+                    cargo_lock_file,
+                    mode="w+",
+                    encoding="utf-8",
+            ) as dst:
+                backup_lock.seek(0)
+                shutil.copyfileobj(backup_lock, dst)
+                dst.flush()
+        result.check_returncode()
+
+        file_modified = False
+
+        cmd = [
+            "diff",
+            "-u",
+            backup_lock.name,
+            cargo_lock_file,
+        ]
+        result = subprocess.run(cmd, capture_output=True)
+        if result.returncode == 1:
+            print("  - Regenerated {} has changed with diff:\n".format(
+                cargo_lock_file))
+            print(result.stdout.decode("ascii"))
+            file_modified = True
+
+            if check_mode:
+                # Restore Cargo.lock file from backup
+                with open(
+                        cargo_lock_file,
+                        mode="w+",
+                        encoding="utf-8",
+                ) as dst:
+                    backup_lock.seek(0)
+                    shutil.copyfileobj(backup_lock, dst)
+                    dst.flush()
+        elif result.returncode != 0:
+            print("xxx diff command failed", file=sys.stderr)
+            print("xxx --- stdout:", file=sys.stderr)
+            print(result.stdout.decode("ascii"), file=sys.stderr)
+            print("xxx --- stderr:", file=sys.stderr)
+            print(result.stderr.decode("ascii"), file=sys.stderr)
+        else:
+            print("  - No changes detected for {}".format(cargo_lock_file))
+
+    return file_modified
 
 
 def update_third_party_rust_cargo_toml(

@@ -4,7 +4,7 @@ use dal::WorkspacePk;
 use futures::{Future, Sink, SinkExt, Stream};
 use futures_lite::future::FutureExt;
 use sdf_server::server::service::ws::crdt::{crdt_handle, BroadcastGroups, CrdtError};
-use si_data_nats::{NatsClient, NatsConfig};
+use si_data_nats::{NatsClient, NatsConfig, Subject};
 use std::{collections::HashMap, pin::Pin, sync::Arc, task::Context, task::Poll, time::Duration};
 use tokio::{
     sync::broadcast, sync::Mutex, sync::Notify, sync::RwLock, task, task::JoinHandle, time::timeout,
@@ -14,7 +14,7 @@ use yrs::{updates::encoder::Encode, Doc, GetString, Text, Transact, UpdateSubscr
 
 struct Server {
     nats: NatsClient,
-    channel_name: String,
+    channel_name: Subject,
     workspace_pk: WorkspacePk,
     id: String,
     broadcast_groups: BroadcastGroups,
@@ -41,8 +41,8 @@ async fn client(doc: Doc, server: &Server) -> Result<Client, Box<dyn std::error:
 
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
 
-    let subscription = server.nats.subscribe(&server.channel_name).await?;
-    let ws_subscription = server.nats.subscribe(&server.channel_name).await?;
+    let subscription = server.nats.subscribe(server.channel_name.clone()).await?;
+    let ws_subscription = server.nats.subscribe(server.channel_name.clone()).await?;
     let _handle = tokio::spawn(crdt_handle(
         sink.clone(),
         stream.clone(),
@@ -85,7 +85,7 @@ async fn start_server(
     }
     let nats = NatsClient::new(&config).await?;
 
-    let channel_name = format!("crdt-{workspace_pk}-{id}");
+    let channel_name = format!("crdt-{workspace_pk}-{id}").into();
     Ok(Server {
         nats,
         broadcast_groups,

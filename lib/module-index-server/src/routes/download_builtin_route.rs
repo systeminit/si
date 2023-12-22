@@ -56,8 +56,9 @@ pub async fn download_builtin_route(
         return Err(DownloadBuiltinError::NotBuiltin(module_id));
     }
 
-    let download_url =
-        s3_bucket.presign_get(format!("{}.sipkg", module.latest_hash), 60 * 5, None)?;
+    let download_url = s3_bucket
+        .presign_get(format!("{}.sipkg", module.latest_hash), 60 * 5, None)
+        .await?;
 
     Ok(Redirect::temporary(&download_url))
 }

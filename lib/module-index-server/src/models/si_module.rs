@@ -1,8 +1,4 @@
-use sea_orm::{
-    entity::prelude::*,
-    sea_query::{self, IdenStatic},
-    TryGetError,
-};
+use sea_orm::{entity::prelude::*, sea_query, DeriveIden, TryGetError};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use ulid::Ulid;
@@ -161,7 +157,7 @@ impl sea_orm::TryGetable for ModuleId {
     }
 }
 
-#[derive(IdenStatic, Clone, Copy)]
+#[derive(DeriveIden, Clone, Copy)]
 struct UlidIdentType;
 
 impl sea_query::ValueType for ModuleId {

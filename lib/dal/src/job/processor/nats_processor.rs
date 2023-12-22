@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use futures::StreamExt;
-use si_data_nats::NatsClient;
+use si_data_nats::{NatsClient, Subject};
 use telemetry::prelude::*;
 use tokio::task::JoinSet;
 
@@ -17,15 +17,15 @@ const NATS_JOB_QUEUE: &str = "pinga-jobs";
 #[derive(Clone, Debug)]
 pub struct NatsProcessor {
     client: NatsClient,
-    pinga_subject: String,
+    pinga_subject: Subject,
 }
 
 impl NatsProcessor {
     pub fn new(client: NatsClient) -> Self {
         let pinga_subject = if let Some(prefix) = client.metadata().subject_prefix() {
-            format!("{prefix}.{NATS_JOB_QUEUE}")
+            format!("{prefix}.{NATS_JOB_QUEUE}").into()
         } else {
-            NATS_JOB_QUEUE.to_owned()
+            NATS_JOB_QUEUE.into()
         };
 
         Self {
@@ -40,7 +40,7 @@ impl NatsProcessor {
 
             if let Err(err) = self
                 .client
-                .publish(&self.pinga_subject, serde_json::to_vec(&job_info)?)
+                .publish(self.pinga_subject.clone(), serde_json::to_vec(&job_info)?)
                 .await
             {
                 error!("Nats job push failed, some jobs will be dropped");
@@ -59,16 +59,16 @@ impl JobQueueProcessor for NatsProcessor {
 
         job_info.blocking = true;
 
-        let job_reply_inbox = self.client.new_inbox();
+        let job_reply_inbox = Subject::from(self.client.new_inbox());
         let mut reply_subscriber = self
             .client
-            .subscribe(&job_reply_inbox)
+            .subscribe(job_reply_inbox.clone())
             .await
             .map_err(|e| BlockingJobError::Nats(e.to_string()))?;
         self.client
             .publish_with_reply(
-                &self.pinga_subject,
-                &job_reply_inbox,
+                self.pinga_subject.clone(),
+                job_reply_inbox,
                 serde_json::to_vec(&job_info)
                     .map_err(|e| BlockingJobError::Serde(e.to_string()))?,
             )

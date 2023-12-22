@@ -371,7 +371,7 @@ where
     ) -> Option<Thing> {
         self.0
             .entry(change_set_pk.unwrap_or(ChangeSetPk::NONE))
-            .or_insert(HashMap::new())
+            .or_default()
             .insert(key, thing)
     }
 }

@@ -104,7 +104,7 @@ pub async fn upsert_module_route(
         owner_display_name: Set(Some(module_metadata.created_by().to_owned())),
         latest_hash: Set(module_metadata.hash().to_string()),
         // maybe use db's `CLOCK_TIMESTAMP()`?
-        latest_hash_created_at: Set(DateTime::<FixedOffset>::from_utc(
+        latest_hash_created_at: Set(DateTime::<FixedOffset>::from_naive_utc_and_offset(
             Utc::now().naive_utc(),
             Utc.fix(),
         )),

@@ -7,6 +7,7 @@ rust_library(
         "//third-party/rust:derive_builder",
         "//third-party/rust:opentelemetry-otlp",
         "//third-party/rust:opentelemetry-semantic-conventions",
+        "//third-party/rust:opentelemetry_sdk",
         "//third-party/rust:remain",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
