@@ -21,6 +21,7 @@ use si_pkg::{
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
+use crate::service::variant_definition::migrate_authentication_funcs_to_new_schema_variant;
 
 use super::{
     super::func::FuncVariant, maybe_delete_schema_variant_connected_to_variant_def,
@@ -228,17 +229,25 @@ pub async fn exec_variant_def(
                     schema_variant_id,
                 )
                 .await?;
+                migrate_authentication_funcs_to_new_schema_variant(
+                    &ctx,
+                    previous_schema_variant_id,
+                    schema_variant_id,
+                )
+                .await?;
 
                 let schema_variant = SchemaVariant::get_by_id(&ctx, &schema_variant_id)
                     .await?
                     .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
 
-                let attribute_prototypes = migrate_attribute_functions_to_new_schema_variant(
-                    &ctx,
-                    attribute_prototypes,
-                    &schema_variant,
-                )
-                .await?;
+                let attribute_prototypes = dbg!(
+                    migrate_attribute_functions_to_new_schema_variant(
+                        &ctx,
+                        attribute_prototypes,
+                        &schema_variant,
+                    )
+                    .await
+                )?;
                 let mut detached_attribute_prototypes =
                     Vec::with_capacity(attribute_prototypes.len());
 
