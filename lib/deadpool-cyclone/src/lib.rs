@@ -16,7 +16,7 @@
 )]
 
 use async_trait::async_trait;
-use deadpool::managed;
+use deadpool::managed::{self, Metrics};
 use thiserror::Error;
 
 pub use self::instance::{Instance, Spec};
@@ -39,10 +39,6 @@ pub mod instance;
 pub type Pool<S> = managed::Pool<Manager<S>>;
 /// Type alias for using [`managed::PoolBuilder`] with Cyclone.
 pub type PoolBuilder<S> = managed::PoolBuilder<Manager<S>, Connection<S>>;
-/// Type alias for using [`managed::BuildError`] with Cyclone.
-pub type BuildError<E> = managed::BuildError<ManagerError<E>>;
-/// Type alias for using [`managed::CreatePoolError`] with Cyclone.
-pub type CreatePoolError<E> = managed::CreatePoolError<ManagerError<E>, E>;
 /// Type alias for using [`managed::PoolError`] with Cyclone.
 pub type PoolError<E> = managed::PoolError<ManagerError<E>>;
 /// Type alias for using [`managed::Object`] with Cyclone.
@@ -51,8 +47,6 @@ pub type Object<S> = managed::Object<Manager<S>>;
 pub type Hook<S> = managed::Hook<Manager<S>>;
 /// Type alias for using [`managed::HookError`] with Cyclone.
 pub type HookError<S> = managed::HookError<Manager<S>>;
-/// Type alias for using [`managed::HookErrorCause`] with Cyclone.
-pub type HookErrorCause<S> = managed::HookErrorCause<Manager<S>>;
 
 /// Type alias for using [`managed::HookErrorCause`] with Cyclone.
 pub type Connection<S> = managed::Object<Manager<S>>;
@@ -107,7 +101,11 @@ where
         self.spec.spawn().await
     }
 
-    async fn recycle(&self, obj: &mut Self::Type) -> managed::RecycleResult<Self::Error> {
+    async fn recycle(
+        &self,
+        obj: &mut Self::Type,
+        _: &Metrics,
+    ) -> managed::RecycleResult<Self::Error> {
         match obj.ensure_healthy().await {
             Ok(_) => Ok(()),
             Err(err) => {
