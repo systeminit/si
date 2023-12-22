@@ -1,5 +1,6 @@
-use content_store::Store;
+use content_store::{ContentHash, Store};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -7,8 +8,10 @@ use thiserror::Error;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::provider::{ProviderArity, ProviderKind};
-use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::SchemaVariantId;
@@ -159,6 +162,54 @@ impl ExternalProvider {
         }
 
         Ok(Self::assemble(id.into(), content))
+    }
+
+    pub async fn list(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> ExternalProviderResult<Vec<Self>> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            schema_variant_id,
+            EdgeWeightKindDiscriminants::Provider,
+        )?;
+
+        let mut content_hashes = Vec::new();
+        let mut node_weights = Vec::new();
+        for node_index in node_indices {
+            let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+            if let Some(content_node_weight) = node_weight.get_option_content_node_weight_of_kind(
+                ContentAddressDiscriminants::ExternalProvider,
+            ) {
+                content_hashes.push(content_node_weight.content_hash());
+                node_weights.push(content_node_weight);
+            }
+        }
+
+        let content_map: HashMap<ContentHash, ExternalProviderContent> = ctx
+            .content_store()
+            .try_lock()?
+            .get_bulk(content_hashes.as_slice())
+            .await?;
+
+        let mut external_providers = Vec::new();
+        for node_weight in node_weights {
+            match content_map.get(&node_weight.content_hash()) {
+                Some(content) => {
+                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+                    let ExternalProviderContent::V1(inner) = content;
+
+                    external_providers
+                        .push(Self::assemble(node_weight.id().into(), inner.to_owned()));
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
+            }
+        }
+
+        Ok(external_providers)
     }
 }
 

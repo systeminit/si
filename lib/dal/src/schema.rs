@@ -214,9 +214,9 @@ impl Schema {
 
         for node_weight in schema_node_weights {
             match schema_contents.get(&node_weight.content_hash()) {
-                Some(func_content) => {
+                Some(content) => {
                     // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-                    let SchemaContent::V1(inner) = func_content;
+                    let SchemaContent::V1(inner) = content;
 
                     schemas.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
                 }
@@ -227,6 +227,37 @@ impl Schema {
         }
 
         Ok(schemas)
+    }
+
+    // NOTE(nick): this assumes that schema names are unique.
+    pub async fn find_by_name(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+    ) -> SchemaResult<Option<Self>> {
+        let schema_node_indices = {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let schema_category_index_id =
+                workspace_snapshot.get_category_node(None, CategoryNodeKind::Schema)?;
+            workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+                schema_category_index_id,
+                EdgeWeightKindDiscriminants::Use,
+            )?
+        };
+
+        // NOTE(nick): this algorithm could be better.
+        for schema_node_index in schema_node_indices {
+            let schema_node_weight = {
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                workspace_snapshot
+                    .get_node_weight(schema_node_index)?
+                    .get_content_node_weight_of_kind(ContentAddressDiscriminants::Schema)?
+            };
+            let schema = Self::get_by_id(ctx, schema_node_weight.id().into()).await?;
+            if schema.name == name.as_ref() {
+                return Ok(Some(schema));
+            }
+        }
+        Ok(None)
     }
 }
 

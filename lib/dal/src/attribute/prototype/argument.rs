@@ -21,7 +21,8 @@ use crate::{
         node_weight::{NodeWeight, NodeWeightError},
         WorkspaceSnapshotError,
     },
-    AttributePrototypeId, DalContext, Timestamp, TransactionsError,
+    AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, Timestamp,
+    TransactionsError,
 };
 
 use self::static_value::{StaticArgumentValue, StaticArgumentValueId};
@@ -59,10 +60,21 @@ pub enum AttributePrototypeArgumentError {
 
 pub type AttributePrototypeArgumentResult<T> = Result<T, AttributePrototypeArgumentError>;
 
+/// Side effect metadata for inter-[`Component`](crate::Component) connections.
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct InterComponentMetadata {
+    pub source_component_id: ComponentId,
+    pub destination_component_id: ComponentId,
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributePrototypeArgument {
     id: AttributePrototypeArgumentId,
     timestamp: Timestamp,
+    /// Side effect metadata that is populated accordingly:
+    /// - [`Some`]: _inter_-[`Component`](crate::Component) connections
+    /// - [`None`]: _intra_-[`Component`](crate::Component) connections
+    inter_component_metadata: Option<InterComponentMetadata>,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -73,6 +85,7 @@ pub enum AttributePrototypeArgumentContent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct AttributePrototypeArgumentContentV1 {
     pub timestamp: Timestamp,
+    pub inter_component_metadata: Option<InterComponentMetadata>,
 }
 
 pub enum AttributePrototypeArgumentValueSource {
@@ -83,11 +96,12 @@ pub enum AttributePrototypeArgumentValueSource {
 impl AttributePrototypeArgument {
     pub fn assemble(
         id: AttributePrototypeArgumentId,
-        inner: &AttributePrototypeArgumentContentV1,
+        inner: AttributePrototypeArgumentContentV1,
     ) -> Self {
         Self {
             id,
-            timestamp: inner.timestamp.to_owned(),
+            timestamp: inner.timestamp,
+            inter_component_metadata: inner.inter_component_metadata,
         }
     }
 
@@ -149,7 +163,7 @@ impl AttributePrototypeArgument {
         // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
         let AttributePrototypeArgumentContent::V1(inner) = content;
 
-        Ok(AttributePrototypeArgument::assemble(id, &inner))
+        Ok(AttributePrototypeArgument::assemble(id, inner))
     }
 
     pub fn new(
@@ -158,7 +172,10 @@ impl AttributePrototypeArgument {
         arg_id: FuncArgumentId,
     ) -> AttributePrototypeArgumentResult<Self> {
         let timestamp = Timestamp::now();
-        let content = AttributePrototypeArgumentContentV1 { timestamp };
+        let content = AttributePrototypeArgumentContentV1 {
+            timestamp,
+            inter_component_metadata: None,
+        };
 
         let hash = ctx
             .content_store()
@@ -188,7 +205,54 @@ impl AttributePrototypeArgument {
             arg_id,
         )?;
 
-        Ok(AttributePrototypeArgument::assemble(id.into(), &content))
+        Ok(AttributePrototypeArgument::assemble(id.into(), content))
+    }
+
+    pub fn new_inter_component(
+        ctx: &DalContext,
+        source_component_id: ComponentId,
+        source_external_provider_id: ExternalProviderId,
+        destination_component_id: ComponentId,
+        destination_attribute_prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        let timestamp = Timestamp::now();
+        let content = AttributePrototypeArgumentContentV1 {
+            timestamp,
+            inter_component_metadata: Some(InterComponentMetadata {
+                source_component_id,
+                destination_component_id,
+            }),
+        };
+
+        let hash = ctx
+            .content_store()
+            .try_lock()?
+            .add(&AttributePrototypeArgumentContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_content(
+            change_set,
+            id,
+            ContentAddress::AttributePrototypeArgument(hash),
+        )?;
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        workspace_snapshot.add_node(node_weight)?;
+
+        workspace_snapshot.add_edge(
+            destination_attribute_prototype_id,
+            EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgument)?,
+            id,
+        )?;
+        workspace_snapshot.add_edge(
+            id,
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            source_external_provider_id,
+        )?;
+
+        Ok(AttributePrototypeArgument::assemble(id.into(), content))
     }
 
     pub fn func_argument_id_by_id(
