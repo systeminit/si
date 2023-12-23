@@ -41,6 +41,14 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) pg_user: Option<String>,
 
+    /// PostgreSQL connection certification path
+    #[arg(long)]
+    pub(crate) pg_cert_path: Option<String>,
+
+    /// PostgreSQL connection certification base64 string
+    #[arg(long)]
+    pub(crate) pg_cert_base64: Option<String>,
+
     /// NATS connection URL [example: demo.nats.io]
     #[arg(long)]
     pub(crate) nats_url: Option<String>,
@@ -100,6 +108,12 @@ impl TryFrom<Args> for Config {
             }
             if let Some(user) = args.pg_user {
                 config_map.set("pg.user", user);
+            }
+            if let Some(cert) = args.pg_cert_path {
+                config_map.set("pg.certificate_path", cert);
+            }
+            if let Some(cert) = args.pg_cert_base64 {
+                config_map.set("pg.certificate_base64", cert);
             }
             if let Some(url) = args.nats_url {
                 config_map.set("nats.url", url);

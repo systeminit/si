@@ -18,6 +18,7 @@ rust_binary(
     resources = {
         "dev.jwt_signing_public_key.pem": "//config/keys:dev.jwt_signing_public_key.pem",
         "prod.jwt_signing_public_key.pem": "//config/keys:prod.jwt_signing_public_key.pem",
+        "dev.postgres.root.crt": "//config/keys:dev.postgres.root.crt",
 #        "pkgs_path": "//pkgs:pkgs",
     },
 )
