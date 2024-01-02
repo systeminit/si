@@ -287,11 +287,13 @@
             ? getToneColorHex(statusIcon.tone!)
             : getToneColorHex('neutral')
         "
-        :size="24"
-        :x="i * -26"
-        :y="nodeBodyHeight - 5"
+        :size="24 + (statusIconHovers[i] ? 6 : 0)"
+        :x="i * -26 + (statusIconHovers[i] ? 3 : 0)"
+        :y="nodeBodyHeight - 5 + (statusIconHovers[i] ? 3 : 0)"
         origin="bottom-right"
         @click="statusIcon.tabSlug ? onClick(statusIcon.tabSlug) : _.noop"
+        @mouseover="statusIconHovers[i] = true"
+        @mouseout="statusIconHovers[i] = false"
       />
     </v-group>
 
@@ -405,6 +407,9 @@ const props = defineProps({
 });
 
 const diffIconHover = ref(false);
+const statusIconHovers = ref(
+  new Array(props.group.def.statusIcons?.length || 0).fill(false),
+);
 
 const emit = defineEmits<{
   (e: "hover:start", meta?: ElementHoverMeta): void;

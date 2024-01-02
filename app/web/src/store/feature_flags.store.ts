@@ -40,6 +40,9 @@ export function useFeatureFlagsStore() {
             }
           });
         });
+        // You can override feature flags while working on a feature by setting them to true here
+
+        // Make sure to remove the override before committing your code!
       },
     }),
   )();

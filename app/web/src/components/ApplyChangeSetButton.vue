@@ -19,14 +19,7 @@
     >
       <div class="max-h-[80vh] overflow-hidden flex flex-col">
         <template v-if="changeSet.status === ChangeSetStatus.NeedsApproval">
-          <div
-            :class="
-              clsx(
-                'p-sm flex items-center gap-3',
-                !appliedByYou && 'border-b dark:border-neutral-500',
-              )
-            "
-          >
+          <div :class="clsx('px-sm pb-sm pt-0 flex items-center gap-3')">
             <UserIcon :user="applyUser" />
             <div>
               <template v-if="appliedByYou">You have</template>
@@ -40,7 +33,7 @@
               </template>
             </div>
           </div>
-          <template v-if="appliedByYou || true">
+          <template v-if="appliedByYou">
             <div class="flex w-full justify-center pb-xs">
               <VButton
                 icon="tools"
@@ -54,14 +47,14 @@
               />
             </div>
             <div
-              class="text-sm pb-2 italic text-center w-full text-neutral-400 border-b dark:border-neutral-500"
+              class="text-sm pb-2 italic text-center w-full text-neutral-400"
             >
               <template v-if="!allUsersVoted"
                 >Waiting on other users in the changeset to vote.</template
               >
             </div>
             <div
-              class="pt-xs overflow-y-auto flex-grow border border-neutral-300 dark:border-neutral-700 mb-xs"
+              class="overflow-y-auto flex-grow border border-neutral-300 dark:border-neutral-700"
             >
               <div
                 v-for="(user, index) in usersInChangeset"
@@ -256,12 +249,14 @@
           You are now on Head. You can continue your work by creating a new
           change set or joining another existing change set.
         </div>
-        <VButton
-          label="Ok"
-          variant="ghost"
-          size="sm"
-          @click="changeSetAppliedHandler()"
-        />
+        <div class="self-stretch px-sm flex flex-row">
+          <VButton
+            class="flex-grow"
+            label="Ok"
+            variant="ghost"
+            @click="changeSetAppliedHandler()"
+          />
+        </div>
       </div>
     </Modal>
   </VButton>
@@ -412,7 +407,14 @@ const applyUser = computed(() => {
     color: "magenta",
     status: "active",
   };
-  if (changeSet.value?.mergeRequestedByUserId) {
+  if (appliedByYou.value && authStore.user) {
+    return {
+      name: authStore.user.name,
+      pictureUrl: authStore.user.picture_url,
+      color: "white",
+      status: "active",
+    };
+  } else if (changeSet.value?.mergeRequestedByUserId) {
     const user =
       presenceStore.usersById[changeSet.value?.mergeRequestedByUserId];
     if (user) {
