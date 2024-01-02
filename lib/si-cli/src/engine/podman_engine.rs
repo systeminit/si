@@ -605,6 +605,10 @@ impl ContainerEngine for PodmanEngine {
                     "/run/pinga/cyclone_encryption.key",
                 ),
                 ("SI_PINGA__NATS__URL", "nats"),
+                (
+                    "SI_PINGA__PG__CERTIFICATE_PATH",
+                    "/run/pinga/dev.postgres.root.crt",
+                ),
                 ("SI_PINGA__PG__HOSTNAME", "postgres"),
                 (
                     "SI_PINGA__SYMMETRIC_CRYPTO_SERVICE__ACTIVE_KEY",
@@ -665,6 +669,10 @@ impl ContainerEngine for PodmanEngine {
                     "/sdf/jwt_signing_public_key.pem",
                 ),
                 ("SI_SDF__NATS__URL", "nats"),
+                (
+                    "SI_SDF__PG__CERTIFICATE_PATH",
+                    "/run/sdf/dev.postgres.root.crt",
+                ),
                 ("SI_SDF__PG__HOSTNAME", "postgres"),
                 (
                     "SI_SDF__SYMMETRIC_CRYPTO_SERVICE__ACTIVE_KEY",
@@ -696,6 +704,14 @@ impl ContainerEngine for PodmanEngine {
                 ContainerMount {
                     destination: Some("/run/sdf/donkey.key".to_owned()),
                     source: Some(data_dir.join("donkey.key").display().to_string()),
+                    options: Some(get_container_mount_opts()),
+                    _type: Some("bind".to_owned()),
+                    uid_mappings: None,
+                    gid_mappings: None,
+                },
+                ContainerMount {
+                    destination: Some("/run/sdf/dev.postgres.root.crt".to_owned()),
+                    source: Some(data_dir.join("dev.postgres.root.crt").display().to_string()),
                     options: Some(get_container_mount_opts()),
                     _type: Some("bind".to_owned()),
                     uid_mappings: None,

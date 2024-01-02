@@ -6,6 +6,7 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+base64 = { workspace = true }
 bytes = { workspace = true }
 deadpool = { workspace = true }
 deadpool-postgres = { workspace = true }
@@ -14,9 +15,13 @@ num_cpus = { workspace = true }
 ouroboros = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
 serde = { workspace = true }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-postgres = { workspace = true }
+tokio-postgres-rustls = { workspace = true }
+webpki-roots = { workspace = true }

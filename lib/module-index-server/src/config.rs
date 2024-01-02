@@ -193,12 +193,20 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
             .to_string()
     };
 
+    let postgres_cert = resources
+        .get_ends_with("dev.postgres.root.crt")
+        .map_err(ConfigError::development)?
+        .to_string_lossy()
+        .to_string();
+
     warn!(
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
+        postgres_cert = postgres_cert.as_str(),
         "detected development run",
     );
 
     config.jwt_signing_public_key_path = jwt_signing_public_key_path;
+    config.pg.certificate_path = Some(postgres_cert.try_into()?);
 
     Ok(())
 }
@@ -220,12 +228,19 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
             .to_string()
     };
 
+    let postgres_cert = Path::new(&dir)
+        .join("../../config/keys/dev.postgres.root.crt")
+        .to_string_lossy()
+        .to_string();
+
     warn!(
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
+        postgres_cert = postgres_cert.as_str(),
         "detected development run",
     );
 
     config.jwt_signing_public_key_path = jwt_signing_public_key_path;
+    config.pg.certificate_path = Some(postgres_cert.try_into()?);
 
     // todo!();
     // config.cyclone_encryption_key_path = cyclone_encryption_key_path;

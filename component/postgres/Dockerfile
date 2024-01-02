@@ -32,6 +32,11 @@ COPY multiple-database-support.sh /docker-entrypoint-initdb.d/
 COPY entrypoint-wrapper.sh /usr/local/bin/entrypoint-wrapper.sh
 COPY pganalyze-collector.conf.sample /etc/pganalyze-collector.conf.sample
 COPY postgresql-additions.conf /etc/postgresql-additions.conf
+COPY server.key /var/lib/postgresql/
+COPY server.crt /var/lib/postgresql/
+
+RUN chown root:ssl-cert /var/lib/postgresql/server.key && chmod 740 /var/lib/postgresql/server.key
+RUN chown root:ssl-cert /var/lib/postgresql/server.crt && chmod 740 /var/lib/postgresql/server.crt
 
 RUN chmod +x /usr/local/bin/entrypoint-wrapper.sh \
     && mkdir -p /etc/postgresql \
