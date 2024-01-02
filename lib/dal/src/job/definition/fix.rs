@@ -1,7 +1,6 @@
 use std::{collections::HashMap, collections::VecDeque, convert::TryFrom};
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use futures::{stream::FuturesUnordered, StreamExt};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -16,7 +15,6 @@ use crate::{
         },
         producer::{JobProducer, JobProducerResult},
     },
-    standard_model::{self, TypeHint},
     AccessBuilder, ActionKind, ActionPrototype, ActionPrototypeId, Component, ComponentId,
     DalContext, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, StandardModel,
     Visibility, WsEvent,
@@ -118,7 +116,7 @@ impl JobConsumerMetadata for FixesJob {
 #[async_trait]
 impl JobConsumer for FixesJob {
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
-        let mut fixes = dbg!(self.fixes.clone());
+        let mut fixes = self.fixes.clone();
 
         // Mark the batch as started if it has not been yet.
         if !self.started {
@@ -211,23 +209,7 @@ impl JobConsumer for FixesJob {
             fixes.remove(&id);
 
             if let Some(mut fix) = Fix::get_by_id(ctx, &id).await? {
-                let deleted_ctx = &ctx.clone_with_delete_visibility();
-                let mut component = Component::get_by_id(deleted_ctx, fix.component_id())
-                    .await?
-                    .ok_or_else(|| JobConsumerError::ComponentNotFound(*fix.component_id()))?;
-                if component.visibility().deleted_at.is_some() {
-                    component.set_deleted_at(deleted_ctx, None).await?;
-                    component.set_needs_destroy(deleted_ctx, false).await?;
-                    standard_model::update(
-                        deleted_ctx,
-                        "components",
-                        "visibility_deleted_at",
-                        component.id(),
-                        None::<DateTime<Utc>>,
-                        TypeHint::TimestampWithTimeZone,
-                    )
-                    .await?;
-                }
+                Component::restore_and_propagate(ctx, *fix.component_id()).await?;
 
                 if fix.started_at().is_none() {
                     fix.stamp_started(ctx).await?;
