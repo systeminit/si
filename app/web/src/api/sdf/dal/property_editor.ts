@@ -94,6 +94,7 @@ export interface PropertyEditorProp {
   isHidden: boolean;
   isReadonly: boolean;
   documentation?: string;
+  validationFormat?: string;
 }
 
 export interface PropertyEditorSchema {

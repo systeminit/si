@@ -164,6 +164,9 @@ importers:
       axios:
         specifier: ^1.5.0
         version: 1.5.0
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
       clsx:
         specifier: ^1.2.1
         version: 1.2.1
@@ -191,6 +194,9 @@ importers:
       javascript-time-ago:
         specifier: ^2.5.7
         version: 2.5.9
+      joi:
+        specifier: ^17.11.0
+        version: 17.11.0
       js-base64:
         specifier: ^3.7.5
         version: 3.7.5
@@ -6156,7 +6162,6 @@ packages:
     dependencies:
       base64-js: 1.5.1
       ieee754: 1.2.1
-    dev: true
 
   /builtin-modules@3.3.0:
     resolution: {integrity: sha512-zhaCDicdLuWN5UbN5IMnFqNMhNfo919sH85y2/ea+5Yg9TsTkeZxpL+JLbp6cgYFS4sRLp3YV4S6yDuqVWHYOw==}

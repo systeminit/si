@@ -3,6 +3,7 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { useComponentAttributesStore } from "@/store/component_attributes.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ComponentId, useComponentsStore } from "./components.store";
@@ -30,7 +31,7 @@ export const useQualificationsStore = () => {
       {
         state: () => ({
           // stats per component - this is the raw data
-          // we may change this to store qualificaiton ids and individual statuses to make realtime updates easier
+          // we may change this to store qualification ids and individual statuses to make realtime updates easier
           qualificationStatsByComponentId: {} as Record<
             ComponentId,
             QualificationStats
@@ -132,14 +133,23 @@ export const useQualificationsStore = () => {
                 );
                 this.qualificationStatsByComponentId = _.mapValues(
                   byComponentId,
-                  (cs) => {
+                  ({ componentId, total, succeeded, warned, failed }) => {
+                    const { result: validationResult } =
+                      useComponentAttributesStore(componentId).schemaValidation;
+
+                    if (validationResult) {
+                      total += 1;
+                      if (validationResult.status === "success") succeeded += 1;
+                      else failed += 1;
+                    }
+
                     return {
                       // transform the data slightly to add "running" so we can avoid recalculating again elsewhere
-                      total: cs.total,
-                      succeeded: cs.succeeded,
-                      warned: cs.warned,
-                      failed: cs.failed,
-                      running: cs.total - cs.succeeded - cs.failed - cs.warned,
+                      total,
+                      succeeded,
+                      warned,
+                      failed,
+                      running: total - succeeded - failed - warned,
                     };
                   },
                 );
@@ -161,6 +171,10 @@ export const useQualificationsStore = () => {
                 visibility_change_set_pk: changeSetId,
               },
               onSuccess: (response) => {
+                response.push(
+                  useComponentAttributesStore(componentId).schemaValidation,
+                );
+
                 // TODO: maybe we want to sort these in the backend?
                 const sorted = _.orderBy(
                   response,
@@ -172,6 +186,7 @@ export const useQualificationsStore = () => {
                       success: 4,
                     }[response.result?.status || "unknown"]),
                 );
+
                 this.qualificationsByComponentId[componentId] = sorted;
               },
             });

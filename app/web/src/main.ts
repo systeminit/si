@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import { createApp } from "vue";
 import FloatingVue from "floating-vue";
 import VueKonva from "vue-konva";
@@ -13,6 +14,8 @@ import App from "@/App.vue";
 import "./utils/posthog";
 import router from "./router";
 import store from "./store";
+
+globalThis.Buffer = Buffer;
 
 const app = createApp(App);
 
