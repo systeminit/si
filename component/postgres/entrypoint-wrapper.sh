@@ -11,7 +11,10 @@ trap 'kill -TERM $(jobs -p); wait' SIGINT SIGTERM
 
 /usr/local/bin/docker-entrypoint.sh \
   "$@" \
-  -c config_file=/etc/postgresql/postgresql.conf &
+  -c config_file=/etc/postgresql/postgresql.conf \
+  -c ssl=on \
+  -c ssl_cert_file=/var/lib/postgresql/server.crt \
+  -c ssl_key_file=/var/lib/postgresql/server.key &
 
 if [ -n "${PGANALYZE:-}" ]; then
   echo '--- pganalyze enabled'

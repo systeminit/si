@@ -18,6 +18,7 @@ rust_binary(
     resources = {
         "dev.encryption.key": "//lib/cyclone-server:dev.encryption.key",
         "dev.donkey.key": "//lib/dal:dev.donkey.key",
+        "dev.postgres.root.crt": "//config/keys:dev.postgres.root.crt",
     },
 )
 

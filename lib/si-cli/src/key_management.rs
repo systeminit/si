@@ -35,6 +35,27 @@ fJwjkI25wNiOHD7LI8nWUqXOM0ZcQQ/4HJwG9IT6flvRQwLi9UrC8FTos4jPeZcA
 T7Pftf1OUGsDQsmx/eAS4GUCAwEAAQ==
 -----END PUBLIC KEY-----";
 
+const DEV_POSTGRES_ROOT_CRT: &str = "-----BEGIN CERTIFICATE-----
+MIIDSzCCAjOgAwIBAgIIAhGEx24hny0wDQYJKoZIhvcNAQELBQAwIDEeMBwGA1UE
+AxMVbWluaWNhIHJvb3QgY2EgMDIxMTg0MCAXDTI0MDEwMjE4MjEyOVoYDzIxMjQw
+MTAyMTgyMTI5WjAgMR4wHAYDVQQDExVtaW5pY2Egcm9vdCBjYSAwMjExODQwggEi
+MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDoByK7UWZsjrKw31m6SwwiIplQ
+d9MvfcD0+Gvvx1Lx0DNNangU/xqc0K5puNAPqwOToKLihbnJwqjXNUazXaM3ojcn
+dkeRs3Cz7KVZkiu+sXqiecMXL2nFkNBSPhiXRumFOw3Qhz6v6dCMZxXcHUIgeBnp
+q0oCQprCSt+S2TpgsPrNxCbByB/ICfI/rT+/QOVeJjqcJe5RMFAIR8pxaBcTlScL
+fwj7PPd2eW/jZ1+pVfYYqKwbLwv14faElMZ2MZwRANDHo7lPA4riB6m7yfRXN7Cn
+bwKGMJFPVoO71UL/ArAr/8bTEf1FZejMPzG7oEqXSGyYTLi0ybLr7G6QVqpJAgMB
+AAGjgYYwgYMwDgYDVR0PAQH/BAQDAgKEMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggr
+BgEFBQcDAjASBgNVHRMBAf8ECDAGAQH/AgEAMB0GA1UdDgQWBBQHGAB8jOdnvpxu
+lS8NlI2L0jRxUzAfBgNVHSMEGDAWgBQHGAB8jOdnvpxulS8NlI2L0jRxUzANBgkq
+hkiG9w0BAQsFAAOCAQEANH3AydMZZGDeTP7SaHPc/+XsRu/0cTTCXd0Jr56RbnPg
+Y2B5jq2WfN7DO7uCva2N4Q6oILMH8JBonFgGh5/LKrFrfzOQBuHWTqyA55QfkYlY
+bZv3zWj3X3UqQcKWJW21P/cWiLiABQD3ahTNaWop1yu2nWvjTosE6/iXloOfTHfx
+XEyztSRLxYGoqrba7MW2RKAo31ENrZVKtI+X8vjxJa1s/sqLQUbyCDVF+l6tsR0T
+kN1/Vtm5EUdiEvDRETI4pQ9b1FSXulSaQJVNFWONXjrb5fhXpnPQ+zG3COdKbKz8
+OGyod3OoVim6KL7RFkjqu2SYWrc5/tmOn+VWBEim/w==
+-----END CERTIFICATE-----";
+
 pub async fn ensure_encryption_keys() -> CliResult<()> {
     let (public_key, secret_key) = box_::gen_keypair();
 
@@ -71,6 +92,17 @@ pub async fn ensure_jwt_public_signing_key() -> CliResult<()> {
     if !jwt_public_signing_key.exists() {
         let mut file = File::create(&jwt_public_signing_key)?;
         file.write_all(JWT_SIGNING_KEY.as_bytes())?;
+    }
+
+    Ok(())
+}
+
+pub async fn ensure_postgres_root_cert() -> CliResult<()> {
+    let si_data_dir = get_si_data_dir().await?;
+    let postgres_root_cert = si_data_dir.join("dev.postgres.root.crt");
+    if !postgres_root_cert.exists() {
+        let mut file = File::create(&postgres_root_cert)?;
+        file.write_all(DEV_POSTGRES_ROOT_CRT.as_bytes())?;
     }
 
     Ok(())
