@@ -1,3 +1,5 @@
+use async_nats::Subject;
+
 use super::{ConnectionMetadata, HeaderMap};
 use std::{fmt, sync::Arc};
 
@@ -14,7 +16,7 @@ impl Message {
 
     /// Gets a reference to the subject of this message.
     #[must_use]
-    pub fn subject(&self) -> &str {
+    pub fn subject(&self) -> &Subject {
         &self.inner.subject
     }
 
@@ -26,7 +28,7 @@ impl Message {
 
     /// Consumes the message and returns the inner data and reply subject.
     #[must_use]
-    pub fn into_parts(self) -> (Vec<u8>, Option<String>) {
+    pub fn into_parts(self) -> (Vec<u8>, Option<Subject>) {
         (self.inner.payload.into(), self.inner.reply)
     }
 

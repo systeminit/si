@@ -7,30 +7,39 @@
 )]
 #![allow(clippy::missing_errors_doc)]
 
+use rustls::{Certificate, RootCertStore};
+use tokio_postgres_rustls::MakeRustlsConnect;
+
+use base64::{engine::general_purpose, Engine};
 use std::{
     cmp,
     fmt::{self, Debug},
     net::ToSocketAddrs,
+    path::Path,
     sync::Arc,
     time::Duration,
 };
 
 use bytes::Buf;
 use deadpool::managed::Object;
+use deadpool_postgres::SslMode;
 use deadpool_postgres::{
     Config, ConfigError, CreatePoolError, Manager, ManagerConfig, Pool, PoolConfig, PoolError,
     RecyclingMethod, Transaction, TransactionBuilder,
 };
 use futures::{Stream, StreamExt};
+
 use ouroboros::self_referencing;
+
 use serde::{Deserialize, Serialize};
-use si_std::{ResultExt, SensitiveString};
+use si_std::{CanonicalFile, ResultExt, SensitiveString};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
+
 use tokio_postgres::{
     row::RowIndex,
     types::{BorrowToSql, FromSql, ToSql, Type},
-    CancelToken, Client, Column, CopyInSink, CopyOutStream, IsolationLevel, NoTls, Portal, Row,
+    CancelToken, Client, Column, CopyInSink, CopyOutStream, IsolationLevel, Portal, Row,
     SimpleQueryMessage, Statement, ToStatement,
 };
 
@@ -59,6 +68,10 @@ pub enum PgError {
 #[remain::sorted]
 #[derive(thiserror::Error, Debug)]
 pub enum PgPoolError {
+    #[error("failed to decode base64 encoded key")]
+    Base64Decode(#[source] base64::DecodeError),
+    #[error("failed to certificate from bytes")]
+    CreateCertificate(#[from] std::io::Error),
     #[error("creating pg pool error: {0}")]
     CreatePoolError(#[from] CreatePoolError),
     #[error("pg pool config error: {0}")]
@@ -67,6 +80,8 @@ pub enum PgPoolError {
     Pg(#[from] PgError),
     #[error("pg pool error: {0}")]
     PoolError(#[from] PoolError),
+    #[error("failed to read pem")]
+    ReadPem(std::io::Error),
     #[error("migration error: {0}")]
     Refinery(#[from] refinery::Error),
     #[error("failed to resolve pg hostname")]
@@ -89,6 +104,8 @@ pub type PgTxn = PgSharedTransaction;
 pub struct PgPoolConfig {
     pub user: String,
     pub password: SensitiveString,
+    pub certificate_path: Option<CanonicalFile>,
+    pub certificate_base64: Option<String>,
     pub dbname: String,
     pub application_name: String,
     pub hostname: String,
@@ -106,6 +123,8 @@ impl Default for PgPoolConfig {
         PgPoolConfig {
             user: String::from("si"),
             password: SensitiveString::from("bugbear"),
+            certificate_path: None,
+            certificate_base64: None,
             dbname: String::from("si"),
             application_name: String::from("si-unknown-app"),
             hostname: String::from("localhost"),
@@ -181,9 +200,16 @@ impl PgPool {
         if let Some(secs) = settings.pool_timeout_recycle_secs {
             pool_config.timeouts.recycle = Some(Duration::from_secs(secs));
         }
+
+        // TODO(scott): we should set this to Require as below once
+        // the postgres:stable image has been updated
+        // to include the SSL bits.
+        // cfg.ssl_mode = Some(SslMode::Require);
+        cfg.ssl_mode = Some(SslMode::Prefer);
+        let tls_config = Self::tls_config(settings).await?;
         debug!(db.pool_config = ?pool_config);
         cfg.pool = Some(pool_config);
-        let pool = cfg.create_pool(Some(deadpool_postgres::Runtime::Tokio1), NoTls)?;
+        let pool = cfg.create_pool(Some(deadpool_postgres::Runtime::Tokio1), tls_config)?;
 
         let resolving_hostname = format!("{}:{}", settings.hostname, settings.port);
         let net_peer_ip = tokio::task::spawn_blocking(move || {
@@ -237,6 +263,63 @@ impl PgPool {
         drop(tokio::spawn(test_connection_task(pg_pool.clone())));
 
         Ok(pg_pool)
+    }
+
+    // Creates a tls_config for connecting to postgres securely
+    async fn tls_config(settings: &PgPoolConfig) -> PgPoolResult<MakeRustlsConnect> {
+        let mut root_cert_store = RootCertStore::empty();
+        root_cert_store.add_trust_anchors(webpki_roots::TLS_SERVER_ROOTS.iter().map(|ta| {
+            rustls::OwnedTrustAnchor::from_subject_spki_name_constraints(
+                ta.subject,
+                ta.spki,
+                ta.name_constraints,
+            )
+        }));
+        if let Some(cert) = &settings.certificate_path {
+            root_cert_store
+                .add_parsable_certificates(&Self::get_certificate_from_path(cert).await?);
+        }
+        if let Some(cert) = &settings.certificate_base64 {
+            root_cert_store.add_parsable_certificates(
+                &Self::get_certificate_from_base64(cert.to_string()).await?,
+            );
+        }
+        let config = rustls::ClientConfig::builder()
+            .with_safe_defaults()
+            .with_root_certificates(root_cert_store)
+            .with_no_client_auth();
+
+        Ok(MakeRustlsConnect::new(config))
+    }
+
+    // Creates a certificate object from bytes
+    async fn get_certificate_from_bytes(bytes: &[u8]) -> PgPoolResult<Vec<Certificate>> {
+        let mut reader = std::io::BufReader::new(bytes);
+        Ok(rustls_pemfile::certs(&mut reader)
+            .map(|c| {
+                Certificate(
+                    c.map_err(PgPoolError::CreateCertificate)
+                        .expect(
+                            "errror unpacking root cert, this should have been caught by map_err",
+                        )
+                        .to_vec(),
+                )
+            })
+            .collect::<Vec<Certificate>>())
+    }
+
+    // Creates a Certificate object from a base64 encoded certificate
+    async fn get_certificate_from_base64(key_string: String) -> PgPoolResult<Vec<Certificate>> {
+        let buf = general_purpose::STANDARD
+            .decode(key_string)
+            .map_err(PgPoolError::Base64Decode)?;
+        Self::get_certificate_from_bytes(&buf).await
+    }
+
+    // Creates a Certificate object from a certificate file
+    async fn get_certificate_from_path(path: impl AsRef<Path>) -> PgPoolResult<Vec<Certificate>> {
+        let buf = std::fs::read(path).map_err(PgPoolError::ReadPem)?;
+        Self::get_certificate_from_bytes(&buf).await
     }
 
     // Attempts to establish a database connection and returns an error if not successful.

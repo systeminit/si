@@ -1,4 +1,3 @@
-import { ProposedAction, ActionId } from "@/store/actions.store";
 import { UserId } from "@/store/auth.store";
 
 export enum ChangeSetStatus {
@@ -14,7 +13,6 @@ export type ChangeSetId = string;
 export interface ChangeSet {
   id: ChangeSetId;
   name: string;
-  actions: Record<ActionId, ProposedAction>;
   status: ChangeSetStatus;
   appliedByUserId?: UserId;
   appliedAt?: IsoDateString;

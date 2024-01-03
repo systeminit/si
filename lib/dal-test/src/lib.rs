@@ -93,6 +93,7 @@ pub struct Config {
     cyclone_encryption_key_path: String,
     jwt_signing_public_key_path: String,
     jwt_signing_private_key_path: String,
+    postgres_key_path: String,
     #[builder(default)]
     pkgs_path: Option<PathBuf>,
     symmetric_crypto_service_config: SymmetricCryptoServiceConfig,
@@ -121,6 +122,7 @@ impl Config {
         }
         config.pg.dbname = env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| pg_dbname.to_string());
         config.pg.pool_max_size *= 32;
+        config.pg.certificate_path = Some(config.postgres_key_path.clone().try_into()?);
 
         if let Ok(value) = env::var(ENV_VAR_MODULE_INDEX_URL) {
             config.module_index_url = value;
@@ -760,6 +762,10 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
         .get_ends_with("dev.donkey.key")?
         .to_string_lossy()
         .to_string();
+    let postgres_key = resources
+        .get_ends_with("dev.postgres.root.crt")?
+        .to_string_lossy()
+        .to_string();
     let pkgs_path = resources
         .get_ends_with("pkgs_path")?
         .to_string_lossy()
@@ -770,6 +776,7 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
         jwt_signing_private_key_path = jwt_signing_private_key_path.as_str(),
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
+        postgres_key = postgres_key.as_str(),
         pkgs_path = pkgs_path.as_str(),
         "detected development run",
     );
@@ -785,6 +792,7 @@ fn detect_and_configure_testing_for_buck2(builder: &mut ConfigBuilder) -> Result
         }
         .try_into()?,
     );
+    builder.postgres_key_path(postgres_key);
     builder.pkgs_path(Some(pkgs_path.into()));
 
     Ok(())
@@ -807,6 +815,10 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
         .join("../../lib/dal/dev.donkey.key")
         .to_string_lossy()
         .to_string();
+    let postgres_key = Path::new(&dir)
+        .join("../../config/keys/dev.postgres.root.crt")
+        .to_string_lossy()
+        .to_string();
     let pkgs_path = Path::new(&dir)
         .join("../../pkgs")
         .to_string_lossy()
@@ -817,6 +829,7 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
         jwt_signing_private_key_path = jwt_signing_private_key_path.as_str(),
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
+        postgres_key = postgres_key.as_str(),
         pkgs_path = pkgs_path.as_str(),
         "detected development run",
     );
@@ -832,6 +845,7 @@ fn detect_and_configure_testing_for_cargo(dir: String, builder: &mut ConfigBuild
         }
         .try_into()?,
     );
+    builder.postgres_key_path(postgres_key);
     builder.pkgs_path(Some(pkgs_path.into()));
 
     Ok(())

@@ -61,21 +61,22 @@ impl PodmanEngine {
 
         podman_socket_candidates.push(std::path::Path::new("/var/run/podman.sock").to_path_buf());
 
-        let podman: Podman;
-        if let "" = podman_sock.as_str() {
+        let podman = if podman_sock.is_empty() {
             let socket = podman_socket_candidates
                 .iter()
                 .find(|candidate| candidate.exists())
                 .ok_or(eyre!(
-            "failed to determine podman socket location. Set a custom location using `--podman-sock` \
-            or `SI_PODMAN_SOCK`; candidates={podman_socket_candidates:?}"
-        ))?;
-            podman = Podman::unix(socket)
+                    "failed to determine podman socket location. Set a custom location using \
+                    `--podman-sock` or `SI_PODMAN_SOCK`; candidates={podman_socket_candidates:?}"
+                ))?;
+
+            Podman::unix(socket)
         } else {
             println!("Checking for user supplied podman.sock");
             let path = std::path::Path::new(podman_sock.as_str()).to_path_buf();
-            podman = Podman::unix(path);
-        }
+
+            Podman::unix(path)
+        };
 
         Ok(Box::new(PodmanEngine {
             podman,
@@ -604,6 +605,10 @@ impl ContainerEngine for PodmanEngine {
                     "/run/pinga/cyclone_encryption.key",
                 ),
                 ("SI_PINGA__NATS__URL", "nats"),
+                (
+                    "SI_PINGA__PG__CERTIFICATE_PATH",
+                    "/run/pinga/dev.postgres.root.crt",
+                ),
                 ("SI_PINGA__PG__HOSTNAME", "postgres"),
                 (
                     "SI_PINGA__SYMMETRIC_CRYPTO_SERVICE__ACTIVE_KEY",
@@ -664,6 +669,10 @@ impl ContainerEngine for PodmanEngine {
                     "/sdf/jwt_signing_public_key.pem",
                 ),
                 ("SI_SDF__NATS__URL", "nats"),
+                (
+                    "SI_SDF__PG__CERTIFICATE_PATH",
+                    "/run/sdf/dev.postgres.root.crt",
+                ),
                 ("SI_SDF__PG__HOSTNAME", "postgres"),
                 (
                     "SI_SDF__SYMMETRIC_CRYPTO_SERVICE__ACTIVE_KEY",
@@ -695,6 +704,14 @@ impl ContainerEngine for PodmanEngine {
                 ContainerMount {
                     destination: Some("/run/sdf/donkey.key".to_owned()),
                     source: Some(data_dir.join("donkey.key").display().to_string()),
+                    options: Some(get_container_mount_opts()),
+                    _type: Some("bind".to_owned()),
+                    uid_mappings: None,
+                    gid_mappings: None,
+                },
+                ContainerMount {
+                    destination: Some("/run/sdf/dev.postgres.root.crt".to_owned()),
+                    source: Some(data_dir.join("dev.postgres.root.crt").display().to_string()),
                     options: Some(get_container_mount_opts()),
                     _type: Some("bind".to_owned()),
                     uid_mappings: None,

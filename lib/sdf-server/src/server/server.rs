@@ -416,7 +416,7 @@ async fn fetch_builtin(
     module_index_client: &IndexClient,
 ) -> Result<SiPkg> {
     let module = module_index_client
-        .get_builtin(Ulid::from_string(module.id.as_str()).unwrap_or(Ulid::new()))
+        .get_builtin(Ulid::from_string(module.id.as_str()).unwrap_or_default())
         .await?;
 
     Ok(SiPkg::load_from_bytes(module)?)

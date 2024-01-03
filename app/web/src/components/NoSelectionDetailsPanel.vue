@@ -25,41 +25,25 @@
         <strong
           class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
         >
-          {{
-            1 +
-            diffs.length +
-            _.keys(changeSetStore.selectedChangeSet?.actions).length
-          }}
+          {{ 1 + diffs.length + _.keys(actionsStore.proposedActions).length }}
         </strong>
       </div>
     </template>
 
-    <template v-if="componentsStore.allComponents.length === 0">
-      <div class="flex flex-col items-center text-neutral-400 pt-lg">
-        <EmptyStateIcon name="no-assets" class="mt-3" />
-        <span class="text-xl dark:text-neutral-300">Your Model Is Empty</span>
-        <div class="capsize px-xs py-md italic text-sm text-center">
-          Drag some assets onto the diagram
-        </div>
-      </div>
-    </template>
-
-    <template v-else>
-      <div class="absolute inset-0">
-        <TabGroup startSelectedTabSlug="changes">
-          <TabGroupItem label="Changes" slug="changes">
-            <ChangesPanel />
-          </TabGroupItem>
-          <TabGroupItem
-            v-if="featureFlagsStore.SECRETS_MANAGEMENT"
-            label="Secrets"
-            slug="secrets"
-          >
-            <SecretsPanel />
-          </TabGroupItem>
-        </TabGroup>
-      </div>
-    </template>
+    <div class="absolute inset-0">
+      <TabGroup startSelectedTabSlug="changes">
+        <TabGroupItem label="Changes" slug="changes">
+          <ChangesPanel />
+        </TabGroupItem>
+        <TabGroupItem
+          v-if="featureFlagsStore.SECRETS_MANAGEMENT"
+          label="Secrets"
+          slug="secrets"
+        >
+          <SecretsPanel />
+        </TabGroupItem>
+      </TabGroup>
+    </div>
   </ScrollArea>
 </template>
 
@@ -77,7 +61,7 @@ import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-import EmptyStateIcon from "./EmptyStateIcon.vue";
+import { useActionsStore } from "@/store/actions.store";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import ChangesPanel from "./ChangesPanel.vue";
 import SecretsPanel from "./SecretsPanel.vue";
@@ -85,6 +69,7 @@ import SecretsPanel from "./SecretsPanel.vue";
 const changeSetStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 const featureFlagsStore = useFeatureFlagsStore();
+const actionsStore = useActionsStore();
 
 const diffs = computed(() => {
   const arr = Object.values(componentsStore.componentsById)

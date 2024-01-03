@@ -6,7 +6,7 @@ use axum::{
 use dal::{WorkspacePk, WsEventError};
 use futures::{Sink, SinkExt, Stream, StreamExt};
 use serde::{Deserialize, Serialize};
-use si_data_nats::{NatsClient, NatsError, Subscriber};
+use si_data_nats::{NatsClient, NatsError, Subject, Subscriber};
 use std::{collections::hash_map::Entry, collections::HashMap, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -64,9 +64,9 @@ pub async fn crdt(
     State(broadcast_groups): State<BroadcastGroups>,
 ) -> Result<impl IntoResponse, WsError> {
     let workspace_pk = claim.workspace_pk;
-    let channel_name = format!("crdt-{workspace_pk}-{id}");
-    let subscription = nats.subscribe(&channel_name).await?;
-    let ws_subscription = nats.subscribe(&channel_name).await?;
+    let channel_name = Subject::from(format!("crdt-{workspace_pk}-{id}"));
+    let subscription = nats.subscribe(channel_name.clone()).await?;
+    let ws_subscription = nats.subscribe(channel_name.clone()).await?;
     let shutdown = shutdown_broadcast.subscribe();
 
     Ok(wsu.on_upgrade(move |socket| async move {
@@ -93,7 +93,7 @@ pub async fn crdt_handle<W, R>(
     mut stream: R,
     nats: NatsClient,
     broadcast_groups: BroadcastGroups,
-    channel_name: String,
+    channel_name: Subject,
     subscription: Subscriber,
     mut ws_subscription: Subscriber,
     workspace_pk: WorkspacePk,
@@ -120,7 +120,7 @@ pub async fn crdt_handle<W, R>(
     tasks.spawn(async move {
         while let Some(msg) = stream.next().await {
             if let Message::Binary(vec) = msg? {
-                ws_nats.publish(&ws_channel_name, vec).await?;
+                ws_nats.publish(ws_channel_name.clone(), vec).await?;
             }
         }
 

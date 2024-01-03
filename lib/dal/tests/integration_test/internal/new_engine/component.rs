@@ -113,7 +113,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
 
     // Rebase!
     let conflicts = ctx.commit().await.expect("unable to commit");
-    assert!(matches!(conflicts, None));
+    assert!(conflicts.is_none());
 
     ctx.update_snapshot_to_visibility()
         .await
@@ -182,7 +182,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
 
     // Rebase again!
     let conflicts = ctx.commit().await.expect("unable to commit");
-    assert!(matches!(conflicts, None));
+    assert!(conflicts.is_none());
 
     ctx.update_snapshot_to_visibility()
         .await

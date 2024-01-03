@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::{routing::get, Extension, Router};
 use telemetry::prelude::*;
 use tokio::sync::mpsc;
+use tower_http::compression::CompressionLayer;
 
 use crate::{
     extract::RequestLimiter,
@@ -25,7 +26,8 @@ pub fn routes(
             "/readiness",
             get(handlers::readiness).head(handlers::readiness),
         )
-        .nest("/execute", execute_routes(config, shutdown_tx.clone()));
+        .nest("/execute", execute_routes(config, shutdown_tx.clone()))
+        .layer(CompressionLayer::new());
 
     if let Some(watch_timeout) = config.watch() {
         debug!("enabling watch endpoint");

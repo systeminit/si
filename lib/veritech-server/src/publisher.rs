@@ -1,6 +1,6 @@
 use deadpool_cyclone::{FunctionResult, OutputStream};
 use serde::Serialize;
-use si_data_nats::NatsClient;
+use si_data_nats::{NatsClient, Subject};
 use thiserror::Error;
 use veritech_core::{reply_mailbox_for_output, reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY};
 
@@ -18,16 +18,16 @@ type Result<T> = std::result::Result<T, PublisherError>;
 #[derive(Debug)]
 pub struct Publisher<'a> {
     nats: &'a NatsClient,
-    reply_mailbox_output: String,
-    reply_mailbox_result: String,
+    reply_mailbox_output: Subject,
+    reply_mailbox_result: Subject,
 }
 
 impl<'a> Publisher<'a> {
     pub fn new(nats: &'a NatsClient, reply_mailbox: &str) -> Self {
         Self {
             nats,
-            reply_mailbox_output: reply_mailbox_for_output(reply_mailbox),
-            reply_mailbox_result: reply_mailbox_for_result(reply_mailbox),
+            reply_mailbox_output: reply_mailbox_for_output(reply_mailbox).into(),
+            reply_mailbox_result: reply_mailbox_for_result(reply_mailbox).into(),
         }
     }
 
@@ -35,18 +35,18 @@ impl<'a> Publisher<'a> {
         let nats_msg = serde_json::to_string(output).map_err(PublisherError::JSONSerialize)?;
 
         self.nats
-            .publish(&self.reply_mailbox_output, nats_msg)
+            .publish(self.reply_mailbox_output.clone(), nats_msg)
             .await
-            .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_output.clone()))
+            .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_output.to_string()))
     }
 
     pub async fn finalize_output(&self) -> Result<()> {
         let mut headers = si_data_nats::HeaderMap::new();
         headers.insert(FINAL_MESSAGE_HEADER_KEY, "true");
         self.nats
-            .publish_with_headers(&self.reply_mailbox_output, headers, vec![])
+            .publish_with_headers(self.reply_mailbox_output.clone(), headers, vec![])
             .await
-            .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_output.clone()))
+            .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_output.to_string()))
     }
 
     pub async fn publish_result<R>(&self, result: &FunctionResult<R>) -> Result<()>
@@ -56,8 +56,8 @@ impl<'a> Publisher<'a> {
         let nats_msg = serde_json::to_string(result).map_err(PublisherError::JSONSerialize)?;
 
         self.nats
-            .publish(&self.reply_mailbox_result, nats_msg)
+            .publish(self.reply_mailbox_result.clone(), nats_msg)
             .await
-            .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_result.clone()))
+            .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_result.to_string()))
     }
 }

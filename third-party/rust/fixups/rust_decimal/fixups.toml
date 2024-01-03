@@ -1,2 +1,10 @@
+omit_deps = [
+  "borsh",
+  "bytes",
+  "rand",
+  "rkyv",
+  "serde_json",
+]
+
 [[buildscript]]
 [buildscript.gen_srcs]

@@ -1,0 +1,5 @@
+omit_deps = [
+  "sqlx_macros",
+  "sqlx_mysql",
+  "sqlx_sqlite",
+]

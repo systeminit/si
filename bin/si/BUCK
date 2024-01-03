@@ -25,3 +25,4 @@ nix_omnibus_pkg(
     pkg_name = "si",
     build_dep = "//bin/si:si",
 )
+

@@ -15,7 +15,7 @@ use futures::{Stream, StreamExt};
 use futures_lite::future::FutureExt;
 use pin_project_lite::pin_project;
 use serde::de::DeserializeOwned;
-use si_data_nats::NatsError;
+use si_data_nats::{NatsError, Subject};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -49,12 +49,12 @@ pub struct Request<T> {
     /// The Rust type expected in the subscriber stream.
     pub payload: T,
     /// An optional reply mailbox.
-    pub reply_mailbox: Option<String>,
+    pub reply_mailbox: Option<Subject>,
 }
 
 impl<T> Request<T> {
     /// Split the [`request`](Self)'s fields into individual values.
-    pub fn into_parts(self) -> (T, Option<String>) {
+    pub fn into_parts(self) -> (T, Option<Subject>) {
         (self.payload, self.reply_mailbox)
     }
 }

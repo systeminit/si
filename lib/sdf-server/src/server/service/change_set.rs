@@ -17,14 +17,16 @@ use crate::server::state::AppState;
 
 // pub mod abandon_change_set;
 // pub mod add_action;
-pub mod apply_change_set;
+// pub mod remove_action;
 // mod begin_approval_process;
-pub mod create_change_set;
 // pub mod get_change_set;
 // pub mod get_stats;
+// mod merge_vote;
+
+pub mod apply_change_set;
+pub mod create_change_set;
 pub mod list_open_change_sets;
-// pub mod remove_action;
-// pub mod update_selected_change_set;
+pub mod update_selected_change_set;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -53,6 +55,8 @@ pub enum ChangeSetError {
     // DalPkg(#[from] dal::pkg::PkgError),
     // #[error(transparent)]
     // Fix(#[from] FixError),
+    #[error("invalid header name {0}")]
+    Hyper(#[from] hyper::http::Error),
     #[error(transparent)]
     IndexClient(#[from] IndexClientError),
     #[error("invalid user {0}")]
@@ -104,6 +108,10 @@ pub fn routes() -> Router<AppState> {
             "/list_open_change_sets",
             get(list_open_change_sets::list_open_change_sets),
         )
+        // .route(
+        //     "/list_queued_actions",
+        //     get(list_queued_actions::list_queued_actions),
+        // )
         // .route("/remove_action", post(remove_action::remove_action))
         // .route("/add_action", post(add_action::add_action))
         .route(

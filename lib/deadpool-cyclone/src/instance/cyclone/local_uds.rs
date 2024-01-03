@@ -261,7 +261,7 @@ impl LocalUdsInstance {
 
     fn has_remaining_requests(&self) -> bool {
         match self.limit_requests {
-            Some(remaining) if remaining == 0 => false,
+            Some(0) => false,
             Some(_) | None => true,
         }
     }
@@ -643,8 +643,8 @@ impl LocalDockerRuntime {
             .expect("unable to unpack path");
         let mounts = vec![
             Mount {
-                source: Some(String::from(socket_dir.clone())),
-                target: Some(String::from(socket_dir.clone())),
+                source: Some(String::from(socket_dir)),
+                target: Some(String::from(socket_dir)),
                 typ: Some(MountTypeEnum::BIND),
                 ..Default::default()
             },

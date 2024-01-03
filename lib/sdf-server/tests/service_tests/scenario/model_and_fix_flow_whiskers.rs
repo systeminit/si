@@ -55,7 +55,7 @@ async fn model_and_fix_flow_whiskers(
         .expect("unable to find one ec2 delete exists");
     func.set_code_plaintext(
         &ctx,
-    Some("async function deleteResource(component: Input): Promise < Output > {
+        Some("async function deleteResource(component: Input): Promise < Output > {
     const resource = component.properties.resource?.payload;
 
     if (!resource.InstanceId)
@@ -92,8 +92,8 @@ async fn model_and_fix_flow_whiskers(
 }"
         ),
     )
-    .await
-    .expect("unable to patch function");
+        .await
+        .expect("unable to patch function");
 
     ctx.commit().await.expect("unable to commit");
 
@@ -552,7 +552,10 @@ async fn model_and_fix_flow_whiskers(
             .expect("could not convert to value"), // actual
     );
 
-    let actions = harness.find_change_set(&ctx).await.actions;
+    let actions = harness
+        .list_actions_for_changeset(ctx.visibility())
+        .await
+        .actions;
 
     let expected_actions_and_parents = [
         (key_pair.component_id, ActionKind::Create, Vec::new()),
@@ -702,7 +705,10 @@ async fn model_and_fix_flow_whiskers(
         .delete_component(ctx.visibility(), ingress.component_id)
         .await;
 
-    let actions = harness.find_change_set(&ctx).await.actions;
+    let actions = harness
+        .list_actions_for_changeset(ctx.visibility())
+        .await
+        .actions;
 
     let expected_actions_and_parents = [
         (

@@ -34,7 +34,7 @@ export function useChangeSetsStore() {
       }),
       getters: {
         allChangeSets: (state) => _.values(state.changeSetsById),
-        openChangeSets(): ChangeSet[] | null {
+        openChangeSets(): ChangeSet[] {
           return _.filter(this.allChangeSets, (cs) =>
             [ChangeSetStatus.Open, ChangeSetStatus.NeedsApproval].includes(
               cs.status,
@@ -102,7 +102,6 @@ export function useChangeSetsStore() {
                   id: HEAD_ID,
                   name: "head",
                   status: ChangeSetStatus.Open,
-                  actions: {},
                 },
                 ..._.keyBy(changeSets, "id"),
               };
@@ -187,25 +186,25 @@ export function useChangeSetsStore() {
         // - change_set/update_selected_change_set (was just fetching the change set info)
 
         getAutoSelectedChangeSetId() {
-          // returning `false` means we cannot auto select
-          if (!this.openChangeSets?.length) return false; // no open change sets
-          if (this.openChangeSets.length === 1) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            return this.openChangeSets[0]!.id; // only 1 change set - will auto select it
-          }
-          // TODO: add logic to for auto-selecting when multiple change sets open
-          // - select one created by you
-          // - track last selected in localstorage and select that one...
           const lastChangeSetId = storage.getItem(
             `SI:LAST_CHANGE_SET/${workspacePk}`,
           );
-          if (!lastChangeSetId) return false;
           if (
+            lastChangeSetId &&
             this.changeSetsById[lastChangeSetId]?.status ===
-            ChangeSetStatus.Open
+              ChangeSetStatus.Open
           ) {
             return lastChangeSetId;
           }
+
+          if (this.openChangeSets?.length <= 2) {
+            // will select the single open change set or head if thats all that exists
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            return _.last(this.openChangeSets)!.id;
+          }
+
+          // can add more logic to auto select eventually...
+
           return false;
         },
         getGeneratedChangesetName() {
@@ -296,13 +295,12 @@ export function useChangeSetsStore() {
           },
           {
             eventType: "ChangeSetWritten",
-            callback: (cs) => {
+            debounce: true,
+            callback: (changeSetId) => {
               // we'll update a timestamp here so individual components can watch this to trigger something if necessary
               // hopefully with more targeted realtime updates we won't need this, but could be useful for now
-              this.changeSetsWrittenAtById[cs] = new Date();
+              this.changeSetsWrittenAtById[changeSetId] = new Date();
               this.FETCH_CHANGE_SETS();
-
-              // could refetch the change sets here, but not useful right now since no interesting metadata exists on the changeset itself
             },
           },
           {

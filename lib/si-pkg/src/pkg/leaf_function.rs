@@ -33,7 +33,7 @@ impl<'a> SiPkgLeafFunction<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::LEAF_FUNCTION_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 
@@ -49,6 +49,9 @@ impl<'a> SiPkgLeafFunction<'a> {
         }
         if node.input_deleted_at {
             inputs.push(LeafInputLocation::DeletedAt);
+        }
+        if node.input_secret {
+            inputs.push(LeafInputLocation::Secrets);
         }
 
         Ok(Self {

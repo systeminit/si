@@ -4,7 +4,6 @@ use dal::change_set_pointer::{ChangeSetPointer, ChangeSetPointerId};
 use dal::ActionKind;
 use dal::{ActionPrototypeId, ChangeSetStatus, ComponentId};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use ulid::Ulid;
 
 use super::ChangeSetResult;
@@ -28,7 +27,6 @@ pub struct ChangeSetView {
     pub id: ChangeSetPointerId,
     pub name: String,
     pub status: ChangeSetStatus,
-    pub actions: HashMap<ActionId, ActionView>,
 }
 
 pub type ListOpenChangeSetsResponse = Vec<ChangeSetView>;
@@ -44,7 +42,7 @@ pub async fn list_open_change_sets(
     for cs in list {
         // let ctx =
         //     ctx.clone_with_new_visibility(Visibility::new(cs.pk, ctx.visibility().deleted_at));
-        let actions = HashMap::new();
+        // let actions = HashMap::new();
         // for (
         //     _,
         //     ActionBag {
@@ -105,7 +103,6 @@ pub async fn list_open_change_sets(
             id: cs.id,
             name: cs.name,
             status: cs.status,
-            actions,
         });
     }
 

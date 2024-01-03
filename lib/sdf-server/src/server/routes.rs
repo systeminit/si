@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
+use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 
 use super::{server::ServerError, state::AppState};
@@ -33,15 +34,19 @@ pub fn routes(state: AppState) -> Router {
         )
         .nest("/api/func", crate::server::service::func::routes())
         .nest("/api/schema", crate::server::service::schema::routes())
-        // .nest("/api/fix", crate::server::service::fix::routes())
-        // .nest("/api/pkg", crate::server::service::pkg::routes())
-        // .nest("/api/provider", crate::server::service::provider::routes())
-        // .nest(
-        //     "/api/qualification",
-        //     crate::server::service::qualification::routes(),
-        // )
         .nest("/api/diagram", crate::server::service::diagram::routes())
-        .nest("/api/graphviz", crate::server::service::graphviz::routes());
+        .nest("/api/graphviz", crate::server::service::graphviz::routes())
+        .nest("/api/session", crate::server::service::session::routes())
+        .nest("/api/ws", crate::server::service::ws::routes())
+        .layer(CompressionLayer::new());
+
+    // .nest("/api/fix", crate::server::service::fix::routes())
+    // .nest("/api/pkg", crate::server::service::pkg::routes())
+    // .nest("/api/provider", crate::server::service::provider::routes())
+    // .nest(
+    //     "/api/qualification",
+    //     crate::server::service::qualification::routes(),
+    // )
     // .nest("/api/secret", crate::server::service::secret::routes())
     // .nest("/api/status", crate::server::service::status::routes())
     // .nest(

@@ -12,7 +12,7 @@ use crate::schema::SchemaVariant;
 use crate::validation::ValidationError;
 use crate::ws_event::WsEvent;
 use crate::{AttributeReadContext, DalContext, RootPropChild, StandardModel, ValidationResolver};
-use crate::{Component, ComponentError, ComponentId};
+use crate::{Component, ComponentError, ComponentId, Prop};
 
 // FIXME(nick): use the formal types from the new version of function authoring instead of this
 // struct. This struct is a temporary stopgap until that's implemented.
@@ -150,23 +150,39 @@ impl Component {
     ) -> ComponentResult<QualificationView> {
         // TODO(nick): this function is a partial port of the original "all fields valid" logic.
         // Use the validation prop tree once available.
+        let statuses = ValidationResolver::find_status(ctx, component_id).await?;
+
+        let component = Component::get_by_id(ctx, &component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(component_id))?;
+        let schema_variant = component
+            .schema_variant(ctx)
+            .await?
+            .ok_or(ComponentError::NoSchemaVariant(component_id))?;
+
+        let props = Prop::find_by_attr(ctx, "schema_variant_id", schema_variant.id()).await?;
+
         let mut validation_errors = Vec::<(String, ValidationError)>::new();
-        for status in ValidationResolver::find_status(ctx, component_id).await? {
+        for status in statuses {
             // FIXME(nick): there's a race condition or bug where the attribute value where
             // "get_by_id" will fail with a given attribute value id from the the "FIND_STATUS"
             // query. This seems to only happen when the "get_summary" route is called from "sdf",
             // but it could happen more frequently. The good news is that this is intermittent
             // and the route is always called again and returns 200 OK. For now, let's log
             // where and when this happens.
-            match AttributeValue::get_by_id(ctx, &status.attribute_value_id).await? {
-                Some(_) => {
-                    let prop_name_json_pointer =
-                        AttributeValue::find_prop_for_value(ctx, status.attribute_value_id)
-                            .await?
-                            .json_pointer(ctx)
-                            .await?;
+            let av = AttributeValue::get_by_id(ctx, &status.attribute_value_id).await?;
+            match av {
+                Some(av) => {
+                    let prop = if let Some(prop) =
+                        props.iter().find(|p| *p.id() == av.context.prop_id())
+                    {
+                        prop
+                    } else {
+                        continue;
+                    };
+
                     for error in status.errors {
-                        validation_errors.push((prop_name_json_pointer.clone(), error));
+                        validation_errors.push((prop.json_pointer(), error));
                     }
                 }
                 None => warn!(

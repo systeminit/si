@@ -24,6 +24,9 @@ use dal::{
     StandardModel, Visibility,
 };
 use names::{Generator, Name};
+use sdf_server::service::change_set::list_queued_actions::{
+    ListQueuedActionsRequest, ListQueuedActionsResponse,
+};
 use sdf_server::service::component::refresh::{RefreshRequest, RefreshResponse};
 use sdf_server::service::dev::{AuthorSingleSchemaRequest, AuthorSingleSchemaResponse};
 use sdf_server::service::diagram::delete_component::DeleteComponentRequest;
@@ -41,7 +44,6 @@ use sdf_server::service::{
     change_set::{
         apply_change_set::{ApplyChangeSetRequest, ApplyChangeSetResponse},
         create_change_set::{CreateChangeSetRequest, CreateChangeSetResponse},
-        list_open_change_sets::{ChangeSetView, ListOpenChangeSetsResponse},
     },
     component::{
         get_property_editor_values::{
@@ -62,8 +64,7 @@ use std::collections::{HashMap, VecDeque};
 use telemetry::prelude::warn;
 
 use crate::service_tests::{
-    api_request_auth_empty, api_request_auth_json_body, api_request_auth_no_response,
-    api_request_auth_query,
+    api_request_auth_json_body, api_request_auth_no_response, api_request_auth_query,
 };
 
 /// This _private_ struct is a wrapper around metadata related to a [`Component`](dal::Component)
@@ -574,17 +575,30 @@ impl ScenarioHarness {
         assert!(response.success);
     }
 
-    pub async fn find_change_set(&self, ctx: &DalContext) -> ChangeSetView {
-        self.list_open_change_sets()
-            .await
-            .into_iter()
-            .find(|c| c.pk == ctx.visibility().change_set_pk)
-            .expect("unable to find change set")
-    }
+    // pub async fn find_change_set(&self, ctx: &DalContext) -> ChangeSetView {
+    //     self.list_open_change_sets()
+    //         .await
+    //         .into_iter()
+    //         .find(|c| c.pk == ctx.visibility().change_set_pk)
+    //         .expect("unable to find change set")
+    // }
 
-    pub async fn list_open_change_sets(&self) -> ListOpenChangeSetsResponse {
-        self.query_get_empty("/api/change_set/list_open_change_sets")
-            .await
+    // pub async fn list_open_change_sets(&self) -> ListOpenChangeSetsResponse {
+    //     self.query_get_empty("/api/change_set/list_open_change_sets")
+    //         .await
+    // }
+
+    pub async fn list_actions_for_changeset(
+        &self,
+        visibility: &Visibility,
+    ) -> ListQueuedActionsResponse {
+        let request = ListQueuedActionsRequest {
+            visibility: *visibility,
+        };
+        let response: ListQueuedActionsResponse = self
+            .query_get("/api/change_set/list_queued_actions", &request)
+            .await;
+        response
     }
 
     pub async fn list_fixes(&self, visibility: &Visibility) -> Vec<BatchHistoryView> {
@@ -605,9 +619,9 @@ impl ScenarioHarness {
     }
 
     /// Send a "GET" method query to the backend.
-    async fn query_get_empty<Res: DeserializeOwned>(&self, uri: impl AsRef<str>) -> Res {
-        api_request_auth_empty(self.app.clone(), Method::GET, uri, &self.auth_token).await
-    }
+    // async fn query_get_empty<Res: DeserializeOwned>(&self, uri: impl AsRef<str>) -> Res {
+    //     api_request_auth_empty(self.app.clone(), Method::GET, uri, &self.auth_token).await
+    // }
 
     /// Send a "POST" method query to the backend expecting an empty response
     async fn query_post_no_response<Req: Serialize>(&self, uri: impl AsRef<str>, request: &Req) {

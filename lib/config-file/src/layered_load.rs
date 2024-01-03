@@ -86,8 +86,9 @@ where
             #[cfg(feature = "yaml")]
             FileFormat::Yaml => config::FileFormat::Yaml,
             FileFormat::Custom(unknown) => {
-                return Err(ConfigFileError::UnknownFileFormat(unknown.to_string()))
-                    .map_err(Into::into)
+                return Err(Into::into(ConfigFileError::UnknownFileFormat(
+                    unknown.to_string(),
+                )))
             }
             // If another file type is compiled in via cargo features, this arm will match
             #[allow(unreachable_patterns)]

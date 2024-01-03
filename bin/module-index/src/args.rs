@@ -45,6 +45,14 @@ pub(crate) struct Args {
     #[arg(long, env)]
     pub(crate) pg_password: Option<String>,
 
+    /// PostgreSQL connection certification path
+    #[arg(long)]
+    pub(crate) pg_cert_path: Option<String>,
+
+    /// PostgreSQL connection certification base64 string
+    #[arg(long)]
+    pub(crate) pg_cert_base64: Option<String>,
+
     /// The address and port to bind the HTTP server to [example: 0.0.0.0:80]
     #[arg(long, env)]
     pub(crate) socket_addr: Option<String>,
@@ -104,6 +112,12 @@ impl TryFrom<Args> for Config {
             }
             if let Some(password) = args.pg_password {
                 config_map.set("pg.password", password);
+            }
+            if let Some(cert) = args.pg_cert_path {
+                config_map.set("pg.certificate_path", cert);
+            }
+            if let Some(cert) = args.pg_cert_base64 {
+                config_map.set("pg.certificate_base64", cert);
             }
             if let Some(socket_addr) = args.socket_addr {
                 config_map.set("socket_addr", socket_addr);

@@ -1,6 +1,6 @@
 use crate::key_management::{
-    ensure_encryption_keys, ensure_jwt_public_signing_key, ensure_symmetric_crypto_key,
-    format_credentials_for_veritech, get_si_data_dir, get_user_email,
+    ensure_encryption_keys, ensure_jwt_public_signing_key, ensure_postgres_root_cert,
+    ensure_symmetric_crypto_key, format_credentials_for_veritech, get_si_data_dir, get_user_email,
 };
 use crate::state::AppState;
 use crate::{CliResult, CONTAINER_NAMES};
@@ -27,6 +27,7 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
 
     ensure_encryption_keys().await?;
     ensure_symmetric_crypto_key().await?;
+    ensure_postgres_root_cert().await?;
     ensure_jwt_public_signing_key().await?;
     let si_data_dir = get_si_data_dir().await?;
 
@@ -315,7 +316,7 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
                 let mut needs_recreated = false;
                 if let Some(ports) = existing.ports {
                     if !ports.is_empty() {
-                        let port = ports.first().unwrap().clone();
+                        let port = ports.first().unwrap();
                         let public_port = port.public_port.unwrap_or(0);
                         let ip = port.ip.clone().unwrap_or("".to_string());
 
@@ -394,7 +395,7 @@ async fn invoke(app: &AppState, is_preview: bool) -> CliResult<()> {
                 let mut needs_recreated = false;
                 if let Some(ports) = existing.ports {
                     if !ports.is_empty() {
-                        let port = ports.first().unwrap().clone();
+                        let port = ports.first().unwrap();
                         let public_port = port.public_port.unwrap_or(0);
                         let ip = port.ip.clone().unwrap_or("".to_string());
 

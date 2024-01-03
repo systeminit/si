@@ -437,6 +437,7 @@ export const useAssetStore = () => {
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
             eventType: "ChangeSetWritten",
+            debounce: true,
             callback: (writtenChangeSetId) => {
               if (writtenChangeSetId !== changeSetId) return;
               this.LOAD_ASSET_LIST();

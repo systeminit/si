@@ -79,7 +79,7 @@ pub async fn list_module_route(
         query
     };
     let query = if let Some(name_filter) = request.name {
-        query.filter(si_module::Column::Name.contains(&name_filter))
+        query.filter(si_module::Column::Name.contains(name_filter))
     } else {
         query
     };

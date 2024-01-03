@@ -156,6 +156,7 @@ impl SymmetricCryptoService {
         SymmetricKey(secretbox::gen_key())
     }
 
+    #[allow(clippy::missing_panics_doc)]
     /// Encrypts a message and returns the crypted bytes, a nonce, and a [`Hash`] of the encrypting
     /// [`SymmetricKey`].
     pub fn encrypt(&self, message: &[u8]) -> (Vec<u8>, SymmetricNonce, &Hash) {

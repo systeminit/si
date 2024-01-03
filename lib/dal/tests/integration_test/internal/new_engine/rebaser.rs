@@ -49,7 +49,7 @@ async fn modify_func_node(ctx: &mut DalContext) {
 
     dbg!(ctx.workspace_snapshot().unwrap().try_lock().unwrap().id());
     let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(matches!(conflicts, None));
+    assert!(conflicts.is_none());
 
     ctx.update_snapshot_to_visibility()
         .await
@@ -126,7 +126,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
         .expect("able to create func argument 2");
 
     let conflicts = ctx.commit().await.expect("unable to commit");
-    assert!(matches!(conflicts, None));
+    assert!(conflicts.is_none());
 
     ctx.update_snapshot_to_visibility()
         .await
@@ -157,7 +157,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
     .expect("able to modify func");
 
     let conflicts = ctx.commit().await.expect("unable to commit");
-    assert!(matches!(conflicts, None));
+    assert!(conflicts.is_none());
 
     ctx.update_snapshot_to_visibility()
         .await
@@ -224,7 +224,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
     assert!(Func::get_by_id(ctx, func.id).await.is_err());
 
     let conflicts = ctx.commit().await.expect("unable to commit");
-    assert!(matches!(conflicts, None));
+    assert!(conflicts.is_none());
 
     ctx.update_snapshot_to_visibility()
         .await

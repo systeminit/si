@@ -318,6 +318,11 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         .map_err(ConfigError::development)?
         .to_string_lossy()
         .to_string();
+    let postgres_cert = resources
+        .get_ends_with("dev.postgres.root.crt")
+        .map_err(ConfigError::development)?
+        .to_string_lossy()
+        .to_string();
     let pkgs_path = resources
         .get_ends_with("pkgs_path")
         .map_err(ConfigError::development)?
@@ -328,6 +333,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
+        postgres_cert = postgres_cert.as_str(),
         pkgs_path = pkgs_path.as_str(),
         "detected development run",
     );
@@ -342,6 +348,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
+    config.pg.certificate_path = Some(postgres_cert.try_into()?);
     config.pkgs_path = pkgs_path;
 
     Ok(())
@@ -371,6 +378,10 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         .join("../../lib/dal/dev.donkey.key")
         .to_string_lossy()
         .to_string();
+    let postgres_cert = Path::new(&dir)
+        .join("../../config/keys/dev.postgres.root.crt")
+        .to_string_lossy()
+        .to_string();
     let pkgs_path = Path::new(&dir)
         .join("../../pkgs/")
         .to_string_lossy()
@@ -380,6 +391,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         jwt_signing_public_key_path = jwt_signing_public_key_path.as_str(),
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
+        postgres_cert = postgres_cert.as_str(),
         pkgs_path = pkgs_path.as_str(),
         "detected development run",
     );
@@ -394,6 +406,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
+    config.pg.certificate_path = Some(postgres_cert.try_into()?);
     config.pkgs_path = pkgs_path;
 
     Ok(())

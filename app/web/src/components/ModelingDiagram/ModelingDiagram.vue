@@ -233,6 +233,7 @@ import {
 } from "@/store/components.store";
 import DiagramGroupOverlay from "@/components/ModelingDiagram/DiagramGroupOverlay.vue";
 import { DiagramCursorDef, usePresenceStore } from "@/store/presence.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DiagramDrawEdgeState,
@@ -284,6 +285,8 @@ import DiagramControls from "./DiagramControls.vue";
 import DiagramHelpModal from "./DiagramHelpModal.vue";
 import DiagramIcon from "./DiagramIcon.vue";
 import DiagramEmptyState from "./DiagramEmptyState.vue";
+
+const changeSetsStore = useChangeSetsStore();
 
 // scroll pan multiplied by this and zoom level when panning
 const ZOOM_PAN_FACTOR = 0.5;
@@ -494,6 +497,10 @@ onMounted(() => {
   }
 });
 
+const CLIPBOARD_LOCALSTORAGE_KEY = computed(
+  () => `clipboard-si-${changeSetsStore.selectedChangeSetId}`,
+);
+
 watch([customFontsLoaded, () => isMounted.value, () => stageRef.value], () => {
   if (!isMounted.value || !customFontsLoaded.value || !stageRef.value) return;
   onMountedAndReady();
@@ -536,7 +543,7 @@ onBeforeUnmount(() => {
 const spaceKeyIsDown = ref(false);
 const shiftKeyIsDown = ref(false);
 
-function onKeyDown(e: KeyboardEvent) {
+async function onKeyDown(e: KeyboardEvent) {
   if (props.controlsDisabled) return;
 
   // TODO: check is cursor is within graph bounds
@@ -557,6 +564,39 @@ function onKeyDown(e: KeyboardEvent) {
   }
   if (e.key === "-" || e.key === "_") {
     setZoomLevel(zoomLevel.value - 0.1);
+  }
+
+  if (
+    (e.metaKey || e.ctrlKey) &&
+    e.key === "c" &&
+    componentsStore.selectedComponentIds.length
+  ) {
+    const component =
+      componentsStore.componentsById[
+        componentsStore.selectedComponentIds[0] ?? -1
+      ];
+    if (component) {
+      // TODO: how to get copyingFrom
+      window.localStorage.setItem(
+        CLIPBOARD_LOCALSTORAGE_KEY.value,
+        JSON.stringify({
+          componentIds: componentsStore.selectedComponentIds,
+          copyingFrom: component.position,
+        }),
+      );
+    }
+  } else if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+    const json = window.localStorage.getItem(CLIPBOARD_LOCALSTORAGE_KEY.value);
+    if (json !== null && json !== "null") {
+      try {
+        const { componentIds, copyingFrom } = JSON.parse(json);
+        componentsStore.selectedComponentIds = componentIds;
+        componentsStore.copyingFrom = copyingFrom;
+        triggerPasteElements();
+      } catch {
+        //
+      }
+    }
   }
 
   // handle arrow keys - nudge and alignment
@@ -2158,10 +2198,14 @@ async function triggerPasteElements() {
   if (!componentsStore.copyingFrom)
     throw new Error("Copy cursor must be in grid to paste element");
 
-  componentsStore.PASTE_COMPONENTS(componentsStore.selectedComponentIds, {
-    x: gridPointerPos.value.x - componentsStore.copyingFrom.x,
-    y: gridPointerPos.value.y - componentsStore.copyingFrom.y,
-  });
+  componentsStore.PASTE_COMPONENTS(
+    componentsStore.selectedComponentIds,
+    {
+      x: gridPointerPos.value.x - componentsStore.copyingFrom.x,
+      y: gridPointerPos.value.y - componentsStore.copyingFrom.y,
+    },
+    gridPointerPos.value,
+  );
   componentsStore.copyingFrom = null;
 }
 

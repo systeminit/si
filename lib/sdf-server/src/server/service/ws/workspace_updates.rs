@@ -83,7 +83,7 @@ mod workspace_updates {
     };
     use futures::StreamExt;
     use serde::{Deserialize, Serialize};
-    use si_data_nats::{NatsClient, NatsError, Subscriber};
+    use si_data_nats::{NatsClient, NatsError, Subject, Subscriber};
     use telemetry::prelude::*;
     use thiserror::Error;
     use tokio_tungstenite::tungstenite;
@@ -145,12 +145,12 @@ mod workspace_updates {
 
     impl WorkspaceUpdates {
         pub async fn start(self) -> Result<WorkspaceUpdatesStarted> {
-            let subject = format!("si.workspace_pk.{}.>", self.workspace_pk);
+            let subject = Subject::from(format!("si.workspace_pk.{}.>", self.workspace_pk));
             let subscriber = self
                 .nats
-                .subscribe(&subject)
+                .subscribe(subject.clone())
                 .await
-                .map_err(|err| WorkspaceUpdatesError::Subscribe(err, subject))?;
+                .map_err(|err| WorkspaceUpdatesError::Subscribe(err, subject.to_string()))?;
 
             Ok(WorkspaceUpdatesStarted {
                 nats: self.nats.clone(),

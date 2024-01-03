@@ -83,7 +83,7 @@ pub async fn reject_module(
         latest_hash: Set(module.latest_hash),
         latest_hash_created_at: Set(module.latest_hash_created_at),
         created_at: Set(module.created_at),
-        rejected_at: Set(Some(DateTime::<FixedOffset>::from_utc(
+        rejected_at: Set(Some(DateTime::<FixedOffset>::from_naive_utc_and_offset(
             Utc::now().naive_utc(),
             Utc.fix(),
         ))),
