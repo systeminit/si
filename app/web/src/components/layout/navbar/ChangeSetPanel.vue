@@ -25,7 +25,10 @@
         variant="ghost"
         icon="git-branch-plus"
         size="sm"
-        :disabled="fixesStore.fixesAreInProgress"
+        :disabled="
+          fixesStore.fixesAreInProgress &&
+          featureFlagStore.DONT_BLOCK_ON_ACTIONS
+        "
         @click="openCreateModal"
       />
 
@@ -36,7 +39,8 @@
         icon="trash"
         size="sm"
         :disabled="
-          fixesStore.fixesAreInProgress ||
+          (fixesStore.fixesAreInProgress &&
+            featureFlagStore.DONT_BLOCK_ON_ACTIONS) ||
           !selectedChangeSetName ||
           changeSetsStore.headSelected
         "

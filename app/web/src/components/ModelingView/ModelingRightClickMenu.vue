@@ -52,7 +52,8 @@ function typeDisplayName(action = "delete") {
 
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
-  const disabled = fixesStore.fixesAreInProgress;
+  const disabled =
+    fixesStore.fixesAreInProgress && featureFlagsStore.DONT_BLOCK_ON_ACTIONS;
   if (selectedEdgeId.value) {
     // single selected edge
     if (selectedEdge.value?.changeStatus === "deleted") {
