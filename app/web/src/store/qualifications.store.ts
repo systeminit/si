@@ -98,7 +98,7 @@ export const useQualificationsStore = () => {
               },
             ),
 
-          // single status per component“
+          // single status per component
           qualificationStatusByComponentId(): Record<
             ComponentId,
             QualificationStatus

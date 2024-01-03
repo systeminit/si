@@ -1,8 +1,5 @@
 import { parseConnectionAnnotation } from "@si/ts-lib";
 import Joi from "joi";
-import { Debug } from "./debug";
-
-const debug = Debug("langJs:asset_builder");
 
 export type ValueFromKind = "inputSocket" | "outputSocket" | "prop";
 
