@@ -170,15 +170,20 @@ async fn process_delivery(
             &mut onto_workspace_snapshot,
             updates.as_slice(),
         )?;
+        info!("Updates complete: {:?}", start.elapsed());
 
-        // Once all updates have been performed, we can write out, mark everything as recently seen
-        // and update the pointer.
-        to_rebase_workspace_snapshot
-            .write(ctx, to_rebase_change_set.vector_clock_id())
-            .await?;
-        to_rebase_change_set
-            .update_pointer(ctx, to_rebase_workspace_snapshot.id())
-            .await?;
+        if !updates.is_empty() {
+            // Once all updates have been performed, we can write out, mark everything as recently seen
+            // and update the pointer.
+            to_rebase_workspace_snapshot
+                .write(ctx, to_rebase_change_set.vector_clock_id())
+                .await?;
+            info!("Snapshot written: {:?}", start.elapsed());
+            to_rebase_change_set
+                .update_pointer(ctx, to_rebase_workspace_snapshot.id())
+                .await?;
+            info!("Pointer updated: {:?}", start.elapsed());
+        }
 
         ChangeSetReplyMessage::Success {
             updates_performed: serde_json::to_value(updates)?,
