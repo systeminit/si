@@ -16,6 +16,7 @@ const FLAG_MAPPING = {
   ABANDON_CHANGESET: "abandon_changeset",
   CONNECTION_ANNOTATIONS: "socket_connection_annotations",
   COPY_PASTE: "copy_paste",
+  DONT_BLOCK_ON_ACTIONS: "dont_block_on_actions",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
