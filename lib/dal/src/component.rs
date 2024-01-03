@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -1010,7 +1010,8 @@ impl Component {
 
         let mut pasted_attribute_values_by_original = HashMap::new();
 
-        for copied_av in &attribute_values {
+        let mut work_queue: VecDeque<AttributeValue> = attribute_values.iter().cloned().collect();
+        while let Some(copied_av) = work_queue.pop_front() {
             let context = AttributeContextBuilder::from(copied_av.context)
                 .set_component_id(*self.id())
                 .to_context()?;
@@ -1045,6 +1046,16 @@ impl Component {
                 .await?;
 
             pasted_attribute_values_by_original.insert(*copied_av.id(), *pasted_av.id());
+
+            if let Some(copied_index_map) = copied_av.index_map() {
+                for (_, copied_id) in copied_index_map.order_as_map() {
+                    if let Some(attribute_value) =
+                        AttributeValue::get_by_id(ctx, &copied_id).await?
+                    {
+                        work_queue.push_back(attribute_value)
+                    }
+                }
+            }
         }
 
         for copied_av in &attribute_values {
@@ -1055,17 +1066,19 @@ impl Component {
 
                 let mut index_map = IndexMap::new();
                 for (key, copied_id) in copied_index_map.order_as_map() {
-                    let pasted_id = *pasted_attribute_values_by_original
-                        .get(&copied_id)
-                        .ok_or(ComponentError::AttributeValueNotFound)?;
-                    index_map.push(pasted_id, Some(key));
+                    if let Some(pasted_id) = pasted_attribute_values_by_original.get(&copied_id) {
+                        index_map.push(*pasted_id, Some(key));
+                    }
                 }
 
                 ctx.txns()
                     .await?
                     .pg()
                     .query(
-                        "UPDATE attribute_values_v1($1, $2) SET index_map = $3 WHERE id = $4",
+                        "UPDATE attribute_values av
+                         SET index_map = $3
+                         FROM attribute_values_v1($1, $2) as attribute_values
+                         WHERE attribute_values.id = $4 AND av.id = attribute_values.id",
                         &[
                             ctx.tenancy(),
                             ctx.visibility(),
