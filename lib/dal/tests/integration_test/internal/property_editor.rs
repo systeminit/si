@@ -3,7 +3,7 @@ use dal::{
     generate_name,
     property_editor::{schema::PropertyEditorSchema, values::PropertyEditorValues},
     DalContext, Func, FuncArgument, FuncBackendKind, FuncBackendResponseType, LeafInput,
-    LeafInputLocation, LeafKind, Prop, PropKind, SchemaVariant, StandardModel,
+    LeafInputLocation, LeafKind, PropKind, SchemaVariant, StandardModel,
 };
 use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::test;

@@ -2,8 +2,7 @@ use dal::{
     func::{backend::validation::FuncBackendValidationArgs, binding::FuncBinding},
     validation::Validation,
     AttributeContext, AttributeValue, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    Prop, PropKind, StandardModel, ValidationPrototype, ValidationPrototypeContext,
-    ValidationResolver,
+    PropKind, StandardModel, ValidationPrototype, ValidationPrototypeContext, ValidationResolver,
 };
 use dal_test::{
     test,

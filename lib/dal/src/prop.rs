@@ -293,6 +293,7 @@ impl Prop {
     /// Create a new [`Prop`]. A corresponding [`AttributePrototype`] and [`AttributeValue`] will be
     /// created when the provided [`SchemaVariant`](crate::SchemaVariant) is
     /// [`finalized`](crate::SchemaVariant::finalize).
+    #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,

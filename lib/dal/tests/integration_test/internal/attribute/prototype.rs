@@ -3,7 +3,7 @@ use dal::{
     attribute::prototype::AttributePrototype,
     func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
     AttributePrototypeError, AttributeValue, Component, ComponentView, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, Prop, PropKind, Schema, SchemaVariant, StandardModel,
+    FuncBackendKind, FuncBackendResponseType, PropKind, Schema, SchemaVariant, StandardModel,
 };
 use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::{

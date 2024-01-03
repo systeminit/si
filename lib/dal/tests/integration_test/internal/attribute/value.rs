@@ -2,7 +2,7 @@ use pretty_assertions_sorted::assert_eq;
 
 use dal::{
     attribute::context::AttributeContextBuilder, component::view::ComponentView, generate_name,
-    AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, Prop, PropKind,
+    AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
     StandardModel,
 };
 use dal_test::helpers::component_bag::ComponentBagger;

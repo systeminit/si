@@ -1,4 +1,3 @@
-use dal::property_editor::schema::WidgetKind;
 use dal::{
     component::ComponentKind,
     func::{binding::FuncBinding, FuncId},
@@ -7,12 +6,11 @@ use dal::{
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind, EncryptedSecret, Func,
-    FuncBackendKind, FuncBackendResponseType, KeyPair, Node, Prop, PropId, PropKind, PropResult,
-    Schema, SchemaId, SchemaVariantId, Secret, StandardModel, User, UserPk, Visibility, Workspace,
+    FuncBackendKind, FuncBackendResponseType, KeyPair, Node, Prop, PropId, PropKind, Schema,
+    SchemaId, SchemaVariantId, Secret, StandardModel, User, UserPk, Visibility, Workspace,
     WorkspacePk,
 };
 use names::{Generator, Name};
-use serde_json::Value;
 
 pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()

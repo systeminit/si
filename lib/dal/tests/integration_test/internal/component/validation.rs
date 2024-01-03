@@ -8,9 +8,8 @@ use dal::{
     func::backend::validation::FuncBackendValidationArgs,
     validation::{Validation, ValidationError, ValidationErrorKind},
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentId, ComponentView,
-    DalContext, Func, FuncBackendKind, FuncBackendResponseType, Prop, PropId, PropKind,
-    StandardModel, ValidationPrototype, ValidationPrototypeContext, ValidationResolver,
-    ValidationStatus,
+    DalContext, Func, FuncBackendKind, FuncBackendResponseType, PropId, PropKind, StandardModel,
+    ValidationPrototype, ValidationPrototypeContext, ValidationResolver, ValidationStatus,
 };
 use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::{

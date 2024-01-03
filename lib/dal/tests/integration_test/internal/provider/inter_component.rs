@@ -3,8 +3,7 @@ use pretty_assertions_sorted::assert_eq;
 use dal::{
     socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
     AttributeValue, Component, ComponentView, DalContext, Edge, ExternalProvider,
-    ExternalProviderId, InternalProvider, InternalProviderId, Prop, PropId, PropKind,
-    StandardModel,
+    ExternalProviderId, InternalProvider, InternalProviderId, PropId, PropKind, StandardModel,
 };
 use dal_test::{
     connection_annotation_string,

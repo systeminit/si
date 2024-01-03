@@ -4,7 +4,7 @@ use dal::{
     attribute::context::AttributeContextBuilder,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
     AttributeReadContext, AttributeValue, Component, ComponentView, ComponentViewProperties,
-    DalContext, Func, FuncBackendKind, FuncBackendResponseType, Prop, PropKind, SchemaVariant,
+    DalContext, Func, FuncBackendKind, FuncBackendResponseType, PropKind, SchemaVariant,
     StandardModel,
 };
 

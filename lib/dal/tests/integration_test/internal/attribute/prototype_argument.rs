@@ -6,7 +6,7 @@ use dal::{
         binding::FuncBinding,
     },
     AttributePrototypeArgument, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    InternalProvider, Prop, PropKind, StandardModel,
+    InternalProvider, PropKind, StandardModel,
 };
 use dal_test::{
     test,

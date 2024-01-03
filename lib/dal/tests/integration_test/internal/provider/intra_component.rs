@@ -5,7 +5,7 @@ use dal::{
     provider::internal::InternalProvider,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
     ComponentView, DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
-    Prop, PropKind, SocketArity, StandardModel,
+    PropKind, SocketArity, StandardModel,
 };
 use dal_test::{
     connection_annotation_string,

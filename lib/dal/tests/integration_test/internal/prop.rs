@@ -92,7 +92,7 @@ async fn parent_props_wrong_prop_kinds(ctx: &DalContext) {
     )
     .await;
 
-    let result = dal_test::test_harness::create_prop_without_ui_optionals(
+    let result = Prop::new_without_ui_optionals(
         ctx,
         generate_fake_name(),
         PropKind::Object,
