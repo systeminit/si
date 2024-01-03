@@ -4135,6 +4135,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rebaser"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "rebaser-server",
+ "telemetry-application",
+ "tokio",
+]
+
+[[package]]
 name = "rebaser-client"
 version = "0.1.0"
 dependencies = [
