@@ -32,12 +32,14 @@ export const useQualificationsStore = () => {
         state: () => ({
           // stats per component - this is the raw data
           // we may change this to store qualification ids and individual statuses to make realtime updates easier
-          qualificationStatsByComponentId: {} as Record<
+          // NOTE(victor) Use the qualificationStatsByComponentId getter, it has validation data
+          qualificationStatsByComponentIdRaw: {} as Record<
             ComponentId,
             QualificationStats
           >,
 
-          qualificationsByComponentId: {} as Record<
+          // NOTE(victor) Use the qualificationsByComponentId getter, it has validation data
+          qualificationsByComponentIdRaw: {} as Record<
             ComponentId,
             Qualification[]
           >,
@@ -45,7 +47,58 @@ export const useQualificationsStore = () => {
           checkedQualificationsAt: null as Date | null,
         }),
         getters: {
-          // single status per component
+          // NOTE(victor) the following two getters only exist because Joi validations
+          // run on the frontend. If all qualification data goes back
+          // to coming from the API we can delete both *Raw entries from state
+          qualificationStatsByComponentId: (state) =>
+            _.mapValues(
+              state.qualificationStatsByComponentIdRaw,
+              (cs, componentId) => {
+                const { result: validationResult } =
+                  useComponentAttributesStore(componentId).schemaValidation;
+
+                let total = cs.total;
+                let succeeded = cs.succeeded;
+                let failed = cs.failed;
+
+                if (validationResult) {
+                  total += 1;
+                  if (validationResult.status === "success") succeeded += 1;
+                  else failed += 1;
+                }
+
+                return {
+                  ...cs,
+                  total,
+                  succeeded,
+                  failed,
+                };
+              },
+            ),
+          qualificationsByComponentId: (state) =>
+            _.mapValues(
+              state.qualificationsByComponentIdRaw,
+              (qualifications, componentId) => {
+                const qualificationsAndValidation = [
+                  ...qualifications,
+                  useComponentAttributesStore(componentId).schemaValidation,
+                ];
+
+                // TODO: maybe we want to sort these in the backend?
+                return _.orderBy(
+                  qualificationsAndValidation,
+                  (response) =>
+                    ({
+                      failure: 1,
+                      warning: 2,
+                      unknown: 3,
+                      success: 4,
+                    }[response.result?.status || "unknown"]),
+                );
+              },
+            ),
+
+          // single status per component“
           qualificationStatusByComponentId(): Record<
             ComponentId,
             QualificationStatus
@@ -131,27 +184,17 @@ export const useQualificationsStore = () => {
                   response.components,
                   "componentId",
                 );
-                this.qualificationStatsByComponentId = _.mapValues(
+
+                this.qualificationStatsByComponentIdRaw = _.mapValues(
                   byComponentId,
-                  ({ componentId, total, succeeded, warned, failed }) => {
-                    const { result: validationResult } =
-                      useComponentAttributesStore(componentId).schemaValidation;
-
-                    if (validationResult) {
-                      total += 1;
-                      if (validationResult.status === "success") succeeded += 1;
-                      else failed += 1;
-                    }
-
-                    return {
-                      // transform the data slightly to add "running" so we can avoid recalculating again elsewhere
-                      total,
-                      succeeded,
-                      warned,
-                      failed,
-                      running: total - succeeded - failed - warned,
-                    };
-                  },
+                  ({ total, succeeded, warned, failed }) => ({
+                    // transform the data slightly to add "running" so we can avoid recalculating again elsewhere
+                    total,
+                    succeeded,
+                    warned,
+                    failed,
+                    running: total - succeeded - failed - warned,
+                  }),
                 );
               },
             });
@@ -171,23 +214,7 @@ export const useQualificationsStore = () => {
                 visibility_change_set_pk: changeSetId,
               },
               onSuccess: (response) => {
-                response.push(
-                  useComponentAttributesStore(componentId).schemaValidation,
-                );
-
-                // TODO: maybe we want to sort these in the backend?
-                const sorted = _.orderBy(
-                  response,
-                  (response) =>
-                    ({
-                      failure: 1,
-                      warning: 2,
-                      unknown: 3,
-                      success: 4,
-                    }[response.result?.status || "unknown"]),
-                );
-
-                this.qualificationsByComponentId[componentId] = sorted;
+                this.qualificationsByComponentIdRaw[componentId] = response;
               },
             });
           },

@@ -192,7 +192,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             const tree = this.domainTree;
 
             const output = [];
-            let status: "success" | "failure" = "success";
+            let status: "success" | "failure" | "unknown" = tree
+              ? "success"
+              : "unknown";
+            let failCounter = 0;
 
             // Walk down the prop tree and calculate all validations
             const queue = [
@@ -237,7 +240,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
 
               const errorMessage = error?.message;
 
-              if (errorMessage) status = "failure";
+              if (errorMessage) {
+                status = "failure";
+                failCounter += 1;
+              }
               // console.log(`${path} (${kind}): value ${value}`);
               // console.log(`${path}: ${errorMessage ?? "OK"}`);
 
@@ -253,7 +259,12 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               output,
               result: {
                 status,
-                sub_checks: [],
+                sub_checks: [
+                  {
+                    status,
+                    description: `Component has ${failCounter} invalid value(s). Click "View Details" for more info.`,
+                  },
+                ],
               },
             };
           },
