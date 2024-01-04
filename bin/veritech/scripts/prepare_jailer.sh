@@ -173,7 +173,7 @@ cat << EOF > $JAIL/firecracker.conf
     }
   ],
   "machine-config": {
-    "vcpu_count": 1,
+    "vcpu_count": 4,
     "mem_size_mib": 512
   },
   "network-interfaces": [{

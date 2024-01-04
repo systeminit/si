@@ -1,4 +1,5 @@
 use std::os::unix::fs::PermissionsExt;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use ::std::path::Path;
 use rand::distributions::Alphanumeric;
@@ -358,7 +359,19 @@ impl Spec for LocalUdsInstanceSpec {
             self.runtime_strategy,
             LocalUdsRuntimeStrategy::LocalFirecracker
         );
+        trace!(
+            "cyclone-execution: client creation {:?}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time has gone backwards")
+        );
         let mut client = Client::uds(runtime.socket(), special_connect)?;
+        trace!(
+            "cyclone-execution: client created {:?}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time has gone backwards")
+        );
 
         // Establish the client watch session. As the process may be booting, we will retry for a
         // period before giving up and assuming that the server instance has failed.
@@ -381,8 +394,20 @@ impl Spec for LocalUdsInstanceSpec {
                 time::sleep(Duration::from_millis(64)).await;
             }
         };
+        trace!(
+            "cyclone-execution: watch established {:?}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time has gone backwards")
+        );
 
         let mut watch_progress = watch.start().await?;
+        trace!(
+            "cyclone-execution: watch started {:?}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time has gone backwards")
+        );
 
         // Establish that we have received our first watch ping, which should happen immediately
         // after establishing a watch session
@@ -390,10 +415,22 @@ impl Spec for LocalUdsInstanceSpec {
             .next()
             .await
             .ok_or(Self::Error::WatchClosed)??;
+        trace!(
+            "cyclone-execution: watch first-ping {:?}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time has gone backwards")
+        );
 
         let (watch_shutdown_tx, watch_shutdown_rx) = oneshot::channel();
         // Spawn a task to keep the watch session open until we shut it down
         tokio::spawn(watch_task(watch_progress, watch_shutdown_rx));
+        trace!(
+            "cyclone-execution: watch spawned {:?}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time has gone backwards")
+        );
 
         Ok(Self::Instance {
             _temp_path: temp_path,
@@ -580,16 +617,40 @@ impl LocalInstanceRuntime for LocalProcessRuntime {
     }
 
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        trace!(
+            "cyclone-execution: spawn start {:?}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time has gone backwards")
+        );
         self.child = Some(
             self.cmd
                 .spawn()
                 .map_err(LocalUdsInstanceError::ChildSpawn)?,
         );
+        trace!(
+            "cyclone-execution: spawn finished {:?}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time has gone backwards")
+        );
         Ok(())
     }
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        trace!(
+            "cyclone-execution: terminate start {:?}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time has gone backwards")
+        );
         match self.child.as_mut() {
             Some(c) => {
+                trace!(
+                    "cyclone-execution: terminate finished {:?}",
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("time has gone backwards")
+                );
                 process::child_shutdown(c, Some(process::Signal::SIGTERM), None).await?;
                 Ok(())
             }
@@ -776,18 +837,42 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
     }
 
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        trace!(
+            "cyclone-execution: spawn start {:?}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time has gone backwards")
+        );
         self.child = Some(
             self.cmd
                 .spawn()
                 .map_err(LocalUdsInstanceError::ChildSpawn)?,
         );
+        trace!(
+            "cyclone-execution: spawn finished {:?}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time has gone backwards")
+        );
         Ok(())
     }
 
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
+        trace!(
+            "cyclone-execution: terminate start {:?}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time has gone backwards")
+        );
         match self.child.as_mut() {
             Some(c) => {
                 process::child_shutdown(c, Some(process::Signal::SIGTERM), None).await?;
+                trace!(
+                    "cyclone-execution: terminate finished {:?}",
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("time has gone backwards")
+                );
                 Ok(())
             }
             None => Ok(()),
@@ -864,7 +949,9 @@ async fn watch_task<Strm>(
             result = watch_progress.next() => {
                 match result {
                     // Got a ping, good news, proceed
-                    Some(Ok(())) => {},
+                    Some(Ok(())) => {
+
+                    },
                     // An error occurred on the stream. We are going to treat this as catastrophic
                     // and end the watch.
                     Some(Err(err)) => {
