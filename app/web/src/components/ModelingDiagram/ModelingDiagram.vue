@@ -154,6 +154,7 @@ overflow hidden */
             fill: SELECTION_BOX_INNER_COLOR,
             strokeWidth: 1,
             stroke: SELECTION_COLOR,
+            listening: false,
           }"
         />
 
@@ -216,6 +217,7 @@ import {
   connectionAnnotationFitsReference,
   parseConnectionAnnotation,
 } from "@si/ts-lib/src/connection-annotations";
+import { windowListenerManager } from "@si/vue-lib";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
 import {
@@ -503,10 +505,11 @@ function onMountedAndReady() {
   kStage.on("wheel", onMouseWheel);
   // attach to window so we have coords even when mouse is outside bounds or on other elements
   // NOTE - mousedown is attached on the konva stage component above, since we only care about starting clicks within the diagram
-  window.addEventListener("mousemove", onMouseMove);
-  window.addEventListener("mouseup", onMouseUp);
-  window.addEventListener("keydown", onKeyDown);
-  window.addEventListener("keyup", onKeyUp);
+  windowListenerManager.addEventListener("mousemove", onMouseMove);
+  windowListenerManager.addEventListener("mouseup", onMouseUp);
+  windowListenerManager.addEventListener("keydown", onKeyDown);
+  windowListenerManager.addEventListener("keyup", onKeyUp);
+
   // window.addEventListener("pointerdown", onPointerDown);
   // window.addEventListener("pointermove", onPointerMove);
   // window.addEventListener("pointerup", onPointerUp);
@@ -517,10 +520,11 @@ function onMountedAndReady() {
 
 onBeforeUnmount(() => {
   kStage?.off("wheel", onMouseWheel);
-  window.removeEventListener("mousemove", onMouseMove);
-  window.removeEventListener("mouseup", onMouseUp);
-  window.removeEventListener("keydown", onKeyDown);
-  window.removeEventListener("keyup", onKeyUp);
+  windowListenerManager.removeEventListener("mousemove", onMouseMove);
+  windowListenerManager.removeEventListener("mouseup", onMouseUp);
+  windowListenerManager.removeEventListener("keydown", onKeyDown);
+  windowListenerManager.removeEventListener("keyup", onKeyUp);
+
   // window.removeEventListener("pointerdown", onPointerDown);
   // window.removeEventListener("pointermove", onPointerMove);
   // window.removeEventListener("pointerup", onPointerUp);

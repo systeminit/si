@@ -27,6 +27,7 @@ import {
 } from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
+import { windowListenerManager } from "@si/vue-lib";
 
 const props = defineProps({
   anchorTo: { type: Object },
@@ -74,14 +75,16 @@ function onWindowMousedown(e: MouseEvent) {
 
 function onKeyboardEvent(e: KeyboardEvent) {
   if (e.key === "Escape") {
+    e.stopPropagation();
+
     if (props.noExit) return;
     close();
   }
 }
 
 function removeListeners() {
-  window.removeEventListener("click", onWindowMousedown);
-  window.removeEventListener("keydown", onKeyboardEvent);
+  windowListenerManager.removeEventListener("click", onWindowMousedown);
+  windowListenerManager.removeEventListener("keydown", onKeyboardEvent);
 }
 
 onBeforeUnmount(() => {
@@ -135,8 +138,8 @@ function finishOpening() {
 }
 
 function startListening() {
-  window.addEventListener("keydown", onKeyboardEvent);
-  window.addEventListener("mousedown", onWindowMousedown);
+  windowListenerManager.addEventListener("keydown", onKeyboardEvent, 10);
+  windowListenerManager.addEventListener("mousedown", onWindowMousedown, 10);
 }
 
 function readjustPosition() {

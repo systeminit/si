@@ -57,7 +57,7 @@
                       : '',
                   )
                 "
-                @mousedown.left="onSelect(schema.id, fixesAreRunning)"
+                @mousedown.left.stop="onSelect(schema.id, fixesAreRunning)"
                 @click.right.prevent
               />
             </li>
@@ -84,6 +84,7 @@ import * as _ from "lodash-es";
 import { computed, onMounted, onBeforeUnmount, ref } from "vue";
 import { Collapsible, Icon, ScrollArea } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { windowListenerManager } from "@si/vue-lib";
 import SiNodeSprite from "@/components/SiNodeSprite.vue";
 import {
   useComponentsStore,
@@ -166,7 +167,6 @@ const selectedSchema = computed(() => {
     return schemasById.value[componentsStore.selectedInsertSchemaId];
   return undefined;
 });
-const selecting = ref(false);
 const mouseNode = ref();
 
 const updateMouseNode = (e: MouseEvent) => {
@@ -186,23 +186,26 @@ function onSelect(schemaId: string, fixesAreRunning: boolean) {
 
   if (componentsStore.selectedInsertSchemaId === schemaId) {
     componentsStore.cancelInsert();
-    selecting.value = false;
   } else {
     componentsStore.setInsertSchema(schemaId);
-    selecting.value = true;
   }
 }
 
 const onKeyDown = (e: KeyboardEvent) => {
-  if (e.key === "Escape" || e.key === "Backspace") {
+  if (
+    (e.key === "Escape" || e.key === "Backspace") &&
+    componentsStore.selectedInsertSchemaId
+  ) {
     componentsStore.cancelInsert();
+    e.stopPropagation();
   }
 };
 
 const onMouseDown = (e: MouseEvent) => {
   updateMouseNode(e);
-  if (selecting.value) selecting.value = false;
-  else componentsStore.cancelInsert();
+  if (componentsStore.selectedInsertSchemaId) {
+    componentsStore.cancelInsert();
+  }
 };
 
 const onMouseMove = (e: MouseEvent) => {
@@ -210,14 +213,14 @@ const onMouseMove = (e: MouseEvent) => {
 };
 
 onMounted(() => {
-  window.addEventListener("mousemove", onMouseMove);
-  window.addEventListener("keydown", onKeyDown);
-  window.addEventListener("mousedown", onMouseDown);
+  windowListenerManager.addEventListener("mousemove", onMouseMove);
+  windowListenerManager.addEventListener("keydown", onKeyDown, 5);
+  windowListenerManager.addEventListener("mousedown", onMouseDown);
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener("mousemove", onMouseMove);
-  window.removeEventListener("keydown", onKeyDown);
-  window.removeEventListener("mousedown", onMouseDown);
+  windowListenerManager.removeEventListener("mousemove", onMouseMove);
+  windowListenerManager.removeEventListener("keydown", onKeyDown);
+  windowListenerManager.removeEventListener("mousedown", onMouseDown);
 });
 </script>
