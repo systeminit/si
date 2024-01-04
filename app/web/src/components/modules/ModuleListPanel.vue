@@ -27,14 +27,19 @@
       </template>
       <template v-else-if="loadLocalModulesReqStatus.isSuccess">
         <div
-          v-if="!moduleStore.localModules.length"
+          v-if="!filteredLocalModules.length"
           class="p-sm italic text-center text-xs"
         >
-          No modules installed.
+          {{
+            textSearch
+              ? "No modules match the search criteria"
+              : "No modules installed"
+          }}
+          .
         </div>
 
         <ModuleListItem
-          v-for="p in moduleStore.localModules"
+          v-for="p in filteredLocalModules"
           :key="p.hash"
           :moduleSlug="p.hash"
         />
@@ -66,7 +71,8 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref } from "vue";
+import * as _ from "lodash-es";
+import { computed, onMounted, ref } from "vue";
 import {
   Collapsible,
   ErrorMessage,
@@ -88,10 +94,18 @@ const searchRemoteModulesReqStatus = moduleStore.getRequestStatus(
 
 const exportModalRef = ref<InstanceType<typeof Modal>>();
 
+const filteredLocalModules = computed(() => {
+  if (!textSearch.value) return moduleStore.localModules;
+
+  return _.filter(moduleStore.localModules, (m) =>
+    m.name.toLowerCase().includes(textSearch.value.toLowerCase()),
+  );
+});
+
 const textSearch = ref("");
 
 async function triggerSearch() {
-  await moduleStore.SEARCH_REMOTE_MODULES({ su: true });
+  await moduleStore.SEARCH_REMOTE_MODULES({ name: textSearch.value, su: true });
 }
 
 onMounted(triggerSearch);
