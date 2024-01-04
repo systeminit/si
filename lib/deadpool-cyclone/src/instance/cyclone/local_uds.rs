@@ -67,6 +67,15 @@ pub enum LocalUdsInstanceError {
     /// Docker api not found
     #[error("no docker api")]
     DockerAPINotFound,
+    /// Failed to parse the Firecracker PID file.
+    #[error("failed to parse the firecracker pid file")]
+    FirecrackerPidParse(#[source] std::num::ParseIntError),
+    /// Failed to read the Firecracker PID file.
+    #[error("failed to open the firecracker pid file")]
+    FirecrackerPidRead(#[source] io::Error),
+    /// Failed to write the Firecracker PID file.
+    #[error("failed to write the firecracker pid file")]
+    FirecrackerPidWrite(#[source] io::Error),
     /// Failed to create firecracker-setup file.
     #[error("failed to create firecracker-setup file")]
     FirecrackerSetupCreate(#[source] io::Error),
@@ -715,22 +724,46 @@ impl LocalInstanceRuntime for LocalDockerRuntime {
 
 #[derive(Debug)]
 struct LocalFirecrackerRuntime {
-    vm_id: String,
+    cmd: Command,
+    child: Option<Child>,
     socket: PathBuf,
 }
 
 impl LocalFirecrackerRuntime {
-    async fn build(spec: LocalUdsInstanceSpec) -> Result<Box<dyn LocalInstanceRuntime>> {
-        // TODO(johnwatson): Run some checks against the ID to see if it's been used before
-        // Calculate it instead of random? Or have an incrementing pool 1..5000 that we loop
-        // over, ensuring that we do cleanup along the way
-        // Obviously this has the potential to clash, but overall the risk here is fairly low
-        // assuming that cleanup works as expected ;)
-        let vm_id: String = thread_rng().gen_range(0..spec.pool_size).to_string();
-        let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", vm_id));
+    async fn build() -> Result<Box<dyn LocalInstanceRuntime>> {
+        // todo(scott): the pid is a naive method for removing serially creating jails.
+        // we read the pid, use that as the vm_id, and then increment it.
+        // There are obvious contention problems here, but we should address
+        // this within deadpool itself.
+        let pid = Path::new("/firecracker-data/pid");
+        let vm_id = &std::fs::read_to_string(pid)
+            .map_err(LocalUdsInstanceError::FirecrackerPidRead)?
+            .parse::<i32>()
+            .map_err(LocalUdsInstanceError::FirecrackerPidParse)?;
+        std::fs::write(pid, format!("{}", vm_id + 1))
+            .map_err(LocalUdsInstanceError::FirecrackerPidWrite)?;
 
+        let mut cmd = Command::new("/usr/bin/jailer");
+        cmd.arg("--cgroup-version")
+            .arg("2")
+            .arg("--id")
+            .arg(vm_id.to_string())
+            .arg("--exec-file")
+            .arg("/usr/bin/firecracker")
+            .arg("--uid")
+            .arg(format!("10000{}", vm_id))
+            .arg("--gid")
+            .arg("10000")
+            .arg("--netns")
+            .arg(format!("/var/run/netns/jailer-{}", vm_id))
+            .arg("--")
+            .arg("--config-file")
+            .arg("./firecracker.conf");
+
+        let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", vm_id));
         Ok(Box::new(LocalFirecrackerRuntime {
-            vm_id,
+            cmd,
+            child: None,
             socket: sock,
         }))
     }
@@ -743,41 +776,22 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
     }
 
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-        let command = "/firecracker-data/start.sh ".to_owned() + &self.vm_id;
-
-        // Spawn the shell process
-        let _status = Command::new("sudo")
-            .arg("bash")
-            .arg("-c")
-            .arg(command)
-            .status()
-            .await;
-
+        self.child = Some(
+            self.cmd
+                .spawn()
+                .map_err(LocalUdsInstanceError::ChildSpawn)?,
+        );
         Ok(())
     }
 
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-        let stop_command = format!("/firecracker-data/stop.sh {}", &self.vm_id);
-
-        // Spawn the stop script
-        let _status = Command::new("sudo")
-            .arg("bash")
-            .arg("-c")
-            .arg(stop_command)
-            .status()
-            .await;
-
-        let prepare_command = format!("/firecracker-data/prepare_jailer.sh {}", &self.vm_id);
-
-        // Re-setup the jail so it can be resued
-        let _status = Command::new("sudo")
-            .arg("bash")
-            .arg("-c")
-            .arg(prepare_command)
-            .status()
-            .await;
-
-        Ok(())
+        match self.child.as_mut() {
+            Some(c) => {
+                process::child_shutdown(c, Some(process::Signal::SIGTERM), None).await?;
+                Ok(())
+            }
+            None => Ok(()),
+        }
     }
 }
 
@@ -792,15 +806,14 @@ async fn runtime_instance_from_spec(
         LocalUdsRuntimeStrategy::LocalDocker => {
             LocalDockerRuntime::build(socket, spec.clone()).await
         }
-        LocalUdsRuntimeStrategy::LocalFirecracker => {
-            LocalFirecrackerRuntime::build(spec.clone()).await
-        }
+        LocalUdsRuntimeStrategy::LocalFirecracker => LocalFirecrackerRuntime::build().await,
     }
 }
 
 async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
     let script_bytes = include_bytes!("firecracker-setup.sh");
     let command = Path::new("/firecracker-data/firecracker-setup.sh");
+    let pid = Path::new("/firecracker-data/pid");
 
     // we need to ensure the file is in the correct location with the correct permissions
     std::fs::create_dir_all(
@@ -813,6 +826,13 @@ async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
     std::fs::set_permissions(command, std::fs::Permissions::from_mode(0o755))
         .map_err(LocalUdsInstanceError::FirecrackerSetupPermissions)?;
 
+    // firecracker pid is used to serialize jail creation
+    std::fs::create_dir_all(
+        pid.parent()
+            .expect("This should never happen. Did you remove the path from the string above?"),
+    )
+    .map_err(LocalUdsInstanceError::FirecrackerSetupCreate)?;
+    std::fs::write(pid, "0").map_err(LocalUdsInstanceError::FirecrackerSetupWrite)?;
     // Spawn the shell process
     let _status = Command::new("sudo")
         .arg(command)
