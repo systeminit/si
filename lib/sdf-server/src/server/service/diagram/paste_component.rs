@@ -1,6 +1,7 @@
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
 use chrono::Utc;
+use dal::NodeId;
 use dal::{
     action_prototype::ActionPrototypeContextField, func::backend::js_action::ActionRunResult,
     Action, ActionKind, ActionPrototype, ActionPrototypeContext, ChangeSet, Component,
@@ -27,7 +28,7 @@ async fn paste_single_component(
     offset_y: f64,
     original_uri: &Uri,
     PosthogClient(posthog_client): &PosthogClient,
-) -> DiagramResult<Node> {
+) -> DiagramResult<(Component, Node)> {
     let ctx = ctx_builder.build(request_ctx.build(visibility)).await?;
 
     let original_comp = Component::get_by_id(&ctx, &component_id)
@@ -136,7 +137,7 @@ async fn paste_single_component(
 
     ctx.commit().await?;
 
-    Ok(pasted_node)
+    Ok((pasted_comp, pasted_node))
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -147,6 +148,14 @@ pub struct PasteComponentsRequest {
     pub offset_y: f64,
     #[serde(flatten)]
     pub visibility: Visibility,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PasteComponentsResponse {
+    pub copied_component_id: ComponentId,
+    pub pasted_component_id: ComponentId,
+    pub pasted_node_id: NodeId,
 }
 
 /// Paste a set of [`Component`](dal::Component)s via their componentId. Creates change-set if on head
@@ -186,7 +195,7 @@ pub async fn paste_components(
         let (original_uri, posthog_client) =
             (original_uri.clone(), PosthogClient(posthog_client.clone()));
         tasks.spawn(async move {
-            let pasted_node = paste_single_component(
+            let (pasted_comp, pasted_node) = paste_single_component(
                 ctx_builder,
                 request_ctx,
                 visibility,
@@ -198,14 +207,14 @@ pub async fn paste_components(
             )
             .await?;
 
-            Ok::<_, DiagramError>((component_id, pasted_node))
+            Ok::<_, DiagramError>((component_id, pasted_comp, pasted_node))
         });
     }
 
     while let Some(result) = tasks.join_next().await {
         match result {
-            Ok(Ok((component_id, pasted_node))) => {
-                pasted_components_by_original.insert(component_id, pasted_node);
+            Ok(Ok((component_id, pasted_comp, pasted_node))) => {
+                pasted_components_by_original.insert(component_id, (pasted_comp, pasted_node));
             }
             Ok(Err(err)) => return Err(err)?,
             // Task panicked, let's propagate it
@@ -215,7 +224,7 @@ pub async fn paste_components(
                 }
                 Err(err) => {
                     if err.is_cancelled() {
-                        warn!("Paste Componetn was cancelled: {err}");
+                        warn!("Paste Component was cancelled: {err}");
                     } else {
                         error!("Unknown failure in component paste: {err}");
                     }
@@ -224,13 +233,28 @@ pub async fn paste_components(
         }
     }
 
+    let mut response_body = Vec::new();
+
     for component_id in &request.component_ids {
+        let (pasted_comp, pasted_node) = match pasted_components_by_original.get(component_id) {
+            Some((c, v)) => (c, v),
+            None => return Err(DiagramError::PasteError),
+        };
+
+        response_body.push(PasteComponentsResponse {
+            copied_component_id: *component_id,
+            pasted_component_id: *pasted_comp.id(),
+            pasted_node_id: *pasted_node.id(),
+        });
+
         let edges = Edge::list_for_component(&ctx, *component_id).await?;
         for edge in edges {
-            let tail_node = pasted_components_by_original.get(&edge.tail_component_id());
-            let head_node = pasted_components_by_original.get(&edge.head_component_id());
-            match (tail_node, head_node) {
-                (Some(tail_node), Some(head_node)) => {
+            let tail = pasted_components_by_original.get(&edge.tail_component_id());
+            let head = pasted_components_by_original.get(&edge.head_component_id());
+            match (tail, head) {
+                (Some(tail), Some(head)) => {
+                    let (_, tail_node) = tail;
+                    let (_, head_node) = head;
                     Connection::new(
                         &ctx,
                         *tail_node.id(),
@@ -241,7 +265,8 @@ pub async fn paste_components(
                     )
                     .await?;
                 }
-                (None, Some(head_node)) => {
+                (None, Some(head)) => {
+                    let (_, head_node) = head;
                     Connection::new(
                         &ctx,
                         edge.tail_node_id(),
@@ -263,5 +288,6 @@ pub async fn paste_components(
     if let Some(force_changeset_pk) = force_changeset_pk {
         response = response.header("force_changeset_pk", force_changeset_pk.to_string());
     }
-    Ok(response.body(axum::body::Empty::new())?)
+
+    Ok(response.body(serde_json::to_string(&response_body)?)?)
 }
