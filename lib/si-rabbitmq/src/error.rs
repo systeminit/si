@@ -18,6 +18,8 @@ pub enum RabbitError {
     ConsumerCreate(#[from] ConsumerCreateError),
     #[error("consumer delivery error: {0}")]
     ConsumerDelivery(#[from] ConsumerDeliveryError),
+    #[error("failed to create an environment")]
+    EnvironmentCreationFailed,
     #[error("from utf-8 error: {0}")]
     FromUtf8(#[from] FromUtf8Error),
     #[error("producer close error: {0}")]
