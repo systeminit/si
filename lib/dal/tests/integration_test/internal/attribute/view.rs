@@ -1,12 +1,13 @@
+use pretty_assertions_sorted::assert_eq;
+
 use dal::{
     attribute::context::AttributeContextBuilder, AttributeReadContext, AttributeValue,
-    AttributeView, DalContext, Prop, PropKind, SchemaVariant, StandardModel,
+    AttributeView, DalContext, PropKind, SchemaVariant, StandardModel,
 };
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
 };
-use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn schema_variant_specific(ctx: &DalContext) {
@@ -18,18 +19,14 @@ async fn schema_variant_specific(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let name_prop = Prop::new(
+    let name_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "name",
         PropKind::String,
-        None,
         *schema_variant.id(),
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-
+    .await;
     SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
         .await
         .expect("cannot create default prototypes and values for SchemaVariant");

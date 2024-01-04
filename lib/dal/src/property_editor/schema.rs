@@ -84,6 +84,7 @@ pub struct PropertyEditorProp {
     pub widget_kind: PropertyEditorPropWidgetKind,
     pub doc_link: Option<String>,
     pub documentation: Option<String>,
+    pub validation_format: Option<String>,
 }
 
 impl PropertyEditorProp {
@@ -98,6 +99,7 @@ impl PropertyEditorProp {
             ),
             doc_link: prop.doc_link().map(Into::into),
             documentation: prop.documentation().map(Into::into),
+            validation_format: prop.validation_format().map(Into::into),
         }
     }
 }

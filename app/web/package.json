@@ -47,6 +47,7 @@
     "@vueuse/head": "^1.1.15",
     "async": "^3.2.4",
     "axios": "^1.5.0",
+    "buffer": "^6.0.3",
     "clsx": "^1.2.1",
     "cm6-theme-basic-light": "^0.2.0",
     "cm6-theme-gruvbox-dark": "^0.2.0",
@@ -56,6 +57,7 @@
     "fontfaceobserver": "^2.3.0",
     "is-promise": "^4.0.0",
     "javascript-time-ago": "^2.5.7",
+    "joi": "^17.11.0",
     "js-base64": "^3.7.5",
     "js-beautify": "^1.14.9",
     "js-confetti": "^0.11.0",
@@ -79,10 +81,10 @@
     "vue-router": "^4.2.5",
     "vue-safe-teleport": "^0.1.2",
     "vue-toastification": "2.0.0-rc.5",
-    "yjs-codemirror-plugin": "workspace:*",
     "y-indexeddb": "^9.0.12",
     "y-websocket": "^1.5.0",
-    "yjs": "^13.6.8"
+    "yjs": "^13.6.8",
+    "yjs-codemirror-plugin": "workspace:*"
   },
   "devDependencies": {
     "@iconify/json": "^2.2.135",

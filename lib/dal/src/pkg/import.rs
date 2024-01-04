@@ -2302,14 +2302,12 @@ async fn import_schema_variant(
         );
 
         if !variant_spec.secret_definitions()?.is_empty() {
-            let secret_definition_prop_id = *Prop::new(
+            let secret_definition_prop_id = *Prop::new_without_ui_optionals(
                 ctx,
                 "secret_definition",
                 PropKind::Object,
-                None,
                 *schema_variant.id(),
                 Some(*schema_variant.find_prop(ctx, &["root"]).await?.id()),
-                None,
             )
             .await?
             .id();
@@ -3196,10 +3194,11 @@ async fn create_dal_prop(
         ctx,
         &data.name,
         kind,
-        Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
         schema_variant_id,
         parent_prop_id,
+        Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
         data.documentation.to_owned(),
+        data.validation_format.to_owned(),
     )
     .await
     .map_err(SiPkgError::visit_prop)?;

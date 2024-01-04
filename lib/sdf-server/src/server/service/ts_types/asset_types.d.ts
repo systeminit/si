@@ -501,6 +501,8 @@ declare module "asset_builder" {
 
     addValidation(validation: Validation): this;
 
+    setValidationFormat(format: Joi.Schema): this;
+
     addMapKeyFunc(func: MapKeyFunc): this;
 
     build(): PropDefinition;
@@ -692,6 +694,17 @@ declare module "asset_builder" {
      * .build())
      */
     setWidget(widget: PropWidgetDefinition): this;
+
+    /**
+     * Add joi validation schema to this prop
+     *
+     * @returns this
+     *
+     * @example
+     * .setValidationFormat(Joi.string().required())
+     * @param format {Joi.Schema} - A joi schema object
+     */
+    setValidationFormat(format: Joi.Schema): this;
   }
 
   export interface SecretPropDefinition extends PropDefinition {

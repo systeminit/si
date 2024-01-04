@@ -177,6 +177,7 @@ impl SchemaVariantSpecBuilder {
                 validations: None,
                 doc_link: None,
                 documentation: None,
+                validation_format: None,
             }),
             entries: vec![],
         }
@@ -197,6 +198,7 @@ impl SchemaVariantSpecBuilder {
                 validations: None,
                 doc_link: None,
                 documentation: None,
+                validation_format: None,
             }),
             entries: vec![],
         }
@@ -217,6 +219,7 @@ impl SchemaVariantSpecBuilder {
                 validations: None,
                 doc_link: None,
                 documentation: None,
+                validation_format: None,
             }),
             entries: vec![],
         })
@@ -237,6 +240,7 @@ impl SchemaVariantSpecBuilder {
                 validations: None,
                 doc_link: None,
                 documentation: None,
+                validation_format: None,
             }),
             entries: vec![],
         }

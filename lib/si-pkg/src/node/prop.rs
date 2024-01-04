@@ -23,6 +23,7 @@ const KEY_WIDGET_OPTIONS_STR: &str = "widget_options";
 const KEY_HIDDEN_STR: &str = "hidden";
 const KEY_DOC_LINK_STR: &str = "doc_link";
 const KEY_DOCUMENTATION_STR: &str = "documentation";
+const KEY_VALIDATION_FORMAT_STR: &str = "validation_format";
 const KEY_UNIQUE_ID_STR: &str = "unique_id";
 
 const PROP_TY_STRING: &str = "string";
@@ -42,6 +43,7 @@ pub struct PropNodeData {
     pub doc_link: Option<Url>,
     pub hidden: bool,
     pub documentation: Option<String>,
+    pub validation_format: Option<String>,
 }
 
 #[remain::sorted]
@@ -156,6 +158,11 @@ impl WriteBytes for PropNode {
             )?;
 
             write_key_value_line_opt(writer, KEY_DOCUMENTATION_STR, data.documentation.as_ref())?;
+            write_key_value_line_opt(
+                writer,
+                KEY_VALIDATION_FORMAT_STR,
+                data.validation_format.as_ref(),
+            )?;
         }
 
         if let Some(unique_id) = match &self {
@@ -218,6 +225,7 @@ impl ReadBytes for PropNode {
                 };
 
                 let documentation = read_key_value_line_opt(reader, KEY_DOCUMENTATION_STR)?;
+                let validation_format = read_key_value_line_opt(reader, KEY_VALIDATION_FORMAT_STR)?;
 
                 Some(PropNodeData {
                     name: name.to_owned(),
@@ -228,6 +236,7 @@ impl ReadBytes for PropNode {
                     doc_link,
                     hidden,
                     documentation,
+                    validation_format,
                 })
             }
         };
@@ -325,6 +334,7 @@ impl NodeChild for PropSpec {
                          hidden,
                          doc_link,
                          documentation,
+                         validation_format,
                          ..
                      }| PropNodeData {
                         name,
@@ -335,6 +345,7 @@ impl NodeChild for PropSpec {
                         hidden: hidden.unwrap_or(false),
                         doc_link,
                         documentation,
+                        validation_format,
                     },
                 ),
                 unique_id.to_owned(),

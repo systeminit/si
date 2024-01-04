@@ -5,7 +5,7 @@ use dal::{
     provider::internal::InternalProvider,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
     ComponentView, DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
-    Prop, PropKind, SocketArity, StandardModel,
+    PropKind, SocketArity, StandardModel,
 };
 use dal_test::{
     connection_annotation_string,
@@ -29,39 +29,30 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // └─ object: Object
     //    ├─ source: String
     //    └─ destination: String
-    let object_prop = Prop::new(
+    let object_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "object",
         PropKind::Object,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let source_prop = Prop::new(
+    .await;
+    let source_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "source",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let destination_prop = Prop::new(
+    .await;
+    let destination_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "destination",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
 
     schema_variant
         .finalize(ctx, None)
@@ -335,17 +326,14 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let freya_prop = Prop::new(
+    let freya_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "freya",
         PropKind::String,
-        None,
         *schema_variant.id(),
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
         setup_identity_func(ctx).await;
     let (external_provider, _output_socket) = ExternalProvider::new_with_socket(

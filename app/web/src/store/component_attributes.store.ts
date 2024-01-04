@@ -2,15 +2,21 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 
+// Joi does not contain Joi.build() by default on browsers, so we import
+// it directly from the lib build. We also had to import node's Buffer
+// in web/main.ts for that to work
+import Joi, { Schema } from "joi/lib/index";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import {
+  PropertyEditorProp,
+  PropertyEditorPropKind,
   PropertyEditorSchema,
   PropertyEditorValidation,
   PropertyEditorValue,
   PropertyEditorValues,
-  PropertyEditorProp,
 } from "@/api/sdf/dal/property_editor";
 import { nilId } from "@/utils/nilId";
+import { Qualification } from "@/api/sdf/dal/qualification";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ComponentId, useComponentsStore } from "./components.store";
@@ -180,6 +186,87 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             if (!componentId) return;
             const componentsStore = useComponentsStore();
             return componentsStore.componentsById[componentId];
+          },
+
+          schemaValidation(): Qualification {
+            const tree = this.domainTree;
+
+            const output = [];
+            let status: "success" | "failure" | "unknown" = tree
+              ? "success"
+              : "unknown";
+            let failCounter = 0;
+
+            // Walk down the prop tree and calculate all validations
+            const queue = [
+              {
+                prop: tree,
+                path: tree?.propDef.name,
+              },
+            ];
+            while (queue.length > 0) {
+              const { prop, path } = queue.pop() || {};
+              if (!prop) break;
+
+              prop.children.forEach((c) =>
+                queue.push({
+                  prop: c,
+                  path: `${path}/${c.propDef.name}`,
+                }),
+              );
+
+              const value = prop.value?.value || null;
+              const kind = prop.propDef.kind;
+
+              if (
+                [
+                  PropertyEditorPropKind.Array,
+                  PropertyEditorPropKind.Map,
+                  PropertyEditorPropKind.Object,
+                ].includes(kind)
+              ) {
+                continue;
+              }
+
+              const validationFormat = Joi.build(
+                JSON.parse(prop.propDef.validationFormat ?? "{}"),
+              ) as Schema;
+
+              // NOTE(victor): Joi treats null as a value, so even if .required()
+              // isn't set it fails validations for typed props
+              const valueNotNull = value === null ? undefined : value;
+
+              const { error } = validationFormat.validate(valueNotNull);
+
+              const errorMessage = error?.message;
+
+              if (errorMessage) {
+                status = "failure";
+                failCounter += 1;
+              }
+              // console.log(`${path} (${kind}): value ${value}`);
+              // console.log(`${path}: ${errorMessage ?? "OK"}`);
+
+              output.push({
+                line: `${path}: ${errorMessage ?? "OK"}`,
+                stream: "stdout",
+                level: "log",
+              });
+            }
+
+            return {
+              title: "Schema Validation",
+              output,
+              result: {
+                status,
+                sub_checks: [
+                  {
+                    status,
+                    description: `Component has ${failCounter} invalid value(s). Click "View Details" for more info.`,
+                  },
+                ],
+              },
+            };
           },
         },
         actions: {

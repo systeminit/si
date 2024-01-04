@@ -58,6 +58,7 @@
     "@typescript/vfs": "^1.4.0",
     "commander": "^9.2.0",
     "execa": "^5.1.1",
+    "joi": "^17.11.0",
     "js-yaml": "^4.1.0",
     "lodash-es": "^4.17.21",
     "node-fetch": "^2",
