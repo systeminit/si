@@ -680,6 +680,8 @@ pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) 
         FuncBackendResponseType::SchemaVariantDefinition => concat!(
             include_str!("./ts_types/asset_builder.d.ts"),
             "\n",
+            include_str!("./ts_types/joi.d.ts"),
+            "\n",
             "type Output = any;"
         ),
     }
@@ -741,6 +743,8 @@ pub fn compile_return_types_2(ty: FuncBackendResponseType, kind: FuncBackendKind
         FuncBackendResponseType::Void => "type Output = void;",
         FuncBackendResponseType::SchemaVariantDefinition => concat!(
             include_str!("./ts_types/asset_types_with_secrets.d.ts"),
+            "\n",
+            include_str!("./ts_types/joi.d.ts"),
             "\n",
             "type Output = any;"
         ),
