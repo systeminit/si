@@ -490,18 +490,53 @@ impl WorkspaceSnapshotGraph {
     }
 
     pub fn cleanup(&mut self) {
-        self.graph.retain_nodes(|frozen_graph, current_node| {
-            // We cannot use "has_path_to_root" because we need to use the Frozen<StableGraph<...>>.
-            algo::has_path_connecting(&*frozen_graph, self.root_index, current_node, None)
-        });
+        let start = tokio::time::Instant::now();
+
+        // We want to remove all of the "garbage" we've accumulated while operating on the graph.
+        // Anything that is no longer reachable from the current `self.root_index` should be
+        // removed as it is no longer referenced by anything in the current version of the graph.
+        // Fortunately, we don't need to walk the graph to find out if something is reachable from
+        // the root, since `has_path_connecting` is slow (depth-first search). Any node that does
+        // *NOT* have any incoming edges (aside from the `self.root_index` node) is not reachable,
+        // by definition. Finding the list of nodes with no incoming edges is very fast. If we
+        // remove all nodes (that are not the `self.root_index` node) that do not have any
+        // incoming edges, and we keep doing this until the only one left is the `self.root_index`
+        // node, then all remaining nodes are reachable from `self.root_index`.
+        let mut old_root_ids: HashSet<NodeIndex>;
+        loop {
+            old_root_ids = self
+                .graph
+                .externals(Incoming)
+                .filter(|node_id| *node_id != self.root_index)
+                .collect();
+            if old_root_ids.is_empty() {
+                break;
+            }
+
+            for stale_node_index in &old_root_ids {
+                self.graph.remove_node(*stale_node_index);
+            }
+        }
+        info!("Removed stale NodeIndex: {:?}", start.elapsed());
 
         // After we retain the nodes, collect the remaining ids and indices.
         let remaining_node_ids: HashSet<Ulid> = self.graph.node_weights().map(|n| n.id()).collect();
+        info!(
+            "Got remaining node IDs: {} ({:?})",
+            remaining_node_ids.len(),
+            start.elapsed()
+        );
         let remaining_node_indices: HashSet<NodeIndex> = self.graph.node_indices().collect();
+        info!(
+            "Got remaining NodeIndex: {} ({:?})",
+            remaining_node_indices.len(),
+            start.elapsed()
+        );
 
         // Cleanup the node index by id map.
         self.node_index_by_id
             .retain(|id, _index| remaining_node_ids.contains(id));
+        info!("Removed stale node_index_by_id: {:?}", start.elapsed());
 
         // Cleanup the node indices by lineage id map.
         self.node_indices_by_lineage_id
@@ -511,6 +546,10 @@ impl WorkspaceSnapshotGraph {
             });
         self.node_indices_by_lineage_id
             .retain(|_lineage_id, node_indices| !node_indices.is_empty());
+        info!(
+            "Removed stale node_indices_by_lineage_id: {:?}",
+            start.elapsed()
+        );
     }
 
     pub fn find_equivalent_node(
