@@ -118,131 +118,235 @@ export function useSecretsStore() {
   };
 
   return addStoreHooks(
-    defineStore("secrets", {
-      state: () => ({
-        secretDefinitionByDefinitionId: {} as SecretsDefinitionHashMap,
-        // Stores whether a request is running on a secret. Previously used to disable the delete button temporarily
-        secretIsTransitioning: {} as Record<SecretId, boolean>,
-        publicKey: null as PublicKey | null,
-      }),
-      getters: {
-        secretsByDefinitionId(state): SecretsHashMap {
-          return _.mapValues(
-            state.secretDefinitionByDefinitionId,
-            (s) => s.secrets,
-          );
-        },
-        secretsByLastCreated(state): SecretsOrderedArray {
-          const out = [] as SecretsOrderedArray;
-
-          for (const [key, value] of Object.entries(
-            state.secretDefinitionByDefinitionId,
-          )) {
-            let change: string | undefined;
-            value.secrets.forEach((secret) => {
-              if (!change) change = secret.createdInfo.timestamp;
-              if (new Date(secret.createdInfo.timestamp) > new Date(change)) {
-                change = secret.createdInfo.timestamp;
-              }
-              if (
-                secret.updatedInfo &&
-                new Date(secret.updatedInfo.timestamp) > new Date(change)
-              ) {
-                change = secret.updatedInfo.timestamp;
-              }
-            });
-
-            out.push({
-              id: key,
-              latestChange: change,
-              secrets: value.secrets,
-            });
-          }
-
-          out.sort((a, b) => {
-            if (!a.latestChange && !b.latestChange) return 0;
-            else if (!a.latestChange && b.latestChange) return 1;
-            else if (a.latestChange && !b.latestChange) return -1;
-            else if (a.latestChange && b.latestChange) {
-              if (new Date(a.latestChange) > new Date(b.latestChange)) {
-                return -1;
-              } else if (new Date(a.latestChange) < new Date(b.latestChange)) {
-                return 1;
-              }
-            }
-            return 0;
-          });
-
-          return out;
-        },
-        secrets(): Secret[] {
-          return _.flatMap(this.secretsByDefinitionId);
-        },
-        secretsById(): Record<SecretId, Secret> {
-          return _.keyBy(this.secrets, (s) => s.id);
-        },
-        definitions: (state) => _.keys(state.secretDefinitionByDefinitionId),
-        secretFormSchemaByDefinitionId(
-          state,
-        ): Record<SecretDefinitionId, SecretFormSchema[]> {
-          return _.transform(
-            state.secretDefinitionByDefinitionId,
-            (acc, value, key) => {
-              acc[key] = value.definition.formData;
-            },
-          );
-        },
-      },
-      actions: {
-        async LOAD_SECRETS() {
-          return new ApiRequest<SecretsDefinitionHashMap>({
-            url: "secret",
-            params: {
-              ...visibilityParams,
-            },
-            onSuccess: (response) => {
-              this.secretDefinitionByDefinitionId = response;
-            },
-          });
-        },
-        async UPDATE_SECRET(secret: Secret, value?: Record<string, string>) {
-          if (_.isEmpty(secret.name)) {
-            throw new Error("All secrets must have a name.");
-          }
-
-          if (this.secretsByDefinitionId[secret.definition] === undefined) {
-            throw new Error(
-              "All secrets must be created based on a definition.",
+    defineStore(
+      `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/secrets`,
+      {
+        state: () => ({
+          secretDefinitionByDefinitionId: {} as SecretsDefinitionHashMap,
+          // Stores whether a request is running on a secret. Previously used to disable the delete button temporarily
+          secretIsTransitioning: {} as Record<SecretId, boolean>,
+          publicKey: null as PublicKey | null,
+        }),
+        getters: {
+          secretsByDefinitionId(state): SecretsHashMap {
+            return _.mapValues(
+              state.secretDefinitionByDefinitionId,
+              (s) => s.secrets,
             );
-          }
+          },
+          secretsByLastCreated(state): SecretsOrderedArray {
+            const out = [] as SecretsOrderedArray;
 
-          const user = useAuthStore().user;
+            for (const [key, value] of Object.entries(
+              state.secretDefinitionByDefinitionId,
+            )) {
+              let change: string | undefined;
+              value.secrets.forEach((secret) => {
+                if (!change) change = secret.createdInfo.timestamp;
+                if (new Date(secret.createdInfo.timestamp) > new Date(change)) {
+                  change = secret.createdInfo.timestamp;
+                }
+                if (
+                  secret.updatedInfo &&
+                  new Date(secret.updatedInfo.timestamp) > new Date(change)
+                ) {
+                  change = secret.updatedInfo.timestamp;
+                }
+              });
 
-          if (_.isNil(user)) {
-            throw new Error("All secrets must be created by a specific user.");
-          }
+              out.push({
+                id: key,
+                latestChange: change,
+                secrets: value.secrets,
+              });
+            }
 
-          const { id, name, definition, description, createdInfo } = secret;
-          const params = {
-            ...visibilityParams,
-            id,
-            name,
-            description,
-            newSecretData: null,
-          } as {
-            visibility_change_set_pk: string | null;
-            workspaceId: string | null;
-            name: string;
-            description: string;
-            newSecretData: {
-              crypted: number[];
-              keyPairPk: string;
-              version: SecretVersion;
-              algorithm: SecretAlgorithm;
-            } | null;
-          };
+            out.sort((a, b) => {
+              if (!a.latestChange && !b.latestChange) return 0;
+              else if (!a.latestChange && b.latestChange) return 1;
+              else if (a.latestChange && !b.latestChange) return -1;
+              else if (a.latestChange && b.latestChange) {
+                if (new Date(a.latestChange) > new Date(b.latestChange)) {
+                  return -1;
+                } else if (
+                  new Date(a.latestChange) < new Date(b.latestChange)
+                ) {
+                  return 1;
+                }
+              }
+              return 0;
+            });
 
-          if (value) {
+            return out;
+          },
+          secrets(): Secret[] {
+            return _.flatMap(this.secretsByDefinitionId);
+          },
+          secretsById(): Record<SecretId, Secret> {
+            return _.keyBy(this.secrets, (s) => s.id);
+          },
+          definitions: (state) => _.keys(state.secretDefinitionByDefinitionId),
+          secretFormSchemaByDefinitionId(
+            state,
+          ): Record<SecretDefinitionId, SecretFormSchema[]> {
+            return _.transform(
+              state.secretDefinitionByDefinitionId,
+              (acc, value, key) => {
+                acc[key] = value.definition.formData;
+              },
+            );
+          },
+        },
+        actions: {
+          async LOAD_SECRETS() {
+            return new ApiRequest<SecretsDefinitionHashMap>({
+              url: "secret",
+              params: {
+                ...visibilityParams,
+              },
+              onSuccess: (response) => {
+                this.secretDefinitionByDefinitionId = response;
+              },
+            });
+          },
+          async UPDATE_SECRET(secret: Secret, value?: Record<string, string>) {
+            if (_.isEmpty(secret.name)) {
+              throw new Error("All secrets must have a name.");
+            }
+
+            if (this.secretsByDefinitionId[secret.definition] === undefined) {
+              throw new Error(
+                "All secrets must be created based on a definition.",
+              );
+            }
+
+            const user = useAuthStore().user;
+
+            if (_.isNil(user)) {
+              throw new Error(
+                "All secrets must be created by a specific user.",
+              );
+            }
+
+            const { id, name, definition, description, createdInfo } = secret;
+            const params = {
+              ...visibilityParams,
+              id,
+              name,
+              description,
+              newSecretData: null,
+            } as {
+              visibility_change_set_pk: string | null;
+              workspaceId: string | null;
+              name: string;
+              description: string;
+              newSecretData: {
+                crypted: number[];
+                keyPairPk: string;
+                version: SecretVersion;
+                algorithm: SecretAlgorithm;
+              } | null;
+            };
+
+            if (value) {
+              // Encrypt Value
+              if (_.isNil(this.publicKey)) {
+                throw new Error("Couldn't fetch publicKey.");
+              }
+
+              const algorithm = SecretAlgorithm.Sealedbox;
+              const version = SecretVersion.V1;
+
+              const keyPairPk = this.publicKey.pk;
+
+              const crypted = await encryptMessage(value, this.publicKey);
+
+              params.newSecretData = {
+                algorithm,
+                version,
+                keyPairPk,
+                crypted,
+              };
+            }
+
+            return new ApiRequest<Secret>({
+              method: "patch",
+              url: "secret",
+              params,
+              optimistic: () => {
+                const { pk: userId, name: userName } = user;
+
+                this.secretDefinitionByDefinitionId[
+                  secret.definition
+                ]?.secrets?.filter((s) => {
+                  return s.id !== secret.id;
+                });
+                this.secretDefinitionByDefinitionId[
+                  secret.definition
+                ]?.secrets?.push({
+                  id,
+                  name,
+                  definition,
+                  description,
+                  createdInfo,
+                  updatedInfo: {
+                    actor: { kind: "user", label: userName, id: userId },
+                    timestamp: Date(),
+                  },
+                });
+                this.secretIsTransitioning[id] = true;
+
+                return () => {
+                  const definition = this.secretDefinitionByDefinitionId[id];
+
+                  if (definition === undefined) return;
+
+                  definition.secrets = definition.secrets.filter(
+                    (s) => s.id !== id,
+                  );
+                  this.secretIsTransitioning[id] = false;
+                };
+              },
+              onSuccess: (response) => {
+                const definition = this.secretDefinitionByDefinitionId[id];
+
+                if (definition === undefined) return;
+
+                definition.secrets = definition.secrets.map((s) =>
+                  s.id === id ? response : s,
+                );
+                this.secretIsTransitioning[id] = false;
+              },
+            });
+          },
+          async SAVE_SECRET(
+            definitionId: SecretDefinitionId,
+            name: string,
+            value: Record<string, string>,
+            description?: string,
+          ) {
+            if (_.isEmpty(name)) {
+              throw new Error("All secrets must have a name.");
+            }
+
+            if (this.secretsByDefinitionId[definitionId] === undefined) {
+              throw new Error(
+                "All secrets must be created based on a definition.",
+              );
+            }
+
+            const user = useAuthStore().user;
+
+            if (_.isNil(user)) {
+              throw new Error(
+                "All secrets must be created by a specific user.",
+              );
+            }
+
+            const tempId = `-${Math.floor(
+              Math.random() * 899999 + 100000,
+            ).toString()}`;
+
             // Encrypt Value
             if (_.isNil(this.publicKey)) {
               throw new Error("Couldn't fetch publicKey.");
@@ -255,220 +359,127 @@ export function useSecretsStore() {
 
             const crypted = await encryptMessage(value, this.publicKey);
 
-            params.newSecretData = {
-              algorithm,
-              version,
-              keyPairPk,
-              crypted,
-            };
-          }
-
-          return new ApiRequest<Secret>({
-            method: "patch",
-            url: "secret",
-            params,
-            optimistic: () => {
-              const { pk: userId, name: userName } = user;
-
-              this.secretDefinitionByDefinitionId[
-                secret.definition
-              ]?.secrets?.filter((s) => {
-                return s.id !== secret.id;
-              });
-              this.secretDefinitionByDefinitionId[
-                secret.definition
-              ]?.secrets?.push({
-                id,
+            return new ApiRequest<Secret>({
+              method: "post",
+              url: "secret",
+              params: {
+                ...visibilityParams,
                 name,
-                definition,
                 description,
-                createdInfo,
-                updatedInfo: {
-                  actor: { kind: "user", label: userName, id: userId },
-                  timestamp: Date(),
-                },
-              });
-              this.secretIsTransitioning[id] = true;
-
-              return () => {
-                const definition = this.secretDefinitionByDefinitionId[id];
-
-                if (definition === undefined) return;
-
-                definition.secrets = definition.secrets.filter(
-                  (s) => s.id !== id,
-                );
-                this.secretIsTransitioning[id] = false;
-              };
-            },
-            onSuccess: (response) => {
-              const definition = this.secretDefinitionByDefinitionId[id];
-
-              if (definition === undefined) return;
-
-              definition.secrets = definition.secrets.map((s) =>
-                s.id === id ? response : s,
-              );
-              this.secretIsTransitioning[id] = false;
-            },
-          });
-        },
-        async SAVE_SECRET(
-          definitionId: SecretDefinitionId,
-          name: string,
-          value: Record<string, string>,
-          description?: string,
-        ) {
-          if (_.isEmpty(name)) {
-            throw new Error("All secrets must have a name.");
-          }
-
-          if (this.secretsByDefinitionId[definitionId] === undefined) {
-            throw new Error(
-              "All secrets must be created based on a definition.",
-            );
-          }
-
-          const user = useAuthStore().user;
-
-          if (_.isNil(user)) {
-            throw new Error("All secrets must be created by a specific user.");
-          }
-
-          const tempId = `-${Math.floor(
-            Math.random() * 899999 + 100000,
-          ).toString()}`;
-
-          // Encrypt Value
-          if (_.isNil(this.publicKey)) {
-            throw new Error("Couldn't fetch publicKey.");
-          }
-
-          const algorithm = SecretAlgorithm.Sealedbox;
-          const version = SecretVersion.V1;
-
-          const keyPairPk = this.publicKey.pk;
-
-          const crypted = await encryptMessage(value, this.publicKey);
-
-          return new ApiRequest<Secret>({
-            method: "post",
-            url: "secret",
-            params: {
-              ...visibilityParams,
-              name,
-              description,
-              definition: definitionId,
-              crypted,
-              keyPairPk,
-              version,
-              algorithm,
-            },
-            optimistic: () => {
-              const { pk: userId, name: userName } = user;
-
-              this.secretDefinitionByDefinitionId[definitionId]?.secrets?.push({
-                id: tempId,
                 definition: definitionId,
-                name,
-                description,
-                createdInfo: {
-                  actor: { kind: "user", label: userName, id: userId },
-                  timestamp: Date(),
-                },
-              });
-              this.secretIsTransitioning[tempId] = true;
+                crypted,
+                keyPairPk,
+                version,
+                algorithm,
+              },
+              optimistic: () => {
+                const { pk: userId, name: userName } = user;
 
-              return () => {
+                this.secretDefinitionByDefinitionId[
+                  definitionId
+                ]?.secrets?.push({
+                  id: tempId,
+                  definition: definitionId,
+                  name,
+                  description,
+                  createdInfo: {
+                    actor: { kind: "user", label: userName, id: userId },
+                    timestamp: Date(),
+                  },
+                });
+                this.secretIsTransitioning[tempId] = true;
+
+                return () => {
+                  const definition =
+                    this.secretDefinitionByDefinitionId[definitionId];
+
+                  if (definition === undefined) return;
+
+                  definition.secrets = definition.secrets.filter(
+                    (s) => s.id !== tempId,
+                  );
+                  this.secretIsTransitioning[tempId] = false;
+                };
+              },
+              onSuccess: (response) => {
                 const definition =
                   this.secretDefinitionByDefinitionId[definitionId];
 
                 if (definition === undefined) return;
 
-                definition.secrets = definition.secrets.filter(
-                  (s) => s.id !== tempId,
+                definition.secrets = definition.secrets.map((s) =>
+                  s.id === tempId ? response : s,
                 );
                 this.secretIsTransitioning[tempId] = false;
-              };
-            },
-            onSuccess: (response) => {
-              const definition =
-                this.secretDefinitionByDefinitionId[definitionId];
-
-              if (definition === undefined) return;
-
-              definition.secrets = definition.secrets.map((s) =>
-                s.id === tempId ? response : s,
-              );
-              this.secretIsTransitioning[tempId] = false;
-            },
-          });
-        },
-        async DELETE_SECRET(id: SecretId) {
-          const secret = this.secretsById[id];
-
-          if (_.isNil(secret)) return;
-
-          return new ApiRequest({
-            method: "delete",
-            url: "secret",
-            params: {
-              ...visibilityParams,
-              id,
-            },
-            optimistic: () => {
-              this.secretIsTransitioning[secret.id] = true;
-
-              return () => {
-                this.secretIsTransitioning[secret.id] = false;
-              };
-            },
-            onSuccess: () => {
-              const secretsOnDef =
-                this.secretsByDefinitionId[secret.definition];
-              if (secretsOnDef === undefined) return;
-
-              this.secretsByDefinitionId[secret.definition] =
-                secretsOnDef.filter((s) => s.id !== id);
-
-              this.secretIsTransitioning[secret.id] = false;
-            },
-          });
-        },
-        async GET_PUBLIC_KEY() {
-          return new ApiRequest<PublicKey>({
-            url: "secret/get_public_key",
-            params: {
-              ...visibilityParams,
-            },
-            onSuccess: (response) => {
-              this.publicKey = response;
-            },
-          });
-        },
-      },
-      onActivated() {
-        // TODO Run load secrets on websocket message too
-        this.LOAD_SECRETS();
-        this.GET_PUBLIC_KEY();
-
-        const realtimeStore = useRealtimeStore();
-        realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-          {
-            eventType: "ChangeSetWritten",
-            debounce: true,
-            callback: (writtenChangeSetId) => {
-              // ideally we wouldn't have to check this - since the topic subscription
-              // would mean we only receive the event for this changeset already...
-              // but this is fine for now
-              if (writtenChangeSetId !== changeSetId) return;
-
-              // probably want to get pushed updates instead of blindly re-fetching, but this is the first step of getting things working
-              this.LOAD_SECRETS();
-            },
+              },
+            });
           },
-        ]);
+          async DELETE_SECRET(id: SecretId) {
+            const secret = this.secretsById[id];
+
+            if (_.isNil(secret)) return;
+
+            return new ApiRequest({
+              method: "delete",
+              url: "secret",
+              params: {
+                ...visibilityParams,
+                id,
+              },
+              optimistic: () => {
+                this.secretIsTransitioning[secret.id] = true;
+
+                return () => {
+                  this.secretIsTransitioning[secret.id] = false;
+                };
+              },
+              onSuccess: () => {
+                const secretsOnDef =
+                  this.secretsByDefinitionId[secret.definition];
+                if (secretsOnDef === undefined) return;
+
+                this.secretsByDefinitionId[secret.definition] =
+                  secretsOnDef.filter((s) => s.id !== id);
+
+                this.secretIsTransitioning[secret.id] = false;
+              },
+            });
+          },
+          async GET_PUBLIC_KEY() {
+            return new ApiRequest<PublicKey>({
+              url: "secret/get_public_key",
+              params: {
+                ...visibilityParams,
+              },
+              onSuccess: (response) => {
+                this.publicKey = response;
+              },
+            });
+          },
+        },
+        onActivated() {
+          // TODO Run load secrets on websocket message too
+          this.LOAD_SECRETS();
+          this.GET_PUBLIC_KEY();
+
+          const realtimeStore = useRealtimeStore();
+          realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
+            {
+              eventType: "ChangeSetWritten",
+              debounce: true,
+              callback: (writtenChangeSetId) => {
+                // ideally we wouldn't have to check this - since the topic subscription
+                // would mean we only receive the event for this changeset already...
+                // but this is fine for now
+                if (writtenChangeSetId !== changeSetId) return;
+
+                // probably want to get pushed updates instead of blindly re-fetching, but this is the first step of getting things working
+                this.LOAD_SECRETS();
+              },
+            },
+          ]);
+        },
       },
-    }),
+    ),
   )();
 }
