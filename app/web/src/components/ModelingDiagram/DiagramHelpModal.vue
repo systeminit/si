@@ -1,12 +1,15 @@
 <template>
-  <Modal ref="modalRef" title="Controls For Diagram Editor">
+  <Modal ref="modalRef" title="Diagram controls info">
     <ul class="space-y-xs">
-      <li>Mouse - Add, Create, and Select Components</li>
-      <li>Arrow Keys - Nudge Selected Component</li>
-      <li>Spacebar - Hold To Drag Scroll</li>
-      <li>Plus/Minus - Adjust Zoom Level</li>
-      <li>Esc - Deselect Component</li>
-      <li>Backspace/Delete - Delete Selected Component</li>
+      <li>Mouse - add, create, and select Components</li>
+      <li>Plus / minus - adjust zoom level</li>
+      <li>CMD + scrollwheel - zoom in/out</li>
+      <li>Option/Alt + click - ignore clicked element, force drag to select</li>
+      <li>Trackpad pinch - adjust zoom</li>
+      <li>Arrow keys - Nudge selection, hold shift to nudge further</li>
+      <li>Spacebar - hold to activate drag-to-scroll</li>
+      <li>Esc - clear selection</li>
+      <li>Backspace / delete - delete selected component</li>
     </ul>
   </Modal>
 </template>
