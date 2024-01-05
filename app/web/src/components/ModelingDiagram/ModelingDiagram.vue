@@ -748,8 +748,8 @@ function checkIfDragStarted(_e: MouseEvent) {
   dragThresholdBroken.value = true;
 
   // determine what kind of drag this is and trigger it
-  if (!lastMouseDownElement.value) {
-    // begin drag to multi-select
+  if (!lastMouseDownElement.value || _e.altKey) {
+    // begin drag to multi-select - NOTE - alt/option forces drag to select
     beginDragSelect();
   } else if (props.readOnly) {
     // TODO: add controls for each of these modes...
@@ -818,13 +818,6 @@ const cursor = computed(() => {
   if (dragToPanArmed.value) return "grab";
   if (dragSelectActive.value) return "crosshair";
 
-  if (
-    !props.readOnly &&
-    hoveredElementMeta.value?.type === "socket" &&
-    hoveredElement.value?.def.changeStatus !== "deleted"
-  ) {
-    return "cell";
-  }
   if (drawEdgeActive.value) return "cell";
   if (dragElementsActive.value) return "move";
   if (insertElementActive.value) return "copy"; // not sure about this...
@@ -854,6 +847,14 @@ const cursor = computed(() => {
         return "auto";
     }
   }
+  if (
+    !props.readOnly &&
+    hoveredElementMeta.value?.type === "socket" &&
+    hoveredElement.value?.def.changeStatus !== "deleted"
+  ) {
+    return "cell";
+  }
+
   if (hoveredElement.value) {
     return "pointer";
   }
@@ -1165,6 +1166,27 @@ function onDragSelectMove() {
     );
   } else {
     dragSelectPreviewKeys.value = selectedInBoxKeys;
+  }
+
+  // if option key was held to force drag select, we ignore the element clicked and any parents
+  if (lastMouseDownEvent.value?.altKey) {
+    if (
+      lastMouseDownElement.value instanceof DiagramGroupData ||
+      lastMouseDownElement.value instanceof DiagramNodeData
+    ) {
+      const ignoreKeys = [
+        lastMouseDownElementKey.value,
+        ..._.map(
+          lastMouseDownElement.value?.def.ancestorIds,
+          getDiagramElementKeyForComponentId,
+        ),
+      ];
+
+      dragSelectPreviewKeys.value = _.reject(
+        dragSelectPreviewKeys.value,
+        (key) => ignoreKeys.includes(key),
+      );
+    }
   }
 }
 
