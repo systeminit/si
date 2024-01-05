@@ -101,6 +101,8 @@ pub enum DiagramError {
     ParentNodeNotFound(NodeId),
     #[error("parse int: {0}")]
     ParseFloat(#[from] ParseFloatError),
+    #[error("paste failed")]
+    PasteError,
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]

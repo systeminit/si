@@ -1078,7 +1078,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             const tempInsertId = _.uniqueId("temp-insert-component");
 
-            return new ApiRequest({
+            return new ApiRequest<
+              {
+                copiedComponentId: ComponentId;
+                pastedComponentId: ComponentId;
+                pastedNodeId: ComponentNodeId;
+              }[]
+            >({
               method: "post",
               url: "diagram/paste_components",
               keyRequestStatusBy: componentIds,
@@ -1099,7 +1105,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 };
               },
               onSuccess: (response) => {
-                delete this.pendingInsertedComponents[tempInsertId];
+                // following CREATE_COMPONENT's strategy here
+                // but matching up the loader to the first id in the list...
+                // not ideal but should help avoid the delay between the loader disappearing and the new things appearing
+                const pendingInsert =
+                  this.pendingInsertedComponents[tempInsertId];
+                if (pendingInsert && response[0]?.pastedComponentId) {
+                  pendingInsert.componentId = response[0]?.pastedComponentId;
+                }
               },
             });
           },
