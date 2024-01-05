@@ -208,15 +208,28 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               const { prop, path } = queue.pop() || {};
               if (!prop) break;
 
-              prop.children.forEach((c) =>
-                queue.push({
-                  prop: c,
-                  path: `${path}/${c.propDef.name}`,
-                }),
-              );
-
               const value = prop.value?.value || null;
               const kind = prop.propDef.kind;
+
+              prop.children.forEach((c) => {
+                let pathSuffix = "";
+
+                switch (kind) {
+                  case PropertyEditorPropKind.Array:
+                    pathSuffix = `[${c.arrayIndex}]`;
+                    break;
+                  case PropertyEditorPropKind.Map:
+                    pathSuffix = `.${c.mapKey}`;
+                    break;
+                  default:
+                    break;
+                }
+
+                queue.push({
+                  prop: c,
+                  path: `${path}/${c.propDef.name}${pathSuffix}`,
+                });
+              });
 
               if (
                 [
@@ -228,8 +241,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 continue;
               }
 
-              const validationFormat = Joi.build(
-                JSON.parse(prop.propDef.validationFormat ?? "{}"),
+              const validationFormat = (
+                prop.propDef.validationFormat
+                  ? Joi.build(JSON.parse(prop.propDef.validationFormat))
+                  : Joi.any()
               ) as Schema;
 
               // NOTE(victor): Joi treats null as a value, so even if .required()
