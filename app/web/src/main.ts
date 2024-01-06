@@ -27,6 +27,10 @@ app.use(store);
 app.use(FloatingVue, {
   container: "#app-layout",
   themes: {
+    html: {
+      $extend: "tooltip",
+      html: true,
+    },
     "user-info": {
       $extend: "tooltip",
       delay: { show: 10, hide: 100 },
