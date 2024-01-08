@@ -52,12 +52,16 @@
     :minSize="430"
   >
     <div class="h-full overflow-hidden relative">
-      <EdgeDetailsPanel v-if="selectedEdge" />
+      <EdgeDetailsPanel v-if="selectedEdge" @openMenu="onThreeDotMenuClick" />
       <ComponentDetails
         v-else-if="selectedComponent"
         :key="selectedComponent.id"
+        @openMenu="onThreeDotMenuClick"
       />
-      <MultiSelectDetailsPanel v-else-if="selectedComponentIds.length > 1" />
+      <MultiSelectDetailsPanel
+        v-else-if="selectedComponentIds.length > 1"
+        @openMenu="onThreeDotMenuClick"
+      />
       <NoSelectionDetailsPanel v-else />
     </div>
   </ResizablePanel>
@@ -149,5 +153,9 @@ function onOutlineRightClick(ev: {
   component: FullComponent;
 }) {
   contextMenuRef.value?.open(ev.mouse, true, ev.component.position);
+}
+
+function onThreeDotMenuClick(mouse: MouseEvent) {
+  contextMenuRef.value?.open(mouse, false);
 }
 </script>

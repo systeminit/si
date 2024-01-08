@@ -30,15 +30,18 @@ export function useChangeSetsStore() {
         changeSetsWrittenAtById: {} as Record<ChangeSetId, Date>,
         creatingChangeSet: false as boolean,
         postApplyActor: null as string | null,
+        postAbandonActor: null as string | null,
         changeSetApprovals: {} as Record<UserId, string>,
       }),
       getters: {
         allChangeSets: (state) => _.values(state.changeSetsById),
         openChangeSets(): ChangeSet[] {
           return _.filter(this.allChangeSets, (cs) =>
-            [ChangeSetStatus.Open, ChangeSetStatus.NeedsApproval].includes(
-              cs.status,
-            ),
+            [
+              ChangeSetStatus.Open,
+              ChangeSetStatus.NeedsApproval,
+              ChangeSetStatus.NeedsAbandonApproval,
+            ].includes(cs.status),
           );
         },
         urlSelectedChangeSetId: () => {
@@ -179,6 +182,39 @@ export function useChangeSetsStore() {
             },
           });
         },
+
+        // TODO(Wendy) - these endpoints do not exist yet!
+        async APPLY_ABANDON_VOTE(vote: string) {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          return new ApiRequest({
+            method: "post",
+            url: "change_set/abandon_vote",
+            params: {
+              vote,
+              visibility_change_set_pk: this.selectedChangeSet.pk,
+            },
+          });
+        },
+        async BEGIN_ABANDON_APPROVAL_PROCESS() {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          return new ApiRequest({
+            method: "post",
+            url: "change_set/begin_abandon_approval_process",
+            params: {
+              visibility_change_set_pk: this.selectedChangeSet.pk,
+            },
+          });
+        },
+        async CANCEL_ABANDON_APPROVAL_PROCESS() {
+          if (!this.selectedChangeSet) throw new Error("Select a change set");
+          return new ApiRequest({
+            method: "post",
+            url: "change_set/cancel_abandon_approval_process",
+            params: {
+              visibility_change_set_pk: this.selectedChangeSet.pk,
+            },
+          });
+        },
         // TODO: async CANCEL_CHANGE_SET() {},
 
         // other related endpoints, not necessarily needed at the moment, but available
@@ -236,7 +272,6 @@ export function useChangeSetsStore() {
         );
 
         const realtimeStore = useRealtimeStore();
-        // TODO: if selected change set gets cancelled/applied, need to show error if by other user, and switch to head...
         realtimeStore.subscribe(this.$id, `workspace/${workspacePk}`, [
           {
             eventType: "ChangeSetCreated",
@@ -244,7 +279,26 @@ export function useChangeSetsStore() {
           },
           {
             eventType: "ChangeSetCancelled",
-            callback: this.FETCH_CHANGE_SETS,
+            callback: (data) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const { changeSetPk, userPk } = data as any as {
+                changeSetPk: string;
+                userPk: UserId;
+              };
+              const changeSet = this.changeSetsById[changeSetPk];
+              if (changeSet) {
+                changeSet.status = ChangeSetStatus.Abandoned;
+                if (
+                  this.selectedChangeSet?.pk === changeSetPk &&
+                  featureFlagsStore.MUTLIPLAYER_CHANGESET_APPLY
+                ) {
+                  this.postAbandonActor = userPk;
+                }
+                this.changeSetsById[changeSetPk] = changeSet;
+              }
+
+              this.FETCH_CHANGE_SETS();
+            },
           },
           {
             eventType: "ChangeSetApplied",
@@ -293,6 +347,34 @@ export function useChangeSetsStore() {
               }
             },
           },
+
+          {
+            eventType: "ChangeSetBeginAbandonProcess",
+            callback: (data) => {
+              if (this.selectedChangeSet?.pk === data.changeSetPk) {
+                this.changeSetApprovals = {};
+              }
+              const changeSet = this.changeSetsById[data.changeSetPk];
+              if (changeSet) {
+                changeSet.status = ChangeSetStatus.NeedsAbandonApproval;
+                changeSet.abandonRequestedAt = new Date().toISOString();
+                changeSet.abandonRequestedByUserId = data.userPk;
+              }
+            },
+          },
+          {
+            eventType: "ChangeSetCancelAbandonProcess",
+            callback: (data) => {
+              if (this.selectedChangeSet?.pk === data.changeSetPk) {
+                this.changeSetApprovals = {};
+              }
+              const changeSet = this.changeSetsById[data.changeSetPk];
+              if (changeSet) {
+                changeSet.status = ChangeSetStatus.Open;
+              }
+            },
+          },
+
           {
             eventType: "ChangeSetWritten",
             debounce: true,
@@ -305,6 +387,14 @@ export function useChangeSetsStore() {
           },
           {
             eventType: "ChangeSetMergeVote",
+            callback: (data) => {
+              if (this.selectedChangeSet?.pk === data.changeSetPk) {
+                this.changeSetApprovals[data.userPk] = data.vote;
+              }
+            },
+          },
+          {
+            eventType: "ChangeSetAbandonVote",
             callback: (data) => {
               if (this.selectedChangeSet?.pk === data.changeSetPk) {
                 this.changeSetApprovals[data.userPk] = data.vote;

@@ -12,7 +12,7 @@
     }"
   >
     <NodeSkeleton :color="`${a.color}`" />
-    <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
+    <div class="w-full truncate">
       {{ assetDisplayName(a) }}
     </div>
   </RouterLink>

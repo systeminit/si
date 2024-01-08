@@ -1,7 +1,15 @@
 <template>
   <ScrollArea v-if="selectedComponent">
     <template #top>
-      <SidebarSubpanelTitle label="Asset Details" icon="component" />
+      <SidebarSubpanelTitle label="Asset Details" icon="component">
+        <DetailsPanelMenuIcon
+          @click="
+            (e) => {
+              emit('openMenu', e);
+            }
+          "
+        />
+      </SidebarSubpanelTitle>
       <ComponentCard :componentId="selectedComponent.id" class="m-xs" />
 
       <div
@@ -185,8 +193,13 @@ import AssetDiffDetails from "./AssetDiffDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import AttributesPanel from "./AttributesPanel/AttributesPanel.vue";
 import ComponentDetailsCode from "./ComponentDetailsCode.vue";
+import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 
-const emit = defineEmits(["delete", "restore"]);
+const emit = defineEmits<{
+  (e: "delete"): void;
+  (e: "restore"): void;
+  (e: "openMenu", mouse: MouseEvent): void;
+}>();
 
 const componentsStore = useComponentsStore();
 const qualificationsStore = useQualificationsStore();

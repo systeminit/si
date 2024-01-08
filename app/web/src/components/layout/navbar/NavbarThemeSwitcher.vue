@@ -30,6 +30,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import {
   Icon,
   DropdownMenuItem,
@@ -38,5 +39,10 @@ import {
 } from "@si/vue-lib/design-system";
 import NavbarButton from "./NavbarButton.vue";
 
-const { theme: currentTheme } = useTheme();
+const { theme } = useTheme();
+
+const currentTheme = computed(() => {
+  if (userOverrideTheme.value) return userOverrideTheme.value;
+  else return theme;
+});
 </script>

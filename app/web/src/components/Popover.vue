@@ -61,16 +61,14 @@ const anchorEl = ref<HTMLElement>();
 const anchorPos = ref<{ x: number; y: number }>();
 
 function onWindowMousedown(e: MouseEvent) {
-  requestAnimationFrame(() => {
-    if (
-      (e.target instanceof Element && internalRef.value?.contains(e.target)) ||
-      props.noExit
-    ) {
-      return; // Don't close on click inside popover or if noExit is set
-    }
+  if (
+    (e.target instanceof Element && internalRef.value?.contains(e.target)) ||
+    props.noExit
+  ) {
+    return; // Don't close on click inside popover or if noExit is set
+  }
 
-    close();
-  });
+  close();
 }
 
 function onKeyboardEvent(e: KeyboardEvent) {
@@ -81,15 +79,6 @@ function onKeyboardEvent(e: KeyboardEvent) {
     close();
   }
 }
-
-function removeListeners() {
-  windowListenerManager.removeEventListener("click", onWindowMousedown);
-  windowListenerManager.removeEventListener("keydown", onKeyboardEvent);
-}
-
-onBeforeUnmount(() => {
-  removeListeners();
-});
 
 function nextFrame(cb: () => void) {
   requestAnimationFrame(() => requestAnimationFrame(cb));
@@ -140,6 +129,11 @@ function finishOpening() {
 function startListening() {
   windowListenerManager.addEventListener("keydown", onKeyboardEvent, 10);
   windowListenerManager.addEventListener("mousedown", onWindowMousedown, 10);
+}
+
+function removeListeners() {
+  windowListenerManager.removeEventListener("keydown", onKeyboardEvent);
+  windowListenerManager.removeEventListener("mousedown", onWindowMousedown);
 }
 
 function readjustPosition() {
@@ -221,6 +215,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener("resize", closeOnResize);
+});
+
+onBeforeUnmount(() => {
+  removeListeners();
 });
 
 defineExpose({ open, openAt, close, isOpen });

@@ -19,7 +19,10 @@
         @keydown="onKeyDown"
       />
     </label>
-    <button class="w-6 text-action- text-neutral-500" @click="triggerSearch">
+    <button
+      class="w-6 text-action- text-neutral-500 hover:text-shade-100 dark:hover:text-shade-0 hover:scale-110"
+      @click="triggerSearch"
+    >
       <Icon name="search" />
     </button>
   </div>

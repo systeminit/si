@@ -45,7 +45,7 @@
                 growTabsToFillWidth && 'flex-grow justify-center',
                 minimal
                   ? [
-                      'border-b ',
+                      'border-b hover:border-b-2',
                       tab.props.slug === selectedTabSlug
                         ? 'border-current text-action-500 dark:text-action-300 font-bold'
                         : 'border-neutral-300 dark:border-neutral-600 hover:border-shade-100 dark:hover:border-shade-0',
