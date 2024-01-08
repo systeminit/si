@@ -24,6 +24,7 @@ pub mod create_connection;
 pub mod create_node;
 pub mod delete_component;
 pub mod delete_connection;
+mod detach_component_from_frame;
 pub mod get_diagram;
 pub mod get_node_add_menu;
 pub mod list_schema_variants;
@@ -175,6 +176,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/delete_components",
             post(delete_component::delete_components),
+        )
+        .route(
+            "/detach_component",
+            post(detach_component_from_frame::detach_component_from_frame),
         )
         .route("/paste_components", post(paste_component::paste_components))
         .route(
