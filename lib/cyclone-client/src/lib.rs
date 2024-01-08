@@ -3,7 +3,7 @@ mod execution;
 mod ping;
 mod watch;
 
-pub use client::{Client, ClientError, CycloneClient, HttpClient, UdsClient};
+pub use client::{Client, ClientConfig, ClientError, CycloneClient, HttpClient, UdsClient};
 pub use cyclone_core::{
     ActionRunRequest, ActionRunResultSuccess, CycloneEncryptionKey, CycloneEncryptionKeyError,
     LivenessStatus, LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError,
