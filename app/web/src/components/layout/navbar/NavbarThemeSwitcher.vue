@@ -42,7 +42,7 @@ import NavbarButton from "./NavbarButton.vue";
 const { theme } = useTheme();
 
 const currentTheme = computed(() => {
-  if(userOverrideTheme.value) return userOverrideTheme.value;
+  if (userOverrideTheme.value) return userOverrideTheme.value;
   else return theme;
 });
 </script>

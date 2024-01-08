@@ -75,7 +75,6 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useComponentsStore } from "@/store/components.store";
 import ApplyHistory from "./ApplyHistory.vue";
 import ActionSprite from "./ActionSprite.vue";
-import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import ChangeCard from "./ChangeCard.vue";
 
 const changeSetStore = useChangeSetsStore();
