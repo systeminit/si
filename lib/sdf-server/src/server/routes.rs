@@ -36,7 +36,6 @@ pub fn routes(state: AppState) -> Router {
         .nest("/api/schema", crate::server::service::schema::routes())
         .nest("/api/diagram", crate::server::service::diagram::routes())
         .nest("/api/graphviz", crate::server::service::graphviz::routes())
-        .nest("/api/session", crate::server::service::session::routes())
         .nest("/api/ws", crate::server::service::ws::routes())
         .layer(CompressionLayer::new());
 
