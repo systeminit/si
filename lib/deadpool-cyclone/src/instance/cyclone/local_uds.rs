@@ -1,4 +1,5 @@
 use std::os::unix::fs::PermissionsExt;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use ::std::path::Path;
@@ -15,8 +16,8 @@ use bollard::{errors::Error, Docker};
 
 use async_trait::async_trait;
 use cyclone_client::{
-    Client, ClientError, Connection, CycloneClient, Execution, LivenessStatus, PingExecution,
-    ReadinessStatus, UdsClient, UnixStream, Watch, WatchError, WatchStarted,
+    Client, ClientConfig, ClientError, Connection, CycloneClient, Execution, LivenessStatus,
+    PingExecution, ReadinessStatus, UdsClient, UnixStream, Watch, WatchError, WatchStarted,
 };
 use cyclone_core::{
     process::{self, ShutdownError},
@@ -333,6 +334,10 @@ pub struct LocalUdsInstanceSpec {
     /// Size of the pool to configure for the spec.
     #[builder(setter(into), default = "500")]
     pool_size: u16,
+
+    /// Sets the timeout for connecting to firecracker
+    #[builder(setter(into), default = "10")]
+    connect_timeout: u64,
 }
 
 #[async_trait]
@@ -355,17 +360,23 @@ impl Spec for LocalUdsInstanceSpec {
         runtime.spawn().await?;
         //TODO(scott): Firecracker requires the client to add a special connection detail. We
         //should find a better way to handle this.
-        let special_connect = matches!(
+        let firecracker_connect = matches!(
             self.runtime_strategy,
             LocalUdsRuntimeStrategy::LocalFirecracker
         );
+
+        let config = ClientConfig {
+            connect_timeout: Duration::from_millis(self.connect_timeout),
+            firecracker_connect,
+            ..Default::default()
+        };
         trace!(
             "cyclone-execution: client creation {:?}",
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("time has gone backwards")
         );
-        let mut client = Client::uds(runtime.socket(), special_connect)?;
+        let mut client = Client::uds(runtime.socket(), Arc::new(config))?;
         trace!(
             "cyclone-execution: client created {:?}",
             SystemTime::now()
@@ -378,11 +389,11 @@ impl Spec for LocalUdsInstanceSpec {
         let watch = {
             let mut retries = 30;
             loop {
-                trace!("calling client.watch()");
+                trace!("cyclone-execution: calling client.watch()");
 
                 match client.watch().await {
                     Ok(watch) => {
-                        trace!("client watch session established");
+                        trace!("cyclone-execution: client watch session established");
                         break watch;
                     }
                     Err(err) => err,

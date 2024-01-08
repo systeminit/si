@@ -89,10 +89,11 @@ cyclone_args=(
   --lang-server /usr/local/bin/lang-js
   --enable-watch
   --limit-requests 1
-  --watch-timeout 10
+  --watch-timeout 30
   --enable-ping
   --enable-resolver
   --enable-action-run
+  -vvvv
 )
 
 # got get the rootfs tar and unpack it
@@ -141,6 +142,8 @@ supervisor="supervise-daemon"
 command="cyclone"
 command_args="${cyclone_args[*]}"
 pidfile="/cyclone/agent.pid"
+output_log="/var/log/cyclone.log"
+error_log="/var/log/cyclone.err"
 EOF
 
 chmod +x "/etc/init.d/cyclone"

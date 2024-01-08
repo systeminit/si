@@ -200,6 +200,8 @@ pub enum CycloneConfig {
         action: bool,
         #[serde(default)]
         pool_size: u16,
+        #[serde(default)]
+        connect_timeout: u64,
     },
 }
 
@@ -231,6 +233,7 @@ impl CycloneConfig {
             resolver: default_enable_endpoint(),
             action: default_enable_endpoint(),
             pool_size: default_pool_size(),
+            connect_timeout: default_connect_timeout(),
         }
     }
 
@@ -360,6 +363,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 resolver,
                 action,
                 pool_size,
+                connect_timeout,
             } => {
                 let mut builder = LocalUdsInstance::spec();
                 //we only need these if running local process. Maybe the builder should handle
@@ -389,6 +393,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                     builder.action();
                 }
                 builder.pool_size(pool_size);
+                builder.connect_timeout(connect_timeout);
 
                 Ok(Self::LocalUds(
                     builder.build().map_err(ConfigError::cyclone_spec_build)?,
@@ -462,6 +467,10 @@ fn default_runtime_strategy() -> LocalUdsRuntimeStrategy {
 
 fn default_pool_size() -> u16 {
     100
+}
+
+fn default_connect_timeout() -> u64 {
+    10
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

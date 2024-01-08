@@ -12,9 +12,7 @@ use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
 
-pub use tokio_tungstenite::tungstenite::{
-    protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,
-};
+pub use tokio_tungstenite::tungstenite::Message as WebSocketMessage;
 
 pub fn execute<T, Request, Success>(
     stream: WebSocketStream<T>,

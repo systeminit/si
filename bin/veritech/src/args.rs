@@ -45,6 +45,10 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) cyclone_local_firecracker: bool,
 
+    /// Cyclone firecracker connect timeout
+    #[arg(long)]
+    pub(crate) cyclone_connect_timeout: Option<u64>,
+
     /// Cyclone pool size
     #[arg(long)]
     pub(crate) cyclone_pool_size: Option<u16>,
@@ -72,6 +76,9 @@ impl TryFrom<Args> for Config {
             }
             if args.cyclone_local_process {
                 config_map.set("cyclone.runtime_strategy", "LocalProcess");
+            }
+            if let Some(timeout) = args.cyclone_connect_timeout {
+                config_map.set("cyclone.connect_timeout", timeout);
             }
             if let Some(size) = args.cyclone_pool_size {
                 config_map.set("cyclone.pool_size", size);
