@@ -245,6 +245,9 @@ importers:
       typescript:
         specifier: ^4.9.5
         version: 4.9.5
+      util-browser:
+        specifier: ^0.0.2
+        version: 0.0.2
       validator:
         specifier: ^13.7.0
         version: 13.7.0
@@ -18375,6 +18378,11 @@ packages:
     resolution: {integrity: sha512-cwESVXlO3url9YWlFW/TA9cshCEhtu7IKJ/p5soJ/gGpj7vbvFrAY/eIioQ6Dw23KjZhYgiIo8HOs1nQ2vr/oQ==}
     engines: {node: '>=0.10.0'}
     dev: true
+
+  /util-browser@0.0.2:
+    resolution: {integrity: sha512-CsBJ5YROxA5mXq0TFFEk447bLcANx7O+MLhgJ8CCuZIOQaYUewpMeF0ODttYxOrWfCNny9b5l1nFMv4kd2MFdw==}
+    engines: {node: '>=0.10.x'}
+    dev: false
 
   /util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}

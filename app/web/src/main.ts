@@ -18,14 +18,6 @@ import store from "./store";
 // this is for joi - because we are importing the source rather than the default build made for the browser
 globalThis.Buffer = Buffer;
 
-// resolving an issue only seen on one user's machine... could not figure out why
-// basically joi is using util - which references process.env... here we just creat it globablly so it wont explode
-// and we'll at least fill in NODE_ENV becuase that's the most common thing that gets checked
-if (typeof window !== "undefined") {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).process = { env: { NODE_ENV: import.meta.env.NODE_ENV } };
-}
-
 const app = createApp(App);
 
 app.use(createHead());
