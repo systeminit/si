@@ -16,17 +16,19 @@ use thiserror::Error;
 use crate::server::state::AppState;
 
 // pub mod abandon_change_set;
+// mod abandon_vote;
 // pub mod add_action;
-// pub mod remove_action;
+pub mod apply_change_set;
+// mod begin_abandon_approval_process;
 // mod begin_approval_process;
+pub mod create_change_set;
 // pub mod get_change_set;
 // pub mod get_stats;
-// mod merge_vote;
-
-pub mod apply_change_set;
-pub mod create_change_set;
 pub mod list_open_change_sets;
-pub mod update_selected_change_set;
+// pub mod list_queued_actions;
+// mod merge_vote;
+// pub mod remove_action;
+// pub mod update_selected_change_set;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -141,4 +143,13 @@ pub fn routes() -> Router<AppState> {
     //     post(begin_approval_process::cancel_approval_process),
     // )
     // .route("/merge_vote", post(merge_vote::merge_vote))
+    // .route(
+    //     "/begin_abandon_approval_process",
+    //     post(begin_abandon_approval_process::begin_abandon_approval_process),
+    // )
+    // .route(
+    //     "/cancel_abandon_approval_process",
+    //     post(begin_abandon_approval_process::cancel_abandon_approval_process),
+    // )
+    // .route("/abandon_vote", post(abandon_vote::abandon_vote))
 }

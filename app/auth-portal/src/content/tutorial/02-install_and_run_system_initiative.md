@@ -1,16 +1,19 @@
 ---
-title: Install and run System Initiative
+title: Run System Initiative
 hideWorkspaceLink: true
 ---
 ## Install and run System Initiative
 
-Let's do this:
-* Visit the <router-link :to="{ name: 'download' }" target="_blank">Install page</router-link> and follow the instructions to install System Initiative.
-* Run the command `si start` in a terminal window, which will check for system dependencies, prompt for the necessary credentials, and download/start the System Initiative components.
+We're currently working on implementing a SaaS version of System Initiative that will alleviate the need to install any software. 
 
-The button below should have two red beacons, which will turn green and say "Frontend online" and "Backend online" when you're running System Initiative and ready to launch. Click this button to login and open your workspace when it's ready:
+In the meantime, there's 2 alternatives: 
+
+* You can build from source, using buck2 and tilt. It takes a little bit to get started but the end result is a full development environment that mirrors what the team is doing and is at the moment the most stable way to use System Initiative.
+
+* We can invite you to a private workspace as a playground. This is ephemeral and should be considered as such. This environment would be used to validate one of your ideas or to get some hands-on experience with System Initiative. 
+
+
+In both cases, please [join the Discord](https://discord.com/invite/system-init) and reach out to @SI_keeb for any help or assistance.
 
 <!-- must wrap in a div to undo some of the automatic styling because otherwise it will be put inside a <p> tag -->
 <div><workspace-link-widget></workspace-link-widget></div>
-
-If you run into trouble - hit us up on <a href="https://discord.com/channels/955539345538957342/1080953018788364288" target="_blank">Discord</a>, and we’ll get you sorted.

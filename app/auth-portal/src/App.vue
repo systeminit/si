@@ -68,9 +68,6 @@
                   )
                 "
               >
-                <RouterLink :to="{ name: 'download' }" class="underline-link">
-                  Install
-                </RouterLink>
                 <RouterLink :to="{ name: 'tutorial' }" class="underline-link">
                   Tutorial
                 </RouterLink>

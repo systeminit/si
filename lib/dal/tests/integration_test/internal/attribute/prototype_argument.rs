@@ -6,7 +6,7 @@ use dal::{
         binding::FuncBinding,
     },
     AttributePrototypeArgument, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    InternalProvider, Prop, PropKind, StandardModel,
+    InternalProvider, PropKind, StandardModel,
 };
 use dal_test::{
     test,
@@ -26,28 +26,22 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext) {
     // domain: Object
     // └─ object: Object
     //    └─ name: String
-    let object_prop = Prop::new(
+    let object_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "object",
         PropKind::Object,
-        None,
         *schema_variant.id(),
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let name_prop = Prop::new(
+    .await;
+    let name_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "name",
         PropKind::String,
-        None,
         *schema_variant.id(),
         Some(*object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
 
     let func = Func::new(
         ctx,

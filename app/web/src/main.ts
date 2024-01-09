@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import { createApp } from "vue";
 import FloatingVue from "floating-vue";
 import VueKonva from "vue-konva";
@@ -14,6 +15,8 @@ import "./utils/posthog";
 import router from "./router";
 import store from "./store";
 
+globalThis.Buffer = Buffer;
+
 const app = createApp(App);
 
 app.use(createHead());
@@ -24,6 +27,10 @@ app.use(store);
 app.use(FloatingVue, {
   container: "#app-layout",
   themes: {
+    html: {
+      $extend: "tooltip",
+      html: true,
+    },
     "user-info": {
       $extend: "tooltip",
       delay: { show: 10, hide: 100 },

@@ -143,7 +143,7 @@
         <div
           v-if="isMap && isMapKeyError"
           :style="{ marginLeft: indentPx }"
-          class="attributes-panel-item__map-key-error text-destructive-500 pl-8 italic pb-xs"
+          class="attributes-panel-item__map-key-error"
         >
           You must enter a valid key.
         </div>
@@ -161,17 +161,14 @@
           name="nested-arrow-right"
           size="none"
         />
-        <div class="attributes-panel-item__item-label-text">
+        <div
+          class="attributes-panel-item__item-label-text"
+          :title="`${propLabelParts[0]}${propLabelParts[1]}`"
+        >
           <i>{{ propLabelParts[0] }}</i
           >{{ propLabelParts[1] }}
         </div>
-        <button
-          v-if="isChildOfMap || isChildOfArray"
-          class="attributes-panel-item__delete-child-button hover:text-destructive-500"
-          @click="removeChildHandler"
-        >
-          <Icon name="trash" size="none" />
-        </button>
+
         <!-- TODO - enable tooltip help info -->
         <!-- <Icon
           v-if="propName === 'region'"
@@ -179,15 +176,6 @@
           name="question-circle"
           class="attributes-panel-item__help-icon"
         /> -->
-        <a
-          v-if="fullPropDef.docLink"
-          class="attributes-panel-item__docs-icon"
-          :href="fullPropDef.docLink"
-          target="_blank"
-          title="show docs"
-        >
-          <Icon class="attributes-panel-item__help-icon" name="docs" />
-        </a>
 
         <div class="attributes-panel-item__action-icons">
           <!-- <Icon v-if="isChildOfArray || isChildOfMap" name="trash" size="sm" />
@@ -196,12 +184,32 @@
           <Icon v-if="isChildOfMap" name="edit" size="sm" /> -->
         </div>
 
-        <Icon
-          v-tooltip="attributeDef.validationError"
-          :name="icon"
-          size="sm"
-          class="attributes-panel-item__type-icon"
-        />
+        <div class="attributes-panel-item__static-icons">
+          <button
+            v-if="isChildOfMap || isChildOfArray"
+            class="attributes-panel-item__delete-child-button hover:scale-125"
+            @click="removeChildHandler"
+          >
+            <Icon name="trash" size="none" />
+          </button>
+
+          <a
+            v-if="fullPropDef.docLink"
+            class="attributes-panel-item__docs-icon hover:scale-125"
+            :href="fullPropDef.docLink"
+            target="_blank"
+            title="show docs"
+          >
+            <Icon class="attributes-panel-item__help-icon" name="docs" />
+          </a>
+
+          <Icon
+            v-tooltip="attributeDef.validationError"
+            :name="icon"
+            size="sm"
+            class="attributes-panel-item__type-icon"
+          />
+        </div>
       </div>
 
       <div
@@ -679,10 +687,6 @@ function secretSelectedHandler(newSecret: Secret) {
   }
 }
 
-.attributes-panel-item__children > *:last-child {
-  border-bottom: 1px solid var(--header-bg-color);
-}
-
 .attributes-panel-item__section-header-wrap {
   position: sticky;
   height: @header-height;
@@ -787,6 +791,7 @@ function secretSelectedHandler(newSecret: Secret) {
   align-items: center;
 }
 .attributes-panel-item__item-label-text {
+  cursor: default;
   flex-shrink: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -984,7 +989,6 @@ function secretSelectedHandler(newSecret: Secret) {
 }
 
 .attributes-panel-item.--input .attributes-panel-item__type-icon {
-  margin-left: auto;
   opacity: 0.5;
 }
 .attributes-panel-item.--input.--invalid .attributes-panel-item__type-icon {
@@ -995,6 +999,15 @@ function secretSelectedHandler(newSecret: Secret) {
 .attributes-panel-item.--focus {
   .attributes-panel-item__input-wrap {
     border-color: var(--input-focus-border-color);
+  }
+}
+
+.attributes-panel-item__delete-child-button {
+  z-index: 30;
+  flex: none;
+  &:hover {
+    color: @colors-destructive-500;
+    opacity: 1;
   }
 }
 
@@ -1091,5 +1104,19 @@ function secretSelectedHandler(newSecret: Secret) {
   border: 1px solid var(--input-focus-border-color);
   background: var(--input-focus-bg-color);
   // margin-bottom: @spacing-px[xs];
+}
+
+.attributes-panel-item__map-key-error {
+  padding-left: 2rem;
+  padding-bottom: 0.5rem;
+  font-style: italic;
+  color: @colors-destructive-500;
+}
+
+.attributes-panel-item__static-icons {
+  display: flex;
+  flex-direction: row;
+  margin-left: auto;
+  flex: none;
 }
 </style>

@@ -58,7 +58,7 @@
                       : '',
                   )
                 "
-                @mousedown.left="
+                @mousedown.left.stop="
                   onSelect(schema.schemaVariantId, fixesAreRunning)
                 "
                 @click.right.prevent
@@ -87,6 +87,7 @@ import * as _ from "lodash-es";
 import { computed, onMounted, onBeforeUnmount, ref } from "vue";
 import { Collapsible, Icon, ScrollArea } from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import { windowListenerManager } from "@si/vue-lib";
 import SiNodeSprite from "@/components/SiNodeSprite.vue";
 import { useComponentsStore } from "@/store/components.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
@@ -98,6 +99,8 @@ defineProps<{ fixesAreRunning: boolean }>();
 const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used
 // otherwise we could trigger calls here
+
+// TODO - probably should not need 2 requests here. currently we only use schema variants for the colors...
 const schemasReqStatus = componentsStore.getRequestStatus(
   "FETCH_AVAILABLE_SCHEMAS",
 );
@@ -186,7 +189,6 @@ const selectedSchemaVariant = computed(() => {
     ];
   return undefined;
 });
-const selecting = ref(false);
 const mouseNode = ref();
 
 const updateMouseNode = (e: MouseEvent) => {
@@ -205,28 +207,27 @@ function onSelect(schemaVariantId: string, fixesAreRunning: boolean) {
   }
 
   if (componentsStore.selectedInsertSchemaVariantId === schemaVariantId) {
-    componentsStore.selectedInsertSchemaVariantId = null;
-    selecting.value = false;
+    componentsStore.cancelInsert();
   } else {
-    componentsStore.selectedInsertSchemaVariantId = schemaVariantId;
-    selecting.value = true;
+    componentsStore.setInsertSchemaVariant(schemaVariantId);
   }
 }
 
-function onDeselect() {
-  componentsStore.selectedInsertSchemaVariantId = null;
-}
-
 const onKeyDown = (e: KeyboardEvent) => {
-  if (e.key === "Escape" || e.key === "Backspace") {
+  if (
+    (e.key === "Escape" || e.key === "Backspace") &&
+    componentsStore.selectedInsertSchemaVariantId
+  ) {
     componentsStore.cancelInsert();
+    e.stopPropagation();
   }
 };
 
 const onMouseDown = (e: MouseEvent) => {
   updateMouseNode(e);
-  if (selecting.value) selecting.value = false;
-  else componentsStore.cancelInsert();
+  if (componentsStore.selectedInsertSchemaVariantId) {
+    componentsStore.cancelInsert();
+  }
 };
 
 const onMouseMove = (e: MouseEvent) => {
@@ -234,14 +235,14 @@ const onMouseMove = (e: MouseEvent) => {
 };
 
 onMounted(() => {
-  window.addEventListener("mousemove", onMouseMove);
-  window.addEventListener("keydown", onKeyDown);
-  window.addEventListener("mousedown", onMouseDown);
+  windowListenerManager.addEventListener("mousemove", onMouseMove);
+  windowListenerManager.addEventListener("keydown", onKeyDown, 5);
+  windowListenerManager.addEventListener("mousedown", onMouseDown);
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener("mousemove", onMouseMove);
-  window.removeEventListener("keydown", onKeyDown);
-  window.removeEventListener("mousedown", onMouseDown);
+  windowListenerManager.removeEventListener("mousemove", onMouseMove);
+  windowListenerManager.removeEventListener("keydown", onKeyDown);
+  windowListenerManager.removeEventListener("mousedown", onMouseDown);
 });
 </script>

@@ -127,23 +127,17 @@ impl RootProp {
         // info!("setting up si, domain and secrets");
         let si_prop_id = Self::setup_si(ctx, root_prop_id).await?;
 
-        let domain_prop = Prop::new(
+        let domain_prop = Prop::new_without_ui_optionals(
             ctx,
             "domain",
             PropKind::Object,
-            false,
-            None,
-            None,
             PropParent::OrderedProp(root_prop_id),
         )?;
 
-        let secrets_prop = Prop::new(
+        let secrets_prop = Prop::new_without_ui_optionals(
             ctx,
             "secrets",
             PropKind::Object,
-            false,
-            None,
-            None,
             PropParent::OrderedProp(root_prop_id),
         )?;
 
@@ -237,20 +231,17 @@ impl RootProp {
         )?;
 
         // The protected prop ensures a component cannot be deleted in the configuration diagram.
-        let _protected_prop = Prop::new(
+        let _protected_prop = Prop::new_without_ui_optionals(
             ctx,
             "protected",
             PropKind::Boolean,
-            false,
-            None,
-            None,
             PropParent::OrderedProp(si_prop.id()),
         )?;
 
         // The type prop controls the type of the configuration node. The default type can be
         // determined by the schema variant author. The widget options correspond to the component
         // type enumeration.
-        let _type_prop = Prop::new(
+        Prop::new(
             ctx,
             "type",
             PropKind::String,

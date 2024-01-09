@@ -109,17 +109,26 @@ const realtimeStore = useRealtimeStore();
   max-width: 380px;
 }
 
-.v-popper--theme-user-info {
+.v-popper--theme-user-info,
+.v-popper--theme-html {
   margin-top: 12px;
-  font-size: 1.25rem;
   font-style: italic;
   border-radius: 1rem;
+}
+
+.v-popper--theme-user-info {
+  font-size: 1.25rem;
 }
 
 .v-popper--theme-user-info > .v-popper__wrapper > .v-popper__inner {
   border-radius: 0.5rem !important;
   padding-left: 0;
   padding-right: 0;
+}
+
+.v-popper--theme-html > .v-popper__wrapper > .v-popper__inner {
+  border-radius: 0.5rem !important;
+  background-color: rgba(0, 0, 0, 0.9);
 }
 
 .bg-caution-lines {

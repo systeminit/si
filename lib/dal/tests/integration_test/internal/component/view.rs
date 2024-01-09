@@ -1,3 +1,5 @@
+use pretty_assertions_sorted::assert_eq;
+
 use dal::{
     schema::RootProp, AttributeContext, AttributeValue, Component, ComponentView, DalContext, Prop,
     PropKind, Schema, SchemaVariant, StandardModel,
@@ -6,7 +8,6 @@ use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
 };
-use pretty_assertions_sorted::assert_eq;
 
 mod complex_func;
 mod properties;
@@ -28,39 +29,30 @@ pub async fn create_schema_with_object_and_string_prop(
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let queen_prop = Prop::new(
+    let queen_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "queen",
         PropKind::Object,
-        None,
         schema_variant_id,
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let killer_prop = Prop::new(
+    .await;
+    let killer_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "killer_queen",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*queen_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let bohemian_prop = Prop::new(
+    .await;
+    let bohemian_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "bohemian_rhapsody",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*queen_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await
@@ -106,61 +98,46 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let queen_prop = Prop::new(
+    let queen_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "queen",
         PropKind::Object,
-        None,
         schema_variant_id,
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let bohemian_prop = Prop::new(
+    .await;
+    let bohemian_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "bohemian_rhapsody",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*queen_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let killer_prop = Prop::new(
+    .await;
+    let killer_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "killer_queen",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*queen_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let pressure_prop = Prop::new(
+    .await;
+    let pressure_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "under_pressure",
         PropKind::Object,
-        None,
         schema_variant_id,
         Some(*queen_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let dust_prop = Prop::new(
+    .await;
+    let dust_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "another_one_bites_the_dust",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*pressure_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await
@@ -199,28 +176,22 @@ pub async fn create_schema_with_string_props(
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let bohemian_prop = Prop::new(
+    let bohemian_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "bohemian_rhapsody",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let killer_prop = Prop::new(
+    .await;
+    let killer_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "killer_queen",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await
@@ -251,28 +222,22 @@ pub async fn create_schema_with_array_of_string_props(
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let sammy_prop = Prop::new(
+    let sammy_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "sammy_hagar",
         PropKind::Array,
-        None,
         schema_variant_id,
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let album_string_prop = Prop::new(
+    .await;
+    let album_string_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "ignoreme",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*sammy_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await
@@ -316,61 +281,46 @@ pub async fn create_schema_with_nested_array_objects(
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let sammy_prop = Prop::new(
+    let sammy_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "sammy_hagar",
         PropKind::Array,
-        None,
         schema_variant_id,
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let album_object_prop = Prop::new(
+    .await;
+    let album_object_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "album_ignore",
         PropKind::Object,
-        None,
         schema_variant_id,
         Some(*sammy_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let album_string_prop = Prop::new(
+    .await;
+    let album_string_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "album",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*album_object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let songs_array_prop = Prop::new(
+    .await;
+    let songs_array_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "songs",
         PropKind::Array,
-        None,
         schema_variant_id,
         Some(*album_object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let song_name_prop = Prop::new(
+    .await;
+    let song_name_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "song_name_ignore",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*songs_array_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await
@@ -410,28 +360,22 @@ pub async fn create_simple_map(ctx: &DalContext) -> (Schema, SchemaVariant, Prop
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let album_prop = Prop::new(
+    let album_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "albums",
         PropKind::Map,
-        None,
         schema_variant_id,
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let album_item_prop = Prop::new(
+    .await;
+    let album_item_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "album_ignore",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*album_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await
@@ -475,72 +419,54 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let sammy_prop = Prop::new(
+    let sammy_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "sammy_hagar",
         PropKind::Array,
-        None,
         schema_variant_id,
         Some(root.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let album_object_prop = Prop::new(
+    .await;
+    let album_object_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "album_ignore",
         PropKind::Object,
-        None,
         schema_variant_id,
         Some(*sammy_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let album_string_prop = Prop::new(
+    .await;
+    let album_string_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "album",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*album_object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let songs_array_prop = Prop::new(
+    .await;
+    let songs_array_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "songs",
         PropKind::Array,
-        None,
         schema_variant_id,
         Some(*album_object_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let song_map_prop = Prop::new(
+    .await;
+    let song_map_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "song_map_ignore",
         PropKind::Map,
-        None,
         schema_variant_id,
         Some(*songs_array_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let song_map_item_prop = Prop::new(
+    .await;
+    let song_map_item_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "song_map_item_ignore",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*song_map_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await

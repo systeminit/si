@@ -1,16 +1,17 @@
+use pretty_assertions_sorted::assert_eq;
+
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::job::definition::DependentValuesUpdate;
 use dal::{
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
     ComponentView, DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
-    FuncBinding, InternalProvider, Prop, PropKind, SocketArity, StandardModel,
+    FuncBinding, InternalProvider, PropKind, SocketArity, StandardModel,
 };
 use dal_test::helpers::setup_identity_func;
 use dal_test::{
     connection_annotation_string, test,
     test_harness::{create_schema, create_schema_variant_with_root},
 };
-use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
@@ -23,39 +24,30 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         .expect("cannot set default schema variant");
     let schema_variant_id = *schema_variant.id();
 
-    let ragnarok_prop = Prop::new(
+    let ragnarok_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "ragnarok",
         PropKind::Object,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let kratos_prop = Prop::new(
+    .await;
+    let kratos_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "kratos",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*ragnarok_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let atreus_prop = Prop::new(
+    .await;
+    let atreus_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "atreus",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*ragnarok_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
 
     // Setup the external provider and finalize.
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
@@ -335,64 +327,49 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
     let schema_variant_id = *schema_variant.id();
 
     // Create direct children of domain, including a map of objects.
-    let concat_prop = Prop::new(
+    let concat_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "concat",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let map_prop = Prop::new(
+    .await;
+    let map_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "map",
         PropKind::Map,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     let map_prop_id = *map_prop.id();
 
     // Setup the map and finalize.
-    let map_item_prop = Prop::new(
+    let map_item_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "item",
         PropKind::Object,
-        None,
         schema_variant_id,
         Some(map_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let _poop_prop = Prop::new(
+    .await;
+    dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "poop",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*map_item_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
-    let _canoe_prop = Prop::new(
+    .await;
+    dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "canoe",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(*map_item_prop.id()),
-        None,
     )
-    .await
-    .expect("could not create prop");
+    .await;
     schema_variant
         .finalize(ctx, None)
         .await

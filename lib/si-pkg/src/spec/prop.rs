@@ -52,6 +52,7 @@ impl From<&PropSpec> for PropSpecWidgetKind {
 #[serde(rename_all = "camelCase")]
 pub struct PropSpecData {
     pub name: String,
+    pub validation_format: Option<String>,
     pub default_value: Option<serde_json::Value>,
     pub validations: Option<Vec<ValidationSpec>>,
     pub func_unique_id: Option<String>,
@@ -140,6 +141,7 @@ pub struct PropSpecBuilder {
     name: Option<String>,
     type_prop: Option<PropSpec>,
     validations: Vec<ValidationSpec>,
+    validation_format: Option<String>,
     widget_kind: Option<PropSpecWidgetKind>,
     widget_options: Option<serde_json::Value>,
     unique_id: Option<String>,
@@ -161,6 +163,7 @@ impl Default for PropSpecBuilder {
             name: None,
             type_prop: None,
             validations: vec![],
+            validation_format: None,
             widget_kind: None,
             widget_options: None,
             unique_id: None,
@@ -209,6 +212,13 @@ impl PropSpecBuilder {
     pub fn validation(&mut self, value: impl Into<ValidationSpec>) -> &mut Self {
         self.has_data = true;
         self.validations.push(value.into());
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn validation_format(&mut self, value: impl Into<String>) -> &mut Self {
+        self.has_data = true;
+        self.validation_format = Some(value.into());
         self
     }
 
@@ -295,96 +305,45 @@ impl PropSpecBuilder {
             }
         };
 
-        let validations = self.validations.clone();
-        let inputs = self.inputs.clone();
-        let func_unique_id = self.func_unique_id.to_owned();
-        let widget_kind = self.widget_kind;
-        let widget_options = self.widget_options.to_owned();
-        let hidden = self.hidden;
-        let doc_link = self.doc_link.to_owned();
-        let documentation = self.documentation.to_owned();
+        let maybe_data = if self.has_data {
+            Some(PropSpecData {
+                name: name.to_owned(),
+                validation_format: self.validation_format.clone(),
+                default_value: self.default_value.to_owned(),
+                validations: Some(self.validations.clone()),
+                func_unique_id: self.func_unique_id.to_owned(),
+                inputs: Some(self.inputs.clone()),
+                widget_kind: self.widget_kind,
+                widget_options: self.widget_options.to_owned(),
+                hidden: Some(self.hidden),
+                doc_link: self.doc_link.to_owned(),
+                documentation: self.documentation.to_owned(),
+            })
+        } else {
+            None
+        };
 
         Ok(match self.kind {
             Some(kind) => match kind {
                 PropSpecKind::String => PropSpec::String {
                     name: name.to_owned(),
                     unique_id: self.unique_id.to_owned(),
-                    data: if self.has_data {
-                        Some(PropSpecData {
-                            name,
-                            default_value: self.default_value.to_owned(),
-                            validations: Some(validations),
-                            func_unique_id,
-                            inputs: Some(inputs),
-                            widget_kind,
-                            widget_options,
-                            hidden: Some(hidden),
-                            doc_link,
-                            documentation,
-                        })
-                    } else {
-                        None
-                    },
+                    data: maybe_data,
                 },
                 PropSpecKind::Number => PropSpec::Number {
                     name: name.to_owned(),
                     unique_id: self.unique_id.to_owned(),
-                    data: if self.has_data {
-                        Some(PropSpecData {
-                            name,
-                            default_value: self.default_value.to_owned(),
-                            validations: Some(validations),
-                            func_unique_id,
-                            inputs: Some(inputs),
-                            widget_kind,
-                            widget_options,
-                            hidden: Some(hidden),
-                            doc_link,
-                            documentation,
-                        })
-                    } else {
-                        None
-                    },
+                    data: maybe_data,
                 },
                 PropSpecKind::Boolean => PropSpec::Boolean {
                     name: name.to_owned(),
                     unique_id: self.unique_id.to_owned(),
-                    data: if self.has_data {
-                        Some(PropSpecData {
-                            name,
-                            default_value: self.default_value.to_owned(),
-                            validations: Some(validations),
-                            func_unique_id,
-                            inputs: Some(inputs),
-                            widget_kind,
-                            widget_options,
-                            hidden: Some(hidden),
-                            doc_link,
-                            documentation,
-                        })
-                    } else {
-                        None
-                    },
+                    data: maybe_data,
                 },
                 PropSpecKind::Map => PropSpec::Map {
                     name: name.to_owned(),
                     unique_id: self.unique_id.to_owned(),
-                    data: if self.has_data {
-                        Some(PropSpecData {
-                            name,
-                            default_value: self.default_value.to_owned(),
-                            validations: Some(validations),
-                            func_unique_id,
-                            inputs: Some(inputs),
-                            widget_kind,
-                            widget_options,
-                            hidden: Some(hidden),
-                            doc_link,
-                            documentation,
-                        })
-                    } else {
-                        None
-                    },
+                    data: maybe_data,
                     type_prop: match self.type_prop {
                         Some(ref value) => Box::new(value.clone()),
                         None => {
@@ -396,22 +355,7 @@ impl PropSpecBuilder {
                 PropSpecKind::Array => PropSpec::Array {
                     name: name.to_owned(),
                     unique_id: self.unique_id.to_owned(),
-                    data: if self.has_data {
-                        Some(PropSpecData {
-                            name,
-                            default_value: self.default_value.to_owned(),
-                            validations: Some(validations),
-                            func_unique_id,
-                            inputs: Some(inputs),
-                            widget_kind,
-                            widget_options,
-                            hidden: Some(hidden),
-                            doc_link,
-                            documentation,
-                        })
-                    } else {
-                        None
-                    },
+                    data: maybe_data,
                     type_prop: match self.type_prop {
                         Some(ref value) => Box::new(value.clone()),
                         None => {
@@ -422,22 +366,7 @@ impl PropSpecBuilder {
                 PropSpecKind::Object => PropSpec::Object {
                     name: name.to_owned(),
                     unique_id: self.unique_id.to_owned(),
-                    data: if self.has_data {
-                        Some(PropSpecData {
-                            name,
-                            default_value: self.default_value.to_owned(),
-                            validations: Some(validations),
-                            func_unique_id,
-                            inputs: Some(inputs),
-                            widget_kind,
-                            widget_options,
-                            hidden: Some(hidden),
-                            doc_link,
-                            documentation,
-                        })
-                    } else {
-                        None
-                    },
+                    data: maybe_data,
                     entries: self.entries.clone(),
                 },
             },

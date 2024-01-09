@@ -240,14 +240,12 @@ pub async fn exec_variant_def(
                     .await?
                     .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
 
-                let attribute_prototypes = dbg!(
-                    migrate_attribute_functions_to_new_schema_variant(
-                        &ctx,
-                        attribute_prototypes,
-                        &schema_variant,
-                    )
-                    .await
-                )?;
+                let attribute_prototypes = migrate_attribute_functions_to_new_schema_variant(
+                    &ctx,
+                    attribute_prototypes,
+                    &schema_variant,
+                )
+                .await?;
                 let mut detached_attribute_prototypes =
                     Vec::with_capacity(attribute_prototypes.len());
 

@@ -16,7 +16,7 @@
     }"
   >
     <Icon name="component" />
-    <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
+    <div class="w-full truncate">
       {{ moduleSummary.name }}
     </div>
   </RouterLink>

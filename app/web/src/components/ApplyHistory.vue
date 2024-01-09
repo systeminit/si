@@ -12,9 +12,11 @@
     </div>
   </div>
   <ScrollArea v-else>
+    <!-- TODO(Wendy) - this search bar isn't implemented, so removing it for now
     <template #top>
-      <SiSearch autoSearch class="border-b-0" />
+      <SiSearch autoSearch />
     </template>
+    -->
     <ApplyHistoryItem
       v-for="(fixBatch, index) in fixBatches"
       :key="index"
@@ -28,7 +30,7 @@
 import * as _ from "lodash-es";
 import { computed } from "vue";
 import { ScrollArea } from "@si/vue-lib/design-system";
-import SiSearch from "@/components/SiSearch.vue";
+// import SiSearch from "@/components/SiSearch.vue";
 import { useFixesStore } from "@/store/fixes.store";
 import ApplyHistoryItem from "@/components/ApplyHistoryItem.vue";
 import EmptyStateIcon from "./EmptyStateIcon.vue";

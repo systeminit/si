@@ -92,6 +92,7 @@
           <div :class="clsx('flex items-center mr-xs')">
             <!-- change status -->
             <StatusIndicatorIcon
+              class="hover:scale-110"
               type="change"
               :status="hasChanges"
               @click.stop="onClick($event, 'diff')"
@@ -102,6 +103,7 @@
             <Icon v-if="isDestroyed" name="none" />
             <StatusIndicatorIcon
               v-else
+              class="hover:scale-110"
               type="qualification"
               :status="qualificationStatus || 'notexists'"
               @click.stop="onClick($event, 'qualifications')"
@@ -111,6 +113,7 @@
 
             <StatusIndicatorIcon
               v-if="component.hasResource"
+              class="hover:scale-110"
               type="resource"
               status="exists"
               @click.stop="onClick($event, 'resource')"

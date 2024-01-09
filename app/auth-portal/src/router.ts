@@ -11,7 +11,6 @@ import LogoutSuccessPage from "./pages/LogoutSuccessPage.vue";
 import NotFoundPage from "./pages/NotFoundPage.vue";
 import DashboardPage from "./pages/DashboardPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
-import DownloadPage from "./pages/DownloadPage.vue";
 
 // normally we'd initialze a router directly, but instead we pass the options to ViteSSG
 export const routerOptions: RouterOptions = {
@@ -56,7 +55,6 @@ export const routerOptions: RouterOptions = {
       component: WorkspaceDetailsPage,
       props: true,
     },
-    { path: "/download", name: "download", component: DownloadPage },
 
     // auth api redirects to this route - gives us some flexibility with what to do with user
     // also used as a sort catch-all for "go to whatever is next"

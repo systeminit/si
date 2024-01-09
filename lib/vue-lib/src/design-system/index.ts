@@ -50,3 +50,4 @@ export { default as TabGroupItem } from "./tabs/TabGroupItem.vue";
 export * from "./utils/color_utils";
 export * from "./utils/size_utils";
 export * from "./utils/theme_tools";
+export * from "./utils/timestamp";

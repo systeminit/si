@@ -1,7 +1,15 @@
 <template>
   <ScrollArea v-if="selectedEdge">
     <template #top>
-      <SidebarSubpanelTitle label="Connection Details" icon="plug" />
+      <SidebarSubpanelTitle label="Connection Details" icon="plug">
+        <DetailsPanelMenuIcon
+          @click="
+            (e) => {
+              emit('openMenu', e);
+            }
+          "
+        />
+      </SidebarSubpanelTitle>
 
       <div class="border-b dark:border-neutral-600">
         <div v-if="DEV_MODE" class="px-xs pt-xs text-2xs italic opacity-30">
@@ -51,6 +59,7 @@ import { useComponentsStore } from "@/store/components.store";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import EdgeCard from "./EdgeCard.vue";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
+import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 
 const DEV_MODE = import.meta.env.DEV;
 
@@ -58,4 +67,8 @@ const componentsStore = useComponentsStore();
 const modelingEventBus = componentsStore.eventBus;
 
 const selectedEdge = computed(() => componentsStore.selectedEdge);
+
+const emit = defineEmits<{
+  (e: "openMenu", mouse: MouseEvent): void;
+}>();
 </script>

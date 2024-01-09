@@ -470,6 +470,7 @@ interface PropDefinition {
   hidden?: boolean;
   defaultValue?: any;
   validations?: Validation[];
+  validationFormat: string;
   mapKeyFuncs?: MapKeyFunc[];
 }
 
@@ -497,6 +498,8 @@ interface IPropBuilder {
   setDefaultValue(value: any): this;
 
   addValidation(validation: Validation): this;
+
+  setValidationFormat(format: Joi.Schema): this;
 
   addMapKeyFunc(func: MapKeyFunc): this;
 
@@ -564,6 +567,19 @@ declare class PropBuilder implements IPropBuilder {
    *    .build()
    */
   addMapKeyFunc(func: MapKeyFunc): this;
+
+  /**
+   * Add joi validation schema to this prop
+   *
+   * @returns this
+   *
+   * @example
+   * .setValidationFormat(Joi.string().required())
+   *
+   * See https://joi.dev/api/ for further details
+   * @param format {Joi.Schema} - A joi schema object
+   */
+  setValidationFormat(format: Joi.Schema): this;
 
   /**
    * Add functions to validate the value of the prop

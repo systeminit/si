@@ -588,6 +588,8 @@ pub struct PropDefinition {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub validations: Option<Vec<ValidationSpec>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validation_format: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_value: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub map_key_funcs: Option<Vec<MapKeyFunc>>,

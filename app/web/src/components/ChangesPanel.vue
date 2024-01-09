@@ -30,30 +30,7 @@
         </div>
       </div>
 
-      <div
-        v-for="diff in diffs"
-        :key="diff.componentId"
-        :class="
-          clsx(
-            'flex flex-row gap-xs items-center text-sm p-xs border-b',
-            themeClasses('border-neutral-200', 'border-neutral-600'),
-          )
-        "
-      >
-        <StatusIndicatorIcon type="change" :status="diff.status" tone="shade" />
-        <div class="flex flex-col overflow-hidden">
-          <div class="">
-            <span v-if="diff.status === 'added'">Added</span>
-            <span v-if="diff.status === 'deleted'">Removed</span>
-            <span v-if="diff.status === 'modified'">Modified</span>
-            {{ componentsStore.componentsById[diff.componentId]?.schemaName }}
-          </div>
-          <div class="text-neutral-400 truncate">
-            {{ componentsStore.componentsById[diff.componentId]?.displayName }}
-          </div>
-          <div class="text-neutral-400 truncate">By: {{ diff.actor }}</div>
-        </div>
-      </div>
+      <ChangeCard v-for="diff in diffs" :key="diff.componentId" :diff="diff" />
 
       <div
         v-for="action in actionsStore.proposedActions"
@@ -98,7 +75,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useComponentsStore } from "@/store/components.store";
 import ApplyHistory from "./ApplyHistory.vue";
 import ActionSprite from "./ActionSprite.vue";
-import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
+import ChangeCard from "./ChangeCard.vue";
 
 const changeSetStore = useChangeSetsStore();
 const actionsStore = useActionsStore();

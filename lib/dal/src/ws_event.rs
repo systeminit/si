@@ -38,8 +38,11 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
     ChangeSetAbandoned(ChangeSetActorPayload),
+    ChangeSetAbandonVote(ChangeSetMergeVotePayload),
     ChangeSetApplied(ChangeSetActorPayload),
+    ChangeSetBeginAbandonProcess(ChangeSetActorPayload),
     ChangeSetBeginApprovalProcess(ChangeSetActorPayload),
+    ChangeSetCancelAbandonProcess(ChangeSetActorPayload),
     ChangeSetCancelApprovalProcess(ChangeSetActorPayload),
     ChangeSetCanceled(ChangeSetPk),
     ChangeSetCreated(ChangeSetPk),

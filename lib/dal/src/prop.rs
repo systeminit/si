@@ -113,6 +113,8 @@ pub struct Prop {
     pub refers_to_prop_id: Option<PropId>,
     /// Connected props may need a custom diff function
     pub diff_func_id: Option<FuncId>,
+    /// A serialized validation format JSON object for the prop. TODO: use
+    pub validation_format: Option<String>,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -343,6 +345,7 @@ impl Prop {
             hidden: inner.hidden,
             refers_to_prop_id: inner.refers_to_prop_id,
             diff_func_id: inner.diff_func_id,
+            validation_format: None,
         }
     }
 
@@ -390,6 +393,15 @@ impl Prop {
 
         parts.reverse();
         Ok(PropPath::new(&parts))
+    }
+
+    pub fn new_without_ui_optionals(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        kind: PropKind,
+        prop_parent: PropParent,
+    ) -> PropResult<Self> {
+        Self::new(ctx, name.as_ref(), kind, false, None, None, prop_parent)
     }
 
     /// Create a new [`Prop`]. A corresponding [`AttributePrototype`] and [`AttributeValue`] will be

@@ -59,6 +59,8 @@ pub enum DiagramError {
     Nats(#[from] si_data_nats::NatsError),
     #[error("not authorized")]
     NotAuthorized,
+    #[error("paste failed")]
+    PasteError,
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]

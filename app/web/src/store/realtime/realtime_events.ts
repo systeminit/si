@@ -59,6 +59,7 @@ export type WsEventPayloadMap = {
   ChangeSetApplied: string;
   ChangeSetWritten: string;
   ChangeSetCancelled: string;
+
   ChangeSetBeginApprovalProcess: {
     changeSetPk: ChangeSetId;
     userPk: UserId;
@@ -68,6 +69,20 @@ export type WsEventPayloadMap = {
     userPk: UserId;
   };
   ChangeSetMergeVote: {
+    changeSetPk: ChangeSetId;
+    userPk: UserId;
+    vote: string;
+  };
+
+  ChangeSetBeginAbandonProcess: {
+    changeSetPk: ChangeSetId;
+    userPk: UserId;
+  };
+  ChangeSetCancelAbandonProcess: {
+    changeSetPk: ChangeSetId;
+    userPk: UserId;
+  };
+  ChangeSetAbandonVote: {
     changeSetPk: ChangeSetId;
     userPk: UserId;
     vote: string;

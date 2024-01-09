@@ -1,3 +1,5 @@
+use pretty_assertions_sorted::assert_eq;
+
 use dal::component::ComponentKind;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::schema::variant::leaves::LeafKind;
@@ -12,7 +14,6 @@ use dal::{
 };
 use dal_test::test;
 use dal_test::test_harness::{create_schema, create_schema_variant_with_root};
-use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
@@ -26,18 +27,14 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
 
     // domain: Object
     // └─ poop: String
-    let poop_prop = Prop::new(
+    let poop_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "poop",
         PropKind::String,
-        None,
         schema_variant_id,
         Some(root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-
+    .await;
     // Create code prototype(s).
     let mut func = Func::new(
         ctx,
@@ -172,18 +169,14 @@ async fn all_code_generation_attribute_values(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*navi_schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let ange1_prop = Prop::new(
+    let ange1_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "ange1",
         PropKind::String,
-        None,
         *navi_schema_variant.id(),
         Some(navi_root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-
+    .await;
     let mut kru_schema = Schema::new(ctx, "kru", &ComponentKind::Standard)
         .await
         .expect("cannot create schema");
@@ -193,18 +186,14 @@ async fn all_code_generation_attribute_values(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*kru_schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let _melser_prop = Prop::new(
+    let _melser_prop = dal_test::test_harness::create_prop_without_ui_optionals(
         ctx,
         "melser",
         PropKind::String,
-        None,
         *kru_schema_variant.id(),
         Some(kru_root_prop.domain_prop_id),
-        None,
     )
-    .await
-    .expect("could not create prop");
-
+    .await;
     // Create two code generation funcs.
     let code = "function generateYAML(input) {
       return {

@@ -23,6 +23,9 @@ const BEGIN_MERGE_FLOW: &str = include_str!("queries/change_set/begin_merge_flow
 const CANCEL_MERGE_FLOW: &str = include_str!("queries/change_set/cancel_merge_flow.sql");
 const ABANDON_CHANGE_SET: &str = include_str!("queries/change_set/abandon_change_set.sql");
 
+const BEGIN_ABANDON_FLOW: &str = include_str!("queries/change_set/begin_abandon_flow.sql");
+const CANCEL_ABANDON_FLOW: &str = include_str!("queries/change_set/cancel_abandon_flow.sql");
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
@@ -61,6 +64,7 @@ pub enum ChangeSetStatus {
     Applied,
     Closed,
     Failed,
+    NeedsAbandonApproval,
     NeedsApproval,
     Open,
 }
@@ -77,6 +81,10 @@ pub struct ChangeSet {
     pub tenancy: Tenancy,
     #[serde(flatten)]
     pub timestamp: Timestamp,
+    pub merge_requested_at: Option<DateTime<Utc>>,
+    pub merge_requested_by_user_id: Option<UserPk>,
+    pub abandon_requested_at: Option<DateTime<Utc>>,
+    pub abandon_requested_by_user_id: Option<UserPk>,
 }
 
 impl ChangeSet {
@@ -118,15 +126,23 @@ impl ChangeSet {
     }
 
     pub async fn begin_approval_flow(&mut self, ctx: &mut DalContext) -> ChangeSetResult<()> {
+        let user_pk = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => Some(*user_pk),
+
+            HistoryActor::SystemInit => None,
+        };
+
         let row = ctx
             .pg_pool()
             .get()
             .await?
-            .query_one(BEGIN_MERGE_FLOW, &[&self.pk])
+            .query_one(BEGIN_MERGE_FLOW, &[&self.pk, &user_pk])
             .await?;
         let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
         self.timestamp.updated_at = updated_at;
         self.status = ChangeSetStatus::NeedsApproval;
+        self.merge_requested_at = Some(updated_at);
+        self.merge_requested_by_user_id = user_pk;
 
         Ok(())
     }
@@ -137,6 +153,48 @@ impl ChangeSet {
             .get()
             .await?
             .query_one(CANCEL_MERGE_FLOW, &[&self.pk])
+            .await?;
+        let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
+        self.timestamp.updated_at = updated_at;
+        self.status = ChangeSetStatus::Open;
+
+        Ok(())
+    }
+
+    pub async fn begin_abandon_approval_flow(
+        &mut self,
+        ctx: &mut DalContext,
+    ) -> ChangeSetResult<()> {
+        let user_pk = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => Some(*user_pk),
+
+            HistoryActor::SystemInit => None,
+        };
+
+        let row = ctx
+            .pg_pool()
+            .get()
+            .await?
+            .query_one(BEGIN_ABANDON_FLOW, &[&self.pk, &user_pk])
+            .await?;
+        let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
+        self.timestamp.updated_at = updated_at;
+        self.status = ChangeSetStatus::NeedsAbandonApproval;
+        self.abandon_requested_at = Some(updated_at);
+        self.abandon_requested_by_user_id = user_pk;
+
+        Ok(())
+    }
+
+    pub async fn cancel_abandon_approval_flow(
+        &mut self,
+        ctx: &mut DalContext,
+    ) -> ChangeSetResult<()> {
+        let row = ctx
+            .pg_pool()
+            .get()
+            .await?
+            .query_one(CANCEL_ABANDON_FLOW, &[&self.pk])
             .await?;
         let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
         self.timestamp.updated_at = updated_at;
@@ -368,6 +426,53 @@ impl WsEvent {
         WsEvent::new(
             ctx,
             WsPayload::ChangeSetCancelApprovalProcess(ChangeSetActorPayload {
+                change_set_pk,
+                user_pk,
+            }),
+        )
+        .await
+    }
+
+    pub async fn change_set_abandon_vote(
+        ctx: &DalContext,
+        change_set_pk: ChangeSetPk,
+        user_pk: UserPk,
+        vote: String,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetAbandonVote(ChangeSetMergeVotePayload {
+                change_set_pk,
+                user_pk,
+                vote,
+            }),
+        )
+        .await
+    }
+
+    pub async fn change_set_begin_abandon_approval_process(
+        ctx: &DalContext,
+        change_set_pk: ChangeSetPk,
+        user_pk: Option<UserPk>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetBeginAbandonProcess(ChangeSetActorPayload {
+                change_set_pk,
+                user_pk,
+            }),
+        )
+        .await
+    }
+
+    pub async fn change_set_cancel_abandon_approval_process(
+        ctx: &DalContext,
+        change_set_pk: ChangeSetPk,
+        user_pk: Option<UserPk>,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetCancelAbandonProcess(ChangeSetActorPayload {
                 change_set_pk,
                 user_pk,
             }),

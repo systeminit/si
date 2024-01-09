@@ -7,6 +7,7 @@ import fetch from "node-fetch";
 import * as _ from "lodash-es";
 import * as yaml from "js-yaml";
 
+import Joi from "joi";
 import { FunctionKind } from "./function";
 import { makeConsole } from "./sandbox/console";
 import { makeExec } from "./sandbox/exec";
@@ -47,6 +48,7 @@ function schemaVariantDefinitionSandbox(): Sandbox {
     MapKeyFuncBuilder: assetBuilder.MapKeyFuncBuilder,
     PropWidgetDefinitionBuilder: assetBuilder.PropWidgetDefinitionBuilder,
     SiPropValueFromDefinitionBuilder: assetBuilder.SiPropValueFromDefinitionBuilder,
+    Joi,
   };
 }
 

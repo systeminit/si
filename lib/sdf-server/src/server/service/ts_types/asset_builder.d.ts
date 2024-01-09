@@ -25,7 +25,7 @@ declare class ValueFromBuilder implements IValueFromBuilder {
     /**
      * The type of the builder
      *
-     * @param {string} kind [inputSocket | outputSocket | prop]
+     * @param kind {string} [inputSocket | outputSocket | prop]
      *
      * @returns this
      *
@@ -67,12 +67,14 @@ type SocketDefinitionArityType = "many" | "one";
 interface SocketDefinition {
     name: string;
     arity: SocketDefinitionArityType;
+    connectionAnnotations: string;
     uiHidden?: boolean;
     valueFrom?: ValueFrom;
 }
 interface ISocketDefinitionBuilder {
     setName(name: string): this;
     setArity(arity: SocketDefinitionArityType): this;
+    setConnectionAnnotation(annotation: string): this;
     setUiHidden(hidden: boolean): this;
     setValueFrom(valueFrom: ValueFrom): this;
     build(): SocketDefinition;
@@ -88,6 +90,7 @@ interface ISocketDefinitionBuilder {
  */
 declare class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
     socket: SocketDefinition;
+    connectionAnnotations: string[];
     constructor();
     /**
      * Build the object
@@ -97,7 +100,7 @@ declare class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
      */
     build(): SocketDefinition;
     /**
-     * Specify the prop path if using a prop
+     * Specify the number of connections the socket can support
      *
      * @param {string} arity - [one | many]
      *
@@ -107,6 +110,29 @@ declare class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
      *  .setArity("one")
      */
     setArity(arity: SocketDefinitionArityType): this;
+    /**
+     * Add a field to the connection annotations array for the socket.
+     * The input should be sequence of word chars (\w regex matcher), optionally
+     * followed by any `<identifier>`, which makes it a supertype of `identifier`.
+     * This can be repeated recursively as many times as necessary (see example).
+     * At socket connecting time an *input* socket can receive a connection of any
+     * *output* socket that has a compatible connection annotation.
+     *
+     * e.g. An input socket with the `Port<string>` connection
+     * annotation can receive a
+     * connection from an output socket with the `Docker<Port<string>>` annotation,
+     * but not one with just `string`.
+     *
+     * The socket's name is always one of the connection annotations.
+     *
+     * @param {string} annotation
+     *
+     * @returns this
+     *
+     * @example
+     *  .setConnectionAnnotation("EC2<IAM<string>>")
+     */
+    setConnectionAnnotation(annotation: string): this;
     /**
      * The name of the socket. Note that this will be used to connect sockets
      * and to reference the socket within the asset.
@@ -188,7 +214,7 @@ declare class ValidationBuilder implements IValidationBuilder {
     /**
      * The type of validation
      *
-     * @param {string} kind [customValidation | integerIsBetweenTwoIntegers | integerIsNotEmpty  | stringEquals  | stringHasPrefix  | stringInStringArray  | stringIsHexColor  | stringIsNotEmpty  | stringIsValidIpAddr]
+     * @param kind {string} [customValidation | integerIsBetweenTwoIntegers | integerIsNotEmpty  | stringEquals  | stringHasPrefix  | stringInStringArray  | stringIsHexColor  | stringIsNotEmpty  | stringIsValidIpAddr]
      *
      * @returns this
      *
@@ -226,7 +252,7 @@ declare class PropWidgetDefinitionBuilder implements IPropWidgetDefinitionBuilde
     /**
      * The type of widget
      *
-     * @param {string} kind [array | checkbox | color | comboBox | header | map | secret | select | text | textArea | codeEditor]
+     * @param kind {PropWidgetDefinitionKind} [array | checkbox | color | comboBox | header | map | select | text | textArea | codeEditor | password]
      *
      * @returns this
      *
@@ -344,6 +370,7 @@ interface PropDefinition {
     hidden?: boolean;
     defaultValue?: any;
     validations?: Validation[];
+    validationFormat: string;
     mapKeyFuncs?: MapKeyFunc[];
 }
 interface IPropBuilder {
@@ -359,6 +386,7 @@ interface IPropBuilder {
     setHidden(hidden: boolean): this;
     setDefaultValue(value: any): this;
     addValidation(validation: Validation): this;
+    setValidationFormat(format: Joi.Schema): this;
     addMapKeyFunc(func: MapKeyFunc): this;
     build(): PropDefinition;
 }
@@ -433,6 +461,18 @@ declare class PropBuilder implements IPropBuilder {
      */
     addValidation(validation: Validation): this;
     /**
+     * Add joi validation schema to this prop
+     *
+     * @returns this
+     *
+     * @example
+     * .setValidationFormat(Joi.string().required())
+     *
+     * See https://joi.dev/api/ for further details
+     * @param format {Joi.Schema} - A joi schema object
+     */
+    setValidationFormat(format: Joi.Schema): this;
+    /**
      * Build the object
      *
      * @example
@@ -487,7 +527,7 @@ declare class PropBuilder implements IPropBuilder {
     /**
      * The type of the prop
      *
-     * @param {string} kind [array | boolean | integer | map | object | string]
+     * @param kind {PropDefinitionKind} [array | boolean | integer | map | object | string]
      *
      * @returns this
      *
@@ -546,14 +586,51 @@ interface ISecretPropBuilder {
     skipInputSocket(): this;
     build(): SecretPropDefinition;
 }
+/**
+ * Creates a prop [and a socket] in an asset with which to connect a secret
+ *
+ * @example
+ *  const secretPropName = new SecretPropBuilder()
+ *   .setName("credential")
+ *   .setSecretKind("DigitalOcean Credential")
+ *  .build();
+ */
 declare class SecretPropBuilder implements ISecretPropBuilder {
     prop: SecretPropDefinition;
     constructor();
+    /**
+     * The secret prop name. This will appear in the model UI and can be any value
+     *
+     * @param {string} name - the name of the secret prop
+     *
+     * @returns this
+     *
+     * @example
+     * .setName("token")
+     */
     setName(name: string): this;
+    /**
+     * The type of the secret - relates to the Secret Definition Name
+     *
+     *
+     * @returns this
+     *
+     * @example
+     * .setSecretKind("DigitalOcean Credential")
+     * @param kind {string}
+     */
     setSecretKind(kind: string): this;
     setDocLinkRef(ref: string): this;
     setDocLink(link: string): this;
     addValidation(validation: Validation): this;
+    /**
+     * Whether the prop should disable the auto-creation of an input socket
+     *
+     * @returns this
+     *
+     * @example
+     *  .skipInputSocket()
+     */
     skipInputSocket(): this;
     build(): SecretPropDefinition;
 }
@@ -563,12 +640,56 @@ interface SecretDefinition {
 }
 interface ISecretDefinitionBuilder {
     addProp(prop: PropDefinition): this;
+    setName(name: string): this;
     build(): SecretDefinition;
 }
+/**
+ * Creates a secret to be used with a set of assets
+ *
+ * @example
+ * const secretDefinition = new SecretDefinitionBuilder()
+ *          .setName("DigitalOcean Token")
+ *         .addProp(
+ *             new PropBuilder()
+ *             .setKind("string")
+ *             .setName("token")
+ *             .setWidget(
+ *                 new PropWidgetDefinitionBuilder()
+ *                 .setKind("password")
+ *                 .build()
+ *             )
+ *             .build()
+ *         )
+ *         .build();
+ */
 declare class SecretDefinitionBuilder implements ISecretDefinitionBuilder {
     definition: SecretDefinition;
     constructor();
+    /**
+     * The secret name. This corresponds to the kind of secret
+     *
+     * @param {string} name - the name of the secret kind
+     *
+     * @returns this
+     *
+     * @example
+     * .setName("DigitalOcean Token")
+     */
     setName(name: string): this;
+    /**
+     * Adds a Prop to the secret definition. These define the form fields for the secret input
+     *
+     * @param prop {PropDefinition}
+     *
+     * @returns this
+     *
+     * @example
+     *   .addProp(new PropBuilder()
+     *     .setName("token")
+     *     .setKind("string")
+     *     .setWidget(new PropWidgetDefinitionBuilder().setKind("password").build())
+     *     .build())
+     */
     addProp(prop: PropDefinition): this;
     build(): SecretDefinition;
 }

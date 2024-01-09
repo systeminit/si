@@ -6,8 +6,9 @@ use dal::{
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind, EncryptedSecret, Func,
-    FuncBackendKind, FuncBackendResponseType, KeyPair, Node, Schema, SchemaId, SchemaVariantId,
-    Secret, StandardModel, User, UserPk, Visibility,
+    FuncBackendKind, FuncBackendResponseType, KeyPair, Node, Prop, PropId, PropKind, Schema,
+    SchemaId, SchemaVariantId, Secret, StandardModel, User, UserPk, Visibility, Workspace,
+    WorkspacePk,
 };
 use names::{Generator, Name};
 
@@ -104,6 +105,18 @@ pub async fn create_schema_variant_with_root(
     .expect("Unable to create socket");
 
     (variant, root)
+}
+
+pub async fn create_prop_without_ui_optionals(
+    ctx: &DalContext,
+    name: impl AsRef<str>,
+    kind: PropKind,
+    schema_variant_id: SchemaVariantId,
+    parent_prop_id: Option<PropId>,
+) -> Prop {
+    Prop::new_without_ui_optionals(ctx, name, kind, schema_variant_id, parent_prop_id)
+        .await
+        .expect("could not create prop")
 }
 
 pub async fn create_component_and_schema(ctx: &DalContext) -> Component {

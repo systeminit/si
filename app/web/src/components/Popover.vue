@@ -27,6 +27,7 @@ import {
 } from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
+import { windowListenerManager } from "@si/vue-lib";
 
 const props = defineProps({
   anchorTo: { type: Object },
@@ -60,33 +61,24 @@ const anchorEl = ref<HTMLElement>();
 const anchorPos = ref<{ x: number; y: number }>();
 
 function onWindowMousedown(e: MouseEvent) {
-  requestAnimationFrame(() => {
-    if (
-      (e.target instanceof Element && internalRef.value?.contains(e.target)) ||
-      props.noExit
-    ) {
-      return; // Don't close on click inside popover or if noExit is set
-    }
+  if (
+    (e.target instanceof Element && internalRef.value?.contains(e.target)) ||
+    props.noExit
+  ) {
+    return; // Don't close on click inside popover or if noExit is set
+  }
 
-    close();
-  });
+  close();
 }
 
 function onKeyboardEvent(e: KeyboardEvent) {
   if (e.key === "Escape") {
+    e.stopPropagation();
+
     if (props.noExit) return;
     close();
   }
 }
-
-function removeListeners() {
-  window.removeEventListener("click", onWindowMousedown);
-  window.removeEventListener("keydown", onKeyboardEvent);
-}
-
-onBeforeUnmount(() => {
-  removeListeners();
-});
 
 function nextFrame(cb: () => void) {
   requestAnimationFrame(() => requestAnimationFrame(cb));
@@ -135,8 +127,13 @@ function finishOpening() {
 }
 
 function startListening() {
-  window.addEventListener("keydown", onKeyboardEvent);
-  window.addEventListener("mousedown", onWindowMousedown);
+  windowListenerManager.addEventListener("keydown", onKeyboardEvent, 10);
+  windowListenerManager.addEventListener("mousedown", onWindowMousedown, 10);
+}
+
+function removeListeners() {
+  windowListenerManager.removeEventListener("keydown", onKeyboardEvent);
+  windowListenerManager.removeEventListener("mousedown", onWindowMousedown);
 }
 
 function readjustPosition() {
@@ -218,6 +215,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener("resize", closeOnResize);
+});
+
+onBeforeUnmount(() => {
+  removeListeners();
 });
 
 defineExpose({ open, openAt, close, isOpen });
