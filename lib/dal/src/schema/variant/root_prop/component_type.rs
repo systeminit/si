@@ -31,16 +31,19 @@ pub enum ComponentType {
     #[serde(alias = "Component")]
     #[strum(serialize = "Component", serialize = "component")]
     Component,
-    #[serde(alias = "ConfigurationFrame")]
-    #[strum(serialize = "ConfigurationFrame", serialize = "configurationFrame")]
-    ConfigurationFrame,
+    #[serde(alias = "ConfigurationFrameDown")]
+    #[strum(
+        serialize = "ConfigurationFrameDown",
+        serialize = "configurationFrameDown"
+    )]
+    ConfigurationFrameDown,
 }
 
 impl From<SchemaVariantSpecComponentType> for ComponentType {
     fn from(value: SchemaVariantSpecComponentType) -> Self {
         match value {
             SchemaVariantSpecComponentType::Component => Self::Component,
-            SchemaVariantSpecComponentType::ConfigurationFrame => Self::ConfigurationFrame,
+            SchemaVariantSpecComponentType::ConfigurationFrameDown => Self::ConfigurationFrameDown,
             SchemaVariantSpecComponentType::AggregationFrame => Self::AggregationFrame,
         }
     }
@@ -50,7 +53,7 @@ impl From<ComponentType> for SchemaVariantSpecComponentType {
     fn from(value: ComponentType) -> Self {
         match value {
             ComponentType::Component => Self::Component,
-            ComponentType::ConfigurationFrame => Self::ConfigurationFrame,
+            ComponentType::ConfigurationFrameDown => Self::ConfigurationFrameDown,
             ComponentType::AggregationFrame => Self::AggregationFrame,
         }
     }
@@ -61,7 +64,7 @@ impl ComponentType {
     pub fn label(&self) -> &'static str {
         match self {
             Self::Component => "Component",
-            Self::ConfigurationFrame => "Configuration Frame",
+            Self::ConfigurationFrameDown => "Configuration Frame (down)",
             Self::AggregationFrame => "Aggregation Frame",
         }
     }

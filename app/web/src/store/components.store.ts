@@ -1,12 +1,13 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { Vector2d } from "konva/lib/types";
-import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
 
 import mitt from "mitt";
 import { watch } from "vue";
 import {
+  ComponentType,
   DiagramEdgeDef,
   DiagramNodeDef,
   DiagramSocketDef,
@@ -21,7 +22,7 @@ import {
   DiagramSchemaVariant,
   DiagramSchemaVariants,
 } from "@/api/sdf/dal/diagram";
-import { ComponentStats, ChangeStatus } from "@/api/sdf/dal/change_set";
+import { ChangeStatus, ComponentStats } from "@/api/sdf/dal/change_set";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
@@ -53,7 +54,7 @@ type RawComponent = {
   displayName: string;
   id: ComponentId;
   nodeId: ComponentNodeId;
-  nodeType: "component" | "configurationFrame" | "aggregationFrame";
+  nodeType: ComponentType;
   parentNodeId?: ComponentNodeId;
   position: GridPoint;
   size?: Size2D;

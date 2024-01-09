@@ -802,7 +802,7 @@ impl Component {
         // we delete all current edges that were configured for the previously
         // set component_type (aka AggregationFrame and Component)
         // The 2 other component_types can retain their edges.
-        if let ComponentType::ConfigurationFrame = component_type {
+        if component_type == ComponentType::ConfigurationFrameDown {
             let edges = Edge::list_for_component(ctx, self.id).await?;
             for mut edge in edges {
                 edge.delete_and_propagate(ctx).await?;

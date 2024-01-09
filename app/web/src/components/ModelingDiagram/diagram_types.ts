@@ -155,6 +155,18 @@ export type DiagramStatusIcon = {
   tabSlug?: "qualifications" | "resource";
 };
 
+export enum SchemaKind {
+  Concept = "concept",
+  Implementation = "implementation",
+  Concrete = "concrete",
+}
+
+export enum ComponentType {
+  Component = "component",
+  ConfigurationFrameDown = "configurationFrameDown",
+  AggregationFrame = "aggregationFrame",
+}
+
 export type DiagramNodeDef = {
   /** unique id of the node */
   id: DiagramElementId;
@@ -184,8 +196,8 @@ export type DiagramNodeDef = {
   color?: string | null;
   /** icon (name/slug) used to help convey node type */
   typeIcon?: string | null;
-  /** type of node - possible options are component, configurationFrame or aggregationFrame */
-  nodeType: "component" | "configurationFrame" | "aggregationFrame";
+  /** type of node - define if this is a simple component or a type of frame */
+  nodeType: ComponentType;
   /** array of icons (slug and colors) to show statuses */
   statusIcons?: DiagramStatusIcon[];
   /** if true, node shows the `loading` overlay */

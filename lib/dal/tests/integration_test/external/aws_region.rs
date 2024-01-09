@@ -20,8 +20,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         .await
         .expect("could not get type");
     assert_eq!(
-        ComponentType::ConfigurationFrame, // expected
-        component_type,                    // actual
+        ComponentType::ConfigurationFrameDown, // expected
+        component_type,                        // actual
     );
 
     // Initialize the tail name field.
@@ -246,8 +246,8 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
         .await
         .expect("could not get type");
     assert_eq!(
-        ComponentType::ConfigurationFrame, // expected
-        component_type,                    // actual
+        ComponentType::ConfigurationFrameDown, // expected
+        component_type,                        // actual
     );
     region_component
         .set_type(ctx, ComponentType::Component)

@@ -132,7 +132,7 @@ async fn connect_component_sockets_to_frame_inner(
 
     let aggregation_frame = match parent_component.get_type(ctx).await? {
         ComponentType::AggregationFrame => true,
-        ComponentType::ConfigurationFrame => false,
+        ComponentType::ConfigurationFrameDown => false,
         component_type => return Err(DiagramError::InvalidComponentTypeForFrame(component_type)),
     };
 
@@ -327,7 +327,7 @@ async fn connect_component_sockets_to_frame_inner(
             .ok_or(ComponentError::NodeNotFoundForComponent(grandparent_id))?;
         match ty {
             ComponentType::Component => {}
-            ComponentType::ConfigurationFrame => {
+            ComponentType::ConfigurationFrameDown => {
                 connect_component_sockets_to_frame(
                     ctx,
                     *grandparent.id(),

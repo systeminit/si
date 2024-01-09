@@ -33,9 +33,12 @@ pub enum SchemaVariantSpecComponentType {
     #[serde(alias = "Component")]
     #[strum(serialize = "Component", serialize = "component")]
     Component,
-    #[serde(alias = "ConfigurationFrame")]
-    #[strum(serialize = "ConfigurationFrame", serialize = "configurationFrame")]
-    ConfigurationFrame,
+    #[serde(alias = "ConfigurationFrameDown")]
+    #[strum(
+        serialize = "ConfigurationFrameDown",
+        serialize = "configurationFrameDown"
+    )]
+    ConfigurationFrameDown,
 }
 
 #[remain::sorted]
