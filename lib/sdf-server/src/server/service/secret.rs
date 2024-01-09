@@ -5,8 +5,8 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    DiagramError, KeyPairError, SecretId, StandardModelError, TransactionsError, UserError,
-    WorkspacePk, WsEventError,
+    ChangeSetError, DiagramError, KeyPairError, SecretId, StandardModelError, TransactionsError,
+    UserError, WorkspacePk, WsEventError,
 };
 use thiserror::Error;
 
@@ -20,10 +20,14 @@ pub mod update_secret;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum SecretError {
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     ContextTransactions(#[from] TransactionsError),
     #[error(transparent)]
     Diagram(#[from] DiagramError),
+    #[error("Hyper error: {0}")]
+    Hyper(#[from] hyper::http::Error),
     #[error(transparent)]
     KeyPairError(#[from] KeyPairError),
     #[error(transparent)]
@@ -34,6 +38,8 @@ pub enum SecretError {
     Secret(#[from] dal::SecretError),
     #[error("definition not found for secret: {0}")]
     SecretWithInvalidDefinition(SecretId),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]

@@ -7,6 +7,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { encryptMessage } from "@/utils/messageEncryption";
 import { PropertyEditorPropWidgetKind } from "@/api/sdf/dal/property_editor";
+import { nilId } from "@/utils/nilId";
 import { ActorAndTimestamp } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
@@ -210,6 +211,11 @@ export function useSecretsStore() {
             });
           },
           async UPDATE_SECRET(secret: Secret, value?: Record<string, string>) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
             if (_.isEmpty(secret.name)) {
               throw new Error("All secrets must have a name.");
             }
@@ -325,6 +331,11 @@ export function useSecretsStore() {
             value: Record<string, string>,
             description?: string,
           ) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
             if (_.isEmpty(name)) {
               throw new Error("All secrets must have a name.");
             }
@@ -415,6 +426,11 @@ export function useSecretsStore() {
             });
           },
           async DELETE_SECRET(id: SecretId) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
             const secret = this.secretsById[id];
 
             if (_.isNil(secret)) return;
