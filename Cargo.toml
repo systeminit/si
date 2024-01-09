@@ -166,3 +166,6 @@ docker-api = { git = "https://github.com/vv9k/docker-api-rs.git", branch = "mast
 # https://github.com/durch/rust-s3/pull/372
 # Note that this helps us to narrow down the number of `ring`/`rustls` versions to 1 each
 rust-s3 = { git = "https://github.com/ScuffleTV/rust-s3.git", branch = "troy/rustls" }
+# pending a potential merge and release of
+# https://github.com/jbg/tokio-postgres-rustls/pull/17
+tokio-postgres-rustls = { git = "https://github.com/fnichol/tokio-postgres-rustls.git", branch = "ring-0.17" }
