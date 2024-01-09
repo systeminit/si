@@ -106,13 +106,7 @@ where
         obj: &mut Self::Type,
         _: &Metrics,
     ) -> managed::RecycleResult<Self::Error> {
-        match obj.ensure_healthy().await {
-            Ok(_) => Ok(()),
-            Err(err) => {
-                obj.terminate().await?;
-                Result::map_err(Err(err), Into::into)
-            }
-        }
+        obj.ensure_healthy().await.map_err(Into::into)
     }
 }
 
