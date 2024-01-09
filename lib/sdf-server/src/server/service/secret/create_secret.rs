@@ -1,7 +1,9 @@
+use axum::response::IntoResponse;
 use axum::Json;
 use dal::secret::SecretView;
 use dal::{
-    key_pair::KeyPairPk, EncryptedSecret, SecretAlgorithm, SecretVersion, Visibility, WsEvent,
+    key_pair::KeyPairPk, ChangeSet, EncryptedSecret, SecretAlgorithm, SecretVersion, Visibility,
+    WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -29,8 +31,10 @@ pub async fn create_secret(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_tx): AccessBuilder,
     Json(request): Json<CreateSecretRequest>,
-) -> SecretResult<Json<CreateSecretResponse>> {
-    let ctx = builder.build(request_tx.build(request.visibility)).await?;
+) -> SecretResult<impl IntoResponse> {
+    let mut ctx = builder.build(request_tx.build(request.visibility)).await?;
+
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     let secret = EncryptedSecret::new(
         &ctx,
@@ -51,5 +55,12 @@ pub async fn create_secret(
 
     ctx.commit().await?;
 
-    Ok(Json(SecretView::from_secret(&ctx, secret).await?))
+    let mut response = axum::response::Response::builder();
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
+
+    let secret = SecretView::from_secret(&ctx, secret).await?;
+
+    Ok(response.body(serde_json::to_string(&secret)?)?)
 }
