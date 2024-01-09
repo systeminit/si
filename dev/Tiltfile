@@ -68,7 +68,13 @@ allow_k8s_contexts(k8s_context())
 docker_compose("./docker-compose.platform.yml")
 compose_services = ["jaeger", "nats", "otelcol", "postgres"]
 for service in compose_services:
-    dc_resource(service, labels = ["platform"])
+    if service == "jaeger":
+        links = [
+            link("http://localhost:16686", "ui"),
+        ]
+    else:
+        links = []
+    dc_resource(service, links = links, labels = ["platform"])
 
 # Locally build and run `module-index`
 module_index_target = "//bin/module-index:module-index"
