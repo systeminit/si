@@ -139,11 +139,13 @@ cat <<EOF >"/etc/init.d/cyclone"
 name="cyclone"
 description="Cyclone"
 supervisor="supervise-daemon"
-command="cyclone"
-command_args="${cyclone_args[*]}"
 pidfile="/cyclone/agent.pid"
 output_log="/var/log/cyclone.log"
 error_log="/var/log/cyclone.err"
+
+start(){
+  cyclone ${cyclone_args[*]} && reboot &
+}
 EOF
 
 chmod +x "/etc/init.d/cyclone"
