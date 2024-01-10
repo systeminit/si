@@ -1,16 +1,28 @@
 <template>
   <div
-    class="flex flex-row gap-2 items-center text-sm relative min-w-0 w-full justify-end p-xs"
+    class="flex flex-row gap-xs items-center text-sm relative p-xs min-w-0 w-full justify-end"
     @click="addAction"
   >
     <StatusIndicatorIcon type="action" :status="action.kind" tone="shade" />
     <div class="flex flex-col overflow-hidden">
       <div class="">{{ actionName }}</div>
-      <div class="text-neutral-400 truncate">
-        <!-- TODO(wendy) - sometimes the component name doesn't load properly? not sure why -->
+      <div
+        :class="
+          clsx(
+            'text-neutral-500 dark:text-neutral-400 truncate cursor-pointer',
+            isHover && 'dark:text-action-300 text-action-500',
+          )
+        "
+        @click="onClick"
+        @mouseenter="onHoverStart"
+        @mouseleave="onHoverEnd"
+      >
         {{ component?.displayName ?? "unknown" }}
       </div>
-      <div v-if="hasActor" class="text-neutral-400 truncate">
+      <div
+        v-if="hasActor"
+        class="text-neutral-500 dark:text-neutral-400 truncate"
+      >
         By: {{ action.actor }}
       </div>
     </div>
@@ -31,12 +43,13 @@
 import { computed } from "vue";
 
 import { VButton } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ProposedAction } from "@/store/actions.store";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
-const componentStore = useComponentsStore();
+const componentsStore = useComponentsStore();
 const changeSetStore = useChangeSetsStore();
 
 const props = defineProps<{
@@ -51,7 +64,7 @@ const actionName = computed(() => {
 const hasActor = computed(() => props.action.actor);
 
 const component = computed(
-  () => componentStore.componentsById[props.action.componentId],
+  () => componentsStore.componentsById[props.action.componentId],
 );
 
 const addAction = (event: Event) => {
@@ -69,4 +82,30 @@ const emit = defineEmits<{
   (e: "add"): void;
   (e: "remove"): void;
 }>();
+
+function onClick() {
+  if (componentsStore.componentsById[props.action.componentId]) {
+    componentsStore.setSelectedComponentId(props.action.componentId);
+    componentsStore.eventBus.emit("panToComponent", {
+      componentId: props.action.componentId,
+      center: true,
+    });
+  }
+}
+
+const isHover = computed(
+  () => componentsStore.hoveredComponentId === props.action.componentId,
+);
+
+function onHoverStart() {
+  if (componentsStore.componentsById[props.action.componentId]) {
+    componentsStore.setHoveredComponentId(props.action.componentId);
+  }
+}
+
+function onHoverEnd() {
+  if (componentsStore.componentsById[props.action.componentId]) {
+    componentsStore.setHoveredComponentId(null);
+  }
+}
 </script>

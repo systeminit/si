@@ -280,8 +280,8 @@ importers:
         version: link:../../lib/yjs-codemirror-plugin
     devDependencies:
       '@iconify/json':
-        specifier: ^2.2.135
-        version: 2.2.135
+        specifier: ^2.2.166
+        version: 2.2.166
       '@si/eslint-config':
         specifier: workspace:*
         version: link:../../lib/eslint-config
@@ -733,8 +733,8 @@ importers:
         version: 0.1.2(vue@3.3.12)
     devDependencies:
       '@iconify/json':
-        specifier: ^2.2.135
-        version: 2.2.135
+        specifier: ^2.2.166
+        version: 2.2.166
       '@si/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
@@ -1763,8 +1763,8 @@ packages:
     resolution: {integrity: sha512-ZnQMnLV4e7hDlUvw8H+U8ASL02SS2Gn6+9Ac3wGGLIe7+je2AeAOxPY+izIPJDfFDb7eDjev0Us8MO1iFRN8hA==}
     dev: true
 
-  /@iconify/json@2.2.135:
-    resolution: {integrity: sha512-SrssFU+P37j3QhxatYazLgNfvlwP3NVMFRUBlKfb8MvMtXqT46lT1KZsXLsRsORbLjm89+VJqXKOyK4u5K6T8A==}
+  /@iconify/json@2.2.166:
+    resolution: {integrity: sha512-Cq+t8xOBWU2Dt+bECLvGnF6yxj5hEEF5rmHiEvVR68flgcmG6/ph5xDr9+YWqT3Ita1WxDtj5lVWxoEe/c+U3A==}
     dependencies:
       '@iconify/types': 2.0.0
       pathe: 1.1.1

@@ -130,6 +130,9 @@ import VimLogo from "~icons/raphael/vim";
 // carbon
 import Create from "~icons/carbon/intent-request-create";
 
+// streamline
+import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
+
 // attribute widget types
 import InputTypeString from "~icons/carbon/string-text";
 import InputTypeText from "~icons/carbon/text-long-paragraph";
@@ -184,6 +187,7 @@ export const ICONS = Object.freeze({
   clock: Clock,
   "cloud-download": CloudDownload,
   "cloud-upload": CloudUpload,
+  "code-circle": StreamlineBracesCircleSolid,
   "collapse-row": CollapseAll,
   component: Cube,
   "component-plus": CubePlus,
