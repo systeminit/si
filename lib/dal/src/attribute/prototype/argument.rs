@@ -21,7 +21,7 @@ use crate::{
         node_weight::{NodeWeight, NodeWeightError},
         WorkspaceSnapshotError,
     },
-    AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, Timestamp,
+    AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, Prop, PropId, Timestamp,
     TransactionsError,
 };
 
@@ -89,6 +89,7 @@ pub struct AttributePrototypeArgumentContentV1 {
 }
 
 pub enum AttributePrototypeArgumentValueSource {
+    Prop(PropId),
     InternalProvider(InternalProviderId),
     StaticArgumentValue(StaticArgumentValueId),
 }
@@ -181,6 +182,7 @@ impl AttributePrototypeArgument {
             inter_component_metadata: None,
         };
 
+        info!("adding to content store");
         let hash = ctx
             .content_store()
             .try_lock()?
@@ -195,14 +197,19 @@ impl AttributePrototypeArgument {
         )?;
 
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        info!("adding node to graph");
 
         workspace_snapshot.add_node(node_weight)?;
+
+        info!("adding edge 1");
 
         workspace_snapshot.add_edge(
             prototype_id,
             EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgument)?,
             id,
         )?;
+
+        info!("adding edge 2");
         workspace_snapshot.add_edge(
             id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
@@ -296,6 +303,9 @@ impl AttributePrototypeArgument {
             if let NodeWeight::Content(inner) = workspace_snapshot.get_node_weight(target)? {
                 let discrim: ContentAddressDiscriminants = inner.content_address().into();
                 return Ok(Some(match discrim {
+                    ContentAddressDiscriminants::Prop => {
+                        AttributePrototypeArgumentValueSource::Prop(inner.id().into())
+                    }
                     ContentAddressDiscriminants::InternalProvider => {
                         AttributePrototypeArgumentValueSource::InternalProvider(inner.id().into())
                     }
@@ -352,6 +362,19 @@ impl AttributePrototypeArgument {
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeArgumentResult<Self> {
         self.set_value_source(ctx, internal_provider_id.into())
+    }
+
+    pub async fn set_value_from_prop_id(
+        self,
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        info!("setting value from prop_id: {}", prop_id);
+
+        let prop = Prop::get_by_id(ctx, prop_id).await.expect("get prop");
+        info!("{}, {}", prop.name, prop.path(ctx).expect("get prop path"));
+
+        self.set_value_source(ctx, prop_id.into())
     }
 
     pub fn set_value_from_static_value_id(

@@ -53,6 +53,8 @@ pub enum PropError {
     MapOrArrayMissingElementProp(PropId),
     #[error("missing prototype for prop {0}")]
     MissingPrototypeForProp(PropId),
+    #[error("missing provider for prop {0}")]
+    MissingProviderForProp(PropId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("prop {0} is orphaned")]
@@ -355,23 +357,26 @@ impl Prop {
 
     pub fn parent_prop_id_by_id(ctx: &DalContext, prop_id: PropId) -> PropResult<Option<PropId>> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        let parent_node_idx = *workspace_snapshot
+        match workspace_snapshot
             .incoming_sources_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Use)?
             .get(0)
-            .ok_or(PropError::PropIsOrphan(prop_id))?;
-
-        Ok(match workspace_snapshot.get_node_weight(parent_node_idx)? {
-            NodeWeight::Prop(prop_inner) => Some(prop_inner.id().into()),
-            NodeWeight::Content(content_inner) => {
-                let content_addr_discrim: ContentAddressDiscriminants =
-                    content_inner.content_address().into();
-                match content_addr_discrim {
-                    ContentAddressDiscriminants::SchemaVariant => None,
+        {
+            Some(parent_node_idx) => Ok(
+                match workspace_snapshot.get_node_weight(*parent_node_idx)? {
+                    NodeWeight::Prop(prop_inner) => Some(prop_inner.id().into()),
+                    NodeWeight::Content(content_inner) => {
+                        let content_addr_discrim: ContentAddressDiscriminants =
+                            content_inner.content_address().into();
+                        match content_addr_discrim {
+                            ContentAddressDiscriminants::SchemaVariant => None,
+                            _ => return Err(PropError::PropParentInvalid(prop_id)),
+                        }
+                    }
                     _ => return Err(PropError::PropParentInvalid(prop_id)),
-                }
-            }
-            _ => return Err(PropError::PropParentInvalid(prop_id)),
-        })
+                },
+            ),
+            None => Ok(None),
+        }
     }
 
     pub fn path(&self, ctx: &DalContext) -> PropResult<PropPath> {
@@ -590,6 +595,21 @@ impl Prop {
             .get_node_weight(current_node_index)?
             .id()
             .into())
+    }
+
+    pub fn set_prototype_id(
+        ctx: &DalContext,
+        prop_id: PropId,
+        attribute_prototype_id: AttributePrototypeId,
+    ) -> PropResult<()> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        workspace_snapshot.add_edge(
+            prop_id,
+            EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(None))?,
+            attribute_prototype_id,
+        )?;
+
+        Ok(())
     }
 
     pub fn prototype_id(ctx: &DalContext, prop_id: PropId) -> PropResult<AttributePrototypeId> {

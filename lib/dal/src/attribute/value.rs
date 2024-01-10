@@ -55,17 +55,18 @@ use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
+use crate::prop::{self, PropError};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::{
-    NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+    ContentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
-use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
+use crate::workspace_snapshot::{self, serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
-    pk, AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncId,
-    InternalProviderId, PropId, PropKind, Timestamp, TransactionsError,
+    pk, AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProviderId,
+    Func, FuncId, InternalProviderId, PropId, PropKind, Timestamp, TransactionsError,
 };
 
 pub mod view;
@@ -75,6 +76,10 @@ pub mod view;
 pub enum AttributeValueError {
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute value {0} has more than one edge to a prop")]
+    AttributeValueMultiplePropEdges(AttributeValueId),
+    #[error("attribute value {0} has more than one provider edge")]
+    AttributeValueMultipleProviderEdges(AttributeValueId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
@@ -95,6 +100,8 @@ pub enum AttributeValueError {
     NodeWeightMismatch(NodeIndex, NodeWeightDiscriminants),
     #[error("attribute value not found for component ({0}) and explicit internal provider ({1})")]
     NotFoundForComponentAndExplicitInternalProvider(ComponentId, InternalProviderId),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("array or map prop missing element prop: {0}")]
     PropMissingElementProp(PropId),
     #[error("array or map prop has more than one child prop: {0}")]
@@ -210,6 +217,65 @@ impl AttributeValue {
         Self::set_value(ctx, attribute_value_id, value.clone()).await?;
         Self::populate_nested_values(ctx, attribute_value_id, value).await?;
         Ok(())
+    }
+
+    pub async fn dependent_value_graph(
+        ctx: &DalContext,
+        values: &[AttributeValueId],
+    ) -> AttributeValueResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
+        let mut result = HashMap::new();
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let mut work_queue = VecDeque::from_iter(values);
+        while let Some(current_attribute_value_id) = work_queue.pop_front() {
+            let current_attribute_value_id = *current_attribute_value_id;
+            let mut provider: Option<NodeIndex> = None;
+
+            // Find internal provider idx for attribute value for prop
+            let prop_targets = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+                current_attribute_value_id,
+                EdgeWeightKindDiscriminants::Prop,
+            )?;
+            if prop_targets.len() > 1 {
+                return Err(AttributeValueError::AttributeValueMultiplePropEdges(
+                    current_attribute_value_id,
+                ));
+            }
+
+            if let Some(prop_target) = prop_targets.get(0).copied() {
+                let prop_id: PropId = workspace_snapshot.get_node_weight(prop_target)?.id().into();
+                let internal_provider_idx = workspace_snapshot
+                    .outgoing_targets_for_edge_weight_kind(
+                        prop_id,
+                        EdgeWeightKindDiscriminants::Provider,
+                    )?
+                    .get(0)
+                    .copied()
+                    .ok_or(PropError::MissingProviderForProp(prop_id))?;
+
+                provider = Some(internal_provider_idx);
+            };
+
+            // Find internal or external provider idx for attribute value for implicit or explicit internal / external provider
+            if let Some(provider_target) = workspace_snapshot
+                .outgoing_targets_for_edge_weight_kind(
+                    current_attribute_value_id,
+                    EdgeWeightKindDiscriminants::Provider,
+                )?
+                .get(0)
+                .copied()
+            {
+                if provider.is_some() {
+                    return Err(AttributeValueError::AttributeValueMultipleProviderEdges(
+                        current_attribute_value_id,
+                    ));
+                }
+
+                provider = Some(provider_target);
+            }
+        }
+
+        Ok(result)
     }
 
     pub async fn insert(

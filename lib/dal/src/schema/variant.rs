@@ -31,7 +31,7 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::graph::NodeIndex;
 
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::workspace_snapshot::{self, WorkspaceSnapshotError};
 use crate::{
     pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
@@ -288,18 +288,16 @@ impl SchemaVariant {
         Ok(Self::assemble(id, inner))
     }
 
-    pub fn find_root_child_implicit_internal_provider(
+    pub fn find_root_child_prop_id(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
         root_prop_child: RootPropChild,
-    ) -> SchemaVariantResult<InternalProviderId> {
-        let root_prop_child_id =
-            Prop::find_prop_id_by_path(ctx, schema_variant_id, &root_prop_child.prop_path())?;
-        let ip_id = InternalProvider::find_for_prop_id(ctx, root_prop_child_id)?.ok_or(
-            InternalProviderError::PropMissingInternalProvider(root_prop_child_id),
-        )?;
-
-        Ok(ip_id)
+    ) -> SchemaVariantResult<PropId> {
+        Ok(Prop::find_prop_id_by_path(
+            ctx,
+            schema_variant_id,
+            &root_prop_child.prop_path(),
+        )?)
     }
 
     pub async fn list_for_schema(
@@ -457,29 +455,32 @@ impl SchemaVariant {
         Ok(())
     }
 
-    pub async fn create_implicit_internal_providers(
+    pub fn mark_props_as_able_to_be_used_as_prototype_args(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
-        let root_prop = Self::get_root_prop_node_weight(ctx, schema_variant_id)?;
+        let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id)?;
+        let root_prop_idx = {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.get_node_index_by_id(root_prop_node_weight.id())?
+        };
+
         let mut work_queue = VecDeque::new();
-        work_queue.push_back(root_prop);
+        work_queue.push_back(root_prop_idx);
 
-        while let Some(prop) = work_queue.pop_front() {
-            InternalProvider::new_implicit(ctx, &prop).await?;
+        while let Some(prop_idx) = work_queue.pop_front() {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.mark_prop_as_able_to_be_used_as_prototype_arg(prop_idx)?;
 
-            // Only descend if we are an object.
-            if prop.kind() == PropKind::Object {
-                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-                let targets = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-                    prop.id(),
-                    EdgeWeightKindDiscriminants::Use,
-                )?;
-                for target in targets {
-                    let node_weight = workspace_snapshot.get_node_weight(target)?;
-                    if let NodeWeight::Prop(child_prop) = node_weight {
-                        work_queue.push_back(child_prop.to_owned());
-                    }
+            let node_weight = workspace_snapshot.get_node_weight(prop_idx)?.to_owned();
+            if let NodeWeight::Prop(prop) = node_weight {
+                // Only descend if we are an object.
+                if prop.kind() == PropKind::Object {
+                    let targets = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+                        prop.id(),
+                        EdgeWeightKindDiscriminants::Use,
+                    )?;
+                    work_queue.extend(targets);
                 }
             }
         }
@@ -543,7 +544,7 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
         Self::create_default_prototypes(ctx, schema_variant_id).await?;
-        Self::create_implicit_internal_providers(ctx, schema_variant_id).await?;
+        //Self::mark_props_as_able_to_be_used_as_prototype_args(ctx, schema_variant_id)?;
 
         // TODO(nick,jacob,zack): if we are going to copy the existing system (which we likely will), we need to
         // set "/root/si/type" and "/root/si/protected".
@@ -674,22 +675,23 @@ impl SchemaVariant {
                         }
 
                         if exisiting_func_arg.is_none() {
-                            let input_internal_provider_id =
-                                Self::find_root_child_implicit_internal_provider(
-                                    ctx,
-                                    schema_variant_id,
-                                    input.location.into(),
-                                )?;
+                            let input_prop_id = Self::find_root_child_prop_id(
+                                ctx,
+                                schema_variant_id,
+                                input.location.clone().into(),
+                            )?;
+
+                            info!(
+                                "adding root child func arg: {:?}, {:?}",
+                                input_prop_id, input.location
+                            );
 
                             let new_apa = AttributePrototypeArgument::new(
                                 ctx,
                                 existing_proto_id,
                                 input.func_argument_id,
                             )?;
-                            new_apa.set_value_from_internal_provider_id(
-                                ctx,
-                                input_internal_provider_id,
-                            )?;
+                            new_apa.set_value_from_prop_id(ctx, input_prop_id).await?;
                         }
                     }
 

@@ -130,7 +130,7 @@ impl WorkspaceSnapshotGraph {
     ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
         // Temporarily add the edge to the existing tree to see if it would create a cycle.
         // Configured to run only in tests because it has a major perf impact otherwise
-        #[cfg(test)]
+        //#[cfg(test)]
         {
             let temp_edge =
                 self.graph
@@ -948,7 +948,7 @@ impl WorkspaceSnapshotGraph {
             },
         );
         let filename_no_extension = format!("dot-{}", Ulid::new().to_string());
-        let mut file = File::create(format!("/Users/nick/src/si/{filename_no_extension}.txt"))
+        let mut file = File::create(format!("/home/zacharyhamm/{filename_no_extension}.txt"))
             .expect("could not create file");
         file.write_all(format!("{dot:?}").as_bytes())
             .expect("could not write file");
@@ -1956,6 +1956,28 @@ impl WorkspaceSnapshotGraph {
                 }
             }
         }
+        Ok(())
+    }
+
+    /// Update node weight in place with a lambda. Use with caution. Generally
+    /// we treat node weights as immutable and replace them by creating a new
+    /// node with a new node weight and replacing references to point to the new
+    /// node.
+    pub(crate) fn update_node_weight<L>(
+        &mut self,
+        node_idx: NodeIndex,
+        lambda: L,
+    ) -> WorkspaceSnapshotGraphResult<()>
+    where
+        L: FnOnce(&mut NodeWeight) -> WorkspaceSnapshotGraphResult<()>,
+    {
+        let node_weight = self
+            .graph
+            .node_weight_mut(node_idx)
+            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
+
+        lambda(node_weight)?;
+
         Ok(())
     }
 

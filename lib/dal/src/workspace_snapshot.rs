@@ -599,4 +599,23 @@ impl WorkspaceSnapshot {
             updates,
         )?)
     }
+
+    /// Mark whether a prop can be used as an input to a function. Props below
+    /// Maps and Arrays are not valid inputs. Must only be used when
+    /// "finalizing" a schema variant!
+    pub fn mark_prop_as_able_to_be_used_as_prototype_arg(
+        &mut self,
+        node_index: NodeIndex,
+    ) -> WorkspaceSnapshotResult<()> {
+        self.working_copy()?
+            .update_node_weight(node_index, |node_weight| match node_weight {
+                NodeWeight::Prop(prop_inner) => {
+                    prop_inner.set_can_be_used_as_prototype_arg(true);
+                    Ok(())
+                }
+                _ => Err(WorkspaceSnapshotGraphError::IncompatibleNodeTypes)?,
+            })?;
+
+        Ok(())
+    }
 }

@@ -2093,6 +2093,7 @@ async fn import_leaf_function(
     schema_variant_id: SchemaVariantId,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
+    info!("import_leaf_function");
     let inputs: Vec<LeafInputLocation> = leaf_func
         .inputs()
         .iter()
@@ -2171,6 +2172,7 @@ async fn import_socket(
     schema_variant_id: SchemaVariantId,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
+    info!("import socket");
     let (ip, ep) = match change_set_pk {
         None => {
             let data = socket_spec
@@ -2223,16 +2225,16 @@ async fn import_socket(
         ip,
     ) {
         (Some(func_unique_id), Some(ep), None) => {
-            import_attr_func_for_output_socket(
-                ctx,
-                change_set_pk,
-                schema_variant_id,
-                ep.id(),
-                func_unique_id,
-                socket_spec.inputs()?.drain(..).map(Into::into).collect(),
-                thing_map,
-            )
-            .await?;
+            //            import_attr_func_for_output_socket(
+            //                ctx,
+            //                change_set_pk,
+            //                schema_variant_id,
+            //                ep.id(),
+            //                func_unique_id,
+            //                socket_spec.inputs()?.drain(..).map(Into::into).collect(),
+            //                thing_map,
+            //            )
+            //            .await?;
         }
         (Some(_), _, Some(_)) => {}
         _ => {}
@@ -2294,6 +2296,7 @@ async fn import_action_func(
     schema_variant_id: SchemaVariantId,
     thing_map: &ThingMap,
 ) -> PkgResult<Option<ActionPrototype>> {
+    info!("import_action_func");
     let prototype =
         match thing_map.get(change_set_pk, &action_func_spec.func_unique_id().to_owned()) {
             Some(Thing::Func(func)) => {
@@ -2388,6 +2391,7 @@ async fn create_props(
     prop_root_prop_id: PropId,
     schema_variant_id: SchemaVariantId,
 ) -> PkgResult<CreatePropsSideEffects> {
+    info!("create_props");
     let context = PropVisitContext {
         ctx,
         schema_variant_id,
@@ -2644,7 +2648,6 @@ async fn import_schema_variant(
                 );
             }
 
-            info!("finalizing");
             SchemaVariant::finalize(ctx, schema_variant.id()).await?;
 
             for socket in variant_spec.sockets()? {
@@ -2704,6 +2707,7 @@ async fn import_schema_variant(
             }
 
             for si_prop_func in variant_spec.si_prop_funcs()? {
+                info!("si_prop_func");
                 let prop_id = Prop::find_prop_id_by_path(
                     ctx,
                     schema_variant.id(),
@@ -2726,6 +2730,17 @@ async fn import_schema_variant(
                     thing_map,
                 )
                 .await?;
+            }
+
+            info!("resource value");
+
+            {
+                let mut workspace_snapshot = ctx
+                    .workspace_snapshot()?
+                    .try_lock()
+                    .expect("give me the lock");
+                workspace_snapshot.cleanup().expect("foo");
+                workspace_snapshot.tiny_dot_to_file();
             }
 
             let mut has_resource_value_func = false;
@@ -2758,9 +2773,11 @@ async fn import_schema_variant(
                 .await?;
             }
             if !has_resource_value_func {
+                info!("attach resource value payload");
                 attach_resource_payload_to_value(ctx, schema_variant.id()).await?;
             }
 
+            info!("non si attr funcs for props");
             for attr_func in side_effects.attr_funcs {
                 import_attr_func_for_prop(
                     ctx,
@@ -2801,6 +2818,7 @@ async fn set_default_value(
     ctx: &DalContext,
     default_value_info: DefaultValueInfo,
 ) -> PkgResult<()> {
+    info!("set_default_value");
     let prop_id = match &default_value_info {
         DefaultValueInfo::Number { prop_id, .. }
         | DefaultValueInfo::String { prop_id, .. }
@@ -2834,6 +2852,7 @@ async fn import_attr_func_for_prop(
     key: Option<String>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
+    info!("import_attr_func_for_prop");
     match thing_map.get(change_set_pk, &func_unique_id.to_owned()) {
         Some(Thing::Func(func)) => {
             import_attr_func(
@@ -2863,6 +2882,7 @@ async fn import_attr_func_for_output_socket(
     inputs: Vec<SiPkgAttrFuncInputView>,
     thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
+    info!("import_attr_func_for_output_socket");
     match thing_map.get(change_set_pk, &func_unique_id.to_owned()) {
         Some(Thing::Func(func)) => {
             import_attr_func(
@@ -2888,6 +2908,7 @@ async fn get_prototype_for_context(
     context: AttrFuncContext,
     key: Option<String>,
 ) -> PkgResult<AttributePrototypeId> {
+    info!("get_prototype_for_context");
     if key.is_some() {
         #[allow(clippy::infallible_destructuring_match)]
         let map_prop_id = match context {
@@ -2913,12 +2934,8 @@ async fn get_prototype_for_context(
                 None => {
                     let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset)?;
                     let prototype_id = AttributePrototype::new(ctx, unset_func_id)?.id();
-                    InternalProvider::new_implicit_with_prototype_and_key(
-                        ctx,
-                        element_prop_id,
-                        prototype_id,
-                        &key,
-                    )?;
+                    Prop::set_prototype_id(ctx, element_prop_id, prototype_id)?;
+
                     prototype_id
                 }
                 Some(prototype_id) => prototype_id,
@@ -2946,6 +2963,7 @@ async fn create_attr_proto_arg(
     func_id: FuncId,
     schema_variant_id: SchemaVariantId,
 ) -> PkgResult<AttributePrototypeArgumentId> {
+    info!("create_attr_proto_arg");
     let arg = match &input {
         SiPkgAttrFuncInputView::Prop { name, .. }
         | SiPkgAttrFuncInputView::InputSocket { name, .. }
@@ -2955,18 +2973,23 @@ async fn create_attr_proto_arg(
                 .ok_or(PkgError::MissingFuncArgument(name.to_owned(), func_id))?
         }
     };
+    info!("got arg");
 
     Ok(match input {
         SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
             let prop_id = Prop::find_prop_id_by_path(ctx, schema_variant_id, &prop_path.into())?;
-            let prop_ip_id = InternalProvider::find_for_prop_id(ctx, prop_id)?.ok_or(
-                PkgError::MissingInternalProviderForProp(prop_id, prop_path.to_owned()),
-            )?;
+            info!("got prop_id");
 
+            info!("creating apa");
             let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id)?;
+            info!("created apa");
             let apa_id = apa.id();
 
-            apa.set_value_from_internal_provider_id(ctx, prop_ip_id)?;
+            info!("calling set_value_from_prop_id");
+
+            apa.set_value_from_prop_id(ctx, prop_id).await?;
+
+            info!("set for prop");
 
             apa_id
         }
@@ -2981,6 +3004,7 @@ async fn create_attr_proto_arg(
             let apa_id = apa.id();
 
             apa.set_value_from_internal_provider_id(ctx, explicit_ip.id())?;
+            info!("set for input socket");
             apa_id
         }
         _ => {
@@ -3063,15 +3087,20 @@ async fn import_attr_func(
     inputs: Vec<SiPkgAttrFuncInputView>,
     _thing_map: &mut ThingMap,
 ) -> PkgResult<()> {
+    info!("import_attr_func: {:?}, {:?}", &context, &inputs);
     let prototype_id = get_prototype_for_context(ctx, context, key).await?;
+    info!("got prototype id");
 
     let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id)?;
 
     if prototype_func_id != func_id {
+        info!("updating func");
+
         AttributePrototype::update_func_by_id(ctx, prototype_id, func_id)?;
     }
 
     for input in &inputs {
+        info!("{:?}", input);
         match change_set_pk {
             None => {
                 create_attr_proto_arg(ctx, prototype_id, input, func_id, schema_variant_id).await?;
@@ -3513,6 +3542,7 @@ pub async fn attach_resource_payload_to_value(
     ctx: &DalContext,
     schema_variant_id: SchemaVariantId,
 ) -> PkgResult<()> {
+    info!("attach_resource_payload_to_value");
     let func_id = Func::find_by_name(ctx, "si:resourcePayloadToValue")?.ok_or(
         PkgError::FuncNotFoundByName("si:resourcePayloadToValue".into()),
     )?;
@@ -3525,16 +3555,11 @@ pub async fn attach_resource_payload_to_value(
         ))?
         .id;
 
-    let source_id = {
-        let prop_id = Prop::find_prop_id_by_path(
-            ctx,
-            schema_variant_id,
-            &PropPath::new(["root", "resource", "payload"]),
-        )?;
-
-        InternalProvider::find_for_prop_id(ctx, prop_id)?
-            .ok_or(PkgError::InternalProviderNotFoundForProp(prop_id))?
-    };
+    let source_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        schema_variant_id,
+        &PropPath::new(["root", "resource", "payload"]),
+    )?;
 
     let target_id = {
         let resource_value_prop_id = Prop::find_prop_id_by_path(
@@ -3563,21 +3588,21 @@ pub async fn attach_resource_payload_to_value(
     match rv_input_apa_id {
         Some(apa_id) => {
             if !{
-                if let Some(AttributePrototypeArgumentValueSource::InternalProvider(ip_id)) =
+                if let Some(AttributePrototypeArgumentValueSource::Prop(prop_id)) =
                     AttributePrototypeArgument::value_source_by_id(ctx, apa_id)?
                 {
-                    ip_id == source_id
+                    prop_id == source_prop_id
                 } else {
                     false
                 }
             } {
                 let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
-                apa.set_value_from_internal_provider_id(ctx, source_id)?;
+                apa.set_value_from_prop_id(ctx, source_prop_id).await?;
             }
         }
         None => {
             let apa = AttributePrototypeArgument::new(ctx, target_id, func_argument_id)?;
-            apa.set_value_from_internal_provider_id(ctx, source_id)?;
+            apa.set_value_from_prop_id(ctx, source_prop_id).await?;
         }
     }
 
