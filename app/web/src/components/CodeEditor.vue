@@ -157,7 +157,7 @@ function onEditorValueUpdated(update: ViewUpdate) {
 
 const debouncedEmitUpdatedValue = _.debounce(() => {
   emit("save", view.state.doc.toString());
-}, 1000);
+}, 500);
 
 // set up all compartments
 const language = new Compartment();
@@ -302,6 +302,7 @@ function getUserInfo(userId: { id: string }) {
 let wsProvider: WebsocketProvider | undefined;
 let yText: Y.Text | undefined;
 onBeforeUnmount(() => {
+  emit("save", view.state.doc.toString());
   wsProvider?.destroy();
 });
 
@@ -387,6 +388,7 @@ const mountEditor = async () => {
     });
 
     view.contentDOM.onblur = () => {
+      emit("save", view.state.doc.toString());
       emit("blur", view.state.doc.toString());
     };
   };
