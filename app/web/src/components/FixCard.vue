@@ -178,10 +178,12 @@ import { PropType, computed, ref } from "vue";
 import { Icon } from "@si/vue-lib/design-system";
 import { Fix } from "@/store/fixes.store";
 import { useComponentsStore } from "@/store/components.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeViewer from "./CodeViewer.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import FixDetails from "./FixDetails.vue";
 
+const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 
 const props = defineProps({
@@ -199,14 +201,23 @@ const formatTitle = (title: string) => {
 const componentNameRef = ref();
 const componentNameTooltip = computed(() => {
   if (componentNameRef.value) {
-    const tooltipText = componentsStore.componentsById[props.fix.componentId]
-      ? componentNameRef.value.textContent
-      : `Component "${componentNameRef.value.textContent}" does not exist in this change set.`;
-
-    return {
-      content: tooltipText,
-      delay: { show: 700, hide: 10 },
-    };
+    if (!componentsStore.componentsById[props.fix.componentId]) {
+      return {
+        content: `Component "${
+          componentNameRef.value.textContent
+        }" does not exist ${
+          changeSetsStore.headSelected ? "on head" : "in this change set"
+        }.`,
+        delay: { show: 700, hide: 10 },
+      };
+    } else if (
+      componentNameRef.value.scrollWidth > componentNameRef.value.offsetWidth
+    ) {
+      return {
+        content: componentNameRef.value.textContent,
+        delay: { show: 700, hide: 10 },
+      };
+    }
   }
   return {};
 });
