@@ -84,16 +84,16 @@ mkfs.ext4 -v "$ROOTFS"
 sudo mount -v "$ROOTFS" "$ROOTFSMOUNT"
 
 cyclone_args=(
-  --bind-vsock 3:52
-  --decryption-key /cyclone/decryption.key
-  --lang-server /usr/local/bin/lang-js
-  --enable-watch
-  --limit-requests 1
-  --watch-timeout 30
-  --enable-ping
-  --enable-resolver
-  --enable-action-run
-  -vvvv
+--bind-vsock 3:52
+--decryption-key /cyclone/decryption.key
+--lang-server /usr/local/bin/lang-js
+--enable-watch
+--limit-requests 1
+--watch-timeout 30
+--enable-ping
+--enable-resolver
+--enable-action-run
+-vvvv
 )
 
 # got get the rootfs tar and unpack it
@@ -140,11 +140,10 @@ name="cyclone"
 description="Cyclone"
 supervisor="supervise-daemon"
 pidfile="/cyclone/agent.pid"
-output_log="/var/log/cyclone.log"
-error_log="/var/log/cyclone.err"
 
 start(){
-  cyclone ${cyclone_args[*]} && reboot &
+  export OTEL_EXPORTER_OTLP_ENDPOINT=10.0.0.3:4317
+  cyclone ${cyclone_args[*]} >> /var/log/cyclone.log 2>&1 && reboot &
 }
 EOF
 
