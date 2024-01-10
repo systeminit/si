@@ -1,11 +1,6 @@
 <template>
-  <span>
-    <button
-      class="underline text-action-400 font-bold"
-      @click="modalRef.open()"
-    >
-      View Details
-    </button>
+  <div class="flex-none w-6 h-6">
+    <Icon name="question-circle" @click="modalRef.open()" />
 
     <Modal ref="modalRef" size="2xl">
       <template #title>
@@ -33,19 +28,19 @@
 
       <!-- modal default content-->
       <div
-        class="flex flex-col my-2 p-2 border border-warning-600 text-warning-500 rounded"
+        class="flex flex-col p-xs border border-warning-600 text-warning-600 dark:text-warning-500 rounded"
       >
-        <b>Logs: </b>
+        <b>{{ details.length === 0 ? "No Logs" : "Logs:" }}</b>
         <p
           v-for="(log, index) in details"
           :key="index"
-          class="text-sm break-all"
+          class="text-sm break-all pt-sm"
         >
           {{ log }}
         </p>
       </div>
     </Modal>
-  </span>
+  </div>
 </template>
 
 <script lang="ts" setup>
