@@ -229,6 +229,7 @@ function onClick() {
       componentId: props.fix.componentId,
       center: true,
     });
+    onHoverEnd();
   }
 }
 

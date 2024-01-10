@@ -1,6 +1,10 @@
 <template>
   <div class="flex-none w-6 h-6">
-    <Icon name="question-circle" @click="modalRef.open()" />
+    <div
+      class="w-6 h-6 rounded-full bg-neutral-400 text-white dark:text-neutral-800 dark:hover:bg-action-300 hover:bg-action-500 flex flex-row items-center justify-center -scale-x-100"
+    >
+      <Icon name="external-link" size="xs" @click="modalRef.open()" />
+    </div>
 
     <Modal ref="modalRef" size="2xl">
       <template #title>
