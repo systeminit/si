@@ -43,7 +43,7 @@ impl Subscriber {
             messaging_destination_kind: "topic",
             messaging_operation: "process",
             messaging_subject: subject.to_string(),
-            process_otel_kind: FormattedSpanKind(SpanKind::Consumer).to_string(),
+            process_otel_kind: SpanKind::Consumer.to_string(),
             process_otel_name: format!("{subject} process"),
         };
 
@@ -90,7 +90,7 @@ impl Subscriber {
             messaging.system = %self.metadata.messaging_system(),
             messaging.url = %self.metadata.messaging_url(),
             net.transport = %self.metadata.net_transport(),
-            otel.kind = %FormattedSpanKind(SpanKind::Client),
+            otel.kind = SpanKind::Client.as_str(),
             otel.status_code = Empty,
             otel.status_message = Empty,
         )
@@ -131,7 +131,7 @@ impl Subscriber {
             messaging.system = %self.metadata.messaging_system(),
             messaging.url = %self.metadata.messaging_url(),
             net.transport = %self.metadata.net_transport(),
-            otel.kind = %FormattedSpanKind(SpanKind::Client),
+            otel.kind = SpanKind::Client.as_str(),
             otel.status_code = Empty,
             otel.status_message = Empty,
         )
