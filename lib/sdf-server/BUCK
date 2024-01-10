@@ -13,6 +13,7 @@ rust_library(
         "//lib/si-posthog-rs:si-posthog",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
+        "//lib/telemetry-http-rs:telemetry-http",
         "//lib/telemetry-rs:telemetry",
         "//lib/veritech-client:veritech-client",
         "//third-party/rust:async-recursion",
