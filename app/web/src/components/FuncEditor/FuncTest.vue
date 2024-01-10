@@ -488,7 +488,11 @@ const prepareTest = async () => {
 };
 
 const startTest = async () => {
-  if (!funcStore.selectedFuncId || !testAttribute.value || !readyToTest.value)
+  if (
+    !funcStore.selectedFuncDetails ||
+    !testAttribute.value ||
+    !readyToTest.value
+  )
     return;
 
   prepareTest();
@@ -515,15 +519,16 @@ const startTest = async () => {
   funcTestTabsRef.value.selectTab("logs");
 
   let args = testInputProperties.value;
-  if (funcStore.selectedFuncDetails?.associations?.type === "validation") {
+  if (funcStore.selectedFuncDetails.associations?.type === "validation") {
     args = { value: args };
-  } else if (funcStore.selectedFuncDetails?.associations?.type === "action") {
+  } else if (funcStore.selectedFuncDetails.associations?.type === "action") {
     args = { kind: "standard", properties: args };
   }
 
   const output = await funcStore.EXECUTE({
-    id: funcStore.selectedFuncId,
+    id: funcStore.selectedFuncDetails.id,
     args,
+    code: funcStore.selectedFuncDetails.code,
     executionKey,
     componentId: testAttribute.value,
   });

@@ -82,7 +82,7 @@ const props = defineProps({
 const emit = defineEmits<{
   "update:modelValue": [v: string];
   blur: [v: string];
-  save: [v: string];
+  change: [v: string];
   close: [];
 }>();
 
@@ -132,8 +132,7 @@ function onEditorValueUpdated(update: ViewUpdate) {
   if (!update.docChanged) return;
 
   emit("update:modelValue", update.state.doc.toString());
-
-  debouncedEmitUpdatedValue();
+  emit("change", view.state.doc.toString());
 
   const serializedState = update.view.state.toJSON({ history: historyField });
   if (props.id && serializedState.history) {
@@ -154,10 +153,6 @@ function onEditorValueUpdated(update: ViewUpdate) {
     );
   }
 }
-
-const debouncedEmitUpdatedValue = _.debounce(() => {
-  emit("save", view.state.doc.toString());
-}, 500);
 
 // set up all compartments
 const language = new Compartment();
@@ -302,7 +297,8 @@ function getUserInfo(userId: { id: string }) {
 let wsProvider: WebsocketProvider | undefined;
 let yText: Y.Text | undefined;
 onBeforeUnmount(() => {
-  emit("save", view.state.doc.toString());
+  emit("change", view.state.doc.toString());
+  emit("blur", view.state.doc.toString());
   wsProvider?.destroy();
 });
 
@@ -388,7 +384,7 @@ const mountEditor = async () => {
     });
 
     view.contentDOM.onblur = () => {
-      emit("save", view.state.doc.toString());
+      emit("change", view.state.doc.toString());
       emit("blur", view.state.doc.toString());
     };
   };

@@ -308,7 +308,7 @@ export const useAssetStore = () => {
               const a = this.assetsById[id];
               if (!a) return;
               this.SAVE_ASSET(a);
-            }, 2000);
+            }, 500);
           }
           const assetSaveFunc = assetSaveDebouncer(asset.id);
           if (assetSaveFunc) {
