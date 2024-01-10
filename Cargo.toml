@@ -38,6 +38,7 @@ members = [
     "lib/si-test-macros",
     "lib/si-posthog-rs",
     "lib/telemetry-application-rs",
+    "lib/telemetry-http-rs",
     "lib/telemetry-rs",
     "lib/veritech-client",
     "lib/veritech-core",

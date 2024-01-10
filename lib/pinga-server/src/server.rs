@@ -387,7 +387,7 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
         messaging.destination = Empty,
         messaging.destination_kind = "topic",
         messaging.operation = "process",
-        otel.kind = %FormattedSpanKind(SpanKind::Consumer),
+        otel.kind = SpanKind::Consumer.as_str(),
         otel.name = Empty,
         otel.status_code = Empty,
         otel.status_message = Empty,

@@ -1,0 +1,12 @@
+[package]
+name = "telemetry-http"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.64"
+publish = false
+
+[dependencies]
+hyper = { workspace = true }
+remain = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
+tower-http = { workspace = true }

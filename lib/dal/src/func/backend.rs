@@ -245,15 +245,15 @@ pub trait FuncDispatch: std::fmt::Debug {
     }
 
     #[instrument(
-    name = "funcdispatch.execute",
-    skip_all,
-    level = "debug",
-    fields(
-    otel.kind = %FormattedSpanKind(SpanKind::Client),
-    otel.status_code = Empty,
-    otel.status_message = Empty,
-    si.func.result = Empty
-    )
+        name = "funcdispatch.execute",
+        skip_all,
+        level = "debug",
+        fields(
+            otel.kind = SpanKind::Client.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            si.func.result = Empty
+        )
     )]
     async fn execute(
         self: Box<Self>,
@@ -311,15 +311,15 @@ pub trait FuncBackend {
     }
 
     #[instrument(
-    name = "funcbackend.execute",
-    skip_all,
-    level = "debug",
-    fields(
-    otel.kind = %FormattedSpanKind(SpanKind::Client),
-    otel.status_code = Empty,
-    otel.status_message = Empty,
-    si.func.result = Empty
-    )
+        name = "funcbackend.execute",
+        skip_all,
+        level = "debug",
+        fields(
+            otel.kind = SpanKind::Client.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            si.func.result = Empty
+        )
     )]
     async fn execute(
         self: Box<Self>,
