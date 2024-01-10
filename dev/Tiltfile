@@ -134,6 +134,9 @@ local_resource(
     labels = ["backend"],
     cmd = "buck2 build {}".format(veritech_target),
     serve_cmd = "SI_LOG=debug buck2 run {}".format(veritech_target),
+    # This is the serve command you might need if you want to execute on firecracker for 10 functione executions.
+    # NB: BUCK2 MUST RUN AS ROOT OR THIS WILL NOT WORK
+    # serve_cmd = "SI_LOG=debug buck2 run {} -- --cyclone-local-firecracker --cyclone-pool-size 10".format(veritech_target),
     allow_parallel = True,
     resource_deps = [
         "nats",

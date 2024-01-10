@@ -140,11 +140,10 @@ name="cyclone"
 description="Cyclone"
 supervisor="supervise-daemon"
 pidfile="/cyclone/agent.pid"
-output_log="/var/log/cyclone.log"
-error_log="/var/log/cyclone.err"
 
 start(){
-  cyclone ${cyclone_args[*]} && reboot &
+  export OTEL_EXPORTER_OTLP_ENDPOINT=10.0.0.3:4317
+  cyclone ${cyclone_args[*]} >> /var/log/cyclone.log 2>&1 && reboot &
 }
 EOF
 
