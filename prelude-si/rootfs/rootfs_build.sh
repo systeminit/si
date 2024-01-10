@@ -84,16 +84,16 @@ mkfs.ext4 -v "$ROOTFS"
 sudo mount -v "$ROOTFS" "$ROOTFSMOUNT"
 
 cyclone_args=(
---bind-vsock 3:52
---decryption-key /cyclone/decryption.key
---lang-server /usr/local/bin/lang-js
---enable-watch
---limit-requests 1
---watch-timeout 30
---enable-ping
---enable-resolver
---enable-action-run
--vvvv
+  --bind-vsock 3:52
+  --decryption-key /cyclone/decryption.key
+  --lang-server /usr/local/bin/lang-js
+  --enable-watch
+  --limit-requests 1
+  --watch-timeout 30
+  --enable-ping
+  --enable-resolver
+  --enable-action-run
+  -vvvv
 )
 
 # got get the rootfs tar and unpack it

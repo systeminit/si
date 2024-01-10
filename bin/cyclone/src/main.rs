@@ -27,6 +27,7 @@ async fn main() -> Result<()> {
         .build()?;
     let telemetry = telemetry_application::init(config)?;
     let args = args::parse();
+
     run(args, telemetry).await
 }
 
