@@ -8,7 +8,12 @@
 // TODO(fnichol): document all, then drop `missing_errors_doc`
 #![allow(clippy::missing_errors_doc)]
 
-use std::{borrow::Cow, env, result::Result};
+use std::{
+    borrow::Cow,
+    env,
+    fmt::{Debug, Display},
+    result::Result,
+};
 
 use async_trait::async_trait;
 use thiserror::Error;
@@ -24,6 +29,26 @@ pub mod prelude {
         info_span, instrument, span, span_enabled, trace, trace_span, warn, Instrument, Level,
         Span,
     };
+}
+
+#[remain::sorted]
+#[derive(Clone, Copy, Debug)]
+enum StatusCode {
+    Error,
+    Ok,
+    // Unset is not currently used, although represents a valid state.
+    #[allow(dead_code)]
+    Unset,
+}
+
+impl StatusCode {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Error => "ERROR",
+            Self::Ok => "OK",
+            Self::Unset => "",
+        }
+    }
 }
 
 /// An extention trait for [`SpanKind`] providing string representations.
@@ -53,19 +78,33 @@ pub trait SpanExt {
     fn record_ok(&self);
     fn record_err<E>(&self, err: E) -> E
     where
-        E: std::error::Error;
+        E: Debug + Display;
+
+    // fn record_status<F, T, E>(&self, f: F) -> std::result::Result<T, E>
+    // where
+    //     F: Fn() -> std::result::Result<T, E>,
+    //     E: Debug + Display,
+    // {
+    //     match f() {
+    //         Ok(ok) => {
+    //             self.record_ok();
+    //             Ok(ok)
+    //         }
+    //         Err(err) => Err(self.record_err(err)),
+    //     }
+    // }
 }
 
 impl SpanExt for tracing::Span {
     fn record_ok(&self) {
-        self.record("otel.status_code", "OK");
+        self.record("otel.status_code", StatusCode::Ok.as_str());
     }
 
     fn record_err<E>(&self, err: E) -> E
     where
-        E: std::error::Error,
+        E: Debug + Display,
     {
-        self.record("otel.status_code", "ERROR");
+        self.record("otel.status_code", StatusCode::Error.as_str());
         self.record("otel.status_message", err.to_string().as_str());
         err
     }

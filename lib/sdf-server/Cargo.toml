@@ -39,6 +39,7 @@ si-std = { path = "../../lib/si-std" }
 sodiumoxide = { workspace = true }
 strum = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-http = { path = "../../lib/telemetry-http-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-tungstenite = { workspace = true }
