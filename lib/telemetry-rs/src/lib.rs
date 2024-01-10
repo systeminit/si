@@ -8,7 +8,7 @@
 // TODO(fnichol): document all, then drop `missing_errors_doc`
 #![allow(clippy::missing_errors_doc)]
 
-use std::{borrow::Cow, env, fmt, result::Result};
+use std::{borrow::Cow, env, result::Result};
 
 use async_trait::async_trait;
 use thiserror::Error;
@@ -18,7 +18,7 @@ pub use opentelemetry::{self, trace::SpanKind};
 pub use tracing;
 
 pub mod prelude {
-    pub use super::{FormattedSpanKind, SpanExt, SpanKind};
+    pub use super::{SpanExt, SpanKind, SpanKindExt};
     pub use tracing::{
         self, debug, debug_span, enabled, error, event, event_enabled, field::Empty, info,
         info_span, instrument, span, span_enabled, trace, trace_span, warn, Instrument, Level,
@@ -26,16 +26,25 @@ pub mod prelude {
     };
 }
 
-pub struct FormattedSpanKind(pub SpanKind);
+/// An extention trait for [`SpanKind`] providing string representations.
+pub trait SpanKindExt {
+    /// Returns a static str representation.
+    fn as_str(&self) -> &'static str;
 
-impl fmt::Display for FormattedSpanKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.0 {
-            SpanKind::Client => write!(f, "client"),
-            SpanKind::Server => write!(f, "server"),
-            SpanKind::Producer => write!(f, "producer"),
-            SpanKind::Consumer => write!(f, "consumer"),
-            SpanKind::Internal => write!(f, "internal"),
+    /// Returns an allocated string representation.
+    fn to_string(&self) -> String {
+        self.as_str().to_string()
+    }
+}
+
+impl SpanKindExt for SpanKind {
+    fn as_str(&self) -> &'static str {
+        match self {
+            SpanKind::Client => "client",
+            SpanKind::Server => "server",
+            SpanKind::Producer => "producer",
+            SpanKind::Consumer => "consumer",
+            SpanKind::Internal => "internal",
         }
     }
 }
