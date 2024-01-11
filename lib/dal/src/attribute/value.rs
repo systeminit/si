@@ -922,8 +922,7 @@ impl AttributeValue {
     /// [`Component`](crate::Component). This means that the [`Prop`](crate::Prop) that the
     /// [`InternalProvider`](crate::InternalProvider) is sourcing its data from does not have a
     /// parent [`Prop`](crate::Prop).
-    #[allow(unused)]
-    async fn is_for_internal_provider_of_root_prop(
+    pub async fn is_for_internal_provider_of_root_prop(
         &mut self,
         ctx: &DalContext,
     ) -> AttributeValueResult<bool> {

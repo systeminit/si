@@ -9,29 +9,28 @@ use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::{
     func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     ws_event::{WsEvent, WsPayload},
-    Component, ComponentError, ComponentId, DalContext, FuncId, StandardModel, StandardModelError,
+    ComponentError, ComponentId, DalContext, FuncId, StandardModel, StandardModelError,
     WsEventResult,
 };
+use crate::{standard_model, TransactionsError};
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct QualificationSummaryForComponent {
-    component_id: ComponentId,
-    component_name: String,
-    total: i64,
-    warned: i64,
-    succeeded: i64,
-    failed: i64,
+    pub component_id: ComponentId,
+    pub component_name: String,
+    pub total: i64,
+    pub warned: i64,
+    pub succeeded: i64,
+    pub failed: i64,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct QualificationSummary {
-    total: i64,
-    succeeded: i64,
-    warned: i64,
-    failed: i64,
-    components: Vec<QualificationSummaryForComponent>,
+    pub total: i64,
+    pub succeeded: i64,
+    pub warned: i64,
+    pub failed: i64,
+    pub components: Vec<QualificationSummaryForComponent>,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -44,70 +43,46 @@ pub enum QualificationSummaryError {
     Pg(#[from] PgError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    Transaction(#[from] TransactionsError),
 }
 
 pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;
 
+const GET_SUMMARY_QUALIFICATIONS: &str =
+    include_str!("queries/summary_qualification/get_summary_qualifications.sql");
+
 impl QualificationSummary {
-    // TODO(nick): turn this into a query for performance. The original version leveraged a query,
-    // but since qualifications are now on the prop tree, there is no longer a relevant query
-    // to help here. I'd write it, but the PR replacing the prototypes and resolvers with the prop
-    // tree is getting huge.
     #[instrument(skip_all)]
     pub async fn get_summary(ctx: &DalContext) -> QualificationSummaryResult<QualificationSummary> {
-        let mut component_summaries = Vec::new();
         let mut components_succeeded = 0;
         let mut components_warned = 0;
         let mut components_failed = 0;
         let mut total = 0;
 
-        for component in Component::list(ctx).await? {
-            let component_id = *component.id();
-            let qualifications = Component::list_qualifications(ctx, component_id).await?;
-
-            let individual_total = qualifications.len() as i64;
-            let mut succeeded = 0;
-            let mut warned = 0;
-            let mut failed = 0;
-            for qualification in qualifications {
-                if let Some(result) = qualification.result {
-                    match result.status {
-                        QualificationSubCheckStatus::Success => succeeded += 1,
-                        QualificationSubCheckStatus::Warning => warned += 1,
-                        QualificationSubCheckStatus::Failure => failed += 1,
-                        QualificationSubCheckStatus::Unknown => {}
-                    }
-                }
-            }
-
-            let individual_summary = QualificationSummaryForComponent {
-                component_id,
-                component_name: component.name(ctx).await?,
-                total: individual_total,
-                succeeded,
-                warned,
-                failed,
-            };
-
-            // Update counters for all components.
-            if failed > 0 {
-                components_failed += 1;
-            } else if warned > 0 {
-                components_warned += 1;
-            } else {
-                components_succeeded += 1;
-            }
-            total += individual_total;
-
-            component_summaries.push(individual_summary);
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                GET_SUMMARY_QUALIFICATIONS,
+                &[ctx.tenancy(), ctx.visibility()],
+            )
+            .await?;
+        let qualification_summary_for_components: Vec<QualificationSummaryForComponent> =
+            standard_model::objects_from_rows(rows)?;
+        for component_summary in qualification_summary_for_components.iter() {
+            components_succeeded += component_summary.succeeded;
+            components_warned += component_summary.warned;
+            components_failed += component_summary.failed;
+            total += 1;
         }
-
         Ok(QualificationSummary {
             total,
             succeeded: components_succeeded,
             warned: components_warned,
             failed: components_failed,
-            components: component_summaries,
+            components: qualification_summary_for_components,
         })
     }
 }
