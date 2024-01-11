@@ -1,34 +1,25 @@
-use dal::jwt_key::JwtConfig;
-use si_crypto::CryptoConfig;
-use std::time::Duration;
-use std::{io, net::SocketAddr, path::Path, path::PathBuf, sync::Arc};
-
-use axum::routing::IntoMakeService;
-use axum::Router;
-use hyper::server::{accept::Accept, conn::AddrIncoming};
-use thiserror::Error;
-use tokio::time::Instant;
-use tokio::{
-    io::{AsyncRead, AsyncWrite},
-    signal,
-    sync::{broadcast, mpsc, oneshot},
-    task::{JoinError, JoinSet},
-    time,
+use std::{
+    io,
+    net::SocketAddr,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
 };
-use tower_http::trace::{DefaultMakeSpan, TraceLayer};
-use ulid::Ulid;
 
-use dal::pkg::{import_pkg_from_pkg, ImportOptions, PkgError};
-use dal::tasks::{StatusReceiver, StatusReceiverError};
+use axum::{routing::IntoMakeService, Router};
 use dal::{
-    builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
+    builtins,
+    jwt_key::JwtConfig,
+    pkg::{import_pkg_from_pkg, ImportOptions, PkgError},
+    tasks::{ResourceScheduler, StatusReceiver, StatusReceiverError},
+    BuiltinsError, DalContext, JwtPublicSigningKey, ServicesContext, Tenancy, TransactionsError,
     Workspace, WorkspaceError,
 };
-use dal::{tasks::ResourceScheduler, ServicesContext};
-use module_index_client::types::BuiltinsDetailsResponse;
-use module_index_client::{IndexClient, ModuleDetailsResponse};
+use hyper::server::{accept::Accept, conn::AddrIncoming};
+use module_index_client::{types::BuiltinsDetailsResponse, IndexClient, ModuleDetailsResponse};
 use si_crypto::{
-    CycloneKeyPairError, SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig,
+    CryptoConfig, CycloneKeyPairError, SymmetricCryptoError, SymmetricCryptoService,
+    SymmetricCryptoServiceConfig,
 };
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
@@ -36,12 +27,24 @@ use si_pkg::{SiPkg, SiPkgError};
 use si_posthog::{PosthogClient, PosthogConfig};
 use si_std::SensitiveString;
 use telemetry::prelude::*;
+use telemetry_http::HttpMakeSpan;
+use thiserror::Error;
+use tokio::{
+    io::{AsyncRead, AsyncWrite},
+    signal,
+    sync::{broadcast, mpsc, oneshot},
+    task::{JoinError, JoinSet},
+    time::{self, Instant},
+};
+use tower_http::trace::TraceLayer;
+use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey, CycloneEncryptionKeyError};
 
 use crate::server::config::CycloneKeyPair;
 
-use super::state::AppState;
-use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
+use super::{
+    routes, state::AppState, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -480,12 +483,7 @@ fn build_service_inner(
     );
 
     let routes = routes(state)
-        // TODO(fnichol): customize http tracing further, using:
-        // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(DefaultMakeSpan::default().include_headers(true)),
-        );
+        .layer(TraceLayer::new_for_http().make_span_with(HttpMakeSpan::new().level(Level::INFO)));
 
     let graceful_shutdown_rx = prepare_graceful_shutdown(shutdown_rx, shutdown_broadcast_tx)?;
 
