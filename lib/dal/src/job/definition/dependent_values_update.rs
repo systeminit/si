@@ -7,6 +7,8 @@ use tokio::task::JoinSet;
 
 use crate::tasks::StatusReceiverClient;
 use crate::tasks::StatusReceiverRequest;
+use crate::ComponentId;
+use crate::FuncBindingReturnValue;
 use crate::{
     job::consumer::{
         JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
@@ -337,11 +339,99 @@ async fn update_value(
         ctx.rollback().await?;
     }
 
+    // If this is a root prop, then we want to update summary tables
+    if attribute_value
+        .is_for_internal_provider_of_root_prop(&ctx)
+        .await?
+    {
+        if let Some(fbrv) =
+            FuncBindingReturnValue::get_by_id(&ctx, &attribute_value.func_binding_return_value_id())
+                .await?
+        {
+            if let Some(component_value_json) = fbrv.unprocessed_value() {
+                update_summary_tables(
+                    &ctx,
+                    component_value_json,
+                    attribute_value.context.component_id(),
+                )
+                .await?;
+            }
+        }
+    }
+
     ctx.commit().await?;
 
     if update_result.is_ok() {
         council.processed_value(attribute_value.id().into()).await?;
     }
+
+    Ok(())
+}
+
+#[instrument(
+    name = "dependent_values_update.update_summary_tables",
+    skip_all,
+    level = "info",
+    fields(
+        component.id = %component_id,
+    )
+)]
+async fn update_summary_tables(
+    ctx: &DalContext,
+    component_value_json: &serde_json::Value,
+    component_id: ComponentId,
+) -> JobConsumerResult<()> {
+    // Qualification summary table - if we add more summary tables, this should be extracted to its
+    // own method.
+    let mut total: i64 = 0;
+    let mut warned: i64 = 0;
+    let mut succeeded: i64 = 0;
+    let mut failed: i64 = 0;
+    let mut name: String = String::new();
+
+    if let Some(component_name) = component_value_json.pointer("/si/name") {
+        if let Some(component_name_str) = component_name.as_str() {
+            dbg!(name = String::from(component_name_str));
+        }
+    }
+
+    if let Some(qualification_map_value) = component_value_json.pointer("/qualification") {
+        if let Some(qualification_map) = qualification_map_value.as_object() {
+            for qual_result_map_value in qualification_map.values() {
+                if let Some(qual_result_map) = qual_result_map_value.as_object() {
+                    if let Some(qual_result) = qual_result_map.get("result") {
+                        if let Some(qual_result_string) = qual_result.as_str() {
+                            total += 1;
+                            match qual_result_string {
+                                "success" => succeeded += 1,
+                                "warning" => warned += 1,
+                                "failure" => failed += 1,
+                                &_ => (),
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let _row = ctx
+        .txns()
+        .await?
+        .pg()
+        .query_one(
+            "SELECT object FROM summary_qualification_update_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+            &[
+                ctx.tenancy(),
+                ctx.visibility(),
+                &component_id,
+                &name,
+                &total,
+                &warned,
+                &succeeded,
+                &failed,
+            ],
+        )
+        .await?;
 
     Ok(())
 }
