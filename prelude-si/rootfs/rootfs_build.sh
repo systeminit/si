@@ -142,7 +142,7 @@ supervisor="supervise-daemon"
 pidfile="/cyclone/agent.pid"
 
 start(){
-  export OTEL_EXPORTER_OTLP_ENDPOINT=1.0.0.1:4317
+  export OTEL_EXPORTER_OTLP_ENDPOINT=http://1.0.0.1:4317
   cyclone ${cyclone_args[*]} >> /var/log/cyclone.log 2>&1 && reboot &
 }
 EOF
