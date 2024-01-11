@@ -33,7 +33,7 @@ pub mod prelude {
 
 #[remain::sorted]
 #[derive(Clone, Copy, Debug)]
-enum StatusCode {
+pub enum OtelStatusCode {
     Error,
     Ok,
     // Unset is not currently used, although represents a valid state.
@@ -41,8 +41,8 @@ enum StatusCode {
     Unset,
 }
 
-impl StatusCode {
-    fn as_str(&self) -> &'static str {
+impl OtelStatusCode {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Self::Error => "ERROR",
             Self::Ok => "OK",
@@ -97,14 +97,14 @@ pub trait SpanExt {
 
 impl SpanExt for tracing::Span {
     fn record_ok(&self) {
-        self.record("otel.status_code", StatusCode::Ok.as_str());
+        self.record("otel.status_code", OtelStatusCode::Ok.as_str());
     }
 
     fn record_err<E>(&self, err: E) -> E
     where
         E: Debug + Display,
     {
-        self.record("otel.status_code", StatusCode::Error.as_str());
+        self.record("otel.status_code", OtelStatusCode::Error.as_str());
         self.record("otel.status_message", err.to_string().as_str());
         err
     }

@@ -27,7 +27,7 @@ use si_pkg::{SiPkg, SiPkgError};
 use si_posthog::{PosthogClient, PosthogConfig};
 use si_std::SensitiveString;
 use telemetry::prelude::*;
-use telemetry_http::HttpMakeSpan;
+use telemetry_http::{HttpMakeSpan, HttpOnResponse};
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -482,8 +482,11 @@ fn build_service_inner(
         for_tests,
     );
 
-    let routes = routes(state)
-        .layer(TraceLayer::new_for_http().make_span_with(HttpMakeSpan::new().level(Level::INFO)));
+    let routes = routes(state).layer(
+        TraceLayer::new_for_http()
+            .make_span_with(HttpMakeSpan::new().level(Level::INFO))
+            .on_response(HttpOnResponse::new().level(Level::DEBUG)),
+    );
 
     let graceful_shutdown_rx = prepare_graceful_shutdown(shutdown_rx, shutdown_broadcast_tx)?;
 
