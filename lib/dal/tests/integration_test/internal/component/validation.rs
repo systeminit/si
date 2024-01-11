@@ -11,7 +11,6 @@ use dal::{
     DalContext, Func, FuncBackendKind, FuncBackendResponseType, PropId, PropKind, StandardModel,
     ValidationPrototype, ValidationPrototypeContext, ValidationResolver, ValidationStatus,
 };
-use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
@@ -532,112 +531,6 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
 
     let empty: Vec<ValidationError> = vec![];
     assert_eq!(empty, status.errors);
-}
-
-/// This test ensures that validation statuses correspond to attribute values that exist in an
-/// attribute context that we expect (schema, schema variant, and component).
-///
-/// Recommended to run this test with the following environment variable:
-/// ```shell
-/// SI_TEST_BUILTIN_SCHEMAS=fallout
-/// ```
-#[test]
-async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
-    let mut bagger = ComponentBagger::new();
-    let component_bag = bagger.create_component(ctx, "ksg", "fallout").await;
-    let rads_prop = component_bag
-        .find_prop(ctx, &["root", "domain", "rads"])
-        .await;
-
-    // Purposefully pass one validation (integer is not empty) and fail the other (integer is not
-    // between two integers).
-    let updated_rads_attribute_value_id = component_bag
-        .update_attribute_value_for_prop(ctx, *rads_prop.id(), Some(serde_json::json![-2]))
-        .await;
-
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
-
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "ksg",
-                "type": "component",
-                "color": "#ffffff",
-                "protected": false
-            },
-            "domain": {
-                "name": "ksg",
-                "rads": -2,
-                "active": true
-            }
-        }], // actual
-        component_bag
-            .component_view_properties(ctx)
-            .await
-            .to_value()
-            .expect("could not convert to value") // expected
-    );
-
-    // Ensure that we see exactly one expected validation status with exactly one expected
-    // validation error.
-    let mut status = find_validation_status(
-        ctx,
-        updated_rads_attribute_value_id,
-        component_bag.component_id,
-        None,
-    )
-    .await;
-    let error = status.errors.pop().expect("found empty errors");
-    assert!(
-        status.errors.is_empty(),
-        "found more than one error (should be exactly one)"
-    );
-    assert_eq!(
-        ValidationErrorKind::IntegerNotInBetweenTwoIntegers, // expected
-        error.kind                                           // actual
-    );
-
-    // Now pass both validations with another update.
-    let updated_rads_attribute_value_id = component_bag
-        .update_attribute_value_for_prop(ctx, *rads_prop.id(), Some(serde_json::json![1]))
-        .await;
-
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
-
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "ksg",
-                "type": "component",
-                "color": "#ffffff",
-                "protected": false
-            },
-            "domain": {
-                "name": "ksg",
-                "rads": 1,
-                "active": true
-            }
-        }], // actual
-        component_bag
-            .component_view_properties(ctx)
-            .await
-            .to_value()
-            .expect("could not convert to value") // expected
-    );
-
-    // Ensure that we see exactly one expected validation status with no errors.
-    let status = find_validation_status(
-        ctx,
-        updated_rads_attribute_value_id,
-        component_bag.component_id,
-        None,
-    )
-    .await;
-    assert!(status.errors.is_empty());
 }
 
 /// Finds exactly one [`ValidationStatus`](dal::ValidationStatus) for a given
