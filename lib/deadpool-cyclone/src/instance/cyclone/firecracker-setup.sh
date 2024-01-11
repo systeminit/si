@@ -221,8 +221,8 @@ execute_configuration_management() {
         # This permits NAT from within the Jail to access the otelcol running on the external interface of the machine. Localhost is `not` resolveable from
         # within the jail or the micro-vm directly due to /etc/hosts misalignment. Hardcoding the destination to 12.0.0.1 for the otel endpoint allows us to
         # ship a static copy of the rootfs but allow us to keep the dynamic nature of the machine hosting. 
-        if ! iptables -t nat -C PREROUTING -p tcp --dport 4317 -d 10.0.0.3 -j DNAT --to-destination $(ip route get 8.8.8.8 | awk -- '{printf $7}'):4317; then
-          iptables -t nat -A PREROUTING -p tcp --dport 4317 -d 10.0.0.3 -j DNAT --to-destination $(ip route get 8.8.8.8 | awk -- '{printf $7}'):4317
+        if ! iptables -t nat -C PREROUTING -p tcp --dport 4317 -d 1.0.0.1 -j DNAT --to-destination $(ip route get 8.8.8.8 | awk -- '{printf $7}'):4317; then
+          iptables -t nat -A PREROUTING -p tcp --dport 4317 -d 1.0.0.1 -j DNAT --to-destination $(ip route get 8.8.8.8 | awk -- '{printf $7}'):4317
         fi
 
     else
