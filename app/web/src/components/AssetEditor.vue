@@ -34,7 +34,7 @@
       v-model="editingAsset"
       :typescript="selectedAsset?.types"
       :disabled="isReadOnly"
-      @save="onChange"
+      @change="onChange"
     />
   </ScrollArea>
   <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">

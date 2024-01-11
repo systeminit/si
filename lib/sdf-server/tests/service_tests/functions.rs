@@ -21,20 +21,16 @@ async fn test_execution_endpoint_qualification_function(
     )
     .await
     .expect("cannot create new function");
-    func.set_code_plaintext(
-        &ctx,
-        Some(
-            "async function main(component: Input): Promise < Output > {
+    let code = "async function main(component: Input): Promise < Output > {
 
         return {
             result: 'success',
             message: component.properties.some
         };
-    }",
-        ),
-    )
-    .await
-    .expect("unable to set code plaintext");
+    }";
+    func.set_code_plaintext(&ctx, Some(code))
+        .await
+        .expect("unable to set code plaintext");
     func.set_handler(&ctx, Some("main".to_string()))
         .await
         .expect("unable to set entrypoint");
@@ -46,6 +42,7 @@ async fn test_execution_endpoint_qualification_function(
         args: serde_json::json!({"properties": {"some" : "info"}}),
         execution_key: "somethingfun".to_string(),
         component_id: ComponentId::NONE,
+        code: code.to_owned(),
         visibility: *ctx.visibility(),
     };
 
