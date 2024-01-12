@@ -368,20 +368,9 @@ impl FuncArgument {
     }
 
     pub fn remove(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<()> {
-        // to remove a func argument we must remove all incoming edges to it. It will then be
-        // garbage collected out of the graph
-
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        workspace_snapshot.remove_incoming_edges_of_kind(
-            ctx.change_set_pointer()?,
-            id,
-            EdgeWeightKindDiscriminants::Use,
-        )?;
 
         workspace_snapshot.remove_node_by_id(id)?;
-
-        // TODO: Note we must also delete the attribute prototype arguments that depend on this func
-        // argument
 
         Ok(())
     }

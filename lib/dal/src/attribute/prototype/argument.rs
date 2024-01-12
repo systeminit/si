@@ -182,7 +182,6 @@ impl AttributePrototypeArgument {
             inter_component_metadata: None,
         };
 
-        info!("adding to content store");
         let hash = ctx
             .content_store()
             .try_lock()?
@@ -197,11 +196,8 @@ impl AttributePrototypeArgument {
         )?;
 
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        info!("adding node to graph");
 
         workspace_snapshot.add_node(node_weight)?;
-
-        info!("adding edge 1");
 
         workspace_snapshot.add_edge(
             prototype_id,
@@ -209,7 +205,6 @@ impl AttributePrototypeArgument {
             id,
         )?;
 
-        info!("adding edge 2");
         workspace_snapshot.add_edge(
             id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
@@ -369,11 +364,6 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         prop_id: PropId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        info!("setting value from prop_id: {}", prop_id);
-
-        let prop = Prop::get_by_id(ctx, prop_id).await.expect("get prop");
-        info!("{}, {}", prop.name, prop.path(ctx).expect("get prop path"));
-
         self.set_value_source(ctx, prop_id.into())
     }
 
@@ -420,11 +410,7 @@ impl AttributePrototypeArgument {
         apa_id: AttributePrototypeArgumentId,
     ) -> AttributePrototypeArgumentResult<()> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        workspace_snapshot.remove_incoming_edges_of_kind(
-            ctx.change_set_pointer()?,
-            apa_id,
-            EdgeWeightKindDiscriminants::PrototypeArgument,
-        )?;
+
         workspace_snapshot.remove_node_by_id(apa_id)?;
 
         Ok(())

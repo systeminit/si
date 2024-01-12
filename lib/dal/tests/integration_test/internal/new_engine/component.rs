@@ -64,7 +64,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
     let image_value = serde_json::json!("fiona/apple");
     AttributeValue::update(ctx, image_av_id, Some(image_value.clone()))
         .await
-        .expect("able to update image prop");
+        .expect("able to update image prop with 'fiona/apple'");
 
     let exposed_port_attribute_value_id = property_values
         .values

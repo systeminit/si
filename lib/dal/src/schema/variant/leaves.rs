@@ -227,17 +227,24 @@ impl SchemaVariant {
         let map_prop_id = Prop::parent_prop_id_by_id(ctx, item_prop_id)?
             .ok_or_else(|| SchemaVariantError::LeafMapPropNotFound(item_prop_id))?;
 
-        let key = Some(func.name.to_owned());
-        if let Some(prototype_id) = AttributePrototype::find_for_prop(ctx, item_prop_id, &key)? {
+        if let Some(prototype_id) = AttributePrototype::find_for_prop(ctx, item_prop_id, &None)? {
+            info!("removing None proto");
             AttributePrototype::remove(ctx, prototype_id)?;
         }
+
+        let key = Some(func.name.to_owned());
+        if let Some(prototype_id) = AttributePrototype::find_for_prop(ctx, item_prop_id, &key)? {
+            info!("removing {:?} proto", &key);
+            AttributePrototype::remove(ctx, prototype_id)?;
+        }
+
         let attribute_prototype_id = AttributePrototype::new(ctx, func_id)?.id();
 
         {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
             workspace_snapshot.add_edge(
                 item_prop_id,
-                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(None))?,
+                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(key))?,
                 attribute_prototype_id,
             )?;
         }
