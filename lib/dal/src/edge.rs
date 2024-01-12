@@ -14,7 +14,7 @@ use crate::node::NodeId;
 use crate::socket::SocketError;
 use crate::standard_model::objects_from_rows;
 use crate::{
-    impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
+    diagram, impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
     AttributeReadContext, AttributeValue, AttributeValueError, ComponentId, ExternalProviderError,
     Func, FuncError, HistoryActor, HistoryEventError, InternalProviderError, Node, PropId, Socket,
     StandardModel, StandardModelError, Tenancy, Timestamp, UserPk, Visibility,
@@ -89,6 +89,8 @@ pub enum EdgeError {
     SocketNotFound(SocketId),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("summary diagram error: {0}")]
+    SummaryDiagram(String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
 }
@@ -214,6 +216,9 @@ impl Edge {
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
+        diagram::summary_diagram::create_edge_entry(ctx, &object)
+            .await
+            .map_err(|e| EdgeError::SummaryDiagram(e.to_string()))?;
         Ok(object)
     }
 
@@ -404,6 +409,9 @@ impl Edge {
             .await?;
 
         if *self.kind() == EdgeKind::Symbolic {
+            diagram::summary_diagram::delete_edge_entry(ctx, self)
+                .await
+                .map_err(|e| EdgeError::SummaryDiagram(e.to_string()))?;
             return Ok(());
         }
 
@@ -487,6 +495,10 @@ impl Edge {
             vec![*attr_value.id()],
         ))
         .await?;
+
+        diagram::summary_diagram::delete_edge_entry(ctx, self)
+            .await
+            .map_err(|e| EdgeError::SummaryDiagram(e.to_string()))?;
 
         Ok(())
     }

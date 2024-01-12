@@ -24,7 +24,7 @@ use crate::socket::{SocketEdgeKind, SocketError};
 use crate::standard_model::object_from_row;
 use crate::ws_event::WsEventError;
 use crate::{
-    impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
+    diagram, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
     AttributePrototype, AttributePrototypeArgumentError, AttributePrototypeError,
@@ -170,6 +170,8 @@ pub enum ComponentError {
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("summary diagram error: {0}")]
+    SummaryDiagram(String),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
     #[error("ws event error: {0}")]
@@ -310,6 +312,16 @@ impl Component {
         node.set_component(ctx, component.id()).await?;
 
         component.set_name(ctx, Some(name.as_ref())).await?;
+
+        diagram::summary_diagram::create_component_entry(
+            ctx,
+            &component,
+            &node,
+            &schema,
+            &schema_variant,
+        )
+        .await
+        .map_err(|e| ComponentError::SummaryDiagram(e.to_string()))?;
 
         Ok((component, node))
     }

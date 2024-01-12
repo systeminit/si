@@ -125,8 +125,8 @@ async fn get_diagram_and_create_and_delete_connection(ctx: &DalContext) {
     // Check the connection on the diagram.
     assert_eq!(diagram.edges().len(), 1);
     assert_eq!(
-        diagram.edges()[0],
-        DiagramEdgeView::from_with_change_status(connection.clone(), ChangeStatus::Added)
+        DiagramEdgeView::from_with_change_status(connection.clone(), ChangeStatus::Added).id(),
+        diagram.edges()[0].edge_id().to_string()
     );
 
     // Check the connection itself.

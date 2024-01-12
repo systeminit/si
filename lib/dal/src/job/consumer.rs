@@ -7,6 +7,7 @@ use si_data_pg::{PgError, PgPoolError};
 use thiserror::Error;
 use tokio::task::JoinError;
 
+use crate::diagram::summary_diagram::SummaryDiagramError;
 use crate::{
     fix::FixError, func::binding_return_value::FuncBindingReturnValueError,
     job::producer::BlockingJobError, job::producer::JobProducerError, status::StatusUpdaterError,
@@ -72,6 +73,8 @@ pub enum JobConsumerError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     StatusUpdaterError(#[from] StatusUpdaterError),
+    #[error(transparent)]
+    SummaryDiagram(#[from] SummaryDiagramError),
     #[error(transparent)]
     TokioTask(#[from] JoinError),
     #[error(transparent)]

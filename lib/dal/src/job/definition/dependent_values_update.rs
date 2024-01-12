@@ -1,14 +1,14 @@
 use std::{collections::HashMap, collections::HashSet, convert::TryFrom};
 
 use async_trait::async_trait;
+
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use tokio::task::JoinSet;
 
 use crate::tasks::StatusReceiverClient;
 use crate::tasks::StatusReceiverRequest;
-use crate::ComponentId;
-use crate::FuncBindingReturnValue;
+use crate::{diagram, ComponentId};
 use crate::{
     job::consumer::{
         JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
@@ -17,6 +17,7 @@ use crate::{
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
     DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
 };
+use crate::{FuncBindingReturnValue, InternalProvider};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct DependentValuesUpdateArgs {
@@ -342,10 +343,13 @@ async fn update_value(
         ctx.rollback().await?;
     }
 
-    // If this is a root prop, then we want to update summary tables
-    if attribute_value
-        .is_for_internal_provider_of_root_prop(&ctx)
-        .await?
+    // If this is for an internal provider corresponding to a root prop for the schema variant of an existing component,
+    // then we want to update summary tables.
+    if !attribute_value.context.is_component_unset()
+        && !attribute_value.context.is_internal_provider_unset()
+        && InternalProvider::is_for_root_prop(&ctx, attribute_value.context.internal_provider_id())
+            .await
+            .unwrap()
     {
         if let Some(fbrv) =
             FuncBindingReturnValue::get_by_id(&ctx, &attribute_value.func_binding_return_value_id())
@@ -391,10 +395,36 @@ async fn update_summary_tables(
     let mut succeeded: i64 = 0;
     let mut failed: i64 = 0;
     let mut name: String = String::new();
+    let mut color: String = String::new();
+    let mut component_type: String = String::new();
+    let mut has_resource: bool = false;
+    let mut deleted_at: Option<String> = None;
 
     if let Some(component_name) = component_value_json.pointer("/si/name") {
         if let Some(component_name_str) = component_name.as_str() {
             name = String::from(component_name_str);
+        }
+    }
+
+    if let Some(component_color) = component_value_json.pointer("/si/color") {
+        if let Some(component_color_str) = component_color.as_str() {
+            color = String::from(component_color_str);
+        }
+    }
+
+    if let Some(component_type_json) = component_value_json.pointer("/si/type") {
+        if let Some(component_type_str) = component_type_json.as_str() {
+            component_type = String::from(component_type_str);
+        }
+    }
+
+    if let Some(_resource) = component_value_json.pointer("/resource") {
+        has_resource = true;
+    }
+
+    if let Some(deleted_at_value) = component_value_json.pointer("/deleted_at") {
+        if let Some(deleted_at_str) = deleted_at_value.as_str() {
+            deleted_at = Some(deleted_at_str.into());
         }
     }
 
@@ -436,6 +466,16 @@ async fn update_summary_tables(
         )
         .await?;
 
+    diagram::summary_diagram::component_update(
+        ctx,
+        &component_id,
+        name,
+        color,
+        component_type,
+        has_resource,
+        deleted_at,
+    )
+    .await?;
     Ok(())
 }
 
