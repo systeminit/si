@@ -9,65 +9,39 @@
     @mouseover="onMouseOver"
     @mouseout="onMouseOut"
   >
-    <!-- selection box outline -->
-    <v-rect
-      v-if="isHovered || isSelected"
-      :config="{
-        width: nodeWidth + 8,
-        height: nodeHeight + 8,
-        x: -halfWidth - 4,
-        y: -4,
-        cornerRadius: CORNER_RADIUS + 3,
-        stroke: SELECTION_COLOR,
-        strokeWidth: isSelected ? 3 : 1,
-        listening: false,
-      }"
-    />
-
     <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
-      <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
-        <v-rect
-          :config="{
-            width: nodeWidth,
-            height: nodeHeaderHeight,
-            x: -halfWidth,
-            y: 0,
-            fill: colors.bodyBg,
-            opacity: 0.9,
-          }"
-        />
-        <v-rect
-          :config="{
-            width: nodeWidth,
-            height: nodeHeight - nodeHeaderHeight,
-            x: -halfWidth,
-            y: nodeHeaderHeight,
-            cornerRadius: CORNER_RADIUS,
-            fill: colors.bodyBg,
-            opacity: 0.7,
-          }"
-        />
-      </template>
+      <!-- drop shadow -->
+      <!-- <v-rect
+        :config="{
+          width: nodeWidth,
+          height: nodeHeight,
+          x: -halfWidth - 10,
+          y: 10,
+          cornerRadius: CORNER_RADIUS,
+          fill: colors.bodyBg,
+          fillAfterStrokeEnabled: true,
+        }"
+      /> -->
 
       <!-- box background - also used by layout manager to figure out nodes location and size -->
       <v-rect
         :config="{
           id: `${node.uniqueKey}--bg`,
-          width: nodeWidth + (edgeDisplayMode === 'EDGES_UNDER' ? 2 : 0),
-          height: nodeHeight + (edgeDisplayMode === 'EDGES_UNDER' ? 2 : 0),
-          x: -halfWidth + (edgeDisplayMode === 'EDGES_UNDER' ? -1 : 0),
-          y: 0 + (edgeDisplayMode === 'EDGES_UNDER' ? -1 : 0),
-          cornerRadius:
-            CORNER_RADIUS + (edgeDisplayMode === 'EDGES_UNDER' ? 1 : 0),
-          fill: edgeDisplayMode === 'EDGES_OVER' ? colors.bodyBg : null,
-          fillAfterStrokeEnabled: edgeDisplayMode === 'EDGES_OVER',
+          width: nodeWidth,
+          height: nodeHeight,
+          x: -halfWidth,
+          y: 0,
+          cornerRadius: CORNER_RADIUS,
+          fill: colors.bodyBg,
           stroke: colors.border,
-          strokeWidth: edgeDisplayMode === 'EDGES_OVER' ? 4 : 2,
+          strokeWidth: 2,
+          shadowForStrokeEnabled: false,
+          hitStrokeWidth: 0,
           shadowColor: 'black',
-          shadowBlur: 8,
-          shadowOffset: { x: 3, y: 3 },
-          shadowOpacity: 0.4,
-          shadowEnabled: false,
+          shadowBlur: 3,
+          shadowOffset: { x: 8, y: 8 },
+          shadowOpacity: 0.3,
+          shadowEnabled: !parentComponentId,
         }"
       />
 
@@ -118,6 +92,18 @@
         }"
       />
 
+      <!-- parent frame attachment indicator -->
+      <DiagramIcon
+        v-if="parentComponentId"
+        icon="frame"
+        :size="16"
+        :x="-halfWidth + 12"
+        :y="nodeHeaderHeight + nodeBodyHeight - 12"
+        :color="colors.parentColor"
+        @mouseover="(e) => onMouseOver(e, 'parent')"
+        @mouseout="onMouseOut"
+      />
+
       <!-- header bottom border -->
       <v-line
         :config="{
@@ -128,47 +114,6 @@
           opacity: 1,
         }"
       />
-
-      <!-- sockets -->
-      <v-group
-        :config="{
-          x: -halfWidth,
-          y: nodeHeaderHeight + subtitleTextHeight + SOCKET_MARGIN_TOP,
-        }"
-      >
-        <DiagramNodeSocket
-          v-for="(socket, i) in leftSockets"
-          :key="socket.uniqueKey"
-          :socket="socket"
-          :y="i * SOCKET_GAP"
-          :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
-          :nodeWidth="nodeWidth"
-          @hover:start="onSocketHoverStart(socket)"
-          @hover:end="onSocketHoverEnd(socket)"
-        />
-      </v-group>
-
-      <v-group
-        :config="{
-          x: halfWidth,
-          y:
-            nodeHeaderHeight +
-            SOCKET_MARGIN_TOP +
-            subtitleTextHeight +
-            SOCKET_GAP * leftSockets.length,
-        }"
-      >
-        <DiagramNodeSocket
-          v-for="(socket, i) in rightSockets"
-          :key="socket.uniqueKey"
-          :socket="socket"
-          :y="i * SOCKET_GAP"
-          :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
-          :nodeWidth="nodeWidth"
-          @hover:start="onSocketHoverStart(socket)"
-          @hover:end="onSocketHoverEnd(socket)"
-        />
-      </v-group>
 
       <!-- status icons -->
       <v-group
@@ -256,6 +201,64 @@
       /> -->
     </v-group>
 
+    <!-- selection box outline -->
+    <v-rect
+      v-if="isHovered || isSelected"
+      :config="{
+        width: nodeWidth + 8,
+        height: nodeHeight + 8,
+        x: -halfWidth - 4,
+        y: -4,
+        cornerRadius: CORNER_RADIUS + 3,
+        stroke: SELECTION_COLOR,
+        strokeWidth: isSelected ? 3 : 1,
+        listening: false,
+      }"
+    />
+
+    <!-- sockets -->
+    <v-group :config="{ opacity: isDeleted ? 0.5 : 1 }">
+      <v-group
+        :config="{
+          x: -halfWidth,
+          y: nodeHeaderHeight + subtitleTextHeight + SOCKET_MARGIN_TOP,
+        }"
+      >
+        <DiagramNodeSocket
+          v-for="(socket, i) in leftSockets"
+          :key="socket.uniqueKey"
+          :socket="socket"
+          :y="i * SOCKET_GAP"
+          :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+          :nodeWidth="nodeWidth"
+          @hover:start="onSocketHoverStart(socket)"
+          @hover:end="onSocketHoverEnd(socket)"
+        />
+      </v-group>
+
+      <v-group
+        :config="{
+          x: halfWidth,
+          y:
+            nodeHeaderHeight +
+            SOCKET_MARGIN_TOP +
+            subtitleTextHeight +
+            SOCKET_GAP * leftSockets.length,
+        }"
+      >
+        <DiagramNodeSocket
+          v-for="(socket, i) in rightSockets"
+          :key="socket.uniqueKey"
+          :socket="socket"
+          :y="i * SOCKET_GAP"
+          :connectedEdges="connectedEdgesBySocketKey[socket.uniqueKey]"
+          :nodeWidth="nodeWidth"
+          @hover:start="onSocketHoverStart(socket)"
+          @hover:end="onSocketHoverEnd(socket)"
+        />
+      </v-group>
+    </v-group>
+
     <!-- change status indicators -->
     <!-- deleted icon overlay (large centered) -->
     <DiagramIcon
@@ -285,7 +288,6 @@ import {
   DiagramElementUniqueKey,
   DiagramNodeData,
   DiagramSocketData,
-  ElementHoverMeta,
 } from "./diagram_types";
 import DiagramNodeSocket from "./DiagramNodeSocket.vue";
 
@@ -320,10 +322,11 @@ const props = defineProps({
 });
 
 const emit = defineEmits<{
-  (e: "hover:start", meta?: ElementHoverMeta): void;
-  (e: "hover:end"): void;
   (e: "resize"): void;
 }>();
+
+const componentsStore = useComponentsStore();
+const componentId = computed(() => props.node.def.componentId);
 
 const diffIconHover = ref(false);
 const statusIconHovers = ref(
@@ -424,6 +427,8 @@ const nodeHeight = computed(
   () => nodeHeaderHeight.value + nodeBodyHeight.value,
 );
 
+const parentComponentId = computed(() => _.last(props.node.def.ancestorIds));
+
 const position = computed(() => props.tempPosition || props.node.def.position);
 
 watch([nodeWidth, nodeHeight, position], () => {
@@ -440,6 +445,8 @@ const colors = computed(() => {
   bodyBgHsl.l = theme.value === "dark" ? 0.08 : 0.95;
   const bodyBg = tinycolor(bodyBgHsl);
 
+  if (edgeDisplayMode.value === "EDGES_UNDER") bodyBg.setAlpha(0.5);
+
   const bodyText = theme.value === "dark" ? "#FFF" : "#000";
   return {
     border: primaryColor.toRgbString(),
@@ -447,6 +454,9 @@ const colors = computed(() => {
     headerText: bodyText,
     bodyBg: bodyBg.toRgbString(),
     bodyText,
+    parentColor:
+      componentsStore.componentsById[parentComponentId.value || ""]?.color ||
+      "#FFF",
   };
 });
 
@@ -462,26 +472,33 @@ watch([() => props.node.def.isLoading, overlay], () => {
   transition.play();
 });
 
-function onMouseOver(_e: KonvaEventObject<MouseEvent>) {
-  emit("hover:start");
+function onMouseOver(evt: KonvaEventObject<MouseEvent>, type?: "parent") {
+  evt.cancelBubble = true;
+  componentsStore.setHoveredComponentId(
+    componentId.value,
+    type ? { type } : undefined,
+  );
 }
 
-function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
-  emit("hover:end");
+function onMouseOut() {
+  componentsStore.setHoveredComponentId(null);
 }
 
 function onSocketHoverStart(socket: DiagramSocketData) {
-  emit("hover:start", { type: "socket", socket });
+  componentsStore.setHoveredComponentId(componentId.value, {
+    type: "socket",
+    socket,
+  });
 }
 
 function onSocketHoverEnd(_socket: DiagramSocketData) {
-  emit("hover:end");
+  componentsStore.setHoveredComponentId(null);
 }
 
 // TODO: not sure if want to communicate with the store here or send the message up to the diagram...
-const componentsStore = useComponentsStore();
+
 function onClick(detailsTabSlug: string) {
-  componentsStore.setSelectedComponentId(props.node.def.componentId, {
+  componentsStore.setSelectedComponentId(componentId.value, {
     detailsTab: detailsTabSlug,
   });
 }

@@ -250,7 +250,8 @@ export type DiagramDrawEdgeState = {
 // Event payloads - emitted by generic diagram //////////////////////////////////
 export type ElementHoverMeta =
   | { type: "resize"; direction: SideAndCornerIdentifiers }
-  | { type: "socket"; socket: DiagramSocketData };
+  | { type: "socket"; socket: DiagramSocketData }
+  | { type: "parent" };
 
 export type RightClickElementEvent = {
   element: DiagramElementData;

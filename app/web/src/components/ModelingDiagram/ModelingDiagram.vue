@@ -38,6 +38,7 @@ overflow hidden */
         height: containerHeight,
         scale: { x: zoomLevel, y: zoomLevel },
         offset: { x: gridMinX, y: gridMinY },
+        devicePixelRatio: 1,
       }"
       @mousedown="onMouseDown"
       @click.right="onRightClick"
@@ -59,8 +60,6 @@ overflow hidden */
           :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
           :isHovered="elementIsHovered(group)"
           :isSelected="elementIsSelected(group)"
-          @hover:start="(meta) => onElementHoverStart(group, meta)"
-          @hover:end="onElementHoverEnd(group)"
           @resize="onNodeLayoutOrLocationChange(group)"
         />
         <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
@@ -72,8 +71,6 @@ overflow hidden */
             :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
             :isHovered="elementIsHovered(edge)"
             :isSelected="elementIsSelected(edge)"
-            @hover:start="onElementHoverStart(edge)"
-            @hover:end="onElementHoverEnd(edge)"
           />
         </template>
         <DiagramNode
@@ -84,8 +81,6 @@ overflow hidden */
           :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
           :isHovered="elementIsHovered(node)"
           :isSelected="elementIsSelected(node)"
-          @hover:start="(meta) => onElementHoverStart(node, meta)"
-          @hover:end="(meta) => onElementHoverEnd(node)"
           @resize="onNodeLayoutOrLocationChange(node)"
         />
         <DiagramCursor
@@ -102,8 +97,6 @@ overflow hidden */
             :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
             :isHovered="elementIsHovered(edge)"
             :isSelected="elementIsSelected(edge)"
-            @hover:start="onElementHoverStart(edge)"
-            @hover:end="onElementHoverEnd(edge)"
           />
         </template>
         <DiagramGroupOverlay
@@ -633,7 +626,7 @@ const dragThresholdBroken = ref(false);
 const lastMouseDownEvent = ref<MouseEvent>();
 const lastMouseDownContainerPointerPos = ref<Vector2d>();
 const lastMouseDownElementKey = ref<DiagramElementUniqueKey>();
-const lastMouseDownHoverMeta = ref<ElementHoverMeta>();
+const lastMouseDownHoverMeta = ref<ElementHoverMeta | null>(null);
 const lastMouseDownElement = computed(() =>
   lastMouseDownElementKey.value
     ? allElementsByKey.value[lastMouseDownElementKey.value]
@@ -884,24 +877,8 @@ const hoveredElement = computed(() =>
 // same event and handler is used for both hovering nodes and sockets
 // NOTE - we'll receive 2 events when hovering sockets, one for the node and one for the socket
 
-// keeping element hover meta (which contains socket vs resize) here for now
-// but will probably want to move into the store as well
-const hoveredElementMeta = ref<ElementHoverMeta>();
-
-function onElementHoverStart(el: DiagramElementData, meta?: ElementHoverMeta) {
-  hoveredElementMeta.value = meta;
-
-  if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
-    componentsStore.setHoveredComponentId(el.def.componentId);
-  } else if (el instanceof DiagramEdgeData) {
-    componentsStore.setHoveredEdgeId(el.def.id);
-  }
-}
-
-function onElementHoverEnd(_el: DiagramElementData) {
-  hoveredElementMeta.value = undefined;
-  componentsStore.setHoveredComponentId(null);
-}
+// more detailed info about what inside an element is being hovered (like resize direction, socket, etc)
+const hoveredElementMeta = computed(() => componentsStore.hoveredComponentMeta);
 
 const disableHoverEvents = computed(() => {
   if (dragToPanArmed.value || dragToPanActive.value) return true;

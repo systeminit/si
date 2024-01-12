@@ -85,6 +85,7 @@ import {
   useTheme,
   getToneColorHex,
 } from "@si/vue-lib/design-system";
+import { useComponentsStore } from "@/store/components.store";
 import { SOCKET_SIZE, SELECTION_COLOR } from "./diagram_constants";
 import { DiagramEdgeData } from "./diagram_types";
 import { pointAlongLinePct, pointAlongLinePx } from "./utils/math";
@@ -168,12 +169,13 @@ const mainLineOpacity = computed(() => {
   return 1;
 });
 
-function onMouseOver(_e: KonvaEventObject<MouseEvent>) {
-  emit("hover:start");
+const componentsStore = useComponentsStore();
+function onMouseOver() {
+  componentsStore.setHoveredEdgeId(props.edge.def.id);
 }
 
 function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
-  emit("hover:end");
+  componentsStore.setHoveredEdgeId(null);
 }
 
 function onMouseDown(_e: KonvaEventObject<MouseEvent>) {

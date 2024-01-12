@@ -92,6 +92,7 @@ import Docs from "~icons/fluent/book-question-mark-20-filled";
 import Password from "~icons/material-symbols-light/password";
 import Key from "~icons/material-symbols/key";
 import Scissors from "~icons/clarity/scissors-solid";
+import Frame from "~icons/iconamoon/frame-light";
 
 import BracketsCurly from "~icons/ph/brackets-curly";
 import BracketsSquare from "~icons/ph/brackets-square";
@@ -206,6 +207,7 @@ export const ICONS = Object.freeze({
   "external-link": ExternalLink,
   eye: Eye,
   filter: Filter,
+  frame: Frame,
   "git-branch": GitBranch,
   "git-branch-plus": GitBranchPlus,
   "git-commit": GitCommit,

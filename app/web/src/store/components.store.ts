@@ -11,6 +11,7 @@ import {
   DiagramNodeDef,
   DiagramSocketDef,
   DiagramStatusIcon,
+  ElementHoverMeta,
   GridPoint,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
@@ -247,6 +248,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           selectedComponentDetailsTab: null as string | null,
           hoveredComponentId: null as ComponentId | null,
           hoveredEdgeId: null as EdgeId | null,
+          hoveredComponentMeta: null as ElementHoverMeta | null,
 
           panTargetComponentId: null as ComponentId | null,
 
@@ -853,8 +855,45 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 parentNodeId,
                 ...visibilityParams,
               },
-              onSuccess: (response) => {
-                // TODO: store component details rather than waiting for re-fetch
+              optimistic: () => {
+                const component =
+                  this.rawComponentsById[
+                    this.componentsByNodeId[childNodeId]?.id || ""
+                  ];
+                if (!component) return;
+                const prevParentId = component?.parentNodeId;
+                component.parentNodeId = parentNodeId;
+                return () => {
+                  component.parentNodeId = prevParentId;
+                };
+              },
+            });
+          },
+          async DETACH_COMPONENT(componentId: ComponentId) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
+            const component = this.componentsById[componentId];
+
+            return new ApiRequest<{ node: DiagramNode }>({
+              method: "post",
+              url: "diagram/detach_component",
+              params: {
+                componentId,
+                // TODO: should not have to pass this to the backend
+                parentComponentIds: component?.ancestorIds,
+                ...visibilityParams,
+              },
+              optimistic: () => {
+                const component = this.rawComponentsById[componentId];
+                if (!component) return;
+                const prevParentId = component?.parentNodeId;
+                delete component.parentNodeId;
+                return () => {
+                  component.parentNodeId = prevParentId;
+                };
               },
             });
           },
@@ -1266,8 +1305,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             }
             this.syncSelectionIntoUrl();
           },
-          setHoveredComponentId(id: ComponentId | null) {
+          setHoveredComponentId(
+            id: ComponentId | null,
+            meta?: ElementHoverMeta,
+          ) {
             this.hoveredComponentId = id;
+            this.hoveredComponentMeta = meta || null;
             this.hoveredEdgeId = null;
           },
           setHoveredEdgeId(id: ComponentId | null) {
