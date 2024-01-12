@@ -218,6 +218,10 @@ const componentTypeOptions = [
     label: "Configuration Frame (down)",
     value: ComponentType.ConfigurationFrameDown,
   },
+  {
+    label: "Configuration Frame (up)",
+    value: ComponentType.ConfigurationFrameUp,
+  },
 ];
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();

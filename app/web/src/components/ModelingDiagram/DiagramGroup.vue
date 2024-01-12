@@ -465,12 +465,15 @@ const headerWidth = computed(() =>
 );
 
 const actualSockets = computed(() =>
-  _.filter(
-    props.group.sockets,
-    (s) =>
-      s.def.label !== "Frame" &&
-      s.parent.def.nodeType !== ComponentType.ConfigurationFrameDown,
-  ),
+  _.filter(props.group.sockets, (s) => {
+    const should_skip =
+      s.def.label === "Frame" ||
+      s.parent.def.nodeType === ComponentType.ConfigurationFrameDown ||
+      (s.parent.def.nodeType === ComponentType.ConfigurationFrameUp &&
+        s.def.direction === "input");
+
+    return !should_skip;
+  }),
 );
 
 const leftSockets = computed(() =>

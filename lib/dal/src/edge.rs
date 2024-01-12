@@ -326,7 +326,7 @@ impl Edge {
 
     pub async fn list_children_for_node(
         ctx: &DalContext,
-        tail_node_id: NodeId,
+        node_id: NodeId,
     ) -> EdgeResult<Vec<NodeId>> {
         let rows = ctx
             .txns()
@@ -334,19 +334,16 @@ impl Edge {
             .pg()
             .query(
                 LIST_CHILDREN_FOR_NODE,
-                &[ctx.tenancy(), ctx.visibility(), &tail_node_id],
+                &[ctx.tenancy(), ctx.visibility(), &node_id],
             )
             .await?;
-        let objects = rows
-            .into_iter()
-            .map(|row| row.get("head_node_id"))
-            .collect();
+        let objects = rows.into_iter().map(|row| row.get("node_id")).collect();
         Ok(objects)
     }
 
     pub async fn list_parents_for_component(
         ctx: &DalContext,
-        head_component_id: ComponentId,
+        component_id: ComponentId,
     ) -> EdgeResult<Vec<ComponentId>> {
         let rows = ctx
             .txns()
@@ -354,13 +351,10 @@ impl Edge {
             .pg()
             .query(
                 LIST_PARENTS_FOR_COMPONENT,
-                &[ctx.tenancy(), ctx.visibility(), &head_component_id],
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
-        let objects = rows
-            .into_iter()
-            .map(|row| row.get("tail_object_id"))
-            .collect();
+        let objects = rows.into_iter().map(|row| row.get("object_id")).collect();
         Ok(objects)
     }
 

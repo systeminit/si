@@ -164,6 +164,7 @@ export enum SchemaKind {
 export enum ComponentType {
   Component = "component",
   ConfigurationFrameDown = "configurationFrameDown",
+  ConfigurationFrameUp = "configurationFrameUp",
   AggregationFrame = "aggregationFrame",
 }
 

@@ -321,7 +321,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   (nodeId) => nodeIdToComponentId[nodeId],
                 ),
                 icon: typeIcon,
-                isGroup: rc.nodeType !== "component",
+                isGroup: rc.nodeType !== ComponentType.Component,
               } as FullComponent;
             });
           },
@@ -484,7 +484,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 const toNodeParentComp =
                   this.componentsByNodeId[toNodeParentId];
 
-                if (toNodeParentComp?.nodeType === "aggregationFrame") {
+                if (
+                  toNodeParentComp?.nodeType === ComponentType.AggregationFrame
+                ) {
                   if (edge.fromNodeId === toNodeParentComp.nodeId) {
                     edge.isInvisible = true;
                   }
@@ -497,7 +499,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               if (fromNodeParentId) {
                 const fromParentComp =
                   this.componentsByNodeId[fromNodeParentId];
-                if (fromParentComp?.nodeType === "aggregationFrame") {
+                if (
+                  fromParentComp?.nodeType === ComponentType.AggregationFrame
+                ) {
                   if (edge.toNodeId === fromParentComp.nodeId) {
                     edge.isInvisible = true;
                   }
