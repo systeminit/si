@@ -40,7 +40,10 @@ impl NatsProcessor {
 
             if let Err(err) = self
                 .client
-                .publish(self.pinga_subject.clone(), serde_json::to_vec(&job_info)?)
+                .publish(
+                    self.pinga_subject.clone(),
+                    serde_json::to_vec(&job_info)?.into(),
+                )
                 .await
             {
                 error!("Nats job push failed, some jobs will be dropped");
@@ -70,7 +73,8 @@ impl JobQueueProcessor for NatsProcessor {
                 self.pinga_subject.clone(),
                 job_reply_inbox,
                 serde_json::to_vec(&job_info)
-                    .map_err(|e| BlockingJobError::Serde(e.to_string()))?,
+                    .map_err(|e| BlockingJobError::Serde(e.to_string()))?
+                    .into(),
             )
             .await
             .map_err(|e| BlockingJobError::Nats(e.to_string()))?;

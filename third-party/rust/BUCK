@@ -276,18 +276,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "anstream-0.6.5.crate",
-    sha256 = "d664a92ecae85fd0a7392615844904654d1d5f5514837f471ddef4a057aba1b6",
-    strip_prefix = "anstream-0.6.5",
-    urls = ["https://crates.io/api/v1/crates/anstream/0.6.5/download"],
+    name = "anstream-0.6.7.crate",
+    sha256 = "4cd2405b3ac1faab2990b74d728624cd9fd115651fcecc7c2d8daf01376275ba",
+    strip_prefix = "anstream-0.6.7",
+    urls = ["https://crates.io/api/v1/crates/anstream/0.6.7/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "anstream-0.6.5",
-    srcs = [":anstream-0.6.5.crate"],
+    name = "anstream-0.6.7",
+    srcs = [":anstream-0.6.7.crate"],
     crate = "anstream",
-    crate_root = "anstream-0.6.5.crate/src/lib.rs",
+    crate_root = "anstream-0.6.7.crate/src/lib.rs",
     edition = "2021",
     features = [
         "auto",
@@ -528,6 +528,7 @@ cargo.rust_library(
     features = [
         "default",
         "server_2_10",
+        "service",
     ],
     visibility = [],
     deps = [
@@ -1840,23 +1841,23 @@ cargo.rust_library(
 
 alias(
     name = "clap",
-    actual = ":clap-4.4.15",
+    actual = ":clap-4.4.16",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "clap-4.4.15.crate",
-    sha256 = "c12ed66a79a555082f595f7eb980d08669de95009dd4b3d61168c573ebe38fc9",
-    strip_prefix = "clap-4.4.15",
-    urls = ["https://crates.io/api/v1/crates/clap/4.4.15/download"],
+    name = "clap-4.4.16.crate",
+    sha256 = "58e54881c004cec7895b0068a0a954cd5d62da01aef83fa35b1e594497bf5445",
+    strip_prefix = "clap-4.4.16",
+    urls = ["https://crates.io/api/v1/crates/clap/4.4.16/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "clap-4.4.15",
-    srcs = [":clap-4.4.15.crate"],
+    name = "clap-4.4.16",
+    srcs = [":clap-4.4.16.crate"],
     crate = "clap",
-    crate_root = "clap-4.4.15.crate/src/lib.rs",
+    crate_root = "clap-4.4.16.crate/src/lib.rs",
     edition = "2021",
     features = [
         "color",
@@ -1872,24 +1873,24 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":clap_builder-4.4.15",
+        ":clap_builder-4.4.16",
         ":clap_derive-4.4.7",
     ],
 )
 
 http_archive(
-    name = "clap_builder-4.4.15.crate",
-    sha256 = "0f4645eab3431e5a8403a96bea02506a8b35d28cd0f0330977dd5d22f9c84f43",
-    strip_prefix = "clap_builder-4.4.15",
-    urls = ["https://crates.io/api/v1/crates/clap_builder/4.4.15/download"],
+    name = "clap_builder-4.4.16.crate",
+    sha256 = "59cb82d7f531603d2fd1f507441cdd35184fa81beff7bd489570de7f773460bb",
+    strip_prefix = "clap_builder-4.4.16",
+    urls = ["https://crates.io/api/v1/crates/clap_builder/4.4.16/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "clap_builder-4.4.15",
-    srcs = [":clap_builder-4.4.15.crate"],
+    name = "clap_builder-4.4.16",
+    srcs = [":clap_builder-4.4.16.crate"],
     crate = "clap_builder",
-    crate_root = "clap_builder-4.4.15.crate/src/lib.rs",
+    crate_root = "clap_builder-4.4.16.crate/src/lib.rs",
     edition = "2021",
     features = [
         "color",
@@ -1903,7 +1904,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":anstream-0.6.5",
+        ":anstream-0.6.7",
         ":anstyle-1.0.4",
         ":clap_lex-0.6.0",
         ":strsim-0.10.0",
@@ -13691,7 +13692,7 @@ cargo.rust_binary(
         ":bytes-1.5.0",
         ":chrono-0.4.31",
         ":ciborium-0.2.1",
-        ":clap-4.4.15",
+        ":clap-4.4.16",
         ":color-eyre-0.6.2",
         ":colored-2.1.0",
         ":comfy-table-7.1.0",

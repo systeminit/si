@@ -194,7 +194,7 @@ mod workspace_updates {
                                             container,
                                             container_key
                                         }).await?;
-                                        self.nats.publish(subject, serde_json::to_vec(&event)?).await?;
+                                        self.nats.publish(subject, serde_json::to_vec(&event)?.into()).await?;
                                     }
                                     WebsocketEventRequest::Online { user_pk, name, picture_url, change_set_pk, idle } => {
                                         let subject = format!("si.workspace_pk.{}.event", self.workspace_pk);
@@ -205,7 +205,7 @@ mod workspace_updates {
                                             change_set_pk,
                                             idle,
                                         }).await?;
-                                        self.nats.publish(subject, serde_json::to_vec(&event)?).await?;
+                                        self.nats.publish(subject, serde_json::to_vec(&event)?.into()).await?;
                                     }
                                 }
                             },

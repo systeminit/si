@@ -46,7 +46,7 @@ members = [
 ]
 
 [workspace.dependencies]
-async-nats = "0.33.0"
+async-nats = { version = "0.33.0", features = ["service"] }
 async-recursion = "1.0.4"
 async-trait = "0.1.68"
 axum = { version = "0.6.18", features = ["macros", "multipart", "ws"] } # todo: upgrade this alongside hyper/http/tokio-tungstenite

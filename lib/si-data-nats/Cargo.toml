@@ -6,9 +6,10 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+async-nats = { workspace = true }
+bytes = { workspace = true }
 crossbeam-channel = { workspace = true }
 futures = { workspace = true }
-async-nats = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

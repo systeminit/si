@@ -35,7 +35,7 @@ impl<'a> Publisher<'a> {
         let nats_msg = serde_json::to_string(output).map_err(PublisherError::JSONSerialize)?;
 
         self.nats
-            .publish(self.reply_mailbox_output.clone(), nats_msg)
+            .publish(self.reply_mailbox_output.clone(), nats_msg.into())
             .await
             .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_output.to_string()))
     }
@@ -44,7 +44,7 @@ impl<'a> Publisher<'a> {
         let mut headers = si_data_nats::HeaderMap::new();
         headers.insert(FINAL_MESSAGE_HEADER_KEY, "true");
         self.nats
-            .publish_with_headers(self.reply_mailbox_output.clone(), headers, vec![])
+            .publish_with_headers(self.reply_mailbox_output.clone(), headers, vec![].into())
             .await
             .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_output.to_string()))
     }
@@ -56,7 +56,7 @@ impl<'a> Publisher<'a> {
         let nats_msg = serde_json::to_string(result).map_err(PublisherError::JSONSerialize)?;
 
         self.nats
-            .publish(self.reply_mailbox_result.clone(), nats_msg)
+            .publish(self.reply_mailbox_result.clone(), nats_msg.into())
             .await
             .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_result.to_string()))
     }

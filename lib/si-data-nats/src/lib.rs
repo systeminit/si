@@ -9,7 +9,8 @@
 
 use std::{fmt::Debug, io, sync::Arc};
 
-use async_nats::subject::ToSubject;
+use async_nats::{subject::ToSubject, ToServerAddrs};
+use bytes::Bytes;
 use crossbeam_channel::RecvError;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -18,9 +19,13 @@ use tokio::sync::Mutex;
 
 mod connect_options;
 mod message;
+pub mod service;
 mod subscriber;
 
-pub use async_nats::{header::HeaderMap, rustls, Subject};
+pub use async_nats::{
+    connection::State, header, header::HeaderMap, rustls, status, subject, Auth, AuthError,
+    Request, ServerAddr, ServerInfo, Subject,
+};
 pub use connect_options::ConnectOptions;
 pub use message::Message;
 pub use subscriber::Subscriber;
@@ -107,7 +112,7 @@ impl Client {
             options = options.credentials(creds)?;
         }
         if let Some(creds_file) = &config.creds_file {
-            options = options.credentials_file(creds_file.into()).await?;
+            options = options.credentials_file(creds_file).await?;
         }
         if let Some(connection_name) = &config.connection_name {
             options = options.name(connection_name);
@@ -131,109 +136,386 @@ impl Client {
         self.inner.server_info()
     }
 
+    /// Returns true if the server version is compatible with the version components.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// assert!(client.is_server_compatible(2, 8, 4));
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn is_server_compatible(&self, major: i64, minor: i64, patch: i64) -> bool {
+        self.inner.is_server_compatible(major, minor, patch)
+    }
+
+    /// Publish a [Message] to a given subject.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// client
+    ///     .publish("events.data".into(), "payload".into())
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn publish(&self, subject: impl ToSubject, payload: Bytes) -> Result<()> {
+        let span = Span::current();
+
+        let subject = subject.to_subject();
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} send", &subject).as_str());
+        self.inner
+            .publish(subject, payload)
+            .await
+            .map_err(|err| span.record_err(Error::NatsPublish(err)))?;
+
+        span.record_ok();
+        Ok(())
+    }
+
+    /// Publish a [Message] with headers to a given subject.
+    ///
+    /// # Examples
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// use std::str::FromStr;
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let mut headers = async_nats::HeaderMap::new();
+    /// headers.insert(
+    ///     "X-Header",
+    ///     async_nats::HeaderValue::from_str("Value").unwrap(),
+    /// );
+    /// client
+    ///     .publish_with_headers("events.data".into(), headers, "payload".into())
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[instrument(
-        name = "client.transaction",
+        name = "client.publish_with_headers",
         skip_all,
         level = "debug",
         fields(
+            messaging.destination = Empty,
+            messaging.destination_kind = "topic",
+            messaging.operation = "send",
             messaging.protocol = %self.metadata.messaging_protocol,
             messaging.system = %self.metadata.messaging_system,
-            messaging.transaction = Empty,
             messaging.url = %self.metadata.messaging_url,
             net.transport = %self.metadata.net_transport,
+            otel.kind = SpanKind::Producer.as_str(),
+            otel.name = Empty,
+            otel.status_code = Empty,
+            otel.status_message = Empty,
         )
     )]
-    pub fn transaction(&self) -> NatsTxn {
-        NatsTxn::new(
-            self.clone(),
-            self.metadata.clone(),
-            current_span_for_debug!(),
-        )
+    pub async fn publish_with_headers(
+        &self,
+        subject: impl ToSubject,
+        headers: HeaderMap,
+        payload: Bytes,
+    ) -> Result<()> {
+        let span = Span::current();
+
+        let subject = subject.to_subject();
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} send", &subject).as_str());
+        self.inner
+            .publish_with_headers(subject, headers, payload)
+            .await
+            .map_err(|err| span.record_err(Error::NatsPublish(err)))?;
+
+        span.record_ok();
+        Ok(())
     }
 
-    /// Establish a `Connection` with a NATS server.
-    ///
-    /// Multiple servers may be specified by separating them with commas.
+    /// Publish a [Message] to a given subject, with specified response subject to which the
+    /// subscriber can respond. This method does not await for the response.
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data_nats::{Client, ConnectOptions};
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let nc = Client::connect_with_options(
-    ///         "demo.nats.io",
-    ///         None,
-    ///         ConnectOptions::default(),
-    ///     ).await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    ///
-    /// In the below case, the second server is configured to use TLS but the first one is not.
-    /// Using the `tls_required` method can ensure that all servers are connected to with TLS, if
-    /// that is your intention.
-    ///
-    /// ```no_run
-    /// # use si_data_nats::{Client, ConnectOptions};
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let nc = Client::connect_with_options(
-    ///         "nats://demo.nats.io:4222,tls://demo.nats.io:4443",
-    ///         None,
-    ///         ConnectOptions::default(),
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// client
+    ///     .publish_with_reply(
+    ///         "events.data".into(),
+    ///         "reply_subject".into(),
+    ///         "payload".into(),
     ///     )
     ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
     #[instrument(
-        name = "client::connect_with_options",
+        name = "client.publish_with_reply",
         skip_all,
         level = "debug",
         fields(
-            messaging.protocol = Empty,
-            messaging.system = Empty,
-            messaging.url = Empty,
-            net.transport = Empty,
-            otel.kind = SpanKind::Client.as_str(),
+            messaging.destination = Empty,
+            messaging.destination_kind = "topic",
+            messaging.operation = "send",
+            messaging.protocol = %self.metadata.messaging_protocol,
+            messaging.system = %self.metadata.messaging_system,
+            messaging.url = %self.metadata.messaging_url,
+            net.transport = %self.metadata.net_transport,
+            otel.kind = SpanKind::Producer.as_str(),
+            otel.name = Empty,
             otel.status_code = Empty,
             otel.status_message = Empty,
         )
     )]
-    pub async fn connect_with_options(
-        nats_url: impl Into<String>,
-        subject_prefix: Option<String>,
-        options: ConnectOptions,
-    ) -> Result<Self> {
-        let nats_url = nats_url.into();
-
-        let metadata = ConnectionMetadata {
-            messaging_protocol: "nats",
-            messaging_system: "nats",
-            messaging_url: nats_url.clone(),
-            net_transport: "ip_tcp",
-            subject_prefix,
-        };
-
+    pub async fn publish_with_reply(
+        &self,
+        subject: impl ToSubject,
+        reply: impl ToSubject,
+        payload: Bytes,
+    ) -> Result<()> {
         let span = Span::current();
-        span.record("messaging.protocol", metadata.messaging_protocol);
-        span.record("messaging.system", metadata.messaging_system);
-        span.record("messaging.url", metadata.messaging_url.as_str());
-        span.record("net.transport", metadata.net_transport);
 
-        let inner = options
-            .inner
-            .connect(&nats_url)
+        let subject = subject.to_subject();
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} send", &subject).as_str());
+        self.inner
+            .publish_with_reply(subject, reply, payload)
             .await
-            .map_err(|err| span.record_err(Error::NatsConnect(err)))?;
-        debug!("successfully connected to nats");
+            .map_err(|err| span.record_err(Error::NatsPublish(err)))?;
 
         span.record_ok();
-        Ok(Self {
-            inner,
-            metadata: Arc::new(metadata),
-        })
+        Ok(())
+    }
+
+    /// Publish a [Message] to a given subject with headers and specified response subject to which
+    /// the subscriber can respond. This method does not await for the response.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::Error> {
+    /// use std::str::FromStr;
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let mut headers = async_nats::HeaderMap::new();
+    /// client
+    ///     .publish_with_reply_and_headers(
+    ///         "events.data",
+    ///         "reply_subject",
+    ///         headers,
+    ///         "payload".into(),
+    ///     )
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[instrument(
+        name = "client.publish_with_reply_and_headers",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.destination = Empty,
+            messaging.destination_kind = "topic",
+            messaging.operation = "send",
+            messaging.protocol = %self.metadata.messaging_protocol,
+            messaging.system = %self.metadata.messaging_system,
+            messaging.url = %self.metadata.messaging_url,
+            net.transport = %self.metadata.net_transport,
+            otel.kind = SpanKind::Producer.as_str(),
+            otel.name = Empty,
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+        )
+    )]
+    pub async fn publish_with_reply_and_headers(
+        &self,
+        subject: impl ToSubject,
+        reply: impl ToSubject,
+        headers: HeaderMap,
+        payload: Bytes,
+    ) -> Result<()> {
+        let span = Span::current();
+
+        let subject = subject.to_subject();
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} send", &subject).as_str());
+        self.inner
+            .publish_with_reply_and_headers(subject, reply, headers, payload)
+            .await
+            .map_err(|err| span.record_err(Error::NatsPublish(err)))?;
+
+        span.record_ok();
+        Ok(())
+    }
+
+    /// Sends the request with headers.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let response = client.request("service", "data".into()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[instrument(
+        name = "client.request",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.destination = Empty,
+            messaging.destination_kind = "topic",
+            messaging.operation = "send",
+            messaging.protocol = %self.metadata.messaging_protocol,
+            messaging.system = %self.metadata.messaging_system,
+            messaging.url = %self.metadata.messaging_url,
+            net.transport = %self.metadata.net_transport,
+            otel.kind = SpanKind::Client.as_str(),
+            otel.name = Empty,
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+        )
+    )]
+    pub async fn request(&self, subject: impl ToSubject, payload: Bytes) -> Result<Message> {
+        let span = Span::current();
+
+        let subject = subject.to_subject();
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} send", &subject).as_str());
+        let msg = self
+            .inner
+            .request(subject, payload)
+            .await
+            .map_err(|err| span.record_err(Error::NatsRequest(err)))?;
+
+        span.record_ok();
+        Ok(Message::new(msg, self.metadata.clone()))
+    }
+
+    /// Sends the request with headers.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let mut headers = async_nats::HeaderMap::new();
+    /// headers.insert("Key", "Value");
+    /// let response = client
+    ///     .request_with_headers("service", headers, "data".into())
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[instrument(
+        name = "client.request_with_headers",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.destination = Empty,
+            messaging.destination_kind = "topic",
+            messaging.operation = "send",
+            messaging.protocol = %self.metadata.messaging_protocol,
+            messaging.system = %self.metadata.messaging_system,
+            messaging.url = %self.metadata.messaging_url,
+            net.transport = %self.metadata.net_transport,
+            otel.kind = SpanKind::Client.as_str(),
+            otel.name = Empty,
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+        )
+    )]
+    pub async fn request_with_headers(
+        &self,
+        subject: impl ToSubject,
+        headers: HeaderMap,
+        payload: Bytes,
+    ) -> Result<Message> {
+        let span = Span::current();
+
+        let subject = subject.to_subject();
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} send", &subject).as_str());
+        let msg = self
+            .inner
+            .request_with_headers(subject, headers, payload)
+            .await
+            .map_err(|err| span.record_err(Error::NatsRequest(err)))?;
+
+        span.record_ok();
+        Ok(Message::new(msg, self.metadata.clone()))
+    }
+
+    /// Sends the request created by the [Request].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let request = async_nats::Request::new().payload("data".into());
+    /// let response = client.send_request("service", request).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[instrument(
+        name = "client.send_request",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.destination = Empty,
+            messaging.destination_kind = "topic",
+            messaging.operation = "send",
+            messaging.protocol = %self.metadata.messaging_protocol,
+            messaging.system = %self.metadata.messaging_system,
+            messaging.url = %self.metadata.messaging_url,
+            net.transport = %self.metadata.net_transport,
+            otel.kind = SpanKind::Client.as_str(),
+            otel.name = Empty,
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+        )
+    )]
+    pub async fn send_request(&self, subject: impl ToSubject, request: Request) -> Result<Message> {
+        let span = Span::current();
+
+        let subject = subject.to_subject();
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} send", &subject).as_str());
+        let msg = self
+            .inner
+            .send_request(subject, request)
+            .await
+            .map_err(|err| span.record_err(Error::NatsRequest(err)))?;
+
+        span.record_ok();
+        Ok(Message::new(msg, self.metadata.clone()))
+    }
+
+    /// Create a new globally unique inbox which can be used for replies.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
+    /// let reply = nc.new_inbox();
+    /// let rsub = nc.subscribe(reply).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn new_inbox(&self) -> String {
+        self.inner.new_inbox()
     }
 
     /// Subscribes to a subject to receive [messages][Message].
@@ -332,19 +614,18 @@ impl Client {
     pub async fn queue_subscribe(
         &self,
         subject: impl ToSubject,
-        queue: impl Into<String>,
+        queue_group: String,
     ) -> Result<Subscriber> {
         let span = Span::current();
 
         let subject = subject.to_subject();
-        let queue = queue.into();
         span.record("messaging.destination", subject.as_str());
-        span.record("messaging.subscriber.queue", queue.as_str());
+        span.record("messaging.subscriber.queue", queue_group.as_str());
         span.record("otel.name", format!("{} receive", &subject).as_str());
         let sub_subject = subject.clone();
         let sub = self
             .inner
-            .queue_subscribe(sub_subject, queue)
+            .queue_subscribe(sub_subject, queue_group)
             .await
             .map_err(|err| span.record_err(Error::NatsSubscribe(err)))?;
 
@@ -354,103 +635,6 @@ impl Client {
             self.metadata.clone(),
             current_span_for_debug!(),
         ))
-    }
-
-    /// Publish a [Message] to a given subject.
-    ///
-    /// # Examples
-    /// ```no_run
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
-    /// client
-    ///     .publish("events.data".into(), "payload".into())
-    ///     .await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub async fn publish(&self, subject: impl ToSubject, msg: impl Into<Vec<u8>>) -> Result<()> {
-        let span = Span::current();
-
-        let subject = subject.to_subject();
-        let msg = msg.into();
-        span.record("messaging.destination", subject.as_str());
-        span.record("otel.name", format!("{} send", &subject).as_str());
-        self.inner
-            .publish(subject, msg.into())
-            .await
-            .map_err(|err| span.record_err(Error::NatsPublish(err)))?;
-
-        span.record_ok();
-        Ok(())
-    }
-
-    /// Create a new globally unique inbox which can be used for replies.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
-    /// let reply = nc.new_inbox();
-    /// let rsub = nc.subscribe(reply).await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    #[must_use]
-    pub fn new_inbox(&self) -> String {
-        self.inner.new_inbox()
-    }
-
-    /// Sends the request with headers.
-    ///
-    /// # Examples
-    /// ```no_run
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
-    /// let response = client.request("service".into(), "data".into()).await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    #[instrument(
-        name = "client.request",
-        skip_all,
-        level = "debug",
-        fields(
-            messaging.destination = Empty,
-            messaging.destination_kind = "topic",
-            messaging.operation = "send",
-            messaging.protocol = %self.metadata.messaging_protocol,
-            messaging.system = %self.metadata.messaging_system,
-            messaging.url = %self.metadata.messaging_url,
-            net.transport = %self.metadata.net_transport,
-            otel.kind = SpanKind::Client.as_str(),
-            otel.name = Empty,
-            otel.status_code = Empty,
-            otel.status_message = Empty,
-        )
-    )]
-    pub async fn request(
-        &self,
-        subject: impl ToSubject,
-        msg: impl Into<Vec<u8>>,
-    ) -> Result<Message> {
-        let span = Span::current();
-
-        let subject = subject.to_subject();
-        let msg = msg.into();
-        span.record("messaging.destination", subject.as_str());
-        span.record("otel.name", format!("{} send", &subject).as_str());
-        let msg = self
-            .inner
-            .request(subject, msg.into())
-            .await
-            .map_err(|err| span.record_err(Error::NatsRequest(err)))?;
-
-        span.record_ok();
-        Ok(Message::new(msg, self.metadata.clone()))
     }
 
     /// Flushes the internal buffer ensuring that all messages are sent.
@@ -491,121 +675,133 @@ impl Client {
         Ok(())
     }
 
-    /// Publish a [Message] to a given subject, with specified response subject
-    /// to which the subscriber can respond.
-    /// This method does not await for the response.
+    /// Returns the current state of the connection.
     ///
     /// # Examples
     ///
     /// ```no_run
     /// # #[tokio::main]
-    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// # async fn main() -> Result<(), async_nats::Error> {
     /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
-    /// client
-    ///     .publish_with_reply(
-    ///         "events.data".into(),
-    ///         "reply_subject".into(),
-    ///         "payload".into(),
+    /// println!("connection state: {}", client.connection_state());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn connection_state(&self) -> State {
+        self.inner.connection_state()
+    }
+}
+
+// API extensions
+impl Client {
+    #[instrument(
+        name = "client.transaction",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.protocol = %self.metadata.messaging_protocol,
+            messaging.system = %self.metadata.messaging_system,
+            messaging.transaction = Empty,
+            messaging.url = %self.metadata.messaging_url,
+            net.transport = %self.metadata.net_transport,
+        )
+    )]
+    pub fn transaction(&self) -> NatsTxn {
+        NatsTxn::new(
+            self.clone(),
+            self.metadata.clone(),
+            current_span_for_debug!(),
+        )
+    }
+
+    /// Establish a `Connection` with a NATS server.
+    ///
+    /// Multiple servers may be specified by separating them with commas.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use si_data_nats::{Client, ConnectOptions};
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// let nc = Client::connect_with_options(
+    ///         "demo.nats.io",
+    ///         None,
+    ///         ConnectOptions::default(),
+    ///     ).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// In the below case, the second server is configured to use TLS but the first one is not.
+    /// Using the `tls_required` method can ensure that all servers are connected to with TLS, if
+    /// that is your intention.
+    ///
+    /// ```no_run
+    /// # use si_data_nats::{Client, ConnectOptions};
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), si_data_nats::Error> {
+    /// let nc = Client::connect_with_options(
+    ///         "nats://demo.nats.io:4222,tls://demo.nats.io:4443",
+    ///         None,
+    ///         ConnectOptions::default(),
     ///     )
     ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
     #[instrument(
-        name = "client.publish_with_reply",
+        name = "client::connect_with_options",
         skip_all,
         level = "debug",
         fields(
-            messaging.destination = Empty,
-            messaging.destination_kind = "topic",
-            messaging.operation = "send",
-            messaging.protocol = %self.metadata.messaging_protocol,
-            messaging.system = %self.metadata.messaging_system,
-            messaging.url = %self.metadata.messaging_url,
-            net.transport = %self.metadata.net_transport,
-            otel.kind = SpanKind::Producer.as_str(),
-            otel.name = Empty,
+            messaging.protocol = Empty,
+            messaging.system = Empty,
+            messaging.url = Empty,
+            net.transport = Empty,
+            otel.kind = SpanKind::Client.as_str(),
             otel.status_code = Empty,
             otel.status_message = Empty,
         )
     )]
-    pub async fn publish_with_reply(
-        &self,
-        subject: impl ToSubject,
-        reply: impl ToSubject,
-        msg: impl Into<Vec<u8>>,
-    ) -> Result<()> {
-        let span = Span::current();
+    pub async fn connect_with_options(
+        addrs: impl ToServerAddrs,
+        subject_prefix: Option<String>,
+        options: ConnectOptions,
+    ) -> Result<Self> {
+        let addrs = addrs.to_server_addrs()?.collect::<Vec<_>>();
 
-        let subject = subject.to_subject();
-        let msg = msg.into();
-        span.record("messaging.destination", subject.as_str());
-        span.record("otel.name", format!("{} send", &subject).as_str());
-        self.inner
-            .publish_with_reply(subject, reply, msg.into())
+        let metadata = ConnectionMetadata {
+            messaging_protocol: "nats",
+            messaging_system: "nats",
+            messaging_url: addrs
+                .clone()
+                .into_iter()
+                .map(|a| a.into_inner().into())
+                .collect::<Vec<String>>()
+                .join(","),
+            net_transport: "ip_tcp",
+            subject_prefix,
+        };
+
+        let span = Span::current();
+        span.record("messaging.protocol", metadata.messaging_protocol);
+        span.record("messaging.system", metadata.messaging_system);
+        span.record("messaging.url", metadata.messaging_url.as_str());
+        span.record("net.transport", metadata.net_transport);
+
+        let inner = options
+            .inner
+            .connect(addrs)
             .await
-            .map_err(|err| span.record_err(Error::NatsPublish(err)))?;
+            .map_err(|err| span.record_err(Error::NatsConnect(err)))?;
+        debug!("successfully connected to nats");
 
         span.record_ok();
-        Ok(())
-    }
-
-    /// Publish a [Message] with headers to a given subject.
-    ///
-    /// # Examples
-    /// ```
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// use std::str::FromStr;
-    /// let client = si_data_nats::Client::connect_with_options("demo.nats.io", None, Default::default()).await?;
-    /// let mut headers = async_nats::HeaderMap::new();
-    /// headers.insert(
-    ///     "X-Header",
-    ///     async_nats::HeaderValue::from_str("Value").unwrap(),
-    /// );
-    /// client
-    ///     .publish_with_headers("events.data".into(), headers, "payload".into())
-    ///     .await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    #[instrument(
-        name = "client.publish_with_headers",
-        skip_all,
-        level = "debug",
-        fields(
-            messaging.destination = Empty,
-            messaging.destination_kind = "topic",
-            messaging.operation = "send",
-            messaging.protocol = %self.metadata.messaging_protocol,
-            messaging.system = %self.metadata.messaging_system,
-            messaging.url = %self.metadata.messaging_url,
-            net.transport = %self.metadata.net_transport,
-            otel.kind = SpanKind::Producer.as_str(),
-            otel.name = Empty,
-            otel.status_code = Empty,
-            otel.status_message = Empty,
-        )
-    )]
-    pub async fn publish_with_headers(
-        &self,
-        subject: impl ToSubject,
-        headers: HeaderMap,
-        msg: impl Into<Vec<u8>>,
-    ) -> Result<()> {
-        let span = Span::current();
-
-        let subject = subject.to_subject();
-        let msg = msg.into();
-        span.record("messaging.destination", subject.as_str());
-        span.record("otel.name", format!("{} send", &subject).as_str());
-        self.inner
-            .publish_with_headers(subject, headers, msg.into())
-            .await
-            .map_err(|err| span.record_err(Error::NatsPublish(err)))?;
-
-        span.record_ok();
-        Ok(())
+        Ok(Self {
+            inner,
+            metadata: Arc::new(metadata),
+        })
     }
 
     /// Gets a reference to the client's metadata.
@@ -715,7 +911,7 @@ impl NatsTxn {
             let msg = serde_json::to_vec(&object)
                 .map_err(|err| span.record_err(self.tx_span.record_err(Error::Serialize(err))))?;
             self.client
-                .publish(subject, msg)
+                .publish(subject, msg.into())
                 .await
                 .map_err(|err| span.record_err(self.tx_span.record_err(err)))?;
         }

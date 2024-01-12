@@ -4,6 +4,7 @@ rust_library(
     name = "si-data-nats",
     deps = [
         "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:bytes",
         "//third-party/rust:crossbeam-channel",
         "//third-party/rust:futures",
         "//third-party/rust:async-nats",

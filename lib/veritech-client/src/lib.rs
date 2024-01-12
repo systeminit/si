@@ -250,7 +250,7 @@ impl Client {
         let mut root_subscriber = self.nats.subscribe(reply_mailbox_root.clone()).await?;
 
         self.nats
-            .publish_with_reply(subject, reply_mailbox_root.clone(), msg)
+            .publish_with_reply(subject, reply_mailbox_root.clone(), msg.into())
             .await?;
 
         tokio::select! {

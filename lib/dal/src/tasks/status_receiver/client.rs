@@ -61,7 +61,7 @@ impl StatusReceiverClient {
             messaging.destination = &subject.as_str(),
             "publishing message"
         );
-        self.nats_client.publish(subject, msg).await?;
+        self.nats_client.publish(subject, msg.into()).await?;
         Ok(())
     }
 }
