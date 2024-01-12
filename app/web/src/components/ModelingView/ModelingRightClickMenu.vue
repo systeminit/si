@@ -3,6 +3,7 @@
 </template>
 
 <script setup lang="ts">
+import * as _ from "lodash-es";
 import {
   DropdownMenuItemObjectDef,
   DropdownMenu,
@@ -24,6 +25,7 @@ const {
   selectedComponentId,
   selectedComponentIds,
   selectedComponent,
+  selectedComponents,
   deletableSelectedComponents,
   restorableSelectedComponents,
   selectedEdgeId,
@@ -136,6 +138,21 @@ const rightClickMenuItems = computed(() => {
     }
   }
 
+  if (
+    _.every(selectedComponents.value, (c) => (c.ancestorIds?.length || 0) > 0)
+  ) {
+    items.push({
+      label: "Detach from parent(s)",
+      icon: "frame",
+      onSelect: () => {
+        // TODO: we likely want an endpoint that handles multiple?
+        _.each(selectedComponentIds.value, (id) => {
+          componentsStore.DETACH_COMPONENT(id);
+        });
+      },
+      disabled,
+    });
+  }
   if (selectedComponent.value?.hasResource) {
     items.push({
       label: "Refresh resource",

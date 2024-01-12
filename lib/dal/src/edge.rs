@@ -395,6 +395,24 @@ impl Edge {
     }
 
     pub async fn delete_and_propagate(&mut self, ctx: &DalContext) -> EdgeResult<()> {
+        let actor_user_pk = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => Some(*user_pk),
+            _ => None,
+        };
+        let _rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT * FROM edge_deletion_v1($1, $2, $3, $4)",
+                &[ctx.tenancy(), ctx.visibility(), self.id(), &actor_user_pk],
+            )
+            .await?;
+
+        if *self.kind() == EdgeKind::Symbolic {
+            return Ok(());
+        }
+
         let head_component_id = *{
             let head_node = Node::get_by_id(ctx, &self.head_node_id())
                 .await?
@@ -455,20 +473,6 @@ impl Edge {
         .ok_or(EdgeError::AttributePrototypeNotFound)?;
 
         edge_argument.delete_by_id(ctx).await?;
-
-        let actor_user_pk = match ctx.history_actor() {
-            HistoryActor::User(user_pk) => Some(*user_pk),
-            _ => None,
-        };
-        let _rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                "SELECT * FROM edge_deletion_v1($1, $2, $3, $4)",
-                &[ctx.tenancy(), ctx.visibility(), self.id(), &actor_user_pk],
-            )
-            .await?;
 
         let read_context = AttributeReadContext {
             prop_id: Some(PropId::NONE),

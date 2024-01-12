@@ -12,7 +12,7 @@
   >
     <!-- selection box outline -->
     <v-rect
-      v-if="isHovered || isSelected"
+      v-if="isHovered || isSelected || highlightParent"
       :config="{
         width: nodeWidth + 8,
         height: nodeHeight + 8,
@@ -50,11 +50,6 @@
         strokeWidth: 3,
         hitStrokeWidth: 0,
         dash: [8, 8],
-        shadowColor: 'black',
-        shadowBlur: 8,
-        shadowOffset: { x: 3, y: 3 },
-        shadowOpacity: 0.4,
-        shadowEnabled: false,
       }"
     />
 
@@ -218,12 +213,13 @@
       <!-- package/type icon -->
       <DiagramIcon
         v-if="group.def.typeIcon"
-        :icon="group.def.typeIcon"
+        :icon="highlightParent ? 'frame' : group.def.typeIcon"
         :color="colors.icon"
         :size="GROUP_HEADER_ICON_SIZE"
         :x="5"
         :y="5"
         origin="top-left"
+        :listening="false"
       />
 
       <!-- header text -->
@@ -269,6 +265,18 @@
       />
       />
     </v-group>
+
+    <!-- parent frame attachment indicator -->
+    <DiagramIcon
+      v-if="parentComponentId"
+      icon="frame"
+      :size="16"
+      :x="-halfWidth + 12"
+      :y="nodeBodyHeight - 12"
+      :color="colors.parentColor"
+      @mouseover="(e) => onMouseOver(e, 'parent')"
+      @mouseout="onMouseOut"
+    />
 
     <!-- status icons -->
     <v-group
@@ -379,7 +387,6 @@ import {
   Size2D,
   SideAndCornerIdentifiers,
   DiagramSocketData,
-  ElementHoverMeta,
 } from "./diagram_types";
 import DiagramIcon from "./DiagramIcon.vue";
 
@@ -406,14 +413,15 @@ const props = defineProps({
   isSelected: Boolean,
 });
 
+const componentId = computed(() => props.group.def.componentId);
+const parentComponentId = computed(() => _.last(props.group.def.ancestorIds));
+
 const diffIconHover = ref(false);
 const statusIconHovers = ref(
   new Array(props.group.def.statusIcons?.length || 0).fill(false),
 );
 
 const emit = defineEmits<{
-  (e: "hover:start", meta?: ElementHoverMeta): void;
-  (e: "hover:end"): void;
   (e: "resize"): void;
 }>();
 
@@ -430,10 +438,12 @@ const isDeleted = computed(() => props.group.def.changeStatus === "deleted");
 const isModified = computed(() => props.group.def.changeStatus === "modified");
 const isAdded = computed(() => props.group.def.changeStatus === "added");
 
+const componentsStore = useComponentsStore();
+
 const childCount = computed(() => {
   const mappedChildren = _.map(
     props.group.def.childNodeIds,
-    (child) => useComponentsStore().componentsByNodeId[child],
+    (child) => componentsStore.componentsByNodeId[child],
   );
 
   const undeletedChildren = _.filter(mappedChildren, (child) =>
@@ -530,12 +540,18 @@ const colors = computed(() => {
     headerText,
     bodyBg: bodyBg.toRgbString(),
     bodyText,
+    parentColor:
+      componentsStore.componentsById[parentComponentId.value || ""]?.color ||
+      "#FFF",
   };
 });
 
-function onMouseOver(evt: KonvaEventObject<MouseEvent>) {
+function onMouseOver(evt: KonvaEventObject<MouseEvent>, type?: "parent") {
   evt.cancelBubble = true;
-  emit("hover:start");
+  componentsStore.setHoveredComponentId(
+    componentId.value,
+    type ? { type } : undefined,
+  );
 }
 
 function onResizeHover(
@@ -543,26 +559,39 @@ function onResizeHover(
   evt: KonvaEventObject<MouseEvent>,
 ) {
   evt.cancelBubble = true;
-  emit("hover:start", { type: "resize", direction });
+  componentsStore.setHoveredComponentId(componentId.value, {
+    type: "resize",
+    direction,
+  });
 }
 
 function onSocketHoverStart(socket: DiagramSocketData) {
-  emit("hover:start", { type: "socket", socket });
+  componentsStore.setHoveredComponentId(componentId.value, {
+    type: "socket",
+    socket,
+  });
 }
 
 function onSocketHoverEnd(_socket: DiagramSocketData) {
-  emit("hover:end");
+  componentsStore.setHoveredComponentId(null);
 }
 
 function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
-  emit("hover:end");
+  componentsStore.setHoveredComponentId(null);
 }
 
-// TODO: not sure if want to communicate with the store here or send the message up to the diagram...
-const componentsStore = useComponentsStore();
 function onClick(detailsTabSlug: string) {
-  componentsStore.setSelectedComponentId(props.group.def.componentId, {
+  componentsStore.setSelectedComponentId(componentId.value, {
     detailsTab: detailsTabSlug,
   });
 }
+
+const highlightParent = computed(() => {
+  if (!componentsStore.hoveredComponent) return false;
+  if (componentsStore.hoveredComponentMeta?.type !== "parent") return false;
+  return (
+    componentsStore.hoveredComponent.ancestorIds?.includes(componentId.value) ||
+    false
+  );
+});
 </script>
