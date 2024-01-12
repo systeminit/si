@@ -1614,17 +1614,45 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
     up: { x: 0, y: -1 * nudgeSize },
     down: { x: 0, y: 1 * nudgeSize },
   }[direction];
+
   _.each(currentSelectionMovableElements.value, (el) => {
-    const newPosition = vectorAdd(el.def.position, nudgeVector);
-    movedElementPositions[el.uniqueKey] = newPosition;
-    sendMovedElementPosition({
-      element: el,
-      position: newPosition,
-      isFinal: true,
-    });
+    nudgeOneNode(el, nudgeVector);
   });
   // TODO: if nudging out of the viewport, pan to give more space
 }
+
+const nudgeOneNode = (
+  el: DiagramGroupData | DiagramNodeData,
+  nudgeVector: Vector2d,
+) => {
+  const newPosition = vectorAdd(
+    movedElementPositions[el.uniqueKey] || el.def.position,
+    nudgeVector,
+  );
+  movedElementPositions[el.uniqueKey] = newPosition;
+  sendMovedElementPosition({
+    element: el,
+    position: newPosition,
+    isFinal: true,
+  });
+
+  const component = componentsStore.componentsById[el.def.componentId];
+
+  _.each(component?.childIds, (id) => {
+    if (
+      !currentSelectionMovableElements.value.find(
+        (e) => e.def.componentId === id,
+      )
+    ) {
+      const key = getDiagramElementKeyForComponentId(id);
+      const node = getElementByKey(key);
+
+      if (node instanceof DiagramNodeData || node instanceof DiagramGroupData) {
+        nudgeOneNode(node, nudgeVector);
+      }
+    }
+  });
+};
 
 // RESIZING DIAGRAM ELEMENTS (groups) ///////////////////////////////////////
 const resizeElement = ref<DiagramGroupData>();
