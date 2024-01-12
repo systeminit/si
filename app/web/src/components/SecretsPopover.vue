@@ -5,7 +5,7 @@
         themeContainerClasses,
         // 'bg-neutral-100 dark:bg-neutral-700 text-shade-100 dark:text-shade-0', // dark/light mode classes
         'bg-neutral-700 text-shade-0', // force dark mode classes
-        'w-96 h-96 rounded flex flex-col overflow-hidden shadow-3xl',
+        'w-96 min-h-[24rem] max-h-[80vh] rounded flex flex-col overflow-hidden shadow-3xl',
       )
     "
   >
@@ -62,7 +62,7 @@
       @save="selectSecret"
       @cancel="cancelAddSecretForm"
     />
-    <div v-else class="overflow-y-auto flex flex-col h-full">
+    <div v-else class="overflow-y-auto flex flex-col h-full flex-grow">
       <RequestStatusMessage
         v-if="loadSecretsReq.isPending"
         :requestStatus="loadSecretsReq"
