@@ -210,6 +210,11 @@ execute_configuration_management() {
         if ! iptables -t nat -C POSTROUTING -o $(ip route get 8.8.8.8 | awk -- '{printf $5}') -j MASQUERADE; then
           iptables -t nat -A POSTROUTING -o $(ip route get 8.8.8.8 | awk -- '{printf $5}') -j MASQUERADE
         fi
+
+        # Allow forwarding in the default network namespace to allow NAT'ed traffic leave
+        # NB: iptables doesn't support -C for the rule checking of protocols
+        iptables -P FORWARD ACCEPT
+
         # Block calls to AWS Metadata not coming from the primary network
         if ! iptables -C FORWARD -d 169.254.169.254 -j DROP; then
           iptables -A FORWARD -d 169.254.169.254 -j DROP
