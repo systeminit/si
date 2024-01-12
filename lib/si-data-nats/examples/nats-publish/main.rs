@@ -40,7 +40,7 @@ async fn run() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     let config = NatsConfig::default();
     let nats = NatsClient::new(&config).await?;
 
-    nats.publish(subject.clone(), msg.clone()).await?;
+    nats.publish(subject.clone(), msg.clone().into()).await?;
     info!(
         msg = msg.as_str(),
         subject = subject.as_str(),

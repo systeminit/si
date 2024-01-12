@@ -30,7 +30,7 @@ impl PubClient {
             .publish_with_reply(
                 self.pub_channel.clone(),
                 self.reply_channel.clone(),
-                message,
+                message.into(),
             )
             .await?;
         Ok(())
@@ -45,7 +45,7 @@ impl PubClient {
             .publish_with_reply(
                 self.pub_channel.clone(),
                 self.reply_channel.clone(),
-                message,
+                message.into(),
             )
             .await?;
         Ok(())
@@ -60,7 +60,7 @@ impl PubClient {
             .publish_with_reply(
                 self.pub_channel.clone(),
                 self.reply_channel.clone(),
-                message,
+                message.into(),
             )
             .await?;
         Ok(())
@@ -74,7 +74,7 @@ impl PubClient {
             .publish_with_reply(
                 self.pub_channel.clone(),
                 self.reply_channel.clone(),
-                message,
+                message.into(),
             )
             .await?;
         Ok(())

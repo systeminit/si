@@ -75,7 +75,9 @@ impl Server {
                 self.nats
                     .publish(
                         reply_channel,
-                        serde_json::to_vec(&Response::OkToProcess { node_ids }).unwrap(),
+                        serde_json::to_vec(&Response::OkToProcess { node_ids })
+                            .unwrap()
+                            .into(),
                     )
                     .await
                     .unwrap();
@@ -234,7 +236,9 @@ pub async fn job_processed_a_value(
         info!(%reply_channel, ?node_id, "AttributeValue has been processed by a job");
         nats.publish(
             reply_channel,
-            serde_json::to_vec(&Response::BeenProcessed { node_id }).unwrap(),
+            serde_json::to_vec(&Response::BeenProcessed { node_id })
+                .unwrap()
+                .into(),
         )
         .await
         .unwrap();
@@ -261,7 +265,8 @@ pub async fn job_failed_processing_a_value(
             serde_json::to_vec(&Response::Failed {
                 node_id: failed_node_id,
             })
-            .unwrap(),
+            .unwrap()
+            .into(),
         )
         .await
         .unwrap();

@@ -443,7 +443,7 @@ async fn execute_job_task(
         if let Ok(message) = serde_json::to_vec(&reply_message) {
             if let Err(err) = ctx_builder
                 .nats_conn()
-                .publish(reply_channel, message)
+                .publish(reply_channel, message.into())
                 .await
             {
                 error!(error = ?err, "Unable to notify spawning job of blocking job completion");

@@ -34,7 +34,7 @@ impl Sink<Vec<u8>> for YSink {
     fn start_send(mut self: Pin<&mut Self>, payload: Vec<u8>) -> Result<(), Self::Error> {
         let (nats, channel) = (self.nats.clone(), self.channel.clone());
         self.future = Some(Box::pin(async move {
-            nats.publish(channel, payload)
+            nats.publish(channel, payload.into())
                 .await
                 .map_err(|err| Error::Other(err.into()))
         }));

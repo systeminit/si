@@ -120,7 +120,7 @@ pub async fn crdt_handle<W, R>(
     tasks.spawn(async move {
         while let Some(msg) = stream.next().await {
             if let Message::Binary(vec) = msg? {
-                ws_nats.publish(ws_channel_name.clone(), vec).await?;
+                ws_nats.publish(ws_channel_name.clone(), vec.into()).await?;
             }
         }
 
