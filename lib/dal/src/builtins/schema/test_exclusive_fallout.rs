@@ -2,7 +2,6 @@ use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
     FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PropSpec, SchemaSpec,
     SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
-    ValidationSpec, ValidationSpecKind,
 };
 use si_pkg::{FuncSpecData, SchemaSpecData};
 
@@ -130,18 +129,6 @@ impl MigrationDriver {
                         PropSpec::builder()
                             .name("rads")
                             .kind(PropKind::Integer)
-                            .validation(
-                                ValidationSpec::builder()
-                                    .kind(ValidationSpecKind::IntegerIsBetweenTwoIntegers)
-                                    .upper_bound(1001)
-                                    .lower_bound(-1)
-                                    .build()?,
-                            )
-                            .validation(
-                                ValidationSpec::builder()
-                                    .kind(ValidationSpecKind::IntegerIsNotEmpty)
-                                    .build()?,
-                            )
                             .build()?,
                     )
                     .domain_prop(

@@ -4,14 +4,11 @@
 use strum::{AsRefStr, Display as EnumDisplay, EnumIter, EnumString};
 use telemetry::prelude::*;
 
-use crate::func::backend::validation::FuncBackendValidationArgs;
 use crate::property_editor::schema::WidgetKind;
-use crate::validation::Validation;
 use crate::{
     schema::variant::{leaves::LeafKind, SchemaVariantResult},
-    DalContext, Func, FuncError, Prop, PropId, PropKind, ReconciliationPrototype,
+    DalContext, Func, Prop, PropId, PropKind, ReconciliationPrototype,
     ReconciliationPrototypeContext, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
-    ValidationPrototype, ValidationPrototypeContext,
 };
 
 pub mod component_type;
@@ -197,37 +194,10 @@ impl SchemaVariant {
         Ok((*leaf_prop.id(), *leaf_item_prop.id()))
     }
 
-    async fn create_validation(
-        ctx: &DalContext,
-        prop_id: PropId,
-        schema_id: SchemaId,
-        schema_variant_id: SchemaVariantId,
-        validation: Validation,
-    ) -> SchemaVariantResult<()> {
-        let validation_func_name = "si:validation";
-        let validation_func: Func = Func::find_by_attr(ctx, "name", &validation_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| FuncError::NotFoundByName(validation_func_name.to_string()))?;
-        let mut builder = ValidationPrototypeContext::builder();
-        builder
-            .set_prop_id(prop_id)
-            .set_schema_id(schema_id)
-            .set_schema_variant_id(schema_variant_id);
-        ValidationPrototype::new(
-            ctx,
-            *validation_func.id(),
-            serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
-            builder.to_context(ctx).await?,
-        )
-        .await?;
-        Ok(())
-    }
-
     async fn setup_si(
         ctx: &DalContext,
         root_prop_id: PropId,
-        schema_id: SchemaId,
+        _schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<PropId> {
         let si_prop = Prop::new_without_ui_optionals(
@@ -299,14 +269,6 @@ impl SchemaVariant {
         )
         .await?;
         color_prop.set_widget_kind(ctx, WidgetKind::Color).await?;
-        Self::create_validation(
-            ctx,
-            *color_prop.id(),
-            schema_id,
-            schema_variant_id,
-            Validation::StringIsHexColor { value: None },
-        )
-        .await?;
 
         Ok(si_prop_id)
     }

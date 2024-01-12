@@ -14,7 +14,6 @@ use si_pkg::{
     SiPkgAuthFunc, SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument,
     SiPkgFuncData, SiPkgKind, SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData,
     SiPkgSchema, SiPkgSchemaData, SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
-    ValidationSpec,
 };
 use telemetry::prelude::*;
 
@@ -25,7 +24,6 @@ use crate::{
     func::{
         self,
         argument::{FuncArgumentError, FuncArgumentKind},
-        backend::validation::FuncBackendValidationArgs,
         binding::FuncBinding,
         binding_return_value::FuncBindingReturnValue,
     },
@@ -42,15 +40,13 @@ use crate::{
         SchemaUiMenu,
     },
     socket::SocketEdgeKind,
-    validation::{Validation, ValidationKind},
     ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContext, AttributeContextBuilder,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeId, AttributeReadContext,
     AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentId,
     DalContext, Edge, ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncError, FuncId,
     InternalProvider, InternalProviderError, InternalProviderId, LeafKind, Node, Prop, PropId,
     PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket,
-    StandardModel, Tenancy, UserPk, ValidationPrototype, ValidationPrototypeContext, Workspace,
-    WorkspacePk,
+    StandardModel, Tenancy, UserPk, Workspace, WorkspacePk,
 };
 
 use super::{PkgError, PkgResult};
@@ -67,7 +63,6 @@ enum Thing {
     Schema(Schema),
     SchemaVariant(SchemaVariant),
     Socket(Box<(Socket, Option<InternalProvider>, Option<ExternalProvider>)>),
-    Validation(ValidationPrototype),
 }
 
 type ThingMap = super::ChangeSetThingMap<String, Thing>;
@@ -1668,7 +1663,6 @@ struct PropVisitContext<'a> {
     pub attr_funcs: Mutex<Vec<AttrFuncInfo>>,
     pub default_values: Mutex<Vec<DefaultValueInfo>>,
     pub map_key_funcs: Mutex<Vec<(String, AttrFuncInfo)>>,
-    pub validations: Mutex<Vec<(PropId, ValidationSpec)>>,
     pub change_set_pk: Option<ChangeSetPk>,
 }
 
@@ -2066,7 +2060,6 @@ struct CreatePropsSideEffects {
     attr_funcs: Vec<AttrFuncInfo>,
     default_values: Vec<DefaultValueInfo>,
     map_key_funcs: Vec<(String, AttrFuncInfo)>,
-    validations: Vec<(PropId, ValidationSpec)>,
 }
 
 impl IntoIterator for CreatePropsSideEffects {
@@ -2085,7 +2078,6 @@ impl Extend<CreatePropsSideEffects> for CreatePropsSideEffects {
             self.attr_funcs.extend(element.attr_funcs);
             self.default_values.extend(element.default_values);
             self.map_key_funcs.extend(element.map_key_funcs);
-            self.validations.extend(element.validations);
         }
     }
 }
@@ -2104,7 +2096,6 @@ async fn create_props(
         attr_funcs: Mutex::new(vec![]),
         default_values: Mutex::new(vec![]),
         map_key_funcs: Mutex::new(vec![]),
-        validations: Mutex::new(vec![]),
         change_set_pk,
     };
 
@@ -2118,7 +2109,6 @@ async fn create_props(
         attr_funcs: context.attr_funcs.into_inner(),
         default_values: context.default_values.into_inner(),
         map_key_funcs: context.map_key_funcs.into_inner(),
-        validations: context.validations.into_inner(),
     })
 }
 
@@ -2502,19 +2492,6 @@ async fn import_schema_variant(
                 *schema_variant.id(),
                 map_key_func,
                 Some(key),
-                thing_map,
-            )
-            .await?;
-        }
-
-        for (prop_id, validation_spec) in side_effects.validations {
-            import_prop_validation(
-                ctx,
-                change_set_pk,
-                validation_spec,
-                *schema.id(),
-                *schema_variant.id(),
-                prop_id,
                 thing_map,
             )
             .await?;
@@ -2976,202 +2953,6 @@ async fn import_attr_func(
     Ok(())
 }
 
-async fn create_validation(
-    ctx: &DalContext,
-    validation_kind: ValidationKind,
-    builtin_func_id: FuncId,
-    prop_id: PropId,
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-) -> PkgResult<ValidationPrototype> {
-    let (validation_func_id, validation_args) = match validation_kind {
-        ValidationKind::Builtin(validation) => (
-            builtin_func_id,
-            serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
-        ),
-
-        ValidationKind::Custom(func_id) => (func_id, serde_json::json!(null)),
-    };
-    let mut builder = ValidationPrototypeContext::builder();
-    builder
-        .set_prop_id(prop_id)
-        .set_schema_id(schema_id)
-        .set_schema_variant_id(schema_variant_id);
-
-    Ok(ValidationPrototype::new(
-        ctx,
-        validation_func_id,
-        validation_args,
-        builder.to_context(ctx).await?,
-    )
-    .await?)
-}
-
-async fn update_validation(
-    ctx: &DalContext,
-    prototype: &mut ValidationPrototype,
-    validation_kind: ValidationKind,
-    builtin_func_id: FuncId,
-    prop_id: PropId,
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-) -> PkgResult<()> {
-    let (validation_func_id, validation_args) = match validation_kind {
-        ValidationKind::Builtin(validation) => (
-            builtin_func_id,
-            serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
-        ),
-
-        ValidationKind::Custom(func_id) => (func_id, serde_json::json!(null)),
-    };
-
-    prototype.set_prop_id(ctx, prop_id).await?;
-    prototype.set_schema_id(ctx, schema_id).await?;
-    prototype
-        .set_schema_variant_id(ctx, schema_variant_id)
-        .await?;
-    prototype.set_args(ctx, validation_args).await?;
-    prototype.set_func_id(ctx, validation_func_id).await?;
-
-    Ok(())
-}
-
-async fn import_prop_validation(
-    ctx: &DalContext,
-    change_set_pk: Option<ChangeSetPk>,
-    spec: ValidationSpec,
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-    prop_id: PropId,
-    thing_map: &mut ThingMap,
-) -> PkgResult<()> {
-    let builtin_validation_func = Func::find_by_attr(ctx, "name", &"si:validation")
-        .await?
-        .pop()
-        .ok_or(FuncError::NotFoundByName("si:validation".to_string()))?;
-
-    let validation_kind = match &spec {
-        ValidationSpec::IntegerIsBetweenTwoIntegers {
-            lower_bound,
-            upper_bound,
-            ..
-        } => ValidationKind::Builtin(Validation::IntegerIsBetweenTwoIntegers {
-            value: None,
-            lower_bound: *lower_bound,
-            upper_bound: *upper_bound,
-        }),
-        ValidationSpec::IntegerIsNotEmpty { .. } => {
-            ValidationKind::Builtin(Validation::IntegerIsNotEmpty { value: None })
-        }
-        ValidationSpec::StringEquals { expected, .. } => {
-            ValidationKind::Builtin(Validation::StringEquals {
-                value: None,
-                expected: expected.to_owned(),
-            })
-        }
-        ValidationSpec::StringHasPrefix { expected, .. } => {
-            ValidationKind::Builtin(Validation::StringHasPrefix {
-                value: None,
-                expected: expected.to_owned(),
-            })
-        }
-        ValidationSpec::StringInStringArray {
-            expected,
-            display_expected,
-            ..
-        } => ValidationKind::Builtin(Validation::StringInStringArray {
-            value: None,
-            expected: expected.to_owned(),
-            display_expected: *display_expected,
-        }),
-        ValidationSpec::StringIsHexColor { .. } => {
-            ValidationKind::Builtin(Validation::StringIsHexColor { value: None })
-        }
-        ValidationSpec::StringIsNotEmpty { .. } => {
-            ValidationKind::Builtin(Validation::StringIsNotEmpty { value: None })
-        }
-        ValidationSpec::StringIsValidIpAddr { .. } => {
-            ValidationKind::Builtin(Validation::StringIsValidIpAddr { value: None })
-        }
-        ValidationSpec::CustomValidation { func_unique_id, .. } => {
-            ValidationKind::Custom(match thing_map.get(None, func_unique_id) {
-                Some(Thing::Func(func)) => *func.id(),
-                _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_owned())),
-            })
-        }
-    };
-
-    match change_set_pk {
-        None => {
-            create_validation(
-                ctx,
-                validation_kind,
-                *builtin_validation_func.id(),
-                prop_id,
-                schema_id,
-                schema_variant_id,
-            )
-            .await?;
-        }
-        Some(_) => {
-            let unique_id = spec
-                .unique_id()
-                .ok_or(PkgError::MissingUniqueIdForNode("validation".into()))?;
-            let deleted = spec.deleted();
-
-            let validation_prototype = match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-                Some(Thing::Validation(prototype)) => {
-                    let mut prototype = prototype.to_owned();
-
-                    if deleted {
-                        prototype.delete_by_id(ctx).await?;
-                    } else {
-                        update_validation(
-                            ctx,
-                            &mut prototype,
-                            validation_kind,
-                            *builtin_validation_func.id(),
-                            prop_id,
-                            schema_id,
-                            schema_variant_id,
-                        )
-                        .await?;
-                    }
-
-                    Some(prototype)
-                }
-                _ => {
-                    if deleted {
-                        None
-                    } else {
-                        Some(
-                            create_validation(
-                                ctx,
-                                validation_kind,
-                                *builtin_validation_func.id(),
-                                prop_id,
-                                schema_id,
-                                schema_variant_id,
-                            )
-                            .await?,
-                        )
-                    }
-                }
-            };
-
-            if let Some(prototype) = validation_prototype {
-                thing_map.insert(
-                    change_set_pk,
-                    unique_id.to_owned(),
-                    Thing::Validation(prototype),
-                );
-            }
-        }
-    }
-
-    Ok(())
-}
-
 fn prop_kind_for_pkg_prop(pkg_prop: &SiPkgProp<'_>) -> PropKind {
     match pkg_prop {
         SiPkgProp::Array { .. } => PropKind::Array,
@@ -3329,15 +3110,6 @@ async fn create_prop(
             prop_id,
             inputs: inputs.drain(..).map(Into::into).collect(),
         });
-    }
-
-    for validation_pkg_spec in spec.validations()? {
-        let validation_spec: ValidationSpec = validation_pkg_spec.try_into()?;
-
-        ctx.validations
-            .lock()
-            .await
-            .push((*prop.id(), validation_spec));
     }
 
     Ok(Some((*prop.id(), prop.path())))

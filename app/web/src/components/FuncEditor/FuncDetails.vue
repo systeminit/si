@@ -113,10 +113,8 @@
             >
               This function is connected to other
               {{
-                (editingFunc?.associations &&
-                  editingFunc.associations?.type === "validation") ||
-                (editingFunc?.associations &&
-                  editingFunc?.associations?.type === "attribute")
+                editingFunc?.associations &&
+                editingFunc?.associations?.type === "attribute"
                   ? "attributes"
                   : "assets"
               }}.
@@ -184,16 +182,6 @@
             v-if="
               editingFunc.associations &&
               editingFunc.associations.type === 'qualification'
-            "
-            ref="detachRef"
-            v-model="editingFunc.associations"
-            :schemaVariantId="schemaVariantId"
-            @change="updateFunc"
-          />
-          <ValidationDetails
-            v-if="
-              editingFunc.associations &&
-              editingFunc.associations.type === 'validation'
             "
             ref="detachRef"
             v-model="editingFunc.associations"
@@ -298,7 +286,6 @@ import FuncArguments from "./FuncArguments.vue";
 import ActionDetails from "./ActionDetails.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
-import ValidationDetails from "./ValidationDetails.vue";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncTest from "./FuncTest.vue";
 
@@ -322,7 +309,6 @@ type DetachType =
   | InstanceType<typeof ActionDetails>
   | InstanceType<typeof AttributeBindings>
   | InstanceType<typeof CodeGenerationDetails>
-  | InstanceType<typeof ValidationDetails>
   | InstanceType<typeof QualificationDetails>;
 
 const detachRef = ref<DetachType>();
@@ -403,8 +389,6 @@ const isConnectedToOtherAssetTypes = computed(() => {
         );
       case "action":
         return associations.schemaVariantIds.length > 1;
-      case "validation":
-        return associations.prototypes.length > 1;
       case "attribute":
         return associations.prototypes.length > 1;
       default:

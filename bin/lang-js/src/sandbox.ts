@@ -42,7 +42,6 @@ function schemaVariantDefinitionSandbox(): Sandbox {
     PropBuilder: assetBuilder.PropBuilder,
     SecretDefinitionBuilder: assetBuilder.SecretDefinitionBuilder,
     SecretPropBuilder: assetBuilder.SecretPropBuilder,
-    ValidationBuilder: assetBuilder.ValidationBuilder,
     ValueFromBuilder: assetBuilder.ValueFromBuilder,
     SocketDefinitionBuilder: assetBuilder.SocketDefinitionBuilder,
     MapKeyFuncBuilder: assetBuilder.MapKeyFuncBuilder,

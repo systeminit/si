@@ -21,7 +21,7 @@ use crate::{
 use si_pkg::{
     AttrFuncInputSpec, MapKeyFuncSpec, PropSpec, SchemaSpec, SchemaSpecData, SchemaVariantSpec,
     SchemaVariantSpecData, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec, SocketSpecArity,
-    SocketSpecData, SocketSpecKind, SpecError, ValidationSpec,
+    SocketSpecData, SocketSpecKind, SpecError,
 };
 
 #[remain::sorted]
@@ -594,9 +594,6 @@ pub struct PropDefinition {
     // Whether the prop is hidden from the UI
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hidden: Option<bool>,
-    // The list of validations specific to the prop.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub validations: Option<Vec<ValidationSpec>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub validation_format: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -622,11 +619,6 @@ impl PropDefinition {
         }
         if let Some(default_value) = &self.default_value {
             builder.default_value(default_value.to_owned());
-        }
-        if let Some(validations) = &self.validations {
-            for validation in validations {
-                builder.validation(validation.to_owned());
-            }
         }
         if let Some(validation_format) = &self.validation_format {
             builder.validation_format(validation_format);

@@ -65,14 +65,6 @@
           required
           :options="attributeOutputLocationOptions"
         />
-        <VormInput
-          v-if="funcVariant === FuncVariant.Validation"
-          v-model="attrToValidate"
-          label="Attribute to Validate"
-          type="dropdown"
-          required
-          :options="validationOptions"
-        />
         <ErrorMessage
           v-if="createFuncReqStatus.isError"
           :requestStatus="createFuncReqStatus"
@@ -126,7 +118,6 @@ import {
 } from "@si/vue-lib/design-system";
 import { useRouter } from "vue-router";
 import clsx from "clsx";
-import uniqBy from "lodash-es/uniqBy";
 import * as _ from "lodash-es";
 import { ActionKind } from "@/store/fixes.store";
 import SiCheckBox from "@/components/SiCheckBox.vue";
@@ -138,7 +129,6 @@ import {
   CreateFuncOptions,
   CreateFuncOutputLocation,
   FuncAssociations,
-  ValidationAssociations,
 } from "@/store/func/types";
 import { nilId } from "@/utils/nilId";
 import CodeEditor from "./CodeEditor.vue";
@@ -262,12 +252,10 @@ const attachEnabled = computed(() => {
   const hasOutput =
     funcVariant.value !== FuncVariant.Attribute ||
     !!attributeOutputLocationParsed.value;
-  const hasAttrToValidate =
-    funcVariant.value !== FuncVariant.Validation || !!attrToValidate.value;
   const existingSelected =
     !attachExisting.value || !!selectedExistingFuncId.value;
 
-  return nameIsSet && hasOutput && hasAttrToValidate && existingSelected;
+  return nameIsSet && hasOutput && existingSelected;
 });
 
 const open = (existing?: boolean, variant?: FuncVariant, funcId?: FuncId) => {
@@ -345,31 +333,10 @@ const newFuncOptions = (
         type: "qualificationOptions",
         ...baseOptions,
       };
-    case FuncVariant.Validation:
-      if (attrToValidate.value) {
-        return {
-          type: "validationOptions",
-          propToValidate: attrToValidate.value,
-          ...baseOptions,
-        };
-      }
-      throw new Error(`attrToValidate not defined for validation`);
     default:
       throw new Error(`newFuncOptions not defined for ${funcVariant}`);
   }
 };
-
-const attachToValidationFunction = (
-  schemaVariantId: string,
-  propId: string,
-  associations: ValidationAssociations,
-): ValidationAssociations => ({
-  ...associations,
-  prototypes: uniqBy(
-    associations.prototypes.concat([{ schemaVariantId, propId }]),
-    (proto) => proto.propId,
-  ),
-});
 
 const attachToAttributeFunction = (
   outputLocation: CreateFuncOutputLocation,
@@ -425,15 +392,6 @@ const attachExistingFunc = async () => {
           if (attributeOutputLocationParsed.value) {
             updatedAssociations = attachToAttributeFunction(
               attributeOutputLocationParsed.value,
-              associations,
-            );
-          }
-          break;
-        case "validation":
-          if (attrToValidate.value) {
-            updatedAssociations = attachToValidationFunction(
-              props.schemaVariantId,
-              attrToValidate.value,
               associations,
             );
           }

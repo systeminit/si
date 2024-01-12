@@ -5,14 +5,11 @@ use telemetry::prelude::*;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentResult;
-use crate::qualification::{
-    QualificationResult, QualificationSubCheck, QualificationSubCheckStatus, QualificationView,
-};
+use crate::qualification::{QualificationSubCheckStatus, QualificationView};
 use crate::schema::SchemaVariant;
-use crate::validation::ValidationError;
 use crate::ws_event::WsEvent;
-use crate::{AttributeReadContext, DalContext, RootPropChild, StandardModel, ValidationResolver};
-use crate::{Component, ComponentError, ComponentId, Prop};
+use crate::{AttributeReadContext, DalContext, RootPropChild, StandardModel};
+use crate::{Component, ComponentError, ComponentId};
 
 // FIXME(nick): use the formal types from the new version of function authoring instead of this
 // struct. This struct is a temporary stopgap until that's implemented.
@@ -37,10 +34,7 @@ impl Component {
             .await?
             .ok_or(ComponentError::NoSchemaVariant(component_id))?;
 
-        // First, check the ephemeral and universal "All Fields Valid" qualification.
-        let all_fields_valid_qualification_view =
-            Self::all_fields_valid_qualification(ctx, component_id).await?;
-        let mut results: Vec<QualificationView> = vec![all_fields_valid_qualification_view];
+        let mut results: Vec<QualificationView> = vec![];
         let mut qualification_views = vec![];
 
         // Prepare to assemble qualification views and access the "/root/qualification" prop tree.
@@ -139,84 +133,5 @@ impl Component {
             .await?;
 
         Ok(results)
-    }
-
-    /// An ephemeral qualification (not present in the
-    /// [`prop tree`](crate::schema::variant::leaves)) that qualifies if all validations passed.
-    #[instrument(skip_all)]
-    pub async fn all_fields_valid_qualification(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<QualificationView> {
-        // TODO(nick): this function is a partial port of the original "all fields valid" logic.
-        // Use the validation prop tree once available.
-        let statuses = ValidationResolver::find_status(ctx, component_id).await?;
-
-        let component = Component::get_by_id(ctx, &component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(component_id))?;
-        let schema_variant = component
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(component_id))?;
-
-        let props = Prop::find_by_attr(ctx, "schema_variant_id", schema_variant.id()).await?;
-
-        let mut validation_errors = Vec::<(String, ValidationError)>::new();
-        for status in statuses {
-            // FIXME(nick): there's a race condition or bug where the attribute value where
-            // "get_by_id" will fail with a given attribute value id from the the "FIND_STATUS"
-            // query. This seems to only happen when the "get_summary" route is called from "sdf",
-            // but it could happen more frequently. The good news is that this is intermittent
-            // and the route is always called again and returns 200 OK. For now, let's log
-            // where and when this happens.
-            let av = AttributeValue::get_by_id(ctx, &status.attribute_value_id).await?;
-            match av {
-                Some(av) => {
-                    let prop = if let Some(prop) =
-                        props.iter().find(|p| *p.id() == av.context.prop_id())
-                    {
-                        prop
-                    } else {
-                        continue;
-                    };
-
-                    for error in status.errors {
-                        validation_errors.push((prop.json_pointer(), error));
-                    }
-                }
-                None => warn!(
-                    "skipping, could not find attribute value for status: {:?}",
-                    status
-                ),
-            }
-        }
-
-        let sub_checks: Vec<QualificationSubCheck> = validation_errors
-            .iter()
-            .map(|(prop_name, error)| QualificationSubCheck {
-                description: format!("validation failed for \"{}\": {}", prop_name, error.message),
-                status: QualificationSubCheckStatus::Failure,
-            })
-            .collect();
-
-        let name = "All fields are valid";
-        Ok(QualificationView {
-            title: name.to_string(),
-            output: vec![],
-            description: None,
-            link: None,
-            result: Some(QualificationResult {
-                status: if sub_checks.is_empty() {
-                    QualificationSubCheckStatus::Success
-                } else {
-                    QualificationSubCheckStatus::Failure
-                },
-                title: None,
-                link: None,
-                sub_checks,
-            }),
-            qualification_name: name.to_string(),
-        })
     }
 }

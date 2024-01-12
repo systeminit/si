@@ -9,7 +9,6 @@
       '--focus': isFocus,
       '--open': canHaveChildren && isOpen,
       '--collapsed': canHaveChildren && !isOpen,
-      '--invalid': !isValid,
     }"
   >
     <div
@@ -202,13 +201,6 @@
           >
             <Icon class="attributes-panel-item__help-icon" name="docs" />
           </a>
-
-          <Icon
-            v-tooltip="attributeDef.validationError"
-            :name="icon"
-            size="sm"
-            class="attributes-panel-item__type-icon"
-          />
         </div>
       </div>
 
@@ -448,8 +440,6 @@ const isChildOfArray = computed(
   () => props.attributeDef.arrayIndex !== undefined,
 );
 const isChildOfMap = computed(() => props.attributeDef.mapKey !== undefined);
-
-const isValid = computed(() => props.attributeDef.isValid);
 
 const canHaveChildren = computed(() => {
   return ["object", "map", "array"].includes(propKind.value);

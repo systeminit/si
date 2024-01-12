@@ -257,19 +257,8 @@ const executeAsset = async () => {
     const result = await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
     if (result.result.success) {
       executeAssetModalRef.value?.open();
-      const {
-        schemaVariantId,
-        detachedValidationPrototypes,
-        detachedAttributePrototypes,
-      } = result.result.data;
-
-      for (const detached of detachedValidationPrototypes) {
-        detachedWarnings.value.push({
-          funcId: detached.funcId,
-          variant: FuncVariant.Validation,
-          message: `Validation ${detached.funcName} detached from asset because the property associated to it changed (Path=${detached.propPath} of Kind=${detached.propKind})`,
-        });
-      }
+      const { schemaVariantId, detachedAttributePrototypes } =
+        result.result.data;
 
       for (const detached of detachedAttributePrototypes) {
         if (

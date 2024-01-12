@@ -1,16 +1,12 @@
 use base64::{engine::general_purpose, Engine};
 use dal::{
-    func::{
-        argument::FuncArgumentKind, backend::validation::FuncBackendValidationArgs,
-        intrinsics::IntrinsicFunc,
-    },
+    func::{argument::FuncArgumentKind, intrinsics::IntrinsicFunc},
     installed_pkg::*,
     pkg::*,
     prop::PropPath,
     schema::variant::leaves::LeafKind,
-    validation::Validation,
-    ActionKind, ChangeSet, ChangeSetPk, DalContext, ExternalProvider, Func, InternalProvider,
-    PropKind, Schema, SchemaVariant, StandardModel, ValidationPrototype,
+    ActionKind, ChangeSet, ChangeSetPk, DalContext, Func, InternalProvider, PropKind, Schema,
+    SchemaVariant, StandardModel,
 };
 use dal::{BuiltinsResult, ComponentType};
 use dal_test::{connection_annotation_string, test, DalContextHeadRef};
@@ -19,8 +15,7 @@ use si_pkg::{
     FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, LeafFunctionSpec,
     LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind, PkgSpec, PropSpec,
     PropSpecKind, SchemaSpec, SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecData, SiPkg,
-    SocketSpec, SocketSpecArity, SocketSpecData, SocketSpecKind, ValidationSpec,
-    ValidationSpecKind,
+    SocketSpec, SocketSpecArity, SocketSpecData, SocketSpecKind,
 };
 
 async fn make_stellarfield(ctx: &DalContext) -> BuiltinsResult<()> {
@@ -527,27 +522,6 @@ async fn test_install_pkg(ctx: &DalContext) {
         .build()
         .expect("able to make schema spec");
 
-    let custom_validation_code = "function validate(value) { return { valid: false, message: 'whatever it is, im against it' }; }";
-    let validation_b64 = general_purpose::STANDARD_NO_PAD.encode(custom_validation_code.as_bytes());
-    let validation_func_spec = FuncSpec::builder()
-        .name("groucho")
-        .unique_id("groucho")
-        .data(
-            FuncSpecData::builder()
-                .name("groucho")
-                .display_name("Horse Feathers")
-                .description("it rejects values")
-                .handler("validate")
-                .code_base64(&validation_b64)
-                .backend_kind(FuncSpecBackendKind::JsValidation)
-                .response_type(FuncSpecBackendResponseType::Validation)
-                .hidden(false)
-                .build()
-                .expect("whatever it is, i'm against it"),
-        )
-        .build()
-        .expect("able to build validation func spec");
-
     let scaffold_func_b = "function createAsset() {
                 return new AssetBuilder().build();
             }";
@@ -624,14 +598,6 @@ async fn test_install_pkg(ctx: &DalContext) {
                     PropSpec::builder()
                         .name("distress_jess")
                         .kind(PropSpecKind::Number)
-                        .validation(
-                            ValidationSpec::builder()
-                                .kind(ValidationSpecKind::IntegerIsBetweenTwoIntegers)
-                                .lower_bound(2)
-                                .upper_bound(100)
-                                .build()
-                                .expect("able to add validation"),
-                        )
                         .build()
                         .expect("able to make prop spec"),
                 )
@@ -639,13 +605,6 @@ async fn test_install_pkg(ctx: &DalContext) {
                     PropSpec::builder()
                         .name("sixes_and_sevens")
                         .kind(PropSpecKind::Number)
-                        .validation(
-                            ValidationSpec::builder()
-                                .kind(ValidationSpecKind::CustomValidation)
-                                .func_unique_id(&validation_func_spec.unique_id)
-                                .build()
-                                .expect("able to add custom validation"),
-                        )
                         .build()
                         .expect("able to make prop spec"),
                 )
@@ -698,7 +657,6 @@ async fn test_install_pkg(ctx: &DalContext) {
         .name("The Kenosha Kid")
         .version("0.1")
         .created_by("Pointsman")
-        .func(validation_func_spec)
         .func(identity_func_spec.clone())
         .schema(schema_a)
         .schema(schema_b)
@@ -848,36 +806,4 @@ async fn test_install_pkg(ctx: &DalContext) {
     .await
     .expect("able to search for ac input")
     .expect("able to find ac input");
-
-    let _light_output =
-        ExternalProvider::find_for_schema_variant_and_name(ctx, *light_bulb.id(), "Light")
-            .await
-            .expect("able to search for light output")
-            .expect("able to find light output");
-
-    let validations = ValidationPrototype::list_for_schema_variant(ctx, *light_bulb.id())
-        .await
-        .expect("able to find validations");
-
-    // The "/root/color" prop gets a StringIsHexColor validation, plus the validation from the spec
-    assert_eq!(3, validations.len());
-    let number_validation = validations.get(1).expect("able to get validation");
-    let validation_args: FuncBackendValidationArgs =
-        serde_json::from_value(number_validation.args().clone()).expect("able to deserialize");
-
-    assert!(matches!(
-        validation_args.validation,
-        Validation::IntegerIsBetweenTwoIntegers {
-            lower_bound: 2,
-            upper_bound: 100,
-            ..
-        }
-    ));
-
-    let custom_validation = validations.get(2).expect("able to get custom validation");
-    let func = Func::get_by_id(ctx, &custom_validation.func_id())
-        .await
-        .expect("able to get func")
-        .expect("func is there");
-    assert_eq!(func.name(), "groucho");
 }

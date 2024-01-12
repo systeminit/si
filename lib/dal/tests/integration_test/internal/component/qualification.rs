@@ -157,19 +157,11 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
     let found_qualifications = Component::list_qualifications(ctx, *component.id())
         .await
         .expect("cannot list qualifications");
-    assert_eq!(found_qualifications.len(), 2);
+    assert_eq!(found_qualifications.len(), 1);
 
-    let mut all_fields_valid_qualification = None;
     let mut test_qualification = None;
     for found_qualification in found_qualifications {
         match found_qualification.title.as_str() {
-            "All fields are valid" => {
-                assert!(
-                    all_fields_valid_qualification.is_none(),
-                    "already found all fields valid"
-                );
-                all_fields_valid_qualification = Some(found_qualification);
-            }
             "test:qualification" => {
                 assert!(
                     test_qualification.is_none(),
@@ -180,17 +172,8 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
             _ => panic!("found unexpected qualification: {found_qualification:?}"),
         }
     }
-    let all_fields_valid_qualification =
-        all_fields_valid_qualification.expect("could not find all fields valid qualification");
     let test_qualification = test_qualification.expect("could not find test qualification");
 
-    assert_eq!(
-        all_fields_valid_qualification
-            .result
-            .expect("could not get result")
-            .status,
-        QualificationSubCheckStatus::Success,
-    );
     assert_eq!(
         test_qualification
             .result

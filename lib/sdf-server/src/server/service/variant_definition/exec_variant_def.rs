@@ -26,10 +26,8 @@ use crate::service::variant_definition::migrate_authentication_funcs_to_new_sche
 use super::{
     super::func::FuncVariant, maybe_delete_schema_variant_connected_to_variant_def,
     migrate_actions_to_new_schema_variant, migrate_attribute_functions_to_new_schema_variant,
-    migrate_leaf_functions_to_new_schema_variant,
-    migrate_validation_functions_to_new_schema_variant, AttributePrototypeContextKind,
+    migrate_leaf_functions_to_new_schema_variant, AttributePrototypeContextKind,
     SaveVariantDefRequest, SchemaVariantDefinitionError, SchemaVariantDefinitionResult,
-    ValidationPrototypeDefinition,
 };
 
 pub type ExecVariantDefRequest = SaveVariantDefRequest;
@@ -51,7 +49,6 @@ pub struct ExecVariantDefResponse {
     pub success: bool,
     pub schema_variant_id: SchemaVariantId,
     pub func_exec_response: serde_json::Value,
-    pub detached_validation_prototypes: Vec<ValidationPrototypeDefinition>,
     pub detached_attribute_prototypes: Vec<AttributePrototypeView>,
 }
 
@@ -85,12 +82,8 @@ pub async fn exec_variant_def(
             request.id,
         ))?;
 
-    let (
-        maybe_previous_variant_id,
-        leaf_funcs_to_migrate,
-        attribute_prototypes,
-        validation_prototypes,
-    ) = maybe_delete_schema_variant_connected_to_variant_def(&ctx, &mut variant_def).await?;
+    let (maybe_previous_variant_id, leaf_funcs_to_migrate, attribute_prototypes) =
+        maybe_delete_schema_variant_connected_to_variant_def(&ctx, &mut variant_def).await?;
 
     let asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
@@ -214,75 +207,62 @@ pub async fn exec_variant_def(
         .copied()
         .ok_or(SchemaVariantDefinitionError::NoAssetCreated)?;
 
-    let (detached_attribute_prototypes, detached_validation_prototypes) =
-        match maybe_previous_variant_id {
-            Some(previous_schema_variant_id) => {
-                migrate_leaf_functions_to_new_schema_variant(
-                    &ctx,
-                    leaf_funcs_to_migrate,
-                    schema_variant_id,
-                )
-                .await?;
-                migrate_actions_to_new_schema_variant(
-                    &ctx,
-                    previous_schema_variant_id,
-                    schema_variant_id,
-                )
-                .await?;
-                migrate_authentication_funcs_to_new_schema_variant(
-                    &ctx,
-                    previous_schema_variant_id,
-                    schema_variant_id,
-                )
-                .await?;
+    let detached_attribute_prototypes = match maybe_previous_variant_id {
+        Some(previous_schema_variant_id) => {
+            migrate_leaf_functions_to_new_schema_variant(
+                &ctx,
+                leaf_funcs_to_migrate,
+                schema_variant_id,
+            )
+            .await?;
+            migrate_actions_to_new_schema_variant(
+                &ctx,
+                previous_schema_variant_id,
+                schema_variant_id,
+            )
+            .await?;
+            migrate_authentication_funcs_to_new_schema_variant(
+                &ctx,
+                previous_schema_variant_id,
+                schema_variant_id,
+            )
+            .await?;
 
-                let schema_variant = SchemaVariant::get_by_id(&ctx, &schema_variant_id)
+            let schema_variant = SchemaVariant::get_by_id(&ctx, &schema_variant_id)
+                .await?
+                .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
+
+            let attribute_prototypes = migrate_attribute_functions_to_new_schema_variant(
+                &ctx,
+                attribute_prototypes,
+                &schema_variant,
+            )
+            .await?;
+            let mut detached_attribute_prototypes = Vec::with_capacity(attribute_prototypes.len());
+
+            for attribute_prototype in attribute_prototypes {
+                let func = Func::get_by_id(&ctx, &attribute_prototype.func_id)
                     .await?
-                    .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
-
-                let attribute_prototypes = migrate_attribute_functions_to_new_schema_variant(
-                    &ctx,
-                    attribute_prototypes,
-                    &schema_variant,
-                )
-                .await?;
-                let mut detached_attribute_prototypes =
-                    Vec::with_capacity(attribute_prototypes.len());
-
-                for attribute_prototype in attribute_prototypes {
-                    let func = Func::get_by_id(&ctx, &attribute_prototype.func_id)
-                        .await?
-                        .ok_or_else(|| {
-                            SchemaVariantDefinitionError::FuncNotFound(attribute_prototype.func_id)
-                        })?;
-                    detached_attribute_prototypes.push(AttributePrototypeView {
-                        id: attribute_prototype.id,
-                        func_id: attribute_prototype.func_id,
-                        func_name: func.name().to_owned(),
-                        variant: (&func).try_into().ok(),
-                        key: attribute_prototype.key,
-                        context: attribute_prototype.context,
-                    });
-                }
-
-                let detached_validation_prototypes =
-                    migrate_validation_functions_to_new_schema_variant(
-                        &ctx,
-                        validation_prototypes,
-                        schema_variant_id,
-                    )
-                    .await?;
-
-                (
-                    detached_attribute_prototypes,
-                    detached_validation_prototypes,
-                )
+                    .ok_or_else(|| {
+                        SchemaVariantDefinitionError::FuncNotFound(attribute_prototype.func_id)
+                    })?;
+                detached_attribute_prototypes.push(AttributePrototypeView {
+                    id: attribute_prototype.id,
+                    func_id: attribute_prototype.func_id,
+                    func_name: func.name().to_owned(),
+                    variant: (&func).try_into().ok(),
+                    key: attribute_prototype.key,
+                    context: attribute_prototype.context,
+                });
             }
-            None => {
-                attach_resource_payload_to_value(&ctx, schema_variant_id).await?;
-                (vec![], vec![])
-            }
-        };
+
+            detached_attribute_prototypes
+        }
+        None => {
+            attach_resource_payload_to_value(&ctx, schema_variant_id).await?;
+            vec![]
+        }
+    };
 
     track(
         &posthog_client,
@@ -315,7 +295,6 @@ pub async fn exec_variant_def(
             success: true,
             func_exec_response,
             schema_variant_id,
-            detached_validation_prototypes,
             detached_attribute_prototypes,
         })?)?,
     )

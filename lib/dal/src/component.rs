@@ -22,7 +22,6 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::socket::{SocketEdgeKind, SocketError};
 use crate::standard_model::object_from_row;
-use crate::validation::ValidationConstructorError;
 use crate::ws_event::WsEventError;
 use crate::{
     impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
@@ -33,8 +32,7 @@ use crate::{
     ExternalProviderError, FixError, FixId, Func, FuncBackendKind, FuncError, HistoryActor,
     HistoryEventError, IndexMap, Node, NodeError, PropError, RootPropChild, Schema, SchemaError,
     SchemaId, Socket, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
-    UserPk, ValidationPrototypeError, ValidationResolverError, Visibility, WorkspaceError, WsEvent,
-    WsEventResult, WsPayload,
+    UserPk, Visibility, WorkspaceError, WsEvent, WsEventResult, WsPayload,
 };
 use crate::{AttributeValueId, QualificationError};
 use crate::{Edge, FixResolverError, NodeKind};
@@ -44,7 +42,6 @@ pub mod diff;
 pub mod qualification;
 pub mod resource;
 pub mod status;
-pub mod validation;
 pub mod view;
 
 pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
@@ -173,12 +170,6 @@ pub enum ComponentError {
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
-    #[error("validation error: {0}")]
-    Validation(#[from] ValidationConstructorError),
-    #[error("validation prototype error: {0}")]
-    ValidationPrototype(#[from] ValidationPrototypeError),
-    #[error("validation resolver error: {0}")]
-    ValidationResolver(#[from] ValidationResolverError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
     #[error("ws event error: {0}")]
@@ -1224,12 +1215,12 @@ impl Component {
                         (object_id, belongs_to_id, tenancy_workspace_pk, visibility_change_set_pk)
                         VALUES ($1, $2, $3, $4)
                         ON CONFLICT (object_id, tenancy_workspace_pk, visibility_change_set_pk) DO NOTHING",
-                    &[
-                        &object_id,
-                        &belongs_to_id,
-                        &ctx.tenancy().workspace_pk(),
-                        &ctx.visibility().change_set_pk,
-                    ],
+                       &[
+                           &object_id,
+                           &belongs_to_id,
+                           &ctx.tenancy().workspace_pk(),
+                           &ctx.visibility().change_set_pk,
+                       ],
                 ).await?;
         }
 

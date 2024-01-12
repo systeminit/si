@@ -9,11 +9,9 @@ use thiserror::Error;
 use crate::{
     pk, schema::variant::SchemaVariantError, AttributeValueError, AttributeValueId, ComponentError,
     PropError, PropId, SchemaVariantId, StandardModelError, TransactionsError,
-    ValidationResolverError,
 };
 
 pub mod schema;
-pub mod validations;
 pub mod values;
 
 #[remain::sorted]
@@ -49,8 +47,6 @@ pub enum PropertyEditorError {
     TooManyValuesFoundForPropertyEditorProp(PropertyEditorPropId),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("validation resolver error: {0}")]
-    ValidationResolver(#[from] ValidationResolverError),
 }
 
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
