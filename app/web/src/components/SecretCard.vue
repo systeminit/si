@@ -108,7 +108,7 @@
         "
         @click="emit('edit')"
       >
-        <Icon name="settings" size="lg" />
+        <Icon name="edit" size="lg" />
       </div>
       <!-- TODO(Wendy) - here's the button we will use when we add deletion -->
       <!-- <div
