@@ -20,11 +20,9 @@ use crate::{
         js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
         js_reconciliation::FuncBackendJsReconciliation,
         js_schema_variant_definition::FuncBackendJsSchemaVariantDefinition,
-        js_validation::FuncBackendJsValidation,
         map::FuncBackendMap,
         object::FuncBackendObject,
         string::FuncBackendString,
-        validation::FuncBackendValidation,
         FuncBackend, FuncDispatch, FuncDispatchContext, InvalidResolverFunctionTypeError,
     },
     TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
@@ -239,10 +237,6 @@ impl FuncBinding {
         before: Vec<BeforeFunction>,
     ) -> FuncBindingResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
         let execution_result = match self.backend_kind() {
-            FuncBackendKind::JsValidation => {
-                FuncBackendJsValidation::create_and_execute(context, &func, &self.args, before)
-                    .await
-            }
             FuncBackendKind::JsAction => {
                 FuncBackendJsAction::create_and_execute(context, &func, &self.args, before).await
             }
@@ -288,7 +282,10 @@ impl FuncBinding {
             FuncBackendKind::String => FuncBackendString::create_and_execute(&self.args).await,
             FuncBackendKind::Unset => Ok((None, None)),
             FuncBackendKind::Validation => {
-                FuncBackendValidation::create_and_execute(&self.args).await
+                unimplemented!("direct Validation function execution is deprecated")
+            }
+            FuncBackendKind::JsValidation => {
+                unimplemented!("direct Validation function execution is deprecated")
             }
             FuncBackendKind::JsAuthentication => unimplemented!(
                 "direct JsAuthentication function execution is not currently supported"

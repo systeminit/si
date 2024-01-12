@@ -1,6 +1,5 @@
 import { ref, Ref, computed } from "vue";
 import * as _ from "lodash-es";
-import { PropertyEditorValidation } from "@/api/sdf/dal/property_editor";
 
 export const VALID_USERNAME_REGEX = /^[a-z0-9._-]+$/i;
 
@@ -52,21 +51,3 @@ export const useValidations = (
     setInError,
   };
 };
-
-export const usePropertyEditorValidations = (
-  validation: Ref<PropertyEditorValidation | undefined> | undefined,
-) =>
-  computed(() => {
-    const results: ValidatorArray = [];
-    if (validation?.value) {
-      for (let x = 0; x < validation.value?.errors.length ?? 0; x++) {
-        const error = validation.value.errors[x];
-        results.push({
-          id: `${x}`,
-          message: error?.message ?? "",
-          check: () => false,
-        });
-      }
-    }
-    return results;
-  });

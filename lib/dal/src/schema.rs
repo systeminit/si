@@ -15,8 +15,8 @@ use crate::{
     schema::ui_menu::SchemaUiMenuId, standard_model, standard_model_accessor,
     standard_model_has_many, standard_model_many_to_many, AttributeContextBuilderError,
     AttributePrototypeError, AttributeValueError, Component, DalContext, FuncError,
-    HistoryEventError, PropError, StandardModel, StandardModelError, Timestamp,
-    ValidationPrototypeError, Visibility, WsEventError,
+    HistoryEventError, PropError, StandardModel, StandardModelError, Timestamp, Visibility,
+    WsEventError,
 };
 use crate::{Tenancy, TransactionsError, WorkspacePk};
 
@@ -77,8 +77,6 @@ pub enum SchemaError {
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("validation prototype error: {0}")]
-    ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("schema variant error: {0}")]
     Variant(#[from] SchemaVariantError),
     #[error("ws event error: {0}")]

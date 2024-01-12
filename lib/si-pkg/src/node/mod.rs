@@ -34,7 +34,6 @@ mod schema_variant;
 mod schema_variant_child;
 mod si_prop_func;
 mod socket;
-mod validation;
 
 pub(crate) use self::{
     action_func::ActionFuncNode,
@@ -61,7 +60,6 @@ pub(crate) use self::{
     schema_variant_child::{SchemaVariantChild, SchemaVariantChildNode},
     si_prop_func::SiPropFuncNode,
     socket::SocketNode,
-    validation::ValidationNode,
 };
 
 const NODE_KIND_ACTION_FUNC: &str = "action_func";
@@ -89,7 +87,6 @@ const NODE_KIND_SCHEMA_VARIANT: &str = "schema_variant";
 const NODE_KIND_SCHEMA_VARIANT_CHILD: &str = "schema_variant_child";
 const NODE_KIND_SI_PROP_FUNC: &str = "si_prop_func";
 const NODE_KIND_SOCKET: &str = "socket";
-const NODE_KIND_VALIDATION: &str = "validation";
 
 const KEY_NODE_KIND_STR: &str = "node_kind";
 
@@ -162,7 +159,6 @@ pub enum PkgNode {
     SchemaVariantChild(SchemaVariantChildNode),
     SiPropFunc(SiPropFuncNode),
     Socket(SocketNode),
-    Validation(ValidationNode),
 }
 
 impl PkgNode {
@@ -191,7 +187,6 @@ impl PkgNode {
     pub const SCHEMA_VARIANT_KIND_CHILD_STR: &'static str = NODE_KIND_SCHEMA_VARIANT_CHILD;
     pub const SOCKET_KIND_STR: &'static str = NODE_KIND_SOCKET;
     pub const SI_PROP_FUNC_KIND_STR: &'static str = NODE_KIND_SI_PROP_FUNC;
-    pub const VALIDATION_KIND_STR: &'static str = NODE_KIND_VALIDATION;
 
     pub fn node_kind_str(&self) -> &'static str {
         match self {
@@ -219,7 +214,6 @@ impl PkgNode {
             Self::SchemaVariantChild(_) => NODE_KIND_SCHEMA_VARIANT_CHILD,
             Self::SiPropFunc(_) => NODE_KIND_SI_PROP_FUNC,
             Self::Socket(_) => NODE_KIND_SOCKET,
-            Self::Validation(_) => NODE_KIND_VALIDATION,
             Self::AuthFunc(_) => NODE_KIND_AUTH_FUNC,
         }
     }
@@ -252,7 +246,6 @@ impl NameStr for PkgNode {
             Self::SchemaVariantChild(node) => node.name(),
             Self::SiPropFunc(_) => NODE_KIND_SI_PROP_FUNC,
             Self::Socket(node) => node.name(),
-            Self::Validation(_) => NODE_KIND_VALIDATION,
             Self::AuthFunc(_) => NODE_KIND_AUTH_FUNC,
         }
     }
@@ -288,7 +281,6 @@ impl WriteBytes for PkgNode {
             Self::SchemaVariantChild(node) => node.write_bytes(writer)?,
             Self::SiPropFunc(node) => node.write_bytes(writer)?,
             Self::Socket(node) => node.write_bytes(writer)?,
-            Self::Validation(node) => node.write_bytes(writer)?,
         };
 
         Ok(())
@@ -348,7 +340,6 @@ impl ReadBytes for PkgNode {
             }
             NODE_KIND_SOCKET => SocketNode::read_bytes(reader)?.map(Self::Socket),
             NODE_KIND_SI_PROP_FUNC => SiPropFuncNode::read_bytes(reader)?.map(Self::SiPropFunc),
-            NODE_KIND_VALIDATION => ValidationNode::read_bytes(reader)?.map(Self::Validation),
             invalid_kind => {
                 dbg!(format!("invalid package node kind: {invalid_kind}"));
                 None

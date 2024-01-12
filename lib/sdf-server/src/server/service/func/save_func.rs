@@ -9,18 +9,16 @@ use dal::{
     attribute::context::AttributeContextBuilder,
     func::argument::FuncArgument,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    validation::prototype::context::ValidationPrototypeContext,
     ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContext, AttributePrototype,
     AttributePrototypeArgument, AttributePrototypeId, AttributeValue, ChangeSet, Component,
     ComponentId, DalContext, Func, FuncBackendKind, FuncBinding, FuncId, InternalProviderId, Prop,
     SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
-use dal::{FuncBackendResponseType, PropKind, SchemaVariant, ValidationPrototype};
+use dal::{FuncBackendResponseType, PropKind, SchemaVariant};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 
-use super::ValidationPrototypeView;
 use super::{
     AttributePrototypeArgumentView, AttributePrototypeView, FuncArgumentView, FuncAssociations,
     FuncError, FuncResult,
@@ -515,59 +513,6 @@ async fn save_action_func_prototypes(
     Ok(())
 }
 
-async fn save_validation_func_prototypes(
-    ctx: &DalContext,
-    func: &Func,
-    prototypes: Vec<ValidationPrototypeView>,
-) -> FuncResult<()> {
-    let mut id_set = HashSet::new();
-
-    for proto_view in prototypes {
-        let mut context = ValidationPrototypeContext::builder();
-        let schema_id = *SchemaVariant::get_by_id(ctx, &proto_view.schema_variant_id)
-            .await?
-            .ok_or(FuncError::ValidationPrototypeMissingSchemaVariant(
-                proto_view.schema_variant_id,
-            ))?
-            .schema(ctx)
-            .await?
-            .ok_or(FuncError::ValidationPrototypeMissingSchema)?
-            .id();
-
-        let context = context
-            .set_prop_id(proto_view.prop_id)
-            .set_schema_variant_id(proto_view.schema_variant_id)
-            .set_schema_id(schema_id)
-            .to_context(ctx)
-            .await?;
-
-        let proto = match ValidationPrototype::find_for_context(ctx, context.clone())
-            .await?
-            .pop()
-        {
-            Some(mut existing_proto) => {
-                existing_proto.set_func_id(ctx, *func.id()).await?;
-                existing_proto
-            }
-            None => {
-                ValidationPrototype::new(ctx, *func.id(), serde_json::json!(null), context).await?
-            }
-        };
-
-        id_set.insert(*proto.id());
-    }
-
-    for proto in ValidationPrototype::list_for_func(ctx, *func.id()).await? {
-        if !id_set.contains(proto.id()) {
-            if let Some(mut proto) = ValidationPrototype::get_by_id(ctx, proto.id()).await? {
-                proto.delete_by_id(ctx).await?;
-            }
-        }
-    }
-
-    Ok(())
-}
-
 pub async fn do_save_func(
     ctx: &DalContext,
     request: SaveFuncRequest,
@@ -595,11 +540,6 @@ pub async fn do_save_func(
             }) = request.associations
             {
                 save_action_func_prototypes(ctx, &func, kind, schema_variant_ids).await?;
-            }
-        }
-        FuncBackendKind::JsValidation => {
-            if let Some(FuncAssociations::Validation { prototypes }) = request.associations {
-                save_validation_func_prototypes(ctx, &func, prototypes).await?;
             }
         }
         FuncBackendKind::JsAttribute => match func.backend_response_type() {
@@ -704,7 +644,8 @@ pub async fn do_save_func(
         | FuncBackendKind::Object
         | FuncBackendKind::String
         | FuncBackendKind::Unset
-        | FuncBackendKind::Validation => return Err(FuncError::NotWritable),
+        | FuncBackendKind::Validation
+        | FuncBackendKind::JsValidation => return Err(FuncError::NotWritable),
     }
 
     let is_revertible = super::is_func_revertible(ctx, &func).await?;

@@ -11,7 +11,6 @@ import {
   PropertyEditorProp,
   PropertyEditorPropKind,
   PropertyEditorSchema,
-  PropertyEditorValidation,
   PropertyEditorValue,
   PropertyEditorValues,
 } from "@/api/sdf/dal/property_editor";
@@ -62,9 +61,6 @@ export type AttributeTreeItem = {
   mapKey?: string;
   arrayKey?: string;
   arrayIndex?: number;
-  validations: PropertyEditorValidation[] | undefined;
-  isValid: boolean;
-  validationError: string | undefined;
 };
 
 export const useComponentAttributesStore = (componentId: ComponentId) => {
@@ -87,7 +83,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           // TODO: likely want to restructure how this data is sent and stored
           // but we'll just move into a pinia store as the first step...
           schema: null as PropertyEditorSchema | null,
-          validations: null as PropertyEditorValidation[] | null,
           values: null as PropertyEditorValues | null,
         }),
         getters: {
@@ -96,10 +91,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             const { schema, values } = state;
             if (!schema || !values) return;
 
-            const validationsByValueId = _.groupBy(
-              state.validations,
-              (v) => v.valueId,
-            );
             const valuesByValueId = state.values?.values;
             const propsByPropId = state.schema?.props;
             const rootValueId = values.rootValueId;
@@ -119,11 +110,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               // some values that we see are for props that are hidden, so we filter them out
               if (!propDef) return;
 
-              const validations = validationsByValueId[value.id as any] as
-                | PropertyEditorValidation[]
-                | undefined;
-              const failingValidation = _.find(validations, (v) => !v.valid);
-
               // console.log("HERE", value);
 
               return {
@@ -139,9 +125,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                   arrayKey: value.key,
                 }),
                 propId: value.propId,
-                validations,
-                isValid: !failingValidation,
-                validationError: failingValidation?.errors[0]?.message,
                 children: _.compact(
                   _.map(values?.childValues[valueId], (cvId, index) =>
                     getAttributeValueWithChildren(
@@ -335,23 +318,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               },
             });
           },
-          async FETCH_PROPERTY_EDITOR_VALIDATIONS() {
-            return new ApiRequest<{ validations: PropertyEditorValidation[] }>({
-              url: "component/get_property_editor_validations",
-              params: {
-                componentId: this.selectedComponentId,
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                this.validations = response.validations;
-              },
-            });
-          },
 
           reloadPropertyEditorData() {
             this.FETCH_PROPERTY_EDITOR_SCHEMA();
             this.FETCH_PROPERTY_EDITOR_VALUES();
-            this.FETCH_PROPERTY_EDITOR_VALIDATIONS();
           },
 
           async REMOVE_PROPERTY_VALUE(

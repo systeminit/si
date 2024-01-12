@@ -10,7 +10,7 @@ use si_pkg::{
     RootPropFuncSpec, SchemaSpec, SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecBuilder,
     SchemaVariantSpecComponentType, SchemaVariantSpecData, SchemaVariantSpecPropRoot, SiPkg,
     SiPkgKind, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec, SocketSpecData, SocketSpecKind,
-    SpecError, ValidationSpec, ValidationSpecKind,
+    SpecError,
 };
 use telemetry::prelude::*;
 
@@ -18,22 +18,18 @@ use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPro
 use crate::{
     component::view::{AttributeDebugView, ComponentDebugView},
     edge::EdgeKind,
-    func::{
-        argument::FuncArgument, backend::validation::FuncBackendValidationArgs,
-        intrinsics::IntrinsicFunc,
-    },
+    func::{argument::FuncArgument, intrinsics::IntrinsicFunc},
     prop::PropPath,
     prop_tree::{PropTree, PropTreeNode},
     schema::variant::definition::SchemaVariantDefinition,
     socket::SocketKind,
-    validation::Validation,
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, ChangeSet, ChangeSetPk,
     Component, ComponentError, ComponentId, ComponentType, DalContext, Edge, EdgeError,
     ExternalProvider, ExternalProviderId, Func, FuncError, FuncId, InternalProvider,
     InternalProviderId, LeafInputLocation, LeafKind, NodeError, Prop, PropError, PropId, PropKind,
     Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket, StandardModel,
-    ValidationPrototype, Workspace,
+    Workspace,
 };
 
 use super::{PkgError, PkgResult};
@@ -947,13 +943,6 @@ impl PkgExporter {
                 }
             }
 
-            for validation in self
-                .export_validations_for_prop(ctx, change_set_pk, entry.prop_id)
-                .await?
-            {
-                entry.builder.validation(validation);
-            }
-
             let prop_spec = entry.builder.build()?;
 
             match entry.parent_prop_id {
@@ -1077,92 +1066,6 @@ impl PkgExporter {
         let func_unique_id = func_spec.unique_id.to_owned();
 
         Ok(Some((func_unique_id, inputs)))
-    }
-
-    async fn export_validations_for_prop(
-        &self,
-        ctx: &DalContext,
-        change_set_pk: Option<ChangeSetPk>,
-        prop_id: PropId,
-    ) -> PkgResult<Vec<ValidationSpec>> {
-        let mut validation_specs = vec![];
-
-        let validation_prototypes = ValidationPrototype::list_for_prop(ctx, prop_id).await?;
-
-        for prototype in &validation_prototypes {
-            if !std_model_change_set_matches(change_set_pk, prototype) {
-                continue;
-            }
-
-            let mut spec_builder = ValidationSpec::builder();
-
-            if self.is_workspace_export {
-                spec_builder.unique_id(prototype.id().to_string());
-            }
-
-            if prototype.visibility().is_deleted() {
-                spec_builder.deleted(true);
-            }
-
-            let args: Option<FuncBackendValidationArgs> =
-                serde_json::from_value(prototype.args().clone())?;
-
-            match args {
-                Some(validation) => match validation.validation {
-                    Validation::IntegerIsBetweenTwoIntegers {
-                        lower_bound,
-                        upper_bound,
-                        ..
-                    } => {
-                        spec_builder.kind(ValidationSpecKind::IntegerIsBetweenTwoIntegers);
-                        spec_builder.upper_bound(upper_bound);
-                        spec_builder.lower_bound(lower_bound);
-                    }
-                    Validation::IntegerIsNotEmpty { .. } => {
-                        spec_builder.kind(ValidationSpecKind::IntegerIsNotEmpty);
-                    }
-                    Validation::StringHasPrefix { expected, .. } => {
-                        spec_builder.kind(ValidationSpecKind::StringHasPrefix);
-                        spec_builder.expected_string(expected);
-                    }
-                    Validation::StringEquals { expected, .. } => {
-                        spec_builder.kind(ValidationSpecKind::StringEquals);
-                        spec_builder.expected_string(expected);
-                    }
-                    Validation::StringInStringArray {
-                        expected,
-                        display_expected,
-                        ..
-                    } => {
-                        spec_builder.kind(ValidationSpecKind::StringInStringArray);
-                        spec_builder.expected_string_array(expected);
-                        spec_builder.display_expected(display_expected);
-                    }
-                    Validation::StringIsNotEmpty { .. } => {
-                        spec_builder.kind(ValidationSpecKind::StringIsNotEmpty);
-                    }
-                    Validation::StringIsValidIpAddr { .. } => {
-                        spec_builder.kind(ValidationSpecKind::StringIsValidIpAddr);
-                    }
-                    Validation::StringIsHexColor { .. } => {
-                        spec_builder.kind(ValidationSpecKind::StringIsHexColor);
-                    }
-                },
-                None => {
-                    let func_spec = self
-                        .func_map
-                        .get(change_set_pk, &prototype.func_id())
-                        .ok_or(PkgError::MissingExportedFunc(prototype.func_id()))?;
-
-                    spec_builder.kind(ValidationSpecKind::CustomValidation);
-                    spec_builder.func_unique_id(&func_spec.unique_id);
-                }
-            }
-
-            validation_specs.push(spec_builder.build()?);
-        }
-
-        Ok(validation_specs)
     }
 
     async fn export_func(

@@ -23,7 +23,7 @@ use crate::{
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
     AttributeReadContext, AttributeValueError, AttributeValueId, DalContext, ExternalProviderId,
     FuncError, InternalProviderId, PropError, PropId, SchemaError, SchemaVariantId,
-    StandardModelError, TransactionsError, ValidationPrototypeError,
+    StandardModelError, TransactionsError,
 };
 
 // Private builtins modules.
@@ -123,8 +123,6 @@ pub enum BuiltinsError {
     StandardModel(#[from] StandardModelError),
     #[error("error creating new transactions")]
     Transactions(#[from] TransactionsError),
-    #[error("validation prototype error: {0}")]
-    ValidationPrototype(#[from] ValidationPrototypeError),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;

@@ -27,7 +27,7 @@ use dal::{
     FuncBackendKind, FuncBackendResponseType, FuncBindingError, FuncId, InternalProvider,
     InternalProviderError, InternalProviderId, LeafInputLocation, Prop, PropError, PropId,
     PrototypeListForFuncError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
-    TenancyError, TransactionsError, ValidationPrototype, ValidationPrototypeError, WsEventError,
+    TenancyError, TransactionsError, WsEventError,
 };
 
 use crate::server::{impl_default_error_into_response, state::AppState};
@@ -92,6 +92,8 @@ pub enum FuncError {
     ContextTransaction(#[from] TransactionsError),
     #[error("editing reconciliation functions is not implemented")]
     EditingReconciliationFuncsNotImplemented,
+    #[error("editing validation functions is not implemented")]
+    EditingValidationFuncsNotImplemented,
     #[error(transparent)]
     ExternalProvider(#[from] ExternalProviderError),
     #[error(transparent)]
@@ -179,8 +181,6 @@ pub enum FuncError {
     UnexpectedFuncVariantCreatingAttributeFunc(FuncVariant),
     #[error("A validation already exists for that attribute")]
     ValidationAlreadyExists,
-    #[error("validation prototype error: {0}")]
-    ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("validation prototype schema is missing")]
     ValidationPrototypeMissingSchema,
     #[error("validation prototype {0} schema_variant is missing")]
@@ -562,19 +562,7 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             return Err(FuncError::EditingReconciliationFuncsNotImplemented);
         }
         FuncBackendKind::JsValidation => {
-            let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
-            let input_type = compile_validation_types(ctx, &protos).await?;
-
-            let associations = Some(FuncAssociations::Validation {
-                prototypes: protos
-                    .iter()
-                    .map(|proto| ValidationPrototypeView {
-                        schema_variant_id: proto.context().schema_variant_id(),
-                        prop_id: proto.context().prop_id(),
-                    })
-                    .collect(),
-            });
-            (associations, input_type)
+            return Err(FuncError::EditingValidationFuncsNotImplemented);
         }
         FuncBackendKind::JsAuthentication => {
             let schema_variant_ids = AuthenticationPrototype::find_for_func(ctx, *func.id())
@@ -748,30 +736,6 @@ pub fn compile_return_types_2(ty: FuncBackendResponseType, kind: FuncBackendKind
             "\n",
             "type Output = any;"
         ),
-    }
-}
-
-async fn compile_validation_types(
-    ctx: &DalContext,
-    prototypes: &[ValidationPrototype],
-) -> FuncResult<String> {
-    let mut input_fields = Vec::new();
-    for prototype in prototypes {
-        let prop = Prop::get_by_id(ctx, &prototype.context().prop_id())
-            .await?
-            .ok_or(PropError::NotFound(
-                prototype.context().prop_id(),
-                *ctx.visibility(),
-            ))?;
-        let ts_type = prop.ts_type(ctx).await?;
-        input_fields.push(ts_type);
-    }
-    if input_fields.is_empty() {
-        Ok("type Input = never;".to_owned())
-    } else {
-        let variants = input_fields.join(" | ");
-        let types = format!("type Input = {variants};");
-        Ok(types)
     }
 }
 

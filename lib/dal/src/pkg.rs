@@ -29,8 +29,8 @@ use crate::{
     ComponentId, DalContext, EdgeError, ExternalProviderError, ExternalProviderId, FuncBackendKind,
     FuncBackendResponseType, FuncBindingReturnValueError, FuncError, FuncId, InternalProviderError,
     InternalProviderId, NodeError, PropError, PropId, PropKind, SchemaError, SchemaId,
-    SchemaVariantError, SchemaVariantId, StandardModelError, UserPk, ValidationPrototypeError,
-    WorkspaceError, WorkspacePk, WsEvent, WsEventResult, WsPayload,
+    SchemaVariantError, SchemaVariantId, StandardModelError, UserPk, WorkspaceError, WorkspacePk,
+    WsEvent, WsEventResult, WsPayload,
 };
 
 mod export;
@@ -213,8 +213,6 @@ pub enum PkgError {
     UlidDecode(#[from] ulid::DecodeError),
     #[error(transparent)]
     UrlParse(#[from] ParseError),
-    #[error("Validation creation error: {0}")]
-    Validation(#[from] ValidationPrototypeError),
     #[error(transparent)]
     Workspace(#[from] WorkspaceError),
     #[error("Cannot find default change set \"{0}\" in workspace backup")]

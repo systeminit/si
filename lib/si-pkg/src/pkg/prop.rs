@@ -2,7 +2,7 @@ use object_tree::{Hash, HashedNode};
 use petgraph::prelude::*;
 use url::Url;
 
-use super::{PkgResult, SiPkgAttrFuncInput, SiPkgError, SiPkgMapKeyFunc, SiPkgValidation, Source};
+use super::{PkgResult, SiPkgAttrFuncInput, SiPkgError, SiPkgMapKeyFunc, Source};
 
 use crate::{
     node::{PkgNode, PropChildNode, PropNode, PropNodeData},
@@ -108,7 +108,6 @@ macro_rules! impl_prop_child_from_graph {
 }
 
 impl<'a> SiPkgProp<'a> {
-    impl_prop_child_from_graph!(validations, PropChildNode::Validations, SiPkgValidation);
     impl_prop_child_from_graph!(inputs, PropChildNode::AttrFuncInputs, SiPkgAttrFuncInput);
     impl_prop_child_from_graph!(map_key_funcs, PropChildNode::MapKeyFuncs, SiPkgMapKeyFunc);
 

@@ -23,7 +23,5 @@ mod standard_model;
 mod status_update;
 mod tenancy;
 mod user;
-mod validation_prototype;
-mod validation_resolver;
 mod visibility;
 mod workspace;

@@ -34,8 +34,8 @@ use crate::{
     ExternalProvider, ExternalProviderError, Func, FuncBackendResponseType, FuncBindingReturnValue,
     FuncError, FuncId, HistoryEventError, InternalProvider, Prop, PropError, PropId, PropKind,
     ReconciliationPrototypeError, RootPropChild, Schema, SchemaId, SocketArity, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, ValidationPrototypeError,
-    Visibility, WorkspacePk, WsEventError,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility, WorkspacePk,
+    WsEventError,
 };
 
 use self::leaves::{LeafInput, LeafInputLocation, LeafKind};
@@ -157,8 +157,6 @@ pub enum SchemaVariantError {
     Std(#[from] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("validation prototype error: {0}")]
-    ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }

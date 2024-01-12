@@ -28,9 +28,7 @@ use dal::{
     ExternalProvider, ExternalProviderError, Func, FuncBinding, FuncBindingError, FuncError,
     FuncId, InternalProvider, InternalProviderError, LeafInputLocation, LeafKind, Prop, PropError,
     PropKind, SchemaError, SchemaVariant, SchemaVariantError, SchemaVariantId, SocketId,
-    StandardModel, StandardModelError, TenancyError, TransactionsError, UserError,
-    ValidationPrototype, ValidationPrototypeContext, ValidationPrototypeError,
-    ValidationPrototypeId, WsEventError,
+    StandardModel, StandardModelError, TenancyError, TransactionsError, UserError, WsEventError,
 };
 use si_pkg::{SiPkgError, SpecError};
 
@@ -141,8 +139,6 @@ pub enum SchemaVariantDefinitionError {
     Tenancy(#[from] TenancyError),
     #[error("transparent")]
     User(#[from] UserError),
-    #[error(transparent)]
-    ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("Schema Variant Definition {0} not found")]
     VariantDefinitionNotFound(SchemaVariantDefinitionId),
     #[error("Cannot update asset structure while in use by components, attribute functions, or validations")]
@@ -212,58 +208,7 @@ pub async fn is_variant_def_locked(
     Ok(!variant_def.list_components(ctx).await?.is_empty())
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ValidationPrototypeDefinition {
-    pub id: ValidationPrototypeId,
-    pub func_id: FuncId,
-    pub func_name: String,
-    pub args: serde_json::Value,
-    pub link: Option<String>,
-    pub prop_path: String,
-    pub prop_kind: PropKind,
-}
-
 // Returns prototypes that were not migrated
-pub async fn migrate_validation_functions_to_new_schema_variant(
-    ctx: &DalContext,
-    validation_prototypes: Vec<ValidationPrototypeDefinition>,
-    new_schema_variant_id: SchemaVariantId,
-) -> SchemaVariantDefinitionResult<Vec<ValidationPrototypeDefinition>> {
-    let schema_variant = SchemaVariant::get_by_id(ctx, &new_schema_variant_id)
-        .await?
-        .ok_or(SchemaVariantError::NotFound(new_schema_variant_id))?;
-    let schema = schema_variant.schema(ctx).await?.ok_or(
-        SchemaVariantDefinitionError::SchemaNotFoundForVariant(new_schema_variant_id),
-    )?;
-
-    let new_props = SchemaVariant::all_props(ctx, new_schema_variant_id).await?;
-    let mut invalid_validation_prototypes = Vec::new();
-    for validation_prototype in validation_prototypes {
-        if let Some(new_prop) = new_props.iter().find(|p| {
-            p.path().as_str() == validation_prototype.prop_path
-                && p.kind() == &validation_prototype.prop_kind
-        }) {
-            let mut prototype = ValidationPrototype::new(
-                ctx,
-                validation_prototype.func_id,
-                validation_prototype.args,
-                ValidationPrototypeContext::builder()
-                    .set_prop_id(*new_prop.id())
-                    .set_schema_variant_id(new_schema_variant_id)
-                    .set_schema_id(*schema.id())
-                    .to_context(ctx)
-                    .await?,
-            )
-            .await?;
-            prototype.set_link(ctx, validation_prototype.link).await?;
-        } else {
-            // Arguments don't match, bail on this prototype
-            invalid_validation_prototypes.push(validation_prototype);
-        }
-    }
-    Ok(invalid_validation_prototypes)
-}
 
 #[derive(Clone, Debug)]
 pub struct ParentAttributeValueDefinition {
@@ -576,10 +521,7 @@ pub async fn migrate_leaf_functions_to_new_schema_variant(
 pub async fn cleanup_orphaned_objects(
     ctx: &DalContext,
     schema_variant_id: SchemaVariantId,
-) -> SchemaVariantDefinitionResult<(
-    Vec<AttributePrototypeDefinition>,
-    Vec<ValidationPrototypeDefinition>,
-)> {
+) -> SchemaVariantDefinitionResult<Vec<AttributePrototypeDefinition>> {
     let mut attribute_prototypes = Vec::new();
     for prototype in AttributePrototype::list_for_schema_variant(ctx, schema_variant_id).await? {
         let args =
@@ -711,30 +653,7 @@ pub async fn cleanup_orphaned_objects(
         internal_provider.delete_by_id(ctx).await?;
     }
 
-    let mut validation_prototypes = Vec::new();
-    for mut validation_prototype in
-        ValidationPrototype::list_for_schema_variant(ctx, schema_variant_id).await?
-    {
-        validation_prototype.delete_by_id(ctx).await?;
-
-        let prop = validation_prototype.prop(ctx).await?;
-        let func = Func::get_by_id(ctx, &validation_prototype.func_id())
-            .await?
-            .ok_or_else(|| {
-                SchemaVariantDefinitionError::FuncNotFound(validation_prototype.func_id())
-            })?;
-        validation_prototypes.push(ValidationPrototypeDefinition {
-            id: *validation_prototype.id(),
-            func_id: validation_prototype.func_id(),
-            func_name: func.name().to_owned(),
-            args: validation_prototype.args().clone(),
-            link: validation_prototype.link().map(ToOwned::to_owned),
-            prop_path: prop.path().as_str().to_owned(),
-            prop_kind: *prop.kind(),
-        });
-    }
-
-    Ok((attribute_prototypes, validation_prototypes))
+    Ok(attribute_prototypes)
 }
 
 #[derive(Debug)]
@@ -751,7 +670,6 @@ pub async fn maybe_delete_schema_variant_connected_to_variant_def(
     Option<SchemaVariantId>,
     Vec<LeafFuncMigration>,
     Vec<AttributePrototypeDefinition>,
-    Vec<ValidationPrototypeDefinition>,
 )> {
     let has_components = is_variant_def_locked(ctx, variant_def).await?;
     if has_components {
@@ -760,58 +678,55 @@ pub async fn maybe_delete_schema_variant_connected_to_variant_def(
 
     let maybe_previous_schema_variant_id = variant_def.schema_variant_id().copied();
     let mut leaf_func_migrations = vec![];
-    let (attribute_prototypes, validation_prototypes) =
-        if let Some(schema_variant_id) = maybe_previous_schema_variant_id {
-            let mut variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
+    let attribute_prototypes = if let Some(schema_variant_id) = maybe_previous_schema_variant_id {
+        let mut variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
+            .await?
+            .ok_or(SchemaVariantDefinitionError::SchemaVariantNotFound(
+                schema_variant_id,
+                *variant_def.id(),
+            ))?;
+
+        for leaf_kind in LeafKind::iter() {
+            let leaf_funcs =
+                SchemaVariant::find_leaf_item_functions(ctx, *variant.id(), leaf_kind).await?;
+            for (_, func) in leaf_funcs {
+                let input_locations = get_leaf_function_inputs(ctx, *func.id()).await?;
+                leaf_func_migrations.push(LeafFuncMigration {
+                    func: func.to_owned(),
+                    leaf_kind,
+                    input_locations,
+                });
+            }
+        }
+
+        let mut schema =
+            variant
+                .schema(ctx)
                 .await?
-                .ok_or(SchemaVariantDefinitionError::SchemaVariantNotFound(
-                    schema_variant_id,
+                .ok_or(SchemaVariantDefinitionError::SchemaNotFound(
                     *variant_def.id(),
                 ))?;
 
-            for leaf_kind in LeafKind::iter() {
-                let leaf_funcs =
-                    SchemaVariant::find_leaf_item_functions(ctx, *variant.id(), leaf_kind).await?;
-                for (_, func) in leaf_funcs {
-                    let input_locations = get_leaf_function_inputs(ctx, *func.id()).await?;
-                    leaf_func_migrations.push(LeafFuncMigration {
-                        func: func.to_owned(),
-                        leaf_kind,
-                        input_locations,
-                    });
-                }
-            }
+        let attribute_prototypes = cleanup_orphaned_objects(ctx, *variant.id()).await?;
 
-            let mut schema =
-                variant
-                    .schema(ctx)
-                    .await?
-                    .ok_or(SchemaVariantDefinitionError::SchemaNotFound(
-                        *variant_def.id(),
-                    ))?;
+        variant.delete_by_id(ctx).await?;
+        for mut ui_menu in schema.ui_menus(ctx).await? {
+            ui_menu.delete_by_id(ctx).await?;
+        }
+        schema.delete_by_id(ctx).await?;
 
-            let (attribute_prototypes, validation_prototypes) =
-                cleanup_orphaned_objects(ctx, *variant.id()).await?;
-
-            variant.delete_by_id(ctx).await?;
-            for mut ui_menu in schema.ui_menus(ctx).await? {
-                ui_menu.delete_by_id(ctx).await?;
-            }
-            schema.delete_by_id(ctx).await?;
-
-            variant_def
-                .set_schema_variant_id(ctx, None::<SchemaVariantId>)
-                .await?;
-            (attribute_prototypes, validation_prototypes)
-        } else {
-            (Vec::new(), Vec::new())
-        };
+        variant_def
+            .set_schema_variant_id(ctx, None::<SchemaVariantId>)
+            .await?;
+        attribute_prototypes
+    } else {
+        Vec::new()
+    };
 
     Ok((
         maybe_previous_schema_variant_id,
         leaf_func_migrations,
         attribute_prototypes,
-        validation_prototypes,
     ))
 }
 

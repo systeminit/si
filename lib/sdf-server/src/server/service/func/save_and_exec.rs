@@ -7,11 +7,8 @@ use axum::{response::IntoResponse, Json};
 use dal::{
     job::definition::DependentValuesUpdate, ActionPrototype, AttributePrototype, AttributeValue,
     AttributeValueError, AttributeValueId, ChangeSet, Component, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, PropId, RootPropChild, SchemaVariant, StandardModel,
-    ValidationPrototype, WsEvent,
+    FuncBackendResponseType, RootPropChild, SchemaVariant, StandardModel, WsEvent,
 };
-use serde_json::Value;
-use std::collections::HashMap;
 
 async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()> {
     let prototypes = AttributePrototype::find_for_func(ctx, func.id()).await?;
@@ -61,7 +58,7 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
                         None => {
                             return Err(FuncError::SchemaVariantNotFoundForProp(
                                 proto.context.prop_id(),
-                            ))
+                            ));
                         }
                     };
 
@@ -76,9 +73,9 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
                                 FuncBackendResponseType::CodeGeneration => RootPropChild::Code,
                                 FuncBackendResponseType::Qualification => RootPropChild::Qualification,
                                 _ => unreachable!("we guard this with a match above to ensure we only have leaf functions with root prop children")
-                            }
+                            },
                         )
-                        .await?;
+                            .await?;
 
                     let new_child_proxy_ids = qualification_attribute_value
                         .populate_child_proxies_for_value(
@@ -110,29 +107,6 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
             value_ids,
         ))
         .await?;
-    }
-
-    Ok(())
-}
-
-async fn run_validations(ctx: &DalContext, func: &Func) -> FuncResult<()> {
-    let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
-    if protos.is_empty() {
-        return Err(FuncError::FuncExecutionFailedNoPrototypes);
-    }
-
-    for proto in protos {
-        let schema_variant_id = proto.context().schema_variant_id();
-        if schema_variant_id.is_none() {
-            continue;
-        }
-        let components = Component::list_for_schema_variant(ctx, schema_variant_id).await?;
-        for component in components {
-            let mut cache: HashMap<PropId, (Option<Value>, AttributeValue)> = HashMap::new();
-            component
-                .check_single_validation(ctx, &proto, &mut cache)
-                .await?;
-        }
     }
 
     Ok(())
@@ -172,9 +146,6 @@ pub async fn save_and_exec(
         FuncBackendKind::JsAttribute => {
             update_values_for_func(&ctx, &func).await?;
         }
-        FuncBackendKind::JsValidation => {
-            run_validations(&ctx, &func).await?;
-        }
         FuncBackendKind::JsAction => {
             run_actions(&ctx, &func).await?;
         }
@@ -190,7 +161,8 @@ pub async fn save_and_exec(
         | FuncBackendKind::Object
         | FuncBackendKind::String
         | FuncBackendKind::Unset
-        | FuncBackendKind::Validation => Err(FuncError::FuncNotRunnable)?,
+        | FuncBackendKind::Validation
+        | FuncBackendKind::JsValidation => Err(FuncError::FuncNotRunnable)?,
     }
 
     WsEvent::change_set_written(&ctx)

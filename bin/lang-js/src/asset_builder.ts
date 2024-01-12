@@ -258,138 +258,6 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
   }
 }
 
-export type ValidationKind =
-  | "customValidation"
-  | "integerIsBetweenTwoIntegers"
-  | "integerIsNotEmpty"
-  | "stringEquals"
-  | "stringHasPrefix"
-  | "stringInStringArray"
-  | "stringIsHexColor"
-  | "stringIsNotEmpty"
-  | "stringIsValidIpAddr";
-
-export interface Validation {
-  kind: ValidationKind;
-  funcUniqueId?: Record<string, unknown>;
-  lowerBound?: number;
-  upperBound?: number;
-  expected?: string[];
-  displayExpected?: boolean;
-}
-
-export interface IValidationBuilder {
-  setKind(kind: ValidationKind): this;
-
-  addFuncUniqueId(key: string, value: unknown): this;
-
-  setLowerBound(value: number): this;
-
-  setUpperBound(value: number): this;
-
-  addExpected(expected: string): this;
-
-  setDisplayExpected(display: boolean): this;
-
-  build(): Validation;
-}
-
-/**
- * Validates a prop using a function or from a list of common validations
- *
- * @example
- * const validation = new ValidationBuilder()
- *  .setKind("stringIsNotEmpty")
- *  .build()
- */
-export class ValidationBuilder implements IValidationBuilder {
-  validation = <Validation>{};
-
-  constructor() {
-    this.validation = <Validation>{};
-  }
-
-  addFuncUniqueId(key: string, value: unknown): this {
-    if (this.validation.kind !== "customValidation") {
-      return this;
-    }
-
-    if (!this.validation.funcUniqueId) {
-      this.validation.funcUniqueId = {};
-    }
-
-    this.validation.funcUniqueId[key] = value;
-    return this;
-  }
-
-  /**
-   * Build the object
-   *
-   * @example
-   *  .build()
-   */
-  build(): Validation {
-    return this.validation;
-  }
-
-  setDisplayExpected(display: boolean): this {
-    if (this.validation.kind !== "stringInStringArray") {
-      return this;
-    }
-
-    this.validation.displayExpected = display;
-    return this;
-  }
-
-  addExpected(expected: string): this {
-    if (
-      this.validation.kind !== "stringEquals"
-      && this.validation.kind !== "stringHasPrefix"
-      && this.validation.kind !== "stringInStringArray"
-    ) {
-      return this;
-    }
-
-    if (!this.validation.expected) {
-      this.validation.expected = [];
-    }
-
-    this.validation.expected.push(expected);
-    return this;
-  }
-
-  setLowerBound(value: number): this {
-    if (this.validation.kind !== "integerIsBetweenTwoIntegers") {
-      return this;
-    }
-    this.validation.lowerBound = value;
-    return this;
-  }
-
-  /**
-   * The type of validation
-   *
-   * @param kind {string} [customValidation | integerIsBetweenTwoIntegers | integerIsNotEmpty  | stringEquals  | stringHasPrefix  | stringInStringArray  | stringIsHexColor  | stringIsNotEmpty  | stringIsValidIpAddr]
-   *
-   * @returns this
-   *
-   * @example
-   * .setKind("integerIsNotEmpty")
-   */
-  setKind(kind: ValidationKind): this {
-    this.validation.kind = kind;
-    return this;
-  }
-
-  setUpperBound(value: number): this {
-    if (this.validation.kind !== "integerIsBetweenTwoIntegers") {
-      return this;
-    }
-    this.validation.upperBound = value;
-    return this;
-  }
-}
-
 export type PropWidgetDefinitionKind =
   | "array"
   | "checkbox"
@@ -630,7 +498,6 @@ export interface PropDefinition {
   hidden?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   defaultValue?: any;
-  validations?: Validation[];
   validationFormat: string; // A JSON.stringify()-ed Joi.Descriptor
   mapKeyFuncs?: MapKeyFunc[];
 }
@@ -658,8 +525,6 @@ export interface IPropBuilder {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setDefaultValue(value: any): this;
-
-  addValidation(validation: Validation): this;
 
   setValidationFormat(format: Joi.Schema): this;
 
@@ -757,26 +622,6 @@ export class PropBuilder implements IPropBuilder {
       this.prop.mapKeyFuncs = [];
     }
     this.prop.mapKeyFuncs.push(func);
-    return this;
-  }
-
-  /**
-   * Add functions to validate the value of the prop
-   *
-   * @param {Validation} validation
-   *
-   * @returns this
-   *
-   * @example
-   * .addValidation(new ValidationBuilder()
-   *  .setKind("stringIsNotEmpty")
-   *  .build())
-   */
-  addValidation(validation: Validation): this {
-    if (!this.prop.validations) {
-      this.prop.validations = [];
-    }
-    this.prop.validations.push(validation);
     return this;
   }
 
@@ -960,8 +805,6 @@ export interface ISecretPropBuilder {
 
   setDocLink(link: string): this;
 
-  addValidation(validation: Validation): this;
-
   skipInputSocket(): this;
 
   build(): SecretPropDefinition;
@@ -1026,14 +869,6 @@ export class SecretPropBuilder implements ISecretPropBuilder {
 
   setDocLink(link: string): this {
     this.prop.docLink = link;
-    return this;
-  }
-
-  addValidation(validation: Validation): this {
-    if (!this.prop.validations) {
-      this.prop.validations = [];
-    }
-    this.prop.validations.push(validation);
     return this;
   }
 

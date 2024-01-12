@@ -3,7 +3,6 @@ export enum FuncVariant {
   CodeGeneration = "CodeGeneration",
   Action = "Action",
   Qualification = "Qualification",
-  Validation = "Validation",
   Authentication = "Authentication",
 }
 
@@ -27,10 +26,6 @@ export const CUSTOMIZABLE_FUNC_TYPES = {
   [FuncVariant.Qualification]: {
     pluralLabel: "Qualifications",
     singularLabel: "Qualification",
-  },
-  [FuncVariant.Validation]: {
-    pluralLabel: "Validations",
-    singularLabel: "Validation",
   },
 };
 

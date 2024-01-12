@@ -80,6 +80,7 @@ use crate::func::binding::{FuncBindingError, FuncBindingId};
 use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
 use crate::standard_model::object_option_from_row_option;
+use crate::ComponentId;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     AttributeContextBuilderError, AttributePrototype, AttributePrototypeError,
@@ -91,7 +92,6 @@ use crate::{
     standard_model_has_many, AttributeContext, AttributeContextError, AttributeValue, DalContext,
     Func, FuncBinding, PropId, SchemaId, SchemaVariantId,
 };
-use crate::{Component, ComponentId};
 
 const BY_SOCKET: &str = include_str!("../queries/internal_provider/by_socket.sql");
 const FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME: &str =
@@ -477,33 +477,6 @@ impl InternalProvider {
         target_attribute_value
             .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
             .await?;
-
-        if target_attribute_value.context.component_id().is_some() && self.prop_id().is_some() {
-            let provider_prop = Prop::get_by_id(ctx, self.prop_id())
-                .await?
-                .ok_or_else(|| InternalProviderError::PropNotFound(*self.prop_id()))?;
-
-            // NOTE(jhelwig): This whole block will go away once Qualifications/Validations become part of the Prop tree.
-            //
-            // The Root Prop won't have a parent Prop.
-            if provider_prop.parent_prop(ctx).await?.is_none() {
-                let ctx_deletion = &ctx.clone_with_delete_visibility();
-                let component = Component::get_by_id(
-                    ctx_deletion,
-                    &target_attribute_value.context.component_id(),
-                )
-                .await?
-                .ok_or_else(|| {
-                    InternalProviderError::ComponentNotFound(
-                        target_attribute_value.context.component_id(),
-                    )
-                })?;
-                component
-                    .check_validations(ctx)
-                    .await
-                    .map_err(|e| InternalProviderError::Component(e.to_string()))?;
-            }
-        }
 
         Ok(())
     }
