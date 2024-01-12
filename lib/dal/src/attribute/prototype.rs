@@ -251,12 +251,6 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<()> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
 
-        workspace_snapshot.remove_incoming_edges_of_kind(
-            ctx.change_set_pointer()?,
-            prototype_id,
-            EdgeWeightKindDiscriminants::Prototype,
-        )?;
-
         workspace_snapshot.remove_node_by_id(prototype_id)?;
 
         Ok(())

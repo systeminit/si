@@ -2644,7 +2644,6 @@ async fn import_schema_variant(
                 );
             }
 
-            info!("finalizing");
             SchemaVariant::finalize(ctx, schema_variant.id()).await?;
 
             for socket in variant_spec.sockets()? {
@@ -2913,12 +2912,8 @@ async fn get_prototype_for_context(
                 None => {
                     let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset)?;
                     let prototype_id = AttributePrototype::new(ctx, unset_func_id)?.id();
-                    InternalProvider::new_implicit_with_prototype_and_key(
-                        ctx,
-                        element_prop_id,
-                        prototype_id,
-                        &key,
-                    )?;
+                    Prop::set_prototype_id(ctx, element_prop_id, prototype_id)?;
+
                     prototype_id
                 }
                 Some(prototype_id) => prototype_id,
@@ -2959,14 +2954,10 @@ async fn create_attr_proto_arg(
     Ok(match input {
         SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
             let prop_id = Prop::find_prop_id_by_path(ctx, schema_variant_id, &prop_path.into())?;
-            let prop_ip_id = InternalProvider::find_for_prop_id(ctx, prop_id)?.ok_or(
-                PkgError::MissingInternalProviderForProp(prop_id, prop_path.to_owned()),
-            )?;
-
             let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id)?;
             let apa_id = apa.id();
 
-            apa.set_value_from_internal_provider_id(ctx, prop_ip_id)?;
+            apa.set_value_from_prop_id(ctx, prop_id).await?;
 
             apa_id
         }
@@ -3525,16 +3516,11 @@ pub async fn attach_resource_payload_to_value(
         ))?
         .id;
 
-    let source_id = {
-        let prop_id = Prop::find_prop_id_by_path(
-            ctx,
-            schema_variant_id,
-            &PropPath::new(["root", "resource", "payload"]),
-        )?;
-
-        InternalProvider::find_for_prop_id(ctx, prop_id)?
-            .ok_or(PkgError::InternalProviderNotFoundForProp(prop_id))?
-    };
+    let source_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        schema_variant_id,
+        &PropPath::new(["root", "resource", "payload"]),
+    )?;
 
     let target_id = {
         let resource_value_prop_id = Prop::find_prop_id_by_path(
@@ -3563,21 +3549,21 @@ pub async fn attach_resource_payload_to_value(
     match rv_input_apa_id {
         Some(apa_id) => {
             if !{
-                if let Some(AttributePrototypeArgumentValueSource::InternalProvider(ip_id)) =
+                if let Some(AttributePrototypeArgumentValueSource::Prop(prop_id)) =
                     AttributePrototypeArgument::value_source_by_id(ctx, apa_id)?
                 {
-                    ip_id == source_id
+                    prop_id == source_prop_id
                 } else {
                     false
                 }
             } {
                 let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
-                apa.set_value_from_internal_provider_id(ctx, source_id)?;
+                apa.set_value_from_prop_id(ctx, source_prop_id).await?;
             }
         }
         None => {
             let apa = AttributePrototypeArgument::new(ctx, target_id, func_argument_id)?;
-            apa.set_value_from_internal_provider_id(ctx, source_id)?;
+            apa.set_value_from_prop_id(ctx, source_prop_id).await?;
         }
     }
 

@@ -122,6 +122,26 @@ impl WorkspaceSnapshotGraph {
         self.root_index
     }
 
+    pub fn get_latest_node_idx_opt(
+        &mut self,
+        node_idx: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
+        if !self.graph.contains_node(node_idx) {
+            return Ok(None);
+        }
+
+        Ok(Some(self.get_latest_node_idx(node_idx)?))
+    }
+
+    #[inline(always)]
+    pub fn get_latest_node_idx(
+        &mut self,
+        node_idx: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
+        let node_id = self.get_node_weight(node_idx)?.id();
+        Ok(self.get_node_index_by_id(node_id)?)
+    }
+
     pub fn add_edge(
         &mut self,
         from_node_index: NodeIndex,
@@ -155,7 +175,7 @@ impl WorkspaceSnapshotGraph {
         self.update_merkle_tree_hash(new_from_node_index)?;
 
         // Update the rest of the graph to reflect the new node/edge.
-        self.replace_references(from_node_index, new_from_node_index)?;
+        self.replace_references(from_node_index)?;
 
         Ok(new_edge_index)
     }
@@ -301,10 +321,7 @@ impl WorkspaceSnapshotGraph {
 
                 let new_container_ordering_node_index =
                     self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
-                self.replace_references(
-                    container_ordering_node_index,
-                    new_container_ordering_node_index,
-                )?;
+                self.replace_references(container_ordering_node_index)?;
             }
         }
 
@@ -870,7 +887,8 @@ impl WorkspaceSnapshotGraph {
     }
 
     #[allow(dead_code)]
-    pub fn tiny_dot_to_file(&self) {
+    pub fn tiny_dot_to_file(&self, prefix: Option<&str>) {
+        let prefix = prefix.unwrap_or("dot");
         // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
         // process and open a new tab in your browser.
         // ```
@@ -947,8 +965,8 @@ impl WorkspaceSnapshotGraph {
                 )
             },
         );
-        let filename_no_extension = format!("dot-{}", Ulid::new().to_string());
-        let mut file = File::create(format!("/Users/nick/src/si/{filename_no_extension}.txt"))
+        let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), prefix);
+        let mut file = File::create(format!("/home/zacharyhamm/{filename_no_extension}.txt"))
             .expect("could not create file");
         file.write_all(format!("{dot:?}").as_bytes())
             .expect("could not write file");
@@ -1430,8 +1448,7 @@ impl WorkspaceSnapshotGraph {
         &mut self,
         other: &WorkspaceSnapshotGraph,
         root_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<HashMap<NodeIndex, NodeIndex>> {
-        let mut updated = HashMap::new();
+    ) -> WorkspaceSnapshotGraphResult<()> {
         let mut dfs = petgraph::visit::DfsPostOrder::new(&other.graph, root_index);
         while let Some(node_index_to_copy) = dfs.next(&other.graph) {
             let node_weight_to_copy = other.get_node_weight(node_index_to_copy)?.clone();
@@ -1451,28 +1468,23 @@ impl WorkspaceSnapshotGraph {
                     equivalent_node_index
                 } else {
                     let new_node_index = self.add_node(node_weight_to_copy)?;
-                    updated.extend(self.replace_references(equivalent_node_index, new_node_index)?);
+                    self.replace_references(equivalent_node_index)?;
 
-                    new_node_index
+                    self.get_latest_node_idx(new_node_index)?
                 }
             } else {
                 self.add_node(node_weight_to_copy)?
             };
 
-            updated.insert(node_index_to_copy, node_index);
-
             for edge in other.graph.edges_directed(node_index_to_copy, Outgoing) {
-                self.graph.update_edge(
-                    node_index,
-                    updated
-                        .get(&edge.target())
-                        .copied()
-                        .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?,
-                    edge.weight().clone(),
-                );
+                let target_id = other.get_node_weight(edge.target())?.id();
+                let latest_target = self.get_node_index_by_id(target_id)?;
+                self.graph
+                    .update_edge(node_index, latest_target, edge.weight().clone());
             }
         }
-        Ok(updated)
+
+        Ok(())
     }
 
     #[allow(dead_code)]
@@ -1587,12 +1599,11 @@ impl WorkspaceSnapshotGraph {
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotGraphResult<HashMap<NodeIndex, NodeIndex>> {
-        let mut updated = NodeIndexMap::new();
-
+    ) -> WorkspaceSnapshotGraphResult<()> {
         let mut edges_to_remove = Vec::new();
-        let new_source_node_index = self.copy_node_by_index(source_node_index)?;
-        updated.extend(self.replace_references(source_node_index, new_source_node_index)?);
+        self.copy_node_by_index(source_node_index)?;
+        self.replace_references(source_node_index)?;
+        let new_source_node_index = self.get_latest_node_idx(source_node_index)?;
 
         for edgeref in self
             .graph
@@ -1631,16 +1642,13 @@ impl WorkspaceSnapshotGraph {
 
                     let new_container_ordering_node_index =
                         self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
-                    updated.extend(self.replace_references(
-                        previous_container_ordering_node_index,
-                        new_container_ordering_node_index,
-                    )?);
+
+                    self.replace_references(previous_container_ordering_node_index)?;
                 }
             }
         }
 
-        let new_source_node_index =
-            self.get_node_index_by_id(self.get_node_weight(new_source_node_index)?.id())?;
+        let new_source_node_index = self.get_latest_node_idx(new_source_node_index)?;
 
         let mut work_queue = VecDeque::from([new_source_node_index]);
 
@@ -1657,7 +1665,7 @@ impl WorkspaceSnapshotGraph {
             }
         }
 
-        Ok(updated)
+        Ok(())
     }
 
     pub fn edge_endpoints(
@@ -1671,97 +1679,77 @@ impl WorkspaceSnapshotGraph {
         Ok((source, destination))
     }
 
+    /// Replace references should be called when a node has been changed and copied into the graph.
+    /// It will use the original_node_index to find the most up to date version of the new node,
+    /// and replace all edges that point to that old node with edges pointing to the new node.
+    /// Because the graph is treated as an immutable, copy-on-write structure, this means walking
+    /// up the graph to the root and copying all nodes that have edges that point to the
+    /// original_node_index, and all nodes that have edges that point to *those* parent nodes,
+    /// etc, until we've processed the entire parent tree of the original node.
     pub fn replace_references(
         &mut self,
         original_node_index: NodeIndex,
-        new_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<HashMap<NodeIndex, NodeIndex>> {
-        let mut old_to_new_node_indices: HashMap<NodeIndex, NodeIndex> = HashMap::new();
-        old_to_new_node_indices.insert(original_node_index, new_node_index);
+    ) -> WorkspaceSnapshotGraphResult<()> {
+        // Climb from the original node, up to root, rewriting outgoing edges along the way. But we
+        // have to be sure to climb to root once for each sibling node that we encounter as we
+        // walk up to root.
+        let mut outer_queue = VecDeque::from([original_node_index]);
 
-        // Create a post order traversal work queue by starting with the original
-        // node index in front.
-        let mut work_queue = VecDeque::new();
-        work_queue.push_front(original_node_index);
+        while let Some(old_node_index) = outer_queue.pop_front() {
+            let mut work_queue = VecDeque::from([old_node_index]);
 
-        // Push all sources of incoming edges that have a path to the root to the back to ensure
-        // post order traversal.
-        for edgeref in self.edges_directed(original_node_index, Incoming) {
-            let source_for_incoming_edge = edgeref.source();
-            if self.is_on_path_between(
-                self.root_index,
-                original_node_index,
-                source_for_incoming_edge,
-            ) {
-                work_queue.push_back(source_for_incoming_edge);
-            }
-        }
-
-        while let Some(old_node_index) = work_queue.pop_front() {
-            // Only process nodes that have a path to root.
-            if !self.has_path_to_root(old_node_index) {
-                continue;
-            }
-
-            // Check if we have incoming edges and push them to the back to ensure we
-            // continue to perform post order traversal.
-            for edgeref in self.edges_directed(old_node_index, Direction::Incoming) {
-                work_queue.push_back(edgeref.source());
-            }
-
-            // Copy the node if we have not seen it or grab it if we have. Only the first node in DFS post order
-            // traversal should already exist since it was created before we entered `replace_references`, and
-            // is the reason we're updating things in the first place.
-            let new_node_index = match old_to_new_node_indices.get(&old_node_index) {
-                Some(found_new_node_index) => *found_new_node_index,
-                None => {
-                    let new_node_index = self.copy_node_by_index(old_node_index)?;
-                    old_to_new_node_indices.insert(old_node_index, new_node_index);
-                    new_node_index
+            while let Some(old_node_index) = work_queue.pop_front() {
+                for edge_ref in self.edges_directed(old_node_index, Direction::Incoming) {
+                    work_queue.push_back(edge_ref.source());
+                    outer_queue.push_back(edge_ref.source())
                 }
-            };
 
-            // Find all outgoing edges weights and find the edge targets.
-            let mut edges_to_create: Vec<(EdgeWeight, NodeIndex)> = Vec::new();
-            for edge_reference in self.graph.edges_directed(old_node_index, Outgoing) {
-                edges_to_create.push((edge_reference.weight().clone(), edge_reference.target()));
+                let latest_node_idx = self.get_latest_node_idx(old_node_index)?;
+                let new_node_index = if latest_node_idx != old_node_index {
+                    latest_node_idx
+                } else {
+                    self.copy_node_by_index(old_node_index)?
+                };
+
+                // Find all outgoing edges weights and find the edge targets.
+                let mut edges_to_create = Vec::new();
+                for edge_ref in self.graph.edges_directed(old_node_index, Outgoing) {
+                    edges_to_create.push((
+                        edge_ref.weight().clone(),
+                        edge_ref.target(),
+                        edge_ref.id(),
+                    ));
+                }
+
+                // Make copies of these edges where the source is the new node index and the
+                // destination is one of the following...
+                // - If an entry exists in `old_to_new_node_indices` for the destination node index,
+                //   use the value of the entry (the destination was affected by the replacement,
+                //   and needs to use the new node index to reflect this).
+                // - There is no entry in `old_to_new_node_indices`; use the same destination node
+                //   index as the old edge (the destination was *NOT* affected by the replacement,
+                //   and does not have any new information to reflect).
+                for (edge_weight, destination_node_index, edge_idx) in edges_to_create {
+                    // Need to directly add the edge, without going through `self.add_edge` to avoid
+                    // infinite recursion, and because we're the place doing all the book keeping
+                    // that we'd be interested in happening from `self.add_edge`.
+                    let destination_node_index =
+                        self.get_latest_node_idx(destination_node_index)?;
+
+                    self.graph.remove_edge(edge_idx);
+
+                    self.graph
+                        .update_edge(new_node_index, destination_node_index, edge_weight);
+                }
+
+                self.update_merkle_tree_hash(new_node_index)?;
             }
-
-            // Make copies of these edges where the source is the new node index and the
-            // destination is one of the following...
-            // - If an entry exists in `old_to_new_node_indices` for the destination node index,
-            //   use the value of the entry (the destination was affected by the replacement,
-            //   and needs to use the new node index to reflect this).
-            // - There is no entry in `old_to_new_node_indices`; use the same destination node
-            //   index as the old edge (the destination was *NOT* affected by the replacement,
-            //   and does not have any new information to reflect).
-            for (edge_weight, destination_node_index) in edges_to_create {
-                // Need to directly add the edge, without going through `self.add_edge` to avoid
-                // infinite recursion, and because we're the place doing all the book keeping
-                // that we'd be interested in happening from `self.add_edge`.
-                self.graph.update_edge(
-                    new_node_index,
-                    old_to_new_node_indices
-                        .get(&destination_node_index)
-                        .copied()
-                        .unwrap_or(destination_node_index),
-                    edge_weight,
-                );
-            }
-
-            self.update_merkle_tree_hash(new_node_index)?;
         }
 
         // Use the new version of the old root node as our root node.
-        if let Some(new_root_node_index) = old_to_new_node_indices.get(&self.root_index) {
-            self.root_index = *new_root_node_index;
-        }
+        self.root_index = self.get_latest_node_idx(self.root_index)?;
 
-        // Before returning, remove the root from the map because we should always "ask" what the
-        // root is rather than relying on a potentially stale reference.
-        old_to_new_node_indices.remove(&self.root_index);
-
-        Ok(old_to_new_node_indices)
+        Ok(())
     }
 
     pub fn update_content(
@@ -1776,7 +1764,7 @@ impl WorkspaceSnapshotGraph {
         node_weight.increment_vector_clock(change_set)?;
         node_weight.new_content_hash(new_content_hash)?;
 
-        self.replace_references(original_node_index, new_node_index)?;
+        self.replace_references(original_node_index)?;
         Ok(())
     }
 
@@ -1793,7 +1781,7 @@ impl WorkspaceSnapshotGraph {
         let node_weight = self.get_node_weight_mut(new_node_index)?;
         node_weight.set_order(change_set, new_order)?;
 
-        self.replace_references(original_node_index, new_node_index)?;
+        self.replace_references(original_node_index)?;
         Ok(())
     }
 
@@ -1907,7 +1895,6 @@ impl WorkspaceSnapshotGraph {
         onto: &WorkspaceSnapshotGraph,
         updates: &[Update],
     ) -> WorkspaceSnapshotGraphResult<()> {
-        let mut updated = NodeIndexMap::new();
         for update in updates {
             match update {
                 Update::NewEdge {
@@ -1915,88 +1902,114 @@ impl WorkspaceSnapshotGraph {
                     destination,
                     edge_weight,
                 } => {
-                    let updated_source = *updated.get(source).unwrap_or(source);
-                    let destination =
-                        self.find_in_self_or_create_using_onto(*destination, &mut updated, onto)?;
-                    let new_edge_index =
-                        self.add_edge(updated_source, edge_weight.clone(), destination)?;
-                    let (new_source, _) = self.edge_endpoints(new_edge_index)?;
-                    updated.insert(*source, new_source);
+                    let updated_source = self.get_latest_node_idx(*source)?;
+                    let destination = self.find_in_self_or_create_using_onto(*destination, onto)?;
+
+                    self.add_edge(updated_source, edge_weight.clone(), destination)?;
                 }
                 Update::RemoveEdge {
                     source,
                     destination,
                     edge_kind,
                 } => {
-                    let updated_source = *updated.get(source).unwrap_or(source);
-                    let destination = *updated.get(destination).unwrap_or(destination);
-                    updated.extend(self.remove_edge(
+                    let updated_source = self.get_latest_node_idx(*source)?;
+                    let destination = self.get_latest_node_idx(*destination)?;
+                    self.remove_edge(
                         to_rebase_change_set,
                         updated_source,
                         destination,
                         *edge_kind,
-                    )?);
-                    if let Some(source_remapped) = updated.get(&updated_source).copied() {
-                        updated.insert(*source, source_remapped);
-                    }
+                    )?;
                 }
                 Update::ReplaceSubgraph {
                     onto: onto_subgraph_root,
                     to_rebase: to_rebase_subgraph_root,
                 } => {
-                    let updated_to_rebase = *updated
-                        .get(to_rebase_subgraph_root)
-                        .unwrap_or(to_rebase_subgraph_root);
-                    let new_subgraph_root = self.find_in_self_or_create_using_onto(
-                        *onto_subgraph_root,
-                        &mut updated,
-                        onto,
-                    )?;
-                    updated.extend(self.replace_references(updated_to_rebase, new_subgraph_root)?);
+                    let updated_to_rebase = self.get_latest_node_idx(*to_rebase_subgraph_root)?;
+                    let new_subgraph_root =
+                        self.find_in_self_or_create_using_onto(*onto_subgraph_root, onto)?;
+                    self.replace_references(updated_to_rebase)?;
                 }
             }
         }
         Ok(())
     }
 
+    /// Update node weight in place with a lambda. Use with caution. Generally
+    /// we treat node weights as immutable and replace them by creating a new
+    /// node with a new node weight and replacing references to point to the new
+    /// node.
+    pub(crate) fn update_node_weight<L>(
+        &mut self,
+        node_idx: NodeIndex,
+        lambda: L,
+    ) -> WorkspaceSnapshotGraphResult<()>
+    where
+        L: FnOnce(&mut NodeWeight) -> WorkspaceSnapshotGraphResult<()>,
+    {
+        let node_weight = self
+            .graph
+            .node_weight_mut(node_idx)
+            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
+
+        lambda(node_weight)?;
+
+        Ok(())
+    }
+
+    /// Given the node index for a node in other, find if a node exists in self that has the same
+    /// id as the node found in other.
+    fn find_latest_idx_in_self_from_other_idx(
+        &mut self,
+        other: &WorkspaceSnapshotGraph,
+        other_idx: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
+        let other_id = other.get_node_weight(other_idx)?.id();
+
+        Ok(self.get_node_index_by_id(other_id).ok())
+    }
+
     /// Find in self where self is the "to rebase" side or create using "onto".
     fn find_in_self_or_create_using_onto(
         &mut self,
         unchecked: NodeIndex,
-        updated: &mut NodeIndexMap,
         onto: &WorkspaceSnapshotGraph,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
-        let found_or_created = match updated.get(&unchecked) {
-            Some(found) => *found,
-            None => {
-                let unchecked_node_weight = onto.get_node_weight(unchecked)?;
-                match self.find_equivalent_node(
+        let unchecked_node_weight = onto.get_node_weight(unchecked)?;
+
+        let found_or_created = {
+            let equivalent_node = if let Some(found) =
+                self.find_latest_idx_in_self_from_other_idx(onto, unchecked)?
+            {
+                Some(found)
+            } else {
+                self.find_equivalent_node(
                     unchecked_node_weight.id(),
                     unchecked_node_weight.lineage_id(),
-                )? {
-                    Some(found_equivalent_node) => {
-                        let found_equivalent_node_weight =
-                            self.get_node_weight(found_equivalent_node)?;
-                        if found_equivalent_node_weight.merkle_tree_hash()
-                            != unchecked_node_weight.merkle_tree_hash()
-                        {
-                            updated.extend(self.import_subgraph(onto, unchecked)?);
+                )?
+            };
 
-                            *updated.get(&unchecked).ok_or(
-                                WorkspaceSnapshotGraphError::DestinationNotUpdatedWhenImportingSubgraph,
-                            )?
-                        } else {
-                            updated.insert(unchecked, found_equivalent_node);
-
-                            found_equivalent_node
-                        }
+            match equivalent_node {
+                Some(found_equivalent_node) => {
+                    let found_equivalent_node_weight =
+                        self.get_node_weight(found_equivalent_node)?;
+                    dbg!("found_equivalent_node");
+                    if found_equivalent_node_weight.merkle_tree_hash()
+                        != unchecked_node_weight.merkle_tree_hash()
+                    {
+                        dbg!("merkle mismatch");
+                        self.import_subgraph(onto, unchecked)?;
+                        self.find_latest_idx_in_self_from_other_idx(onto, unchecked)?
+                            .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
+                    } else {
+                        found_equivalent_node
                     }
-                    None => {
-                        updated.extend(self.import_subgraph(onto, unchecked)?);
-                        *updated.get(&unchecked).ok_or(
-                            WorkspaceSnapshotGraphError::DestinationNotUpdatedWhenImportingSubgraph,
-                        )?
-                    }
+                }
+                None => {
+                    info!("no equivalent_node_index");
+                    self.import_subgraph(onto, unchecked)?;
+                    self.find_latest_idx_in_self_from_other_idx(onto, unchecked)?
+                        .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
                 }
             }
         };

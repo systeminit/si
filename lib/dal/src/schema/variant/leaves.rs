@@ -4,8 +4,10 @@
 
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
+use telemetry::prelude::*;
 
 use crate::attribute::prototype::argument::AttributePrototypeArgument;
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
 use crate::{
     AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncId, InternalProvider, Prop, PropId, SchemaVariant,
@@ -225,47 +227,54 @@ impl SchemaVariant {
         let map_prop_id = Prop::parent_prop_id_by_id(ctx, item_prop_id)?
             .ok_or_else(|| SchemaVariantError::LeafMapPropNotFound(item_prop_id))?;
 
-        let key = Some(func.name.to_owned());
-        if let Some(prototype_id) = AttributePrototype::find_for_prop(ctx, item_prop_id, &key)? {
+        if let Some(prototype_id) = AttributePrototype::find_for_prop(ctx, item_prop_id, &None)? {
+            info!("removing None proto");
             AttributePrototype::remove(ctx, prototype_id)?;
         }
-        let attribute_protoype_id = AttributePrototype::new(ctx, func_id)?.id();
-        match InternalProvider::find_for_prop_id(ctx, item_prop_id)? {
-            Some(internal_provider_id) => {
-                InternalProvider::add_prototype_edge(
-                    ctx,
-                    internal_provider_id,
-                    attribute_protoype_id,
-                    &key,
-                )?;
-                internal_provider_id
-            }
-            None => InternalProvider::new_implicit_with_prototype_and_key(
-                ctx,
+
+        let key = Some(func.name.to_owned());
+        if let Some(prototype_id) = AttributePrototype::find_for_prop(ctx, item_prop_id, &key)? {
+            info!("removing {:?} proto", &key);
+            AttributePrototype::remove(ctx, prototype_id)?;
+        }
+
+        let attribute_prototype_id = AttributePrototype::new(ctx, func_id)?.id();
+
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            workspace_snapshot.add_edge(
                 item_prop_id,
-                attribute_protoype_id,
-                &key,
-            )?,
-        };
+                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(key))?,
+                attribute_prototype_id,
+            )?;
+        }
 
         for input in inputs {
-            let input_internal_provider_id =
-                SchemaVariant::find_root_child_implicit_internal_provider(
-                    ctx,
-                    schema_variant_id,
-                    input.location.into(),
-                )?;
+            let input_prop_id = SchemaVariant::find_root_child_prop_id(
+                ctx,
+                schema_variant_id,
+                input.location.clone().into(),
+            )?;
+
+            info!(
+                "add leaf: adding root child func arg: {:?}, {:?}",
+                input_prop_id, input.location
+            );
+
+            let prop = Prop::get_by_id(ctx, input_prop_id).await?;
+            info!("{}, {}", prop.name, prop.path(ctx)?);
+
             let apa = AttributePrototypeArgument::new(
                 ctx,
-                attribute_protoype_id,
+                attribute_prototype_id,
                 input.func_argument_id,
             )?;
 
-            apa.set_value_from_internal_provider_id(ctx, input_internal_provider_id)?;
+            apa.set_value_from_prop_id(ctx, input_prop_id).await?;
         }
 
         // Return the prop id for the entire map so that its implicit internal provider can be
         // used for intelligence functions.
-        Ok((map_prop_id, attribute_protoype_id))
+        Ok((map_prop_id, attribute_prototype_id))
     }
 }

@@ -89,6 +89,7 @@ rust_test(
         "//lib/veritech-client:veritech-client",
         "//third-party/rust:base64",
         "//third-party/rust:itertools",
+        "//third-party/rust:petgraph",
         "//third-party/rust:pretty_assertions_sorted",
         "//third-party/rust:serde_json",
         "//third-party/rust:sodiumoxide",

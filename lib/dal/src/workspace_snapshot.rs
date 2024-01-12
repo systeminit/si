@@ -322,21 +322,19 @@ impl WorkspaceSnapshot {
         &mut self,
         other: &mut Self,
         root_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<NodeIndexMap> {
-        let updated_indices = self
+    ) -> WorkspaceSnapshotResult<()> {
+        Ok(self
             .working_copy()?
-            .import_subgraph(other.working_copy()?, root_index)?;
-        Ok(updated_indices)
+            .import_subgraph(other.working_copy()?, root_index)?)
     }
 
     pub fn replace_references(
         &mut self,
         original_node_index: NodeIndex,
-        new_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotResult<NodeIndexMap> {
+    ) -> WorkspaceSnapshotResult<()> {
         Ok(self
             .working_copy()?
-            .replace_references(original_node_index, new_node_index)?)
+            .replace_references(original_node_index)?)
     }
 
     pub fn get_node_weight_by_id(
@@ -385,10 +383,10 @@ impl WorkspaceSnapshot {
             .dot();
     }
 
-    pub fn tiny_dot_to_file(&mut self) {
+    pub fn tiny_dot_to_file(&mut self, prefix: Option<&str>) {
         self.working_copy()
             .expect("failed on accessing or creating a working copy")
-            .tiny_dot_to_file();
+            .tiny_dot_to_file(prefix);
     }
 
     #[inline(always)]
@@ -576,7 +574,7 @@ impl WorkspaceSnapshot {
         source_node_index: NodeIndex,
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
-    ) -> WorkspaceSnapshotResult<NodeIndexMap> {
+    ) -> WorkspaceSnapshotResult<()> {
         Ok(self.working_copy()?.remove_edge(
             change_set,
             source_node_index,
@@ -598,5 +596,24 @@ impl WorkspaceSnapshot {
             onto.working_copy()?,
             updates,
         )?)
+    }
+
+    /// Mark whether a prop can be used as an input to a function. Props below
+    /// Maps and Arrays are not valid inputs. Must only be used when
+    /// "finalizing" a schema variant!
+    pub fn mark_prop_as_able_to_be_used_as_prototype_arg(
+        &mut self,
+        node_index: NodeIndex,
+    ) -> WorkspaceSnapshotResult<()> {
+        self.working_copy()?
+            .update_node_weight(node_index, |node_weight| match node_weight {
+                NodeWeight::Prop(prop_inner) => {
+                    prop_inner.set_can_be_used_as_prototype_arg(true);
+                    Ok(())
+                }
+                _ => Err(WorkspaceSnapshotGraphError::IncompatibleNodeTypes)?,
+            })?;
+
+        Ok(())
     }
 }

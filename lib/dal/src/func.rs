@@ -309,10 +309,9 @@ impl Func {
                 .set_name(func.name.as_str())
                 .set_backend_kind(func.backend_kind);
 
-            let new_node_index =
-                workspace_snapshot.add_node(NodeWeight::Func(node_weight.clone()))?;
+            workspace_snapshot.add_node(NodeWeight::Func(node_weight.clone()))?;
 
-            workspace_snapshot.replace_references(original_node_index, new_node_index)?;
+            workspace_snapshot.replace_references(original_node_index)?;
         }
         let updated = FuncContentV1::from(func.clone());
 

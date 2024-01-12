@@ -24,6 +24,7 @@ pub struct PropNodeWeight {
     merkle_tree_hash: ContentHash,
     kind: PropKind,
     name: String,
+    can_be_used_as_prototype_arg: bool,
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
@@ -44,6 +45,7 @@ impl PropNodeWeight {
             merkle_tree_hash: ContentHash::default(),
             kind,
             name,
+            can_be_used_as_prototype_arg: false,
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
@@ -60,6 +62,14 @@ impl PropNodeWeight {
 
     pub fn content_hash(&self) -> ContentHash {
         self.content_address.content_hash()
+    }
+
+    pub fn can_be_used_as_prototype_arg(&self) -> bool {
+        self.can_be_used_as_prototype_arg
+    }
+
+    pub fn set_can_be_used_as_prototype_arg(&mut self, can_be_used: bool) {
+        self.can_be_used_as_prototype_arg = can_be_used;
     }
 
     pub fn id(&self) -> Ulid {

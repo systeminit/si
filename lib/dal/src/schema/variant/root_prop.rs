@@ -164,7 +164,7 @@ impl RootProp {
         // Now that the structure is set up, we can populate default
         // AttributePrototypes to be updated appropriately below.
         SchemaVariant::create_default_prototypes(ctx, schema_variant_id).await?;
-        SchemaVariant::create_implicit_internal_providers(ctx, schema_variant_id).await?;
+        //SchemaVariant::mark_props_as_able_to_be_used_as_prototype_args(ctx, schema_variant_id)?;
 
         Ok(RootProp {
             prop_id: root_prop_id,

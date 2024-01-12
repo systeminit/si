@@ -8,6 +8,7 @@ mod test {
     use petgraph::visit::EdgeRef;
     use petgraph::Outgoing;
     use pretty_assertions_sorted::assert_eq;
+    use std::collections::HashMap;
     use std::collections::HashSet;
 
     use crate::change_set_pointer::ChangeSetPointer;
@@ -34,6 +35,151 @@ mod test {
         let graph = WorkspaceSnapshotGraph::new(change_set)
             .expect("Unable to create WorkspaceSnapshotGraph");
         assert!(graph.is_acyclic_directed());
+    }
+
+    #[test]
+    fn multiply_parented_nodes() {
+        // All edges are outgoing from top to bottom except e to u
+        //
+        //          root node---->t--->u--->v
+        //              |              ^
+        //              |              |
+        //              r ------       |
+        //             / \     |       |
+        //            a   b    |       |
+        //             \ / \   |       |
+        //              c  |   |       |
+        //            / |  |   |       |
+        //            | d <-   |       |
+        //            | |      |       |
+        //            ->e<------       |
+        //              |              |
+        //              ----------------
+        //
+        // Edge from e to u mimics a function edge from a prop through a prototype to a function
+        // There are a few other edges to "u" that are not represented in the drawing above.
+        //
+
+        let nodes = ["r", "t", "u", "v", "a", "b", "c", "d", "e"];
+        let edges = [
+            (None, "r"),
+            (None, "t"),
+            (Some("t"), "u"),
+            (Some("u"), "v"),
+            (Some("r"), "a"),
+            (Some("r"), "b"),
+            (Some("r"), "e"),
+            (Some("a"), "c"),
+            (Some("b"), "c"),
+            (Some("c"), "d"),
+            (Some("b"), "d"),
+            (Some("d"), "e"),
+            (Some("c"), "e"),
+            (Some("e"), "u"),
+            (Some("c"), "u"),
+            (Some("a"), "u"),
+            (Some("a"), "b"),
+        ];
+
+        let change_set = ChangeSetPointer::new_local().expect("Unable to create ChangeSet");
+        let change_set = &change_set;
+        let mut graph = WorkspaceSnapshotGraph::new(change_set)
+            .expect("Unable to create WorkspaceSnapshotGraph");
+
+        let mut node_id_map = HashMap::new();
+
+        for node in nodes {
+            // "props" here are just nodes that are easy to create and render the name on the dot
+            // output. there is no domain modeling in this test.
+            let node_id = change_set.generate_ulid().expect("Unable to generate Ulid");
+            let prop_node_weight = NodeWeight::new_prop(
+                change_set,
+                node_id,
+                PropKind::Object,
+                node,
+                ContentHash::new(node.as_bytes()),
+            )
+            .expect("create prop node weight");
+            graph
+                .add_node(prop_node_weight)
+                .expect("Unable to add prop");
+
+            node_id_map.insert(node, node_id);
+        }
+
+        for (source, target) in edges {
+            let source = match source {
+                None => graph.root_index,
+                Some(node) => graph
+                    .get_node_index_by_id(
+                        node_id_map
+                            .get(node)
+                            .copied()
+                            .expect("source node should have an id"),
+                    )
+                    .expect("get node index by id"),
+            };
+
+            let target = graph
+                .get_node_index_by_id(
+                    node_id_map
+                        .get(target)
+                        .copied()
+                        .expect("target node should have an id"),
+                )
+                .expect("get node index by id");
+
+            graph
+                .add_edge(
+                    source,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Use).expect("create edge weight"),
+                    target,
+                )
+                .expect("add edge");
+        }
+
+        graph.cleanup();
+
+        for (source, target) in edges {
+            let source_idx = match source {
+                None => graph.root_index,
+                Some(node) => graph
+                    .get_node_index_by_id(
+                        node_id_map
+                            .get(node)
+                            .copied()
+                            .expect("source node should have an id"),
+                    )
+                    .expect("get node index by id"),
+            };
+
+            let target_idx = graph
+                .get_node_index_by_id(
+                    node_id_map
+                        .get(target)
+                        .copied()
+                        .expect("target node should have an id"),
+                )
+                .expect("get node index by id");
+
+            assert!(
+                graph
+                    .edges_directed(source_idx, Outgoing)
+                    .any(|edge_ref| edge_ref.target() == target_idx),
+                "An edge from {} to {} should exist",
+                source.unwrap_or("root"),
+                target
+            );
+        }
+
+        for (_, id) in node_id_map.iter() {
+            let idx_for_node = graph
+                .get_node_index_by_id(*id)
+                .expect("able to get idx by id");
+            graph
+                .get_node_weight(idx_for_node)
+                .expect("node with weight in graph");
+        }
     }
 
     #[test]
@@ -2142,6 +2288,7 @@ mod test {
             .expect("Failed to detect conflicts and updates");
 
         assert!(conflicts.is_empty());
+        dbg!(&updates);
         assert_eq!(1, updates.len());
 
         assert!(matches!(
