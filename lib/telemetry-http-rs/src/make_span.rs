@@ -1,6 +1,9 @@
 use hyper::header::USER_AGENT;
 use telemetry::prelude::*;
 use tower_http::trace::MakeSpan;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+use crate::extract_opentelemetry_context;
 
 /// An implementation of [`MakeSpan`] to generate [`Span`]s from incoming HTTP requests.
 #[derive(Clone, Debug)]
@@ -254,6 +257,10 @@ impl HttpMakeSpan {
                 user_agent_original.to_str().unwrap_or("invalid-ascii"),
             );
         }
+
+        // Extract OpenTelemetry parent span metadata from the request headers (if it exists) and
+        // associate it with this request span
+        span.set_parent(extract_opentelemetry_context(request.headers()));
 
         span
     }
