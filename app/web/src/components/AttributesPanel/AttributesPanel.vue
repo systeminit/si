@@ -136,7 +136,7 @@ const siValuesFromStore = computed(() => ({
   name: (siProps.value?.name?.value?.value as string) || component.displayName,
   color: (siProps.value?.color?.value?.value as string) || component.color,
 }));
-const siValues = reactive(siValuesFromStore.value);
+const siValues = reactive(_.cloneDeep(siValuesFromStore.value));
 
 watch(
   siValuesFromStore,
