@@ -330,8 +330,9 @@ export const useModuleStore = () => {
               url: "/pkg/reject_pkg",
               params: { id: moduleId, ...visibility },
               onSuccess: (_response) => {
-                // response is just success, so we have to reload local modules
+                // response is just success, so we have to reload the remote modules
                 this.LOAD_LOCAL_MODULES();
+                this.SEARCH_REMOTE_MODULES();
               },
             });
           },
@@ -342,8 +343,8 @@ export const useModuleStore = () => {
               url: "/pkg/set_as_builtin",
               params: { id: moduleId, ...visibility },
               onSuccess: (_response) => {
-                // response is just success, so we have to reload local modules
-                this.LOAD_LOCAL_MODULES();
+                // response is just success, so we have to reload the remote modules
+                this.SEARCH_REMOTE_MODULES();
               },
             });
           },
