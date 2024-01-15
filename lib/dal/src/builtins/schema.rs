@@ -167,6 +167,7 @@ pub async fn migrate_pkg(
                 schemas: Some(schemas),
                 ..Default::default()
             }),
+            true,
         )
         .await?;
     }

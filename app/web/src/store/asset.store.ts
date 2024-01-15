@@ -97,11 +97,12 @@ export interface VariantDef extends ListedVariantDef {
 
 export type Asset = VariantDef;
 export type AssetListEntry = ListedVariantDef;
-export type AssetSaveRequest = Visibility &
-  Omit<Asset, "createdAt" | "updatedAt" | "variantExists" | "hasComponents">;
+export type AssetSaveRequest = Visibility & {
+  overrideBuiltinSchemaFeatureFlag: boolean;
+} & Omit<Asset, "createdAt" | "updatedAt" | "variantExists" | "hasComponents">;
 export type AssetCreateRequest = Omit<
   AssetSaveRequest,
-  "id" | "definition" | "variantExists"
+  "id" | "definition" | "variantExists" | "overrideBuiltinSchemaFeatureFlag"
 >;
 export type AssetCloneRequest = Visibility & { id: AssetId };
 
@@ -341,6 +342,8 @@ export const useAssetStore = () => {
               };
             },
             params: {
+              overrideBuiltinSchemaFeatureFlag:
+                featureFlagsStore.OVERRIDE_SCHEMA,
               ...visibility,
               ..._.omit(asset, [
                 "schemaVariantId",
@@ -403,6 +406,8 @@ export const useAssetStore = () => {
             url: "/variant_def/exec_variant_def",
             keyRequestStatusBy: assetId,
             params: {
+              overrideBuiltinSchemaFeatureFlag:
+                featureFlagsStore.OVERRIDE_SCHEMA,
               ...visibility,
               ..._.omit(asset, [
                 "schemaVariantId",

@@ -185,43 +185,43 @@ impl<'a> TryFrom<SiPkgAttrFuncInput<'a>> for AttrFuncInputSpec {
 
     fn try_from(value: SiPkgAttrFuncInput<'a>) -> Result<Self, Self::Error> {
         let mut builder = AttrFuncInputSpec::builder();
-        let (unique_id, deleted) = match &value {
+        let (name, unique_id, deleted) = match &value {
             SiPkgAttrFuncInput::InputSocket {
-                unique_id, deleted, ..
+                name,
+                unique_id,
+                deleted,
+                ..
             }
             | SiPkgAttrFuncInput::OutputSocket {
-                unique_id, deleted, ..
+                name,
+                unique_id,
+                deleted,
+                ..
             }
             | SiPkgAttrFuncInput::Prop {
-                unique_id, deleted, ..
-            } => (unique_id.as_deref(), *deleted),
+                name,
+                unique_id,
+                deleted,
+                ..
+            } => (name, unique_id.as_deref(), *deleted),
         };
 
         if let Some(unique_id) = unique_id {
             builder.unique_id(unique_id);
         }
-        builder.deleted(deleted);
+        builder.deleted(deleted).name(name);
 
         match value {
-            SiPkgAttrFuncInput::Prop {
-                name, prop_path, ..
-            } => {
+            SiPkgAttrFuncInput::Prop { prop_path, .. } => {
                 builder.kind(AttrFuncInputSpecKind::Prop);
-                builder.name(name);
                 builder.prop_path(prop_path);
             }
-            SiPkgAttrFuncInput::InputSocket {
-                name, socket_name, ..
-            } => {
+            SiPkgAttrFuncInput::InputSocket { socket_name, .. } => {
                 builder.kind(AttrFuncInputSpecKind::InputSocket);
-                builder.name(name);
                 builder.socket_name(socket_name);
             }
-            SiPkgAttrFuncInput::OutputSocket {
-                name, socket_name, ..
-            } => {
+            SiPkgAttrFuncInput::OutputSocket { socket_name, .. } => {
                 builder.kind(AttrFuncInputSpecKind::OutputSocket);
-                builder.name(name);
                 builder.socket_name(socket_name);
             }
         }

@@ -68,7 +68,7 @@ async fn paste_single_component(
         .set_resource_raw(
             &ctx,
             ActionRunResult {
-                status: ResourceStatus::Ok,
+                status: Some(ResourceStatus::Ok),
                 payload: None,
                 message: None,
                 logs: Vec::new(),

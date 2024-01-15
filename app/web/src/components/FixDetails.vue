@@ -14,7 +14,7 @@
             class="pr-2"
             :class="icon.class"
             size="lg"
-            :title="`Health: ${health}`"
+            :title="`Health: ${health ?? 'unknown'}`"
           />
 
           <span class="flex flex-col">
@@ -26,7 +26,7 @@
               {{ singleMessage }}
             </p>
           </span>
-          <p v-if="message.length === 0">Health {{ health }}</p>
+          <p v-if="message.length === 0">Health {{ health ?? "unknown" }}</p>
         </span>
       </template>
 
@@ -53,7 +53,7 @@ import { Icon, IconNames, Modal } from "@si/vue-lib/design-system";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 
 const props = defineProps<{
-  health: ResourceHealth;
+  health: ResourceHealth | null;
   message: string[];
   details: string[];
 }>();

@@ -128,21 +128,21 @@ impl<'a> TryFrom<SiPkgSocket<'a>> for SocketSpec {
             .name(&value.name)
             .unique_id(value.unique_id.to_owned());
 
+        for input in value.inputs()? {
+            builder.input(input.try_into()?);
+        }
+
         if let Some(data) = &value.data {
             let mut data_builder = SocketSpecData::builder();
             if let Some(func_unique_id) = &data.func_unique_id {
                 data_builder.func_unique_id(func_unique_id);
             }
             data_builder
+                .kind(data.kind)
                 .name(&data.name)
                 .connection_annotations(&data.connection_annotations)
-                .kind(data.kind)
                 .arity(data.arity)
                 .ui_hidden(data.ui_hidden);
-        }
-
-        for input in value.inputs()? {
-            builder.input(input.try_into()?);
         }
 
         Ok(builder.build()?)

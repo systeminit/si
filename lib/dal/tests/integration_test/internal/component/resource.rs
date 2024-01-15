@@ -26,7 +26,7 @@ async fn list_resources(mut octx: DalContext) {
     expected.insert(
         fallout_bag.component_id,
         ResourceView {
-            status: ResourceStatus::Ok,
+            status: Some(ResourceStatus::Ok),
             message: None,
             data: None,
             logs: vec![],
@@ -36,7 +36,7 @@ async fn list_resources(mut octx: DalContext) {
     expected.insert(
         starfield_bag.component_id,
         ResourceView {
-            status: ResourceStatus::Ok,
+            status: Some(ResourceStatus::Ok),
             message: None,
             data: None,
             logs: vec![],
@@ -65,7 +65,7 @@ async fn list_resources(mut octx: DalContext) {
         .set_resource(
             ctx,
             ActionRunResult {
-                status: ResourceStatus::Ok,
+                status: Some(ResourceStatus::Ok),
                 payload: Some(serde_json::json![{ "poop": true }]),
                 message: None,
                 logs: vec![],
@@ -96,7 +96,7 @@ async fn list_resources(mut octx: DalContext) {
         .set_resource(
             ctx,
             ActionRunResult {
-                status: ResourceStatus::Ok,
+                status: Some(ResourceStatus::Ok),
                 payload: None,
                 message: None,
                 logs: vec![],

@@ -32,7 +32,7 @@ pub struct ActionFuncSpec {
     #[builder(setter(into))]
     pub func_unique_id: String,
 
-    #[builder(setter(into, strip_option), default)]
+    #[builder(setter(into), default)]
     pub name: Option<String>,
 
     #[builder(setter(into))]

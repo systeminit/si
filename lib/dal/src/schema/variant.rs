@@ -166,6 +166,8 @@ pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
 pk!(SchemaVariantPk);
 pk!(SchemaVariantId);
 
+type DateTimeUtc = chrono::DateTime<chrono::Utc>;
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct SchemaVariant {
     pk: SchemaVariantPk,
@@ -184,6 +186,7 @@ pub struct SchemaVariant {
     root_prop_id: Option<PropId>,
     schema_variant_definition_id: Option<SchemaVariantDefinitionId>,
     link: Option<String>,
+    pkg_created_at: Option<DateTimeUtc>,
     // NOTE(nick): we may want to replace this with a better solution. We use this to ensure
     // components are not created unless the variant has been finalized at least once.
     finalized_once: bool,
@@ -425,6 +428,7 @@ impl SchemaVariant {
     }
 
     standard_model_accessor!(default_color, Option<String>, SchemaVariantResult);
+    standard_model_accessor!(pkg_created_at, Option<DateTimeUtc>, SchemaVariantResult);
     standard_model_accessor!(ui_hidden, bool, SchemaVariantResult);
     standard_model_accessor!(name, String, SchemaVariantResult);
     standard_model_accessor!(root_prop_id, Option<Pk(PropId)>, SchemaVariantResult);

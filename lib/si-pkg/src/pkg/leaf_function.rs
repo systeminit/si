@@ -100,8 +100,8 @@ impl<'a> TryFrom<SiPkgLeafFunction<'a>> for LeafFunctionSpec {
 
     fn try_from(value: SiPkgLeafFunction<'a>) -> Result<Self, Self::Error> {
         Ok(LeafFunctionSpec::builder()
-            .leaf_kind(value.leaf_kind)
             .func_unique_id(value.func_unique_id)
+            .leaf_kind(value.leaf_kind)
             .unique_id(value.unique_id)
             .deleted(value.deleted)
             .inputs(value.inputs)

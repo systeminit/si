@@ -15,7 +15,7 @@ export enum ResourceStatus {
 
 export interface Resource {
   data: unknown;
-  status: ResourceHealth;
+  status: ResourceHealth | null;
   message: string | null;
   logs: string[];
   lastSynced?: string;

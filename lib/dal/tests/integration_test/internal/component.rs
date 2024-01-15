@@ -416,7 +416,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
         .set_resource(
             ctx,
             ActionRunResult {
-                status: ResourceStatus::Ok,
+                status: Some(ResourceStatus::Ok),
                 payload: Some(serde_json::json![{ "quantum": true }]),
                 logs: Default::default(),
                 message: Default::default(),

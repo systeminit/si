@@ -93,6 +93,8 @@ pub enum PkgError {
     ComponentMissingNode(ComponentId),
     #[error("could not find schema variant {0} for package component {1}")]
     ComponentMissingSchemaVariant(String, String),
+    #[error("could not update find schema {0} with variant {1} for package component {2}")]
+    ComponentMissingUpdateSchemaVariant(String, String, String),
     #[error("component spec has no position")]
     ComponentSpecMissingPosition,
     #[error("map item prop {0} has both custom key prototypes and custom prop only prototype")]
@@ -135,6 +137,10 @@ pub enum PkgError {
     InternalProviderMissingProp(InternalProviderId, PropId),
     #[error("Leaf Function {0} has invalid argument {1}")]
     InvalidLeafArgument(FuncId, String),
+    #[error("json pointer {1} not found in {0:?}")]
+    JsonPointerNotFound(serde_json::Value, String),
+    #[error("json value is not an object: {0:?}")]
+    JsonValueIsNotAnObject(serde_json::Value),
     #[error("Missing AttributePrototype {0} for explicit InternalProvider {1}")]
     MissingAttributePrototypeForInputSocket(AttributePrototypeId, InternalProviderId),
     #[error("Missing AttributePrototype {0} for ExternalProvider {1}")]
@@ -211,6 +217,8 @@ pub enum PkgError {
     StandardModelMultipleBelongsTo(&'static str, &'static str, String),
     #[error(transparent)]
     UlidDecode(#[from] ulid::DecodeError),
+    #[error("unable to export component: {0}")]
+    UnableToExportComponent(ComponentId),
     #[error(transparent)]
     UrlParse(#[from] ParseError),
     #[error(transparent)]
@@ -332,6 +340,7 @@ impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
 /// A generic hash map of hash maps for tracking the presence of a thing in each change set. If a
 /// thing is asked for in a specific change set, and not found, the NONE change set will be
 /// checked.
+#[derive(Debug)]
 pub struct ChangeSetThingMap<Key, Thing>(HashMap<ChangeSetPk, HashMap<Key, Thing>>);
 
 impl<Key, Thing> ChangeSetThingMap<Key, Thing>
@@ -347,8 +356,8 @@ where
         Self(change_set_map)
     }
 
-    pub fn get(&self, change_set_pk: Option<ChangeSetPk>, key: &Key) -> Option<&Thing> {
-        match self.0.get(&change_set_pk.unwrap_or(ChangeSetPk::NONE)) {
+    pub fn get(&self, change_set_pk: ChangeSetPk, key: &Key) -> Option<&Thing> {
+        match self.0.get(&change_set_pk) {
             Some(change_set_map) => change_set_map.get(key).or_else(|| {
                 self.0
                     .get(&ChangeSetPk::NONE)
@@ -361,16 +370,8 @@ where
         }
     }
 
-    pub fn insert(
-        &mut self,
-        change_set_pk: Option<ChangeSetPk>,
-        key: Key,
-        thing: Thing,
-    ) -> Option<Thing> {
-        self.0
-            .entry(change_set_pk.unwrap_or(ChangeSetPk::NONE))
-            .or_default()
-            .insert(key, thing)
+    pub fn insert(&mut self, change_set_pk: ChangeSetPk, key: Key, thing: Thing) -> Option<Thing> {
+        self.0.entry(change_set_pk).or_default().insert(key, thing)
     }
 }
 

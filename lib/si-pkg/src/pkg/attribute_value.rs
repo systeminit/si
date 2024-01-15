@@ -9,6 +9,7 @@ use crate::{
     FuncSpecBackendResponseType,
 };
 
+#[derive(Debug)]
 pub struct SiPkgAttributeValue<'a> {
     parent_path: Option<AttributeValuePath>,
     path: AttributeValuePath,
@@ -200,6 +201,10 @@ impl<'a> TryFrom<SiPkgAttributeValue<'a>> for AttributeValueSpec {
             builder.value(value.to_owned());
         }
 
+        if let Some(value) = value.implicit_value() {
+            builder.implicit_value(value.to_owned());
+        }
+
         if let Some(output_stream) = value.output_stream() {
             builder.output_stream(output_stream.to_owned());
         }
@@ -211,6 +216,7 @@ impl<'a> TryFrom<SiPkgAttributeValue<'a>> for AttributeValueSpec {
             .backend_kind(value.backend_kind())
             .response_type(value.response_type())
             .sealed_proxy(value.sealed_proxy())
+            .is_proxy(value.is_proxy())
             .component_specific(value.component_specific());
 
         for input in value.inputs()? {

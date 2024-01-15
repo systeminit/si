@@ -112,10 +112,16 @@ impl<'a> TryFrom<SiPkgEdge<'a>> for EdgeSpec {
 
     fn try_from(value: SiPkgEdge<'a>) -> Result<Self, Self::Error> {
         Ok(EdgeSpec::builder()
+            .edge_kind(value.edge_kind())
             .from_component_unique_id(value.from_component_unique_id())
             .from_socket_name(value.from_socket_name())
             .to_component_unique_id(value.to_component_unique_id())
             .to_socket_name(value.to_socket_name())
+            .creation_user_pk(value.creation_user_pk().map(Into::into))
+            .deletion_user_pk(value.deletion_user_pk().map(Into::into))
+            .deleted_implicitly(value.deleted_implicitly())
+            .unique_id(value.unique_id())
+            .deleted(value.deleted())
             .build()?)
     }
 }

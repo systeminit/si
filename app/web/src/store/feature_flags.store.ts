@@ -17,6 +17,7 @@ const FLAG_MAPPING = {
   CONNECTION_ANNOTATIONS: "socket_connection_annotations",
   COPY_PASTE: "copy_paste",
   DONT_BLOCK_ON_ACTIONS: "dont_block_on_actions",
+  OVERRIDE_SCHEMA: "override_schema",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

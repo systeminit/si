@@ -182,6 +182,7 @@ const FIND_FOR_NODE: &str = include_str!("queries/component/find_for_node.sql");
 const FIND_SI_CHILD_PROP_ATTRIBUTE_VALUE: &str =
     include_str!("queries/component/find_si_child_attribute_value.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str = include_str!("queries/component/list_for_schema_variant.sql");
+const LIST_FOR_SCHEMA: &str = include_str!("queries/component/list_for_schema.sql");
 const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
     include_str!("queries/component/list_sockets_for_socket_edge_kind.sql");
 const FIND_NAME: &str = include_str!("queries/component/find_name.sql");
@@ -235,6 +236,7 @@ pub struct Component {
     kind: ComponentKind,
     deletion_user_pk: Option<UserPk>,
     needs_destroy: bool,
+    hidden: bool,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -333,6 +335,7 @@ impl Component {
 
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
     standard_model_accessor!(needs_destroy, bool, ComponentResult);
+    standard_model_accessor!(hidden, bool, ComponentResult);
     standard_model_accessor!(deletion_user_pk, Option<Pk(UserPk)>, ComponentResult);
 
     standard_model_belongs_to!(
@@ -457,6 +460,31 @@ impl Component {
             )
             .await?;
         Ok(row.is_some())
+    }
+
+    #[instrument(skip_all)]
+    pub async fn list_for_schema(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> ComponentResult<Vec<Component>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                LIST_FOR_SCHEMA,
+                &[ctx.tenancy(), ctx.visibility(), &schema_id],
+            )
+            .await?;
+
+        let mut results = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let object: Self = serde_json::from_value(json)?;
+            results.push(object);
+        }
+
+        Ok(results)
     }
 
     #[instrument(skip_all)]

@@ -397,6 +397,7 @@ async fn install_builtins(
                         no_record: false,
                         is_builtin: true,
                     }),
+                    true,
                 )
                 .await
                 {
