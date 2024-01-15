@@ -73,7 +73,7 @@ pub enum ClientError {
     SocketAddrResolve(#[source] std::io::Error),
     #[error("unexpected status code: {0}")]
     UnexpectedStatusCode(StatusCode),
-    #[error("client is not healthy")]
+    #[error("execution client is not healthy: {0}")]
     Unhealthy(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("failed to decode as a UTF8 string")]
     Utf8Decode(#[from] std::str::Utf8Error),

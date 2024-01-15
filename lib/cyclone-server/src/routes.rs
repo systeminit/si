@@ -87,6 +87,7 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
     }
 
     let limit_requests = Arc::new(config.limit_requests().map(|i| i.into()));
+    let execution_timeout = Arc::new(config.execution_timeout().map(|i| i.into()));
 
-    router.layer(Extension(RequestLimiter::new(limit_requests, shutdown_tx)))
+    router.layer(Extension(RequestLimiter::new(limit_requests, execution_timeout, shutdown_tx)))
 }

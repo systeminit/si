@@ -1,3 +1,4 @@
+use std::ops::Add;
 use std::os::unix::fs::PermissionsExt;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -90,6 +91,9 @@ pub enum LocalUdsInstanceError {
     /// Instance has exhausted its predefined request count.
     #[error("no remaining requests, cyclone server is considered unhealthy")]
     NoRemainingRequests,
+    /// Instance has exhausted its predefined request count.
+    #[error("no remaining time left for execution, cyclone server is considered unhealthy")]
+    NoTimeLeft,
     /// Failed to setup the host correctly.
     #[error("failed to setup host")]
     SetupFailed,
@@ -121,6 +125,7 @@ pub struct LocalUdsInstance {
     _temp_path: Option<TempPath>,
     client: UdsClient,
     limit_requests: Option<u32>,
+    execution_timeout: SystemTime,
     runtime: Box<dyn LocalInstanceRuntime>,
     watch_shutdown_tx: oneshot::Sender<()>,
 }
@@ -260,11 +265,15 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
 
 impl LocalUdsInstance {
     async fn ensure_healthy_client(&mut self) -> Result<()> {
+
         if !self.is_watch_shutdown_open() {
             return Err(LocalUdsInstanceError::WatchShutDown);
         }
         if !self.has_remaining_requests() {
             return Err(LocalUdsInstanceError::NoRemainingRequests);
+        }
+        if !self.has_remaining_time() {
+            return Err(LocalUdsInstanceError::NoTimeLeft);
         }
 
         Ok(())
@@ -275,6 +284,13 @@ impl LocalUdsInstance {
             Some(0) => false,
             Some(_) | None => true,
         }
+    }
+
+    fn has_remaining_time(&self) -> bool {
+        dbg!("COMPARING THESE TWO BADBOYS");
+        dbg!(SystemTime::now());
+        dbg!(self.execution_timeout);
+        SystemTime::now() < self.execution_timeout
     }
 
     fn is_watch_shutdown_open(&self) -> bool {
@@ -318,6 +334,10 @@ pub struct LocalUdsInstanceSpec {
     /// Sets the limit requests strategy for a spawned Cyclone server.
     #[builder(setter(into), default = "Some(1)")]
     limit_requests: Option<u32>,
+
+    /// Sets the execution timeout strategy for a spawned Cyclone server.
+    #[builder(setter(into), default = "Some(2)")]
+    execution_timeout: Option<u32>,
 
     /// Enables the `ping` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_ping"), default = "false")]
@@ -405,6 +425,16 @@ impl Spec for LocalUdsInstanceSpec {
                 time::sleep(Duration::from_millis(64)).await;
             }
         };
+
+        // This terminate_time is used to calculate when to terminate the watch_session due to timeout
+        // There should always be a value here due to the default so it's safe to unwrap like that
+        let execution_timeout_time = SystemTime::now().add(Duration::new(self.execution_timeout.unwrap() as u64,0)); //+ self.execution_timeout;
+
+        trace!(
+            "cyclone-execution: timeout set to {:?}",
+            execution_timeout_time
+        );
+
         trace!(
             "cyclone-execution: watch established {:?}",
             SystemTime::now()
@@ -447,6 +477,7 @@ impl Spec for LocalUdsInstanceSpec {
             _temp_path: temp_path,
             client,
             limit_requests: self.limit_requests,
+            execution_timeout: execution_timeout_time,
             runtime,
             watch_shutdown_tx,
         })
@@ -902,7 +933,9 @@ async fn runtime_instance_from_spec(
         LocalUdsRuntimeStrategy::LocalDocker => {
             LocalDockerRuntime::build(socket, spec.clone()).await
         }
-        LocalUdsRuntimeStrategy::LocalFirecracker => LocalFirecrackerRuntime::build().await,
+        LocalUdsRuntimeStrategy::LocalFirecracker => {
+            LocalFirecrackerRuntime::build().await 
+        }
     }
 }
 

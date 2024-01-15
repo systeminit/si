@@ -54,6 +54,9 @@ pub struct Config {
 
     #[builder(setter(into), default)]
     limit_requests: Option<u32>,
+
+    #[builder(setter(into), default)]
+    execution_timeout: Option<u32>,
 }
 
 impl Config {
@@ -121,6 +124,12 @@ impl Config {
     #[must_use]
     pub fn limit_requests(&self) -> Option<u32> {
         self.limit_requests
+    }
+
+    /// Gets a reference to the config's execution timeout on requests.
+    #[must_use]
+    pub fn execution_timeout(&self) -> Option<u32> {
+        self.execution_timeout
     }
 }
 

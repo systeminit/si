@@ -18,16 +18,19 @@ use super::server::ShutdownSource;
 #[derive(Clone, Debug)]
 pub struct RequestLimiter {
     remaining: Arc<Option<AtomicU32>>,
+    execution_timeout: Arc<Option<AtomicU32>>,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
 }
 
 impl RequestLimiter {
     pub fn new(
         remaining: Arc<Option<AtomicU32>>,
+        execution_timeout: Arc<Option<AtomicU32>>,
         shutdown_tx: mpsc::Sender<ShutdownSource>,
     ) -> Self {
         Self {
             remaining,
+            execution_timeout,
             shutdown_tx,
         }
     }

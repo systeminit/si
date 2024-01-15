@@ -92,21 +92,27 @@ pub(crate) struct Args {
     #[arg(long, group = "configuration")]
     pub(crate) disable_configuration: bool,
 
+    /// Cyclone decryption key file location [example: /run/cyclone/cyclone.key]
+    #[arg(long, group = "configuration")]
+    pub(crate) decryption_key: PathBuf,
+
     /// Path to the lang server program.
     #[arg(long, env = "SI_LANG_SERVER", hide_env = true)]
     pub(crate) lang_server: PathBuf,
 
     /// Limits execution requests to 1 before shutting down
-    #[arg(long, group = "request_limiting")]
+    #[arg(long, group = "execution_configuration")]
     pub(crate) oneshot: bool,
 
     /// Limits execution requests to the given value before shutting down
-    #[arg(long, group = "request_limiting")]
+    #[arg(long, group = "execution_configuration")]
     pub(crate) limit_requests: Option<u32>,
 
-    /// Cyclone decryption key file location [example: /run/cyclone/cyclone.key]
-    #[arg(long)]
-    pub(crate) decryption_key: PathBuf,
+    // TODO(johnrwatson): Does this default even work mate?
+    /// Limits execution time to the given value before shutting down, in seconds
+    #[arg(long, default_value = "30", group = "execution_configuration")]
+    pub(crate) execution_timeout: Option<u32>,
+
 }
 
 impl TryFrom<Args> for Config {
@@ -158,6 +164,12 @@ impl TryFrom<Args> for Config {
             builder.limit_requests(1);
         } else if let Some(limit_requests) = args.limit_requests {
             builder.limit_requests(limit_requests);
+        }
+
+        if let Some(execution_timeout) = args.execution_timeout {
+            dbg!("Setting execution timeout to");
+            dbg!(execution_timeout);
+            builder.execution_timeout(execution_timeout);
         }
 
         builder.build().map_err(Into::into)
