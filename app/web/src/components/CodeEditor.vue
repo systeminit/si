@@ -297,9 +297,11 @@ function getUserInfo(userId: { id: string }) {
 let wsProvider: WebsocketProvider | undefined;
 let yText: Y.Text | undefined;
 onBeforeUnmount(() => {
-  emit("change", view.state.doc.toString());
-  emit("blur", view.state.doc.toString());
-  wsProvider?.destroy();
+  if (view) {
+    emit("change", view.state.doc.toString());
+    emit("blur", view.state.doc.toString());
+    wsProvider?.destroy();
+  }
 });
 
 // Initialization /////////////////////////////////////////////////////////////////////////////////
