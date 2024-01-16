@@ -3,14 +3,16 @@
 
 use std::marker::PhantomData;
 
-use si_data_nats::NatsClient;
+use si_data_nats::{subject::ToSubject, NatsClient, Subject};
+use telemetry::prelude::*;
+use telemetry_nats::NatsMakeSpan;
 
 use crate::{Subscriber, SubscriberError, SubscriberResult};
 
 /// The [`builder`](Self) used for creating a [`Subscriber`].
 pub struct SubscriberBuilder<T> {
     /// The [NATS](https://nats.io) subject used.
-    pub subject: String,
+    pub subject: Subject,
     /// Indicates the final type of the [`Request`](crate::Request).
     _phantom: PhantomData<T>,
 
@@ -24,17 +26,21 @@ pub struct SubscriberBuilder<T> {
     /// [`Request`](crate::Request).
     /// Otherwise, it will not perform the check.
     pub check_for_reply_mailbox: bool,
+
+    /// The logging level of the message processing spans
+    span_level: Level,
 }
 
 impl<T> SubscriberBuilder<T> {
     /// Create a new [`builder`](SubscriberBuilder) for building a [`Subscriber`].
-    pub fn new(subject: impl Into<String>) -> Self {
+    pub fn new(subject: impl ToSubject) -> Self {
         Self {
-            subject: subject.into(),
+            subject: subject.to_subject(),
             _phantom: PhantomData::<T>,
             queue_name: None,
             final_message_header_key: None,
             check_for_reply_mailbox: false,
+            span_level: Level::INFO,
         }
     }
 
@@ -55,12 +61,15 @@ impl<T> SubscriberBuilder<T> {
                 .map_err(SubscriberError::NatsSubscribe)?
         };
 
+        let make_span = NatsMakeSpan::new().level(self.span_level);
+
         Ok(Subscriber {
             inner,
             _phantom: PhantomData::<T>,
             subject: self.subject,
             final_message_header_key: self.final_message_header_key,
             check_for_reply_mailbox: self.check_for_reply_mailbox,
+            make_span,
         })
     }
 
@@ -79,6 +88,12 @@ impl<T> SubscriberBuilder<T> {
     /// Sets the "check_for_reply_mailbox" field.
     pub fn check_for_reply_mailbox(mut self) -> Self {
         self.check_for_reply_mailbox = true;
+        self
+    }
+
+    /// Sets the logging level for the message processing spans.
+    pub fn span_level(mut self, level: Level) -> Self {
+        self.span_level = level;
         self
     }
 }

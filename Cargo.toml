@@ -39,6 +39,7 @@ members = [
     "lib/si-test-macros",
     "lib/telemetry-application-rs",
     "lib/telemetry-http-rs",
+    "lib/telemetry-nats-rs",
     "lib/telemetry-rs",
     "lib/veritech-client",
     "lib/veritech-core",

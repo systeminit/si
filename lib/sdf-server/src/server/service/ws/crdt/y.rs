@@ -76,7 +76,9 @@ impl Stream for YStream {
         match Pin::new(&mut self.0).poll_next(cx) {
             Poll::Pending => Poll::Pending,
             Poll::Ready(None) => Poll::Ready(None),
-            Poll::Ready(Some(message)) => Poll::Ready(Some(Ok(message.payload().to_owned()))),
+            Poll::Ready(Some(message)) => {
+                Poll::Ready(Some(Ok(message.into_parts().0.payload.into())))
+            }
         }
     }
 }

@@ -11701,7 +11701,7 @@ cargo.rust_library(
         ":ouroboros-0.17.2",
         ":rust_decimal-1.33.1",
         ":sea-orm-macros-0.12.10",
-        ":sea-query-0.30.6",
+        ":sea-query-0.30.7",
         ":sea-query-binder-0.5.0",
         ":serde-1.0.195",
         ":serde_json-1.0.111",
@@ -11750,18 +11750,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "sea-query-0.30.6.crate",
-    sha256 = "a4a1feb0a26c02efedb049b22d3884e66f15a40c42b33dcbe49b46abc484c2bd",
-    strip_prefix = "sea-query-0.30.6",
-    urls = ["https://crates.io/api/v1/crates/sea-query/0.30.6/download"],
+    name = "sea-query-0.30.7.crate",
+    sha256 = "4166a1e072292d46dc91f31617c2a1cdaf55a8be4b5c9f4bf2ba248e3ac4999b",
+    strip_prefix = "sea-query-0.30.7",
+    urls = ["https://crates.io/api/v1/crates/sea-query/0.30.7/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "sea-query-0.30.6",
-    srcs = [":sea-query-0.30.6.crate"],
+    name = "sea-query-0.30.7",
+    srcs = [":sea-query-0.30.7.crate"],
     crate = "sea_query",
-    crate_root = "sea-query-0.30.6.crate/src/lib.rs",
+    crate_root = "sea-query-0.30.7.crate/src/lib.rs",
     edition = "2021",
     features = [
         "backend-mysql",
@@ -11836,7 +11836,7 @@ cargo.rust_library(
         ":bigdecimal-0.3.1",
         ":chrono-0.4.31",
         ":rust_decimal-1.33.1",
-        ":sea-query-0.30.6",
+        ":sea-query-0.30.7",
         ":serde_json-1.0.111",
         ":sqlx-0.7.3",
         ":time-0.3.31",
@@ -12023,23 +12023,23 @@ cargo.rust_library(
 
 alias(
     name = "serde-aux",
-    actual = ":serde-aux-4.3.1",
+    actual = ":serde-aux-4.4.0",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "serde-aux-4.3.1.crate",
-    sha256 = "184eba62ebddb71658697c8b08822edee89970bf318c5362189f0de27f85b498",
-    strip_prefix = "serde-aux-4.3.1",
-    urls = ["https://crates.io/api/v1/crates/serde-aux/4.3.1/download"],
+    name = "serde-aux-4.4.0.crate",
+    sha256 = "a86348501c129f3ad50c2f4635a01971f76974cd8a3f335988a0f1581c082765",
+    strip_prefix = "serde-aux-4.4.0",
+    urls = ["https://crates.io/api/v1/crates/serde-aux/4.4.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "serde-aux-4.3.1",
-    srcs = [":serde-aux-4.3.1.crate"],
+    name = "serde-aux-4.4.0",
+    srcs = [":serde-aux-4.4.0.crate"],
     crate = "serde_aux",
-    crate_root = "serde-aux-4.3.1.crate/src/lib.rs",
+    crate_root = "serde-aux-4.4.0.crate/src/lib.rs",
     edition = "2021",
     features = [
         "chrono",
@@ -13754,7 +13754,7 @@ cargo.rust_binary(
         ":sea-orm-0.12.10",
         ":self-replace-1.3.7",
         ":serde-1.0.195",
-        ":serde-aux-4.3.1",
+        ":serde-aux-4.4.0",
         ":serde_json-1.0.111",
         ":serde_url_params-0.2.1",
         ":serde_with-3.4.0",

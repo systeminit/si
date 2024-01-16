@@ -213,6 +213,7 @@ impl DependentValuesUpdate {
                                 task_ctx,
                                 attribute_value,
                                 pub_council.clone(),
+                                Span::current(),
                             ));
                         }
                     }
@@ -317,6 +318,7 @@ impl DependentValuesUpdate {
 /// play more nicely with being spawned into a `JoinSet`.
 #[instrument(
     name = "dependent_values_update.update_value",
+    parent = &parent_span,
     skip_all,
     level = "info",
     fields(
@@ -327,6 +329,7 @@ async fn update_value(
     ctx: DalContext,
     mut attribute_value: AttributeValue,
     council: council_server::PubClient,
+    parent_span: Span,
 ) -> JobConsumerResult<()> {
     let update_result = attribute_value.update_from_prototype_function(&ctx).await;
     // We don't propagate the error up, because we want the rest of the nodes in the graph to make progress
