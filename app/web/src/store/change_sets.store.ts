@@ -246,7 +246,7 @@ export function useChangeSetsStore() {
         getGeneratedChangesetName() {
           let latestNum = 0;
           _.each(this.allChangeSets, (cs) => {
-            const labelNum = parseInt(cs.name.split(" ").pop() || "");
+            const labelNum = Number(cs.name.split(" ").pop());
             if (!_.isNaN(labelNum) && labelNum > latestNum) {
               latestNum = labelNum;
             }

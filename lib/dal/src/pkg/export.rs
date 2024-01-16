@@ -27,9 +27,8 @@ use crate::{
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, ChangeSet, ChangeSetPk,
     Component, ComponentError, ComponentId, ComponentType, DalContext, Edge, EdgeError,
     ExternalProvider, ExternalProviderId, Func, FuncError, FuncId, InternalProvider,
-    InternalProviderId, LeafInputLocation, LeafKind, NodeError, Prop, PropError, PropId, PropKind,
-    Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket, StandardModel,
-    Workspace,
+    InternalProviderId, LeafInputLocation, LeafKind, Prop, PropError, PropId, PropKind, Schema,
+    SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket, StandardModel, Workspace,
 };
 
 use super::{PkgError, PkgResult};
@@ -157,21 +156,21 @@ impl PkgExporter {
             for func in &related_funcs {
                 if change_set_pk.is_some()
                     && change_set_pk.as_ref().expect("some is ensured") != &ChangeSetPk::NONE
-                    && self
-                        .func_map
-                        .get(Some(ChangeSetPk::NONE), func.id())
-                        .is_none()
+                    && self.func_map.get(ChangeSetPk::NONE, func.id()).is_none()
                     && func.visibility().change_set_pk == ChangeSetPk::NONE
                 {
                     let (func_spec, _) =
                         self.export_func(ctx, Some(ChangeSetPk::NONE), func).await?;
                     self.func_map
-                        .insert(Some(ChangeSetPk::NONE), *func.id(), func_spec.to_owned());
+                        .insert(ChangeSetPk::NONE, *func.id(), func_spec.to_owned());
                     head_funcs.push(func_spec);
                 } else {
                     let (func_spec, include) = self.export_func(ctx, change_set_pk, func).await?;
-                    self.func_map
-                        .insert(change_set_pk, *func.id(), func_spec.to_owned());
+                    self.func_map.insert(
+                        change_set_pk.unwrap_or(ChangeSetPk::NONE),
+                        *func.id(),
+                        func_spec.to_owned(),
+                    );
 
                     if include {
                         funcs.push(func_spec);
@@ -181,8 +180,11 @@ impl PkgExporter {
 
             if !is_deleted {
                 let variant_spec = self.export_variant(ctx, change_set_pk, variant).await?;
-                self.variant_map
-                    .insert(change_set_pk, *variant.id(), variant_spec.to_owned());
+                self.variant_map.insert(
+                    change_set_pk.unwrap_or(ChangeSetPk::NONE),
+                    *variant.id(),
+                    variant_spec.to_owned(),
+                );
                 if variant_spec.unique_id.is_some() {
                     if let Some(default_variant_id) = default_variant_id {
                         if variant.id() == &default_variant_id {
@@ -262,7 +264,10 @@ impl PkgExporter {
 
             let asset_func_unique_id = self
                 .func_map
-                .get(change_set_pk, &schema_variant_definition.func_id())
+                .get(
+                    change_set_pk.unwrap_or(ChangeSetPk::NONE),
+                    &schema_variant_definition.func_id(),
+                )
                 .ok_or(PkgError::MissingExportedFunc(
                     schema_variant_definition.func_id(),
                 ))?
@@ -473,7 +478,7 @@ impl PkgExporter {
 
                 let func_spec = self
                     .func_map
-                    .get(change_set_pk, leaf_func.id())
+                    .get(change_set_pk.unwrap_or(ChangeSetPk::NONE), leaf_func.id())
                     .ok_or(PkgError::MissingExportedFunc(*leaf_func.id()))?;
 
                 let mut inputs = vec![];
@@ -653,7 +658,10 @@ impl PkgExporter {
 
             let func_spec = self
                 .func_map
-                .get(change_set_pk, &action_proto.func_id())
+                .get(
+                    change_set_pk.unwrap_or(ChangeSetPk::NONE),
+                    &action_proto.func_id(),
+                )
                 .ok_or(PkgError::MissingExportedFunc(action_proto.func_id()))?;
 
             let mut builder = ActionFuncSpec::builder();
@@ -695,7 +703,10 @@ impl PkgExporter {
 
             let func_spec = self
                 .func_map
-                .get(change_set_pk, &prototype.func_id())
+                .get(
+                    change_set_pk.unwrap_or(ChangeSetPk::NONE),
+                    &prototype.func_id(),
+                )
                 .ok_or(PkgError::MissingExportedFunc(prototype.func_id()))?;
 
             let mut builder = AuthenticationFuncSpec::builder();
@@ -1060,7 +1071,7 @@ impl PkgExporter {
 
         let func_spec = self
             .func_map
-            .get(change_set_pk, proto_func.id())
+            .get(change_set_pk.unwrap_or(ChangeSetPk::NONE), proto_func.id())
             .ok_or(PkgError::MissingExportedFunc(*proto_func.id()))?;
 
         let func_unique_id = func_spec.unique_id.to_owned();
@@ -1204,8 +1215,11 @@ impl PkgExporter {
                     .ok_or(PkgError::MissingIntrinsicFunc(intrinsic_name.to_string()))?;
 
                 let intrinsic_spec = intrinsic.to_spec()?;
-                self.func_map
-                    .insert(change_set_pk, *intrinsic_func.id(), intrinsic_spec.clone());
+                self.func_map.insert(
+                    change_set_pk.unwrap_or(ChangeSetPk::NONE),
+                    *intrinsic_func.id(),
+                    intrinsic_spec.clone(),
+                );
 
                 func_specs.push(intrinsic_spec);
             }
@@ -1238,12 +1252,41 @@ impl PkgExporter {
 
         if self.is_workspace_export && self.include_components {
             for component in Component::list(ctx).await? {
+                let variant = component
+                    .schema_variant(ctx)
+                    .await?
+                    .ok_or(ComponentError::NoSchemaVariant(*component.id()))?;
+
+                let component_variant = match self
+                    .variant_map
+                    .get(change_set_pk.unwrap_or(ChangeSetPk::NONE), variant.id())
+                {
+                    Some(variant_spec) => ComponentSpecVariant::WorkspaceVariant {
+                        variant_unique_id: variant_spec
+                            .unique_id
+                            .as_ref()
+                            .unwrap_or(&variant.id().to_string())
+                            .to_owned(),
+                    },
+                    None => {
+                        let schema = component
+                            .schema(ctx)
+                            .await?
+                            .ok_or(ComponentError::NoSchema(*component.id()))?;
+
+                        ComponentSpecVariant::BuiltinVariant {
+                            schema_name: schema.name().to_owned(),
+                            variant_name: variant.name().to_owned(),
+                        }
+                    }
+                };
+
                 if let Some((component_spec, component_funcs, component_head_funcs)) = self
-                    .export_component(ctx, change_set_pk, &component)
+                    .export_component(ctx, change_set_pk, &component, component_variant)
                     .await?
                 {
                     self.component_map.insert(
-                        change_set_pk,
+                        change_set_pk.unwrap_or(ChangeSetPk::NONE),
                         *component.id(),
                         component_spec.to_owned(),
                     );
@@ -1255,7 +1298,30 @@ impl PkgExporter {
             }
 
             for edge in Edge::list(ctx).await? {
-                edge_specs.push(self.export_edge(ctx, change_set_pk, &edge).await?);
+                let to_component_spec = self
+                    .component_map
+                    .get(
+                        change_set_pk.unwrap_or(ChangeSetPk::NONE),
+                        &edge.head_component_id(),
+                    )
+                    .ok_or(PkgError::EdgeRefersToMissingComponent(
+                        edge.head_component_id(),
+                    ))?
+                    .clone();
+                let from_component_spec = self
+                    .component_map
+                    .get(
+                        change_set_pk.unwrap_or(ChangeSetPk::NONE),
+                        &edge.tail_component_id(),
+                    )
+                    .ok_or(PkgError::EdgeRefersToMissingComponent(
+                        edge.tail_component_id(),
+                    ))?
+                    .clone();
+                edge_specs.push(
+                    self.export_edge(ctx, &edge, &to_component_spec, &from_component_spec)
+                        .await?,
+                );
             }
         }
 
@@ -1271,19 +1337,11 @@ impl PkgExporter {
     pub async fn export_edge(
         &mut self,
         ctx: &DalContext,
-        change_set_pk: Option<ChangeSetPk>,
         edge: &Edge,
+        to_component_spec: &ComponentSpec,
+        from_component_spec: &ComponentSpec,
     ) -> PkgResult<EdgeSpec> {
         // head = to, tail = from
-        let head_component = Component::find_for_node(ctx, edge.head_node_id())
-            .await
-            .map_err(|err| EdgeError::Component(err.to_string()))?
-            .ok_or(NodeError::ComponentIsNone)?;
-        let tail_component = Component::find_for_node(ctx, edge.tail_node_id())
-            .await
-            .map_err(|err| EdgeError::Component(err.to_string()))?
-            .ok_or(NodeError::ComponentIsNone)?;
-
         let head_explicit_internal_provider =
             InternalProvider::find_explicit_for_socket(ctx, edge.head_socket_id())
                 .await?
@@ -1298,17 +1356,7 @@ impl PkgExporter {
 
         let mut edge_builder = EdgeSpec::builder();
 
-        let to_component_spec = self
-            .component_map
-            .get(change_set_pk, head_component.id())
-            .ok_or(PkgError::EdgeRefersToMissingComponent(*head_component.id()))?;
-
         let to_socket_name = head_explicit_internal_provider.name().to_owned();
-
-        let from_component_spec = self
-            .component_map
-            .get(change_set_pk, tail_component.id())
-            .ok_or(PkgError::EdgeRefersToMissingComponent(*tail_component.id()))?;
 
         let from_socket_name = tail_external_provider.name().to_owned();
 
@@ -1335,7 +1383,12 @@ impl PkgExporter {
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
         component: &Component,
+        component_variant: ComponentSpecVariant,
     ) -> PkgResult<Option<(ComponentSpec, Vec<FuncSpec>, Vec<FuncSpec>)>> {
+        if component.hidden() {
+            return Ok(None);
+        }
+
         let mut component_spec_builder = ComponentSpec::builder();
         component_spec_builder
             .name(component.name(ctx).await?)
@@ -1357,27 +1410,6 @@ impl PkgExporter {
             .await?
             .pop()
             .ok_or(PkgError::ComponentMissingNode(*component.id()))?;
-
-        let component_variant = match self.variant_map.get(change_set_pk, variant.id()) {
-            Some(variant_spec) => ComponentSpecVariant::WorkspaceVariant {
-                variant_unique_id: variant_spec
-                    .unique_id
-                    .as_ref()
-                    .unwrap_or(&variant.id().to_string())
-                    .to_owned(),
-            },
-            None => {
-                let schema = component
-                    .schema(ctx)
-                    .await?
-                    .ok_or(ComponentError::NoSchema(*component.id()))?;
-
-                ComponentSpecVariant::BuiltinVariant {
-                    schema_name: schema.name().to_owned(),
-                    variant_name: variant.name().to_owned(),
-                }
-            }
-        };
         component_spec_builder.variant(component_variant);
 
         let mut position_spec_builder = PositionSpec::builder();
@@ -1389,9 +1421,8 @@ impl PkgExporter {
 
         component_spec_builder.needs_destroy(component.needs_destroy());
 
-        if let Some(deletion_user_pk) = component.deletion_user_pk() {
-            component_spec_builder.deletion_user_pk(deletion_user_pk.to_string());
-        }
+        component_spec_builder
+            .deletion_user_pk(component.deletion_user_pk().map(ToString::to_string));
 
         component_spec_builder.deleted(component.visibility().is_deleted());
 
@@ -1414,14 +1445,14 @@ impl PkgExporter {
                 .await?;
             funcs.extend_from_slice(&attr_funcs);
             head_funcs.extend_from_slice(&attr_head_funcs);
-            component_spec_builder.attribute(attr_spec);
+            component_spec_builder.input_socket(attr_spec);
         }
 
         for attribute in debug_view.output_sockets {
             let (attr_spec, attr_funcs, attr_head_funcs) = self
                 .export_attribute_value(ctx, change_set_pk, attribute)
                 .await?;
-            component_spec_builder.attribute(attr_spec);
+            component_spec_builder.output_socket(attr_spec);
             funcs.extend_from_slice(&attr_funcs);
             head_funcs.extend_from_slice(&attr_head_funcs);
         }
@@ -1474,7 +1505,10 @@ impl PkgExporter {
 
         let func_id = *view.func.id();
 
-        let func_unique_id = match self.func_map.get(change_set_pk, &func_id) {
+        let func_unique_id = match self
+            .func_map
+            .get(change_set_pk.unwrap_or(ChangeSetPk::NONE), &func_id)
+        {
             Some(func_spec) => {
                 let func = Func::get_by_id(ctx, &func_id)
                     .await?
@@ -1499,15 +1533,18 @@ impl PkgExporter {
                         .await?;
                     let unique_id = func_spec.unique_id.to_owned();
                     self.func_map
-                        .insert(Some(ChangeSetPk::NONE), func_id, func_spec.to_owned());
+                        .insert(ChangeSetPk::NONE, func_id, func_spec.to_owned());
                     head_funcs.push(func_spec);
 
                     unique_id
                 } else {
                     let (func_spec, _) = self.export_func(ctx, change_set_pk, &func).await?;
                     let unique_id = func_spec.unique_id.to_owned();
-                    self.func_map
-                        .insert(change_set_pk, func_id, func_spec.to_owned());
+                    self.func_map.insert(
+                        change_set_pk.unwrap_or(ChangeSetPk::NONE),
+                        func_id,
+                        func_spec.to_owned(),
+                    );
                     funcs.push(func_spec);
 
                     unique_id
@@ -1554,7 +1591,7 @@ impl PkgExporter {
         }
 
         let inputs = self
-            .export_input_func_and_arguments(ctx, None, &view.prototype)
+            .export_input_func_and_arguments(ctx, change_set_pk, &view.prototype)
             .await?;
 
         if let Some((_, inputs)) = inputs {

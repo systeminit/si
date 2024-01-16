@@ -224,9 +224,8 @@ impl Schema {
         ctx: &DalContext,
         name: impl AsRef<str>,
     ) -> SchemaResult<Option<Schema>> {
-        let name = name.as_ref();
-
         let builtin_ctx = ctx.clone_with_new_tenancy(Tenancy::new(WorkspacePk::NONE));
+
         let builtin_schema = Self::find_by_name(&builtin_ctx, name).await?;
 
         Ok(Self::get_by_id(ctx, builtin_schema.id()).await?)

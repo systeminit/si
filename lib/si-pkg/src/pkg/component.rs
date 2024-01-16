@@ -8,6 +8,7 @@ use crate::{
     AttributeValueSpec, ComponentSpec, ComponentSpecVariant, PositionSpec,
 };
 
+#[derive(Clone, Debug)]
 pub struct SiPkgComponent<'a> {
     name: String,
     variant: ComponentSpecVariant,
@@ -139,32 +140,29 @@ impl<'a> TryFrom<SiPkgComponent<'a>> for ComponentSpec {
     fn try_from(value: SiPkgComponent<'a>) -> Result<Self, Self::Error> {
         let mut builder = ComponentSpec::builder();
 
-        builder
-            .name(value.name())
-            .variant(value.variant().to_owned())
-            .needs_destroy(value.needs_destroy())
-            .deleted(value.deleted());
-
-        if let Some(deletion_user_pk) = value.deletion_user_pk() {
-            builder.deletion_user_pk(deletion_user_pk);
-        }
-
-        for attribute in value.attributes()? {
-            builder.attribute(AttributeValueSpec::try_from(attribute)?);
-        }
-        for input_socket in value.input_sockets()? {
-            builder.attribute(AttributeValueSpec::try_from(input_socket)?);
-        }
-        for output_socket in value.output_sockets()? {
-            builder.attribute(AttributeValueSpec::try_from(output_socket)?);
-        }
-
         let position = value
             .position()?
             .pop()
             .ok_or(SiPkgError::ComponentMissingPosition(value.name().into()))?;
 
-        builder.position(PositionSpec::try_from(position)?);
+        builder
+            .name(value.name())
+            .position(PositionSpec::try_from(position)?)
+            .variant(value.variant().to_owned())
+            .needs_destroy(value.needs_destroy())
+            .deletion_user_pk(value.deletion_user_pk().map(ToString::to_string))
+            .unique_id(value.unique_id())
+            .deleted(value.deleted());
+
+        for attribute in value.attributes()? {
+            builder.attribute(AttributeValueSpec::try_from(attribute)?);
+        }
+        for input_socket in value.input_sockets()? {
+            builder.input_socket(AttributeValueSpec::try_from(input_socket)?);
+        }
+        for output_socket in value.output_sockets()? {
+            builder.output_socket(AttributeValueSpec::try_from(output_socket)?);
+        }
 
         Ok(builder.build()?)
     }

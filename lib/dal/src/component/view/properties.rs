@@ -31,7 +31,8 @@ pub struct ComponentViewProperties {
 /// more granular level than [`ComponentViewProperties`].
 #[derive(Deserialize, Serialize, Debug, Default, Clone)]
 struct ResourceProperties {
-    status: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    status: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     message: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]

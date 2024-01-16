@@ -391,7 +391,7 @@ async fn update_summary_tables(
 
     if let Some(component_name) = component_value_json.pointer("/si/name") {
         if let Some(component_name_str) = component_name.as_str() {
-            dbg!(name = String::from(component_name_str));
+            name = String::from(component_name_str);
         }
     }
 

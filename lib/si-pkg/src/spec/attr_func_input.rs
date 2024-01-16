@@ -69,6 +69,14 @@ impl AttrFuncInputSpec {
     pub fn builder() -> AttrFuncInputSpecBuilder {
         AttrFuncInputSpecBuilder::default()
     }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Self::InputSocket { name, .. } => name.as_str(),
+            Self::OutputSocket { name, .. } => name.as_str(),
+            Self::Prop { name, .. } => name.as_str(),
+        }
+    }
 }
 
 impl AttrFuncInputSpecBuilder {

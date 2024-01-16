@@ -4,6 +4,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
@@ -110,6 +111,8 @@ export const useModuleStore = () => {
 
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
+
+  const featureFlagsStore = useFeatureFlagsStore();
   return addStoreHooks(
     defineStore(
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/modules`,
@@ -305,6 +308,11 @@ export const useModuleStore = () => {
           },
 
           async INSTALL_REMOTE_MODULE(moduleId: ModuleId) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
             this.installingModule = true;
             return new ApiRequest<{
               success: true;
@@ -313,7 +321,12 @@ export const useModuleStore = () => {
             }>({
               method: "post",
               url: "/pkg/install_pkg",
-              params: { id: moduleId, ...visibility },
+              params: {
+                id: moduleId,
+                ...visibility,
+                overrideBuiltinSchemaFeatureFlag:
+                  featureFlagsStore.OVERRIDE_SCHEMA,
+              },
               onSuccess: (_response) => {
                 // response is just success, so we have to reload local modules
                 this.LOAD_LOCAL_MODULES();

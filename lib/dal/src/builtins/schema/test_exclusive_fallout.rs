@@ -208,6 +208,7 @@ impl MigrationDriver {
                 schemas: Some(vec!["fallout".into()]),
                 ..Default::default()
             }),
+            true,
         )
         .await?;
 

@@ -90,6 +90,8 @@ impl<'a> TryFrom<SiPkgFuncArgument<'a>> for FuncArgumentSpec {
             .name(value.name)
             .kind(value.kind)
             .element_kind(value.element_kind)
+            .unique_id(value.unique_id.to_owned())
+            .deleted(value.deleted)
             .build()?)
     }
 }
@@ -287,7 +289,8 @@ impl<'a> TryFrom<SiPkgFunc<'a>> for FuncSpec {
         builder
             .name(&value.name)
             .unique_id(&value.unique_id)
-            .deleted(value.deleted);
+            .deleted(value.deleted)
+            .is_from_builtin(value.is_from_builtin);
 
         if let Some(data) = value.data() {
             data_builder

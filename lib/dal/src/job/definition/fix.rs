@@ -217,7 +217,7 @@ impl JobConsumer for FixesJob {
 
                 if fix.finished_at().is_none() {
                     let resource = ActionRunResult {
-                        status: ResourceStatus::Error,
+                        status: Some(ResourceStatus::Error),
                         payload: fix.resource().cloned(),
                         message: Some(err.clone()),
                         logs: logs.clone(),

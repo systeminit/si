@@ -317,6 +317,7 @@ impl MigrationDriver {
                 schemas: Some(vec!["starfield".into()]),
                 ..Default::default()
             }),
+            true,
         )
         .await?;
 

@@ -253,8 +253,11 @@ impl Fix {
         Ok(match action_prototype.run(ctx, self.component_id).await {
             Ok(Some(run_result)) => {
                 let completion_status = match run_result.status {
-                    ResourceStatus::Ok | ResourceStatus::Warning => FixCompletionStatus::Success,
-                    ResourceStatus::Error => FixCompletionStatus::Failure,
+                    Some(ResourceStatus::Ok) | Some(ResourceStatus::Warning) => {
+                        FixCompletionStatus::Success
+                    }
+                    Some(ResourceStatus::Error) => FixCompletionStatus::Failure,
+                    None => FixCompletionStatus::Unstarted,
                 };
 
                 self.stamp_finished(
@@ -346,7 +349,7 @@ impl Fix {
             None => {
                 if batch_timed_out {
                     Some(ActionRunResult {
-                        status: ResourceStatus::Error,
+                        status: Some(ResourceStatus::Error),
                         payload: None,
                         message: Some("Execution timed-out".to_owned()),
                         // TODO: add proper logs here

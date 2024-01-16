@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
         "--- Importing pkg: {tar_file} into change set \"{change_set_name}\" in workspace \"{}\"",
         workspace.name()
     );
-    import_pkg_from_pkg(&ctx, &pkg, None).await?;
+    import_pkg_from_pkg(&ctx, &pkg, None, true).await?;
 
     println!("--- Committing database transaction");
     ctx.commit().await?;

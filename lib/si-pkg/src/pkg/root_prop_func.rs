@@ -94,9 +94,9 @@ impl<'a> TryFrom<SiPkgRootPropFunc<'a>> for RootPropFuncSpec {
 
         Ok(builder
             .prop(value.prop)
+            .func_unique_id(value.func_unique_id)
             .unique_id(value.unique_id)
             .deleted(value.deleted)
-            .func_unique_id(value.func_unique_id)
             .build()?)
     }
 }

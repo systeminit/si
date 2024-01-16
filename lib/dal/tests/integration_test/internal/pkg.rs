@@ -319,6 +319,7 @@ async fn make_stellarfield(ctx: &DalContext) -> BuiltinsResult<()> {
             schemas: Some(vec!["stellarfield".into()]),
             ..Default::default()
         }),
+        true,
     )
     .await?;
 
@@ -345,7 +346,7 @@ async fn test_workspace_pkg_export(DalContextHeadRef(ctx): DalContextHeadRef<'_>
     let pkg = SiPkg::load_from_bytes(package_bytes).expect("able to load from bytes");
     let _spec = pkg.to_spec().await.expect("can convert to spec");
 
-    import_pkg_from_pkg(ctx, &pkg, None)
+    import_pkg_from_pkg(ctx, &pkg, None, true)
         .await
         .expect("able to import workspace");
 }
@@ -390,7 +391,7 @@ async fn test_module_pkg_export(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
         .expect("can create change set");
 
     let new_ctx = ctx.clone_with_new_visibility(ctx.visibility().to_change_set(new_change_set.pk));
-    import_pkg_from_pkg(&new_ctx, &pkg, None)
+    import_pkg_from_pkg(&new_ctx, &pkg, None, true)
         .await
         .expect("able to import pkg");
 
@@ -646,7 +647,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         .schema(schema_a.clone())
         .func(func_spec)
         .func(identity_func_spec.clone())
-        .func(qualification_func_spec)
+        .func(qualification_func_spec.clone())
         .func(scaffold_func_spec_a.clone())
         .build()
         .expect("able to build package spec");
@@ -662,17 +663,18 @@ async fn test_install_pkg(ctx: &DalContext) {
         .schema(schema_b)
         .func(scaffold_func_spec_a)
         .func(scaffold_func_spec_b)
+        .func(qualification_func_spec)
         .build()
         .expect("able to build package spec");
 
     let pkg_b = SiPkg::load_from_spec(spec_b).expect("able to load pkg from spec");
 
-    import_pkg_from_pkg(ctx, &pkg_a, None)
+    import_pkg_from_pkg(ctx, &pkg_a, None, true)
         .await
         .expect("able to install pkg");
 
     // We should refuse to install the same package twice
-    let second_import_result = import_pkg_from_pkg(ctx, &pkg_a, None).await;
+    let second_import_result = import_pkg_from_pkg(ctx, &pkg_a, None, true).await;
     assert!(matches!(
         second_import_result,
         Err(PkgError::PackageAlreadyInstalled(_))
@@ -753,7 +755,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         }
     }
 
-    import_pkg_from_pkg(ctx, &pkg_b, None)
+    import_pkg_from_pkg(ctx, &pkg_b, None, true)
         .await
         .expect("install pkg b");
 

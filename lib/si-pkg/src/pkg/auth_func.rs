@@ -74,8 +74,10 @@ impl<'a> TryFrom<SiPkgAuthFunc<'a>> for AuthenticationFuncSpec {
     fn try_from(value: SiPkgAuthFunc<'a>) -> Result<Self, Self::Error> {
         Ok(AuthenticationFuncSpec::builder()
             .deleted(value.deleted())
-            .func_unique_id(value.func_unique_id)
-            .unique_id(value.unique_id)
+            .func_unique_id(value.func_unique_id())
+            .name(value.name().map(ToOwned::to_owned))
+            .unique_id(value.unique_id().map(ToOwned::to_owned))
+            .deleted(value.deleted)
             .build()?)
     }
 }

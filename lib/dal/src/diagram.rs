@@ -180,6 +180,9 @@ impl Diagram {
                 .component(ctx_with_deleted)
                 .await?
                 .ok_or(DiagramError::ComponentNotFound)?;
+            if component.hidden() {
+                continue;
+            }
 
             let schema_variant = match node.kind() {
                 NodeKind::Configuration => component

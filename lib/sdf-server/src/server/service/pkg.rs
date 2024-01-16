@@ -6,9 +6,9 @@ use axum::{
 };
 use convert_case::{Case, Casing};
 use dal::{
-    installed_pkg::InstalledPkgError, pkg::PkgError as DalPkgError, DalContextBuilder,
-    SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError, TransactionsError,
-    UserError, UserPk, WorkspaceError, WorkspacePk, WsEventError,
+    installed_pkg::InstalledPkgError, pkg::PkgError as DalPkgError, ChangeSetError,
+    DalContextBuilder, SchemaVariantError, SchemaVariantId, StandardModelError, TenancyError,
+    TransactionsError, UserError, UserPk, WorkspaceError, WorkspacePk, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgError};
@@ -37,9 +37,13 @@ pub enum PkgError {
     #[error("Could not canononicalize path: {0}")]
     Canononicalize(#[from] CanonicalFileError),
     #[error(transparent)]
+    ChangeSet(#[from] ChangeSetError),
+    #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error(transparent)]
     DalPkg(#[from] DalPkgError),
+    #[error(transparent)]
+    Hyper(#[from] hyper::http::Error),
     // add error for matching hash
     #[error(transparent)]
     InstalledPkg(#[from] InstalledPkgError),

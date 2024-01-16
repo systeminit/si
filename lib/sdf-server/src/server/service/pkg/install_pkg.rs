@@ -8,8 +8,8 @@ use crate::{
     service::pkg::PkgError,
 };
 use axum::extract::OriginalUri;
-use axum::Json;
-use dal::{pkg::import_pkg_from_pkg, Visibility, WsEvent};
+use axum::{response::IntoResponse, Json};
+use dal::{pkg::import_pkg_from_pkg, ChangeSet, Visibility, WsEvent};
 use dal::{HistoryActor, User, WorkspacePk};
 use module_index_client::IndexClient;
 use serde::{Deserialize, Serialize};
@@ -20,6 +20,7 @@ use ulid::Ulid;
 #[serde(rename_all = "camelCase")]
 pub struct InstallPkgRequest {
     pub id: Ulid,
+    pub override_builtin_schema_feature_flag: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -39,8 +40,24 @@ pub async fn install_pkg(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<InstallPkgRequest>,
-) -> PkgResult<Json<InstallPkgResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+) -> PkgResult<impl IntoResponse> {
+    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let mut force_changeset_pk = None;
+    if ctx.visibility().is_head() {
+        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
+
+        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
+
+        ctx.update_visibility(new_visibility);
+
+        force_changeset_pk = Some(change_set.pk);
+
+        WsEvent::change_set_created(&ctx, change_set.pk)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
+    };
 
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
@@ -52,7 +69,13 @@ pub async fn install_pkg(
 
     let pkg = SiPkg::load_from_bytes(pkg_data)?;
     let metadata = pkg.metadata()?;
-    let (_, svs, import_skips) = import_pkg_from_pkg(&ctx, &pkg, None).await?;
+    let (_, svs, import_skips) = import_pkg_from_pkg(
+        &ctx,
+        &pkg,
+        None, // TODO: add is_builtin option
+        request.override_builtin_schema_feature_flag,
+    )
+    .await?;
 
     track(
         &posthog_client,
@@ -106,9 +129,14 @@ pub async fn install_pkg(
         .as_ref()
         .is_some_and(|skips| skips.iter().any(|skip| !skip.attribute_skips.is_empty()));
 
-    Ok(Json(InstallPkgResponse {
+    let mut response = axum::response::Response::builder();
+    response = response.header("Content-Type", "application/json");
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
+    Ok(response.body(serde_json::to_string(&InstallPkgResponse {
         success: true,
         skipped_edges,
         skipped_attributes,
-    }))
+    })?)?)
 }

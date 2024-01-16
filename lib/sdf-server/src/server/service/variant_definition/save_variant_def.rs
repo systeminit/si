@@ -19,6 +19,7 @@ pub struct SaveVariantDefRequest {
     pub code: String,
     pub description: Option<String>,
     pub component_type: ComponentType,
+    pub override_builtin_schema_feature_flag: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
