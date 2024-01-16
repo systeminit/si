@@ -51,11 +51,15 @@ impl PgStore {
     }
 
     /// Migrate the content store database
-    pub async fn migrate() -> StoreResult<()> {
-        let pg_pool = PgStoreTools::new_production_pg_pool().await?;
-        PgStoreTools::migrate(&pg_pool).await?;
+    pub async fn migrate(pg_pool: &PgPool) -> StoreResult<()> {
+        PgStoreTools::migrate(pg_pool).await?;
 
         Ok(())
+    }
+
+    /// Access the internal pg_pool
+    pub fn pg_pool(&self) -> &PgPool {
+        &self.pg_pool
     }
 }
 

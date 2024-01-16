@@ -3,9 +3,7 @@
 //! value. It defines source of the value for the function argument in the
 //! context of the prototype.
 
-use content_store::Store;
 use serde::{Deserialize, Serialize};
-use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -16,16 +14,20 @@ use crate::{
     pk,
     provider::internal::InternalProviderId,
     workspace_snapshot::{
-        content_address::{ContentAddress, ContentAddressDiscriminants},
+        content_address::ContentAddressDiscriminants,
         edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants},
-        node_weight::{NodeWeight, NodeWeightError},
+        node_weight::{
+            AttributePrototypeArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants,
+            NodeWeightError,
+        },
         WorkspaceSnapshotError,
     },
-    AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, Prop, PropId, Timestamp,
-    TransactionsError,
+    AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, PropId, TransactionsError,
 };
 
 use self::static_value::{StaticArgumentValue, StaticArgumentValueId};
+
+pub use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 
 pub mod static_value;
 
@@ -51,41 +53,23 @@ pub enum AttributePrototypeArgumentError {
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
     #[error(
+        "PrototypeArgument {0} ArgumentValue edge pointing to unexpected content node weight kind: {1:?}"
+    )]
+    UnexpectedValueSourceContent(AttributePrototypeArgumentId, ContentAddressDiscriminants),
+    #[error(
         "PrototypeArgument {0} ArgumentValue edge pointing to unexpected node weight kind: {1:?}"
     )]
-    UnexpectedValueSource(AttributePrototypeArgumentId, ContentAddressDiscriminants),
+    UnexpectedValueSourceNode(AttributePrototypeArgumentId, NodeWeightDiscriminants),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 pub type AttributePrototypeArgumentResult<T> = Result<T, AttributePrototypeArgumentError>;
 
-/// Side effect metadata for inter-[`Component`](crate::Component) connections.
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct InterComponentMetadata {
-    pub source_component_id: ComponentId,
-    pub destination_component_id: ComponentId,
-}
-
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributePrototypeArgument {
     id: AttributePrototypeArgumentId,
-    timestamp: Timestamp,
-    /// Side effect metadata that is populated accordingly:
-    /// - [`Some`]: _inter_-[`Component`](crate::Component) connections
-    /// - [`None`]: _intra_-[`Component`](crate::Component) connections
-    inter_component_metadata: Option<InterComponentMetadata>,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum AttributePrototypeArgumentContent {
-    V1(AttributePrototypeArgumentContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct AttributePrototypeArgumentContentV1 {
-    pub timestamp: Timestamp,
-    pub inter_component_metadata: Option<InterComponentMetadata>,
+    targets: Option<ArgumentTargets>,
 }
 
 pub enum AttributePrototypeArgumentValueSource {
@@ -94,24 +78,22 @@ pub enum AttributePrototypeArgumentValueSource {
     StaticArgumentValue(StaticArgumentValueId),
 }
 
-impl AttributePrototypeArgument {
-    pub fn assemble(
-        id: AttributePrototypeArgumentId,
-        inner: AttributePrototypeArgumentContentV1,
-    ) -> Self {
+impl From<AttributePrototypeArgumentNodeWeight> for AttributePrototypeArgument {
+    fn from(value: AttributePrototypeArgumentNodeWeight) -> Self {
         Self {
-            id,
-            timestamp: inner.timestamp,
-            inter_component_metadata: inner.inter_component_metadata,
+            id: value.id().into(),
+            targets: value.targets(),
         }
     }
+}
 
+impl AttributePrototypeArgument {
     pub fn id(&self) -> AttributePrototypeArgumentId {
         self.id
     }
 
-    pub fn inter_component_metadata(&self) -> Option<InterComponentMetadata> {
-        self.inter_component_metadata
+    pub fn targets(&self) -> Option<ArgumentTargets> {
+        self.targets
     }
 
     pub async fn static_value_by_id(
@@ -120,7 +102,7 @@ impl AttributePrototypeArgument {
     ) -> AttributePrototypeArgumentResult<Option<StaticArgumentValue>> {
         let mut static_value_id: Option<StaticArgumentValueId> = None;
         {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
             for node_idx in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
                 apa_id,
@@ -153,51 +135,28 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         id: AttributePrototypeArgumentId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
         let node_index = workspace_snapshot.get_node_index_by_id(id)?;
         let node_weight = workspace_snapshot.get_node_weight(node_index)?;
-        let hash = node_weight.content_hash();
 
-        let content: AttributePrototypeArgumentContent = ctx
-            .content_store()
-            .try_lock()?
-            .get(&hash)
-            .await?
-            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
-
-        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-        let AttributePrototypeArgumentContent::V1(inner) = content;
-
-        Ok(AttributePrototypeArgument::assemble(id, inner))
+        Ok(node_weight
+            .get_attribute_prototype_argument_node_weight()?
+            .into())
     }
 
-    pub fn new(
+    pub async fn new(
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
         arg_id: FuncArgumentId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        let timestamp = Timestamp::now();
-        let content = AttributePrototypeArgumentContentV1 {
-            timestamp,
-            inter_component_metadata: None,
-        };
-
-        let hash = ctx
-            .content_store()
-            .try_lock()?
-            .add(&AttributePrototypeArgumentContent::V1(content.clone()))?;
-
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_content(
-            change_set,
-            id,
-            ContentAddress::AttributePrototypeArgument(hash),
-        )?;
+        let node_weight = NodeWeight::new_attribute_prototype_argument(change_set, id, None)?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
 
-        workspace_snapshot.add_node(node_weight)?;
+        workspace_snapshot.add_node(node_weight.clone())?;
 
         workspace_snapshot.add_edge(
             prototype_id,
@@ -211,68 +170,62 @@ impl AttributePrototypeArgument {
             arg_id,
         )?;
 
-        Ok(AttributePrototypeArgument::assemble(id.into(), content))
+        Ok(node_weight
+            .get_attribute_prototype_argument_node_weight()?
+            .into())
     }
 
-    pub fn new_inter_component(
+    pub async fn new_inter_component(
         ctx: &DalContext,
         source_component_id: ComponentId,
         source_external_provider_id: ExternalProviderId,
         destination_component_id: ComponentId,
         destination_attribute_prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        let timestamp = Timestamp::now();
-        let content = AttributePrototypeArgumentContentV1 {
-            timestamp,
-            inter_component_metadata: Some(InterComponentMetadata {
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_attribute_prototype_argument(
+            change_set,
+            id,
+            Some(ArgumentTargets {
                 source_component_id,
                 destination_component_id,
             }),
-        };
-
-        let hash = ctx
-            .content_store()
-            .try_lock()?
-            .add(&AttributePrototypeArgumentContent::V1(content.clone()))?;
-
-        let change_set = ctx.change_set_pointer()?;
-        let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_content(
-            change_set,
-            id,
-            ContentAddress::AttributePrototypeArgument(hash),
         )?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
 
-        workspace_snapshot.add_node(node_weight)?;
+        workspace_snapshot.add_node(node_weight.clone())?;
 
         workspace_snapshot.add_edge(
             destination_attribute_prototype_id,
             EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgument)?,
             id,
         )?;
+        // todo: this should be an edge to a  "value source" pointing to the external provider
         workspace_snapshot.add_edge(
             id,
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
             source_external_provider_id,
         )?;
 
-        Ok(AttributePrototypeArgument::assemble(id.into(), content))
+        Ok(node_weight
+            .get_attribute_prototype_argument_node_weight()?
+            .into())
     }
 
-    pub fn func_argument_id_by_id(
+    pub async fn func_argument_id_by_id(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
     ) -> AttributePrototypeArgumentResult<FuncArgumentId> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         for target in workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(apa_id, EdgeWeightKindDiscriminants::Use)?
         {
             match workspace_snapshot
                 .get_node_weight(target)?
-                .get_content_node_weight_of_kind(ContentAddressDiscriminants::FuncArg)
+                .get_func_argument_node_weight()
             {
                 Ok(content_node_weight) => {
                     return Ok(content_node_weight.id().into());
@@ -285,48 +238,63 @@ impl AttributePrototypeArgument {
         Err(AttributePrototypeArgumentError::MissingFuncArgument(apa_id))
     }
 
-    pub fn value_source_by_id(
+    pub async fn value_source_by_id(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
     ) -> AttributePrototypeArgumentResult<Option<AttributePrototypeArgumentValueSource>> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         for target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
             apa_id,
             EdgeWeightKindDiscriminants::PrototypeArgumentValue,
         )? {
-            if let NodeWeight::Content(inner) = workspace_snapshot.get_node_weight(target)? {
-                let discrim: ContentAddressDiscriminants = inner.content_address().into();
-                return Ok(Some(match discrim {
-                    ContentAddressDiscriminants::Prop => {
-                        AttributePrototypeArgumentValueSource::Prop(inner.id().into())
-                    }
-                    ContentAddressDiscriminants::InternalProvider => {
-                        AttributePrototypeArgumentValueSource::InternalProvider(inner.id().into())
-                    }
-                    ContentAddressDiscriminants::StaticArgumentValue => {
-                        AttributePrototypeArgumentValueSource::StaticArgumentValue(
-                            inner.id().into(),
-                        )
-                    }
-                    other => {
-                        return Err(AttributePrototypeArgumentError::UnexpectedValueSource(
-                            apa_id, other,
-                        ))
-                    }
-                }));
+            info!("looking at {:?}", &target);
+            match workspace_snapshot.get_node_weight(target)? {
+                NodeWeight::Prop(inner) => {
+                    return Ok(Some(AttributePrototypeArgumentValueSource::Prop(
+                        inner.id().into(),
+                    )));
+                }
+                NodeWeight::Content(inner) => {
+                    let discrim: ContentAddressDiscriminants = inner.content_address().into();
+                    return Ok(Some(match discrim {
+                        ContentAddressDiscriminants::InternalProvider => {
+                            AttributePrototypeArgumentValueSource::InternalProvider(
+                                inner.id().into(),
+                            )
+                        }
+                        ContentAddressDiscriminants::StaticArgumentValue => {
+                            AttributePrototypeArgumentValueSource::StaticArgumentValue(
+                                inner.id().into(),
+                            )
+                        }
+                        other => {
+                            return Err(
+                                AttributePrototypeArgumentError::UnexpectedValueSourceContent(
+                                    apa_id, other,
+                                ),
+                            )
+                        }
+                    }));
+                }
+                other => {
+                    return Err(AttributePrototypeArgumentError::UnexpectedValueSourceNode(
+                        apa_id,
+                        other.into(),
+                    ))
+                }
             }
         }
 
         Ok(None)
     }
 
-    fn set_value_source(
+    async fn set_value_source(
         self,
         ctx: &DalContext,
         value_id: Ulid,
     ) -> AttributePrototypeArgumentResult<Self> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
         let change_set = ctx.change_set_pointer()?;
 
         for existing_value_source in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
@@ -351,12 +319,50 @@ impl AttributePrototypeArgument {
         Ok(self)
     }
 
-    pub fn set_value_from_internal_provider_id(
+    pub async fn prototype_id_for_argument_id(
+        ctx: &DalContext,
+        attribute_prototype_argument_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<AttributePrototypeId> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+        let prototype_idxs = workspace_snapshot.incoming_sources_for_edge_weight_kind(
+            attribute_prototype_argument_id,
+            EdgeWeightKindDiscriminants::PrototypeArgument,
+        )?;
+
+        if prototype_idxs.len() != 1 {
+            return Err(WorkspaceSnapshotError::UnexpectedNumberOfIncomingEdges(
+                EdgeWeightKindDiscriminants::PrototypeArgument,
+                NodeWeightDiscriminants::AttributePrototypeArgument,
+                attribute_prototype_argument_id.into(),
+            )
+            .into());
+        }
+
+        let prototype_idx = prototype_idxs
+            .get(0)
+            .copied()
+            .expect("checked length above");
+
+        let prototype_node_weight = workspace_snapshot.get_node_weight(prototype_idx)?;
+
+        Ok(prototype_node_weight.id().into())
+    }
+
+    pub async fn prototype_id(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributePrototypeArgumentResult<AttributePrototypeId> {
+        Self::prototype_id_for_argument_id(ctx, self.id).await
+    }
+
+    pub async fn set_value_from_internal_provider_id(
         self,
         ctx: &DalContext,
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeArgumentResult<Self> {
         self.set_value_source(ctx, internal_provider_id.into())
+            .await
     }
 
     pub async fn set_value_from_prop_id(
@@ -364,33 +370,34 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         prop_id: PropId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        self.set_value_source(ctx, prop_id.into())
+        self.set_value_source(ctx, prop_id.into()).await
     }
 
-    pub fn set_value_from_static_value_id(
+    pub async fn set_value_from_static_value_id(
         self,
         ctx: &DalContext,
         value_id: StaticArgumentValueId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        self.set_value_source(ctx, value_id.into())
+        self.set_value_source(ctx, value_id.into()).await
     }
 
-    pub fn set_value_from_static_value(
+    pub async fn set_value_from_static_value(
         self,
         ctx: &DalContext,
         value: serde_json::Value,
     ) -> AttributePrototypeArgumentResult<Self> {
-        let static_value = StaticArgumentValue::new(ctx, value)?;
+        let static_value = StaticArgumentValue::new(ctx, value).await?;
 
         self.set_value_from_static_value_id(ctx, static_value.id())
+            .await
     }
 
-    pub fn list_ids_for_prototype(
+    pub async fn list_ids_for_prototype(
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeArgumentResult<Vec<AttributePrototypeArgumentId>> {
         let mut apas = vec![];
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         let apa_node_idxs = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
             prototype_id,
@@ -405,11 +412,11 @@ impl AttributePrototypeArgument {
         Ok(apas)
     }
 
-    pub fn remove(
+    pub async fn remove(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
     ) -> AttributePrototypeArgumentResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
 
         workspace_snapshot.remove_node_by_id(apa_id)?;
 

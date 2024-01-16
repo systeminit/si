@@ -27,9 +27,9 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributeValue, AttributeValueId, DalContext, ExternalProviderId, InternalProvider,
-    InternalProviderId, PropId, PropKind, SchemaVariant, SchemaVariantId, Timestamp,
-    TransactionsError, WsEvent, WsEventResult, WsPayload,
+    pk, AttributeValue, AttributeValueId, DalContext, ExternalProviderId, InternalProviderId,
+    PropId, PropKind, SchemaVariant, SchemaVariantId, Timestamp, TransactionsError, WsEvent,
+    WsEventResult, WsPayload,
 };
 
 pub mod resource;
@@ -196,7 +196,7 @@ impl Component {
         self.height.as_deref()
     }
 
-    pub fn new(
+    pub async fn new(
         ctx: &DalContext,
         name: impl Into<String>,
         schema_variant_id: SchemaVariantId,
@@ -204,7 +204,7 @@ impl Component {
     ) -> ComponentResult<Self> {
         let content = ComponentContentV1 {
             timestamp: Timestamp::now(),
-            name: name.into(),
+            name: name.into(), // XXX: name is part of the si tree
             kind: match component_kind {
                 Some(provided_kind) => provided_kind,
                 None => ComponentKind::Standard,
@@ -217,14 +217,15 @@ impl Component {
         };
         let hash = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .add(&ComponentContent::V1(content.clone()))?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Component(hash))?;
         let provider_indices = {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
             workspace_snapshot.add_node(node_weight)?;
 
             // Root --> Component Category --> Component (this)
@@ -253,14 +254,14 @@ impl Component {
 
         // Create attribute values for all providers corresponding to input and output sockets.
         for provider_index in provider_indices {
-            let attribute_value = AttributeValue::new(ctx, false)?;
+            let attribute_value = AttributeValue::new(ctx, false).await?;
             {
-                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
 
                 // Component (this) --> AttributeValue (new)
                 workspace_snapshot.add_edge(
                     id,
-                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Socket)?,
                     attribute_value.id(),
                 )?;
 
@@ -276,14 +277,15 @@ impl Component {
         }
 
         // Walk all the props for the schema variant and create attribute values for all of them
-        let root_prop_id = SchemaVariant::get_root_prop_id(ctx, schema_variant_id)?;
+        let root_prop_id = SchemaVariant::get_root_prop_id(ctx, schema_variant_id).await?;
         let mut work_queue = VecDeque::from([(root_prop_id, None::<AttributeValueId>)]);
 
         while let Some((prop_id, maybe_parent_attribute_value_id)) = work_queue.pop_front() {
             // Ensure that we are processing a prop before creating attribute values. Cache the
             // prop kind for later.
             let prop_kind = {
-                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
                 match workspace_snapshot.get_node_weight_by_id(prop_id)? {
                     NodeWeight::Prop(prop_node_weight) => prop_node_weight.kind(),
                     _ => return Err(ComponentError::PropIdNotAProp(prop_id)),
@@ -291,10 +293,10 @@ impl Component {
             };
 
             // Create an attribute value for the prop.
-            let attribute_value = AttributeValue::new(ctx, false)?;
+            let attribute_value = AttributeValue::new(ctx, false).await?;
 
             // AttributeValue --Prop--> Prop
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
             workspace_snapshot.add_edge(
                 attribute_value.id(),
                 EdgeWeight::new(change_set, EdgeWeightKind::Prop)?,
@@ -354,7 +356,7 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<(ContentHash, ComponentContentV1)> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         let id: Ulid = component_id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(id)?;
         let node_weight = workspace_snapshot.get_node_weight(node_index)?;
@@ -362,7 +364,8 @@ impl Component {
 
         let content: ComponentContent = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .get(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
@@ -374,7 +377,7 @@ impl Component {
     }
 
     pub async fn list(ctx: &DalContext) -> ComponentResult<Vec<Self>> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         let mut components = vec![];
         let component_category_node_id =
@@ -397,7 +400,8 @@ impl Component {
 
         let contents: HashMap<ContentHash, ComponentContent> = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .get_bulk(hashes.as_slice())
             .await?;
 
@@ -418,7 +422,7 @@ impl Component {
         Ok(components)
     }
 
-    pub async fn schema_variant(
+    pub async fn schema_variant_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<SchemaVariant> {
@@ -426,11 +430,16 @@ impl Component {
         Ok(SchemaVariant::get_by_id(ctx, schema_variant_id).await?)
     }
 
+    pub async fn schema_variant(&self, ctx: &DalContext) -> ComponentResult<SchemaVariant> {
+        Ok(Self::schema_variant_for_component_id(ctx, self.id).await?)
+    }
+
     pub async fn schema_variant_id(
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<SchemaVariantId> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
         let maybe_schema_variant_indices = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
                 component_id,
@@ -460,7 +469,6 @@ impl Component {
             schema_variant_id.ok_or(ComponentError::SchemaVariantNotFound(component_id))?;
         Ok(schema_variant_id)
     }
-
     pub async fn get_by_id(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<Self> {
         let (_, content) = Self::get_content_with_hash(ctx, component_id).await?;
         Ok(Self::assemble(component_id, content))
@@ -487,10 +495,11 @@ impl Component {
         if updated != before {
             let hash = ctx
                 .content_store()
-                .try_lock()?
+                .lock()
+                .await
                 .add(&ComponentContent::V1(updated.clone()))?;
 
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
             workspace_snapshot.update_content(ctx.change_set_pointer()?, id.into(), hash)?;
         }
 
@@ -512,11 +521,11 @@ impl Component {
         Ok(ComponentType::Component)
     }
 
-    pub fn root_attribute_value_id(
+    pub async fn root_attribute_value_id(
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<AttributeValueId> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         let mut maybe_root_attribute_value_id = None;
         for target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
@@ -524,28 +533,24 @@ impl Component {
             EdgeWeightKindDiscriminants::Root,
         )? {
             let target_node_weight = workspace_snapshot.get_node_weight(target)?;
-            if let NodeWeight::Content(content_node_weight) = target_node_weight {
-                let discrim: ContentAddressDiscriminants =
-                    content_node_weight.content_address().into();
-                if ContentAddressDiscriminants::AttributeValue == discrim {
-                    maybe_root_attribute_value_id = match maybe_root_attribute_value_id {
-                        Some(already_found_root_attribute_value_id) => {
-                            return Err(ComponentError::MultipleRootAttributeValuesFound(
-                                target_node_weight.id().into(),
-                                already_found_root_attribute_value_id,
-                                component_id,
-                            ));
-                        }
-                        None => Some(target_node_weight.id().into()),
-                    };
-                }
+            if let NodeWeight::AttributeValue(_) = target_node_weight {
+                maybe_root_attribute_value_id = match maybe_root_attribute_value_id {
+                    Some(already_found_root_attribute_value_id) => {
+                        return Err(ComponentError::MultipleRootAttributeValuesFound(
+                            target_node_weight.id().into(),
+                            already_found_root_attribute_value_id,
+                            component_id,
+                        ));
+                    }
+                    None => Some(target_node_weight.id().into()),
+                };
             }
         }
         maybe_root_attribute_value_id
             .ok_or(ComponentError::RootAttributeValueNotFound(component_id))
     }
 
-    pub fn connect(
+    pub async fn connect(
         ctx: &DalContext,
         source_component_id: ComponentId,
         source_external_provider_id: ExternalProviderId,
@@ -557,21 +562,11 @@ impl Component {
                 ctx,
                 destination_component_id,
                 destination_explicit_internal_provider_id,
-            )?;
+            )
+            .await?;
 
-        // Use the attribute prototype from the attribute value, if one exists. Otherwise, use the default attribute
-        // prototype from the schema variant.
         let destination_prototype_id =
-            if let Some(found_attribute_prototype_id_for_attribute_value) =
-                AttributeValue::prototype_id(ctx, destination_attribute_value_id)?
-            {
-                found_attribute_prototype_id_for_attribute_value
-            } else {
-                InternalProvider::prototype_id_for_explicit(
-                    ctx,
-                    destination_explicit_internal_provider_id,
-                )?
-            };
+            AttributeValue::prototype_id(ctx, destination_attribute_value_id).await?;
 
         let attribute_prototype_argument = AttributePrototypeArgument::new_inter_component(
             ctx,
@@ -579,7 +574,8 @@ impl Component {
             source_external_provider_id,
             destination_component_id,
             destination_prototype_id,
-        )?;
+        )
+        .await?;
 
         Ok(attribute_prototype_argument.id())
     }

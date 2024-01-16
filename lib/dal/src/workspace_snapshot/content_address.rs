@@ -12,13 +12,12 @@ use strum::EnumDiscriminants;
 pub enum ContentAddress {
     ActionPrototype(ContentHash),
     AttributePrototype(ContentHash),
-    AttributePrototypeArgument(ContentHash),
-    AttributeValue(ContentHash),
     Component(ContentHash),
     ExternalProvider(ContentHash),
     Func(ContentHash),
     FuncArg(ContentHash),
     InternalProvider(ContentHash),
+    JsonValue(ContentHash),
     Prop(ContentHash),
     Root,
     Schema(ContentHash),
@@ -33,13 +32,12 @@ impl ContentAddress {
             ContentAddress::Root => None,
             ContentAddress::ActionPrototype(id)
             | ContentAddress::AttributePrototype(id)
-            | ContentAddress::AttributePrototypeArgument(id)
-            | ContentAddress::AttributeValue(id)
             | ContentAddress::Component(id)
             | ContentAddress::ExternalProvider(id)
             | ContentAddress::FuncArg(id)
             | ContentAddress::Func(id)
             | ContentAddress::InternalProvider(id)
+            | ContentAddress::JsonValue(id)
             | ContentAddress::Prop(id)
             | ContentAddress::Schema(id)
             | ContentAddress::SchemaVariant(id)

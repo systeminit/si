@@ -455,7 +455,7 @@ async fn save_attr_func_arguments(
     for func_arg in FuncArgument::list_for_func(ctx, func.id).await? {
         if !id_set.contains(&func_arg.id) {
             info!("should remove func arg: {:?}", func_arg.id);
-            FuncArgument::remove(ctx, func_arg.id)?;
+            FuncArgument::remove(ctx, func_arg.id).await?;
         }
     }
 

@@ -28,6 +28,8 @@ pub mod node;
 pub enum DiagramError {
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("attribute prototype argument targets not found for attribute prototype argument ({0}) found via external provider: {1}")]
+    AttributePrototypeArgumentTargetsNotFound(AttributePrototypeArgumentId, ExternalProviderId),
     #[error("attribute prototype not found")]
     AttributePrototypeNotFound,
     #[error("attribute value not found")]
@@ -50,8 +52,6 @@ pub enum DiagramError {
     ExternalProvider(#[from] ExternalProviderError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("inter component metadata not found for attribute prototype argument ({0}) found via external provider: {1}")]
-    InterComponentMetadataNotFound(AttributePrototypeArgumentId, ExternalProviderId),
     #[error("node not found")]
     NodeNotFound,
     #[error(transparent)]
@@ -132,7 +132,7 @@ impl Diagram {
 
         let mut component_views = Vec::with_capacity(components.len());
         for component in &components {
-            let schema_variant = Component::schema_variant(ctx, component.id()).await?;
+            let schema_variant = component.schema_variant(ctx).await?;
 
             // TODO(nick): restore this.
             let is_modified = false;

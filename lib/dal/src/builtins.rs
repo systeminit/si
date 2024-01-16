@@ -120,6 +120,8 @@ pub async fn migrate(
     info!("migrate minimal number of schemas for testing the new engine");
     schema::migrate_pkg(ctx, SI_DOCKER_IMAGE_PKG, None).await?;
     schema::migrate_pkg(ctx, SI_COREOS_PKG, None).await?;
+    schema::migrate_test_exclusive_fallout(ctx).await?;
+    schema::migrate_test_exclusive_starfield(ctx).await?;
 
     // match selected_test_builtin_schemas {
     //     Some(found_selected_test_builtin_schemas) => {

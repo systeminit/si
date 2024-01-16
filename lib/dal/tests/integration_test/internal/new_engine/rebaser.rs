@@ -40,6 +40,24 @@ async fn modify_func_node(ctx: &mut DalContext) {
 
     let func = func
         .modify(ctx, |f| {
+            f.name = "i changed this".into();
+
+            Ok(())
+        })
+        .await
+        .expect("able to modify func");
+
+    let conflicts = ctx.commit().await.expect("unable to commit");
+    assert!(conflicts.is_none());
+
+    let refetched_func = Func::get_by_id(ctx, func.id)
+        .await
+        .expect("able to fetch func");
+
+    assert_eq!("i changed this", refetched_func.name.as_str());
+
+    let func = func
+        .modify(ctx, |f| {
             f.code_base64 = Some(new_code_base64.clone());
 
             Ok(())
@@ -47,7 +65,6 @@ async fn modify_func_node(ctx: &mut DalContext) {
         .await
         .expect("able to modify func");
 
-    dbg!(ctx.workspace_snapshot().unwrap().try_lock().unwrap().id());
     let conflicts = ctx.blocking_commit().await.expect("unable to commit");
     assert!(conflicts.is_none());
 
@@ -55,7 +72,6 @@ async fn modify_func_node(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visibility again");
 
-    dbg!(ctx.workspace_snapshot().unwrap().try_lock().unwrap().id());
     let modified_func = Func::get_by_id(ctx, func.id)
         .await
         .expect("able to get func by id again");
@@ -140,6 +156,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
         Some(new_code_base64).as_deref(),
         modified_func.code_base64.as_deref()
     );
+    assert_eq!("test:modified", modified_func.name.as_str());
 
     let args = FuncArgument::list_for_func(ctx, modified_func.id)
         .await
@@ -156,17 +173,22 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
     .await
     .expect("able to modify func");
 
+    let func_arg_refetch = FuncArgument::get_by_id(ctx, arg_1.id)
+        .await
+        .expect("get func arg");
+
+    assert_eq!(
+        "bargle argle",
+        func_arg_refetch.name.as_str(),
+        "refetch should have updated func arg name"
+    );
+
     let conflicts = ctx.commit().await.expect("unable to commit");
     assert!(conflicts.is_none());
 
     ctx.update_snapshot_to_visibility()
         .await
         .expect("unable to update snapshot to visiblity again");
-
-    let func = Func::get_by_id(ctx, func.id)
-        .await
-        .expect("able to get func by id again");
-
     let args = FuncArgument::list_for_func(ctx, func.id)
         .await
         .expect("able to list args again");
@@ -178,7 +200,11 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
         .find(|a| a.id == arg_1.id)
         .expect("able to get modified func arg");
 
-    assert_eq!("bargle argle", modified_arg.name.as_str());
+    assert_eq!(
+        "bargle argle",
+        modified_arg.name.as_str(),
+        "modified func arg should have new name after rebase"
+    );
 }
 
 #[test]
@@ -210,8 +236,8 @@ async fn delete_func_node(ctx: &mut DalContext) {
     let snapshot_id_before_deletion = {
         ctx.workspace_snapshot()
             .expect("get snap")
-            .try_lock()
-            .expect("lock snap")
+            .read()
+            .await
             .id()
     };
 
@@ -219,7 +245,9 @@ async fn delete_func_node(ctx: &mut DalContext) {
         .await
         .expect("able to get func by id");
 
-    Func::remove(ctx, func.id).expect("able to remove func");
+    Func::remove(ctx, func.id)
+        .await
+        .expect("able to remove func");
 
     assert!(Func::get_by_id(ctx, func.id).await.is_err());
 
@@ -233,8 +261,8 @@ async fn delete_func_node(ctx: &mut DalContext) {
     let snapshot_id_after_deletion = {
         ctx.workspace_snapshot()
             .expect("get snap")
-            .try_lock()
-            .expect("lock snap")
+            .read()
+            .await
             .id()
     };
 

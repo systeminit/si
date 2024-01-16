@@ -1,6 +1,7 @@
 use content_store::Store;
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
+use telemetry::prelude::*;
 
 use crate::{
     pk,
@@ -45,7 +46,7 @@ impl StaticArgumentValue {
         self.id
     }
 
-    pub fn new(
+    pub async fn new(
         ctx: &DalContext,
         value: serde_json::Value,
     ) -> AttributePrototypeArgumentResult<Self> {
@@ -57,8 +58,11 @@ impl StaticArgumentValue {
 
         let hash = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .add(&StaticArgumentValueContent::V1(content.clone()))?;
+
+        info!("added static argument value with hash: {}", &hash);
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -66,7 +70,7 @@ impl StaticArgumentValue {
             NodeWeight::new_content(change_set, id, ContentAddress::StaticArgumentValue(hash))?;
 
         {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
             workspace_snapshot.add_node(node_weight)?;
         }
 
@@ -77,15 +81,19 @@ impl StaticArgumentValue {
         ctx: &DalContext,
         id: StaticArgumentValueId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
         let ulid: ulid::Ulid = id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(ulid)?;
         let node_weight = workspace_snapshot.get_node_weight(node_index)?;
         let hash = node_weight.content_hash();
 
+        info!("fetching static argument value with hash: {}", &hash);
+
         let content: StaticArgumentValueContent = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .get(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;

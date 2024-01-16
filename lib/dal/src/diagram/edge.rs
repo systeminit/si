@@ -43,7 +43,7 @@ impl DiagramEdgeView {
             // We will also need the destination components from their metadata.
             for external_provider in external_providers_used_by_component {
                 let inter_component_attribute_prototype_argument_node_indices = {
-                    let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                    let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
                     workspace_snapshot.incoming_sources_for_edge_weight_kind(
                         external_provider.id(),
                         EdgeWeightKindDiscriminants::InterComponent,
@@ -55,7 +55,7 @@ impl DiagramEdgeView {
                 {
                     // Cache the destination component from the inter component attribute prototype argument.
                     let inter_component_attribute_prototype_argument_id_raw = {
-                        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
                         workspace_snapshot
                             .get_node_weight(
                                 inter_component_attribute_prototype_argument_node_index,
@@ -69,15 +69,15 @@ impl DiagramEdgeView {
                         )
                         .await?;
                     let to_component_id = inter_component_attribute_prototype_argument
-                        .inter_component_metadata()
-                        .ok_or(DiagramError::InterComponentMetadataNotFound(
+                        .targets()
+                        .ok_or(DiagramError::AttributePrototypeArgumentTargetsNotFound(
                             inter_component_attribute_prototype_argument.id(),
                             external_provider.id(),
                         ))?
                         .destination_component_id;
 
                     // Now, we need to find the explicit internal provider. Start by finding the attribute prototype.
-                    let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                    let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
                     let attribute_prototype_node_index = *workspace_snapshot
                         .incoming_sources_for_edge_weight_kind(
                             inter_component_attribute_prototype_argument_id_raw,

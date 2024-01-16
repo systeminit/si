@@ -7,7 +7,6 @@ use crate::action_prototype::ActionPrototypeError;
 use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::schema::variant::SchemaVariantError;
-use crate::validation::prototype::ValidationPrototypeError;
 use crate::{
     change_set_pointer::ChangeSetPointerError,
     func::{argument::FuncArgumentError, FuncError},
@@ -190,8 +189,6 @@ pub enum PkgError {
     // UlidDecode(#[from] ulid::DecodeError),
     // #[error(transparent)]
     // UrlParse(#[from] ParseError),
-    #[error("Validation creation error: {0}")]
-    Validation(#[from] ValidationPrototypeError),
     // #[error(transparent)]
     // Workspace(#[from] WorkspaceError),
     // #[error("Cannot find default change set \"{0}\" in workspace backup")]

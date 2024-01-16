@@ -171,7 +171,7 @@ impl ActionPrototype {
         }
     }
 
-    pub fn new(
+    pub async fn new(
         ctx: &DalContext,
         name: Option<impl Into<String>>,
         kind: ActionKind,
@@ -188,7 +188,8 @@ impl ActionPrototype {
 
         let hash = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .add(&ActionPrototypeContent::V1(content.to_owned()))?;
 
         let change_set = ctx.change_set_pointer()?;
@@ -196,7 +197,7 @@ impl ActionPrototype {
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::ActionPrototype(hash))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
 
         workspace_snapshot.add_node(node_weight.to_owned())?;
         workspace_snapshot.add_edge(

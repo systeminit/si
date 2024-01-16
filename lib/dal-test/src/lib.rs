@@ -9,8 +9,7 @@ use std::{
 };
 
 use buck2_resources::Buck2Resources;
-use content_store::PgStore;
-use content_store_test::{PgStoreFactory, PgTestMigrationClient};
+use content_store::PgStoreTools;
 use dal::{
     builtins::SelectedTestBuiltinSchemas,
     job::processor::{JobQueueProcessor, NatsProcessor},
@@ -48,6 +47,7 @@ const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 const ENV_VAR_MODULE_INDEX_URL: &str = "SI_TEST_MODULE_INDEX_URL";
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
+const ENV_VAR_CONTENT_STORE_PG_DBNAME: &str = "SI_TEST_CONTENT_STORE_PG_DBNAME";
 const ENV_VAR_BUILTIN_SCHEMAS: &str = "SI_TEST_BUILTIN_SCHEMAS";
 
 pub static COLOR_EYRE_INIT: Once = Once::new();
@@ -101,12 +101,17 @@ pub struct Config {
     #[allow(dead_code)]
     #[builder(default)]
     rebaser_config: RebaserClientConfig,
+    #[builder(default = "PgStoreTools::default_pool_config()")]
+    content_store_pg_pool: PgPoolConfig,
 }
 
 impl Config {
     #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test and
                                          // all are prefixed with `SI_TEST_`
-    fn create_default(pg_dbname: &'static str) -> Result<Self> {
+    fn create_default(
+        pg_dbname: &'static str,
+        content_store_pg_dbname: &'static str,
+    ) -> Result<Self> {
         let mut config = {
             let mut builder = ConfigBuilder::default();
             detect_and_configure_testing(&mut builder)?;
@@ -123,6 +128,15 @@ impl Config {
         config.pg.dbname = env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| pg_dbname.to_string());
         config.pg.pool_max_size *= 32;
         config.pg.certificate_path = Some(config.postgres_key_path.clone().try_into()?);
+
+        if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
+            config.content_store_pg_pool.hostname = value;
+        }
+        config.content_store_pg_pool.dbname = env::var(ENV_VAR_CONTENT_STORE_PG_DBNAME)
+            .unwrap_or_else(|_| content_store_pg_dbname.to_string());
+        config.content_store_pg_pool.pool_max_size *= 32;
+        config.content_store_pg_pool.certificate_path =
+            Some(config.postgres_key_path.clone().try_into()?);
 
         if let Ok(value) = env::var(ENV_VAR_MODULE_INDEX_URL) {
             config.module_index_url = value;
@@ -179,11 +193,9 @@ pub struct TestContext {
     encryption_key: Arc<CycloneEncryptionKey>,
     /// A service that can encrypt values based on the loaded donkeys
     symmetric_crypto_service: SymmetricCryptoService,
-    /// The content-addressable [`store`](content_store::Store) used by the "dal".
-    ///
-    /// This should be configurable in the future, but for now, the only kind of store used is the
-    /// [`PgStore`](content_store::PgStore).
-    content_store: PgStore,
+    /// The pg_pool used by the content-addressable [`store`](content_store::Store) used by the
+    /// "dal".
+    content_store_pg_pool: PgPool,
 
     /// The configuration for the rebaser client used in tests
     rebaser_config: RebaserClientConfig,
@@ -197,14 +209,18 @@ impl TestContext {
     ///
     /// This functions wraps over a mutex which ensures that only the first caller will run global
     /// database creation, migrations, and other preparations.
-    pub async fn global(pg_dbname: &'static str) -> Result<Self> {
+    pub async fn global(
+        pg_dbname: &'static str,
+        content_store_pg_dbname: &'static str,
+    ) -> Result<Self> {
         let mut mutex_guard = TEST_CONTEXT_BUILDER.lock().await;
 
         match &*mutex_guard {
             ContextBuilderState::Uninitialized => {
-                let config = Config::create_default(pg_dbname).si_inspect_err(|err| {
-                    *mutex_guard = ContextBuilderState::errored(err.to_string())
-                })?;
+                let config = Config::create_default(pg_dbname, content_store_pg_dbname)
+                    .si_inspect_err(|err| {
+                        *mutex_guard = ContextBuilderState::errored(err.to_string())
+                    })?;
                 let test_context_builder = TestContextBuilder::create(config)
                     .await
                     .si_inspect_err(|err| {
@@ -262,17 +278,13 @@ impl TestContext {
             None,
             self.symmetric_crypto_service.clone(),
             self.rebaser_config.clone(),
+            self.content_store_pg_pool.clone(),
         )
     }
 
     /// Gets a reference to the NATS configuration.
     pub fn nats_config(&self) -> &NatsConfig {
         &self.config.nats
-    }
-
-    /// Gets a reference to the content store.
-    pub fn content_store(&self) -> &PgStore {
-        &self.content_store
     }
 }
 
@@ -310,20 +322,30 @@ impl TestContextBuilder {
         let pg_pool = PgPool::new(&self.config.pg)
             .await
             .wrap_err("failed to create global setup PgPool")?;
-        let content_store = PgStoreFactory::global().await?;
+        let content_store_pool = PgPool::new(&self.config.content_store_pg_pool)
+            .await
+            .wrap_err("failed to create global setup content store PgPool")?;
 
-        self.build_inner(pg_pool, content_store).await
+        self.build_inner(pg_pool, content_store_pool).await
     }
 
     /// Builds and returns a new [`TestContext`] with its own connection pooling for each test.
     async fn build_for_test(&self) -> Result<TestContext> {
-        let pg_pool = self.create_test_specific_db_with_pg_pool().await?;
-        let content_store = PgStoreFactory::test_specific().await?;
+        let pg_pool = self
+            .create_test_specific_db_with_pg_pool(&self.config.pg)
+            .await?;
+        let content_store_pg_pool = self
+            .create_test_specific_db_with_pg_pool(&self.config.content_store_pg_pool)
+            .await?;
 
-        self.build_inner(pg_pool, content_store).await
+        self.build_inner(pg_pool, content_store_pg_pool).await
     }
 
-    async fn build_inner(&self, pg_pool: PgPool, content_store: PgStore) -> Result<TestContext> {
+    async fn build_inner(
+        &self,
+        pg_pool: PgPool,
+        content_store_pg_pool: PgPool,
+    ) -> Result<TestContext> {
         let universal_prefix = random_identifier_string();
 
         // Need to make a new NatsConfig so that we can add the test-specific subject prefix
@@ -353,14 +375,17 @@ impl TestContextBuilder {
             job_processor,
             encryption_key: self.encryption_key.clone(),
             symmetric_crypto_service,
-            content_store,
             rebaser_config,
+            content_store_pg_pool,
         })
     }
 
-    async fn create_test_specific_db_with_pg_pool(&self) -> Result<PgPool> {
+    async fn create_test_specific_db_with_pg_pool(
+        &self,
+        pg_pool_config: &PgPoolConfig,
+    ) -> Result<PgPool> {
         // Connect to the 'postgres' database so we can copy our migrated template test database
-        let mut new_pg_pool_config = self.config.pg.clone();
+        let mut new_pg_pool_config = pg_pool_config.clone();
         new_pg_pool_config.dbname = "postgres".to_string();
         let new_pg_pool = PgPool::new(&new_pg_pool_config)
             .await
@@ -372,10 +397,10 @@ impl TestContextBuilder {
 
         // Create new database from template
         let db_name_suffix = random_identifier_string();
-        let dbname = format!("{}_{}", self.config.pg.dbname, db_name_suffix);
+        let dbname = format!("{}_{}", pg_pool_config.dbname, db_name_suffix);
         let query = format!(
             "CREATE DATABASE {dbname} WITH TEMPLATE {} OWNER {};",
-            self.config.pg.dbname, self.config.pg.user,
+            pg_pool_config.dbname, pg_pool_config.user,
         );
         let db_exists_check = db_conn
             .query_opt(
@@ -501,6 +526,7 @@ pub fn rebaser_server(services_context: &ServicesContext) -> Result<rebaser_serv
         services_context.symmetric_crypto_service().clone(),
         false,
         services_context.rebaser_config().clone(),
+        services_context.content_store_pg_pool().clone(),
     )
     .wrap_err("failed to create Rebaser server")?;
 
@@ -572,7 +598,6 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     tokio::spawn(veritech_server.run());
 
     info!("creating client with pg pool for global Content Store test database");
-    let content_store_pg_test_migration_client = PgTestMigrationClient::new().await?;
 
     info!("testing database connection");
     services_ctx
@@ -582,21 +607,21 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .wrap_err("failed to connect to database, is it running and available?")?;
 
     info!("testing global Content Store database connection");
-    content_store_pg_test_migration_client
+    services_ctx
+        .content_store_pg_pool()
         .test_connection()
         .await
-        .wrap_err("failed to connect to database, is it running and available?")?;
+        .wrap_err("failed to connect to content store database, is it running and available?")?;
 
-    info!("dropping old test-specific databases");
+    info!("dropping old test-specific databases for dal");
     drop_old_test_databases(services_ctx.pg_pool())
         .await
         .wrap_err("failed to drop old databases")?;
 
-    info!("dropping old test-specific Content Store databases");
-    content_store_pg_test_migration_client
-        .drop_old_test_databases()
+    info!("dropping old test-specific content store databases");
+    drop_old_test_databases(services_ctx.content_store_pg_pool())
         .await
-        .wrap_err("failed to drop old databases")?;
+        .wrap_err("failed to drop old content store databases")?;
 
     // Ensure the database is totally clean, then run all migrations
     info!("dropping and re-creating the database schema");
@@ -605,20 +630,15 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .drop_and_create_public_schema()
         .await
         .wrap_err("failed to drop and create the database")?;
-    info!("running database migrations");
-    dal::migrate(services_ctx.pg_pool())
-        .await
-        .wrap_err("failed to migrate database")?;
 
-    // Ensure the Content Store database is totally clean, then run all migrations
-    info!("dropping and re-creating the Content Store database schema");
-    content_store_pg_test_migration_client
+    services_ctx
+        .content_store_pg_pool()
         .drop_and_create_public_schema()
         .await
-        .wrap_err("failed to drop and create the database")?;
-    info!("running Content Store database migrations");
-    content_store_pg_test_migration_client
-        .migrate()
+        .wrap_err("failed to drop and create content store database")?;
+
+    info!("running database migrations");
+    dal::migrate(services_ctx.pg_pool(), services_ctx.content_store_pg_pool())
         .await
         .wrap_err("failed to migrate database")?;
 
@@ -628,9 +648,6 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     info!("creating builtins");
     // TODO: @stack72 - remove this code path and install these from the module-index??
-    let content_store_pg_store = content_store_pg_test_migration_client
-        .global_store()
-        .await?;
     dal::migrate_builtins(
         services_ctx.pg_pool(),
         services_ctx.nats_conn(),
@@ -646,7 +663,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         test_context.config.module_index_url.clone(),
         services_ctx.symmetric_crypto_service(),
         services_ctx.rebaser_config().clone(),
-        &content_store_pg_store,
+        services_ctx.content_store_pg_pool(),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;

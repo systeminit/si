@@ -30,7 +30,7 @@ impl PropertyEditorSchema {
 
         // Get the root prop and load it into the work queue.
         let root_prop_id =
-            Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"]))?;
+            Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
         let root_prop = Prop::get_by_id(ctx, root_prop_id).await?;
         let root_property_editor_prop = PropertyEditorProp::new(root_prop);
         let root_property_editor_prop_id = root_property_editor_prop.id;
@@ -41,7 +41,7 @@ impl PropertyEditorSchema {
             // Collect all child props.
             let mut cache = Vec::new();
             {
-                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
                 for child_prop_node_index in workspace_snapshot
                     .outgoing_targets_for_edge_weight_kind(
                         prop_id,

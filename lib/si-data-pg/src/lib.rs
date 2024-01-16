@@ -44,6 +44,7 @@ use tokio_postgres::{
 };
 
 pub use tokio_postgres::error::SqlState;
+pub use tokio_postgres::types as postgres_types;
 
 const MIGRATION_LOCK_NUMBER: i64 = 42;
 const MAX_POOL_SIZE_MINIMUM: usize = 32;

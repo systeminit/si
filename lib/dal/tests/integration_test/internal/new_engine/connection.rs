@@ -56,8 +56,10 @@ async fn connect_components_simple(ctx: &DalContext) {
         docker_image_schema_variant_id,
         None,
     )
+    .await
     .expect("could not create component");
     let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id, None)
+        .await
         .expect("could not create component");
 
     // Connect the components!
@@ -68,6 +70,7 @@ async fn connect_components_simple(ctx: &DalContext) {
         royel_component.id(),
         explicit_internal_provider.id(),
     )
+    .await
     .expect("could not connect components");
 
     // Assemble the diagram and check the edges.

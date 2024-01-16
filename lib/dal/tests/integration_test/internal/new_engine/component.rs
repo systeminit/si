@@ -25,8 +25,9 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
 
     let name = "a tulip in a cup";
 
-    let component =
-        Component::new(ctx, name, variant.id(), None).expect("able to create component");
+    let component = Component::new(ctx, name, variant.id(), None)
+        .await
+        .expect("able to create component");
 
     let property_values = PropertyEditorValues::assemble(ctx, component.id())
         .await
@@ -37,6 +38,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
         variant.id(),
         &PropPath::new(["root", "domain", "image"]),
     )
+    .await
     .expect("able to find image prop");
 
     let exposed_ports_prop_id = Prop::find_prop_id_by_path(
@@ -44,6 +46,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
         variant.id(),
         &PropPath::new(["root", "domain", "ExposedPorts"]),
     )
+    .await
     .expect("able to find exposed ports prop");
 
     let exposed_ports_elem_prop_id = Prop::find_prop_id_by_path(
@@ -51,6 +54,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
         variant.id(),
         &PropPath::new(["root", "domain", "ExposedPorts", "ExposedPort"]),
     )
+    .await
     .expect("able to find exposed ports element prop");
 
     // Update image
@@ -235,8 +239,9 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
 
     // Create a component and set geometry.
     let name = "fsu not top four";
-    let component =
-        Component::new(ctx, name, schema_variant_id, None).expect("could not create component");
+    let component = Component::new(ctx, name, schema_variant_id, None)
+        .await
+        .expect("could not create component");
     let component = component
         .set_geometry(
             ctx,
@@ -249,7 +254,8 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
         .expect("could not set geometry");
 
     // Determine the schema variant from the component. Ensure it is the same as before.
-    let post_creation_schema_variant = Component::schema_variant(ctx, component.id())
+    let post_creation_schema_variant = component
+        .schema_variant(ctx)
         .await
         .expect("could not get schema variant for component");
     assert_eq!(
@@ -270,4 +276,283 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
     let _diagram = Diagram::assemble(ctx)
         .await
         .expect("could not assemble diagram");
+}
+
+#[test]
+async fn through_the_wormholes(ctx: &mut DalContext) {
+    let starfield_schema = Schema::list(ctx)
+        .await
+        .expect("list schemas")
+        .iter()
+        .find(|schema| schema.name() == "starfield")
+        .expect("starfield does not exist")
+        .to_owned();
+
+    let variant = SchemaVariant::list_for_schema(ctx, starfield_schema.id())
+        .await
+        .expect("get schema variants")
+        .pop()
+        .expect("get default variant");
+
+    let name = "across the universe";
+
+    let component = Component::new(ctx, name, variant.id(), None)
+        .await
+        .expect("able to create component");
+
+    let rigid_designator_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        variant.id(),
+        &PropPath::new([
+            "root",
+            "domain",
+            "possible_world_a",
+            "wormhole_1",
+            "wormhole_2",
+            "wormhole_3",
+            "rigid_designator",
+        ]),
+    )
+    .await
+    .expect("able to find 'rigid_designator' prop");
+
+    let rigid_designator_values = Prop::attribute_values_for_prop_id(ctx, rigid_designator_prop_id)
+        .await
+        .expect("able to get attribute value for universe prop");
+
+    assert_eq!(1, rigid_designator_values.len());
+
+    let rigid_designator_value_id = rigid_designator_values
+        .get(0)
+        .copied()
+        .expect("get first value id");
+
+    assert_eq!(
+        component.id(),
+        AttributeValue::component_id(ctx, rigid_designator_value_id)
+            .await
+            .expect("able to get component id for universe value")
+    );
+
+    let naming_and_necessity_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        variant.id(),
+        &PropPath::new([
+            "root",
+            "domain",
+            "possible_world_b",
+            "wormhole_1",
+            "wormhole_2",
+            "wormhole_3",
+            "naming_and_necessity",
+        ]),
+    )
+    .await
+    .expect("able to find 'naming_and_necessity' prop");
+
+    let naming_and_necessity_value_id =
+        Prop::attribute_values_for_prop_id(ctx, naming_and_necessity_prop_id)
+            .await
+            .expect("able to get values for naming_and_necessity")
+            .get(0)
+            .copied()
+            .expect("get first value id");
+
+    let update_graph = AttributeValue::dependent_value_graph(ctx, vec![rigid_designator_value_id])
+        .await
+        .expect("able to generate update graph");
+
+    assert!(
+        update_graph.contains_value(naming_and_necessity_value_id),
+        "update graph has the value we aren't setting but which depends on the value we are setting"
+    );
+
+    assert!(update_graph
+        .direct_dependencies_of(naming_and_necessity_value_id)
+        .iter()
+        .any(|&id| id == rigid_designator_value_id),
+        "update graph declares that `naming_and_necessity` value depends on `rigid_designator` value"
+    );
+
+    let rigid_designation = serde_json::json!("hesperus");
+
+    AttributeValue::update(
+        ctx,
+        rigid_designator_value_id,
+        Some(rigid_designation.to_owned()),
+    )
+    .await
+    .expect("able to set universe value");
+
+    let materialized_view = AttributeValue::get_by_id(ctx, rigid_designator_value_id)
+        .await
+        .expect("get av")
+        .materialized_view(ctx)
+        .await
+        .expect("get view")
+        .expect("has a view");
+
+    assert_eq!(rigid_designation, materialized_view);
+
+    ctx.blocking_commit().await.expect("commit");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("unable to update snapshot to visiblity");
+
+    let naming_and_necessity_view = AttributeValue::get_by_id(ctx, naming_and_necessity_value_id)
+        .await
+        .expect("able to get attribute value for `naming_and_necessity_value_id`")
+        .materialized_view(ctx)
+        .await
+        .expect("able to get materialized_view for `naming_and_necessity_value_id`")
+        .expect("naming and necessity has a value");
+
+    // hesperus is phosphorus
+    assert_eq!("phosphorus", naming_and_necessity_view);
+
+    let root_prop_id = Prop::find_prop_id_by_path(ctx, variant.id(), &PropPath::new(["root"]))
+        .await
+        .expect("able to find root prop");
+
+    let root_value_id = Prop::attribute_values_for_prop_id(ctx, root_prop_id)
+        .await
+        .expect("get root prop value id")
+        .get(0)
+        .copied()
+        .expect("a value exists for the root prop");
+
+    let root_value = AttributeValue::get_by_id(ctx, root_value_id)
+        .await
+        .expect("able to get the value for the root prop attriburte value id");
+
+    let root_view = root_value
+        .materialized_view(ctx)
+        .await
+        .expect("able to fetch materialized_view for root value")
+        .expect("there is a value for the root value materialized_view");
+
+    assert_eq!(
+        serde_json::json!({
+                "domain": {
+                    "possible_world_a": {
+                        "wormhole_1": {
+                            "wormhole_2": {
+                                "wormhole_3": {
+                                    "rigid_designator": rigid_designation
+                                }
+                            }
+                        }
+                    },
+                    "possible_world_b": {
+                        "wormhole_1": {
+                            "wormhole_2": {
+                                "wormhole_3": {
+                                    "naming_and_necessity": "phosphorus"
+                                }
+                            }
+                        }
+                    }
+        }}),
+        root_view
+    );
+}
+#[test]
+async fn set_the_universe(ctx: &mut DalContext) {
+    let starfield_schema = Schema::list(ctx)
+        .await
+        .expect("list schemas")
+        .iter()
+        .find(|schema| schema.name() == "starfield")
+        .expect("starfield does not exist")
+        .to_owned();
+
+    let variant = SchemaVariant::list_for_schema(ctx, starfield_schema.id())
+        .await
+        .expect("get schema variants")
+        .pop()
+        .expect("get default variant");
+
+    let name = "across the universe";
+
+    let component = Component::new(ctx, name, variant.id(), None)
+        .await
+        .expect("able to create component");
+
+    let universe_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        variant.id(),
+        &PropPath::new(["root", "domain", "universe"]),
+    )
+    .await
+    .expect("able to find 'root/domain/universe' prop");
+
+    let universe_values = Prop::attribute_values_for_prop_id(ctx, universe_prop_id)
+        .await
+        .expect("able to get attribute value for universe prop");
+
+    assert_eq!(1, universe_values.len());
+
+    let universe_value_id = universe_values.get(0).copied().expect("get first value id");
+
+    assert_eq!(
+        component.id(),
+        AttributeValue::component_id(ctx, universe_value_id)
+            .await
+            .expect("able to get component id for universe value")
+    );
+
+    let universe_json = serde_json::json!({
+        "galaxies": [
+            { "sun": "sol", "planets": 9 },
+            { "sun": "champagne supernova", "planets": 9000 },
+            { "sun": "black hole", "planets": 0 }
+        ]
+    });
+
+    AttributeValue::update(ctx, universe_value_id, Some(universe_json.to_owned()))
+        .await
+        .expect("able to set universe value");
+
+    let materialized_view = AttributeValue::get_by_id(ctx, universe_value_id)
+        .await
+        .expect("get av")
+        .materialized_view(ctx)
+        .await
+        .expect("get view")
+        .expect("has a view");
+
+    assert_eq!(universe_json, materialized_view);
+
+    ctx.blocking_commit().await.expect("commit");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("unable to update snapshot to visiblity");
+
+    let root_prop_id = Prop::find_prop_id_by_path(ctx, variant.id(), &PropPath::new(["root"]))
+        .await
+        .expect("able to find root prop");
+
+    let root_value_id = Prop::attribute_values_for_prop_id(ctx, root_prop_id)
+        .await
+        .expect("get domain prop id")
+        .get(0)
+        .copied()
+        .expect("a value exists for the root prop");
+
+    let root_value = AttributeValue::get_by_id(ctx, root_value_id)
+        .await
+        .expect("able to get the value for the root prop attriburte value id");
+
+    let root_view = root_value
+        .materialized_view(ctx)
+        .await
+        .expect("able to fetch materialized_view for root value")
+        .expect("there is a value for the root value materialized_view");
+
+    assert_eq!(
+        serde_json::json!({ "domain": { "universe": universe_json } }),
+        root_view
+    );
 }

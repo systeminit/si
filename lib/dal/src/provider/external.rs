@@ -134,7 +134,8 @@ impl ExternalProvider {
         };
         let hash = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .add(&ExternalProviderContent::V1(content.clone()))?;
 
         let change_set = ctx.change_set_pointer()?;
@@ -142,7 +143,7 @@ impl ExternalProvider {
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::ExternalProvider(hash))?;
         {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
             let _node_index = workspace_snapshot.add_node(node_weight)?;
             workspace_snapshot.add_edge(
                 schema_variant_id,
@@ -151,9 +152,10 @@ impl ExternalProvider {
             )?;
         }
 
-        let attribute_prototype = AttributePrototype::new(ctx, func_id)?;
+        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+
         {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
             workspace_snapshot.add_edge(
                 id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Prototype(None))?,
@@ -168,7 +170,7 @@ impl ExternalProvider {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> ExternalProviderResult<Vec<Self>> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
             schema_variant_id,
@@ -189,7 +191,8 @@ impl ExternalProvider {
 
         let content_map: HashMap<ContentHash, ExternalProviderContent> = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .get_bulk(content_hashes.as_slice())
             .await?;
 

@@ -94,7 +94,7 @@ pub async fn schema_variant(
     let sv = SchemaVariant::get_by_id(&ctx, request.schema_variant_id).await?;
 
     let sv_node = {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         let node_idx = workspace_snapshot.get_node_index_by_id(request.schema_variant_id)?;
         let sv_node_weight = workspace_snapshot.get_node_weight(node_idx)?;
 
@@ -112,7 +112,7 @@ pub async fn schema_variant(
     // descend
     let mut work_queue: VecDeque<Ulid> = VecDeque::from([request.schema_variant_id.into()]);
     while let Some(id) = work_queue.pop_front() {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         for target in workspace_snapshot.all_outgoing_targets(id)? {
             work_queue.push_back(target.id());
             if !added_edges.contains(&(id, target.id())) {
@@ -147,7 +147,7 @@ pub async fn schema_variant(
     // ascend
     let mut work_queue: VecDeque<Ulid> = VecDeque::from([request.schema_variant_id.into()]);
     while let Some(id) = work_queue.pop_front() {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         let sources = workspace_snapshot.all_incoming_sources(id)?;
         if sources.is_empty() {
             root_node_id = Some(id);
@@ -185,7 +185,7 @@ pub async fn schema_variant(
 
     // connect func_nodes to root
     for func_id in func_nodes {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         for user_node_idx in workspace_snapshot
             .incoming_sources_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)?
         {
@@ -251,7 +251,7 @@ pub async fn nodes_edges(
 ) -> GraphVizResult<Json<GraphVizResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+    let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
     let mut node_idx_to_id = HashMap::new();
 

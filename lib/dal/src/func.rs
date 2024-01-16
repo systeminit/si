@@ -52,9 +52,9 @@ pub type FuncResult<T> = Result<T, FuncError>;
 pub mod argument;
 pub mod backend;
 // pub before;
-// pub mod binding;
-// pub mod binding_return_value;
-// pub mod execution;
+pub mod binding;
+pub mod binding_return_value;
+pub mod execution;
 // pub mod identity;
 pub mod intrinsics;
 
@@ -190,13 +190,15 @@ impl Func {
 
         let hash = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .add(&FuncContent::V1(content.clone()))?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_func(change_set, id, name.into(), backend_kind, hash)?;
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
         let _node_index = workspace_snapshot.add_node(node_weight.clone())?;
 
         let func_category_id =
@@ -212,13 +214,28 @@ impl Func {
         Ok(Self::assemble(&func_node_weight, &content))
     }
 
+    pub fn metadata_view(&self) -> FuncMetadataView {
+        FuncMetadataView {
+            display_name: self
+                .display_name
+                .as_deref()
+                .unwrap_or_else(|| self.name.as_str())
+                .into(),
+            description: self.description.as_deref().map(Into::into),
+            link: None,
+        }
+    }
+
     pub async fn get_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<Self> {
         let (node_weight, content) = Self::get_node_weight_and_content(ctx, id).await?;
         Ok(Self::assemble(&node_weight, &content))
     }
 
-    pub fn find_by_name(ctx: &DalContext, name: impl AsRef<str>) -> FuncResult<Option<FuncId>> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+    pub async fn find_by_name(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+    ) -> FuncResult<Option<FuncId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         let func_category_id =
             workspace_snapshot.get_category_node(None, CategoryNodeKind::Func)?;
         let func_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
@@ -261,7 +278,7 @@ impl Func {
     ) -> FuncResult<(FuncNodeWeight, FuncContentV1)> {
         let (func_node_weight, hash) = Self::get_node_weight_and_content_hash(ctx, func_id).await?;
 
-        let content: FuncContent = ctx.content_store().try_lock()?.get(&hash).await?.ok_or(
+        let content: FuncContent = ctx.content_store().lock().await.get(&hash).await?.ok_or(
             WorkspaceSnapshotError::MissingContentFromStore(func_id.into()),
         )?;
 
@@ -275,7 +292,7 @@ impl Func {
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncResult<(FuncNodeWeight, ContentHash)> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         let id: Ulid = func_id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(id)?;
         let node_weight = workspace_snapshot.get_node_weight(node_index)?;
@@ -295,7 +312,8 @@ impl Func {
         lambda(&mut func)?;
 
         let (mut node_weight, _) = Func::get_node_weight_and_content_hash(ctx, func.id).await?;
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
 
         // If both either the name or backend_kind have changed, *and* parts of the FuncContent
         // have changed, this ends up updating the node for the function twice. This could be
@@ -309,7 +327,9 @@ impl Func {
                 .set_name(func.name.as_str())
                 .set_backend_kind(func.backend_kind);
 
-            workspace_snapshot.add_node(NodeWeight::Func(node_weight.clone()))?;
+            workspace_snapshot.add_node(NodeWeight::Func(
+                node_weight.new_with_incremented_vector_clock(ctx.change_set_pointer()?)?,
+            ))?;
 
             workspace_snapshot.replace_references(original_node_index)?;
         }
@@ -318,7 +338,8 @@ impl Func {
         if updated != before {
             let hash = ctx
                 .content_store()
-                .try_lock()?
+                .lock()
+                .await
                 .add(&FuncContent::V1(updated.clone()))?;
             workspace_snapshot.update_content(ctx.change_set_pointer()?, func.id.into(), hash)?;
         }
@@ -326,11 +347,11 @@ impl Func {
         Ok(Func::assemble(&node_weight, &updated))
     }
 
-    pub fn remove(ctx: &DalContext, id: FuncId) -> FuncResult<()> {
+    pub async fn remove(ctx: &DalContext, id: FuncId) -> FuncResult<()> {
         // to remove a func we must remove all incoming edges to it. It will then be
         // garbage collected out of the graph
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
 
         let arg_node_idx = workspace_snapshot.get_node_index_by_id(id)?;
 
@@ -353,13 +374,15 @@ impl Func {
         Ok(())
     }
 
-    pub fn find_intrinsic(ctx: &DalContext, intrinsic: IntrinsicFunc) -> FuncResult<FuncId> {
+    pub async fn find_intrinsic(ctx: &DalContext, intrinsic: IntrinsicFunc) -> FuncResult<FuncId> {
         let name = intrinsic.name();
-        Self::find_by_name(ctx, name)?.ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()))
+        Self::find_by_name(ctx, name)
+            .await?
+            .ok_or(FuncError::IntrinsicFuncNotFound(name.to_owned()))
     }
 
     pub async fn list(ctx: &DalContext) -> FuncResult<Vec<Self>> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         let mut funcs = vec![];
         let func_category_id =
@@ -382,7 +405,8 @@ impl Func {
 
         let func_contents: HashMap<ContentHash, FuncContent> = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .get_bulk(func_content_hash.as_slice())
             .await?;
 

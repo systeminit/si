@@ -7,8 +7,6 @@ use crate::prop::{PropParent, PropPath};
 use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::leaves::LeafKind;
 use crate::schema::variant::SchemaVariantResult;
-use crate::validation::prototype::ValidationPrototype;
-use crate::validation::Validation;
 use crate::{DalContext, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId};
 
 pub mod component_type;
@@ -121,7 +119,8 @@ impl RootProp {
             None,
             None,
             PropParent::SchemaVariant(schema_variant_id),
-        )?;
+        )
+        .await?;
         let root_prop_id = root_prop.id();
 
         // info!("setting up si, domain and secrets");
@@ -132,14 +131,16 @@ impl RootProp {
             "domain",
             PropKind::Object,
             PropParent::OrderedProp(root_prop_id),
-        )?;
+        )
+        .await?;
 
         let secrets_prop = Prop::new_without_ui_optionals(
             ctx,
             "secrets",
             PropKind::Object,
             PropParent::OrderedProp(root_prop_id),
-        )?;
+        )
+        .await?;
 
         // info!("setting up resource");
         let resource_prop_id = Self::setup_resource(ctx, root_prop_id).await?;
@@ -159,7 +160,8 @@ impl RootProp {
             None,
             None,
             PropParent::OrderedProp(root_prop_id),
-        )?;
+        )
+        .await?;
 
         // Now that the structure is set up, we can populate default
         // AttributePrototypes to be updated appropriately below.
@@ -194,7 +196,8 @@ impl RootProp {
             None,
             None,
             PropParent::OrderedProp(root_prop_id),
-        )?;
+        )
+        .await?;
 
         let leaf_item_prop = Prop::new(
             ctx,
@@ -204,7 +207,8 @@ impl RootProp {
             None,
             None,
             PropParent::OrderedProp(leaf_prop.id()),
-        )?;
+        )
+        .await?;
 
         Ok((leaf_prop.id(), leaf_item_prop.id()))
     }
@@ -218,7 +222,8 @@ impl RootProp {
             None,
             None,
             PropParent::OrderedProp(root_prop_id),
-        )?;
+        )
+        .await?;
 
         let _si_name_prop = Prop::new(
             ctx,
@@ -228,7 +233,8 @@ impl RootProp {
             None,
             None,
             PropParent::OrderedProp(si_prop.id()),
-        )?;
+        )
+        .await?;
 
         // The protected prop ensures a component cannot be deleted in the configuration diagram.
         let _protected_prop = Prop::new_without_ui_optionals(
@@ -236,7 +242,8 @@ impl RootProp {
             "protected",
             PropKind::Boolean,
             PropParent::OrderedProp(si_prop.id()),
-        )?;
+        )
+        .await?;
 
         // The type prop controls the type of the configuration node. The default type can be
         // determined by the schema variant author. The widget options correspond to the component
@@ -265,10 +272,11 @@ impl RootProp {
                 ])),
             )),
             PropParent::OrderedProp(si_prop.id()),
-        )?;
+        )
+        .await?;
 
         // Override the schema variant color for nodes on the diagram.
-        let color_prop = Prop::new(
+        Prop::new(
             ctx,
             "color",
             PropKind::String,
@@ -276,13 +284,8 @@ impl RootProp {
             None,
             Some((WidgetKind::Color, None)),
             PropParent::OrderedProp(si_prop.id()),
-        )?;
-
-        ValidationPrototype::new_intrinsic(
-            ctx,
-            Validation::StringIsHexColor { value: None },
-            color_prop.id(),
-        )?;
+        )
+        .await?;
 
         Ok(si_prop.id())
     }
@@ -297,7 +300,8 @@ impl RootProp {
             None,
             None,
             PropParent::OrderedProp(root_prop_id),
-        )?;
+        )
+        .await?;
 
         // /root/resource/status
         let _resource_status_prop = Prop::new(
@@ -308,7 +312,8 @@ impl RootProp {
             None,
             None,
             PropParent::Prop(resource_prop.id()),
-        )?;
+        )
+        .await?;
 
         // /root/resource/message
         let _resource_message_prop = Prop::new(
@@ -319,7 +324,8 @@ impl RootProp {
             None,
             None,
             PropParent::Prop(resource_prop.id()),
-        )?;
+        )
+        .await?;
 
         // /root/resource/logs
         let resource_logs_prop = Prop::new(
@@ -330,7 +336,8 @@ impl RootProp {
             None,
             None,
             PropParent::Prop(resource_prop.id()),
-        )?;
+        )
+        .await?;
 
         // /root/resource/logs/log
         let _resource_logs_log_prop = Prop::new(
@@ -341,7 +348,8 @@ impl RootProp {
             None,
             None,
             PropParent::OrderedProp(resource_logs_prop.id()),
-        )?;
+        )
+        .await?;
 
         // /root/resource/payload
         let _resource_payload_prop = Prop::new(
@@ -352,7 +360,8 @@ impl RootProp {
             None,
             None,
             PropParent::Prop(resource_prop.id()),
-        )?;
+        )
+        .await?;
 
         // /root/resource/payload
         let _resource_last_synced_prop = Prop::new(
@@ -363,7 +372,8 @@ impl RootProp {
             None,
             None,
             PropParent::Prop(resource_prop.id()),
-        )?;
+        )
+        .await?;
 
         Ok(resource_prop.id())
     }
@@ -380,7 +390,8 @@ impl RootProp {
             None,
             None,
             PropParent::OrderedProp(root_prop_id),
-        )?;
+        )
+        .await?;
 
         Ok(resource_value_prop.id())
     }
@@ -397,7 +408,8 @@ impl RootProp {
             None,
             None,
             PropParent::OrderedProp(code_map_item_prop_id),
-        )?;
+        )
+        .await?;
 
         let _child_format_prop = Prop::new(
             ctx,
@@ -407,7 +419,8 @@ impl RootProp {
             None,
             None,
             PropParent::OrderedProp(code_map_item_prop_id),
-        )?;
+        )
+        .await?;
 
         Ok(code_map_prop_id)
     }
@@ -427,7 +440,8 @@ impl RootProp {
             None,
             None,
             PropParent::OrderedProp(qualification_map_item_prop_id),
-        )?;
+        )
+        .await?;
 
         let _child_message_prop = Prop::new(
             ctx,
@@ -437,7 +451,8 @@ impl RootProp {
             None,
             None,
             PropParent::OrderedProp(qualification_map_item_prop_id),
-        )?;
+        )
+        .await?;
 
         Ok(qualification_map_prop_id)
     }

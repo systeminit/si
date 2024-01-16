@@ -1,10 +1,13 @@
+use bytes::BytesMut;
 use std::{fmt, str::FromStr};
 
+use postgres_types::ToSql;
 use serde::{
     de::{self, Visitor},
     Deserialize, Serialize,
 };
 use serde_json::Value;
+
 use thiserror::Error;
 
 /// The [`blake3::Hash`] of a given set of contents.
@@ -116,5 +119,36 @@ impl ContentHasher {
 
     pub fn finalize(&self) -> ContentHash {
         ContentHash(self.0.finalize())
+    }
+}
+
+impl ToSql for ContentHash {
+    fn to_sql(
+        &self,
+        ty: &postgres_types::Type,
+        out: &mut BytesMut,
+    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>>
+    where
+        Self: Sized,
+    {
+        let self_string = self.to_string();
+
+        self_string.to_sql(ty, out)
+    }
+
+    fn accepts(ty: &postgres_types::Type) -> bool
+    where
+        Self: Sized,
+    {
+        String::accepts(ty)
+    }
+
+    fn to_sql_checked(
+        &self,
+        ty: &postgres_types::Type,
+        out: &mut BytesMut,
+    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+        let self_string = self.to_string();
+        self_string.to_sql_checked(ty, out)
     }
 }

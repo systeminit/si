@@ -120,15 +120,16 @@ impl Schema {
 
         let hash = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .add(&SchemaContent::V1(content.clone()))?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Schema(hash))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
-        let _node_index = workspace_snapshot.add_node(node_weight)?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        workspace_snapshot.add_node(node_weight)?;
 
         let schema_category_index_id =
             workspace_snapshot.get_category_node(None, CategoryNodeKind::Schema)?;
@@ -142,7 +143,7 @@ impl Schema {
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Self> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         let node_index = workspace_snapshot.get_node_index_by_id(id)?;
         let node_weight = workspace_snapshot.get_node_weight(node_index)?;
@@ -150,7 +151,8 @@ impl Schema {
 
         let content: SchemaContent = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .get(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
@@ -174,10 +176,11 @@ impl Schema {
         if updated != before {
             let hash = ctx
                 .content_store()
-                .try_lock()?
+                .lock()
+                .await
                 .add(&SchemaContent::V1(updated.clone()))?;
 
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
             workspace_snapshot.update_content(ctx.change_set_pointer()?, schema.id.into(), hash)?;
         }
 
@@ -185,7 +188,7 @@ impl Schema {
     }
 
     pub async fn list(ctx: &DalContext) -> SchemaResult<Vec<Self>> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         let mut schemas = vec![];
         let schema_category_index_id =
@@ -208,7 +211,8 @@ impl Schema {
 
         let schema_contents: HashMap<ContentHash, SchemaContent> = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .get_bulk(schema_content_hashes.as_slice())
             .await?;
 
@@ -235,7 +239,7 @@ impl Schema {
         name: impl AsRef<str>,
     ) -> SchemaResult<Option<Self>> {
         let schema_node_indices = {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
             let schema_category_index_id =
                 workspace_snapshot.get_category_node(None, CategoryNodeKind::Schema)?;
             workspace_snapshot.outgoing_targets_for_edge_weight_kind(
@@ -247,7 +251,7 @@ impl Schema {
         // NOTE(nick): this algorithm could be better.
         for schema_node_index in schema_node_indices {
             let schema_node_weight = {
-                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
                 workspace_snapshot
                     .get_node_weight(schema_node_index)?
                     .get_content_node_weight_of_kind(ContentAddressDiscriminants::Schema)?

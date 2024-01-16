@@ -26,7 +26,10 @@ use crate::workspace_snapshot::node_weight::{
     NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, DalContext, ExternalProviderId, FuncId, PropId, Timestamp, TransactionsError};
+use crate::{
+    pk, AttributeValueId, DalContext, ExternalProviderId, FuncId, PropId, Timestamp,
+    TransactionsError,
+};
 
 pub mod argument;
 
@@ -109,20 +112,21 @@ impl AttributePrototype {
     //   - an attribute value whose lineage comes from a component
     //   - a prop or provider whose lineage comes from a schema variant
     // Outgoing edges from an attribute prototype are used for intra and inter component relationships.
-    pub fn new(ctx: &DalContext, func_id: FuncId) -> AttributePrototypeResult<Self> {
+    pub async fn new(ctx: &DalContext, func_id: FuncId) -> AttributePrototypeResult<Self> {
         let timestamp = Timestamp::now();
 
         let content = AttributePrototypeContentV1 { timestamp };
         let hash = ctx
             .content_store()
-            .try_lock()?
+            .lock()
+            .await
             .add(&AttributePrototypeContent::V1(content.clone()))?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::AttributePrototype(hash))?;
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
         let _node_index = workspace_snapshot.add_node(node_weight)?;
 
         workspace_snapshot.add_edge(
@@ -137,11 +141,11 @@ impl AttributePrototype {
         ))
     }
 
-    pub fn func_id(
+    pub async fn func_id(
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<FuncId> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         for node_index in workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(prototype_id, EdgeWeightKindDiscriminants::Use)?
         {
@@ -154,12 +158,12 @@ impl AttributePrototype {
         Err(AttributePrototypeError::MissingFunction(prototype_id))
     }
 
-    pub fn find_for_prop(
+    pub async fn find_for_prop(
         ctx: &DalContext,
         prop_id: PropId,
         key: &Option<String>,
     ) -> AttributePrototypeResult<Option<AttributePrototypeId>> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         if let Some(prototype_idx) = workspace_snapshot
             .edges_directed(prop_id, Direction::Outgoing)?
@@ -185,11 +189,11 @@ impl AttributePrototype {
         Ok(None)
     }
 
-    pub fn find_for_external_provider(
+    pub async fn find_for_external_provider(
         ctx: &DalContext,
         external_provider_id: ExternalProviderId,
     ) -> AttributePrototypeResult<Option<AttributePrototypeId>> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         if let Some(prototype_idx) = workspace_snapshot
             .edges_directed(external_provider_id, Direction::Outgoing)?
@@ -211,12 +215,13 @@ impl AttributePrototype {
         Ok(None)
     }
 
-    pub fn update_func_by_id(
+    pub async fn update_func_by_id(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
         func_id: FuncId,
     ) -> AttributePrototypeResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+
         let attribute_prototype_idx =
             workspace_snapshot.get_node_index_by_id(attribute_prototype_id)?;
 
@@ -245,11 +250,114 @@ impl AttributePrototype {
         Ok(())
     }
 
-    pub fn remove(
+    pub async fn attribute_value_ids(
+        ctx: &DalContext,
+        attribute_prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<Vec<AttributeValueId>> {
+        if let Some(attribute_value_id) =
+            Self::attribute_value_id(ctx, attribute_prototype_id).await?
+        {
+            return Ok(vec![attribute_value_id]);
+        }
+
+        // Remaining edges
+        // prototype <-- Prototype -- (Prop | Provider) <-- Prop|Provider -- Attribute Values
+        // (multiple avs possible)
+
+        let mut attribute_value_ids = vec![];
+
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        for prototype_edge_source in workspace_snapshot.incoming_sources_for_edge_weight_kind(
+            attribute_prototype_id,
+            EdgeWeightKindDiscriminants::Prototype,
+        )? {
+            let (target_id, edge_weight_discrim) = match workspace_snapshot
+                .get_node_weight(prototype_edge_source)?
+            {
+                NodeWeight::Prop(prop_inner) => {
+                    (prop_inner.id(), EdgeWeightKindDiscriminants::Prop)
+                }
+                NodeWeight::Content(content_inner) => match content_inner.content_address() {
+                    ContentAddress::ExternalProvider(_) | ContentAddress::InternalProvider(_) => {
+                        (content_inner.id(), EdgeWeightKindDiscriminants::Provider)
+                    }
+                    _ => {
+                        return Err(WorkspaceSnapshotError::UnexpectedEdgeSource(
+                            content_inner.id(),
+                            attribute_prototype_id.into(),
+                            EdgeWeightKindDiscriminants::Prototype,
+                        )
+                        .into())
+                    }
+                },
+                other => {
+                    return Err(WorkspaceSnapshotError::UnexpectedEdgeSource(
+                        other.id(),
+                        attribute_prototype_id.into(),
+                        EdgeWeightKindDiscriminants::Prototype,
+                    )
+                    .into())
+                }
+            };
+
+            for attribute_value_target in workspace_snapshot
+                .incoming_sources_for_edge_weight_kind(target_id, edge_weight_discrim)?
+            {
+                // There are also provider edges from the schema variant to the provider.
+                // These should be different edge kinds, I think
+                if let NodeWeight::AttributeValue(av_node_weight) =
+                    workspace_snapshot.get_node_weight(attribute_value_target)?
+                {
+                    attribute_value_ids.push(av_node_weight.id().into())
+                }
+            }
+        }
+
+        Ok(attribute_value_ids)
+    }
+
+    /// If this prototype is defined at the component level, it will have an incoming edge from the
+    /// AttributeValue for which it is the prototype. Otherwise this will return None, indicating a
+    /// prototype defined at the schema variant level (which has no attribute value)
+    pub async fn attribute_value_id(
+        ctx: &DalContext,
+        attribute_prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<Option<AttributeValueId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+        let maybe_value_idxs = workspace_snapshot.incoming_sources_for_edge_weight_kind(
+            attribute_prototype_id,
+            EdgeWeightKindDiscriminants::Prototype,
+        )?;
+
+        if maybe_value_idxs.len() > 1 {
+            return Err(WorkspaceSnapshotError::UnexpectedNumberOfIncomingEdges(
+                EdgeWeightKindDiscriminants::Prototype,
+                NodeWeightDiscriminants::Content,
+                attribute_prototype_id.into(),
+            )
+            .into());
+        }
+
+        Ok(match maybe_value_idxs.get(0).copied() {
+            Some(value_idx) => {
+                if let NodeWeight::AttributeValue(av_node_weight) =
+                    workspace_snapshot.get_node_weight(value_idx)?
+                {
+                    Some(av_node_weight.id().into())
+                } else {
+                    None
+                }
+            }
+            None => None,
+        })
+    }
+
+    pub async fn remove(
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
 
         workspace_snapshot.remove_node_by_id(prototype_id)?;
 

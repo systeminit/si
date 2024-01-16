@@ -10,8 +10,7 @@ use crate::attribute::prototype::argument::AttributePrototypeArgument;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
 use crate::{
     AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncId, InternalProvider, Prop, PropId, SchemaVariant,
-    SchemaVariantId,
+    FuncBackendResponseType, FuncId, Prop, PropId, SchemaVariant, SchemaVariantId,
 };
 use si_pkg::{LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind};
 
@@ -224,24 +223,29 @@ impl SchemaVariant {
         let item_prop_id =
             SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
 
-        let map_prop_id = Prop::parent_prop_id_by_id(ctx, item_prop_id)?
+        let map_prop_id = Prop::parent_prop_id_by_id(ctx, item_prop_id)
+            .await?
             .ok_or_else(|| SchemaVariantError::LeafMapPropNotFound(item_prop_id))?;
 
-        if let Some(prototype_id) = AttributePrototype::find_for_prop(ctx, item_prop_id, &None)? {
+        if let Some(prototype_id) =
+            AttributePrototype::find_for_prop(ctx, item_prop_id, &None).await?
+        {
             info!("removing None proto");
-            AttributePrototype::remove(ctx, prototype_id)?;
+            AttributePrototype::remove(ctx, prototype_id).await?;
         }
 
         let key = Some(func.name.to_owned());
-        if let Some(prototype_id) = AttributePrototype::find_for_prop(ctx, item_prop_id, &key)? {
+        if let Some(prototype_id) =
+            AttributePrototype::find_for_prop(ctx, item_prop_id, &key).await?
+        {
             info!("removing {:?} proto", &key);
-            AttributePrototype::remove(ctx, prototype_id)?;
+            AttributePrototype::remove(ctx, prototype_id).await?;
         }
 
-        let attribute_prototype_id = AttributePrototype::new(ctx, func_id)?.id();
+        let attribute_prototype_id = AttributePrototype::new(ctx, func_id).await?.id();
 
         {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
             workspace_snapshot.add_edge(
                 item_prop_id,
                 EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(key))?,
@@ -254,21 +258,15 @@ impl SchemaVariant {
                 ctx,
                 schema_variant_id,
                 input.location.clone().into(),
-            )?;
-
-            info!(
-                "add leaf: adding root child func arg: {:?}, {:?}",
-                input_prop_id, input.location
-            );
-
-            let prop = Prop::get_by_id(ctx, input_prop_id).await?;
-            info!("{}, {}", prop.name, prop.path(ctx)?);
+            )
+            .await?;
 
             let apa = AttributePrototypeArgument::new(
                 ctx,
                 attribute_prototype_id,
                 input.func_argument_id,
-            )?;
+            )
+            .await?;
 
             apa.set_value_from_prop_id(ctx, input_prop_id).await?;
         }

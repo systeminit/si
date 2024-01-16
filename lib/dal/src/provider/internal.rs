@@ -68,7 +68,6 @@
 //! than directly observing the real time values frequently.
 
 use content_store::{ContentHash, Store};
-use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use strum::EnumDiscriminants;
@@ -77,18 +76,17 @@ use thiserror::Error;
 
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
-use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::provider::{ProviderArity, ProviderKind};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributePrototype, AttributePrototypeId, AttributeValueId, DalContext, Func, FuncId,
-    PropId, SchemaVariantId, Timestamp, TransactionsError,
+    pk, AttributePrototype, AttributePrototypeId, AttributeValueId, DalContext, FuncId, PropId,
+    SchemaVariantId, Timestamp, TransactionsError,
 };
 
 #[remain::sorted]
@@ -225,11 +223,11 @@ impl InternalProvider {
         Ok(Self::assemble(node_weight.id().into(), inner))
     }
 
-    pub fn find_for_prop_id(
+    pub async fn find_for_prop_id(
         ctx: &DalContext,
         prop_id: PropId,
     ) -> InternalProviderResult<Option<InternalProviderId>> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         match workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Provider)?
@@ -243,13 +241,13 @@ impl InternalProvider {
         }
     }
 
-    pub fn add_prototype_edge(
+    pub async fn add_prototype_edge(
         ctx: &DalContext,
         internal_provider_id: InternalProviderId,
         attribute_prototype_id: AttributePrototypeId,
         key: &Option<String>,
     ) -> InternalProviderResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
         workspace_snapshot.add_edge(
             internal_provider_id,
             EdgeWeight::new(
@@ -269,7 +267,7 @@ impl InternalProvider {
     ) -> InternalProviderResult<Option<Self>> {
         let name = name.as_ref();
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         for provider_idx in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
             schema_variant_id,
@@ -319,8 +317,9 @@ impl InternalProvider {
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
+
         {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
             let node_weight =
                 NodeWeight::new_content(change_set, id, ContentAddress::InternalProvider(hash))?;
             let _node_index = workspace_snapshot.add_node(node_weight)?;
@@ -331,9 +330,10 @@ impl InternalProvider {
             )?;
         }
 
-        let attribute_prototype = AttributePrototype::new(ctx, func_id)?;
+        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+
         {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
             workspace_snapshot.add_edge(
                 id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Prototype(None))?,
@@ -344,11 +344,11 @@ impl InternalProvider {
         Ok(Self::assemble(id.into(), content))
     }
 
-    pub fn prototype_id_for_explicit(
+    pub async fn prototype_id_for_explicit(
         ctx: &DalContext,
         explicit_internal_provider_id: InternalProviderId,
     ) -> InternalProviderResult<AttributePrototypeId> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         let prototype_node_index = *workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
                 explicit_internal_provider_id,
@@ -364,11 +364,11 @@ impl InternalProvider {
             .into())
     }
 
-    pub fn attribute_value_id_for_explicit(
+    pub async fn attribute_value_id_for_explicit(
         ctx: &DalContext,
         explicit_internal_provider_id: InternalProviderId,
     ) -> InternalProviderResult<AttributeValueId> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         let attribute_value_node_index = *workspace_snapshot
             .incoming_sources_for_edge_weight_kind(
                 explicit_internal_provider_id,
@@ -388,7 +388,7 @@ impl InternalProvider {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> InternalProviderResult<Vec<Self>> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
         let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
             schema_variant_id,
@@ -430,6 +430,29 @@ impl InternalProvider {
         }
 
         Ok(internal_providers)
+    }
+
+    pub async fn attribute_values_for_internal_provider_id(
+        ctx: &DalContext,
+        internal_provider_id: InternalProviderId,
+    ) -> InternalProviderResult<Vec<AttributeValueId>> {
+        let mut result = vec![];
+
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let av_sources = workspace_snapshot.incoming_sources_for_edge_weight_kind(
+            internal_provider_id,
+            EdgeWeightKindDiscriminants::Provider,
+        )?;
+        for av_source_idx in av_sources {
+            let av_id: AttributeValueId = workspace_snapshot
+                .get_node_weight(av_source_idx)?
+                .get_attribute_value_node_weight()?
+                .id()
+                .into();
+            result.push(av_id)
+        }
+
+        Ok(result)
     }
 }
 

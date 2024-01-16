@@ -5,7 +5,6 @@ rust_library(
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/content-store:content-store",
-        "//lib/content-store-test:content-store-test",
         "//lib/council-server:council-server",
         "//lib/dal:dal",
         "//lib/module-index-client:module-index-client",

@@ -11,9 +11,11 @@ telemetry = { path = "../../lib/telemetry-rs" }
 
 async-trait = { workspace = true }
 blake3 = { workspace = true }
+bytes = { workspace = true }
 chrono = { workspace = true }
 color-eyre = { workspace = true }
 postcard = { workspace = true }
+postgres-types = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }

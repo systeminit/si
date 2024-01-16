@@ -6,8 +6,11 @@ use crate::installed_pkg::InstalledPkg;
 use crate::pkg::{import_pkg_from_pkg, ImportOptions};
 use crate::{BuiltinsError, BuiltinsResult, DalContext};
 
-// mod test_exclusive_fallout;
-// mod test_exclusive_starfield;
+mod test_exclusive_fallout;
+mod test_exclusive_starfield;
+
+pub use test_exclusive_fallout::migrate_test_exclusive_fallout;
+pub use test_exclusive_starfield::migrate_test_exclusive_starfield;
 
 // /// Migrate [`Schemas`](crate::Schema) for production use.
 // pub async fn migrate_for_production(ctx: &DalContext) -> BuiltinsResult<()> {

@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use content_store::PgStore;
 use rand::Rng;
 use rebaser_client::Config as RebaserClientConfig;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
@@ -52,7 +51,6 @@ pub mod standard_pk;
 pub mod tenancy;
 pub mod timestamp;
 pub mod user;
-pub mod validation;
 pub mod visibility;
 pub mod workspace;
 pub mod workspace_snapshot;
@@ -62,7 +60,7 @@ pub mod ws_event;
 // pub mod node;
 // pub mod socket;
 
-// pub mod code_view;
+//pub mod code_view;
 // pub mod edge;
 // pub mod fix;
 // pub mod index_map;
@@ -74,7 +72,7 @@ pub mod ws_event;
 // pub mod reconciliation_prototype;
 // pub mod secret;
 // pub mod status;
-// pub mod tasks;
+//pub mod tasks;
 
 pub use action_prototype::{ActionKind, ActionPrototype, ActionPrototypeId};
 pub use attribute::{
@@ -164,7 +162,11 @@ pub type ModelResult<T> = Result<T, ModelError>;
 
 #[instrument(skip_all)]
 pub async fn migrate_all(services_context: &ServicesContext) -> ModelResult<()> {
-    migrate(services_context.pg_pool()).await?;
+    migrate(
+        services_context.pg_pool(),
+        services_context.content_store_pg_pool(),
+    )
+    .await?;
     Ok(())
 }
 
@@ -194,8 +196,8 @@ pub async fn migrate_all_with_progress(services_context: &ServicesContext) -> Mo
 }
 
 #[instrument(skip_all)]
-pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
-    content_store::PgStore::migrate().await?;
+pub async fn migrate(pg: &PgPool, content_store_pg_pool: &PgPool) -> ModelResult<()> {
+    content_store::PgStore::migrate(content_store_pg_pool).await?;
     pg.migrate(embedded::migrations::runner()).await?;
     Ok(())
 }
@@ -213,7 +215,7 @@ pub async fn migrate_builtins(
     module_index_url: String,
     symmetric_crypto_service: &SymmetricCryptoService,
     rebaser_config: RebaserClientConfig,
-    content_store_pg: &PgStore,
+    content_store_pg_pool: &PgPool,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         dal_pg.clone(),
@@ -225,11 +227,10 @@ pub async fn migrate_builtins(
         Some(module_index_url),
         symmetric_crypto_service.clone(),
         rebaser_config,
+        content_store_pg_pool.clone(),
     );
     let dal_context = services_context.into_builder(true);
-    let mut ctx = dal_context
-        .build_default_with_content_store(content_store_pg.to_owned())
-        .await?;
+    let mut ctx = dal_context.build_default().await?;
 
     let workspace = Workspace::builtin(&mut ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));

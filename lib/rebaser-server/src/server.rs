@@ -108,6 +108,8 @@ pub struct Server {
     recreate_management_stream: bool,
     /// The configuration for the si-rabbitmq library
     rabbitmq_config: SiRabbitMqConfig,
+    /// The pg pool for the content store
+    content_store_pg_pool: PgPool,
 }
 
 impl Server {
@@ -120,6 +122,7 @@ impl Server {
             Self::load_encryption_key(config.cyclone_encryption_key_path()).await?;
         let nats = Self::connect_to_nats(config.nats()).await?;
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
+        let content_store_pg_pool = Self::create_pg_pool(config.content_store_pg_pool()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
@@ -135,6 +138,7 @@ impl Server {
             symmetric_crypto_service,
             config.recreate_management_stream(),
             rabbitmq_config.to_owned(),
+            content_store_pg_pool,
         )
     }
 
@@ -150,6 +154,7 @@ impl Server {
         symmetric_crypto_service: SymmetricCryptoService,
         recreate_management_stream: bool,
         rabbitmq_config: SiRabbitMqConfig,
+        content_store_pg_pool: PgPool,
     ) -> ServerResult<Self> {
         // An mpsc channel which can be used to externally shut down the server.
         let (external_shutdown_tx, external_shutdown_rx) = mpsc::channel(4);
@@ -175,6 +180,7 @@ impl Server {
             external_shutdown_tx,
             graceful_shutdown_rx,
             rabbitmq_config,
+            content_store_pg_pool,
         })
     }
 
@@ -191,6 +197,7 @@ impl Server {
             self.encryption_key,
             self.shutdown_watch_rx,
             self.rabbitmq_config,
+            self.content_store_pg_pool,
         )
         .await;
 

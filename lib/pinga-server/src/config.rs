@@ -1,6 +1,7 @@
 use std::{env, path::Path};
 
 use buck2_resources::Buck2Resources;
+use content_store::PgStoreTools;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_crypto::{CryptoConfig, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
@@ -56,6 +57,9 @@ pub struct Config {
 
     #[builder(default = "SymmetricCryptoServiceConfig::default()")]
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
+
+    #[builder(default = "PgStoreTools::default_pool_config()")]
+    content_store_pg_pool: PgPoolConfig,
 }
 
 impl StandardConfig for Config {
@@ -98,6 +102,12 @@ impl Config {
     /// Gets the config's instance ID.
     pub fn instance_id(&self) -> &str {
         self.instance_id.as_ref()
+    }
+
+    /// Gets a reference to the config's content store pg pool.
+    #[must_use]
+    pub fn content_store_pg_pool(&self) -> &PgPoolConfig {
+        &self.content_store_pg_pool
     }
 }
 

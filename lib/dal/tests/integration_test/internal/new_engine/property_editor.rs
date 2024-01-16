@@ -19,8 +19,9 @@ async fn assemble(ctx: &DalContext) {
 
     // Create a component and set geometry.
     let name = "steam deck";
-    let component =
-        Component::new(ctx, name, schema_variant_id, None).expect("could not create component");
+    let component = Component::new(ctx, name, schema_variant_id, None)
+        .await
+        .expect("could not create component");
 
     // Assemble both property editor blobs.
     let property_editor_schema = PropertyEditorSchema::assemble(ctx, schema_variant_id)

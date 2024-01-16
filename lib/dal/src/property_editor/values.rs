@@ -9,7 +9,6 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::property_editor::PropertyEditorResult;
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 
 use crate::{AttributeValue, AttributeValueId, Component, ComponentId, DalContext, Prop, PropId};
@@ -31,9 +30,9 @@ impl PropertyEditorValues {
         let mut child_values = HashMap::new();
 
         // Get the root attribute value and load it into the work queue.
-        let root_attribute_value_id = Component::root_attribute_value_id(ctx, component_id)?;
+        let root_attribute_value_id = Component::root_attribute_value_id(ctx, component_id).await?;
         let root_property_editor_value_id = PropertyEditorValueId::from(root_attribute_value_id);
-        let root_prop_id = AttributeValue::prop(ctx, root_attribute_value_id)?;
+        let root_prop_id = AttributeValue::prop(ctx, root_attribute_value_id).await?;
         let root_attribute_value = AttributeValue::get_by_id(ctx, root_attribute_value_id).await?;
 
         values.insert(
@@ -42,7 +41,10 @@ impl PropertyEditorValues {
                 id: root_property_editor_value_id,
                 prop_id: root_prop_id.into(),
                 key: None,
-                value: root_attribute_value.value.unwrap_or(Value::Null),
+                value: root_attribute_value
+                    .value(ctx)
+                    .await?
+                    .unwrap_or(Value::Null),
                 // TODO(nick): restore how this boolean was detected.
                 is_from_external_source: false,
             },
@@ -54,7 +56,7 @@ impl PropertyEditorValues {
             // Collect all child attribute values.
             let mut cache: Vec<(AttributeValueId, Option<String>)> = Vec::new();
             {
-                let mut workspace_snapshot = ctx.workspace_snapshot()?.try_lock()?;
+                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
                 let child_attribute_values_with_keys: Vec<(NodeIndex, Option<String>)> =
                     workspace_snapshot
@@ -72,10 +74,8 @@ impl PropertyEditorValues {
                 for (child_attribute_value_node_index, key) in child_attribute_values_with_keys {
                     let child_attribute_value_node_weight =
                         workspace_snapshot.get_node_weight(child_attribute_value_node_index)?;
-                    let content = child_attribute_value_node_weight
-                        .get_content_node_weight_of_kind(
-                            ContentAddressDiscriminants::AttributeValue,
-                        )?;
+                    let content =
+                        child_attribute_value_node_weight.get_attribute_value_node_weight()?;
                     cache.push((content.id().into(), key));
                 }
             }
@@ -88,7 +88,7 @@ impl PropertyEditorValues {
                 let child_attribute_value =
                     AttributeValue::get_by_id(ctx, child_attribute_value_id).await?;
                 let prop_id_for_child_attribute_value =
-                    AttributeValue::prop(ctx, child_attribute_value_id)?;
+                    AttributeValue::prop(ctx, child_attribute_value_id).await?;
                 let child_property_editor_value_id =
                     PropertyEditorValueId::from(child_attribute_value_id);
 
@@ -96,7 +96,10 @@ impl PropertyEditorValues {
                     id: child_property_editor_value_id,
                     prop_id: prop_id_for_child_attribute_value.into(),
                     key,
-                    value: child_attribute_value.value.unwrap_or(Value::Null),
+                    value: child_attribute_value
+                        .value(ctx)
+                        .await?
+                        .unwrap_or(Value::Null),
                     // TODO(nick): restore how this boolean was detected.
                     is_from_external_source: false,
                 };

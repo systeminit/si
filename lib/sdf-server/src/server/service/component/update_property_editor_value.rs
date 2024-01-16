@@ -30,8 +30,6 @@ pub async fn update_property_editor_value(
 
     // let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
-    dbg!("update_property_editor_value");
-
     AttributeValue::update(&ctx, request.attribute_value_id, request.value).await?;
 
     // Track
