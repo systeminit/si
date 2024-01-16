@@ -211,7 +211,7 @@ async fn import_change_set(
     // Code level feature flag to allow updating any schema by simpling installing a package with a schema of the same name
     // This existis mostly to help debugging
     // Should always be `false` in production
-    let update_even_if_not_builtin = true;
+    let update_even_if_not_builtin = false;
 
     'spec: for schema_spec in schemas {
         match &options.schemas {
@@ -409,7 +409,7 @@ async fn import_change_set(
     }
 
     for (comp_spec, _func_specs, _head_func_specs, edges) in exported_components {
-        let _skips = import_component(ctx, change_set_pk, comp_spec, thing_map).await?;
+        let _skips = import_component(ctx, change_set_pk, comp_spec, thing_map, true).await?;
         for edge in edges {
             let _skips = import_edge(ctx, change_set_pk, &edge, thing_map).await?;
         }
@@ -450,8 +450,14 @@ async fn import_change_set(
     for component_spec in components {
         let component_spec: SiPkgComponent<'_> = component_spec.clone();
         let name = component_spec.name().to_owned();
-        let skips =
-            import_component(ctx, change_set_pk, component_spec.try_into()?, thing_map).await?;
+        let skips = import_component(
+            ctx,
+            change_set_pk,
+            component_spec.try_into()?,
+            thing_map,
+            false,
+        )
+        .await?;
         if !skips.is_empty() {
             component_attribute_skips.push((name, skips));
         }
@@ -622,6 +628,7 @@ async fn import_component(
     change_set_pk: ChangeSetPk,
     mut component_spec: ComponentSpec,
     thing_map: &mut ThingMap,
+    force_resource_patch: bool,
 ) -> PkgResult<Vec<ImportAttributeSkip>> {
     let variant = match &component_spec.variant {
         ComponentSpecVariant::BuiltinVariant {
@@ -873,7 +880,7 @@ async fn import_component(
     }
 
     if let Some(resource_value) = resource_value {
-        if change_set_pk == ChangeSetPk::NONE {
+        if force_resource_patch || change_set_pk == ChangeSetPk::NONE {
             if let Ok(result) = serde_json::from_value(resource_value) {
                 component.set_resource(ctx, result).await?;
             }
