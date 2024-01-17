@@ -91,7 +91,6 @@
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { PropType, computed, ref } from "vue";
-import { Icon, VButton } from "@si/vue-lib/design-system";
 import { Fix } from "@/store/fixes.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
