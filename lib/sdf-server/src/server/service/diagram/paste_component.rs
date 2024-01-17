@@ -1,17 +1,17 @@
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
 use chrono::Utc;
-use dal::NodeId;
 use dal::{
     action_prototype::ActionPrototypeContextField, func::backend::js_action::ActionRunResult,
     Action, ActionKind, ActionPrototype, ActionPrototypeContext, ChangeSet, Component,
-    ComponentError, ComponentId, Connection, DalContextBuilder, Edge, Node, StandardModel,
-    Visibility, WsEvent,
+    ComponentError, ComponentId, Connection, DalContext, DalContextBuilder, Edge, Node,
+    StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use telemetry::prelude::*;
 use tokio::task::JoinSet;
+use ulid::Ulid;
 use veritech_client::ResourceStatus;
 
 use super::{DiagramError, DiagramResult};
@@ -153,9 +153,7 @@ pub struct PasteComponentsRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PasteComponentsResponse {
-    pub copied_component_id: ComponentId,
-    pub pasted_component_id: ComponentId,
-    pub pasted_node_id: NodeId,
+    pub id: Ulid,
 }
 
 /// Paste a set of [`Component`](dal::Component)s via their componentId. Creates change-set if on head
@@ -185,6 +183,66 @@ pub async fn paste_components(
     };
     ctx.commit().await?;
 
+    let id = Ulid::new();
+    tokio::task::spawn(async move {
+        if let Err(err) = paste_components_inner(
+            request_ctx,
+            &ctx,
+            request,
+            &original_uri,
+            PosthogClient(posthog_client),
+        )
+        .await
+        {
+            handle_error(&ctx, id, err.to_string()).await;
+        } else {
+            match WsEvent::async_finish(&ctx, id).await {
+                Ok(event) => match event.publish_on_commit(&ctx).await {
+                    Ok(()) => {
+                        if let Err(err) = ctx.commit().await {
+                            handle_error(&ctx, id, err.to_string()).await;
+                        }
+                    }
+                    Err(err) => error!("Unable to publish ws event of finish: {err}"),
+                },
+                Err(err) => {
+                    error!("Unable to make ws event of finish: {err}");
+                }
+            }
+        }
+
+        async fn handle_error(ctx: &DalContext, id: Ulid, err: String) {
+            error!("Unable to paste components: {err}");
+            match WsEvent::async_error(ctx, id, err).await {
+                Ok(event) => match event.publish_on_commit(ctx).await {
+                    Ok(()) => {}
+                    Err(err) => error!("Unable to publish ws event of error: {err}"),
+                },
+                Err(err) => {
+                    error!("Unable to make ws event of error: {err}");
+                }
+            }
+            if let Err(err) = ctx.commit().await {
+                error!("Unable to commit errors in paste components: {err}");
+            }
+        }
+    });
+
+    let mut response = axum::response::Response::builder();
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
+
+    Ok(response.body(serde_json::to_string(&PasteComponentsResponse { id })?)?)
+}
+
+async fn paste_components_inner(
+    request_ctx: dal::AccessBuilder,
+    ctx: &DalContext,
+    request: PasteComponentsRequest,
+    original_uri: &Uri,
+    PosthogClient(posthog_client): PosthogClient,
+) -> DiagramResult<()> {
     let mut tasks = JoinSet::new();
 
     let mut pasted_components_by_original = HashMap::new();
@@ -233,21 +291,13 @@ pub async fn paste_components(
         }
     }
 
-    let mut response_body = Vec::new();
-
     for component_id in &request.component_ids {
-        let (pasted_comp, pasted_node) = match pasted_components_by_original.get(component_id) {
+        let (_pasted_comp, _pasted_node) = match pasted_components_by_original.get(component_id) {
             Some((c, v)) => (c, v),
             None => return Err(DiagramError::PasteError),
         };
 
-        response_body.push(PasteComponentsResponse {
-            copied_component_id: *component_id,
-            pasted_component_id: *pasted_comp.id(),
-            pasted_node_id: *pasted_node.id(),
-        });
-
-        let edges = Edge::list_for_component(&ctx, *component_id).await?;
+        let edges = Edge::list_for_component(ctx, *component_id).await?;
         for edge in edges {
             let tail = pasted_components_by_original.get(&edge.tail_component_id());
             let head = pasted_components_by_original.get(&edge.head_component_id());
@@ -256,7 +306,7 @@ pub async fn paste_components(
                     let (_, tail_node) = tail;
                     let (_, head_node) = head;
                     Connection::new(
-                        &ctx,
+                        ctx,
                         *tail_node.id(),
                         edge.tail_socket_id(),
                         *head_node.id(),
@@ -268,7 +318,7 @@ pub async fn paste_components(
                 (None, Some(head)) => {
                     let (_, head_node) = head;
                     Connection::new(
-                        &ctx,
+                        ctx,
                         edge.tail_node_id(),
                         edge.tail_socket_id(),
                         *head_node.id(),
@@ -282,12 +332,5 @@ pub async fn paste_components(
         }
     }
 
-    ctx.commit().await?;
-
-    let mut response = axum::response::Response::builder();
-    if let Some(force_changeset_pk) = force_changeset_pk {
-        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
-    }
-
-    Ok(response.body(serde_json::to_string(&response_body)?)?)
+    Ok(())
 }

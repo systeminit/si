@@ -2210,6 +2210,7 @@ const pasteElementsActive = computed(() => {
     componentsStore.selectedComponentIds.length > 0
   );
 });
+
 async function triggerPasteElements() {
   if (!pasteElementsActive.value)
     throw new Error("paste element mode must be active");
@@ -2218,7 +2219,7 @@ async function triggerPasteElements() {
   if (!componentsStore.copyingFrom)
     throw new Error("Copy cursor must be in grid to paste element");
 
-  componentsStore.PASTE_COMPONENTS(
+  await componentsStore.PASTE_COMPONENTS(
     componentsStore.selectedComponentIds,
     {
       x: gridPointerPos.value.x - componentsStore.copyingFrom.x,
