@@ -201,6 +201,12 @@
           >
             <Icon class="attributes-panel-item__help-icon" name="docs" />
           </a>
+
+          <Icon
+            :name="icon"
+            size="sm"
+            class="attributes-panel-item__type-icon"
+          />
         </div>
       </div>
 
