@@ -1,10 +1,12 @@
 <template>
   <div class="flex-none w-6 h-6">
-    <div
-      class="w-6 h-6 rounded-full bg-neutral-400 text-white dark:text-neutral-800 dark:hover:bg-action-300 hover:bg-action-500 flex flex-row items-center justify-center -scale-x-100"
-    >
-      <Icon name="external-link" size="xs" @click="modalRef.open()" />
-    </div>
+    <FixCardIconButton
+      tooltip="see logs"
+      icon="logs-pop"
+      iconHover="logs-pop-square"
+      :selected="modalRef?.isOpen"
+      @click="modalRef.open()"
+    />
 
     <Modal ref="modalRef" size="2xl">
       <template #title>
@@ -51,6 +53,7 @@
 import { ref, computed } from "vue";
 import { Icon, IconNames, Modal } from "@si/vue-lib/design-system";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
+import FixCardIconButton from "./FixCardIconButton.vue";
 
 const props = defineProps<{
   health: ResourceHealth | null;

@@ -164,8 +164,11 @@
           class="attributes-panel-item__item-label-text"
           :title="`${propLabelParts[0]}${propLabelParts[1]}`"
         >
-          <i>{{ propLabelParts[0] }}</i
-          >{{ propLabelParts[1] }}
+          <template v-if="isChildOfMap">{{ propLabelParts[1] }}</template>
+          <template v-else-if="isChildOfArray">
+            [{{ props.attributeDef.arrayIndex }}]
+          </template>
+          <template v-else>{{ propLabel }}</template>
         </div>
 
         <!-- TODO - enable tooltip help info -->
@@ -201,12 +204,6 @@
           >
             <Icon class="attributes-panel-item__help-icon" name="docs" />
           </a>
-
-          <Icon
-            :name="icon"
-            size="sm"
-            class="attributes-panel-item__type-icon"
-          />
         </div>
       </div>
 
@@ -216,7 +213,13 @@
         @mouseleave="onHoverEnd"
       >
         <Icon
-          v-if="currentValue !== null"
+          v-if="noValue && !iconShouldBeHidden && !isFocus && !valueFromSocket"
+          :name="icon"
+          size="sm"
+          class="attributes-panel-item__type-icon"
+        />
+        <Icon
+          v-if="currentValue !== null && !valueFromSocket"
           name="x-circle"
           class="attributes-panel-item__unset-button"
           @click="unsetHandler"
@@ -345,6 +348,11 @@
             {{ widgetKind }}
           </div>
         </template>
+        <div
+          v-if="valueFromSocket"
+          v-tooltip="`${propName} is set via its input socket.`"
+          class="absolute top-0 w-full h-full bg-caution-lines z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50"
+        />
       </div>
       <!-- <Icon name="none" class="p-[3px] mx-[2px]" /> -->
     </div>
@@ -491,6 +499,15 @@ const currentValue = computed(() => props.attributeDef.value?.value);
 const newValueBoolean = ref<boolean>();
 const newValueString = ref<string>("");
 const newValueNumber = ref<number>();
+const noValue = computed(
+  () => currentValue.value === null && newValueString.value === "",
+);
+const iconShouldBeHidden = computed(
+  () => icon.value === "input-type-select" || icon.value === "check",
+);
+const valueFromSocket = computed(
+  () => props.attributeDef.value?.isFromExternalSource,
+);
 
 function resetNewValueToCurrentValue() {
   newValueBoolean.value = !!currentValue.value;
@@ -706,11 +723,11 @@ function secretSelectedHandler(newSecret: Secret) {
 }
 
 .attributes-panel-item__section-toggle {
+  background-color: var(--toggle-controls-bg-color);
   cursor: pointer;
   position: absolute;
   width: @header-height;
   height: @header-height;
-  opacity: 0.8;
   transition: all 0.2s;
 
   body.light & {
@@ -720,8 +737,13 @@ function secretSelectedHandler(newSecret: Secret) {
     color: @colors-white;
   }
 
+  .icon {
+    opacity: 0.8;
+  }
+
   &:hover .icon {
     transform: scale(1.1);
+    opacity: 1;
   }
 
   .attributes-panel.--show-section-toggles & {
@@ -830,12 +852,18 @@ function secretSelectedHandler(newSecret: Secret) {
     background: transparent;
     font-family: inherit;
     padding: 5px 8px;
-    padding-right: 28px; // to give space for unset button
     width: 100%;
     border: none;
     font-size: inherit;
     line-height: inherit;
     display: block;
+    text-overflow: ellipsis;
+    overflow: hidden;
+
+    .attributes-panel-item.--input.--focus &,
+    .attributes-panel-item.--input.--hover & {
+      padding-right: 28px; // to give space for unset button
+    }
   }
   textarea {
     min-height: 80px;
@@ -848,6 +876,17 @@ function secretSelectedHandler(newSecret: Secret) {
       background: white;
       color: black;
     }
+  }
+
+  .attributes-panel-item__type-icon {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    width: 28px;
+    height: 28px;
+    padding: 3px;
+    z-index: 2;
+    pointer-events: none;
   }
 }
 .attributes-panel-item__input-value {
@@ -1070,7 +1109,7 @@ function secretSelectedHandler(newSecret: Secret) {
 .attributes-panel-item__secret-value-empty {
   opacity: 0.6;
   font-style: italic;
-  padding-left: 4px;
+  padding-left: 24px;
   cursor: pointer;
   // text-align: center;
   &:hover {
@@ -1114,5 +1153,7 @@ function secretSelectedHandler(newSecret: Secret) {
   flex-direction: row;
   margin-left: auto;
   flex: none;
+  gap: 0.25rem;
+  margin-right: 0.25rem;
 }
 </style>

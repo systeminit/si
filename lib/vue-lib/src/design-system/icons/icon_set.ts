@@ -159,6 +159,11 @@ import RefreshHexOutline from "./custom-icons/refresh-hex-outline.svg?raw";
 import QuestionHexOutline from "./custom-icons/question-hex-outline.svg?raw";
 import TildeHexOutline from "./custom-icons/tilde-hex-outline.svg?raw";
 
+import CodePop from "./custom-icons/code-pop.svg?raw";
+import LogsPop from "./custom-icons/logs-pop.svg?raw";
+import CodePopSquare from "./custom-icons/code-pop-square.svg?raw";
+import LogsPopSquare from "./custom-icons/logs-pop-square.svg?raw";
+
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
 export const ICONS = Object.freeze({
@@ -189,6 +194,8 @@ export const ICONS = Object.freeze({
   "cloud-download": CloudDownload,
   "cloud-upload": CloudUpload,
   "code-circle": StreamlineBracesCircleSolid,
+  "code-pop": CodePop,
+  "code-pop-square": CodePopSquare,
   "collapse-row": CollapseAll,
   component: Cube,
   "component-plus": CubePlus,
@@ -225,6 +232,8 @@ export const ICONS = Object.freeze({
   lock: Lock,
   "lock-open": LockOpen,
   logout: Logout,
+  "logs-pop": LogsPop,
+  "logs-pop-square": LogsPopSquare,
   menu: Menu,
   minus: Minus,
   "minus-circle": MinusCircle,

@@ -18,8 +18,8 @@
       <div
         :class="
           clsx(
-            'text-neutral-500 dark:text-neutral-400 truncate cursor-pointer',
-            isHover && 'dark:text-action-300 text-action-500',
+            'dark:text-action-300 text-action-500 truncate cursor-pointer font-bold',
+            isHover && 'underline',
           )
         "
         @click="onClick"
