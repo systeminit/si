@@ -94,9 +94,9 @@ dependencies = [
 
 [[package]]
 name = "anstream"
-version = "0.6.9"
+version = "0.6.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fde6067df7359f2d6335ec1a50c1f8f825801687d10da0cc4c6b08e3f6afd15"
+checksum = "6e2e1ebcb11de5c03c67de28a7df593d32191b44939c482e97702baaaa6ab6a5"
 dependencies = [
  "anstyle",
  "anstyle-parse",
@@ -4444,9 +4444,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.12.0"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2593d31f82ead8df961d8bd23a64c2ccf2eb5dd34b0a34bfb4dd54011c72009e"
+checksum = "3b187f0231d56fe41bfb12034819dd2bf336422a5866de41bc3fec4b2e3883e8"
 
 [[package]]
 name = "socket2"
@@ -5202,10 +5202,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-postgres-rustls"
-version = "0.11.0"
-source = "git+https://github.com/jbg/tokio-postgres-rustls.git?branch=master#f210aa24c4788e7f3bd9af52c4f7014c5561ac70"
+version = "0.11.1"
+source = "git+https://github.com/jbg/tokio-postgres-rustls.git?branch=master#b8de7acc8067a3ec4b7e99ba6ea654fae8e28fe4"
 dependencies = [
- "futures",
  "ring",
  "rustls 0.22.2",
  "tokio",
