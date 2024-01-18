@@ -31,10 +31,16 @@ pub enum ComponentType {
     #[serde(alias = "Component")]
     #[strum(serialize = "Component", serialize = "component")]
     Component,
-    #[serde(alias = "ConfigurationFrameDown")]
+    #[serde(
+        alias = "ConfigurationFrameDown",
+        alias = "ConfigurationFrame",
+        alias = "configurationFrame"
+    )]
     #[strum(
         serialize = "ConfigurationFrameDown",
-        serialize = "configurationFrameDown"
+        serialize = "configurationFrameDown",
+        serialize = "ConfigurationFrame",
+        serialize = "configurationFrame"
     )]
     ConfigurationFrameDown,
     #[strum(serialize = "ConfigurationFrameUp", serialize = "configurationFrameUp")]
