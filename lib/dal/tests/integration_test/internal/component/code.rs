@@ -158,6 +158,148 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
 }
 
 #[test]
+async fn code_generation_can_handle_string_formats(ctx: &DalContext) {
+    let mut schema = create_schema(ctx).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+        .await
+        .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
+
+    // domain: Object
+    // └─ poop: String
+    let poop_prop = dal_test::test_harness::create_prop_without_ui_optionals(
+        ctx,
+        "poop",
+        PropKind::String,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
+    )
+    .await;
+    // Create code prototype(s).
+    let mut func = Func::new(
+        ctx,
+        "test:codeGeneration",
+        FuncBackendKind::JsAttribute,
+        FuncBackendResponseType::CodeGeneration,
+    )
+    .await
+    .expect("could not create func");
+    let code = "function simpleStringReturn(input) {
+      return {
+        format: \"string\",
+        code: \"test string\"
+      };
+    }";
+    func.set_code_plaintext(ctx, Some(code))
+        .await
+        .expect("set code");
+    func.set_handler(ctx, Some("simpleStringReturn"))
+        .await
+        .expect("set handler");
+    let func_argument =
+        FuncArgument::new(ctx, "domain", FuncArgumentKind::Object, None, *func.id())
+            .await
+            .expect("could not create func argument");
+
+    SchemaVariant::add_leaf(
+        ctx,
+        *func.id(),
+        *schema_variant.id(),
+        None,
+        LeafKind::CodeGeneration,
+        vec![LeafInput {
+            location: LeafInputLocation::Domain,
+            func_argument_id: *func_argument.id(),
+        }],
+    )
+    .await
+    .expect("could not add code generation");
+
+    // Finalize the schema variant and create the component.
+    schema_variant
+        .finalize(ctx, None)
+        .await
+        .expect("unable to finalize schema variant");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
+    let (component, _) = Component::new(ctx, "component", *schema_variant.id())
+        .await
+        .expect("cannot create component");
+
+    // Set a value on the prop to check if our code generation works as intended.
+    let read_context = AttributeReadContext {
+        prop_id: Some(*poop_prop.id()),
+        component_id: Some(*component.id()),
+        ..AttributeReadContext::default()
+    };
+    let attribute_value = AttributeValue::find_for_context(ctx, read_context)
+        .await
+        .expect("could not perform find for context")
+        .expect("attribute value not found");
+    let parent_attribute_value = attribute_value
+        .parent_attribute_value(ctx)
+        .await
+        .expect("could not perform find parent attribute value")
+        .expect("no parent attribute value found");
+    let context = AttributeContextBuilder::from(read_context)
+        .to_context()
+        .expect("could not convert builder to attribute context");
+    AttributeValue::update_for_context(
+        ctx,
+        *attribute_value.id(),
+        Some(*parent_attribute_value.id()),
+        context,
+        Some(serde_json::json!["canoe"]),
+        None,
+    )
+    .await
+    .expect("could not perform update for context");
+
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+
+    // Observe that the code generation worked.
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("could not generate component view");
+    assert_eq!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "component",
+                    "type": "component",
+                    "protected": false,
+                },
+                "code": {
+                    "test:codeGeneration": {
+                        "code": "test string",
+                        "format": "string",
+                    },
+                },
+                "domain": {
+                    "poop": "canoe",
+                }
+        }], // expected
+        component_view.properties // actual
+    );
+
+    // Ensure the code view looks as we expect it to.
+    let (mut code_views, _) = Component::list_code_generated(ctx, *component.id())
+        .await
+        .expect("could not list code generated for component");
+    let code_view = code_views.pop().expect("code views are empty");
+    assert!(code_views.is_empty());
+    assert_eq!(CodeLanguage::String, code_view.language);
+    assert_eq!(Some("test string".to_string()), code_view.code);
+}
+
+#[test]
 async fn all_code_generation_attribute_values(ctx: &DalContext) {
     // Create two schemas and variants.
     let mut navi_schema = Schema::new(ctx, "navi", &ComponentKind::Standard)
