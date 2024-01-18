@@ -127,7 +127,6 @@ impl Server {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[instrument(name = "pinga.init.from_services", skip_all)]
     pub fn from_services(
         instance_id: impl Into<String>,
@@ -267,7 +266,6 @@ impl Default for ShutdownSource {
 
 pub struct JobItem {
     metadata: Arc<ServerMetadata>,
-    messaging_destination: Arc<String>,
     ctx_builder: DalContextBuilder,
     request: Result<Request<JobInfo>>,
 }
@@ -283,7 +281,7 @@ impl Subscriber {
 
         let subject = nats_jobs_subject(nats.metadata().subject_prefix());
         debug!(
-            messaging.destination = &subject.as_str(),
+            messaging.destination.name = subject.as_str(),
             "subscribing for job requests"
         );
 
@@ -291,15 +289,12 @@ impl Subscriber {
         // Since the any blocking job should block on its child jobs
         let ctx_builder = DalContext::builder(services_context, false);
 
-        let messaging_destination = Arc::new(subject.clone());
-
         Ok(nats_subscriber::Subscriber::create(subject)
             .queue_name(NATS_JOBS_DEFAULT_QUEUE)
             .start(&nats)
             .await?
             .map(move |request| JobItem {
                 metadata: metadata.clone(),
-                messaging_destination: messaging_destination.clone(),
                 ctx_builder: ctx_builder.clone(),
                 request: request.map_err(Into::into),
             }))
@@ -348,12 +343,8 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
             match job.request {
                 Ok(request) => {
                     // Spawn a task and process the request
-                    let join_handle = task::spawn(execute_job_task(
-                        job.metadata,
-                        job.messaging_destination,
-                        job.ctx_builder,
-                        request,
-                    ));
+                    let join_handle =
+                        task::spawn(execute_job_task(job.metadata, job.ctx_builder, request));
                     if let Err(err) = join_handle.await {
                         // NOTE(fnichol): This likely happens when there is contention or
                         // an error in the Tokio runtime so we will be loud and log an
@@ -376,6 +367,7 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
 
 #[instrument(
     name = "execute_job_task",
+    parent = &request.process_span,
     skip_all,
     fields(
         job.id = request.payload.id,
@@ -395,7 +387,6 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
 )]
 async fn execute_job_task(
     metadata: Arc<ServerMetadata>,
-    messaging_destination: Arc<String>,
     ctx_builder: DalContextBuilder,
     request: Request<JobInfo>,
 ) {
@@ -405,6 +396,8 @@ async fn execute_job_task(
     let arg_str = serde_json::to_string(&request.payload.arg)
         .unwrap_or_else(|_| "arg failed to serialize".to_string());
 
+    let messaging_destination = request.subject;
+
     span.record("job.invoked_arg", arg_str);
     span.record("messaging.destination", messaging_destination.as_str());
     span.record(
@@ -412,15 +405,25 @@ async fn execute_job_task(
         format!("{} process", &messaging_destination).as_str(),
     );
 
-    let maybe_reply_channel = request.reply_mailbox.clone();
-    let reply_message = match execute_job(
-        &metadata,
-        messaging_destination,
-        ctx_builder.clone(),
-        request,
-    )
-    .await
     {
+        let job_info = &request.payload;
+
+        span.record("job_info.id", &job_info.id);
+        span.record("job_info.kind", &job_info.kind);
+        if let Ok(arg_str) = serde_json::to_string(&job_info.arg) {
+            span.record("job_info.arg", arg_str);
+        }
+        if let Ok(access_builder) = serde_json::to_string(&job_info.access_builder) {
+            span.record("job_info.access_builder", access_builder);
+        }
+        if let Ok(visibility) = serde_json::to_string(&job_info.visibility) {
+            span.record("job_info.visibility", visibility);
+        }
+        span.record("job_info.blocking", job_info.blocking);
+    }
+
+    let maybe_reply_channel = request.reply.clone();
+    let reply_message = match execute_job(ctx_builder.clone(), request.payload).await {
         Ok(_) => {
             span.record_ok();
             Ok(())
@@ -452,32 +455,9 @@ async fn execute_job_task(
     }
 }
 
-async fn execute_job(
-    _metadata: &Arc<ServerMetadata>,
-    _messaging_destination: Arc<String>,
-    mut ctx_builder: DalContextBuilder,
-    request: Request<JobInfo>,
-) -> Result<()> {
-    let (job_info, _) = request.into_parts();
+async fn execute_job(mut ctx_builder: DalContextBuilder, job_info: JobInfo) -> Result<()> {
     if job_info.blocking {
         ctx_builder.set_blocking();
-    }
-
-    let current_span = tracing::Span::current();
-    if !current_span.is_disabled() {
-        tracing::Span::current().record("job_info.id", &job_info.id);
-        tracing::Span::current().record("job_info.kind", &job_info.kind);
-        let arg_str = serde_json::to_string(&job_info.arg)?;
-        tracing::Span::current().record("job_info.arg", arg_str);
-        tracing::Span::current().record(
-            "job_info.access_builder",
-            serde_json::to_string(&job_info.access_builder)?,
-        );
-        tracing::Span::current().record(
-            "job_info.visibility",
-            serde_json::to_string(&job_info.visibility)?,
-        );
-        tracing::Span::current().record("job_info.blocking", job_info.blocking);
     }
 
     let job =

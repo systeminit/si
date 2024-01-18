@@ -15,8 +15,9 @@ use futures::{Stream, StreamExt};
 use futures_lite::future::FutureExt;
 use pin_project_lite::pin_project;
 use serde::de::DeserializeOwned;
-use si_data_nats::{NatsError, Subject};
+use si_data_nats::{status::StatusCode, subject::ToSubject, HeaderMap, NatsError, Subject};
 use telemetry::prelude::*;
+use telemetry_nats::NatsMakeSpan;
 use thiserror::Error;
 
 pub use crate::builder::SubscriberBuilder;
@@ -46,17 +47,28 @@ type SubscriberResult<T> = Result<T, SubscriberError>;
 /// Contains the Rust type expected in the subscriber stream.
 #[derive(Debug)]
 pub struct Request<T> {
-    /// The Rust type expected in the subscriber stream.
-    pub payload: T,
-    /// An optional reply mailbox.
-    pub reply_mailbox: Option<Subject>,
-}
+    /// Subject to which this request is published to.
+    pub subject: Subject,
 
-impl<T> Request<T> {
-    /// Split the [`request`](Self)'s fields into individual values.
-    pub fn into_parts(self) -> (T, Option<Subject>) {
-        (self.payload, self.reply_mailbox)
-    }
+    /// A deserialized `T` from the message payload bytes in the subscriber stream.
+    pub payload: T,
+
+    /// Optional reply subject to which response can be published by [crate::Subscriber].
+    ///
+    /// Used for request-response pattern with [crate::Client::request].
+    pub reply: Option<Subject>,
+
+    /// Optional headers.
+    pub headers: Option<HeaderMap>,
+
+    /// Optional Status of the message. Used mostly for internal handling.
+    pub status: Option<StatusCode>,
+
+    /// Optional [status][crate::Message::status] description.
+    pub description: Option<String>,
+
+    /// Parent [`Span`] for processing the underlying request message.
+    pub process_span: Span,
 }
 
 pin_project! {
@@ -66,15 +78,16 @@ pin_project! {
         #[pin]
         inner: si_data_nats::Subscriber,
         _phantom: PhantomData<T>,
-        subject: String,
+        subject: Subject,
         final_message_header_key: Option<String>,
         check_for_reply_mailbox: bool,
+        make_span: NatsMakeSpan,
     }
 }
 
 impl<T> Subscriber<T> {
     /// Provides the [`builder`](SubscriberBuilder) for creating a [`Subscriber`].
-    pub fn create(subject: impl Into<String>) -> SubscriberBuilder<T> {
+    pub fn create(subject: impl ToSubject) -> SubscriberBuilder<T> {
         SubscriberBuilder::new(subject)
     }
 
@@ -102,8 +115,8 @@ impl<T> Subscriber<T> {
             .map_err(SubscriberError::NatsUnsubscribe)
     }
 
-    /// Returns the NATS subject to which this subscriber is subscribed.
-    pub fn subject(&self) -> &str {
+    /// Returns a reference to the [`Subject`] to which this subscriber is subscribed.
+    pub fn subject(&self) -> &Subject {
         &self.subject
     }
 }
@@ -121,13 +134,13 @@ where
             // Convert this NATS message into the request type `T` and return any errors
             // for the caller to decide how to proceed (i.e. does the caller fail on first error,
             // ignore error items, etc.)
-            Poll::Ready(Some(nats_msg)) => {
+            Poll::Ready(Some(msg)) => {
                 // Only check if the message has a final message header if our subscriber config
                 // specified one (or used the default).
                 if let Some(final_message_header_key) = this.final_message_header_key {
                     // If the NATS message has a final message header, then treat this as an
                     // end-of-stream marker and close our stream.
-                    if let Some(headers) = nats_msg.headers() {
+                    if let Some(headers) = msg.headers() {
                         if headers
                             .iter()
                             .any(|(key, _)| AsRef::<str>::as_ref(key) == final_message_header_key)
@@ -141,16 +154,15 @@ where
                     }
                 }
 
-                let (data, reply) = nats_msg.into_parts();
-                let reply_mailbox = reply;
-
                 // Always provide the reply_mailbox if there is one, but only make it an error if
                 // we were told to explicitly check for one.
-                if *this.check_for_reply_mailbox && reply_mailbox.is_none() {
-                    return Poll::Ready(Some(Err(SubscriberError::NoReplyMailbox(data))));
+                if *this.check_for_reply_mailbox && msg.reply().is_none() {
+                    return Poll::Ready(Some(Err(SubscriberError::NoReplyMailbox(
+                        msg.into_parts().0.payload.into(),
+                    ))));
                 }
 
-                let payload: T = match serde_json::from_slice(&data) {
+                let payload: T = match serde_json::from_slice(msg.payload()) {
                     // Deserializing from JSON into a formal request type was successful
                     Ok(request) => request,
                     // Deserializing failed
@@ -159,10 +171,19 @@ where
                     }
                 };
 
+                let process_span = this.make_span.make_span(&msg, this.subject);
+
+                let (msg, _metadata) = msg.into_parts();
+
                 // Return the request type
                 Poll::Ready(Some(Ok(Request {
+                    reply: msg.reply,
+                    subject: msg.subject,
                     payload,
-                    reply_mailbox,
+                    headers: msg.headers,
+                    status: msg.status,
+                    description: msg.description,
+                    process_span,
                 })))
             }
             // We see no more messages on the subject, so let's decide what to do

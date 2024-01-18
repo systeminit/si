@@ -3,14 +3,16 @@ use std::{
     time::Instant,
 };
 
+use si_data_nats::Subject;
+
 use crate::{server::Error, Id};
 
 #[derive(Debug)]
 pub struct NodeMetadata {
     // This should really be an ordered set, to remove duplicates, but we'll deal with
     // that later.
-    wanted_by_reply_channels: VecDeque<String>,
-    processing_reply_channel: Option<String>,
+    wanted_by_reply_channels: VecDeque<Subject>,
+    processing_reply_channel: Option<Subject>,
     depends_on_node_ids: HashSet<Id>,
     processing_started_at: Option<Instant>,
     last_updated_at: Instant,
@@ -29,7 +31,7 @@ impl Default for NodeMetadata {
 }
 
 impl NodeMetadata {
-    pub fn add_wanted_by_reply_channel(&mut self, reply_channel: &str) {
+    pub fn add_wanted_by_reply_channel(&mut self, reply_channel: &Subject) {
         self.wanted_by_reply_channels
             .push_back(reply_channel.to_owned());
         self.last_updated_at = Instant::now();
@@ -62,7 +64,7 @@ impl NodeMetadata {
 
     pub fn mark_as_processed(
         &mut self,
-        reply_channel: &str,
+        reply_channel: &Subject,
     ) -> Result<(bool, HashSet<String>), Error> {
         if self.processing_reply_channel().map(|p| &**p) != Some(reply_channel) {
             return Err(Error::ShouldNotBeProcessingByJob);
@@ -79,7 +81,7 @@ impl NodeMetadata {
         if self.dependencies_satisfied() {
             let mut wanted_by_reply_channels = self.wanted_by_reply_channels();
             if let Some(processed_by_reply_channel) = processing_reply_channel {
-                wanted_by_reply_channels.insert(processed_by_reply_channel);
+                wanted_by_reply_channels.insert(processed_by_reply_channel.to_string());
             }
 
             Ok((true, wanted_by_reply_channels))
@@ -88,7 +90,7 @@ impl NodeMetadata {
         }
     }
 
-    pub fn merge_metadata(&mut self, reply_channel: String, dependencies: &Vec<Id>) {
+    pub fn merge_metadata(&mut self, reply_channel: Subject, dependencies: &Vec<Id>) {
         self.last_updated_at = Instant::now();
 
         if !self.wanted_by_reply_channels.contains(&reply_channel) {
@@ -97,7 +99,7 @@ impl NodeMetadata {
         self.depends_on_node_ids.extend(dependencies);
     }
 
-    pub fn next_to_process(&mut self) -> Option<String> {
+    pub fn next_to_process(&mut self) -> Option<Subject> {
         if self.depends_on_node_ids.is_empty() && self.processing_reply_channel.is_none() {
             self.last_updated_at = Instant::now();
 
@@ -112,11 +114,11 @@ impl NodeMetadata {
         None
     }
 
-    pub fn processing_reply_channel(&self) -> Option<&String> {
+    pub fn processing_reply_channel(&self) -> Option<&Subject> {
         self.processing_reply_channel.as_ref()
     }
 
-    pub fn remove_channel(&mut self, reply_channel: &str) {
+    pub fn remove_channel(&mut self, reply_channel: &Subject) {
         self.last_updated_at = Instant::now();
 
         self.wanted_by_reply_channels
@@ -134,10 +136,10 @@ impl NodeMetadata {
     }
 
     pub fn wanted_by_reply_channels(&self) -> HashSet<String> {
-        HashSet::from_iter(self.wanted_by_reply_channels.iter().cloned())
+        HashSet::from_iter(self.wanted_by_reply_channels.iter().map(|s| s.to_string()))
     }
 
-    pub fn wanted_by_reply_channels_iter(&self) -> Iter<'_, String> {
+    pub fn wanted_by_reply_channels_iter(&self) -> Iter<'_, Subject> {
         self.wanted_by_reply_channels.iter()
     }
 }

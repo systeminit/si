@@ -5,6 +5,7 @@ rust_library(
     deps = [
         "//lib/si-data-nats:si-data-nats",
         "//lib/telemetry-rs:telemetry",
+        "//lib/telemetry-nats-rs:telemetry-nats",
         "//third-party/rust:futures",
         "//third-party/rust:futures-lite",
         "//third-party/rust:pin-project-lite",

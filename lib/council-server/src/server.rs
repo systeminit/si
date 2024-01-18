@@ -2,7 +2,7 @@ use crate::{Graph, Id, Request, Response};
 use std::time::Duration;
 
 use futures::StreamExt;
-use si_data_nats::NatsClient;
+use si_data_nats::{NatsClient, Subject};
 use telemetry::prelude::*;
 use tokio::{signal, sync::watch};
 
@@ -213,7 +213,7 @@ pub enum Error {
 #[instrument(level = "info")]
 pub async fn register_graph_from_job(
     complete_graph: &mut ChangeSetGraph,
-    reply_channel: String,
+    reply_channel: Subject,
     change_set_id: Id,
     new_dependency_data: Graph,
 ) -> Result<(), Error> {
@@ -225,7 +225,7 @@ pub async fn register_graph_from_job(
 pub async fn job_processed_a_value(
     nats: &NatsClient,
     complete_graph: &mut ChangeSetGraph,
-    reply_channel: String,
+    reply_channel: Subject,
     change_set_id: Id,
     node_id: Id,
 ) -> Result<(), Error> {
@@ -251,7 +251,7 @@ pub async fn job_processed_a_value(
 pub async fn job_failed_processing_a_value(
     nats: &NatsClient,
     complete_graph: &mut ChangeSetGraph,
-    reply_channel: String,
+    reply_channel: Subject,
     change_set_id: Id,
     node_id: Id,
 ) -> Result<(), Error> {
@@ -278,7 +278,7 @@ pub async fn job_failed_processing_a_value(
 #[instrument(level = "info")]
 pub async fn job_is_going_away(
     complete_graph: &mut ChangeSetGraph,
-    reply_channel: String,
+    reply_channel: Subject,
     change_set_id: Id,
 ) -> Result<(), Error> {
     debug!(%reply_channel, %change_set_id, ?complete_graph, "Job is going away");

@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 mod node_metadata;
 
 use node_metadata::NodeMetadata;
+use si_data_nats::Subject;
 
 #[derive(Default, Debug)]
 pub struct ChangeSetGraph {
@@ -20,7 +21,10 @@ impl ChangeSetGraph {
         for graph in self.dependency_data.values_mut() {
             for (id, metadata) in graph.iter_mut() {
                 if let Some(reply_channel) = metadata.next_to_process() {
-                    result.entry(reply_channel.clone()).or_default().push(*id);
+                    result
+                        .entry(reply_channel.to_string())
+                        .or_default()
+                        .push(*id);
                 }
             }
         }
@@ -29,7 +33,7 @@ impl ChangeSetGraph {
 
     pub fn merge_dependency_graph(
         &mut self,
-        reply_channel: String,
+        reply_channel: Subject,
         new_dependency_data: Graph,
         change_set_id: Id,
     ) -> Result<(), Error> {
@@ -68,7 +72,7 @@ impl ChangeSetGraph {
 
     pub fn mark_node_as_processed(
         &mut self,
-        reply_channel: &str,
+        reply_channel: &Subject,
         change_set_id: Id,
         node_id: Id,
     ) -> Result<HashSet<String>, Error> {
@@ -96,7 +100,7 @@ impl ChangeSetGraph {
         Ok(wanted_by_reply_channels)
     }
 
-    pub fn remove_channel(&mut self, change_set_id: Id, reply_channel: &str) {
+    pub fn remove_channel(&mut self, change_set_id: Id, reply_channel: &Subject) {
         if let Some(graph) = self.dependency_data.get_mut(&change_set_id) {
             let mut to_remove = Vec::new();
             for (id, metadata) in graph.iter_mut() {
@@ -118,10 +122,10 @@ impl ChangeSetGraph {
     /// for the nodes that are being removed.
     pub fn remove_node_and_dependents(
         &mut self,
-        reply_channel: String,
+        reply_channel: Subject,
         change_set_id: Id,
         node_id: Id,
-    ) -> Result<Vec<(String, Id)>, Error> {
+    ) -> Result<Vec<(Subject, Id)>, Error> {
         let mut failure_notifications = Vec::new();
         let change_set_graph_data = self.dependency_data.get_mut(&change_set_id).unwrap();
 
