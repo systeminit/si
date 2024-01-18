@@ -320,7 +320,7 @@
         <template v-else-if="widgetKind === 'secret'">
           <div
             class="attributes-panel-item__secret-value-wrap"
-            @click="secretPopoverRef?.open($event)"
+            @click="secretModalRef?.open()"
           >
             <div v-if="secret" class="attributes-panel-item__secret-value">
               <Icon name="key" size="xs" />
@@ -331,28 +331,23 @@
             </div>
           </div>
 
-          <Popover
-            ref="secretPopoverRef"
-            anchorDirectionX="left"
-            anchorAlignY="bottom"
-          >
-            <SecretsPopover
-              v-if="secretDefinitionId"
-              :definitionId="secretDefinitionId"
-              @select="secretSelectedHandler"
-            />
-          </Popover>
+          <SecretsModal
+            v-if="secretDefinitionId"
+            ref="secretModalRef"
+            :definitionId="secretDefinitionId"
+            @select="secretSelectedHandler"
+          />
         </template>
         <template v-else>
           <div class="py-[4px] px-[8px] text-sm">
             {{ widgetKind }}
           </div>
         </template>
-        <div
+        <!-- <div
           v-if="valueFromSocket"
           v-tooltip="`${propName} is set via its input socket.`"
           class="absolute top-0 w-full h-full bg-caution-lines z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50"
-        />
+        /> -->
       </div>
       <!-- <Icon name="none" class="p-[3px] mx-[2px]" /> -->
     </div>
@@ -396,8 +391,7 @@ import { Secret, useSecretsStore } from "@/store/secrets.store";
 import AttributesPanelItem from "./AttributesPanelItem.vue"; // eslint-disable-line import/no-self-import
 import { useAttributesPanelContext } from "./AttributesPanel.vue";
 import CodeEditor from "../CodeEditor.vue";
-import Popover from "../Popover.vue";
-import SecretsPopover from "../SecretsPopover.vue";
+import SecretsModal from "../SecretsModal.vue";
 
 const props = defineProps({
   parentPath: { type: String },
@@ -649,8 +643,7 @@ const isSectionHover = computed(
 );
 
 const editModalRef = ref<InstanceType<typeof Modal>>();
-
-const secretPopoverRef = ref<InstanceType<typeof Popover>>();
+const secretModalRef = ref<InstanceType<typeof SecretsModal>>();
 const secretsStore = useSecretsStore();
 const secret = computed(
   () => secretsStore.secretsById[newValueString.value?.toString() || ""],
@@ -669,7 +662,7 @@ const secretDefinitionId = computed(() => {
 function secretSelectedHandler(newSecret: Secret) {
   newValueString.value = newSecret.id;
   updateValue();
-  secretPopoverRef.value?.close();
+  secretModalRef.value?.close();
 }
 </script>
 
