@@ -9,7 +9,7 @@ docker_image(
         "nats-server.conf": "component/nats",
     },
     build_args = {
-        "BASE_VERSION": "2.10.9",
+        "BASE_VERSION": "2.3.4",
     },
     run_docker_args = [
         "--publish",
