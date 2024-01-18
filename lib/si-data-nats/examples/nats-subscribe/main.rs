@@ -72,22 +72,40 @@ async fn run() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     skip_all,
     level = "debug",
     fields(
-        messaging.destination = sub.metadata().messaging_destination(),
-        messaging.destination_kind = sub.metadata().messaging_destination_kind(),
-        messaging.operation = sub.metadata().messaging_operation(),
-        messaging.protocol = sub.metadata().messaging_protocol(),
+        messaging.client_id = sub.metadata().messaging_client_id(),
+        messaging.destination.name = sub.metadata().messaging_destination_name(),
+        messaging.message.body.size = message.payload().len(),
+        messaging.nats.server.id = sub.metadata().messaging_nats_server_id(),
+        messaging.nats.server.name = sub.metadata().messaging_nats_server_name(),
+        messaging.nats.server.version = sub.metadata().messaging_nats_server_version(),
+        messaging.operation = MessagingOperation::Receive.as_str(),
         messaging.system = sub.metadata().messaging_system(),
         messaging.url = sub.metadata().messaging_url(),
-        messaging.subject = sub.metadata().messaging_subject(),
-        net.transport = sub.metadata().net_transport(),
-        otel.kind = sub.metadata().process_otel_kind(),
-        otel.name = sub.metadata().process_otel_name(),
+        network.peer.address = sub.metadata().network_peer_address(),
+        network.protocol.name = sub.metadata().network_protocol_name(),
+        network.protocol.version = sub.metadata().network_protocol_version(),
+        network.transport = sub.metadata().network_transport(),
+        otel.kind = SpanKind::Consumer.as_str(), // similar to an RPC operation
+        otel.name = Empty,
         otel.status_code = Empty,
         otel.status_message = Empty,
+        server.address = sub.metadata().server_address(),
+        server.port = sub.metadata().server_port(),
     )
 )]
 fn process_message(message: Message, count: u32, sub: &Subscriber) {
-    Span::current().follows_from(sub.span());
+    let span = Span::current();
+    span.follows_from(sub.span());
+
+    span.record(
+        "otel.name",
+        format!(
+            "{} {}",
+            message.subject(),
+            MessagingOperation::Receive.as_str()
+        )
+        .as_str(),
+    );
 
     let data = String::from_utf8_lossy(message.payload());
     info!(message = ?message, data = data.as_ref(), count);

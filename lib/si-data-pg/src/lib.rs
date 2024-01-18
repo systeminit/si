@@ -7,7 +7,10 @@
 )]
 #![allow(clippy::missing_errors_doc)]
 
-use rustls::{Certificate, RootCertStore};
+use rustls::{
+    pki_types::{CertificateDer, TrustAnchor},
+    RootCertStore,
+};
 use tokio_postgres_rustls::MakeRustlsConnect;
 
 use base64::{engine::general_purpose, Engine};
@@ -266,24 +269,20 @@ impl PgPool {
     // Creates a tls_config for connecting to postgres securely
     async fn tls_config(settings: &PgPoolConfig) -> PgPoolResult<MakeRustlsConnect> {
         let mut root_cert_store = RootCertStore::empty();
-        root_cert_store.add_trust_anchors(webpki_roots::TLS_SERVER_ROOTS.iter().map(|ta| {
-            rustls::OwnedTrustAnchor::from_subject_spki_name_constraints(
-                ta.subject,
-                ta.spki,
-                ta.name_constraints,
-            )
+        root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().map(|ta| TrustAnchor {
+            subject: ta.subject.into(),
+            subject_public_key_info: ta.spki.into(),
+            name_constraints: ta.name_constraints.map(Into::into),
         }));
         if let Some(cert) = &settings.certificate_path {
-            root_cert_store
-                .add_parsable_certificates(&Self::get_certificate_from_path(cert).await?);
+            root_cert_store.add_parsable_certificates(Self::get_certificate_from_path(cert).await?);
         }
         if let Some(cert) = &settings.certificate_base64 {
             root_cert_store.add_parsable_certificates(
-                &Self::get_certificate_from_base64(cert.to_string()).await?,
+                Self::get_certificate_from_base64(cert.to_string()).await?,
             );
         }
         let config = rustls::ClientConfig::builder()
-            .with_safe_defaults()
             .with_root_certificates(root_cert_store)
             .with_no_client_auth();
 
@@ -291,23 +290,22 @@ impl PgPool {
     }
 
     // Creates a certificate object from bytes
-    async fn get_certificate_from_bytes(bytes: &[u8]) -> PgPoolResult<Vec<Certificate>> {
+    async fn get_certificate_from_bytes(
+        bytes: &[u8],
+    ) -> PgPoolResult<Vec<CertificateDer<'static>>> {
         let mut reader = std::io::BufReader::new(bytes);
         Ok(rustls_pemfile::certs(&mut reader)
             .map(|c| {
-                Certificate(
-                    c.map_err(PgPoolError::CreateCertificate)
-                        .expect(
-                            "errror unpacking root cert, this should have been caught by map_err",
-                        )
-                        .to_vec(),
-                )
+                c.map_err(PgPoolError::CreateCertificate)
+                    .expect("errror unpacking root cert, this should have been caught by map_err")
             })
-            .collect::<Vec<Certificate>>())
+            .collect::<Vec<_>>())
     }
 
     // Creates a Certificate object from a base64 encoded certificate
-    async fn get_certificate_from_base64(key_string: String) -> PgPoolResult<Vec<Certificate>> {
+    async fn get_certificate_from_base64(
+        key_string: String,
+    ) -> PgPoolResult<Vec<CertificateDer<'static>>> {
         let buf = general_purpose::STANDARD
             .decode(key_string)
             .map_err(PgPoolError::Base64Decode)?;
@@ -315,7 +313,9 @@ impl PgPool {
     }
 
     // Creates a Certificate object from a certificate file
-    async fn get_certificate_from_path(path: impl AsRef<Path>) -> PgPoolResult<Vec<Certificate>> {
+    async fn get_certificate_from_path(
+        path: impl AsRef<Path>,
+    ) -> PgPoolResult<Vec<CertificateDer<'static>>> {
         let buf = std::fs::read(path).map_err(PgPoolError::ReadPem)?;
         Self::get_certificate_from_bytes(&buf).await
     }

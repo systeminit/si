@@ -40,12 +40,7 @@ impl Subscriber {
     ) -> Self {
         let metadata = SubscriberMessageMetadata {
             connection_metadata,
-            messaging_destination: subject.to_string(),
-            messaging_destination_kind: "topic",
-            messaging_operation: "process",
-            messaging_subject: subject.to_string(),
-            process_otel_kind: SpanKind::Consumer.to_string(),
-            process_otel_name: format!("{subject} process"),
+            messaging_destination_name: subject.to_string(),
         };
 
         Self {
@@ -75,13 +70,22 @@ impl Subscriber {
         skip_all,
         level = "debug",
         fields(
-            messaging.protocol = %self.metadata.messaging_protocol(),
-            messaging.system = %self.metadata.messaging_system(),
-            messaging.url = %self.metadata.messaging_url(),
-            net.transport = %self.metadata.net_transport(),
-            otel.kind = SpanKind::Client.as_str(),
+            messaging.client_id = self.metadata.messaging_client_id(),
+            messaging.destination.name = self.metadata.messaging_destination_name.as_str(),
+            messaging.nats.server.id = self.metadata.messaging_nats_server_id(),
+            messaging.nats.server.name = self.metadata.messaging_nats_server_name(),
+            messaging.nats.server.version = self.metadata.messaging_nats_server_version(),
+            messaging.system = self.metadata.messaging_system(),
+            messaging.url = self.metadata.messaging_url(),
+            network.peer.address = self.metadata.network_peer_address(),
+            network.protocol.name = self.metadata.network_protocol_name(),
+            network.protocol.version = self.metadata.network_protocol_version(),
+            network.transport = self.metadata.network_transport(),
+            otel.kind = SpanKind::Client.as_str(), // similar to an RPC operation
             otel.status_code = Empty,
             otel.status_message = Empty,
+            server.address = self.metadata.server_address(),
+            server.port = self.metadata.server_port(),
         )
     )]
     pub async fn unsubscribe(mut self) -> Result<()> {
@@ -125,18 +129,26 @@ impl Subscriber {
     /// # }
     /// ```
     #[instrument(
-        name = "subscriber.unsubscribe",
+        name = "subscriber.unsubscribe_after",
         skip_all,
         level = "debug",
         fields(
-            subscriber.unsub_after = %unsub_after,
-            messaging.protocol = %self.metadata.messaging_protocol(),
-            messaging.system = %self.metadata.messaging_system(),
-            messaging.url = %self.metadata.messaging_url(),
-            net.transport = %self.metadata.net_transport(),
-            otel.kind = SpanKind::Client.as_str(),
+            messaging.client_id = self.metadata.messaging_client_id(),
+            messaging.destination.name = self.metadata.messaging_destination_name.as_str(),
+            messaging.nats.server.id = self.metadata.messaging_nats_server_id(),
+            messaging.nats.server.name = self.metadata.messaging_nats_server_name(),
+            messaging.nats.server.version = self.metadata.messaging_nats_server_version(),
+            messaging.system = self.metadata.messaging_system(),
+            messaging.url = self.metadata.messaging_url(),
+            network.peer.address = self.metadata.network_peer_address(),
+            network.protocol.name = self.metadata.network_protocol_name(),
+            network.protocol.version = self.metadata.network_protocol_version(),
+            network.transport = self.metadata.network_transport(),
+            otel.kind = SpanKind::Client.as_str(), // similar to an RPC operation
             otel.status_code = Empty,
             otel.status_message = Empty,
+            server.address = self.metadata.server_address(),
+            server.port = self.metadata.server_port(),
         )
     )]
     pub async fn unsubscribe_after(mut self, unsub_after: u64) -> Result<()> {
@@ -184,64 +196,80 @@ impl Stream for Subscriber {
 #[derive(Clone, Debug)]
 pub struct SubscriberMessageMetadata {
     connection_metadata: Arc<ConnectionMetadata>,
-    messaging_destination: String,
-    messaging_destination_kind: &'static str,
-    messaging_operation: &'static str,
-    messaging_subject: String,
-
-    process_otel_kind: String,
-    process_otel_name: String,
+    messaging_destination_name: String,
 }
 
 impl SubscriberMessageMetadata {
-    /// Gets a reference to the subscriber message metadata's messaging destination.
-    pub fn messaging_destination(&self) -> &str {
-        self.messaging_destination.as_ref()
+    /// Gets a reference to the subscriber metadata's messaging destination name.
+    pub fn messaging_destination_name(&self) -> &str {
+        self.messaging_destination_name.as_str()
     }
 
-    /// Gets a reference to the subscriber message metadata's messaging destination kind.
-    pub fn messaging_destination_kind(&self) -> &str {
-        self.messaging_destination_kind
+    /// Gets a reference to the subscriber metadata's messaging client id.
+    pub fn messaging_client_id(&self) -> &str {
+        self.connection_metadata.messaging_client_id.as_ref()
     }
 
-    /// Gets a reference to the subscriber message metadata's messaging operation.
-    pub fn messaging_operation(&self) -> &str {
-        self.messaging_operation
+    /// Gets a reference to the subscriber metadata's messaging nats server id.
+    pub fn messaging_nats_server_id(&self) -> &str {
+        self.connection_metadata.messaging_nats_server_id.as_ref()
     }
 
-    /// Gets a reference to the subscriber message metadata's messaging protocol.
-    pub fn messaging_protocol(&self) -> &str {
-        self.connection_metadata.messaging_protocol()
+    /// Gets a reference to the subscriber metadata's messaging nats server name.
+    pub fn messaging_nats_server_name(&self) -> &str {
+        self.connection_metadata.messaging_nats_server_name.as_ref()
     }
 
-    /// Gets a reference to the subscriber message metadata's messaging system.
+    /// Gets a reference to the subscriber metadata's messaging nats server version.
+    pub fn messaging_nats_server_version(&self) -> &str {
+        self.connection_metadata
+            .messaging_nats_server_version
+            .as_ref()
+    }
+
+    /// Gets a reference to the subscriber metadata's messaging system.
     pub fn messaging_system(&self) -> &str {
-        self.connection_metadata.messaging_system()
+        self.connection_metadata.messaging_system
     }
 
-    /// Gets a reference to the subscriber message metadata's messaging url.
+    /// Gets a reference to the subscriber metadata's messaging url.
     pub fn messaging_url(&self) -> &str {
-        self.connection_metadata.messaging_url()
+        self.connection_metadata.messaging_url.as_ref()
     }
 
-    /// Gets a reference to the subscriber message metadata's messaging subject.
-    pub fn messaging_subject(&self) -> &str {
-        self.messaging_subject.as_ref()
+    /// Gets a reference to the subscriber metadata's network peer address.
+    pub fn network_peer_address(&self) -> &str {
+        self.connection_metadata.network_peer_address.as_ref()
     }
 
-    /// Get a reference to the subscriber message metadata's net transport.
-    pub fn net_transport(&self) -> &str {
-        self.connection_metadata.net_transport()
+    /// Gets a reference to the subscriber metadata's network protocol name.
+    pub fn network_protocol_name(&self) -> &str {
+        self.connection_metadata.network_protocol_name
     }
 
-    /// Gets a reference to the subscriber message metadata's process otel kind.
-    pub fn process_otel_kind(&self) -> &str {
-        &self.process_otel_kind
+    /// Gets a reference to the subscriber metadata's network protocol version.
+    pub fn network_protocol_version(&self) -> &str {
+        self.connection_metadata.network_protocol_version.as_ref()
     }
 
-    /// Gets a reference to the subscriber message metadata's process otel name.
-    pub fn process_otel_name(&self) -> &str {
-        self.process_otel_name.as_ref()
+    /// Gets a reference to the subscriber metadata's network transport.
+    pub fn network_transport(&self) -> &str {
+        self.connection_metadata.network_transport
+    }
+
+    /// Gets a reference to the subscriber metadata's server address.
+    pub fn server_address(&self) -> &str {
+        self.connection_metadata.server_address.as_ref()
+    }
+
+    /// Gets a reference to the subscriber metadata's server port.
+    pub fn server_port(&self) -> u16 {
+        self.connection_metadata.server_port
+    }
+
+    /// Gets the common prefix for use on all subjects.
+    pub fn subject_prefix(&self) -> Option<&str> {
+        self.connection_metadata.subject_prefix.as_deref()
     }
 
     /// Get a reference to the subscriber message metadata's connection metadata.

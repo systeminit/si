@@ -276,9 +276,10 @@ async fn resolver_function_request_task(
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ResolverFunctionRequest>,
 ) {
-    let (cyclone_request, reply_mailbox) = request.into_parts();
-    let reply_mailbox = match reply_mailbox {
-        Some(reply_mailbox) => reply_mailbox,
+    let cyclone_request = request.payload;
+
+    let reply_mailbox = match request.reply {
+        Some(reply) => reply,
         None => {
             error!("no reply mailbox found");
             return;
@@ -441,8 +442,9 @@ async fn validation_request(
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ValidationRequest>,
 ) -> ServerResult<()> {
-    let (cyclone_request, reply_mailbox) = request.into_parts();
-    let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
+    let cyclone_request = request.payload;
+
+    let reply_mailbox = request.reply.ok_or(ServerError::NoReplyMailboxFound)?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut client = cyclone_pool
@@ -560,8 +562,8 @@ async fn schema_variant_definition_request(
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<SchemaVariantDefinitionRequest>,
 ) -> ServerResult<()> {
-    let (cyclone_request, reply_mailbox) = request.into_parts();
-    let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
+    let cyclone_request = request.payload;
+    let reply_mailbox = request.reply.ok_or(ServerError::NoReplyMailboxFound)?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut client = cyclone_pool
@@ -674,8 +676,8 @@ async fn action_run_request(
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ActionRunRequest>,
 ) -> ServerResult<()> {
-    let (cyclone_request, reply_mailbox) = request.into_parts();
-    let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
+    let cyclone_request = request.payload;
+    let reply_mailbox = request.reply.ok_or(ServerError::NoReplyMailboxFound)?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut client = cyclone_pool
@@ -789,8 +791,8 @@ async fn reconciliation_request(
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ReconciliationRequest>,
 ) -> ServerResult<()> {
-    let (cyclone_request, reply_mailbox) = request.into_parts();
-    let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
+    let cyclone_request = request.payload;
+    let reply_mailbox = request.reply.ok_or(ServerError::NoReplyMailboxFound)?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut client = cyclone_pool

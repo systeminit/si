@@ -115,6 +115,14 @@ impl JobConsumerMetadata for FixesJob {
 
 #[async_trait]
 impl JobConsumer for FixesJob {
+    #[instrument(
+        name = "fixes_job.run",
+        skip_all,
+        level = "info",
+        fields(
+            // TODO(fnichol): add some?
+        )
+    )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
         let mut fixes = self.fixes.clone();
 
@@ -150,7 +158,13 @@ impl JobConsumer for FixesJob {
                 .await?;
             handles.push(async move {
                 let id = fix_item.id;
-                let res = tokio::task::spawn(fix_task(task_ctx, self.batch_id, fix_item)).await;
+                let res = tokio::task::spawn(fix_task(
+                    task_ctx,
+                    self.batch_id,
+                    fix_item,
+                    Span::current(),
+                ))
+                .await;
                 (id, res)
             });
         }
@@ -309,10 +323,20 @@ async fn finish_batch(ctx: &DalContext, id: FixBatchId) -> JobConsumerResult<()>
     Ok(())
 }
 
+#[instrument(
+    name = "fixes_job.fix_task",
+    parent = &parent_span,
+    skip_all,
+    level = "info",
+    fields(
+        // TODO(fnichol): add some?
+    )
+)]
 async fn fix_task(
     ctx: DalContext,
     batch_id: FixBatchId,
     fix_item: FixItem,
+    parent_span: Span,
 ) -> JobConsumerResult<(Fix, Vec<String>)> {
     let deleted_ctx = &ctx.clone_with_delete_visibility();
     // Get the workflow for the action we need to run.

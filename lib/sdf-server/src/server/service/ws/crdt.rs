@@ -108,8 +108,8 @@ pub async fn crdt_handle<W, R>(
 
     tasks.spawn(async move {
         while let Some(message) = ws_subscription.next().await {
-            sink.send(Message::Binary(message.payload().to_owned()))
-                .await?;
+            let (inner, _) = message.into_parts();
+            sink.send(Message::Binary(inner.payload.into())).await?;
         }
 
         let result: CrdtResult<()> = Ok(());

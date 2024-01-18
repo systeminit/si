@@ -23,7 +23,7 @@ pub use opentelemetry::{self, trace::SpanKind};
 pub use tracing;
 
 pub mod prelude {
-    pub use super::{SpanExt, SpanKind, SpanKindExt};
+    pub use super::{MessagingOperation, SpanExt, SpanKind, SpanKindExt};
     pub use tracing::{
         self, debug, debug_span, enabled, error, event, event_enabled, field::Empty, info,
         info_span, instrument, span, span_enabled, trace, trace_span, warn, Instrument, Level,
@@ -47,6 +47,46 @@ impl OtelStatusCode {
             Self::Error => "ERROR",
             Self::Ok => "OK",
             Self::Unset => "",
+        }
+    }
+}
+
+/// Represents valied states for OpenTelemetry's `messaging.operation` field.
+///
+/// `messaging.operation` has the following list of well-known values. If one of them applies, then
+/// the respective value MUST be used, otherwise a custom value MAY be used.
+///
+/// See: <https://opentelemetry.io/docs/specs/semconv/attributes-registry/messaging/>
+#[remain::sorted]
+#[derive(Clone, Copy, Debug)]
+pub enum MessagingOperation {
+    /// A message is created. “Create” spans always refer to a single message and are used to
+    /// provide a unique creation context for messages in batch publishing scenarios.
+    Create,
+    /// One or more messages are passed to a consumer. This operation refers to push-based
+    /// scenarios, where consumer register callbacks which get called by messaging SDKs.
+    Deliver,
+    /// One or more messages are provided for publishing to an intermediary. If a single message is
+    /// published, the context of the “Publish” span can be used as the creation context and no
+    /// “Create” span needs to be created.
+    Publish,
+    /// One or more messages are requested by a consumer. This operation refers to pull-based
+    /// scenarios, where consumers explicitly call methods of messaging SDKs to receive messages.
+    Receive,
+}
+
+impl MessagingOperation {
+    pub const CREATE_STR: &'static str = "create";
+    pub const DELIVER_STR: &'static str = "deliver";
+    pub const PUBLISH_STR: &'static str = "publish";
+    pub const RECEIVE_STR: &'static str = "receive";
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Create => Self::CREATE_STR,
+            Self::Deliver => Self::DELIVER_STR,
+            Self::Publish => Self::PUBLISH_STR,
+            Self::Receive => Self::RECEIVE_STR,
         }
     }
 }
