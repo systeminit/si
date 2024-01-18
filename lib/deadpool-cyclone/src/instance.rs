@@ -79,7 +79,12 @@ pub trait Spec {
     /// # });
     /// # Ok::<(), SpawnError>(())
     /// ```
-    async fn spawn(&self) -> result::Result<Self::Instance, Self::Error>;
+    async fn spawn(&self, id: u32) -> result::Result<Self::Instance, Self::Error>;
+
+    /// whether to enable pool_noodle when using this spec
+    fn use_pool_noodle(&self) -> bool;
+    /// the size of the pool
+    fn pool_size(&self) -> u16;
 }
 
 /// A type which implements the [Builder pattern] and builds a [`Spec`].
@@ -311,6 +316,9 @@ pub trait Instance {
     /// # Ok::<(), TerminationError>(())
     /// ```
     async fn terminate(&mut self) -> result::Result<(), Self::Error>;
+
+    /// Get the id of the underlying child runtime
+    fn id(&self) -> u32;
 }
 
 // async fn spawn<B, E, I, S>(builder: &B) -> Result<impl Instance<Error = E>, E>

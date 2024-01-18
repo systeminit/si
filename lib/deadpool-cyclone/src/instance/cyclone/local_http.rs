@@ -97,6 +97,9 @@ impl Instance for LocalHttpInstance {
 
         Ok(())
     }
+    fn id(&self) -> u32 {
+        0
+    }
 }
 
 #[async_trait]
@@ -293,10 +296,17 @@ impl Spec for LocalHttpInstanceSpec {
     type Instance = LocalHttpInstance;
     type Error = LocalHttpInstanceError;
 
+    fn use_pool_noodle(&self) -> bool {
+        false
+    }
+    fn pool_size(&self) -> u16 {
+        0
+    }
+
     async fn setup(&self) -> result::Result<(), Self::Error> {
         Ok(())
     }
-    async fn spawn(&self) -> result::Result<Self::Instance, Self::Error> {
+    async fn spawn(&self, _id: u32) -> result::Result<Self::Instance, Self::Error> {
         let socket_addr = socket_addr_from(&self.socket_strategy).await?;
         let mut cmd = self.build_command(&socket_addr);
 

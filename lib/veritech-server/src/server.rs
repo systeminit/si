@@ -107,7 +107,7 @@ impl Server {
                 let (shutdown_broadcast_tx, _) = broadcast::channel(16);
 
                 let nats = connect_to_nats(&config).await?;
-                let manager = Manager::new(spec.clone());
+                let mut manager = Manager::new(spec.clone());
                 manager
                     .setup()
                     .await
