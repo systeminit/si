@@ -43,7 +43,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "si": {
                 "name": "us-east-2",
                 "color": "#FF9900",
-                "type": "configurationFrame",
+                "type": "configurationFrameDown",
                 "protected": false,
             },
             "domain": {
@@ -126,7 +126,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "si": {
                 "name": "us-east-2",
                 "color": "#FF9900",
-                "type": "configurationFrame",
+                "type": "configurationFrameDown",
                 "protected": false,
             },
             "domain": {
@@ -184,7 +184,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "si": {
                 "name": "us-west-2",
                 "color": "#FF9900",
-                "type": "configurationFrame",
+                "type": "configurationFrameDown",
                 "protected": false,
             },
             "domain": {

@@ -177,7 +177,7 @@ async fn model_flow_fedora_coreos_ignition(
         serde_json::json![{
             "si": {
                 "name": "us-east-2",
-                "type": "configurationFrame",
+                "type": "configurationFrameDown",
                 "protected": false,
             },
             "domain": {

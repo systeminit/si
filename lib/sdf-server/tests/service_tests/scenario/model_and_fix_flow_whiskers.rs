@@ -459,7 +459,7 @@ async fn model_and_fix_flow_whiskers(
         serde_json::json![{
             "si": {
                 "name": "us-east-2",
-                "type": "configurationFrame",
+                "type": "configurationFrameDown",
                 "color": "#FF9900",
                 "protected": false,
             },
