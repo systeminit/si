@@ -380,7 +380,6 @@ import {
   SOCKET_MARGIN_TOP,
 } from "@/components/ModelingDiagram/diagram_constants";
 import {
-  ComponentType,
   DiagramDrawEdgeState,
   DiagramEdgeData,
   DiagramElementUniqueKey,
@@ -466,11 +465,7 @@ const headerWidth = computed(() =>
 
 const actualSockets = computed(() =>
   _.filter(props.group.sockets, (s) => {
-    const should_skip =
-      s.def.label === "Frame" ||
-      s.parent.def.nodeType === ComponentType.ConfigurationFrameDown ||
-      (s.parent.def.nodeType === ComponentType.ConfigurationFrameUp &&
-        s.def.direction === "input");
+    const should_skip = s.def.label === "Frame";
 
     return !should_skip;
   }),

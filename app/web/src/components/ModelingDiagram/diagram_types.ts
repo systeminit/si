@@ -243,8 +243,6 @@ export type DiagramEdgeDef = {
   toNodeId: DiagramElementId;
   toSocketId: DiagramElementId;
   isBidirectional?: boolean;
-  // color
-  // thickness
   isInvisible?: boolean;
   /** change status of edge in relation to head */
   changeStatus?: ChangeStatus;

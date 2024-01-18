@@ -166,21 +166,7 @@ pub async fn paste_components(
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut force_changeset_pk = None;
-    if ctx.visibility().is_head() {
-        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
-
-        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
-
-        ctx.update_visibility(new_visibility);
-
-        force_changeset_pk = Some(change_set.pk);
-
-        WsEvent::change_set_created(&ctx, change_set.pk)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
-    };
+    let maybe_force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
     ctx.commit().await?;
 
     let id = Ulid::new();
@@ -229,7 +215,7 @@ pub async fn paste_components(
     });
 
     let mut response = axum::response::Response::builder();
-    if let Some(force_changeset_pk) = force_changeset_pk {
+    if let Some(force_changeset_pk) = maybe_force_changeset_pk {
         response = response.header("force_changeset_pk", force_changeset_pk.to_string());
     }
 
