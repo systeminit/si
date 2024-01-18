@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
+use ulid::Ulid;
 
 use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::ComponentCreatedPayload;
@@ -46,6 +47,8 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[serde(tag = "kind", content = "data")]
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
+    AsyncError(ErrorPayload),
+    AsyncFinish(FinishPayload),
     ChangeSetAbandoned(ChangeSetActorPayload),
     ChangeSetAbandonVote(ChangeSetMergeVotePayload),
     ChangeSetApplied(ChangeSetActorPayload),
@@ -152,5 +155,27 @@ impl WsEvent {
         let subject = format!("si.workspace_pk.{}.event", self.workspace_pk);
         ctx.txns().await?.nats().publish(subject, &self).await?;
         Ok(())
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ErrorPayload {
+    id: Ulid,
+    error: String,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FinishPayload {
+    id: Ulid,
+}
+
+impl WsEvent {
+    pub async fn async_error(ctx: &DalContext, id: Ulid, error: String) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::AsyncError(ErrorPayload { id, error })).await
+    }
+    pub async fn async_finish(ctx: &DalContext, id: Ulid) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::AsyncFinish(FinishPayload { id })).await
     }
 }

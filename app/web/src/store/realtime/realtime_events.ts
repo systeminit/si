@@ -170,6 +170,13 @@ export type WsEventPayloadMap = {
     workspacePk: WorkspacePk;
     userPk: UserId;
   };
+  AsyncFinish: {
+    id: string;
+  };
+  AsyncError: {
+    id: string;
+    error: string;
+  };
 
   // Old fake status update
   // UpdateStatus: {

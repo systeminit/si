@@ -258,6 +258,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           refreshingStatus: {} as Record<ComponentId, boolean>,
 
           debugDataByComponentId: {} as Record<ComponentId, ComponentDebugView>,
+
+          pastingId: null as string | null,
+          pastingError: undefined as string | undefined,
+          pastingLoading: false as boolean,
         }),
         getters: {
           // transforming the diagram-y data back into more generic looking data
@@ -1115,15 +1119,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             if (changeSetId === nilId())
               changeSetsStore.creatingChangeSet = true;
 
-            const tempInsertId = _.uniqueId("temp-insert-component");
+            this.pastingId = null;
+            this.pastingLoading = true;
+            this.pastingError = undefined;
 
-            return new ApiRequest<
-              {
-                copiedComponentId: ComponentId;
-                pastedComponentId: ComponentId;
-                pastedNodeId: ComponentNodeId;
-              }[]
-            >({
+            return new ApiRequest<{
+              id: string;
+            }>({
               method: "post",
               url: "diagram/paste_components",
               keyRequestStatusBy: componentIds,
@@ -1133,25 +1135,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 offsetY: offset.y,
                 ...visibilityParams,
               },
-              optimistic: () => {
-                this.pendingInsertedComponents[tempInsertId] = {
-                  tempId: tempInsertId,
+              onSuccess: (data) => {
+                this.pastingId = data.id;
+                this.pendingInsertedComponents[this.pastingId] = {
+                  tempId: this.pastingId,
                   position,
                 };
-
-                return () => {
-                  delete this.pendingInsertedComponents[tempInsertId];
-                };
               },
-              onSuccess: (response) => {
-                // following CREATE_COMPONENT's strategy here
-                // but matching up the loader to the first id in the list...
-                // not ideal but should help avoid the delay between the loader disappearing and the new things appearing
-                const pendingInsert =
-                  this.pendingInsertedComponents[tempInsertId];
-                if (pendingInsert && response[0]?.pastedComponentId) {
-                  pendingInsert.componentId = response[0]?.pastedComponentId;
-                }
+              onFail: () => {
+                this.pastingId = null;
+                this.pastingLoading = false;
               },
             });
           },
@@ -1413,6 +1406,28 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (resourceRefreshedEvent?.componentId) {
                   this.refreshingStatus[resourceRefreshedEvent.componentId] =
                     false;
+                }
+              },
+            },
+            {
+              eventType: "AsyncFinish",
+              callback: ({ id }: { id: string }) => {
+                if (id === this.pastingId) {
+                  this.pastingLoading = false;
+                  this.pastingError = undefined;
+                  this.pastingId = null;
+                  delete this.pendingInsertedComponents[id];
+                }
+              },
+            },
+            {
+              eventType: "AsyncError",
+              callback: ({ id, error }: { id: string; error: string }) => {
+                if (id === this.pastingId) {
+                  this.pastingLoading = false;
+                  this.pastingError = error;
+                  this.pastingId = null;
+                  delete this.pendingInsertedComponents[id];
                 }
               },
             },
