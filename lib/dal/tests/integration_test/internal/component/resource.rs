@@ -3,7 +3,6 @@ use dal::{ChangeSet, DalContext, ResourceView};
 use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
-use std::collections::HashMap;
 use veritech_client::ResourceStatus;
 
 /// Recommendation: run this test with the following environment variable:
@@ -11,41 +10,26 @@ use veritech_client::ResourceStatus;
 /// SI_TEST_BUILTIN_SCHEMAS=test
 /// ```
 #[test]
-async fn list_resources(mut octx: DalContext) {
+async fn get_resource(mut octx: DalContext) {
     let ctx = &mut octx;
 
     let mut bagger = ComponentBagger::new();
     let fallout_bag = bagger.create_component(ctx, "fallout", "fallout").await;
-    let starfield_bag = bagger.create_component(ctx, "starfield", "starfield").await;
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
     // Check the resources after creation.
-    let mut expected = HashMap::new();
-    expected.insert(
-        fallout_bag.component_id,
-        ResourceView {
-            status: Some(ResourceStatus::Ok),
-            message: None,
-            data: None,
-            logs: vec![],
-            last_synced: None,
-        },
-    );
-    expected.insert(
-        starfield_bag.component_id,
-        ResourceView {
-            status: Some(ResourceStatus::Ok),
-            message: None,
-            data: None,
-            logs: vec![],
-            last_synced: None,
-        },
-    );
-    let actual = ResourceView::list_with_deleted(ctx)
+    let mut expected = ResourceView {
+        status: Some(ResourceStatus::Ok),
+        message: None,
+        data: None,
+        logs: vec![],
+        last_synced: None,
+    };
+    let actual = ResourceView::get_by_component_id(ctx, &fallout_bag.component_id)
         .await
-        .expect("could not get resource view(s)");
+        .expect("could not get resource view");
     assert_eq!(
         expected, // expected
         actual,   // actual
@@ -79,13 +63,10 @@ async fn list_resources(mut octx: DalContext) {
         .expect("could not commit & run jobs");
 
     // Check the resources again.
-    expected
-        .get_mut(&fallout_bag.component_id)
-        .expect("resource view not found")
-        .data = Some(serde_json::json![{ "poop": true}]);
-    let actual = ResourceView::list_with_deleted(ctx)
+    expected.data = Some(serde_json::json![{ "poop": true}]);
+    let actual = ResourceView::get_by_component_id(ctx, &fallout_bag.component_id)
         .await
-        .expect("could not get resource view(s)");
+        .expect("could not get resource view");
     assert_eq!(
         expected, // expected
         actual,   // actual
@@ -110,13 +91,10 @@ async fn list_resources(mut octx: DalContext) {
         .expect("could not commit & run jobs");
 
     // Check the resources again.
-    expected
-        .get_mut(&fallout_bag.component_id)
-        .expect("resource view not found")
-        .data = None;
-    let actual = ResourceView::list_with_deleted(ctx)
+    expected.data = None;
+    let actual = ResourceView::get_by_component_id(ctx, &fallout_bag.component_id)
         .await
-        .expect("could not get resource view(s)");
+        .expect("could not get resource view");
     assert_eq!(
         expected, // expected
         actual,   // actual
