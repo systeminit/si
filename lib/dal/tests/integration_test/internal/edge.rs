@@ -15,7 +15,7 @@ async fn new(ctx: &DalContext) {
 
     let output_socket = Socket::find_by_name_for_edge_kind_and_node(
         ctx,
-        "bethesda",
+        "Frame",
         SocketEdgeKind::ConfigurationOutput,
         fallout_bag.node_id,
     )
@@ -24,7 +24,7 @@ async fn new(ctx: &DalContext) {
     .expect("could not find socket");
     let input_socket = Socket::find_by_name_for_edge_kind_and_node(
         ctx,
-        "bethesda",
+        "Frame",
         SocketEdgeKind::ConfigurationInput,
         starfield_bag.node_id,
     )
@@ -32,9 +32,9 @@ async fn new(ctx: &DalContext) {
     .expect("could not perform socket find'")
     .expect("could not find socket");
 
-    let _edge = Edge::new(
+    Edge::new(
         ctx,
-        EdgeKind::Configuration,
+        EdgeKind::Symbolic,
         starfield_bag.node_id,
         VertexObjectKind::Configuration,
         EdgeObjectId::from(starfield_bag.component_id),
@@ -47,11 +47,11 @@ async fn new(ctx: &DalContext) {
     .await
     .expect("cannot create new edge");
 
-    let parents = Edge::list_parents_for_component(ctx, starfield_bag.component_id)
+    let parents = Edge::list_parents_for_component(ctx, fallout_bag.component_id)
         .await
         .expect("unable to find component's parents");
     assert_eq!(parents.len(), 1);
-    assert_eq!(parents[0], fallout_bag.component_id);
+    assert_eq!(parents[0], starfield_bag.component_id);
 }
 
 #[test]
