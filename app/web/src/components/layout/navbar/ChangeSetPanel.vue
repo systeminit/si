@@ -36,7 +36,6 @@
       />
 
       <VButton
-        v-if="featureFlagStore.ABANDON_CHANGESET"
         v-tooltip="{
           content: 'Abandon Change Set',
         }"
