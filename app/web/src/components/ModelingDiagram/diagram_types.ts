@@ -175,6 +175,8 @@ export type DiagramNodeDef = {
   componentId: ComponentId;
   /** parent frame (or whatever) id */
   parentNodeId?: DiagramElementId;
+  /** parent frame (or whatever) id */
+  parentComponentId?: ComponentId;
   /** list of ancestor component ids */
   ancestorIds?: ComponentId[];
   /** node type within the context of the diagram */
@@ -256,6 +258,11 @@ export type DiagramDrawEdgeState = {
   toSocketKey?: DiagramElementUniqueKey;
   possibleTargetSocketKeys: DiagramElementUniqueKey[];
   edgeKeysToDelete: DiagramElementUniqueKey[];
+};
+
+export type MoveElementsState = {
+  active: boolean;
+  intoNewParentKey: DiagramElementUniqueKey | undefined;
 };
 
 // Event payloads - emitted by generic diagram //////////////////////////////////

@@ -442,11 +442,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ]);
 
               return {
-                ...component,
+                ..._.omit(component, "parentId"),
                 // swapping "id" to be node id and passing along component id separately for the diagram
                 // this is gross and needs to go, but will happen later
                 id: component.nodeId,
                 componentId: component.id,
+                parentComponentId: component.parentId,
                 title: component.displayName,
                 subtitle: component.schemaName,
                 isLoading:

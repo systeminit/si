@@ -20,13 +20,28 @@ export function vectorBetween(v1: Vector2d, v2: Vector2d) {
   } as Vector2d;
 }
 
+export function pointsToRect(v1: Vector2d, v2: Vector2d) {
+  return {
+    x: v1.x,
+    y: v1.y,
+    width: v2.x - v1.x,
+    height: v2.y - v1.y,
+  };
+}
+
 /** check if 2 rectangles overlap, each rect defined by 2 opposite corner points */
-export function checkRectanglesOverlap(
-  r1v1: Vector2d,
-  r1v2: Vector2d,
-  r2v1: Vector2d,
-  r2v2: Vector2d,
-) {
+export function checkRectanglesOverlap(rect1: IRect, rect2: IRect) {
+  const r1v1: Vector2d = { x: rect1.x, y: rect1.y };
+  const r1v2: Vector2d = {
+    x: rect1.x + rect1.width,
+    y: rect1.y + rect1.height,
+  };
+  const r2v1: Vector2d = { x: rect2.x, y: rect2.y };
+  const r2v2: Vector2d = {
+    x: rect2.x + rect2.width,
+    y: rect2.y + rect2.height,
+  };
+
   // we allow any 2 points to be passed in, but we need the points in a sorted order for this algorithm
   // so we use min/max to make sure we're getting the bottom left and top right of each rect
   const r1x1 = Math.min(r1v1.x, r1v2.x);
@@ -88,12 +103,23 @@ export function rectContainsAnother(container: IRect, object: IRect) {
 
   return insideX && insideY;
 }
+
+export function rectContainsPoint(rect: IRect, point: Vector2d) {
+  return (
+    point.x >= rect.x &&
+    point.x <= rect.x + rect.width &&
+    point.y >= rect.y &&
+    point.y <= rect.y + rect.height
+  );
+}
+
 export function getRectCenter(rect: IRect) {
   return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
 }
 export function getAdjustmentRectToContainAnother(
   container: IRect,
   object: IRect,
+  paddingPx = 0,
 ) {
   const cMinX = container.x;
   const cMaxX = container.x + container.width;
@@ -109,15 +135,15 @@ export function getAdjustmentRectToContainAnother(
   let moveY = 0;
 
   if (oMinX < cMinX) {
-    moveX = oMinX - cMinX - container.width * 0.05;
+    moveX = oMinX - cMinX - paddingPx;
   } else if (oMaxX > cMaxX) {
-    moveX = oMaxX - cMaxX + container.width * 0.05;
+    moveX = oMaxX - cMaxX + paddingPx;
   }
 
   if (oMinY < cMinY) {
-    moveY = oMinY - cMinY - container.width * 0.05;
+    moveY = oMinY - cMinY - paddingPx;
   } else if (oMaxY > cMaxY) {
-    moveY = oMaxY - cMaxY + container.height * 0.05;
+    moveY = oMaxY - cMaxY + paddingPx;
   }
 
   return {

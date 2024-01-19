@@ -35,13 +35,7 @@
           fill: colors.bodyBg,
           stroke: colors.border,
           strokeWidth: 2,
-          shadowForStrokeEnabled: false,
           hitStrokeWidth: 0,
-          shadowColor: 'black',
-          shadowBlur: 3,
-          shadowOffset: { x: 8, y: 8 },
-          shadowOpacity: 0.3,
-          shadowEnabled: !parentComponentId,
         }"
       />
 
@@ -494,8 +488,6 @@ function onSocketHoverStart(socket: DiagramSocketData) {
 function onSocketHoverEnd(_socket: DiagramSocketData) {
   componentsStore.setHoveredComponentId(null);
 }
-
-// TODO: not sure if want to communicate with the store here or send the message up to the diagram...
 
 function onClick(detailsTabSlug: string) {
   componentsStore.setSelectedComponentId(componentId.value, {

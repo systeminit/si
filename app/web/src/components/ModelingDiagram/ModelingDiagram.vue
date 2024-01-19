@@ -172,6 +172,8 @@ type DiagramContext = {
   edgeDisplayMode: Ref<EdgeDisplayMode>;
   toggleEdgeDisplayMode: () => void;
   drawEdgeState: ComputedRef<DiagramDrawEdgeState>;
+  moveElementsState: ComputedRef<MoveElementsState>;
+  gridRect: ComputedRef<IRect>;
 };
 
 const DIAGRAM_CONTEXT_INJECTION_KEY: InjectionKey<DiagramContext> =
@@ -237,6 +239,7 @@ import {
   SideAndCornerIdentifiers,
   ElementHoverMeta,
   EdgeDisplayMode,
+  MoveElementsState,
   ComponentType,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
@@ -252,8 +255,6 @@ import {
   MIN_ZOOM,
   NODE_WIDTH,
   GROUP_INTERNAL_PADDING,
-  GROUP_HEADER_ICON_SIZE,
-  GROUP_HEADER_BOTTOM_MARGIN,
   GROUP_BOTTOM_INTERNAL_PADDING,
   GROUP_INNER_Y_BOUNDARY_OFFSET,
 } from "./diagram_constants";
@@ -266,6 +267,8 @@ import {
   pointAlongLinePct,
   getRectCenter,
   getAdjustmentRectToContainAnother,
+  pointsToRect,
+  rectContainsPoint,
 } from "./utils/math";
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
@@ -286,8 +289,6 @@ const props = defineProps({
   },
   // TODO: split this into controls for specific features rather than single toggle
   readOnly: { type: Boolean },
-
-  controlsDisabled: { type: Boolean },
 });
 
 const emit = defineEmits<{
@@ -352,7 +353,7 @@ const gridMaxX = computed(() => gridOrigin.value.x + gridWidth.value / 2);
 const gridMinY = computed(() => gridOrigin.value.y - gridHeight.value / 2);
 const gridMaxY = computed(() => gridOrigin.value.y + gridHeight.value / 2);
 
-const gridRect = computed(() => ({
+const gridRect = computed<IRect>(() => ({
   x: gridMinX.value,
   y: gridMinY.value,
   width: gridWidth.value,
@@ -400,7 +401,6 @@ const pointerIsWithinGrid = computed(() => {
 function onMouseWheel(e: KonvaEventObject<WheelEvent>) {
   // TODO check if target is the stage?
   e.evt.preventDefault();
-  if (props.controlsDisabled) return;
 
   // is it a mouse wheel or a trackpad pinch to zoom?
   const isTrackpadPinch = !_.isInteger(e.evt.deltaY);
@@ -534,8 +534,6 @@ const spaceKeyIsDown = ref(false);
 const shiftKeyIsDown = ref(false);
 
 async function onKeyDown(e: KeyboardEvent) {
-  if (props.controlsDisabled) return;
-
   // TODO: check is cursor is within graph bounds
   // TODO: check if something else (like an input) is focused and bail
 
@@ -554,6 +552,10 @@ async function onKeyDown(e: KeyboardEvent) {
   }
   if (e.key === "-" || e.key === "_") {
     setZoomLevel(zoomLevel.value - 0.1);
+  }
+  // CMD + 0 - reset zoom level to 100%
+  if (e.key === "0" && e.metaKey) {
+    setZoomLevel(1);
   }
 
   if (
@@ -619,7 +621,11 @@ async function onKeyDown(e: KeyboardEvent) {
 
 function onKeyUp(e: KeyboardEvent) {
   if (e.key === " ") spaceKeyIsDown.value = false;
-  if (e.key === "Shift") shiftKeyIsDown.value = false;
+  if (e.key === "Shift") {
+    shiftKeyIsDown.value = false;
+    // shift constrains to vertical or horizontal drag, so letting go snaps things back to the mouse position
+    if (dragElementsActive.value) onDragElementsMove();
+  }
 }
 
 const mouseIsDown = ref(false);
@@ -635,7 +641,6 @@ const lastMouseDownElement = computed(() =>
 );
 
 function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
-  if (props.controlsDisabled) return;
   // not sure why, but this is being called twice, once with the konva event, and once with the bare event
   // so we ignore the bare event
   if (!ke.evt) return;
@@ -667,7 +672,6 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
 }
 
 function onMouseUp(e: MouseEvent) {
-  if (props.controlsDisabled) return;
   // we dont care about right click
   if (e.button === 2) return;
   mouseIsDown.value = false;
@@ -686,12 +690,14 @@ function onMouseUp(e: MouseEvent) {
 }
 
 function onMouseMove(e: MouseEvent) {
-  if (props.controlsDisabled) return;
   // update pointer location relative to container, which is used throughout
   containerPointerPos.value = {
     x: e.clientX - containerViewportX.value,
     y: e.clientY - containerViewportY.value,
   };
+
+  // some bugs where letting go of shift key isn't caught, so we'll add this here to help
+  shiftKeyIsDown.value = e.shiftKey;
 
   if (dragToPanActive.value) onDragToPanMove();
   else if (dragElementsActive.value) onDragElementsMove();
@@ -711,7 +717,6 @@ function onMouseMove(e: MouseEvent) {
 }
 
 function onRightClick(ke: KonvaEventObject<MouseEvent>) {
-  if (props.controlsDisabled) return;
   const e = ke.evt;
   e.preventDefault(); // do not show browser right click menu
   if (!hoveredElement.value) return;
@@ -956,14 +961,8 @@ function panToComponent(payload: {
   const el = allElementsByKey.value[key];
   if (!el) return;
 
-  const nodeLocation = nodesLocationInfo[el.uniqueKey];
-  if (!nodeLocation) return;
-  const nodeRect = {
-    x: nodeLocation.topLeft.x,
-    y: nodeLocation.topLeft.y,
-    width: nodeLocation.width,
-    height: nodeLocation.height,
-  };
+  const nodeRect = nodesLocationInfo[el.uniqueKey];
+  if (!nodeRect) return;
 
   if (payload.center) {
     // TODO: if element doesnt fit on screen, need to zoom out
@@ -1123,15 +1122,10 @@ function onDragSelectMove() {
   dragSelectEndPos.value = gridPointerPos.value;
 
   const selectedInBoxKeys: DiagramElementUniqueKey[] = [];
-  _.each(nodesLocationInfo, (nodeLocation, nodeKey) => {
+  _.each(nodesLocationInfo, (nodeRect, nodeKey) => {
     const inSelectionBox = checkRectanglesOverlap(
-      dragSelectStartPos.value!,
-      dragSelectEndPos.value!,
-      nodeLocation.topLeft,
-      {
-        x: nodeLocation.topLeft.x + nodeLocation.width,
-        y: nodeLocation.topLeft.y + nodeLocation.height,
-      },
+      pointsToRect(dragSelectStartPos.value!, dragSelectEndPos.value!),
+      nodeRect,
     );
     if (inSelectionBox) selectedInBoxKeys.push(nodeKey);
   });
@@ -1178,16 +1172,24 @@ const movedElementPositions = reactive<
   Record<DiagramElementUniqueKey, Vector2d>
 >({});
 const dragElementsActive = ref(false);
-const currentSelectionMovableElements = computed(
-  () =>
-    _.filter(
-      currentSelectionElements.value,
-      (el) => el && "position" in el.def,
-    ) as unknown as (DiagramNodeData | DiagramGroupData)[],
-);
-const movedElementParent = reactive<Record<DiagramElementUniqueKey, string>>(
-  {},
-);
+const currentSelectionMovableElements = computed(() => {
+  // filter selection for nodes and groups
+  const elements = _.filter(
+    currentSelectionElements.value,
+    (el) => el && "position" in el.def,
+  ) as unknown as (DiagramNodeData | DiagramGroupData)[];
+
+  // filter out children of other selected items, since moving a parent will already move the child
+  const filteredElements = _.reject(elements, (el) => {
+    const parentKeys = _.map(
+      el.def.ancestorIds,
+      getDiagramElementKeyForComponentId,
+    );
+    return _.intersection(currentSelectionKeys.value, parentKeys).length > 0;
+  });
+
+  return filteredElements;
+});
 
 const draggedElementsPositionsPreDrag = ref<
   Record<DiagramElementUniqueKey, Vector2d | undefined>
@@ -1229,80 +1231,25 @@ function beginDragElements() {
 
 function endDragElements() {
   dragElementsActive.value = false;
-  // fire off final move event, might want to clean up how this is done...
+  // fire off final move event
+  // note - we've already filtered out children that are selected along with their parents
+  // so we dont need to worry about accidentally moving them more than once
   _.each(currentSelectionMovableElements.value, (el) => {
     if (!movedElementPositions[el.uniqueKey]) return;
 
-    const parentId =
-      movedElementParent[el.uniqueKey] || el.def.parentNodeId || undefined;
+    // dragging onto root - ie detach from all parents
+    if (!cursorWithinGroupKey.value) {
+      componentsStore.DETACH_COMPONENT(el.def.componentId);
+    } else {
+      const newParent = allElementsByKey.value[
+        cursorWithinGroupKey.value
+      ] as DiagramGroupData;
 
-    const elPos = nodesLocationInfo[el.uniqueKey];
-
-    if (!elPos) return;
-    const elRect = {
-      x: elPos.topLeft.x,
-      y: elPos.topLeft.y,
-      width: elPos.width,
-      height: elPos.height,
-    };
-
-    const groupOrderedByZIndex = _.sortBy(groups.value, (g) => {
-      const groupShape = kStage.findOne(`#${g.uniqueKey}--bg`);
-      return -(groupShape?.getAbsoluteZIndex() ?? -Infinity);
-    });
-
-    const newContainingGroup = groupOrderedByZIndex.find((group) => {
-      if (group.uniqueKey === el.uniqueKey) return false;
-
-      const groupPos = nodesLocationInfo[group.uniqueKey];
-
-      if (!groupPos) return;
-      const groupRect = {
-        x: groupPos.topLeft.x,
-        y: groupPos.topLeft.y,
-        width: groupPos.width,
-        height: groupPos.height,
-      };
-
-      return rectContainsAnother(groupRect, elRect);
-    });
-
-    if (
-      newContainingGroup &&
-      el.def.parentNodeId !== newContainingGroup.def.id
-    ) {
-      let elements = [el];
-
-      if (newContainingGroup.def.nodeType === ComponentType.AggregationFrame) {
-        const groupSchemaId =
-          componentsStore.componentsByNodeId[newContainingGroup.def.id]
-            ?.schemaVariantId;
-        elements = _.filter(elements, (e) => {
-          const elementSchemaId =
-            componentsStore.componentsByNodeId[e.def.id]?.schemaVariantId;
-
-          return elementSchemaId === groupSchemaId;
-        });
+      if (el.def.parentComponentId !== newParent?.def.componentId) {
+        // TODO: this needs to be a single api call
+        componentsStore.DETACH_COMPONENT(el.def.componentId);
+        componentsStore.CONNECT_COMPONENT_TO_FRAME(el.def.id, newParent.def.id);
       }
-
-      for (const element of elements) {
-        if (element.def.parentNodeId === newContainingGroup.def.id) {
-          /* eslint-disable-next-line no-console */
-          console.error(
-            "Recursive connection:",
-            element.def.parentNodeId,
-            newContainingGroup.def.id,
-          );
-          continue;
-        }
-
-        componentsStore.CONNECT_COMPONENT_TO_FRAME(
-          element.def.id,
-          newContainingGroup.def.id,
-        );
-      }
-
-      movedElementParent[el.uniqueKey] = newContainingGroup.def.id;
     }
 
     const movedElementPosition = movedElementPositions[el.uniqueKey];
@@ -1362,6 +1309,10 @@ function onDragElementsMove() {
     else delta.x = 0;
   }
 
+  const newParent = allElementsByKey.value[
+    cursorWithinGroupKey.value || ""
+  ] as DiagramGroupData;
+
   _.each(currentSelectionMovableElements.value, (el) => {
     if (!draggedElementsPositionsPreDrag.value?.[el.uniqueKey]) return;
     const newPosition = vectorAdd(
@@ -1369,50 +1320,37 @@ function onDragElementsMove() {
       delta,
     );
 
-    // block moving components outside of their group
-    if (el.def.parentNodeId) {
-      const parentGroup = getElementByKey(
-        DiagramGroupData.generateUniqueKey(el.def.parentNodeId),
-      );
-      if (!parentGroup) throw new Error("parent group not found");
+    // if we are going to move the element within a new parent we may need to adjust
+    // the position to stay inside of it
+    if (newParent && newParent.def.componentId !== el.def.parentComponentId) {
+      // if dragging OUT of a parent onto the root, we want to make sure the element is not
+      // floating on top of another group
 
-      const groupShape = kStage.findOne(`#${parentGroup?.uniqueKey}--bg`);
-      const groupPos = groupShape.getAbsolutePosition(kStage);
-      const groupBounds = {
-        left: groupPos.x + GROUP_INTERNAL_PADDING,
-        right: groupPos.x + groupShape.width() - GROUP_INTERNAL_PADDING,
-        top:
-          groupPos.y +
-          GROUP_INTERNAL_PADDING +
-          (el.def.nodeType === ComponentType.Component
-            ? 0
-            : GROUP_HEADER_ICON_SIZE +
-              GROUP_HEADER_BOTTOM_MARGIN +
-              GROUP_INTERNAL_PADDING / 2),
-        bottom:
-          groupPos.y + groupShape.height() - GROUP_BOTTOM_INTERNAL_PADDING,
+      const newParentRect = nodesLocationInfo[newParent.uniqueKey];
+      const elRect = nodesLocationInfo[el.uniqueKey];
+      if (!newParentRect || !elRect) return;
+      const movedElRect = {
+        x: newPosition.x - elRect.width / 2,
+        y: newPosition.y,
+        width: elRect.width,
+        height: elRect.height,
       };
 
-      const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
-      // const elPos = elShape.getAbsolutePosition(kStage);
-      const newElBounds = {
-        left: newPosition.x - elShape.width() / 2,
-        right: newPosition.x + elShape.width() / 2,
-        top: newPosition.y,
-        bottom: newPosition.y + elShape.height(),
+      // TODO: use helper fn
+      const newParentRectWithBuffer = {
+        x: newParentRect.x + 10,
+        y: newParentRect.y + 10,
+        width: newParentRect.width - 20,
+        height: newParentRect.height - 20,
       };
 
-      if (newElBounds.left <= groupBounds.left) {
-        newPosition.x = groupBounds.left + elShape.width() / 2;
-      }
-      if (newElBounds.right >= groupBounds.right) {
-        newPosition.x = groupBounds.right - elShape.width() / 2;
-      }
-      if (newElBounds.top <= groupBounds.top) {
-        newPosition.y = groupBounds.top;
-      }
-      if (newElBounds.bottom >= groupBounds.bottom) {
-        newPosition.y = groupBounds.bottom - elShape.height();
+      if (!rectContainsAnother(newParentRectWithBuffer, movedElRect)) {
+        const adjust = getAdjustmentRectToContainAnother(
+          newParentRectWithBuffer,
+          movedElRect,
+        );
+        newPosition.x -= adjust.x;
+        newPosition.y -= adjust.y;
       }
     }
 
@@ -1461,6 +1399,7 @@ function onDragElementsMove() {
           draggedElementsPositionsPreDrag.value[childEl.uniqueKey]!,
           actualParentDelta,
         );
+
         // track the position locally, so we don't need to rely on parent to store the temporary position
         movedElementPositions[childEl.uniqueKey] = newChildPosition;
         sendMovedElementPosition({
@@ -1497,6 +1436,9 @@ function onDragElementsMove() {
     dragToEdgeScrollInterval = undefined;
   }
 }
+onBeforeUnmount(() => {
+  if (dragToEdgeScrollInterval) clearInterval(dragToEdgeScrollInterval);
+});
 
 function triggerDragToEdgeScrolling() {
   if (!containerPointerPos.value) return;
@@ -1631,6 +1573,31 @@ const nudgeOneNode = (
     }
   });
 };
+
+// we calculate which group (if any) the cursor is within without using hover events
+// which is useful when dragging elements in/out of groups
+const cursorWithinGroupKey = computed(() => {
+  // groups are sorted by depth so they render in the right order
+  // so we search from the opposite direction to find deepest child first
+  if (!gridPointerPos.value) return undefined;
+
+  const withinGroup = _.findLast(groups.value, (group) => {
+    // skip groups that are selected
+    if (currentSelectionKeys.value.includes(group.uniqueKey)) return false;
+
+    const frameRect = nodesLocationInfo[group.uniqueKey];
+    if (!frameRect) return false;
+    return rectContainsPoint(frameRect, gridPointerPos.value!);
+  });
+  return withinGroup?.uniqueKey;
+});
+
+const moveElementsState = computed(() => {
+  return {
+    active: dragElementsActive.value,
+    intoNewParentKey: cursorWithinGroupKey.value,
+  } as MoveElementsState;
+});
 
 // RESIZING DIAGRAM ELEMENTS (groups) ///////////////////////////////////////
 const resizeElement = ref<DiagramGroupData>();
@@ -1965,7 +1932,7 @@ function onResizeMove() {
   }
 
   // Make sure the frame doesn't get larger than parent
-  const parentId = movedElementParent[resizeTargetKey] || node.parentNodeId;
+  const parentId = node.parentComponentId;
 
   if (parentId) {
     // Resized element with top-left corner xy coordinates instead of top-center
@@ -1975,7 +1942,7 @@ function onResizeMove() {
       x: newNodePosition.x - newNodeSize.width / 2,
     };
 
-    const parent = groups.value.find((g) => g.def.id === parentId);
+    const parent = groups.value.find((g) => g.def.componentId === parentId);
     const parentShape = kStage.findOne(`#${parent?.uniqueKey}--bg`);
     if (parent && parentShape) {
       const parentPosition =
@@ -2273,9 +2240,8 @@ async function triggerInsertElement() {
 }
 
 // LAYOUT REGISTRY + HELPERS ///////////////////////////////////////////////////////////
-type NodeLocationInfo = { topLeft: Vector2d; width: number; height: number };
 type SocketLocationInfo = { center: Vector2d };
-const nodesLocationInfo = reactive<Record<string, NodeLocationInfo>>({});
+const nodesLocationInfo = reactive<Record<string, IRect>>({});
 const socketsLocationInfo = reactive<Record<string, SocketLocationInfo>>({});
 
 function getSocketLocationInfo(socketKey?: DiagramElementUniqueKey) {
@@ -2288,7 +2254,7 @@ function onNodeLayoutOrLocationChange(el: DiagramNodeData | DiagramGroupData) {
   // we find the background shape, because the parent group has no dimensions
   const nodeBgShape = kStage.findOne(`#${el.uniqueKey}--bg`);
   nodesLocationInfo[el.uniqueKey] = {
-    topLeft: nodeBgShape.getAbsolutePosition(kStage),
+    ...nodeBgShape.getAbsolutePosition(kStage),
     width: nodeBgShape.width(),
     height: nodeBgShape.height(),
   };
@@ -2450,6 +2416,8 @@ const context: DiagramContext = {
   edgeDisplayMode,
   toggleEdgeDisplayMode,
   drawEdgeState,
+  moveElementsState,
+  gridRect,
 };
 provide(DIAGRAM_CONTEXT_INJECTION_KEY, context);
 </script>

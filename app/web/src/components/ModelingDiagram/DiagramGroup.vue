@@ -12,7 +12,7 @@
   >
     <!-- selection box outline -->
     <v-rect
-      v-if="isHovered || isSelected || highlightParent"
+      v-if="isHovered || isSelected || highlightParent || highlightAsNewParent"
       :config="{
         width: nodeWidth + 8,
         height: nodeHeight + 8,
@@ -35,6 +35,22 @@
       }"
     /> -->
 
+    <v-rect
+      :config="{
+        id: `${group.uniqueKey}--bg`,
+        width: nodeWidth,
+        height: nodeBodyHeight,
+        x: -halfWidth,
+        y: 0,
+        cornerRadius: CORNER_RADIUS,
+        fill: colors.bodyBg,
+        fillAfterStrokeEnabled: true,
+        stroke: colors.headerBg,
+        strokeWidth: 3,
+        dash: [8, 8],
+      }"
+    />
+
     <!--  Node Body  -->
     <v-rect
       :config="{
@@ -48,8 +64,15 @@
         fillAfterStrokeEnabled: true,
         stroke: colors.headerBg,
         strokeWidth: 3,
-        hitStrokeWidth: 0,
         dash: [8, 8],
+
+        shadowForStrokeEnabled: false,
+        hitStrokeWidth: 0,
+        shadowColor: 'black',
+        shadowBlur: 3,
+        shadowOffset: { x: 8, y: 8 },
+        shadowOpacity: 0.3,
+        shadowEnabled: !parentComponentId,
       }"
     />
 
@@ -388,6 +411,7 @@ import {
   SideAndCornerIdentifiers,
   Size2D,
 } from "./diagram_types";
+import { useDiagramContext } from "./ModelingDiagram.vue";
 import DiagramIcon from "./DiagramIcon.vue";
 
 const props = defineProps({
@@ -412,6 +436,8 @@ const props = defineProps({
   isHovered: Boolean,
   isSelected: Boolean,
 });
+
+const diagramContext = useDiagramContext();
 
 const componentId = computed(() => props.group.def.componentId);
 const parentComponentId = computed(() => _.last(props.group.def.ancestorIds));
@@ -592,6 +618,14 @@ const highlightParent = computed(() => {
   return (
     componentsStore.hoveredComponent.ancestorIds?.includes(componentId.value) ||
     false
+  );
+});
+
+const highlightAsNewParent = computed(() => {
+  return (
+    diagramContext.moveElementsState.value.active &&
+    diagramContext.moveElementsState.value.intoNewParentKey ===
+      props.group.uniqueKey
   );
 });
 </script>
