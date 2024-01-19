@@ -13,7 +13,6 @@ const FLAG_MAPPING = {
   WORKSPACE_BACKUPS: "workspaceBackups",
   COLLABORATORS: "collaborators",
   MUTLIPLAYER_CHANGESET_APPLY: "multiplayer_changeset_apply_flow",
-  CONNECTION_ANNOTATIONS: "socket_connection_annotations",
   COPY_PASTE: "copy_paste",
   DONT_BLOCK_ON_ACTIONS: "dont_block_on_actions",
   OVERRIDE_SCHEMA: "override_schema",
