@@ -134,6 +134,13 @@ import Create from "~icons/carbon/intent-request-create";
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
 
+// Phosphor
+import PhCursorTextBold from "~icons/ph/cursor-text-bold";
+
+// MDI
+import MdiCheckboxBlankCircle from "~icons/mdi/checkbox-blank-circle";
+import MdiCheckboxBlankCircleOutline from "~icons/mdi/checkbox-blank-circle-outline";
+
 // attribute widget types
 import InputTypeString from "~icons/carbon/string-text";
 import InputTypeText from "~icons/carbon/text-long-paragraph";
@@ -163,6 +170,7 @@ import CodePop from "./custom-icons/code-pop.svg?raw";
 import LogsPop from "./custom-icons/logs-pop.svg?raw";
 import CodePopSquare from "./custom-icons/code-pop-square.svg?raw";
 import LogsPopSquare from "./custom-icons/logs-pop-square.svg?raw";
+import Func from "./custom-icons/func.svg?raw";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -188,6 +196,8 @@ export const ICONS = Object.freeze({
   "check-hex-outline": CheckHexOutline,
   "check-square": CheckSquare,
   check2: Check2,
+  "circle-empty": MdiCheckboxBlankCircleOutline,
+  "circle-full": MdiCheckboxBlankCircle,
   "circle-slash": CircleSlash,
   "clipboard-copy": ClipboardCopy,
   clock: Clock,
@@ -201,6 +211,7 @@ export const ICONS = Object.freeze({
   "component-plus": CubePlus,
   create: Create,
   "credit-card": CreditCard,
+  cursor: PhCursorTextBold,
   "cursor-array-rays": CursorArrayRays,
   diagram: Diagram,
   docs: Docs,
@@ -215,6 +226,7 @@ export const ICONS = Object.freeze({
   eye: Eye,
   filter: Filter,
   frame: Frame,
+  func: Func,
   "git-branch": GitBranch,
   "git-branch-plus": GitBranchPlus,
   "git-commit": GitCommit,
