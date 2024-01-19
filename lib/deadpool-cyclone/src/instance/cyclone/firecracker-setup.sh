@@ -41,11 +41,13 @@ check_os_release() {
     [[ "$(cat /etc/os-release | grep 'Red Hat Enterprise Linux Server release 7')" ]] && export OS_VARIANT=redhat-7 && return 0
     [[ "$(cat /etc/os-release | grep 'Red Hat Enterprise Linux release 8')" ]] && export OS_VARIANT=redhat-8 && return 0
     [[ "$(cat /etc/os-release | grep 'Amazon Linux release 2')" ]] && export OS_VARIANT=amazon-linux-2 && return 0
+    [[ "$(cat /etc/os-release | grep 'Arch Linux')" ]] && export OS_VARIANT=arch-linux && return 0
     [[ "$(cat /etc/os-release | grep ^NAME | grep Fedora)" ]] && export OS_VARIANT=fedora && return 0
     [[ "$(cat /etc/os-release | grep ^NAME | grep Ubuntu)" ]] && export OS_VARIANT=ubuntu && return 0
     [[ "$(cat /etc/os-release | grep ^NAME | grep -i pop!_os )" ]] && export OS_VARIANT=ubuntu && return 0
     [[ "$(cat /etc/os-release | grep ^NAME | grep Debian)" ]] && export OS_VARIANT=debian && return 0
     [[ "$(cat /etc/os-release | grep ^NAME | grep Mint)" ]] && export OS_VARIANT=mint && return 0
+
     echo "Error: Operating system could not be determined or is unsupported, could not configure the OS for firecracker node" && exit 1
 
 }
@@ -83,9 +85,14 @@ install_pre_reqs() {
             # Insert OS specific setup steps here
             echo "Info: executing prereq steps for ubuntu"
         ;;
+        arch-linux)
+            echo "Info: executing prereq steps for arch linux"
+        ;;
         *)
             echo "Error: Something went wrong, OS_VARIANT determined to be: $OS_VARIANT (unsupported)" && exit 1
         ;;
+
+
     esac
 
     [[ $? != 0 ]] && echo "Error: Exit code $? returned during installation; see above error log for information"
@@ -267,6 +274,12 @@ execute_cleanup() {
             # Insert OS specific cleanup steps here
             yum -v clean all
         ;;
+
+        arch-linux)
+            # Insert OS specific cleanup steps here
+            echo "Info: Executing post-clean up for arch"          
+        ;;
+
         ubuntu)
             # Insert OS specific setup steps here
             echo "Info: Executing post-clean up for ubuntu"
