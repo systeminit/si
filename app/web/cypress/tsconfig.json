@@ -1,7 +1,14 @@
 {
   "compilerOptions": {
-    "lib": ["es2015", "dom"],
-    "types": ["cypress"],
+    "lib": [
+      "es5",
+      "dom"
+    ],
+    "types": [
+      "cypress",
+      "node",
+      "vite/client"
+    ],
     "isolatedModules": false,
     "allowJs": true,
     "noEmit": true,
@@ -10,5 +17,10 @@
     "allowSyntheticDefaultImports": true,
     "target": "es5",
   },
-  "include": ["**/*.ts", "../src/**/*.ts"]
+  "include": [
+    "**/*.ts",
+    "../src/**/*.ts",
+    "../cypress.d.ts"
+  ],
+  "extends": "../tsconfig.json",
 }
