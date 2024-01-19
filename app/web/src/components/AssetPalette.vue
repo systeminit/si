@@ -42,6 +42,7 @@
               v-for="(schema, schemaIndex) in category.schemas"
               :key="schemaIndex"
               class="select-none border-b-2 dark:border-neutral-600"
+              data-cy="asset_card"
             >
               <SiNodeSprite
                 :color="schema.color"

@@ -2,7 +2,7 @@
 
 declare namespace Cypress {
 
-  interface CustomWindow extends Window {}
+  interface CustomWindow extends Window { }
 
   interface Chainable {
     /**
@@ -11,15 +11,14 @@ declare namespace Cypress {
      */
     window(options?: Partial<Loggable & Timeoutable>): Chainable<CustomWindow>;
 
+    getBySel(dataTestAttribute: string, args?: any): Chainable<JQuery<HTMLElement>>;
+    getBySelLike(dataTestPrefixAttribute: string, args?: any): Chainable<JQuery<HTMLElement>>;
+
     /**
-     * Custom command to select DOM element by data-cy attribute.
-     * @example cy.dataCy('greeting')
+     * Logs in via Auth0 login page
      */
-    getBySel(value: string): Chainable<Element>;
+    loginToAuth0(username: string, password: string): Chainable<any>;
 
-    getBySelLike(value: string): Chainable<Element>;
-
-    signup(): Chainable<Response<any>>;
-    signupAndLogin(): Chainable<Response<any>>;
+    dragTo(sourceElement: string, targetElement: string): void;
   }
 }
