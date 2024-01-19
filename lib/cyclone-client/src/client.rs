@@ -31,6 +31,7 @@ use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     net::TcpStream,
+    time::error::Elapsed,
 };
 use tokio_tungstenite::WebSocketStream;
 
@@ -71,6 +72,8 @@ pub enum ClientError {
     Response(#[source] hyper::Error),
     #[error("failed to resolve socket addrs")]
     SocketAddrResolve(#[source] std::io::Error),
+    #[error("timed out waiting for cyclone server")]
+    Timeout(#[source] Elapsed),
     #[error("unexpected status code: {0}")]
     UnexpectedStatusCode(StatusCode),
     #[error("client is not healthy")]

@@ -2,6 +2,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+
 use ::std::path::Path;
 use rand::distributions::Alphanumeric;
 use rand::thread_rng;
@@ -40,6 +41,8 @@ use tokio::{
 use tracing::{trace, warn};
 
 use crate::instance::{Instance, Spec, SpecBuilder};
+
+const CYCLONE_TIMEOUT: u64 = 3600;
 
 /// Error type for [`LocalUdsInstance`].
 #[remain::sorted]
@@ -185,7 +188,12 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-        let result = self.client.execute_resolver(request).await;
+        let result = tokio::time::timeout(
+            Duration::from_secs(CYCLONE_TIMEOUT),
+            self.client.execute_resolver(request),
+        )
+        .await
+        .map_err(ClientError::Timeout)?;
         self.count_request();
         result
     }
@@ -200,7 +208,12 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
-        let result = self.client.execute_validation(request).await;
+        let result = tokio::time::timeout(
+            Duration::from_secs(CYCLONE_TIMEOUT),
+            self.client.execute_validation(request),
+        )
+        .await
+        .map_err(ClientError::Timeout)?;
         self.count_request();
 
         result
@@ -217,7 +230,12 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
             .await
             .map_err(ClientError::unhealthy)?;
         // Use the websocket client for cyclone to execute command run.
-        let result = self.client.execute_action_run(request).await;
+        let result = tokio::time::timeout(
+            Duration::from_secs(CYCLONE_TIMEOUT),
+            self.client.execute_action_run(request),
+        )
+        .await
+        .map_err(ClientError::Timeout)?;
         self.count_request();
 
         result
@@ -234,7 +252,12 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
             .await
             .map_err(ClientError::unhealthy)?;
         // Use the websocket client for cyclone to execute reconciliation.
-        let result = self.client.execute_reconciliation(request).await;
+        let result = tokio::time::timeout(
+            Duration::from_secs(CYCLONE_TIMEOUT),
+            self.client.execute_reconciliation(request),
+        )
+        .await
+        .map_err(ClientError::Timeout)?;
         self.count_request();
 
         result
@@ -251,7 +274,12 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
             .await
             .map_err(ClientError::unhealthy)?;
         // Use the websocket client for cyclone to execute reconciliation.
-        let result = self.client.execute_schema_variant_definition(request).await;
+        let result = tokio::time::timeout(
+            Duration::from_secs(CYCLONE_TIMEOUT),
+            self.client.execute_schema_variant_definition(request),
+        )
+        .await
+        .map_err(ClientError::Timeout)?;
         self.count_request();
 
         result
