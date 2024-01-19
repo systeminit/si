@@ -202,8 +202,36 @@
             class="attributes-panel-item__delete-child-button hover:scale-125"
             @click="removeChildHandler"
           >
-            <Icon name="trash" size="none" />
+            <Icon name="trash" size="xs" />
           </button>
+
+          <template
+            v-if="
+              featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
+              !isChildOfMap &&
+              !isChildOfArray &&
+              !(widgetKind === 'secret')
+            "
+          >
+            <!-- TODO(Wendy) - These icons should be interactable, change color to action on hover, and have tooltips -->
+            <Icon
+              v-if="valueFromSocket"
+              v-tooltip="`${propName} is set via an input socket`"
+              class="hover:text-action-500 dark:hover:text-action-300"
+              name="circle-full"
+              size="xs"
+            />
+            <Icon
+              v-else
+              v-tooltip="`${propName} can be set manually`"
+              name="cursor"
+              size="xs"
+              class="text-neutral-400 dark:text-neutral-600 hover:text-action-500 dark:hover:text-action-300"
+            />
+            <!-- TODO(Wendy) - the cursor icon should switch to black/white when the field is manually set -->
+            <!-- <Icon name="circle-empty" size="xs" class="text-neutral-400 dark:text-neutral-600" />  TODO(Wendy) - display this icon for fields which have a socket -->
+            <!-- <Icon name="func" size="sm" /> TODO(Wendy) - display this icon for fields which are set by a function -->
+          </template>
 
           <a
             v-if="fullPropDef.docLink"
@@ -358,8 +386,8 @@
           </div>
         </template>
         <!-- <div
-          v-if="valueFromSocket"
-          v-tooltip="`${propName} is set via its input socket.`"
+          v-if="featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET && valueFromSocket"
+          v-tooltip="`${propName} is set via an input socket`"
           class="absolute top-0 w-full h-full bg-caution-lines z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50"
         /> -->
       </div>
@@ -426,6 +454,7 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { Secret, useSecretsStore } from "@/store/secrets.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AttributesPanelItem from "./AttributesPanelItem.vue"; // eslint-disable-line import/no-self-import
 import { useAttributesPanelContext } from "./AttributesPanel.vue";
 import CodeEditor from "../CodeEditor.vue";
@@ -440,6 +469,8 @@ const props = defineProps({
   // number of prop keys to show while collapsed
   numPreviewProps: { type: Number, default: 3 },
 });
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const isOpen = ref(true);
 const showValidationDetails = ref(false);
@@ -1196,8 +1227,13 @@ function secretSelectedHandler(newSecret: Secret) {
   display: flex;
   flex-direction: row;
   margin-left: auto;
+  align-items: center;
   flex: none;
   gap: 0.25rem;
   margin-right: 0.25rem;
+}
+
+.attributes-panel-item__static-icons > * {
+  cursor: pointer;
 }
 </style>

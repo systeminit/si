@@ -18,6 +18,7 @@ const FLAG_MAPPING = {
   SECRETS: "secrets",
   WORKSPACE_BACKUPS: "workspaceBackups",
   SEARCH_FILTERS: "search-filters",
+  INDICATORS_MANUAL_FUNCTION_SOCKET: "indicators_manual_function_socket",
   STATUSBAR_RESOURCE_COUNT: "statusbar_resource_count",
 };
 
