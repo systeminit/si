@@ -10,6 +10,7 @@ import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -68,11 +69,6 @@ export interface DetachedValidationPrototype {
   propPath: string;
   propKind: PropKind;
 }
-
-export type ComponentType =
-  | "aggregationFrame"
-  | "component"
-  | "configurationFrame";
 
 export interface ListedVariantDef {
   id: AssetId;
@@ -245,7 +241,7 @@ export const useAssetStore = () => {
             color: this.generateMockColor(),
             description: "",
             category: "",
-            componentType: "component",
+            componentType: ComponentType.Component,
             link: "https://www.systeminit.com/",
             funcs: [],
             createdAt: new Date().toISOString(),

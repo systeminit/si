@@ -58,7 +58,9 @@
           size="md"
           icon="trash-restore"
           :label="`Restore ${
-            selectedComponent.nodeType === 'component' ? 'Component' : 'Frame'
+            selectedComponent.nodeType === ComponentType.Component
+              ? 'Component'
+              : 'Frame'
           }`"
           @click="modelingEventBus.emit('restoreSelection')"
         />
@@ -165,23 +167,24 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, watch, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import {
-  Icon,
   ErrorMessage,
-  VButton,
+  Icon,
+  Inline,
+  PillCounter,
+  ScrollArea,
   Stack,
   TabGroup,
   TabGroupItem,
-  Inline,
-  ScrollArea,
-  PillCounter,
+  VButton,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { useStatusStore } from "@/store/status.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useActionsStore } from "@/store/actions.store";
+import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import ComponentDetailsResource from "./ComponentDetailsResource.vue";
@@ -258,6 +261,7 @@ const onClickRefreshButton = () => {
 
 const tabsRef = ref<InstanceType<typeof TabGroup>>();
 const componentSubTabsRef = ref<InstanceType<typeof TabGroup>>();
+
 function onTabSelected(newTabSlug?: string) {
   componentsStore.setComponentDetailsTab(newTabSlug || null);
 }

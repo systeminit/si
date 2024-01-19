@@ -237,6 +237,7 @@ import {
   SideAndCornerIdentifiers,
   ElementHoverMeta,
   EdgeDisplayMode,
+  ComponentType,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramCursor from "./DiagramCursor.vue";
@@ -935,7 +936,7 @@ watch(
     if (!panToComponent) return;
 
     const key =
-      panToComponent.nodeType === "component"
+      panToComponent.nodeType === ComponentType.Component
         ? DiagramNodeData.generateUniqueKey(panToComponent.id)
         : DiagramGroupData.generateUniqueKey(panToComponent.id);
 
@@ -1272,7 +1273,7 @@ function endDragElements() {
     ) {
       let elements = [el];
 
-      if (newContainingGroup.def.nodeType === "aggregationFrame") {
+      if (newContainingGroup.def.nodeType === ComponentType.AggregationFrame) {
         const groupSchemaId =
           componentsStore.componentsByNodeId[newContainingGroup.def.id]
             ?.schemaVariantId;
@@ -1383,7 +1384,7 @@ function onDragElementsMove() {
         top:
           groupPos.y +
           GROUP_INTERNAL_PADDING +
-          (el.def.nodeType === "component"
+          (el.def.nodeType === ComponentType.Component
             ? 0
             : GROUP_HEADER_ICON_SIZE +
               GROUP_HEADER_BOTTOM_MARGIN +
@@ -2261,7 +2262,7 @@ async function triggerInsertElement() {
     );
     if (
       parentComponent &&
-      (parentComponent.nodeType !== "aggregationFrame" ||
+      (parentComponent.nodeType !== ComponentType.AggregationFrame ||
         schemaId === parentComponent.schemaId)
     ) {
       parentId = parentGroupId;
@@ -2309,13 +2310,19 @@ function onNodeLayoutOrLocationChange(el: DiagramNodeData | DiagramGroupData) {
 
 const nodes = computed(() =>
   _.map(
-    _.filter(componentsStore.diagramNodes, (n) => n.nodeType === "component"),
+    _.filter(
+      componentsStore.diagramNodes,
+      (n) => n.nodeType === ComponentType.Component,
+    ),
     (nodeDef) => new DiagramNodeData(nodeDef),
   ),
 );
 const groups = computed(() => {
   const allGroups = _.map(
-    _.filter(componentsStore.diagramNodes, (n) => n.nodeType !== "component"),
+    _.filter(
+      componentsStore.diagramNodes,
+      (n) => n.nodeType !== ComponentType.Component,
+    ),
     (groupDef) => new DiagramGroupData(groupDef),
   );
   const orderedGroups = _.orderBy(allGroups, (g) => {

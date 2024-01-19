@@ -368,25 +368,25 @@ import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import DiagramNodeSocket from "@/components/ModelingDiagram/DiagramNodeSocket.vue";
 import {
-  SOCKET_GAP,
-  SOCKET_MARGIN_TOP,
   CORNER_RADIUS,
   DEFAULT_NODE_COLOR,
   DIAGRAM_FONT_FAMILY,
-  SELECTION_COLOR,
   GROUP_HEADER_BOTTOM_MARGIN,
-  GROUP_TITLE_FONT_SIZE,
-  GROUP_RESIZE_HANDLE_SIZE,
   GROUP_HEADER_ICON_SIZE,
+  GROUP_RESIZE_HANDLE_SIZE,
+  GROUP_TITLE_FONT_SIZE,
+  SELECTION_COLOR,
+  SOCKET_GAP,
+  SOCKET_MARGIN_TOP,
 } from "@/components/ModelingDiagram/diagram_constants";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
   DiagramElementUniqueKey,
   DiagramGroupData,
-  Size2D,
-  SideAndCornerIdentifiers,
   DiagramSocketData,
+  SideAndCornerIdentifiers,
+  Size2D,
 } from "./diagram_types";
 import DiagramIcon from "./DiagramIcon.vue";
 
@@ -464,11 +464,11 @@ const headerWidth = computed(() =>
 );
 
 const actualSockets = computed(() =>
-  _.filter(
-    props.group.sockets,
-    (s) =>
-      s.def.label !== "Frame" && s.parent.def.nodeType !== "configurationFrame",
-  ),
+  _.filter(props.group.sockets, (s) => {
+    const should_skip = s.def.label === "Frame";
+
+    return !should_skip;
+  }),
 );
 
 const leftSockets = computed(() =>

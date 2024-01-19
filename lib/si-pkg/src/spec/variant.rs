@@ -1,8 +1,9 @@
-use crate::spec::authentication_func::AuthenticationFuncSpec;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
+
+use crate::spec::authentication_func::AuthenticationFuncSpec;
 
 use super::{
     ActionFuncSpec, LeafFunctionSpec, PropSpec, PropSpecData, PropSpecWidgetKind, RootPropFuncSpec,
@@ -33,9 +34,16 @@ pub enum SchemaVariantSpecComponentType {
     #[serde(alias = "Component")]
     #[strum(serialize = "Component", serialize = "component")]
     Component,
-    #[serde(alias = "ConfigurationFrame")]
-    #[strum(serialize = "ConfigurationFrame", serialize = "configurationFrame")]
-    ConfigurationFrame,
+    #[serde(alias = "ConfigurationFrameDown")]
+    #[strum(
+        serialize = "ConfigurationFrameDown",
+        serialize = "configurationFrameDown",
+        serialize = "ConfigurationFrame",
+        serialize = "configurationFrame"
+    )] // this was called ConfigurationFrame so we need to keep compatibility
+    ConfigurationFrameDown,
+    #[strum(serialize = "ConfigurationFrameUp", serialize = "configurationFrameUp")]
+    ConfigurationFrameUp,
 }
 
 #[remain::sorted]

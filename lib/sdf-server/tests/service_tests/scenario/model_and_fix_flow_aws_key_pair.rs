@@ -98,7 +98,7 @@ async fn model_and_fix_flow_aws_key_pair(
         serde_json::json![{
             "si": {
                 "name": "us-east-2",
-                "type": "configurationFrame",
+                "type": "configurationFrameDown",
                 "protected": false,
             },
             "domain": {

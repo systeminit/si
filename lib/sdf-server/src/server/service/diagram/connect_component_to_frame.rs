@@ -1,6 +1,11 @@
+use std::collections::{HashMap, VecDeque};
+
 use async_recursion::async_recursion;
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
+use hyper::http::Uri;
+use serde::{Deserialize, Serialize};
+
 use dal::edge::{EdgeKind, EdgeObjectId, VertexObjectKind};
 use dal::job::definition::DependentValuesUpdate;
 use dal::socket::{SocketEdgeKind, SocketKind};
@@ -10,9 +15,6 @@ use dal::{
     StandardModel, Visibility, WsEvent,
 };
 use dal::{ComponentType, Socket};
-use hyper::http::Uri;
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -49,7 +51,6 @@ pub async fn connect_component_sockets_to_frame(
         child_node_id,
         original_uri,
         posthog_client,
-        &mut HashMap::new(),
     )
     .await?;
 
@@ -69,7 +70,6 @@ pub async fn connect_component_sockets_to_frame(
             child_node_id,
             original_uri,
             posthog_client,
-            &mut HashMap::new(),
         )
         .await?;
 
@@ -91,14 +91,15 @@ async fn connect_component_sockets_to_frame_inner(
     child_node_id: NodeId,
     original_uri: &Uri,
     posthog_client: &crate::server::state::PosthogClient,
-    tree: &mut HashMap<NodeId, Vec<SocketId>>,
 ) -> DiagramResult<()> {
-    if tree.contains_key(&parent_node_id) {
-        return Ok(());
-    }
+    let mut connected_sockets_for_node_id: HashMap<NodeId, Vec<SocketId>> = HashMap::new();
 
-    tree.entry(child_node_id).or_default();
-    tree.entry(parent_node_id).or_default();
+    connected_sockets_for_node_id
+        .entry(child_node_id)
+        .or_default();
+    connected_sockets_for_node_id
+        .entry(parent_node_id)
+        .or_default();
 
     let from_socket =
         Socket::find_frame_socket_for_node(ctx, child_node_id, SocketEdgeKind::ConfigurationOutput)
@@ -128,189 +129,219 @@ async fn connect_component_sockets_to_frame_inner(
         .await?
         .ok_or(DiagramError::NodeNotFound(child_node_id))?;
 
-    let child_sockets = Socket::list_for_component(ctx, *child_component.id()).await?;
-
-    let aggregation_frame = match parent_component.get_type(ctx).await? {
-        ComponentType::AggregationFrame => true,
-        ComponentType::ConfigurationFrame => false,
-        component_type => return Err(DiagramError::InvalidComponentTypeForFrame(component_type)),
-    };
-
-    for parent_socket in parent_sockets {
+    for parent_socket in &parent_sockets {
         if parent_socket.kind() == &SocketKind::Frame {
             continue;
         }
 
-        if aggregation_frame {
-            match *parent_socket.edge_kind() {
-                SocketEdgeKind::ConfigurationInput => {
-                    let provider =
-                        InternalProvider::find_explicit_for_socket(ctx, *parent_socket.id())
-                            .await?
-                            .ok_or(EdgeError::InternalProviderNotFoundForSocket(
-                                *parent_socket.id(),
-                            ))?;
-
-                    // We don't want to connect the provider when we are not using configuration edge kind
-                    Edge::connect_internal_providers_for_components(
-                        ctx,
-                        *provider.id(),
-                        *child_component.id(),
-                        *parent_component.id(),
-                    )
-                    .await?;
-
-                    Edge::new(
-                        ctx,
-                        EdgeKind::Configuration,
-                        child_node_id,
-                        VertexObjectKind::Configuration,
-                        EdgeObjectId::from(*child_component.id()),
-                        *parent_socket.id(),
-                        parent_node_id,
-                        VertexObjectKind::Configuration,
-                        EdgeObjectId::from(*parent_component.id()),
-                        *parent_socket.id(),
-                    )
-                    .await?;
-
-                    let attribute_value_context = AttributeReadContext {
-                        component_id: Some(*parent_component.id()),
-                        internal_provider_id: Some(*provider.id()),
-                        ..Default::default()
-                    };
-
-                    let attribute_value =
-                        AttributeValue::find_for_context(ctx, attribute_value_context)
-                            .await?
-                            .ok_or(DiagramError::AttributeValueNotFoundForContext(
-                                attribute_value_context,
-                            ))?;
-
-                    ctx.enqueue_job(DependentValuesUpdate::new(
-                        ctx.access_builder(),
-                        *ctx.visibility(),
-                        vec![*attribute_value.id()],
-                    ))
-                    .await?;
-                }
-                SocketEdgeKind::ConfigurationOutput => {
-                    let provider = ExternalProvider::find_for_socket(ctx, *parent_socket.id())
-                        .await?
-                        .ok_or(EdgeError::ExternalProviderNotFoundForSocket(
-                            *parent_socket.id(),
-                        ))?;
-
-                    Edge::connect_external_providers_for_components(
-                        ctx,
-                        *provider.id(),
-                        *parent_component.id(),
-                        *child_component.id(),
-                    )
-                    .await?;
-
-                    Edge::new(
-                        ctx,
-                        EdgeKind::Configuration,
-                        parent_node_id,
-                        VertexObjectKind::Configuration,
-                        EdgeObjectId::from(*parent_component.id()),
-                        *parent_socket.id(),
-                        child_node_id,
-                        VertexObjectKind::Configuration,
-                        EdgeObjectId::from(*child_component.id()),
-                        *parent_socket.id(),
-                    )
-                    .await?;
-
-                    let attribute_value_context = AttributeReadContext {
-                        component_id: Some(*child_component.id()),
-                        external_provider_id: Some(*provider.id()),
-                        ..Default::default()
-                    };
-
-                    let attribute_value =
-                        AttributeValue::find_for_context(ctx, attribute_value_context)
-                            .await?
-                            .ok_or(DiagramError::AttributeValueNotFoundForContext(
-                                attribute_value_context,
-                            ))?;
-
-                    ctx.enqueue_job(DependentValuesUpdate::new(
-                        ctx.access_builder(),
-                        *ctx.visibility(),
-                        vec![*attribute_value.id()],
-                    ))
-                    .await?;
-                }
+        match parent_component.get_type(ctx).await? {
+            component_type @ ComponentType::Component => {
+                return Err(DiagramError::InvalidComponentTypeForFrame(component_type))
             }
-        } else if let Some(parent_provider) = parent_socket.external_provider(ctx).await? {
-            for child_socket in &child_sockets {
-                // Skip child sockets corresponding to frames.
-                if child_socket.kind() == &SocketKind::Frame {
-                    continue;
-                }
+            ComponentType::AggregationFrame => {
+                match *parent_socket.edge_kind() {
+                    SocketEdgeKind::ConfigurationInput => {
+                        let provider =
+                            InternalProvider::find_explicit_for_socket(ctx, *parent_socket.id())
+                                .await?
+                                .ok_or(EdgeError::InternalProviderNotFoundForSocket(
+                                    *parent_socket.id(),
+                                ))?;
 
-                let used_socket = tree
-                    .get(&child_node_id)
-                    .into_iter()
-                    .flatten()
-                    .any(|socket_id| child_socket.id() == socket_id);
-                if used_socket {
-                    continue;
-                }
-
-                if let Some(child_provider) = child_socket.internal_provider(ctx).await? {
-                    // TODO(nick): once type definitions used for providers, we should not
-                    // match on name.
-                    if parent_provider.name() == child_provider.name() {
-                        tree.entry(child_node_id)
-                            .or_default()
-                            .push(*child_socket.id());
-
-                        Connection::new(
+                        // We don't want to connect the provider when we are not using configuration edge kind
+                        Edge::connect_internal_providers_for_components(
                             ctx,
-                            parent_node_id,
-                            *parent_socket.id(),
-                            child_node_id,
-                            *child_socket.id(),
-                            EdgeKind::Configuration,
+                            *provider.id(),
+                            *child_component.id(),
+                            *parent_component.id(),
                         )
                         .await?;
 
-                        let child_socket_internal_provider =
-                            InternalProvider::find_explicit_for_socket(ctx, *child_socket.id())
-                                .await?
-                                .ok_or(DiagramError::InternalProviderNotFoundForSocket(
-                                    *child_socket.id(),
-                                ))?;
+                        Edge::new(
+                            ctx,
+                            EdgeKind::Configuration,
+                            child_node_id,
+                            VertexObjectKind::Configuration,
+                            EdgeObjectId::from(*child_component.id()),
+                            *parent_socket.id(),
+                            parent_node_id,
+                            VertexObjectKind::Configuration,
+                            EdgeObjectId::from(*parent_component.id()),
+                            *parent_socket.id(),
+                        )
+                        .await?;
 
-                        let child_attribute_value_context = AttributeReadContext {
-                            internal_provider_id: Some(*child_socket_internal_provider.id()),
-                            component_id: Some(*child_component.id()),
+                        let attribute_value_context = AttributeReadContext {
+                            component_id: Some(*parent_component.id()),
+                            internal_provider_id: Some(*provider.id()),
                             ..Default::default()
                         };
-                        let mut child_attribute_value =
-                            AttributeValue::find_for_context(ctx, child_attribute_value_context)
+
+                        let attribute_value =
+                            AttributeValue::find_for_context(ctx, attribute_value_context)
                                 .await?
                                 .ok_or(DiagramError::AttributeValueNotFoundForContext(
-                                    child_attribute_value_context,
+                                    attribute_value_context,
                                 ))?;
-
-                        child_attribute_value
-                            .update_from_prototype_function(ctx)
-                            .await?;
 
                         ctx.enqueue_job(DependentValuesUpdate::new(
                             ctx.access_builder(),
                             *ctx.visibility(),
-                            vec![*child_attribute_value.id()],
+                            vec![*attribute_value.id()],
+                        ))
+                        .await?;
+                    }
+                    SocketEdgeKind::ConfigurationOutput => {
+                        let provider = ExternalProvider::find_for_socket(ctx, *parent_socket.id())
+                            .await?
+                            .ok_or(EdgeError::ExternalProviderNotFoundForSocket(
+                                *parent_socket.id(),
+                            ))?;
+
+                        Edge::connect_external_providers_for_components(
+                            ctx,
+                            *provider.id(),
+                            *parent_component.id(),
+                            *child_component.id(),
+                        )
+                        .await?;
+
+                        Edge::new(
+                            ctx,
+                            EdgeKind::Configuration,
+                            parent_node_id,
+                            VertexObjectKind::Configuration,
+                            EdgeObjectId::from(*parent_component.id()),
+                            *parent_socket.id(),
+                            child_node_id,
+                            VertexObjectKind::Configuration,
+                            EdgeObjectId::from(*child_component.id()),
+                            *parent_socket.id(),
+                        )
+                        .await?;
+
+                        let attribute_value_context = AttributeReadContext {
+                            component_id: Some(*child_component.id()),
+                            external_provider_id: Some(*provider.id()),
+                            ..Default::default()
+                        };
+
+                        let attribute_value =
+                            AttributeValue::find_for_context(ctx, attribute_value_context)
+                                .await?
+                                .ok_or(DiagramError::AttributeValueNotFoundForContext(
+                                    attribute_value_context,
+                                ))?;
+
+                        ctx.enqueue_job(DependentValuesUpdate::new(
+                            ctx.access_builder(),
+                            *ctx.visibility(),
+                            vec![*attribute_value.id()],
                         ))
                         .await?;
                     }
                 }
             }
-        }
+            component_type @ (ComponentType::ConfigurationFrameDown
+            | ComponentType::ConfigurationFrameUp) => {
+                let child_sockets = Socket::list_for_component(ctx, *child_component.id()).await?;
+
+                for child_socket in &child_sockets {
+                    // Skip child sockets corresponding to frames.
+                    if child_socket.kind() == &SocketKind::Frame {
+                        continue;
+                    }
+
+                    // Configuration frames down and up behave similarly, only connecting either child to parent vs
+                    // parent to child sockets. So we assign destination and source entities here
+                    let (
+                        source_node_id,
+                        source_socket,
+                        dest_node_id,
+                        destination_component_id,
+                        dest_socket,
+                    ) = if component_type == ComponentType::ConfigurationFrameDown {
+                        let used_socket = connected_sockets_for_node_id
+                            .get(&child_node_id)
+                            .into_iter()
+                            .flatten()
+                            .any(|socket_id| child_socket.id() == socket_id);
+                        if used_socket {
+                            continue;
+                        }
+
+                        (
+                            parent_node_id,
+                            parent_socket,
+                            child_node_id,
+                            *child_component.id(),
+                            child_socket,
+                        )
+                    } else {
+                        (
+                            child_node_id,
+                            child_socket,
+                            parent_node_id,
+                            *parent_component.id(),
+                            parent_socket,
+                        )
+                    };
+
+                    if let (Some(source_provider), Some(dest_provider)) = (
+                        source_socket.external_provider(ctx).await?,
+                        dest_socket.internal_provider(ctx).await?,
+                    ) {
+                        // TODO(victor): Refactor to match on connection annotations.
+                        if source_provider.name() == dest_provider.name() {
+                            connected_sockets_for_node_id
+                                .entry(dest_node_id)
+                                .or_default()
+                                .push(*dest_socket.id());
+
+                            Connection::new(
+                                ctx,
+                                source_node_id,
+                                *source_socket.id(),
+                                dest_node_id,
+                                *dest_socket.id(),
+                                EdgeKind::Configuration,
+                            )
+                            .await?;
+
+                            let dest_socket_internal_provider =
+                                InternalProvider::find_explicit_for_socket(ctx, *dest_socket.id())
+                                    .await?
+                                    .ok_or(DiagramError::InternalProviderNotFoundForSocket(
+                                        *dest_socket.id(),
+                                    ))?;
+
+                            let dest_attribute_value_context = AttributeReadContext {
+                                internal_provider_id: Some(*dest_socket_internal_provider.id()),
+                                component_id: Some(destination_component_id),
+                                ..Default::default()
+                            };
+                            let mut dest_attribute_value =
+                                AttributeValue::find_for_context(ctx, dest_attribute_value_context)
+                                    .await?
+                                    .ok_or(DiagramError::AttributeValueNotFoundForContext(
+                                        dest_attribute_value_context,
+                                    ))?;
+
+                            dest_attribute_value
+                                .update_from_prototype_function(ctx)
+                                .await?;
+
+                            ctx.enqueue_job(DependentValuesUpdate::new(
+                                ctx.access_builder(),
+                                *ctx.visibility(),
+                                vec![*dest_attribute_value.id()],
+                            ))
+                            .await?;
+                        }
+                    }
+                }
+            }
+        };
     }
 
     let grandparents = Edge::list_parents_for_component(ctx, *parent_component.id()).await?;
@@ -327,7 +358,7 @@ async fn connect_component_sockets_to_frame_inner(
             .ok_or(ComponentError::NodeNotFoundForComponent(grandparent_id))?;
         match ty {
             ComponentType::Component => {}
-            ComponentType::ConfigurationFrame => {
+            ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => {
                 connect_component_sockets_to_frame(
                     ctx,
                     *grandparent.id(),
@@ -383,21 +414,7 @@ pub async fn connect_component_to_frame(
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut force_changeset_pk = None;
-    if ctx.visibility().is_head() {
-        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
-
-        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
-
-        ctx.update_visibility(new_visibility);
-
-        force_changeset_pk = Some(change_set.pk);
-
-        WsEvent::change_set_created(&ctx, change_set.pk)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
-    };
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     // Connect children to parent through frame edge
     connect_component_sockets_to_frame(

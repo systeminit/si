@@ -42,7 +42,10 @@
     />
 
     <v-group
-      v-if="isAdded || isDeleted || willDeleteIfPendingEdgeCreated"
+      v-if="
+        !edge.def.isInvisible &&
+        (isAdded || isDeleted || willDeleteIfPendingEdgeCreated)
+      "
       :config="{
         x: centerPoint.x,
         y: centerPoint.y,
@@ -82,11 +85,11 @@ import { Vector2d } from "konva/lib/types";
 import { computed, PropType } from "vue";
 import {
   COLOR_PALETTE,
-  useTheme,
   getToneColorHex,
+  useTheme,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
-import { SOCKET_SIZE, SELECTION_COLOR } from "./diagram_constants";
+import { SELECTION_COLOR, SOCKET_SIZE } from "./diagram_constants";
 import { DiagramEdgeData } from "./diagram_types";
 import { pointAlongLinePct, pointAlongLinePx } from "./utils/math";
 import DiagramIcon from "./DiagramIcon.vue";
@@ -170,6 +173,7 @@ const mainLineOpacity = computed(() => {
 });
 
 const componentsStore = useComponentsStore();
+
 function onMouseOver() {
   componentsStore.setHoveredEdgeId(props.edge.def.id);
 }

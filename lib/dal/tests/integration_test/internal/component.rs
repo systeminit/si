@@ -179,7 +179,7 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext) {
     );
 
     // Update the type.
-    let new_component_type = ComponentType::ConfigurationFrame;
+    let new_component_type = ComponentType::ConfigurationFrameDown;
     component
         .set_type(ctx, new_component_type)
         .await

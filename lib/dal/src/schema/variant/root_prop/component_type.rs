@@ -31,17 +31,29 @@ pub enum ComponentType {
     #[serde(alias = "Component")]
     #[strum(serialize = "Component", serialize = "component")]
     Component,
-    #[serde(alias = "ConfigurationFrame")]
-    #[strum(serialize = "ConfigurationFrame", serialize = "configurationFrame")]
-    ConfigurationFrame,
+    #[serde(
+        alias = "ConfigurationFrameDown",
+        alias = "ConfigurationFrame",
+        alias = "configurationFrame"
+    )]
+    #[strum(
+        serialize = "ConfigurationFrameDown",
+        serialize = "configurationFrameDown",
+        serialize = "ConfigurationFrame",
+        serialize = "configurationFrame"
+    )]
+    ConfigurationFrameDown,
+    #[strum(serialize = "ConfigurationFrameUp", serialize = "configurationFrameUp")]
+    ConfigurationFrameUp,
 }
 
 impl From<SchemaVariantSpecComponentType> for ComponentType {
     fn from(value: SchemaVariantSpecComponentType) -> Self {
         match value {
             SchemaVariantSpecComponentType::Component => Self::Component,
-            SchemaVariantSpecComponentType::ConfigurationFrame => Self::ConfigurationFrame,
             SchemaVariantSpecComponentType::AggregationFrame => Self::AggregationFrame,
+            SchemaVariantSpecComponentType::ConfigurationFrameDown => Self::ConfigurationFrameDown,
+            SchemaVariantSpecComponentType::ConfigurationFrameUp => Self::ConfigurationFrameUp,
         }
     }
 }
@@ -50,8 +62,9 @@ impl From<ComponentType> for SchemaVariantSpecComponentType {
     fn from(value: ComponentType) -> Self {
         match value {
             ComponentType::Component => Self::Component,
-            ComponentType::ConfigurationFrame => Self::ConfigurationFrame,
             ComponentType::AggregationFrame => Self::AggregationFrame,
+            ComponentType::ConfigurationFrameDown => Self::ConfigurationFrameDown,
+            ComponentType::ConfigurationFrameUp => Self::ConfigurationFrameUp,
         }
     }
 }
@@ -61,8 +74,9 @@ impl ComponentType {
     pub fn label(&self) -> &'static str {
         match self {
             Self::Component => "Component",
-            Self::ConfigurationFrame => "Configuration Frame",
             Self::AggregationFrame => "Aggregation Frame",
+            Self::ConfigurationFrameDown => "Configuration Frame (down)",
+            Self::ConfigurationFrameUp => "Configuration Frame (up)",
         }
     }
 }

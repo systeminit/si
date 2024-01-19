@@ -1,12 +1,13 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { Vector2d } from "konva/lib/types";
-import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { IconNames } from "@si/vue-lib/design-system";
 
 import mitt from "mitt";
 import { watch } from "vue";
 import {
+  ComponentType,
   DiagramEdgeDef,
   DiagramNodeDef,
   DiagramSocketDef,
@@ -21,7 +22,7 @@ import {
   DiagramSchemaVariant,
   DiagramSchemaVariants,
 } from "@/api/sdf/dal/diagram";
-import { ComponentStats, ChangeStatus } from "@/api/sdf/dal/change_set";
+import { ChangeStatus, ComponentStats } from "@/api/sdf/dal/change_set";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
@@ -53,7 +54,7 @@ type RawComponent = {
   displayName: string;
   id: ComponentId;
   nodeId: ComponentNodeId;
-  nodeType: "component" | "configurationFrame" | "aggregationFrame";
+  nodeType: ComponentType;
   parentNodeId?: ComponentNodeId;
   position: GridPoint;
   size?: Size2D;
@@ -320,7 +321,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   (nodeId) => nodeIdToComponentId[nodeId],
                 ),
                 icon: typeIcon,
-                isGroup: rc.nodeType !== "component",
+                isGroup: rc.nodeType !== ComponentType.Component,
               } as FullComponent;
             });
           },
@@ -465,48 +466,37 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           diagramEdges(): DiagramEdgeDef[] {
-            // Note(victor): The code below checks whether was only created implicitly, through inheritance from an aggregation frame
-            // In the future, it would make more sense for these edges to not be returned from the backend
             const validEdges = _.filter(this.allEdges, (edge) => {
               return (
                 !!this.componentsByNodeId[edge.toNodeId] &&
                 !!this.componentsByNodeId[edge.fromNodeId]
               );
             });
-            const edgesWithInvisibleSet = _.map(validEdges, (rawEdge) => {
-              const edge = { ...rawEdge, invisible: false };
 
-              const toNodeParentId =
-                this.componentsByNodeId[edge.toNodeId]?.parentNodeId;
+            // If edge connects inside ancestry, don't show
+            return _.map(validEdges, (edge) => {
+              const fromComponent = this.componentsByNodeId[edge.fromNodeId];
+              if (!fromComponent)
+                throw Error(`Not finding from node for edge ${edge.id}`);
+              const fromParentage = [
+                fromComponent.id,
+                ...(fromComponent.ancestorIds ?? []),
+              ];
 
-              if (toNodeParentId) {
-                const toNodeParentComp =
-                  this.componentsByNodeId[toNodeParentId];
+              const toComponent = this.componentsByNodeId[edge.toNodeId];
+              if (!toComponent)
+                throw Error(`Not finding to node for edge ${edge.id}`);
+              const toParentage = [
+                toComponent.id,
+                ...(toComponent.ancestorIds ?? []),
+              ];
 
-                if (toNodeParentComp?.nodeType === "aggregationFrame") {
-                  if (edge.fromNodeId === toNodeParentComp.nodeId) {
-                    edge.isInvisible = true;
-                  }
-                }
-              }
+              const isInvisible =
+                fromParentage.includes(toComponent.id) ||
+                toParentage.includes(fromComponent.id);
 
-              const fromNodeParentId =
-                this.componentsByNodeId[edge.fromNodeId]?.parentNodeId;
-
-              if (fromNodeParentId) {
-                const fromParentComp =
-                  this.componentsByNodeId[fromNodeParentId];
-                if (fromParentComp?.nodeType === "aggregationFrame") {
-                  if (edge.toNodeId === fromParentComp.nodeId) {
-                    edge.isInvisible = true;
-                  }
-                }
-              }
-
-              return edge;
+              return { ...edge, isInvisible };
             });
-
-            return edgesWithInvisibleSet;
           },
 
           edgesByFromNodeId(): Record<ComponentNodeId, Edge[]> {
