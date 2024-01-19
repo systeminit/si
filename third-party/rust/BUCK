@@ -34,7 +34,7 @@ git_fetch(
 git_fetch(
     name = "tokio-postgres-rustls-855e14009fe3bebe.git",
     repo = "https://github.com/jbg/tokio-postgres-rustls.git",
-    rev = "f210aa24c4788e7f3bd9af52c4f7014c5561ac70",
+    rev = "b8de7acc8067a3ec4b7e99ba6ea654fae8e28fe4",
     visibility = [],
 )
 
@@ -276,18 +276,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "anstream-0.6.9.crate",
-    sha256 = "3fde6067df7359f2d6335ec1a50c1f8f825801687d10da0cc4c6b08e3f6afd15",
-    strip_prefix = "anstream-0.6.9",
-    urls = ["https://crates.io/api/v1/crates/anstream/0.6.9/download"],
+    name = "anstream-0.6.11.crate",
+    sha256 = "6e2e1ebcb11de5c03c67de28a7df593d32191b44939c482e97702baaaa6ab6a5",
+    strip_prefix = "anstream-0.6.11",
+    urls = ["https://crates.io/api/v1/crates/anstream/0.6.11/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "anstream-0.6.9",
-    srcs = [":anstream-0.6.9.crate"],
+    name = "anstream-0.6.11",
+    srcs = [":anstream-0.6.11.crate"],
     crate = "anstream",
-    crate_root = "anstream-0.6.9.crate/src/lib.rs",
+    crate_root = "anstream-0.6.11.crate/src/lib.rs",
     edition = "2021",
     features = [
         "auto",
@@ -1120,7 +1120,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":bytes-1.5.0",
-        ":smallvec-1.12.0",
+        ":smallvec-1.13.0",
     ],
 )
 
@@ -1925,7 +1925,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":anstream-0.6.9",
+        ":anstream-0.6.11",
         ":anstyle-1.0.4",
         ":clap_lex-0.6.0",
         ":strsim-0.10.0",
@@ -7639,7 +7639,7 @@ cargo.rust_library(
         ":num-iter-0.1.43",
         ":num-traits-0.2.17",
         ":rand-0.8.5",
-        ":smallvec-1.12.0",
+        ":smallvec-1.13.0",
         ":zeroize-1.7.0",
     ],
 )
@@ -8608,7 +8608,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":cfg-if-1.0.0",
-        ":smallvec-1.12.0",
+        ":smallvec-1.13.0",
     ],
 )
 
@@ -12841,22 +12841,22 @@ cargo.rust_library(
     edition = "2018",
     features = ["union"],
     visibility = [],
-    deps = [":smallvec-1.12.0"],
+    deps = [":smallvec-1.13.0"],
 )
 
 http_archive(
-    name = "smallvec-1.12.0.crate",
-    sha256 = "2593d31f82ead8df961d8bd23a64c2ccf2eb5dd34b0a34bfb4dd54011c72009e",
-    strip_prefix = "smallvec-1.12.0",
-    urls = ["https://crates.io/api/v1/crates/smallvec/1.12.0/download"],
+    name = "smallvec-1.13.0.crate",
+    sha256 = "3b187f0231d56fe41bfb12034819dd2bf336422a5866de41bc3fec4b2e3883e8",
+    strip_prefix = "smallvec-1.13.0",
+    urls = ["https://crates.io/api/v1/crates/smallvec/1.13.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "smallvec-1.12.0",
-    srcs = [":smallvec-1.12.0.crate"],
+    name = "smallvec-1.13.0",
+    srcs = [":smallvec-1.13.0.crate"],
     crate = "smallvec",
-    crate_root = "smallvec-1.12.0.crate/src/lib.rs",
+    crate_root = "smallvec-1.13.0.crate/src/lib.rs",
     edition = "2018",
     features = [
         "const_generics",
@@ -13138,7 +13138,7 @@ cargo.rust_library(
         ":serde-1.0.195",
         ":serde_json-1.0.111",
         ":sha2-0.10.8",
-        ":smallvec-1.12.0",
+        ":smallvec-1.13.0",
         ":sqlformat-0.2.3",
         ":thiserror-1.0.56",
         ":time-0.3.31",
@@ -13213,7 +13213,7 @@ cargo.rust_library(
         ":serde_json-1.0.111",
         ":sha1-0.10.6",
         ":sha2-0.10.8",
-        ":smallvec-1.12.0",
+        ":smallvec-1.13.0",
         ":sqlx-core-0.7.3",
         ":stringprep-0.1.4",
         ":thiserror-1.0.56",
@@ -13879,7 +13879,7 @@ cargo.rust_binary(
         ":thiserror-1.0.56",
         ":tokio-1.35.1",
         ":tokio-postgres-0.7.10",
-        ":tokio-postgres-rustls-0.11.0",
+        ":tokio-postgres-rustls-0.11.1",
         ":tokio-serde-0.8.0",
         ":tokio-stream-0.1.14",
         ":tokio-test-0.4.3",
@@ -14327,19 +14327,18 @@ cargo.rust_library(
 
 alias(
     name = "tokio-postgres-rustls",
-    actual = ":tokio-postgres-rustls-0.11.0",
+    actual = ":tokio-postgres-rustls-0.11.1",
     visibility = ["PUBLIC"],
 )
 
 cargo.rust_library(
-    name = "tokio-postgres-rustls-0.11.0",
+    name = "tokio-postgres-rustls-0.11.1",
     srcs = [":tokio-postgres-rustls-855e14009fe3bebe.git"],
     crate = "tokio_postgres_rustls",
     crate_root = "tokio-postgres-rustls-855e14009fe3bebe/src/lib.rs",
     edition = "2018",
     visibility = [],
     deps = [
-        ":futures-0.3.30",
         ":ring-0.17.5",
         ":rustls-0.22.2",
         ":tokio-1.35.1",
@@ -15161,7 +15160,7 @@ cargo.rust_library(
         ":once_cell-1.19.0",
         ":opentelemetry-0.21.0",
         ":opentelemetry_sdk-0.21.2",
-        ":smallvec-1.12.0",
+        ":smallvec-1.13.0",
         ":tracing-0.1.40",
         ":tracing-core-0.1.32",
         ":tracing-log-0.2.0",
@@ -15214,7 +15213,7 @@ cargo.rust_library(
         ":once_cell-1.19.0",
         ":regex-1.10.2",
         ":sharded-slab-0.1.7",
-        ":smallvec-1.12.0",
+        ":smallvec-1.13.0",
         ":thread_local-1.1.7",
         ":tracing-0.1.40",
         ":tracing-core-0.1.32",
@@ -16470,7 +16469,7 @@ cargo.rust_library(
         ":serde-1.0.195",
         ":serde_json-1.0.111",
         ":smallstr-0.3.0",
-        ":smallvec-1.12.0",
+        ":smallvec-1.13.0",
         ":thiserror-1.0.56",
     ],
 )

@@ -140,6 +140,9 @@ impl Instance for LocalUdsInstance {
 
         Ok(())
     }
+    fn id(&self) -> u32 {
+        self.runtime.id()
+    }
 }
 
 #[async_trait]
@@ -345,6 +348,16 @@ impl Spec for LocalUdsInstanceSpec {
     type Instance = LocalUdsInstance;
     type Error = LocalUdsInstanceError;
 
+    fn use_pool_noodle(&self) -> bool {
+        matches!(
+            self.runtime_strategy,
+            LocalUdsRuntimeStrategy::LocalFirecracker
+        )
+    }
+    fn pool_size(&self) -> u16 {
+        self.pool_size
+    }
+
     async fn setup(&self) -> result::Result<(), Self::Error> {
         match self.runtime_strategy {
             LocalUdsRuntimeStrategy::LocalDocker => Ok(()),
@@ -353,9 +366,9 @@ impl Spec for LocalUdsInstanceSpec {
         }
     }
 
-    async fn spawn(&self) -> result::Result<Self::Instance, Self::Error> {
+    async fn spawn(&self, id: u32) -> result::Result<Self::Instance, Self::Error> {
         let (temp_path, socket) = temp_path_and_socket_from(&self.socket_strategy)?;
-        let mut runtime = runtime_instance_from_spec(self, &socket).await?;
+        let mut runtime = runtime_instance_from_spec(self, &socket, id).await?;
 
         runtime.spawn().await?;
         //TODO(scott): Firecracker requires the client to add a special connection detail. We
@@ -571,6 +584,7 @@ impl Default for LocalUdsRuntimeStrategy {
 
 #[async_trait]
 pub trait LocalInstanceRuntime: Send + Sync {
+    fn id(&self) -> u32;
     fn socket(&mut self) -> PathBuf;
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError>;
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError>;
@@ -623,6 +637,9 @@ impl LocalProcessRuntime {
 
 #[async_trait]
 impl LocalInstanceRuntime for LocalProcessRuntime {
+    fn id(&self) -> u32 {
+        0
+    }
     fn socket(&mut self) -> PathBuf {
         self.socket.to_path_buf()
     }
@@ -766,6 +783,9 @@ impl LocalDockerRuntime {
 
 #[async_trait]
 impl LocalInstanceRuntime for LocalDockerRuntime {
+    fn id(&self) -> u32 {
+        0
+    }
     fn socket(&mut self) -> PathBuf {
         self.socket.to_path_buf()
     }
@@ -798,22 +818,13 @@ impl LocalInstanceRuntime for LocalDockerRuntime {
 struct LocalFirecrackerRuntime {
     cmd: Command,
     child: Option<Child>,
+    vm_id: u32,
     socket: PathBuf,
 }
 
 impl LocalFirecrackerRuntime {
-    async fn build() -> Result<Box<dyn LocalInstanceRuntime>> {
-        // todo(scott): the pid is a naive method for removing serially creating jails.
-        // we read the pid, use that as the vm_id, and then increment it.
-        // There are obvious contention problems here, but we should address
-        // this within deadpool itself.
-        let pid = Path::new("/firecracker-data/pid");
-        let vm_id = &std::fs::read_to_string(pid)
-            .map_err(LocalUdsInstanceError::FirecrackerPidRead)?
-            .parse::<i32>()
-            .map_err(LocalUdsInstanceError::FirecrackerPidParse)?;
-        std::fs::write(pid, format!("{}", vm_id + 1))
-            .map_err(LocalUdsInstanceError::FirecrackerPidWrite)?;
+    async fn build(id: u32) -> Result<Box<dyn LocalInstanceRuntime>> {
+        let vm_id = id;
 
         let mut cmd = Command::new("/usr/bin/jailer");
         cmd.arg("--cgroup-version")
@@ -836,6 +847,7 @@ impl LocalFirecrackerRuntime {
         Ok(Box::new(LocalFirecrackerRuntime {
             cmd,
             child: None,
+            vm_id,
             socket: sock,
         }))
     }
@@ -843,6 +855,9 @@ impl LocalFirecrackerRuntime {
 
 #[async_trait]
 impl LocalInstanceRuntime for LocalFirecrackerRuntime {
+    fn id(&self) -> u32 {
+        self.vm_id
+    }
     fn socket(&mut self) -> PathBuf {
         self.socket.to_path_buf()
     }
@@ -894,6 +909,7 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
 async fn runtime_instance_from_spec(
     spec: &LocalUdsInstanceSpec,
     socket: &PathBuf,
+    id: u32,
 ) -> Result<Box<dyn LocalInstanceRuntime>> {
     match spec.runtime_strategy {
         LocalUdsRuntimeStrategy::LocalProcess => {
@@ -902,14 +918,13 @@ async fn runtime_instance_from_spec(
         LocalUdsRuntimeStrategy::LocalDocker => {
             LocalDockerRuntime::build(socket, spec.clone()).await
         }
-        LocalUdsRuntimeStrategy::LocalFirecracker => LocalFirecrackerRuntime::build().await,
+        LocalUdsRuntimeStrategy::LocalFirecracker => LocalFirecrackerRuntime::build(id).await,
     }
 }
 
 async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
     let script_bytes = include_bytes!("firecracker-setup.sh");
     let command = Path::new("/firecracker-data/firecracker-setup.sh");
-    let pid = Path::new("/firecracker-data/pid");
 
     // we need to ensure the file is in the correct location with the correct permissions
     std::fs::create_dir_all(
@@ -922,20 +937,14 @@ async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
     std::fs::set_permissions(command, std::fs::Permissions::from_mode(0o755))
         .map_err(LocalUdsInstanceError::FirecrackerSetupPermissions)?;
 
-    // firecracker pid is used to serialize jail creation
-    std::fs::create_dir_all(
-        pid.parent()
-            .expect("This should never happen. Did you remove the path from the string above?"),
-    )
-    .map_err(LocalUdsInstanceError::FirecrackerSetupCreate)?;
-    std::fs::write(pid, "0").map_err(LocalUdsInstanceError::FirecrackerSetupWrite)?;
     // Spawn the shell process
     let _status = Command::new("sudo")
         .arg(command)
         .arg("-j")
         .arg(&spec.pool_size.to_string())
         .arg("-rk")
-        .status();
+        .status()
+        .await;
 
     Ok(())
 }

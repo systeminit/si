@@ -15,11 +15,15 @@
     clippy::module_name_repetitions
 )]
 
-use async_trait::async_trait;
 use deadpool::managed::{self, Metrics};
+use tokio::sync::Mutex;
+
+use async_trait::async_trait;
+use pool_noodle::pool_noodle::PoolNoodleError;
 use thiserror::Error;
 
 pub use self::instance::{Instance, Spec};
+pub use crate::pool_noodle::pool_noodle::PoolNoodle;
 
 pub use cyclone_client::{
     ClientError, CycloneClient, CycloneEncryptionKey, CycloneEncryptionKeyError, ExecutionError,
@@ -34,6 +38,8 @@ pub use cyclone_core::{
 
 /// [`Instance`] implementations.
 pub mod instance;
+/// [`PoolNoodle`] implementations.
+pub mod pool_noodle;
 
 /// Type alias for using [`managed::Pool`] with Cyclone.
 pub type Pool<S> = managed::Pool<Manager<S>>;
@@ -67,8 +73,8 @@ pub enum ManagerError<T> {
 }
 
 /// [`Manager`] for creating and recycling generic [`Instance`]s.
-#[derive(Debug)]
 pub struct Manager<S> {
+    pool_noodle: Mutex<PoolNoodle>,
     spec: S,
 }
 
@@ -78,12 +84,19 @@ where
 {
     /// Creates a new [`Manager`] from the given instance specification.
     pub fn new(spec: S) -> Self {
-        Self { spec }
+        Self {
+            pool_noodle: PoolNoodle::new(spec.pool_size().into()).into(),
+            spec,
+        }
     }
 
     /// Peforms any necessary setup work to ensure the host can run the pool members.
-    pub async fn setup(&self) -> Result<(), S::Error> {
-        self.spec.setup().await
+    pub async fn setup(&mut self) -> Result<(), S::Error> {
+        self.spec.setup().await?;
+        if self.spec.use_pool_noodle() {
+            self.pool_noodle.lock().await.start();
+        }
+        Ok(())
     }
 }
 
@@ -98,7 +111,19 @@ where
     type Error = E;
 
     async fn create(&self) -> Result<Self::Type, Self::Error> {
-        self.spec.spawn().await
+        let id = if self.spec.use_pool_noodle() {
+            self
+            .pool_noodle
+            .lock()
+            .await
+            .get_ready_jail()
+            .await
+            .map_err(|_| PoolNoodleError::ExecutionPoolStarved)
+            .expect("Function execution is impossible as the execution pool is starved and not recovering.")
+        } else {
+            0
+        };
+        self.spec.spawn(id).await
     }
 
     async fn recycle(
@@ -106,7 +131,19 @@ where
         obj: &mut Self::Type,
         _: &Metrics,
     ) -> managed::RecycleResult<Self::Error> {
-        obj.ensure_healthy().await.map_err(Into::into)
+        match obj.ensure_healthy().await {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                if self.spec.use_pool_noodle() {
+                    self.pool_noodle
+                        .lock()
+                        .await
+                        .set_as_to_be_cleaned(obj.id())
+                        .await;
+                }
+                Result::map_err(Err(err), Into::into)
+            }
+        }
     }
 }
 
