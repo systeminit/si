@@ -47,9 +47,7 @@ pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
     Transactions, TransactionsError,
 };
-pub use diagram::{
-    connection::Connection, connection::DiagramEdgeView, Diagram, DiagramError, DiagramKind,
-};
+pub use diagram::{connection::Connection, Diagram, DiagramError, DiagramKind};
 pub use edge::{Edge, EdgeError, EdgeResult};
 pub use fix::batch::{FixBatch, FixBatchId};
 pub use fix::resolver::{FixResolver, FixResolverError, FixResolverId};
