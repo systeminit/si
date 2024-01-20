@@ -8,8 +8,8 @@ use crate::diagram::node::HistoryEventMetadata;
 use crate::diagram::DiagramResult;
 use crate::socket::SocketId;
 use crate::{
-    node::NodeId, ActorView, Component, ComponentError, DalContext, DiagramError, HistoryActor,
-    Socket, SocketArity, StandardModel, User,
+    node::NodeId, Component, ComponentError, DalContext, DiagramError, Socket, SocketArity,
+    StandardModel, User,
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -114,12 +114,6 @@ impl Connection {
         Ok(Connection::from_edge(&edge))
     }
 
-    pub async fn list(ctx: &DalContext) -> DiagramResult<Vec<Self>> {
-        let edges = Edge::list(ctx).await?;
-        let connections = edges.iter().map(Self::from_edge).collect::<Vec<Self>>();
-        Ok(connections)
-    }
-
     pub fn from_edge(edge: &Edge) -> Self {
         Self {
             id: *edge.id(),
@@ -179,31 +173,6 @@ impl DiagramEdgeView {
 }
 
 impl DiagramEdgeView {
-    pub async fn set_actor_details(&mut self, ctx: &DalContext, edge: &Edge) -> DiagramResult<()> {
-        if let Some(user_pk) = edge.creation_user_pk() {
-            let history_actor = HistoryActor::User(*user_pk);
-            let actor = ActorView::from_history_actor(ctx, history_actor).await?;
-            self.created_info = Some(HistoryEventMetadata {
-                actor,
-                timestamp: edge.timestamp().created_at,
-            })
-        }
-
-        if let Some(user_pk) = edge.deletion_user_pk() {
-            let history_actor = HistoryActor::User(*user_pk);
-            let actor = ActorView::from_history_actor(ctx, history_actor).await?;
-            self.deleted_info = Some(HistoryEventMetadata {
-                actor,
-                timestamp: ctx
-                    .visibility()
-                    .deleted_at
-                    .ok_or(DiagramError::DeletionTimeStamp)?,
-            })
-        }
-
-        Ok(())
-    }
-
     pub fn from_with_change_status(conn: Connection, change_status: ChangeStatus) -> Self {
         Self {
             id: conn.id.to_string(),
@@ -215,11 +184,5 @@ impl DiagramEdgeView {
             created_info: None,
             deleted_info: None,
         }
-    }
-}
-
-impl From<Connection> for DiagramEdgeView {
-    fn from(conn: Connection) -> Self {
-        DiagramEdgeView::from_with_change_status(conn, ChangeStatus::Unmodified)
     }
 }

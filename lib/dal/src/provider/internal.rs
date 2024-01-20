@@ -99,6 +99,7 @@ const FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME: &str =
 const FIND_FOR_PROP: &str = include_str!("../queries/internal_provider/find_for_prop.sql");
 const FIND_EXPLICIT_FOR_SOCKET: &str =
     include_str!("../queries/internal_provider/find_explicit_for_socket.sql");
+const IS_FOR_ROOT_PROP: &str = include_str!("../queries/internal_provider/is_for_root_prop.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/internal_provider/list_for_schema_variant.sql");
 const LIST_EXPLICIT_FOR_SCHEMA_VARIANT: &str =
@@ -634,5 +635,23 @@ impl InternalProvider {
         }
 
         Ok(objects.into_iter().collect())
+    }
+
+    /// Determines if the provided [`InternalProvider`] corresponds to a "root" [`Prop`](crate::Prop).
+    #[tracing::instrument(skip(ctx))]
+    pub async fn is_for_root_prop(
+        ctx: &DalContext,
+        internal_provider_id: InternalProviderId,
+    ) -> InternalProviderResult<bool> {
+        let maybe_row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                IS_FOR_ROOT_PROP,
+                &[ctx.tenancy(), ctx.visibility(), &internal_provider_id],
+            )
+            .await?;
+        Ok(maybe_row.is_some())
     }
 }

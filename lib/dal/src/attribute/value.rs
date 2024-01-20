@@ -76,8 +76,6 @@ const CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_value/child_attribute_values_for_context.sql");
 const FETCH_UPDATE_GRAPH_DATA: &str =
     include_str!("../queries/attribute_value/fetch_update_graph_data.sql");
-const IS_FOR_INTERNAL_PROVIDER_OF_ROOT_PROP: &str =
-    include_str!("../queries/attribute_value/is_for_internal_provider_of_root_prop.sql");
 const FIND_PROP_FOR_VALUE: &str =
     include_str!("../queries/attribute_value/find_prop_for_value.sql");
 const FIND_WITH_PARENT_AND_KEY_FOR_CONTEXT: &str =
@@ -915,36 +913,6 @@ impl AttributeValue {
             .await?;
 
         Ok(())
-    }
-
-    /// Convenience method to determine if this [`AttributeValue`](Self) is for the implicit
-    /// [`InternalProvider`](crate::InternalProvider) that represents the "snapshot" of the entire
-    /// [`Component`](crate::Component). This means that the [`Prop`](crate::Prop) that the
-    /// [`InternalProvider`](crate::InternalProvider) is sourcing its data from does not have a
-    /// parent [`Prop`](crate::Prop).
-    pub async fn is_for_internal_provider_of_root_prop(
-        &mut self,
-        ctx: &DalContext,
-    ) -> AttributeValueResult<bool> {
-        let maybe_row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_opt(
-                IS_FOR_INTERNAL_PROVIDER_OF_ROOT_PROP,
-                &[&ctx.tenancy(), ctx.visibility(), &self.context],
-            )
-            .await?;
-        if let Some(row) = maybe_row {
-            // If we got a row back, that means that we are an AttributeValue for an InternalProvider,
-            // and we should have gotten a row back from the query.
-            Ok(row.try_get("is_for_root_prop")?)
-        } else {
-            // If we didn't get a row back, that means that we didn't find an InternalProvider for the
-            // InternalProviderId in our AttributeContext. Likely because it is ident_nil_v1, indicating that we're
-            // not for an InternalProvider at all.
-            Ok(false)
-        }
     }
 
     #[instrument(skip(ctx), level = "debug")]

@@ -2,14 +2,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
-use crate::change_status::ChangeStatus;
 use crate::diagram::DiagramResult;
-use crate::schema::SchemaUiMenu;
+
 use crate::socket::{SocketArity, SocketEdgeKind};
-use crate::{
-    history_event, ActorView, Component, ComponentId, ComponentStatus, ComponentType, DalContext,
-    DiagramError, HistoryActorTimestamp, Node, NodeId, SchemaVariant, StandardModel,
-};
+use crate::{ActorView, DalContext, HistoryActorTimestamp, SchemaVariant, StandardModel};
 
 #[remain::sorted]
 #[derive(
@@ -109,8 +105,8 @@ impl SocketView {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct GridPoint {
-    x: isize,
-    y: isize,
+    pub x: isize,
+    pub y: isize,
 }
 
 impl GridPoint {
@@ -126,8 +122,8 @@ impl GridPoint {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Size2D {
-    width: isize,
-    height: isize,
+    pub width: isize,
+    pub height: isize,
 }
 
 impl Size2D {
@@ -139,157 +135,7 @@ impl Size2D {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct DiagramComponentView {
-    id: ComponentId,
-    node_id: NodeId,
-    display_name: Option<String>,
-
-    parent_node_id: Option<NodeId>,
-    child_node_ids: Vec<NodeId>,
-
-    schema_name: String,
-    schema_id: String,
-    schema_variant_id: String,
-    schema_variant_name: String,
-    schema_category: Option<String>,
-
-    sockets: Option<Vec<SocketView>>,
-    position: GridPoint,
-    size: Option<Size2D>,
-    color: Option<String>,
-    node_type: ComponentType,
-    change_status: ChangeStatus,
-    has_resource: bool,
-    created_info: HistoryEventMetadata,
-    updated_info: HistoryEventMetadata,
-
-    deleted_info: Option<HistoryEventMetadata>,
-}
-
-impl DiagramComponentView {
-    #[allow(clippy::too_many_arguments)]
-    pub async fn new(
-        ctx: &DalContext,
-        component: &Component,
-        node: &Node,
-        parent_node_id: Option<NodeId>,
-        child_node_ids: Vec<NodeId>,
-        is_modified: bool,
-        schema_variant: &SchemaVariant,
-    ) -> DiagramResult<Self> {
-        let schema = schema_variant
-            .schema(ctx)
-            .await?
-            .ok_or(DiagramError::SchemaNotFound)?;
-
-        let schema_category = SchemaUiMenu::find_for_schema(ctx, *schema.id())
-            .await?
-            .map(|um| um.category().to_string());
-
-        let size = if let (Some(w), Some(h)) = (node.width(), node.height()) {
-            Some(Size2D {
-                height: h.parse()?,
-                width: w.parse()?,
-            })
-        } else {
-            None
-        };
-
-        let x = node.x().parse::<f64>()?;
-        let y = node.y().parse::<f64>()?;
-
-        // Change status should track the component, not the node, since node position is on the
-        // node and the node will change if it is moved
-        let change_status = if component.visibility().deleted_at.is_some() {
-            ChangeStatus::Deleted
-        } else if !component.exists_in_head(ctx).await? {
-            ChangeStatus::Added
-        } else if is_modified {
-            ChangeStatus::Modified
-        } else {
-            ChangeStatus::Unmodified
-        };
-
-        let component_status = ComponentStatus::get_by_id(ctx, component.id())
-            .await?
-            .ok_or_else(|| DiagramError::ComponentStatusNotFound(*component.id()))?;
-
-        let created_info =
-            HistoryEventMetadata::from_history_actor_timestamp(ctx, component_status.creation())
-                .await?;
-        let updated_info =
-            HistoryEventMetadata::from_history_actor_timestamp(ctx, component_status.update())
-                .await?;
-
-        let mut deleted_info: Option<HistoryEventMetadata> = None;
-        {
-            if let Some(deleted_at) = ctx.visibility().deleted_at {
-                if let Some(deletion_user_pk) = component.deletion_user_pk() {
-                    let history_actor = history_event::HistoryActor::User(*deletion_user_pk);
-                    let actor = ActorView::from_history_actor(ctx, history_actor).await?;
-
-                    deleted_info = Some(HistoryEventMetadata {
-                        actor,
-                        timestamp: deleted_at,
-                    });
-                }
-            }
-        }
-
-        let resource_exists = component.resource(ctx).await?.payload.is_some();
-
-        Ok(Self {
-            id: *component.id(),
-            node_id: *node.id(),
-            parent_node_id,
-            child_node_ids,
-            display_name: Some(component.name(ctx).await?),
-            schema_name: schema.name().to_owned(),
-            schema_variant_name: schema_variant.name().to_owned(),
-            schema_id: schema.id().to_string(),
-            schema_variant_id: schema_variant.id().to_string(),
-            schema_category,
-            sockets: Some(SocketView::list(ctx, schema_variant).await?),
-            position: GridPoint {
-                x: x.round() as isize,
-                y: y.round() as isize,
-            },
-            size,
-            color: component.color(ctx).await?,
-            node_type: component.get_type(ctx).await?,
-            change_status,
-            has_resource: resource_exists,
-            created_info,
-            updated_info,
-            deleted_info,
-        })
-    }
-
-    pub fn id(&self) -> ComponentId {
-        self.id
-    }
-
-    pub fn node_id(&self) -> NodeId {
-        self.node_id
-    }
-
-    pub fn position(&self) -> &GridPoint {
-        &self.position
-    }
-
-    pub fn size(&self) -> &Option<Size2D> {
-        &self.size
-    }
-
-    pub fn has_resource(&self) -> bool {
-        self.has_resource
-    }
-}
-
 // TODO(theo,victor): this should probably move and be used more generally in a few places?
-
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryEventMetadata {

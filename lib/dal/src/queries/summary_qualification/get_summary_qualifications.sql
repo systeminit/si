@@ -1,5 +1,6 @@
 SELECT row_to_json(a) AS object
-FROM (SELECT DISTINCT ON (components.id) components.id AS component_id,
+FROM (
+SELECT DISTINCT ON (components.id) components.id AS component_id,
                                          summary_qualifications.component_name,
                                          summary_qualifications.total,
                                          summary_qualifications.warned,

@@ -1,4 +1,7 @@
-use dal::{socket::SocketArity, DalContext, ExternalProvider, InternalProvider, StandardModel};
+use dal::{
+    socket::SocketArity, DalContext, ExternalProvider, InternalProvider, Schema, SchemaVariant,
+    StandardModel,
+};
 use dal_test::{
     connection_annotation_string,
     helpers::setup_identity_func,
@@ -82,4 +85,49 @@ async fn new_implicit_internal(ctx: &DalContext) {
         *found_explicit_internal_provider.id(), // actual
         *explicit_internal_provider.id()        // expected
     );
+}
+
+/// Use the following environment variable when running the test:
+/// ```bash
+/// SI_TEST_BUILTIN_SCHEMAS=test
+/// ```
+#[test]
+async fn is_for_root_prop(ctx: &DalContext) {
+    let schema = Schema::find_by_name(ctx, "fallout")
+        .await
+        .expect("could not find the schema");
+    let schema_variant_id = *schema
+        .default_schema_variant_id()
+        .expect("no default schema variant id");
+    let root_prop = SchemaVariant::find_root_prop(ctx, schema_variant_id)
+        .await
+        .expect("could not perform find root prop")
+        .expect("no root prop found");
+    let internal_provider_for_root_prop = InternalProvider::find_for_prop(ctx, *root_prop.id())
+        .await
+        .expect("could not perform find for prop")
+        .expect("no internal provider found");
+
+    // Check if the query works.
+    let is_for_root_prop =
+        InternalProvider::is_for_root_prop(ctx, *internal_provider_for_root_prop.id())
+            .await
+            .expect("could not check if the internal provider is for a root prop");
+    assert!(is_for_root_prop);
+
+    // Now ensure it fails for non-root props.
+    let children_of_root = root_prop
+        .child_props(ctx)
+        .await
+        .expect("could not get child props");
+    for child in children_of_root {
+        let internal_provider = InternalProvider::find_for_prop(ctx, *child.id())
+            .await
+            .expect("could not perform find for prop")
+            .expect("no internal provider found");
+        let is_for_root_prop = InternalProvider::is_for_root_prop(ctx, *internal_provider.id())
+            .await
+            .expect("could not check if the internal provider is for a root prop");
+        assert!(!is_for_root_prop);
+    }
 }
