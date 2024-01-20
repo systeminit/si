@@ -1,13 +1,16 @@
-use crate::{Tenancy, TransactionsError};
 use serde::{Deserialize, Serialize};
-use strum::Display as StrumDisplay;
-use thiserror::Error;
-
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use strum::Display as StrumDisplay;
 use telemetry::prelude::*;
+use thiserror::Error;
 
 use crate::{pk, DalContext, Timestamp, UserPk};
+use crate::{Tenancy, TransactionsError};
+
+pub use metadata::HistoryEventMetadata;
+
+mod metadata;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

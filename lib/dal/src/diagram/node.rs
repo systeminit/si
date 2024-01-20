@@ -1,11 +1,9 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 use crate::diagram::DiagramResult;
-
 use crate::socket::{SocketArity, SocketEdgeKind};
-use crate::{ActorView, DalContext, HistoryActorTimestamp, SchemaVariant, StandardModel};
+use crate::{DalContext, SchemaVariant, StandardModel};
 
 #[remain::sorted]
 #[derive(
@@ -132,27 +130,5 @@ impl Size2D {
     }
     pub fn height(&self) -> isize {
         self.height
-    }
-}
-
-// TODO(theo,victor): this should probably move and be used more generally in a few places?
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct HistoryEventMetadata {
-    pub actor: ActorView,
-    pub timestamp: DateTime<Utc>,
-}
-
-impl HistoryEventMetadata {
-    pub async fn from_history_actor_timestamp(
-        ctx: &DalContext,
-        value: HistoryActorTimestamp,
-    ) -> DiagramResult<Self> {
-        let actor = ActorView::from_history_actor(ctx, value.actor).await?;
-
-        Ok(Self {
-            actor,
-            timestamp: value.timestamp,
-        })
     }
 }

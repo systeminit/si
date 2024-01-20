@@ -5,9 +5,9 @@ use std::num::{ParseFloatError, ParseIntError};
 use thiserror::Error;
 
 use crate::change_status::ChangeStatus;
-use crate::diagram::node::{GridPoint, HistoryEventMetadata, Size2D, SocketView};
-
+use crate::diagram::node::{GridPoint, Size2D, SocketView};
 use crate::edge::{EdgeId, EdgeKind};
+use crate::history_event::HistoryEventMetadata;
 use crate::schema::SchemaUiMenu;
 use crate::standard_model::objects_from_rows;
 use crate::{
