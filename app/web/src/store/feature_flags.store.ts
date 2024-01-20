@@ -11,8 +11,6 @@ const FLAG_MAPPING = {
   INVITE_USER: "invite_user",
   SECRETS_MANAGEMENT: "secrets_management",
   WORKSPACE_BACKUPS: "workspaceBackups",
-  COLLABORATORS: "collaborators",
-  MUTLIPLAYER_CHANGESET_APPLY: "multiplayer_changeset_apply_flow",
   COPY_PASTE: "copy_paste",
   DONT_BLOCK_ON_ACTIONS: "dont_block_on_actions",
   OVERRIDE_SCHEMA: "override_schema",

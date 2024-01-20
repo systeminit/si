@@ -11,7 +11,6 @@ import { UserId } from "@/store/auth.store";
 import { nilId } from "@/utils/nilId";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { useFeatureFlagsStore } from "./feature_flags.store";
 import { useRouterStore } from "./router.store";
 
 export type ChangeSetId = string;
@@ -19,7 +18,6 @@ export type ChangeSetId = string;
 const HEAD_ID = nilId();
 
 export function useChangeSetsStore() {
-  const featureFlagsStore = useFeatureFlagsStore();
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
 
@@ -288,10 +286,7 @@ export function useChangeSetsStore() {
               const changeSet = this.changeSetsById[changeSetPk];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Abandoned;
-                if (
-                  this.selectedChangeSet?.pk === changeSetPk &&
-                  featureFlagsStore.MUTLIPLAYER_CHANGESET_APPLY
-                ) {
+                if (this.selectedChangeSet?.pk === changeSetPk) {
                   this.postAbandonActor = userPk;
                 }
                 this.changeSetsById[changeSetPk] = changeSet;
@@ -311,10 +306,7 @@ export function useChangeSetsStore() {
               const changeSet = this.changeSetsById[changeSetPk];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Applied;
-                if (
-                  this.selectedChangeSet?.pk === changeSetPk &&
-                  featureFlagsStore.MUTLIPLAYER_CHANGESET_APPLY
-                ) {
+                if (this.selectedChangeSet?.pk === changeSetPk) {
                   this.postApplyActor = userPk;
                 }
                 this.changeSetsById[changeSetPk] = changeSet;
