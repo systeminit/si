@@ -1,6 +1,6 @@
 <template>
   <div class="flex items-center justify-end h-full flex-1 min-w-0">
-    <Collaborators v-if="featureFlagsStore.COLLABORATORS" />
+    <Collaborators />
 
     <NavbarButton tooltipText="Copy link" @click="copyURL">
       <Icon name="link" />
