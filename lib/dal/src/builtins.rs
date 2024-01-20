@@ -1,6 +1,6 @@
 //! This module contains "builtin" objects that are included with System Initiative.
 //! All submodules are private since the only entrypoint to this module should be the
-//! [migrate()](crate::builtins::migrate()) function. However, they may have some functionality
+//! [migrate()](crate::builtins::migrate_local()) function. However, they may have some functionality
 //! exposed for "dev mode" use cases.
 
 use std::collections::HashSet;
@@ -143,12 +143,8 @@ pub enum SelectedTestBuiltinSchemas {
     Test,
 }
 
-/// Migrate all "builtins" in a definitive order.
-///
-/// 1. [`Funcs`](crate::Func)
-/// 1. [`Schemas`](crate::Schema)
-/// 1. ['ActionPrototypes'](crate::ActionPrototype)
-pub async fn migrate(
+/// Migrate all local "builtins" in a definitive order.
+pub async fn migrate_local(
     ctx: &DalContext,
     selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
 ) -> BuiltinsResult<()> {
@@ -159,10 +155,11 @@ pub async fn migrate(
 
     match selected_test_builtin_schemas {
         Some(found_selected_test_builtin_schemas) => {
-            schema::migrate_for_tests(ctx, found_selected_test_builtin_schemas).await?;
+            schema::migrate_local_only_test_schemas(ctx, found_selected_test_builtin_schemas)
+                .await?;
         }
         None => {
-            schema::migrate_for_production(ctx).await?;
+            schema::migrate_local_all_schemas(ctx).await?;
         }
     }
 
