@@ -289,8 +289,7 @@ export function useChangeSetsStore() {
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Abandoned;
                 if (
-                  this.selectedChangeSet?.pk === changeSetPk &&
-                  featureFlagsStore.MUTLIPLAYER_CHANGESET_APPLY
+                  this.selectedChangeSet?.pk === changeSetPk
                 ) {
                   this.postAbandonActor = userPk;
                 }
@@ -312,8 +311,7 @@ export function useChangeSetsStore() {
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Applied;
                 if (
-                  this.selectedChangeSet?.pk === changeSetPk &&
-                  featureFlagsStore.MUTLIPLAYER_CHANGESET_APPLY
+                  this.selectedChangeSet?.pk === changeSetPk
                 ) {
                   this.postApplyActor = userPk;
                 }
