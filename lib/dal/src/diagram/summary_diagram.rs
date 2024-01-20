@@ -2,18 +2,20 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use std::num::{ParseFloatError, ParseIntError};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
 
 use crate::change_status::ChangeStatus;
-use crate::diagram::node::{GridPoint, Size2D, SocketView};
+use crate::diagram::DiagramResult;
 use crate::edge::{EdgeId, EdgeKind};
 use crate::history_event::HistoryEventMetadata;
 use crate::schema::SchemaUiMenu;
+use crate::socket::SocketEdgeKind;
 use crate::standard_model::objects_from_rows;
 use crate::{
     history_event, impl_standard_model, pk, ActorView, Component, ComponentError, ComponentId,
     ComponentStatus, DalContext, DiagramError, Edge, EdgeError, HistoryActor, Node, NodeId, Schema,
-    SchemaError, SchemaId, SchemaVariant, SchemaVariantId, SocketId, StandardModel,
+    SchemaError, SchemaId, SchemaVariant, SchemaVariantId, SocketArity, SocketId, StandardModel,
     StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
 };
 
@@ -112,7 +114,7 @@ pub async fn create_component_entry(
     let schema_category_name = SchemaUiMenu::find_for_schema(ctx, *schema.id())
         .await?
         .map_or("None".to_string(), |um| um.category().to_string());
-    let sockets = SocketView::list(ctx, schema_variant).await?;
+    let sockets = DiagramSocket::list(ctx, schema_variant).await?;
     let display_name = component.name(ctx).await?;
     let position = GridPoint {
         x: node.x().parse::<f64>()?.round() as isize,
@@ -482,4 +484,113 @@ pub async fn edge_list(ctx: &DalContext) -> SummaryDiagramResult<Vec<SummaryDiag
         .await?;
     let objects: Vec<SummaryDiagramEdge> = objects_from_rows(rows)?;
     Ok(objects)
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct GridPoint {
+    pub x: isize,
+    pub y: isize,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct Size2D {
+    pub width: isize,
+    pub height: isize,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct DiagramSocket {
+    pub id: String,
+    pub label: String,
+    pub connection_annotations: Vec<String>,
+    pub direction: DiagramSocketDirection,
+    pub max_connections: Option<usize>,
+    pub is_required: Option<bool>,
+    pub node_side: DiagramSocketNodeSide,
+}
+
+impl DiagramSocket {
+    pub async fn list(
+        ctx: &DalContext,
+        schema_variant: &SchemaVariant,
+    ) -> DiagramResult<Vec<Self>> {
+        Ok(schema_variant
+            .sockets(ctx)
+            .await?
+            .into_iter()
+            .filter_map(|socket| {
+                (!socket.ui_hidden()).then(|| {
+                    let connection_annotations =
+                        serde_json::from_str(socket.connection_annotations())
+                            .unwrap_or(vec![socket.name().to_owned()]);
+
+                    Self {
+                        id: socket.id().to_string(),
+                        label: socket.human_name().unwrap_or(socket.name()).to_owned(),
+                        connection_annotations,
+                        // Note: it's not clear if this mapping is correct, and there is no backend support for bidirectional sockets for now
+                        direction: match socket.edge_kind() {
+                            SocketEdgeKind::ConfigurationOutput => DiagramSocketDirection::Output,
+                            _ => DiagramSocketDirection::Input,
+                        },
+                        max_connections: match socket.arity() {
+                            SocketArity::Many => None,
+                            SocketArity::One => Some(1),
+                        },
+                        is_required: Some(socket.required()),
+                        node_side: match socket.edge_kind() {
+                            SocketEdgeKind::ConfigurationOutput => DiagramSocketNodeSide::Right,
+                            _ => DiagramSocketNodeSide::Left,
+                        },
+                    }
+                })
+            })
+            .collect())
+    }
+}
+
+#[remain::sorted]
+#[derive(
+    AsRefStr,
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Display,
+    EnumIter,
+    EnumString,
+    Eq,
+    PartialEq,
+    Serialize,
+)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
+enum DiagramSocketDirection {
+    Bidirectional,
+    Input,
+    Output,
+}
+
+#[remain::sorted]
+#[derive(
+    AsRefStr,
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Display,
+    EnumIter,
+    EnumString,
+    Eq,
+    PartialEq,
+    Serialize,
+)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
+enum DiagramSocketNodeSide {
+    Left,
+    Right,
 }

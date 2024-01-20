@@ -20,7 +20,6 @@ use crate::{
 };
 
 pub mod connection;
-pub mod node;
 pub(crate) mod summary_diagram;
 
 #[remain::sorted]
