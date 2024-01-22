@@ -382,6 +382,10 @@ pub async fn create_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
         .await?;
 
     // If this is a symbolic edge, we need to set the relevant summary diagram component row's parent node id.
+    // NOTE(victor): This will store the wrong parent ID if parent has parents, since they get connected via symbolic edge,
+    // implicitly, later.
+    // TODO Store parent_node_id as data on the component itself, making sure to store only the direct parent
+    // so data survives export and import too
     if edge.kind() == &EdgeKind::Symbolic {
         let _row = ctx
             .txns()
