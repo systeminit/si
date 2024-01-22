@@ -16,10 +16,8 @@
 )]
 
 use deadpool::managed::{self, Metrics};
-use tokio::sync::Mutex;
 
 use async_trait::async_trait;
-use pool_noodle::pool_noodle::PoolNoodleError;
 use thiserror::Error;
 
 pub use self::instance::{Instance, Spec};
@@ -74,7 +72,6 @@ pub enum ManagerError<T> {
 
 /// [`Manager`] for creating and recycling generic [`Instance`]s.
 pub struct Manager<S> {
-    pool_noodle: Mutex<PoolNoodle>,
     spec: S,
 }
 
@@ -84,18 +81,12 @@ where
 {
     /// Creates a new [`Manager`] from the given instance specification.
     pub fn new(spec: S) -> Self {
-        Self {
-            pool_noodle: PoolNoodle::new(spec.pool_size().into()).into(),
-            spec,
-        }
+        Self { spec }
     }
 
     /// Peforms any necessary setup work to ensure the host can run the pool members.
     pub async fn setup(&mut self) -> Result<(), S::Error> {
         self.spec.setup().await?;
-        if self.spec.use_pool_noodle() {
-            self.pool_noodle.lock().await.start();
-        }
         Ok(())
     }
 }
@@ -111,19 +102,7 @@ where
     type Error = E;
 
     async fn create(&self) -> Result<Self::Type, Self::Error> {
-        let id = if self.spec.use_pool_noodle() {
-            self
-            .pool_noodle
-            .lock()
-            .await
-            .get_ready_jail()
-            .await
-            .map_err(|_| PoolNoodleError::ExecutionPoolStarved)
-            .expect("Function execution is impossible as the execution pool is starved and not recovering.")
-        } else {
-            0
-        };
-        self.spec.spawn(id).await
+        self.spec.spawn().await
     }
 
     async fn recycle(
@@ -134,13 +113,7 @@ where
         match obj.ensure_healthy().await {
             Ok(_) => Ok(()),
             Err(err) => {
-                if self.spec.use_pool_noodle() {
-                    self.pool_noodle
-                        .lock()
-                        .await
-                        .set_as_to_be_cleaned(obj.id())
-                        .await;
-                }
+                obj.terminate().await?;
                 Result::map_err(Err(err), Into::into)
             }
         }

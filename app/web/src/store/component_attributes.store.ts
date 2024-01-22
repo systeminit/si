@@ -339,6 +339,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 ...removePayload,
                 ...visibilityParams,
               },
+              onSuccess() {
+                const store = useComponentAttributesStore(componentId);
+                store.reloadPropertyEditorData();
+              },
             });
           },
 
@@ -381,7 +385,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 ...(isInsert ? updatePayload.insert : updatePayload.update),
                 ...visibilityParams,
               },
-              // onSuccess() {},
+              onSuccess() {
+                const store = useComponentAttributesStore(componentId);
+                store.reloadPropertyEditorData();
+              },
               onFail() {
                 // may not work exactly right with concurrent updates... but I dont think will be a problem
                 statusStore.cancelUpdateStarted();
@@ -395,10 +402,11 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
-              eventType: "ChangeSetWritten",
+              eventType: "ComponentUpdated",
               debounce: true,
-              callback: (writtenChangeSetId) => {
-                if (writtenChangeSetId !== changeSetId) return;
+              callback: (updated) => {
+                if (updated.changeSetPk !== changeSetId) return;
+                if (updated.componentId !== this.selectedComponentId) return;
                 this.reloadPropertyEditorData();
               },
             },

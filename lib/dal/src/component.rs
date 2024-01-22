@@ -23,6 +23,7 @@ use crate::schema::SchemaVariant;
 use crate::socket::{SocketEdgeKind, SocketError};
 use crate::standard_model::object_from_row;
 use crate::ws_event::WsEventError;
+use crate::ChangeSetPk;
 use crate::{
     diagram, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
@@ -1279,6 +1280,29 @@ impl WsEvent {
         WsEvent::new(
             ctx,
             WsPayload::ComponentCreated(ComponentCreatedPayload { success: true }),
+        )
+        .await
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentUpdatedPayload {
+    component_id: ComponentId,
+    change_set_pk: ChangeSetPk,
+}
+
+impl WsEvent {
+    pub async fn component_updated(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ComponentUpdated(ComponentUpdatedPayload {
+                component_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
         )
         .await
     }

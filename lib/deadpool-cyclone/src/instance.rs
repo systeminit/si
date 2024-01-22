@@ -17,7 +17,7 @@ pub trait Spec {
     type Error;
 
     /// Performs setup activities to prepare the host to create [Instance]s.
-    async fn setup(&self) -> result::Result<(), Self::Error>;
+    async fn setup(&mut self) -> result::Result<(), Self::Error>;
     /// Creates and launches an [`Instance`].
     ///
     /// NOTE: the method is non-consuming so that multiple Instances can be spawned from the same
@@ -79,12 +79,7 @@ pub trait Spec {
     /// # });
     /// # Ok::<(), SpawnError>(())
     /// ```
-    async fn spawn(&self, id: u32) -> result::Result<Self::Instance, Self::Error>;
-
-    /// whether to enable pool_noodle when using this spec
-    fn use_pool_noodle(&self) -> bool;
-    /// the size of the pool
-    fn pool_size(&self) -> u16;
+    async fn spawn(&self) -> result::Result<Self::Instance, Self::Error>;
 }
 
 /// A type which implements the [Builder pattern] and builds a [`Spec`].

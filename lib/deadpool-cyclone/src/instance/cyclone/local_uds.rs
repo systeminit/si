@@ -7,6 +7,7 @@ use rand::distributions::Alphanumeric;
 use rand::thread_rng;
 use rand::Rng;
 use std::{io, path::PathBuf, result, time::Duration};
+use tokio::time::Instant;
 
 use bollard::container::{
     Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions,
@@ -40,6 +41,7 @@ use tokio::{
 use tracing::{trace, warn};
 
 use crate::instance::{Instance, Spec, SpecBuilder};
+use crate::PoolNoodle;
 
 /// Error type for [`LocalUdsInstance`].
 #[remain::sorted]
@@ -341,6 +343,10 @@ pub struct LocalUdsInstanceSpec {
     /// Sets the timeout for connecting to firecracker
     #[builder(setter(into), default = "10")]
     connect_timeout: u64,
+
+    /// pool noodle
+    #[builder(default)]
+    pool_noodle: PoolNoodle,
 }
 
 #[async_trait]
@@ -348,17 +354,7 @@ impl Spec for LocalUdsInstanceSpec {
     type Instance = LocalUdsInstance;
     type Error = LocalUdsInstanceError;
 
-    fn use_pool_noodle(&self) -> bool {
-        matches!(
-            self.runtime_strategy,
-            LocalUdsRuntimeStrategy::LocalFirecracker
-        )
-    }
-    fn pool_size(&self) -> u16 {
-        self.pool_size
-    }
-
-    async fn setup(&self) -> result::Result<(), Self::Error> {
+    async fn setup(&mut self) -> result::Result<(), Self::Error> {
         match self.runtime_strategy {
             LocalUdsRuntimeStrategy::LocalDocker => Ok(()),
             LocalUdsRuntimeStrategy::LocalProcess => Ok(()),
@@ -366,9 +362,9 @@ impl Spec for LocalUdsInstanceSpec {
         }
     }
 
-    async fn spawn(&self, id: u32) -> result::Result<Self::Instance, Self::Error> {
+    async fn spawn(&self) -> result::Result<Self::Instance, Self::Error> {
         let (temp_path, socket) = temp_path_and_socket_from(&self.socket_strategy)?;
-        let mut runtime = runtime_instance_from_spec(self, &socket, id).await?;
+        let mut runtime = runtime_instance_from_spec(self, &socket).await?;
 
         runtime.spawn().await?;
         //TODO(scott): Firecracker requires the client to add a special connection detail. We
@@ -818,13 +814,31 @@ impl LocalInstanceRuntime for LocalDockerRuntime {
 struct LocalFirecrackerRuntime {
     cmd: Command,
     child: Option<Child>,
+    pool_noodle: PoolNoodle,
     vm_id: u32,
     socket: PathBuf,
 }
 
 impl LocalFirecrackerRuntime {
-    async fn build(id: u32) -> Result<Box<dyn LocalInstanceRuntime>> {
-        let vm_id = id;
+    async fn build(spec: LocalUdsInstanceSpec) -> Result<Box<dyn LocalInstanceRuntime>> {
+        let vm_id = spec
+            .pool_noodle
+            .0
+            .lock()
+            .await
+            .get_ready_jail()
+            .await
+            .expect(
+            "Function execution is impossible as the execution pool is starved and not recovering.",
+        );
+
+        let _start_time = spec
+            .pool_noodle
+            .0
+            .lock()
+            .await
+            .set_as_active(vm_id, Instant::now())
+            .await;
 
         let mut cmd = Command::new("/usr/bin/jailer");
         cmd.arg("--cgroup-version")
@@ -847,6 +861,7 @@ impl LocalFirecrackerRuntime {
         Ok(Box::new(LocalFirecrackerRuntime {
             cmd,
             child: None,
+            pool_noodle: spec.pool_noodle,
             vm_id,
             socket: sock,
         }))
@@ -892,6 +907,12 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
         );
         match self.child.as_mut() {
             Some(c) => {
+                self.pool_noodle
+                    .0
+                    .lock()
+                    .await
+                    .set_as_to_be_cleaned(self.vm_id)
+                    .await;
                 process::child_shutdown(c, Some(process::Signal::SIGTERM), None).await?;
                 trace!(
                     "cyclone-execution: terminate finished {:?}",
@@ -909,7 +930,6 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
 async fn runtime_instance_from_spec(
     spec: &LocalUdsInstanceSpec,
     socket: &PathBuf,
-    id: u32,
 ) -> Result<Box<dyn LocalInstanceRuntime>> {
     match spec.runtime_strategy {
         LocalUdsRuntimeStrategy::LocalProcess => {
@@ -918,7 +938,9 @@ async fn runtime_instance_from_spec(
         LocalUdsRuntimeStrategy::LocalDocker => {
             LocalDockerRuntime::build(socket, spec.clone()).await
         }
-        LocalUdsRuntimeStrategy::LocalFirecracker => LocalFirecrackerRuntime::build(id).await,
+        LocalUdsRuntimeStrategy::LocalFirecracker => {
+            LocalFirecrackerRuntime::build(spec.clone()).await
+        }
     }
 }
 
@@ -946,6 +968,7 @@ async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
         .status()
         .await;
 
+    spec.pool_noodle.start();
     Ok(())
 }
 
