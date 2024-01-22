@@ -1,10 +1,7 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { watch } from "vue";
-
-import storage from "local-storage-fallback";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
-
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import router from "@/router";
 import { UserId } from "@/store/auth.store";
@@ -220,7 +217,7 @@ export function useChangeSetsStore() {
         // - change_set/update_selected_change_set (was just fetching the change set info)
 
         getAutoSelectedChangeSetId() {
-          const lastChangeSetId = storage.getItem(
+          const lastChangeSetId = sessionStorage.getItem(
             `SI:LAST_CHANGE_SET/${workspacePk}`,
           );
           if (
@@ -260,7 +257,7 @@ export function useChangeSetsStore() {
           () => {
             // store last used change set (per workspace) in localstorage
             if (this.selectedChangeSet && workspacePk) {
-              storage.setItem(
+              sessionStorage.setItem(
                 `SI:LAST_CHANGE_SET/${workspacePk}`,
                 this.selectedChangeSet.pk,
               );
