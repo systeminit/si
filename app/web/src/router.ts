@@ -11,12 +11,6 @@ const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 
 const routes: RouteRecordRaw[] = [
   {
-    path: "/store-test",
-    name: "store-test",
-    meta: { public: true },
-    component: () => import("@/pages/store_test/StoreTestPage.vue"),
-  },
-  {
     path: "/",
     name: "home",
     component: () => import("@/pages/HomePage.vue"),
