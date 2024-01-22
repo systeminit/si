@@ -538,7 +538,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     info!("creating builtins");
     // TODO: @stack72 - remove this code path and install these from the module-index??
-    dal::migrate_builtins(
+    dal::migrate_local_builtins(
         services_ctx.pg_pool(),
         services_ctx.nats_conn(),
         services_ctx.job_processor(),

@@ -17,7 +17,7 @@ use telemetry::prelude::*;
 use veritech_client::SensitiveContainer;
 
 use crate::{
-    diagram::node::HistoryEventMetadata,
+    history_event::HistoryEventMetadata,
     impl_standard_model,
     key_pair::KeyPairPk,
     pk,
