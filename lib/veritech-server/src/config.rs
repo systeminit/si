@@ -1,3 +1,4 @@
+use deadpool_cyclone::PoolNoodle;
 use std::{
     env,
     net::{SocketAddr, ToSocketAddrs},
@@ -394,6 +395,7 @@ impl TryFrom<CycloneConfig> for CycloneSpec {
                 }
                 builder.pool_size(pool_size);
                 builder.connect_timeout(connect_timeout);
+                builder.pool_noodle(PoolNoodle::new(pool_size.into()));
 
                 Ok(Self::LocalUds(
                     builder.build().map_err(ConfigError::cyclone_spec_build)?,
