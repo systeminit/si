@@ -8,13 +8,6 @@
         placeholder="The name of this module..."
       />
       <VormInput
-        v-if="!autoVersion"
-        v-model="packageExportReq.version"
-        label="Version"
-        required
-        placeholder="The version of this module..."
-      />
-      <VormInput
         v-model="packageExportReq.description"
         label="Description"
         type="textarea"
@@ -110,14 +103,12 @@ const props = withDefaults(
     title?: string;
     label?: string;
     loadingText?: string;
-    autoVersion?: boolean;
     preSelectedSchemaVariantId?: string;
   }>(),
   {
     title: "Export Module",
     label: "Export",
     loadingText: "Exporting...",
-    autoVersion: false,
   },
 );
 
@@ -176,26 +167,11 @@ const schemaVariantOptions = computed(() =>
 const getVersionTimestamp = () => dateFormat(Date.now(), "yyyyMMddkkmmss");
 
 const enableExportButton = computed(() => {
-  if (packageExportReq.value?.name?.trim().length === 0) {
-    return false;
-  }
-  if (
-    !props.autoVersion &&
-    packageExportReq.value?.version?.trim().length === 0
-  ) {
-    return false;
-  }
-  if (schemaVariantsForExport.value?.length === 0) {
-    return false;
-  }
-
-  return true;
+  return packageExportReq.value?.name?.trim().length !== 0;
 });
 
 const exportPkg = async () => {
-  if (props.autoVersion) {
-    packageExportReq.value.version = getVersionTimestamp();
-  }
+  packageExportReq.value.version = getVersionTimestamp();
   const result = await moduleStore.EXPORT_MODULE({
     ...packageExportReq.value,
     schemaVariants: schemaVariantsForExport.value,
