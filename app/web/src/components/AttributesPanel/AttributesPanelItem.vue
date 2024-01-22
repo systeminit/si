@@ -213,13 +213,29 @@
               !(widgetKind === 'secret')
             "
           >
-            <!-- TODO(Wendy) - These icons should be interactable, change color to action on hover, and have tooltips -->
             <Icon
               v-if="valueFromSocket"
               v-tooltip="`${propName} is set via an input socket`"
               class="hover:text-action-500 dark:hover:text-action-300"
               name="circle-full"
               size="xs"
+            />
+            <!-- TODO(Wendy) - display this icon for fields which are set by a function -->
+            <!-- <Icon name="func" size="sm" class="hover:text-action-500 dark:hover:text-action-300" />  -->
+            <!-- TODO(Wendy) - there's probably a better way to know if something was set manually? -->
+            <Icon
+              v-else-if="!valueFromSocket && props.attributeDef.value?.value"
+              v-tooltip="`${propName} has been set manually`"
+              name="cursor"
+              size="xs"
+              class="hover:text-action-500 dark:hover:text-action-300"
+            />
+            <Icon
+              v-else-if="propHasSocket"
+              v-tooltip="`${propName} can be set via an input socket`"
+              name="circle-empty"
+              size="xs"
+              class="text-neutral-400 dark:text-neutral-600 hover:text-action-500 dark:hover:text-action-300"
             />
             <Icon
               v-else
@@ -228,9 +244,6 @@
               size="xs"
               class="text-neutral-400 dark:text-neutral-600 hover:text-action-500 dark:hover:text-action-300"
             />
-            <!-- TODO(Wendy) - the cursor icon should switch to black/white when the field is manually set -->
-            <!-- <Icon name="circle-empty" size="xs" class="text-neutral-400 dark:text-neutral-600" />  TODO(Wendy) - display this icon for fields which have a socket -->
-            <!-- <Icon name="func" size="sm" /> TODO(Wendy) - display this icon for fields which are set by a function -->
           </template>
 
           <a
@@ -381,17 +394,17 @@
           />
         </template>
         <template v-else>
-          <div class="py-[4px] px-[8px] text-sm">
-            {{ widgetKind }}
-          </div>
+          <div class="py-[4px] px-[8px] text-sm">{{ widgetKind }}</div>
         </template>
-        <!-- <div
-          v-if="featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET && valueFromSocket"
+        <div
+          v-if="
+            featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
+            valueFromSocket
+          "
           v-tooltip="`${propName} is set via an input socket`"
           class="absolute top-0 w-full h-full bg-caution-lines z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50"
-        /> -->
+        />
       </div>
-      <!-- <Icon name="none" class="p-[3px] mx-[2px]" /> -->
 
       <Icon
         v-if="validation?.status === 'Success'"
@@ -571,6 +584,9 @@ const iconShouldBeHidden = computed(
 );
 const valueFromSocket = computed(
   () => props.attributeDef.value?.isFromExternalSource,
+);
+const propHasSocket = computed(
+  () => props.attributeDef.value?.canBeSetBySocket,
 );
 
 function resetNewValueToCurrentValue() {

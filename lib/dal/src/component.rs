@@ -197,8 +197,8 @@ const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
 const FIND_NAME: &str = include_str!("queries/component/find_name.sql");
 const ROOT_CHILD_ATTRIBUTE_VALUE_FOR_COMPONENT: &str =
     include_str!("queries/component/root_child_attribute_value_for_component.sql");
-const LIST_CONNECTED_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE: &str =
-    include_str!("queries/component/list_connected_input_sockets_for_attribute_value.sql");
+const LIST_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE: &str =
+    include_str!("queries/component/list_input_sockets_for_attribute_value.sql");
 const COMPONENT_STATUS_UPDATE_BY_PK: &str =
     include_str!("queries/component/status_update_by_pk.sql");
 
@@ -757,17 +757,17 @@ impl Component {
     /// [`context`](crate::AttributeContext) whose least specific field corresponds to a
     /// [`PropId`](crate::Prop)._
     #[instrument(level = "debug", skip_all)]
-    pub async fn list_connected_input_sockets_for_attribute_value(
+    pub async fn list_input_sockets_for_attribute_value(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<Socket>> {
+    ) -> ComponentResult<Vec<(Socket, bool)>> {
         let rows = ctx
             .txns()
             .await?
             .pg()
             .query(
-                LIST_CONNECTED_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE,
+                LIST_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE,
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -776,7 +776,15 @@ impl Component {
                 ],
             )
             .await?;
-        Ok(standard_model::objects_from_rows(rows)?)
+
+        let mut result = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let object: Socket = serde_json::from_value(json)?;
+            let has_edge_connected: bool = row.try_get("has_edge_connected")?;
+            result.push((object, has_edge_connected));
+        }
+        Ok(result)
     }
 
     /// Find the [`SchemaVariantId`](crate::SchemaVariantId) that belongs to the provided

@@ -111,6 +111,7 @@ export interface PropertyEditorValue {
   key?: string;
   value: unknown;
   isFromExternalSource: boolean;
+  canBeSetBySocket: boolean;
 }
 
 export interface PropertyEditorValues {

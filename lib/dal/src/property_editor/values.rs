@@ -58,13 +58,16 @@ impl PropertyEditorValues {
         for work in work_queue {
             let work_attribute_value_id = *work.attribute_value.id();
 
-            let sockets = Component::list_connected_input_sockets_for_attribute_value(
+            let sockets = Component::list_input_sockets_for_attribute_value(
                 ctx,
                 work_attribute_value_id,
                 component_id,
             )
             .await?;
-            let is_from_external_source = !sockets.is_empty();
+
+            let can_be_set_by_socket: bool = !sockets.is_empty();
+
+            let is_from_external_source = sockets.iter().any(|(_socket, has_edge)| *has_edge);
 
             values.insert(
                 work_attribute_value_id.into(),
@@ -77,6 +80,7 @@ impl PropertyEditorValues {
                         .and_then(|f| f.value().cloned())
                         .unwrap_or(Value::Null),
                     is_from_external_source,
+                    can_be_set_by_socket,
                 },
             );
             if let Some(parent_id) = work.parent_attribute_value_id {
@@ -109,6 +113,7 @@ pub struct PropertyEditorValue {
     pub key: Option<String>,
     value: Value,
     is_from_external_source: bool,
+    can_be_set_by_socket: bool,
 }
 
 impl PropertyEditorValue {
