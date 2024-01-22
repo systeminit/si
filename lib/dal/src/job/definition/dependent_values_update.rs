@@ -476,6 +476,12 @@ async fn update_summary_tables(
         deleted_at,
     )
     .await?;
+
+    WsEvent::component_updated(ctx, component_id)
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
+
     Ok(())
 }
 

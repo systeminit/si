@@ -5,7 +5,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
-use crate::component::ComponentCreatedPayload;
+use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
 use crate::pkg::{
     ImportWorkspaceVotePayload, ModuleImportedPayload, WorkspaceActorPayload,
     WorkspaceExportPayload, WorkspaceImportApprovalActorPayload, WorkspaceImportPayload,
@@ -63,6 +63,7 @@ pub enum WsPayload {
     CheckedQualifications(QualificationCheckPayload),
     CodeGenerated(CodeGeneratedPayload),
     ComponentCreated(ComponentCreatedPayload),
+    ComponentUpdated(ComponentUpdatedPayload),
     Cursor(CursorPayload),
     FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),

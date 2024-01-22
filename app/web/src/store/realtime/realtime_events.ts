@@ -147,6 +147,10 @@ export type WsEventPayloadMap = {
   ComponentCreated: {
     success: boolean;
   };
+  ComponentUpdated: {
+    componentId: string;
+    changeSetPk: string;
+  };
   ModuleImported: {
     schemaVariantIds: string[];
   };
