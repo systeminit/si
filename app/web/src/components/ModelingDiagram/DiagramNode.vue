@@ -343,18 +343,26 @@ const titleTextRef = ref();
 const subtitleTextRef = ref();
 const groupRef = ref();
 
+const actualSockets = computed(() =>
+  _.filter(props.node.sockets, (s) => {
+    const should_skip = s.def.label === "Frame";
+
+    return !should_skip;
+  }),
+);
+
 const leftSockets = computed(() => {
   const leftSockets = _.filter(
-    props.node.sockets,
-    (s) => s.def.nodeSide === "left" && s.def.label !== "Frame",
+    actualSockets.value,
+    (s) => s.def.nodeSide === "left",
   );
 
   return _.sortBy(leftSockets, (s) => s.def.label);
 });
 const rightSockets = computed(() => {
   const rightSockets = _.filter(
-    props.node.sockets,
-    (s) => s.def.nodeSide === "right" && s.def.label !== "Frame",
+    actualSockets.value,
+    (s) => s.def.nodeSide === "right",
   );
 
   return _.sortBy(rightSockets, (s) => s.def.label);
