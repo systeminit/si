@@ -246,7 +246,7 @@ export function useChangeSetsStore() {
               latestNum = labelNum;
             }
           });
-          return `Demo ${latestNum + 1}`;
+          return `Change Set ${latestNum + 1}`;
         },
       },
       onActivated() {
