@@ -278,42 +278,29 @@ async fn paste_components_inner(
     }
 
     for component_id in &request.component_ids {
-        let (_pasted_comp, _pasted_node) = match pasted_components_by_original.get(component_id) {
-            Some((c, v)) => (c, v),
-            None => return Err(DiagramError::PasteError),
-        };
+        if pasted_components_by_original.get(component_id).is_none() {
+            return Err(DiagramError::PasteError);
+        }
 
-        let edges = Edge::list_for_component(ctx, *component_id).await?;
+        let edges = Edge::list_for_component(ctx, *component_id)
+            .await?
+            .into_iter();
+
+        // Copy edges if peer is on set
         for edge in edges {
-            let tail = pasted_components_by_original.get(&edge.tail_component_id());
-            let head = pasted_components_by_original.get(&edge.head_component_id());
-            match (tail, head) {
-                (Some(tail), Some(head)) => {
-                    let (_, tail_node) = tail;
-                    let (_, head_node) = head;
-                    Connection::new(
-                        ctx,
-                        *tail_node.id(),
-                        edge.tail_socket_id(),
-                        *head_node.id(),
-                        edge.head_socket_id(),
-                        *edge.kind(),
-                    )
-                    .await?;
-                }
-                (None, Some(head)) => {
-                    let (_, head_node) = head;
-                    Connection::new(
-                        ctx,
-                        edge.tail_node_id(),
-                        edge.tail_socket_id(),
-                        *head_node.id(),
-                        edge.head_socket_id(),
-                        *edge.kind(),
-                    )
-                    .await?;
-                }
-                _ => {}
+            if let (Some((_, tail_node)), Some((_, head_node))) = (
+                pasted_components_by_original.get(&edge.tail_component_id()),
+                pasted_components_by_original.get(&edge.head_component_id()),
+            ) {
+                Connection::new(
+                    ctx,
+                    *tail_node.id(),
+                    edge.tail_socket_id(),
+                    *head_node.id(),
+                    edge.head_socket_id(),
+                    *edge.kind(),
+                )
+                .await?;
             }
         }
     }
