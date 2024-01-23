@@ -261,7 +261,9 @@ impl PgPool {
         // database network connection hiccup from crashing a fleet of services which may get
         // immediately rescheduled/restarted only to fall into a perpetual crash loop while not
         // being able to serve any traffic--including health/readiness status.
-        drop(tokio::spawn(test_connection_task(pg_pool.clone())));
+        drop(tokio::spawn(
+            test_connection_infallible_and_warm_up_pool_task(pg_pool.clone()),
+        ));
 
         Ok(pg_pool)
     }
@@ -320,7 +322,7 @@ impl PgPool {
         Self::get_certificate_from_bytes(&buf).await
     }
 
-    // Attempts to establish a database connection and returns an error if not successful.
+    /// Attempts to establish a database connection and returns an error if not successful.
     #[instrument(
         name = "pool.test_connection",
         skip_all,
@@ -2754,6 +2756,6 @@ impl PgOwnedTransaction {
     }
 }
 
-async fn test_connection_task(check_pool: PgPool) {
+async fn test_connection_infallible_and_warm_up_pool_task(check_pool: PgPool) {
     let _result = check_pool.test_connection().await;
 }
