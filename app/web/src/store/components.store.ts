@@ -232,7 +232,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           componentResourceById: {} as Record<ComponentId, Resource>,
           componentDiffsById: {} as Record<ComponentId, ComponentDiff>,
 
-          rawComponents: {} as RawComponent[],
+          rawComponentsById: {} as Record<ComponentId, RawComponent>,
 
           pendingInsertedComponents: {} as Record<string, PendingComponent>,
 
@@ -267,9 +267,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         getters: {
           // transforming the diagram-y data back into more generic looking data
           // TODO: ideally we just fetch it like this...
-
-          rawComponentsById: (state) => _.keyBy(state.rawComponents, "id"),
-
           selectedComponentId: (state) => {
             return state.selectedComponentIds.length === 1
               ? state.selectedComponentIds[0]
@@ -283,39 +280,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             const getAncestorIds = (
               componentId: ComponentId,
-              _idsArray = [] as ComponentId[],
+              idsArray = [] as ComponentId[],
             ): ComponentId[] => {
               const c = this.rawComponentsById[componentId];
 
               if (!c) throw new Error("what?");
-              // TODO(victor) Revert back to this went parentId gets returned correctly
-              // const parentId = c.parentNodeId
-              //   ? nodeIdToComponentId[c.parentNodeId]
-              //   : undefined;
-              //
-              // if (parentId) {
-              //   return getAncestorIds(parentId, [parentId, ...idsArray]);
-              // } else {
-              //   return idsArray;
-              // }
+              const parentId = c.parentNodeId
+                ? nodeIdToComponentId[c.parentNodeId]
+                : undefined;
 
-              const outFrameSocket = c.sockets.find(
-                (s) => s.label === "Frame" && s.direction === "output",
-              );
-              if (!outFrameSocket)
-                throw Error(`Component ${c.id} should have frame socket`);
-
-              const edgesToParents = _.filter(
-                this.edgesByFromNodeId[c.nodeId] ?? [],
-                (e) => e.fromSocketId === outFrameSocket.id,
-              );
-
-              return _.map(
-                edgesToParents,
-                (e) =>
-                  this.rawComponents.find((rc) => rc.nodeId === e.toNodeId)
-                    ?.id ?? "-1",
-              );
+              if (parentId) {
+                return getAncestorIds(parentId, [parentId, ...idsArray]);
+              } else {
+                return idsArray;
+              }
             };
 
             return _.mapValues(this.rawComponentsById, (rc) => {
@@ -336,7 +314,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...rc,
                 // convert "node" ids back to component ids, so we can use that in a few places
                 ancestorIds,
-                parentId: _.first(ancestorIds),
+                parentId: _.last(ancestorIds),
                 childIds: _.map(
                   rc.childNodeIds,
                   (nodeId) => nodeIdToComponentId[nodeId],
@@ -633,7 +611,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...visibilityParams,
               },
               onSuccess: (response) => {
-                this.rawComponents = response.components;
+                this.rawComponentsById = _.keyBy(response.components, "id");
                 this.edgesById = _.keyBy(response.edges, "id");
 
                 // find any pending inserts that we know the component id of
