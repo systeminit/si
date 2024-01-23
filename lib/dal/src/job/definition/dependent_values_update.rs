@@ -418,7 +418,7 @@ async fn update_summary_tables(
         }
     }
 
-    if let Some(_resource) = component_value_json.pointer("/resource") {
+    if let Some(_resource) = component_value_json.pointer("/resource/payload") {
         has_resource = true;
     }
 
