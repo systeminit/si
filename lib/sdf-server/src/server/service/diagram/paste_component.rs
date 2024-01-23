@@ -318,10 +318,10 @@ async fn paste_components_inner(
         if let Some(parent_node_id) = request.new_parent_node_id {
             if !has_parent {
                 connect_component_sockets_to_frame(
-                    &ctx,
+                    ctx,
                     parent_node_id,
                     *pasted_node.id(),
-                    &original_uri,
+                    original_uri,
                     &posthog_client,
                 )
                 .await?;
