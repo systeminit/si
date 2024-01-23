@@ -37,7 +37,6 @@ pub struct CreateFrameConnectionResponse {
 }
 
 // Create all valid connections between parent and child sockets
-// TODO(victor,paul) We should tidy up this function after the feature stabilizes a bit
 pub async fn connect_component_sockets_to_frame(
     ctx: &DalContext,
     parent_node_id: NodeId,
@@ -45,12 +44,25 @@ pub async fn connect_component_sockets_to_frame(
     original_uri: &Uri,
     posthog_client: &crate::server::state::PosthogClient,
 ) -> DiagramResult<()> {
+    // We stored connected sockets to ensure we connect children's sockets only to the nearest valid ancestor socket
+    let mut connected_sockets_for_node_id: HashMap<NodeId, Vec<SocketId>> = HashMap::new();
+
+    connected_sockets_for_node_id
+        .entry(child_node_id)
+        .or_default();
+    connected_sockets_for_node_id
+        .entry(parent_node_id)
+        .or_default();
+
+    Connection::new_to_parent(ctx, child_node_id, parent_node_id).await?;
+
     connect_component_sockets_to_frame_inner(
         ctx,
         parent_node_id,
         child_node_id,
         original_uri,
         posthog_client,
+        &mut connected_sockets_for_node_id,
     )
     .await?;
 
@@ -62,7 +74,7 @@ pub async fn connect_component_sockets_to_frame(
             .map(|grandchild_node_id| (child_node_id, grandchild_node_id))
             .collect();
 
-    // Follows children in order to reconnect all of them, since the grand-parents changed
+    // Goes down new child's children list, trying to connect them to their new ancestors' Configuration Sockets
     while let Some((parent_node_id, child_node_id)) = sorted_children.pop_front() {
         connect_component_sockets_to_frame_inner(
             ctx,
@@ -70,6 +82,7 @@ pub async fn connect_component_sockets_to_frame(
             child_node_id,
             original_uri,
             posthog_client,
+            &mut HashMap::new(),
         )
         .await?;
 
@@ -91,34 +104,8 @@ async fn connect_component_sockets_to_frame_inner(
     child_node_id: NodeId,
     original_uri: &Uri,
     posthog_client: &crate::server::state::PosthogClient,
+    connected_sockets_for_node_id: &mut HashMap<NodeId, Vec<SocketId>>,
 ) -> DiagramResult<()> {
-    let mut connected_sockets_for_node_id: HashMap<NodeId, Vec<SocketId>> = HashMap::new();
-
-    connected_sockets_for_node_id
-        .entry(child_node_id)
-        .or_default();
-    connected_sockets_for_node_id
-        .entry(parent_node_id)
-        .or_default();
-
-    let from_socket =
-        Socket::find_frame_socket_for_node(ctx, child_node_id, SocketEdgeKind::ConfigurationOutput)
-            .await?;
-
-    let to_socket =
-        Socket::find_frame_socket_for_node(ctx, parent_node_id, SocketEdgeKind::ConfigurationInput)
-            .await?;
-
-    Connection::new(
-        ctx,
-        child_node_id,
-        *from_socket.id(),
-        parent_node_id,
-        *to_socket.id(),
-        EdgeKind::Symbolic,
-    )
-    .await?;
-
     let parent_component = Component::find_for_node(ctx, parent_node_id)
         .await?
         .ok_or(DiagramError::NodeNotFound(parent_node_id))?;
@@ -344,8 +331,9 @@ async fn connect_component_sockets_to_frame_inner(
         };
     }
 
-    let grandparents = Edge::list_parents_for_component(ctx, *parent_component.id()).await?;
-    for grandparent_id in grandparents {
+    if let Some(grandparent_id) =
+        Edge::get_parent_for_component(ctx, *parent_component.id()).await?
+    {
         let grandparent = Component::get_by_id(ctx, &grandparent_id)
             .await?
             .ok_or(ComponentError::NotFound(grandparent_id))?;
@@ -359,12 +347,13 @@ async fn connect_component_sockets_to_frame_inner(
         match ty {
             ComponentType::Component => {}
             ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => {
-                connect_component_sockets_to_frame(
+                connect_component_sockets_to_frame_inner(
                     ctx,
                     *grandparent.id(),
                     child_node_id,
                     original_uri,
                     posthog_client,
+                    connected_sockets_for_node_id,
                 )
                 .await?
             }
@@ -372,33 +361,48 @@ async fn connect_component_sockets_to_frame_inner(
         }
     }
 
-    let child_schema = child_component
-        .schema(ctx)
-        .await?
-        .ok_or(DiagramError::SchemaNotFound)?;
+    {
+        let child_schema = child_component
+            .schema(ctx)
+            .await?
+            .ok_or(DiagramError::SchemaNotFound)?;
 
-    let parent_schema = parent_component
-        .schema(ctx)
-        .await?
-        .ok_or(DiagramError::SchemaNotFound)?;
+        let parent_schema = parent_component
+            .schema(ctx)
+            .await?
+            .ok_or(DiagramError::SchemaNotFound)?;
 
-    track(
-        posthog_client,
-        ctx,
-        original_uri,
-        "component_connected_to_frame",
-        serde_json::json!({
-                    "parent_component_id": parent_component.id(),
-                    "parent_component_schema_name": parent_schema.name(),
-                    "parent_socket_id": to_socket.id(),
-                    "parent_socket_name": to_socket.name(),
-                    "child_component_id": child_component.id(),
-                    "child_component_schema_name": child_schema.name(),
-                    "child_socket_id": from_socket.id(),
-                    "child_socket_name": from_socket.name(),
-        }),
-    );
+        let from_socket = Socket::find_frame_socket_for_node(
+            ctx,
+            child_node_id,
+            SocketEdgeKind::ConfigurationOutput,
+        )
+        .await?;
 
+        let to_socket = Socket::find_frame_socket_for_node(
+            ctx,
+            parent_node_id,
+            SocketEdgeKind::ConfigurationInput,
+        )
+        .await?;
+
+        track(
+            posthog_client,
+            ctx,
+            original_uri,
+            "component_connected_to_frame",
+            serde_json::json!({
+                        "parent_component_id": parent_component.id(),
+                        "parent_component_schema_name": parent_schema.name(),
+                        "parent_socket_id": to_socket.id(),
+                        "parent_socket_name": to_socket.name(),
+                        "child_component_id": child_component.id(),
+                        "child_component_schema_name": child_schema.name(),
+                        "child_socket_id": from_socket.id(),
+                        "child_socket_name": from_socket.name(),
+            }),
+        );
+    }
     Ok(())
 }
 

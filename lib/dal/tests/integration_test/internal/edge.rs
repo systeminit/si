@@ -47,11 +47,13 @@ async fn new(ctx: &DalContext) {
     .await
     .expect("cannot create new edge");
 
-    let parents = Edge::list_parents_for_component(ctx, fallout_bag.component_id)
+    let edges = Edge::list_for_component(ctx, fallout_bag.component_id)
         .await
-        .expect("unable to find component's parents");
-    assert_eq!(parents.len(), 1);
-    assert_eq!(parents[0], starfield_bag.component_id);
+        .expect("should list edges for component");
+
+    assert_eq!(edges.len(), 1);
+    assert_eq!(edges[0].head_component_id(), starfield_bag.component_id);
+    assert_eq!(edges[0].tail_component_id(), fallout_bag.component_id);
 }
 
 #[test]

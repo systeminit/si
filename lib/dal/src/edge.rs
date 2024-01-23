@@ -346,10 +346,10 @@ impl Edge {
         Ok(objects)
     }
 
-    pub async fn list_parents_for_component(
+    pub async fn get_parent_for_component(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> EdgeResult<Vec<ComponentId>> {
+    ) -> EdgeResult<Option<ComponentId>> {
         let rows = ctx
             .txns()
             .await?
@@ -359,8 +359,20 @@ impl Edge {
                 &[ctx.tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
-        let objects = rows.into_iter().map(|row| row.get("object_id")).collect();
-        Ok(objects)
+        let objects: Vec<ComponentId> = rows.into_iter().map(|row| row.get("object_id")).collect();
+
+        Ok(if objects.is_empty() {
+            None
+        } else {
+            // NOTE(victor) This should fail in the future, or we could auto update components for backwards compat?
+            if objects.len() > 1 {
+                warn!(
+                    "Component({}) has more than one parent edge! Obsolete diagram data",
+                    component_id
+                );
+            }
+            Some(objects[0])
+        })
     }
 
     pub async fn list_for_component(

@@ -3,7 +3,7 @@ use telemetry::prelude::*;
 
 use crate::diagram::DiagramResult;
 use crate::edge::{Edge, EdgeId, EdgeKind};
-use crate::socket::SocketId;
+use crate::socket::{SocketEdgeKind, SocketId};
 use crate::{
     node::NodeId, Component, ComponentError, DalContext, DiagramError, Socket, SocketArity,
     StandardModel, User,
@@ -109,6 +109,38 @@ impl Connection {
         .await?;
 
         Ok(Connection::from_edge(&edge))
+    }
+
+    pub async fn new_to_parent(
+        ctx: &DalContext,
+        child_node_id: NodeId,
+        parent_node_id: NodeId,
+    ) -> DiagramResult<Self> {
+        // TODO check if child already has parent and block connection
+
+        let from_socket = Socket::find_frame_socket_for_node(
+            ctx,
+            child_node_id,
+            SocketEdgeKind::ConfigurationOutput,
+        )
+        .await?;
+
+        let to_socket = Socket::find_frame_socket_for_node(
+            ctx,
+            parent_node_id,
+            SocketEdgeKind::ConfigurationInput,
+        )
+        .await?;
+
+        Self::new(
+            ctx,
+            child_node_id,
+            *from_socket.id(),
+            parent_node_id,
+            *to_socket.id(),
+            EdgeKind::Symbolic,
+        )
+        .await
     }
 
     pub fn from_edge(edge: &Edge) -> Self {
