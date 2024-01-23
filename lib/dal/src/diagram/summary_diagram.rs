@@ -160,8 +160,6 @@ pub async fn create_component_entry(
         }
     }
 
-    let resource_exists = component.resource(ctx).await?.payload.is_some();
-
     let _row = ctx
         .txns()
         .await?
@@ -185,7 +183,7 @@ pub async fn create_component_entry(
                 &color,
                 &node_type.to_string(),
                 &change_status.to_string(),
-                &resource_exists,
+                &false,
                 &serde_json::to_value(created_info)?,
                 &serde_json::to_value(updated_info)?,
                 &serde_json::to_value(deleted_info)?,
