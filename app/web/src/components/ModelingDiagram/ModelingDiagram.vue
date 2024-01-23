@@ -269,6 +269,7 @@ import {
   getAdjustmentRectToContainAnother,
   pointsToRect,
   rectContainsPoint,
+  shrinkRect,
 } from "./utils/math";
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
@@ -1322,10 +1323,7 @@ function onDragElementsMove() {
 
     // if we are going to move the element within a new parent we may need to adjust
     // the position to stay inside of it
-    if (newParent && newParent.def.componentId !== el.def.parentComponentId) {
-      // if dragging OUT of a parent onto the root, we want to make sure the element is not
-      // floating on top of another group
-
+    if (newParent) {
       const newParentRect = nodesLocationInfo[newParent.uniqueKey];
       const elRect = nodesLocationInfo[el.uniqueKey];
       if (!newParentRect || !elRect) return;
@@ -1336,13 +1334,7 @@ function onDragElementsMove() {
         height: elRect.height,
       };
 
-      // TODO: use helper fn
-      const newParentRectWithBuffer = {
-        x: newParentRect.x + 10,
-        y: newParentRect.y + 10,
-        width: newParentRect.width - 20,
-        height: newParentRect.height - 20,
-      };
+      const newParentRectWithBuffer = shrinkRect(newParentRect, 20);
 
       if (!rectContainsAnother(newParentRectWithBuffer, movedElRect)) {
         const adjust = getAdjustmentRectToContainAnother(
