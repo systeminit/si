@@ -1232,8 +1232,8 @@ function beginDragElements() {
 function endDragElements() {
   dragElementsActive.value = false;
   // fire off final move event
-  // note - we've already filtered out children that are selected along with their parents
-  // so we dont need to worry about accidentally moving them more than once
+  // note - we've already filtered out children that are selected along with their parents,
+  // so we don't need to worry about accidentally moving them more than once
   _.each(currentSelectionMovableElements.value, (el) => {
     if (!movedElementPositions[el.uniqueKey]) return;
 
@@ -1262,11 +1262,11 @@ function endDragElements() {
       });
     }
 
-    // move child elements inside of a group
+    // move child elements inside a group
     if (el instanceof DiagramGroupData) {
       // for now only dealing with nodes... will be fixed later
       const childEls = _.filter(
-        nodes.value,
+        [...nodes.value, ...groups.value],
         (n) => n.def.parentNodeId === el.def.id,
       );
       _.each(childEls, (childEl) => {
