@@ -57,6 +57,8 @@ pub enum ServerError {
     SymmetricCryptoService(#[from] SymmetricCryptoError),
     #[error(transparent)]
     Transactions(#[from] Box<TransactionsError>),
+    #[error("unable to connect to database: {0}")]
+    UnableToConnectToDatabase(Box<PgPoolError>),
     #[error("unknown job kind {0}")]
     UnknownJobKind(String),
 }
@@ -161,6 +163,13 @@ impl Server {
     }
 
     pub async fn run(self) -> Result<()> {
+        // First, check if we can communicate with the database. If we cannot, we need to explode.
+        self.services_context
+            .pg_pool()
+            .test_connection()
+            .await
+            .map_err(|e| ServerError::UnableToConnectToDatabase(Box::new(e)))?;
+
         let (tx, rx) = mpsc::unbounded_channel();
 
         // Span a task to receive and process jobs from the unbounded channel
