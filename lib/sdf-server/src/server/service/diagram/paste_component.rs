@@ -1,10 +1,11 @@
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
 use chrono::Utc;
+use dal::edge::EdgeKind;
 use dal::{
     action_prototype::ActionPrototypeContextField, func::backend::js_action::ActionRunResult,
     Action, ActionKind, ActionPrototype, ActionPrototypeContext, ChangeSet, Component,
-    ComponentError, ComponentId, Connection, DalContext, DalContextBuilder, Edge, Node,
+    ComponentError, ComponentId, Connection, DalContext, DalContextBuilder, Edge, Node, NodeId,
     StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
@@ -17,6 +18,7 @@ use veritech_client::ResourceStatus;
 use super::{DiagramError, DiagramResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
+use crate::service::diagram::connect_component_to_frame::connect_component_sockets_to_frame;
 
 #[allow(clippy::too_many_arguments)]
 async fn paste_single_component(
@@ -146,6 +148,7 @@ pub struct PasteComponentsRequest {
     pub component_ids: Vec<ComponentId>,
     pub offset_x: f64,
     pub offset_y: f64,
+    pub new_parent_node_id: Option<NodeId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -278,13 +281,17 @@ async fn paste_components_inner(
     }
 
     for component_id in &request.component_ids {
-        if pasted_components_by_original.get(component_id).is_none() {
+        let pasted_node = if let Some((_, node)) = pasted_components_by_original.get(component_id) {
+            node
+        } else {
             return Err(DiagramError::PasteError);
-        }
+        };
 
         let edges = Edge::list_for_component(ctx, *component_id)
             .await?
             .into_iter();
+
+        let mut has_parent = false;
 
         // Copy edges if peer is on set
         for edge in edges {
@@ -292,6 +299,10 @@ async fn paste_components_inner(
                 pasted_components_by_original.get(&edge.tail_component_id()),
                 pasted_components_by_original.get(&edge.head_component_id()),
             ) {
+                if *edge.kind() == EdgeKind::Symbolic && edge.tail_component_id() == *component_id {
+                    has_parent = true;
+                }
+
                 Connection::new(
                     ctx,
                     *tail_node.id(),
@@ -299,6 +310,19 @@ async fn paste_components_inner(
                     *head_node.id(),
                     edge.head_socket_id(),
                     *edge.kind(),
+                )
+                .await?;
+            }
+        }
+
+        if let Some(parent_node_id) = request.new_parent_node_id {
+            if !has_parent {
+                connect_component_sockets_to_frame(
+                    &ctx,
+                    parent_node_id,
+                    *pasted_node.id(),
+                    &original_uri,
+                    &posthog_client,
                 )
                 .await?;
             }

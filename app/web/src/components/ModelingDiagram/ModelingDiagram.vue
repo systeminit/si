@@ -1436,6 +1436,7 @@ function onDragElementsMove() {
     dragToEdgeScrollInterval = undefined;
   }
 }
+
 onBeforeUnmount(() => {
   if (dragToEdgeScrollInterval) clearInterval(dragToEdgeScrollInterval);
 });
@@ -2187,6 +2188,9 @@ async function triggerPasteElements() {
   if (!componentsStore.copyingFrom)
     throw new Error("Copy cursor must be in grid to paste element");
 
+  const newParentNodeId =
+    allElementsByKey.value[cursorWithinGroupKey.value ?? "-1"]?.def.id;
+
   await componentsStore.PASTE_COMPONENTS(
     componentsStore.selectedComponentIds,
     {
@@ -2194,6 +2198,7 @@ async function triggerPasteElements() {
       y: gridPointerPos.value.y - componentsStore.copyingFrom.y,
     },
     gridPointerPos.value,
+    newParentNodeId,
   );
   componentsStore.copyingFrom = null;
 }
