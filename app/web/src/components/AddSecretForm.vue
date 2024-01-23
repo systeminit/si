@@ -304,6 +304,8 @@ const updateSecret = async () => {
 const fieldInputType = (field: SecretFormSchema) => {
   if (field.widgetKind.kind === "password") {
     return "password";
+  } else if (field.widgetKind.kind === "textArea") {
+    return "textarea";
   } else {
     return "text";
   }
