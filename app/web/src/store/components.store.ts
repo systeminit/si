@@ -1103,6 +1103,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             componentIds: ComponentId[],
             offset: { x: number; y: number },
             position: { x: number; y: number },
+            newParentNodeId?: ComponentNodeId,
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -1123,6 +1124,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 componentIds,
                 offsetX: offset.x,
                 offsetY: offset.y,
+                newParentNodeId,
                 ...visibilityParams,
               },
               onSuccess: (data) => {
