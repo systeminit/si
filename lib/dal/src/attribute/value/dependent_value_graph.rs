@@ -1,4 +1,5 @@
 use petgraph::prelude::*;
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 use super::AttributeValueId;
@@ -7,6 +8,12 @@ use super::AttributeValueId;
 pub struct DependentValueGraph {
     graph: StableDiGraph<AttributeValueId, ()>,
     id_to_index_map: HashMap<AttributeValueId, NodeIndex>,
+}
+
+impl Default for DependentValueGraph {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DependentValueGraph {
@@ -18,16 +25,14 @@ impl DependentValueGraph {
     }
 
     pub fn add_value(&mut self, value_id: AttributeValueId) -> NodeIndex {
-        if !self.id_to_index_map.contains_key(&value_id) {
-            let node_idx = self.graph.add_node(value_id);
-            self.id_to_index_map.insert(value_id, node_idx);
+        match self.id_to_index_map.entry(value_id) {
+            Entry::Vacant(entry) => {
+                let node_idx = self.graph.add_node(value_id);
+                entry.insert(node_idx);
 
-            node_idx
-        } else {
-            self.id_to_index_map
-                .get(&value_id)
-                .copied()
-                .expect("contains_key succeeded, so this should always succeed")
+                node_idx
+            }
+            Entry::Occupied(entry) => *entry.get(),
         }
     }
 

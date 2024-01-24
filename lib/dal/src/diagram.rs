@@ -6,10 +6,12 @@ use thiserror::Error;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
+use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentError;
 use crate::diagram::edge::DiagramEdgeView;
 use crate::diagram::node::DiagramComponentView;
 use crate::provider::external::ExternalProviderError;
+use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -32,6 +34,8 @@ pub enum DiagramError {
     AttributePrototypeArgumentTargetsNotFound(AttributePrototypeArgumentId, ExternalProviderId),
     #[error("attribute prototype not found")]
     AttributePrototypeNotFound,
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("attribute value not found")]
     AttributeValueNotFound,
     #[error("component error: {0}")]
@@ -52,6 +56,8 @@ pub enum DiagramError {
     ExternalProvider(#[from] ExternalProviderError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
     #[error("node not found")]
     NodeNotFound,
     #[error(transparent)]

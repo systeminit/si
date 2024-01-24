@@ -10,7 +10,7 @@ use ulid::Ulid;
 
 use crate::{
     change_set_pointer::ChangeSetPointerError,
-    func::argument::FuncArgumentId,
+    func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
     pk,
     provider::internal::InternalProviderId,
     workspace_snapshot::{
@@ -22,24 +22,39 @@ use crate::{
         },
         WorkspaceSnapshotError,
     },
-    AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, PropId, TransactionsError,
+    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, PropId,
+    TransactionsError,
 };
 
-use self::static_value::{StaticArgumentValue, StaticArgumentValueId};
+use self::{
+    static_value::{StaticArgumentValue, StaticArgumentValueId},
+    value_source::ValueSource,
+};
 
 pub use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 
+use super::AttributePrototypeError;
+
 pub mod static_value;
+pub mod value_source;
 
 pk!(AttributePrototypeArgumentId);
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum AttributePrototypeArgumentError {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
+    #[error("Destination prototype {0} has no function arguments")]
+    InterComponentDestinationPrototypeHasNoFuncArgs(AttributePrototypeId),
+    #[error("Destination prototype {0} has more than one function argument")]
+    InterComponentDestinationPrototypeHasTooManyFuncArgs(AttributePrototypeId),
     #[error("attribute prototype argument {0} has no func argument")]
     MissingFuncArgument(AttributePrototypeArgumentId),
     #[error("node weight error: {0}")]
@@ -70,12 +85,6 @@ pub type AttributePrototypeArgumentResult<T> = Result<T, AttributePrototypeArgum
 pub struct AttributePrototypeArgument {
     id: AttributePrototypeArgumentId,
     targets: Option<ArgumentTargets>,
-}
-
-pub enum AttributePrototypeArgumentValueSource {
-    Prop(PropId),
-    InternalProvider(InternalProviderId),
-    StaticArgumentValue(StaticArgumentValueId),
 }
 
 impl From<AttributePrototypeArgumentNodeWeight> for AttributePrototypeArgument {
@@ -193,25 +202,47 @@ impl AttributePrototypeArgument {
             }),
         )?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        let prototype_func_id =
+            AttributePrototype::func_id(ctx, destination_attribute_prototype_id).await?;
+        let func_arg_ids = FuncArgument::list_ids_for_func(ctx, prototype_func_id).await?;
 
-        workspace_snapshot.add_node(node_weight.clone())?;
+        if func_arg_ids.len() > 1 {
+            return Err(AttributePrototypeArgumentError::InterComponentDestinationPrototypeHasTooManyFuncArgs(destination_attribute_prototype_id));
+        }
 
-        workspace_snapshot.add_edge(
-            destination_attribute_prototype_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgument)?,
-            id,
-        )?;
-        // todo: this should be an edge to a  "value source" pointing to the external provider
-        workspace_snapshot.add_edge(
-            id,
-            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            source_external_provider_id,
+        let func_arg_id = func_arg_ids.get(0).ok_or(
+            AttributePrototypeArgumentError::InterComponentDestinationPrototypeHasNoFuncArgs(
+                destination_attribute_prototype_id,
+            ),
         )?;
 
-        Ok(node_weight
-            .get_attribute_prototype_argument_node_weight()?
-            .into())
+        let prototype_arg: Self = {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+
+            workspace_snapshot.add_node(node_weight.clone())?;
+
+            workspace_snapshot.add_edge(
+                destination_attribute_prototype_id,
+                EdgeWeight::new(change_set, EdgeWeightKind::PrototypeArgument)?,
+                id,
+            )?;
+
+            let prototype_arg: Self = node_weight
+                .get_attribute_prototype_argument_node_weight()?
+                .into();
+
+            workspace_snapshot.add_edge(
+                prototype_arg.id(),
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                func_arg_id,
+            )?;
+
+            prototype_arg
+        };
+
+        prototype_arg
+            .set_value_from_external_provider_id(ctx, source_external_provider_id)
+            .await
     }
 
     pub async fn func_argument_id_by_id(
@@ -241,32 +272,32 @@ impl AttributePrototypeArgument {
     pub async fn value_source_by_id(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
-    ) -> AttributePrototypeArgumentResult<Option<AttributePrototypeArgumentValueSource>> {
+    ) -> AttributePrototypeArgumentResult<Option<ValueSource>> {
         let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
-        for target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            apa_id,
-            EdgeWeightKindDiscriminants::PrototypeArgumentValue,
-        )? {
-            info!("looking at {:?}", &target);
+        if let Some(target) = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                apa_id,
+                EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+            )?
+            .into_iter()
+            .next()
+        {
             match workspace_snapshot.get_node_weight(target)? {
                 NodeWeight::Prop(inner) => {
-                    return Ok(Some(AttributePrototypeArgumentValueSource::Prop(
-                        inner.id().into(),
-                    )));
+                    return Ok(Some(ValueSource::Prop(inner.id().into())));
                 }
                 NodeWeight::Content(inner) => {
                     let discrim: ContentAddressDiscriminants = inner.content_address().into();
                     return Ok(Some(match discrim {
                         ContentAddressDiscriminants::InternalProvider => {
-                            AttributePrototypeArgumentValueSource::InternalProvider(
-                                inner.id().into(),
-                            )
+                            ValueSource::InternalProvider(inner.id().into())
+                        }
+                        ContentAddressDiscriminants::ExternalProvider => {
+                            ValueSource::ExternalProvider(inner.id().into())
                         }
                         ContentAddressDiscriminants::StaticArgumentValue => {
-                            AttributePrototypeArgumentValueSource::StaticArgumentValue(
-                                inner.id().into(),
-                            )
+                            ValueSource::StaticArgumentValue(inner.id().into())
                         }
                         other => {
                             return Err(
@@ -362,6 +393,15 @@ impl AttributePrototypeArgument {
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeArgumentResult<Self> {
         self.set_value_source(ctx, internal_provider_id.into())
+            .await
+    }
+
+    pub async fn set_value_from_external_provider_id(
+        self,
+        ctx: &DalContext,
+        external_provider_id: ExternalProviderId,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        self.set_value_source(ctx, external_provider_id.into())
             .await
     }
 

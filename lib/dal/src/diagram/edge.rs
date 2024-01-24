@@ -4,13 +4,13 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
-use crate::diagram::{DiagramError, DiagramResult};
-use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
+use crate::diagram::DiagramResult;
 use crate::{
-    Component, ComponentId, DalContext, ExternalProvider, ExternalProviderId, InternalProviderId,
+    AttributeValue, Component, ComponentId, DalContext, ExternalProviderId, InternalProviderId,
 };
 
 pub type DiagramEdgeViewId = AttributePrototypeArgumentId;
@@ -32,87 +32,33 @@ impl DiagramEdgeView {
     pub async fn list(ctx: &DalContext) -> DiagramResult<Vec<Self>> {
         let mut views = Vec::new();
 
-        // Start by gathering all external providers used by all components in the workspace.
+        // Walk the input socket values for every component and find the attribute prototype
+        // arguments for their prototypes
         for component in Component::list(ctx).await? {
-            let schema_variant_id_used_by_component =
-                Component::schema_variant_id(ctx, component.id()).await?;
-            let external_providers_used_by_component =
-                ExternalProvider::list(ctx, schema_variant_id_used_by_component).await?;
-
-            // Once we have the external providers, find the inter component attribute prototype arguments.
-            // We will also need the destination components from their metadata.
-            for external_provider in external_providers_used_by_component {
-                let inter_component_attribute_prototype_argument_node_indices = {
-                    let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-                    workspace_snapshot.incoming_sources_for_edge_weight_kind(
-                        external_provider.id(),
-                        EdgeWeightKindDiscriminants::InterComponent,
-                    )?
-                };
-
-                for inter_component_attribute_prototype_argument_node_index in
-                    inter_component_attribute_prototype_argument_node_indices
+            for (ip_value_id, to_explicit_internal_provider_id) in
+                component.internal_provider_attribute_values(ctx).await?
+            {
+                let prototype_id = AttributeValue::prototype_id(ctx, ip_value_id).await?;
+                if let Some(apa_id) =
+                    AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id)
+                        .await?
+                        .get(0)
+                        .copied()
                 {
-                    // Cache the destination component from the inter component attribute prototype argument.
-                    let inter_component_attribute_prototype_argument_id_raw = {
-                        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-                        workspace_snapshot
-                            .get_node_weight(
-                                inter_component_attribute_prototype_argument_node_index,
-                            )?
-                            .id()
-                    };
-                    let inter_component_attribute_prototype_argument =
-                        AttributePrototypeArgument::get_by_id(
-                            ctx,
-                            inter_component_attribute_prototype_argument_id_raw.into(),
-                        )
-                        .await?;
-                    let to_component_id = inter_component_attribute_prototype_argument
-                        .targets()
-                        .ok_or(DiagramError::AttributePrototypeArgumentTargetsNotFound(
-                            inter_component_attribute_prototype_argument.id(),
-                            external_provider.id(),
-                        ))?
-                        .destination_component_id;
-
-                    // Now, we need to find the explicit internal provider. Start by finding the attribute prototype.
-                    let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-                    let attribute_prototype_node_index = *workspace_snapshot
-                        .incoming_sources_for_edge_weight_kind(
-                            inter_component_attribute_prototype_argument_id_raw,
-                            EdgeWeightKindDiscriminants::PrototypeArgument,
-                        )?
-                        .get(0)
-                        .ok_or(DiagramError::DestinationAttributePrototypeNotFound(
-                            inter_component_attribute_prototype_argument.id(),
-                        ))?;
-                    let attribute_prototype_id_raw = workspace_snapshot
-                        .get_node_weight(attribute_prototype_node_index)?
-                        .id();
-
-                    // Use the attribute prototype to find the explicit internal provider.
-                    let explicit_internal_provider_node_index = *workspace_snapshot
-                        .incoming_sources_for_edge_weight_kind(
-                            attribute_prototype_id_raw,
-                            EdgeWeightKindDiscriminants::Prototype,
-                        )?
-                        .get(0)
-                        .ok_or(DiagramError::DestinationExplicitInternalProviderNotFound(
-                            attribute_prototype_id_raw.into(),
-                            inter_component_attribute_prototype_argument.id(),
-                        ))?;
-                    let explicit_internal_provider_node_weight = workspace_snapshot
-                        .get_node_weight(explicit_internal_provider_node_index)?;
-
-                    // We have all the information we need to assemble a diagram edge view.
-                    views.push(Self::new(
-                        inter_component_attribute_prototype_argument.id(),
-                        component.id(),
-                        external_provider.id(),
-                        to_component_id,
-                        explicit_internal_provider_node_weight.id().into(),
-                    ));
+                    let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
+                    if let Some(targets) = apa.targets() {
+                        if let Some(ValueSource::ExternalProvider(from_external_provider_id)) =
+                            AttributePrototypeArgument::value_source_by_id(ctx, apa_id).await?
+                        {
+                            views.push(Self::new(
+                                apa_id,
+                                targets.source_component_id,
+                                from_external_provider_id,
+                                targets.destination_component_id,
+                                to_explicit_internal_provider_id,
+                            ))
+                        }
+                    }
                 }
             }
         }

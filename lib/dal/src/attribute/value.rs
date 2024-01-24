@@ -39,9 +39,7 @@
 // direct child [`Prop`](crate::Prop) of the [`RootProp`](crate::RootProp).
 
 use content_store::{Store, StoreError};
-use petgraph::graph::NodeIndex;
-use petgraph::prelude::EdgeRef;
-use petgraph::Direction::{self, Incoming, Outgoing};
+use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
@@ -69,13 +67,14 @@ use crate::workspace_snapshot::node_weight::{
 use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
     pk, AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProviderId,
-    Func, FuncId, InternalProvider, InternalProviderId, Prop, PropId, PropKind, TransactionsError,
+    Func, FuncId, InternalProviderId, Prop, PropId, PropKind, TransactionsError,
 };
 
 use super::prototype::argument::static_value::StaticArgumentValue;
+use super::prototype::argument::value_source::ValueSourceError;
 use super::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-    AttributePrototypeArgumentValueSource,
+    value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentError,
+    AttributePrototypeArgumentId,
 };
 
 pub mod dependent_value_graph;
@@ -96,20 +95,24 @@ pub enum AttributeValueError {
         InternalProviderId,
         ComponentId,
     ),
-    #[error("attribute prototype argument {0} has no value source")]
-    AttributePrototypeArgumentMissingValueSource(AttributePrototypeArgumentId),
-    #[error("attribute prototype argument {0} has a value source prop {1} but no value for that prop found in component {2}")]
-    AttributePrototypeArgumentPropMissingValueInSourceComponent(
+    #[error("attribute prototype argument {0} has a value source {1:?} but no value for that prop found in component {2}")]
+    AttributePrototypeArgumentMissingValueInSourceComponent(
         AttributePrototypeArgumentId,
-        PropId,
+        ValueSource,
         ComponentId,
     ),
+    #[error("attribute prototype argument {0} has no value source")]
+    AttributePrototypeArgumentMissingValueSource(AttributePrototypeArgumentId),
     #[error("attribute value {0} has no prototype")]
     AttributeValueMissingPrototype(AttributeValueId),
     #[error("attribute value {0} has more than one edge to a prop")]
     AttributeValueMultiplePropEdges(AttributeValueId),
     #[error("attribute value {0} has more than one provider edge")]
     AttributeValueMultipleProviderEdges(AttributeValueId),
+    #[error(
+        "cannot explicitly set the value of {0} because it is for an internal or external provider"
+    )]
+    CannotExplicitlySetProviderValues(AttributeValueId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
@@ -164,6 +167,8 @@ pub enum AttributeValueError {
     TypeMismatch(PropKind, String),
     #[error("unexpected graph layout: {0}")]
     UnexpectedGraphLayout(&'static str),
+    #[error("value source error: {0}")]
+    ValueSource(#[from] ValueSourceError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -192,6 +197,29 @@ pub enum ValueIsFor {
     Prop(PropId),
     ExternalProvider(ExternalProviderId),
     InternalProvider(InternalProviderId),
+}
+
+impl ValueIsFor {
+    pub fn prop_id(&self) -> Option<PropId> {
+        match self {
+            ValueIsFor::Prop(prop_id) => Some(*prop_id),
+            _ => None,
+        }
+    }
+
+    pub fn external_provider_id(&self) -> Option<ExternalProviderId> {
+        match self {
+            ValueIsFor::ExternalProvider(ep_id) => Some(*ep_id),
+            _ => None,
+        }
+    }
+
+    pub fn internal_provider_id(&self) -> Option<InternalProviderId> {
+        match self {
+            ValueIsFor::InternalProvider(ip_id) => Some(*ip_id),
+            _ => None,
+        }
+    }
 }
 
 impl From<ValueIsFor> for Ulid {
@@ -335,7 +363,6 @@ impl AttributeValue {
         let destination_component_id =
             AttributeValue::component_id(ctx, attribute_value_id).await?;
         let value_is_for = AttributeValue::is_for(ctx, attribute_value_id).await?;
-
         let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
         let mut func_binding_args: HashMap<String, Vec<serde_json::Value>> = HashMap::new();
 
@@ -349,7 +376,6 @@ impl AttributeValue {
             if apa.targets().map_or(true, |targets| {
                 targets.destination_component_id == destination_component_id
             }) {
-                info!("fetching func arg by id for {}", apa_id);
                 let func_arg_id =
                     AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?;
                 let func_arg_name = {
@@ -361,73 +387,44 @@ impl AttributeValue {
                         .to_owned()
                 };
 
-                info!("fetching value source by id for {}", apa_id);
                 let value = match AttributePrototypeArgument::value_source_by_id(ctx, apa_id)
                     .await?
                     .ok_or(
                         AttributeValueError::AttributePrototypeArgumentMissingValueSource(apa_id),
                     )? {
-                    AttributePrototypeArgumentValueSource::StaticArgumentValue(
-                        static_argument_value_id,
-                    ) => {
-                        info!("static argument value");
-                        let static_value =
-                            StaticArgumentValue::get_by_id(ctx, static_argument_value_id).await?;
-                        static_value.value
+                    ValueSource::StaticArgumentValue(static_argument_value_id) => {
+                        StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
+                            .await?
+                            .value
                     }
-                    AttributePrototypeArgumentValueSource::Prop(prop_id) => {
-                        info!("prop value: {prop_id}");
+                    other_source => {
                         let mut value = None;
-                        for av_id in Prop::attribute_values_for_prop_id(ctx, prop_id).await? {
-                            let source_component_id = Self::component_id(ctx, av_id).await?;
-                            if expected_source_component_id == source_component_id {
-                                let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
-                                // XXX: We need to properly handle the difference between "there is
-                                // XXX: no value" vs "the value is null", but right now we collapse
-                                // XXX: the two to just be "null" when passing these to a function.
-                                value = Some(
-                                    attribute_value
-                                        .materialized_view(ctx)
-                                        .await?
-                                        .unwrap_or(serde_json::Value::Null),
-                                );
-                            }
-                        }
 
-                        value.ok_or(AttributeValueError::AttributePrototypeArgumentPropMissingValueInSourceComponent(apa_id, prop_id, expected_source_component_id))?
-                    }
-                    AttributePrototypeArgumentValueSource::InternalProvider(ip_id) => {
-                        info!("internal provider value: {ip_id}");
-                        let mut value = None;
-                        for av_id in
-                            InternalProvider::attribute_values_for_internal_provider_id(ctx, ip_id)
-                                .await?
+                        for av_id in other_source
+                            .attribute_values_for_component_id(ctx, expected_source_component_id)
+                            .await?
                         {
-                            let source_component_id = Self::component_id(ctx, av_id).await?;
-                            if apa
-                                .targets()
-                                .map(|targets| targets.source_component_id)
-                                .unwrap_or(destination_component_id)
-                                == source_component_id
-                            {
-                                let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
-                                // XXX: We need to properly handle the difference between "there is
-                                // XXX: no value" vs "the value is null", but right now we collapse
-                                // XXX: the two to just be "null" when passing these to a function.
-                                value = Some(
-                                    attribute_value
-                                        .materialized_view(ctx)
-                                        .await?
-                                        .unwrap_or(serde_json::Value::Null),
-                                )
-                            }
+                            // This seems wrong...
+                            let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
+                            // XXX: We need to properly handle the difference between "there is
+                            // XXX: no value" vs "the value is null", but right now we collapse
+                            // XXX: the two to just be "null" when passing these to a function.
+                            value = attribute_value
+                                .materialized_view(ctx)
+                                .await?
+                                .or(Some(serde_json::Value::Null));
                         }
 
-                        value.ok_or(AttributeValueError::AttributePrototypeArgumentInternalProviderMissingValueInSourceComponent(apa_id, ip_id, expected_source_component_id))?
+                        // rust-analyzer doesn't seem able to format this
+                        value.ok_or(
+                                AttributeValueError::AttributePrototypeArgumentMissingValueInSourceComponent(
+                                    apa_id,
+                                    other_source,
+                                    expected_source_component_id
+                                )
+                            )?
                     }
                 };
-
-                info!("func_arg_name: {} = {:?}", &func_arg_name, value);
 
                 func_binding_args
                     .entry(func_arg_name)
@@ -638,22 +635,18 @@ impl AttributeValue {
 
         // walk the contain edges to the root attribute value
         let mut current_attribute_value_id = attribute_value_id;
-        loop {
-            if let Some(parent_target) = workspace_snapshot
-                .incoming_sources_for_edge_weight_kind(
-                    current_attribute_value_id,
-                    EdgeWeightKindDiscriminants::Contain,
-                )?
-                .get(0)
-                .copied()
-            {
-                current_attribute_value_id = workspace_snapshot
-                    .get_node_weight(parent_target)?
-                    .id()
-                    .into();
-            } else {
-                break;
-            }
+        while let Some(parent_target) = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                current_attribute_value_id,
+                EdgeWeightKindDiscriminants::Contain,
+            )?
+            .get(0)
+            .copied()
+        {
+            current_attribute_value_id = workspace_snapshot
+                .get_node_weight(parent_target)?
+                .id()
+                .into();
         }
 
         // current_attribute_value_id is now the root attribute value. Check if it has a socket
@@ -753,14 +746,7 @@ impl AttributeValue {
         };
 
         // Create the "element" attribute value in the array or map alongside an attribute prototype for it.
-        let new_attribute_value = Self::new(
-            ctx,
-            matches!(
-                element_prop_node_weight.kind(),
-                PropKind::Map | PropKind::Object | PropKind::Array
-            ),
-        )
-        .await?;
+        let new_attribute_value = Self::new(ctx, element_prop_node_weight.kind().ordered()).await?;
 
         {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
@@ -793,97 +779,28 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<()> {
-        // determine if the value is for a prop, or for an internal provider. if it is for an
-        // internal provider we want to find if it is an internal provider for a prop (since we
-        // want to use the function for that prop kind), or if it is an explicit internal  or
-        // external provider (and has no prop)
-        // Values on components have outgoing edges to props or outgoing edges to a provider. Values
-        // on a schema variant have incoming edges from props or incoming edges from providers
         let mut current_attribute_value_id = Some(attribute_value_id);
 
         while let Some(attribute_value_id) = current_attribute_value_id {
-            let mut maybe_prop_node_index = None;
-            let mut maybe_provider_node_index = None;
             let empty_value = {
-                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-
-                for edge_ref in
-                    workspace_snapshot.edges_directed(attribute_value_id, Direction::Outgoing)?
+                let prop_id = match AttributeValue::is_for(ctx, attribute_value_id)
+                    .await?
+                    .prop_id()
                 {
-                    if edge_ref.weight().kind() == &EdgeWeightKind::Prop {
-                        maybe_prop_node_index = Some(edge_ref.target());
-                    }
+                    Some(prop_id) => prop_id,
+                    // Only prop values can be "vivified", but we don't return an error here to
+                    // simplify the use of this function
+                    None => return Ok(()),
+                };
 
-                    if edge_ref.weight().kind() == &EdgeWeightKind::Provider {
-                        maybe_provider_node_index = Some(edge_ref.target());
-                    }
-                }
+                let prop_node = {
+                    let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+                    workspace_snapshot
+                        .get_node_weight_by_id(prop_id)?
+                        .get_prop_node_weight()?
+                };
 
-                if maybe_provider_node_index.is_none() || maybe_prop_node_index.is_none() {
-                    for edge_ref in workspace_snapshot
-                        .edges_directed(attribute_value_id, Direction::Incoming)?
-                    {
-                        if edge_ref.weight().kind() == &EdgeWeightKind::Prop {
-                            maybe_prop_node_index = Some(edge_ref.source());
-                        }
-
-                        if edge_ref.weight().kind() == &EdgeWeightKind::Provider {
-                            maybe_provider_node_index = Some(edge_ref.source());
-                        }
-                    }
-                }
-
-                // This should not be possible.
-                if maybe_prop_node_index.is_some() && maybe_provider_node_index.is_some() {
-                    return Err(AttributeValueError::UnexpectedGraphLayout(
-                        "found both an provider edge and an prop edge",
-                    ));
-                }
-
-                // We're set on a provider, so we should look up the prop (if any)
-                if let Some(provider_node_index) = maybe_provider_node_index {
-                    let provider_id = workspace_snapshot
-                        .get_node_weight(provider_node_index)?
-                        .id();
-
-                    maybe_prop_node_index = workspace_snapshot
-                        .incoming_sources_for_edge_weight_kind(
-                            provider_id,
-                            EdgeWeightKindDiscriminants::Prop,
-                        )?
-                        .get(0)
-                        .copied();
-                }
-
-                match maybe_prop_node_index {
-                    Some(prop_node_index) => {
-                        match workspace_snapshot.get_node_weight(prop_node_index).map(
-                            |node_weight| {
-                                if let NodeWeight::Prop(inner) = node_weight {
-                                    Some(inner.kind())
-                                } else {
-                                    None
-                                }
-                            },
-                        )? {
-                            Some(PropKind::Array) => Some(serde_json::json!([])),
-                            Some(PropKind::Map) | Some(PropKind::Object) => {
-                                Some(serde_json::json!({}))
-                            }
-
-                            // This means we did not get a prop node weight despite the node index coming
-                            // from a prop edge
-                            None => {
-                                return Err(AttributeValueError::NodeWeightMismatch(
-                                    prop_node_index,
-                                    NodeWeightDiscriminants::Prop,
-                                ))
-                            }
-                            _ => None,
-                        }
-                    }
-                    None => Some(serde_json::json!({})),
-                }
+                prop_node.kind().empty_value()
             };
 
             let attribute_value = Self::get_by_id(ctx, attribute_value_id).await?;
@@ -943,7 +860,7 @@ impl AttributeValue {
             }
         };
 
-        let new_attribute_value = Self::new(ctx, true).await?;
+        let new_attribute_value = Self::new(ctx, matches!(prop_kind, PropKind::Array)).await?;
 
         {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
@@ -1037,6 +954,8 @@ impl AttributeValue {
                 // attribute values on components. For default values at the schema variant level, we're
                 // planning to add a "const arg" node that contains the default input for the function that
                 // sets the value on the prototype
+                //
+
                 let prop_node_index = workspace_snapshot
                     .outgoing_targets_for_edge_weight_kind(
                         attribute_value_id,
@@ -1220,7 +1139,7 @@ impl AttributeValue {
                             workspace_snapshot
                                 .ordered_children_for_node(attribute_value_id)?
                                 .ok_or(AttributeValueError::UnexpectedGraphLayout(
-                                    "array attribute value had no ordering node",
+                                    "array attribute value has no ordering node",
                                 ))?
                         };
 
@@ -1637,47 +1556,38 @@ impl AttributeValue {
         attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
     ) -> AttributeValueResult<()> {
-        let prop_node_idx = {
-            let mut maybe_prop_node_idx = None;
-
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-
-            for edge_ref in
-                workspace_snapshot.edges_directed(attribute_value_id, Direction::Outgoing)?
-            {
-                if edge_ref.weight().kind() == &EdgeWeightKind::Prop {
-                    maybe_prop_node_idx = Some(edge_ref.target());
-                }
+        let prop_id = match AttributeValue::is_for(ctx, attribute_value_id).await? {
+            ValueIsFor::Prop(prop_id) => prop_id,
+            _ => {
+                // Attribute values for internal and external providers should only be set by
+                // functions (usually identity) since they get their values from inter-component
+                // connections
+                return Err(AttributeValueError::CannotExplicitlySetProviderValues(
+                    attribute_value_id,
+                ));
             }
-
-            maybe_prop_node_idx.ok_or(AttributeValueError::MissingPropEdge(attribute_value_id))?
         };
 
         let intrinsic_func = {
             let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
-            if let NodeWeight::Prop(prop_inner) =
-                workspace_snapshot.get_node_weight(prop_node_idx)?
-            {
-                // None for the value means there is no value, so we use unset, but if it's a
-                // literal serde_json::Value::Null it means the value is set, but to null
-                if value.is_none() {
-                    IntrinsicFunc::Unset
-                } else {
-                    match prop_inner.kind() {
-                        PropKind::Array => IntrinsicFunc::SetArray,
-                        PropKind::Boolean => IntrinsicFunc::SetBoolean,
-                        PropKind::Integer => IntrinsicFunc::SetInteger,
-                        PropKind::Map => IntrinsicFunc::SetMap,
-                        PropKind::Object => IntrinsicFunc::SetObject,
-                        PropKind::String => IntrinsicFunc::SetString,
-                    }
-                }
+            let prop_node = workspace_snapshot
+                .get_node_weight_by_id(prop_id)?
+                .get_prop_node_weight()?;
+
+            // None for the value means there is no value, so we use unset, but if it's a
+            // literal serde_json::Value::Null it means the value is set, but to null
+            if value.is_none() {
+                IntrinsicFunc::Unset
             } else {
-                Err(AttributeValueError::NodeWeightMismatch(
-                    prop_node_idx,
-                    NodeWeightDiscriminants::Prop,
-                ))?
+                match prop_node.kind() {
+                    PropKind::Array => IntrinsicFunc::SetArray,
+                    PropKind::Boolean => IntrinsicFunc::SetBoolean,
+                    PropKind::Integer => IntrinsicFunc::SetInteger,
+                    PropKind::Map => IntrinsicFunc::SetMap,
+                    PropKind::Object => IntrinsicFunc::SetObject,
+                    PropKind::String => IntrinsicFunc::SetString,
+                }
             }
         };
 
@@ -1891,62 +1801,6 @@ impl AttributeValue {
         }
 
         maybe_prop_id.ok_or(AttributeValueError::PropNotFound(attribute_value_id))
-    }
-
-    pub async fn find_for_component_and_explicit_internal_provider(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        explicit_internal_provider_id: InternalProviderId,
-    ) -> AttributeValueResult<AttributeValueId> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-
-        // Collect all attribute value ids that correspond to external providers and explicit internal providers.
-        let mut attribute_value_ids: Vec<AttributeValueId> = Vec::new();
-        let maybe_attribute_value_node_indices = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                component_id,
-                EdgeWeightKindDiscriminants::Socket,
-            )?;
-        for maybe_attribute_value_node_index in maybe_attribute_value_node_indices {
-            let maybe_attribute_value_node_weight =
-                workspace_snapshot.get_node_weight(maybe_attribute_value_node_index)?;
-            if let NodeWeight::AttributeValue(_) = maybe_attribute_value_node_weight {
-                attribute_value_ids.push(maybe_attribute_value_node_weight.id().into());
-            }
-        }
-
-        // Find the attribute value for the provided explicit internal provider. This is a greedy algorithm, so we are
-        // not checking if there are accidentally two explicit internal providers for a given attribute value. Good luck.
-        for attribute_value_id in attribute_value_ids {
-            let maybe_explicit_internal_provider_node_indices = workspace_snapshot
-                .outgoing_targets_for_edge_weight_kind(
-                    attribute_value_id,
-                    EdgeWeightKindDiscriminants::Provider,
-                )?;
-            for maybe_explicit_internal_provider_node_index in
-                maybe_explicit_internal_provider_node_indices
-            {
-                let maybe_explicit_internal_provider_node_weight = workspace_snapshot
-                    .get_node_weight(maybe_explicit_internal_provider_node_index)?;
-                if let Some(discrim) =
-                    maybe_explicit_internal_provider_node_weight.content_address_discriminants()
-                {
-                    if ContentAddressDiscriminants::InternalProvider == discrim
-                        && maybe_explicit_internal_provider_node_weight.id()
-                            == explicit_internal_provider_id.into()
-                    {
-                        return Ok(attribute_value_id);
-                    }
-                }
-            }
-        }
-
-        Err(
-            AttributeValueError::NotFoundForComponentAndExplicitInternalProvider(
-                component_id,
-                explicit_internal_provider_id,
-            ),
-        )
     }
 
     async fn fetch_value_from_store(

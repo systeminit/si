@@ -9,7 +9,7 @@ use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
 use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentId, AttributePrototypeArgumentValueSource,
+    value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
 use crate::prop::PropParent;
 use crate::{func::intrinsics::IntrinsicFunc, ComponentKind, ProviderKind};
@@ -3368,7 +3368,7 @@ pub async fn attach_resource_payload_to_value(
     match rv_input_apa_id {
         Some(apa_id) => {
             if !{
-                if let Some(AttributePrototypeArgumentValueSource::Prop(prop_id)) =
+                if let Some(ValueSource::Prop(prop_id)) =
                     AttributePrototypeArgument::value_source_by_id(ctx, apa_id).await?
                 {
                     prop_id == source_prop_id

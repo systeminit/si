@@ -682,7 +682,7 @@ impl SchemaVariant {
                             let input_prop_id = Self::find_root_child_prop_id(
                                 ctx,
                                 schema_variant_id,
-                                input.location.clone().into(),
+                                input.location.into(),
                             )
                             .await?;
 

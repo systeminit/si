@@ -14,8 +14,8 @@ use crate::workspace_snapshot::edge_weight::{
 };
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::SchemaVariantId;
 use crate::{pk, AttributePrototype, DalContext, FuncId, Timestamp, TransactionsError};
+use crate::{AttributeValueId, SchemaVariantId};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -121,7 +121,6 @@ impl ExternalProvider {
         kind: ProviderKind,
         // todo: connection_annotation
     ) -> ExternalProviderResult<Self> {
-        info!("creating external provider");
         let name = name.into();
         let content = ExternalProviderContentV1 {
             timestamp: Timestamp::now(),
@@ -164,6 +163,28 @@ impl ExternalProvider {
         }
 
         Ok(Self::assemble(id.into(), content))
+    }
+
+    pub async fn attribute_values_for_external_provider_id(
+        ctx: &DalContext,
+        external_provider_id: ExternalProviderId,
+    ) -> ExternalProviderResult<Vec<AttributeValueId>> {
+        let mut result = vec![];
+
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let av_sources = workspace_snapshot.incoming_sources_for_edge_weight_kind(
+            external_provider_id,
+            EdgeWeightKindDiscriminants::Provider,
+        )?;
+        for av_source_idx in av_sources {
+            if let NodeWeight::AttributeValue(av_node_weight) =
+                workspace_snapshot.get_node_weight(av_source_idx)?
+            {
+                result.push(av_node_weight.id().into());
+            }
+        }
+
+        Ok(result)
     }
 
     pub async fn list(

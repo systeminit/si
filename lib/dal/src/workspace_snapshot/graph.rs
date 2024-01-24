@@ -138,7 +138,7 @@ impl WorkspaceSnapshotGraph {
         node_idx: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         let node_id = self.get_node_weight(node_idx)?.id();
-        Ok(self.get_node_index_by_id(node_id)?)
+        self.get_node_index_by_id(node_id)
     }
 
     pub fn add_edge(
@@ -916,7 +916,6 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKindDiscriminants::ActionPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
                     EdgeWeightKindDiscriminants::Ordering => "gray",
-                    EdgeWeightKindDiscriminants::InterComponent => "green",
                     EdgeWeightKindDiscriminants::Prop => "orange",
                     EdgeWeightKindDiscriminants::Prototype => "green",
                     EdgeWeightKindDiscriminants::PrototypeArgument => "green",
@@ -927,7 +926,19 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKindDiscriminants::Root => "black",
                     EdgeWeightKindDiscriminants::Socket => "purple",
                 };
-                format!("label = \"{discrim:?}\"\nfontcolor = {color}\ncolor = {color}")
+
+                match edgeref.weight().kind() {
+                    EdgeWeightKind::Contain(key) => {
+                        let key = key
+                            .as_deref()
+                            .map(|key| format!(" ({key}"))
+                            .unwrap_or("".into());
+                        format!(
+                            "label = \"{discrim:?}{key}\"\nfontcolor = {color}\ncolor = {color}"
+                        )
+                    }
+                    _ => format!("label = \"{discrim:?}\"\nfontcolor = {color}\ncolor = {color}"),
+                }
             },
             &|_, (node_index, node_weight)| {
                 let (label, color) = match node_weight {
@@ -1881,7 +1892,6 @@ impl WorkspaceSnapshotGraph {
                     // Nothing to do, as these EdgeWeightKind do not encode extra information
                     // in the edge itself.
                     EdgeWeightKind::Contain(None)
-                    | EdgeWeightKind::InterComponent
                     | EdgeWeightKind::PrototypeArgument
                     | EdgeWeightKind::PrototypeArgumentValue
                     | EdgeWeightKind::Provider

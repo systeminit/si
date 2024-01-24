@@ -344,47 +344,34 @@ impl InternalProvider {
         Ok(Self::assemble(id.into(), content))
     }
 
-    pub async fn prototype_id_for_explicit(
+    pub async fn list_ids_for_schema_variant(
         ctx: &DalContext,
-        explicit_internal_provider_id: InternalProviderId,
-    ) -> InternalProviderResult<AttributePrototypeId> {
+        schema_variant_id: SchemaVariantId,
+    ) -> InternalProviderResult<Vec<InternalProviderId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        let prototype_node_index = *workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                explicit_internal_provider_id,
-                EdgeWeightKindDiscriminants::Prototype,
-            )?
-            .get(0)
-            .ok_or(InternalProviderError::MissingAttributePrototypeExplicit(
-                explicit_internal_provider_id,
-            ))?;
-        Ok(workspace_snapshot
-            .get_node_weight(prototype_node_index)?
-            .id()
-            .into())
+
+        let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            schema_variant_id,
+            EdgeWeightKindDiscriminants::Provider,
+        )?;
+
+        let mut result = vec![];
+        for node_index in node_indices {
+            let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+            if node_weight
+                .get_option_content_node_weight_of_kind(
+                    ContentAddressDiscriminants::InternalProvider,
+                )
+                .is_some()
+            {
+                result.push(node_weight.id().into());
+            }
+        }
+
+        Ok(result)
     }
 
-    pub async fn attribute_value_id_for_explicit(
-        ctx: &DalContext,
-        explicit_internal_provider_id: InternalProviderId,
-    ) -> InternalProviderResult<AttributeValueId> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        let attribute_value_node_index = *workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(
-                explicit_internal_provider_id,
-                EdgeWeightKindDiscriminants::Provider,
-            )?
-            .get(0)
-            .ok_or(InternalProviderError::MissingAttributeValueExplicit(
-                explicit_internal_provider_id,
-            ))?;
-        Ok(workspace_snapshot
-            .get_node_weight(attribute_value_node_index)?
-            .id()
-            .into())
-    }
-
-    pub async fn list_explicit(
+    pub async fn list(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> InternalProviderResult<Vec<Self>> {
@@ -444,12 +431,11 @@ impl InternalProvider {
             EdgeWeightKindDiscriminants::Provider,
         )?;
         for av_source_idx in av_sources {
-            let av_id: AttributeValueId = workspace_snapshot
-                .get_node_weight(av_source_idx)?
-                .get_attribute_value_node_weight()?
-                .id()
-                .into();
-            result.push(av_id)
+            if let NodeWeight::AttributeValue(av_node_weight) =
+                workspace_snapshot.get_node_weight(av_source_idx)?
+            {
+                result.push(av_node_weight.id().into());
+            }
         }
 
         Ok(result)

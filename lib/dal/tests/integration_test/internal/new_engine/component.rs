@@ -408,7 +408,8 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
         .expect("able to get materialized_view for `naming_and_necessity_value_id`")
         .expect("naming and necessity has a value");
 
-    // hesperus is phosphorus
+    // hesperus is phosphorus (the attr func on naming_and_necessity_value_id will return
+    // phosphorus if it receives hesperus)
     assert_eq!("phosphorus", naming_and_necessity_view);
 
     let root_prop_id = Prop::find_prop_id_by_path(ctx, variant.id(), &PropPath::new(["root"]))
@@ -453,7 +454,9 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
                             }
                         }
                     }
-        }}),
+                }
+            }
+        ),
         root_view
     );
 }

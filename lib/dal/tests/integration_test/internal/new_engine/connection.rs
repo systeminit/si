@@ -3,7 +3,7 @@ use dal::{Component, DalContext, ExternalProvider, InternalProvider, Schema, Sch
 use dal_test::test;
 
 #[test]
-async fn connect_components_simple(ctx: &DalContext) {
+async fn connect_components_simple(ctx: &mut DalContext) {
     // Get the source schema variant id.
     let docker_image_schema = Schema::find_by_name(ctx, "Docker Image")
         .await
@@ -40,10 +40,9 @@ async fn connect_components_simple(ctx: &DalContext) {
         .iter()
         .find(|e| e.name() == "Container Image")
         .expect("could not find external provider");
-    let butane_explicit_internal_providers =
-        InternalProvider::list_explicit(ctx, butane_schema_variant_id)
-            .await
-            .expect("could not list explicit internal providers");
+    let butane_explicit_internal_providers = InternalProvider::list(ctx, butane_schema_variant_id)
+        .await
+        .expect("could not list explicit internal providers");
     let explicit_internal_provider = butane_explicit_internal_providers
         .iter()
         .find(|e| e.name() == "Container Image")
@@ -72,6 +71,12 @@ async fn connect_components_simple(ctx: &DalContext) {
     )
     .await
     .expect("could not connect components");
+
+    ctx.blocking_commit().await.expect("blocking commit failed");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
 
     // Assemble the diagram and check the edges.
     let mut diagram = Diagram::assemble(ctx)

@@ -1,14 +1,13 @@
 use std::{
     collections::{HashMap, HashSet},
     convert::TryFrom,
-    time::Duration,
 };
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::task::{JoinError, JoinHandle, JoinSet};
+use tokio::task::{JoinError, JoinSet};
 
 //use crate::tasks::StatusReceiverClient;
 //use crate::tasks::StatusReceiverRequest;
@@ -114,8 +113,20 @@ impl JobConsumer for DependentValuesUpdate {
 
 impl DependentValuesUpdate {
     async fn inner_run(&self, ctx: &mut DalContext) -> DependentValueUpdateResult<()> {
+        let start = tokio::time::Instant::now();
+
+        // Since this job happens in an async runner there is the possiblity for a commit and
+        // rebase to occur between dispatch and execution. Ensure we have the latest workspace
+        // snapshot for our change set
+        ctx.update_snapshot_to_visibility().await?;
+
         let mut dependency_graph =
             AttributeValue::dependent_value_graph(ctx, self.attribute_values.clone()).await?;
+
+        debug!(
+            "DependentValueGraph calculation took: {:?}",
+            start.elapsed()
+        );
 
         let mut seen_ids = HashSet::new();
         let mut task_id_to_av_id = HashMap::new();
@@ -140,7 +151,7 @@ impl DependentValuesUpdate {
                 }
             }
 
-            // Wait a task to finish
+            // Wait for a task to finish
             if let Some(join_result) = update_join_set.join_next_with_id().await {
                 let (task_id, execution_result) = join_result?;
                 if let Some(finished_value_id) = task_id_to_av_id.remove(&task_id) {
@@ -179,13 +190,15 @@ impl DependentValuesUpdate {
             independent_value_ids = dependency_graph.independent_values();
         }
 
+        debug!("DependentValuesUpdate took: {:?}", start.elapsed());
+
         ctx.commit().await?;
 
         Ok(())
     }
 }
 
-/// Wrapper around `AttributeValue.update_from_prototype_function(&ctx)` to get it to
+/// Wrapper around `AttributeValue.values_from_prototype_function_execution(&ctx)` to get it to
 /// play more nicely with being spawned into a `JoinSet`.
 #[instrument(
     name = "dependent_values_update.values_from_prototype_function_execution",

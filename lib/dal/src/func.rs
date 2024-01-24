@@ -219,7 +219,7 @@ impl Func {
             display_name: self
                 .display_name
                 .as_deref()
-                .unwrap_or_else(|| self.name.as_str())
+                .unwrap_or(self.name.as_str())
                 .into(),
             description: self.description.as_deref().map(Into::into),
             link: None,

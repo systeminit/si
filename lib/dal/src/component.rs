@@ -16,6 +16,8 @@ use crate::attribute::prototype::argument::{
 };
 use crate::attribute::value::AttributeValueError;
 use crate::change_set_pointer::ChangeSetPointerError;
+use crate::job::definition::DependentValuesUpdate;
+use crate::prop::{PropError, PropPath};
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::SchemaVariantError;
@@ -27,9 +29,9 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributeValue, AttributeValueId, DalContext, ExternalProviderId, InternalProviderId,
-    PropId, PropKind, SchemaVariant, SchemaVariantId, Timestamp, TransactionsError, WsEvent,
-    WsEventResult, WsPayload,
+    pk, AttributeValue, AttributeValueId, DalContext, ExternalProviderId, InternalProvider,
+    InternalProviderId, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId, Timestamp,
+    TransactionsError, WsEvent, WsEventResult, WsPayload,
 };
 
 pub mod resource;
@@ -57,6 +59,10 @@ pub enum ComponentError {
     AttributeValue(#[from] AttributeValueError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
+    #[error(
+        "connection destination component {0} has no attribute value for internal provider {1}"
+    )]
+    DestinationComponentMissingAttributeValueForInternalProvider(ComponentId, InternalProviderId),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("internal provider error: {0}")]
@@ -65,6 +71,8 @@ pub enum ComponentError {
     MultipleRootAttributeValuesFound(AttributeValueId, AttributeValueId, ComponentId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("found prop id ({0}) that is not a prop")]
     PropIdNotAProp(PropId),
     #[error("root attribute value not found for component: {0}")]
@@ -196,6 +204,27 @@ impl Component {
         self.height.as_deref()
     }
 
+    pub async fn materialized_view(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Option<serde_json::Value>> {
+        let schema_variant_id = Self::schema_variant_id(ctx, self.id()).await?;
+        let root_prop_id =
+            Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(["root"])).await?;
+
+        let root_value_ids = Prop::attribute_values_for_prop_id(ctx, root_prop_id).await?;
+        for value_id in root_value_ids {
+            let value_component_id = AttributeValue::component_id(ctx, value_id).await?;
+            if value_component_id == self.id() {
+                let root_value = AttributeValue::get_by_id(ctx, value_id).await?;
+                return Ok(root_value.materialized_view(ctx).await?);
+            }
+        }
+
+        // Should this be an error?
+        Ok(None)
+    }
+
     pub async fn new(
         ctx: &DalContext,
         name: impl Into<String>,
@@ -293,7 +322,8 @@ impl Component {
             };
 
             // Create an attribute value for the prop.
-            let attribute_value = AttributeValue::new(ctx, false).await?;
+            let attribute_value =
+                AttributeValue::new(ctx, matches!(prop_kind, PropKind::Array)).await?;
 
             // AttributeValue --Prop--> Prop
             let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
@@ -309,7 +339,8 @@ impl Component {
             match maybe_parent_attribute_value_id {
                 Some(parent_attribute_value_id) => {
                     // AttributeValue (Parent) --Contain--> AttributeValue
-                    workspace_snapshot.add_edge(
+                    workspace_snapshot.add_ordered_edge(
+                        change_set,
                         parent_attribute_value_id,
                         EdgeWeight::new(change_set, EdgeWeightKind::Contain(None))?,
                         attribute_value.id(),
@@ -431,7 +462,7 @@ impl Component {
     }
 
     pub async fn schema_variant(&self, ctx: &DalContext) -> ComponentResult<SchemaVariant> {
-        Ok(Self::schema_variant_for_component_id(ctx, self.id).await?)
+        Self::schema_variant_for_component_id(ctx, self.id).await
     }
 
     pub async fn schema_variant_id(
@@ -550,6 +581,83 @@ impl Component {
             .ok_or(ComponentError::RootAttributeValueNotFound(component_id))
     }
 
+    pub async fn external_provider_attribute_values(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<AttributeValueId>> {
+        let mut result = vec![];
+
+        let socket_values = {
+            let mut socket_values: Vec<AttributeValueId> = vec![];
+            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+            for socket_target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+                self.id(),
+                EdgeWeightKindDiscriminants::Socket,
+            )? {
+                socket_values.push(
+                    workspace_snapshot
+                        .get_node_weight(socket_target)?
+                        .get_attribute_value_node_weight()?
+                        .id()
+                        .into(),
+                );
+            }
+
+            socket_values
+        };
+
+        for socket_value_id in socket_values {
+            if AttributeValue::is_for(ctx, socket_value_id)
+                .await?
+                .external_provider_id()
+                .is_some()
+            {
+                result.push(socket_value_id);
+            }
+        }
+
+        Ok(result)
+    }
+
+    pub async fn internal_provider_attribute_values(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<(AttributeValueId, InternalProviderId)>> {
+        let mut result = vec![];
+
+        let socket_values = {
+            let mut socket_values: Vec<AttributeValueId> = vec![];
+            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+            for socket_target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+                self.id(),
+                EdgeWeightKindDiscriminants::Socket,
+            )? {
+                socket_values.push(
+                    workspace_snapshot
+                        .get_node_weight(socket_target)?
+                        .get_attribute_value_node_weight()?
+                        .id()
+                        .into(),
+                );
+            }
+
+            socket_values
+        };
+
+        for socket_value_id in socket_values {
+            if let Some(internal_provider_id) = AttributeValue::is_for(ctx, socket_value_id)
+                .await?
+                .internal_provider_id()
+            {
+                result.push((socket_value_id, internal_provider_id));
+            }
+        }
+
+        Ok(result)
+    }
+
     pub async fn connect(
         ctx: &DalContext,
         source_component_id: ComponentId,
@@ -557,13 +665,29 @@ impl Component {
         destination_component_id: ComponentId,
         destination_explicit_internal_provider_id: InternalProviderId,
     ) -> ComponentResult<AttributePrototypeArgumentId> {
-        let destination_attribute_value_id =
-            AttributeValue::find_for_component_and_explicit_internal_provider(
+        let destination_attribute_value_ids =
+            InternalProvider::attribute_values_for_internal_provider_id(
                 ctx,
-                destination_component_id,
                 destination_explicit_internal_provider_id,
             )
             .await?;
+
+        // filter the value ids by destination_component_id
+        let mut destination_attribute_value_id: Option<AttributeValueId> = None;
+        for value_id in destination_attribute_value_ids {
+            let component_id = AttributeValue::component_id(ctx, value_id).await?;
+            if component_id == destination_component_id {
+                destination_attribute_value_id = Some(value_id);
+                break;
+            }
+        }
+
+        let destination_attribute_value_id = destination_attribute_value_id.ok_or(
+            ComponentError::DestinationComponentMissingAttributeValueForInternalProvider(
+                destination_component_id,
+                destination_explicit_internal_provider_id,
+            ),
+        )?;
 
         let destination_prototype_id =
             AttributeValue::prototype_id(ctx, destination_attribute_value_id).await?;
@@ -575,6 +699,15 @@ impl Component {
             destination_component_id,
             destination_prototype_id,
         )
+        .await?;
+
+        AttributeValue::update_from_prototype_function(ctx, destination_attribute_value_id).await?;
+
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            vec![destination_attribute_value_id],
+        ))
         .await?;
 
         Ok(attribute_prototype_argument.id())

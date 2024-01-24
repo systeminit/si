@@ -286,6 +286,14 @@ impl PropKind {
     pub fn ordered(&self) -> bool {
         matches!(self, PropKind::Array | PropKind::Map | PropKind::Object)
     }
+
+    pub fn empty_value(&self) -> Option<serde_json::Value> {
+        match self {
+            Self::Array => Some(serde_json::json!([])),
+            Self::Map | Self::Object => Some(serde_json::json!({})),
+            _ => None,
+        }
+    }
 }
 
 impl From<PropKind> for PropSpecKind {
