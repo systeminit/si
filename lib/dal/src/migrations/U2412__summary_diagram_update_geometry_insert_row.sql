@@ -52,7 +52,7 @@ BEGIN
                size,
                color,
                node_type,
-               this_change_status,
+               change_status,
                has_resource,
                created_info,
                updated_info,
