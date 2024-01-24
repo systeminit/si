@@ -106,7 +106,6 @@ const fixesAreRunning = computed(
 );
 
 const openCollapsible = ref(true);
-
 onMounted(() => {
   if (changeSetStore.headSelected) {
     openCollapsible.value = !!window.localStorage.getItem("applied-changes");

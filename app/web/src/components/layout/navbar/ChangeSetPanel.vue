@@ -418,12 +418,16 @@ function onSelectChangeSet(newVal: string) {
 
   if (newVal && route.name) {
     if (newVal === nilId()) newVal = "head";
+
+    // keep everything in the current route except the change set id
+    // note - we use push here, so there is a new browser history entry
     router.push({
       name: route.name,
       params: {
         ...route.params,
         changeSetId: newVal,
       },
+      query: route.query,
     });
   }
 }
