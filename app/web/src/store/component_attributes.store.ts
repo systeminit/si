@@ -16,6 +16,7 @@ import {
 } from "@/api/sdf/dal/property_editor";
 import { nilId } from "@/utils/nilId";
 import { Qualification } from "@/api/sdf/dal/qualification";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ComponentId, useComponentsStore } from "./components.store";
@@ -64,6 +65,8 @@ export type AttributeTreeItem = {
 };
 
 export const useComponentAttributesStore = (componentId: ComponentId) => {
+  const featureFlagsStore = useFeatureFlagsStore();
+
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
 
@@ -172,6 +175,12 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           },
 
           schemaValidation(): Qualification {
+            if (!featureFlagsStore.JOI_VALIDATIONS) {
+              /* eslint-disable no-console */
+              console.warn(
+                "Trying to get schemaValidation with feature flag turned off",
+              );
+            }
             const tree = this.domainTree;
 
             const output = [];
