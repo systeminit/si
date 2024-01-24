@@ -116,6 +116,16 @@ export function rectContainsPoint(rect: IRect, point: Vector2d) {
 export function getRectCenter(rect: IRect) {
   return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
 }
+
+export function shrinkRect(rect: IRect, shrinkPx: number) {
+  return {
+    x: rect.x + shrinkPx,
+    y: rect.y + shrinkPx,
+    width: rect.width - shrinkPx * 2,
+    height: rect.height - shrinkPx * 2,
+  };
+}
+
 export function getAdjustmentRectToContainAnother(
   container: IRect,
   object: IRect,
