@@ -1,12 +1,3 @@
-DROP FUNCTION IF EXISTS summary_diagram_component_update_geometry_v1(
-    this_tenancy jsonb,
-    this_visibility jsonb,
-    this_node_id ident,
-    this_position jsonb,
-    this_size jsonb,
-    OUT object json
-);
-
 CREATE OR REPLACE FUNCTION summary_diagram_component_update_geometry_v2(
     this_tenancy jsonb,
     this_visibility jsonb,
@@ -52,7 +43,7 @@ BEGIN
                size,
                color,
                node_type,
-               this_change_status,
+               change_status,
                has_resource,
                created_info,
                updated_info,
