@@ -614,6 +614,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 this.rawComponentsById = _.keyBy(response.components, "id");
                 this.edgesById = _.keyBy(response.edges, "id");
 
+                // remove invalid component IDs from the selection
+                const validComponentIds = _.intersection(
+                  this.selectedComponentIds,
+                  _.keys(this.rawComponentsById),
+                );
+                this.setSelectedComponentId(validComponentIds);
+
                 // find any pending inserts that we know the component id of
                 // and have now been loaded - and remove them from the pending inserts
                 const pendingInsertsByComponentId = _.keyBy(
@@ -1220,16 +1227,18 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               selectedIds = _.map(this.selectedComponentIds, (id) => `c_${id}`);
             }
 
-            router.replace({
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              name: router.currentRoute.value.name!,
-              query: {
-                ...(selectedIds.length && { s: selectedIds.join("|") }),
-                ...(this.selectedComponentDetailsTab && {
-                  t: this.selectedComponentDetailsTab,
-                }),
-              },
-            });
+            const newQueryObj = {
+              ...(selectedIds.length && { s: selectedIds.join("|") }),
+              ...(this.selectedComponentDetailsTab && {
+                t: this.selectedComponentDetailsTab,
+              }),
+            };
+
+            if (!_.isEqual(router.currentRoute.value.query, newQueryObj)) {
+              router.replace({
+                query: newQueryObj,
+              });
+            }
           },
           syncUrlIntoSelection() {
             const ids = (
@@ -1426,6 +1435,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           ]);
 
           return () => {
+            // clear selection without triggering url stuff
+            this.selectedComponentIds = [];
+            this.selectedEdgeId = null;
+
             stopWatchingUrl();
             realtimeStore.unsubscribe(this.$id);
           };
