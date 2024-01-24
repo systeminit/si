@@ -222,7 +222,7 @@ pub async fn component_update_geometry(
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_component_update_geometry_v1($1, $2, $3, $4, $5)",
+            "SELECT object FROM summary_diagram_component_update_geometry_v2($1, $2, $3, $4, $5)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
