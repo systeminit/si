@@ -14,6 +14,7 @@ const FLAG_MAPPING = {
   COPY_PASTE: "copy_paste",
   DONT_BLOCK_ON_ACTIONS: "dont_block_on_actions",
   OVERRIDE_SCHEMA: "override_schema",
+  JOI_VALIDATIONS: "joi_validations",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
