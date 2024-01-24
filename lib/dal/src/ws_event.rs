@@ -7,8 +7,8 @@ use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::ComponentCreatedPayload;
 use crate::user::OnlinePayload;
 use crate::{
-    pkg::ModuleImportedPayload, user::CursorPayload, ChangeSetPk, DalContext, PropId,
-    StandardModelError, TransactionsError, WorkspacePk,
+    func::binding::LogLinePayload, pkg::ModuleImportedPayload, user::CursorPayload, ChangeSetPk,
+    DalContext, PropId, StandardModelError, TransactionsError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -55,7 +55,7 @@ pub enum WsPayload {
     // FixBatchReturn(FixBatchReturn),
     // FixReturn(FixReturn),
     // ImportWorkspaceVote(ImportWorkspaceVotePayload),
-    // LogLine(LogLinePayload),
+    LogLine(LogLinePayload),
     ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),
     // ResourceRefreshed(ResourceRefreshedPayload),

@@ -17,13 +17,18 @@ pub struct PgStoreTools;
 impl PgStoreTools {
     /// Create a new [`PgPool`] for a production [`PgStore`].
     pub async fn new_production_pg_pool() -> Result<PgPool, PgPoolError> {
-        let pg_pool_config = PgPoolConfig {
+        let pg_pool_config = Self::default_pool_config();
+        let pg_pool = PgPool::new(&pg_pool_config).await?;
+        Ok(pg_pool)
+    }
+
+    /// The default pool configuration for the PgStore
+    pub fn default_pool_config() -> PgPoolConfig {
+        PgPoolConfig {
             dbname: DBNAME.to_string(),
             application_name: APPLICATION_NAME.to_string(),
             ..Default::default()
-        };
-        let pg_pool = PgPool::new(&pg_pool_config).await?;
-        Ok(pg_pool)
+        }
     }
 
     /// Perform migrations for the database.

@@ -325,11 +325,9 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
 
     let module_index_url = services_context
         .module_index_url()
-        .as_ref()
         .ok_or(ServerError::ModuleIndexNotSet)?;
 
-    let module_index_client =
-        IndexClient::unauthenticated_client(module_index_url.clone().as_str().try_into()?);
+    let module_index_client = IndexClient::unauthenticated_client(module_index_url.try_into()?);
     let module_list = module_index_client.list_builtins().await?;
     let install_builtins = install_builtins(ctx, module_list, module_index_client);
     tokio::pin!(install_builtins);
@@ -358,7 +356,11 @@ async fn install_builtins(
 ) -> Result<()> {
     let dal = &ctx;
     let client = &module_index_client.clone();
-    let modules = module_list.modules;
+    let modules: Vec<ModuleDetailsResponse> = module_list
+        .modules
+        .into_iter()
+        .filter(|m| m.name == "si-docker-image-builtin")
+        .collect();
     let total = modules.len();
 
     let mut join_set = JoinSet::new();

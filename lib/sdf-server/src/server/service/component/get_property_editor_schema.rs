@@ -33,7 +33,8 @@ pub async fn get_property_editor_schema(
     //     return Err(ComponentError::InvalidVisibility);
     // }
 
-    let schema_variant = Component::schema_variant(&ctx, request.component_id).await?;
+    let schema_variant =
+        Component::schema_variant_for_component_id(&ctx, request.component_id).await?;
 
     let prop_edit_schema = PropertyEditorSchema::assemble(&ctx, schema_variant.id()).await?;
 

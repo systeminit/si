@@ -11,6 +11,7 @@ use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::RwLock;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use tokio::time::Instant;
 use ulid::Ulid;
@@ -56,6 +57,8 @@ pub struct ServicesContext {
     symmetric_crypto_service: SymmetricCryptoService,
     /// Config for the the rebaser service
     rebaser_config: RebaserClientConfig,
+    /// Content store
+    content_store_pg_pool: PgPool,
 }
 
 impl ServicesContext {
@@ -71,6 +74,7 @@ impl ServicesContext {
         module_index_url: Option<String>,
         symmetric_crypto_service: SymmetricCryptoService,
         rebaser_config: RebaserClientConfig,
+        content_store_pg_pool: PgPool,
     ) -> Self {
         Self {
             pg_pool,
@@ -82,6 +86,7 @@ impl ServicesContext {
             module_index_url,
             symmetric_crypto_service,
             rebaser_config,
+            content_store_pg_pool,
         }
     }
 
@@ -91,7 +96,6 @@ impl ServicesContext {
             services_context: self,
             blocking,
             no_dependent_values: false,
-            content_store: None,
         }
     }
 
@@ -120,8 +124,8 @@ impl ServicesContext {
     }
 
     /// Get a reference to the module index url
-    pub fn module_index_url(&self) -> &Option<String> {
-        &self.module_index_url
+    pub fn module_index_url(&self) -> Option<&str> {
+        self.module_index_url.as_deref()
     }
 
     /// Get a reference to the symmetric encryption service
@@ -129,8 +133,19 @@ impl ServicesContext {
         &self.symmetric_crypto_service
     }
 
+    /// Gets a reference to the rebaser client configuration
     pub fn rebaser_config(&self) -> &RebaserClientConfig {
         &self.rebaser_config
+    }
+
+    /// Gets a reference to the content store pg pool
+    pub fn content_store_pg_pool(&self) -> &PgPool {
+        &self.content_store_pg_pool
+    }
+
+    /// Builds and returns a new [`content_store::PgStore`]
+    pub async fn content_store(&self) -> content_store::StoreResult<PgStore> {
+        PgStore::new(self.content_store_pg_pool().clone()).await
     }
 
     /// Builds and returns a new [`Connections`].
@@ -266,7 +281,7 @@ pub struct DalContext {
     /// [`PgStore`](content_store::PgStore).
     content_store: Arc<Mutex<PgStore>>,
     /// The workspace snapshot for this context
-    workspace_snapshot: Option<Arc<Mutex<WorkspaceSnapshot>>>,
+    workspace_snapshot: Option<Arc<RwLock<WorkspaceSnapshot>>>,
     /// The change set pointer for this context
     change_set_pointer: Option<ChangeSetPointer>,
 }
@@ -279,7 +294,6 @@ impl DalContext {
             services_context,
             blocking,
             no_dependent_values: false,
-            content_store: None,
         }
     }
 
@@ -331,7 +345,8 @@ impl DalContext {
 
             Ok(Some(
                 snapshot
-                    .try_lock()?
+                    .write()
+                    .await
                     .write(self, vector_clock_id)
                     .await
                     .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?,
@@ -395,13 +410,13 @@ impl DalContext {
         Ok(conflicts)
     }
 
-    // pub fn to_builder(&self) -> DalContextBuilder {
-    //     DalContextBuilder {
-    //         services_context: self.services_context.clone(),
-    //         blocking: self.blocking,
-    //         no_dependent_values: self.no_dependent_values,
-    //     }
-    // }
+    pub fn to_builder(&self) -> DalContextBuilder {
+        DalContextBuilder {
+            services_context: self.services_context.clone(),
+            blocking: self.blocking,
+            no_dependent_values: self.no_dependent_values,
+        }
+    }
 
     /// Consumes all inner transactions and committing all changes made within them.
     pub async fn commit(&self) -> Result<Option<Conflicts>, TransactionsError> {
@@ -455,13 +470,13 @@ impl DalContext {
     }
 
     pub fn set_workspace_snapshot(&mut self, workspace_snapshot: WorkspaceSnapshot) {
-        self.workspace_snapshot = Some(Arc::new(Mutex::new(workspace_snapshot)));
+        self.workspace_snapshot = Some(Arc::new(RwLock::new(workspace_snapshot)));
     }
 
     /// Fetch the workspace snapshot for the current visibility
     pub fn workspace_snapshot(
         &self,
-    ) -> Result<&Arc<Mutex<WorkspaceSnapshot>>, WorkspaceSnapshotError> {
+    ) -> Result<&Arc<RwLock<WorkspaceSnapshot>>, WorkspaceSnapshotError> {
         match &self.workspace_snapshot {
             Some(workspace_snapshot) => Ok(workspace_snapshot),
             None => Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched),
@@ -487,6 +502,7 @@ impl DalContext {
     /// Consumes all inner transactions, committing all changes made within them, and
     /// blocks until all queued jobs have reported as finishing.
     pub async fn blocking_commit(&self) -> Result<Option<Conflicts>, TransactionsError> {
+        info!("blocking_commit");
         let rebase_request = match self.write_snapshot().await? {
             Some(workspace_snapshot_id) => Some(self.get_rebase_request(workspace_snapshot_id)?),
             None => None,
@@ -831,21 +847,14 @@ pub struct DalContextBuilder {
     /// Determines if we should not enqueue dependent value update jobs for attribute value
     /// changes.
     no_dependent_values: bool,
-    /// The content store, which defaults to the production [`PgStore`], if empty.
-    ///
-    /// In the future, this should use the [`Store`](content_store::Store) trait instead of the
-    /// [`PgStore`] directly.
-    content_store: Option<PgStore>,
 }
 
 impl DalContextBuilder {
     /// Constructs and returns a new [`DalContext`] using a default [`RequestContext`].
     pub async fn build_default(&self) -> Result<DalContext, TransactionsError> {
         let conns = self.services_context.connections().await?;
-        let raw_content_store = match &self.content_store {
-            Some(found_content_store) => found_content_store.clone(),
-            None => PgStore::new_production().await?,
-        };
+        // should we move this into Connections?
+        let content_store = self.services_context.content_store().await?;
 
         Ok(DalContext {
             services_context: self.services_context.clone(),
@@ -854,29 +863,8 @@ impl DalContextBuilder {
             tenancy: Tenancy::new_empty(),
             visibility: Visibility::new_head(false),
             history_actor: HistoryActor::SystemInit,
-            content_store: Arc::new(Mutex::new(raw_content_store)),
-            no_dependent_values: self.no_dependent_values,
-            workspace_snapshot: None,
-            change_set_pointer: None,
-        })
-    }
-
-    /// Constructs and returns a new [`DalContext`] using a default [`RequestContext`] and a
-    /// provided content store.
-    pub async fn build_default_with_content_store(
-        &self,
-        content_store: PgStore,
-    ) -> Result<DalContext, TransactionsError> {
-        let conns = self.services_context.connections().await?;
-        Ok(DalContext {
-            services_context: self.services_context.clone(),
-            blocking: self.blocking,
-            conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
-            tenancy: Tenancy::new_empty(),
-            visibility: Visibility::new_head(false),
-            history_actor: HistoryActor::SystemInit,
-            no_dependent_values: self.no_dependent_values,
             content_store: Arc::new(Mutex::new(content_store)),
+            no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set_pointer: None,
         })
@@ -888,10 +876,7 @@ impl DalContextBuilder {
         access_builder: AccessBuilder,
     ) -> Result<DalContext, TransactionsError> {
         let conns = self.services_context.connections().await?;
-        let raw_content_store = match &self.content_store {
-            Some(found_content_store) => found_content_store.clone(),
-            None => PgStore::new_production().await?,
-        };
+        let content_store = self.services_context.content_store().await?;
 
         Ok(DalContext {
             services_context: self.services_context.clone(),
@@ -901,7 +886,7 @@ impl DalContextBuilder {
             history_actor: access_builder.history_actor,
             visibility: Visibility::new_head(false),
             no_dependent_values: self.no_dependent_values,
-            content_store: Arc::new(Mutex::new(raw_content_store)),
+            content_store: Arc::new(Mutex::new(content_store)),
             workspace_snapshot: None,
             change_set_pointer: None,
         })
@@ -913,11 +898,7 @@ impl DalContextBuilder {
         request_context: RequestContext,
     ) -> Result<DalContext, TransactionsError> {
         let conns = self.services_context.connections().await?;
-        let raw_content_store = match &self.content_store {
-            Some(found_content_store) => found_content_store.clone(),
-            None => PgStore::new_production().await?,
-        };
-
+        let content_store = self.services_context.content_store().await?;
         let mut ctx = DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
@@ -926,7 +907,7 @@ impl DalContextBuilder {
             visibility: request_context.visibility,
             history_actor: request_context.history_actor,
             no_dependent_values: self.no_dependent_values,
-            content_store: Arc::new(Mutex::new(raw_content_store)),
+            content_store: Arc::new(Mutex::new(content_store)),
             workspace_snapshot: None,
             change_set_pointer: None,
         };
@@ -1190,6 +1171,7 @@ impl Transactions {
         let nats_conn = self.nats_txn.commit_into_conn().await?;
 
         let conflicts = if let Some(rebase_request) = rebase_request {
+            info!("rebase request");
             rebase(self.rebaser_config.clone(), rebase_request).await?
         } else {
             None

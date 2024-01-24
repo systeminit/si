@@ -18,15 +18,11 @@ use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPro
 use crate::{
     component::view::{AttributeDebugView, ComponentDebugView},
     edge::EdgeKind,
-    func::{
-        argument::FuncArgument, backend::validation::FuncBackendValidationArgs,
-        intrinsics::IntrinsicFunc,
-    },
+    func::{argument::FuncArgument, intrinsics::IntrinsicFunc},
     prop::PropPath,
     prop_tree::{PropTree, PropTreeNode},
     schema::variant::definition::SchemaVariantDefinition,
     socket::SocketKind,
-    validation::Validation,
     ActionPrototype, ActionPrototypeContext, AttributeContextBuilder, AttributePrototype,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, ChangeSet, ChangeSetPk,
     Component, ComponentError, ComponentId, ComponentType, DalContext, Edge, EdgeError,

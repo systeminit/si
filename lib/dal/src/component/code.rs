@@ -3,13 +3,13 @@ use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 
+use super::{ComponentError, ComponentResult};
 use crate::attribute::value::AttributeValue;
 use crate::{
-    AttributeValueId, CodeLanguage, CodeView, ComponentId, DalContext, StandardModel, WsEvent,
-    WsPayload,
+    attribute::value::AttributeValueError, code_view::CodeLanguage, code_view::CodeView,
+    schema::variant::root_prop::RootPropChild, AttributeValueId, Component, ComponentId,
+    DalContext, SchemaVariant, StandardModel, WsEvent, WsEventResult, WsPayload,
 };
-use crate::{Component, SchemaVariant};
-use crate::{RootPropChild, WsEventResult};
 
 #[derive(Deserialize, Debug)]
 struct CodeGenerationEntry {
@@ -27,13 +27,8 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<(Vec<CodeView>, bool)> {
-        let component = Self::get_by_id(ctx, &component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(component_id))?;
-        let schema_variant = component
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(component_id))?;
+        let component = Self::get_by_id(ctx, component_id).await?;
+        let schema_variant = component.schema_variant(ctx).await?;
 
         // Prepare to assemble code views and access the "/root/code" prop tree.
         let mut code_views: Vec<CodeView> = Vec::new();

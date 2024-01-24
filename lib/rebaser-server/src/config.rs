@@ -1,6 +1,7 @@
 use std::{env, path::Path};
 
 use buck2_resources::Buck2Resources;
+use content_store::PgStoreTools;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
@@ -54,6 +55,9 @@ pub struct Config {
 
     #[builder(default)]
     rabbitmq_config: SiRabbitMqConfig,
+
+    #[builder(default = "PgStoreTools::default_pool_config()")]
+    content_store_pg_pool: PgPoolConfig,
 }
 
 impl StandardConfig for Config {
@@ -97,6 +101,12 @@ impl Config {
     /// Gets a reference to the config for the SiRabbitMqConfig
     pub fn rabbitmq_config(&self) -> &SiRabbitMqConfig {
         &self.rabbitmq_config
+    }
+
+    /// Gets a reference to the config's content store pg pool.
+    #[must_use]
+    pub fn content_store_pg_pool(&self) -> &PgPoolConfig {
+        &self.content_store_pg_pool
     }
 }
 

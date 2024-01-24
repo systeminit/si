@@ -7,6 +7,7 @@ use std::{
 };
 
 use buck2_resources::Buck2Resources;
+use content_store::PgStoreTools;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
@@ -77,6 +78,9 @@ pub struct Config {
 
     #[builder(default = "JwtConfig::default()")]
     jwt_signing_public_key: JwtConfig,
+
+    #[builder(default = "PgStoreTools::default_pool_config()")]
+    content_store_pg_pool: PgPoolConfig,
 
     signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
@@ -149,6 +153,12 @@ impl Config {
     #[must_use]
     pub fn module_index_url(&self) -> &str {
         &self.module_index_url
+    }
+
+    /// Gets a reference to the config's content store pg pool.
+    #[must_use]
+    pub fn content_store_pg_pool(&self) -> &PgPoolConfig {
+        &self.content_store_pg_pool
     }
 }
 

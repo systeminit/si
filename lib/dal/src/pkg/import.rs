@@ -2,7 +2,7 @@ use si_pkg::{
     SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView, SiPkgComponent,
     SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
     SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData,
-    SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind, ValidationSpec,
+    SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
 };
 use std::{collections::HashMap, path::Path};
 use telemetry::prelude::*;
@@ -11,10 +11,7 @@ use tokio::sync::Mutex;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentId, AttributePrototypeArgumentValueSource,
 };
-use crate::func::backend::validation::FuncBackendValidationArgs;
 use crate::prop::PropParent;
-use crate::validation::prototype::ValidationPrototype;
-use crate::validation::ValidationKind;
 use crate::{func::intrinsics::IntrinsicFunc, ComponentKind, ProviderKind};
 use crate::{
     func::{self, argument::FuncArgument},
@@ -24,7 +21,6 @@ use crate::{
     },
     prop::PropPath,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    validation::Validation,
     ActionPrototype, ChangeSetPk, DalContext, ExternalProvider, ExternalProviderId, Func, FuncId,
     InternalProvider, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId,
     StandardModel,
@@ -46,8 +42,6 @@ enum Thing {
     Schema(Schema),
     SchemaVariant(SchemaVariant),
     Socket(Box<(Option<InternalProvider>, Option<ExternalProvider>)>),
-    #[allow(dead_code)]
-    Validation(ValidationPrototype),
 }
 
 type ThingMap = super::ChangeSetThingMap<String, Thing>;
@@ -92,7 +86,7 @@ async fn import_change_set(
             || special_case_funcs.contains(&func_spec.name())
             || func_spec.is_from_builtin().unwrap_or(false)
         {
-            if let Some(func_id) = Func::find_by_name(ctx, func_spec.name())? {
+            if let Some(func_id) = Func::find_by_name(ctx, func_spec.name()).await? {
                 let func = Func::get_by_id(ctx, func_id).await?;
 
                 thing_map.insert(
@@ -2082,7 +2076,6 @@ struct PropVisitContext<'a> {
     pub attr_funcs: Mutex<Vec<AttrFuncInfo>>,
     pub default_values: Mutex<Vec<DefaultValueInfo>>,
     pub map_key_funcs: Mutex<Vec<(String, AttrFuncInfo)>>,
-    pub validations: Mutex<Vec<(PropId, ValidationSpec)>>,
     pub change_set_pk: Option<ChangeSetPk>,
 }
 
@@ -2116,9 +2109,8 @@ async fn import_leaf_function(
     Ok(())
 }
 
-fn get_identity_func(ctx: &DalContext) -> PkgResult<FuncId> {
-    let id_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)?;
-    Ok(id_func_id)
+async fn get_identity_func(ctx: &DalContext) -> PkgResult<FuncId> {
+    Ok(Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?)
 }
 
 async fn create_socket(
@@ -2126,7 +2118,7 @@ async fn create_socket(
     data: &SiPkgSocketData,
     schema_variant_id: SchemaVariantId,
 ) -> PkgResult<(Option<InternalProvider>, Option<ExternalProvider>)> {
-    let identity_func_id = get_identity_func(ctx)?;
+    let identity_func_id = get_identity_func(ctx).await?;
 
     let (ip, ep) = match data.kind() {
         SocketSpecKind::Input => {
@@ -2253,7 +2245,8 @@ async fn create_action_protoype(
         action_func_spec.kind().into(),
         schema_variant_id,
         func_id,
-    )?;
+    )
+    .await?;
 
     Ok(proto)
 }
@@ -2358,7 +2351,6 @@ struct CreatePropsSideEffects {
     attr_funcs: Vec<AttrFuncInfo>,
     default_values: Vec<DefaultValueInfo>,
     map_key_funcs: Vec<(String, AttrFuncInfo)>,
-    validations: Vec<(PropId, ValidationSpec)>,
 }
 
 impl IntoIterator for CreatePropsSideEffects {
@@ -2375,7 +2367,6 @@ impl Extend<CreatePropsSideEffects> for CreatePropsSideEffects {
             self.attr_funcs.extend(element.attr_funcs);
             self.default_values.extend(element.default_values);
             self.map_key_funcs.extend(element.map_key_funcs);
-            self.validations.extend(element.validations);
         }
     }
 }
@@ -2394,7 +2385,6 @@ async fn create_props(
         attr_funcs: Mutex::new(vec![]),
         default_values: Mutex::new(vec![]),
         map_key_funcs: Mutex::new(vec![]),
-        validations: Mutex::new(vec![]),
         change_set_pk,
     };
 
@@ -2412,7 +2402,6 @@ async fn create_props(
         attr_funcs: context.attr_funcs.into_inner(),
         default_values: context.default_values.into_inner(),
         map_key_funcs: context.map_key_funcs.into_inner(),
-        validations: context.validations.into_inner(),
     })
 }
 
@@ -2566,7 +2555,8 @@ async fn import_schema_variant(
                 ctx,
                 schema_variant.id(),
                 &PropPath::new(["root", "domain"]),
-            )?;
+            )
+            .await?;
 
             side_effects.extend(
                 create_props(
@@ -2584,7 +2574,8 @@ async fn import_schema_variant(
                 ctx,
                 schema_variant.id(),
                 &PropPath::new(["root", "resource_value"]),
-            )?;
+            )
+            .await?;
 
             side_effects.extend(
                 create_props(
@@ -2602,7 +2593,8 @@ async fn import_schema_variant(
                 ctx,
                 schema_variant.id(),
                 &PropPath::new(["root", "secrets"]),
-            )?;
+            )
+            .await?;
 
             side_effects.extend(
                 create_props(
@@ -2618,7 +2610,8 @@ async fn import_schema_variant(
 
             if !variant_spec.secret_definitions()?.is_empty() {
                 let root_prop_id =
-                    Prop::find_prop_id_by_path(ctx, schema_variant.id(), &PropPath::new(["root"]))?;
+                    Prop::find_prop_id_by_path(ctx, schema_variant.id(), &PropPath::new(["root"]))
+                        .await?;
 
                 let secret_definition_prop = Prop::new(
                     ctx,
@@ -2628,7 +2621,8 @@ async fn import_schema_variant(
                     None,
                     None,
                     PropParent::OrderedProp(root_prop_id),
-                )?;
+                )
+                .await?;
                 let secret_definition_prop_id = secret_definition_prop.id();
 
                 side_effects.extend(
@@ -2693,7 +2687,8 @@ async fn import_schema_variant(
                     ctx,
                     schema_variant.id(),
                     &PropPath::new(["root", "si", "name"]),
-                )?;
+                )
+                .await?;
                 let name_default_value_info = DefaultValueInfo::String {
                     prop_id: name_prop_id,
                     default_value: schema.name.to_owned().to_lowercase(),
@@ -2707,7 +2702,8 @@ async fn import_schema_variant(
                     ctx,
                     schema_variant.id(),
                     &PropPath::new(si_prop_func.kind().prop_path()),
-                )?;
+                )
+                .await?;
                 import_attr_func_for_prop(
                     ctx,
                     change_set_pk,
@@ -2737,7 +2733,8 @@ async fn import_schema_variant(
                     ctx,
                     schema_variant.id(),
                     &PropPath::new(root_prop_func.prop().path_parts()),
-                )?;
+                )
+                .await?;
                 import_attr_func_for_prop(
                     ctx,
                     change_set_pk,
@@ -2782,11 +2779,6 @@ async fn import_schema_variant(
                     thing_map,
                 )
                 .await?;
-            }
-
-            for (prop_id, validation_spec) in side_effects.validations {
-                import_prop_validation(ctx, change_set_pk, validation_spec, prop_id, thing_map)
-                    .await?;
             }
 
             Some(schema_variant)
@@ -2906,13 +2898,13 @@ async fn get_prototype_for_context(
             ));
         }
 
-        let element_prop_id = map_prop.element_prop_id(ctx)?;
+        let element_prop_id = map_prop.element_prop_id(ctx).await?;
         Ok(
-            match AttributePrototype::find_for_prop(ctx, element_prop_id, &key)? {
+            match AttributePrototype::find_for_prop(ctx, element_prop_id, &key).await? {
                 None => {
-                    let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset)?;
-                    let prototype_id = AttributePrototype::new(ctx, unset_func_id)?.id();
-                    Prop::set_prototype_id(ctx, element_prop_id, prototype_id)?;
+                    let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
+                    let prototype_id = AttributePrototype::new(ctx, unset_func_id).await?.id();
+                    Prop::set_prototype_id(ctx, element_prop_id, prototype_id).await?;
 
                     prototype_id
                 }
@@ -2922,13 +2914,16 @@ async fn get_prototype_for_context(
     } else {
         Ok(match context {
             AttrFuncContext::Prop(prop_id) => {
-                AttributePrototype::find_for_prop(ctx, prop_id, &None)?
+                AttributePrototype::find_for_prop(ctx, prop_id, &None)
+                    .await?
                     .ok_or(PkgError::PropMissingPrototype(prop_id))?
             }
             AttrFuncContext::ExternalProvider(external_provider_id) => {
-                AttributePrototype::find_for_external_provider(ctx, external_provider_id)?.ok_or(
-                    PkgError::ExternalProviderMissingPrototype(external_provider_id),
-                )?
+                AttributePrototype::find_for_external_provider(ctx, external_provider_id)
+                    .await?
+                    .ok_or(PkgError::ExternalProviderMissingPrototype(
+                        external_provider_id,
+                    ))?
             }
         })
     }
@@ -2953,8 +2948,9 @@ async fn create_attr_proto_arg(
 
     Ok(match input {
         SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
-            let prop_id = Prop::find_prop_id_by_path(ctx, schema_variant_id, &prop_path.into())?;
-            let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id)?;
+            let prop_id =
+                Prop::find_prop_id_by_path(ctx, schema_variant_id, &prop_path.into()).await?;
+            let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id).await?;
             let apa_id = apa.id();
 
             apa.set_value_from_prop_id(ctx, prop_id).await?;
@@ -2968,10 +2964,11 @@ async fn create_attr_proto_arg(
                     .ok_or(PkgError::MissingInternalProviderForSocketName(
                         socket_name.to_owned(),
                     ))?;
-            let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id)?;
+            let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id).await?;
             let apa_id = apa.id();
 
-            apa.set_value_from_internal_provider_id(ctx, explicit_ip.id())?;
+            apa.set_value_from_internal_provider_id(ctx, explicit_ip.id())
+                .await?;
             apa_id
         }
         _ => {
@@ -3056,10 +3053,10 @@ async fn import_attr_func(
 ) -> PkgResult<()> {
     let prototype_id = get_prototype_for_context(ctx, context, key).await?;
 
-    let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id)?;
+    let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
 
     if prototype_func_id != func_id {
-        AttributePrototype::update_func_by_id(ctx, prototype_id, func_id)?;
+        AttributePrototype::update_func_by_id(ctx, prototype_id, func_id).await?;
     }
 
     for input in &inputs {
@@ -3137,182 +3134,6 @@ async fn import_attr_func(
     Ok(())
 }
 
-async fn create_validation(
-    ctx: &DalContext,
-    validation_kind: ValidationKind,
-    builtin_func_id: FuncId,
-    prop_id: PropId,
-) -> PkgResult<ValidationPrototype> {
-    let (validation_func_id, validation_args) = match validation_kind {
-        ValidationKind::Builtin(validation) => (
-            builtin_func_id,
-            serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
-        ),
-
-        ValidationKind::Custom(func_id) => (func_id, serde_json::json!(null)),
-    };
-
-    Ok(ValidationPrototype::new(
-        ctx,
-        validation_func_id,
-        validation_args,
-        prop_id,
-    )?)
-}
-
-// async fn update_validation(
-//     ctx: &DalContext,
-//     prototype: &mut ValidationPrototype,
-//     validation_kind: ValidationKind,
-//     builtin_func_id: FuncId,
-//     prop_id: PropId,
-//     schema_id: SchemaId,
-//     schema_variant_id: SchemaVariantId,
-// ) -> PkgResult<()> {
-//     let (validation_func_id, validation_args) = match validation_kind {
-//         ValidationKind::Builtin(validation) => (
-//             builtin_func_id,
-//             serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
-//         ),
-
-//         ValidationKind::Custom(func_id) => (func_id, serde_json::json!(null)),
-//     };
-
-//     prototype.set_prop_id(ctx, prop_id).await?;
-//     prototype.set_schema_id(ctx, schema_id).await?;
-//     prototype
-//         .set_schema_variant_id(ctx, schema_variant_id)
-//         .await?;
-//     prototype.set_args(ctx, validation_args).await?;
-//     prototype.set_func_id(ctx, validation_func_id).await?;
-
-//     Ok(())
-// }
-
-async fn import_prop_validation(
-    ctx: &DalContext,
-    change_set_pk: Option<ChangeSetPk>,
-    spec: ValidationSpec,
-    prop_id: PropId,
-    thing_map: &mut ThingMap,
-) -> PkgResult<()> {
-    let builtin_validation_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Validation)?;
-
-    let validation_kind = match &spec {
-        ValidationSpec::IntegerIsBetweenTwoIntegers {
-            lower_bound,
-            upper_bound,
-            ..
-        } => ValidationKind::Builtin(Validation::IntegerIsBetweenTwoIntegers {
-            value: None,
-            lower_bound: *lower_bound,
-            upper_bound: *upper_bound,
-        }),
-        ValidationSpec::IntegerIsNotEmpty { .. } => {
-            ValidationKind::Builtin(Validation::IntegerIsNotEmpty { value: None })
-        }
-        ValidationSpec::StringEquals { expected, .. } => {
-            ValidationKind::Builtin(Validation::StringEquals {
-                value: None,
-                expected: expected.to_owned(),
-            })
-        }
-        ValidationSpec::StringHasPrefix { expected, .. } => {
-            ValidationKind::Builtin(Validation::StringHasPrefix {
-                value: None,
-                expected: expected.to_owned(),
-            })
-        }
-        ValidationSpec::StringInStringArray {
-            expected,
-            display_expected,
-            ..
-        } => ValidationKind::Builtin(Validation::StringInStringArray {
-            value: None,
-            expected: expected.to_owned(),
-            display_expected: *display_expected,
-        }),
-        ValidationSpec::StringIsHexColor { .. } => {
-            ValidationKind::Builtin(Validation::StringIsHexColor { value: None })
-        }
-        ValidationSpec::StringIsNotEmpty { .. } => {
-            ValidationKind::Builtin(Validation::StringIsNotEmpty { value: None })
-        }
-        ValidationSpec::StringIsValidIpAddr { .. } => {
-            ValidationKind::Builtin(Validation::StringIsValidIpAddr { value: None })
-        }
-        ValidationSpec::CustomValidation { func_unique_id, .. } => {
-            ValidationKind::Custom(match thing_map.get(None, func_unique_id) {
-                Some(Thing::Func(func)) => func.id,
-                _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_owned())),
-            })
-        }
-    };
-
-    match change_set_pk {
-        None => {
-            create_validation(ctx, validation_kind, builtin_validation_func_id, prop_id).await?;
-        }
-        Some(_) => {
-            todo!("workspace import not yet implemented");
-            // let unique_id = spec
-            //     .unique_id()
-            //     .ok_or(PkgError::MissingUniqueIdForNode("validation".into()))?;
-            // let deleted = spec.deleted();
-
-            // let validation_prototype = match thing_map.get(change_set_pk, &unique_id.to_owned()) {
-            //     Some(Thing::Validation(prototype)) => {
-            //         let mut prototype = prototype.to_owned();
-
-            //         if deleted {
-            //             prototype.delete_by_id(ctx).await?;
-            //         } else {
-            //             update_validation(
-            //                 ctx,
-            //                 &mut prototype,
-            //                 validation_kind,
-            //                 *builtin_validation_func.id(),
-            //                 prop_id,
-            //                 schema_id,
-            //                 schema_variant_id,
-            //             )
-            //             .await?;
-            //         }
-
-            //         Some(prototype)
-            //     }
-            //     _ => {
-            //         if deleted {
-            //             None
-            //         } else {
-            //             Some(
-            //                 create_validation(
-            //                     ctx,
-            //                     validation_kind,
-            //                     *builtin_validation_func.id(),
-            //                     prop_id,
-            //                     schema_id,
-            //                     schema_variant_id,
-            //                 )
-            //                 .await?,
-            //             )
-            //         }
-            //     }
-            // };
-
-            // if let Some(prototype) = validation_prototype {
-            //     thing_map.insert(
-            //         change_set_pk,
-            //         unique_id.to_owned(),
-            //         Thing::Validation(prototype),
-            //     );
-            // }
-        }
-    }
-
-    Ok(())
-}
-
 fn prop_kind_for_pkg_prop(pkg_prop: &SiPkgProp<'_>) -> PropKind {
     match pkg_prop {
         SiPkgProp::Array { .. } => PropKind::Array,
@@ -3351,6 +3172,7 @@ async fn create_dal_prop(
         Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
         prop_parent,
     )
+    .await
     .map_err(SiPkgError::visit_prop)?;
 
     Ok(prop)
@@ -3388,7 +3210,7 @@ async fn create_prop(
 
             let path = parent_path.join(&PropPath::new([spec.name()]));
 
-            match Prop::find_prop_id_by_path_opt(ctx.ctx, ctx.schema_variant_id, &path)? {
+            match Prop::find_prop_id_by_path_opt(ctx.ctx, ctx.schema_variant_id, &path).await? {
                 None => {
                     let data = spec.data().ok_or(PkgError::DataNotFound("prop".into()))?;
                     create_dal_prop(
@@ -3484,18 +3306,9 @@ async fn create_prop(
         });
     }
 
-    for validation_pkg_spec in spec.validations()? {
-        let validation_spec: ValidationSpec = validation_pkg_spec.try_into()?;
-
-        ctx.validations
-            .lock()
-            .await
-            .push((prop.id(), validation_spec));
-    }
-
     Ok(Some(ParentPropInfo {
         prop_id: prop.id(),
-        path: prop.path(ctx.ctx)?,
+        path: prop.path(ctx.ctx).await?,
         kind: prop.kind,
     }))
 }
@@ -3504,9 +3317,11 @@ pub async fn attach_resource_payload_to_value(
     ctx: &DalContext,
     schema_variant_id: SchemaVariantId,
 ) -> PkgResult<()> {
-    let func_id = Func::find_by_name(ctx, "si:resourcePayloadToValue")?.ok_or(
-        PkgError::FuncNotFoundByName("si:resourcePayloadToValue".into()),
-    )?;
+    let func_id = Func::find_by_name(ctx, "si:resourcePayloadToValue")
+        .await?
+        .ok_or(PkgError::FuncNotFoundByName(
+            "si:resourcePayloadToValue".into(),
+        ))?;
 
     let func_argument_id = FuncArgument::find_by_name_for_func(ctx, "payload", func_id)
         .await?
@@ -3520,27 +3335,31 @@ pub async fn attach_resource_payload_to_value(
         ctx,
         schema_variant_id,
         &PropPath::new(["root", "resource", "payload"]),
-    )?;
+    )
+    .await?;
 
     let target_id = {
         let resource_value_prop_id = Prop::find_prop_id_by_path(
             ctx,
             schema_variant_id,
             &PropPath::new(["root", "resource_value"]),
-        )?;
+        )
+        .await?;
 
         let prototype_id =
             get_prototype_for_context(ctx, AttrFuncContext::Prop(resource_value_prop_id), None)
                 .await?;
 
-        AttributePrototype::update_func_by_id(ctx, prototype_id, func_id)?;
+        AttributePrototype::update_func_by_id(ctx, prototype_id, func_id).await?;
 
         prototype_id
     };
 
     let mut rv_input_apa_id = None;
-    for apa_id in AttributePrototypeArgument::list_ids_for_prototype(ctx, target_id)? {
-        if func_argument_id == AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id)? {
+    for apa_id in AttributePrototypeArgument::list_ids_for_prototype(ctx, target_id).await? {
+        if func_argument_id
+            == AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?
+        {
             rv_input_apa_id = Some(apa_id);
             break;
         }
@@ -3550,7 +3369,7 @@ pub async fn attach_resource_payload_to_value(
         Some(apa_id) => {
             if !{
                 if let Some(AttributePrototypeArgumentValueSource::Prop(prop_id)) =
-                    AttributePrototypeArgument::value_source_by_id(ctx, apa_id)?
+                    AttributePrototypeArgument::value_source_by_id(ctx, apa_id).await?
                 {
                     prop_id == source_prop_id
                 } else {
@@ -3562,7 +3381,7 @@ pub async fn attach_resource_payload_to_value(
             }
         }
         None => {
-            let apa = AttributePrototypeArgument::new(ctx, target_id, func_argument_id)?;
+            let apa = AttributePrototypeArgument::new(ctx, target_id, func_argument_id).await?;
             apa.set_value_from_prop_id(ctx, source_prop_id).await?;
         }
     }

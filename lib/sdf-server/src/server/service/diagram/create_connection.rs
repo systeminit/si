@@ -58,7 +58,8 @@ pub async fn create_connection(
         request.from_external_provider_id,
         request.to_component_id,
         request.to_explicit_internal_provider_id,
-    )?;
+    )
+    .await?;
 
     // TODO(nick): restore dependent values update.
     // let to_attribute_value_context = AttributeReadContext {

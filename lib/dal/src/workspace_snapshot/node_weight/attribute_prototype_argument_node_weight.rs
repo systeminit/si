@@ -3,66 +3,68 @@ use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
-use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
     change_set_pointer::ChangeSetPointer,
     workspace_snapshot::{
-        content_address::ContentAddress,
-        graph::LineageId,
-        node_weight::{NodeWeightError, NodeWeightResult},
-        vector_clock::VectorClock,
+        graph::LineageId, node_weight::NodeWeightResult, vector_clock::VectorClock,
     },
+    ComponentId,
 };
 
+use crate::workspace_snapshot::vector_clock::VectorClockId;
+
+/// When this `AttributePrototypeArgument` represents a connection between two
+/// components, we need to know which components are being connected.
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ArgumentTargets {
+    pub source_component_id: ComponentId,
+    pub destination_component_id: ComponentId,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ContentNodeWeight {
-    /// The stable local ID of the object in question. Mainly used by external things like
-    /// the UI to be able to say "do X to _this_ thing" since the `NodeIndex` is an
-    /// internal implementation detail, and the content ID wrapped by the
-    /// [`NodeWeightKind`] changes whenever something about the node itself changes (for
-    /// example, the name, or type of a [`Prop`].)
+pub struct AttributePrototypeArgumentNodeWeight {
     id: Ulid,
-    /// Globally stable ID for tracking the "lineage" of a thing to determine whether it
-    /// should be trying to receive updates.
     lineage_id: LineageId,
-    /// What type of thing is this node representing, and what is the content hash used to
-    /// retrieve the data for this specific node.
-    content_address: ContentAddress,
-    /// [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree) hash for the graph
-    /// starting with this node as the root. Mainly useful in quickly determining "has
-    /// something changed anywhere in this (sub)graph".
     merkle_tree_hash: ContentHash,
-    /// The first time a [`ChangeSetPointer`] has "seen" this content. This is useful for determining
-    /// whether the absence of this content on one side or the other of a rebase/merge is because
-    /// the content is new, or because one side deleted it.
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
+    targets: Option<ArgumentTargets>,
 }
 
-impl ContentNodeWeight {
+impl AttributePrototypeArgumentNodeWeight {
     pub fn new(
         change_set: &ChangeSetPointer,
         id: Ulid,
-        content_address: ContentAddress,
+        targets: Option<ArgumentTargets>,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
             lineage_id: change_set.generate_ulid()?,
-            content_address,
             merkle_tree_hash: ContentHash::default(),
+            targets,
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
         })
     }
 
-    pub fn content_address(&self) -> ContentAddress {
-        self.content_address
+    pub fn content_hash(&self) -> ContentHash {
+        let target_string = self
+            .targets
+            .map(|targets| {
+                format!(
+                    "{}{}",
+                    targets.source_component_id, targets.destination_component_id
+                )
+            })
+            .unwrap_or("".into());
+
+        ContentHash::new(target_string.as_bytes())
     }
 
-    pub fn content_hash(&self) -> ContentHash {
-        self.content_address.content_hash()
+    pub fn node_hash(&self) -> ContentHash {
+        self.content_hash()
     }
 
     pub fn id(&self) -> Ulid {
@@ -118,38 +120,8 @@ impl ContentNodeWeight {
         self.merkle_tree_hash
     }
 
-    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
-        let new_address = match &self.content_address {
-            ContentAddress::ActionPrototype(_) => ContentAddress::ActionPrototype(content_hash),
-            ContentAddress::AttributePrototype(_) => {
-                ContentAddress::AttributePrototype(content_hash)
-            }
-            ContentAddress::Component(_) => ContentAddress::Component(content_hash),
-            ContentAddress::ExternalProvider(_) => ContentAddress::ExternalProvider(content_hash),
-            ContentAddress::FuncArg(_) => ContentAddress::FuncArg(content_hash),
-            ContentAddress::Func(_) => ContentAddress::Func(content_hash),
-            ContentAddress::InternalProvider(_) => ContentAddress::InternalProvider(content_hash),
-            ContentAddress::JsonValue(_) => ContentAddress::JsonValue(content_hash),
-            ContentAddress::Prop(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Prop".to_string(),
-                    "Content".to_string(),
-                ));
-            }
-            ContentAddress::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
-            ContentAddress::Schema(_) => ContentAddress::Schema(content_hash),
-            ContentAddress::SchemaVariant(_) => ContentAddress::SchemaVariant(content_hash),
-            ContentAddress::StaticArgumentValue(_) => {
-                ContentAddress::StaticArgumentValue(content_hash)
-            }
-            ContentAddress::ValidationPrototype(_) => {
-                ContentAddress::ValidationPrototype(content_hash)
-            }
-        };
-
-        self.content_address = new_address;
-
-        Ok(())
+    pub fn targets(&self) -> Option<ArgumentTargets> {
+        self.targets
     }
 
     pub fn new_with_incremented_vector_clock(
@@ -160,10 +132,6 @@ impl ContentNodeWeight {
         new_node_weight.increment_vector_clock(change_set)?;
 
         Ok(new_node_weight)
-    }
-
-    pub fn node_hash(&self) -> ContentHash {
-        self.content_hash()
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
@@ -192,12 +160,13 @@ impl ContentNodeWeight {
     }
 }
 
-impl std::fmt::Debug for ContentNodeWeight {
+impl std::fmt::Debug for AttributePrototypeArgumentNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("ContentNodeWeight")
-            .field("id", &self.id.to_string())
+        f.debug_struct("AttributePrototypeArgumentNodeWeight")
+            .field("id", &self.id().to_string())
             .field("lineage_id", &self.lineage_id.to_string())
-            .field("content_address", &self.content_address)
+            .field("targets", &self.targets)
+            .field("node_hash", &self.node_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .field("vector_clock_first_seen", &self.vector_clock_first_seen)
             .field(

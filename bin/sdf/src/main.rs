@@ -84,6 +84,8 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
+    let content_store_pg_pool = Server::create_pg_pool(config.content_store_pg_pool()).await?;
+
     let veritech = Server::create_veritech_client(nats_conn.clone());
 
     let symmetric_crypto_service =
@@ -107,6 +109,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         Some(module_index_url),
         symmetric_crypto_service,
         rebaser_config,
+        content_store_pg_pool,
     );
 
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {

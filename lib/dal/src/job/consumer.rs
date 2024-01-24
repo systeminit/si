@@ -8,6 +8,8 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 use crate::{
+    attribute::value::AttributeValueError,
+    job::definition::dependent_values_update::DependentValueUpdateError,
     job::producer::BlockingJobError, job::producer::JobProducerError, AccessBuilder,
     ActionPrototypeId, DalContext, DalContextBuilder, StandardModelError, TransactionsError,
     Visibility, WsEventError,
@@ -22,6 +24,8 @@ pub enum JobConsumerError {
     ActionPrototypeNotFound(ActionPrototypeId),
     #[error("arg {0:?} not found at index {1}")]
     ArgNotFound(JobInfo, usize),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("Error blocking on job: {0}")]
     BlockingJob(#[from] BlockingJobError),
     // #[error("component {0} is destroyed")]
@@ -32,6 +36,8 @@ pub enum JobConsumerError {
     Council(#[from] council_server::client::Error),
     #[error("Protocol error with council: {0}")]
     CouncilProtocol(String),
+    #[error("dependent value update error: {0}")]
+    DependentValueUpdate(#[from] DependentValueUpdateError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
     #[error(transparent)]

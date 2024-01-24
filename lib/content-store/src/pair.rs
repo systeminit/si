@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgPool, PgPoolError, PgRow};
 use std::str::FromStr;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::hash::{ContentHash, ContentHashParseError};

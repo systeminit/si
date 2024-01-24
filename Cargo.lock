@@ -1015,9 +1015,11 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "blake3",
+ "bytes 1.5.0",
  "chrono",
  "color-eyre",
  "postcard",
+ "postgres-types",
  "refinery",
  "remain",
  "serde",
@@ -1026,17 +1028,6 @@ dependencies = [
  "si-data-pg",
  "telemetry",
  "thiserror",
- "uuid",
-]
-
-[[package]]
-name = "content-store-test"
-version = "0.1.0"
-dependencies = [
- "color-eyre",
- "content-store",
- "si-data-pg",
- "telemetry",
  "uuid",
 ]
 
@@ -1387,7 +1378,6 @@ dependencies = [
  "chrono",
  "ciborium",
  "content-store",
- "content-store-test",
  "convert_case 0.6.0",
  "council-server",
  "dal-test",
@@ -1445,7 +1435,6 @@ dependencies = [
  "buck2-resources",
  "color-eyre",
  "content-store",
- "content-store-test",
  "council-server",
  "dal",
  "derive_builder",
@@ -3698,6 +3687,7 @@ name = "pinga-server"
 version = "0.1.0"
 dependencies = [
  "buck2-resources",
+ "content-store",
  "dal",
  "derive_builder",
  "futures",
@@ -4175,6 +4165,7 @@ name = "rebaser-server"
 version = "0.1.0"
 dependencies = [
  "buck2-resources",
+ "content-store",
  "dal",
  "derive_builder",
  "futures",
@@ -4674,6 +4665,7 @@ dependencies = [
  "base64 0.21.5",
  "buck2-resources",
  "chrono",
+ "content-store",
  "convert_case 0.6.0",
  "dal",
  "dal-test",

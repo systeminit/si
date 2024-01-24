@@ -3,6 +3,7 @@ use std::{io, sync::Arc};
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
+        definition::DependentValuesUpdate,
         producer::BlockingJobError,
     },
     DalContext, DalContextBuilder, InitializationError, JobFailure, JobFailureError,
@@ -104,6 +105,7 @@ impl Server {
         let encryption_key = Self::load_encryption_key(config.crypto().clone()).await?;
         let nats = Self::connect_to_nats(config.nats()).await?;
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
+        let content_store_pg_pool = Self::create_pg_pool(config.content_store_pg_pool()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
@@ -120,6 +122,7 @@ impl Server {
             None,
             symmetric_crypto_service,
             rebaser_config,
+            content_store_pg_pool,
         );
 
         Self::from_services(
@@ -482,26 +485,26 @@ async fn execute_job(
         tracing::Span::current().record("job_info.blocking", job_info.blocking);
     }
 
-    // let job = match job_info.kind.as_str() {
-    //     stringify!(DependentValuesUpdate) => {
-    //         Box::new(DependentValuesUpdate::try_from(job_info.clone())?)
-    //             as Box<dyn JobConsumer + Send + Sync>
-    //     }
-    //     stringify!(FixesJob) => Box::new(FixesJob::try_from(job_info.clone())?)
-    //         as Box<dyn JobConsumer + Send + Sync>,
-    //     stringify!(RefreshJob) => Box::new(RefreshJob::try_from(job_info.clone())?)
-    //         as Box<dyn JobConsumer + Send + Sync>,
-    //     kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),
-    // };
+    let job = match job_info.kind.as_str() {
+        stringify!(DependentValuesUpdate) => {
+            Box::new(DependentValuesUpdate::try_from(job_info.clone())?)
+                as Box<dyn JobConsumer + Send + Sync>
+        }
+        //     stringify!(FixesJob) => Box::new(FixesJob::try_from(job_info.clone())?)
+        //         as Box<dyn JobConsumer + Send + Sync>,
+        //     stringify!(RefreshJob) => Box::new(RefreshJob::try_from(job_info.clone())?)
+        //         as Box<dyn JobConsumer + Send + Sync>,
+        kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),
+    };
 
-    // info!("Processing job");
+    info!("Processing job");
 
-    // if let Err(err) = job.run_job(ctx_builder.clone()).await {
-    //     // The missing part is this, should we execute subsequent jobs if the one they depend on fail or not?
-    //     record_job_failure(ctx_builder, job, err).await?;
-    // }
+    if let Err(err) = job.run_job(ctx_builder.clone()).await {
+        // The missing part is this, should we execute subsequent jobs if the one they depend on fail or not?
+        record_job_failure(ctx_builder, job, err).await?;
+    }
 
-    // info!("Finished processing job");
+    info!("Finished processing job");
 
     Ok(())
 }

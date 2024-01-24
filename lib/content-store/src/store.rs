@@ -26,7 +26,8 @@ pub enum StoreError {
     SerdeJson(#[from] serde_json::Error),
 }
 
-type StoreResult<T> = Result<T, StoreError>;
+/// The [`Result`] type used by the [`Store`] trait methods
+pub type StoreResult<T> = Result<T, StoreError>;
 
 /// This trait provides the minimum methods needed to create a content store.
 #[async_trait::async_trait]

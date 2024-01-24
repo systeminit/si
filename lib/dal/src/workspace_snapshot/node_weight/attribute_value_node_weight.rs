@@ -3,70 +3,83 @@ use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
-use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::{
     change_set_pointer::ChangeSetPointer,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,
-        node_weight::{NodeWeightError, NodeWeightResult},
-        vector_clock::VectorClock,
+        node_weight::NodeWeightResult,
+        vector_clock::{VectorClock, VectorClockId},
     },
 };
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ContentNodeWeight {
-    /// The stable local ID of the object in question. Mainly used by external things like
-    /// the UI to be able to say "do X to _this_ thing" since the `NodeIndex` is an
-    /// internal implementation detail, and the content ID wrapped by the
-    /// [`NodeWeightKind`] changes whenever something about the node itself changes (for
-    /// example, the name, or type of a [`Prop`].)
+pub struct AttributeValueNodeWeight {
     id: Ulid,
-    /// Globally stable ID for tracking the "lineage" of a thing to determine whether it
-    /// should be trying to receive updates.
     lineage_id: LineageId,
-    /// What type of thing is this node representing, and what is the content hash used to
-    /// retrieve the data for this specific node.
-    content_address: ContentAddress,
-    /// [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree) hash for the graph
-    /// starting with this node as the root. Mainly useful in quickly determining "has
-    /// something changed anywhere in this (sub)graph".
     merkle_tree_hash: ContentHash,
-    /// The first time a [`ChangeSetPointer`] has "seen" this content. This is useful for determining
-    /// whether the absence of this content on one side or the other of a rebase/merge is because
-    /// the content is new, or because one side deleted it.
     vector_clock_first_seen: VectorClock,
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
+    /// The unprocessed return value is the "real" result, unprocessed for any other behavior.
+    /// This is potentially-maybe-only-kinda-sort-of(?) useful for non-scalar values.
+    /// Example: a populated array.
+    unprocessed_value: Option<ContentAddress>,
+    /// The processed return value.
+    /// Example: empty array.
+    value: Option<ContentAddress>,
+    /// A cached representation of this value and all of its child values.
+    materialized_view: Option<ContentAddress>,
 }
 
-impl ContentNodeWeight {
+impl AttributeValueNodeWeight {
     pub fn new(
         change_set: &ChangeSetPointer,
         id: Ulid,
-        content_address: ContentAddress,
+        unprocessed_value: Option<ContentAddress>,
+        value: Option<ContentAddress>,
+        materialized_view: Option<ContentAddress>,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
             lineage_id: change_set.generate_ulid()?,
-            content_address,
             merkle_tree_hash: ContentHash::default(),
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
+
+            unprocessed_value,
+            value,
+            materialized_view,
         })
-    }
-
-    pub fn content_address(&self) -> ContentAddress {
-        self.content_address
-    }
-
-    pub fn content_hash(&self) -> ContentHash {
-        self.content_address.content_hash()
     }
 
     pub fn id(&self) -> Ulid {
         self.id
+    }
+
+    pub fn unprocessed_value(&self) -> Option<ContentAddress> {
+        self.unprocessed_value
+    }
+
+    pub fn set_unprocessed_value(&mut self, unprocessed_value: Option<ContentAddress>) {
+        self.unprocessed_value = unprocessed_value
+    }
+
+    pub fn value(&self) -> Option<ContentAddress> {
+        self.value
+    }
+
+    pub fn set_value(&mut self, value: Option<ContentAddress>) {
+        self.value = value
+    }
+
+    pub fn materialized_view(&self) -> Option<ContentAddress> {
+        self.materialized_view
+    }
+
+    pub fn set_materialized_view(&mut self, materialized_view: Option<ContentAddress>) {
+        self.materialized_view = materialized_view
     }
 
     pub fn increment_vector_clock(
@@ -118,40 +131,6 @@ impl ContentNodeWeight {
         self.merkle_tree_hash
     }
 
-    pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
-        let new_address = match &self.content_address {
-            ContentAddress::ActionPrototype(_) => ContentAddress::ActionPrototype(content_hash),
-            ContentAddress::AttributePrototype(_) => {
-                ContentAddress::AttributePrototype(content_hash)
-            }
-            ContentAddress::Component(_) => ContentAddress::Component(content_hash),
-            ContentAddress::ExternalProvider(_) => ContentAddress::ExternalProvider(content_hash),
-            ContentAddress::FuncArg(_) => ContentAddress::FuncArg(content_hash),
-            ContentAddress::Func(_) => ContentAddress::Func(content_hash),
-            ContentAddress::InternalProvider(_) => ContentAddress::InternalProvider(content_hash),
-            ContentAddress::JsonValue(_) => ContentAddress::JsonValue(content_hash),
-            ContentAddress::Prop(_) => {
-                return Err(NodeWeightError::InvalidContentAddressForWeightKind(
-                    "Prop".to_string(),
-                    "Content".to_string(),
-                ));
-            }
-            ContentAddress::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
-            ContentAddress::Schema(_) => ContentAddress::Schema(content_hash),
-            ContentAddress::SchemaVariant(_) => ContentAddress::SchemaVariant(content_hash),
-            ContentAddress::StaticArgumentValue(_) => {
-                ContentAddress::StaticArgumentValue(content_hash)
-            }
-            ContentAddress::ValidationPrototype(_) => {
-                ContentAddress::ValidationPrototype(content_hash)
-            }
-        };
-
-        self.content_address = new_address;
-
-        Ok(())
-    }
-
     pub fn new_with_incremented_vector_clock(
         &self,
         change_set: &ChangeSetPointer,
@@ -162,8 +141,16 @@ impl ContentNodeWeight {
         Ok(new_node_weight)
     }
 
+    pub fn content_hash(&self) -> ContentHash {
+        self.node_hash()
+    }
+
     pub fn node_hash(&self) -> ContentHash {
-        self.content_hash()
+        ContentHash::from(&serde_json::json![{
+            "unprocessed_value": self.unprocessed_value,
+            "value": self.value,
+            "materialized_view": self.materialized_view,
+        }])
     }
 
     pub fn set_merkle_tree_hash(&mut self, new_hash: ContentHash) {
@@ -192,12 +179,15 @@ impl ContentNodeWeight {
     }
 }
 
-impl std::fmt::Debug for ContentNodeWeight {
+impl std::fmt::Debug for AttributeValueNodeWeight {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("ContentNodeWeight")
-            .field("id", &self.id.to_string())
+        f.debug_struct("AttributeValueNodeWeight")
+            .field("id", &self.id().to_string())
             .field("lineage_id", &self.lineage_id.to_string())
-            .field("content_address", &self.content_address)
+            .field("value", &self.value)
+            .field("unprocessed_value", &self.unprocessed_value)
+            .field("materialized_view", &self.materialized_view)
+            .field("node_hash", &self.node_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .field("vector_clock_first_seen", &self.vector_clock_first_seen)
             .field(

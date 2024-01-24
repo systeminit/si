@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
+content-store = { path = "../../lib/content-store" }
 dal = { path = "../../lib/dal" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 rebaser-core = { path = "../../lib/rebaser-core" }

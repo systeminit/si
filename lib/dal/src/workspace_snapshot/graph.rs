@@ -1,6 +1,6 @@
 use chrono::Utc;
 use content_store::{ContentHash, Store, StoreError};
-use petgraph::stable_graph::Edges;
+use petgraph::stable_graph::{EdgeReference, Edges};
 use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -31,7 +31,6 @@ pub use petgraph::Direction;
 
 mod tests;
 
-pub type NodeIndexMap = HashMap<NodeIndex, NodeIndex>;
 pub type LineageId = Ulid;
 
 #[allow(clippy::large_enum_variant)]
@@ -254,6 +253,18 @@ impl WorkspaceSnapshotGraph {
         self.graph.edges_directed(node_index, direction)
     }
 
+    pub fn edges_directed_for_edge_weight_kind(
+        &self,
+        node_index: NodeIndex,
+        direction: Direction,
+        edge_kind: EdgeWeightKindDiscriminants,
+    ) -> Vec<EdgeReference<'_, EdgeWeight>> {
+        self.graph
+            .edges_directed(node_index, direction)
+            .filter(|edge_ref| edge_kind == edge_ref.weight().kind().into())
+            .collect()
+    }
+
     pub fn nodes(&self) -> impl Iterator<Item = (&NodeWeight, NodeIndex)> {
         self.graph.node_indices().filter_map(|node_idx| {
             self.graph
@@ -319,8 +330,7 @@ impl WorkspaceSnapshotGraph {
                 new_order.push(element_node_weight.id());
                 new_container_ordering_node_weight.set_order(change_set, new_order)?;
 
-                let new_container_ordering_node_index =
-                    self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
+                self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
                 self.replace_references(container_ordering_node_index)?;
             }
         }
@@ -720,7 +730,7 @@ impl WorkspaceSnapshotGraph {
 
                     // Check if there's a difference in the node itself (and whether it is a
                     // conflict if there is a difference).
-                    if onto_node_weight.content_hash() != to_rebase_node_weight.content_hash() {
+                    if onto_node_weight.node_hash() != to_rebase_node_weight.node_hash() {
                         if to_rebase_node_weight
                             .vector_clock_write()
                             .is_newer_than(onto_node_weight.vector_clock_write())
@@ -887,8 +897,8 @@ impl WorkspaceSnapshotGraph {
     }
 
     #[allow(dead_code)]
-    pub fn tiny_dot_to_file(&self, prefix: Option<&str>) {
-        let prefix = prefix.unwrap_or("dot");
+    pub fn tiny_dot_to_file(&self, suffix: Option<&str>) {
+        let suffix = suffix.unwrap_or("dot");
         // NOTE(nick): copy the output and execute this on macOS. It will create a file in the
         // process and open a new tab in your browser.
         // ```
@@ -915,6 +925,7 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKindDiscriminants::Proxy => "gray",
                     EdgeWeightKindDiscriminants::Use => "black",
                     EdgeWeightKindDiscriminants::Root => "black",
+                    EdgeWeightKindDiscriminants::Socket => "purple",
                 };
                 format!("label = \"{discrim:?}\"\nfontcolor = {color}\ncolor = {color}")
             },
@@ -925,13 +936,12 @@ impl WorkspaceSnapshotGraph {
                         let color = match discrim {
                             ContentAddressDiscriminants::ActionPrototype => "green",
                             ContentAddressDiscriminants::AttributePrototype => "green",
-                            ContentAddressDiscriminants::AttributePrototypeArgument => "green",
-                            ContentAddressDiscriminants::AttributeValue => "blue",
                             ContentAddressDiscriminants::Component => "black",
                             ContentAddressDiscriminants::ExternalProvider => "red",
                             ContentAddressDiscriminants::Func => "black",
                             ContentAddressDiscriminants::FuncArg => "black",
                             ContentAddressDiscriminants::InternalProvider => "red",
+                            ContentAddressDiscriminants::JsonValue => "fuchsia",
                             ContentAddressDiscriminants::Prop => "orange",
                             ContentAddressDiscriminants::Root => "black",
                             ContentAddressDiscriminants::Schema => "black",
@@ -941,6 +951,10 @@ impl WorkspaceSnapshotGraph {
                         };
                         (discrim.to_string(), color)
                     }
+                    NodeWeight::AttributePrototypeArgument(_) => {
+                        ("Attribute Prototype Argument".to_string(), "green")
+                    }
+                    NodeWeight::AttributeValue(_) => ("Attribute Value".to_string(), "blue"),
                     NodeWeight::Category(category_node_weight) => match category_node_weight.kind()
                     {
                         CategoryNodeKind::Component => {
@@ -952,6 +966,10 @@ impl WorkspaceSnapshotGraph {
                     NodeWeight::Func(func_node_weight) => {
                         (format!("Func\n{}", func_node_weight.name()), "black")
                     }
+                    NodeWeight::FuncArgument(func_arg_node_weight) => (
+                        format!("Func Arg\n{}", func_arg_node_weight.name()),
+                        "black",
+                    ),
                     NodeWeight::Ordering(_) => {
                         (NodeWeightDiscriminants::Ordering.to_string(), "gray")
                     }
@@ -960,12 +978,13 @@ impl WorkspaceSnapshotGraph {
                     }
                 };
                 let color = color.to_string();
+                let id = node_weight.id();
                 format!(
-                    "label = \"\n\n{label}\n{node_index:?}\n\n\n\"\nfontcolor = {color}\ncolor = {color}",
+                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n\"\nfontcolor = {color}\ncolor = {color}",
                 )
             },
         );
-        let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), prefix);
+        let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), suffix);
         let mut file = File::create(format!("/home/zacharyhamm/{filename_no_extension}.txt"))
             .expect("could not create file");
         file.write_all(format!("{dot:?}").as_bytes())
@@ -1640,9 +1659,7 @@ impl WorkspaceSnapshotGraph {
                 if &new_order != previous_container_ordering_node_weight.order() {
                     new_container_ordering_node_weight.set_order(change_set, new_order)?;
 
-                    let new_container_ordering_node_index =
-                        self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
-
+                    self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
                     self.replace_references(previous_container_ordering_node_index)?;
                 }
             }
@@ -1873,6 +1890,7 @@ impl WorkspaceSnapshotGraph {
                     | EdgeWeightKind::Prototype(None)
                     | EdgeWeightKind::Proxy
                     | EdgeWeightKind::Root
+                    | EdgeWeightKind::Socket
                     | EdgeWeightKind::Use => {}
                 }
             }
@@ -1926,8 +1944,7 @@ impl WorkspaceSnapshotGraph {
                     to_rebase: to_rebase_subgraph_root,
                 } => {
                     let updated_to_rebase = self.get_latest_node_idx(*to_rebase_subgraph_root)?;
-                    let new_subgraph_root =
-                        self.find_in_self_or_create_using_onto(*onto_subgraph_root, onto)?;
+                    self.find_in_self_or_create_using_onto(*onto_subgraph_root, onto)?;
                     self.replace_references(updated_to_rebase)?;
                 }
             }
@@ -1993,11 +2010,9 @@ impl WorkspaceSnapshotGraph {
                 Some(found_equivalent_node) => {
                     let found_equivalent_node_weight =
                         self.get_node_weight(found_equivalent_node)?;
-                    dbg!("found_equivalent_node");
                     if found_equivalent_node_weight.merkle_tree_hash()
                         != unchecked_node_weight.merkle_tree_hash()
                     {
-                        dbg!("merkle mismatch");
                         self.import_subgraph(onto, unchecked)?;
                         self.find_latest_idx_in_self_from_other_idx(onto, unchecked)?
                             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
@@ -2006,7 +2021,6 @@ impl WorkspaceSnapshotGraph {
                     }
                 }
                 None => {
-                    info!("no equivalent_node_index");
                     self.import_subgraph(onto, unchecked)?;
                     self.find_latest_idx_in_self_from_other_idx(onto, unchecked)?
                         .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?

@@ -32,5 +32,5 @@ pub use store::local::LocalStore;
 pub use store::pg::tools::PgStoreTools;
 pub use store::pg::PgStore;
 pub use store::Store;
-pub use store::StoreError;
+pub use store::{StoreError, StoreResult};
 pub use value::Value;

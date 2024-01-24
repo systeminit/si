@@ -29,6 +29,7 @@ pub(crate) async fn management_loop_infallible_wrapper(
     encryption_key: Arc<veritech_client::CycloneEncryptionKey>,
     shutdown_watch_rx: watch::Receiver<()>,
     rabbitmq_config: SiRabbitMqConfig,
+    content_store_pg_pool: PgPool,
 ) {
     info!("attempting to start management loop");
     if let Err(err) = management_loop(
@@ -40,6 +41,7 @@ pub(crate) async fn management_loop_infallible_wrapper(
         symmetric_crypto_service,
         encryption_key,
         rabbitmq_config,
+        content_store_pg_pool,
         shutdown_watch_rx,
     )
     .await
@@ -58,6 +60,7 @@ async fn management_loop(
     symmetric_crypto_service: SymmetricCryptoService,
     encryption_key: Arc<veritech_client::CycloneEncryptionKey>,
     rabbitmq_config: SiRabbitMqConfig,
+    content_store_pg_pool: PgPool,
     mut shutdown_watch_rx: watch::Receiver<()>,
 ) -> ServerResult<()> {
     let services_context = ServicesContext::new(
@@ -70,6 +73,7 @@ async fn management_loop(
         None,
         symmetric_crypto_service,
         rabbitmq_config.clone(),
+        content_store_pg_pool,
     );
     info!("created services context for management loop");
 
