@@ -1310,7 +1310,7 @@ function onDragElementsMove() {
     else delta.x = 0;
   }
 
-  const newParent = allElementsByKey.value[
+  const parentOrCandidate = allElementsByKey.value[
     cursorWithinGroupKey.value || ""
   ] as DiagramGroupData;
 
@@ -1323,10 +1323,10 @@ function onDragElementsMove() {
 
     // if we are going to move the element within a new parent we may need to adjust
     // the position to stay inside of it
-    if (newParent) {
-      const newParentRect = nodesLocationInfo[newParent.uniqueKey];
+    if (parentOrCandidate) {
+      const parentRect = nodesLocationInfo[parentOrCandidate.uniqueKey];
       const elRect = nodesLocationInfo[el.uniqueKey];
-      if (!newParentRect || !elRect) return;
+      if (!parentRect || !elRect) return;
       const movedElRect = {
         x: newPosition.x - elRect.width / 2,
         y: newPosition.y,
@@ -1334,11 +1334,11 @@ function onDragElementsMove() {
         height: elRect.height,
       };
 
-      const newParentRectWithBuffer = shrinkRect(newParentRect, 20);
+      const parentRectWithBuffer = shrinkRect(parentRect, 20);
 
-      if (!rectContainsAnother(newParentRectWithBuffer, movedElRect)) {
+      if (!rectContainsAnother(parentRectWithBuffer, movedElRect)) {
         const adjust = getAdjustmentRectToContainAnother(
-          newParentRectWithBuffer,
+          parentRectWithBuffer,
           movedElRect,
         );
         newPosition.x -= adjust.x;
