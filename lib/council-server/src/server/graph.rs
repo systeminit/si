@@ -1,10 +1,11 @@
-use crate::{server::Error, Graph, Id};
-use std::collections::{HashMap, HashSet, VecDeque};
-
-mod node_metadata;
-
 use node_metadata::NodeMetadata;
 use si_data_nats::Subject;
+use std::collections::{HashMap, HashSet, VecDeque};
+use telemetry::prelude::*;
+
+use crate::{server::Error, Graph, Id};
+
+mod node_metadata;
 
 #[derive(Default, Debug)]
 pub struct ChangeSetGraph {
@@ -76,7 +77,10 @@ impl ChangeSetGraph {
         change_set_id: Id,
         node_id: Id,
     ) -> Result<HashSet<String>, Error> {
-        let change_set_graph_data = self.dependency_data.get_mut(&change_set_id).unwrap();
+        let change_set_graph_data = self
+            .dependency_data
+            .get_mut(&change_set_id)
+            .ok_or(Error::DependencyDataMissing)?;
 
         let (ok_to_remove_node, wanted_by_reply_channels) =
             if let Some(node_metadata) = change_set_graph_data.get_mut(&node_id) {
@@ -111,7 +115,9 @@ impl ChangeSetGraph {
             }
 
             for id in to_remove {
-                graph.remove(&id).unwrap();
+                if graph.remove(&id).is_none() {
+                    error!(%id, "found nothing when removing from graph by id")
+                }
             }
         }
     }
@@ -127,7 +133,10 @@ impl ChangeSetGraph {
         node_id: Id,
     ) -> Result<Vec<(Subject, Id)>, Error> {
         let mut failure_notifications = Vec::new();
-        let change_set_graph_data = self.dependency_data.get_mut(&change_set_id).unwrap();
+        let change_set_graph_data = self
+            .dependency_data
+            .get_mut(&change_set_id)
+            .ok_or(Error::DependencyDataMissing)?;
 
         let mut node_ids_to_fail = VecDeque::new();
         node_ids_to_fail.push_back(node_id);

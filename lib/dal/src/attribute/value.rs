@@ -110,7 +110,7 @@ pub enum AttributeValueError {
     #[error("component not found by id: {0}")]
     ComponentNotFoundById(ComponentId),
     #[error(transparent)]
-    Council(#[from] council_server::client::Error),
+    Council(#[from] council_server::client::ClientError),
     #[error("empty attribute prototype arguments for group name: {0}")]
     EmptyAttributePrototypeArgumentsForGroup(String),
     #[error("external provider error: {0}")]

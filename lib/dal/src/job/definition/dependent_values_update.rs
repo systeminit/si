@@ -1,8 +1,7 @@
-use std::{collections::HashMap, collections::HashSet, convert::TryFrom};
-
 use async_trait::async_trait;
-
+use council_server::ManagementResponse;
 use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, collections::HashSet, convert::TryFrom};
 use telemetry::prelude::*;
 use tokio::task::JoinSet;
 
@@ -95,23 +94,30 @@ impl JobConsumer for DependentValuesUpdate {
         )
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
-        let council_subject =
-            if let Some(subject_prefix) = ctx.nats_conn().metadata().subject_prefix() {
-                format!("{subject_prefix}.council")
-            } else {
-                "council".to_string()
-            };
         let jid = council_server::Id::from_string(&self.job_id().unwrap())?;
         let mut council = council_server::Client::new(
             ctx.nats_conn().clone(),
-            &council_subject,
+            ctx.nats_conn()
+                .metadata()
+                .subject_prefix()
+                .map(|p| p.to_string()),
             jid,
             self.visibility().change_set_pk.into(),
         )
         .await?;
         let pub_council = council.clone_into_pub();
+        let council_management = council_server::ManagementClient::new(
+            ctx.nats_conn(),
+            ctx.nats_conn()
+                .metadata()
+                .subject_prefix()
+                .map(|p| p.to_string()),
+        )
+        .await?;
 
-        let res = self.inner_run(ctx, &mut council, pub_council).await;
+        let res = self
+            .inner_run(ctx, &mut council, pub_council, council_management)
+            .await;
 
         council.bye().await?;
 
@@ -125,11 +131,11 @@ impl DependentValuesUpdate {
         ctx: &mut DalContext,
         council: &mut council_server::Client,
         pub_council: council_server::PubClient,
+        mut management_council: council_server::ManagementClient,
     ) -> JobConsumerResult<()> {
         // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
         ctx.update_without_deleted_visibility();
 
-        let ctx_builder = ctx.to_builder();
         let mut status_updater = StatusUpdater::initialize(ctx).await;
 
         let mut dependency_graph =
@@ -188,6 +194,68 @@ impl DependentValuesUpdate {
 
         let mut update_tasks = JoinSet::new();
 
+        // This is the core loop. Use both the individual and the management subscription to determine what to do next.
+        let needs_restart = tokio::select! {
+            result = self.listen(ctx, council, pub_council, dependency_graph, &mut status_updater, &mut update_tasks) => result,
+            management_result = self.listen_management(&mut management_council) => management_result,
+        }?;
+
+        // If we need to restart, we need to stop what we are doing, tell the status update that we are stopping, and
+        // then re-enqueue ourselves.
+        if needs_restart {
+            update_tasks.abort_all();
+
+            info!(?self.attribute_values, "aborted update tasks and restarting job");
+
+            status_updater
+                .values_completed(ctx, self.attribute_values.clone())
+                .await;
+
+            ctx.enqueue_job(DependentValuesUpdate::new(
+                self.access_builder,
+                self.visibility,
+                self.attribute_values.clone(),
+            ))
+            .await?;
+        }
+
+        // No matter what, we need to finish the updater, publish WsEvent(s) and commit.
+        status_updater.finish(ctx).await;
+
+        WsEvent::change_set_written(ctx)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
+        let client = StatusReceiverClient::new(ctx.nats_conn().clone()).await;
+        if let Err(e) = client
+            .publish(&StatusReceiverRequest {
+                visibility: *ctx.visibility(),
+                tenancy: *ctx.tenancy(),
+                dependent_graph: original_dependency_graph,
+            })
+            .await
+        {
+            error!("could not publish status receiver request: {:?}", e);
+        }
+
+        ctx.commit().await?;
+
+        Ok(())
+    }
+
+    async fn listen(
+        &self,
+        ctx: &DalContext,
+        council: &mut council_server::Client,
+        pub_council: council_server::PubClient,
+        mut dependency_graph: HashMap<AttributeValueId, Vec<AttributeValueId>>,
+        status_updater: &mut StatusUpdater,
+        update_tasks: &mut JoinSet<JobConsumerResult<()>>,
+    ) -> JobConsumerResult<bool> {
+        let ctx_builder = ctx.to_builder();
+        let mut needs_restart = false;
+
         while !dependency_graph.is_empty() {
             match council.fetch_response().await? {
                 Some(response) => match response {
@@ -245,10 +313,20 @@ impl DependentValuesUpdate {
                         // the pg_pool to do writes
                         ctx.rollback().await?;
                     }
+                    council_server::Response::Restart => {
+                        info!("received response that job needs restart");
+                        needs_restart = true;
+
+                        // Ejecto seato cuz.
+                        break;
+                    }
                     council_server::Response::Shutdown => break,
                 },
-                // FIXME: reconnect
-                None => break, // Happens if subscriber has been unsubscribed or if connection is closed
+                None => {
+                    // FIXME(nick): reconnect. Same "FIXME" as the one found in the original listener.
+                    warn!("subscriber has been unsubscribed or the connection has been closed");
+                    break;
+                }
             }
 
             WsEvent::change_set_written(ctx)
@@ -290,28 +368,27 @@ impl DependentValuesUpdate {
             }
         }
 
-        status_updater.finish(ctx).await;
+        Ok(needs_restart)
+    }
 
-        WsEvent::change_set_written(ctx)
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
-
-        let client = StatusReceiverClient::new(ctx.nats_conn().clone()).await;
-        if let Err(e) = client
-            .publish(&StatusReceiverRequest {
-                visibility: *ctx.visibility(),
-                tenancy: *ctx.tenancy(),
-                dependent_graph: original_dependency_graph,
-            })
-            .await
-        {
-            error!("could not publish status receiver request: {:?}", e);
-        }
-
-        ctx.commit().await?;
-
-        Ok(())
+    async fn listen_management(
+        &self,
+        council_management: &mut council_server::ManagementClient,
+    ) -> JobConsumerResult<bool> {
+        let needs_restart = match council_management.fetch_response().await? {
+            Some(management_response) => match management_response {
+                ManagementResponse::Restart => true,
+            },
+            None => {
+                // FIXME(nick): reconnect. Same "FIXME" as the one found in the original listener.
+                warn!(
+                    "management subscriber has been unsubscribed or the connection has been closed"
+                );
+                false
+            }
+        };
+        info!("received management response that job needs restart");
+        Ok(needs_restart)
     }
 }
 
