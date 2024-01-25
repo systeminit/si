@@ -112,6 +112,11 @@ export interface PropertyEditorValue {
   value: unknown;
   isFromExternalSource: boolean;
   canBeSetBySocket: boolean;
+  isControlledByIntrinsicFunc: boolean;
+  overridden: boolean;
+  controllingFuncId: string;
+  controllingAttributeValueId: string;
+  // TODO(Wendy) - we also need the default funcId and funcName for this prop to tell the user the default func that was overriden
 }
 
 export interface PropertyEditorValues {

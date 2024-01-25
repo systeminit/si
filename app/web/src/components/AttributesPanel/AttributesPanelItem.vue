@@ -208,42 +208,21 @@
           <template
             v-if="
               featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
-              !isChildOfMap &&
-              !isChildOfArray &&
               !(widgetKind === 'secret')
             "
           >
-            <Icon
-              v-if="valueFromSocket"
-              v-tooltip="`${propName} is set via an input socket`"
-              class="hover:text-action-500 dark:hover:text-action-300"
-              name="circle-full"
-              size="xs"
-            />
-            <!-- TODO(Wendy) - display this icon for fields which are set by a function -->
-            <!-- <Icon name="func" size="sm" class="hover:text-action-500 dark:hover:text-action-300" />  -->
-            <!-- TODO(Wendy) - there's probably a better way to know if something was set manually? -->
-            <Icon
-              v-else-if="!valueFromSocket && props.attributeDef.value?.value"
-              v-tooltip="`${propName} has been set manually`"
-              name="cursor"
-              size="xs"
-              class="hover:text-action-500 dark:hover:text-action-300"
-            />
-            <Icon
-              v-else-if="propHasSocket"
-              v-tooltip="`${propName} can be set via an input socket`"
-              name="circle-empty"
-              size="xs"
-              class="text-neutral-400 dark:text-neutral-600 hover:text-action-500 dark:hover:text-action-300"
-            />
-            <Icon
-              v-else
-              v-tooltip="`${propName} can be set manually`"
-              name="cursor"
-              size="xs"
-              class="text-neutral-400 dark:text-neutral-600 hover:text-action-500 dark:hover:text-action-300"
-            />
+            <div
+              :class="
+                clsx(
+                  'border hover:text-action-500 dark:hover:text-action-300 rounded p-[2px]',
+                  sourceOverridden
+                    ? ' text-warning-500 dark:text-warning-300 border-warning-500 dark:border-warning-300 hover:border-action-500 dark:hover:border-action-300'
+                    : 'border-transparent',
+                )
+              "
+            >
+              <Icon v-tooltip="sourceTooltip" :name="sourceIcon" size="xs" />
+            </div>
           </template>
 
           <a
@@ -268,13 +247,19 @@
         @mouseleave="onHoverEnd"
       >
         <Icon
-          v-if="noValue && !iconShouldBeHidden && !isFocus && !valueFromSocket"
+          v-if="
+            noValue && !iconShouldBeHidden && !isFocus && !propPopulatedBySocket
+          "
           :name="icon"
           size="sm"
           class="attributes-panel-item__type-icon"
         />
         <Icon
-          v-if="currentValue !== null && !valueFromSocket"
+          v-if="
+            currentValue !== null &&
+            !propPopulatedBySocket &&
+            !propControlledByParent
+          "
           name="x-circle"
           class="attributes-panel-item__unset-button"
           @click="unsetHandler"
@@ -320,6 +305,7 @@
             @keydown.enter="(e) => e.metaKey && updateValue()"
           />
           <Icon
+            v-if="!propControlledByParent"
             name="external-link"
             class="attributes-panel-item__popout-edit-button"
             title="Edit in popup"
@@ -398,11 +384,18 @@
         </template>
         <div
           v-if="
-            featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
-            valueFromSocket
+            propControlledByParent ||
+            (featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
+              propPopulatedBySocket &&
+              !editOverride)
           "
-          v-tooltip="`${propName} is set via an input socket`"
+          v-tooltip="
+            propControlledByParent
+              ? `${propName} is set via a function from an ancestor`
+              : `${propName} is set via an input socket`
+          "
           class="absolute top-0 w-full h-full bg-caution-lines z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50"
+          @click="openConfirmEditModal"
         />
       </div>
 
@@ -452,6 +445,46 @@
       </div>
       <!-- <VButton @click="editModalRef?.close">Save</VButton> -->
     </Modal>
+
+    <Modal
+      ref="confirmEditModalRef"
+      :title="
+        propControlledByParent
+          ? `You Cannot Edit Prop &quot;${propName}&quot;`
+          : 'Are You Sure?'
+      "
+    >
+      <div class="pb-sm">
+        <template v-if="propControlledByParent">
+          You cannot edit prop "{{ propName }}" because it is populated by a
+          function from an ancestor prop.
+        </template>
+        <template v-else>
+          Editing the prop "{{ propName }}" directly will override the socket
+          which is currently setting its value.
+        </template>
+      </div>
+      <div class="flex gap-sm">
+        <VButton
+          icon="x"
+          tone="shade"
+          variant="ghost"
+          :class="propControlledByParent ? 'flex-grow' : ''"
+          @click="closeConfirmEditModal"
+        >
+          Cancel
+        </VButton>
+        <VButton
+          v-if="!propControlledByParent"
+          icon="edit"
+          tone="action"
+          class="flex-grow"
+          @click="confirmEdit"
+        >
+          Confirm
+        </VButton>
+      </div>
+    </Modal>
   </div>
 </template>
 
@@ -459,7 +492,7 @@
 import * as _ from "lodash-es";
 import { computed, PropType, ref, watch } from "vue";
 import clsx from "clsx";
-import { Icon, IconNames, Modal } from "@si/vue-lib/design-system";
+import { Icon, IconNames, Modal, VButton } from "@si/vue-lib/design-system";
 import {
   AttributeTreeItem,
   useComponentAttributesStore,
@@ -582,11 +615,45 @@ const noValue = computed(
 const iconShouldBeHidden = computed(
   () => icon.value === "input-type-select" || icon.value === "check",
 );
-const valueFromSocket = computed(
+
+const propPopulatedBySocket = computed(
   () => props.attributeDef.value?.isFromExternalSource,
 );
 const propHasSocket = computed(
   () => props.attributeDef.value?.canBeSetBySocket,
+);
+const propSetByFunc = computed(
+  () =>
+    !props.attributeDef.value?.isControlledByIntrinsicFunc &&
+    !propHasSocket.value &&
+    !propPopulatedBySocket.value,
+);
+
+const sourceIcon = computed(() => {
+  if (propPopulatedBySocket.value) return "circle-full";
+  else if (propSetByFunc.value) return "func";
+  else if (propHasSocket.value) return "circle-empty";
+  else return "cursor";
+});
+
+const sourceOverridden = computed(() => props.attributeDef.value?.overridden);
+
+const sourceTooltip = computed(() => {
+  if (propPopulatedBySocket.value) {
+    return `${propName.value} is set via a populated socket`;
+  } else if (propSetByFunc.value) {
+    return `${propName.value} is set by a dynamic function`;
+  } else if (propHasSocket.value) {
+    return `${propName.value} is set via an empty socket`;
+  } else {
+    return `${propName.value} can be set manually`;
+  }
+});
+
+const propControlledByParent = computed(
+  () =>
+    props.attributeDef.value?.id !==
+    props.attributeDef.value?.controllingAttributeValueId,
 );
 
 function resetNewValueToCurrentValue() {
@@ -711,7 +778,9 @@ const isHover = ref(false);
 const isFocus = ref(false);
 
 function onHoverStart() {
-  isHover.value = true;
+  if (!propControlledByParent.value) {
+    isHover.value = true;
+  }
 }
 function onHoverEnd() {
   isHover.value = false;
@@ -759,6 +828,27 @@ function secretSelectedHandler(newSecret: Secret) {
   updateValue();
   secretModalRef.value?.close();
 }
+
+const confirmEditModalRef = ref<InstanceType<typeof Modal>>();
+
+const openConfirmEditModal = () => {
+  if (confirmEditModalRef.value) {
+    confirmEditModalRef.value.open();
+  }
+};
+
+const closeConfirmEditModal = () => {
+  if (confirmEditModalRef.value) {
+    confirmEditModalRef.value.close();
+  }
+};
+
+const confirmEdit = () => {
+  editOverride.value = true;
+  closeConfirmEditModal();
+};
+
+const editOverride = ref(false);
 </script>
 
 <style lang="less">
@@ -901,6 +991,7 @@ function secretSelectedHandler(newSecret: Secret) {
   flex-shrink: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   padding: 4px 0; // fixes cut off descenders
   i {
     font-style: normal;
@@ -1052,7 +1143,7 @@ function secretSelectedHandler(newSecret: Secret) {
   right: 4px;
   bottom: 4px;
   display: none;
-  z-index: 102;
+  z-index: 49;
   transform: scaleX(-1);
 
   .attributes-panel-item.--input.--focus &,

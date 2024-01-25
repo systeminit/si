@@ -336,10 +336,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 ...removePayload,
                 ...visibilityParams,
               },
-              onSuccess() {
-                const store = useComponentAttributesStore(componentId);
-                store.reloadPropertyEditorData();
-              },
             });
           },
 
@@ -381,10 +377,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               params: {
                 ...(isInsert ? updatePayload.insert : updatePayload.update),
                 ...visibilityParams,
-              },
-              onSuccess() {
-                const store = useComponentAttributesStore(componentId);
-                store.reloadPropertyEditorData();
               },
               onFail() {
                 // may not work exactly right with concurrent updates... but I dont think will be a problem

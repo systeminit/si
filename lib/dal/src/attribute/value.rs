@@ -69,6 +69,7 @@ use crate::{
     InternalProviderId, Prop, PropError, PropId, PropKind, StandardModel, StandardModelError,
     Tenancy, Timestamp, TransactionsError, Visibility, WsEventError,
 };
+use crate::{ExternalProviderId, FuncId};
 
 pub mod view;
 
@@ -87,6 +88,10 @@ const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
     include_str!("../queries/attribute_value/list_payload_for_read_context.sql");
 const LIST_PAYLOAD_FOR_READ_CONTEXT_AND_ROOT: &str =
     include_str!("../queries/attribute_value/list_payload_for_read_context_and_root.sql");
+const FIND_CONTROLLING_FUNCS: &str =
+    include_str!("../queries/attribute_value/find_controlling_funcs.sql");
+const LIST_ATTRIBUTES_WITH_OVERRIDDEN: &str =
+    include_str!("../queries/attribute_value/list_attributes_with_overridden.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -165,6 +170,8 @@ pub enum AttributeValueError {
     MissingFuncBinding(FuncBindingId),
     #[error("func binding return value not found")]
     MissingFuncBindingReturnValue,
+    #[error("func information not found for attribute value id: {0}")]
+    MissingFuncInformation(AttributeValueId),
     #[error("missing value from func binding return value for attribute value id: {0}")]
     MissingValueFromFuncBindingReturnValue(AttributeValueId),
     #[error("nats txn error: {0}")]
@@ -1286,6 +1293,124 @@ impl AttributeValue {
         }
 
         Ok(row.try_get("new_proxy_value_ids")?)
+    }
+
+    /// Get the controlling function id for a particular attribute value by it's id
+    /// This function id may be for a function on a parent of the attribute value
+    pub async fn get_controlling_func_id(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<(FuncId, AttributeValueId, String)> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                FIND_CONTROLLING_FUNCS,
+                &[ctx.tenancy(), ctx.visibility(), &attribute_value_id],
+            )
+            .await?;
+
+        #[derive(Clone, Debug, Deserialize)]
+        struct FuncInfo {
+            depth: i32,
+            func_id: FuncId,
+            name: String,
+            attribute_value_id: AttributeValueId,
+        }
+        let mut base_func_info = None;
+        let mut ancestor_func_info = None;
+
+        let func_infos: Vec<FuncInfo> = standard_model::objects_from_rows(rows)?;
+
+        dbg!(&func_infos);
+
+        for func_info in func_infos {
+            if func_info.depth == 1 {
+                base_func_info = Some(func_info.clone());
+            } else {
+                let mut better_ancestor = false;
+
+                if !func_info.name.starts_with("si:set") && !func_info.name.starts_with("si:unset")
+                {
+                    if ancestor_func_info.is_none() {
+                        ancestor_func_info = Some(func_info.clone());
+                    } else if let Some(ancestor_info) = &ancestor_func_info {
+                        if func_info.depth < ancestor_info.depth {
+                            better_ancestor = true;
+                        }
+                    }
+                }
+
+                if better_ancestor {
+                    ancestor_func_info = Some(func_info.clone());
+                }
+            }
+        }
+
+        dbg!(&ancestor_func_info, &base_func_info);
+
+        if let Some(ancestor_info) = ancestor_func_info {
+            Ok((
+                ancestor_info.func_id,
+                ancestor_info.attribute_value_id,
+                ancestor_info.name,
+            ))
+        } else if let Some(base_info) = base_func_info {
+            Ok((
+                base_info.func_id,
+                base_info.attribute_value_id,
+                base_info.name,
+            ))
+        } else {
+            dbg!(attribute_value_id, ctx.visibility(), ctx.tenancy());
+            Err(AttributeValueError::MissingFuncInformation(
+                attribute_value_id,
+            ))
+        }
+    }
+
+    /// Get all attribute value ids with a boolean for each telling whether it is using a different prototype from the schema variant
+    pub async fn list_attributes_with_overridden(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> AttributeValueResult<HashMap<AttributeValueId, bool>> {
+        let component_av_ctx = AttributeReadContext {
+            prop_id: None,
+            internal_provider_id: Some(InternalProviderId::NONE),
+            external_provider_id: Some(ExternalProviderId::NONE),
+            component_id: Some(component_id),
+        };
+
+        let prop_av_ctx = AttributeReadContext {
+            prop_id: None,
+            internal_provider_id: Some(InternalProviderId::NONE),
+            external_provider_id: Some(ExternalProviderId::NONE),
+            component_id: Some(ComponentId::NONE),
+        };
+
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                LIST_ATTRIBUTES_WITH_OVERRIDDEN,
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &prop_av_ctx,
+                    &component_av_ctx,
+                    &component_id,
+                ],
+            )
+            .await?;
+
+        let result: HashMap<AttributeValueId, bool> = HashMap::from_iter(
+            rows.iter()
+                .map(|row| (row.get("attribute_value_id"), row.get("overridden"))),
+        );
+
+        Ok(result)
     }
 }
 
