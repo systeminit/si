@@ -4,12 +4,13 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use ulid::Ulid;
 
 use crate::property_editor::{PropertyEditorError, PropertyEditorResult};
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use crate::{
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentId, DalContext,
-    Prop, PropId, StandardModel,
+    FuncId, Prop, PropId, StandardModel,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -55,6 +56,8 @@ impl PropertyEditorValues {
                 .unwrap_or(0)
         });
 
+        let overrides = AttributeValue::list_attributes_with_overridden(ctx, component_id).await?;
+
         for work in work_queue {
             let work_attribute_value_id = *work.attribute_value.id();
 
@@ -69,6 +72,17 @@ impl PropertyEditorValues {
 
             let is_from_external_source = sockets.iter().any(|(_socket, has_edge)| *has_edge);
 
+            let (controlling_func_id, controlling_attribute_value_id, controlling_func_name) =
+                AttributeValue::get_controlling_func_id(ctx, work_attribute_value_id).await?;
+
+            let is_controlled_by_intrinsic_func = controlling_func_name.starts_with("si:set")
+                || controlling_func_name.starts_with("si:unset");
+
+            let overridden = overrides
+                .get(&work_attribute_value_id)
+                .copied()
+                .unwrap_or(false);
+
             values.insert(
                 work_attribute_value_id.into(),
                 PropertyEditorValue {
@@ -81,6 +95,10 @@ impl PropertyEditorValues {
                         .unwrap_or(Value::Null),
                     is_from_external_source,
                     can_be_set_by_socket,
+                    is_controlled_by_intrinsic_func,
+                    controlling_func_id,
+                    controlling_attribute_value_id,
+                    overridden,
                 },
             );
             if let Some(parent_id) = work.parent_attribute_value_id {
@@ -114,6 +132,10 @@ pub struct PropertyEditorValue {
     value: Value,
     is_from_external_source: bool,
     can_be_set_by_socket: bool,
+    is_controlled_by_intrinsic_func: bool,
+    controlling_func_id: FuncId,
+    controlling_attribute_value_id: AttributeValueId,
+    overridden: bool,
 }
 
 impl PropertyEditorValue {

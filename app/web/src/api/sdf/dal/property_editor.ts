@@ -112,6 +112,10 @@ export interface PropertyEditorValue {
   value: unknown;
   isFromExternalSource: boolean;
   canBeSetBySocket: boolean;
+  isControlledByIntrinsicFunc: boolean;
+  controllingFuncId: string;
+  controllingAttributeValueId: string;
+  overridden: boolean;
 }
 
 export interface PropertyEditorValues {
