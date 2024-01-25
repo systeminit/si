@@ -30,11 +30,6 @@ userdel jailer-$SB_ID || true
 
 # Remove directories and files
 umount /srv/jailer/firecracker/$SB_ID/root/rootfs.ext4 || true
-until ! mountpoint -q /srv/jailer/firecracker/$SB_ID/root/rootfs.ext4
-do
-  echo "waiting for unmount"
-  sleep .1
-done
 dmsetup remove --retry rootfs-overlay-$SB_ID
 
 # We are not currently creating these.
