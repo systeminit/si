@@ -100,7 +100,7 @@
               variant="transparent"
               tone="shade"
               @mousedown.prevent
-              @click.prevent="profileMenuRef?.open || _.noop"
+              @click.prevent="profileMenuRef?.open($event) || _.noop"
             >
               <div class="mr-xs">Hi {{ authStore.bestUserLabel }}!</div>
               <template #iconRight>
@@ -157,6 +157,11 @@
                     @click="authStore.REFRESH_AUTH0_PROFILE"
                     >Already verified?</VButton
                   >
+                  <!-- normally we'd use the ErrorMessage component, but we're already using it as the wrapper here for a sort of alert -->
+                  <p v-if="refreshAuth0Req.isError">
+                    ERROR: {{ refreshAuth0Req.errorMessage }}
+                  </p>
+
                   <VButton
                     v-if="!resendEmailVerificationReq.isSuccess"
                     tone="shade"
@@ -166,6 +171,9 @@
                     @click="authStore.RESEND_EMAIL_VERIFICATION"
                     >Resend Email</VButton
                   >
+                  <p v-if="resendEmailVerificationReq.isError">
+                    ERROR: {{ resendEmailVerificationReq.errorMessage }}
+                  </p>
                 </Inline>
               </ErrorMessage>
 
