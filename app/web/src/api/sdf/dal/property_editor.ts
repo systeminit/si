@@ -116,6 +116,7 @@ export interface PropertyEditorValue {
   controllingFuncId: string;
   controllingAttributeValueId: string;
   overridden: boolean;
+  // TODO(Wendy) - we also need the default funcId for this prop
 }
 
 export interface PropertyEditorValues {

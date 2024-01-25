@@ -241,7 +241,11 @@
           class="attributes-panel-item__type-icon"
         />
         <Icon
-          v-if="currentValue !== null && !propPopulatedBySocket"
+          v-if="
+            currentValue !== null &&
+            !propPopulatedBySocket &&
+            !propControlledByParent
+          "
           name="x-circle"
           class="attributes-panel-item__unset-button"
           @click="unsetHandler"
@@ -287,6 +291,7 @@
             @keydown.enter="(e) => e.metaKey && updateValue()"
           />
           <Icon
+            v-if="!propControlledByParent"
             name="external-link"
             class="attributes-panel-item__popout-edit-button"
             title="Edit in popup"
@@ -365,11 +370,16 @@
         </template>
         <div
           v-if="
-            featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
-            propPopulatedBySocket &&
-            !editOverride
+            propControlledByParent ||
+            (featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
+              propPopulatedBySocket &&
+              !editOverride)
           "
-          v-tooltip="`${propName} is set via an input socket`"
+          v-tooltip="
+            propControlledByParent
+              ? `${propName} is set via a function from an ancestor`
+              : `${propName} is set via an input socket`
+          "
           class="absolute top-0 w-full h-full bg-caution-lines z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50"
           @click="openConfirmEditModal"
         />
@@ -398,21 +408,36 @@
       <!-- <VButton @click="editModalRef?.close">Save</VButton> -->
     </Modal>
 
-    <Modal ref="confirmEditModalRef" title="Are You Sure?">
+    <Modal
+      ref="confirmEditModalRef"
+      :title="
+        propControlledByParent
+          ? `You Cannot Edit Prop &quot;${propName}&quot;`
+          : 'Are You Sure?'
+      "
+    >
       <div class="pb-sm">
-        Editing the prop "{{ propName }}" directly will override the socket
-        which is currently setting its value.
+        <template v-if="propControlledByParent">
+          You cannot edit prop "{{ propName }}" because it is populated by a
+          function from an ancestor prop.
+        </template>
+        <template v-else>
+          Editing the prop "{{ propName }}" directly will override the socket
+          which is currently setting its value.
+        </template>
       </div>
       <div class="flex gap-sm">
         <VButton
           icon="x"
           tone="shade"
           variant="ghost"
+          :class="propControlledByParent ? 'flex-grow' : ''"
           @click="closeConfirmEditModal"
         >
           Cancel
         </VButton>
         <VButton
+          v-if="!propControlledByParent"
           icon="edit"
           tone="action"
           class="flex-grow"
@@ -586,6 +611,12 @@ const sourceTooltip = computed(() => {
   }
 });
 
+const propControlledByParent = computed(
+  () =>
+    props.attributeDef.value?.id !==
+    props.attributeDef.value?.controllingAttributeValueId,
+);
+
 function resetNewValueToCurrentValue() {
   newValueBoolean.value = !!currentValue.value;
   newValueString.value = currentValue.value?.toString() || "";
@@ -699,7 +730,9 @@ const isHover = ref(false);
 const isFocus = ref(false);
 
 function onHoverStart() {
-  isHover.value = true;
+  if (!propControlledByParent.value) {
+    isHover.value = true;
+  }
 }
 function onHoverEnd() {
   isHover.value = false;
@@ -1059,7 +1092,7 @@ const editOverride = ref(false);
   right: 4px;
   bottom: 4px;
   display: none;
-  z-index: 102;
+  z-index: 49;
   transform: scaleX(-1);
 
   .attributes-panel-item.--input.--focus &,

@@ -1260,6 +1260,8 @@ impl AttributeValue {
 
         let func_infos: Vec<FuncInfo> = standard_model::objects_from_rows(rows)?;
 
+        dbg!(&func_infos);
+
         for func_info in func_infos {
             if func_info.depth == 1 {
                 base_func_info = Some(func_info.clone());
@@ -1283,6 +1285,8 @@ impl AttributeValue {
             }
         }
 
+        dbg!(&ancestor_func_info, &base_func_info);
+
         if let Some(ancestor_info) = ancestor_func_info {
             Ok((
                 ancestor_info.func_id,
@@ -1296,6 +1300,7 @@ impl AttributeValue {
                 base_info.name,
             ))
         } else {
+            dbg!(attribute_value_id, ctx.visibility(), ctx.tenancy());
             Err(AttributeValueError::MissingFuncInformation(
                 attribute_value_id,
             ))
