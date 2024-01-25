@@ -77,6 +77,7 @@ useHead(
 const authStore = useAuthStore();
 const route = useRoute();
 if (route.name === "auth-connect") {
+  // we are just clearing any local login state since we are in the process of logging in again
   authStore.localLogout(false);
 } else {
   authStore.initFromStorage().then();

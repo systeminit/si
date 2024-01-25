@@ -121,8 +121,6 @@ const routes: RouteRecordRaw[] = [
     beforeEnter: () => {
       const authStore = useAuthStore();
       authStore.localLogout();
-
-      window.location.href = `${AUTH_PORTAL_URL}/logout`;
     },
     component: () => import("@/pages/auth/LogoutPage.vue"), // just need something here for TS, but guard always redirects
   },
