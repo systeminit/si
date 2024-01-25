@@ -301,6 +301,14 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
         .await
         .expect("able to create component");
 
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after component creation");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
     let rigid_designator_prop_id = Prop::find_prop_id_by_path(
         ctx,
         variant.id(),
@@ -436,7 +444,9 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
 
     assert_eq!(
         serde_json::json!({
+                "si": { "name": name },
                 "domain": {
+                    "name": name,
                     "possible_world_a": {
                         "wormhole_1": {
                             "wormhole_2": {
@@ -482,6 +492,14 @@ async fn set_the_universe(ctx: &mut DalContext) {
     let component = Component::new(ctx, name, variant.id(), None)
         .await
         .expect("able to create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after component creation");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
 
     let universe_prop_id = Prop::find_prop_id_by_path(
         ctx,
@@ -556,7 +574,7 @@ async fn set_the_universe(ctx: &mut DalContext) {
         .expect("there is a value for the root value materialized_view");
 
     assert_eq!(
-        serde_json::json!({ "domain": { "universe": universe_json } }),
+        serde_json::json!({ "domain": { "universe": universe_json, "name": name }, "si": { "name": name } } ),
         root_view
     );
 }

@@ -221,6 +221,7 @@ pub trait FuncDispatch: std::fmt::Debug {
     where
         <Self::Output as ExtractPayload>::Payload: Serialize,
     {
+        info!("executing js attribute function: {:?} {:?}", func, args);
         let executor = Self::create(context, func, args, before)?;
         Ok(executor.execute().await?)
     }

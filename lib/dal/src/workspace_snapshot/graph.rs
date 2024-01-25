@@ -1027,6 +1027,7 @@ impl WorkspaceSnapshotGraph {
         };
 
         if onto_ordering.order() == to_rebase_ordering.order() {
+            dbg!("ordering is identical");
             // Both contain the same items, in the same order. No conflicts, and nothing
             // to update.
             return Ok((conflicts, updates));
@@ -1034,7 +1035,7 @@ impl WorkspaceSnapshotGraph {
             .vector_clock_write()
             .is_newer_than(to_rebase_ordering.vector_clock_write())
         {
-            // info!("onto_ordering_clock_newer");
+            dbg!("onto_ordering_clock_newer");
             let onto_ordering_set: HashSet<Ulid> = onto_ordering.order().iter().copied().collect();
             let to_rebase_ordering_set: HashSet<Ulid> =
                 to_rebase_ordering.order().iter().copied().collect();
@@ -1096,9 +1097,11 @@ impl WorkspaceSnapshotGraph {
             .vector_clock_write()
             .is_newer_than(onto_ordering.vector_clock_write())
         {
+            dbg!("we have everything in onto as part of to rebase");
             // We already have everything in `onto` as part of `to_rebase`. Nothing needs
             // updating, and there are no conflicts.
         } else {
+            dbg!("both have changes");
             // Both `onto` and `to_rebase` have changes that the other has not incorporated. We
             // need to find out what the changes are to see what needs to be updated, and what
             // conflicts.
@@ -1571,6 +1574,10 @@ impl WorkspaceSnapshotGraph {
                     node_index_by_id.insert(neighbor_weight.id(), neighbor_index);
                 }
                 for ordered_id in ordering_weight.order() {
+                    if node_index_by_id.get(ordered_id).is_none() {
+                        let ostr = ordered_id.clone().to_string();
+                        dbg!(ostr);
+                    }
                     ordered_child_indexes.push(
                         *node_index_by_id
                             .get(ordered_id)
@@ -1668,6 +1675,7 @@ impl WorkspaceSnapshotGraph {
                 // We only want to update the ordering of the container if we removed an edge to
                 // one of the ordered relationships.
                 if &new_order != previous_container_ordering_node_weight.order() {
+                    dbg!("calling set order");
                     new_container_ordering_node_weight.set_order(change_set, new_order)?;
 
                     self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;

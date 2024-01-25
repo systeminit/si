@@ -1,7 +1,7 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::property_editor::values::PropertyEditorValues;
-use dal::{ComponentId, Visibility};
+use dal::{Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -34,6 +34,9 @@ pub async fn get_property_editor_values(
     // }
 
     let prop_edit_values = PropertyEditorValues::assemble(&ctx, request.component_id).await?;
+    let component = Component::get_by_id(&ctx, request.component_id).await?;
+
+    let _ = dbg!(component.materialized_view(&ctx).await);
 
     Ok(Json(prop_edit_values))
 }
