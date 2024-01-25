@@ -1,3 +1,4 @@
+use dal::attribute::value::DependentValueGraph;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::diagram::Diagram;
 use dal::prop::{Prop, PropPath};
@@ -358,7 +359,7 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
             .copied()
             .expect("get first value id");
 
-    let update_graph = AttributeValue::dependent_value_graph(ctx, vec![rigid_designator_value_id])
+    let update_graph = DependentValueGraph::for_values(ctx, vec![rigid_designator_value_id])
         .await
         .expect("able to generate update graph");
 

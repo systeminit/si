@@ -12,7 +12,9 @@ use tokio::task::{JoinError, JoinSet};
 //use crate::tasks::StatusReceiverClient;
 //use crate::tasks::StatusReceiverRequest;
 use crate::{
-    attribute::value::{AttributeValueError, PrototypeExecutionResult},
+    attribute::value::{
+        dependent_value_graph::DependentValueGraph, AttributeValueError, PrototypeExecutionResult,
+    },
     job::consumer::{
         JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
     },
@@ -62,9 +64,6 @@ impl DependentValuesUpdate {
         visibility: Visibility,
         attribute_values: Vec<AttributeValueId>,
     ) -> Box<Self> {
-        // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to force non deleted visibility in the future.
-        let visibility = visibility.to_non_deleted();
-
         Box::new(Self {
             attribute_values,
             access_builder,
@@ -121,7 +120,12 @@ impl DependentValuesUpdate {
         ctx.update_snapshot_to_visibility().await?;
 
         let mut dependency_graph =
-            AttributeValue::dependent_value_graph(ctx, self.attribute_values.clone()).await?;
+            DependentValueGraph::for_values(ctx, self.attribute_values.clone()).await?;
+
+        // Remove the values that brought us here, since they should already have had their functions executed
+        for value in &self.attribute_values {
+            dependency_graph.remove_value(*value);
+        }
 
         debug!(
             "DependentValueGraph calculation took: {:?}",

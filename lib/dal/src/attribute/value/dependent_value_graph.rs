@@ -1,8 +1,14 @@
 use petgraph::prelude::*;
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap, VecDeque};
+use ulid::Ulid;
 
-use super::AttributeValueId;
+use crate::{
+    attribute::prototype::{argument::AttributePrototypeArgument, AttributePrototype},
+    workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
+    DalContext,
+};
+
+use super::{AttributeValue, AttributeValueId, AttributeValueResult};
 
 #[derive(Debug, Clone)]
 pub struct DependentValueGraph {
@@ -22,6 +28,99 @@ impl DependentValueGraph {
             id_to_index_map: HashMap::new(),
             graph: StableGraph::new(),
         }
+    }
+
+    /// Construct a [`DependentValueGraph`] of all the [`AttributeValueId`]
+    /// whose values depend on the value of the values in [`values`]. This
+    /// includes the entire parent tree of each value, up to the root, as well
+    /// as any dependencies of values discovered while walking the graph (e.g.,
+    /// if a value's prototype takes one of the passed values as an input, we
+    /// also need to find the values for the other inputs to the prototype,
+    /// etc.).
+    pub async fn for_values(
+        ctx: &DalContext,
+        values: Vec<AttributeValueId>,
+    ) -> AttributeValueResult<Self> {
+        let mut dependent_value_graph = Self::new();
+
+        let mut work_queue = VecDeque::from_iter(values);
+        while let Some(current_attribute_value_id) = work_queue.pop_front() {
+            let current_component_id =
+                AttributeValue::component_id(ctx, current_attribute_value_id).await?;
+            let data_source_id: Ulid = AttributeValue::is_for(ctx, current_attribute_value_id)
+                .await?
+                .into();
+
+            // Gather the Attribute Prototype Arguments that take the thing the
+            // current value is for (prop, or provider/socket) as an input
+            let relevant_apas = {
+                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+                let attribute_prototype_argument_idxs = workspace_snapshot
+                    .incoming_sources_for_edge_weight_kind(
+                        data_source_id,
+                        EdgeWeightKindDiscriminants::PrototypeArgumentValue,
+                    )?;
+
+                let mut relevant_apas = vec![];
+                for apa_idx in attribute_prototype_argument_idxs {
+                    let apa = workspace_snapshot
+                        .get_node_weight(apa_idx)?
+                        .get_attribute_prototype_argument_node_weight()?;
+
+                    match apa.targets() {
+                        // If there are no targets, this is a schema-level attribute prototype argument
+                        None => relevant_apas.push(apa),
+                        Some(targets) => {
+                            if targets.source_component_id == current_component_id {
+                                relevant_apas.push(apa)
+                            }
+                        }
+                    }
+                }
+                relevant_apas
+            };
+
+            // Find the values that are set by the prototype for the relevant
+            // AttributePrototypeArguments, and declare that these values depend
+            // on the value of the current value
+            for apa in relevant_apas {
+                let prototype_id =
+                    AttributePrototypeArgument::prototype_id_for_argument_id(ctx, apa.id().into())
+                        .await?;
+
+                let attribute_value_ids =
+                    AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;
+
+                for attribute_value_id in attribute_value_ids {
+                    let filter_component_id = match apa.targets() {
+                        None => current_component_id,
+                        Some(targets) => targets.destination_component_id,
+                    };
+                    let component_id =
+                        AttributeValue::component_id(ctx, attribute_value_id).await?;
+                    if component_id == filter_component_id {
+                        work_queue.push_back(attribute_value_id);
+                        dependent_value_graph
+                            .value_depends_on(attribute_value_id, current_attribute_value_id);
+                    }
+                }
+            }
+
+            // Also walk up to the root and ensure each parent value of the
+            // current value depends on its child (down to the current value)
+            // This ensures that we update the materialized views of the parent
+            // tree
+            if let Some(parent_attribute_value_id) =
+                AttributeValue::parent_attribute_value_id(ctx, current_attribute_value_id).await?
+            {
+                work_queue.push_back(parent_attribute_value_id);
+                dependent_value_graph
+                    .value_depends_on(parent_attribute_value_id, current_attribute_value_id);
+            }
+        }
+
+        Ok(dependent_value_graph)
     }
 
     pub fn add_value(&mut self, value_id: AttributeValueId) -> NodeIndex {
