@@ -125,7 +125,7 @@ export const useAuthStore = defineStore("auth", {
         method: "post",
         url: `/users/${this.user.id}/resend-email-verification`,
         onSuccess: (response) => {
-          this.user = response.user;
+          // returns { success: true }
         },
         onFail: (response) => {
           // if we see this error, it means the backend will have updated the user already too
