@@ -93,6 +93,7 @@
         butane
         gh
         skopeo
+        openssh
       ];
 
       buck2Derivation = {
