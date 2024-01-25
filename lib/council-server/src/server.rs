@@ -1,16 +1,18 @@
-use crate::{Graph, Id, Request, Response};
-use std::time::Duration;
-
 use futures::StreamExt;
-use si_data_nats::{NatsClient, Subject};
+use graph::ChangeSetGraph;
+use si_data_nats::{NatsClient, Subject, Subscriber};
+use std::time::Duration;
 use telemetry::prelude::*;
 use tokio::{signal, sync::watch};
 
-pub mod config;
-mod graph;
+use crate::subject_generator::{ManagementChannel, ManagementReplyChannel};
+use crate::{Graph, Id, Request, Response};
+use crate::{RequestDiscriminants, SubjectGenerator};
+
 pub use config::Config;
 
-use graph::ChangeSetGraph;
+pub mod config;
+mod graph;
 
 #[derive(Debug, Clone)]
 pub struct Server {
@@ -29,12 +31,10 @@ impl Server {
         subscriber_started_tx: watch::Sender<()>,
         mut shutdown_request_rx: watch::Receiver<()>,
     ) -> Result<()> {
-        let channel_suffix = "council.*";
-        let subscriber_channel = if let Some(prefix) = self.nats.metadata().subject_prefix() {
-            format!("{}.{}", prefix, channel_suffix)
-        } else {
-            channel_suffix.to_string()
-        };
+        let (subscriber_channel, management_channel, management_reply_channel) =
+            SubjectGenerator::for_server(
+                self.nats.metadata().subject_prefix().map(|p| p.to_string()),
+            );
         let mut subscriber = loop {
             match self.nats.subscribe(subscriber_channel.clone()).await {
                 Ok(sub) => break sub,
@@ -68,19 +68,75 @@ impl Server {
             }
         });
 
+        // Before entering the main loop, tell everyone subscribing to the management channel (i.e. all pinga instances)
+        // to restart their jobs.
+        self.nats
+            .publish_with_reply(
+                management_channel.clone(),
+                management_reply_channel.clone(),
+                serde_json::to_vec(&Response::Restart)?.into(),
+            )
+            .await?;
+        info!(%management_channel, %management_reply_channel, "published message for all active pinga instances to restart jobs in progress");
+
+        // Begin the main loop. Everything after this point should be infallible.
+        self.core_loop_infallible_wrapper(
+            &mut subscriber,
+            &mut shutdown_request_rx,
+            &mut our_shutdown_request_rx,
+            &management_channel,
+            &management_reply_channel,
+        )
+        .await;
+
+        Ok(())
+    }
+
+    async fn core_loop_infallible_wrapper(
+        &self,
+        subscriber: &mut Subscriber,
+        shutdown_request_rx: &mut watch::Receiver<()>,
+        our_shutdown_request_rx: &mut watch::Receiver<()>,
+        management_channel: &ManagementChannel,
+        management_reply_channel: &ManagementReplyChannel,
+    ) {
         let mut complete_graph = ChangeSetGraph::default();
+        loop {
+            match self
+                .core_loop(
+                    subscriber,
+                    shutdown_request_rx,
+                    our_shutdown_request_rx,
+                    management_channel,
+                    management_reply_channel,
+                    &mut complete_graph,
+                )
+                .await
+            {
+                Ok(()) => break,
+                Err(e) => error!("{e}"),
+            }
+        }
+    }
+
+    async fn core_loop(
+        &self,
+        subscriber: &mut Subscriber,
+        shutdown_request_rx: &mut watch::Receiver<()>,
+        our_shutdown_request_rx: &mut watch::Receiver<()>,
+        management_channel: &ManagementChannel,
+        management_reply_channel: &ManagementReplyChannel,
+        complete_graph: &mut ChangeSetGraph,
+    ) -> Result<()> {
         loop {
             for (reply_channel, node_ids) in complete_graph.fetch_all_available() {
                 info!(%reply_channel, ?node_ids, "Ok to process AttributeValue");
                 self.nats
                     .publish(
                         reply_channel,
-                        serde_json::to_vec(&Response::OkToProcess { node_ids })
-                            .unwrap()
-                            .into(),
+                        serde_json::to_vec(&Response::OkToProcess { node_ids })?.into(),
                     )
-                    .await
-                    .unwrap();
+                    .await?;
             }
 
             let sleep = tokio::time::sleep(Duration::from_secs(60));
@@ -105,71 +161,100 @@ impl Server {
                             continue;
                         }
                     }
-                    // FIXME: reconnect
-                    None => break, // Happens if subscriber has been unsubscribed or if connection is closed
+                    None => {
+                        // FIXME(nick): reconnect. Same "FIXME" as the one found in the original listener.
+                        warn!("subscriber has been unsubscribed or the connection has been closed");
+                        return Ok(());
+                    }
                 },
                 Ok(()) = shutdown_request_rx.changed() => {
                     info!("Worker task received shutdown notification: stopping");
-                    break;
+                    return Ok(());
                 }
                 _ = our_shutdown_request_rx.changed() => {
                     info!("Worker task received our shutdown notification: stopping");
-                    break;
+                    return Ok(());
                 }
                 else => unreachable!(),
             };
 
-            match request {
+            // Cache the reply channel in case we are missing dependency data and need to restart.
+            let cached_reply_channel = reply_channel.clone();
+
+            let (result, discrim) = match request {
                 Request::ValueDependencyGraph {
                     change_set_id,
                     dependency_graph,
-                } => {
+                } => (
                     register_graph_from_job(
-                        &mut complete_graph,
+                        complete_graph,
                         reply_channel,
                         change_set_id,
                         dependency_graph,
                     )
-                    .await
-                    .unwrap();
-                }
+                    .await,
+                    RequestDiscriminants::ValueDependencyGraph,
+                ),
                 Request::ProcessedValue {
                     change_set_id,
                     node_id,
-                } => {
+                } => (
                     job_processed_a_value(
                         &self.nats,
-                        &mut complete_graph,
+                        complete_graph,
                         reply_channel,
                         change_set_id,
                         node_id,
                     )
-                    .await
-                    .unwrap();
-                }
-                Request::Bye { change_set_id } => {
-                    job_is_going_away(&mut complete_graph, reply_channel, change_set_id)
-                        .await
-                        .unwrap();
-                }
+                    .await,
+                    RequestDiscriminants::ProcessedValue,
+                ),
+                Request::Bye { change_set_id } => (
+                    job_is_going_away(complete_graph, reply_channel, change_set_id).await,
+                    RequestDiscriminants::Bye,
+                ),
                 Request::ValueProcessingFailed {
                     change_set_id,
                     node_id,
-                } => {
+                } => (
                     job_failed_processing_a_value(
                         &self.nats,
-                        &mut complete_graph,
+                        complete_graph,
                         reply_channel,
                         change_set_id,
                         node_id,
                     )
-                    .await
-                    .unwrap();
+                    .await,
+                    RequestDiscriminants::ValueProcessingFailed,
+                ),
+                Request::Restart => {
+                    debug!(
+                        %management_channel, %management_reply_channel, "found restart request sent to everyone subscribing to management channel: no-op"
+                    );
+                    (Ok(()), RequestDiscriminants::Restart)
                 }
             };
-        }
 
-        Ok(())
+            match result {
+                Ok(()) => match discrim {
+                    RequestDiscriminants::Restart => {
+                        debug!("no-op successful for restart request")
+                    }
+                    discrim => debug!(?discrim, "processing request successful"),
+                },
+                Err(err) => match err {
+                    Error::DependencyDataMissing => {
+                        self.nats
+                            .publish(
+                                cached_reply_channel,
+                                serde_json::to_vec(&Response::Restart)?.into(),
+                            )
+                            .await?;
+                    }
+                    err => return Err(err),
+                },
+            }
+        }
     }
 }
 
@@ -198,10 +283,14 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub enum Error {
     #[error(transparent)]
     Config(#[from] config::ConfigError),
+    #[error("missing dependency data")]
+    DependencyDataMissing,
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Nats(#[from] si_data_nats::Error),
+    #[error("serde json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("Job reported finishing processing, but we expected a different job to be processing")]
     ShouldNotBeProcessingByJob,
     #[error("Unexpected JobId")]
@@ -236,12 +325,9 @@ pub async fn job_processed_a_value(
         info!(%reply_channel, ?node_id, "AttributeValue has been processed by a job");
         nats.publish(
             reply_channel,
-            serde_json::to_vec(&Response::BeenProcessed { node_id })
-                .unwrap()
-                .into(),
+            serde_json::to_vec(&Response::BeenProcessed { node_id })?.into(),
         )
-        .await
-        .unwrap();
+        .await?;
     }
     debug!(?complete_graph);
     Ok(())
@@ -264,12 +350,10 @@ pub async fn job_failed_processing_a_value(
             reply_channel,
             serde_json::to_vec(&Response::Failed {
                 node_id: failed_node_id,
-            })
-            .unwrap()
+            })?
             .into(),
         )
-        .await
-        .unwrap();
+        .await?;
     }
 
     Ok(())

@@ -3,7 +3,23 @@ use si_data_nats::{NatsClient, Subject, Subscriber};
 use std::time::Duration;
 use telemetry::prelude::*;
 
+use crate::SubjectGenerator;
 use crate::{Graph, Id, Request, Response};
+
+pub mod management;
+
+pub type ClientResult<T, E = ClientError> = Result<T, E>;
+
+#[remain::sorted]
+#[derive(Debug, thiserror::Error)]
+pub enum ClientError {
+    #[error(transparent)]
+    Nats(#[from] si_data_nats::Error),
+    #[error("no listener available for message that was just sent")]
+    NoListenerAvailable,
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+}
 
 #[remain::sorted]
 #[derive(Debug)]
@@ -21,7 +37,7 @@ pub struct PubClient {
 }
 
 impl PubClient {
-    pub async fn register_dependency_graph(&self, dependency_graph: Graph) -> Result<()> {
+    pub async fn register_dependency_graph(&self, dependency_graph: Graph) -> ClientResult<()> {
         let message = serde_json::to_vec(&Request::ValueDependencyGraph {
             change_set_id: self.change_set_id,
             dependency_graph,
@@ -36,7 +52,7 @@ impl PubClient {
         Ok(())
     }
 
-    pub async fn processed_value(&self, node_id: Id) -> Result<()> {
+    pub async fn processed_value(&self, node_id: Id) -> ClientResult<()> {
         let message = serde_json::to_vec(&Request::ProcessedValue {
             change_set_id: self.change_set_id,
             node_id,
@@ -51,7 +67,7 @@ impl PubClient {
         Ok(())
     }
 
-    pub async fn failed_processing_value(&self, node_id: Id) -> Result<()> {
+    pub async fn failed_processing_value(&self, node_id: Id) -> ClientResult<()> {
         let message = serde_json::to_vec(&Request::ValueProcessingFailed {
             change_set_id: self.change_set_id,
             node_id,
@@ -66,7 +82,7 @@ impl PubClient {
         Ok(())
     }
 
-    pub async fn bye(self) -> Result<()> {
+    pub async fn bye(self) -> ClientResult<()> {
         let message = serde_json::to_vec(&Request::Bye {
             change_set_id: self.change_set_id,
         })?;
@@ -93,12 +109,11 @@ pub struct Client {
 impl Client {
     pub async fn new(
         nats: NatsClient,
-        subject_prefix: &str,
+        subject_prefix: Option<String>,
         id: Id,
         change_set_id: Id,
-    ) -> Result<Self> {
-        let pub_channel = format!("{subject_prefix}.{id}");
-        let reply_channel = format!("{pub_channel}.reply");
+    ) -> ClientResult<Self> {
+        let (pub_channel, reply_channel) = SubjectGenerator::for_client(subject_prefix, id);
         Ok(Self {
             pub_channel: pub_channel.into(),
             change_set_id,
@@ -118,7 +133,7 @@ impl Client {
     }
 
     // None means subscriber has been unsubscribed or that the connection has been closed
-    pub async fn fetch_response(&mut self) -> Result<Option<Response>> {
+    pub async fn fetch_response(&mut self) -> ClientResult<Option<Response>> {
         // TODO: timeout so we don't get stuck here forever if council goes away
         // TODO: handle message.data() empty with Status header as 503: https://github.com/nats-io/nats.go/pull/576
         let msg = loop {
@@ -135,7 +150,7 @@ impl Client {
         match msg {
             Some(msg) => {
                 if msg.payload().is_empty() {
-                    return Err(Error::NoListenerAvailable);
+                    return Err(ClientError::NoListenerAvailable);
                 }
                 Ok(Some(serde_json::from_slice::<Response>(msg.payload())?))
             }
@@ -143,30 +158,17 @@ impl Client {
         }
     }
 
-    pub async fn register_dependency_graph(&self, dependency_graph: Graph) -> Result<()> {
+    pub async fn register_dependency_graph(&self, dependency_graph: Graph) -> ClientResult<()> {
         self.clone_into_pub()
             .register_dependency_graph(dependency_graph)
             .await
     }
 
-    pub async fn processed_value(&self, node_id: Id) -> Result<()> {
+    pub async fn processed_value(&self, node_id: Id) -> ClientResult<()> {
         self.clone_into_pub().processed_value(node_id).await
     }
 
-    pub async fn bye(&self) -> Result<()> {
+    pub async fn bye(&self) -> ClientResult<()> {
         self.clone_into_pub().bye().await
     }
-}
-
-pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-#[remain::sorted]
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error(transparent)]
-    Nats(#[from] si_data_nats::Error),
-    #[error("no listener available for message that was just sent")]
-    NoListenerAvailable,
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
 }

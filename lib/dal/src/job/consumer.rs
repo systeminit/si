@@ -38,7 +38,7 @@ pub enum JobConsumerError {
     #[error("component {0} not found")]
     ComponentNotFound(ComponentId),
     #[error(transparent)]
-    Council(#[from] council_server::client::Error),
+    CouncilClient(#[from] council_server::client::ClientError),
     #[error("Protocol error with council: {0}")]
     CouncilProtocol(String),
     #[error(transparent)]

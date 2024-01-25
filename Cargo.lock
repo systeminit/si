@@ -1057,6 +1057,7 @@ dependencies = [
  "serde_json",
  "si-data-nats",
  "si-settings",
+ "strum",
  "telemetry",
  "thiserror",
  "tokio",

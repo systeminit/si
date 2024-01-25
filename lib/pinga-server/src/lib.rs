@@ -16,7 +16,7 @@ pub fn nats_jobs_subject(prefix: Option<&str>) -> String {
     nats_subject(prefix, NATS_JOBS_DEFAULT_SUBJECT)
 }
 
-pub fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
+fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
     let suffix = suffix.as_ref();
     match prefix {
         Some(prefix) => format!("{prefix}.{suffix}"),
