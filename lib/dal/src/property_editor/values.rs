@@ -4,7 +4,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use ulid::Ulid;
 
 use crate::property_editor::{PropertyEditorError, PropertyEditorResult};
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
