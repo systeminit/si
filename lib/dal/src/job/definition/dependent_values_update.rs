@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use tokio::task::JoinSet;
 
+use crate::property_editor;
 use crate::tasks::StatusReceiverClient;
 use crate::tasks::StatusReceiverRequest;
 use crate::{diagram, ComponentId};
@@ -474,6 +475,12 @@ async fn update_summary_tables(
         component_type,
         has_resource,
         deleted_at,
+    )
+    .await?;
+
+    property_editor::values_summary::PropertyEditorValuesSummary::create_or_update_component_entry(
+        ctx,
+        component_id,
     )
     .await?;
 

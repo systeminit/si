@@ -8,6 +8,7 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 use crate::diagram::summary_diagram::SummaryDiagramError;
+use crate::property_editor::values_summary::PropertyEditorValuesSummaryError;
 use crate::{
     fix::FixError, func::binding_return_value::FuncBindingReturnValueError,
     job::producer::BlockingJobError, job::producer::JobProducerError, status::StatusUpdaterError,
@@ -67,6 +68,8 @@ pub enum JobConsumerError {
     PgError(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
+    #[error(transparent)]
+    PropertyEditorValuesSummary(#[from] PropertyEditorValuesSummaryError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
