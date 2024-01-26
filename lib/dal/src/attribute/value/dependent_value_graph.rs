@@ -34,13 +34,12 @@ impl DependentValueGraph {
         }
     }
 
-    /// Construct a [`DependentValueGraph`] of all the [`AttributeValueId`]
-    /// whose values depend on the value of the values in [`values`]. This
-    /// includes the entire parent tree of each value, up to the root, as well
-    /// as any dependencies of values discovered while walking the graph (e.g.,
-    /// if a value's prototype takes one of the passed values as an input, we
-    /// also need to find the values for the other inputs to the prototype,
-    /// etc.).
+    /// Construct a [`DependentValueGraph`] of all the [`AttributeValueId`] whose values depend on
+    /// the value of the values in [`values`]. This includes the entire parent tree of each value
+    /// discovered, up to the root for every value's component, as well as any dependencies of
+    /// values discovered while walking the graph (e.g., if a value's prototype takes one of the
+    /// passed values as an input, we also need to find the values for the other inputs to the
+    /// prototype, etc.).
     pub async fn for_values(
         ctx: &DalContext,
         values: Vec<AttributeValueId>,

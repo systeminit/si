@@ -62,6 +62,8 @@ pub enum ComponentError {
     AttributeValue(#[from] AttributeValueError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
+    #[error("component {0} has no attribute value for the root/si/color prop")]
+    ComponentMissingColorValue(ComponentId),
     #[error("component {0} has no attribute value for the root/si/name prop")]
     ComponentMissingNameValue(ComponentId),
     #[error(
@@ -404,21 +406,11 @@ impl Component {
         let component = Self::assemble(id.into(), content);
 
         component.set_name(ctx, &name).await?;
+        if let Some(default_color) = component.schema_variant(ctx).await?.get_color(ctx).await? {
+            component.set_color(ctx, &default_color).await?;
+        }
 
         Ok(component)
-    }
-
-    pub async fn set_name(&self, ctx: &DalContext, name: &str) -> ComponentResult<()> {
-        let av_for_name = self
-            .attribute_values_for_prop(ctx, &["root", "si", "name"])
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(ComponentError::ComponentMissingNameValue(self.id()))?;
-
-        AttributeValue::update(ctx, av_for_name, Some(serde_json::to_value(name)?)).await?;
-
-        Ok(())
     }
 
     pub async fn incoming_connections(
@@ -611,14 +603,62 @@ impl Component {
         Ok(Self::assemble(id, updated))
     }
 
-    // TODO(nick): use the prop tree here.
-    pub async fn name(&self, _ctx: &DalContext) -> ComponentResult<String> {
-        Ok(self.name.clone())
+    pub async fn set_name(&self, ctx: &DalContext, name: &str) -> ComponentResult<()> {
+        let av_for_name = self
+            .attribute_values_for_prop(ctx, &["root", "si", "name"])
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(ComponentError::ComponentMissingNameValue(self.id()))?;
+
+        AttributeValue::update(ctx, av_for_name, Some(serde_json::to_value(name)?)).await?;
+
+        Ok(())
     }
 
-    // TODO(nick): use the prop tree here.
-    pub async fn color(&self, _ctx: &DalContext) -> ComponentResult<Option<String>> {
-        Ok(None)
+    pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
+        let name_value_id = self
+            .attribute_values_for_prop(ctx, &["root", "si", "name"])
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(ComponentError::ComponentMissingNameValue(self.id()))?;
+
+        let name_av = AttributeValue::get_by_id(ctx, name_value_id).await?;
+
+        Ok(match name_av.materialized_view(ctx).await? {
+            Some(serde_value) => serde_json::from_value(serde_value)?,
+            None => "".into(),
+        })
+    }
+
+    pub async fn set_color(&self, ctx: &DalContext, color: &str) -> ComponentResult<()> {
+        let av_for_color = self
+            .attribute_values_for_prop(ctx, &["root", "si", "color"])
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(ComponentError::ComponentMissingNameValue(self.id()))?;
+
+        AttributeValue::update(ctx, av_for_color, Some(serde_json::to_value(color)?)).await?;
+
+        Ok(())
+    }
+
+    pub async fn color(&self, ctx: &DalContext) -> ComponentResult<Option<String>> {
+        let color_value_id = self
+            .attribute_values_for_prop(ctx, &["root", "si", "color"])
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(ComponentError::ComponentMissingColorValue(self.id()))?;
+
+        let color_av = AttributeValue::get_by_id(ctx, color_value_id).await?;
+
+        Ok(match color_av.materialized_view(ctx).await? {
+            Some(serde_value) => Some(serde_json::from_value(serde_value)?),
+            None => None,
+        })
     }
 
     // TODO(nick): use the prop tree here.
