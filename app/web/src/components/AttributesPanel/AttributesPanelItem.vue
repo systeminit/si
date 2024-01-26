@@ -34,7 +34,7 @@
         </div>
 
         <div
-          class="attributes-panel-item__section-header"
+          class="attributes-panel-item__section-header group/header"
           :style="{ marginLeft: indentPx }"
           @click="toggleOpen(true)"
         >
@@ -49,7 +49,7 @@
             :name="icon"
             size="none"
           />
-          <div class="attributes-panel-item__section-header-label">
+          <div class="attributes-panel-item__section-header-label mr-xs">
             <template v-if="isChildOfArray">
               {{ propName }}[{{ attributeDef.arrayIndex }}]
             </template>
@@ -74,6 +74,18 @@
                 >({{ attributeDef.children.length }} items)</template
               >
             </span>
+          </div>
+          <div
+            :class="
+              clsx(
+                'border dark:group-hover/header:hover:text-action-500 group-hover/header:hover:text-action-300 rounded p-[1px] m-[2px] w-5 h-5 cursor-pointer',
+                sourceOverridden
+                  ? ' text-warning-500 dark:text-warning-300 border-warning-500 dark:border-warning-300 dark:group-hover/header:hover:border-action-500 group-hover/header:hover:border-action-300 dark:group-hover/header:text-shade-100 dark:group-hover/header:border-shade-100 group-hover/header:text-shade-0 group-hover/header:border-shade-0'
+                  : 'border-transparent',
+              )
+            "
+          >
+            <Icon v-tooltip="sourceTooltip" :name="sourceIcon" size="none" />
           </div>
           <div class="attributes-panel-item__action-icons">
             <!-- <Icon
@@ -212,16 +224,17 @@
             "
           >
             <div
+              v-tooltip="sourceTooltip"
               :class="
                 clsx(
-                  'border hover:text-action-500 dark:hover:text-action-300 rounded p-[2px]',
+                  'border hover:text-action-500 dark:hover:text-action-300 rounded p-[2px] w-6 h-6',
                   sourceOverridden
                     ? ' text-warning-500 dark:text-warning-300 border-warning-500 dark:border-warning-300 hover:border-action-500 dark:hover:border-action-300'
                     : 'border-transparent',
                 )
               "
             >
-              <Icon v-tooltip="sourceTooltip" :name="sourceIcon" size="xs" />
+              <Icon :name="sourceIcon" size="none" />
             </div>
           </template>
 
@@ -493,6 +506,7 @@ import * as _ from "lodash-es";
 import { computed, PropType, ref, watch } from "vue";
 import clsx from "clsx";
 import { Icon, IconNames, Modal, VButton } from "@si/vue-lib/design-system";
+import { VTooltip } from "floating-vue";
 import {
   AttributeTreeItem,
   useComponentAttributesStore,
@@ -639,13 +653,23 @@ const sourceIcon = computed(() => {
 const sourceOverridden = computed(() => props.attributeDef.value?.overridden);
 
 const sourceTooltip = computed(() => {
-  if (propPopulatedBySocket.value) {
-    return `${propName.value} is set via a populated socket`;
-  } else if (propSetByFunc.value) {
-    return `${propName.value} is set by a dynamic function`;
-  } else if (propHasSocket.value) {
-    return `${propName.value} is set via an empty socket`;
+  if (sourceOverridden.value) {
+    if (propPopulatedBySocket.value) {
+      return `${propName.value} has been overriden to be set via a populated socket`;
+    } else if (propSetByFunc.value) {
+      return `${propName.value} has been overriden to be set by a dynamic function`;
+    } else if (propHasSocket.value) {
+      return `${propName.value} has been overriden to be set via an empty socket`;
+    }
+    return `${propName.value} has been set manually`;
   } else {
+    if (propPopulatedBySocket.value) {
+      return `${propName.value} is set via a populated socket`;
+    } else if (propSetByFunc.value) {
+      return `${propName.value} is set by a dynamic function`;
+    } else if (propHasSocket.value) {
+      return `${propName.value} is set via an empty socket`;
+    }
     return `${propName.value} can be set manually`;
   }
 });
