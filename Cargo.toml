@@ -171,3 +171,6 @@ rust-s3 = { git = "https://github.com/ScuffleTV/rust-s3.git", branch = "troy/rus
 # pending a potential merge and release of
 # https://github.com/jbg/tokio-postgres-rustls/pull/18
 tokio-postgres-rustls = { git = "https://github.com/jbg/tokio-postgres-rustls.git", branch = "master" }
+# pending a potential release of
+# https://github.com/tokio-rs/tracing-opentelemetry/pull/86
+tracing-opentelemetry = { git = "https://github.com/tokio-rs/tracing-opentelemetry.git", rev = "bd90c86db606522a19eb89dd742f1d2ad88244a1" }
