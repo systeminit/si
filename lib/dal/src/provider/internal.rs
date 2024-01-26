@@ -171,6 +171,16 @@ pub struct InternalProviderContentV1 {
 }
 
 impl InternalProvider {
+    pub async fn get_by_id(
+        ctx: &DalContext,
+        id: InternalProviderId,
+    ) -> InternalProviderResult<Self> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let node_weight = workspace_snapshot.get_node_weight_by_id(id)?;
+
+        Self::get_from_node_weight(ctx, node_weight).await
+    }
+
     pub fn assemble(id: InternalProviderId, inner: InternalProviderContentV1) -> Self {
         Self {
             id,
@@ -221,24 +231,6 @@ impl InternalProvider {
         let InternalProviderContent::V1(inner) = content;
 
         Ok(Self::assemble(node_weight.id().into(), inner))
-    }
-
-    pub async fn find_for_prop_id(
-        ctx: &DalContext,
-        prop_id: PropId,
-    ) -> InternalProviderResult<Option<InternalProviderId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-
-        match workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Provider)?
-            .get(0)
-        {
-            None => Ok(None),
-            Some(provider_idx) => {
-                let node_weight = workspace_snapshot.get_node_weight(*provider_idx)?;
-                Ok(Some(node_weight.id().into()))
-            }
-        }
     }
 
     pub async fn add_prototype_edge(

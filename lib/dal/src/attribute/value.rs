@@ -109,6 +109,8 @@ pub enum AttributeValueError {
     AttributeValueMultiplePropEdges(AttributeValueId),
     #[error("attribute value {0} has more than one provider edge")]
     AttributeValueMultipleProviderEdges(AttributeValueId),
+    #[error("Cannot create nested values for {0} since it is not the value for a prop")]
+    CannotCreateNestedValuesForNonPropValues(AttributeValueId),
     #[error(
         "cannot explicitly set the value of {0} because it is for an internal or external provider"
     )]
@@ -387,49 +389,51 @@ impl AttributeValue {
                         .to_owned()
                 };
 
-                let value = match AttributePrototypeArgument::value_source_by_id(ctx, apa_id)
-                    .await?
-                    .ok_or(
-                        AttributeValueError::AttributePrototypeArgumentMissingValueSource(apa_id),
-                    )? {
-                    ValueSource::StaticArgumentValue(static_argument_value_id) => {
-                        StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
-                            .await?
-                            .value
-                    }
-                    other_source => {
-                        let mut value = None;
-
-                        for av_id in other_source
-                            .attribute_values_for_component_id(ctx, expected_source_component_id)
-                            .await?
-                        {
-                            // This seems wrong...
-                            let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
-                            // XXX: We need to properly handle the difference between "there is
-                            // XXX: no value" vs "the value is null", but right now we collapse
-                            // XXX: the two to just be "null" when passing these to a function.
-                            value = attribute_value
-                                .materialized_view(ctx)
-                                .await?
-                                .or(Some(serde_json::Value::Null));
+                let values_for_arg =
+                    match AttributePrototypeArgument::value_source_by_id(ctx, apa_id)
+                        .await?
+                        .ok_or(
+                            AttributeValueError::AttributePrototypeArgumentMissingValueSource(
+                                apa_id,
+                            ),
+                        )? {
+                        ValueSource::StaticArgumentValue(static_argument_value_id) => {
+                            vec![
+                                StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
+                                    .await?
+                                    .value,
+                            ]
                         }
+                        other_source => {
+                            let mut values = vec![];
 
-                        // rust-analyzer doesn't seem able to format this
-                        value.ok_or(
-                                AttributeValueError::AttributePrototypeArgumentMissingValueInSourceComponent(
-                                    apa_id,
-                                    other_source,
-                                    expected_source_component_id
+                            for av_id in other_source
+                                .attribute_values_for_component_id(
+                                    ctx,
+                                    expected_source_component_id,
                                 )
-                            )?
-                    }
-                };
+                                .await?
+                            {
+                                let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
+                                // XXX: We need to properly handle the difference between "there is
+                                // XXX: no value" vs "the value is null", but right now we collapse
+                                // XXX: the two to just be "null" when passing these to a function.
+                                values.push(
+                                    attribute_value
+                                        .materialized_view(ctx)
+                                        .await?
+                                        .unwrap_or(serde_json::Value::Null),
+                                );
+                            }
+
+                            values
+                        }
+                    };
 
                 func_binding_args
                     .entry(func_arg_name)
-                    .and_modify(|values| values.push(value.clone()))
-                    .or_insert_with(|| vec![value]);
+                    .and_modify(|values| values.extend(values_for_arg.clone()))
+                    .or_insert(values_for_arg);
             }
         }
 
@@ -520,7 +524,20 @@ impl AttributeValue {
             unprocessed_value,
         }: PrototypeExecutionResult,
     ) -> AttributeValueResult<()> {
-        Self::vivify_value_and_parent_values(ctx, attribute_value_id).await?;
+        // We need to ensure the parent value tree for this value is set. But we don't want to
+        // vivify the current attribute value since that would override the function which sets it
+        // (and we're setting it ourselves, just below). Note that this will override the
+        // prototypes for all parent values to intrinsic setters. But, a value set by an attribute
+        // function other than an intrinsic setter (si:setString, etc) must not be the child of
+        // *another* value set by an attribute function (other than another intrinsic setter).
+        // Otherwise it would be impossible to determine the function that sets the value (two
+        // functions would set it with two different sets of inputs). So vivify the parent and
+        // above, but not this value.
+        if let Some(parent_attribute_value_id) =
+            Self::parent_attribute_value_id(ctx, attribute_value_id).await?
+        {
+            Self::vivify_value_and_parent_values(ctx, parent_attribute_value_id).await?;
+        }
 
         let values_are_different = value != unprocessed_value;
 
@@ -735,25 +752,8 @@ impl AttributeValue {
             } else {
                 Self::set_value(ctx, attribute_value_id, empty_value).await?;
 
-                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-
-                // This assumes the only incoming contain edge from an attribute value is from
-                // another attribute value
-                let maybe_parent_attribute_node_index = workspace_snapshot
-                    .incoming_sources_for_edge_weight_kind(
-                        attribute_value_id,
-                        EdgeWeightKindDiscriminants::Contain,
-                    )?
-                    .get(0)
-                    .copied();
-
-                if let Some(node_index) = maybe_parent_attribute_node_index {
-                    current_attribute_value_id = Some(AttributeValueId::from(
-                        workspace_snapshot.get_node_weight(node_index)?.id(),
-                    ));
-                } else {
-                    current_attribute_value_id = None;
-                }
+                current_attribute_value_id =
+                    AttributeValue::parent_attribute_value_id(ctx, attribute_value_id).await?;
             }
         }
 
@@ -840,6 +840,17 @@ impl AttributeValue {
         Ok(new_attribute_value.id)
     }
 
+    pub async fn order(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributeValueResult<Option<Vec<AttributeValueId>>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+        Ok(workspace_snapshot
+            .ordering_node_for_container(self.id())?
+            .map(|node| node.order().clone().into_iter().map(Into::into).collect()))
+    }
+
     async fn populate_nested_values(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -858,10 +869,13 @@ impl AttributeValue {
             )? {
                 let current_node_index =
                     workspace_snapshot.get_node_index_by_id(attribute_value_id)?;
+                let current_target_idx =
+                    workspace_snapshot.get_latest_node_index(attribute_value_target)?;
+
                 workspace_snapshot.remove_edge(
                     ctx.change_set_pointer()?,
                     current_node_index,
-                    attribute_value_target,
+                    current_target_idx,
                     EdgeWeightKindDiscriminants::Contain,
                 )?;
             }
@@ -873,32 +887,17 @@ impl AttributeValue {
 
         while let Some((attribute_value_id, maybe_value)) = work_queue.pop_front() {
             let (prop_kind, prop_id) = {
-                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-                // We're only looking for props on outgoing edges because we're assuming this will only be used for
-                // attribute values on components. For default values at the schema variant level, we're
-                // planning to add a "const arg" node that contains the default input for the function that
-                // sets the value on the prototype
-                //
+                let prop_id = Self::is_for(ctx, attribute_value_id)
+                    .await?
+                    .prop_id()
+                    .ok_or(
+                        AttributeValueError::CannotCreateNestedValuesForNonPropValues(
+                            attribute_value_id,
+                        ),
+                    )?;
+                let prop = Prop::get_by_id(ctx, prop_id).await?;
 
-                let prop_node_index = workspace_snapshot
-                    .outgoing_targets_for_edge_weight_kind(
-                        attribute_value_id,
-                        EdgeWeightKindDiscriminants::Prop,
-                    )?
-                    .get(0)
-                    .copied()
-                    .ok_or(AttributeValueError::MissingPropEdge(attribute_value_id))?;
-
-                if let NodeWeight::Prop(prop_inner) =
-                    workspace_snapshot.get_node_weight(prop_node_index)?
-                {
-                    (prop_inner.kind(), PropId::from(prop_inner.id()))
-                } else {
-                    return Err(AttributeValueError::NodeWeightMismatch(
-                        prop_node_index,
-                        NodeWeightDiscriminants::Prop,
-                    ));
-                }
+                (prop.kind, prop_id)
             };
 
             view_stack.push(attribute_value_id);

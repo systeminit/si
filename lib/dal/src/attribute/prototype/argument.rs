@@ -269,6 +269,13 @@ impl AttributePrototypeArgument {
         Err(AttributePrototypeArgumentError::MissingFuncArgument(apa_id))
     }
 
+    pub async fn value_source(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributePrototypeArgumentResult<Option<ValueSource>> {
+        Self::value_source_by_id(ctx, self.id).await
+    }
+
     pub async fn value_source_by_id(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,

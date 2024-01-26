@@ -3,7 +3,8 @@
 
 use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{hash_map, HashMap, VecDeque};
+use std::hash::Hash;
 use strum::EnumDiscriminants;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
@@ -11,6 +12,7 @@ use thiserror::Error;
 use tokio::sync::TryLockError;
 use ulid::Ulid;
 
+use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
@@ -25,6 +27,7 @@ use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressD
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
+use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
@@ -67,8 +70,12 @@ pub enum ComponentError {
     DestinationComponentMissingAttributeValueForInternalProvider(ComponentId, InternalProviderId),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("external provider {0} has more than one attribute value")]
+    ExternalProviderTooManyAttributeValues(ExternalProviderId),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
+    #[error("internal provider {0} has more than one attribute value")]
+    InternalProviderTooManyAttributeValues(InternalProviderId),
     #[error("found multiple root attribute values ({0} and {1}, at minimum) for component: {2}")]
     MultipleRootAttributeValuesFound(AttributeValueId, AttributeValueId, ComponentId),
     #[error("node weight error: {0}")]
@@ -124,6 +131,15 @@ impl Default for ComponentKind {
     fn default() -> Self {
         Self::Standard
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct IncomingConnection {
+    pub attribute_prototype_argument_id: AttributePrototypeArgumentId,
+    pub to_component_id: ComponentId,
+    pub to_internal_provider_id: InternalProviderId,
+    pub from_component_id: ComponentId,
+    pub from_external_provider_id: ExternalProviderId,
 }
 
 /// A [`Component`] is an instantiation of a [`SchemaVariant`](crate::SchemaVariant).
@@ -405,6 +421,42 @@ impl Component {
         Ok(())
     }
 
+    pub async fn incoming_connections(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<Vec<IncomingConnection>> {
+        let mut incoming_edges = vec![];
+        for (to_internal_provider_id, to_value_id) in
+            self.internal_provider_attribute_values(ctx).await?
+        {
+            let prototype_id = AttributeValue::prototype_id(ctx, to_value_id).await?;
+            for apa_id in
+                AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?
+            {
+                let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
+                if let Some(ArgumentTargets {
+                    source_component_id,
+                    ..
+                }) = apa.targets()
+                {
+                    if let Some(ValueSource::ExternalProvider(from_external_provider_id)) =
+                        apa.value_source(ctx).await?
+                    {
+                        incoming_edges.push(IncomingConnection {
+                            attribute_prototype_argument_id: apa_id,
+                            to_component_id: self.id(),
+                            from_component_id: source_component_id,
+                            to_internal_provider_id,
+                            from_external_provider_id,
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(incoming_edges)
+    }
+
     async fn get_content_with_hash(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -603,43 +655,40 @@ impl Component {
             .ok_or(ComponentError::RootAttributeValueNotFound(component_id))
     }
 
-    pub async fn external_provider_attribute_values(
-        &self,
+    pub async fn external_provider_attribute_values_for_component_id(
         ctx: &DalContext,
-    ) -> ComponentResult<Vec<AttributeValueId>> {
-        let mut result = vec![];
+        component_id: ComponentId,
+    ) -> ComponentResult<HashMap<ExternalProviderId, AttributeValueId>> {
+        let mut result = HashMap::new();
 
-        let socket_values = {
-            let mut socket_values: Vec<AttributeValueId> = vec![];
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-
-            for socket_target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-                self.id(),
-                EdgeWeightKindDiscriminants::Socket,
-            )? {
-                socket_values.push(
-                    workspace_snapshot
-                        .get_node_weight(socket_target)?
-                        .get_attribute_value_node_weight()?
-                        .id()
-                        .into(),
-                );
-            }
-
-            socket_values
-        };
+        let socket_values = Self::values_for_all_providers(ctx, component_id).await?;
 
         for socket_value_id in socket_values {
-            if AttributeValue::is_for(ctx, socket_value_id)
+            if let Some(external_provider_id) = AttributeValue::is_for(ctx, socket_value_id)
                 .await?
                 .external_provider_id()
-                .is_some()
             {
-                result.push(socket_value_id);
+                match result.entry(external_provider_id) {
+                    hash_map::Entry::Vacant(entry) => {
+                        entry.insert(socket_value_id);
+                    }
+                    hash_map::Entry::Occupied(_) => {
+                        return Err(ComponentError::ExternalProviderTooManyAttributeValues(
+                            external_provider_id,
+                        ))
+                    }
+                }
             }
         }
 
         Ok(result)
+    }
+
+    pub async fn external_provider_attribute_values(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<HashMap<ExternalProviderId, AttributeValueId>> {
+        Self::external_provider_attribute_values_for_component_id(ctx, self.id()).await
     }
 
     pub async fn attribute_values_for_prop(
@@ -664,42 +713,63 @@ impl Component {
         Ok(result)
     }
 
-    pub async fn internal_provider_attribute_values(
-        &self,
+    async fn values_for_all_providers(
         ctx: &DalContext,
-    ) -> ComponentResult<Vec<(AttributeValueId, InternalProviderId)>> {
-        let mut result = vec![];
+        component_id: ComponentId,
+    ) -> ComponentResult<Vec<AttributeValueId>> {
+        let mut socket_values: Vec<AttributeValueId> = vec![];
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
-        let socket_values = {
-            let mut socket_values: Vec<AttributeValueId> = vec![];
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        for socket_target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            component_id,
+            EdgeWeightKindDiscriminants::Socket,
+        )? {
+            socket_values.push(
+                workspace_snapshot
+                    .get_node_weight(socket_target)?
+                    .get_attribute_value_node_weight()?
+                    .id()
+                    .into(),
+            );
+        }
 
-            for socket_target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-                self.id(),
-                EdgeWeightKindDiscriminants::Socket,
-            )? {
-                socket_values.push(
-                    workspace_snapshot
-                        .get_node_weight(socket_target)?
-                        .get_attribute_value_node_weight()?
-                        .id()
-                        .into(),
-                );
-            }
+        Ok(socket_values)
+    }
 
-            socket_values
-        };
+    pub async fn internal_provider_attribute_values_for_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<HashMap<InternalProviderId, AttributeValueId>> {
+        let mut result = HashMap::new();
+
+        let socket_values = Self::values_for_all_providers(ctx, component_id).await?;
 
         for socket_value_id in socket_values {
             if let Some(internal_provider_id) = AttributeValue::is_for(ctx, socket_value_id)
                 .await?
                 .internal_provider_id()
             {
-                result.push((socket_value_id, internal_provider_id));
+                match result.entry(internal_provider_id) {
+                    hash_map::Entry::Vacant(entry) => {
+                        entry.insert(socket_value_id);
+                    }
+                    hash_map::Entry::Occupied(_) => {
+                        return Err(ComponentError::InternalProviderTooManyAttributeValues(
+                            internal_provider_id,
+                        ))
+                    }
+                }
             }
         }
 
         Ok(result)
+    }
+
+    pub async fn internal_provider_attribute_values(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<HashMap<InternalProviderId, AttributeValueId>> {
+        Self::internal_provider_attribute_values_for_component_id(ctx, self.id()).await
     }
 
     pub async fn connect(

@@ -44,8 +44,6 @@ async fn docker_image_has_one_qualfiication_map_prop(ctx: &DalContext) {
         })
         .collect();
 
-    workspace_snapshot.tiny_dot_to_file(None);
-
     assert_eq!(1, qualification_props.len());
 }
 

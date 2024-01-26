@@ -76,7 +76,7 @@ impl ContentPair {
         let client = pg_pool.get().await?;
         let maybe_row = client
             .query_opt(
-                "SELECT * FROM content_pairs WHERE key = $1",
+                "SELECT * FROM content_pairs WHERE key = $1 LIMIT 1",
                 &[&key.to_string()],
             )
             .await?;

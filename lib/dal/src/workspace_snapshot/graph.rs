@@ -122,7 +122,7 @@ impl WorkspaceSnapshotGraph {
     }
 
     pub fn get_latest_node_idx_opt(
-        &mut self,
+        &self,
         node_idx: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<Option<NodeIndex>> {
         if !self.graph.contains_node(node_idx) {
@@ -134,7 +134,7 @@ impl WorkspaceSnapshotGraph {
 
     #[inline(always)]
     pub fn get_latest_node_idx(
-        &mut self,
+        &self,
         node_idx: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<NodeIndex> {
         let node_id = self.get_node_weight(node_idx)?.id();
@@ -957,9 +957,18 @@ impl WorkspaceSnapshotGraph {
                         };
                         (discrim.to_string(), color)
                     }
-                    NodeWeight::AttributePrototypeArgument(_) => {
-                        ("Attribute Prototype Argument".to_string(), "green")
-                    }
+                    NodeWeight::AttributePrototypeArgument(apa) => (
+                        format!(
+                            "Attribute Prototype Argument{}",
+                            apa.targets()
+                                .map(|targets| format!(
+                                    "\nsource: {}\nto: {}",
+                                    targets.source_component_id, targets.destination_component_id
+                                ))
+                                .unwrap_or("".to_string())
+                        ),
+                        "green",
+                    ),
                     NodeWeight::AttributeValue(_) => ("Attribute Value".to_string(), "blue"),
                     NodeWeight::Category(category_node_weight) => match category_node_weight.kind()
                     {
@@ -1578,6 +1587,22 @@ impl WorkspaceSnapshotGraph {
         Ok(Some(ordered_child_indexes))
     }
 
+    pub fn ordering_node_for_container(
+        &self,
+        container_node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<Option<OrderingNodeWeight>> {
+        Ok(
+            if let Some(NodeWeight::Ordering(ordering_node)) = self
+                .ordering_node_index_for_container(container_node_index)?
+                .and_then(|node_index| self.graph.node_weight(node_index))
+            {
+                Some(ordering_node.clone())
+            } else {
+                None
+            },
+        )
+    }
+
     pub fn ordering_node_index_for_container(
         &self,
         container_node_index: NodeIndex,
@@ -1623,8 +1648,12 @@ impl WorkspaceSnapshotGraph {
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotGraphResult<()> {
+        let source_node_index = self.get_latest_node_idx(source_node_index)?;
+        let target_node_index = self.get_latest_node_idx(target_node_index)?;
+
         self.copy_node_by_index(source_node_index)?;
         self.replace_references(source_node_index)?;
+        // replace references may copy the node again to a new index
         let source_node_index = self.get_latest_node_idx(source_node_index)?;
 
         self.inner_remove_edge(source_node_index, target_node_index, edge_kind);
@@ -1633,7 +1662,7 @@ impl WorkspaceSnapshotGraph {
             self.ordering_node_index_for_container(source_node_index)?
         {
             let element_id = self
-                .node_index_to_id(source_node_index)
+                .node_index_to_id(target_node_index)
                 .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
 
             if let NodeWeight::Ordering(previous_container_ordering_node_weight) = self

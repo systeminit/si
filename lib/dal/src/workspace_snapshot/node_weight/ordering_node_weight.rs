@@ -6,7 +6,6 @@ use ulid::Ulid;
 use crate::change_set_pointer::ChangeSetPointer;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
-use petgraph::prelude::*;
 
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct OrderingNodeWeight {

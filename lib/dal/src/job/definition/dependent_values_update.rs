@@ -19,9 +19,10 @@ use crate::{
         JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
     },
     job::producer::{JobProducer, JobProducerResult},
-    AccessBuilder, AttributeValue, AttributeValueId, DalContext, TransactionsError,
-    /*StatusUpdater,*/
-    Visibility, /*WsEvent*/
+    AccessBuilder, AttributeValue, AttributeValueId, DalContext,
+    /*WsEvent*/
+    TransactionsError, /*StatusUpdater,*/
+    Visibility,
 };
 
 #[remain::sorted]
@@ -114,13 +115,9 @@ impl DependentValuesUpdate {
     async fn inner_run(&self, ctx: &mut DalContext) -> DependentValueUpdateResult<()> {
         let start = tokio::time::Instant::now();
 
-        // Since this job happens in an async runner there is the possiblity for a commit and
-        // rebase to occur between dispatch and execution. Ensure we have the latest workspace
-        // snapshot for our change set
-        ctx.update_snapshot_to_visibility().await?;
-
         let mut dependency_graph =
             DependentValueGraph::for_values(ctx, self.attribute_values.clone()).await?;
+        dependency_graph.debug_dot(None);
 
         // Remove the values that brought us here, since they should already have had their functions executed
         for value in &self.attribute_values {

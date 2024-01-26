@@ -22,10 +22,10 @@ pub enum Value {
     Bool(bool),
     /// A null value
     Null,
-    /// A Number value. JSON numbers are either double precision IEEE floating
-    /// point values, or they in some implementations can be BigInt values. However, we're
-    /// currently only going to support double precision floats. If arbitrary precision integers
-    /// are enabled for serde_json, this *will* cause a panic.
+    /// A Number value. JSON numbers are either double precision IEEE floating point values, or
+    /// they in some implementations can be BigInt values. However, we're currently only going to
+    /// support double precision floats and 64 bit integers. If arbitrary precision integers are
+    /// enabled for serde_json, this *will* cause a panic.
     Number(ValueNumber),
     /// An object. BTreeMap is the internal representation used by serde_json for objects,
     /// *unless* order preservation is enabled. If order preservation is enabled, we will

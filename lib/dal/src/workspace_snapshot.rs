@@ -55,7 +55,7 @@ use crate::{
     DalContext, TransactionsError, WorkspaceSnapshotGraph,
 };
 
-use self::node_weight::NodeWeightDiscriminants;
+use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
 
 const FIND_FOR_CHANGE_SET: &str =
     include_str!("queries/workspace_snapshot/find_for_change_set.sql");
@@ -381,6 +381,13 @@ impl WorkspaceSnapshot {
         Ok(self.working_copy.get_node_index_by_id(id)?)
     }
 
+    pub fn get_latest_node_index(
+        &self,
+        node_index: NodeIndex,
+    ) -> WorkspaceSnapshotResult<NodeIndex> {
+        Ok(self.working_copy.get_latest_node_idx(node_index)?)
+    }
+
     #[instrument(skip_all)]
     pub async fn find(
         ctx: &DalContext,
@@ -610,6 +617,14 @@ impl WorkspaceSnapshot {
             })?;
 
         Ok(())
+    }
+
+    pub fn ordering_node_for_container(
+        &self,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<Option<OrderingNodeWeight>> {
+        let idx = self.get_node_index_by_id(id)?;
+        Ok(self.working_copy.ordering_node_for_container(idx)?)
     }
 
     pub fn ordered_children_for_node(

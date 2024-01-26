@@ -1,5 +1,9 @@
 use petgraph::prelude::*;
-use std::collections::{hash_map::Entry, HashMap, VecDeque};
+use std::{
+    collections::{hash_map::Entry, HashMap, VecDeque},
+    fs::File,
+    io::Write,
+};
 use ulid::Ulid;
 
 use crate::{
@@ -121,6 +125,29 @@ impl DependentValueGraph {
         }
 
         Ok(dependent_value_graph)
+    }
+
+    pub fn debug_dot(&self, suffix: Option<&str>) {
+        let dot = petgraph::dot::Dot::with_attr_getters(
+            &self.graph,
+            &[
+                petgraph::dot::Config::NodeNoLabel,
+                petgraph::dot::Config::EdgeNoLabel,
+            ],
+            &|_, _| "label = \"\"".to_string(),
+            &|_, (_, attribute_value_id)| format!("label = \"{}\"", attribute_value_id),
+        );
+
+        let filename_no_extension = format!(
+            "{}-{}",
+            Ulid::new().to_string(),
+            suffix.unwrap_or("depgraph")
+        );
+        let mut file = File::create(format!("/home/zacharyhamm/{filename_no_extension}.txt"))
+            .expect("could not create file");
+        file.write_all(format!("{dot:?}").as_bytes())
+            .expect("could not write file");
+        println!("dot output stored in file (filename without extension: {filename_no_extension})");
     }
 
     pub fn add_value(&mut self, value_id: AttributeValueId) -> NodeIndex {

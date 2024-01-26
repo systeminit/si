@@ -4,14 +4,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::attribute::prototype::argument::value_source::ValueSource;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentId,
-};
+use crate::attribute::prototype::argument::AttributePrototypeArgumentId;
+use crate::component::IncomingConnection;
 use crate::diagram::DiagramResult;
-use crate::{
-    AttributeValue, Component, ComponentId, DalContext, ExternalProviderId, InternalProviderId,
-};
+use crate::{Component, ComponentId, DalContext, ExternalProviderId, InternalProviderId};
 
 pub type DiagramEdgeViewId = AttributePrototypeArgumentId;
 
@@ -32,35 +28,26 @@ impl DiagramEdgeView {
     pub async fn list(ctx: &DalContext) -> DiagramResult<Vec<Self>> {
         let mut views = Vec::new();
 
-        // Walk the input socket values for every component and find the attribute prototype
-        // arguments for their prototypes
         for component in Component::list(ctx).await? {
-            for (ip_value_id, to_explicit_internal_provider_id) in
-                component.internal_provider_attribute_values(ctx).await?
-            {
-                let prototype_id = AttributeValue::prototype_id(ctx, ip_value_id).await?;
-                if let Some(apa_id) =
-                    AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id)
-                        .await?
-                        .get(0)
-                        .copied()
-                {
-                    let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
-                    if let Some(targets) = apa.targets() {
-                        if let Some(ValueSource::ExternalProvider(from_external_provider_id)) =
-                            AttributePrototypeArgument::value_source_by_id(ctx, apa_id).await?
-                        {
-                            views.push(Self::new(
-                                apa_id,
-                                targets.source_component_id,
-                                from_external_provider_id,
-                                targets.destination_component_id,
-                                to_explicit_internal_provider_id,
-                            ))
-                        }
-                    }
-                }
-            }
+            let incoming_connections = component.incoming_connections(ctx).await?;
+
+            views.extend(incoming_connections.iter().map(
+                |IncomingConnection {
+                     attribute_prototype_argument_id,
+                     to_component_id,
+                     to_internal_provider_id,
+                     from_component_id,
+                     from_external_provider_id,
+                 }| {
+                    DiagramEdgeView::new(
+                        *attribute_prototype_argument_id,
+                        *from_component_id,
+                        *from_external_provider_id,
+                        *to_component_id,
+                        *to_internal_provider_id,
+                    )
+                },
+            ))
         }
 
         Ok(views)

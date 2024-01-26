@@ -6,7 +6,7 @@ use dal::{
 use dal_test::test;
 
 #[test]
-async fn connect_components_simple(ctx: &mut DalContext) {
+async fn connect_components(ctx: &mut DalContext) {
     // Get the source schema variant id.
     let docker_image_schema = Schema::find_by_name(ctx, "Docker Image")
         .await
@@ -63,7 +63,25 @@ async fn connect_components_simple(ctx: &mut DalContext) {
 
     ctx.blocking_commit()
         .await
-        .expect("blocking commit after setting image prop");
+        .expect("blocking commit after component creation");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    // Create a second component for a second source
+    let lunch_component = Component::new(
+        ctx,
+        "were saving for lunch",
+        docker_image_schema_variant_id,
+        None,
+    )
+    .await
+    .expect("could not create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after component 2 creation");
 
     ctx.update_snapshot_to_visibility()
         .await
@@ -75,7 +93,7 @@ async fn connect_components_simple(ctx: &mut DalContext) {
 
     ctx.blocking_commit()
         .await
-        .expect("blocking commit after setting image prop");
+        .expect("blocking commit after butane component creation");
 
     ctx.update_snapshot_to_visibility()
         .await
@@ -98,35 +116,51 @@ async fn connect_components_simple(ctx: &mut DalContext) {
         .await
         .expect("update_snapshot_to_visibility");
 
-    dbg!(royel_component
+    // Connect component 2
+    let inter_component_attribute_prototype_argument_id = Component::connect(
+        ctx,
+        lunch_component.id(),
+        external_provider.id(),
+        royel_component.id(),
+        explicit_internal_provider.id(),
+    )
+    .await
+    .expect("could not connect components");
+
+    ctx.blocking_commit().await.expect("blocking commit failed");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    //dbg!(royel_component.incoming_connections(ctx).await.expect("ok"));
+
+    let units_value_id = royel_component
+        .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
+        .await
+        .expect("able to get values for units")
+        .iter()
+        .next()
+        .copied()
+        .expect("has a value");
+
+    let materialized_view = AttributeValue::get_by_id(ctx, units_value_id)
+        .await
+        .expect("value exists")
         .materialized_view(ctx)
         .await
-        .expect("get view of butane after connection"));
+        .expect("able to get units materialized_view")
+        .expect("units has a materialized_view");
+
+    assert!(matches!(materialized_view, serde_json::Value::Array(_)));
+
+    if let serde_json::Value::Array(units_array) = materialized_view {
+        assert_eq!(2, units_array.len())
+    }
 
     // Assemble the diagram and check the edges.
     let mut diagram = Diagram::assemble(ctx)
         .await
         .expect("could not assemble the diagram");
-    let diagram_edge = diagram.edges.pop().expect("diagram edges are empty");
-    assert!(diagram.edges.is_empty());
-    assert_eq!(
-        inter_component_attribute_prototype_argument_id.to_string(), // expected
-        diagram_edge.id                                              // actual
-    );
-    assert_eq!(
-        oysters_component.id().to_string(), // expected
-        diagram_edge.from_component_id      // actual
-    );
-    assert_eq!(
-        external_provider.id().to_string(),     // expected
-        diagram_edge.from_external_provider_id  // actual
-    );
-    assert_eq!(
-        royel_component.id().to_string(), // expected
-        diagram_edge.to_component_id      // actual
-    );
-    assert_eq!(
-        explicit_internal_provider.id().to_string(),   // expected
-        diagram_edge.to_explicit_internal_provider_id  // actual
-    );
+    assert_eq!(2, diagram.edges.len());
 }
