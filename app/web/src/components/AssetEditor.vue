@@ -24,6 +24,7 @@
           <div>
             <span class="font-bold">Created By: </span>System Initiative
           </div>
+          <SiChip v-if="isReadOnly" variant="warning" text="read-only" />
         </div>
       </div>
     </template>
@@ -32,6 +33,7 @@
       :id="`asset-${assetId}`"
       v-model="editingAsset"
       :typescript="selectedAsset?.types"
+      :disabled="isReadOnly"
       @change="onChange"
     />
   </ScrollArea>
@@ -49,13 +51,20 @@ import {
   ScrollArea,
 } from "@si/vue-lib/design-system";
 import { useAssetStore, assetDisplayName } from "@/store/asset.store";
-import SiChip from "@/components/SiChip.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import SiChip from "./SiChip.vue";
 import CodeEditor from "./CodeEditor.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
 
 const props = defineProps<{
   assetId?: string;
 }>();
+
+const featureFlagsStore = useFeatureFlagsStore();
+const isReadOnly = computed(
+  () =>
+    !!selectedAsset.value?.hasComponents && !featureFlagsStore.OVERRIDE_SCHEMA,
+);
 
 const assetStore = useAssetStore();
 const selectedAsset = computed(() =>

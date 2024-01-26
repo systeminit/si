@@ -5,10 +5,10 @@ import storage from "local-storage-fallback"; // drop-in storage polyfill which 
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { FuncVariant } from "@/api/sdf/dal/func";
 import { Visibility } from "@/api/sdf/dal/visibility";
+import { PropKind } from "@/api/sdf/dal/prop";
 import { nilId } from "@/utils/nilId";
 import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
-import { PropKind } from "@/api/sdf/dal/prop";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
 import { useChangeSetsStore } from "./change_sets.store";
@@ -33,6 +33,33 @@ export interface InstalledPkgAssetView {
   assetKind: string;
 }
 
+export interface ImportEdgeSkip {
+  type: "missingInputSocket" | "missingOutputSocket";
+  data: string;
+}
+export type ImportAttributeSkip =
+  | {
+      type: "missingProp";
+      data: {
+        path: string;
+        funcId: FuncId | null;
+        variant: FuncVariant | null;
+      };
+    }
+  | {
+      type: "kindMismatch";
+      data: {
+        path: string;
+        expectedKind: PropKind;
+        variantKind: PropKind;
+        variant: FuncVariant | null;
+        funcId: FuncId;
+      };
+    };
+export interface ImportSkips {
+  edgeSkips: ImportEdgeSkip[];
+  attributeSkips: [string, ImportAttributeSkip[]][];
+}
 export type DetachedAttributePrototypeKind =
   | {
       type: "ExternalProviderSocket";
@@ -52,12 +79,8 @@ export type DetachedAttributePrototypeKind =
   | { type: "Prop"; data: { path: string; kind: PropKind } };
 
 export interface DetachedAttributePrototype {
-  id: string;
   funcId: FuncId;
-  funcName: string;
-  key: string | null;
   variant: FuncVariant;
-  context: DetachedAttributePrototypeKind;
 }
 
 export interface DetachedValidationPrototype {
@@ -393,8 +416,7 @@ export const useAssetStore = () => {
             {
               success: true;
               schemaVariantId: string;
-              detachedAttributePrototypes: DetachedAttributePrototype[];
-              detachedValidationPrototypes: DetachedValidationPrototype[];
+              skips: ImportSkips[];
             },
             AssetSaveRequest
           >({

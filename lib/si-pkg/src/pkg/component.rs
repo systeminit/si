@@ -16,6 +16,7 @@ pub struct SiPkgComponent<'a> {
     deletion_user_pk: Option<String>,
     unique_id: String,
     deleted: bool,
+    hidden: bool,
 
     hash: Hash,
     source: Source<'a>,
@@ -74,6 +75,7 @@ impl<'a> SiPkgComponent<'a> {
             needs_destroy: node.needs_destroy,
             deletion_user_pk: node.deletion_user_pk,
             deleted: node.deleted,
+            hidden: node.hidden,
             unique_id: node.unique_id,
 
             hash: hashed_node.hash(),
@@ -125,6 +127,10 @@ impl<'a> SiPkgComponent<'a> {
         self.deleted
     }
 
+    pub fn hidden(&self) -> bool {
+        self.hidden
+    }
+
     pub fn hash(&self) -> Hash {
         self.hash
     }
@@ -152,7 +158,8 @@ impl<'a> TryFrom<SiPkgComponent<'a>> for ComponentSpec {
             .needs_destroy(value.needs_destroy())
             .deletion_user_pk(value.deletion_user_pk().map(ToString::to_string))
             .unique_id(value.unique_id())
-            .deleted(value.deleted());
+            .deleted(value.deleted())
+            .hidden(value.hidden());
 
         for attribute in value.attributes()? {
             builder.attribute(AttributeValueSpec::try_from(attribute)?);

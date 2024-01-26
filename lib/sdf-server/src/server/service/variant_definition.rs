@@ -103,8 +103,6 @@ pub enum SchemaVariantDefinitionError {
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
-    PgPool(#[from] si_data_pg::PgPoolError),
-    #[error(transparent)]
     Pkg(#[from] PkgError),
     #[error(transparent)]
     Prop(#[from] PropError),
@@ -134,7 +132,11 @@ pub enum SchemaVariantDefinitionError {
     StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
-    #[error("transparent")]
+    #[error("type prop missing for map or array")]
+    TypePropMissingForMapOrArray,
+    #[error(transparent)]
+    Ulid(#[from] ulid::DecodeError),
+    #[error(transparent)]
     User(#[from] UserError),
     #[error("Schema Variant Definition {0} not found")]
     VariantDefinitionNotFound(SchemaVariantDefinitionId),

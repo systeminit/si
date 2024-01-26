@@ -113,10 +113,77 @@ impl PropSpec {
     pub fn builder() -> PropSpecBuilder {
         PropSpecBuilder::default()
     }
+
+    pub fn unique_id(&self) -> Option<&str> {
+        match self {
+            Self::String { unique_id, .. } => unique_id.as_deref(),
+            Self::Array { unique_id, .. } => unique_id.as_deref(),
+            Self::Boolean { unique_id, .. } => unique_id.as_deref(),
+            Self::Map { unique_id, .. } => unique_id.as_deref(),
+            Self::Number { unique_id, .. } => unique_id.as_deref(),
+            Self::Object { unique_id, .. } => unique_id.as_deref(),
+        }
+    }
+
+    pub fn unique_id_mut(&mut self) -> &mut Option<String> {
+        match self {
+            Self::String { unique_id, .. } => unique_id,
+            Self::Array { unique_id, .. } => unique_id,
+            Self::Boolean { unique_id, .. } => unique_id,
+            Self::Map { unique_id, .. } => unique_id,
+            Self::Number { unique_id, .. } => unique_id,
+            Self::Object { unique_id, .. } => unique_id,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Self::String { name, .. } => name,
+            Self::Array { name, .. } => name,
+            Self::Boolean { name, .. } => name,
+            Self::Map { name, .. } => name,
+            Self::Number { name, .. } => name,
+            Self::Object { name, .. } => name,
+        }
+    }
+
+    pub fn kind(&self) -> PropSpecKind {
+        match self {
+            Self::String { .. } => PropSpecKind::String,
+            Self::Array { .. } => PropSpecKind::Array,
+            Self::Boolean { .. } => PropSpecKind::Boolean,
+            Self::Map { .. } => PropSpecKind::Map,
+            Self::Number { .. } => PropSpecKind::Number,
+            Self::Object { .. } => PropSpecKind::Object,
+        }
+    }
+
+    pub fn data(&self) -> Option<&PropSpecData> {
+        match self {
+            Self::String { data, .. } => data.as_ref(),
+            Self::Array { data, .. } => data.as_ref(),
+            Self::Boolean { data, .. } => data.as_ref(),
+            Self::Map { data, .. } => data.as_ref(),
+            Self::Number { data, .. } => data.as_ref(),
+            Self::Object { data, .. } => data.as_ref(),
+        }
+    }
+
+    pub fn data_mut(&mut self) -> &mut Option<PropSpecData> {
+        match self {
+            Self::String { data, .. } => data,
+            Self::Array { data, .. } => data,
+            Self::Boolean { data, .. } => data,
+            Self::Map { data, .. } => data,
+            Self::Number { data, .. } => data,
+            Self::Object { data, .. } => data,
+        }
+    }
 }
 
 #[remain::sorted]
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
 pub enum PropSpecKind {
     Array,
     Boolean,
