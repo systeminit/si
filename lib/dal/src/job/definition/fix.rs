@@ -169,40 +169,62 @@ impl JobConsumer for FixesJob {
             });
         }
 
-        let mut failed_fixes = VecDeque::new();
-
         while let Some((id, future_result)) = handles.next().await {
             match future_result {
-                Ok(Ok((fix, logs))) => {
-                    let completion_status: FixCompletionStatus = *fix
-                        .completion_status()
-                        .ok_or(FixError::EmptyCompletionStatus)?;
-                    if !matches!(completion_status, FixCompletionStatus::Success) {
-                        failed_fixes.push_back((
+                Ok(job_consumer_result) => match job_consumer_result {
+                    Ok((fix, logs)) => {
+                        let completion_status: FixCompletionStatus = *fix
+                            .completion_status()
+                            .ok_or(FixError::EmptyCompletionStatus)?;
+                        if !matches!(completion_status, FixCompletionStatus::Success) {
+                            process_failed_fix(
+                                ctx,
+                                &mut fixes,
+                                self.batch_id,
+                                id,
+                                fix.completion_message()
+                                    .map(ToOwned::to_owned)
+                                    .unwrap_or_else(|| {
+                                        format!(
+                                            "Action failed with unknown error: {completion_status}"
+                                        )
+                                    }),
+                                logs,
+                            )
+                            .await;
+                            continue;
+                        }
+
+                        fixes.remove(&id);
+
+                        for fix in fixes.values_mut() {
+                            fix.parents.retain(|parent_id| *parent_id != id);
+                        }
+                    }
+                    Err(err) => {
+                        error!("Unable to finish fix {id}: {err}");
+                        process_failed_fix(
+                            ctx,
+                            &mut fixes,
+                            self.batch_id,
                             id,
-                            fix.completion_message()
-                                .map(ToOwned::to_owned)
-                                .unwrap_or_else(|| {
-                                    format!("Action failed with unknown error: {completion_status}")
-                                }),
-                            logs,
-                        ));
-                        continue;
+                            format!("Action failed: {err}"),
+                            Vec::new(),
+                        )
+                        .await;
                     }
-
-                    fixes.remove(&id);
-
-                    for fix in fixes.values_mut() {
-                        fix.parents.retain(|parent_id| *parent_id != id);
-                    }
-                }
-                Ok(Err(err)) => {
-                    error!("Unable to finish fix {id}: {err}");
-
-                    failed_fixes.push_back((id, format!("Action failed: {err}"), Vec::new()));
-                }
+                },
                 Err(err) => {
-                    failed_fixes.push_back((id, format!("Action failed: {err}"), Vec::new()));
+                    process_failed_fix(
+                        ctx,
+                        &mut fixes,
+                        self.batch_id,
+                        id,
+                        format!("Action failed: {err}"),
+                        Vec::new(),
+                    )
+                    .await;
+
                     match err.try_into_panic() {
                         Ok(panic) => {
                             std::panic::resume_unwind(panic);
@@ -217,67 +239,6 @@ impl JobConsumer for FixesJob {
                     }
                 }
             }
-        }
-
-        while let Some((id, err, logs)) = failed_fixes.pop_front() {
-            fixes.remove(&id);
-
-            if let Some(mut fix) = Fix::get_by_id(ctx, &id).await? {
-                Component::restore_and_propagate(ctx, *fix.component_id()).await?;
-
-                if fix.started_at().is_none() {
-                    fix.stamp_started(ctx).await?;
-                }
-
-                if fix.finished_at().is_none() {
-                    let resource = ActionRunResult {
-                        status: Some(ResourceStatus::Error),
-                        payload: fix.resource().cloned(),
-                        message: Some(err.clone()),
-                        logs: logs.clone(),
-                        last_synced: None,
-                    };
-
-                    fix.stamp_finished(
-                        ctx,
-                        FixCompletionStatus::Error,
-                        Some(err.clone()),
-                        Some(resource),
-                    )
-                    .await?;
-                }
-
-                let action = ActionPrototype::get_by_id(ctx, fix.action_prototype_id())
-                    .await?
-                    .ok_or_else(|| {
-                        JobConsumerError::ActionPrototypeNotFound(*fix.action_prototype_id())
-                    })?;
-
-                FixResolver::upsert(ctx, *action.id(), Some(false), *fix.id()).await?;
-
-                WsEvent::fix_return(
-                    ctx,
-                    *fix.id(),
-                    self.batch_id,
-                    *action.kind(),
-                    FixCompletionStatus::Error,
-                    logs,
-                )
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
-            }
-
-            for fix in fixes.values() {
-                if fix.parents.contains(&id) {
-                    failed_fixes.push_back((
-                        fix.id,
-                        format!("Action depends on another action that failed: {err}"),
-                        Vec::new(),
-                    ));
-                }
-            }
-            ctx.blocking_commit().await?;
         }
 
         if fixes.is_empty() {
@@ -406,4 +367,101 @@ async fn fix_task(
     }
 
     Ok((fix, logs))
+}
+
+#[instrument(name = "fixes_job.process_failed_fix", skip_all, level = "info")]
+async fn process_failed_fix(
+    ctx: &DalContext,
+    fixes: &mut HashMap<FixId, FixItem>,
+    batch_id: FixBatchId,
+    failed_fix_id: FixId,
+    error_message: String,
+    logs: Vec<String>,
+) {
+    if let Err(e) =
+        process_failed_fix_inner(ctx, fixes, batch_id, failed_fix_id, error_message, logs).await
+    {
+        error!("{e}");
+    }
+}
+
+#[instrument(name = "fixes_job.process_failed_fix_inner", skip_all, level = "info")]
+async fn process_failed_fix_inner(
+    ctx: &DalContext,
+    fixes: &mut HashMap<FixId, FixItem>,
+    batch_id: FixBatchId,
+    failed_fix_id: FixId,
+    error_message: String,
+    logs: Vec<String>,
+) -> JobConsumerResult<()> {
+    let mut failed_fixes = VecDeque::new();
+    failed_fixes.push_back((failed_fix_id, error_message, logs));
+
+    while let Some((id, err, logs)) = failed_fixes.pop_front() {
+        info!(%id, "processing failed action/fix");
+        fixes.remove(&id);
+
+        if let Some(mut fix) = Fix::get_by_id(ctx, &id).await? {
+            Component::restore_and_propagate(ctx, *fix.component_id()).await?;
+
+            if fix.started_at().is_none() {
+                fix.stamp_started(ctx).await?;
+            }
+
+            if fix.finished_at().is_none() {
+                let resource = ActionRunResult {
+                    status: Some(ResourceStatus::Error),
+                    payload: fix.resource().cloned(),
+                    message: Some(err.clone()),
+                    logs: logs.clone(),
+                    last_synced: None,
+                };
+
+                fix.stamp_finished(
+                    ctx,
+                    FixCompletionStatus::Error,
+                    Some(err.clone()),
+                    Some(resource),
+                )
+                .await?;
+            }
+
+            let action = ActionPrototype::get_by_id(ctx, fix.action_prototype_id())
+                .await?
+                .ok_or_else(|| {
+                    JobConsumerError::ActionPrototypeNotFound(*fix.action_prototype_id())
+                })?;
+
+            FixResolver::upsert(ctx, *action.id(), Some(false), *fix.id()).await?;
+
+            WsEvent::fix_return(
+                ctx,
+                *fix.id(),
+                batch_id,
+                *action.kind(),
+                FixCompletionStatus::Error,
+                logs,
+            )
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        } else {
+            warn!(%id, "fix not found by id");
+        }
+
+        for fix in fixes.values() {
+            if fix.parents.contains(&id) {
+                info!(%id, "pushing back action/fix that depends on another action/fix");
+                failed_fixes.push_back((
+                    fix.id,
+                    format!("Action depends on another action that failed: {err}"),
+                    Vec::new(),
+                ));
+            }
+        }
+
+        ctx.blocking_commit().await?;
+    }
+
+    Ok(())
 }
