@@ -459,12 +459,8 @@ impl PgPool {
 // "transaction span" might be an ancestor span unless we're really careful.
 macro_rules! current_span_for_debug {
     () => {
-        if span_enabled!(target: "si_data_pg", Level::DEBUG) {
-            Span::current()
-        } else {
-            Span::none()
-        }
-    }
+        Span::none()
+    };
 }
 
 /// An instrumented wrapper for `deadpool::managed::Object<deadpool_postgres::Manager>`
