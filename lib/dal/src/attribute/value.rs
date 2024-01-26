@@ -1,41 +1,33 @@
-//! An [`AttributeValue`] represents which [`FuncBinding`](crate::func::binding::FuncBinding)
-//! and [`FuncBindingReturnValue`] provide attribute's value. Moreover, it tracks whether the
-//! value is proxied or not. Proxied values "point" to another [`AttributeValue`] to provide
-//! the attribute's value.
+//! An [`AttributeValue`] represents which [`FuncBinding`] and [`FuncBindingReturnValue`] provide attribute's value.
+//! Moreover, it tracks whether the value is proxied or not. Proxied values "point" to another [`AttributeValue`] to
+//! provide the attribute's value.
 //!
 //! ## Updating [`AttributeValues`](AttributeValue)
 //!
-//! Let's say you want to update a
-//! [`PropertyEditorValue`](crate::property_editor::values::PropertyEditorValue) in the UI or a
-//! "field" on a [`Component`](crate::Component) in general. The key to doing so is the following
-//! process:
+//! Let's say you want to update a [`PropertyEditorValue`](crate::property_editor::values::PropertyEditorValue) in the
+//! UI or a "field" on a [`Component`] in general. The key to doing so is the following process:
 //!
-//! 1) Find the appropriate [`AttributeValue`] in a [`context`](crate::AttributeContext) that is
-//!   either "exactly specific" to what you need or "less specific" than what you need (see the
-//!   [`module`](crate::attribute::context) for more information)
-//! 2) Find its parent, which almost all [`AttributeValues`](AttributeValue) should have if they are
-//!   in the lineage of a [`RootProp`](crate::RootProp) (usually, the
-//!   [`standard model accessor`](crate::standard_accessors) that contains the parent will suffice
-//!   in finding the parent)
-//! 3) Use [`AttributeValue::update_for_context()`] with the appropriate key and
-//!   [`context`](crate::AttributeContext) while ensuring that if you reuse the key and/or
-//!   [`context`](crate::AttributeContext) from the [`AttributeValue`](crate::AttributeValue)
-//!   that you found, that it is _exactly_ what you need (i.e. if the key changes or the
-//!   [`context`](crate::AttributeContext) is in a lesser specificity than what you need, you
-//!   mutate them accordingly)
+//! 1) Find the appropriate [`AttributeValue`] in a [`context`](AttributeContext) that is either "exactly specific" to
+//!   what you need or "less specific" than what you need (see the [`module`](crate::attribute::context) for more
+//!   information)
+//! 2) Find its parent, which almost all [`AttributeValues`](AttributeValue) should have if they are in the lineage of
+//!   a [`RootProp`](crate::RootProp) (usually, the [`standard model accessor`](crate::standard_accessors) that contains
+//!   the parent will suffice in finding the parent)
+//! 3) Use [`AttributeValue::update_for_context()`] with the appropriate key and [`context`](AttributeContext) while
+//!   ensuring that if you reuse the key and/or [`context`](AttributeContext) from the [`AttributeValue`] that you
+//!   found, that it is _exactly_ what you need (i.e. if the key changes or the [`context`](AttributeContext) is in a
+//!   lesser specificity than what you need, you mutate them accordingly)
 //!
-//! Often, you may not have all the information necessary to find the [`AttributeValue`] that you
-//! would like to update. Ideally, you would use one of the existing accessor methods off
-//! [`AttributeValue`] with contextual information such as a [`PropId`](crate::Prop),
-//! a [`ComponentId`](crate::Component)), a parent [`AttributeValue`], a key, etc.
+//! Often, you may not have all the information necessary to find the [`AttributeValue`] that you would like to update.
+//! Ideally, you would use one of the existing accessor methods off [`AttributeValue`] with contextual information such
+//! as a [`PropId`](Prop), a [`ComponentId`](Component)), a parent [`AttributeValue`], a key, etc.
 //!
-//! In situations where we do not have minimal information to find the _correct_ [`AttributeValue`]
-//! from existing accessor queries, we can leveraging existing queries from other structs and write
-//! new queries for those structs and specific use cases. For example, since most members of the
-//! [`RootProp`](crate::RootProp) tree are stable across [`SchemaVariants`](crate::SchemaVariant),
-//! we can use [`Component::root_prop_child_attribute_value_for_component()`](crate::Component::root_prop_child_attribute_value_for_component)
-//! to find the [`AttributeValue`] whose [`context`](crate::AttributeContext) corresponds to a
-//! direct child [`Prop`](crate::Prop) of the [`RootProp`](crate::RootProp).
+//! In situations where we do not have minimal information to find the _correct_ [`AttributeValue`] from existing
+//! accessor queries, we can leveraging existing queries from other structs and write new queries for those structs and
+//! specific use cases. For example, since most members of the [`RootProp`](crate::RootProp) tree are stable across
+//! [`SchemaVariants`](crate::SchemaVariant), we can use [`Component::root_prop_child_attribute_value_for_component`] to
+//! find the [`AttributeValue`] whose [`context`](AttributeContext) corresponds to a direct child [`Prop`] of the
+//! [`RootProp`](crate::RootProp).
 
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
@@ -343,8 +335,8 @@ impl AttributeValue {
         self.index_map.as_mut()
     }
 
-    /// Returns the *unprocessed* [`serde_json::Value`] within the [`FuncBindingReturnValue`](crate::FuncBindingReturnValue)
-    /// corresponding to the field on [`Self`].
+    /// Returns the *unprocessed* [`serde_json::Value`] within the [`FuncBindingReturnValue`] corresponding to the field
+    /// on [`Self`].
     pub async fn get_unprocessed_value(
         &self,
         ctx: &DalContext,
@@ -364,8 +356,7 @@ impl AttributeValue {
     // ) -> AttributeValueResult<()> {
     // }
 
-    /// Returns the [`serde_json::Value`] within the [`FuncBindingReturnValue`](crate::FuncBindingReturnValue)
-    /// corresponding to the field on [`Self`].
+    /// Returns the [`serde_json::Value`] within the [`FuncBindingReturnValue`] corresponding to the field on [`Self`].
     pub async fn get_value(
         &self,
         ctx: &DalContext,
@@ -389,8 +380,8 @@ impl AttributeValue {
         Ok(())
     }
 
-    /// Returns a list of child [`AttributeValues`](crate::AttributeValue) for a given
-    /// [`AttributeValue`] and [`AttributeReadContext`](crate::AttributeReadContext).
+    /// Returns a list of child [`AttributeValues`](AttributeValue) for a given [`AttributeValue`] and
+    /// [`AttributeReadContext`].
     pub async fn child_attribute_values_for_context(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -465,13 +456,10 @@ impl AttributeValue {
         Ok(standard_model::option_object_from_row(row)?)
     }
 
-    /// List [`AttributeValues`](crate::AttributeValue) for a provided
-    /// [`AttributeReadContext`](crate::AttributeReadContext).
+    /// List [`AttributeValues`](AttributeValue) for a provided [`AttributeReadContext`].
     ///
-    /// If you only anticipate one result to be returned and have an
-    /// [`AttributeReadContext`](crate::AttributeReadContext)
-    /// that is also a valid [`AttributeContext`](crate::AttributeContext), then you should use
-    /// [`Self::find_for_context()`] instead of this method.
+    /// If you only anticipate one result to be returned and have an [`AttributeReadContext`] that is also a valid
+    /// [`AttributeContext`], then you should use [`Self::find_for_context()`] instead of this method.
     ///
     /// This does _not_ work for maps and arrays, barring the _first_ instance of the array or map
     /// object themselves! For those objects, please use
@@ -492,18 +480,14 @@ impl AttributeValue {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    /// Find one [`AttributeValue`](crate::AttributeValue) for a provided
-    /// [`AttributeReadContext`](crate::AttributeReadContext).
+    /// Find one [`AttributeValue`] for a provided [`AttributeReadContext`].
     ///
-    /// This is a modified version of [`Self::list_for_context()`] that requires an
-    /// [`AttributeReadContext`](crate::AttributeReadContext)
-    /// that is also a valid [`AttributeContext`](crate::AttributeContext) _and_ "pops" the first
-    /// row off the rows found (which are sorted from most to least specific). Thus, the "popped"
-    /// row will corresponding to the most specific [`AttributeValue`] found.
+    /// This is a modified version of [`Self::list_for_context()`] that requires an [`AttributeReadContext`] that is
+    /// also a valid [`AttributeContext`] _and_ "pops" the first row off the rows found (which are sorted from most to
+    /// least specific). Thus, the "popped" row will corresponding to the most specific [`AttributeValue`] found.
     ///
-    /// This does _not_ work for maps and arrays, barring the _first_ instance of the array or map
-    /// object themselves! For those objects, please use
-    /// [`Self::find_with_parent_and_key_for_context()`].
+    /// This does _not_ work for maps and arrays, barring the _first_ instance of the array or map object themselves!
+    /// For those objects, please use [`Self::find_with_parent_and_key_for_context()`].
     pub async fn find_for_context(
         ctx: &DalContext,
         context: AttributeReadContext,
@@ -607,11 +591,11 @@ impl AttributeValue {
     }
 
     /// This method is similar to [`Self::list_payload_for_read_context()`], but it leverages a
-    /// root [`AttributeValueId`](crate::AttributeValue) in order to find payloads at any
-    /// root [`Prop`](crate::Prop) corresponding to the provided context and root value.
+    /// root [`AttributeValueId`](AttributeValue) in order to find payloads at any root [`Prop`] corresponding to the
+    /// provided context and root value.
     ///
-    /// Requirements for the [`AttributeReadContext`](crate::AttributeReadContext):
-    /// - [`PropId`](crate::Prop) must be set to [`None`]
+    /// Requirements for the [`AttributeReadContext`]:
+    /// - [`PropId`](Prop) must be set to [`None`]
     /// - Both providers fields must be unset
     pub async fn list_payload_for_read_context_and_root(
         ctx: &DalContext,
@@ -673,8 +657,7 @@ impl AttributeValue {
     /// exist here". This is potentially useful for "tombstoning" values that have been inherited
     /// from a less-specific [`AttributeContext`]. For example, if a value has been set for a
     /// [`SchemaVariant`](crate::SchemaVariant), but we do not want that value to exist for a
-    /// specific [`Component`](crate::Component), we can update the variant's value to [`None`] in
-    /// an [`AttributeContext`] specific to that component.
+    /// specific [`Component`], we can update the variant's value to [`None`] in an [`AttributeContext`] specific to that component.
     ///
     /// This method returns the following:
     /// - the [`Option<serde_json::Value>`] that was passed in

@@ -126,7 +126,7 @@ pub enum EdgeKind {
 pk!(EdgeId);
 pk!(EdgePk);
 
-/// A mathematical edge between a head and a tail [`Node`](crate::Node).
+/// A mathematical edge between a head and a tail [`Node`].
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Edge {
     pk: EdgePk,
@@ -678,8 +678,8 @@ impl Edge {
     /// - _"head":_ where the connection is going to
     /// - _"tail":_ where the connection is coming from
     ///
-    /// Currently this func only supports connecting via the identity [`Func`](crate::Func), refactoring
-    /// is necessary to support other transformation functions for edge connections.
+    /// Currently this func only supports connecting via the identity [`Func`]. Refactoring is necessary to support
+    /// other transformation functions for edge connections.
     pub async fn connect_providers_for_components(
         ctx: &DalContext,
         head_explicit_internal_provider_id: InternalProviderId,

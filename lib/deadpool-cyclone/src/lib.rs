@@ -52,7 +52,7 @@ pub type Hook<S> = managed::Hook<Manager<S>>;
 /// Type alias for using [`managed::HookError`] with Cyclone.
 pub type HookError<S> = managed::HookError<Manager<S>>;
 
-/// Type alias for using [`managed::HookErrorCause`] with Cyclone.
+/// Type alias for using `HookErrorCause` with Cyclone.
 pub type Connection<S> = managed::Object<Manager<S>>;
 
 /// Type alias for using [`managed::RecycleResult`] with Cyclone.

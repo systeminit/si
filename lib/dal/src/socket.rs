@@ -146,8 +146,8 @@ pub enum SocketEdgeKind {
 
 impl ToLabelList for SocketEdgeKind {}
 
-/// The mechanism for setting relationships between [`SchemaVariants`](crate::SchemaVariant) or
-/// instantiations of the same [`SchemaVariant`](crate::SchemaVariant).
+/// The mechanism for setting relationships between [`SchemaVariants`](SchemaVariant) or instantiations of the same
+/// [`SchemaVariant`].
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Socket {
     pk: SocketPk,

@@ -10,9 +10,9 @@ use telemetry::prelude::*;
 
 use super::{ConnectionMetadata, Error, Message, Result};
 
-/// Retrieves messages from given `subscription` created by [Client::subscribe].
+/// Retrieves messages from given `subscription`.
 ///
-/// Implements [futures::stream::Stream] for ergonomic async message processing.
+/// Implements [Stream] for ergonomic async message processing.
 ///
 /// # Examples
 ///

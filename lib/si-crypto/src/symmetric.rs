@@ -59,7 +59,7 @@ pub struct SymmetricCryptoService {
 /// A configuration that can be used to build a [`SymmetricCryptoService`].
 ///
 /// A primary "active key" is used when encrypting data and may be used when decrypting data. A
-/// [`Hash`] of a key is provided when decrypting data which is used to look up the appropriate
+/// [`struct@Hash`] of a key is provided when decrypting data which is used to look up the appropriate
 /// loaded key. In this way the service can take an arbitrary number of keys which is useful in
 /// operations such as key rotation where at least 2 keys are needed (the new key and the old
 /// keys).
@@ -157,7 +157,7 @@ impl SymmetricCryptoService {
     }
 
     #[allow(clippy::missing_panics_doc)]
-    /// Encrypts a message and returns the crypted bytes, a nonce, and a [`Hash`] of the encrypting
+    /// Encrypts a message and returns the crypted bytes, a nonce, and a [``struct@Hash`] of the encrypting
     /// [`SymmetricKey`].
     pub fn encrypt(&self, message: &[u8]) -> (Vec<u8>, SymmetricNonce, &Hash) {
         let key = self
@@ -173,7 +173,7 @@ impl SymmetricCryptoService {
         )
     }
 
-    /// Decrypts a ciphertext provided with a nonce and a [`Hash`] of the encrypting
+    /// Decrypts a ciphertext provided with a nonce and a [`struct@Hash`] of the encrypting
     /// [`SymmetricKey`] and returns the decrypted message.
     ///
     /// # Errors

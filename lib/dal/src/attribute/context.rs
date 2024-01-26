@@ -15,9 +15,8 @@
 //!
 //! ## `AttributeContext` vs. `AttributeReadContext`
 //!
-//! While the [`AttributeContext`] can be used for both read and write queries, the
-//! [`AttributeReadContext`](crate::AttributeReadContext) is useful for read-only queries and for
-//! flexibility when searching for objects of varying levels of specificity.
+//! While the [`AttributeContext`] can be used for both read and write queries, the [`AttributeReadContext`] is useful
+//! for read-only queries and for flexibility when searching for objects of varying levels of specificity.
 
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -108,7 +107,7 @@ impl PartialOrd for AttributeContext {
     /// - [`Ordering::Greater`]: "self" is "more-specific" than "other"
     /// - [`Ordering::Less`]: "self" is "less-specific" than "other"
     /// - [`None`]: "self" and "other" have different "least-specific" fields (e.g. "self" is
-    ///   [`Prop`](crate::Prop)-specific and "other" is [`InternalProvider`](crate::InternalProvider)-specific.
+    ///   [`Prop`]-specific and "other" is [`InternalProvider`](crate::InternalProvider)-specific.
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if !self.is_component_unset() {
             return if !other.is_component_unset() {
@@ -206,7 +205,7 @@ impl AttributeContext {
         Ok(builder.to_context()?)
     }
 
-    /// Returns true if the least specific field corresponds to a [`Prop`](crate::Prop).
+    /// Returns true if the least specific field corresponds to a [`Prop`].
     pub fn is_least_specific_field_kind_prop(&self) -> AttributeContextResult<bool> {
         if let AttributeContextLeastSpecificFieldKind::Prop(_) = self.least_specific_field_kind()? {
             Ok(true)

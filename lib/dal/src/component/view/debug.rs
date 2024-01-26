@@ -17,9 +17,8 @@ use crate::{
 
 type ComponentDebugViewResult<T> = Result<T, ComponentDebugViewError>;
 
-/// A generated view for an [`Component`](crate::Component) that contains metadata about each of
-/// the components attributes. Used for constructing a debug view of the component and also for
-/// cloning a component
+/// A generated view for an [`Component`] that contains metadata about each of the components attributes. Used for
+/// constructing a debug view of the component and also for cloning a component.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentDebugView {

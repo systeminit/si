@@ -159,7 +159,7 @@ pub struct PasteComponentsResponse {
     pub id: Ulid,
 }
 
-/// Paste a set of [`Component`](dal::Component)s via their componentId. Creates change-set if on head
+/// Paste a set of [`Components`](Component) via their componentId. Creates a [`ChangeSet`] if on [`head`](dal::ChangeSetPk::NONE).
 pub async fn paste_components(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,

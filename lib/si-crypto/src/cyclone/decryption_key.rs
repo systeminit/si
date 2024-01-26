@@ -90,7 +90,7 @@ impl CycloneDecryptionKey {
             .map_err(|_| CycloneDecryptionKeyError::DecryptionFailed)
     }
 
-    /// Returns a [`Hash`] of the encryption key which would have encoded a message.
+    /// Returns a [`struct@Hash`] of the encryption key which would have encoded a message.
     pub fn encryption_key_hash(&self) -> &Hash {
         &self.public_key_hash
     }

@@ -351,7 +351,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
                                 "Array or map has more than one direct child",
                             ));
                         }
-                        let type_prop = children.get(0).ok_or(SiPkgError::prop_tree_invalid(
+                        let type_prop = children.first().ok_or(SiPkgError::prop_tree_invalid(
                             "Array or map prop missing type prop",
                         ))?;
                         prop.type_prop(type_prop.clone());

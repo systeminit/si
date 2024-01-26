@@ -58,7 +58,7 @@ async fn restore_single_component(
     Ok(())
 }
 
-/// Restore a [`Component`](dal::Component) via its componentId. Creating change set if on head.
+/// Restore a [`Component`] via its id. Creates a [`ChangeSet`] if on [`head`](dal::ChangeSetPk::NONE).
 pub async fn restore_component(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -103,7 +103,7 @@ pub struct RestoreComponentsRequest {
     pub visibility: Visibility,
 }
 
-/// Restore a set of [`Component`](dal::Component)s via their componentId. Creating change set if on head.
+/// Restore a set of [`Components`](Component) from their ids. Creates a [`ChangeSet`] if on [`head`](dal::ChangeSetPk::NONE).
 pub async fn restore_components(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,

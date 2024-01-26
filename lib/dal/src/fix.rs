@@ -133,11 +133,10 @@ pub struct Fix {
     #[serde(flatten)]
     visibility: Visibility,
 
-    /// The [`Component`](crate::Component) being fixed.
+    /// The [`Component`] being fixed.
     component_id: ComponentId,
     component_name: String,
-    /// The [`ActionPrototype`](crate::action_prototype::ActionPrototype) that runs the action for
-    /// this fix.
+    /// The [`ActionPrototype`] that runs the action for this fix.
     action_prototype_id: ActionPrototypeId,
 
     action_kind: ActionKind,

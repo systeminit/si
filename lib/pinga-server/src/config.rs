@@ -1,5 +1,3 @@
-use std::{env, path::Path};
-
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
@@ -7,12 +5,12 @@ use si_crypto::{CryptoConfig, SymmetricCryptoServiceConfig, SymmetricCryptoServi
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_std::CanonicalFileError;
+use std::{env, path::Path};
 use telemetry::prelude::*;
 use thiserror::Error;
-
-pub use si_crypto::CycloneKeyPair;
-pub use si_settings::{StandardConfig, StandardConfigFile};
 use ulid::Ulid;
+
+pub use si_settings::{StandardConfig, StandardConfigFile};
 
 const DEFAULT_CONCURRENCY_LIMIT: usize = 5;
 

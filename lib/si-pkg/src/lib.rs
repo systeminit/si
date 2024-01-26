@@ -66,7 +66,7 @@ mod tests {
 
         assert_eq!(
             "head",
-            change_sets.get(0).expect("get first change set").name()
+            change_sets.first().expect("get first change set").name()
         );
     }
 
@@ -93,7 +93,7 @@ mod tests {
         let funcs = read_pkg.funcs().expect("failed to get funcs");
         assert_eq!(2, funcs.len());
 
-        let truthy_func = funcs.get(0).expect("failed to get first func");
+        let truthy_func = funcs.first().expect("failed to get first func");
         assert_eq!("si:truthy", truthy_func.name());
         let args = truthy_func.arguments().expect("failed to get arguments");
         assert_eq!(6, args.len());

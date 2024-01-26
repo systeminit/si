@@ -1,5 +1,5 @@
-//! This module contains [`Component`], which is an instance of a
-//! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
+//! This module contains [`Component`], which is an instance of a [`SchemaVariant`] and a _model_ of a "real world
+//! resource".
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -226,12 +226,7 @@ impl Default for ComponentKind {
     }
 }
 
-/// A [`Component`] is an instantiation of a [`SchemaVariant`](crate::SchemaVariant).
-///
-/// ## Updating "Fields" on a [`Component`]
-///
-/// To learn more about updating a "field" on a [`Component`], please see the
-/// [`AttributeValue module`](crate::attribute::value).
+/// A [`Component`] is an instantiation of a [`SchemaVariant`].
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Component {
     pk: ComponentPk,
@@ -327,9 +322,8 @@ impl Component {
         Ok((component, node))
     }
 
-    /// A secondary constructor method that finds the default
-    /// [`SchemaVariant`](crate::SchemaVariant) for a given [`SchemaId`](crate::Schema). Once found,
-    /// the [`primary constructor method`](Self::new) is called.
+    /// A secondary constructor method that finds the default [`SchemaVariant`] for a given [`SchemaId`](Schema). Once
+    /// found, the [`primary constructor method`](Self::new) is called.
     pub async fn new_for_default_variant_from_schema(
         ctx: &DalContext,
         name: impl AsRef<str>,
@@ -724,8 +718,7 @@ impl Component {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    /// Find the [`SchemaVariantId`](crate::SchemaVariantId) that belongs to the provided
-    /// [`Component`](crate::Component).
+    /// Find the [`SchemaVariantId`] that belongs to the provided [`Component`].
     pub async fn schema_variant_id(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -746,8 +739,7 @@ impl Component {
         Ok(row.try_get("schema_variant_id")?)
     }
 
-    /// Find the [`SchemaId`](crate::SchemaId) that belongs to the provided
-    /// [`Component`](crate::Component).
+    /// Find the [`SchemaId`] that belongs to the provided [`Component`].
     pub async fn schema_id(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -768,7 +760,7 @@ impl Component {
         Ok(row.try_get("schema_id")?)
     }
 
-    /// Gets the [`ComponentType`](crate::ComponentType) of [`self`](Self).
+    /// Gets the [`ComponentType`] of [`self`](Self).
     ///
     /// Mutate this with [`Self::set_type()`].
     pub async fn get_type(&self, ctx: &DalContext) -> ComponentResult<ComponentType> {

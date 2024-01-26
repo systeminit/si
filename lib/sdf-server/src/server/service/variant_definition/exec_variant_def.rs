@@ -204,7 +204,7 @@ pub async fn exec_variant_def(
     .await?;
 
     let schema_variant_id = schema_variant_ids
-        .get(0)
+        .first()
         .copied()
         .ok_or(SchemaVariantDefinitionError::NoAssetCreated)?;
 

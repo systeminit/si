@@ -1,5 +1,4 @@
-//! This module contains the ability to construct values reflecting the latest state of a
-//! [`Component`](crate::Component)'s properties.
+//! This module contains the ability to construct values reflecting the latest state of a [`Component`]'s properties.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -124,7 +123,7 @@ impl PropertyEditorValue {
         self.prop_id.into()
     }
 
-    /// Returns the [`Prop`](crate::Prop) corresponding to the "prop_id" field.
+    /// Returns the [`Prop`] corresponding to the "prop_id" field.
     pub async fn prop(&self, ctx: &DalContext) -> PropertyEditorResult<Prop> {
         let prop = Prop::get_by_id(ctx, &self.prop_id.into())
             .await?

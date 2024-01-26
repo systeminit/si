@@ -85,21 +85,19 @@ pub async fn execute(
     }))
 }
 
-/// Publish a [`WsEvent`](crate::WsEvent) immediately.
+/// Publish a [`WsEvent`] immediately.
 ///
 /// # Errors
 ///
-/// Returns [`Err`] if the [`event`](crate::WsEvent) could not be published or the payload
-/// could not be serialized.
+/// Returns [`Err`] if the [`event`](WsEvent) could not be published or the payload could not be serialized.
 ///
 /// # Notes
 ///
-/// This should only be done unless the caller is _certain_ that the [`event`](crate::WsEvent)
-/// should be published immediately. If unsure, use
-/// [`WsEvent::publish`](crate::WsEvent::publish_on_commit).
+/// This should only be done unless the caller is _certain_ that the [`event`](WsEvent) should be published immediately.
+/// If unsure, use [`WsEvent::publish_on_commit`].
 ///
-/// This method requires an owned [`WsEvent`](crate::WsEvent), despite it not needing to,
-///  because [`events`](crate::WsEvent) should likely not be reused.
+/// This method requires an owned [`WsEvent`], despite it not needing to, because [`events`](WsEvent) should likely not
+/// be reused.
 async fn publish_immediately(ctx: &DalContext, ws_event: WsEvent) -> FuncBindingResult<()> {
     let subject = format!("si.workspace_pk.{}.event", ws_event.workspace_pk());
     let msg_bytes = serde_json::to_vec(&ws_event)?;

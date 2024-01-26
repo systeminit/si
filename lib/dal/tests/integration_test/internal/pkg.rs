@@ -687,7 +687,7 @@ async fn test_install_pkg(ctx: &DalContext) {
         .await
         .expect("find by attr");
     assert_eq!(1, installed_pkgs.len());
-    let installed_pkg_a = installed_pkgs.get(0).expect("pkg should be there");
+    let installed_pkg_a = installed_pkgs.first().expect("pkg should be there");
 
     assert_eq!("The White Visitation", installed_pkg_a.name());
 
@@ -767,7 +767,7 @@ async fn test_install_pkg(ctx: &DalContext) {
     .await
     .expect("find by attr");
     assert_eq!(1, installed_pkgs.len());
-    let installed_pkg_b = installed_pkgs.get(0).expect("pkg should be there");
+    let installed_pkg_b = installed_pkgs.first().expect("pkg should be there");
 
     assert_eq!("The Kenosha Kid", installed_pkg_b.name());
 

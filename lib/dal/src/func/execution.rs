@@ -56,13 +56,12 @@ pub enum FuncExecutionState {
     Success,
 }
 
-/// [`FuncExecutions`](Self) record that a [`function`](crate::Func) has executed alongside all the
-/// context required to understand the execution as well as the log of the output stream for the
-/// [`function`](crate::Func).
+/// [`FuncExecutions`](Self) record that a [`function`](Func) has executed alongside all the context required to
+/// understand the execution as well as the log of the output stream for the [`function`](Func).
 ///
 /// It's not part of the [`standard model`](crate::standard_model) as it doesn't participate in
-/// [`change sets`](crate::ChangeSet), and is only used for reference. Essentially, this is the
-/// [`Func`](crate::Func) equivalent of a [`HistoryEvent`](crate::HistoryEvent).
+/// [`change sets`](crate::ChangeSet), and is only used for reference. Essentially, this is the [`Func`] equivalent of a
+/// [`HistoryEvent`](crate::HistoryEvent).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FuncExecution {
     pk: FuncExecutionPk,

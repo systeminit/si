@@ -1,6 +1,6 @@
 //! This module contains all "leaves" that can be created underneath [`RootProp`](crate::RootProp)
-//! subtrees for a [`SchemaVariant`](crate::SchemaVariant). In this domain, a "leaf" is considered
-//! to an entry of a immediate child [`map`](crate::PropKind::Map) underneath "/root".
+//! subtrees for a [`SchemaVariant`]. In this domain, a "leaf" is considered to an entry of a immediate child
+//! [`map`](crate::PropKind::Map) underneath "/root".
 
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
@@ -160,7 +160,7 @@ impl LeafInputLocation {
 pub struct LeafInput {
     /// The source location of the input.
     pub location: LeafInputLocation,
-    /// The corresponding [`FuncArgumentId`](crate::FuncArgument) for the [`Func`](crate::Func).
+    /// The corresponding [`FuncArgumentId`](crate::FuncArgument) for the [`Func`].
     pub func_argument_id: FuncArgumentId,
 }
 
@@ -185,12 +185,11 @@ impl From<LeafKind> for FuncBackendResponseType {
 }
 
 impl SchemaVariant {
-    /// Insert an [`object`](crate::PropKind::Object) entry into a "/root" subtree of
-    /// [`map`](crate::PropKind::Map) with a [`Func`](crate::Func) that matches the provided
-    /// [`LeafKind`] in order to populate the subtree entry.
+    /// Insert an [`object`](crate::PropKind::Object) entry into a "/root" subtree of [`map`](crate::PropKind::Map) with
+    /// a [`Func`] that matches the provided [`LeafKind`] in order to populate the subtree entry.
     ///
-    /// The [`PropId`](crate::Prop) for the child [`map`](crate::PropKind::Map) of "/root"
-    /// corresponding to the [`LeafKind`] is returned.
+    /// The [`PropId`](crate::Prop) for the child [`map`](crate::PropKind::Map) of "/root" corresponding to the
+    /// [`LeafKind`] is returned.
     pub async fn add_leaf(
         ctx: &DalContext,
         func_id: FuncId,

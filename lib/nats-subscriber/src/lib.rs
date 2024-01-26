@@ -53,18 +53,18 @@ pub struct Request<T> {
     /// A deserialized `T` from the message payload bytes in the subscriber stream.
     pub payload: T,
 
-    /// Optional reply subject to which response can be published by [crate::Subscriber].
+    /// Optional reply subject to which response can be published by [`Subscriber`].
     ///
-    /// Used for request-response pattern with [crate::Client::request].
+    /// Used for request-response pattern.
     pub reply: Option<Subject>,
 
     /// Optional headers.
     pub headers: Option<HeaderMap>,
 
-    /// Optional Status of the message. Used mostly for internal handling.
+    /// Optional status of the message. Used mostly for internal handling.
     pub status: Option<StatusCode>,
 
-    /// Optional [status][crate::Message::status] description.
+    /// Optional description.
     pub description: Option<String>,
 
     /// Parent [`Span`] for processing the underlying request message.

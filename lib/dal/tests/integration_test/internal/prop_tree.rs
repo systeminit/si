@@ -42,7 +42,7 @@ async fn one_schema_variant(ctx: &DalContext) {
         .expect("able to fetch prop tree");
 
     assert_eq!(1, prop_tree.root_props.len());
-    let root_prop = prop_tree.root_props.get(0).expect("able to get root prop");
+    let root_prop = prop_tree.root_props.first().expect("able to get root prop");
     assert_eq!(*default_variant.id(), root_prop.schema_variant_id);
 
     let domain = root_prop
@@ -62,7 +62,7 @@ async fn one_schema_variant(ctx: &DalContext) {
     let prop_tree = PropTree::new(ctx, true, Some(vec![*default_variant.id()]), None)
         .await
         .expect("able to fetch prop tree");
-    let root_prop = prop_tree.root_props.get(0).expect("able to get root prop");
+    let root_prop = prop_tree.root_props.first().expect("able to get root prop");
     let domain = root_prop
         .children
         .iter()

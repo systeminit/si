@@ -29,9 +29,8 @@ pub struct CreateConnectionResponse {
     pub connection: Connection,
 }
 
-/// Create a [`Connection`](dal::Connection) with a _to_ [`Socket`](dal::Socket) and
-/// [`Node`](dal::Node) and a _from_ [`Socket`](dal::Socket) and [`Node`](dal::Node).
-/// Creating change set if on head
+/// Create a [`Connection`] with a _to_ [`Socket`] and [`Node`] and a _from_ [`Socket`] and [`Node`].
+/// Creates a [`ChangeSet`] if on [`head`](dal::ChangeSetPk::NONE).
 pub async fn create_connection(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,

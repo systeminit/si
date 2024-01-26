@@ -1,8 +1,7 @@
-//! Create a [`SchemaVariant`](crate::SchemaVariant) with a [`Prop`](crate::Prop) tree via a
-//! [`SchemaVariantDefinition`], stored in the database.
-//! Do not use this struct to access or modify [`SchemaVariant`](crate::SchemaVariant) data.
-//! After import, it only exists to map a [`SchemaVariant`](crate::SchemaVariant) to its
-//! generating [`Func`](crate::Func). Data on this object will get outdated if the prop tree changes.
+//! Create a [`SchemaVariant`] with a [`Prop`](crate::Prop) tree via a [`SchemaVariantDefinition`], stored in the
+//! database. Do not use this struct to access or modify [`SchemaVariant`] data. After import, it only exists to map a
+//! [`SchemaVariant`] to its generating [`Func`](crate::Func). Data on this object will get outdated if the prop tree
+//! changes.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -124,8 +123,8 @@ pub struct SchemaVariantDefinition {
     #[serde(flatten)]
     visibility: Visibility,
 
-    /// Name for this variant. Actually, this is the name for this [`Schema`](crate::Schema), we're
-    /// punting on the issue of multiple variants for the moment.
+    /// Name for this variant. Actually, this is the name for this [`Schema`], we're punting on the issue of multiple
+    /// variants for the moment.
     name: String,
     /// Override for the UI name for this schema
     menu_name: Option<String>,
@@ -276,8 +275,8 @@ impl SchemaVariantDefinition {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaVariantDefinitionMetadataJson {
-    /// Name for this variant. Actually, this is the name for this [`Schema`](crate::Schema), we're
-    /// punting on the issue of multiple variants for the moment.
+    /// Name for this variant. Actually, this is the name for this [`Schema`], we're punting on the issue of multiple
+    /// variants for the moment.
     pub name: String,
     /// Override for the UI name for this schema
     #[serde(alias = "menu_name")]
@@ -357,7 +356,7 @@ impl SchemaVariantDefinitionMetadataJson {
         variant: &SchemaVariant,
     ) -> SchemaVariantDefinitionResult<Self> {
         let (menu_name, category) = match schema.ui_menus(ctx).await {
-            Ok(ui_menus) => match ui_menus.get(0) {
+            Ok(ui_menus) => match ui_menus.first() {
                 Some(ui_menu) => (
                     Some(ui_menu.name().to_string()),
                     ui_menu.category().to_string(),
@@ -391,8 +390,7 @@ impl SchemaVariantDefinitionMetadataJson {
     }
 }
 
-/// The definition for a [`SchemaVariant`](crate::SchemaVariant)'s [`Prop`](crate::Prop) tree (and
-/// more in the future).
+/// The definition for a [`SchemaVariant`]'s [`Prop`](crate::Prop) tree (and more in the future).
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaVariantDefinitionJson {
@@ -487,7 +485,7 @@ impl SchemaVariantDefinitionJson {
 
         let variant_spec = schema_spec
             .variants
-            .get(0)
+            .first()
             .ok_or(SchemaVariantDefinitionError::NoVariants)?;
 
         let schema_data = schema_spec.data.unwrap_or(SchemaSpecData {
@@ -561,7 +559,7 @@ impl MapKeyFunc {
     }
 }
 
-/// The definition for a [`Prop`](crate::Prop) in a [`SchemaVariant`](crate::SchemaVariant).
+/// The definition for a [`Prop`](crate::Prop) in a [`SchemaVariant`].
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PropDefinition {
@@ -662,8 +660,8 @@ impl PropDefinition {
     }
 }
 
-/// The definition for a [`Socket`](crate::Socket) in a [`SchemaVariant`](crate::SchemaVariant).
-/// A corresponding [`provider`](crate::provider) will be created as well.
+/// The definition for a [`Socket`](crate::Socket) in a [`SchemaVariant`]. A corresponding [`provider`](crate::provider)
+/// will be created as well.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SocketDefinition {
@@ -671,8 +669,8 @@ pub struct SocketDefinition {
     pub name: String,
     /// The type identifier of the [`Socket`](crate::Socket) to be created.
     pub connection_annotations: String,
-    /// The [`arity`](https://en.wikipedia.org/wiki/Arity) of the [`Socket`](crate::Socket).
-    /// Defaults to [`SocketArity::Many`](crate::SocketArity::Many) if nothing is provided.
+    /// The [`arity`](https://en.wikipedia.org/wiki/Arity) of the [`Socket`](crate::Socket). Defaults to
+    /// [`SocketArity::Many`] if nothing is provided.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arity: Option<SocketArity>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -719,7 +717,7 @@ impl SocketDefinition {
     }
 }
 
-/// The definition for the source of the information for a prop or a socket in a [`SchemaVariant`](crate::SchemaVariant).
+/// The definition for the source of the information for a prop or a socket in a [`SchemaVariant`].
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ValueFrom {
@@ -753,7 +751,7 @@ impl ValueFrom {
     }
 }
 
-/// The definition for the source of the data for prop under "/root/"si" in a [`SchemaVariant`](crate::SchemaVariant).
+/// The definition for the source of the data for prop under "/root/"si" in a [`SchemaVariant`].
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SiPropValueFrom {

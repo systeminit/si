@@ -442,7 +442,7 @@ impl Prop {
                 "{}[]",
                 self.child_props(ctx)
                     .await?
-                    .get(0)
+                    .first()
                     .ok_or(PropError::ArrayMissingElementChild(self.id))?
                     .ts_type(ctx)
                     .await?
@@ -453,7 +453,7 @@ impl Prop {
                 "Record<string, {}>",
                 self.child_props(ctx)
                     .await?
-                    .get(0)
+                    .first()
                     .ok_or(PropError::MapMissingElementChild(self.id))?
                     .ts_type(ctx)
                     .await?
@@ -489,8 +489,7 @@ impl Prop {
         format!("/{}", self.path().as_parts().join("/"))
     }
 
-    /// Finds a prop by a path made up of prop names separated by
-    /// [`PROP_PATH_SEPARATOR`](crate::prop::PROP_PATH_SEPARATOR) for each depth level
+    /// Finds a prop by a path made up of prop names separated by [`PROP_PATH_SEPARATOR`] for each depth level.
     pub async fn find_prop_by_path(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -504,8 +503,7 @@ impl Prop {
             ))
     }
 
-    /// Finds a prop by a path made up of prop names separated by
-    /// [`PROP_PATH_SEPARATOR`](crate::prop::PROP_PATH_SEPARATOR) for each depth level
+    /// Finds a prop by a path made up of prop names separated by [`PROP_PATH_SEPARATOR`] for each depth level.
     pub async fn find_prop_by_path_opt(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
