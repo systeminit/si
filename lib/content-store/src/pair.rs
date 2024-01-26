@@ -59,7 +59,7 @@ impl ContentPair {
                 let client = pg_pool.get().await?;
                 let row = client
                     .query_one(
-                        "INSERT INTO content_pairs (key, value) VALUES ($1, $2) RETURNING *",
+                        "INSERT INTO content_pairs (key, value) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING *",
                         &[&key.to_string(), &value],
                     )
                     .await?;

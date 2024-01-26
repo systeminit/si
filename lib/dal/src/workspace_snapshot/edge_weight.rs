@@ -30,6 +30,8 @@ pub enum EdgeWeightKind {
     Contain(Option<String>),
     /// Used to record the order that the elements of a container should be presented in.
     Ordering,
+    /// Connects the node at the Ordering edge directly to the things it orders.
+    Ordinal,
     /// Used to link an attribute value to the prop that it is for.
     Prop,
     /// An edge from a [`provider`](crate::provider) to an

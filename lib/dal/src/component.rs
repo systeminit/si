@@ -59,6 +59,8 @@ pub enum ComponentError {
     AttributeValue(#[from] AttributeValueError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
+    #[error("component {0} has no attribute value for the root/si/name prop")]
+    ComponentMissingNameValue(ComponentId),
     #[error(
         "connection destination component {0} has no attribute value for internal provider {1}"
     )]
@@ -81,6 +83,8 @@ pub enum ComponentError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found for component: {0}")]
     SchemaVariantNotFound(ComponentId),
+    #[error("serde_json error: {0}")]
+    Serde(#[from] serde_json::Error),
     #[error("store error: {0}")]
     Store(#[from] StoreError),
     #[error("transactions error: {0}")]
@@ -231,9 +235,11 @@ impl Component {
         schema_variant_id: SchemaVariantId,
         component_kind: Option<ComponentKind>,
     ) -> ComponentResult<Self> {
+        let name: String = name.into();
         let content = ComponentContentV1 {
             timestamp: Timestamp::now(),
-            name: name.into(), // XXX: name is part of the si tree
+            name: name.to_owned(), // XXX: name is part of the si tree and should not be on the
+            // component node or content
             kind: match component_kind {
                 Some(provided_kind) => provided_kind,
                 None => ComponentKind::Standard,
@@ -322,8 +328,7 @@ impl Component {
             };
 
             // Create an attribute value for the prop.
-            let attribute_value =
-                AttributeValue::new(ctx, matches!(prop_kind, PropKind::Array)).await?;
+            let attribute_value = AttributeValue::new(ctx, prop_kind.ordered()).await?;
 
             // AttributeValue --Prop--> Prop
             let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
@@ -380,7 +385,24 @@ impl Component {
             }
         }
 
-        Ok(Self::assemble(id.into(), content))
+        let component = Self::assemble(id.into(), content);
+
+        component.set_name(ctx, &name).await?;
+
+        Ok(component)
+    }
+
+    pub async fn set_name(&self, ctx: &DalContext, name: &str) -> ComponentResult<()> {
+        let av_for_name = self
+            .attribute_values_for_prop(ctx, &["root", "si", "name"])
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(ComponentError::ComponentMissingNameValue(self.id()))?;
+
+        AttributeValue::update(ctx, av_for_name, Some(serde_json::to_value(name)?)).await?;
+
+        Ok(())
     }
 
     async fn get_content_with_hash(
@@ -614,6 +636,28 @@ impl Component {
                 .is_some()
             {
                 result.push(socket_value_id);
+            }
+        }
+
+        Ok(result)
+    }
+
+    pub async fn attribute_values_for_prop(
+        &self,
+        ctx: &DalContext,
+        prop_path: &[&str],
+    ) -> ComponentResult<Vec<AttributeValueId>> {
+        let mut result = vec![];
+
+        let schema_variant_id = Self::schema_variant_id(ctx, self.id()).await?;
+
+        let prop_id =
+            Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(prop_path)).await?;
+
+        for attribute_value_id in Prop::attribute_values_for_prop_id(ctx, prop_id).await? {
+            let value_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
+            if value_component_id == self.id() {
+                result.push(attribute_value_id)
             }
         }
 

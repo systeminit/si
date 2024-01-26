@@ -1,5 +1,8 @@
 use dal::diagram::Diagram;
-use dal::{Component, DalContext, ExternalProvider, InternalProvider, Schema, SchemaVariant};
+use dal::{
+    AttributeValue, Component, DalContext, ExternalProvider, InternalProvider, Schema,
+    SchemaVariant,
+};
 use dal_test::test;
 
 #[test]
@@ -57,9 +60,26 @@ async fn connect_components_simple(ctx: &mut DalContext) {
     )
     .await
     .expect("could not create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after setting image prop");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
     let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id, None)
         .await
         .expect("could not create component");
+
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after setting image prop");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
 
     // Connect the components!
     let inter_component_attribute_prototype_argument_id = Component::connect(
@@ -77,6 +97,11 @@ async fn connect_components_simple(ctx: &mut DalContext) {
     ctx.update_snapshot_to_visibility()
         .await
         .expect("update_snapshot_to_visibility");
+
+    dbg!(royel_component
+        .materialized_view(ctx)
+        .await
+        .expect("get view of butane after connection"));
 
     // Assemble the diagram and check the edges.
     let mut diagram = Diagram::assemble(ctx)

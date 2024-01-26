@@ -291,45 +291,39 @@ impl WorkspaceSnapshotGraph {
         to_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
         let _start = std::time::Instant::now();
-        // info!("begin adding edge: {:?}", start.elapsed());
         let new_edge_index = self.add_edge(from_node_index, edge_weight, to_node_index)?;
-        // info!("added edge: {:?}", start.elapsed());
 
-        let (new_from_node_index, _) = self
-            .graph
-            .edge_endpoints(new_edge_index)
-            .ok_or(WorkspaceSnapshotGraphError::EdgeWeightNotFound)?;
+        let from_node_index = self.get_latest_node_idx(from_node_index)?;
+        let to_node_index = self.get_latest_node_idx(to_node_index)?;
 
         // Find the ordering node of the "container" if there is one, and add the thing pointed to
-        // by the `to_node_index` to the ordering.
-        // info!(
-        //     "begin ordering node index for container: {:?}",
-        //     start.elapsed()
-        // );
+        // by the `to_node_index` to the ordering. Also point the ordering node at the thing with
+        // an `Ordinal` edge, so that Ordering nodes must be touched *after* the things they order
+        // in a depth first search
         if let Some(container_ordering_node_index) =
-            self.ordering_node_index_for_container(new_from_node_index)?
+            self.ordering_node_index_for_container(from_node_index)?
         {
-            // info!(
-            //     "got ordering node index for container: {:?}",
-            //     start.elapsed()
-            // );
+            self.add_edge(
+                container_ordering_node_index,
+                EdgeWeight::new(change_set, EdgeWeightKind::Ordinal)?,
+                to_node_index,
+            )?;
+
+            let container_ordering_node_index =
+                self.get_latest_node_idx(container_ordering_node_index)?;
+
             if let NodeWeight::Ordering(previous_container_ordering_node_weight) = self
                 .graph
                 .node_weight(container_ordering_node_index)
-                .ok_or_else(|| WorkspaceSnapshotGraphError::NodeWeightNotFound)?
+                .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
             {
-                let element_node_weight = self
-                    .graph
-                    .node_weight(to_node_index)
-                    .ok_or_else(|| WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
+                let element_id = self
+                    .node_index_to_id(to_node_index)
+                    .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
+
                 let mut new_container_ordering_node_weight =
                     previous_container_ordering_node_weight.clone();
-                let mut new_order =
-                    Vec::with_capacity(previous_container_ordering_node_weight.order().len() + 1);
-                new_order.extend(previous_container_ordering_node_weight.order());
-                new_order.push(element_node_weight.id());
-                new_container_ordering_node_weight.set_order(change_set, new_order)?;
-
+                new_container_ordering_node_weight.push_to_order(change_set, element_id)?;
                 self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
                 self.replace_references(container_ordering_node_index)?;
             }
@@ -916,6 +910,7 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKindDiscriminants::ActionPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
                     EdgeWeightKindDiscriminants::Ordering => "gray",
+                    EdgeWeightKindDiscriminants::Ordinal => "gray",
                     EdgeWeightKindDiscriminants::Prop => "orange",
                     EdgeWeightKindDiscriminants::Prototype => "green",
                     EdgeWeightKindDiscriminants::PrototypeArgument => "green",
@@ -1034,7 +1029,6 @@ impl WorkspaceSnapshotGraph {
             .vector_clock_write()
             .is_newer_than(to_rebase_ordering.vector_clock_write())
         {
-            // info!("onto_ordering_clock_newer");
             let onto_ordering_set: HashSet<Ulid> = onto_ordering.order().iter().copied().collect();
             let to_rebase_ordering_set: HashSet<Ulid> =
                 to_rebase_ordering.order().iter().copied().collect();
@@ -1452,6 +1446,12 @@ impl WorkspaceSnapshotGraph {
             .unwrap_or_default()
     }
 
+    pub fn node_index_to_id(&self, node_idx: NodeIndex) -> Option<Ulid> {
+        self.graph
+            .node_weight(node_idx)
+            .map(|node_weight| node_weight.id())
+    }
+
     pub fn get_node_weight(
         &self,
         node_index: NodeIndex,
@@ -1498,8 +1498,8 @@ impl WorkspaceSnapshotGraph {
                     equivalent_node_index
                 } else {
                     let new_node_index = self.add_node(node_weight_to_copy)?;
-                    self.replace_references(equivalent_node_index)?;
 
+                    self.replace_references(equivalent_node_index)?;
                     self.get_latest_node_idx(new_node_index)?
                 }
             } else {
@@ -1562,17 +1562,10 @@ impl WorkspaceSnapshotGraph {
             if let NodeWeight::Ordering(ordering_weight) =
                 self.get_node_weight(container_ordering_index)?
             {
-                let mut node_index_by_id = HashMap::new();
-                for neighbor_index in self
-                    .graph
-                    .neighbors_directed(container_node_index, Outgoing)
-                {
-                    let neighbor_weight = self.get_node_weight(neighbor_index)?;
-                    node_index_by_id.insert(neighbor_weight.id(), neighbor_index);
-                }
                 for ordered_id in ordering_weight.order() {
                     ordered_child_indexes.push(
-                        *node_index_by_id
+                        *self
+                            .node_index_by_id
                             .get(ordered_id)
                             .ok_or(WorkspaceSnapshotGraphError::NodeWithIdNotFound(*ordered_id))?,
                     );
@@ -1630,30 +1623,19 @@ impl WorkspaceSnapshotGraph {
         target_node_index: NodeIndex,
         edge_kind: EdgeWeightKindDiscriminants,
     ) -> WorkspaceSnapshotGraphResult<()> {
-        let mut edges_to_remove = Vec::new();
         self.copy_node_by_index(source_node_index)?;
         self.replace_references(source_node_index)?;
-        let new_source_node_index = self.get_latest_node_idx(source_node_index)?;
+        let source_node_index = self.get_latest_node_idx(source_node_index)?;
 
-        for edgeref in self
-            .graph
-            .edges_connecting(new_source_node_index, target_node_index)
-        {
-            if edge_kind == edgeref.weight().kind().into() {
-                edges_to_remove.push(edgeref.id());
-            }
-        }
-        for edge_to_remove in edges_to_remove {
-            self.graph.remove_edge(edge_to_remove);
-        }
+        self.inner_remove_edge(source_node_index, target_node_index, edge_kind);
 
         if let Some(previous_container_ordering_node_index) =
-            self.ordering_node_index_for_container(new_source_node_index)?
+            self.ordering_node_index_for_container(source_node_index)?
         {
-            let old_target_node_weight = self
-                .graph
-                .node_weight(target_node_index)
+            let element_id = self
+                .node_index_to_id(source_node_index)
                 .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
+
             if let NodeWeight::Ordering(previous_container_ordering_node_weight) = self
                 .graph
                 .node_weight(previous_container_ordering_node_index)
@@ -1661,14 +1643,15 @@ impl WorkspaceSnapshotGraph {
             {
                 let mut new_container_ordering_node_weight =
                     previous_container_ordering_node_weight.clone();
-                let old_target_id = old_target_node_weight.id();
-                let mut new_order = new_container_ordering_node_weight.order().clone();
-                new_order.retain(|id| *id != old_target_id);
 
                 // We only want to update the ordering of the container if we removed an edge to
                 // one of the ordered relationships.
-                if &new_order != previous_container_ordering_node_weight.order() {
-                    new_container_ordering_node_weight.set_order(change_set, new_order)?;
+                if new_container_ordering_node_weight.remove_from_order(change_set, element_id)? {
+                    self.inner_remove_edge(
+                        previous_container_ordering_node_index,
+                        target_node_index,
+                        EdgeWeightKindDiscriminants::Ordinal,
+                    );
 
                     self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
                     self.replace_references(previous_container_ordering_node_index)?;
@@ -1676,9 +1659,8 @@ impl WorkspaceSnapshotGraph {
             }
         }
 
-        let new_source_node_index = self.get_latest_node_idx(new_source_node_index)?;
-
-        let mut work_queue = VecDeque::from([new_source_node_index]);
+        let source_node_index = self.get_latest_node_idx(source_node_index)?;
+        let mut work_queue = VecDeque::from([source_node_index]);
 
         while let Some(node_index) = work_queue.pop_front() {
             self.update_merkle_tree_hash(
@@ -1694,6 +1676,26 @@ impl WorkspaceSnapshotGraph {
         }
 
         Ok(())
+    }
+
+    fn inner_remove_edge(
+        &mut self,
+        source_node_index: NodeIndex,
+        target_node_index: NodeIndex,
+        edge_kind: EdgeWeightKindDiscriminants,
+    ) {
+        let mut edges_to_remove = vec![];
+        for edgeref in self
+            .graph
+            .edges_connecting(source_node_index, target_node_index)
+        {
+            if edge_kind == edgeref.weight().kind().into() {
+                edges_to_remove.push(edgeref.id());
+            }
+        }
+        for edge_to_remove in edges_to_remove {
+            self.graph.remove_edge(edge_to_remove);
+        }
     }
 
     pub fn edge_endpoints(
@@ -1896,6 +1898,7 @@ impl WorkspaceSnapshotGraph {
                     | EdgeWeightKind::PrototypeArgumentValue
                     | EdgeWeightKind::Provider
                     | EdgeWeightKind::Ordering
+                    | EdgeWeightKind::Ordinal
                     | EdgeWeightKind::Prop
                     | EdgeWeightKind::Prototype(None)
                     | EdgeWeightKind::Proxy

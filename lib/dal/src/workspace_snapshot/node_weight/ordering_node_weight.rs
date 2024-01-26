@@ -6,6 +6,7 @@ use ulid::Ulid;
 use crate::change_set_pointer::ChangeSetPointer;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
+use petgraph::prelude::*;
 
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct OrderingNodeWeight {
@@ -161,6 +162,31 @@ impl OrderingNodeWeight {
 
     pub fn vector_clock_write(&self) -> &VectorClock {
         &self.vector_clock_write
+    }
+
+    pub fn push_to_order(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        id: Ulid,
+    ) -> NodeWeightResult<()> {
+        let mut order = self.order().to_owned();
+        order.push(id);
+        self.set_order(change_set, order)
+    }
+
+    pub fn remove_from_order(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        id: Ulid,
+    ) -> NodeWeightResult<bool> {
+        let mut order = self.order.to_owned();
+        order.retain(|&item_id| item_id != id);
+        if order.len() != self.order().len() {
+            self.set_order(change_set, order)?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }
 

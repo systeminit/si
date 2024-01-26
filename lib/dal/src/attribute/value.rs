@@ -784,7 +784,7 @@ impl AttributeValue {
             }
         };
 
-        let new_attribute_value = Self::new(ctx, matches!(prop_kind, PropKind::Array)).await?;
+        let new_attribute_value = Self::new(ctx, prop_kind.ordered()).await?;
 
         {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
