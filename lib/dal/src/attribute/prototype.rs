@@ -1,13 +1,9 @@
 //! An [`AttributePrototype`] represents, for a specific attribute:
 //!
-//!   * Which context the following applies to ([`AttributeContext`](crate::AttributeContext))
 //!   * The function that should be run to find its value.
-//!   * In the case that the [`Prop`](crate::Prop) is the child of an
-//!     [`Array`](crate::prop::PropKind::Array): Which index in the `Array` the value
-//!     is for.
-//!   * In the case that the [`Prop`](crate::Prop) is the child of a
-//!     [`Map`](crate::prop::PropKind::Map): Which key of the `Map` the value is
-//!     for.
+//!   * In the case that the [`Prop`] is the child of an [`Array`](PropKind::Array): Which index in the `Array` the
+//!     value is for.
+//!   * In the case that the [`Prop`] is the child of a [`Map`](PropKind::Map): Which key of the `Map` the value is for.
 
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
@@ -141,7 +137,7 @@ pub struct AttributePrototype {
     /// The [`AttributeContext`] corresponding to the prototype.
     #[serde(flatten)]
     pub context: AttributeContext,
-    /// The [`Func`](crate::Func) corresponding to the prototype.
+    /// The [`Func`] corresponding to the prototype.
     func_id: FuncId,
     /// An optional key used for tracking parentage.
     pub key: Option<String>,
@@ -264,18 +260,14 @@ impl AttributePrototype {
         result: AttributePrototypeResult,
     );
 
-    /// Permanently deletes the [`AttributePrototype`] for the given id along with any
-    /// corresponding [`AttributeValue`](crate::AttributeValue) prototype and
-    /// any [`AttributePrototypeArguments`](crate::AttributePrototypeArgument)
-    /// for the prototype, if and only if any of the above values are in a changeset (i.e.,
-    /// not in HEAD). The effect is to revert the prototype, it's values, and arguments,
-    /// to the HEAD state. Marking them as soft-deleted would propagate the deletion up to
-    /// HEAD. The implementation here is almost identical to that of
-    /// [`AttributePrototype::remove`](crate::AttributePrototype::remove)` but (1)
-    /// checks for in_change_set and (2) hard deletes. Least-specific checks are not necessary here
-    /// because we only do this for prototypes that exist only in a changeset. A corresponding
-    /// prototype for this prop will exist in head, and it will take priority when this one is
-    /// deleted.
+    /// Permanently deletes the [`AttributePrototype`] for the given id along with any corresponding [`AttributeValue`]
+    /// prototype and any [`AttributePrototypeArguments`](AttributePrototypeArgument) for the prototype, if and only if
+    /// any of the above values are in a changeset (i.e., not in HEAD). The effect is to revert the prototype, it's
+    /// values, and arguments, to the HEAD state. Marking them as soft-deleted would propagate the deletion up to HEAD.
+    /// The implementation here is almost identical to that of [`AttributePrototype::remove`] but (1) checks for
+    /// "in_change_set" and (2) hard deletes. Least-specific checks are not necessary here because we only do this for
+    /// prototypes that exist only in a changeset. A corresponding prototype for this prop will exist in head, and it
+    /// will take priority when this one is deleted.
     pub async fn hard_delete_if_in_changeset(
         ctx: &DalContext,
         attribute_prototype_id: &AttributePrototypeId,
@@ -387,20 +379,18 @@ impl AttributePrototype {
         Ok(())
     }
 
-    /// Deletes the [`AttributePrototype`] corresponding to a provided ID. Before deletion occurs,
-    /// its corresponding [`AttributeValue`](crate::AttributeValue), all of its child values
-    /// (and their children, recursively) and those children's prototypes are deleted. Any value or
-    /// prototype that could not be found or does not exist is assumed to have already been deleted
-    /// or never existed. Moreover, before deletion of the [`AttributePrototype`] occurs, we delete
-    /// all [`AttributePrototypeArguments`](crate::AttributePrototypeArgument) that belong to the
-    /// prototype.
+    /// Deletes the [`AttributePrototype`] corresponding to a provided ID. Before deletion occurs, its corresponding
+    /// [`AttributeValue`], all of its child values (and their children, recursively) and those children's prototypes
+    /// are deleted. Any value or prototype that could not be found or does not exist is assumed to have already been
+    /// deleted or never existed. Moreover, before deletion of the [`AttributePrototype`] occurs, we delete all
+    /// [`AttributePrototypeArguments`](AttributePrototypeArgument) that belong to the prototype.
     ///
-    /// Caution: this should be used rather than [`StandardModel::delete_by_id()`] when deleting an
-    /// [`AttributePrototype`]. That method should never be called directly.
+    /// **Caution: this should be used rather than [`StandardModel::delete_by_id()`] when deleting an
+    /// [`AttributePrototype`]. That method should never be called directly.**
     ///
     /// Normally we forbid deleting "least specific" attribute prototypes, that is, prototypes
     /// at the schema variant level, but we need to do so when removing a schema variant and
-    /// all its associated objects. To make this possible, set `force` to `true`
+    /// all its associated objects. To make this possible, set `force` to `true`.
     pub async fn remove(
         ctx: &DalContext,
         attribute_prototype_id: &AttributePrototypeId,
@@ -608,7 +598,7 @@ impl AttributePrototype {
         Ok(standard_model::option_object_from_row(row)?)
     }
 
-    /// List [`Vec<Self>`] that depend on a provided [`InternalProviderId`](crate::InternalProvider).
+    /// List [`Vec<Self>`] that depend on a provided [`InternalProviderId`](InternalProvider).
     pub async fn list_from_internal_provider_use(
         ctx: &DalContext,
         internal_provider_id: InternalProviderId,
@@ -625,8 +615,8 @@ impl AttributePrototype {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    /// List [`Vec<Self>`] that depend on a provided [`ExternalProviderId`](crate::ExternalProvider)
-    /// and _tail_ [`ComponentId`](crate::Component).
+    /// List [`Vec<Self>`] that depend on a provided [`ExternalProviderId`](ExternalProvider) and _tail_
+    /// [`ComponentId`](crate::Component).
     pub async fn list_by_head_from_external_provider_use_with_tail(
         ctx: &DalContext,
         external_provider_id: ExternalProviderId,
@@ -686,9 +676,9 @@ impl AttributePrototype {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    /// List [`AttributeValues`](crate::AttributeValue) that belong to a provided [`AttributePrototypeId`](Self)
-    /// and whose context contains the provided [`AttributeReadContext`](crate::AttributeReadContext)
-    /// or are "more-specific" than the provided [`AttributeReadContext`](crate::AttributeReadContext).
+    /// List [`AttributeValues`](AttributeValue) that belong to a provided [`AttributePrototypeId`](AttributePrototype)
+    /// and whose context contains the provided [`AttributeReadContext`] or are "more-specific" than the provided
+    /// [`AttributeReadContext`].
     pub async fn attribute_values_in_context_or_greater(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,

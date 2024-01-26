@@ -22,8 +22,8 @@ struct CodeGenerationEntry {
 }
 
 impl Component {
-    /// List all [`CodeViews`](crate::CodeView) for based on the "code generation"
-    /// [`leaves`](crate::schema::variant::leaves) for a given [`ComponentId`](Self).
+    /// List all [`CodeViews`](CodeView) for based on the "code generation" [`leaves`](crate::schema::variant::leaves)
+    /// for a given [`ComponentId`](Component).
     #[instrument(skip_all)]
     pub async fn list_code_generated(
         ctx: &DalContext,
@@ -101,8 +101,7 @@ impl Component {
     }
 
     // TODO(nick): big query potential.
-    /// Returns a [`HashSet`](std::collections::HashSet) of all the
-    /// [`AttributeValueIds`](crate::AttributeValue) corresponding to "code generation"
+    /// Returns a [`HashSet`] of all the [`AttributeValueIds`](AttributeValue) corresponding to "code generation"
     /// [`leaves`](crate::schema::variant::leaves) in the workspace.
     pub async fn all_code_generation_attribute_values(
         ctx: &DalContext,
@@ -118,9 +117,8 @@ impl Component {
     }
 
     // TODO(nick): big query potential.
-    /// Returns a [`HashSet`](std::collections::HashSet) of all the
-    /// [`AttributeValueIds`](crate::AttributeValue) corresponding to "code generation"
-    /// [`leaves`](crate::schema::variant::leaves) for a given [`ComponentId`](Self).
+    /// Returns a [`HashSet`] of all the [`AttributeValueIds`](AttributeValue) corresponding to "code generation"
+    /// [`leaves`](crate::schema::variant::leaves) for a given [`ComponentId`](Component).
     async fn all_code_generation_attribute_values_for_component(
         ctx: &DalContext,
         component_id: ComponentId,

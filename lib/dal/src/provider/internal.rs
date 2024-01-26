@@ -2,44 +2,42 @@
 //!
 //! ## What are implicit [`InternalProviders`](InternalProvider)?
 //!
-//! Implicit [`InternalProviders`](InternalProvider) are created for every [`Prop`](crate::Prop) in
-//! a [`SchemaVariant`](crate::SchemaVariant) that is not a descendant of a [`map`](crate::PropKind::Map)
-//! or an [`array`](crate::PropKind::Array). They reflect the [`view`](crate::AttributeView) of the
-//! [`Prop`](crate::Prop) (which includes its descendants) and can be used for
-//! intra-[`SchemaVariant`](crate::SchemaVariant) connections.
+//! Implicit [`InternalProviders`](InternalProvider) are created for every [`Prop`] in a
+//! [`SchemaVariant`](crate::SchemaVariant) that is not a descendant of a [`map`](crate::PropKind::Map) or an
+//! [`array`](crate::PropKind::Array). They reflect the [`view`](AttributeView) of the [`Prop`] (which includes its
+//! descendants) and can be used for intra-[`SchemaVariant`](crate::SchemaVariant) connections.
 //!
 //! ## What are explicit [`InternalProviders`](InternalProvider)?
 //!
 //! Explicit [`InternalProviders`](InternalProvider) _consume_ values from external
-//! [`SchemaVariants`](crate::SchemaVariant), pass them through a transformation [`Func`](crate::Func)
-//! (usually the identity [`Func`](crate::Func)), and then _expose_ the resulting value within the
-//! [`SchemaVariant`](crate::SchemaVariant) that it belongs to.
+//! [`SchemaVariants`](crate::SchemaVariant), pass them through a transformation [`Func`] (usually the identity
+//! [`Func`]), and then _expose_ the resulting value within the [`SchemaVariant`](crate::SchemaVariant) that it belongs
+//! to.
 //!
 //! One way to think of explicit [`InternalProviders`](InternalProvider) is as "inverted"
-//! [`ExternalProviders`](crate::ExternalProvider). [`ExternalProviders`](crate::ExternalProvider)
-//! _consume_ values from within the [`SchemaVariant`](crate::SchemaVariant) that they belong to,
-//! pass them through a transformation [`Func`](crate::Func) (usually the identity [`Func`](crate::Func)), and then
-//! _expose_ the resulting value to external [`SchemaVariants`](crate::SchemaVariant).
+//! [`ExternalProviders`](crate::ExternalProvider). [`ExternalProviders`](crate::ExternalProvider) _consume_ values from
+//! within the [`SchemaVariant`](crate::SchemaVariant) that they belong to, pass them through a transformation [`Func`]
+//! (usually the identity [`Func`]), and then _expose_ the resulting value to external
+//! [`SchemaVariants`](crate::SchemaVariant).
 //!
 //! ## Why the labels "implicit" and "explicit"?
 //!
 //! The labels originate from the direct and indirect actions of how they are created.
 //!
-//! [`InternalProviders`](InternalProvider) that _internally consume_ are "implicitly" created when
-//! assembling a [`Prop`](crate::Prop) tree for a [`SchemaVariant`](crate::SchemaVariant). They are
-//! not "explicitly" created since you get them automatically when
-//! [`finalizing`](crate::SchemaVariant::finalize()) a [`SchemaVariant`](crate::SchemaVariant).
-//! Conversely, [`InternalProviders`](InternalProvider) for external consumption are "explicitly"
-//! created alongside [`Sockets`](crate::Socket) for a [`SchemaVariant`](crate::SchemaVariant).
+//! [`InternalProviders`](InternalProvider) that _internally consume_ are "implicitly" created when assembling a
+//! [`Prop`] tree for a [`SchemaVariant`](crate::SchemaVariant). They are not "explicitly" created since you get them
+//! automatically when [`finalizing`](crate::SchemaVariant::finalize()) a [`SchemaVariant`](crate::SchemaVariant).
+//! Conversely, [`InternalProviders`](InternalProvider) for external consumption are "explicitly" created alongside
+//! [`Sockets`](Socket) for a [`SchemaVariant`](crate::SchemaVariant).
 //!
-//! ## Why do implicit [`InternalProviders`](InternalProvider) exist? Can we not just use the values for the [`Props`](crate::Prop) themselves?
+//! ## Why do implicit [`InternalProviders`](InternalProvider) exist? Can we not just use the values for the [`Props`](Prop) themselves?
 //!
 //! This was touched on a bit in the "implicit" section, but let's expand on it.
 //!
-//! [`AttributeValues`](crate::AttributeValue) whose least specific field is a [`Prop`](crate::Prop)
-//! in a [`SchemaVariant`](crate::SchemaVariant) contain the value for _solely_ the [`Prop`](crate::Prop)
-//! itself. If the [`Prop`](crate::Prop) is an [`object`](crate::PropKind::Object), then you'll likely
-//! want to show the value for that [`Prop`](crate::Prop) and its child [`Props`](crate::Prop).
+//! [`AttributeValues`](AttributeValue) whose least specific field is a [`Prop`] in a
+//! [`SchemaVariant`](crate::SchemaVariant) contain the value for _solely_ the [`Prop`] itself. If the [`Prop`] is an
+//! [`object`](crate::PropKind::Object), then you'll likely want to show the value for that [`Prop`] and its child
+//! [`Props`](Prop).
 //!
 //! ```json
 //! {
@@ -50,22 +48,20 @@
 //! }
 //! ```
 //!
-//! In the above case, the "data" [`object`](crate::PropKind::Object) [`Prop`](crate::Prop) has two
-//! child [`Props`](crate::Prop) of kind [`string`](crate::PropKind::String). If we want to use
-//! this entire [`view`](crate::AttributeView), we need an [`AttributeValue`](crate::AttributeValue)
-//! for it. What [`AttributeValue`](crate::AttributeValue) contains the view? The
-//! [`AttributeValue`](crate::AttributeValue) whose least specific field is the implicit
-//! [`InternalProvider`] for the "data" [`Prop`](crate::Prop) (which lives in a
+//! In the above case, the "data" [`object`](crate::PropKind::Object) [`Prop`] has two child [`Props`](Prop) of kind
+//! [`string`](crate::PropKind::String). If we want to use this entire [`view`](AttributeView), we need an
+//! [`AttributeValue`] for it. What [`AttributeValue`] contains the view? The [`AttributeValue`] whose least specific
+//! field is the implicit [`InternalProvider`] for the "data" [`Prop`] (which lives in a
 //! [`SchemaVariant`](crate::SchemaVariant)).
 //!
 //! In addition to the two different [`AttributeValues`](crate::AttributeValue), having implicit
 //! [`InternalProviders`](Self) help minimize the number of things that
-//! [`AttributePrototypeArguments`](crate::AttributePrototypeArgument) can reference. Need to use
-//! a section of the [`Prop`](crate::Prop) tree for a [`SchemaVariant`](crate::SchemaVariant)? No
-//! problem, just specify once [`InternalProviderId`](InternalProvider).
+//! [`AttributePrototypeArguments`](crate::AttributePrototypeArgument) can reference. Need to use a section of the
+//! [`Prop`] tree for a [`SchemaVariant`](crate::SchemaVariant)? No problem, just specify once
+//! [`InternalProviderId`](InternalProvider).
 //!
-//! This design also lets us cache the view of a [`Prop`](crate::Prop) and its children rather
-//! than directly observing the real time values frequently.
+//! This design also lets us cache the view of a [`Prop`] and its children rather than directly observing the real time
+//! values frequently.
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -210,8 +206,8 @@ pub struct InternalProvider {
     #[serde(flatten)]
     timestamp: Timestamp,
 
-    /// Indicates which [`Prop`](crate::Prop) this provider belongs to. This will be
-    /// unset if [`Self`] is "explicit". If [`Self`] is "implicit", this will always be a "set" id.
+    /// Indicates which [`Prop`] this provider belongs to. This will be unset if [`Self`] is "explicit". If [`Self`] is
+    /// "implicit", this will always be a "set" id.
     prop_id: PropId,
     /// Indicates which [`SchemaVariant`](crate::SchemaVariant) this provider belongs to.
     schema_variant_id: SchemaVariantId,
@@ -404,15 +400,12 @@ impl InternalProvider {
         self.prop_id != PropId::NONE
     }
 
-    /// Consume with a provided [`AttributeContext`](crate::AttributeContext) and return the
-    /// resulting [`AttributeValue`](crate::AttributeValue).
+    /// Consume with a provided [`AttributeContext`] and return the resulting [`AttributeValue`].
     ///
-    /// Requirements for the provided [`AttributeContext`](crate::AttributeContext):
-    /// - The least specific field be a [`PropId`](crate::Prop)
-    /// - If the [`SchemaId`](crate::Schema) is set, it must match the corresponding field on
-    ///   [`Self`]
-    /// - If the [`SchemaVariantId`](crate::SchemaVariant) is set, it must match the corresponding
-    ///   field on [`Self`]
+    /// Requirements for the provided [`AttributeContext`]:
+    /// - The least specific field be a [`PropId`](Prop)
+    /// - If the [`SchemaId`](crate::Schema) is set, it must match the corresponding field on [`Self`]
+    /// - If the [`SchemaVariantId`](crate::SchemaVariant) is set, it must match the corresponding field on [`Self`]
     pub async fn implicit_emit(
         &self,
         ctx: &DalContext,
@@ -593,7 +586,7 @@ impl InternalProvider {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    /// Returns an [`AttributeContext`](crate::AttributeContext) corresponding to our id.
+    /// Returns an [`AttributeContext`] corresponding to our id.
     pub fn attribute_context(&self) -> InternalProviderResult<AttributeContext> {
         Ok(AttributeContext::builder()
             .set_internal_provider_id(self.id)

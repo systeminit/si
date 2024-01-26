@@ -42,7 +42,7 @@ pub trait PrototypeContext {
     fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId);
 }
 
-/// A helper trait for objects that have a [`PrototypeContext`](crate::prototype_context::PrototypeContext) associated with them.
+/// A helper trait for objects that have a [`PrototypeContext`] associated with them.
 pub trait HasPrototypeContext<T>
 where
     T: PrototypeContext,

@@ -59,7 +59,7 @@ impl PropTreeNode {
             PropKind::Array => {
                 let array_element_type = self
                     .children
-                    .get(0)
+                    .first()
                     .ok_or(PropTreeError::ArrayMissingElementProp(self.prop_id))?;
 
                 format!("{}[] | null | undefined", array_element_type.ts_type()?)
@@ -86,7 +86,7 @@ impl PropTreeNode {
             PropKind::Map => {
                 let map_element_type = self
                     .children
-                    .get(0)
+                    .first()
                     .ok_or(PropTreeError::MapMissingElementProp(self.prop_id))?;
 
                 format!(

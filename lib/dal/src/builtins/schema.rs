@@ -144,7 +144,7 @@ async fn migrate_pkg_test_exclusive(
     Ok(())
 }
 
-/// Test exclusive [`Schema`] are solely used for "dal" integration tests.
+/// Test exclusive [`Schema`](crate::Schema) are solely used for "dal" integration tests.
 #[remain::sorted]
 #[derive(Debug, Copy, Clone, AsRefStr, Display, EnumIter, EnumString, Eq, PartialEq)]
 enum TestExclusiveSchema {

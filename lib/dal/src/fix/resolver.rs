@@ -1,5 +1,4 @@
-//! Contains the ability to resolve _current_ fixes, provided by
-//! [`FixResolver`](crate::FixResolver).
+//! Contains the ability to resolve _current_ fixes, provided by [`FixResolver`].
 
 use crate::{DalContext, FixId, TransactionsError};
 use serde::{Deserialize, Serialize};

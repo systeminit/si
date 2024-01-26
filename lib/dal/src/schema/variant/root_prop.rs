@@ -64,7 +64,7 @@ pub enum SiPropChild {
 }
 
 impl SiPropChild {
-    /// Return the _case-sensitive_ name for the corresponding [`Prop`](crate::Prop).
+    /// Return the _case-sensitive_ name for the corresponding [`Prop`].
     pub fn prop_name(&self) -> &'static str {
         match self {
             Self::Name => "name",
@@ -75,29 +75,27 @@ impl SiPropChild {
     }
 }
 
-/// Contains the root [`PropId`](crate::Prop) and its immediate children for a
-/// [`SchemaVariant`](crate::SchemaVariant). These [`Props`](crate::Prop) are also those that
-/// correspond to the "root" [`Props`](crate::Prop) on the [`ComponentView`](crate::ComponentView)
-/// "properties" field.
+/// Contains the root [`PropId`](Prop) and its immediate children for a [`SchemaVariant`]. These [`Props`](Prop) are
+/// also those that correspond to the "root" [`Props`](Prop) on the [`ComponentView`](crate::ComponentView) "properties"
+/// field.
 #[derive(Debug, Copy, Clone)]
 pub struct RootProp {
-    /// The parent of the other [`Props`](crate::Prop) on [`self`](Self).
+    /// The parent of the other [`Props`](Prop) on [`self`](Self).
     pub prop_id: PropId,
-    /// Contains the tree of [`Props`](crate::Prop) corresponding to System Initiative metadata.
+    /// Contains the tree of [`Props`](Prop) corresponding to System Initiative metadata.
     pub si_prop_id: PropId,
-    /// Contains the tree of [`Props`](crate::Prop) corresponding to the real world _model_.
+    /// Contains the tree of [`Props`](Prop) corresponding to the real world _model_.
     pub domain_prop_id: PropId,
-    /// The parent of the resource [`Props`](crate::Prop) corresponding to the real world _resource_.
+    /// The parent of the resource [`Props`](Prop) corresponding to the real world _resource_.
     pub resource_prop_id: PropId,
-    /// Contains the tree of [`Props`](crate::Prop) that are of secret value.
+    /// Contains the tree of [`Props`](Prop) that are of secret value.
     pub secrets_prop_id: PropId,
     /// All information needed to populate the _model_ should be derived from this tree.
     pub resource_value_prop_id: PropId,
-    /// Contains the tree of [`Props`](crate::Prop) corresponding to code generation
-    /// [`Funcs`](crate::Func).
+    /// Contains the tree of [`Props`](Prop) corresponding to code generation
+    /// [`Funcs`](Func).
     pub code_prop_id: PropId,
-    /// Contains the tree of [`Props`](crate::Prop) corresponding to qualification
-    /// [`Funcs`](crate::Func).
+    /// Contains the tree of [`Props`](Prop) corresponding to qualification [`Funcs`](Func).
     pub qualification_prop_id: PropId,
     /// The deleted_at prop on [`self`](Self).
     pub deleted_at_prop_id: PropId,

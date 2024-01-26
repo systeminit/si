@@ -58,7 +58,7 @@ pub struct FuncBindingReturnValue {
     unprocessed_value: Option<serde_json::Value>,
     /// The processed return value.
     value: Option<serde_json::Value>,
-    /// A record of the [`Func`](crate::Func) at the time that [`self`](Self) was
+    /// A record of the [`Func`] at the time that [`self`](Self) was
     /// created.
     func_id: FuncId,
     /// A record of the [`FuncBinding`](crate::FuncBinding) at the time that [`self`](Self) was
@@ -163,8 +163,7 @@ impl FuncBindingReturnValue {
         Ok(None)
     }
 
-    /// Returns the [`FuncMetadataView`](crate::func::FuncMetadataView) based on the
-    /// [`FuncId`](crate::Func) used at the creation time of [`self`](Self).
+    /// Returns the [`FuncMetadataView`] based on the [`FuncId`](Func) used at the creation time of [`self`](Self).
     pub async fn func_metadata_view(
         &self,
         ctx: &DalContext,

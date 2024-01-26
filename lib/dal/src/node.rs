@@ -142,10 +142,9 @@ impl Node {
         result: NodeResult,
     );
 
-    /// List all "live" [`Nodes`](Node) for a given [`NodeKind`](NodeKind).
+    /// List all "live" [`Nodes`](Node) for a given [`NodeKind`].
     ///
-    /// The [`DalContext`](crate::DalContext) should be provided with "deletion"
-    /// [`Visibility`](crate::Visibility).
+    /// The [`DalContext`] should be provided with "deletion" [`Visibility`].
     pub async fn list_live(ctx: &DalContext, kind: NodeKind) -> NodeResult<Vec<Self>> {
         let rows = ctx
             .txns()

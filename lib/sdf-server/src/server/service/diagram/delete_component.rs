@@ -100,7 +100,7 @@ async fn delete_single_component(
     Ok(())
 }
 
-/// Delete a [`Component`](dal::Component) via its componentId. Creates change-set if on head
+/// Delete a [`Component`] via its ids. Creates a [`ChangeSet`] if on [`head`](dal::ChangeSetPk::NONE).
 pub async fn delete_component(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -131,7 +131,8 @@ pub struct DeleteComponentsRequest {
     pub visibility: Visibility,
 }
 
-/// Delete a set of [`Component`](dal::Component)s via their componentId. Creates change-set if on head
+/// Delete a set of [`Components`](Component) via their ids. Creates a [`ChangeSet`] if on
+/// [`head`](dal::ChangeSetPk::NONE).
 pub async fn delete_components(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,

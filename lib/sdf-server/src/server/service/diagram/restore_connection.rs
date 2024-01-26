@@ -18,7 +18,7 @@ pub struct UndeleteConnectionRequest {
     pub visibility: Visibility,
 }
 
-/// Delete a [`Connection`](dal::Connection) via its EdgeId. Creates change-set if on head.
+/// Restore a [`Connection`] via its [`EdgeId`]. Creates a [`ChangeSet`] if on [`head`](dal::ChangeSetPk::NONE).
 pub async fn restore_connection(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,

@@ -406,9 +406,8 @@ async fn connect_component_sockets_to_frame_inner(
     Ok(())
 }
 
-/// Create a [`Connection`](dal::Connection) with a _to_ [`Socket`](dal::Socket) and
-/// [`Node`](dal::Node) and a _from_ [`Socket`](dal::Socket) and [`Node`](dal::Node).
-/// Creating a change set if on head.
+/// Create a [`Connection`] with a _to_ [`Socket`] and [`Node`](dal::Node) and a _from_ [`Socket`] and
+/// [`Node`](dal::Node). Creates a [`ChangeSet`] if on [`head`](dal::ChangeSetPk::NONE).
 pub async fn connect_component_to_frame(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,

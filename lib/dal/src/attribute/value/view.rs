@@ -11,9 +11,8 @@ use crate::{
     StandardModel,
 };
 
-/// A generated view for an [`AttributeReadContext`](crate::AttributeReadContext) and an optional
-/// root [`AttributeValueId`](crate::AttributeValue). The requirements for the context are laid
-/// out in [`Self::new()`].
+/// A generated view for an [`AttributeReadContext`] and an optional root [`AttributeValueId`](AttributeValue). The
+/// requirements for the context are laid out in [`Self::new()`].
 #[derive(Debug)]
 pub struct AttributeView {
     /// The value that was generated from [`Self::new()`]. This can also be referred to as the
@@ -23,18 +22,16 @@ pub struct AttributeView {
 }
 
 impl AttributeView {
-    /// Generates an [`AttributeView`] with an [`AttributeReadContext`](crate::AttributeReadContext)
-    /// and an optional root [`AttributeValueId`](crate::AttributeValue). The context's requirements
-    /// are specified in the following locations:
+    /// Generates an [`AttributeView`] with an [`AttributeReadContext`]and an optional root
+    /// [`AttributeValueId`](AttributeValue). The context's requirements are specified in the following locations:
     ///
     /// - If the root is _not_ provided: [`AttributeValue::list_payload_for_read_context()`]
     /// - If the root is provided: [`AttributeValue::list_payload_for_read_context_and_root()`]
     ///
-    /// The view is generated based on the [`AttributeValuePayloads`](crate::AttributeValuePayload)
-    /// found, including their corresponding [`Props`](crate::Prop). Usually, the root should be
-    /// provided if a view is desired for any given context and "location" in the object value. If
-    /// the [`SchemaVariant`](crate::SchemaVariant) is known and you only desire to generate a view
-    /// for the entire value, you do not need to provide the root.
+    /// The view is generated based on the [`AttributeValuePayloads`](AttributeValuePayload) found, including their
+    /// corresponding [`Props`](Prop). Usually, the root should be provided if a view is desired for any given context
+    /// and "location" in the object value. If the [`SchemaVariant`](crate::SchemaVariant) is known and you only desire
+    /// to generate a view for the entire value, you do not need to provide the root.
     pub async fn new(
         ctx: &DalContext,
         attribute_read_context: AttributeReadContext,

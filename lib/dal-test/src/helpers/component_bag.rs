@@ -15,8 +15,8 @@ use std::collections::HashMap;
 /// [`ComponentBags`](ComponentBag).
 #[derive(Debug, Default)]
 pub struct ComponentBagger {
-    /// A _private_ cache used for creating multiple [`Components`](dal::Component) of the
-    /// same [`Schema`](dal::Schema) and default [`SchemaVariant`](dal::SchemaVariant).
+    /// A _private_ cache used for creating multiple [`Components`](Component) of the same [`Schema`] and default
+    /// [`SchemaVariant`].
     schema_cache: HashMap<String, (SchemaId, SchemaVariantId)>,
 }
 
@@ -28,8 +28,7 @@ impl ComponentBagger {
         }
     }
 
-    /// Create a [`Component`](dal::Component) and assemble a [`ComponentBag`] using its
-    /// metadata.
+    /// Create a [`Component`] and assemble a [`ComponentBag`] using its metadata.
     pub async fn create_component(
         &mut self,
         ctx: &DalContext,
@@ -67,8 +66,7 @@ impl ComponentBagger {
 }
 
 #[derive(Debug)]
-/// This struct is used for bundling a [`Component`](dal::Component) with all metadata needed for a
-/// test.
+/// This struct is used for bundling a [`Component`] with all metadata needed for a test.
 pub struct ComponentBag {
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
@@ -83,7 +81,7 @@ impl ComponentBag {
         ComponentBagger::default()
     }
 
-    /// Gets the [`Node`](dal::Node) for [`self`](ComponentBag).
+    /// Gets the [`Node`] for [`self`](ComponentBag).
     pub async fn node(&self, ctx: &DalContext) -> Node {
         Node::get_by_id(ctx, &self.node_id)
             .await
@@ -91,7 +89,7 @@ impl ComponentBag {
             .expect("not found")
     }
 
-    /// Gets the [`Component`](dal::Component) for [`self`](ComponentBag).
+    /// Gets the [`Component`] for [`self`](ComponentBag).
     pub async fn component(&self, ctx: &DalContext) -> Component {
         Component::get_by_id(ctx, &self.component_id)
             .await
@@ -99,7 +97,7 @@ impl ComponentBag {
             .expect("not found")
     }
 
-    /// Gets the [`Schema`](dal::Schema) for [`self`](ComponentBag).
+    /// Gets the [`Schema`] for [`self`](ComponentBag).
     pub async fn schema(&self, ctx: &DalContext) -> Schema {
         Schema::get_by_id(ctx, &self.schema_id)
             .await
@@ -107,7 +105,7 @@ impl ComponentBag {
             .expect("not found")
     }
 
-    /// Gets the [`SchemaVariant`](dal::SchemaVariant) for [`self`](ComponentBag).
+    /// Gets the [`SchemaVariant`] for [`self`](ComponentBag).
     pub async fn schema_variant(&self, ctx: &DalContext) -> SchemaVariant {
         SchemaVariant::get_by_id(ctx, &self.schema_variant_id)
             .await
@@ -115,7 +113,7 @@ impl ComponentBag {
             .expect("not found")
     }
 
-    /// Finds the [`Prop`](dal::Prop) corresponding to the "path" provided.
+    /// Finds the [`Prop`] corresponding to the "path" provided.
     pub async fn find_prop(&self, ctx: &DalContext, prop_path: &[&str]) -> Prop {
         SchemaVariant::find_prop_in_tree(ctx, self.schema_variant_id, prop_path)
             .await
@@ -152,8 +150,7 @@ impl ComponentBag {
             .properties
     }
 
-    /// Returns an [`AttributeReadContext`](dal::AttributeReadContext) using a set
-    /// [`PropId`](dal::Prop) and [`ComponentId`](dal::Component).
+    /// Returns an [`AttributeReadContext`] using a set [`PropId`](Prop) and [`ComponentId`](Component).
     pub fn attribute_read_context_with_prop(&self, prop_id: PropId) -> AttributeReadContext {
         AttributeReadContext {
             prop_id: Some(prop_id),
@@ -161,8 +158,8 @@ impl ComponentBag {
         }
     }
 
-    /// Returns an [`AttributeReadContext`](dal::AttributeReadContext) using a set
-    /// [`InternalProviderId`](dal::InternalProvider) and [`ComponentId`](dal::Component).
+    /// Returns an [`AttributeReadContext`] using a set [`InternalProviderId`](dal::InternalProvider) and
+    /// [`ComponentId`](Component).
     pub fn attribute_read_context_with_internal_provider(
         &self,
         internal_provider_id: InternalProviderId,
@@ -173,8 +170,8 @@ impl ComponentBag {
         }
     }
 
-    /// Returns an [`AttributeReadContext`](dal::AttributeReadContext) using a set
-    /// [`ExternalProviderId`](dal::ExternalProvider) and [`ComponentId`](dal::Component).
+    /// Returns an [`AttributeReadContext`] using a set [`ExternalProviderId`](dal::ExternalProvider) and
+    /// [`ComponentId`](Component).
     pub fn attribute_read_context_with_external_provider(
         &self,
         external_provider_id: ExternalProviderId,

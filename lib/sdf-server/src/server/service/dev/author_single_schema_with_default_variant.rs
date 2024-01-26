@@ -50,8 +50,7 @@ pub async fn author_single_schema_with_default_variant(
 struct AuthoringHelper;
 
 impl AuthoringHelper {
-    /// Create a [`Schema`](dal::Schema) with a default [`SchemaVariant`](dal::SchemaVariant)
-    /// that does not rely on "builtins".
+    /// Create a [`Schema`] with a default [`SchemaVariant`] that does not rely on "builtins".
     pub async fn author_single_schema_with_default_variant(
         ctx: &DalContext,
         schema_name: impl AsRef<str>,

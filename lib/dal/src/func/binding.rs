@@ -88,8 +88,7 @@ pub type FuncBindingResult<T> = Result<T, FuncBindingError>;
 pk!(FuncBindingPk);
 pk!(FuncBindingId);
 
-/// A [`FuncBinding`] binds an execution context (including arguments) to a [`Func`](crate::Func),
-/// so that it can be executed.
+/// A [`FuncBinding`] binds an execution context (including arguments) to a [`Func`] so that it can be executed.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FuncBinding {
     pk: FuncBindingPk,
@@ -174,9 +173,8 @@ impl FuncBinding {
 
     /// Runs [`Self::new()`] and executes.
     ///
-    /// Use this function if you would like to receive the
-    /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) for a given
-    /// [`FuncId`](crate::Func) and [`args`](serde_json::Value).
+    /// Use this function if you would like to receive the [`FuncBindingReturnValue`] for a given [`FuncId`](Func) and
+    /// [`args`](serde_json::Value).
     pub async fn create_and_execute(
         ctx: &DalContext,
         args: serde_json::Value,
@@ -228,8 +226,7 @@ impl FuncBinding {
             .await
     }
 
-    /// Perform function execution to veritech for a given [`Func`](crate::Func) and
-    /// [`FuncDispatchContext`](crate::func::backend::FuncDispatchContext).
+    /// Perform function execution to veritech for a given [`Func`] and [`FuncDispatchContext`].
     pub async fn execute_critical_section(
         &self,
         func: Func,

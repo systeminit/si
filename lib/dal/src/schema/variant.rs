@@ -1,5 +1,4 @@
-//! This module contains [`SchemaVariant`](crate::SchemaVariant), which is t/he "class" of a
-//! [`Component`](crate::Component).
+//! This module contains [`SchemaVariant`], which is t/he "class" of a [`Component`].
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -182,7 +181,7 @@ pub struct SchemaVariant {
     ui_hidden: bool,
     default_color: Option<String>,
     name: String,
-    /// The [`RootProp`](crate::RootProp) for [`self`](Self).
+    /// The [`RootProp`] for [`self`](Self).
     root_prop_id: Option<PropId>,
     schema_variant_definition_id: Option<SchemaVariantDefinitionId>,
     link: Option<String>,
@@ -202,7 +201,7 @@ impl_standard_model! {
 }
 
 impl SchemaVariant {
-    /// Create a [`SchemaVariant`](Self) with a [`RootProp`](crate::schema::RootProp).
+    /// Create a [`SchemaVariant`] with a [`RootProp`].
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
@@ -275,14 +274,12 @@ impl SchemaVariant {
 
     /// This _idempotent_ function "finalizes" a [`SchemaVariant`].
     ///
-    /// Once a [`SchemaVariant`] has had all of its [`Props`](crate::Prop) created, there are a few
-    /// things that need to happen before it is usable:
+    /// Once a [`SchemaVariant`] has had all of its [`Props`](Prop) created, there are a few things that need to happen
+    /// before it is usable:
     ///
-    /// * Create the default [`AttributePrototypes`](crate::AttributePrototype) and
-    ///   [`AttributeValues`](crate::AttributeValue).
-    /// * Create the _internally consuming_ [`InternalProviders`](crate::InternalProvider)
-    ///   corresponding to every [`Prop`](crate::Prop) in the [`SchemaVariant`] that is not a
-    ///   descendant of an Array or a Map.
+    /// * Create the default [`AttributePrototypes`](AttributePrototype) and [`AttributeValues`](AttributeValue)
+    /// * Create the _internally consuming_ [`InternalProviders`](InternalProvider) corresponding to every [`Prop`] in
+    ///   the [`SchemaVariant`] that is not a descendant of an Array or a Map
     ///
     /// This method **MUST** be called once all the [`Props`](Prop) have been created for the
     /// [`SchemaVariant`]. It can be called multiple times while [`Props`](Prop) are being created,
@@ -392,9 +389,8 @@ impl SchemaVariant {
         Ok(Prop::create_default_prototypes_and_values(ctx, *root_prop.id()).await?)
     }
 
-    /// Creates _internally consuming_ [`InternalProviders`](crate::InternalProvider) corresponding
-    /// to every [`Prop`](crate::Prop) in the [`SchemaVariant`] that is not a descendant of an array
-    /// or a map.
+    /// Creates _internally consuming_ [`InternalProviders`](InternalProvider) corresponding to every [`Prop`] in the
+    /// [`SchemaVariant`] that is not a descendant of an array or a map.
     async fn create_implicit_internal_providers(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -734,8 +730,7 @@ impl SchemaVariant {
         )
     }
 
-    /// This method finds a [`leaf`](crate::schema::variant::leaves)'s entry
-    /// [`Prop`](crate::Prop) given a [`LeafKind`](crate::schema::variant::leaves::LeafKind).
+    /// This method finds a [`leaf`](leaves)'s entry [`Prop`] given a [`LeafKind`].
     pub async fn find_leaf_item_prop(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -760,8 +755,8 @@ impl SchemaVariant {
         Ok(object_from_row(row)?)
     }
 
-    /// Find the implicit [`InternalProvider`](crate::InternalProvider) corresponding to a provided,
-    /// [`direct child`](crate::RootPropChild) of [`RootProp`](crate::RootProp).
+    /// Find the implicit [`InternalProvider`] corresponding to a provided, [`direct child`](RootPropChild) of  
+    /// [`RootProp`].
     pub async fn find_root_child_implicit_internal_provider(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -784,14 +779,12 @@ impl SchemaVariant {
         Ok(object_from_row(row)?)
     }
 
-    /// Call [`Self::find_root_prop`] with the [`SchemaVariantId`](SchemaVariant) off
-    /// [`self`](SchemaVariant).
+    /// Call [`Self::find_root_prop`] with the [`SchemaVariantId`](SchemaVariant) off [`self`](SchemaVariant).
     pub async fn root_prop(&self, ctx: &DalContext) -> SchemaVariantResult<Option<Prop>> {
         Self::find_root_prop(ctx, self.id).await
     }
 
-    /// Find the [`Prop`](crate::Prop) corresponding to "/root" for a given
-    /// [`SchemaVariantId`](SchemaVariant).
+    /// Find the [`Prop`] corresponding to "/root" for a given [`SchemaVariantId`](SchemaVariant).
     pub async fn find_root_prop(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -808,12 +801,10 @@ impl SchemaVariant {
         Ok(option_object_from_row(maybe_row)?)
     }
 
-    /// Find the [`SchemaVariant`] for a given [`PropId`](crate::Prop) that resides _anywhere_ in a
-    /// [`Prop`](crate::Prop) tree.
+    /// Find the [`SchemaVariant`] for a given [`PropId`](Prop) that resides _anywhere_ in a [`Prop`] tree.
     ///
-    /// For instance, if you have a [`PropId`](crate::Prop) corresponding to "/root/domain/poop"
-    /// and want to know what [`SchemaVariant`]'s [`Prop`](crate::Prop) tree it resides in, use this
-    /// method to find out.
+    /// For instance, if you have a [`PropId`](Prop) corresponding to "/root/domain/poop" and want to know what
+    /// [`SchemaVariant`]'s [`Prop`] tree it resides in, use this method to find out.
     pub async fn find_for_prop(
         ctx: &DalContext,
         prop_id: PropId,

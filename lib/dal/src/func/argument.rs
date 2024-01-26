@@ -175,7 +175,7 @@ impl FuncArgument {
     );
     standard_model_accessor!(shape, OptionJson<JsonValue>, FuncArgumentResult);
 
-    /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId).
+    /// List all [`FuncArgument`] for the provided [`FuncId`].
     pub async fn list_for_func(ctx: &DalContext, func_id: FuncId) -> FuncArgumentResult<Vec<Self>> {
         let rows = ctx
             .txns()
@@ -187,9 +187,8 @@ impl FuncArgument {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId) along with the
-    /// [`AttributePrototypeArgument`](crate::AttributePrototypeArgument) that corresponds to it
-    /// *if* one exists.
+    /// List all [`FuncArgument`] for the provided [`FuncId`] along with the [`AttributePrototypeArgument`] that
+    /// corresponds to it *if* one exists.
     pub async fn list_for_func_with_prototype_arguments(
         ctx: &DalContext,
         func_id: FuncId,
@@ -253,8 +252,8 @@ impl FuncArgument {
         )
     }
 
-    /// Remove the [`FuncArgument`](Self) along with any [`AttributePrototypeArgument`](crate::AttributePrototypeArgument) rows that reference it.
-    /// This should be used instead of the [`delete_by_id`](Self::delete_by_id) method since it keeps the two tables in sync.
+    /// Remove the [`FuncArgument`] along with any [`AttributePrototypeArgument`] rows that reference it. This should be
+    /// used instead of the [`delete_by_id`](Self::delete_by_id) method since it keeps the two tables in sync.
     pub async fn remove(
         ctx: &DalContext,
         func_argument_id: &FuncArgumentId,

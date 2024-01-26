@@ -15,8 +15,7 @@ use crate::{
 pk!(FixBatchPk);
 pk!(FixBatchId);
 
-/// A batch of [`Fixs`](crate::Fix). Every [`Fix`](crate::Fix)
-/// must belong at one and only one [`batch`](Self).
+/// A batch of [`Fixes`](Fix). Every [`Fix`] must belong at one and only one [`batch`](Self).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FixBatch {
     pk: FixBatchPk,

@@ -7,8 +7,8 @@ use crate::component::view::ComponentViewResult;
 use crate::component::ComponentViewError;
 use crate::ComponentView;
 
-/// This struct provides the ability to drop fields from a [`ComponentView`](crate::ComponentView)
-/// properties tree and then re-render the view using [`Self::to_value()`].
+/// This struct provides the ability to drop fields from a [`ComponentView`] properties tree and then re-render the view
+/// using [`Self::to_value()`].
 ///
 /// - It is not recommended to use [`self`] "as-is" in assertions.
 /// - It is recommended to use [`Self::to_value()`] in assertions.

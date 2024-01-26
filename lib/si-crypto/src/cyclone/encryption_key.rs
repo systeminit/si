@@ -116,7 +116,7 @@ impl CycloneEncryptionKey {
         general_purpose::STANDARD_NO_PAD.encode(crypted)
     }
 
-    /// Returns a [`Hash`] of this key.
+    /// Returns a [`struct@Hash`] of this key.
     pub fn key_hash(&self) -> &Hash {
         &self.key_hash
     }
