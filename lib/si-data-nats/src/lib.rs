@@ -87,12 +87,8 @@ impl Default for NatsConfig {
 // "transaction span" might be an ancestor span unless we're really careful.
 macro_rules! current_span_for_debug {
     () => {
-        if span_enabled!(target: "si_data_nats", Level::DEBUG) {
-            Span::current()
-        } else {
-            Span::none()
-        }
-    }
+        Span::none()
+    };
 }
 
 pub type NatsClient = Client;
