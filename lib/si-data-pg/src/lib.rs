@@ -450,17 +450,13 @@ impl PgPool {
     }
 }
 
-// Ensure that we only grab the current span if we're at debug level or lower, otherwise use none.
+// Returns [`Span`] used when opening a transaction.
 //
-// When recording a parent span for long running tasks such as a transaction we want the direct
-// span parent. However, `Span::current()` returns a suitable parent span, according to the tracing
-// `Subscriber`, meaning that instead of capturing the transaction starting span, we might capture
-// a calling function up the stack that is at the info level or higher. In other words, then
-// "transaction span" might be an ancestor span unless we're really careful.
-macro_rules! current_span_for_debug {
-    () => {
-        Span::none()
-    };
+// Note: if the current transaction span is disabled, then a disabled span will be returned.
+#[inline]
+fn tx_span() -> Span {
+    let current = Span::current();
+    current.is_disabled().then(Span::none).unwrap_or(current)
 }
 
 /// An instrumented wrapper for `deadpool::managed::Object<deadpool_postgres::Manager>`
@@ -544,7 +540,7 @@ impl InstrumentedClient {
         Ok(InstrumentedTransaction::new(
             self.inner.transaction().await?,
             self.metadata.clone(),
-            current_span_for_debug!(),
+            tx_span(),
         ))
     }
 
@@ -1915,7 +1911,7 @@ impl<'a> InstrumentedTransaction<'a> {
                 .instrument(self.tx_span.clone())
                 .await?,
             self.metadata.clone(),
-            current_span_for_debug!(),
+            tx_span(),
         ))
     }
 
@@ -1946,7 +1942,7 @@ impl<'a> InstrumentedTransaction<'a> {
                 .instrument(self.tx_span.clone())
                 .await?,
             self.metadata.clone(),
-            current_span_for_debug!(),
+            tx_span(),
         ))
     }
 
@@ -2092,7 +2088,7 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
         Ok(InstrumentedTransaction::new(
             self.inner.start().await?,
             self.metadata,
-            current_span_for_debug!(),
+            tx_span(),
         ))
     }
 }
