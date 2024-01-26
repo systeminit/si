@@ -1059,11 +1059,6 @@ impl AttributeValue {
     /// Re-evaluates the current `AttributeValue`'s `AttributePrototype` to update the
     /// `FuncBinding`, and `FuncBindingReturnValue`, reflecting the current inputs to
     /// the function.
-    ///
-    /// If the `AttributeValue` represents the `InternalProvider` for a `Prop` that
-    /// does not have a parent `Prop` (this is typically the `InternalProvider` for
-    /// the "root" `Prop` of a `SchemaVariant`), then it will also enqueue a
-    /// `CodeGeneration` job for the `Component`.
     #[instrument(
         name = "attribute_value.update_from_prototype_function",
         skip_all,
