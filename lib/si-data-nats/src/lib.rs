@@ -78,13 +78,17 @@ impl Default for NatsConfig {
     }
 }
 
-// Returns [`Span`] used when opening a subscription.
+// Ensure that we only grab the current span if we're at debug level or lower, otherwise use none.
 //
-// Note: if the current subscription span is disabled, then a disabled span will be returned.
-#[inline]
-fn sub_span() -> Span {
-    let current = Span::current();
-    current.is_disabled().then(Span::none).unwrap_or(current)
+// When recording a parent span for long running tasks such as a transaction we want the direct
+// span parent. However, `Span::current()` returns a suitable parent span, according to the tracing
+// `Subscriber`, meaning that instead of capturing the transaction starting span, we might capture
+// a calling function up the stack that is at the info level or higher. In other words, then
+// "transaction span" might be an ancestor span unless we're really careful.
+macro_rules! current_span_for_debug {
+    () => {
+        Span::none()
+    };
 }
 
 pub type NatsClient = Client;
@@ -685,7 +689,7 @@ impl Client {
             sub,
             &subject,
             self.metadata.clone(),
-            sub_span(),
+            current_span_for_debug!(),
         ))
     }
 
@@ -758,7 +762,7 @@ impl Client {
             sub,
             &subject,
             self.metadata.clone(),
-            sub_span(),
+            current_span_for_debug!(),
         ))
     }
 
@@ -851,7 +855,11 @@ impl Client {
         )
     )]
     pub fn transaction(&self) -> NatsTxn {
-        NatsTxn::new(self.clone(), self.metadata.clone(), sub_span())
+        NatsTxn::new(
+            self.clone(),
+            self.metadata.clone(),
+            current_span_for_debug!(),
+        )
     }
 
     /// Establish a `Connection` with a NATS server.
