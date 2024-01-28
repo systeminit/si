@@ -94,6 +94,7 @@
         gh
         skopeo
         openssh
+        minio-client
       ];
 
       buck2Derivation = {
