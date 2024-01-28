@@ -87,6 +87,16 @@ export const useWorkspacesStore = defineStore("workspaces", {
       });
     },
 
+    async DELETE_WORKSPACE(workspaceId: WorkspaceId) {
+      return new ApiRequest({
+        method: "delete",
+        url: `/workspaces/${workspaceId}`,
+        onSuccess: (response) => {
+          // TODO
+        },
+      });
+    },
+
     async EDIT_WORKSPACE(workspace: Partial<Workspace>) {
       return new ApiRequest<Workspace[]>({
         method: "patch",

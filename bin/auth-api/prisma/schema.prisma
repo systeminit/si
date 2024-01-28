@@ -69,6 +69,9 @@ model Workspace {
   // The list of users that have access to this workspace
   UserMemberships WorkspaceMembers[]
 
+  // The time in which the workspace was deleted
+  deletedAt DateTime? @map("deleted_at")
+
   @@index(fields: [creatorUserId])
   @@map("workspaces")
 }

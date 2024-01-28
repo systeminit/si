@@ -55,6 +55,11 @@ export async function createWorkspace(creatorUser: User, instanceUrl = 'http://l
   return newWorkspace;
 }
 
+export async function deleteWorkspace(id: WorkspaceId) {
+  const deletedAt = new Date();
+  await prisma.workspace.update({ where: { id }, data: { deletedAt } });
+}
+
 export async function patchWorkspace(id: WorkspaceId, instanceUrl: string, displayName: string) {
   return await prisma.workspace.update({ where: { id }, data: { instanceUrl, displayName } });
 }
@@ -62,6 +67,7 @@ export async function patchWorkspace(id: WorkspaceId, instanceUrl: string, displ
 export async function getUserWorkspaces(userId: UserId) {
   const workspaces = await prisma.workspace.findMany({
     where: {
+      deletedAt: null,
       UserMemberships: {
         some: {
           userId,
