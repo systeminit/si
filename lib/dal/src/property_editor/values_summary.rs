@@ -106,11 +106,20 @@ impl PropertyEditorValuesSummary {
                 .position(|attribute_value_id| attribute_value_id == avp.attribute_value.id())
                 .unwrap_or(0)
         });
+        let attribute_value_controlling_func_info =
+            AttributeValue::get_controlling_func_id(ctx, component_id).await?;
 
         let overrides = AttributeValue::list_attributes_with_overridden(ctx, component_id).await?;
 
         for work in work_queue {
             let work_attribute_value_id = *work.attribute_value.id();
+            let (
+                work_controlling_func_id,
+                work_controlling_attribute_value_id,
+                work_controlling_func_name,
+            ) = attribute_value_controlling_func_info
+                .get(&work_attribute_value_id)
+                .ok_or(AttributeValueError::MissingForId(work_attribute_value_id))?;
 
             let sockets = Component::list_input_sockets_for_attribute_value(
                 ctx,
@@ -123,11 +132,8 @@ impl PropertyEditorValuesSummary {
 
             let is_from_external_source = sockets.iter().any(|(_socket, has_edge)| *has_edge);
 
-            let (controlling_func_id, controlling_attribute_value_id, controlling_func_name) =
-                AttributeValue::get_controlling_func_id(ctx, work_attribute_value_id).await?;
-
-            let is_controlled_by_intrinsic_func = controlling_func_name.starts_with("si:set")
-                || controlling_func_name.starts_with("si:unset");
+            let is_controlled_by_intrinsic_func = work_controlling_func_name.starts_with("si:set")
+                || work_controlling_func_name.starts_with("si:unset");
 
             let overridden = overrides
                 .get(&work_attribute_value_id)
@@ -147,8 +153,8 @@ impl PropertyEditorValuesSummary {
                     is_from_external_source,
                     can_be_set_by_socket,
                     is_controlled_by_intrinsic_func,
-                    controlling_func_id,
-                    controlling_attribute_value_id,
+                    controlling_func_id: *work_controlling_func_id,
+                    controlling_attribute_value_id: *work_controlling_attribute_value_id,
                     overridden,
                 },
             );
