@@ -714,6 +714,87 @@ impl AttributeValue {
         Ok(result)
     }
 
+    // Eventually, this should be usable for *ALL* Component AttributeValues, but
+    // there isn't much point in supporting not-Prop AttributeValues until there
+    // is a way to assign functions other than the identity function to them.
+    pub async fn use_default_prototype(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        // =================================== DEBUG =========================
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT avbtap.object_id AS av, avbtap.belongs_to_id AS ap FROM attribute_value_belongs_to_attribute_prototype_v1($1, $2) as avbtap WHERE avbtap.object_id = $3",
+                &[ctx.tenancy(), ctx.visibility(), &attribute_value_id]
+            )
+            .await?;
+        let before: Vec<(AttributeValueId, AttributePrototypeId)> = rows
+            .iter()
+            .map(|r| {
+                let av: AttributeValueId = r.get("av");
+                let ap: AttributePrototypeId = r.get("ap");
+                (av, ap)
+            })
+            .collect();
+        dbg!(before);
+        // =================================== DEBUG =========================
+
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                "SELECT attribute_value_use_default_prototype_v1($1, $2, $3) AS changed",
+                &[ctx.tenancy(), ctx.visibility(), &attribute_value_id],
+            )
+            .await?;
+
+        // =================================== DEBUG =========================
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT avbtap.object_id AS av, avbtap.belongs_to_id AS ap FROM attribute_value_belongs_to_attribute_prototype_v1($1, $2) as avbtap WHERE avbtap.object_id = $3",
+                &[ctx.tenancy(), ctx.visibility(), &attribute_value_id]
+            )
+            .await?;
+        let after: Vec<(AttributeValueId, AttributePrototypeId)> = rows
+            .iter()
+            .map(|r| {
+                let av: AttributeValueId = r.get("av");
+                let ap: AttributePrototypeId = r.get("ap");
+                (av, ap)
+            })
+            .collect();
+        dbg!(after);
+        // =================================== DEBUG =========================
+
+        if row.get("changed") {
+            println!("Prototype changed");
+            // Update from prototype & trigger dependent values update
+            let mut av = AttributeValue::get_by_id(ctx, &attribute_value_id)
+                .await?
+                .ok_or_else(|| {
+                    AttributeValueError::NotFound(attribute_value_id, *ctx.visibility())
+                })?;
+            let _ = dbg!(av.get_value(ctx).await);
+            av.update_from_prototype_function(ctx).await?;
+            let _ = dbg!(av.get_value(ctx).await);
+            ctx.enqueue_job(DependentValuesUpdate::new(
+                ctx.access_builder(),
+                *ctx.visibility(),
+                vec![attribute_value_id],
+            ))
+            .await?;
+        }
+
+        Ok(())
+    }
+
     /// Update the [`AttributeValue`] for a specific [`AttributeContext`] to the given value. If the
     /// given [`AttributeValue`] is for a different [`AttributeContext`] than the one provided, a
     /// new [`AttributeValue`] will be created for the given [`AttributeContext`].
@@ -1294,75 +1375,61 @@ impl AttributeValue {
     /// This function id may be for a function on a parent of the attribute value
     pub async fn get_controlling_func_id(
         ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<(FuncId, AttributeValueId, String)> {
+        component_id: ComponentId,
+    ) -> AttributeValueResult<HashMap<AttributeValueId, (FuncId, AttributeValueId, String)>> {
         let rows = ctx
             .txns()
             .await?
             .pg()
             .query(
                 FIND_CONTROLLING_FUNCS,
-                &[ctx.tenancy(), ctx.visibility(), &attribute_value_id],
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
 
         #[derive(Clone, Debug, Deserialize)]
         struct FuncInfo {
-            depth: i32,
             func_id: FuncId,
-            name: String,
+            func_name: String,
             attribute_value_id: AttributeValueId,
+            parent_av_ids: Vec<AttributeValueId>,
         }
-        let mut base_func_info = None;
-        let mut ancestor_func_info = None;
 
         let func_infos: Vec<FuncInfo> = standard_model::objects_from_rows(rows)?;
+        let func_info_by_attribute_value_id: HashMap<AttributeValueId, FuncInfo> = func_infos
+            .iter()
+            .map(|info| (info.attribute_value_id, info.clone()))
+            .collect();
+        let mut result = HashMap::new();
 
-        dbg!(&func_infos);
-
-        for func_info in func_infos {
-            if func_info.depth == 1 {
-                base_func_info = Some(func_info.clone());
-            } else {
-                let mut better_ancestor = false;
-
-                if !func_info.name.starts_with("si:set") && !func_info.name.starts_with("si:unset")
+        for (attribute_value_id, func_info) in &func_info_by_attribute_value_id {
+            let mut ancestor_func_info = func_info.clone();
+            // The parent AV IDs are populated root -> leaf, but we're most interested
+            // in walking them leaf -> root.
+            let mut parent_av_ids = func_info.parent_av_ids.clone();
+            parent_av_ids.reverse();
+            for ancestor_av_id in parent_av_ids {
+                if let Some(parent_func_info) = func_info_by_attribute_value_id.get(&ancestor_av_id)
                 {
-                    if ancestor_func_info.is_none() {
-                        ancestor_func_info = Some(func_info.clone());
-                    } else if let Some(ancestor_info) = &ancestor_func_info {
-                        if func_info.depth < ancestor_info.depth {
-                            better_ancestor = true;
-                        }
+                    if !parent_func_info.func_name.starts_with("si:set")
+                        && !parent_func_info.func_name.starts_with("si:unset")
+                    {
+                        ancestor_func_info = parent_func_info.clone();
+                        break;
                     }
                 }
-
-                if better_ancestor {
-                    ancestor_func_info = Some(func_info.clone());
-                }
             }
+            result.insert(
+                *attribute_value_id,
+                (
+                    ancestor_func_info.func_id,
+                    ancestor_func_info.attribute_value_id,
+                    ancestor_func_info.func_name,
+                ),
+            );
         }
 
-        dbg!(&ancestor_func_info, &base_func_info);
-
-        if let Some(ancestor_info) = ancestor_func_info {
-            Ok((
-                ancestor_info.func_id,
-                ancestor_info.attribute_value_id,
-                ancestor_info.name,
-            ))
-        } else if let Some(base_info) = base_func_info {
-            Ok((
-                base_info.func_id,
-                base_info.attribute_value_id,
-                base_info.name,
-            ))
-        } else {
-            dbg!(attribute_value_id, ctx.visibility(), ctx.tenancy());
-            Err(AttributeValueError::MissingFuncInformation(
-                attribute_value_id,
-            ))
-        }
+        Ok(result)
     }
 
     /// Get all attribute value ids with a boolean for each telling whether it is using a different prototype from the schema variant

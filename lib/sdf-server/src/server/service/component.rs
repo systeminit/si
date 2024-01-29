@@ -39,6 +39,7 @@ pub mod list_qualifications;
 pub mod migrate_to_default_variant;
 pub mod refresh;
 pub mod resource_domain_diff;
+pub mod restore_default_function;
 pub mod set_type;
 pub mod update_property_editor_value;
 
@@ -190,6 +191,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/delete_property_editor_value",
             post(delete_property_editor_value::delete_property_editor_value),
+        )
+        .route(
+            "/restore_default_function",
+            post(restore_default_function::restore_default_function),
         )
         .route("/set_type", post(set_type::set_type))
         .route("/refresh", post(refresh::refresh))
