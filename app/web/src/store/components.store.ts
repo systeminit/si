@@ -611,6 +611,29 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...visibilityParams,
               },
               onSuccess: (response) => {
+                // This is us calculating the childNodeIds
+                for (let x = 0; x < response.components.length; x++) {
+                  const c = response.components[x];
+                  if (c?.parentNodeId) {
+                    for (let y = 0; y < response.components.length; y++) {
+                      if (response.components[y]?.nodeId === c.parentNodeId) {
+                        if (
+                          response.components[y]?.childNodeIds.indexOf(
+                            c.nodeId,
+                          ) === -1
+                        ) {
+                          response.components[y]?.childNodeIds.push(c.nodeId);
+                        } else {
+                          if (_.isEmpty(response.components[y]?.childNodeIds)) {
+                            // @ts-ignore - we know this exists, we just checked
+                            response.components[y].childNodeIds = [c.nodeId];
+                          }
+                        }
+                        break;
+                      }
+                    }
+                  }
+                }
                 this.rawComponentsById = _.keyBy(response.components, "id");
                 this.edgesById = _.keyBy(response.edges, "id");
 
