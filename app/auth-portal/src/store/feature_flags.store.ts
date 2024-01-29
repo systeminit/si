@@ -19,6 +19,7 @@ export const useFeatureFlagsStore = () => {
           this.CREATE_WORKSPACES = flags.includes("create_workspaces");
           this.INVITE_USER = flags.includes("invite_user");
           // If you can create workspaces, editing workspaces will also be enabled.
+          this.DELETE_WORKSPACE = flags.includes("delete_workspace");
           this.EDIT_WORKSPACES =
             flags.includes("edit_workspaces") || this.CREATE_WORKSPACES;
         });
