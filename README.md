@@ -14,8 +14,8 @@ To learn more, read our ["Second Wave DevOps" blog post](https://www.systeminit.
 
 ## Quickstart
 
-If you would like to get System Initiative (SI) up and running, navigate to the installation page on [our website](https://systeminit.com) to get started.
-If you would like to develop locally, follow the [Local Development Setup](#local-development-setup) instructions below.
+Follow the [Local Development Setup](#local-development-setup) instructions below.
+We are working on and investigating more way(s) to try out System Initiative in the future.
 
 ## Local Development Setup
 
@@ -73,15 +73,7 @@ the repository and `nix` will bootstrap the environment for you using the flake.
 
 _Please note: you may notice a large download of dependencies when entering the repository for the first time._
 
-### (4) Configure Providers
-
-Configuring providers is optional for using the System Initiative software, but may be required depending on the types of assets used.
-
-If you are using AWS assets, authentication with the `aws` CLI is required to deploy and manage your infrastructure.
-
-```bash
-aws configure
-```
+### (4) (Optional) Configure Docker
 
 Docker Hub authentication is not strictly needed if you only access public docker images, but to avoid being rate-limited when qualifying images, we recommend authenticating with the `docker` CLI.
 
