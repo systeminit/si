@@ -1,14 +1,17 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
+use std::collections::{HashMap, VecDeque};
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
+use thiserror::Error;
+
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use std::collections::{HashMap, VecDeque};
-use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
-use thiserror::Error;
+pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
 
 use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
@@ -44,8 +47,6 @@ pub mod qualification;
 pub mod resource;
 pub mod status;
 pub mod view;
-
-pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -985,6 +986,18 @@ impl Component {
             ids,
         ))
         .await?;
+
+        diagram::summary_diagram::component_update(
+            ctx,
+            &component_id,
+            component.name(ctx).await?,
+            component.color(ctx).await?.unwrap_or_default(),
+            component.get_type(ctx).await?,
+            component.resource(ctx).await?.payload.is_some(),
+            None,
+        )
+        .await
+        .map_err(|e| ComponentError::SummaryDiagram(e.to_string()))?;
 
         Ok(Component::get_by_id(ctx, &component_id).await?)
     }
