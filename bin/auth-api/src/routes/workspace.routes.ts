@@ -10,6 +10,7 @@ import {
   getWorkspaceMembers,
   inviteMember,
   patchWorkspace,
+  deleteWorkspace,
   removeUser,
   userRoleForWorkspace,
 } from "../services/workspaces.service";
@@ -55,6 +56,18 @@ async function handleWorkspaceIdParam(ctx: CustomRouteContext) {
 router.get("/workspaces/:workspaceId", async (ctx) => {
   const workspace = await handleWorkspaceIdParam(ctx);
   ctx.body = workspace;
+});
+
+router.delete("/workspaces/:workspaceId", async (ctx) => {
+  if (!ctx.state.authUser) {
+    throw new ApiError('Unauthorized', "You are not logged in");
+  }
+
+  const workspace = await handleWorkspaceIdParam(ctx);
+
+  await deleteWorkspace(workspace.id);
+
+  ctx.body = "";
 });
 
 router.post("/workspaces/new", async (ctx) => {

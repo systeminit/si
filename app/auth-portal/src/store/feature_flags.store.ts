@@ -11,6 +11,7 @@ export const useFeatureFlagsStore = () => {
         CREATE_WORKSPACES: false,
         EDIT_WORKSPACES: false,
         INVITE_USER: false,
+        DELETE_WORKSPACE: false,
       }),
       onActivated() {
         posthog.onFeatureFlags((flags) => {
