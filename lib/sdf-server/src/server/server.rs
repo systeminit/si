@@ -216,6 +216,14 @@ impl Server<(), ()> {
             .map_err(Into::into)
     }
 
+    #[instrument(name = "sdf.init.generate_symmetric_key", skip_all)]
+    pub async fn generate_symmetric_key(symmetric_key_path: impl AsRef<Path>) -> Result<()> {
+        SymmetricCryptoService::generate_key()
+            .save(symmetric_key_path.as_ref())
+            .await
+            .map_err(Into::into)
+    }
+
     #[instrument(name = "sdf.init.load_jwt_public_signing_key", skip_all)]
     pub async fn load_jwt_public_signing_key(config: JwtConfig) -> Result<JwtPublicSigningKey> {
         Ok(JwtPublicSigningKey::from_config(config).await?)
