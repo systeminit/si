@@ -162,7 +162,7 @@ impl JobConsumer for FixesJob {
                     task_ctx,
                     self.batch_id,
                     fix_item,
-                    Span::current(),
+                    Span::current().or_current(),
                 ))
                 .await;
                 (id, res)

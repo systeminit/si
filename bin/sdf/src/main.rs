@@ -9,7 +9,7 @@ use sdf_server::{
 };
 use telemetry_application::{
     prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
-    TelemetryClient, TelemetryConfig,
+    ApplicationTelemetryClientV2, TelemetryClient, TelemetryConfig, start_tracing_level_signal_handler_task_v2,
 };
 
 mod args;
@@ -39,21 +39,26 @@ async fn async_main() -> Result<()> {
         .log_env_var_prefix("SI")
         .app_modules(vec!["sdf", "sdf_server"])
         .build()?;
-    let telemetry = telemetry_application::init(config)?;
+    // let telemetry = telemetry_application::init(config)?;
+    let telemetry = telemetry_application::init_v3(config)?;
+    // telemetry_application::init_v2(config)?;
     let args = args::parse();
 
     run(args, telemetry).await
+    // run(args).await
 }
 
-async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Result<()> {
+// async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Result<()> {
+async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClientV2) -> Result<()> {
+// async fn run(args: args::Args) -> Result<()> {
     if args.verbose > 0 {
         telemetry.set_verbosity(args.verbose.into()).await?;
     }
     debug!(arguments =?args, "parsed cli arguments");
 
-    if args.disable_opentelemetry {
-        telemetry.disable_opentelemetry().await?;
-    }
+    // if args.disable_opentelemetry {
+    //     telemetry.disable_opentelemetry().await?;
+    // }
 
     Server::init()?;
 
@@ -115,7 +120,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         trace!("migration mode is skip, not running migrations");
     }
 
-    start_tracing_level_signal_handler_task(&telemetry)?;
+    start_tracing_level_signal_handler_task_v2(&telemetry)?;
 
     let posthog_client = Server::start_posthog(config.posthog()).await?;
 

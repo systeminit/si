@@ -262,6 +262,14 @@ impl HttpMakeSpan {
         // associate it with this request span
         span.set_parent(extract_opentelemetry_context(request.headers()));
 
+        if uri.path() != "/api/" {
+            use telemetry::opentelemetry::trace::TraceContextExt;
+            let ctx = dbg!(span.context());
+            let span_ref = dbg!(ctx.span());
+            let span_ctx = dbg!(span_ref.span_context());
+            dbg!(dbg!(span_ctx.is_valid()).then(|| span_ctx.trace_id()));
+        }
+
         span
     }
 }

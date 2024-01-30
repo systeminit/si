@@ -114,7 +114,7 @@ impl NatsMakeSpan {
             "otel.name",
             format!("{} {}", sub_subject, MessagingOperation::Receive.as_str()),
         );
-        if let Some(headers) = message.headers() {
+        if let Some(headers) = dbg!(message.headers()) {
             if let Some(message_id) = headers.get(header::NATS_MESSAGE_ID) {
                 span.record("messaging.message.id", message_id.as_str());
             }

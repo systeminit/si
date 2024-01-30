@@ -1,7 +1,10 @@
 use async_trait::async_trait;
 use futures::StreamExt;
-use si_data_nats::{NatsClient, Subject};
-use telemetry::prelude::*;
+use si_data_nats::{HeaderMap, NatsClient, Subject};
+use telemetry::{opentelemetry::trace::FutureExt, prelude::*};
+use telemetry_nats::{
+    find_current_context, find_trace_id, inject_empty_headers, inject_opentelemetry_context,
+};
 use tokio::task::JoinSet;
 
 use crate::job::{
@@ -34,14 +37,25 @@ impl NatsProcessor {
         }
     }
 
+    #[instrument(
+        name = "nats_processor.push_all_jobs",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
     async fn push_all_jobs(&self, queue: JobQueue) -> JobQueueProcessorResult<()> {
+        let mut headers = HeaderMap::new();
+        inject_opentelemetry_context(&dbg!(find_current_context()), &mut headers);
+        dbg!(find_trace_id(&find_current_context()));
+
         while let Some(element) = queue.fetch_job().await {
             let job_info = JobInfo::new(element)?;
 
             if let Err(err) = self
                 .client
-                .publish(
+                .publish_with_headers(
                     self.pinga_subject.clone(),
+                    headers.clone(),
                     serde_json::to_vec(&job_info)?.into(),
                 )
                 .await
@@ -62,6 +76,9 @@ impl JobQueueProcessor for NatsProcessor {
 
         job_info.blocking = true;
 
+        let mut headers = HeaderMap::new();
+        inject_opentelemetry_context(&dbg!(find_current_context()), &mut headers);
+
         let job_reply_inbox = Subject::from(self.client.new_inbox());
         let mut reply_subscriber = self
             .client
@@ -69,9 +86,10 @@ impl JobQueueProcessor for NatsProcessor {
             .await
             .map_err(|e| BlockingJobError::Nats(e.to_string()))?;
         self.client
-            .publish_with_reply(
+            .publish_with_reply_and_headers(
                 self.pinga_subject.clone(),
                 job_reply_inbox,
+                headers,
                 serde_json::to_vec(&job_info)
                     .map_err(|e| BlockingJobError::Serde(e.to_string()))?
                     .into(),
@@ -92,12 +110,27 @@ impl JobQueueProcessor for NatsProcessor {
         &self,
         jobs: Vec<Box<dyn JobProducer + Send + Sync>>,
     ) -> BlockingJobResult {
+        use telemetry::opentelemetry::trace::FutureExt;
+        use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+        let parent_span = Span::current().or_current();
+        let otel_ctx = parent_span.context();
+
         let mut dispatched_jobs = JoinSet::new();
 
         // Fan out, dispatching all queued jobs to pinga over nats.
         for job in jobs {
             let job_processor = Self::new(self.client.clone());
-            dispatched_jobs.spawn(async move { job_processor.block_on_job(job).await });
+            let otel_ctx = otel_ctx.clone();
+            let parent_span = parent_span.clone();
+
+            dispatched_jobs.spawn(async move {
+                job_processor
+                    .block_on_job(job)
+                    .with_context(otel_ctx)
+                    .instrument(info_span!(parent: parent_span, "job_processor.block_on_job"))
+                    .await
+            });
         }
 
         let mut results = Vec::new();
@@ -129,19 +162,38 @@ impl JobQueueProcessor for NatsProcessor {
         }
     }
 
+    #[instrument(
+        name = "nats_processor.process_queue",
+        level = "info",
+        skip_all,
+        fields(
+            queue.size = Empty,
+        )
+    )]
     async fn process_queue(&self, queue: JobQueue) -> JobQueueProcessorResult<()> {
-        let processor = self.clone();
-        tokio::spawn(async move {
-            if let Err(err) = processor.push_all_jobs(queue).await {
-                error!("Unable to push jobs to nats: {err}");
-            }
-        });
+        let span = Span::current();
+        span.record("queue.size", queue.size().await);
+
+        self.push_all_jobs(queue).await?;
 
         Ok(())
     }
 
+    #[instrument(
+        name = "nats_processor.blocking_process_queue",
+        level = "info",
+        skip_all,
+        fields(
+            queue.size = Empty,
+        )
+    )]
     async fn blocking_process_queue(&self, queue: JobQueue) -> JobQueueProcessorResult<()> {
-        self.block_on_jobs(queue.drain().await).await?;
+        let span = Span::current();
+        span.record("queue.size", queue.size().await);
+
+        self.block_on_jobs(queue.drain().await)
+            .instrument(info_span!("nats_processor.block_on_jobs"))
+            .await?;
 
         Ok(())
     }

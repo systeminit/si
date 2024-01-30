@@ -19,11 +19,14 @@ use async_trait::async_trait;
 use thiserror::Error;
 use tokio::sync::mpsc;
 
-pub use opentelemetry::{self, trace::SpanKind};
+pub use opentelemetry::{
+    self,
+    trace::{SpanKind, WithContext},
+};
 pub use tracing;
 
 pub mod prelude {
-    pub use super::{MessagingOperation, SpanExt, SpanKind, SpanKindExt};
+    pub use super::{MessagingOperation, SpanExt, SpanKind, SpanKindExt, WithContext};
     pub use tracing::{
         self, debug, debug_span, enabled, error, event, event_enabled, field::Empty, info,
         info_span, instrument, span, span_enabled, trace, trace_span, warn, Instrument, Level,
@@ -178,6 +181,89 @@ pub trait TelemetryClient: Clone + Send + Sync + 'static {
 /// A telemetry type that can report its tracing level.
 pub trait TelemetryLevel: Send + Sync {
     fn is_debug_or_lower(&self) -> bool;
+}
+
+/// A telemetry client which holds handles to a process' tracing and OpenTelemetry setup.
+#[derive(Clone, Debug)]
+pub struct ApplicationTelemetryClientV2 {
+    app_modules: Vec<&'static str>,
+    tracing_level: TracingLevel,
+    tracing_level_tx: mpsc::Sender<TracingLevel>,
+}
+
+impl ApplicationTelemetryClientV2 {
+    pub fn new(
+        app_modules: Vec<&'static str>,
+        tracing_level: TracingLevel,
+        tracing_level_tx: mpsc::Sender<TracingLevel>,
+    ) -> Self {
+        Self {
+            app_modules,
+            tracing_level,
+            tracing_level_tx,
+        }
+    }
+}
+
+#[async_trait]
+impl TelemetryClient for ApplicationTelemetryClientV2 {
+    async fn set_verbosity(&mut self, updated: Verbosity) -> Result<(), ClientError> {
+        match self.tracing_level {
+            TracingLevel::Verbosity {
+                ref mut verbosity, ..
+            } => {
+                *verbosity = updated;
+            }
+            TracingLevel::Custom(_) => {
+                self.tracing_level = TracingLevel::new(updated, Some(self.app_modules.as_slice()));
+            }
+        }
+
+        self.tracing_level_tx
+            .send(self.tracing_level.clone())
+            .await?;
+        Ok(())
+    }
+
+    async fn increase_verbosity(&mut self) -> Result<(), ClientError> {
+        match self.tracing_level {
+            TracingLevel::Verbosity { verbosity, .. } => {
+                let updated = verbosity.increase();
+                self.set_verbosity(updated).await
+            }
+            TracingLevel::Custom(_) => Err(ClientError::CustomHasNoVerbosity),
+        }
+    }
+
+    async fn decrease_verbosity(&mut self) -> Result<(), ClientError> {
+        match self.tracing_level {
+            TracingLevel::Verbosity { verbosity, .. } => {
+                let updated = verbosity.decrease();
+                self.set_verbosity(updated).await
+            }
+            TracingLevel::Custom(_) => Err(ClientError::CustomHasNoVerbosity),
+        }
+    }
+
+    async fn set_custom_tracing(
+        &mut self,
+        directives: impl Into<String> + Send + 'async_trait,
+    ) -> Result<(), ClientError> {
+        let updated = TracingLevel::custom(directives);
+        self.tracing_level = updated;
+        self.tracing_level_tx
+            .send(self.tracing_level.clone())
+            .await?;
+        Ok(())
+    }
+
+    async fn enable_opentelemetry(&mut self) -> Result<(), ClientError> {
+        todo!("whoops!")
+    }
+
+    async fn disable_opentelemetry(&mut self) -> Result<(), ClientError> {
+        todo!("whoops!")
+    }
 }
 
 /// A telemetry client which holds handles to a process' tracing and OpenTelemetry setup.

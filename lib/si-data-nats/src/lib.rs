@@ -264,6 +264,8 @@ impl Client {
     ) -> Result<()> {
         let span = Span::current();
 
+        dbg!(&headers);
+
         let subject = subject.to_subject();
         span.record("messaging.destination.name", subject.as_str());
         span.record("messaging.message.body.size", payload.len());

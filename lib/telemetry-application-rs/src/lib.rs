@@ -15,7 +15,7 @@ use opentelemetry_sdk::{
     propagation::TraceContextPropagator,
     resource::{EnvResourceDetector, OsResourceDetector, ProcessResourceDetector},
     runtime,
-    trace::{self, Tracer},
+    trace::{self, Sampler, Tracer},
     Resource,
 };
 use opentelemetry_semantic_conventions::resource;
@@ -33,7 +33,7 @@ use tracing_subscriber::{
 };
 
 pub use telemetry::{prelude, tracing};
-pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
+pub use telemetry::{ApplicationTelemetryClient, ApplicationTelemetryClientV2, TelemetryClient};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -173,24 +173,49 @@ impl TelemetryConfigBuilder {
     }
 }
 
-type EnvLayerHandle = reload::Handle<Option<EnvFilter>, Registry>;
+// type EnvLayerHandle = reload::Handle<Option<EnvFilter>, Registry>;
 
-type OtelLayer = Option<
-    OpenTelemetryLayer<
-        Layered<reload::Layer<Option<EnvFilter>, Registry>, Registry, Registry>,
-        Tracer,
-    >,
+type EnvLayerHandle = reload::Handle<
+    Option<EnvFilter>,
+    Layered<reload::Layer<Option<OpenTelemetryLayer<Registry, Tracer>>, Registry>, Registry>,
 >;
 
-type OtelLayerHandler = reload::Handle<
-    Option<
-        OpenTelemetryLayer<
-            Layered<reload::Layer<Option<EnvFilter>, Registry>, Registry, Registry>,
-            Tracer,
-        >,
-    >,
-    Layered<reload::Layer<Option<EnvFilter>, Registry>, Registry, Registry>,
->;
+type EnvLayerHandleV2 =
+    reload::Handle<Option<EnvFilter>, Layered<OpenTelemetryLayer<Registry, Tracer>, Registry>>;
+
+// type OtelLayer = Option<
+//     OpenTelemetryLayer<
+//         Layered<reload::Layer<Option<EnvFilter>, Registry>, Registry, Registry>,
+//         Tracer,
+//     >,
+// >;
+
+type OtelLayer = Option<OpenTelemetryLayer<Registry, Tracer>>;
+
+type OtelLayerHandler = reload::Handle<Option<OpenTelemetryLayer<Registry, Tracer>>, Registry>;
+
+pub fn init_v3(config: TelemetryConfig) -> Result<ApplicationTelemetryClientV2> {
+    global::set_text_map_propagator(TraceContextPropagator::new());
+    let tracing_level = default_tracing_level(&config);
+    let span_events_fmt = default_span_events_fmt(&config)?;
+    let (subscriber, env_handle) = tracing_subscriber_v3(&config, &tracing_level, span_events_fmt)?;
+    subscriber.try_init()?;
+    dbg!(tracing::dispatcher::has_been_set());
+    let telemetry_client = start_telemetry_update_tasks_v2(config, tracing_level, env_handle);
+
+    Ok(telemetry_client)
+}
+
+pub fn init_v2(config: TelemetryConfig) -> Result<()> {
+    global::set_text_map_propagator(TraceContextPropagator::new());
+    let tracing_level = default_tracing_level(&config);
+    let span_events_fmt = default_span_events_fmt(&config)?;
+    let subscriber = tracing_subscriber_v2(&config, &tracing_level, span_events_fmt)?;
+    subscriber.try_init()?;
+    dbg!(tracing::dispatcher::has_been_set());
+
+    Ok(())
+}
 
 pub fn init(config: TelemetryConfig) -> Result<ApplicationTelemetryClient> {
     global::set_text_map_propagator(TraceContextPropagator::new());
@@ -199,6 +224,7 @@ pub fn init(config: TelemetryConfig) -> Result<ApplicationTelemetryClient> {
     let (subscriber, env_handle, otel_handle, inner_otel_layer) =
         tracing_subscriber(&config, &tracing_level, span_events_fmt)?;
     subscriber.try_init()?;
+    dbg!(tracing::dispatcher::has_been_set());
     let telemetry_client = start_telemetry_update_tasks(
         config,
         tracing_level,
@@ -279,6 +305,52 @@ fn fmt_span_from_str(value: &str) -> Result<FmtSpan> {
         .fold(FmtSpan::NONE, |acc, filter| filter | acc))
 }
 
+fn tracing_subscriber_v3(
+    config: &TelemetryConfig,
+    tracing_level: &TracingLevel,
+    span_events_fmt: FmtSpan,
+) -> Result<(impl Subscriber + Send + Sync, EnvLayerHandleV2)> {
+    let directives = TracingDirectives::from(tracing_level);
+    let env_filter = EnvFilter::try_new(directives.as_str())?;
+    let (env_filter_layer, env_handle) = reload::Layer::new(Some(env_filter));
+
+    let otel_layer = tracing_opentelemetry::layer().with_tracer(try_tracer(config)?);
+
+    let registry = Registry::default()
+        .with(otel_layer)
+        .with(env_filter_layer)
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_thread_ids(true)
+                .with_span_events(span_events_fmt),
+        );
+
+    Ok((registry, env_handle))
+}
+
+fn tracing_subscriber_v2(
+    config: &TelemetryConfig,
+    tracing_level: &TracingLevel,
+    span_events_fmt: FmtSpan,
+) -> Result<impl Subscriber + Send + Sync> {
+    let directives = TracingDirectives::from(tracing_level);
+    let env_filter = EnvFilter::try_new(directives.as_str())?;
+    let env_filter_layer = env_filter;
+
+    let otel_layer = tracing_opentelemetry::layer().with_tracer(try_tracer(config)?);
+
+    let registry = Registry::default()
+        .with(otel_layer)
+        .with(env_filter_layer)
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_thread_ids(true)
+                .with_span_events(span_events_fmt),
+        );
+
+    Ok(registry)
+}
+
 fn tracing_subscriber(
     config: &TelemetryConfig,
     tracing_level: &TracingLevel,
@@ -304,8 +376,8 @@ fn tracing_subscriber(
     }
 
     let registry = Registry::default()
-        .with(env_filter_layer)
         .with(otel_layer)
+        .with(env_filter_layer)
         .with(
             tracing_subscriber::fmt::layer()
                 .with_thread_ids(true)
@@ -319,7 +391,9 @@ fn try_tracer(config: &TelemetryConfig) -> std::result::Result<Tracer, TraceErro
     opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(opentelemetry_otlp::new_exporter().tonic())
-        .with_trace_config(trace::config().with_resource(telemetry_resource(config)))
+        .with_trace_config(dbg!(trace::config()
+            .with_resource(telemetry_resource(config))
+            .with_sampler(Sampler::AlwaysOn)))
         .install_batch(runtime::Tokio)
 }
 
@@ -338,6 +412,44 @@ fn telemetry_resource(config: &TelemetryConfig) -> Resource {
         resource::SERVICE_VERSION.string(config.service_version.to_string()),
         resource::SERVICE_NAMESPACE.string("si"),
     ]))
+}
+
+pub fn start_tracing_level_signal_handler_task_v2(
+    client: &ApplicationTelemetryClientV2,
+) -> io::Result<()> {
+    let user_defined1 = unix::signal(unix::SignalKind::user_defined1())?;
+    let user_defined2 = unix::signal(unix::SignalKind::user_defined2())?;
+    drop(tokio::spawn(tracing_level_signal_handler_task_v2(
+        client.clone(),
+        user_defined1,
+        user_defined2,
+    )));
+    Ok(())
+}
+
+async fn tracing_level_signal_handler_task_v2(
+    mut client: ApplicationTelemetryClientV2,
+    mut user_defined1: unix::Signal,
+    mut user_defined2: unix::Signal,
+) {
+    loop {
+        tokio::select! {
+            _ = user_defined1.recv() => {
+                if let Err(err) = client.increase_verbosity().await {
+                    warn!(error = ?err, "error while trying to increase verbosity");
+                }
+            }
+            _ = user_defined2.recv() => {
+                if let Err(err) = client.decrease_verbosity().await {
+                    warn!(error = ?err, "error while trying to decrease verbosity");
+                }
+            }
+            else => {
+                // All other arms are closed, nothing let to do but return
+                trace!("returning from tracing level signal handler with all select arms closed");
+            }
+        }
+    }
 }
 
 pub fn start_tracing_level_signal_handler_task(
@@ -378,6 +490,23 @@ async fn tracing_level_signal_handler_task(
     }
 }
 
+fn start_telemetry_update_tasks_v2(
+    config: TelemetryConfig,
+    tracing_level: TracingLevel,
+    env_handle: reload::Handle<
+        Option<EnvFilter>,
+        Layered<OpenTelemetryLayer<Registry, Tracer>, Registry>,
+    >,
+) -> ApplicationTelemetryClientV2 {
+    let (env_handle_tx, env_handle_rx) = mpsc::channel(2);
+    drop(tokio::spawn(update_tracing_level_task_v2(
+        env_handle,
+        env_handle_rx,
+    )));
+
+    ApplicationTelemetryClientV2::new(config.app_modules, tracing_level, env_handle_tx)
+}
+
 fn start_telemetry_update_tasks(
     config: TelemetryConfig,
     tracing_level: TracingLevel,
@@ -403,6 +532,34 @@ fn start_telemetry_update_tasks(
         env_handle_tx,
         otel_handle_tx,
     )
+}
+
+async fn update_tracing_level_task_v2(
+    layer_handle: EnvLayerHandleV2,
+    mut rx: mpsc::Receiver<TracingLevel>,
+) {
+    while let Some(tracing_level) = rx.recv().await {
+        if let Err(err) = update_tracing_level_v2(&layer_handle, tracing_level) {
+            warn!(error = ?err, "failed to update tracing level, using prior value");
+            continue;
+        }
+    }
+    debug!("update_tracing_level_task received closed channel, ending task");
+}
+
+fn update_tracing_level_v2(
+    layer_handle: &EnvLayerHandleV2,
+    tracing_level: TracingLevel,
+) -> Result<()> {
+    let directives = TracingDirectives::from(tracing_level);
+    let updated = EnvFilter::try_new(directives.as_str())?;
+
+    layer_handle.modify(|layer| {
+        layer.replace(updated);
+    })?;
+    info!("updated tracing levels to: {:?}", directives.as_str());
+
+    Ok(())
 }
 
 async fn update_tracing_level_task(

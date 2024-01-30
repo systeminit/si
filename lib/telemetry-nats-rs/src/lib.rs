@@ -16,4 +16,7 @@ mod make_span;
 mod propagation;
 
 pub use make_span::NatsMakeSpan;
-pub use propagation::{extract_opentelemetry_context, inject_opentelemetry_context};
+pub use propagation::{
+    extract_opentelemetry_context, find_current_context, find_trace_id, inject_empty_headers,
+    inject_headers, inject_opentelemetry_context,
+};
