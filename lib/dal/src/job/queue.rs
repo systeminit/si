@@ -32,6 +32,10 @@ impl JobQueue {
         self.queue.lock().await.is_empty()
     }
 
+    pub async fn size(&self) -> usize {
+        self.queue.lock().await.len()
+    }
+
     pub async fn drain(&self) -> Vec<Box<dyn JobProducer + Send + Sync>> {
         self.queue.lock().await.drain(0..).collect()
     }
