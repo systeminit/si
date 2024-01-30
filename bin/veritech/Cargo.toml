@@ -14,4 +14,5 @@ clap = { workspace = true }
 color-eyre = { workspace = true }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }
 tokio = { workspace = true }
+tokio-util = { workspace = true }
 veritech-server = { path = "../../lib/veritech-server" }

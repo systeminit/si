@@ -22,24 +22,39 @@ use opentelemetry_semantic_conventions::resource;
 use telemetry::{
     opentelemetry::{global, trace::TraceError},
     tracing::{debug, info, trace, warn, Subscriber},
-    TracingLevel, UpdateOpenTelemetry, Verbosity,
+    TelemetryCommand, TracingLevel, Verbosity,
 };
 use thiserror::Error;
-use tokio::{signal::unix, sync::mpsc};
-use tracing_opentelemetry::OpenTelemetryLayer;
+use tokio::{
+    signal::unix::{self, SignalKind},
+    sync::mpsc,
+};
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing_subscriber::{
-    filter::ParseError, fmt::format::FmtSpan, layer::Layered, prelude::*, reload,
-    util::TryInitError, EnvFilter, Registry,
+    filter::ParseError,
+    fmt::format::FmtSpan,
+    layer::SubscriberExt as _,
+    reload,
+    util::{SubscriberInitExt as _, TryInitError},
+    EnvFilter, Layer, Registry,
 };
 
-pub use telemetry::{prelude, tracing};
+pub use telemetry::tracing;
 pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
+
+pub mod prelude {
+    pub use super::TelemetryConfig;
+    pub use telemetry::prelude::*;
+    pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
+}
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
     #[error(transparent)]
     DirectivesParse(#[from] ParseError),
+    #[error("error creating signal handler: {0}")]
+    Signal(#[source] io::Error),
     #[error("failed to parse span event fmt token: {0}")]
     SpanEventParse(String),
     #[error(transparent)]
@@ -54,15 +69,15 @@ type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone, Builder, Debug, Default)]
 pub struct TelemetryConfig {
-    #[builder(setter(into), default = r#"env!("CARGO_PKG_NAME").to_string()"#)]
-    service_name: String,
+    #[builder(setter(into), default = r#"env!("CARGO_PKG_NAME")"#)]
+    service_name: &'static str,
 
-    #[builder(setter(into), default = r#"env!("CARGO_PKG_VERSION").to_string()"#)]
-    service_version: String,
+    #[builder(setter(into), default = r#"env!("CARGO_PKG_VERSION")"#)]
+    service_version: &'static str,
 
     #[allow(dead_code)]
     #[builder(setter(into))]
-    service_namespace: String,
+    service_namespace: &'static str,
 
     #[builder(default)]
     app_modules: Vec<&'static str>,
@@ -99,7 +114,7 @@ pub struct TelemetryConfig {
     secondary_log_span_events_env_var: Option<String>,
 
     #[builder(default = "true")]
-    enable_opentelemetry: bool,
+    signal_handlers: bool,
 }
 
 impl TelemetryConfig {
@@ -173,41 +188,21 @@ impl TelemetryConfigBuilder {
     }
 }
 
-type EnvLayerHandle = reload::Handle<Option<EnvFilter>, Registry>;
-
-type OtelLayer = Option<
-    OpenTelemetryLayer<
-        Layered<reload::Layer<Option<EnvFilter>, Registry>, Registry, Registry>,
-        Tracer,
-    >,
->;
-
-type OtelLayerHandler = reload::Handle<
-    Option<
-        OpenTelemetryLayer<
-            Layered<reload::Layer<Option<EnvFilter>, Registry>, Registry, Registry>,
-            Tracer,
-        >,
-    >,
-    Layered<reload::Layer<Option<EnvFilter>, Registry>, Registry, Registry>,
->;
-
-pub fn init(config: TelemetryConfig) -> Result<ApplicationTelemetryClient> {
+pub fn init(
+    config: TelemetryConfig,
+    tracker: &TaskTracker,
+    shutdown_token: CancellationToken,
+) -> Result<ApplicationTelemetryClient> {
     global::set_text_map_propagator(TraceContextPropagator::new());
     let tracing_level = default_tracing_level(&config);
     let span_events_fmt = default_span_events_fmt(&config)?;
-    let (subscriber, env_handle, otel_handle, inner_otel_layer) =
-        tracing_subscriber(&config, &tracing_level, span_events_fmt)?;
-    subscriber.try_init()?;
-    let telemetry_client = start_telemetry_update_tasks(
-        config,
-        tracing_level,
-        env_handle,
-        otel_handle,
-        inner_otel_layer,
-    );
 
-    Ok(telemetry_client)
+    let (subscriber, handles) = tracing_subscriber(&config, &tracing_level, span_events_fmt)?;
+    subscriber.try_init()?;
+
+    let client = create_client(config, tracing_level, handles, tracker, shutdown_token)?;
+
+    Ok(client)
 }
 
 fn default_tracing_level(config: &TelemetryConfig) -> TracingLevel {
@@ -283,39 +278,50 @@ fn tracing_subscriber(
     config: &TelemetryConfig,
     tracing_level: &TracingLevel,
     span_events_fmt: FmtSpan,
-) -> Result<(
-    impl Subscriber + Send + Sync,
-    EnvLayerHandle,
-    OtelLayerHandler,
-    OtelLayer,
-)> {
+) -> Result<(impl Subscriber + Send + Sync, TelemetryHandles)> {
     let directives = TracingDirectives::from(tracing_level);
-    let env_filter = EnvFilter::try_new(directives.as_str())?;
-    let (env_filter_layer, env_handle) = reload::Layer::new(Some(env_filter));
 
-    let (otel_layer, otel_handle) = reload::Layer::new(Some(
-        tracing_opentelemetry::layer().with_tracer(try_tracer(config)?),
-    ));
-    let mut inner_otel_layer = None;
-    if !config.enable_opentelemetry {
-        otel_handle.modify(|layer| {
-            inner_otel_layer = layer.take();
-        })?;
-    }
+    let (console_log_layer, console_log_filter_reload) = {
+        let layer = tracing_subscriber::fmt::layer()
+            .with_thread_ids(true)
+            .with_span_events(span_events_fmt);
 
-    let registry = Registry::default()
-        .with(env_filter_layer)
-        .with(otel_layer)
-        .with(
-            tracing_subscriber::fmt::layer()
-                .with_thread_ids(true)
-                .with_span_events(span_events_fmt),
-        );
+        let env_filter = EnvFilter::try_new(directives.as_str())?;
+        let (filter, handle) = reload::Layer::new(env_filter);
+        let layer = layer.with_filter(filter);
 
-    Ok((registry, env_handle, otel_handle, inner_otel_layer))
+        let reloader =
+            Box::new(move |updated: EnvFilter| handle.reload(updated).map_err(Into::into));
+
+        (layer, reloader)
+    };
+
+    let (otel_layer, otel_filter_reload) = {
+        let layer = tracing_opentelemetry::layer().with_tracer(otel_tracer(config)?);
+
+        let env_filter = EnvFilter::try_new(directives.as_str())?;
+        let (filter, handle) = reload::Layer::new(env_filter);
+        let layer = layer.with_filter(filter);
+
+        let reloader =
+            Box::new(move |updated: EnvFilter| handle.reload(updated).map_err(Into::into));
+
+        (layer, reloader)
+    };
+
+    let registry = Registry::default();
+    let registry = registry.with(console_log_layer);
+    let registry = registry.with(otel_layer);
+
+    let handles = TelemetryHandles {
+        console_log_filter_reload,
+        otel_filter_reload,
+    };
+
+    Ok((registry, handles))
 }
 
-fn try_tracer(config: &TelemetryConfig) -> std::result::Result<Tracer, TraceError> {
+fn otel_tracer(config: &TelemetryConfig) -> std::result::Result<Tracer, TraceError> {
     opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(opentelemetry_otlp::new_exporter().tonic())
@@ -340,138 +346,190 @@ fn telemetry_resource(config: &TelemetryConfig) -> Resource {
     ]))
 }
 
-pub fn start_tracing_level_signal_handler_task(
-    client: &ApplicationTelemetryClient,
-) -> io::Result<()> {
-    let user_defined1 = unix::signal(unix::SignalKind::user_defined1())?;
-    let user_defined2 = unix::signal(unix::SignalKind::user_defined2())?;
-    drop(tokio::spawn(tracing_level_signal_handler_task(
-        client.clone(),
-        user_defined1,
-        user_defined2,
-    )));
-    Ok(())
-}
-
-async fn tracing_level_signal_handler_task(
-    mut client: ApplicationTelemetryClient,
-    mut user_defined1: unix::Signal,
-    mut user_defined2: unix::Signal,
-) {
-    loop {
-        tokio::select! {
-            _ = user_defined1.recv() => {
-                if let Err(err) = client.increase_verbosity().await {
-                    warn!(error = ?err, "error while trying to increase verbosity");
-                }
-            }
-            _ = user_defined2.recv() => {
-                if let Err(err) = client.decrease_verbosity().await {
-                    warn!(error = ?err, "error while trying to decrease verbosity");
-                }
-            }
-            else => {
-                // All other arms are closed, nothing let to do but return
-                trace!("returning from tracing level signal handler with all select arms closed");
-            }
-        }
-    }
-}
-
-fn start_telemetry_update_tasks(
+fn create_client(
     config: TelemetryConfig,
     tracing_level: TracingLevel,
-    env_handle: EnvLayerHandle,
-    otel_handle: OtelLayerHandler,
-    otel_layer: OtelLayer,
-) -> ApplicationTelemetryClient {
-    let (env_handle_tx, env_handle_rx) = mpsc::channel(2);
-    drop(tokio::spawn(update_tracing_level_task(
-        env_handle,
-        env_handle_rx,
-    )));
-    let (otel_handle_tx, otel_handle_rx) = mpsc::channel(2);
-    drop(tokio::spawn(update_opentelemetry_task(
-        otel_handle,
-        otel_layer,
-        otel_handle_rx,
-    )));
+    handles: TelemetryHandles,
+    tracker: &TaskTracker,
+    shutdown_token: CancellationToken,
+) -> Result<ApplicationTelemetryClient> {
+    let (update_telemetry_tx, update_telemetry_rx) = mpsc::unbounded_channel();
 
-    ApplicationTelemetryClient::new(
-        config.app_modules,
-        tracing_level,
-        env_handle_tx,
-        otel_handle_tx,
-    )
-}
+    let client =
+        ApplicationTelemetryClient::new(config.app_modules, tracing_level, update_telemetry_tx);
 
-async fn update_tracing_level_task(
-    layer_handle: EnvLayerHandle,
-    mut rx: mpsc::Receiver<TracingLevel>,
-) {
-    while let Some(tracing_level) = rx.recv().await {
-        if let Err(err) = update_tracing_level(&layer_handle, tracing_level) {
-            warn!(error = ?err, "failed to update tracing level, using prior value");
-            continue;
-        }
+    tracker.spawn(
+        TelemetryUpdateTask::new(handles, shutdown_token.clone(), update_telemetry_rx).run(),
+    );
+    if config.signal_handlers {
+        tracker.spawn(
+            TelemetrySignalHandlerTask::create(client.clone(), shutdown_token.clone())
+                .map_err(Error::Signal)?
+                .run(),
+        );
     }
-    debug!("update_tracing_level_task received closed channel, ending task");
+    tracker.spawn(TelemetryShutdownTask::new(shutdown_token).run());
+
+    Ok(client)
 }
 
-fn update_tracing_level(layer_handle: &EnvLayerHandle, tracing_level: TracingLevel) -> Result<()> {
-    let directives = TracingDirectives::from(tracing_level);
-    let updated = EnvFilter::try_new(directives.as_str())?;
+type ReloadHandle = Box<dyn Fn(EnvFilter) -> Result<()> + Send + Sync>;
 
-    layer_handle.modify(|layer| {
-        layer.replace(updated);
-    })?;
-    info!("updated tracing levels to: {:?}", directives.as_str());
-
-    Ok(())
+struct TelemetryHandles {
+    console_log_filter_reload: ReloadHandle,
+    otel_filter_reload: ReloadHandle,
 }
 
-async fn update_opentelemetry_task(
-    layer_handle: OtelLayerHandler,
-    mut otel_layer: OtelLayer,
-    mut rx: mpsc::Receiver<UpdateOpenTelemetry>,
-) {
-    while let Some(update) = rx.recv().await {
-        if let Err(err) = update_opentelemetry(&layer_handle, &mut otel_layer, update) {
-            warn!(error = ?err, "failed to update opentelemetry, using prior setting");
-            continue;
-        }
-    }
-    debug!("update_opentelemetry_task received closed channel, ending task");
+struct TelemetrySignalHandlerTask {
+    client: ApplicationTelemetryClient,
+    shutdown_token: CancellationToken,
+    sig_usr1: unix::Signal,
+    sig_usr2: unix::Signal,
 }
 
-fn update_opentelemetry(
-    layer_handle: &OtelLayerHandler,
-    otel_layer: &mut OtelLayer,
-    update: UpdateOpenTelemetry,
-) -> Result<()> {
-    match (update, &otel_layer) {
-        (UpdateOpenTelemetry::Enable, Some(_)) => {
-            layer_handle.modify(|layer| {
-                *layer = otel_layer.take();
-            })?;
-            info!("enabled opentelemetry");
-        }
-        (UpdateOpenTelemetry::Disable, None) => {
-            layer_handle.modify(|layer| {
-                *otel_layer = layer.take();
-            })?;
-            info!("disabled opentelemetry");
-        }
+impl TelemetrySignalHandlerTask {
+    const NAME: &'static str = "TelemetrySignalHandlerTask";
 
-        (UpdateOpenTelemetry::Enable, None) => {
-            debug!("opentelemtry already enabled, continuing");
-        }
-        (UpdateOpenTelemetry::Disable, Some(_)) => {
-            debug!("opentelemtry already disabled, continuing");
-        }
+    fn create(
+        client: ApplicationTelemetryClient,
+        shutdown_token: CancellationToken,
+    ) -> io::Result<Self> {
+        let sig_usr1 = unix::signal(SignalKind::user_defined1())?;
+        let sig_usr2 = unix::signal(SignalKind::user_defined2())?;
+
+        Ok(Self {
+            client,
+            shutdown_token,
+            sig_usr1,
+            sig_usr2,
+        })
     }
 
-    Ok(())
+    async fn run(mut self) {
+        loop {
+            tokio::select! {
+                _ = self.shutdown_token.cancelled() => {
+                    debug!(task = Self::NAME, "received cancellation");
+                    break;
+                }
+                Some(_) = self.sig_usr1.recv() => {
+                    if let Err(err) = self.client.increase_verbosity().await {
+                        warn!(
+                            task = Self::NAME,
+                            error = ?err,
+                            "error while trying to increase verbosity",
+                        );
+                    }
+                }
+                Some(_) = self.sig_usr2.recv() => {
+                    if let Err(err) = self.client.decrease_verbosity().await {
+                        warn!(
+                            task = Self::NAME,
+                            error = ?err,
+                            "error while trying to decrease verbosity",
+                        );
+                    }
+                }
+                else => {
+                    // All other arms are closed, nothing let to do but return
+                    trace!(task = Self::NAME, "all signal listeners have closed");
+                    break;
+                }
+            }
+        }
+
+        debug!(task = Self::NAME, "shutdown complete");
+    }
+}
+
+struct TelemetryUpdateTask {
+    handles: TelemetryHandles,
+    shutdown_token: CancellationToken,
+    update_command_rx: mpsc::UnboundedReceiver<TelemetryCommand>,
+}
+
+impl TelemetryUpdateTask {
+    const NAME: &'static str = "TelemetryUpdateTask";
+
+    fn new(
+        handles: TelemetryHandles,
+        shutdown_token: CancellationToken,
+        update_command_rx: mpsc::UnboundedReceiver<TelemetryCommand>,
+    ) -> Self {
+        Self {
+            handles,
+            shutdown_token,
+            update_command_rx,
+        }
+    }
+
+    async fn run(mut self) {
+        loop {
+            tokio::select! {
+                _ = self.shutdown_token.cancelled() => {
+                    debug!(task = Self::NAME, "received cancellation");
+                    break;
+                }
+                Some(command) = self.update_command_rx.recv() => match command {
+                    TelemetryCommand::TracingLevel(tracing_level) => {
+                        if let Err(err) = self.update_tracing_level(tracing_level) {
+                            warn!(
+                                task = Self::NAME,
+                                error = ?err,
+                                "failed to update tracing level, using prior value",
+                            );
+                        }
+                    }
+                },
+                else => {
+                    trace!(task = Self::NAME, "update command stream has closed");
+                    break;
+                }
+            }
+        }
+
+        debug!(task = Self::NAME, "shutdown complete");
+    }
+
+    fn update_tracing_level(&self, tracing_level: TracingLevel) -> Result<()> {
+        let directives = TracingDirectives::from(tracing_level);
+
+        (self.handles.console_log_filter_reload)(EnvFilter::try_new(directives.as_str())?)?;
+        (self.handles.otel_filter_reload)(EnvFilter::try_new(directives.as_str())?)?;
+
+        info!(
+            task = Self::NAME,
+            "updated tracing levels to: {:?}",
+            directives.as_str()
+        );
+
+        Ok(())
+    }
+}
+
+struct TelemetryShutdownTask {
+    shutdown_token: CancellationToken,
+}
+
+impl TelemetryShutdownTask {
+    const NAME: &'static str = "TelemetryShutdownTask";
+
+    fn new(shutdown_token: CancellationToken) -> Self {
+        Self { shutdown_token }
+    }
+
+    async fn run(self) {
+        self.shutdown_token.cancelled().await;
+
+        debug!(task = Self::NAME, "received cancellation");
+        // TODO(fnichol): call to `shutdown_tracer_provider` blocks forever when called, causing
+        // the services to not gracefully shut down in time.
+        //
+        // See: https://github.com/open-telemetry/opentelemetry-rust/issues/1395
+        //
+        // telemetry::opentelemetry::global::shutdown_tracer_provider();
+        debug!(task = Self::NAME, "shutdown complete");
+    }
 }
 
 struct TracingDirectives(Cow<'static, str>);
