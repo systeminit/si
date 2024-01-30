@@ -273,6 +273,15 @@ export function useChangeSetsStore() {
             callback: this.FETCH_CHANGE_SETS,
           },
           {
+            eventType: "ChangeSetAbandoned",
+            callback: async (data) => {
+              if (data.changeSetPk === this.selectedChangeSetId) {
+                await this.setActiveChangeset(HEAD_ID);
+              }
+              await this.FETCH_CHANGE_SETS();
+            },
+          },
+          {
             eventType: "ChangeSetCancelled",
             callback: (data) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -361,17 +370,6 @@ export function useChangeSetsStore() {
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Open;
               }
-            },
-          },
-
-          {
-            eventType: "ChangeSetWritten",
-            debounce: true,
-            callback: (changeSetId) => {
-              // we'll update a timestamp here so individual components can watch this to trigger something if necessary
-              // hopefully with more targeted realtime updates we won't need this, but could be useful for now
-              this.changeSetsWrittenAtById[changeSetId] = new Date();
-              this.FETCH_CHANGE_SETS();
             },
           },
           {

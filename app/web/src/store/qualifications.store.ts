@@ -234,23 +234,16 @@ export const useQualificationsStore = () => {
 
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-            // Doesnt seem to actually do anything
-            // {
-            //   eventType: "CheckedQualifications",
-            //   callback: ({ componentId }) => {
-            //     this.FETCH_COMPONENT_QUALIFICATIONS(componentId);
-            //   },
-            // },
-            // {
-            //   eventType: "ComponentCreated",
-            //   callback: () => {
-            //     this.FETCH_QUALIFICATIONS_SUMMARY();
-            //   },
-            // },
             {
-              // TODO(nick,theo,fletcher,wendy): replace this someday.
-              eventType: "ChangeSetWritten",
-              debounce: true,
+              eventType: "ComponentUpdated",
+              callback: (data) => {
+                if (data.changeSetPk === changeSetId) {
+                  this.FETCH_QUALIFICATIONS_SUMMARY();
+                }
+              },
+            },
+            {
+              eventType: "ChangeSetApplied",
               callback: () => {
                 this.FETCH_QUALIFICATIONS_SUMMARY();
               },

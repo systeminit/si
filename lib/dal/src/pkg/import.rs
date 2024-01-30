@@ -211,7 +211,7 @@ async fn import_change_set(
     // Code level feature flag to allow updating any schema by simpling installing a package with a schema of the same name
     // This existis mostly to help debugging
     // Should always be `false` in production
-    let update_even_if_not_builtin = false;
+    let update_even_if_not_builtin = true;
 
     'spec: for schema_spec in schemas {
         match &options.schemas {
@@ -1839,11 +1839,11 @@ async fn import_schema(
                     )
                     .await?;
 
-                    if let Thing::Func(asset_func) =
-                        thing_map
-                            .get(change_set_pk, &func_unique_id)
-                            .ok_or(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))?
-                    {
+                    if let Thing::Func(asset_func) = thing_map
+                        .get(change_set_pk, &func_unique_id)
+                        .ok_or_else(|| {
+                        dbg!(PkgError::MissingFuncUniqueId(func_unique_id.to_string()))
+                    })? {
                         create_schema_variant_definition(
                             ctx,
                             schema_spec.clone(),
@@ -2031,9 +2031,9 @@ async fn import_leaf_function(
                 .await?;
         }
         _ => {
-            return Err(PkgError::MissingFuncUniqueId(
+            return Err(dbg!(PkgError::MissingFuncUniqueId(
                 leaf_func.func_unique_id().to_string(),
-            ));
+            )));
         }
     }
 
@@ -2322,9 +2322,9 @@ async fn import_action_func(
                 }
             }
             _ => {
-                return Err(PkgError::MissingFuncUniqueId(
+                return Err(dbg!(PkgError::MissingFuncUniqueId(
                     action_func_spec.func_unique_id().into(),
-                ));
+                )));
             }
         };
 
@@ -2377,9 +2377,9 @@ async fn import_auth_func(
             }
         }
         _ => {
-            return Err(PkgError::MissingFuncUniqueId(
+            return Err(dbg!(PkgError::MissingFuncUniqueId(
                 func_spec.func_unique_id().into(),
-            ));
+            )));
         }
     };
 
@@ -2942,7 +2942,11 @@ async fn import_attr_func_for_prop(
             )
             .await?;
         }
-        _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_string())),
+        _ => {
+            return Err(dbg!(PkgError::MissingFuncUniqueId(
+                func_unique_id.to_string()
+            )))
+        }
     }
 
     Ok(())
@@ -2974,7 +2978,11 @@ async fn import_attr_func_for_output_socket(
             )
             .await?;
         }
-        _ => return Err(PkgError::MissingFuncUniqueId(func_unique_id.to_string())),
+        _ => {
+            return Err(dbg!(PkgError::MissingFuncUniqueId(
+                func_unique_id.to_string()
+            )))
+        }
     }
 
     Ok(())

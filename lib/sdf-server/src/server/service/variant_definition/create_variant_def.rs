@@ -98,10 +98,11 @@ pub async fn create_variant_def(
         }),
     );
 
-    WsEvent::change_set_written(&ctx)
+    WsEvent::schema_variant_definition_created(&ctx, *variant_def.id())
         .await?
         .publish_on_commit(&ctx)
         .await?;
+
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();

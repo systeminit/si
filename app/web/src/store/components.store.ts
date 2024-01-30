@@ -1394,23 +1394,19 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           const realtimeStore = useRealtimeStore();
 
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-            // dont need to do anything here as we will also get a ChangeSetWritten event
-            // {
-            //   eventType: "ComponentCreated",
-            //   callback: (_update) => {
-            //     this.FETCH_DIAGRAM_DATA();
-            //   },
-            // },
             {
-              eventType: "ChangeSetWritten",
+              eventType: "ComponentUpdated",
               debounce: true,
-              callback: (writtenChangeSetId) => {
-                // ideally we wouldn't have to check this - since the topic subscription
-                // would mean we only receive the event for this changeset already...
-                // but this is fine for now
-                if (writtenChangeSetId !== changeSetId) return;
-
-                // probably want to get pushed updates instead of blindly re-fetching, but this is the first step of getting things working
+              callback: (data) => {
+                // If the component that updated wasn't in this change set,
+                // don't update
+                if (data.changeSetPk !== changeSetId) return;
+                this.FETCH_DIAGRAM_DATA();
+              },
+            },
+            {
+              eventType: "ChangeSetApplied",
+              callback: () => {
                 this.FETCH_DIAGRAM_DATA();
               },
             },

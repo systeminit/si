@@ -438,8 +438,8 @@ async fn test_install_pkg(ctx: &DalContext) {
         .data(
             FuncSpecData::builder()
                 .name("si:qualificationWarning")
-                .display_name("warning")
-                .description("it warns")
+                .display_name("warning".to_owned())
+                .description("it warns".to_owned())
                 .handler("qualification")
                 .code_base64(&qualification_b64)
                 .backend_kind(FuncSpecBackendKind::JsAttribute)
@@ -627,8 +627,8 @@ async fn test_install_pkg(ctx: &DalContext) {
         .data(
             FuncSpecData::builder()
                 .name("si:truthy")
-                .display_name("truth")
-                .description("it returns true")
+                .display_name("truth".to_owned())
+                .description("it returns true".to_owned())
                 .handler("truth")
                 .code_base64(&code_base64)
                 .backend_kind(FuncSpecBackendKind::JsAttribute)

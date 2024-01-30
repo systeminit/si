@@ -20,7 +20,6 @@
             :label="
               editingAsset.schemaVariantId ? 'Update Asset' : 'Create Asset'
             "
-            :disabled="disabled"
             tone="action"
             icon="bolt"
             size="md"
@@ -62,10 +61,6 @@
       </template>
 
       <Stack class="p-xs py-sm">
-        <ErrorMessage v-if="disabled" icon="alert-triangle" tone="warning">
-          {{ disabledWarning }}
-        </ErrorMessage>
-
         <ErrorMessage
           v-if="executeAssetReqStatus.isError"
           :requestStatus="executeAssetReqStatus"
@@ -74,7 +69,6 @@
           id="name"
           v-model="editingAsset.name"
           type="text"
-          :disabled="disabled"
           label="Name"
           placeholder="(mandatory) Provide the asset a name"
           @blur="updateAsset"
@@ -83,7 +77,6 @@
           id="menuName"
           v-model="editingAsset.menuName"
           type="text"
-          :disabled="disabled"
           label="Display name"
           placeholder="(optional) Provide the asset a shorter display name"
           @blur="updateAsset"
@@ -92,7 +85,6 @@
           id="category"
           v-model="editingAsset.category"
           type="text"
-          :disabled="disabled"
           label="Category"
           placeholder="(mandatory) Provide a category for the asset"
           @blur="updateAsset"
@@ -101,7 +93,6 @@
           id="componentType"
           v-model="editingAsset.componentType"
           type="dropdown"
-          :disabled="disabled"
           :options="componentTypeOptions"
           label="Component Type"
           @change="updateAsset"
@@ -110,16 +101,14 @@
           id="description"
           v-model="editingAsset.description"
           type="textarea"
-          :disabled="disabled"
           label="Description"
           placeholder="(optional) Provide a brief description of the asset"
           @blur="updateAsset"
         />
-        <VormInput type="container" label="color" :disabled="disabled">
+        <VormInput type="container" label="color">
           <ColorPicker
             id="color"
             v-model="editingAsset.color"
-            :disabled="disabled"
             @change="updateAsset"
           />
         </VormInput>
@@ -128,7 +117,6 @@
           id="link"
           v-model="editingAsset.link"
           type="url"
-          :disabled="disabled"
           label="Documentation Link"
           placeholder="(optional) Provide a documentation link for the asset"
           @blur="updateAsset"
@@ -247,16 +235,6 @@ const updateAsset = async () => {
     await assetStore.SAVE_ASSET(editingAsset.value);
   }
 };
-
-const disabled = computed(() => !!(editingAsset.value?.hasComponents ?? false));
-
-const disabledWarning = computed(() => {
-  if (editingAsset.value?.hasComponents) {
-    return `This asset cannot be edited because it is in use by components.`;
-  }
-
-  return "";
-});
 
 const detachedWarnings = ref<
   { message: string; funcId: FuncId; variant?: FuncVariant }[]

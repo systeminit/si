@@ -106,9 +106,9 @@ pub enum FuncSpecBackendResponseType {
 pub struct FuncSpecData {
     #[builder(setter(into))]
     pub name: String,
-    #[builder(setter(into, strip_option), default)]
+    #[builder(setter(into), default)]
     pub display_name: Option<String>,
-    #[builder(setter(into, strip_option), default)]
+    #[builder(setter(into), default)]
     pub description: Option<String>,
     #[builder(setter(into))]
     pub handler: String,
@@ -120,7 +120,7 @@ pub struct FuncSpecData {
     pub response_type: FuncSpecBackendResponseType,
     #[builder(setter(into), default)]
     pub hidden: bool,
-    #[builder(setter(into, strip_option), default)]
+    #[builder(setter(into), default)]
     pub link: Option<Url>,
 }
 
@@ -133,11 +133,24 @@ impl FuncSpecData {
 
 impl FuncSpecDataBuilder {
     #[allow(unused_mut)]
+    pub fn maybe_try_link<V>(&mut self, value: Option<V>) -> Result<&mut Self, V::Error>
+    where
+        V: TryInto<Url>,
+    {
+        let converted = if let Some(value) = value {
+            Some(value.try_into()?)
+        } else {
+            None
+        };
+        Ok(self.link(converted))
+    }
+
+    #[allow(unused_mut)]
     pub fn try_link<V>(&mut self, value: V) -> Result<&mut Self, V::Error>
     where
         V: TryInto<Url>,
     {
-        let converted: Url = value.try_into()?;
+        let converted = value.try_into()?;
         Ok(self.link(converted))
     }
 

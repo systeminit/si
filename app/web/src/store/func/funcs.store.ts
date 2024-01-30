@@ -674,10 +674,30 @@ export const useFuncStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [
           {
-            eventType: "ChangeSetWritten",
-            debounce: true,
-            callback: (writtenChangeSetId) => {
-              if (writtenChangeSetId !== selectedChangeSetId) return;
+            eventType: "FuncCreated",
+            callback: (data) => {
+              if (data.changeSetPk !== selectedChangeSetId) return;
+              this.FETCH_FUNC_LIST();
+            },
+          },
+          {
+            eventType: "FuncDeleted",
+            callback: (data) => {
+              if (data.changeSetPk !== selectedChangeSetId) return;
+              this.FETCH_FUNC_LIST();
+            },
+          },
+          {
+            eventType: "FuncReverted",
+            callback: (data) => {
+              if (data.changeSetPk !== selectedChangeSetId) return;
+              this.FETCH_FUNC_LIST();
+            },
+          },
+          {
+            eventType: "FuncSaved",
+            callback: (data) => {
+              if (data.changeSetPk !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
             },
           },

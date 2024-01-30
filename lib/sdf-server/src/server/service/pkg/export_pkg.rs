@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAc
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::{HistoryActor, SchemaVariant, SchemaVariantId, StandardModel, User, Visibility, WsEvent};
+use dal::{HistoryActor, SchemaVariant, SchemaVariantId, StandardModel, User, Visibility};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
@@ -109,12 +109,6 @@ pub async fn export_pkg(
                     "pkg_hash": response.latest_hash,
         }),
     );
-
-    // TODO: Is this really the WsEvent we want to send right now?
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     ctx.commit().await?;
 

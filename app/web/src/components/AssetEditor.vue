@@ -24,7 +24,6 @@
           <div>
             <span class="font-bold">Created By: </span>System Initiative
           </div>
-          <SiChip v-if="isReadOnly" variant="warning" text="read-only" />
         </div>
       </div>
     </template>
@@ -33,7 +32,6 @@
       :id="`asset-${assetId}`"
       v-model="editingAsset"
       :typescript="selectedAsset?.types"
-      :disabled="isReadOnly"
       @change="onChange"
     />
   </ScrollArea>
@@ -63,8 +61,6 @@ const assetStore = useAssetStore();
 const selectedAsset = computed(() =>
   props.assetId ? assetStore.assetsById[props.assetId] : undefined,
 );
-
-const isReadOnly = computed(() => !!selectedAsset.value?.hasComponents);
 
 const editingAsset = ref<string>(selectedAsset.value?.code ?? "");
 

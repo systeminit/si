@@ -92,11 +92,6 @@ async fn delete_single_component(
         }),
     );
 
-    WsEvent::change_set_written(ctx)
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
-
     Ok(())
 }
 

@@ -1,19 +1,20 @@
-use std::collections::HashMap;
-
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use chrono::Utc;
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+use strum::IntoEnumIterator;
 
 use dal::{
     func::intrinsics::IntrinsicFunc,
-    pkg::{attach_resource_payload_to_value, import_pkg_from_pkg},
+    pkg::import_pkg_from_pkg,
+    pkg::PkgExporter,
     schema::variant::definition::{
         SchemaVariantDefinition, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
     },
     AttributePrototypeId, ChangeSet, Func, FuncBinding, FuncId, HistoryActor, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, StandardModel, User, WsEvent,
+    SchemaVariantError, SchemaVariantId, StandardModel, User,
 };
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, SiPkg,
@@ -21,13 +22,10 @@ use si_pkg::{
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use crate::service::variant_definition::migrate_authentication_funcs_to_new_schema_variant;
 
 use super::{
-    super::func::FuncVariant, maybe_delete_schema_variant_connected_to_variant_def,
-    migrate_actions_to_new_schema_variant, migrate_attribute_functions_to_new_schema_variant,
-    migrate_leaf_functions_to_new_schema_variant, AttributePrototypeContextKind,
-    SaveVariantDefRequest, SchemaVariantDefinitionError, SchemaVariantDefinitionResult,
+    super::func::FuncVariant, AttributePrototypeContextKind, SaveVariantDefRequest,
+    SchemaVariantDefinitionError, SchemaVariantDefinitionResult,
 };
 
 pub type ExecVariantDefRequest = SaveVariantDefRequest;
@@ -76,14 +74,12 @@ pub async fn exec_variant_def(
         .map(|user| user.email().to_owned())
         .unwrap_or("unauthenticated user email".into());
 
-    let mut variant_def = SchemaVariantDefinition::get_by_id(&ctx, &request.id)
+    let variant_def = SchemaVariantDefinition::get_by_id(&ctx, &request.id)
         .await?
         .ok_or(SchemaVariantDefinitionError::VariantDefinitionNotFound(
             request.id,
         ))?;
-
-    let (maybe_previous_variant_id, leaf_funcs_to_migrate, attribute_prototypes) =
-        maybe_delete_schema_variant_connected_to_variant_def(&ctx, &mut variant_def).await?;
+    let maybe_previous_variant_id = variant_def.schema_variant_id().copied();
 
     let asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
@@ -165,74 +161,87 @@ pub async fn exec_variant_def(
             .build()?
     };
 
-    let pkg_spec = {
-        // we need to change this to use the PkgImport
-        let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
+    // we need to change this to use the PkgImport
+    let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
 
-        let variant_spec = definition.to_spec(
-            metadata.clone(),
-            &identity_func_spec.unique_id,
-            &asset_func_built.unique_id,
-        )?;
-        let schema_spec = metadata.to_spec(variant_spec)?;
-        PkgSpec::builder()
-            .name(metadata.clone().name)
-            .created_by(&user_email)
-            .func(identity_func_spec)
-            .func(asset_func_built.clone())
-            .schema(schema_spec)
-            .version("0.0.1")
-            .build()?
-    };
+    let mut variant_spec = definition.to_spec(
+        metadata.clone(),
+        &identity_func_spec.unique_id,
+        &asset_func_built.unique_id,
+    )?;
 
-    let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
-
-    let (_, schema_variant_ids, _) = import_pkg_from_pkg(
-        &ctx,
-        &pkg,
-        Some(dal::pkg::ImportOptions {
-            schemas: None,
-            skip_import_funcs: Some(HashMap::from_iter([(
-                asset_func_built.unique_id.to_owned(),
-                asset_func.clone(),
-            )])),
-            no_record: true,
-            is_builtin: false,
-        }),
-        request.override_builtin_schema_feature_flag,
-    )
-    .await?;
-
-    let schema_variant_id = schema_variant_ids
-        .get(0)
-        .copied()
-        .ok_or(SchemaVariantDefinitionError::NoAssetCreated)?;
+    let mut func_specs = Vec::new();
 
     let detached_attribute_prototypes = match maybe_previous_variant_id {
         Some(previous_schema_variant_id) => {
-            migrate_leaf_functions_to_new_schema_variant(
-                &ctx,
-                leaf_funcs_to_migrate,
-                schema_variant_id,
-            )
-            .await?;
-            migrate_actions_to_new_schema_variant(
-                &ctx,
-                previous_schema_variant_id,
-                schema_variant_id,
-            )
-            .await?;
-            migrate_authentication_funcs_to_new_schema_variant(
-                &ctx,
-                previous_schema_variant_id,
-                schema_variant_id,
-            )
-            .await?;
-
-            let schema_variant = SchemaVariant::get_by_id(&ctx, &schema_variant_id)
+            let variant = SchemaVariant::get_by_id(&ctx, &previous_schema_variant_id)
                 .await?
-                .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
+                .ok_or(SchemaVariantError::NotFound(previous_schema_variant_id))?;
+            let exporter = PkgExporter::new_workspace_exporter(
+                "temporary",
+                "SystemInit".to_owned(),
+                "1.0",
+                "Temporary pkg created to update schemas",
+            );
+            variant_spec.leaf_functions = exporter
+                .export_leaf_funcs(&ctx, Some(ctx.visibility().change_set_pk), *variant.id())
+                .await?;
+            variant_spec.action_funcs = exporter
+                .export_action_funcs(&ctx, Some(ctx.visibility().change_set_pk), *variant.id())
+                .await?;
+            variant_spec.auth_funcs = exporter
+                .export_auth_funcs(&ctx, Some(ctx.visibility().change_set_pk), *variant.id())
+                .await?;
+            variant_spec.si_prop_funcs = exporter
+                .export_si_prop_funcs(&ctx, Some(ctx.visibility().change_set_pk), &variant)
+                .await?;
+            variant_spec.root_prop_funcs = exporter
+                .export_root_prop_funcs(&ctx, Some(ctx.visibility().change_set_pk), &variant)
+                .await?;
 
+            let unique_ids = variant_spec
+                .leaf_functions
+                .iter()
+                .map(|f| f.func_unique_id.clone())
+                .chain(
+                    variant_spec
+                        .action_funcs
+                        .iter()
+                        .map(|f| f.func_unique_id.clone()),
+                )
+                .chain(
+                    variant_spec
+                        .auth_funcs
+                        .iter()
+                        .map(|f| f.func_unique_id.clone()),
+                )
+                .chain(
+                    variant_spec
+                        .si_prop_funcs
+                        .iter()
+                        .map(|f| f.func_unique_id.clone()),
+                )
+                .chain(
+                    variant_spec
+                        .root_prop_funcs
+                        .iter()
+                        .map(|f| f.func_unique_id.clone()),
+                );
+            for unique_id in unique_ids {
+                if let Some(func_id) = FuncId::from_str(&unique_id).ok() {
+                    if let Some(func) = Func::get_by_id(&ctx, &func_id).await? {
+                        let (spec, _) = exporter
+                            .export_func(&ctx, Some(ctx.visibility().change_set_pk), &func)
+                            .await?;
+                        if spec.data.is_some() {
+                            func_specs.push(spec);
+                        }
+                    }
+                }
+            }
+
+            let detached_attribute_prototypes = Vec::new();
+            /*
             let attribute_prototypes = migrate_attribute_functions_to_new_schema_variant(
                 &ctx,
                 attribute_prototypes,
@@ -256,14 +265,53 @@ pub async fn exec_variant_def(
                     context: attribute_prototype.context,
                 });
             }
+            */
 
             detached_attribute_prototypes
         }
         None => {
-            attach_resource_payload_to_value(&ctx, schema_variant_id).await?;
             vec![]
         }
     };
+
+    let schema_spec = metadata.to_spec(variant_spec)?;
+
+    let pkg_spec = {
+        let mut builder = PkgSpec::builder();
+
+        for spec in func_specs {
+            builder.func(spec);
+        }
+
+        for intrinsic in IntrinsicFunc::iter() {
+            let spec = intrinsic.to_spec()?;
+            builder.func(spec);
+        }
+
+        builder
+            .name(metadata.clone().name)
+            .created_by(&user_email)
+            .func(identity_func_spec)
+            .func(asset_func_built.clone())
+            .schema(schema_spec)
+            .version("0.0.1");
+
+        builder.build()?
+    };
+
+    let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
+
+    let (_, schema_variant_ids, _) = import_pkg_from_pkg(
+        &ctx,
+        &pkg,
+        None,
+        request.override_builtin_schema_feature_flag,
+    )
+    .await?;
+    let schema_variant_id = schema_variant_ids
+        .get(0)
+        .copied()
+        .ok_or(SchemaVariantDefinitionError::NoAssetCreated)?;
 
     track(
         &posthog_client,
@@ -279,10 +327,6 @@ pub async fn exec_variant_def(
         }),
     );
 
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();

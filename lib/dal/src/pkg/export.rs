@@ -222,7 +222,7 @@ impl PkgExporter {
         Ok((schema_spec, funcs, head_funcs))
     }
 
-    async fn export_variant(
+    pub async fn export_variant(
         &self,
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
@@ -362,7 +362,7 @@ impl PkgExporter {
         Ok(variant_spec)
     }
 
-    async fn export_root_prop_funcs(
+    pub async fn export_root_prop_funcs(
         &self,
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
@@ -414,7 +414,7 @@ impl PkgExporter {
         Ok(specs)
     }
 
-    async fn export_si_prop_funcs(
+    pub async fn export_si_prop_funcs(
         &self,
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
@@ -460,7 +460,7 @@ impl PkgExporter {
         Ok(specs)
     }
 
-    async fn export_leaf_funcs(
+    pub async fn export_leaf_funcs(
         &self,
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
@@ -476,10 +476,13 @@ impl PkgExporter {
                     continue;
                 }
 
-                let func_spec = self
+                let func_unique_id = self
                     .func_map
                     .get(change_set_pk.unwrap_or(ChangeSetPk::NONE), leaf_func.id())
-                    .ok_or(PkgError::MissingExportedFunc(*leaf_func.id()))?;
+                    .map_or_else(
+                        || leaf_func.id().to_string(),
+                        |spec| spec.unique_id.to_owned(),
+                    );
 
                 let mut inputs = vec![];
                 for arg in FuncArgument::list_for_func(ctx, *leaf_func.id()).await? {
@@ -503,7 +506,7 @@ impl PkgExporter {
 
                 specs.push(
                     builder
-                        .func_unique_id(&func_spec.unique_id)
+                        .func_unique_id(&func_unique_id)
                         .leaf_kind(leaf_kind)
                         .inputs(inputs)
                         .deleted(prototype.visibility().is_deleted())
@@ -639,7 +642,7 @@ impl PkgExporter {
         Ok(specs)
     }
 
-    async fn export_action_funcs(
+    pub async fn export_action_funcs(
         &self,
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
@@ -656,13 +659,16 @@ impl PkgExporter {
                 continue;
             }
 
-            let func_spec = self
+            let func_unique_id = self
                 .func_map
                 .get(
                     change_set_pk.unwrap_or(ChangeSetPk::NONE),
                     &action_proto.func_id(),
                 )
-                .ok_or(PkgError::MissingExportedFunc(action_proto.func_id()))?;
+                .map_or_else(
+                    || action_proto.func_id().to_string(),
+                    |spec| spec.unique_id.to_owned(),
+                );
 
             let mut builder = ActionFuncSpec::builder();
 
@@ -673,7 +679,7 @@ impl PkgExporter {
             specs.push(
                 builder
                     .kind(action_proto.kind())
-                    .func_unique_id(&func_spec.unique_id)
+                    .func_unique_id(&func_unique_id)
                     .deleted(action_proto.visibility().is_deleted())
                     .build()?,
             )
@@ -682,7 +688,7 @@ impl PkgExporter {
         Ok(specs)
     }
 
-    async fn export_auth_funcs(
+    pub async fn export_auth_funcs(
         &self,
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
@@ -701,13 +707,16 @@ impl PkgExporter {
                 continue;
             }
 
-            let func_spec = self
+            let func_unique_id = self
                 .func_map
                 .get(
                     change_set_pk.unwrap_or(ChangeSetPk::NONE),
                     &prototype.func_id(),
                 )
-                .ok_or(PkgError::MissingExportedFunc(prototype.func_id()))?;
+                .map_or_else(
+                    || prototype.func_id().to_string(),
+                    |spec| spec.unique_id.to_owned(),
+                );
 
             let mut builder = AuthenticationFuncSpec::builder();
 
@@ -717,7 +726,7 @@ impl PkgExporter {
 
             specs.push(
                 builder
-                    .func_unique_id(&func_spec.unique_id)
+                    .func_unique_id(&func_unique_id)
                     .deleted(prototype.visibility().is_deleted())
                     .build()?,
             )
@@ -1069,17 +1078,18 @@ impl PkgExporter {
             }
         }
 
-        let func_spec = self
+        let func_unique_id = self
             .func_map
             .get(change_set_pk.unwrap_or(ChangeSetPk::NONE), proto_func.id())
-            .ok_or(PkgError::MissingExportedFunc(*proto_func.id()))?;
-
-        let func_unique_id = func_spec.unique_id.to_owned();
+            .map_or_else(
+                || proto_func.id().to_string(),
+                |spec| spec.unique_id.to_owned(),
+            );
 
         Ok(Some((func_unique_id, inputs)))
     }
 
-    async fn export_func(
+    pub async fn export_func(
         &self,
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
@@ -1108,33 +1118,27 @@ impl PkgExporter {
             return Ok((func_spec_builder.build()?, true));
         }
 
-        if in_change_set {
-            let mut data_builder = FuncSpecData::builder();
+        let mut data_builder = FuncSpecData::builder();
 
-            data_builder.name(func.name());
+        data_builder.name(func.name());
 
-            if let Some(display_name) = func.display_name() {
-                data_builder.display_name(display_name);
-            }
+        data_builder.display_name(func.display_name().map(ToOwned::to_owned));
 
-            if let Some(description) = func.description() {
-                data_builder.description(description);
-            }
+        data_builder.description(func.description().map(ToOwned::to_owned));
 
-            if let Some(link) = func.link() {
-                data_builder.try_link(link)?;
-            }
-            // Should we package an empty func?
-            data_builder.handler(func.handler().unwrap_or(""));
-            data_builder.code_base64(func.code_base64().unwrap_or(""));
-
-            data_builder.response_type(*func.backend_response_type());
-            data_builder.backend_kind(*func.backend_kind());
-
-            data_builder.hidden(func.hidden());
-
-            func_spec_builder.data(data_builder.build()?);
+        if let Some(link) = func.link() {
+            data_builder.try_link(link)?;
         }
+        // Should we package an empty func?
+        data_builder.handler(func.handler().unwrap_or(""));
+        data_builder.code_base64(func.code_base64().unwrap_or(""));
+
+        data_builder.response_type(*func.backend_response_type());
+        data_builder.backend_kind(*func.backend_kind());
+
+        data_builder.hidden(func.hidden());
+
+        func_spec_builder.data(data_builder.build()?);
 
         if self.is_workspace_export {
             func_spec_builder.unique_id(func.id().to_string());

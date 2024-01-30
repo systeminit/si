@@ -98,7 +98,7 @@ pub async fn delete_func(
         }),
     );
 
-    WsEvent::change_set_written(&ctx)
+    WsEvent::func_deleted(&ctx, *func.id())
         .await?
         .publish_on_commit(&ctx)
         .await?;

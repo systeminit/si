@@ -15,6 +15,8 @@ import {
 } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";
+import { ActionId } from "../actions.store";
+import { SecretId } from "../secrets.store";
 
 export type WebsocketRequest = CursorRequest | OnlineRequest;
 
@@ -87,7 +89,10 @@ export type WsEventPayloadMap = {
     userPk: UserId;
     vote: string;
   };
-
+  ChangeSetAbandoned: {
+    changeSetPk: ChangeSetId;
+    userPk: UserId;
+  };
   CheckedQualifications: {
     prototypeId: string;
     componentId: string;
@@ -200,5 +205,51 @@ export type WsEventPayloadMap = {
         id?: string;
       };
     }[];
+  };
+  ActionAdded: {
+    componentId: ComponentId;
+    actionId: ActionId;
+    changeSetPk: ChangeSetId;
+  };
+  ActionRemoved: {
+    componentId: ComponentId;
+    actionId: ActionId;
+    changeSetPk: ChangeSetId;
+  };
+  SecretUpdated: {
+    secretId: SecretId;
+    changeSetPk: ChangeSetId;
+  };
+  SecretCreated: {
+    secretId: SecretId;
+    changeSetPk: ChangeSetId;
+  };
+  SchemaVariantDefinitionCreated: {
+    schemaVariantDefinitionId: string;
+    changeSetPk: ChangeSetId;
+  };
+  SchemaVariantDefinitionCloned: {
+    schemaVariantDefinitionId: string;
+    changeSetPk: ChangeSetId;
+  };
+  SchemaVariantDefinitionSaved: {
+    schemaVariantDefinitionId: string;
+    changeSetPk: ChangeSetId;
+  };
+  FuncCreated: {
+    funcId: FuncId;
+    changeSetPk: ChangeSetId;
+  };
+  FuncDeleted: {
+    funcId: FuncId;
+    changeSetPk: ChangeSetId;
+  };
+  FuncReverted: {
+    funcId: FuncId;
+    changeSetPk: ChangeSetId;
+  };
+  FuncSaved: {
+    funcId: FuncId;
+    changeSetPk: ChangeSetId;
   };
 };

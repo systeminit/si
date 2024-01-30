@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use council_server::ManagementResponse;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, collections::HashSet, convert::TryFrom};
@@ -219,13 +220,8 @@ impl DependentValuesUpdate {
             .await?;
         }
 
-        // No matter what, we need to finish the updater, publish WsEvent(s) and commit.
+        // No matter what, we need to finish the updater
         status_updater.finish(ctx).await;
-
-        WsEvent::change_set_written(ctx)
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
 
         let client = StatusReceiverClient::new(ctx.nats_conn().clone()).await;
         if let Err(e) = client
@@ -294,12 +290,6 @@ impl DependentValuesUpdate {
                         // Send a completed status for this value and *remove* it from the hash
                         status_updater.values_completed(ctx, vec![id]).await;
 
-                        WsEvent::change_set_written(ctx)
-                            .await?
-                            .publish_on_commit(ctx)
-                            .await?;
-
-                        // Publish the WsEvent
                         ctx.commit().await?;
                     }
                     council_server::Response::Failed { node_id } => {
@@ -329,12 +319,6 @@ impl DependentValuesUpdate {
                 }
             }
 
-            WsEvent::change_set_written(ctx)
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
-
-            // Publish the WsEvent now!
             ctx.commit().await?;
 
             // If we get `None` back from the `JoinSet` that means that there are no
@@ -476,6 +460,11 @@ async fn update_summary_tables(
     let mut component_type: String = String::new();
     let mut has_resource: bool = false;
     let mut deleted_at: Option<String> = None;
+    let mut deleted_at_datetime: Option<DateTime<Utc>> = None;
+    if let Some(ref deleted_at) = deleted_at {
+        let deleted_at_datetime_inner: DateTime<Utc> = deleted_at.parse()?;
+        deleted_at_datetime = Some(deleted_at_datetime_inner);
+    }
 
     if let Some(component_name) = component_value_json.pointer("/si/name") {
         if let Some(component_name_str) = component_name.as_str() {
@@ -529,7 +518,7 @@ async fn update_summary_tables(
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_qualification_update_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+            "SELECT object FROM summary_qualification_update_v2($1, $2, $3, $4, $5, $6, $7, $8, $9)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
@@ -539,6 +528,7 @@ async fn update_summary_tables(
                 &warned,
                 &succeeded,
                 &failed,
+                &deleted_at_datetime,
             ],
         )
         .await?;

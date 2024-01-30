@@ -59,7 +59,7 @@ pub async fn add_action(
         }),
     );
 
-    WsEvent::change_set_written(&ctx)
+    WsEvent::action_added(&ctx, *component.id(), *action.id())
         .await?
         .publish_on_commit(&ctx)
         .await?;
