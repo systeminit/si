@@ -1,15 +1,19 @@
 use petgraph::prelude::*;
 use std::{
     collections::{hash_map::Entry, HashMap, VecDeque},
-    fs::File,
-    io::Write,
+    sync::Arc,
 };
 use ulid::Ulid;
 
+use tokio::{fs::File, io::AsyncWriteExt, sync::Mutex};
+
 use crate::{
-    attribute::prototype::{argument::AttributePrototypeArgument, AttributePrototype},
+    attribute::{
+        prototype::{argument::AttributePrototypeArgument, AttributePrototype},
+        value::ValueIsFor,
+    },
     workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
-    DalContext,
+    DalContext, Prop,
 };
 
 use super::{AttributeValue, AttributeValueId, AttributeValueResult};
@@ -126,7 +130,41 @@ impl DependentValueGraph {
         Ok(dependent_value_graph)
     }
 
-    pub fn debug_dot(&self, suffix: Option<&str>) {
+    pub async fn debug_dot(&self, ctx: &DalContext, suffix: Option<&str>) {
+        let mut is_for_map = HashMap::new();
+
+        for (attribute_value_id, _) in &self.id_to_index_map {
+            let is_for: String = match AttributeValue::is_for(ctx, *attribute_value_id)
+                .await
+                .expect("able to get value is for")
+            {
+                ValueIsFor::Prop(prop_id) => format!(
+                    "prop = {}",
+                    Prop::path_by_id(ctx, prop_id)
+                        .await
+                        .expect("able to get prop path")
+                        .with_replaced_sep("/"),
+                ),
+                ValueIsFor::ExternalProvider(_) => "output socket".into(),
+                ValueIsFor::InternalProvider(_) => "input socket".into(),
+            };
+            is_for_map.insert(*attribute_value_id, is_for);
+        }
+
+        let label_value_fn =
+            move |_: &StableDiGraph<AttributeValueId, ()>,
+                  (_, attribute_value_id): (NodeIndex, &AttributeValueId)| {
+                let attribute_value_id = *attribute_value_id;
+                let is_for = is_for_map.clone();
+
+                let is_for_string = (&is_for.clone())
+                    .get(&attribute_value_id)
+                    .map(ToOwned::to_owned)
+                    .expect("is for exists for every value");
+
+                format!("label = \"{}\n{}\"", attribute_value_id, is_for_string)
+            };
+
         let dot = petgraph::dot::Dot::with_attr_getters(
             &self.graph,
             &[
@@ -134,7 +172,7 @@ impl DependentValueGraph {
                 petgraph::dot::Config::EdgeNoLabel,
             ],
             &|_, _| "label = \"\"".to_string(),
-            &|_, (_, attribute_value_id)| format!("label = \"{}\"", attribute_value_id),
+            &label_value_fn,
         );
 
         let filename_no_extension = format!(
@@ -143,8 +181,11 @@ impl DependentValueGraph {
             suffix.unwrap_or("depgraph")
         );
         let mut file = File::create(format!("/home/zacharyhamm/{filename_no_extension}.txt"))
+            .await
             .expect("could not create file");
+
         file.write_all(format!("{dot:?}").as_bytes())
+            .await
             .expect("could not write file");
         println!("dot output stored in file (filename without extension: {filename_no_extension})");
     }

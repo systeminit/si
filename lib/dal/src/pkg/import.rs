@@ -2534,20 +2534,18 @@ async fn import_schema_variant(
                 );
             }
 
-            let schema_variant = match variant_spec.data() {
-                Some(data) => match data.color() {
-                    Some(color) => {
-                        let current_color = schema_variant.get_color(ctx).await?;
-                        if current_color.as_deref() != Some(color) {
-                            schema_variant.set_color(ctx, color).await?
-                        } else {
-                            schema_variant
-                        }
+            if let Some(data) = variant_spec.data() {
+                if let Some(color) = data.color() {
+                    let current_color = schema_variant.get_color(ctx).await?;
+                    if current_color.as_deref() != Some(color) {
+                        schema_variant.set_color(ctx, color).await?
                     }
-                    None => schema_variant,
-                },
-                None => schema_variant,
-            };
+                }
+
+                schema_variant
+                    .set_type(ctx, data.component_type().to_string())
+                    .await?;
+            }
 
             let mut side_effects = CreatePropsSideEffects::default();
 
@@ -3350,6 +3348,11 @@ pub async fn attach_resource_payload_to_value(
             get_prototype_for_context(ctx, AttrFuncContext::Prop(resource_value_prop_id), None)
                 .await?;
 
+        dbg!(
+            "attaching resource payload to prototype",
+            prototype_id,
+            func_id
+        );
         AttributePrototype::update_func_by_id(ctx, prototype_id, func_id).await?;
 
         prototype_id
@@ -3360,6 +3363,7 @@ pub async fn attach_resource_payload_to_value(
         if func_argument_id
             == AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?
         {
+            dbg!(&apa_id);
             rv_input_apa_id = Some(apa_id);
             break;
         }
@@ -3367,6 +3371,7 @@ pub async fn attach_resource_payload_to_value(
 
     match rv_input_apa_id {
         Some(apa_id) => {
+            dbg!("existing apa");
             if !{
                 if let Some(ValueSource::Prop(prop_id)) =
                     AttributePrototypeArgument::value_source_by_id(ctx, apa_id).await?
@@ -3382,6 +3387,7 @@ pub async fn attach_resource_payload_to_value(
         }
         None => {
             let apa = AttributePrototypeArgument::new(ctx, target_id, func_argument_id).await?;
+            dbg!("new apa for resource payload prototype", apa.id());
             apa.set_value_from_prop_id(ctx, source_prop_id).await?;
         }
     }

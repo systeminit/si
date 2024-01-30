@@ -187,6 +187,30 @@ impl ExternalProvider {
         Ok(result)
     }
 
+    pub async fn list_ids_for_schema_variant(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> ExternalProviderResult<Vec<ExternalProviderId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+        let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            schema_variant_id,
+            EdgeWeightKindDiscriminants::Provider,
+        )?;
+
+        let mut result = vec![];
+        for node_index in node_indices {
+            let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+            if let Some(_) = node_weight.get_option_content_node_weight_of_kind(
+                ContentAddressDiscriminants::ExternalProvider,
+            ) {
+                result.push(node_weight.id().into())
+            }
+        }
+
+        Ok(result)
+    }
+
     pub async fn list(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,

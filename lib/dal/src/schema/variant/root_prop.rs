@@ -311,7 +311,7 @@ impl RootProp {
             true,
             None,
             None,
-            PropParent::Prop(resource_prop.id()),
+            PropParent::OrderedProp(resource_prop.id()),
         )
         .await?;
 
@@ -323,7 +323,7 @@ impl RootProp {
             true,
             None,
             None,
-            PropParent::Prop(resource_prop.id()),
+            PropParent::OrderedProp(resource_prop.id()),
         )
         .await?;
 
@@ -335,7 +335,7 @@ impl RootProp {
             true,
             None,
             None,
-            PropParent::Prop(resource_prop.id()),
+            PropParent::OrderedProp(resource_prop.id()),
         )
         .await?;
 
@@ -359,7 +359,7 @@ impl RootProp {
             true,
             None,
             None,
-            PropParent::Prop(resource_prop.id()),
+            PropParent::OrderedProp(resource_prop.id()),
         )
         .await?;
 
@@ -371,7 +371,7 @@ impl RootProp {
             true,
             None,
             None,
-            PropParent::Prop(resource_prop.id()),
+            PropParent::OrderedProp(resource_prop.id()),
         )
         .await?;
 

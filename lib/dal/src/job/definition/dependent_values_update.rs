@@ -117,17 +117,16 @@ impl DependentValuesUpdate {
 
         let mut dependency_graph =
             DependentValueGraph::for_values(ctx, self.attribute_values.clone()).await?;
-        dependency_graph.debug_dot(None);
-
-        // Remove the values that brought us here, since they should already have had their functions executed
-        for value in &self.attribute_values {
-            dependency_graph.remove_value(*value);
-        }
 
         debug!(
             "DependentValueGraph calculation took: {:?}",
             start.elapsed()
         );
+
+        // Remove the first set of independent_values since they should already have had their functions executed
+        for value in dependency_graph.independent_values() {
+            dependency_graph.remove_value(value);
+        }
 
         let mut seen_ids = HashSet::new();
         let mut task_id_to_av_id = HashMap::new();
@@ -213,7 +212,7 @@ async fn values_from_prototype_function_execution(
     ctx: DalContext,
     attribute_value_id: AttributeValueId,
 ) -> DependentValueUpdateResult<PrototypeExecutionResult> {
-    Ok(AttributeValue::values_from_prototype_function_execution(&ctx, attribute_value_id).await?)
+    Ok(AttributeValue::execute_prototype_function(&ctx, attribute_value_id).await?)
 }
 
 impl TryFrom<JobInfo> for DependentValuesUpdate {

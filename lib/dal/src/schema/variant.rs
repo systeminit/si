@@ -580,17 +580,38 @@ impl SchemaVariant {
     /// we will remove that edge and replace it with one pointing to
     /// `SetString`.
     pub async fn set_color(
-        self,
+        &self,
         ctx: &DalContext,
         color: impl AsRef<str>,
-    ) -> SchemaVariantResult<Self> {
+    ) -> SchemaVariantResult<()> {
         let color_prop_id =
             Prop::find_prop_id_by_path(ctx, self.id, &PropPath::new(["root", "si", "color"]))
                 .await?;
 
         Prop::set_default_value(ctx, color_prop_id, color.as_ref()).await?;
 
-        Ok(self)
+        Ok(())
+    }
+
+    /// Configures the "default" value for the
+    /// [`AttributePrototypeArgument`](crate::attribute::prototype::argument::AttributePrototypeArgument)
+    /// for the /root/si/type [`Prop`](crate::Prop). If a prototype already
+    /// exists pointing to a function other than
+    /// [`IntrinsicFunc::SetString`](`crate::func::intrinsics::IntrinsicFunc::SetString`)
+    /// we will remove that edge and replace it with one pointing to
+    /// `SetString`.
+    pub async fn set_type(
+        &self,
+        ctx: &DalContext,
+        component_type: impl AsRef<str>,
+    ) -> SchemaVariantResult<()> {
+        let type_prop_id =
+            Prop::find_prop_id_by_path(ctx, self.id, &PropPath::new(["root", "si", "type"]))
+                .await?;
+
+        Prop::set_default_value(ctx, type_prop_id, component_type.as_ref()).await?;
+
+        Ok(())
     }
 
     /// This method finds a [`leaf`](crate::schema::variant::leaves)'s entry

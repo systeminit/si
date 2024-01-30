@@ -38,6 +38,7 @@ use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgRow};
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::time::Instant;
 use ulid::Ulid;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
@@ -115,11 +116,16 @@ impl TryFrom<PgRow> for WorkspaceSnapshot {
     type Error = WorkspaceSnapshotError;
 
     fn try_from(row: PgRow) -> Result<Self, Self::Error> {
+        let start = Instant::now();
         let snapshot: Vec<u8> = row.try_get("snapshot")?;
+        info!("snapshot copy into vec: {:?}", start.elapsed());
+        let start = Instant::now();
+        let working_copy = postcard::from_bytes(&snapshot)?;
+        info!("snapshot deserialize: {:?}", start.elapsed());
         Ok(Self {
             id: row.try_get("id")?,
             created_at: row.try_get("created_at")?,
-            working_copy: postcard::from_bytes(&snapshot)?,
+            working_copy,
         })
     }
 }
@@ -393,6 +399,7 @@ impl WorkspaceSnapshot {
         ctx: &DalContext,
         workspace_snapshot_id: WorkspaceSnapshotId,
     ) -> WorkspaceSnapshotResult<Self> {
+        let start = tokio::time::Instant::now();
         let row = ctx
             .txns()
             .await?
@@ -402,6 +409,7 @@ impl WorkspaceSnapshot {
                 &[&workspace_snapshot_id],
             )
             .await?;
+        info!("data fetch: {:?}", start.elapsed());
         Self::try_from(row)
     }
 

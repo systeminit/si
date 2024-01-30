@@ -444,7 +444,9 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
 
     assert_eq!(
         serde_json::json!({
-                "si": { "name": name },
+                "si": { "name": name, "color": "#ffffff", "type": "component" },
+                "resource": {},
+                "resource_value": {},
                 "domain": {
                     "name": name,
                     "possible_world_a": {
@@ -464,7 +466,8 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
                                 }
                             }
                         }
-                    }
+                    },
+                    "universe": { "galaxies": [] },
                 }
             }
         ),
@@ -552,29 +555,13 @@ async fn set_the_universe(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let root_prop_id = Prop::find_prop_id_by_path(ctx, variant.id(), &PropPath::new(["root"]))
+    let materialized_view = AttributeValue::get_by_id(ctx, universe_value_id)
         .await
-        .expect("able to find root prop");
-
-    let root_value_id = Prop::attribute_values_for_prop_id(ctx, root_prop_id)
-        .await
-        .expect("get domain prop id")
-        .get(0)
-        .copied()
-        .expect("a value exists for the root prop");
-
-    let root_value = AttributeValue::get_by_id(ctx, root_value_id)
-        .await
-        .expect("able to get the value for the root prop attriburte value id");
-
-    let root_view = root_value
+        .expect("get av")
         .materialized_view(ctx)
         .await
-        .expect("able to fetch materialized_view for root value")
-        .expect("there is a value for the root value materialized_view");
+        .expect("get view")
+        .expect("has a view");
 
-    assert_eq!(
-        serde_json::json!({ "domain": { "universe": universe_json, "name": name }, "si": { "name": name } } ),
-        root_view
-    );
+    assert_eq!(universe_json, materialized_view);
 }

@@ -111,6 +111,10 @@ pub enum AttributeValueError {
     AttributeValueMultipleProviderEdges(AttributeValueId),
     #[error("Cannot create nested values for {0} since it is not the value for a prop")]
     CannotCreateNestedValuesForNonPropValues(AttributeValueId),
+    #[error("Cannot create attribute value for provider without component id")]
+    CannotCreateProviderValueWithoutComponentId,
+    #[error("Cannot create attribute value for root prop without component id")]
+    CannotCreateRootPropValueWithoutComponentId,
     #[error(
         "cannot explicitly set the value of {0} because it is for an internal or external provider"
     )]
@@ -119,6 +123,8 @@ pub enum AttributeValueError {
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("empty attribute prototype arguments for group name: {0}")]
+    EmptyAttributePrototypeArgumentsForGroup(String),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
@@ -234,6 +240,24 @@ impl From<ValueIsFor> for Ulid {
     }
 }
 
+impl From<PropId> for ValueIsFor {
+    fn from(value: PropId) -> Self {
+        Self::Prop(value)
+    }
+}
+
+impl From<ExternalProviderId> for ValueIsFor {
+    fn from(value: ExternalProviderId) -> Self {
+        Self::ExternalProvider(value)
+    }
+}
+
+impl From<InternalProviderId> for ValueIsFor {
+    fn from(value: InternalProviderId) -> Self {
+        Self::InternalProvider(value)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct PrototypeExecutionResult {
     value: Option<serde_json::Value>,
@@ -256,10 +280,29 @@ impl AttributeValue {
         self.id
     }
 
-    pub async fn new(ctx: &DalContext, ordered: bool) -> AttributeValueResult<Self> {
+    pub async fn new(
+        ctx: &DalContext,
+        is_for: impl Into<ValueIsFor>,
+        component_id: Option<ComponentId>,
+        maybe_parent_attribute_value: Option<AttributeValueId>,
+        key: Option<String>,
+    ) -> AttributeValueResult<Self> {
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_attribute_value(change_set, id, None, None, None)?;
+        let is_for = is_for.into();
+
+        let ordered = if let Some(prop_id) = is_for.prop_id() {
+            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+            workspace_snapshot
+                .get_node_weight_by_id(prop_id)?
+                .get_prop_node_weight()?
+                .kind()
+                .ordered()
+        } else {
+            false
+        };
 
         {
             let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
@@ -270,7 +313,86 @@ impl AttributeValue {
             };
         }
 
+        match is_for {
+            ValueIsFor::Prop(prop_id) => {
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+                workspace_snapshot.add_edge(
+                    id,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Prop)?,
+                    prop_id,
+                )?;
+
+                // Attach value to parent prop (or root to component)
+                match maybe_parent_attribute_value {
+                    Some(pav_id) => {
+                        workspace_snapshot.add_ordered_edge(
+                            change_set,
+                            pav_id,
+                            EdgeWeight::new(change_set, EdgeWeightKind::Contain(key))?,
+                            id,
+                        )?;
+                    }
+                    None => {
+                        // Component --Use--> AttributeValue
+                        workspace_snapshot.add_edge(
+                            component_id.ok_or(
+                                AttributeValueError::CannotCreateRootPropValueWithoutComponentId,
+                            )?,
+                            EdgeWeight::new(change_set, EdgeWeightKind::Root)?,
+                            id,
+                        )?;
+                    }
+                }
+            }
+            is_for_provider => {
+                // Attach value to component via Socket edge and to Provider
+                let provider_id: Ulid = is_for_provider
+                    .external_provider_id()
+                    .map(Into::into)
+                    .or_else(|| is_for_provider.internal_provider_id().map(Into::into))
+                    .ok_or(AttributeValueError::UnexpectedGraphLayout(
+                        "we expected a ValueIsFor for a provider type here but did not get one",
+                    ))?;
+
+                let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+                workspace_snapshot.add_edge(
+                    component_id
+                        .ok_or(AttributeValueError::CannotCreateProviderValueWithoutComponentId)?,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Socket)?,
+                    id,
+                )?;
+
+                workspace_snapshot.add_edge(
+                    id,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
+                    provider_id,
+                )?;
+            }
+        }
+
         Ok(node_weight.get_attribute_value_node_weight()?.into())
+    }
+
+    async fn update_inner(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+        value: Option<serde_json::Value>,
+        spawn_dependent_values_update: bool,
+    ) -> AttributeValueResult<()> {
+        Self::vivify_value_and_parent_values(ctx, attribute_value_id).await?;
+        Self::set_value(ctx, attribute_value_id, value.clone()).await?;
+        Self::populate_nested_values(ctx, attribute_value_id, value).await?;
+
+        if spawn_dependent_values_update {
+            ctx.enqueue_job(DependentValuesUpdate::new(
+                ctx.access_builder(),
+                *ctx.visibility(),
+                vec![attribute_value_id],
+            ))
+            .await?;
+        }
+
+        Ok(())
     }
 
     pub async fn update(
@@ -278,18 +400,21 @@ impl AttributeValue {
         attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
     ) -> AttributeValueResult<()> {
-        Self::vivify_value_and_parent_values(ctx, attribute_value_id).await?;
-        Self::set_value(ctx, attribute_value_id, value.clone()).await?;
-        Self::populate_nested_values(ctx, attribute_value_id, value).await?;
+        Self::update_inner(ctx, attribute_value_id, value, true).await
+    }
 
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            vec![attribute_value_id],
-        ))
-        .await?;
-
-        Ok(())
+    /// Directly update an attribute value but do not trigger a dependent values update. Used
+    /// during component creation so that we can ensure only one job is necessary for the many
+    /// values updated when a component is created. Use only when you understand why you don't want
+    /// to trigger a job, because if you don't run a dependent values job update, the materialized
+    /// views for the component will *not* be updated to reflect the new value, nor will any values
+    /// that depend on this value be updated.
+    pub async fn update_no_dependent_values(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+        value: Option<serde_json::Value>,
+    ) -> AttributeValueResult<()> {
+        Self::update_inner(ctx, attribute_value_id, value, false).await
     }
 
     pub async fn is_for(
@@ -356,7 +481,7 @@ impl AttributeValue {
         .into())
     }
 
-    pub async fn values_from_prototype_function_execution(
+    pub async fn execute_prototype_function(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<PrototypeExecutionResult> {
@@ -451,7 +576,11 @@ impl AttributeValue {
             // functions.
             let mut prepared_func_binding_args = HashMap::new();
             for (arg_name, values) in func_binding_args {
-                if values.len() == 1 {
+                if values.is_empty() {
+                    return Err(
+                        AttributeValueError::EmptyAttributePrototypeArgumentsForGroup(arg_name),
+                    );
+                } else if values.len() == 1 {
                     prepared_func_binding_args.insert(arg_name, values[0].to_owned());
                 } else {
                     let vec_value = serde_json::to_value(values)?;
@@ -559,8 +688,7 @@ impl AttributeValue {
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<()> {
         let execution_result =
-            AttributeValue::values_from_prototype_function_execution(ctx, attribute_value_id)
-                .await?;
+            AttributeValue::execute_prototype_function(ctx, attribute_value_id).await?;
 
         AttributeValue::set_values_from_execution_result(ctx, attribute_value_id, execution_result)
             .await?;
@@ -625,7 +753,7 @@ impl AttributeValue {
         value: Option<serde_json::Value>,
         key: Option<String>,
     ) -> AttributeValueResult<AttributeValueId> {
-        let element_prop_node_weight = {
+        let element_prop_id: PropId = {
             let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
             // Find the array or map prop.
@@ -640,15 +768,9 @@ impl AttributeValue {
                     parent_attribute_value_id,
                 ))?;
 
-            let prop_node_weight = match workspace_snapshot.get_node_weight(prop_index)?.clone() {
-                NodeWeight::Prop(inner) => inner,
-                _ => {
-                    return Err(AttributeValueError::NodeWeightMismatch(
-                        prop_index,
-                        NodeWeightDiscriminants::Prop,
-                    ))
-                }
-            };
+            let prop_node_weight = workspace_snapshot
+                .get_node_weight(prop_index)?
+                .get_prop_node_weight()?;
 
             // Ensure it actually is an array or map prop.
             if prop_node_weight.kind() != PropKind::Array
@@ -672,40 +794,24 @@ impl AttributeValue {
                 .get(0)
                 .ok_or(AttributeValueError::PropMissingElementProp(prop_id))?
                 .to_owned();
-            match workspace_snapshot
+
+            workspace_snapshot
                 .get_node_weight(element_prop_index)?
+                .get_prop_node_weight()?
                 .clone()
-            {
-                NodeWeight::Prop(inner) => inner,
-                _ => {
-                    return Err(AttributeValueError::NodeWeightMismatch(
-                        element_prop_index,
-                        NodeWeightDiscriminants::Prop,
-                    ))
-                }
-            }
+                .id()
+                .into()
         };
 
         // Create the "element" attribute value in the array or map alongside an attribute prototype for it.
-        let new_attribute_value = Self::new(ctx, element_prop_node_weight.kind().ordered()).await?;
-
-        {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-
-            let change_set = ctx.change_set_pointer()?;
-            workspace_snapshot.add_ordered_edge(
-                change_set,
-                parent_attribute_value_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Contain(key))?,
-                new_attribute_value.id,
-            )?;
-
-            workspace_snapshot.add_edge(
-                new_attribute_value.id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Prop)?,
-                element_prop_node_weight.id(),
-            )?;
-        }
+        let new_attribute_value = Self::new(
+            ctx,
+            element_prop_id,
+            None,
+            Some(parent_attribute_value_id),
+            key,
+        )
+        .await?;
 
         let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
         AttributePrototype::new(ctx, func_id).await?;
@@ -784,26 +890,8 @@ impl AttributeValue {
             }
         };
 
-        let new_attribute_value = Self::new(ctx, prop_kind.ordered()).await?;
-
-        {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-
-            let change_set = ctx.change_set_pointer()?;
-
-            workspace_snapshot.add_ordered_edge(
-                change_set,
-                attribute_value_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Contain(key))?,
-                new_attribute_value.id,
-            )?;
-
-            workspace_snapshot.add_edge(
-                new_attribute_value.id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Prop)?,
-                prop_id,
-            )?;
-        }
+        let new_attribute_value =
+            Self::new(ctx, prop_id, None, Some(attribute_value_id), key).await?;
 
         AttributePrototype::new(ctx, func_id).await?;
 

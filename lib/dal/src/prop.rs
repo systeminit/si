@@ -391,10 +391,18 @@ impl Prop {
         }
     }
 
-    pub async fn path(&self, ctx: &DalContext) -> PropResult<PropPath> {
-        let mut parts = vec![self.name.to_owned()];
+    pub async fn path_by_id(ctx: &DalContext, prop_id: PropId) -> PropResult<PropPath> {
+        let name = ctx
+            .workspace_snapshot()?
+            .read()
+            .await
+            .get_node_weight_by_id(prop_id)?
+            .get_prop_node_weight()?
+            .name()
+            .to_owned();
 
-        let mut work_queue = VecDeque::from([self.id]);
+        let mut parts = VecDeque::from([name]);
+        let mut work_queue = VecDeque::from([prop_id]);
 
         while let Some(prop_id) = work_queue.pop_front() {
             if let Some(prop_id) = Prop::parent_prop_id_by_id(ctx, prop_id).await? {
@@ -402,14 +410,17 @@ impl Prop {
                 let node_idx = workspace_snapshot.get_node_index_by_id(prop_id)?;
 
                 if let NodeWeight::Prop(inner) = workspace_snapshot.get_node_weight(node_idx)? {
-                    parts.push(inner.name().to_owned());
+                    parts.push_front(inner.name().to_owned());
                     work_queue.push_back(inner.id().into());
                 }
             }
         }
 
-        parts.reverse();
-        Ok(PropPath::new(&parts))
+        Ok(PropPath::new(parts))
+    }
+
+    pub async fn path(&self, ctx: &DalContext) -> PropResult<PropPath> {
+        Self::path_by_id(ctx, self.id).await
     }
 
     pub async fn attribute_values_for_prop_id(
@@ -646,6 +657,14 @@ impl Prop {
         )?;
 
         Ok(())
+    }
+
+    pub async fn prototypes_by_key(
+        _ctx: &DalContext,
+        _prop_id: PropId,
+    ) -> PropResult<Vec<(String, AttributePrototypeId)>> {
+        let result = vec![];
+        Ok(result)
     }
 
     pub async fn prototype_id(
