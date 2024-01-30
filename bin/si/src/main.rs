@@ -4,8 +4,9 @@ use si_cli::engine::docker_engine::DockerEngine;
 use si_cli::engine::podman_engine::PodmanEngine;
 use si_cli::state::AppState;
 use std::sync::Arc;
-use telemetry_application::{prelude::*, TelemetryConfig};
+use telemetry_application::prelude::*;
 use tokio::sync::oneshot::Sender;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 mod args;
 
@@ -13,14 +14,18 @@ static VERSION: &str = include_str!("version.txt");
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> Result<()> {
+    let shutdown_token = CancellationToken::new();
+    let task_tracker = TaskTracker::new();
+
     color_eyre::install()?;
     let config = TelemetryConfig::builder()
         .service_name("cli")
         .service_namespace("cli")
         .log_env_var_prefix("SI")
         .app_modules(vec!["si"])
+        .signal_handlers(false)
         .build()?;
-    let _telemetry = telemetry_application::init(config)?;
+    let _telemetry = telemetry_application::init(config, &task_tracker, shutdown_token.clone())?;
     let args = args::parse();
     let mode = args.mode();
     let is_preview = args.is_preview;
@@ -109,6 +114,8 @@ async fn main() -> Result<()> {
         println!("Preview mode... System Initiative would have taken the following actions");
     }
 
+    task_tracker.close();
+
     match args.command {
         Commands::Install(_args) => {
             state.install().await?;
@@ -152,6 +159,15 @@ async fn main() -> Result<()> {
     }
 
     drop(state);
+
+    // TODO(fnichol): this will eventually go into the signal handler code but at the moment in
+    // si's case, this doesn't really exist anywhere. At this moment in the program however, the
+    // command to run has shut down so it's an appropriate time to cancel other remaining tasks and
+    // wait on their graceful shutdowns
+    {
+        shutdown_token.cancel();
+        task_tracker.wait().await;
+    }
 
     if let Err(e) = ph_done_receiver.await {
         println!("{}", e)
