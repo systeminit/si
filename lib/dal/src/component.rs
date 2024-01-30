@@ -17,6 +17,7 @@ use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::code_view::CodeViewError;
+use crate::edge::EdgeKind;
 use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::{FuncBindingReturnValueError, FuncBindingReturnValueId};
 use crate::job::definition::DependentValuesUpdate;
@@ -812,14 +813,39 @@ impl Component {
         ctx: &DalContext,
         component_type: ComponentType,
     ) -> ComponentResult<()> {
-        // anytime a component_type is changed to a Configuration Frame,
-        // we delete all current edges that were configured for the previously
-        // set component_type (aka AggregationFrame and Component)
-        // The 2 other component_types can retain their edges.
-        if component_type == ComponentType::ConfigurationFrameDown {
-            let edges = Edge::list_for_component(ctx, self.id).await?;
-            for mut edge in edges {
-                edge.delete_and_propagate(ctx).await?;
+        //when we change the component_type we need to do 2 things:
+        //1. remove all symbollic edges to children of that component (for example if changing from a up/down frame)
+        //2. if the component has a parent, we need to create a symbollic edge between what was formerly grandparent -> child relationships
+
+        let edges = Edge::list_for_component(ctx, self.id).await?;
+        let mut children_of_frame_connections = Vec::new();
+        let mut maybe_grandparent_node_id: Option<Edge> = None;
+
+        for mut edge in edges {
+            if *edge.kind() == EdgeKind::Symbolic {
+                if edge.tail_component_id() == self.id {
+                    // this node is a tail, so this edge is to a grandparent
+                    // let's grab the edge so we can create edges between any children this component has
+                    maybe_grandparent_node_id = Some(edge.clone());
+                } else if edge.head_component_id() == self.id {
+                    children_of_frame_connections.push(edge.clone());
+                    edge.delete_and_propagate(ctx).await?;
+                }
+            }
+        }
+
+        //lets create the new symbolic edges from grandparent -> child
+        for edge in children_of_frame_connections {
+            if let Some(parent_edge) = &maybe_grandparent_node_id {
+                let _new_edge = Edge::new_for_connection(
+                    ctx,
+                    parent_edge.head_node_id(),
+                    parent_edge.head_socket_id(),
+                    edge.tail_node_id(),
+                    edge.tail_socket_id(),
+                    EdgeKind::Symbolic,
+                )
+                .await?;
             }
         }
 
