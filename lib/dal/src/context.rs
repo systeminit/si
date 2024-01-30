@@ -791,6 +791,12 @@ impl Transactions {
 
     /// Consumes all inner transactions, committing all changes made within them, and returns
     /// underlying connections.
+    #[instrument(
+        name = "transactions.commit_into_conns",
+        level = "info",
+        skip_all,
+        fields()
+    )]
     pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
@@ -802,6 +808,12 @@ impl Transactions {
 
     /// Consumes all inner transactions, committing all changes made within them, and returns
     /// underlying connections. Blocking until all queued jobs have reported as finishing.
+    #[instrument(
+        name = "transactions.blocking_commit_into_conns",
+        level = "info",
+        skip_all,
+        fields()
+    )]
     pub async fn blocking_commit_into_conns(self) -> Result<Connections, TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
