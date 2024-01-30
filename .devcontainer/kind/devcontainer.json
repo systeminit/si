@@ -1,0 +1,87 @@
+// Reference:
+// - https://containers.dev/features
+// - https://containers.dev/implementors/features
+// - https://code.visualstudio.com/docs/getstarted/settings
+{
+  "name": "konductor-kind",
+  "image": "ghcr.io/containercraft/konductor:latest",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        // https://github.com/VSCodeVim/Vim
+        //"keyboard.dispatch": "keyCode",
+        //"vim.leader": "<space>",
+        "vim.easymotion": true,
+        "vim.incsearch": true,
+        "vim.useSystemClipboard": true,
+        "vim.useCtrlKeys": true,
+        "vim.hlsearch": true,
+        "vim.insertModeKeyBindings": [
+          {
+            "before": ["j", "j"],
+            "after": ["<Esc>"]
+          }
+        ],
+        "vim.handleKeys": {
+          "<C-a>": false,
+          "<C-f>": false
+        },
+        "extensions.experimental.affinity": {
+          "vscodevim.vim": 1
+        },
+        "go.testTags": "all",
+        "go.buildTags": "all",
+        "editor.minimap.enabled": false,
+        "editor.quickSuggestionsDelay": 0,
+        "editor.suggestSelection": "first",
+        "editor.snippetSuggestions": "top",
+        "editor.gotoLocation.multipleReferences": "goto",
+        "editor.gotoLocation.multipleDefinitions": "goto",
+        "editor.gotoLocation.multipleDeclarations": "goto",
+        "editor.gotoLocation.multipleImplementations": "goto",
+        "editor.gotoLocation.multipleTypeDefinitions": "goto",
+        "editor.terminal.integrated.shell.linux": "/usr/bin/fish",
+        "terminal.integrated.sendKeybindingsToShell": true,
+        "terminal.integrated.fontFamily": "FiraMono Nerd Font Mono",
+        "workbench.colorTheme": "Dracula Soft",
+        "explorer.openEditors.visible": 1,
+        "files.trimTrailingWhitespace": true,
+        "files.trimFinalNewlines": true
+      },
+      "extensions": [
+        "golang.go",
+        "vscodevim.vim",
+        "github.copilot",
+        "ms-python.python",
+        "redhat.vscode-yaml",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker",
+        "github.vscode-pull-request-github",
+        "ms-vscode-remote.remote-containers",
+        "visualstudioexptteam.vscodeintellicode",
+        "bierner.markdown-preview-github-styles"
+      ]
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+        "username": "vscode",
+        "userGid": "automatic",
+        "userUid": "automatic",
+        "upgradePackages": true,
+        "nonFreePackages": true
+    },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+        "moby": false,
+        "installDockerBuildx": true,
+        "version": "latest",
+        "dockerDashComposeVersion": "v2"
+    },
+
+    "ghcr.io/devcontainers-contrib/features/kind:1": {}
+  },
+  "postCreateCommand": "git submodule update --init --recursive",
+  "remoteUser": "vscode",
+  "forwardPorts": [1313, 2222, 6000, 7681, 8080],
+  "runArgs": ["--network=host"]
+}

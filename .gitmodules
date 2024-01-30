@@ -1,0 +1,3 @@
+[submodule ".github/konductor"]
+	path = .github/konductor
+	url = https://github.com/containercraft/konductor

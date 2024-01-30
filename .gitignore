@@ -38,3 +38,4 @@ bin/si/src/version.txt
 
 # direnv
 .direnv
+.devcontainer/docker
