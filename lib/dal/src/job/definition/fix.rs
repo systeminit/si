@@ -144,6 +144,7 @@ impl JobConsumer for FixesJob {
                     fix_items.push(item.clone());
                 }
             }
+            let should_blocking_commit = fixes.len() != fix_items.len();
 
             debug!(
                 ?fixes,
@@ -190,6 +191,7 @@ impl JobConsumer for FixesJob {
                         self.batch_id,
                         fix_item,
                         Span::current(),
+                        should_blocking_commit,
                     ))
                     .await;
                     (id, res)
@@ -329,6 +331,7 @@ async fn fix_task(
     batch_id: FixBatchId,
     fix_item: FixItem,
     parent_span: Span,
+    should_blocking_commit: bool,
 ) -> JobConsumerResult<(Fix, Vec<String>)> {
     let deleted_ctx = &ctx.clone_with_delete_visibility();
     // Get the workflow for the action we need to run.
@@ -386,7 +389,14 @@ async fn fix_task(
     // consecutive fixes that depend on the /root/resource from the previous fix.
     // `blocking_commit()` will wait for any jobs that have ben created through
     // `enqueue_job(...)` to finish before moving on.
-    ctx.blocking_commit().await?;
+    if should_blocking_commit {
+        ctx.blocking_commit().await?;
+    } else {
+        if ctx.blocking() {
+            info!("Blocked on commit that should not block of fix definition");
+        }
+        ctx.commit().await?;
+    }
 
     if matches!(completion_status, FixCompletionStatus::Success) {
         if let Err(err) = component.act(&ctx, ActionKind::Refresh).await {
@@ -494,7 +504,7 @@ async fn process_failed_fix_inner(
             }
         }
 
-        ctx.blocking_commit().await?;
+        ctx.commit().await?;
     }
 
     Ok(())
