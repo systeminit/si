@@ -25,7 +25,7 @@ pub async fn remove_action(
         .ok_or(ChangeSetError::ActionNotFound(request.id))?;
     action.delete_by_id(&ctx).await?;
 
-    WsEvent::change_set_written(&ctx)
+    WsEvent::action_removed(&ctx, *action.component_id(), *action.id())
         .await?
         .publish_on_commit(&ctx)
         .await?;

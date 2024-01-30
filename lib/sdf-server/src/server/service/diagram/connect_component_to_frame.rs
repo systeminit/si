@@ -12,7 +12,7 @@ use dal::socket::{SocketEdgeKind, SocketKind};
 use dal::{
     node::NodeId, AttributeReadContext, AttributeValue, ChangeSet, Component, ComponentError,
     Connection, DalContext, Edge, EdgeError, ExternalProvider, InternalProvider, SocketId,
-    StandardModel, Visibility, WsEvent,
+    StandardModel, Visibility,
 };
 use dal::{ComponentType, Socket};
 
@@ -429,11 +429,6 @@ pub async fn connect_component_to_frame(
         &posthog_client,
     )
     .await?;
-
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     ctx.commit().await?;
 

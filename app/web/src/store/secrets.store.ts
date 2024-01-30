@@ -425,6 +425,7 @@ export function useSecretsStore() {
               },
             });
           },
+          // This is totally unimplemented, as of 2024-01-29 -- Adam
           async DELETE_SECRET(id: SecretId) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -474,22 +475,28 @@ export function useSecretsStore() {
           },
         },
         onActivated() {
-          // TODO Run load secrets on websocket message too
           this.LOAD_SECRETS();
           this.GET_PUBLIC_KEY();
 
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
-              eventType: "ChangeSetWritten",
-              debounce: true,
-              callback: (writtenChangeSetId) => {
-                // ideally we wouldn't have to check this - since the topic subscription
-                // would mean we only receive the event for this changeset already...
-                // but this is fine for now
-                if (writtenChangeSetId !== changeSetId) return;
-
-                // probably want to get pushed updates instead of blindly re-fetching, but this is the first step of getting things working
+              eventType: "ChangeSetApplied",
+              callback: () => {
+                this.LOAD_SECRETS();
+              },
+            },
+            {
+              eventType: "SecretCreated",
+              callback: (data) => {
+                if (data.changeSetPk !== changeSetId) return;
+                this.LOAD_SECRETS();
+              },
+            },
+            {
+              eventType: "SecretUpdated",
+              callback: (data) => {
+                if (data.changeSetPk !== changeSetId) return;
                 this.LOAD_SECRETS();
               },
             },

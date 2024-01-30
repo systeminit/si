@@ -32,6 +32,8 @@ pub enum JobConsumerError {
     #[error("Error blocking on job: {0}")]
     BlockingJob(#[from] BlockingJobError),
     #[error(transparent)]
+    Chrono(#[from] chrono::ParseError),
+    #[error(transparent)]
     Component(#[from] ComponentError),
     #[error("component {0} is destroyed")]
     ComponentIsDestroyed(ComponentId),

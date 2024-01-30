@@ -12,9 +12,9 @@ use veritech_client::CycloneValueEncryptError;
 use crate::func::argument::FuncArgumentError;
 use crate::{
     generate_unique_id, impl_standard_model, pk, standard_model, standard_model_accessor,
-    standard_model_accessor_ro, DalContext, FuncBinding, HistoryEventError, SecretError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
-    WorkspacePk,
+    standard_model_accessor_ro, ChangeSetPk, DalContext, FuncBinding, HistoryEventError,
+    SecretError, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    Visibility, WorkspacePk, WsEvent, WsEventResult, WsPayload,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -281,4 +281,78 @@ impl Func {
     standard_model_accessor!(handler, Option<String>, FuncResult);
     standard_model_accessor!(code_base64, Option<String>, FuncResult);
     standard_model_accessor_ro!(code_sha256, String);
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncCreatedPayload {
+    func_id: FuncId,
+    change_set_pk: ChangeSetPk,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncDeletedPayload {
+    func_id: FuncId,
+    change_set_pk: ChangeSetPk,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncRevertedPayload {
+    func_id: FuncId,
+    change_set_pk: ChangeSetPk,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncSavedPayload {
+    func_id: FuncId,
+    change_set_pk: ChangeSetPk,
+}
+
+impl WsEvent {
+    pub async fn func_created(ctx: &DalContext, func_id: FuncId) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::FuncCreated(FuncCreatedPayload {
+                func_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
+        )
+        .await
+    }
+
+    pub async fn func_deleted(ctx: &DalContext, func_id: FuncId) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::FuncDeleted(FuncDeletedPayload {
+                func_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
+        )
+        .await
+    }
+
+    pub async fn func_reverted(ctx: &DalContext, func_id: FuncId) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::FuncReverted(FuncRevertedPayload {
+                func_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
+        )
+        .await
+    }
+
+    pub async fn func_saved(ctx: &DalContext, func_id: FuncId) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::FuncSaved(FuncSavedPayload {
+                func_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
+        )
+        .await
+    }
 }

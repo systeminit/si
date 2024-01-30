@@ -4,7 +4,7 @@ use crate::service::diagram::DiagramError;
 use axum::Json;
 use dal::node::NodeId;
 use dal::socket::SocketEdgeKind;
-use dal::{Node, StandardModel, Visibility, WsEvent};
+use dal::{Node, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -84,11 +84,6 @@ pub async fn set_node_position(
                 .await?;
         };
     }
-
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     ctx.commit().await?;
 

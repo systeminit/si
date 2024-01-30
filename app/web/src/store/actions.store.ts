@@ -198,7 +198,13 @@ export const useActionsStore = () => {
             `workspace/${workspaceId}/${changeSetId}`,
             [
               {
-                eventType: "ChangeSetWritten",
+                eventType: "ActionAdded",
+                callback: () => {
+                  this.FETCH_QUEUED_ACTIONS();
+                },
+              },
+              {
+                eventType: "ActionRemoved",
                 callback: () => {
                   this.FETCH_QUEUED_ACTIONS();
                 },

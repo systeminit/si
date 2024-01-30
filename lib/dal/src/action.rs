@@ -10,7 +10,7 @@ use crate::{
     ActionPrototype, ActionPrototypeError, ActionPrototypeId, ChangeSetPk, Component,
     ComponentError, ComponentId, DalContext, HistoryActor, HistoryEventError, Node, NodeError,
     StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, Visibility,
-    WsEvent, WsEventError,
+    WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 const FIND_FOR_CHANGE_SET: &str = include_str!("./queries/action/find_for_change_set.sql");
@@ -116,9 +116,9 @@ impl Action {
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(ctx, row).await?;
+        let object: Action = standard_model::finish_create_from_row(ctx, row).await?;
 
-        WsEvent::change_set_written(ctx)
+        WsEvent::action_added(ctx, component_id, *object.id())
             .await?
             .publish_on_commit(ctx)
             .await?;
@@ -361,4 +361,54 @@ impl Action {
     standard_model_accessor_ro!(change_set_pk, ChangeSetPk);
     standard_model_accessor_ro!(component_id, ComponentId);
     standard_model_accessor_ro!(creation_user_id, Option<UserPk>);
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ActionAddedPayload {
+    component_id: ComponentId,
+    action_id: ActionId,
+    change_set_pk: ChangeSetPk,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ActionRemovedPayload {
+    component_id: ComponentId,
+    action_id: ActionId,
+    change_set_pk: ChangeSetPk,
+}
+
+impl WsEvent {
+    pub async fn action_added(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        action_id: ActionId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ActionAdded(ActionAddedPayload {
+                component_id,
+                action_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
+        )
+        .await
+    }
+
+    pub async fn action_removed(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        action_id: ActionId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ActionRemoved(ActionRemovedPayload {
+                component_id,
+                action_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
+        )
+        .await
+    }
 }

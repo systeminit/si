@@ -2,7 +2,7 @@ use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::{
     AttributeContext, AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, Prop,
-    PropId, StandardModel, Visibility, WsEvent,
+    PropId, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -86,11 +86,6 @@ pub async fn update_property_editor_value(
             }),
         );
     }
-
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     ctx.commit().await?;
 

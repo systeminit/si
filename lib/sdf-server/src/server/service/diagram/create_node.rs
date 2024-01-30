@@ -122,11 +122,6 @@ pub async fn create_node(
         .publish_on_commit(&ctx)
         .await?;
 
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
-
     track(
         &posthog_client,
         &ctx,

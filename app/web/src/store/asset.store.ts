@@ -437,10 +437,29 @@ export const useAssetStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
-            eventType: "ChangeSetWritten",
-            debounce: true,
-            callback: (writtenChangeSetId) => {
-              if (writtenChangeSetId !== changeSetId) return;
+            eventType: "SchemaVariantDefinitionCreated",
+            callback: (data) => {
+              if (data.changeSetPk !== changeSetId) return;
+              this.LOAD_ASSET_LIST();
+            },
+          },
+          {
+            eventType: "SchemaVariantDefinitionCloned",
+            callback: (data) => {
+              if (data.changeSetPk !== changeSetId) return;
+              this.LOAD_ASSET_LIST();
+            },
+          },
+          {
+            eventType: "SchemaVariantDefinitionSaved",
+            callback: (data) => {
+              if (data.changeSetPk !== changeSetId) return;
+              this.LOAD_ASSET_LIST();
+            },
+          },
+          {
+            eventType: "ChangeSetApplied",
+            callback: () => {
               this.LOAD_ASSET_LIST();
             },
           },

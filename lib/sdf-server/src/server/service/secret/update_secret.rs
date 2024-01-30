@@ -67,7 +67,7 @@ pub async fn update_secret(
         secret.set_algorithm(&ctx, new_data.algorithm).await?;
     }
 
-    WsEvent::change_set_written(&ctx)
+    WsEvent::secret_updated(&ctx, *secret.id())
         .await?
         .publish_on_commit(&ctx)
         .await?;

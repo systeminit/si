@@ -21,6 +21,7 @@ use crate::{
     SchemaVariant, SchemaVariantId, SocketArity, StandardModel, StandardModelError, Tenancy,
     Timestamp, TransactionsError, Visibility,
 };
+use crate::{ChangeSetPk, WsEvent, WsEventResult, WsPayload};
 use si_pkg::{
     AttrFuncInputSpec, MapKeyFuncSpec, PropSpec, SchemaSpec, SchemaSpecData, SchemaVariantSpec,
     SchemaVariantSpecData, SiPropFuncSpec, SiPropFuncSpecKind, SocketSpec, SocketSpecArity,
@@ -271,6 +272,71 @@ impl SchemaVariantDefinition {
         Enum(ComponentType),
         SchemaVariantDefinitionResult
     );
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantDefinitionCreatedPayload {
+    schema_variant_definition_id: SchemaVariantDefinitionId,
+    change_set_pk: ChangeSetPk,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantDefinitionClonedPayload {
+    schema_variant_definition_id: SchemaVariantDefinitionId,
+    change_set_pk: ChangeSetPk,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantDefinitionSavedPayload {
+    schema_variant_definition_id: SchemaVariantDefinitionId,
+    change_set_pk: ChangeSetPk,
+}
+
+impl WsEvent {
+    pub async fn schema_variant_definition_created(
+        ctx: &DalContext,
+        schema_variant_definition_id: SchemaVariantDefinitionId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::SchemaVariantDefinitionCreated(SchemaVariantDefinitionCreatedPayload {
+                schema_variant_definition_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
+        )
+        .await
+    }
+
+    pub async fn schema_variant_definition_cloned(
+        ctx: &DalContext,
+        schema_variant_definition_id: SchemaVariantDefinitionId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::SchemaVariantDefinitionCloned(SchemaVariantDefinitionClonedPayload {
+                schema_variant_definition_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
+        )
+        .await
+    }
+
+    pub async fn schema_variant_definition_saved(
+        ctx: &DalContext,
+        schema_variant_definition_id: SchemaVariantDefinitionId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::SchemaVariantDefinitionSaved(SchemaVariantDefinitionSavedPayload {
+                schema_variant_definition_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
+        )
+        .await
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
