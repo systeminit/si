@@ -39,9 +39,10 @@ ARG dir_clean="\
 ##################################################################################
 # BEGIN user defined layers
 ##################################################################################
-# zstd dependency
+# Add SI dependencies
 ARG APT_PKGS="\
   zstd \
+  docker-compose-plugin \
   "
 RUN echo \
   && ${apt_update} \
