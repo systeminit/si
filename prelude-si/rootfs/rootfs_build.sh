@@ -40,7 +40,6 @@ for binary_input in "${binary_inputs[@]}"; do
 done
 echo "-------------------------------------"
 
-GITROOT="$(pwd)"
 BUCKROOT="$BUCK_SCRATCH_PATH" # This is provided by buck2
 
 BIN=cyclone
@@ -85,7 +84,7 @@ sudo mount -v "$ROOTFS" "$ROOTFSMOUNT"
 
 cyclone_args=(
   --bind-vsock 3:52
-  --decryption-key /cyclone/decryption.key
+  --decryption-key /mnt/dkey/decryption.key
   --lang-server /usr/local/bin/lang-js
   --enable-watch
   --limit-requests 1
@@ -132,6 +131,11 @@ rc-update add sshd
 echo "ttyS0::respawn:/sbin/mingetty --autologin root --noclear ttyS0" >> /etc/inittab
 sed -i 's/root:*::0:::::/root:::0:::::/g' /etc/shadow
 
+# mount decryption key volume
+cat <<EOV >>"/etc/fstab"
+LABEL=dkey     /mnt/dkey    ext4   defaults 0 0
+EOV
+
 # autostart cyclone
 cat <<EOF >"/etc/init.d/cyclone"
 #!/sbin/openrc-run
@@ -169,17 +173,6 @@ EOL
 # we created above. This will cumulatively stack the content of each.
 for binary_input in "${binary_inputs[@]}"; do
   sudo tar -xpf "$binary_input" -C "$ROOTFSMOUNT"
-
-  # TODO(johnrwatson): This can never make it into Production We need to figure
-  # out how to pass these decryption keys at all for the services That need
-  # them, maybe we need another sub-service specifically for fetching these from
-  # a secret provider or similar. Only for cyclone pull the dev decryption key
-  if echo "$binary_input" | grep -q "cyclone"; then
-    sudo mkdir -pv "$ROOTFSMOUNT/cyclone"
-    sudo cp -v \
-      "$GITROOT/lib/cyclone-server/src/dev.decryption.key" \
-      "$ROOTFSMOUNT/cyclone/decryption.key"
-  fi
 done
 # Must be unmounted then moved with sudo or permission issues will prevent all directories
 # from copying over for some mysterious reason.
