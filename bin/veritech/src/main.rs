@@ -1,14 +1,15 @@
 use color_eyre::Result;
-use telemetry_application::{
-    prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
-    TelemetryClient, TelemetryConfig,
-};
+use telemetry_application::prelude::*;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use veritech_server::{Config, CycloneSpec, Server};
 
 mod args;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let shutdown_token = CancellationToken::new();
+    let task_tracker = TaskTracker::new();
+
     color_eyre::install()?;
     let config = TelemetryConfig::builder()
         .service_name("veritech")
@@ -16,24 +17,17 @@ async fn main() -> Result<()> {
         .log_env_var_prefix("SI")
         .app_modules(vec!["veritech", "veritech_server"])
         .build()?;
-    let telemetry = telemetry_application::init(config)?;
+    let mut telemetry = telemetry_application::init(config, &task_tracker, shutdown_token.clone())?;
     let args = args::parse();
 
-    run(args, telemetry).await
-}
-
-async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Result<()> {
     if args.verbose > 0 {
         telemetry.set_verbosity(args.verbose.into()).await?;
     }
     debug!(arguments =?args, "parsed cli arguments");
 
-    if args.disable_opentelemetry {
-        telemetry.disable_opentelemetry().await?;
-    }
     let config = Config::try_from(args)?;
 
-    start_tracing_level_signal_handler_task(&telemetry)?;
+    task_tracker.close();
 
     match config.cyclone_spec() {
         CycloneSpec::LocalHttp(_) => {
@@ -44,5 +38,15 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         }
     }
 
+    // TODO(fnichol): this will eventually go into the signal handler code but at the moment in
+    // veritech's case, this is embedded in server library code which is incorrect. At this moment
+    // in the program however, the server has shut down so it's an appropriate time to cancel other
+    // remaining tasks and wait on their graceful shutdowns
+    {
+        shutdown_token.cancel();
+        task_tracker.wait().await;
+    }
+
+    info!("graceful shutdown complete.");
     Ok(())
 }

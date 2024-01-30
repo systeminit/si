@@ -1,9 +1,7 @@
 use color_eyre::Result;
 use cyclone_server::{Config, IncomingStream, Server};
-use telemetry_application::{
-    prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
-    TelemetryClient, TelemetryConfig,
-};
+use telemetry_application::prelude::*;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 mod args;
 
@@ -17,6 +15,9 @@ const CUSTOM_DEFAULT_TRACING_LEVEL: &str = "warn";
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let shutdown_token = CancellationToken::new();
+    let task_tracker = TaskTracker::new();
+
     color_eyre::install()?;
     let config = TelemetryConfig::builder()
         .service_name("cyclone")
@@ -25,29 +26,21 @@ async fn main() -> Result<()> {
         .app_modules(vec!["cyclone", "cyclone_server"])
         .custom_default_tracing_level(CUSTOM_DEFAULT_TRACING_LEVEL)
         .build()?;
-    let telemetry = telemetry_application::init(config)?;
+    let mut telemetry = telemetry_application::init(config, &task_tracker, shutdown_token.clone())?;
     let args = args::parse();
 
-    run(args, telemetry).await
-}
-
-async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Result<()> {
     if args.verbose > 0 {
         telemetry.set_verbosity(args.verbose.into()).await?;
     }
     debug!(arguments =?args, "parsed cli arguments");
 
-    if args.disable_opentelemetry {
-        telemetry.disable_opentelemetry().await?;
-    }
-
     let decryption_key = Server::load_decryption_key(&args.decryption_key).await?;
 
     let config = Config::try_from(args)?;
 
-    start_tracing_level_signal_handler_task(&telemetry)?;
-
     let telemetry = Box::new(telemetry);
+
+    task_tracker.close();
 
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {
@@ -68,6 +61,15 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 .run()
                 .await?
         }
+    }
+
+    // TODO(fnichol): this will eventually go into the signal handler code but at the moment in
+    // cyclone's case, this is embedded in server library code which is incorrect. At this moment in
+    // the program however, axum has shut down so it's an appropriate time to cancel other
+    // remaining tasks and wait on their graceful shutdowns
+    {
+        shutdown_token.cancel();
+        task_tracker.wait().await;
     }
 
     Ok(())

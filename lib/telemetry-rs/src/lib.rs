@@ -150,15 +150,7 @@ impl SpanExt for tracing::Span {
     }
 }
 
-#[remain::sorted]
-#[derive(Clone, Copy, Debug)]
-pub enum UpdateOpenTelemetry {
-    Disable,
-    Enable,
-}
-
-/// A telemetry client trait which can update tracing verbosity, toggle OpenTelemetry services,
-/// etc.
+/// A telemetry client trait which can update tracing verbosity.
 ///
 /// It is designed to be consumed by library authors without the need to depend on the entire
 /// binary/server infrastructure of tracing-rs/OpenTelemetry/etc.
@@ -171,8 +163,6 @@ pub trait TelemetryClient: Clone + Send + Sync + 'static {
         &mut self,
         directives: impl Into<String> + Send + 'async_trait,
     ) -> Result<(), ClientError>;
-    async fn enable_opentelemetry(&mut self) -> Result<(), ClientError>;
-    async fn disable_opentelemetry(&mut self) -> Result<(), ClientError>;
 }
 
 /// A telemetry type that can report its tracing level.
@@ -185,22 +175,19 @@ pub trait TelemetryLevel: Send + Sync {
 pub struct ApplicationTelemetryClient {
     app_modules: Vec<&'static str>,
     tracing_level: TracingLevel,
-    tracing_level_tx: mpsc::Sender<TracingLevel>,
-    opentelemetry_tx: mpsc::Sender<UpdateOpenTelemetry>,
+    update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
 }
 
 impl ApplicationTelemetryClient {
     pub fn new(
         app_modules: Vec<&'static str>,
         tracing_level: TracingLevel,
-        tracing_level_tx: mpsc::Sender<TracingLevel>,
-        opentelemetry_tx: mpsc::Sender<UpdateOpenTelemetry>,
+        update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
     ) -> Self {
         Self {
             app_modules,
             tracing_level,
-            tracing_level_tx,
-            opentelemetry_tx,
+            update_telemetry_tx,
         }
     }
 }
@@ -219,9 +206,8 @@ impl TelemetryClient for ApplicationTelemetryClient {
             }
         }
 
-        self.tracing_level_tx
-            .send(self.tracing_level.clone())
-            .await?;
+        self.update_telemetry_tx
+            .send(TelemetryCommand::TracingLevel(self.tracing_level.clone()))?;
         Ok(())
     }
 
@@ -251,24 +237,9 @@ impl TelemetryClient for ApplicationTelemetryClient {
     ) -> Result<(), ClientError> {
         let updated = TracingLevel::custom(directives);
         self.tracing_level = updated;
-        self.tracing_level_tx
-            .send(self.tracing_level.clone())
-            .await?;
+        self.update_telemetry_tx
+            .send(TelemetryCommand::TracingLevel(self.tracing_level.clone()))?;
         Ok(())
-    }
-
-    async fn enable_opentelemetry(&mut self) -> Result<(), ClientError> {
-        self.opentelemetry_tx
-            .send(UpdateOpenTelemetry::Enable)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn disable_opentelemetry(&mut self) -> Result<(), ClientError> {
-        self.opentelemetry_tx
-            .send(UpdateOpenTelemetry::Disable)
-            .await
-            .map_err(Into::into)
     }
 }
 
@@ -305,14 +276,6 @@ impl TelemetryClient for NoopClient {
     ) -> Result<(), ClientError> {
         Ok(())
     }
-
-    async fn enable_opentelemetry(&mut self) -> Result<(), ClientError> {
-        Ok(())
-    }
-
-    async fn disable_opentelemetry(&mut self) -> Result<(), ClientError> {
-        Ok(())
-    }
 }
 
 impl TelemetryLevel for NoopClient {
@@ -329,10 +292,14 @@ impl TelemetryLevel for NoopClient {
 pub enum ClientError {
     #[error("custom tracing level has no verbosity")]
     CustomHasNoVerbosity,
-    #[error("error while updating opentelemetry")]
-    UpdateOpenTelemetry(#[from] mpsc::error::SendError<UpdateOpenTelemetry>),
     #[error("error while updating tracing level")]
-    UpdateTracingLevel(#[from] mpsc::error::SendError<TracingLevel>),
+    UpdateTracingLevel(#[from] mpsc::error::SendError<TelemetryCommand>),
+}
+
+#[remain::sorted]
+#[derive(Clone, Debug)]
+pub enum TelemetryCommand {
+    TracingLevel(TracingLevel),
 }
 
 #[remain::sorted]
