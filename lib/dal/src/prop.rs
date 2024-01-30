@@ -116,7 +116,7 @@ pub struct Prop {
     pub refers_to_prop_id: Option<PropId>,
     /// Connected props may need a custom diff function
     pub diff_func_id: Option<FuncId>,
-    /// A serialized validation format JSON object for the prop. TODO: use
+    /// A serialized validation format JSON object for the prop.  TODO: useTODO: use
     pub validation_format: Option<String>,
 }
 
@@ -391,6 +391,29 @@ impl Prop {
         }
     }
 
+    pub async fn direct_child_prop_ids_by_id(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<Vec<PropId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        Ok(workspace_snapshot
+            .edges_directed_for_edge_weight_kind(
+                prop_id,
+                Outgoing,
+                EdgeWeightKindDiscriminants::Use,
+            )?
+            .iter()
+            .filter_map(|edge_ref| {
+                workspace_snapshot
+                    .get_node_weight(edge_ref.target())
+                    .ok()
+                    .map(|node_weight| node_weight.get_prop_node_weight().ok())
+                    .flatten()
+                    .map(|prop_node| prop_node.id().into())
+            })
+            .collect())
+    }
+
     pub async fn path_by_id(ctx: &DalContext, prop_id: PropId) -> PropResult<PropPath> {
         let name = ctx
             .workspace_snapshot()?
@@ -660,11 +683,29 @@ impl Prop {
     }
 
     pub async fn prototypes_by_key(
-        _ctx: &DalContext,
-        _prop_id: PropId,
-    ) -> PropResult<Vec<(String, AttributePrototypeId)>> {
-        let result = vec![];
-        Ok(result)
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<Vec<(Option<String>, AttributePrototypeId)>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        Ok(workspace_snapshot
+            .edges_directed_for_edge_weight_kind(
+                prop_id,
+                Outgoing,
+                EdgeWeightKindDiscriminants::Prototype,
+            )?
+            .iter()
+            .filter_map(|edge_ref| {
+                match (
+                    edge_ref.weight().kind(),
+                    workspace_snapshot.get_node_weight(edge_ref.target()).ok(),
+                ) {
+                    (EdgeWeightKind::Prototype(key), Some(node_weight)) => {
+                        Some((key.to_owned(), node_weight.id().into()))
+                    }
+                    _ => None,
+                }
+            })
+            .collect())
     }
 
     pub async fn prototype_id(

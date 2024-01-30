@@ -152,6 +152,11 @@ async fn connect_components(ctx: &mut DalContext) {
         .expect("able to get units materialized_view")
         .expect("units has a materialized_view");
 
+    dbg!(lunch_component
+        .materialized_view(ctx)
+        .await
+        .expect("get docker image materialized_view"));
+
     assert!(matches!(materialized_view, serde_json::Value::Array(_)));
 
     if let serde_json::Value::Array(units_array) = materialized_view {

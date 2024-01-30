@@ -117,12 +117,17 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
     assert_eq!(inserted_av_id, pvalues_inserted_attribute_value_id);
 
     // Rebase!
-    let conflicts = ctx.commit().await.expect("unable to commit");
+    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
     assert!(conflicts.is_none());
 
     ctx.update_snapshot_to_visibility()
         .await
         .expect("unable to update snapshot to visiblity");
+
+    dbg!(component
+        .materialized_view(ctx)
+        .await
+        .expect("materialized_view for component"));
 
     // Confirm after rebase
     let property_values = PropertyEditorValues::assemble(ctx, component.id())

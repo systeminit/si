@@ -3348,11 +3348,6 @@ pub async fn attach_resource_payload_to_value(
             get_prototype_for_context(ctx, AttrFuncContext::Prop(resource_value_prop_id), None)
                 .await?;
 
-        dbg!(
-            "attaching resource payload to prototype",
-            prototype_id,
-            func_id
-        );
         AttributePrototype::update_func_by_id(ctx, prototype_id, func_id).await?;
 
         prototype_id
@@ -3363,7 +3358,6 @@ pub async fn attach_resource_payload_to_value(
         if func_argument_id
             == AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?
         {
-            dbg!(&apa_id);
             rv_input_apa_id = Some(apa_id);
             break;
         }
@@ -3387,7 +3381,6 @@ pub async fn attach_resource_payload_to_value(
         }
         None => {
             let apa = AttributePrototypeArgument::new(ctx, target_id, func_argument_id).await?;
-            dbg!("new apa for resource payload prototype", apa.id());
             apa.set_value_from_prop_id(ctx, source_prop_id).await?;
         }
     }

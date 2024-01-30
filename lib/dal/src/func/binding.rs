@@ -180,7 +180,6 @@ impl FuncBinding {
         before: Vec<BeforeFunction>,
     ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
         let func = Func::get_by_id(ctx, func_id).await?;
-        //dbg!(&func.name, &args);
         let func_binding = Self::new(ctx, args, func.id, func.backend_kind).await?;
 
         let func_binding_return_value: FuncBindingReturnValue =

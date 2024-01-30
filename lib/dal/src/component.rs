@@ -9,6 +9,7 @@ use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString, IntoEnum
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
+use tokio::task::JoinSet;
 use ulid::Ulid;
 
 use crate::attribute::prototype::argument::value_source::ValueSource;
@@ -82,10 +83,14 @@ pub enum ComponentError {
     InternalProvider(#[from] InternalProviderError),
     #[error("internal provider {0} has more than one attribute value")]
     InternalProviderTooManyAttributeValues(InternalProviderId),
+    #[error("map prop {0} has no element prop")]
+    MapPropMissingElementProp(PropId),
     #[error("found multiple root attribute values ({0} and {1}, at minimum) for component: {2}")]
     MultipleRootAttributeValuesFound(AttributeValueId, AttributeValueId, ComponentId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("object prop {0} has no ordering node")]
+    ObjectPropHasNoOrderingNode(PropId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("found prop id ({0}) that is not a prop")]
@@ -325,6 +330,11 @@ impl Component {
         let mut work_queue = VecDeque::from([(root_prop_id, None::<AttributeValueId>, None)]);
 
         while let Some((prop_id, maybe_parent_attribute_value_id, key)) = work_queue.pop_front() {
+            // If we came in with a key, we're the child of a map. We should not descend deeper
+            // into it because the value should be governed by its prototype function and will
+            // create child values when that function is executed
+            let should_descend = key.is_none();
+
             // Ensure that we are processing a prop before creating attribute values. Cache the
             // prop kind for later.
             let prop_kind = {
@@ -348,20 +358,13 @@ impl Component {
 
             attribute_values.push(attribute_value.id());
 
-            match prop_kind {
-                PropKind::Object => {
-                    let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-
-                    if let Some(ordering_node_idx) = workspace_snapshot
-                        .outgoing_targets_for_edge_weight_kind(
-                            prop_id,
-                            EdgeWeightKindDiscriminants::Ordering,
-                        )?
-                        .get(0)
-                    {
+            if should_descend {
+                match prop_kind {
+                    PropKind::Object => {
+                        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
                         let ordering_node_weight = workspace_snapshot
-                            .get_node_weight(*ordering_node_idx)?
-                            .get_ordering_node_weight()?;
+                            .ordering_node_for_container(prop_id)?
+                            .ok_or(ComponentError::ObjectPropHasNoOrderingNode(prop_id))?;
 
                         for &child_prop_id in ordering_node_weight.order() {
                             work_queue.push_back((
@@ -370,15 +373,27 @@ impl Component {
                                 None,
                             ));
                         }
-                    } else {
-                        // TODO(nick): address this better.
-                        unreachable!("object props must have ordering nodes")
                     }
+                    PropKind::Map => {
+                        let element_prop_id = Prop::direct_child_prop_ids_by_id(ctx, prop_id)
+                            .await?
+                            .iter()
+                            .next()
+                            .copied()
+                            .ok_or(ComponentError::MapPropMissingElementProp(prop_id))?;
+
+                        for (key, _) in Prop::prototypes_by_key(ctx, element_prop_id).await? {
+                            if key.is_some() {
+                                work_queue.push_back((
+                                    element_prop_id,
+                                    Some(attribute_value.id()),
+                                    key,
+                                ))
+                            }
+                        }
+                    }
+                    _ => {}
                 }
-                PropKind::Map => {
-                    //
-                }
-                _ => {}
             }
         }
 
@@ -389,6 +404,7 @@ impl Component {
         let component_graph = DependentValueGraph::for_values(ctx, attribute_values).await?;
         let leaf_value_ids = component_graph.independent_values();
         for leaf_value_id in &leaf_value_ids {
+            // Run these concurrently in a join set? They will serialize on the lock...
             AttributeValue::update_from_prototype_function(ctx, *leaf_value_id).await?;
         }
         ctx.enqueue_job(DependentValuesUpdate::new(
