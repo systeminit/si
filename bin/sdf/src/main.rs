@@ -63,6 +63,15 @@ async fn async_main() -> Result<()> {
         return Ok(());
     }
 
+    if let Some(symmetric_key_path) = &args.generate_symmetric_key_path {
+        info!(
+            "Generating Symmetric key at: {}",
+            symmetric_key_path.display()
+        );
+        Server::generate_symmetric_key(symmetric_key_path).await?;
+        return Ok(());
+    }
+
     let config = Config::try_from(args)?;
 
     let encryption_key = Server::load_encryption_key(config.crypto().clone()).await?;
