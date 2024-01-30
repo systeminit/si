@@ -3,10 +3,10 @@
     :class="
       clsx(
         themeContainerClasses,
-        'flex flex-row flex-none items-center overflow-hidden',
+        'flex flex-row flex-none items-center overflow-hidden text-shade-100 dark:text-shade-0',
         detailedListItem
-          ? 'border-b border-neutral-200 dark:border-neutral-500 text-shade-100 dark:text-shade-0'
-          : 'border rounded h-[90px] cursor-pointer border-neutral-500 text-shade-0 hover:bg-action-800 hover:outline-blue-300 hover:outline -outline-offset-1  hover:rounded hover:outline-1',
+          ? 'border-b border-neutral-200 dark:border-neutral-500'
+          : 'border rounded h-[90px] cursor-pointer border-neutral-500 dark:hover:bg-action-700 hover:bg-action-100 dark:hover:outline-action-300 hover:outline-action-500 hover:outline -outline-offset-1',
       )
     "
   >
@@ -25,10 +25,8 @@
         v-if="secret.updatedInfo"
         :class="
           clsx(
-            'text-xs',
-            detailedListItem
-              ? 'text-neutral-500 dark:text-neutral-300'
-              : 'text-neutral-300 truncate',
+            'text-xs text-neutral-500 dark:text-neutral-300',
+            !detailedListItem && 'truncate',
           )
         "
       >
@@ -45,10 +43,8 @@
         v-if="!secret.updatedInfo || detailedListItem"
         :class="
           clsx(
-            'text-xs',
-            detailedListItem
-              ? 'text-neutral-500 dark:text-neutral-300'
-              : 'text-neutral-300 truncate',
+            'text-xs text-neutral-500 dark:text-neutral-300',
+            !detailedListItem && 'truncate',
           )
         "
       >

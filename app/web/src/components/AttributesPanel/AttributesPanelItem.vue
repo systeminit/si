@@ -75,18 +75,16 @@
               >
             </span>
           </div>
-          <div
-            :class="
-              clsx(
-                'border dark:group-hover/header:hover:text-action-500 group-hover/header:hover:text-action-300 rounded p-[1px] m-[2px] w-5 h-5 cursor-pointer',
-                sourceOverridden
-                  ? ' text-warning-500 dark:text-warning-300 border-warning-500 dark:border-warning-300 dark:group-hover/header:hover:border-action-500 group-hover/header:hover:border-action-300 dark:group-hover/header:text-shade-100 dark:group-hover/header:border-shade-100 group-hover/header:text-shade-0 group-hover/header:border-shade-0'
-                  : 'border-transparent',
-              )
+          <SourceIconWithTooltip
+            v-if="
+              featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
+              !(widgetKind === 'secret')
             "
-          >
-            <Icon v-tooltip="sourceTooltip" :name="sourceIcon" size="none" />
-          </div>
+            :icon="sourceIcon"
+            :overridden="sourceOverridden"
+            :tooltipText="sourceTooltip"
+            header
+          />
           <div class="attributes-panel-item__action-icons">
             <!-- <Icon
               :name="isOpen ? 'collapse-row' : 'expand-row'"
@@ -217,26 +215,15 @@
             <Icon name="trash" size="xs" />
           </button>
 
-          <template
+          <SourceIconWithTooltip
             v-if="
               featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
               !(widgetKind === 'secret')
             "
-          >
-            <div
-              v-tooltip="sourceTooltip"
-              :class="
-                clsx(
-                  'border hover:text-action-500 dark:hover:text-action-300 rounded p-[2px] w-6 h-6',
-                  sourceOverridden
-                    ? ' text-warning-500 dark:text-warning-300 border-warning-500 dark:border-warning-300 hover:border-action-500 dark:hover:border-action-300'
-                    : 'border-transparent',
-                )
-              "
-            >
-              <Icon :name="sourceIcon" size="none" />
-            </div>
-          </template>
+            :icon="sourceIcon"
+            :overridden="sourceOverridden"
+            :tooltipText="sourceTooltip"
+          />
 
           <a
             v-if="fullPropDef.docLink"
@@ -506,7 +493,6 @@ import * as _ from "lodash-es";
 import { computed, PropType, ref, watch } from "vue";
 import clsx from "clsx";
 import { Icon, IconNames, Modal, VButton } from "@si/vue-lib/design-system";
-import { VTooltip } from "floating-vue";
 import {
   AttributeTreeItem,
   useComponentAttributesStore,
@@ -519,6 +505,8 @@ import AttributesPanelItem from "./AttributesPanelItem.vue"; // eslint-disable-l
 import { useAttributesPanelContext } from "./AttributesPanel.vue";
 import CodeEditor from "../CodeEditor.vue";
 import SecretsModal from "../SecretsModal.vue";
+import SourceIcon from "./SourceIcon.vue";
+import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
 
 const props = defineProps({
   parentPath: { type: String },
@@ -747,18 +735,22 @@ function addChildHandler() {
   newMapChildKey.value = "";
 }
 function unsetHandler() {
-  // TODO: figure out number handling
-  // also clarify how we want to handle null/undefined versus empty string
   newValueBoolean.value = false;
   newValueString.value = "";
-  attributesStore.UPDATE_PROPERTY_VALUE({
-    update: {
-      attributeValueId: props.attributeDef.valueId,
-      parentAttributeValueId: props.attributeDef.parentValueId,
-      propId: props.attributeDef.propId,
-      componentId,
-      value: null,
-    },
+
+  // TODO(Wendy) - OLD CODE, REMOVE ONCE RESET_PROPERTY_VALUE IS WIRED UP TO THE BACKEND
+  // attributesStore.UPDATE_PROPERTY_VALUE({
+  //   update: {
+  //     attributeValueId: props.attributeDef.valueId,
+  //     parentAttributeValueId: props.attributeDef.parentValueId,
+  //     propId: props.attributeDef.propId,
+  //     componentId,
+  //     value: null,
+  //   },
+  // });
+
+  attributesStore.RESET_PROPERTY_VALUE({
+    attributeValueId: props.attributeDef.valueId,
   });
 }
 function updateValue() {

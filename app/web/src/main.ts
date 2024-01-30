@@ -41,6 +41,9 @@ app.use(FloatingVue, {
     "w-380": {
       $extend: "tooltip",
     },
+    "attribute-source-icon": {
+      $extend: "tooltip",
+    },
   },
 });
 
