@@ -92,11 +92,6 @@ pub async fn delete_property_editor_value(
         av.delete_by_id(&ctx).await?;
     }
 
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
-
     ctx.enqueue_job(DependentValuesUpdate::new(
         ctx.access_builder(),
         *ctx.visibility(),

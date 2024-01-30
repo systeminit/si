@@ -69,12 +69,12 @@ pub async fn revert_func(
             }
         }
 
-        func.hard_delete(&ctx).await?;
-
-        WsEvent::change_set_written(&ctx)
+        WsEvent::func_reverted(&ctx, *func.id())
             .await?
             .publish_on_commit(&ctx)
             .await?;
+
+        func.hard_delete(&ctx).await?;
 
         ctx.commit().await?;
 

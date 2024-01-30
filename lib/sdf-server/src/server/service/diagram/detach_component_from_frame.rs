@@ -4,7 +4,7 @@ use crate::service::diagram::{DiagramError, DiagramResult};
 use axum::extract::OriginalUri;
 use axum::response::IntoResponse;
 use axum::Json;
-use dal::{ChangeSet, Component, ComponentId, Edge, StandardModel, Visibility, WsEvent};
+use dal::{ChangeSet, Component, ComponentId, Edge, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -53,11 +53,6 @@ pub async fn detach_component_from_frame(
             "parent_component_ids": &request.parent_component_ids,
         }),
     );
-
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     ctx.commit().await?;
 

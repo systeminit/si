@@ -721,12 +721,12 @@ pub async fn save_func<'a>(
                         "func_associated_with_component_ids": component_ids,
             }),
         );
+        WsEvent::func_saved(&ctx, *func.id())
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
     }
 
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();

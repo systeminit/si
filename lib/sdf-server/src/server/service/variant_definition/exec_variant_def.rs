@@ -13,7 +13,7 @@ use dal::{
         SchemaVariantDefinition, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
     },
     AttributePrototypeId, ChangeSet, Func, FuncBinding, FuncId, HistoryActor, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, StandardModel, User, WsEvent,
+    SchemaVariantError, SchemaVariantId, StandardModel, User,
 };
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, SiPkg,
@@ -279,10 +279,6 @@ pub async fn exec_variant_def(
         }),
     );
 
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();

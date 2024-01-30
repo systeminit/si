@@ -165,7 +165,7 @@ pub async fn save_and_exec(
         | FuncBackendKind::JsValidation => Err(FuncError::FuncNotRunnable)?,
     }
 
-    WsEvent::change_set_written(&ctx)
+    WsEvent::func_saved(&ctx, *func.id())
         .await?
         .publish_on_commit(&ctx)
         .await?;

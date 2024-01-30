@@ -4,12 +4,19 @@ use si_data_pg::PgError;
 use thiserror::Error;
 use ulid::Ulid;
 
+use crate::action::{ActionAddedPayload, ActionRemovedPayload};
 use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
+use crate::func::{FuncCreatedPayload, FuncDeletedPayload, FuncRevertedPayload, FuncSavedPayload};
 use crate::pkg::{
     ImportWorkspaceVotePayload, ModuleImportedPayload, WorkspaceActorPayload,
     WorkspaceExportPayload, WorkspaceImportApprovalActorPayload, WorkspaceImportPayload,
 };
+use crate::schema::variant::definition::{
+    SchemaVariantDefinitionClonedPayload, SchemaVariantDefinitionCreatedPayload,
+    SchemaVariantDefinitionSavedPayload,
+};
+use crate::secret::{SecretCreatedPayload, SecretUpdatedPayload};
 use crate::{
     component::{code::CodeGeneratedPayload, resource::ResourceRefreshedPayload},
     fix::{batch::FixBatchReturn, FixReturn},
@@ -47,6 +54,8 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[serde(tag = "kind", content = "data")]
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
+    ActionAdded(ActionAddedPayload),
+    ActionRemoved(ActionRemovedPayload),
     AsyncError(ErrorPayload),
     AsyncFinish(FinishPayload),
     ChangeSetAbandoned(ChangeSetActorPayload),
@@ -67,12 +76,21 @@ pub enum WsPayload {
     Cursor(CursorPayload),
     FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),
+    FuncCreated(FuncCreatedPayload),
+    FuncDeleted(FuncDeletedPayload),
+    FuncReverted(FuncRevertedPayload),
+    FuncSaved(FuncSavedPayload),
     ImportWorkspaceVote(ImportWorkspaceVotePayload),
     LogLine(LogLinePayload),
     ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),
     ResourceRefreshed(ResourceRefreshedPayload),
     SchemaCreated(SchemaPk),
+    SchemaVariantDefinitionCloned(SchemaVariantDefinitionClonedPayload),
+    SchemaVariantDefinitionCreated(SchemaVariantDefinitionCreatedPayload),
+    SchemaVariantDefinitionSaved(SchemaVariantDefinitionSavedPayload),
+    SecretCreated(SecretCreatedPayload),
+    SecretUpdated(SecretUpdatedPayload),
     StatusUpdate(StatusMessage),
     WorkspaceExported(WorkspaceExportPayload),
     WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),

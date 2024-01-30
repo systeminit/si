@@ -49,9 +49,6 @@ pub enum QualificationSummaryError {
 
 pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;
 
-const GET_SUMMARY_QUALIFICATIONS: &str =
-    include_str!("queries/summary_qualification/get_summary_qualifications.sql");
-
 impl QualificationSummary {
     #[instrument(skip_all)]
     pub async fn get_summary(ctx: &DalContext) -> QualificationSummaryResult<QualificationSummary> {
@@ -60,17 +57,8 @@ impl QualificationSummary {
         let mut components_failed = 0;
         let mut total = 0;
 
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                GET_SUMMARY_QUALIFICATIONS,
-                &[ctx.tenancy(), ctx.visibility()],
-            )
-            .await?;
         let qualification_summary_for_components: Vec<QualificationSummaryForComponent> =
-            standard_model::objects_from_rows(rows)?;
+            standard_model::list(ctx, "summary_qualifications").await?;
         for component_summary in qualification_summary_for_components.iter() {
             components_succeeded += component_summary.succeeded;
             components_warned += component_summary.warned;

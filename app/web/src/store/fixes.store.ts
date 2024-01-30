@@ -115,10 +115,8 @@ export const useFixesStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `workspace/${workspacePk}`, [
           {
-            eventType: "ChangeSetWritten",
-            debounce: true,
-            callback: (writtenChangeSetId) => {
-              if (writtenChangeSetId !== nilId()) return;
+            eventType: "ChangeSetApplied",
+            callback: (_update) => {
               this.LOAD_FIX_BATCHES();
             },
           },

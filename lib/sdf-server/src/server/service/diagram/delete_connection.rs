@@ -1,7 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::edge::EdgeId;
-use dal::{ChangeSet, Connection, Edge, Node, Socket, Visibility, WsEvent};
+use dal::{ChangeSet, Connection, Edge, Node, Socket, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -80,11 +80,6 @@ pub async fn delete_connection(
             "to_socket_name":  &to_socket.name(),
         }),
     );
-
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     ctx.commit().await?;
 
