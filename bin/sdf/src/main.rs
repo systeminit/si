@@ -163,7 +163,6 @@ async fn async_main() -> Result<()> {
         task_tracker.wait().await;
     }
 
-    info!("Shutting down the job processor client");
     if let Err(err) = (&job_client as &dyn JobProcessorClientCloser).close().await {
         error!("Failed to close job client: {err}");
     }

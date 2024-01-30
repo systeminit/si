@@ -2,6 +2,7 @@ use crate::{server::server::ServerError, Config, Server};
 use async_trait::async_trait;
 use dal::{JobQueueProcessor, NatsProcessor};
 use si_data_nats::NatsClient;
+use telemetry::prelude::*;
 
 #[async_trait]
 pub trait JobProcessorClientCloser {
@@ -11,7 +12,8 @@ pub trait JobProcessorClientCloser {
 #[async_trait]
 impl JobProcessorClientCloser for NatsClient {
     async fn close(&self) -> Result<(), ServerError> {
-        Ok(self.close().await?)
+        debug!("shutting down the job processor client");
+        self.flush().await.map_err(Into::into)
     }
 }
 
