@@ -151,11 +151,13 @@ impl JobConsumer for FixesJob {
         // Block just in case
         ctx.blocking_commit().await?;
 
+        let should_blocking_commit = !fixes.is_empty();
         for fix_item in fix_items {
-            let task_ctx = ctx
-                .to_builder()
-                .build(self.access_builder().build(self.visibility()))
-                .await?;
+            let task_ctx = dbg!(
+                ctx.to_builder()
+                    .build(self.access_builder().build(self.visibility()))
+                    .await
+            )?;
             handles.push(async move {
                 let id = fix_item.id;
                 let res = tokio::task::spawn(fix_task(
@@ -163,6 +165,7 @@ impl JobConsumer for FixesJob {
                     self.batch_id,
                     fix_item,
                     Span::current(),
+                    should_blocking_commit,
                 ))
                 .await;
                 (id, res)
@@ -298,6 +301,7 @@ async fn fix_task(
     batch_id: FixBatchId,
     fix_item: FixItem,
     parent_span: Span,
+    should_blocking_commit: bool,
 ) -> JobConsumerResult<(Fix, Vec<String>)> {
     let deleted_ctx = &ctx.clone_with_delete_visibility();
     // Get the workflow for the action we need to run.
@@ -355,7 +359,11 @@ async fn fix_task(
     // consecutive fixes that depend on the /root/resource from the previous fix.
     // `blocking_commit()` will wait for any jobs that have ben created through
     // `enqueue_job(...)` to finish before moving on.
-    ctx.blocking_commit().await?;
+    if should_blocking_commit {
+        ctx.blocking_commit().await?;
+    } else {
+        ctx.commit().await?;
+    }
 
     if matches!(completion_status, FixCompletionStatus::Success) {
         if let Err(err) = component.act(&ctx, ActionKind::Refresh).await {
@@ -460,7 +468,7 @@ async fn process_failed_fix_inner(
             }
         }
 
-        ctx.blocking_commit().await?;
+        ctx.commit().await?;
     }
 
     Ok(())
