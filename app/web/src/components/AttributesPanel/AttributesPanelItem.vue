@@ -505,7 +505,6 @@ import * as _ from "lodash-es";
 import { computed, PropType, ref, watch } from "vue";
 import clsx from "clsx";
 import { Icon, IconNames, Modal, VButton } from "@si/vue-lib/design-system";
-import { VTooltip } from "floating-vue";
 import {
   AttributeTreeItem,
   useComponentAttributesStore,
@@ -519,6 +518,7 @@ import { useAttributesPanelContext } from "./AttributesPanel.vue";
 import CodeEditor from "../CodeEditor.vue";
 import SecretsModal from "../SecretsModal.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
+import SourceIcon from "./SourceIcon.vue";
 
 const props = defineProps({
   parentPath: { type: String },
