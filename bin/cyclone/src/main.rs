@@ -1,5 +1,5 @@
 use color_eyre::Result;
-use cyclone_server::{Config, IncomingStream, Server};
+use cyclone_server::{Config, Runnable as _, Server};
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
@@ -42,26 +42,10 @@ async fn main() -> Result<()> {
 
     task_tracker.close();
 
-    match config.incoming_stream() {
-        IncomingStream::HTTPSocket(_) => {
-            Server::http(config, telemetry, decryption_key)?
-                .run()
-                .await?
-        }
-        IncomingStream::UnixDomainSocket(_) => {
-            Server::uds(config, telemetry, decryption_key)
-                .await?
-                .run()
-                .await?
-        }
-        #[cfg(target_os = "linux")]
-        IncomingStream::VsockSocket(_) => {
-            Server::vsock(config, telemetry, decryption_key)
-                .await?
-                .run()
-                .await?
-        }
-    }
+    Server::from_config(config, telemetry, decryption_key)
+        .await?
+        .run()
+        .await?;
 
     // TODO(fnichol): this will eventually go into the signal handler code but at the moment in
     // cyclone's case, this is embedded in server library code which is incorrect. At this moment in
