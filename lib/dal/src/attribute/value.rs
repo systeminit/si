@@ -672,6 +672,87 @@ impl AttributeValue {
         Ok(result)
     }
 
+    // Eventually, this should be usable for *ALL* Component AttributeValues, but
+    // there isn't much point in supporting not-Prop AttributeValues until there
+    // is a way to assign functions other than the identity function to them.
+    pub async fn use_default_prototype(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        // =================================== DEBUG =========================
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT avbtap.object_id AS av, avbtap.belongs_to_id AS ap FROM attribute_value_belongs_to_attribute_prototype_v1($1, $2) as avbtap WHERE avbtap.object_id = $3",
+                &[ctx.tenancy(), ctx.visibility(), &attribute_value_id]
+            )
+            .await?;
+        let before: Vec<(AttributeValueId, AttributePrototypeId)> = rows
+            .iter()
+            .map(|r| {
+                let av: AttributeValueId = r.get("av");
+                let ap: AttributePrototypeId = r.get("ap");
+                (av, ap)
+            })
+            .collect();
+        dbg!(before);
+        // =================================== DEBUG =========================
+
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                "SELECT attribute_value_use_default_prototype_v1($1, $2, $3) AS changed",
+                &[ctx.tenancy(), ctx.visibility(), &attribute_value_id],
+            )
+            .await?;
+
+        // =================================== DEBUG =========================
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT avbtap.object_id AS av, avbtap.belongs_to_id AS ap FROM attribute_value_belongs_to_attribute_prototype_v1($1, $2) as avbtap WHERE avbtap.object_id = $3",
+                &[ctx.tenancy(), ctx.visibility(), &attribute_value_id]
+            )
+            .await?;
+        let after: Vec<(AttributeValueId, AttributePrototypeId)> = rows
+            .iter()
+            .map(|r| {
+                let av: AttributeValueId = r.get("av");
+                let ap: AttributePrototypeId = r.get("ap");
+                (av, ap)
+            })
+            .collect();
+        dbg!(after);
+        // =================================== DEBUG =========================
+
+        if row.get("changed") {
+            println!("Prototype changed");
+            // Update from prototype & trigger dependent values update
+            let mut av = AttributeValue::get_by_id(ctx, &attribute_value_id)
+                .await?
+                .ok_or_else(|| {
+                    AttributeValueError::NotFound(attribute_value_id, *ctx.visibility())
+                })?;
+            let _ = dbg!(av.get_value(ctx).await);
+            av.update_from_prototype_function(ctx).await?;
+            let _ = dbg!(av.get_value(ctx).await);
+            ctx.enqueue_job(DependentValuesUpdate::new(
+                ctx.access_builder(),
+                *ctx.visibility(),
+                vec![attribute_value_id],
+            ))
+            .await?;
+        }
+
+        Ok(())
+    }
+
     /// Update the [`AttributeValue`] for a specific [`AttributeContext`] to the given value. If the
     /// given [`AttributeValue`] is for a different [`AttributeContext`] than the one provided, a
     /// new [`AttributeValue`] will be created for the given [`AttributeContext`].
