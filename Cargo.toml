@@ -24,6 +24,9 @@ members = [
     "lib/deadpool-cyclone",
     "lib/module-index-client",
     "lib/module-index-server",
+    "lib/nats-multiplexer",
+    "lib/nats-multiplexer-client",
+    "lib/nats-multiplexer-core",
     "lib/nats-subscriber",
     "lib/object-tree",
     "lib/pinga-server",
@@ -136,11 +139,11 @@ tokio = { version = "1.28.0", features = ["full"] }
 tokio-postgres = { version = "0.7.8", features = ["runtime", "with-chrono-0_4", "with-serde_json-1"] }
 tokio-postgres-rustls = { version = "0.11.0" }
 tokio-serde = { version = "0.8.0", features = ["json"] }
-tokio-stream = "0.1.14"
+tokio-stream = { version = "0.1.14", features = ["sync"] }
 tokio-test = "0.4.2"
 tokio-tungstenite = "0.20.1" # todo: pinning back from 0.21.0, upgrade this alongside hyper/http/axum/tokio-tungstenite,tower-http
 tokio-util = { version = "0.7.8", features = ["codec", "rt"] }
-tokio-vsock = { version = "0.4.0"}
+tokio-vsock = { version = "0.4.0" }
 toml = { version = "0.8.8" }
 tower = "0.4.13"
 tower-http = { version = "0.4", features = ["compression-br", "compression-deflate", "compression-gzip", "cors", "trace"] } # todo: pinning back to 0.4.4, upgrade this alongside hyper/http/axum/tokio-tungstenite

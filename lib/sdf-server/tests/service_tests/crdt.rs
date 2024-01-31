@@ -3,7 +3,10 @@ use axum::extract::ws::Message;
 use dal::WorkspacePk;
 use futures::{Future, Sink, SinkExt, Stream};
 use futures_lite::future::FutureExt;
+use nats_multiplexer::Multiplexer;
+use nats_multiplexer_client::MultiplexerClient;
 use sdf_server::server::service::ws::crdt::{crdt_handle, BroadcastGroups, CrdtError};
+use sdf_server::server::CRDT_MULTIPLEXER_SUBJECT;
 use si_data_nats::{NatsClient, NatsConfig, Subject};
 use std::{collections::HashMap, pin::Pin, sync::Arc, task::Context, task::Poll, time::Duration};
 use tokio::{
@@ -18,6 +21,9 @@ struct Server {
     workspace_pk: WorkspacePk,
     id: String,
     broadcast_groups: BroadcastGroups,
+    crdt_multiplexer_client: MultiplexerClient,
+    _shutdown_broadcast_tx: broadcast::Sender<()>,
+    _shutdown_broadcast_rx: broadcast::Receiver<()>,
 }
 
 struct Client {
@@ -39,18 +45,22 @@ async fn client(doc: Doc, server: &Server) -> Result<Client, Box<dyn std::error:
     let sink = TestWsSink::new(sink);
     let stream = TestWsStream::new(stream);
 
+    let receiver = server
+        .crdt_multiplexer_client
+        .receiver(server.channel_name.clone())
+        .await?;
+    let ws_receiver = receiver.resubscribe();
+
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
 
-    let subscription = server.nats.subscribe(server.channel_name.clone()).await?;
-    let ws_subscription = server.nats.subscribe(server.channel_name.clone()).await?;
     let _handle = tokio::spawn(crdt_handle(
         sink.clone(),
         stream.clone(),
         server.nats.clone(),
         server.broadcast_groups.clone(),
         server.channel_name.clone(),
-        subscription,
-        ws_subscription,
+        receiver,
+        ws_receiver,
         server.workspace_pk,
         server.id.clone(),
         shutdown_broadcast_rx,
@@ -85,13 +95,25 @@ async fn start_server(
     }
     let nats = NatsClient::new(&config).await?;
 
-    let channel_name = format!("crdt-{workspace_pk}-{id}").into();
+    let channel_name = format!("crdt.{workspace_pk}.{id}").into();
+
+    // NOTE(nick,paulo,fletcher): we need to ensure the lifetimes of these correspond to the lifetime of an entire test.
+    let (_shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
+
+    let (crdt_multiplexer, crdt_multiplexer_client) =
+        Multiplexer::new(&nats, CRDT_MULTIPLEXER_SUBJECT).await?;
+
+    tokio::spawn(crdt_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
+
     Ok(Server {
         nats,
         broadcast_groups,
         channel_name,
         workspace_pk,
         id,
+        crdt_multiplexer_client,
+        _shutdown_broadcast_tx,
+        _shutdown_broadcast_rx: shutdown_broadcast_rx,
     })
 }
 

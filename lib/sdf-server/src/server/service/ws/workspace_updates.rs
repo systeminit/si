@@ -1,13 +1,16 @@
-use super::WsError;
 use axum::{
     extract::{ws::WebSocket, State, WebSocketUpgrade},
     response::IntoResponse,
 };
 use dal::WorkspacePk;
+use nats_multiplexer_client::MultiplexerClient;
 use si_data_nats::NatsClient;
+use std::sync::Arc;
 use telemetry::prelude::*;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Mutex};
 
+use super::WsError;
+use crate::server::nats_multiplexer::NatsMultiplexerClients;
 use crate::server::{
     extract::{Nats, WsAuthorization},
     state::ShutdownBroadcast,
@@ -20,15 +23,17 @@ pub async fn workspace_updates(
     Nats(nats): Nats,
     WsAuthorization(claim): WsAuthorization,
     State(shutdown_broadcast): State<ShutdownBroadcast>,
+    State(channel_multiplexer_clients): State<NatsMultiplexerClients>,
 ) -> Result<impl IntoResponse, WsError> {
     async fn handle_socket(
         socket: WebSocket,
         nats: NatsClient,
         mut shutdown: broadcast::Receiver<()>,
         workspace_pk: WorkspacePk,
+        ws_multiplexer_client: Arc<Mutex<MultiplexerClient>>,
     ) {
         tokio::select! {
-            _ = run_workspace_updates_proto(socket, nats, workspace_pk) => {
+            _ = run_workspace_updates_proto(socket, nats, workspace_pk, ws_multiplexer_client) => {
                 trace!("finished workspace_updates proto");
             }
             _ = shutdown.recv() => {
@@ -41,15 +46,27 @@ pub async fn workspace_updates(
     }
 
     let shutdown = shutdown_broadcast.subscribe();
-    Ok(wsu.on_upgrade(move |socket| handle_socket(socket, nats, shutdown, claim.workspace_pk)))
+    Ok(wsu.on_upgrade(move |socket| {
+        handle_socket(
+            socket,
+            nats,
+            shutdown,
+            claim.workspace_pk,
+            channel_multiplexer_clients.ws,
+        )
+    }))
 }
 
 async fn run_workspace_updates_proto(
     mut socket: WebSocket,
     nats: NatsClient,
     workspace_pk: WorkspacePk,
+    ws_multiplexer_client: Arc<Mutex<MultiplexerClient>>,
 ) {
-    let proto = match workspace_updates::run(nats, workspace_pk).start().await {
+    let proto = match workspace_updates::run(nats, workspace_pk)
+        .start(ws_multiplexer_client)
+        .await
+    {
         Ok(started) => started,
         Err(err) => {
             // This is likely due to nats failing to subscribe to the required topic, which is
@@ -74,18 +91,20 @@ async fn run_workspace_updates_proto(
 }
 
 mod workspace_updates {
-    use std::error::Error;
-
     use axum::extract::ws::{self, WebSocket};
     use dal::{
         user::CursorPayload, user::OnlinePayload, ChangeSetPk, UserPk, WorkspacePk, WsEvent,
         WsEventError,
     };
-    use futures::StreamExt;
+    use nats_multiplexer_client::{MultiplexerClient, MultiplexerClientError};
     use serde::{Deserialize, Serialize};
-    use si_data_nats::{NatsClient, NatsError, Subject, Subscriber};
+    use si_data_nats::{NatsClient, Subject};
+    use std::error::Error;
+    use std::sync::Arc;
     use telemetry::prelude::*;
     use thiserror::Error;
+    use tokio::sync::broadcast::error::RecvError;
+    use tokio::sync::{broadcast, Mutex};
     use tokio_tungstenite::tungstenite;
 
     #[remain::sorted]
@@ -121,12 +140,16 @@ mod workspace_updates {
     pub enum WorkspaceUpdatesError {
         #[error("axum error: {0}")]
         Axum(#[from] axum::Error),
+        #[error("broadcast recv error: {0}")]
+        BroadcastRecv(#[from] RecvError),
+        #[error("nats multiplexer client error: {0}")]
+        MultiplexerClient(#[from] MultiplexerClientError),
         #[error("nats error: {0}")]
         Nats(#[from] si_data_nats::Error),
         #[error("serde json error: {0}")]
         Serde(#[from] serde_json::Error),
-        #[error("failed to subscribe to subject {1}")]
-        Subscribe(#[source] NatsError, String),
+        #[error("try lock error: {0}")]
+        TryLock(#[from] tokio::sync::TryLockError),
         #[error("error when closing websocket")]
         WsClose(#[source] axum::Error),
         #[error("wsevent error: {0}")]
@@ -144,18 +167,17 @@ mod workspace_updates {
     }
 
     impl WorkspaceUpdates {
-        pub async fn start(self) -> Result<WorkspaceUpdatesStarted> {
+        pub async fn start(
+            self,
+            ws_multiplexer_client: Arc<Mutex<MultiplexerClient>>,
+        ) -> Result<WorkspaceUpdatesStarted> {
             let subject = Subject::from(format!("si.workspace_pk.{}.>", self.workspace_pk));
-            let subscriber = self
-                .nats
-                .subscribe(subject.clone())
-                .await
-                .map_err(|err| WorkspaceUpdatesError::Subscribe(err, subject.to_string()))?;
+            let receiver = ws_multiplexer_client.try_lock()?.receiver(subject).await?;
 
             Ok(WorkspaceUpdatesStarted {
                 nats: self.nats.clone(),
                 workspace_pk: self.workspace_pk,
-                subscriber,
+                receiver,
             })
         }
     }
@@ -164,7 +186,7 @@ mod workspace_updates {
     pub struct WorkspaceUpdatesStarted {
         workspace_pk: WorkspacePk,
         nats: NatsClient,
-        subscriber: Subscriber,
+        receiver: broadcast::Receiver<si_data_nats::Message>,
     }
 
     impl WorkspaceUpdatesStarted {
@@ -213,7 +235,9 @@ mod workspace_updates {
                             None => return Ok(WorkspaceUpdatesClosing { ws_is_closed: true }),
                         }
                     }
-                    Some(nats_msg) = self.subscriber.next() => {
+                    recv_result = self.receiver.recv() => {
+                        // NOTE(nick): in the long term, determine if we want to return this result or just log it.
+                        let nats_msg =  recv_result?;
                         let msg = ws::Message::Text(String::from_utf8_lossy(nats_msg.payload()).to_string());
 
                         if let Err(err) = ws.send(msg).await {
