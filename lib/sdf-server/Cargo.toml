@@ -6,19 +6,33 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+buck2-resources = { path = "../../lib/buck2-resources" }
+dal = { path = "../../lib/dal" }
+module-index-client = { path = "../../lib/module-index-client" }
+nats-multiplexer = { path = "../../lib/nats-multiplexer" }
+nats-multiplexer-client = { path = "../../lib/nats-multiplexer-client" }
+nats-subscriber = { path = "../../lib/nats-subscriber" }
+si-crypto = { path = "../../lib/si-crypto" }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-pkg = { path = "../../lib/si-pkg" }
+si-posthog = { path = "../../lib/si-posthog-rs" }
+si-settings = { path = "../../lib/si-settings" }
+si-std = { path = "../../lib/si-std" }
+telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-http = { path = "../../lib/telemetry-http-rs" }
+veritech-client = { path = "../../lib/veritech-client" }
+
 async-recursion = { workspace = true }
 async-trait = { workspace = true }
 axum = { workspace = true }
 base64 = { workspace = true }
-buck2-resources = { path = "../../lib/buck2-resources" }
 chrono = { workspace = true }
 convert_case = { workspace = true }
-dal = { path = "../../lib/dal" }
 derive_builder = { workspace = true }
 futures = { workspace = true }
 futures-lite = { workspace = true }
 hyper = { workspace = true }
-module-index-client = { path = "../../lib/module-index-client" }
 names = { workspace = true }
 nix = { workspace = true }
 once_cell = { workspace = true }
@@ -29,29 +43,21 @@ reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
-si-crypto = { path = "../../lib/si-crypto" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-si-data-pg = { path = "../../lib/si-data-pg" }
-si-pkg = { path = "../../lib/si-pkg" }
-si-posthog = { path = "../../lib/si-posthog-rs" }
-si-settings = { path = "../../lib/si-settings" }
-si-std = { path = "../../lib/si-std" }
 sodiumoxide = { workspace = true }
 strum = { workspace = true }
-telemetry = { path = "../../lib/telemetry-rs" }
-telemetry-http = { path = "../../lib/telemetry-http-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tokio-stream = { workspace = true }
 tokio-tungstenite = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 ulid = { workspace = true }
 url = { workspace = true }
-veritech-client = { path = "../../lib/veritech-client" }
 y-sync = { workspace = true }
 
 [dev-dependencies]
-yrs = { workspace = true }
 dal-test = { path = "../../lib/dal-test" }
+
+yrs = { workspace = true }
 pretty_assertions_sorted = { workspace = true }
 serde_url_params = { workspace = true }

@@ -17,6 +17,8 @@ use dal::{
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use module_index_client::{types::BuiltinsDetailsResponse, IndexClient, ModuleDetailsResponse};
+use nats_multiplexer::Multiplexer;
+use nats_multiplexer_client::MultiplexerClient;
 use si_crypto::{
     CryptoConfig, CycloneKeyPairError, SymmetricCryptoError, SymmetricCryptoService,
     SymmetricCryptoServiceConfig,
@@ -127,6 +129,10 @@ impl Server<(), ()> {
         services_context: ServicesContext,
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
+        ws_multiplexer: Multiplexer,
+        ws_multiplexer_client: MultiplexerClient,
+        crdt_multiplexer: Multiplexer,
+        crdt_multiplexer_client: MultiplexerClient,
     ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
@@ -135,7 +141,12 @@ impl Server<(), ()> {
                     jwt_public_signing_key,
                     config.signup_secret().clone(),
                     posthog_client,
+                    ws_multiplexer_client,
+                    crdt_multiplexer_client,
                 )?;
+
+                tokio::spawn(ws_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
+                tokio::spawn(crdt_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
 
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
                 let inner = axum::Server::bind(socket_addr).serve(service.into_make_service());
@@ -163,6 +174,10 @@ impl Server<(), ()> {
         services_context: ServicesContext,
         jwt_public_signing_key: JwtPublicSigningKey,
         posthog_client: PosthogClient,
+        ws_multiplexer: Multiplexer,
+        ws_multiplexer_client: MultiplexerClient,
+        crdt_multiplexer: Multiplexer,
+        crdt_multiplexer_client: MultiplexerClient,
     ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
@@ -171,7 +186,12 @@ impl Server<(), ()> {
                     jwt_public_signing_key,
                     config.signup_secret().clone(),
                     posthog_client,
+                    ws_multiplexer_client,
+                    crdt_multiplexer_client,
                 )?;
+
+                tokio::spawn(ws_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
+                tokio::spawn(crdt_multiplexer.run(shutdown_broadcast_rx.resubscribe()));
 
                 info!("binding to Unix domain socket; path={}", path.display());
                 let inner = axum::Server::builder(UdsIncomingStream::create(path).await?)
@@ -446,6 +466,8 @@ pub fn build_service_for_tests(
     jwt_public_signing_key: JwtPublicSigningKey,
     signup_secret: SensitiveString,
     posthog_client: PosthogClient,
+    ws_multiplexer_client: MultiplexerClient,
+    crdt_multiplexer_client: MultiplexerClient,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     build_service_inner(
         services_context,
@@ -453,6 +475,8 @@ pub fn build_service_for_tests(
         signup_secret,
         posthog_client,
         true,
+        ws_multiplexer_client,
+        crdt_multiplexer_client,
     )
 }
 
@@ -461,6 +485,8 @@ pub fn build_service(
     jwt_public_signing_key: JwtPublicSigningKey,
     signup_secret: SensitiveString,
     posthog_client: PosthogClient,
+    ws_multiplexer_client: MultiplexerClient,
+    crdt_multiplexer_client: MultiplexerClient,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     build_service_inner(
         services_context,
@@ -468,6 +494,8 @@ pub fn build_service(
         signup_secret,
         posthog_client,
         false,
+        ws_multiplexer_client,
+        crdt_multiplexer_client,
     )
 }
 
@@ -477,6 +505,8 @@ fn build_service_inner(
     signup_secret: SensitiveString,
     posthog_client: PosthogClient,
     for_tests: bool,
+    ws_multiplexer_client: MultiplexerClient,
+    crdt_multiplexer_client: MultiplexerClient,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
@@ -489,6 +519,8 @@ fn build_service_inner(
         shutdown_broadcast_tx.clone(),
         shutdown_tx,
         for_tests,
+        ws_multiplexer_client,
+        crdt_multiplexer_client,
     );
 
     let routes = routes(state).layer(

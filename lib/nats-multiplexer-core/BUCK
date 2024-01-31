@@ -1,0 +1,12 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "nats-multiplexer-core",
+    deps = [
+        "//lib/si-data-nats:si-data-nats",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

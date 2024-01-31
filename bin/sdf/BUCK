@@ -8,6 +8,7 @@ load(
 rust_binary(
     name = "sdf",
     deps = [
+        "//lib/nats-multiplexer:nats-multiplexer",
         "//lib/sdf-server:sdf-server",
         "//lib/telemetry-application-rs:telemetry-application",
         "//third-party/rust:clap",

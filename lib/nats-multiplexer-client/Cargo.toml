@@ -1,0 +1,14 @@
+[package]
+name = "nats-multiplexer-client"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+nats-multiplexer-core = { path = "../../lib/nats-multiplexer-core" }
+si-data-nats = { path = "../../lib/si-data-nats" }
+telemetry = { path = "../../lib/telemetry-rs" }
+
+remain = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
