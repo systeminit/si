@@ -149,11 +149,15 @@ start(){
   export OTEL_EXPORTER_OTLP_ENDPOINT=http://1.0.0.1:4316
   cyclone ${cyclone_args[*]} >> /var/log/cyclone.log 2>&1 && reboot &
 }
+
+depend(){
+  need net
+}
 EOF
 
 chmod +x "/etc/init.d/cyclone"
 
-rc-update add cyclone boot
+rc-update add cyclone
 
 # Set up TAP device route/escape
 cat <<EOZ >"/etc/network/interfaces"
