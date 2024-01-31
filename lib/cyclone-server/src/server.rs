@@ -4,9 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use async_trait::async_trait;
 use axum::routing::{IntoMakeService, Router};
 use cyclone_core::{CycloneDecryptionKey, CycloneDecryptionKeyError};
-use hyper::server::{accept::Accept, conn::AddrIncoming};
+use hyper::server::accept::Accept;
 use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::{prelude::*, TelemetryLevel};
 use thiserror::Error;
@@ -47,109 +48,96 @@ pub enum ServerError {
 
 type Result<T> = std::result::Result<T, ServerError>;
 
-pub struct Server<I, S> {
-    config: Config,
-    inner: axum::Server<I, IntoMakeService<Router>>,
-    socket: S,
-    shutdown_rx: oneshot::Receiver<()>,
+// Runnable trait which can be used as a trait object (i.e. `Box<dyn Runnable>`), containing a
+// method which moves `self` (i.e. `fn run(self)`).
+//
+// See: https://users.rust-lang.org/t/need-explanation-on-how-to-avoid-this-move-out-of-a-box-dyn/98734/3
+// See: https://quinedot.github.io/rust-learning/dyn-trait-box-impl.html
+mod runnable {
+    use super::Result;
+
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait BoxedRunnable {
+        async fn boxed_run(self: Box<Self>) -> Result<()>;
+    }
+
+    #[async_trait]
+    pub trait Runnable: BoxedRunnable {
+        async fn run(self) -> Result<()>;
+    }
+
+    #[async_trait]
+    impl<T: Runnable + Send> BoxedRunnable for T {
+        async fn boxed_run(self: Box<Self>) -> Result<()> {
+            <Self as Runnable>::run(*self).await
+        }
+    }
+
+    #[async_trait]
+    impl Runnable for Box<dyn Runnable + Send + '_> {
+        async fn run(self) -> Result<()> {
+            <dyn Runnable as BoxedRunnable>::boxed_run(self).await
+        }
+    }
 }
 
-impl Server<(), ()> {
-    pub fn http(
+pub use runnable::Runnable;
+
+pub struct Server {
+    inner: Box<dyn Runnable + Send>,
+    config: Config,
+    socket: ServerSocket,
+}
+
+impl Server {
+    pub async fn from_config(
         config: Config,
         telemetry_level: Box<dyn TelemetryLevel>,
         decryption_key: CycloneDecryptionKey,
-    ) -> Result<Server<AddrIncoming, SocketAddr>> {
+    ) -> Result<Self> {
+        let (service, shutdown_rx) = build_service(&config, telemetry_level, decryption_key)?;
+
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
-                let (service, shutdown_rx) =
-                    build_service(&config, telemetry_level, decryption_key)?;
-
                 debug!(socket = %socket_addr, "binding an http server");
                 let inner = axum::Server::bind(socket_addr).serve(service);
                 let socket = inner.local_addr();
                 info!(socket = %socket, "http server serving");
 
-                Ok(Server {
+                Ok(Self {
+                    inner: Box::new(InnerServer { inner, shutdown_rx }),
                     config,
-                    inner,
-                    socket,
-                    shutdown_rx,
+                    socket: ServerSocket::SocketAddr(socket),
                 })
             }
-            wrong @ IncomingStream::UnixDomainSocket(_) => {
-                Err(ServerError::WrongIncomingStream("uds", wrong.clone()))
-            }
-            #[cfg(target_os = "linux")]
-            wrong @ IncomingStream::VsockSocket(_) => {
-                Err(ServerError::WrongIncomingStream("vsock", wrong.clone()))
-            }
-        }
-    }
-
-    pub async fn uds(
-        config: Config,
-        telemetry_level: Box<dyn TelemetryLevel>,
-        decryption_key: CycloneDecryptionKey,
-    ) -> Result<Server<UdsIncomingStream, PathBuf>> {
-        match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
-                let (service, shutdown_rx) =
-                    build_service(&config, telemetry_level, decryption_key)?;
-
                 debug!(socket = %path.display(), "binding a unix domain server");
                 let inner =
                     axum::Server::builder(UdsIncomingStream::create(path).await?).serve(service);
                 let socket = path.clone();
                 info!(socket = %socket.display(), "unix domain server serving");
 
-                Ok(Server {
+                Ok(Self {
+                    inner: Box::new(InnerServer { inner, shutdown_rx }),
                     config,
-                    inner,
-                    socket,
-                    shutdown_rx,
+                    socket: ServerSocket::DomainSocket(socket),
                 })
             }
-            wrong @ IncomingStream::HTTPSocket(_) => {
-                Err(ServerError::WrongIncomingStream("http", wrong.clone()))
-            }
             #[cfg(target_os = "linux")]
-            wrong @ IncomingStream::VsockSocket(_) => {
-                Err(ServerError::WrongIncomingStream("vsock", wrong.clone()))
-            }
-        }
-    }
-
-    #[cfg(target_os = "linux")]
-    pub async fn vsock(
-        config: Config,
-        telemetry_level: Box<dyn TelemetryLevel>,
-        decryption_key: CycloneDecryptionKey,
-    ) -> Result<Server<VsockIncomingStream, tokio_vsock::VsockAddr>> {
-        match config.incoming_stream() {
             IncomingStream::VsockSocket(addr) => {
-                let (service, shutdown_rx) =
-                    build_service(&config, telemetry_level, decryption_key)?;
-
                 debug!(socket = %addr, "binding a vsock server");
                 let inner =
                     axum::Server::builder(VsockIncomingStream::create(*addr).await?).serve(service);
                 let socket = *addr;
                 info!(socket = %socket, "vsock server serving");
 
-                Ok(Server {
+                Ok(Self {
+                    inner: Box::new(InnerServer { inner, shutdown_rx }),
                     config,
-                    inner,
-                    socket,
-                    shutdown_rx,
+                    socket: ServerSocket::VsockAddr(socket),
                 })
-            }
-            wrong @ IncomingStream::HTTPSocket(_) => {
-                Err(ServerError::WrongIncomingStream("http", wrong.clone()))
-            }
-            #[cfg(target_os = "linux")]
-            wrong @ IncomingStream::UnixDomainSocket(_) => {
-                Err(ServerError::WrongIncomingStream("uds", wrong.clone()))
             }
         }
     }
@@ -161,15 +149,38 @@ impl Server<(), ()> {
         let key = CycloneDecryptionKey::load(path.as_path()).await?;
         Ok(key)
     }
+
+    /// Gets a reference to the server's config.
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
+    /// Gets a reference to the server's locally bound socket.
+    pub fn local_socket(&self) -> &ServerSocket {
+        &self.socket
+    }
 }
 
-impl<I, IO, IE, S> Server<I, S>
+#[async_trait]
+impl Runnable for Server {
+    async fn run(self) -> Result<()> {
+        self.inner.run().await
+    }
+}
+
+struct InnerServer<I> {
+    inner: axum::Server<I, IntoMakeService<Router>>,
+    shutdown_rx: oneshot::Receiver<()>,
+}
+
+#[async_trait]
+impl<I, IO, IE> Runnable for InnerServer<I>
 where
-    I: Accept<Conn = IO, Error = IE>,
+    I: Accept<Conn = IO, Error = IE> + Send + Sync,
     IO: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     IE: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
-    pub async fn run(self) -> Result<()> {
+    async fn run(self) -> Result<()> {
         let shutdown_rx = self.shutdown_rx;
 
         self.inner
@@ -179,15 +190,37 @@ where
             .await
             .map_err(Into::into)
     }
+}
 
-    /// Gets a reference to the server's config.
-    pub fn config(&self) -> &Config {
-        &self.config
+#[remain::sorted]
+pub enum ServerSocket {
+    DomainSocket(PathBuf),
+    SocketAddr(SocketAddr),
+    #[cfg(target_os = "linux")]
+    VsockAddr(tokio_vsock::VsockAddr),
+}
+
+impl ServerSocket {
+    pub fn as_domain_socket(&self) -> Option<&Path> {
+        match self {
+            Self::DomainSocket(pathbuf) => Some(pathbuf.as_path()),
+            _ => None,
+        }
     }
 
-    /// Gets a reference to the server's locally bound socket.
-    pub fn local_socket(&self) -> &S {
-        &self.socket
+    pub fn as_socket_addr(&self) -> Option<&SocketAddr> {
+        match self {
+            Self::SocketAddr(addr) => Some(addr),
+            _ => None,
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn as_vsock_addr(&self) -> Option<&tokio_vsock::VsockAddr> {
+        match self {
+            Self::VsockAddr(addr) => Some(addr),
+            _ => None,
+        }
     }
 }
 

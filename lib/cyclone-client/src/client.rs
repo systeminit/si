@@ -521,9 +521,8 @@ mod tests {
         ComponentKind, ComponentView, CycloneDecryptionKey, FunctionResult, ProgressMessage,
         ResolverFunctionComponent, ValidationRequest,
     };
-    use cyclone_server::{Config, ConfigBuilder, Server, UdsIncomingStream};
+    use cyclone_server::{Config, ConfigBuilder, Runnable as _, Server};
     use futures::StreamExt;
-    use hyper::server::conn::AddrIncoming;
     use serde_json::json;
     use sodiumoxide::crypto::box_::PublicKey;
     use tempfile::{NamedTempFile, TempPath};
@@ -585,7 +584,7 @@ mod tests {
         builder: &mut ConfigBuilder,
         tmp_socket: &TempPath,
         key: CycloneDecryptionKey,
-    ) -> Server<UdsIncomingStream, PathBuf> {
+    ) -> Server {
         let config = builder
             .unix_domain_socket(tmp_socket)
             .try_lang_server_path(lang_server_path())
@@ -593,7 +592,7 @@ mod tests {
             .build()
             .expect("failed to build config");
 
-        Server::uds(config, Box::new(telemetry::NoopClient), key)
+        Server::from_config(config, Box::new(telemetry::NoopClient), key)
             .await
             .expect("failed to init server")
     }
@@ -604,17 +603,18 @@ mod tests {
         key: CycloneDecryptionKey,
     ) -> UdsClient {
         let server = uds_server(builder, tmp_socket, key).await;
-        let path = server.local_socket().clone();
+        let path = server
+            .local_socket()
+            .as_domain_socket()
+            .expect("expected a domain socket")
+            .to_owned();
         tokio::spawn(async move { server.run().await });
         let config = Arc::new(ClientConfig::default());
 
         Client::uds(path, config).expect("failed to create uds client")
     }
 
-    async fn http_server(
-        builder: &mut ConfigBuilder,
-        key: CycloneDecryptionKey,
-    ) -> Server<AddrIncoming, SocketAddr> {
+    async fn http_server(builder: &mut ConfigBuilder, key: CycloneDecryptionKey) -> Server {
         let config = builder
             .http_socket("127.0.0.1:0")
             .expect("failed to resolve socket addr")
@@ -623,7 +623,9 @@ mod tests {
             .build()
             .expect("failed to build config");
 
-        Server::http(config, Box::new(telemetry::NoopClient), key).expect("failed to init server")
+        Server::from_config(config, Box::new(telemetry::NoopClient), key)
+            .await
+            .expect("failed to init server")
     }
 
     async fn http_client_for_running_server(
@@ -631,7 +633,10 @@ mod tests {
         key: CycloneDecryptionKey,
     ) -> HttpClient {
         let server = http_server(builder, key).await;
-        let socket = *server.local_socket();
+        let socket = *server
+            .local_socket()
+            .as_socket_addr()
+            .expect("expected a socket addr");
         tokio::spawn(async move { server.run().await });
 
         Client::http(socket).expect("failed to create client")
