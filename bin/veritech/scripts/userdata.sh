@@ -55,6 +55,15 @@ CYCLONE_ENCRYPTION_KEY_SECRET=${3:-tools-encryption-key}
 NATS_CREDS_SECRET=${3:-tools-prod-nats-creds}
 HONEYCOMB_API_SECRET=${4:-tools-honeycomb-api-key}
 
+wget https://artifacts.systeminit.com/veritech/stable/omnibus/linux/$(arch)/veritech-stable-omnibus-linux-$(arch).tar.gz -O - | tar -xzvf - -C /
+
+# Awkward install of the aws cli
+sudo apt update
+sudo apt install unzip jq -y
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
 # create a volume for our friend the decryption key
 KEY_VOLUME=/firecracker-data/decrypt_key.ext4
 KEY_MOUNT=/firecracker-data/key
@@ -66,15 +75,6 @@ mount $KEY_VOLUME $KEY_MOUNT
 aws secretsmanager get-secret-value --region us-east-1 --secret-id $CYCLONE_ENCRYPTION_KEY_SECRET | jq -r '.SecretString' > $KEY_MOUNT/decryption.key
 chmod 777 $KEY_MOUNT/decryption.key
 umount $KEY_VOLUME
-
-wget https://artifacts.systeminit.com/veritech/stable/omnibus/linux/$(arch)/veritech-stable-omnibus-linux-$(arch).tar.gz -O - | tar -xzvf - -C /
-
-# Awkward install of the aws cli
-sudo apt update
-sudo apt install unzip jq -y
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-sudo ./aws/install
 
 aws secretsmanager get-secret-value --region us-east-1 --secret-id $NATS_CREDS_SECRET | jq -r '.SecretString' >> /tmp/nats-creds
 
