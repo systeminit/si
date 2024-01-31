@@ -10,7 +10,7 @@ pub mod ws;
 // pub mod fix;
 // pub mod pkg;
 // pub mod provider;
-// pub mod qualification;
+pub mod qualification;
 // pub mod secret;
 // pub mod status;
 // pub mod variant_definition;

@@ -5,6 +5,7 @@ use ulid::Ulid;
 
 use crate::{
     change_set_pointer::ChangeSetPointer,
+    func::execution::FuncExecutionPk,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,
@@ -30,6 +31,8 @@ pub struct AttributeValueNodeWeight {
     value: Option<ContentAddress>,
     /// A cached representation of this value and all of its child values.
     materialized_view: Option<ContentAddress>,
+    /// The id of the func execution that produced the values for this value
+    func_execution_pk: Option<FuncExecutionPk>,
 }
 
 impl AttributeValueNodeWeight {
@@ -39,6 +42,7 @@ impl AttributeValueNodeWeight {
         unprocessed_value: Option<ContentAddress>,
         value: Option<ContentAddress>,
         materialized_view: Option<ContentAddress>,
+        func_execution_pk: Option<FuncExecutionPk>,
     ) -> NodeWeightResult<Self> {
         Ok(Self {
             id,
@@ -51,6 +55,7 @@ impl AttributeValueNodeWeight {
             unprocessed_value,
             value,
             materialized_view,
+            func_execution_pk,
         })
     }
 
@@ -80,6 +85,14 @@ impl AttributeValueNodeWeight {
 
     pub fn set_materialized_view(&mut self, materialized_view: Option<ContentAddress>) {
         self.materialized_view = materialized_view
+    }
+
+    pub fn set_func_execution_pk(&mut self, func_execution_pk: Option<FuncExecutionPk>) {
+        self.func_execution_pk = func_execution_pk
+    }
+
+    pub fn func_execution_pk(&self) -> Option<FuncExecutionPk> {
+        self.func_execution_pk
     }
 
     pub fn increment_vector_clock(

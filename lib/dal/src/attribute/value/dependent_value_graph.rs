@@ -1,11 +1,7 @@
 use petgraph::prelude::*;
-use std::{
-    collections::{hash_map::Entry, HashMap, VecDeque},
-    sync::Arc,
-};
+use std::collections::{hash_map::Entry, HashMap, VecDeque};
+use tokio::{fs::File, io::AsyncWriteExt};
 use ulid::Ulid;
-
-use tokio::{fs::File, io::AsyncWriteExt, sync::Mutex};
 
 use crate::{
     attribute::{

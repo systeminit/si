@@ -68,7 +68,7 @@ pub mod ws_event;
 // pub mod prop_tree;
 // pub mod prototype_context;
 // pub mod prototype_list_for_func;
-// pub mod qualification;
+pub mod qualification;
 // pub mod reconciliation_prototype;
 // pub mod secret;
 // pub mod status;

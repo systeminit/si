@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::ComponentCreatedPayload;
+use crate::qualification::QualificationCheckPayload;
 use crate::user::OnlinePayload;
 use crate::{
     func::binding::LogLinePayload, pkg::ModuleImportedPayload, user::CursorPayload, ChangeSetPk,
@@ -48,7 +49,7 @@ pub enum WsPayload {
     ChangeSetCreated(ChangeSetPk),
     ChangeSetMergeVote(ChangeSetMergeVotePayload),
     ChangeSetWritten(ChangeSetPk),
-    // CheckedQualifications(QualificationCheckPayload),
+    CheckedQualifications(QualificationCheckPayload),
     // CodeGenerated(CodeGeneratedPayload),
     ComponentCreated(ComponentCreatedPayload),
     Cursor(CursorPayload),

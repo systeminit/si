@@ -62,8 +62,6 @@ impl StaticArgumentValue {
             .await
             .add(&StaticArgumentValueContent::V1(content.clone()))?;
 
-        info!("added static argument value with hash: {}", &hash);
-
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
@@ -87,8 +85,6 @@ impl StaticArgumentValue {
         let node_index = workspace_snapshot.get_node_index_by_id(ulid)?;
         let node_weight = workspace_snapshot.get_node_weight(node_index)?;
         let hash = node_weight.content_hash();
-
-        info!("fetching static argument value with hash: {}", &hash);
 
         let content: StaticArgumentValueContent = ctx
             .content_store()

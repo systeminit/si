@@ -27,7 +27,7 @@ pub mod update_property_editor_value;
 // pub mod get_resource;
 pub mod insert_property_editor_value;
 // pub mod json;
-// pub mod list_qualifications;
+pub mod list_qualifications;
 // pub mod list_resources;
 // pub mod refresh;
 // pub mod resource_domain_diff;
@@ -156,10 +156,10 @@ pub fn routes() -> Router<AppState> {
         //     "/get_components_metadata",
         //     get(get_components_metadata::get_components_metadata),
         // )
-        // .route(
-        //     "/list_qualifications",
-        //     get(list_qualifications::list_qualifications),
-        // )
+        .route(
+            "/list_qualifications",
+            get(list_qualifications::list_qualifications),
+        )
         // .route("/list_resources", get(list_resources::list_resources))
         // .route("/get_code", get(get_code::get_code))
         // .route("/get_diff", get(get_diff::get_diff))

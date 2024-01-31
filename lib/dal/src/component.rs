@@ -5,11 +5,10 @@ use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, HashMap, VecDeque};
 use std::hash::Hash;
-use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
+use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
-use tokio::task::JoinSet;
 use ulid::Ulid;
 
 use crate::attribute::prototype::argument::value_source::ValueSource;
@@ -22,7 +21,8 @@ use crate::job::definition::DependentValuesUpdate;
 use crate::prop::{PropError, PropPath};
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
-use crate::schema::variant::root_prop::{component_type::ComponentType, RootPropChild};
+use crate::qualification::QualificationError;
+use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::SchemaVariantError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
@@ -35,14 +35,14 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, AttributeValue, AttributeValueId, DalContext, ExternalProvider, ExternalProviderId,
     InternalProvider, InternalProviderId, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId,
-    Timestamp, TransactionsError, WsEvent, WsEventResult, WsPayload,
+    Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod resource;
 
 // pub mod code;
 // pub mod diff;
-// pub mod qualification;
+pub mod qualification;
 // pub mod status;
 // pub mod validation;
 // pub mod view;
@@ -85,6 +85,8 @@ pub enum ComponentError {
     InternalProviderTooManyAttributeValues(InternalProviderId),
     #[error("map prop {0} has no element prop")]
     MapPropMissingElementProp(PropId),
+    #[error("component {0} missing attribute value for qualifications")]
+    MissingQualificationsValue(ComponentId),
     #[error("found multiple root attribute values ({0} and {1}, at minimum) for component: {2}")]
     MultipleRootAttributeValuesFound(AttributeValueId, AttributeValueId, ComponentId),
     #[error("node weight error: {0}")]
@@ -95,6 +97,8 @@ pub enum ComponentError {
     Prop(#[from] PropError),
     #[error("found prop id ({0}) that is not a prop")]
     PropIdNotAProp(PropId),
+    #[error("qualification error: {0}")]
+    Qualification(#[from] QualificationError),
     #[error("root attribute value not found for component: {0}")]
     RootAttributeValueNotFound(ComponentId),
     #[error("schema variant error: {0}")]
@@ -111,6 +115,8 @@ pub enum ComponentError {
     TryLock(#[from] TryLockError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    #[error("WsEvent error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -639,46 +645,6 @@ impl Component {
             Some(serde_value) => serde_json::from_value(serde_value)?,
             None => "".into(),
         })
-    }
-
-    async fn set_color(&self, ctx: &DalContext, color: &str) -> ComponentResult<()> {
-        let av_for_color = self
-            .attribute_values_for_prop(ctx, &["root", "si", "color"])
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(ComponentError::ComponentMissingNameValue(self.id()))?;
-
-        AttributeValue::update_no_dependent_values(
-            ctx,
-            av_for_color,
-            Some(serde_json::to_value(color)?),
-        )
-        .await?;
-
-        Ok(())
-    }
-
-    async fn set_type(
-        &self,
-        ctx: &DalContext,
-        component_type: ComponentType,
-    ) -> ComponentResult<()> {
-        let av_for_type = self
-            .attribute_values_for_prop(ctx, &["root", "si", "type"])
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(ComponentError::ComponentMissingNameValue(self.id()))?;
-
-        AttributeValue::update_no_dependent_values(
-            ctx,
-            av_for_type,
-            Some(serde_json::to_value(component_type.to_string())?),
-        )
-        .await?;
-
-        Ok(())
     }
 
     pub async fn color(&self, ctx: &DalContext) -> ComponentResult<Option<String>> {

@@ -37,15 +37,15 @@ pub fn routes(state: AppState) -> Router {
         .nest("/api/diagram", crate::server::service::diagram::routes())
         .nest("/api/graphviz", crate::server::service::graphviz::routes())
         .nest("/api/ws", crate::server::service::ws::routes())
+        .nest(
+            "/api/qualification",
+            crate::server::service::qualification::routes(),
+        )
         .layer(CompressionLayer::new());
 
     // .nest("/api/fix", crate::server::service::fix::routes())
     // .nest("/api/pkg", crate::server::service::pkg::routes())
     // .nest("/api/provider", crate::server::service::provider::routes())
-    // .nest(
-    //     "/api/qualification",
-    //     crate::server::service::qualification::routes(),
-    // )
     // .nest("/api/secret", crate::server::service::secret::routes())
     // .nest("/api/status", crate::server::service::status::routes())
     // .nest(

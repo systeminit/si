@@ -5,6 +5,7 @@ use strum::EnumDiscriminants;
 use thiserror::Error;
 use ulid::Ulid;
 
+use crate::func::execution::FuncExecutionPk;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::FuncBackendKind;
 use crate::{
@@ -496,6 +497,7 @@ impl NodeWeight {
         unprocessed_value: Option<ContentAddress>,
         value: Option<ContentAddress>,
         materialized_view: Option<ContentAddress>,
+        func_execution_pk: Option<FuncExecutionPk>,
     ) -> NodeWeightResult<Self> {
         Ok(NodeWeight::AttributeValue(AttributeValueNodeWeight::new(
             change_set,
@@ -503,6 +505,7 @@ impl NodeWeight {
             unprocessed_value,
             value,
             materialized_view,
+            func_execution_pk,
         )?))
     }
 
