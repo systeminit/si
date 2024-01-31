@@ -1240,7 +1240,9 @@ function endDragElements() {
 
     // dragging onto root - ie detach from all parents
     if (!cursorWithinGroupKey.value) {
-      componentsStore.DETACH_COMPONENT(el.def.componentId);
+      if (el.def.parentNodeId) {
+        componentsStore.DETACH_COMPONENT(el.def.componentId);
+      }
     } else {
       const newParent = allElementsByKey.value[
         cursorWithinGroupKey.value

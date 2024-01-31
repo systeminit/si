@@ -117,13 +117,25 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
-CREATE OR REPLACE FUNCTION restore_edge_by_pk_v1(
-    this_pk ident,
+CREATE OR REPLACE FUNCTION restore_edge_by_id_v1(
+    this_tenancy jsonb,
+    this_visibility jsonb,
+    this_edge_id ident,
     OUT object json
 )
 AS
 $$
+DECLARE
+    this_tenancy_record    tenancy_record_v1;
+    this_visibility_record visibility_record_v1;
 BEGIN
-    DELETE FROM summary_diagram_edges e WHERE e.pk = this_pk;
+    this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
+    this_visibility_record := visibility_json_to_columns_v1(this_visibility);
+
+    DELETE
+    FROM summary_diagram_edges e
+    WHERE e.id = this_edge_id
+      AND e.tenancy_workspace_pk = this_tenancy_record.tenancy_workspace_pk
+      AND e.visibility_change_set_pk = this_visibility_record.visibility_change_set_pk;
 END;
 $$ LANGUAGE PLPGSQL;

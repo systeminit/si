@@ -478,12 +478,20 @@ pub async fn restore_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagram
         .await?
         .ok_or(EdgeError::EdgeNotFound(*edge.id()))?;
 
+    if deleted_edge.visibility().deleted_at.is_none()
+        || deleted_edge.visibility().change_set_pk != ctx.visibility().change_set_pk
+    {
+        return Err(SummaryDiagramError::Edge(
+            EdgeError::RestoringNonDeletedEdge(*edge.id()),
+        ));
+    }
+
     ctx.txns()
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM restore_edge_by_pk_v1($1)",
-            &[&deleted_edge.pk()],
+            "SELECT object FROM restore_edge_by_id_v1($1, $2, $3)",
+            &[ctx.tenancy(), ctx.visibility(), &deleted_edge.id()],
         )
         .await?;
 

@@ -141,6 +141,7 @@ const rightClickMenuItems = computed(() => {
   }
 
   if (
+    selectedComponents.value.length > 0 &&
     _.every(selectedComponents.value, (c) => (c.ancestorIds?.length || 0) > 0)
   ) {
     items.push({
