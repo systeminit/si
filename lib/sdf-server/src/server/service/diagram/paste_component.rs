@@ -132,7 +132,7 @@ async fn paste_single_component(
         }),
     );
 
-    WsEvent::component_created(&ctx)
+    WsEvent::component_created(&ctx, *pasted_comp.id())
         .await?
         .publish_on_commit(&ctx)
         .await?;

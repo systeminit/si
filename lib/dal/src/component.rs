@@ -1295,13 +1295,22 @@ impl Component {
 #[serde(rename_all = "camelCase")]
 pub struct ComponentCreatedPayload {
     success: bool,
+    component_id: ComponentId,
+    change_set_pk: ChangeSetPk,
 }
 
 impl WsEvent {
-    pub async fn component_created(ctx: &DalContext) -> WsEventResult<Self> {
+    pub async fn component_created(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::ComponentCreated(ComponentCreatedPayload { success: true }),
+            WsPayload::ComponentCreated(ComponentCreatedPayload {
+                success: true,
+                change_set_pk: ctx.visibility().change_set_pk,
+                component_id,
+            }),
         )
         .await
     }
