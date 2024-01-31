@@ -1,6 +1,8 @@
+//! Telemetry propagation via NATS headers.
+
 use si_data_nats::HeaderMap;
 use telemetry::{
-    opentelemetry::{global, Context},
+    opentelemetry::{global, trace::TraceContextExt, Context},
     tracing::Span,
 };
 
@@ -18,6 +20,19 @@ pub fn empty_injected_headers() -> HeaderMap {
     inject_headers(&mut headers);
 
     headers
+}
+
+/// Associates the current [`Span`] with propagation telemetry in an optional [`HeaderMap`].
+pub fn associate_current_span_from_headers<'a>(headers: impl Into<Option<&'a HeaderMap>>) {
+    use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+    if let Some(headers) = headers.into() {
+        let span_ctx = extract_opentelemetry_context(headers)
+            .span()
+            .span_context()
+            .clone();
+        Span::current().add_link(span_ctx);
+    }
 }
 
 /// Extracts an OpenTelemetry [`Context`] from a [`HeaderMap`].

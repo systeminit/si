@@ -1,10 +1,11 @@
+use std::time::Duration;
+
 use futures::StreamExt;
 use si_data_nats::{NatsClient, Subject, Subscriber};
-use std::time::Duration;
-use telemetry::prelude::*;
+use telemetry::{prelude::*, tracing::field};
+use telemetry_nats::propagation;
 
-use crate::SubjectGenerator;
-use crate::{Graph, Id, Request, Response};
+use crate::{Graph, Id, Request, Response, SubjectGenerator};
 
 pub mod management;
 
@@ -43,9 +44,10 @@ impl PubClient {
             dependency_graph,
         })?;
         self.nats
-            .publish_with_reply(
+            .publish_with_reply_and_headers(
                 self.pub_channel.clone(),
                 self.reply_channel.clone(),
+                propagation::empty_injected_headers(),
                 message.into(),
             )
             .await?;
@@ -58,9 +60,10 @@ impl PubClient {
             node_id,
         })?;
         self.nats
-            .publish_with_reply(
+            .publish_with_reply_and_headers(
                 self.pub_channel.clone(),
                 self.reply_channel.clone(),
+                propagation::empty_injected_headers(),
                 message.into(),
             )
             .await?;
@@ -73,9 +76,10 @@ impl PubClient {
             node_id,
         })?;
         self.nats
-            .publish_with_reply(
+            .publish_with_reply_and_headers(
                 self.pub_channel.clone(),
                 self.reply_channel.clone(),
+                propagation::empty_injected_headers(),
                 message.into(),
             )
             .await?;
@@ -87,9 +91,10 @@ impl PubClient {
             change_set_id: self.change_set_id,
         })?;
         self.nats
-            .publish_with_reply(
+            .publish_with_reply_and_headers(
                 self.pub_channel.clone(),
                 self.reply_channel.clone(),
+                propagation::empty_injected_headers(),
                 message.into(),
             )
             .await?;
@@ -133,31 +138,60 @@ impl Client {
     }
 
     // None means subscriber has been unsubscribed or that the connection has been closed
+    #[instrument(
+        name = "council_client.fetch_response",
+        level = "info",
+        skip_all,
+        fields(
+            response = Empty,
+        )
+    )]
     pub async fn fetch_response(&mut self) -> ClientResult<Option<Response>> {
         // TODO: timeout so we don't get stuck here forever if council goes away
-        // TODO: handle message.data() empty with Status header as 503: https://github.com/nats-io/nats.go/pull/576
+        // TODO: handle message.data() empty with Status header as 503:
+        // https://github.com/nats-io/nats.go/pull/576
         let msg = loop {
             let res = tokio::time::timeout(Duration::from_secs(60), self.subscriber.next()).await;
 
             match res {
                 Ok(msg) => break msg,
                 Err(_) => {
-                    warn!(change_set_id = ?self.change_set_id, pub_channel = ?self.pub_channel, reply_channel = ?self.reply_channel, "Council client waiting for response for 60 seconds");
+                    warn!(
+                        change_set_id = ?self.change_set_id,
+                        pub_channel = ?self.pub_channel,
+                        reply_channel = ?self.reply_channel,
+                        "Council client waiting for response for 60 seconds",
+                    );
                 }
             }
         };
 
         match msg {
             Some(msg) => {
+                let span = Span::current();
+                propagation::associate_current_span_from_headers(msg.headers());
                 if msg.payload().is_empty() {
                     return Err(ClientError::NoListenerAvailable);
                 }
-                Ok(Some(serde_json::from_slice::<Response>(msg.payload())?))
+                let response = serde_json::from_slice::<Response>(msg.payload())?;
+                span.record("response", field::debug(&response));
+                Ok(Some(response))
             }
-            None => Ok(None),
+            None => {
+                // TODO(fnichol): I'm guessing at a trace messaage--is this expected behavior, or
+                // the sign that something unexpected happened?
+                trace!("no response recieved, subscriber stream closed");
+                Ok(None)
+            }
         }
     }
 
+    #[instrument(
+        name = "council_client.register_dependency_graph",
+        level = "info",
+        skip_all,
+        fields()
+    )]
     pub async fn register_dependency_graph(&self, dependency_graph: Graph) -> ClientResult<()> {
         self.clone_into_pub()
             .register_dependency_graph(dependency_graph)

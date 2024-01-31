@@ -240,6 +240,12 @@ impl DependentValuesUpdate {
         Ok(())
     }
 
+    #[instrument(
+        name = "dependent_values_update.listen",
+        level = "info",
+        skip_all,
+        fields()
+    )]
     async fn listen(
         &self,
         ctx: &DalContext,
@@ -355,6 +361,12 @@ impl DependentValuesUpdate {
         Ok(needs_restart)
     }
 
+    #[instrument(
+        name = "dependent_values_update.listen_management",
+        level = "info",
+        skip_all,
+        fields()
+    )]
     async fn listen_management(
         &self,
         council_management: &mut council_server::ManagementClient,

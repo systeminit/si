@@ -3,6 +3,7 @@ use graph::ChangeSetGraph;
 use si_data_nats::{NatsClient, Subject, Subscriber};
 use std::time::Duration;
 use telemetry::prelude::*;
+use telemetry_nats::propagation;
 use tokio::{signal, sync::watch};
 
 use crate::subject_generator::{ManagementChannel, ManagementReplyChannel};
@@ -77,7 +78,11 @@ impl Server {
                 serde_json::to_vec(&Response::Restart)?.into(),
             )
             .await?;
-        info!(%management_channel, %management_reply_channel, "published message for all active pinga instances to restart jobs in progress");
+        info!(
+            %management_channel,
+            %management_reply_channel,
+            "published message for all active pinga instances to restart jobs in progress",
+        );
 
         // Begin the main loop. Everything after this point should be infallible.
         self.core_loop_infallible_wrapper(
@@ -113,8 +118,10 @@ impl Server {
                 )
                 .await
             {
-                Ok(()) => break,
-                Err(e) => error!("{e}"),
+                Ok(_) => break,
+                Err(err) => {
+                    error!(error = ?err, "core loop encountered an error; restarting loop");
+                }
             }
         }
     }
@@ -132,8 +139,9 @@ impl Server {
             for (reply_channel, node_ids) in complete_graph.fetch_all_available() {
                 info!(%reply_channel, ?node_ids, "Ok to process AttributeValue");
                 self.nats
-                    .publish(
+                    .publish_with_headers(
                         reply_channel,
+                        propagation::empty_injected_headers(),
                         serde_json::to_vec(&Response::OkToProcess { node_ids })?.into(),
                     )
                     .await?;
@@ -145,20 +153,26 @@ impl Server {
             let (reply_channel, request) = tokio::select! {
                 _ = &mut sleep => {
                     if !complete_graph.is_empty() {
-                        warn!(?complete_graph, "Council has values in graph but has been waiting for messages for 60 seconds");
+                        warn!(
+                            ?complete_graph,
+                            "has values in graph but has been waiting for messages for 60 seconds",
+                        );
                     }
                     continue;
                 }
                 req = subscriber.next() => match req {
-                    Some(msg) => match (serde_json::from_slice::<Request>(msg.payload()), msg.reply()) {
-                        (Ok(req), Some(reply)) => (reply.to_owned(), req),
-                        (Err(err), _) => {
-                            error!("Unable to deserialize request: {err}");
-                            continue;
-                        }
-                        _ => {
-                            error!("No reply channel provided: {msg:?}");
-                            continue;
+                    Some(msg) => {
+                        propagation::associate_current_span_from_headers(msg.headers());
+                        match (serde_json::from_slice::<Request>(msg.payload()), msg.reply()) {
+                            (Ok(req), Some(reply)) => (reply.to_owned(), req),
+                            (Err(err), _) => {
+                                error!("Unable to deserialize request: {err}");
+                                continue;
+                            }
+                            _ => {
+                                error!("No reply channel provided: {msg:?}");
+                                continue;
+                            }
                         }
                     }
                     None => {
@@ -229,7 +243,9 @@ impl Server {
                 ),
                 Request::Restart => {
                     debug!(
-                        %management_channel, %management_reply_channel, "found restart request sent to everyone subscribing to management channel: no-op"
+                        %management_channel,
+                        %management_reply_channel,
+                        "found restart request sent to everyone subscribing to management channel: no-op",
                     );
                     (Ok(()), RequestDiscriminants::Restart)
                 }
@@ -323,8 +339,9 @@ pub async fn job_processed_a_value(
         complete_graph.mark_node_as_processed(&reply_channel, change_set_id, node_id)?
     {
         info!(%reply_channel, ?node_id, "AttributeValue has been processed by a job");
-        nats.publish(
+        nats.publish_with_headers(
             reply_channel,
+            propagation::empty_injected_headers(),
             serde_json::to_vec(&Response::BeenProcessed { node_id })?.into(),
         )
         .await?;
@@ -346,8 +363,9 @@ pub async fn job_failed_processing_a_value(
     for (reply_channel, failed_node_id) in
         complete_graph.remove_node_and_dependents(reply_channel, change_set_id, node_id)?
     {
-        nats.publish(
+        nats.publish_with_headers(
             reply_channel,
+            propagation::empty_injected_headers(),
             serde_json::to_vec(&Response::Failed {
                 node_id: failed_node_id,
             })?
