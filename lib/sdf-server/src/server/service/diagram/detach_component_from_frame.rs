@@ -1,17 +1,16 @@
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-use crate::service::diagram::{DiagramError, DiagramResult};
+use crate::service::diagram::DiagramResult;
 use axum::extract::OriginalUri;
 use axum::response::IntoResponse;
 use axum::Json;
-use dal::{ChangeSet, Component, ComponentId, Edge, StandardModel, Visibility};
+use dal::{ChangeSet, ComponentId, Edge, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DetachComponentRequest {
     pub component_id: ComponentId,
-    pub parent_component_ids: Vec<ComponentId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -26,22 +25,8 @@ pub async fn detach_component_from_frame(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
-    let child_comp = Component::get_by_id(&ctx, &request.component_id)
-        .await?
-        .ok_or(DiagramError::ComponentNotFound)?;
 
-    let child_comp_edges = Edge::list_for_component(&ctx, *child_comp.id()).await?;
-    for mut child_comp_edge in child_comp_edges {
-        if request
-            .parent_component_ids
-            .contains(&child_comp_edge.head_component_id())
-            || request
-                .parent_component_ids
-                .contains(&child_comp_edge.tail_component_id())
-        {
-            child_comp_edge.delete_and_propagate(&ctx).await?;
-        }
-    }
+    let detached_parent_id = Edge::detach_component_from_parent(&ctx, request.component_id).await?;
 
     track(
         &posthog_client,
@@ -50,7 +35,7 @@ pub async fn detach_component_from_frame(
         "detach_component_from_frame",
         serde_json::json!({
             "child_component_id": &request.component_id,
-            "parent_component_ids": &request.parent_component_ids,
+            "parent_component_id": detached_parent_id,
         }),
     );
 

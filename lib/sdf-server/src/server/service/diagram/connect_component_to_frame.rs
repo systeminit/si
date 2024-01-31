@@ -11,7 +11,7 @@ use dal::job::definition::DependentValuesUpdate;
 use dal::socket::{SocketEdgeKind, SocketKind};
 use dal::{
     node::NodeId, AttributeReadContext, AttributeValue, ChangeSet, Component, ComponentError,
-    Connection, DalContext, Edge, EdgeError, ExternalProvider, InternalProvider, SocketId,
+    Connection, DalContext, Edge, EdgeError, ExternalProvider, InternalProvider, Node, SocketId,
     StandardModel, Visibility,
 };
 use dal::{ComponentType, Socket};
@@ -123,7 +123,7 @@ async fn connect_component_sockets_to_frame_inner(
 
         match parent_component.get_type(ctx).await? {
             component_type @ ComponentType::Component => {
-                return Err(DiagramError::InvalidComponentTypeForFrame(component_type))
+                return Err(DiagramError::InvalidComponentTypeForFrame(component_type));
             }
             ComponentType::AggregationFrame => {
                 match *parent_socket.edge_kind() {
@@ -419,6 +419,23 @@ pub async fn connect_component_to_frame(
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
+
+    // Detach from previous parent
+    {
+        let child_component = Node::get_by_id(&ctx, &request.child_node_id)
+            .await?
+            .ok_or(DiagramError::NodeNotFound(request.child_node_id))?
+            .component(&ctx)
+            .await?
+            .ok_or(DiagramError::ComponentNotFound)?;
+
+        let maybe_parent = Edge::get_parent_for_component(&ctx, *child_component.id()).await?;
+
+        if maybe_parent.is_some() {
+            Edge::detach_component_from_parent(&ctx, *child_component.id()).await?;
+        }
+    }
+    println!("Done det");
 
     // Connect children to parent through frame edge
     connect_component_sockets_to_frame(

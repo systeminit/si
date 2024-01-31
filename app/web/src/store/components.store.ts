@@ -899,15 +899,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             if (changeSetId === nilId())
               changeSetsStore.creatingChangeSet = true;
 
-            const component = this.componentsById[componentId];
-
             return new ApiRequest<{ node: DiagramNode }>({
               method: "post",
               url: "diagram/detach_component",
               params: {
                 componentId,
-                // TODO: should not have to pass this to the backend
-                parentComponentIds: component?.ancestorIds,
                 ...visibilityParams,
               },
               optimistic: () => {

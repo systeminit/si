@@ -1240,15 +1240,15 @@ function endDragElements() {
 
     // dragging onto root - ie detach from all parents
     if (!cursorWithinGroupKey.value) {
-      componentsStore.DETACH_COMPONENT(el.def.componentId);
+      if (el.def.parentNodeId) {
+        componentsStore.DETACH_COMPONENT(el.def.componentId);
+      }
     } else {
       const newParent = allElementsByKey.value[
         cursorWithinGroupKey.value
       ] as DiagramGroupData;
 
       if (el.def.parentComponentId !== newParent?.def.componentId) {
-        // TODO: this needs to be a single api call
-        componentsStore.DETACH_COMPONENT(el.def.componentId);
         componentsStore.CONNECT_COMPONENT_TO_FRAME(el.def.id, newParent.def.id);
       }
     }
