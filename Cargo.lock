@@ -578,7 +578,7 @@ checksum = "b58071e8fd9ec1e930efd28e3a90c1251015872a2ce49f81f36421b86466932e"
 dependencies = [
  "serde",
  "serde_repr",
- "serde_with 3.5.1",
+ "serde_with 3.6.0",
 ]
 
 [[package]]
@@ -1365,7 +1365,7 @@ dependencies = [
  "serde",
  "serde-aux",
  "serde_json",
- "serde_with 3.5.1",
+ "serde_with 3.6.0",
  "si-crypto",
  "si-data-nats",
  "si-data-pg",
@@ -1430,12 +1430,12 @@ dependencies = [
 
 [[package]]
 name = "darling"
-version = "0.20.4"
+version = "0.20.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da01daa5f6d41c91358398e8db4dde38e292378da1f28300b59ef4732b879454"
+checksum = "fc5d6b04b3fd0ba9926f945895de7d806260a2d7431ba82e7edaecb043c4c6b8"
 dependencies = [
- "darling_core 0.20.4",
- "darling_macro 0.20.4",
+ "darling_core 0.20.5",
+ "darling_macro 0.20.5",
 ]
 
 [[package]]
@@ -1454,9 +1454,9 @@ dependencies = [
 
 [[package]]
 name = "darling_core"
-version = "0.20.4"
+version = "0.20.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f44f6238b948a3c6c3073cdf53bb0c2d5e024ee27e0f35bfe9d556a12395808a"
+checksum = "04e48a959bcd5c761246f5d090ebc2fbf7b9cd527a492b07a67510c108f1e7e3"
 dependencies = [
  "fnv",
  "ident_case",
@@ -1479,11 +1479,11 @@ dependencies = [
 
 [[package]]
 name = "darling_macro"
-version = "0.20.4"
+version = "0.20.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d2d88bd93979b1feb760a6b5c531ac5ba06bd63e74894c377af02faee07b9cd"
+checksum = "1d1545d67a2149e1d93b7e5c7752dce5a7426eb5d1357ddcfd89336b94444f77"
 dependencies = [
- "darling_core 0.20.4",
+ "darling_core 0.20.5",
  "quote",
  "syn 2.0.48",
 ]
@@ -2803,13 +2803,13 @@ checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
 
 [[package]]
 name = "maybe-async"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f1b8c13cb1f814b634a96b2c725449fe7ed464a7b8781de8688be5ffbd3f305"
+checksum = "174c44590f35300ae0155d74f5a08e0742dcea34445e25be9a8054cca8b8688f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.48",
 ]
 
 [[package]]
@@ -2987,6 +2987,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7bddcd3bf5144b6392de80e04c347cd7fab2508f6df16a85fc496ecd5cec39bc"
 dependencies = [
  "rand 0.8.5",
+]
+
+[[package]]
+name = "nats-multiplexer"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "nats-multiplexer-client",
+ "nats-multiplexer-core",
+ "remain",
+ "serde_json",
+ "si-data-nats",
+ "telemetry",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "nats-multiplexer-client"
+version = "0.1.0"
+dependencies = [
+ "nats-multiplexer-core",
+ "remain",
+ "si-data-nats",
+ "telemetry",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "nats-multiplexer-core"
+version = "0.1.0"
+dependencies = [
+ "si-data-nats",
+ "tokio",
 ]
 
 [[package]]
@@ -4440,6 +4475,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "color-eyre",
+ "nats-multiplexer",
  "sdf-server",
  "telemetry-application",
  "tokio",
@@ -4465,6 +4501,9 @@ dependencies = [
  "hyper",
  "module-index-client",
  "names",
+ "nats-multiplexer",
+ "nats-multiplexer-client",
+ "nats-subscriber",
  "nix 0.27.1",
  "once_cell",
  "pathdiff",
@@ -4475,7 +4514,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_url_params",
- "serde_with 3.5.1",
+ "serde_with 3.6.0",
  "si-crypto",
  "si-data-nats",
  "si-data-pg",
@@ -4489,6 +4528,7 @@ dependencies = [
  "telemetry-http",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tokio-tungstenite",
  "tower",
  "tower-http",
@@ -4769,9 +4809,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "3.5.1"
+version = "3.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5c9fdb6b00a489875b22efd4b78fe2b363b72265cc5f6eb2e2b9ee270e6140c"
+checksum = "1b0ed1662c5a68664f45b76d18deb0e234aff37207086803165c961eb695e981"
 dependencies = [
  "base64 0.21.7",
  "chrono",
@@ -4780,7 +4820,7 @@ dependencies = [
  "indexmap 2.2.1",
  "serde",
  "serde_json",
- "serde_with_macros 3.5.1",
+ "serde_with_macros 3.6.0",
  "time",
 ]
 
@@ -4790,7 +4830,7 @@ version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "881b6f881b17d13214e5d494c939ebab463d01264ce1811e9d4ac3a882e7695f"
 dependencies = [
- "darling 0.20.4",
+ "darling 0.20.5",
  "proc-macro2",
  "quote",
  "syn 2.0.48",
@@ -4798,11 +4838,11 @@ dependencies = [
 
 [[package]]
 name = "serde_with_macros"
-version = "3.5.1"
+version = "3.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbff351eb4b33600a2e138dfa0b10b65a238ea8ff8fb2387c422c5022a3e8298"
+checksum = "568577ff0ef47b879f736cd66740e022f3672788cdf002a05a4e609ea5a6fb15"
 dependencies = [
- "darling 0.20.4",
+ "darling 0.20.5",
  "proc-macro2",
  "quote",
  "syn 2.0.48",
@@ -5027,7 +5067,7 @@ version = "0.1.0"
 dependencies = [
  "remain",
  "serde",
- "serde_with 3.5.1",
+ "serde_with 3.6.0",
  "thiserror",
 ]
 
@@ -5897,6 +5937,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

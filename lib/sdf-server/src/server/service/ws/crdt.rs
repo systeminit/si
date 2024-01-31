@@ -6,14 +6,17 @@ use axum::{
 use dal::{WorkspacePk, WsEventError};
 use futures::{Sink, SinkExt, Stream, StreamExt};
 use serde::{Deserialize, Serialize};
-use si_data_nats::{NatsClient, NatsError, Subject, Subscriber};
+use si_data_nats::{NatsClient, NatsError, Subject};
 use std::{collections::hash_map::Entry, collections::HashMap, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{sync::broadcast, sync::Mutex, task::JoinSet};
+use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
+use tokio_stream::wrappers::BroadcastStream;
 use y::{YSink, YStream};
 use y_sync::net::BroadcastGroup;
 
+use crate::server::nats_multiplexer::NatsMultiplexerClients;
 use crate::server::{
     extract::{Nats, WsAuthorization},
     state::ShutdownBroadcast,
@@ -30,8 +33,10 @@ pub mod y;
 pub enum CrdtError {
     #[error("axum error: {0}")]
     Axum(#[from] axum::Error),
-    #[error("broadcast error: {0}")]
-    Broadcast(#[from] broadcast::error::SendError<Message>),
+    #[error("broadcast send error: {0}")]
+    BroadcastSend(#[from] broadcast::error::SendError<Message>),
+    #[error("broadcast stream recv error: {0}")]
+    BrodcastStreamRecv(#[from] BroadcastStreamRecvError),
     #[error("nats error: {0}")]
     Nats(#[from] si_data_nats::Error),
     #[error("Shutdown recv error: {0}")]
@@ -62,11 +67,17 @@ pub async fn crdt(
     Query(Id { id }): Query<Id>,
     State(shutdown_broadcast): State<ShutdownBroadcast>,
     State(broadcast_groups): State<BroadcastGroups>,
+    State(nats_multiplexer_clients): State<NatsMultiplexerClients>,
 ) -> Result<impl IntoResponse, WsError> {
     let workspace_pk = claim.workspace_pk;
-    let channel_name = Subject::from(format!("crdt-{workspace_pk}-{id}"));
-    let subscription = nats.subscribe(channel_name.clone()).await?;
-    let ws_subscription = nats.subscribe(channel_name.clone()).await?;
+    let channel_name = Subject::from(format!("crdt.{workspace_pk}.{id}"));
+
+    let receiver = nats_multiplexer_clients
+        .crdt
+        .try_lock()?
+        .receiver(channel_name.clone())
+        .await?;
+    let ws_receiver = receiver.resubscribe();
     let shutdown = shutdown_broadcast.subscribe();
 
     Ok(wsu.on_upgrade(move |socket| async move {
@@ -77,8 +88,8 @@ pub async fn crdt(
             nats,
             broadcast_groups,
             channel_name,
-            subscription,
-            ws_subscription,
+            receiver,
+            ws_receiver,
             workspace_pk,
             id,
             shutdown,
@@ -94,8 +105,8 @@ pub async fn crdt_handle<W, R>(
     nats: NatsClient,
     broadcast_groups: BroadcastGroups,
     channel_name: Subject,
-    subscription: Subscriber,
-    mut ws_subscription: Subscriber,
+    receiver: broadcast::Receiver<si_data_nats::Message>,
+    ws_receiver: broadcast::Receiver<si_data_nats::Message>,
     workspace_pk: WorkspacePk,
     id: String,
     mut shutdown: broadcast::Receiver<()>,
@@ -106,8 +117,11 @@ pub async fn crdt_handle<W, R>(
 {
     let mut tasks = JoinSet::new();
 
+    let mut ws_receiver_stream = BroadcastStream::new(ws_receiver);
+
     tasks.spawn(async move {
-        while let Some(message) = ws_subscription.next().await {
+        while let Some(message) = ws_receiver_stream.next().await {
+            let message = message?;
             let (inner, _) = message.into_parts();
             sink.send(Message::Binary(inner.payload.into())).await?;
         }
@@ -130,7 +144,7 @@ pub async fn crdt_handle<W, R>(
     tasks.spawn(async move { Ok(shutdown.recv().await?) });
 
     let sink = Arc::new(Mutex::new(YSink::new(nats, channel_name)));
-    let stream = YStream::new(subscription);
+    let stream = YStream::new(receiver);
 
     let bcast: Arc<BroadcastGroup> = match broadcast_groups
         .lock()
