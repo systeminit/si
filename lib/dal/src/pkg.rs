@@ -29,8 +29,8 @@ use crate::{
     ComponentId, DalContext, EdgeError, ExternalProviderError, ExternalProviderId, FuncBackendKind,
     FuncBackendResponseType, FuncBindingReturnValueError, FuncError, FuncId, InternalProviderError,
     InternalProviderId, NodeError, PropError, PropId, PropKind, SchemaError, SchemaId,
-    SchemaVariantError, SchemaVariantId, StandardModelError, UserPk, WorkspaceError, WorkspacePk,
-    WsEvent, WsEventResult, WsPayload,
+    SchemaVariantError, SchemaVariantId, StandardModelError, TransactionsError, UserPk,
+    WorkspaceError, WorkspacePk, WsEvent, WsEventResult, WsPayload,
 };
 
 mod export;
@@ -215,6 +215,8 @@ pub enum PkgError {
     StandardModelMissingBelongsTo(&'static str, &'static str, String),
     #[error("standard model relationship {0} found multiple belongs_to for {1} with id {2}")]
     StandardModelMultipleBelongsTo(&'static str, &'static str, String),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
     #[error(transparent)]
     UlidDecode(#[from] ulid::DecodeError),
     #[error("unable to export component: {0}")]

@@ -2,6 +2,7 @@ use std::{
     io,
     net::SocketAddr,
     path::{Path, PathBuf},
+    sync::atomic::{self, AtomicUsize},
     sync::Arc,
     time::Duration,
 };
@@ -12,8 +13,8 @@ use dal::{
     jwt_key::JwtConfig,
     pkg::{import_pkg_from_pkg, ImportOptions, PkgError},
     tasks::{ResourceScheduler, StatusReceiver, StatusReceiverError},
-    BuiltinsError, DalContext, JwtPublicSigningKey, ServicesContext, Tenancy, TransactionsError,
-    Workspace, WorkspaceError,
+    AccessBuilder, BuiltinsError, DalContext, DalContextBuilder, JwtPublicSigningKey,
+    RequestContext, ServicesContext, Tenancy, TransactionsError, Workspace, WorkspaceError,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use module_index_client::{types::BuiltinsDetailsResponse, IndexClient, ModuleDetailsResponse};
@@ -380,23 +381,31 @@ async fn install_builtins(
     let total = modules.len();
 
     let mut join_set = JoinSet::new();
+    let count = Arc::new(AtomicUsize::new(1));
     for module in modules {
         let module = module.clone();
         let client = client.clone();
+        let count = count.clone();
+        let ctx_builder = ctx.to_builder();
+        let access_builder = AccessBuilder::from(ctx.clone());
+        let request_ctx = access_builder.build(*ctx.visibility());
         join_set.spawn(async move {
-            (
-                module.name.to_owned(),
-                fetch_builtin(&module, &client).await,
-            )
-        });
-    }
-
-    let mut count: usize = 0;
-    while let Some(res) = join_set.join_next().await {
-        let (pkg_name, res) = res?;
-        match res {
-            Ok(pkg) => {
-                if let Err(err) = import_pkg_from_pkg(
+            async fn process(
+                module: ModuleDetailsResponse,
+                client: IndexClient,
+                ctx_builder: DalContextBuilder,
+                request_ctx: RequestContext,
+                count: Arc<AtomicUsize>,
+                total: usize,
+            ) -> Result<(), String> {
+                let pkg = fetch_builtin(&module, &client)
+                    .await
+                    .map_err(|err| err.to_string())?;
+                let ctx = ctx_builder
+                    .build(request_ctx)
+                    .await
+                    .map_err(|err| err.to_string())?;
+                import_pkg_from_pkg(
                     &ctx,
                     &pkg,
                     Some(ImportOptions {
@@ -408,20 +417,28 @@ async fn install_builtins(
                     true,
                 )
                 .await
-                {
-                    println!("Pkg {pkg_name} Install failed, {err}");
-                } else {
-                    ctx.commit().await?;
+                .map_err(|err| err.to_string())?;
+                ctx.commit().await.map_err(|err| err.to_string())?;
 
-                    count += 1;
-                    println!(
-                        "Pkg {pkg_name} Install finished successfully. {count} of {total} installed.",
-                    );
-                }
+                let count = count.fetch_add(1, atomic::Ordering::Relaxed);
+                println!(
+                    "Pkg {} Install finished successfully. {count} of {total} installed.",
+                    module.name,
+                );
+                Ok(())
             }
-            Err(err) => {
-                println!("Pkg {pkg_name} Install failed, {err}");
-            }
+
+            (
+                module.name.to_owned(),
+                process(module, client, ctx_builder, request_ctx, count, total).await,
+            )
+        });
+    }
+
+    while let Some(res) = join_set.join_next().await {
+        let (pkg_name, res) = res?;
+        if let Err(err) = res {
+            println!("Pkg {pkg_name} Install failed, {err}");
         }
     }
 
