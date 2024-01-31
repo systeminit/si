@@ -1247,8 +1247,6 @@ function endDragElements() {
       ] as DiagramGroupData;
 
       if (el.def.parentComponentId !== newParent?.def.componentId) {
-        // TODO: this needs to be a single api call
-        componentsStore.DETACH_COMPONENT(el.def.componentId);
         componentsStore.CONNECT_COMPONENT_TO_FRAME(el.def.id, newParent.def.id);
       }
     }

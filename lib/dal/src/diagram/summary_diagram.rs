@@ -1,9 +1,11 @@
+use std::num::{ParseFloatError, ParseIntError};
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_data_pg::PgError;
-use std::num::{ParseFloatError, ParseIntError};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
+
+use si_data_pg::PgError;
 
 use crate::change_status::ChangeStatus;
 use crate::diagram::DiagramResult;
@@ -381,12 +383,12 @@ pub async fn create_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
 
     // If this is a symbolic edge, we need to set the relevant summary diagram component row's parent node id.
     if edge.kind() == &EdgeKind::Symbolic {
-        let _row = ctx
+        ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM summary_diagram_component_set_parent_node_id_v1($1, $2, $3, $4)",
+                "SELECT object FROM summary_diagram_component_set_parent_node_id_v2($1, $2, $3, $4)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -444,7 +446,7 @@ pub async fn delete_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_edge_delete_v1($1, $2, $3, $4, $5)",
+            "SELECT object FROM summary_diagram_edge_delete_v2($1, $2, $3, $4, $5)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
@@ -457,13 +459,47 @@ pub async fn delete_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
 
     // If this is a symbolic edge, we need to unset the relevant summary diagram component row's parent node id.
     if edge.kind() == &EdgeKind::Symbolic {
-        let _row = ctx
-            .txns()
+        ctx.txns()
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM summary_diagram_component_unset_parent_node_id_v1($1, $2, $3)",
+                "SELECT object FROM summary_diagram_component_unset_parent_node_id_v2($1, $2, $3)",
                 &[ctx.tenancy(), ctx.visibility(), &edge.tail_component_id()],
+            )
+            .await?;
+    }
+    Ok(())
+}
+
+pub async fn restore_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramResult<()> {
+    let ctx_with_deleted = ctx.clone_with_delete_visibility();
+
+    let deleted_edge = Edge::get_by_id(&ctx_with_deleted, edge.id())
+        .await?
+        .ok_or(EdgeError::EdgeNotFound(*edge.id()))?;
+
+    ctx.txns()
+        .await?
+        .pg()
+        .query_one(
+            "SELECT object FROM restore_edge_by_pk_v1($1)",
+            &[&deleted_edge.pk()],
+        )
+        .await?;
+
+    // If this is a symbolic edge, we need to update the relevant summary diagram component row's parent node id.
+    if edge.kind() == &EdgeKind::Symbolic {
+        ctx.txns()
+            .await?
+            .pg()
+            .query_one(
+                "SELECT object FROM summary_diagram_component_set_parent_node_id_v2($1, $2, $3, $4)",
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &edge.tail_component_id(),
+                    &edge.head_node_id(),
+                ],
             )
             .await?;
     }
