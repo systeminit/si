@@ -32,18 +32,25 @@
         </span>
       </template>
 
+      <div
+        class="text-lg font-bold border-warning-600 text-warning-600 dark:text-warning-500 pb-xs"
+      >
+        {{ details.length === 0 ? "No Logs" : "Logs:" }}
+      </div>
+
       <!-- modal default content-->
       <div
-        class="flex flex-col p-xs border border-warning-600 text-warning-600 dark:text-warning-500 rounded"
+        class="border border-warning-600 text-warning-600 dark:text-warning-500 rounded overflow-hidden"
       >
-        <b>{{ details.length === 0 ? "No Logs" : "Logs:" }}</b>
-        <p
-          v-for="(log, index) in details"
-          :key="index"
-          class="text-sm break-all pt-sm"
-        >
-          {{ log }}
-        </p>
+        <div class="flex flex-col gap-sm max-h-[80vh] overflow-y-auto p-xs">
+          <p
+            v-for="(log, index) in details"
+            :key="index"
+            class="text-sm break-all"
+          >
+            {{ log }}
+          </p>
+        </div>
       </div>
     </Modal>
   </div>

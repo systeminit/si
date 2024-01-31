@@ -30,10 +30,10 @@
 
       <div
         v-if="fix.resource"
-        class="dark:text-action-300 text-action-500 flex-none cursor-pointer"
+        class="dark:text-action-300 text-action-500 flex-none cursor-pointer flex flex-row gap-xs"
       >
         <FixDetails
-          v-if="fix.resource.logs && !fix.resource?.data"
+          v-if="fix.resource.logs"
           :health="fix.resource.status"
           :message="
             [
@@ -47,7 +47,7 @@
           :details="fix.resource.logs"
         />
         <FixCardIconButton
-          v-else
+          v-if="fix.resource?.data"
           tooltip="show code"
           rotate="down"
           icon="code-pop"
