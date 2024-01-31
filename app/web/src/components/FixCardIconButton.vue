@@ -11,6 +11,7 @@
     "
     @mouseover="onHover"
     @mouseleave="onEndHover"
+    @click="onEndHover"
   >
     <Icon :name="iconShowing" :rotate="rotate" />
   </div>
