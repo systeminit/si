@@ -95,9 +95,9 @@ impl<'a> TryFrom<SiPkgSiPropFunc<'a>> for SiPropFuncSpec {
 
         Ok(builder
             .kind(value.kind)
+            .func_unique_id(value.func_unique_id)
             .unique_id(value.unique_id)
             .deleted(value.deleted)
-            .func_unique_id(value.func_unique_id)
             .build()?)
     }
 }

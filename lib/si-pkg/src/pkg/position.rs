@@ -75,8 +75,8 @@ impl<'a> TryFrom<SiPkgPosition<'a>> for PositionSpec {
         Ok(PositionSpec::builder()
             .x(value.x())
             .y(value.y())
-            .height(value.height().map(Into::into))
             .width(value.width().map(Into::into))
+            .height(value.height().map(Into::into))
             .build()?)
     }
 }

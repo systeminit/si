@@ -8,7 +8,12 @@
 // TODO(fnichol): document all, then drop `missing_errors_doc`
 #![allow(clippy::missing_errors_doc)]
 
-use std::{borrow::Cow, env, fmt, result::Result};
+use std::{
+    borrow::Cow,
+    env,
+    fmt::{Debug, Display},
+    result::Result,
+};
 
 use async_trait::async_trait;
 use thiserror::Error;
@@ -18,7 +23,7 @@ pub use opentelemetry::{self, trace::SpanKind};
 pub use tracing;
 
 pub mod prelude {
-    pub use super::{FormattedSpanKind, SpanExt, SpanKind};
+    pub use super::{MessagingOperation, SpanExt, SpanKind, SpanKindExt};
     pub use tracing::{
         self, debug, debug_span, enabled, error, event, event_enabled, field::Empty, info,
         info_span, instrument, span, span_enabled, trace, trace_span, warn, Instrument, Level,
@@ -26,16 +31,85 @@ pub mod prelude {
     };
 }
 
-pub struct FormattedSpanKind(pub SpanKind);
+#[remain::sorted]
+#[derive(Clone, Copy, Debug)]
+pub enum OtelStatusCode {
+    Error,
+    Ok,
+    // Unset is not currently used, although represents a valid state.
+    #[allow(dead_code)]
+    Unset,
+}
 
-impl fmt::Display for FormattedSpanKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.0 {
-            SpanKind::Client => write!(f, "client"),
-            SpanKind::Server => write!(f, "server"),
-            SpanKind::Producer => write!(f, "producer"),
-            SpanKind::Consumer => write!(f, "consumer"),
-            SpanKind::Internal => write!(f, "internal"),
+impl OtelStatusCode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Error => "ERROR",
+            Self::Ok => "OK",
+            Self::Unset => "",
+        }
+    }
+}
+
+/// Represents valied states for OpenTelemetry's `messaging.operation` field.
+///
+/// `messaging.operation` has the following list of well-known values. If one of them applies, then
+/// the respective value MUST be used, otherwise a custom value MAY be used.
+///
+/// See: <https://opentelemetry.io/docs/specs/semconv/attributes-registry/messaging/>
+#[remain::sorted]
+#[derive(Clone, Copy, Debug)]
+pub enum MessagingOperation {
+    /// A message is created. “Create” spans always refer to a single message and are used to
+    /// provide a unique creation context for messages in batch publishing scenarios.
+    Create,
+    /// One or more messages are passed to a consumer. This operation refers to push-based
+    /// scenarios, where consumer register callbacks which get called by messaging SDKs.
+    Deliver,
+    /// One or more messages are provided for publishing to an intermediary. If a single message is
+    /// published, the context of the “Publish” span can be used as the creation context and no
+    /// “Create” span needs to be created.
+    Publish,
+    /// One or more messages are requested by a consumer. This operation refers to pull-based
+    /// scenarios, where consumers explicitly call methods of messaging SDKs to receive messages.
+    Receive,
+}
+
+impl MessagingOperation {
+    pub const CREATE_STR: &'static str = "create";
+    pub const DELIVER_STR: &'static str = "deliver";
+    pub const PUBLISH_STR: &'static str = "publish";
+    pub const RECEIVE_STR: &'static str = "receive";
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Create => Self::CREATE_STR,
+            Self::Deliver => Self::DELIVER_STR,
+            Self::Publish => Self::PUBLISH_STR,
+            Self::Receive => Self::RECEIVE_STR,
+        }
+    }
+}
+
+/// An extention trait for [`SpanKind`] providing string representations.
+pub trait SpanKindExt {
+    /// Returns a static str representation.
+    fn as_str(&self) -> &'static str;
+
+    /// Returns an allocated string representation.
+    fn to_string(&self) -> String {
+        self.as_str().to_string()
+    }
+}
+
+impl SpanKindExt for SpanKind {
+    fn as_str(&self) -> &'static str {
+        match self {
+            SpanKind::Client => "client",
+            SpanKind::Server => "server",
+            SpanKind::Producer => "producer",
+            SpanKind::Consumer => "consumer",
+            SpanKind::Internal => "internal",
         }
     }
 }
@@ -44,33 +118,39 @@ pub trait SpanExt {
     fn record_ok(&self);
     fn record_err<E>(&self, err: E) -> E
     where
-        E: std::error::Error;
+        E: Debug + Display;
+
+    // fn record_status<F, T, E>(&self, f: F) -> std::result::Result<T, E>
+    // where
+    //     F: Fn() -> std::result::Result<T, E>,
+    //     E: Debug + Display,
+    // {
+    //     match f() {
+    //         Ok(ok) => {
+    //             self.record_ok();
+    //             Ok(ok)
+    //         }
+    //         Err(err) => Err(self.record_err(err)),
+    //     }
+    // }
 }
 
 impl SpanExt for tracing::Span {
     fn record_ok(&self) {
-        self.record("otel.status_code", "OK");
+        self.record("otel.status_code", OtelStatusCode::Ok.as_str());
     }
 
     fn record_err<E>(&self, err: E) -> E
     where
-        E: std::error::Error,
+        E: Debug + Display,
     {
-        self.record("otel.status_code", "ERROR");
+        self.record("otel.status_code", OtelStatusCode::Error.as_str());
         self.record("otel.status_message", err.to_string().as_str());
         err
     }
 }
 
-#[remain::sorted]
-#[derive(Clone, Copy, Debug)]
-pub enum UpdateOpenTelemetry {
-    Disable,
-    Enable,
-}
-
-/// A telemetry client trait which can update tracing verbosity, toggle OpenTelemetry services,
-/// etc.
+/// A telemetry client trait which can update tracing verbosity.
 ///
 /// It is designed to be consumed by library authors without the need to depend on the entire
 /// binary/server infrastructure of tracing-rs/OpenTelemetry/etc.
@@ -83,8 +163,6 @@ pub trait TelemetryClient: Clone + Send + Sync + 'static {
         &mut self,
         directives: impl Into<String> + Send + 'async_trait,
     ) -> Result<(), ClientError>;
-    async fn enable_opentelemetry(&mut self) -> Result<(), ClientError>;
-    async fn disable_opentelemetry(&mut self) -> Result<(), ClientError>;
 }
 
 /// A telemetry type that can report its tracing level.
@@ -97,22 +175,19 @@ pub trait TelemetryLevel: Send + Sync {
 pub struct ApplicationTelemetryClient {
     app_modules: Vec<&'static str>,
     tracing_level: TracingLevel,
-    tracing_level_tx: mpsc::Sender<TracingLevel>,
-    opentelemetry_tx: mpsc::Sender<UpdateOpenTelemetry>,
+    update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
 }
 
 impl ApplicationTelemetryClient {
     pub fn new(
         app_modules: Vec<&'static str>,
         tracing_level: TracingLevel,
-        tracing_level_tx: mpsc::Sender<TracingLevel>,
-        opentelemetry_tx: mpsc::Sender<UpdateOpenTelemetry>,
+        update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
     ) -> Self {
         Self {
             app_modules,
             tracing_level,
-            tracing_level_tx,
-            opentelemetry_tx,
+            update_telemetry_tx,
         }
     }
 }
@@ -131,9 +206,8 @@ impl TelemetryClient for ApplicationTelemetryClient {
             }
         }
 
-        self.tracing_level_tx
-            .send(self.tracing_level.clone())
-            .await?;
+        self.update_telemetry_tx
+            .send(TelemetryCommand::TracingLevel(self.tracing_level.clone()))?;
         Ok(())
     }
 
@@ -163,24 +237,9 @@ impl TelemetryClient for ApplicationTelemetryClient {
     ) -> Result<(), ClientError> {
         let updated = TracingLevel::custom(directives);
         self.tracing_level = updated;
-        self.tracing_level_tx
-            .send(self.tracing_level.clone())
-            .await?;
+        self.update_telemetry_tx
+            .send(TelemetryCommand::TracingLevel(self.tracing_level.clone()))?;
         Ok(())
-    }
-
-    async fn enable_opentelemetry(&mut self) -> Result<(), ClientError> {
-        self.opentelemetry_tx
-            .send(UpdateOpenTelemetry::Enable)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn disable_opentelemetry(&mut self) -> Result<(), ClientError> {
-        self.opentelemetry_tx
-            .send(UpdateOpenTelemetry::Disable)
-            .await
-            .map_err(Into::into)
     }
 }
 
@@ -217,14 +276,6 @@ impl TelemetryClient for NoopClient {
     ) -> Result<(), ClientError> {
         Ok(())
     }
-
-    async fn enable_opentelemetry(&mut self) -> Result<(), ClientError> {
-        Ok(())
-    }
-
-    async fn disable_opentelemetry(&mut self) -> Result<(), ClientError> {
-        Ok(())
-    }
 }
 
 impl TelemetryLevel for NoopClient {
@@ -241,10 +292,14 @@ impl TelemetryLevel for NoopClient {
 pub enum ClientError {
     #[error("custom tracing level has no verbosity")]
     CustomHasNoVerbosity,
-    #[error("error while updating opentelemetry")]
-    UpdateOpenTelemetry(#[from] mpsc::error::SendError<UpdateOpenTelemetry>),
     #[error("error while updating tracing level")]
-    UpdateTracingLevel(#[from] mpsc::error::SendError<TracingLevel>),
+    UpdateTracingLevel(#[from] mpsc::error::SendError<TelemetryCommand>),
+}
+
+#[remain::sorted]
+#[derive(Clone, Debug)]
+pub enum TelemetryCommand {
+    TracingLevel(TracingLevel),
 }
 
 #[remain::sorted]

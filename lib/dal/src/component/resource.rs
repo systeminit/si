@@ -154,7 +154,7 @@ use veritech_client::ResourceStatus;
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ResourceView {
-    pub status: ResourceStatus,
+    pub status: Option<ResourceStatus>,
     pub message: Option<String>,
     pub data: Option<Value>,
     pub logs: Vec<String>,

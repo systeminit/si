@@ -23,7 +23,6 @@ use veritech_client::ResourceStatus;
 mod code;
 mod qualification;
 mod resource;
-mod validation;
 mod view;
 
 #[test]
@@ -180,7 +179,7 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext) {
     );
 
     // Update the type.
-    let new_component_type = ComponentType::ConfigurationFrame;
+    let new_component_type = ComponentType::ConfigurationFrameDown;
     component
         .set_type(ctx, new_component_type)
         .await
@@ -417,7 +416,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
         .set_resource(
             ctx,
             ActionRunResult {
-                status: ResourceStatus::Ok,
+                status: Some(ResourceStatus::Ok),
                 payload: Some(serde_json::json![{ "quantum": true }]),
                 logs: Default::default(),
                 message: Default::default(),

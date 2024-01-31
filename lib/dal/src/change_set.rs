@@ -378,14 +378,6 @@ impl WsEvent {
         WsEvent::new(ctx, WsPayload::ChangeSetCanceled(change_set_pk)).await
     }
 
-    pub async fn change_set_written(ctx: &DalContext) -> WsEventResult<Self> {
-        WsEvent::new(
-            ctx,
-            WsPayload::ChangeSetWritten(ctx.visibility().change_set_pk),
-        )
-        .await
-    }
-
     pub async fn change_set_merge_vote(
         ctx: &DalContext,
         change_set_pk: ChangeSetPk,

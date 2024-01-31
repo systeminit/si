@@ -11,12 +11,6 @@ const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 
 const routes: RouteRecordRaw[] = [
   {
-    path: "/store-test",
-    name: "store-test",
-    meta: { public: true },
-    component: () => import("@/pages/store_test/StoreTestPage.vue"),
-  },
-  {
     path: "/",
     name: "home",
     component: () => import("@/pages/HomePage.vue"),
@@ -132,8 +126,6 @@ const routes: RouteRecordRaw[] = [
     beforeEnter: () => {
       const authStore = useAuthStore();
       authStore.localLogout();
-
-      window.location.href = `${AUTH_PORTAL_URL}/logout`;
     },
     component: () => import("@/pages/auth/LogoutPage.vue"), // just need something here for TS, but guard always redirects
   },

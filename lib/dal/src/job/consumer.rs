@@ -3,10 +3,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_nats::NatsError;
-use si_data_pg::PgPoolError;
+use si_data_pg::{PgError, PgPoolError};
 use thiserror::Error;
 use tokio::task::JoinError;
 
+use crate::diagram::summary_diagram::SummaryDiagramError;
 use crate::{
     attribute::value::AttributeValueError,
     job::definition::dependent_values_update::DependentValueUpdateError,
@@ -33,7 +34,7 @@ pub enum JobConsumerError {
     // #[error("component {0} not found")]
     // ComponentNotFound(ComponentId),
     #[error(transparent)]
-    Council(#[from] council_server::client::Error),
+    CouncilClient(#[from] council_server::client::ClientError),
     #[error("Protocol error with council: {0}")]
     CouncilProtocol(String),
     #[error("dependent value update error: {0}")]

@@ -92,6 +92,7 @@ import Docs from "~icons/fluent/book-question-mark-20-filled";
 import Password from "~icons/material-symbols-light/password";
 import Key from "~icons/material-symbols/key";
 import Scissors from "~icons/clarity/scissors-solid";
+import Frame from "~icons/iconamoon/frame-light";
 
 import BracketsCurly from "~icons/ph/brackets-curly";
 import BracketsSquare from "~icons/ph/brackets-square";
@@ -130,6 +131,9 @@ import VimLogo from "~icons/raphael/vim";
 // carbon
 import Create from "~icons/carbon/intent-request-create";
 
+// streamline
+import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
+
 // attribute widget types
 import InputTypeString from "~icons/carbon/string-text";
 import InputTypeText from "~icons/carbon/text-long-paragraph";
@@ -154,6 +158,11 @@ import MinusHexOutline from "./custom-icons/minus-hex-outline.svg?raw";
 import RefreshHexOutline from "./custom-icons/refresh-hex-outline.svg?raw";
 import QuestionHexOutline from "./custom-icons/question-hex-outline.svg?raw";
 import TildeHexOutline from "./custom-icons/tilde-hex-outline.svg?raw";
+
+import CodePop from "./custom-icons/code-pop.svg?raw";
+import LogsPop from "./custom-icons/logs-pop.svg?raw";
+import CodePopSquare from "./custom-icons/code-pop-square.svg?raw";
+import LogsPopSquare from "./custom-icons/logs-pop-square.svg?raw";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -184,6 +193,9 @@ export const ICONS = Object.freeze({
   clock: Clock,
   "cloud-download": CloudDownload,
   "cloud-upload": CloudUpload,
+  "code-circle": StreamlineBracesCircleSolid,
+  "code-pop": CodePop,
+  "code-pop-square": CodePopSquare,
   "collapse-row": CollapseAll,
   component: Cube,
   "component-plus": CubePlus,
@@ -202,6 +214,7 @@ export const ICONS = Object.freeze({
   "external-link": ExternalLink,
   eye: Eye,
   filter: Filter,
+  frame: Frame,
   "git-branch": GitBranch,
   "git-branch-plus": GitBranchPlus,
   "git-commit": GitCommit,
@@ -219,6 +232,8 @@ export const ICONS = Object.freeze({
   lock: Lock,
   "lock-open": LockOpen,
   logout: Logout,
+  "logs-pop": LogsPop,
+  "logs-pop-square": LogsPopSquare,
   menu: Menu,
   minus: Minus,
   "minus-circle": MinusCircle,

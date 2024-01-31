@@ -30,6 +30,10 @@ services:
 
   otelcol:
     image: systeminit/otelcol:stable
+    # If you'd like to ship to honeycomb from your local machine, you need these two variables in the otelcol
+    #environment:
+    #  - "SI_OTEL_COL__HONEYCOMB_API_KEY=<insert key>"
+    #  - "SI_OTEL_COL__CONFIG_PATH=/etc/otelcol/honeycomb-config.yaml"
     ports:
       - "4317:4317"
       - "55679:55679"

@@ -894,7 +894,7 @@ impl StatusUpdaterInner {
         // "immediately publish" events.
         let subject = format!("si.workspace_pk.{}.event", ws_event.workspace_pk());
         let msg_bytes = serde_json::to_vec(&ws_event)?;
-        ctx.nats_conn().publish(subject, msg_bytes).await?;
+        ctx.nats_conn().publish(subject, msg_bytes.into()).await?;
         Ok(())
     }
 }

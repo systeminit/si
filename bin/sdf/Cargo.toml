@@ -16,3 +16,4 @@ rebaser-client = { path = "../../lib/rebaser-client" }
 sdf-server = { path = "../../lib/sdf-server" }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }
 tokio = { workspace = true }
+tokio-util = { workspace = true }

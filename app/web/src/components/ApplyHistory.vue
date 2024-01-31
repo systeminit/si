@@ -12,11 +12,11 @@
     </div>
   </div>
   <ScrollArea v-else>
-    <!-- TODO(Wendy) - this search bar isn't implemented, so removing it for now
-    <template #top>
+    <!-- TODO(Wendy) - this search bar isn't implemented, so removing it for now -->
+    <!-- <template #top>
       <SiSearch autoSearch />
-    </template>
-    -->
+    </template> -->
+
     <ApplyHistoryItem
       v-for="(fixBatch, index) in fixBatches"
       :key="index"

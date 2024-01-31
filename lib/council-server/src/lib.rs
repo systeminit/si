@@ -1,12 +1,25 @@
+#![warn(
+    clippy::unwrap_in_result,
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::panic_in_result_fn
+)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use strum::EnumDiscriminants;
 use ulid::Ulid;
 
 pub mod client;
 pub mod server;
 
+// The subject generator module is for internal use. The module is private as a result.
+mod subject_generator;
+
+pub use client::management::ManagementClient;
 pub use client::{Client, PubClient};
 pub use server::Server;
+pub(crate) use subject_generator::SubjectGenerator;
 
 #[derive(Clone, Copy, Eq, PartialEq, Serialize, Deserialize, Hash)]
 pub struct Id(Ulid);
@@ -53,7 +66,7 @@ impl std::fmt::Debug for Id {
 pub type Graph = HashMap<Id, Vec<Id>>;
 
 #[remain::sorted]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, EnumDiscriminants)]
 #[serde(tag = "kind")]
 pub enum Request {
     Bye {
@@ -63,6 +76,7 @@ pub enum Request {
         change_set_id: Id,
         node_id: Id,
     },
+    Restart,
     ValueDependencyGraph {
         change_set_id: Id,
         dependency_graph: Graph,
@@ -80,5 +94,13 @@ pub enum Response {
     BeenProcessed { node_id: Id },
     Failed { node_id: Id },
     OkToProcess { node_ids: Vec<Id> },
+    Restart,
     Shutdown,
+}
+
+#[remain::sorted]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "kind")]
+pub enum ManagementResponse {
+    Restart,
 }

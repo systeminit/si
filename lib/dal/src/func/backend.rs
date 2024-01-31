@@ -168,13 +168,13 @@ impl TryFrom<FuncBackendResponseType> for ResolverFunctionResponseType {
             FuncBackendResponseType::Unset => ResolverFunctionResponseType::Unset,
             FuncBackendResponseType::Json => ResolverFunctionResponseType::Json,
             FuncBackendResponseType::Validation => {
-                return Err(InvalidResolverFunctionTypeError(value))
+                return Err(InvalidResolverFunctionTypeError(value));
             }
             FuncBackendResponseType::Reconciliation => {
-                return Err(InvalidResolverFunctionTypeError(value))
+                return Err(InvalidResolverFunctionTypeError(value));
             }
             FuncBackendResponseType::SchemaVariantDefinition => {
-                return Err(InvalidResolverFunctionTypeError(value))
+                return Err(InvalidResolverFunctionTypeError(value));
             }
             FuncBackendResponseType::Void => ResolverFunctionResponseType::Void,
         };
@@ -247,16 +247,16 @@ pub trait FuncDispatch: std::fmt::Debug {
     }
 
     #[instrument(
-     name = "funcdispatch.execute",
-     skip_all,
-     level = "debug",
-     fields(
-     otel.kind = %FormattedSpanKind(SpanKind::Client),
-     otel.status_code = Empty,
-     otel.status_message = Empty,
-     si.func.result = Empty
-     )
-     )]
+    name = "funcdispatch.execute",
+    skip_all,
+    level = "debug",
+    fields(
+    otel.kind = SpanKind::Client.as_str(),
+    otel.status_code = Empty,
+    otel.status_message = Empty,
+    si.func.result = Empty
+    )
+    )]
     async fn execute(
         self: Box<Self>,
     ) -> FuncBackendResult<(Option<serde_json::Value>, Option<serde_json::Value>)>
@@ -313,16 +313,16 @@ pub trait FuncBackend {
     }
 
     #[instrument(
-     name = "funcbackend.execute",
-     skip_all,
-     level = "debug",
-     fields(
-     otel.kind = %FormattedSpanKind(SpanKind::Client),
-     otel.status_code = Empty,
-     otel.status_message = Empty,
-     si.func.result = Empty
-     )
-     )]
+    name = "funcbackend.execute",
+    skip_all,
+    level = "debug",
+    fields(
+    otel.kind = SpanKind::Client.as_str(),
+    otel.status_code = Empty,
+    otel.status_message = Empty,
+    si.func.result = Empty
+    )
+    )]
     async fn execute(
         self: Box<Self>,
     ) -> FuncBackendResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {

@@ -1,0 +1,14 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "telemetry-http",
+    deps = [
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:http",
+        "//third-party/rust:hyper",
+        "//third-party/rust:remain",
+        "//third-party/rust:tower-http",
+        "//third-party/rust:tracing-opentelemetry",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)

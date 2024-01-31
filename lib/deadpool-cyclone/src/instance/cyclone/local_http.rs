@@ -97,6 +97,9 @@ impl Instance for LocalHttpInstance {
 
         Ok(())
     }
+    fn id(&self) -> u32 {
+        0
+    }
 }
 
 #[async_trait]
@@ -293,7 +296,7 @@ impl Spec for LocalHttpInstanceSpec {
     type Instance = LocalHttpInstance;
     type Error = LocalHttpInstanceError;
 
-    async fn setup(&self) -> result::Result<(), Self::Error> {
+    async fn setup(&mut self) -> result::Result<(), Self::Error> {
         Ok(())
     }
     async fn spawn(&self) -> result::Result<Self::Instance, Self::Error> {

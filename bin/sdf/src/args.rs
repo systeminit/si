@@ -90,14 +90,35 @@ pub(crate) struct Args {
     /// Generates cyclone secret key file (does not run server)
     ///
     /// Will error if set when `generate_cyclone_public_key_path` is not set
-    #[arg(long, requires = "generate_cyclone_public_key_path")]
+    #[arg(
+        long,
+        requires = "generate_cyclone_public_key_path",
+        conflicts_with = "generate_symmetric_key_path"
+    )]
     pub(crate) generate_cyclone_secret_key_path: Option<PathBuf>,
 
     /// Generates cyclone public key file (does not run server)
     ///
     /// Will error if set when `generate_cyclone_secret_key_path` is not set
-    #[arg(long, requires = "generate_cyclone_secret_key_path")]
+    #[arg(
+        long,
+        requires = "generate_cyclone_secret_key_path",
+        conflicts_with = "generate_symmetric_key_path"
+    )]
     pub(crate) generate_cyclone_public_key_path: Option<PathBuf>,
+
+    /// Generates symmetric key (does not run server)
+    ///
+    /// Will error if set when cyclone key generation flags are set
+    #[arg(
+        long,
+        group = "symmetric",
+        conflicts_with_all = [
+            "generate_cyclone_secret_key_path",
+            "generate_cyclone_public_key_path",
+        ]
+    )]
+    pub(crate) generate_symmetric_key_path: Option<PathBuf>,
 
     /// Location on disk of available packages
     pub(crate) pkgs_path: Option<String>,

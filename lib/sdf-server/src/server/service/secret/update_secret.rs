@@ -1,7 +1,9 @@
+use axum::response::IntoResponse;
 use axum::Json;
 use dal::secret::SecretView;
 use dal::{
-    key_pair::KeyPairPk, EncryptedSecret, SecretAlgorithm, SecretVersion, Visibility, WsEvent,
+    key_pair::KeyPairPk, ChangeSet, EncryptedSecret, SecretAlgorithm, SecretVersion, Visibility,
+    WsEvent,
 };
 use dal::{HistoryActor, SecretError, SecretId, StandardModel};
 use serde::{Deserialize, Serialize};
@@ -36,8 +38,10 @@ pub async fn update_secret(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_tx): AccessBuilder,
     Json(request): Json<UpdateSecretRequest>,
-) -> SecretResult<Json<UpdateSecretResponse>> {
-    let ctx = builder.build(request_tx.build(request.visibility)).await?;
+) -> SecretResult<impl IntoResponse> {
+    let mut ctx = builder.build(request_tx.build(request.visibility)).await?;
+
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     let mut secret = EncryptedSecret::get_by_id(&ctx, &request.id)
         .await?
@@ -63,12 +67,19 @@ pub async fn update_secret(
         secret.set_algorithm(&ctx, new_data.algorithm).await?;
     }
 
-    WsEvent::change_set_written(&ctx)
+    WsEvent::secret_updated(&ctx, *secret.id())
         .await?
         .publish_on_commit(&ctx)
         .await?;
 
     ctx.commit().await?;
 
-    Ok(Json(SecretView::from_secret(&ctx, secret.into()).await?))
+    let mut response = axum::response::Response::builder();
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
+
+    Ok(response.body(serde_json::to_string(
+        &SecretView::from_secret(&ctx, secret.into()).await?,
+    )?)?)
 }

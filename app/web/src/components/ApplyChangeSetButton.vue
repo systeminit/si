@@ -180,7 +180,7 @@
                     )
                   "
                 >
-                  <ActionSprite
+                  <ActionCard
                     :action="action"
                     @remove="actionsStore.REMOVE_ACTION(action.id)"
                   />
@@ -270,7 +270,7 @@ import { VButton, Modal, Icon } from "@si/vue-lib/design-system";
 import JSConfetti from "js-confetti";
 import clsx from "clsx";
 import { storeToRefs } from "pinia";
-import ActionSprite from "@/components/ActionSprite.vue";
+import ActionCard from "@/components/ActionCard.vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useStatusStore } from "@/store/status.store";
 import { useActionsStore } from "@/store/actions.store";

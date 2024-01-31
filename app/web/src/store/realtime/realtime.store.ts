@@ -186,7 +186,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
 
     _.each(subscriptions, (sub) => {
       // TODO: also filter by topic once we receive this info from the backend
-      if (sub.eventType === eventKind) {
+      if (sub?.eventType === eventKind) {
         // TODO: probably want to convert the raw metadata into something easier to use
         // like a boolean that says whether this event came from the auth'd user
         sub.callback(eventData, eventMetadata);

@@ -6,8 +6,8 @@ use crate::installed_pkg::InstalledPkg;
 use crate::pkg::{import_pkg_from_pkg, ImportOptions};
 use crate::{BuiltinsError, BuiltinsResult, DalContext};
 
-mod test_exclusive_fallout;
-mod test_exclusive_starfield;
+mod test_exclusive_schema_fallout;
+mod test_exclusive_schema_starfield;
 
 pub use test_exclusive_fallout::migrate_test_exclusive_fallout;
 pub use test_exclusive_starfield::migrate_test_exclusive_starfield;
@@ -139,7 +139,7 @@ impl BuiltinSchema {
 //     Ok(())
 // }
 
-pub async fn migrate_pkg(
+async fn migrate_pkg(
     ctx: &DalContext,
     pkg_filename: &str,
     schemas: Option<Vec<String>>,
@@ -159,6 +159,7 @@ pub async fn migrate_pkg(
                 schemas: Some(schemas),
                 ..Default::default()
             }),
+            true,
         )
         .await?;
     }

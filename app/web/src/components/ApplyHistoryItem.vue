@@ -2,8 +2,8 @@
   <Collapsible
     v-if="fixBatch"
     :defaultOpen="!props.collapse"
-    hideBottomBorderWhenOpen
     extraBorderAtBottomOfContent
+    contentClasses="bg-neutral-200 dark:bg-neutral-600"
   >
     <template #label>
       <div class="flex flex-row items-center truncate">
@@ -70,75 +70,12 @@
       </div>
     </template>
     <template #default>
-      <div
+      <FixCard
         v-for="(fix, fix_index) of fixBatch.fixes"
         :key="fix_index"
-        class="ml-12 my-xs flex flex-row items-center"
-      >
-        <StatusIndicatorIcon type="fix" :status="fix.status" />
-        <div class="flex flex-col pl-xs gap-xs">
-          <div class="font-bold">
-            {{ `${fix.displayName}` }}
-          </div>
-          <div class="dark:text-neutral-50 text-neutral-900">
-            <div v-if="!fix.resource"></div>
-            <CodeViewer
-              v-else-if="fix.resource.data"
-              :code="JSON.stringify(fix.resource.data, null, 2)"
-              class="dark:text-neutral-50 text-neutral-900"
-            >
-              <template #title>
-                <div class="font-bold">
-                  {{ fix.resource.message ?? "Resource Code" }}
-                  <FixDetails
-                    v-if="fix.resource.logs && fix.resource.logs.length > 0"
-                    :health="fix.resource.status"
-                    :message="
-                      [
-                        `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
-                        fix.resource.message ?? '',
-                      ].filter((f) => f.length > 0)
-                    "
-                    :details="fix.resource.logs"
-                  />
-                </div>
-              </template>
-            </CodeViewer>
-            <div v-else-if="fix.resource.message" class="text-sm">
-              {{ fix.resource.message }}
-              <FixDetails
-                v-if="fix.resource.logs && fix.resource.logs.length > 0"
-                :health="fix.resource.status"
-                :message="
-                  [
-                    `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
-                    fix.resource.message ?? '',
-                  ].filter((f) => f.length > 0)
-                "
-                :details="fix.resource.logs"
-              />
-            </div>
-            <div v-else class="text-sm">
-              {{
-                fix.resource.status === "ok"
-                  ? "Completed successfully"
-                  : "Error"
-              }}
-              <FixDetails
-                v-if="fix.resource.logs && fix.resource.logs.length > 0"
-                :health="fix.resource.status"
-                :message="
-                  [
-                    `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
-                    fix.resource.message ?? '',
-                  ].filter((f) => f.length > 0)
-                "
-                :details="fix.resource.logs"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+        :fix="fix"
+        :hideTopBorder="fix_index === 0"
+      />
     </template>
   </Collapsible>
 </template>
@@ -154,25 +91,13 @@ import {
 } from "@si/vue-lib/design-system";
 import { computed } from "vue";
 import { FixBatch } from "@/store/fixes.store";
-import CodeViewer from "./CodeViewer.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
-import FixDetails from "./FixDetails.vue";
+import FixCard from "./FixCard.vue";
 
 const props = defineProps<{
   fixBatch: FixBatch;
   collapse: boolean;
 }>();
-
-const hasCollaborators = computed(
-  () => props.fixBatch.actors && props.fixBatch.actors.length > 0,
-);
-
-const formatTitle = (title: string) => {
-  return title
-    .split(" ")
-    .map((t) => `${t[0]?.toUpperCase()}${t.slice(1).toLowerCase()}`)
-    .join(" ");
-};
 
 const timestampTooltip = computed(() => {
   if (!props.fixBatch.startedAt) return {};
@@ -191,8 +116,10 @@ const timestampTooltip = computed(() => {
   return tooltip;
 });
 
+const hasCollaborators = computed(
+  () => props.fixBatch.actors && props.fixBatch.actors.length > 0,
+);
 const collaborators = computed(() => props.fixBatch.actors || []);
-
 const collaboratorsTooltip = computed(() => {
   const tooltip = { content: "", theme: "html" };
 

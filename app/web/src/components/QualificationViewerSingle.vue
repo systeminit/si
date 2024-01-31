@@ -43,7 +43,7 @@
             <li
               v-for="(subCheck, idx) in failedSubchecks"
               :key="idx"
-              class="p-2"
+              class="p-2 break-words"
             >
               {{ subCheck.description }}
             </li>

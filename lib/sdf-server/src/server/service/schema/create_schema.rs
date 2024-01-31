@@ -20,6 +20,7 @@ pub struct CreateSchemaResponse {
     pub schema: Schema,
 }
 
+// I believe this is dead code now - worth cleaning up. -- Adam, 2024-01-29
 pub async fn create_schema(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -29,11 +30,6 @@ pub async fn create_schema(
 
     let schema = Schema::new(&ctx, &request.name, ComponentKind::Standard).await?;
     let response = CreateSchemaResponse { schema };
-
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     ctx.commit().await?;
 

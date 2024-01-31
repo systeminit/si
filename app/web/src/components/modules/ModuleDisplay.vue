@@ -151,8 +151,10 @@
             </ErrorMessage>
 
             <ErrorMessage :requestStatus="installReqStatus" />
+            <ErrorMessage :message="moduleStore.installingError" />
             <VButton
               :requestStatus="installReqStatus"
+              :loading="moduleStore.installingLoading"
               @click="installButtonHandler"
             >
               Install this module

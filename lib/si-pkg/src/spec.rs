@@ -19,13 +19,12 @@ mod root_prop_func;
 mod schema;
 mod si_prop_func;
 mod socket;
-mod validation;
 mod variant;
 
 pub use {
     action_func::*, attr_func_input::*, attribute_value::*, authentication_func::*, change_set::*,
     component::*, edge::*, func::*, leaf_function::*, map_key_func::*, position::*, prop::*,
-    root_prop_func::*, schema::*, si_prop_func::*, socket::*, validation::*, variant::*,
+    root_prop_func::*, schema::*, si_prop_func::*, socket::*, variant::*,
 };
 
 use super::SiPkgKind;

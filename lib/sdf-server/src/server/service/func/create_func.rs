@@ -381,9 +381,6 @@ pub async fn create_func(
             .await?
         }
         FuncVariant::Action => create_action_func(&ctx, request.name, request.options).await?,
-        FuncVariant::Validation => {
-            create_validation_func(&ctx, request.name, request.options).await?
-        }
         FuncVariant::Qualification => {
             create_attribute_func(
                 &ctx,
@@ -397,6 +394,7 @@ pub async fn create_func(
             create_authentication_func(&ctx, request.name, request.options).await?
         }
         FuncVariant::Reconciliation => unimplemented!(),
+        FuncVariant::Validation => unimplemented!("deprecated"),
     };
 
     let func_variant = (&func).try_into()?;
@@ -414,7 +412,7 @@ pub async fn create_func(
         }),
     );
 
-    WsEvent::change_set_written(&ctx)
+    WsEvent::func_created(&ctx, *func.id())
         .await?
         .publish_on_commit(&ctx)
         .await?;

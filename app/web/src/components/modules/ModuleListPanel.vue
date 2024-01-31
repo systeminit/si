@@ -3,15 +3,7 @@
     <template #top>
       <div
         class="p-xs border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
-      >
-        <VButton
-          label="Create Module"
-          tone="action"
-          icon="plus"
-          size="sm"
-          @click="exportModalRef?.open()"
-        />
-      </div>
+      ></div>
       <SiSearch
         v-model="textSearch"
         autoSearch
@@ -66,7 +58,6 @@
         />
       </template>
     </Collapsible>
-    <ModuleExportModal ref="exportModalRef" />
   </ScrollArea>
 </template>
 
@@ -76,14 +67,11 @@ import { computed, onMounted, ref } from "vue";
 import {
   Collapsible,
   ErrorMessage,
-  Modal,
   ScrollArea,
-  VButton,
 } from "@si/vue-lib/design-system";
 import SiSearch from "@/components/SiSearch.vue";
 import { useModuleStore } from "@/store/module.store";
 import ModuleListItem from "./ModuleListItem.vue";
-import ModuleExportModal from "./ModuleExportModal.vue";
 
 const moduleStore = useModuleStore();
 const loadLocalModulesReqStatus =
@@ -91,8 +79,6 @@ const loadLocalModulesReqStatus =
 const searchRemoteModulesReqStatus = moduleStore.getRequestStatus(
   "SEARCH_REMOTE_MODULES",
 );
-
-const exportModalRef = ref<InstanceType<typeof Modal>>();
 
 const filteredLocalModules = computed(() => {
   if (!textSearch.value) return moduleStore.localModules;

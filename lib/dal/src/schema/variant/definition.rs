@@ -1,5 +1,8 @@
 //! Create a [`SchemaVariant`](crate::SchemaVariant) with a [`Prop`](crate::Prop) tree via a
 //! [`SchemaVariantDefinition`], stored in the database.
+//! Do not use this struct to access or modify [`SchemaVariant`](crate::SchemaVariant) data.
+//! After import, it only exists to map a [`SchemaVariant`](crate::SchemaVariant) to its
+//! generating [`Func`](crate::Func). Data on this object will get outdated if the prop tree changes.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -584,9 +587,6 @@ pub struct PropDefinition {
     // Whether the prop is hidden from the UI
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hidden: Option<bool>,
-    // The list of validations specific to the prop.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub validations: Option<Vec<ValidationSpec>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub validation_format: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

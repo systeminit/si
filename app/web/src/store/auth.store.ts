@@ -80,6 +80,20 @@ export const useAuthStore = defineStore("auth", {
         onSuccess: (response) => {
           this.finishUserLogin(response);
         },
+        onFail: (response) => {
+          const errMessage = response?.error?.message || "";
+          if (
+            errMessage.includes("relation") &&
+            errMessage.includes("does not exist")
+          ) {
+            /* eslint-disable no-console, no-alert */
+            console.log("db needs migrations");
+            // TODO: probably show a better error than an alert
+            alert(
+              "Looks like your database needs migrations - please restart SDF",
+            );
+          }
+        },
       });
     },
 
@@ -154,7 +168,7 @@ export const useAuthStore = defineStore("auth", {
         }
       }
     },
-    localLogout(logoutAuthPortal = true) {
+    localLogout(redirectToAuthPortal = true) {
       storage.removeItem(AUTH_LOCAL_STORAGE_KEYS.USER_TOKENS);
       this.$patch({
         tokens: {},
@@ -162,8 +176,8 @@ export const useAuthStore = defineStore("auth", {
       });
       posthog.reset();
 
-      if (window && logoutAuthPortal) {
-        window.location.href = `${AUTH_PORTAL_URL}/logout`;
+      if (window && redirectToAuthPortal) {
+        window.location.href = `${AUTH_PORTAL_URL}/dashboard`;
       }
     },
 

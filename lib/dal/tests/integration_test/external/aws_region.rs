@@ -1,129 +1,7 @@
-use dal::{
-    validation::ValidationErrorKind, ComponentType, DalContext, Edge, ExternalProvider,
-    InternalProvider, StandardModel, ValidationResolver,
-};
+use dal::{ComponentType, DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
 use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
-
-#[test]
-async fn aws_region_field_validation(ctx: &DalContext) {
-    let mut bagger = ComponentBagger::new();
-    let region_bag = bagger.create_component(ctx, "region", "Region").await;
-
-    let region_prop = region_bag
-        .find_prop(ctx, &["root", "domain", "region"])
-        .await;
-
-    let updated_region_attribute_value_id = region_bag
-        .update_attribute_value_for_prop(
-            ctx,
-            *region_prop.id(),
-            Some(serde_json::json!["us-poop-1"]),
-        )
-        .await;
-
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
-
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "us-poop-1",
-                "color": "#FF9900",
-                "type": "configurationFrame",
-                "protected": false,
-            },
-            "domain": {
-                "region": "us-poop-1",
-            }
-        }], // actual
-        region_bag
-            .component_view_properties(ctx)
-            .await
-            .drop_qualification()
-            .to_value()
-            .expect("could not convert to value") // expected
-    );
-
-    let validation_statuses = ValidationResolver::find_status(ctx, region_bag.component_id)
-        .await
-        .expect("could not find status for validation(s) of a given component");
-
-    let mut expected_validation_status = None;
-    for validation_status in &validation_statuses {
-        if validation_status.attribute_value_id == updated_region_attribute_value_id {
-            if expected_validation_status.is_some() {
-                panic!("found more than one expected validation status: {validation_statuses:?}");
-            }
-            expected_validation_status = Some(validation_status.clone());
-        }
-    }
-    let expected_validation_status =
-        expected_validation_status.expect("did not find expected validation status");
-
-    let mut found_expected_validation_error = false;
-    for validation_error in &expected_validation_status.errors {
-        if validation_error.kind == ValidationErrorKind::StringNotInStringArray {
-            if found_expected_validation_error {
-                panic!("found more than one expected validation error: {validation_error:?}");
-            }
-            found_expected_validation_error = true;
-        }
-    }
-    assert!(found_expected_validation_error);
-
-    let updated_region_attribute_value_id = region_bag
-        .update_attribute_value_for_prop(
-            ctx,
-            *region_prop.id(),
-            Some(serde_json::json!["us-east-1"]),
-        )
-        .await;
-
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
-
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "us-east-1",
-                "color": "#FF9900",
-                "type": "configurationFrame",
-                "protected": false,
-            },
-            "domain": {
-                "region": "us-east-1",
-            },
-        }], // actual
-        region_bag
-            .component_view_properties(ctx)
-            .await
-            .drop_qualification()
-            .to_value()
-            .expect("could not convert to value") // expected
-    );
-
-    // TODO(nick): now, ensure we have the right value! Huzzah.
-    let validation_statuses = ValidationResolver::find_status(ctx, region_bag.component_id)
-        .await
-        .expect("could not find status for validation(s) of a given component");
-
-    let mut expected_validation_status = None;
-    for validation_status in &validation_statuses {
-        if validation_status.attribute_value_id == updated_region_attribute_value_id {
-            if expected_validation_status.is_some() {
-                panic!("found more than one expected validation status: {validation_statuses:?}");
-            }
-            expected_validation_status = Some(validation_status.clone());
-        }
-    }
-    let expected_validation_status =
-        expected_validation_status.expect("did not find expected validation status");
-    assert!(expected_validation_status.errors.is_empty());
-}
 
 #[test]
 async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
@@ -142,8 +20,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         .await
         .expect("could not get type");
     assert_eq!(
-        ComponentType::ConfigurationFrame, // expected
-        component_type,                    // actual
+        ComponentType::ConfigurationFrameDown, // expected
+        component_type,                        // actual
     );
 
     // Initialize the tail name field.
@@ -165,7 +43,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "si": {
                 "name": "us-east-2",
                 "color": "#FF9900",
-                "type": "configurationFrame",
+                "type": "configurationFrameDown",
                 "protected": false,
             },
             "domain": {
@@ -248,7 +126,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "si": {
                 "name": "us-east-2",
                 "color": "#FF9900",
-                "type": "configurationFrame",
+                "type": "configurationFrameDown",
                 "protected": false,
             },
             "domain": {
@@ -306,7 +184,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "si": {
                 "name": "us-west-2",
                 "color": "#FF9900",
-                "type": "configurationFrame",
+                "type": "configurationFrameDown",
                 "protected": false,
             },
             "domain": {
@@ -368,8 +246,8 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
         .await
         .expect("could not get type");
     assert_eq!(
-        ComponentType::ConfigurationFrame, // expected
-        component_type,                    // actual
+        ComponentType::ConfigurationFrameDown, // expected
+        component_type,                        // actual
     );
     region_component
         .set_type(ctx, ComponentType::Component)

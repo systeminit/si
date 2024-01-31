@@ -195,86 +195,6 @@ declare class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
   setValueFrom(valueFrom: ValueFrom): this;
 }
 
-type ValidationKind =
-  "customValidation"
-  | "integerIsBetweenTwoIntegers"
-  | "integerIsNotEmpty"
-  | "stringEquals"
-  | "stringHasPrefix"
-  | "stringInStringArray"
-  | "stringIsHexColor"
-  | "stringIsNotEmpty"
-  | "stringIsValidIpAddr";
-
-interface Validation {
-  kind: ValidationKind;
-  funcUniqueId?: Record<string, unknown>;
-  lowerBound?: number;
-  upperBound?: number;
-  expected?: string[];
-  displayExpected?: boolean;
-}
-
-interface IValidationBuilder {
-  setKind(kind: ValidationKind): this;
-
-  addFuncUniqueId(key: string, value: unknown): this;
-
-  setLowerBound(value: number): this;
-
-  setUpperBound(value: number): this;
-
-  addExpected(expected: string): this;
-
-  setDisplayExpected(display: boolean): this;
-
-  build(): Validation;
-}
-
-/**
- * Validates a prop using a function or from a list of common validations
- *
- * @example
- * const validation = new ValidationBuilder()
- *  .setKind("stringIsNotEmpty")
- *  .build()
- */
-declare class ValidationBuilder implements IValidationBuilder {
-  validation: Validation;
-
-  constructor();
-
-  addFuncUniqueId(key: string, value: unknown): this;
-
-  /**
-   * Build the object
-   *
-   * @example
-   *  .build()
-   */
-  build(): Validation;
-
-  setDisplayExpected(display: boolean): this;
-
-  addExpected(expected: string): this;
-
-  setLowerBound(value: number): this;
-
-  /**
-   * The type of validation
-   *
-   * @param {string} kind [customValidation | integerIsBetweenTwoIntegers | integerIsNotEmpty  | stringEquals  | stringHasPrefix  | stringInStringArray  | stringIsHexColor  | stringIsNotEmpty  | stringIsValidIpAddr]
-   *
-   * @returns this
-   *
-   * @example
-   * .setKind("integerIsNotEmpty")
-   */
-  setKind(kind: ValidationKind): this;
-
-  setUpperBound(value: number): this;
-}
-
 type PropWidgetDefinitionKind =
   "array"
   | "checkbox"
@@ -469,7 +389,6 @@ interface PropDefinition {
   valueFrom?: ValueFrom;
   hidden?: boolean;
   defaultValue?: any;
-  validations?: Validation[];
   validationFormat: string;
   mapKeyFuncs?: MapKeyFunc[];
 }
@@ -496,8 +415,6 @@ interface IPropBuilder {
   setHidden(hidden: boolean): this;
 
   setDefaultValue(value: any): this;
-
-  addValidation(validation: Validation): this;
 
   setValidationFormat(format: Joi.Schema): this;
 
@@ -580,20 +497,6 @@ declare class PropBuilder implements IPropBuilder {
    * @param format {Joi.Schema} - A joi schema object
    */
   setValidationFormat(format: Joi.Schema): this;
-
-  /**
-   * Add functions to validate the value of the prop
-   *
-   * @param {Validation} validation
-   *
-   * @returns this
-   *
-   * @example
-   * .addValidation(new ValidationBuilder()
-   *  .setKind("stringIsNotEmpty")
-   *  .build())
-   */
-  addValidation(validation: Validation): this;
 
   /**
    * Build the object
@@ -720,8 +623,6 @@ interface ISecretPropBuilder {
 
   setDocLink(link: string): this;
 
-  addValidation(validation: Validation): this;
-
   skipInputSocket(): this;
 
   build(): SecretPropDefinition;
@@ -768,8 +669,6 @@ declare class SecretPropBuilder implements ISecretPropBuilder {
   setDocLinkRef(ref: string): this;
 
   setDocLink(link: string): this;
-
-  addValidation(validation: Validation): this;
 
   /**
    * Whether the prop should disable the auto-creation of an input socket

@@ -101,6 +101,7 @@ export default (opts: { mode: string }) => {
           find: "@",
           replacement: path.resolve(__dirname, "src"),
         },
+        { find: "util", replacement: "util-browser" },
       ],
     },
     build: {

@@ -15,6 +15,7 @@ pub struct ExecuteRequest {
     pub id: FuncId,
     pub args: serde_json::Value,
     pub execution_key: String,
+    pub code: String,
     pub component_id: ComponentId,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -37,9 +38,10 @@ pub async fn execute(
 ) -> FuncResult<Json<ExecuteResponse>> {
     let ctx = builder.build(request_ctx.build(req.visibility)).await?;
 
-    let func = Func::get_by_id(&ctx, &req.id)
+    let mut func = Func::get_by_id(&ctx, &req.id)
         .await?
         .ok_or(FuncError::NotFound(req.id))?;
+    func.set_code_plaintext(&ctx, Some(&req.code)).await?;
 
     // We need the associated [`ComponentId`] for this function--this is how we resolve and
     // prepare before functions
@@ -101,6 +103,6 @@ pub async fn execute(
 async fn publish_immediately(ctx: &DalContext, ws_event: WsEvent) -> FuncBindingResult<()> {
     let subject = format!("si.workspace_pk.{}.event", ws_event.workspace_pk());
     let msg_bytes = serde_json::to_vec(&ws_event)?;
-    ctx.nats_conn().publish(subject, msg_bytes).await?;
+    ctx.nats_conn().publish(subject, msg_bytes.into()).await?;
     Ok(())
 }

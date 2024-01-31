@@ -55,8 +55,8 @@ pub async fn migrate_intrinsics(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .is_none()
     {
-        import_pkg_from_pkg(ctx, &intrinsics_pkg, None).await?;
-        //        ctx.blocking_commit().await?;
+        import_pkg_from_pkg(ctx, &intrinsics_pkg, None, true).await?;
+        ctx.blocking_commit().await?;
     }
 
     Ok(())

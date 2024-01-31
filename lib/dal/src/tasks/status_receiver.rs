@@ -164,7 +164,13 @@ impl StatusReceiver {
         ctx.update_tenancy(request.payload.tenancy);
 
         let code_generation_attribute_values: HashSet<AttributeValueId> =
-            Component::all_code_generation_attribute_values(&ctx).await?;
+            match Component::all_code_generation_attribute_values(&ctx).await {
+                Ok(v) => v,
+                Err(err) => {
+                    warn!("Unable to list code generations attribute value, probably a race condition and the values went away between status updates: {err}");
+                    return Ok(());
+                }
+            };
 
         // Flatten the dependency graph into a single vec.
         let mut flattened_dependent_graph: Vec<&AttributeValueId> =
@@ -212,7 +218,7 @@ impl StatusReceiver {
     async fn publish_immediately(ctx: &DalContext, ws_event: WsEvent) -> StatusReceiverResult<()> {
         let subject = format!("si.workspace_pk.{}.event", ws_event.workspace_pk());
         let msg_bytes = serde_json::to_vec(&ws_event)?;
-        ctx.nats_conn().publish(subject, msg_bytes).await?;
+        ctx.nats_conn().publish(subject, msg_bytes.into()).await?;
         Ok(())
     }
 }

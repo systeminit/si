@@ -65,6 +65,7 @@
           </VormInput>
 
           <ErrorMessage :requestStatus="importReqStatus" />
+          <ErrorMessage :message="workspaceStore.importError" />
 
           <VButton
             icon="cloud-download"
@@ -77,6 +78,7 @@
             :requestStatus="
               requiresVoting ? beginApprovalProcessReqStatus : importReqStatus
             "
+            :loading="workspaceStore.importLoading"
             @click="
               requiresVoting ? beginApprovalHandler() : importWorkspaceHandler()
             "
@@ -222,7 +224,9 @@
           </div>
         </template>
         <template v-if="importFlow">
-          <template v-if="importReqStatus.isPending">
+          <template
+            v-if="importReqStatus.isPending || workspaceStore.importLoading"
+          >
             <LoadingMessage>
               Importing your workspace!
               <template #moreContent>
@@ -446,7 +450,11 @@ const blockExit = computed(() => {
   if (approvalInFlight.value) {
     return !importedByYou.value;
   }
-  return importReqStatus.value.isPending || importReqStatus.value.isSuccess;
+  return (
+    importReqStatus.value.isPending ||
+    importReqStatus.value.isSuccess ||
+    workspaceStore.importLoading
+  );
 });
 
 defineExpose({ open, close });

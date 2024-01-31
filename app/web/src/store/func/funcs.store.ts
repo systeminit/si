@@ -491,6 +491,7 @@ export const useFuncStore = () => {
           args: unknown;
           executionKey: string;
           componentId: string;
+          code: string;
         }) {
           const func = this.funcById(executeRequest.id);
           if (func) {
@@ -621,7 +622,7 @@ export const useFuncStore = () => {
 
         updateFuncCode(funcId: FuncId, code: string) {
           const func = _.cloneDeep(this.funcDetailsById[funcId]);
-          if (!func) return;
+          if (!func || func.code === code) return;
           func.code = code;
 
           this.enqueueFuncSave(func);
@@ -640,7 +641,7 @@ export const useFuncStore = () => {
               const f = this.funcDetailsById[id];
               if (!f) return;
               this.UPDATE_FUNC(f);
-            }, 2000);
+            }, 500);
           }
           // call debounced function which will trigger sending the save to the backend
           const saveFunc = funcSaveDebouncer(func.id);
@@ -673,10 +674,30 @@ export const useFuncStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [
           {
-            eventType: "ChangeSetWritten",
-            debounce: true,
-            callback: (writtenChangeSetId) => {
-              if (writtenChangeSetId !== selectedChangeSetId) return;
+            eventType: "FuncCreated",
+            callback: (data) => {
+              if (data.changeSetPk !== selectedChangeSetId) return;
+              this.FETCH_FUNC_LIST();
+            },
+          },
+          {
+            eventType: "FuncDeleted",
+            callback: (data) => {
+              if (data.changeSetPk !== selectedChangeSetId) return;
+              this.FETCH_FUNC_LIST();
+            },
+          },
+          {
+            eventType: "FuncReverted",
+            callback: (data) => {
+              if (data.changeSetPk !== selectedChangeSetId) return;
+              this.FETCH_FUNC_LIST();
+            },
+          },
+          {
+            eventType: "FuncSaved",
+            callback: (data) => {
+              if (data.changeSetPk !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
             },
           },

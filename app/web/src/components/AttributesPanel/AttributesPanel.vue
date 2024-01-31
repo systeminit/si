@@ -25,6 +25,16 @@
         @blur="updateSiProp('name')"
         @keyup.enter="updateSiProp('name')"
       />
+      <div class="attributes-panel__type-dropdown">
+        <select v-model="siValues.type" @change="updateNodeType()">
+          <option value="component">Component</option>
+          <option value="configurationFrameUp">Configuration Frame (Up)</option>
+          <option value="configurationFrameDown">
+            Configuration Frame (Down)
+          </option>
+        </select>
+        <Icon name="chevron--down" />
+      </div>
     </div>
 
     <LoadingMessage v-if="loadSchemaReqStatus.isPending && !domainTree">
@@ -96,6 +106,7 @@ import {
   DropdownMenuItem,
   JsonTreeExplorer,
   LoadingMessage,
+  Icon,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
@@ -135,8 +146,9 @@ const siProps = computed(() => attributesStore.siTreeByPropName);
 const siValuesFromStore = computed(() => ({
   name: (siProps.value?.name?.value?.value as string) || component.displayName,
   color: (siProps.value?.color?.value?.value as string) || component.color,
+  type: (siProps.value?.type?.value?.value as string) || component?.nodeType,
 }));
-const siValues = reactive(siValuesFromStore.value);
+const siValues = reactive(_.cloneDeep(siValuesFromStore.value));
 
 watch(
   siValuesFromStore,
@@ -171,6 +183,13 @@ function updateSiProp(key: keyof typeof siValues) {
 
 // color picker
 const colorPickerMountRef = ref<HTMLElement>();
+function updateNodeType() {
+  attributesStore.SET_COMPONENT_TYPE({
+    componentId: component.id,
+    value: siValues.type,
+  });
+}
+
 let picker: Picker | undefined;
 function openColorPicker() {
   if (!picker) {
@@ -310,5 +329,25 @@ provide(AttributesPanelContextInjectionKey, {
   flex-grow: 1;
   flex-shrink: 1;
   min-width: 50px;
+}
+.attributes-panel__type-dropdown {
+  position: relative;
+  height: inherit;
+  flex-grow: 1;
+  min-width: 120px;
+  select {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    padding-right: 30px;
+    text-overflow: ellipsis;
+  }
+  .icon {
+    position: absolute;
+    right: 4px;
+    top: 0;
+    height: inherit;
+    z-index: 3;
+  }
 }
 </style>

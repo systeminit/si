@@ -205,6 +205,14 @@ impl Server<(), ()> {
             .map_err(Into::into)
     }
 
+    #[instrument(name = "sdf.init.generate_symmetric_key", skip_all)]
+    pub async fn generate_symmetric_key(symmetric_key_path: impl AsRef<Path>) -> Result<()> {
+        SymmetricCryptoService::generate_key()
+            .save(symmetric_key_path.as_ref())
+            .await
+            .map_err(Into::into)
+    }
+
     #[instrument(name = "sdf.init.load_jwt_public_signing_key", skip_all)]
     pub async fn load_jwt_public_signing_key(config: JwtConfig) -> Result<JwtPublicSigningKey> {
         Ok(JwtPublicSigningKey::from_config(config).await?)
@@ -388,6 +396,7 @@ async fn install_builtins(
                         no_record: false,
                         is_builtin: true,
                     }),
+                    true,
                 )
                 .await
                 {
@@ -473,13 +482,11 @@ fn build_service_inner(
         for_tests,
     );
 
-    let routes = routes(state)
-        // TODO(fnichol): customize http tracing further, using:
-        // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(DefaultMakeSpan::default().include_headers(true)),
-        );
+    let routes = routes(state).layer(
+        TraceLayer::new_for_http()
+            .make_span_with(HttpMakeSpan::new().level(Level::INFO))
+            .on_response(HttpOnResponse::new().level(Level::DEBUG)),
+    );
 
     let graceful_shutdown_rx = prepare_graceful_shutdown(shutdown_rx, shutdown_broadcast_tx)?;
 

@@ -14,7 +14,6 @@ use thiserror::Error;
 use crate::server::state::AppState;
 
 pub mod get_property_editor_schema;
-pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
 pub mod update_property_editor_value;
 

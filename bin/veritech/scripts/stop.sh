@@ -30,7 +30,7 @@ userdel jailer-$SB_ID || true
 
 # Remove directories and files
 umount /srv/jailer/firecracker/$SB_ID/root/rootfs.ext4 || true
-dmsetup remove rootfs-overlay-$SB_ID || true
+dmsetup remove --retry rootfs-overlay-$SB_ID
 
 # We are not currently creating these.
 # umount /srv/jailer/firecracker/$SB_ID/root/image-kernel.bin || true

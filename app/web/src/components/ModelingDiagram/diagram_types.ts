@@ -155,11 +155,26 @@ export type DiagramStatusIcon = {
   tabSlug?: "qualifications" | "resource";
 };
 
+export enum SchemaKind {
+  Concept = "concept",
+  Implementation = "implementation",
+  Concrete = "concrete",
+}
+
+export enum ComponentType {
+  Component = "component",
+  ConfigurationFrameDown = "configurationFrameDown",
+  ConfigurationFrameUp = "configurationFrameUp",
+  AggregationFrame = "aggregationFrame",
+}
+
 export type DiagramNodeDef = {
   /** unique id of the node */
   id: DiagramElementId;
   /** parent frame (or whatever) id */
-  parentComponentId?: DiagramElementId;
+  parentNodeId?: DiagramElementId;
+  /** parent frame (or whatever) id */
+  parentComponentId?: ComponentId;
   /** list of ancestor component ids */
   ancestorIds?: ComponentId[];
   /** node type within the context of the diagram */
@@ -182,8 +197,8 @@ export type DiagramNodeDef = {
   color?: string | null;
   /** icon (name/slug) used to help convey node type */
   typeIcon?: string | null;
-  /** type of node - possible options are component, configurationFrame or aggregationFrame */
-  nodeType: "component" | "configurationFrame" | "aggregationFrame";
+  /** type of node - define if this is a simple component or a type of frame */
+  nodeType: ComponentType;
   /** array of icons (slug and colors) to show statuses */
   statusIcons?: DiagramStatusIcon[];
   /** if true, node shows the `loading` overlay */
@@ -228,8 +243,6 @@ export type DiagramEdgeDef = {
   toComponentId: DiagramElementId;
   toExplicitInternalProviderId: DiagramElementId;
   isBidirectional?: boolean;
-  // color
-  // thickness
   isInvisible?: boolean;
   /** change status of edge in relation to head */
   changeStatus?: ChangeStatus;
@@ -245,10 +258,16 @@ export type DiagramDrawEdgeState = {
   edgeKeysToDelete: DiagramElementUniqueKey[];
 };
 
+export type MoveElementsState = {
+  active: boolean;
+  intoNewParentKey: DiagramElementUniqueKey | undefined;
+};
+
 // Event payloads - emitted by generic diagram //////////////////////////////////
 export type ElementHoverMeta =
   | { type: "resize"; direction: SideAndCornerIdentifiers }
-  | { type: "socket"; socket: DiagramSocketData };
+  | { type: "socket"; socket: DiagramSocketData }
+  | { type: "parent" };
 
 export type RightClickElementEvent = {
   element: DiagramElementData;

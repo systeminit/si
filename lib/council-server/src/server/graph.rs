@@ -1,9 +1,11 @@
-use crate::{server::Error, Graph, Id};
+use node_metadata::NodeMetadata;
+use si_data_nats::Subject;
 use std::collections::{HashMap, HashSet, VecDeque};
+use telemetry::prelude::*;
+
+use crate::{server::Error, Graph, Id};
 
 mod node_metadata;
-
-use node_metadata::NodeMetadata;
 
 #[derive(Default, Debug)]
 pub struct ChangeSetGraph {
@@ -20,7 +22,10 @@ impl ChangeSetGraph {
         for graph in self.dependency_data.values_mut() {
             for (id, metadata) in graph.iter_mut() {
                 if let Some(reply_channel) = metadata.next_to_process() {
-                    result.entry(reply_channel.clone()).or_default().push(*id);
+                    result
+                        .entry(reply_channel.to_string())
+                        .or_default()
+                        .push(*id);
                 }
             }
         }
@@ -29,7 +34,7 @@ impl ChangeSetGraph {
 
     pub fn merge_dependency_graph(
         &mut self,
-        reply_channel: String,
+        reply_channel: Subject,
         new_dependency_data: Graph,
         change_set_id: Id,
     ) -> Result<(), Error> {
@@ -68,11 +73,14 @@ impl ChangeSetGraph {
 
     pub fn mark_node_as_processed(
         &mut self,
-        reply_channel: &str,
+        reply_channel: &Subject,
         change_set_id: Id,
         node_id: Id,
     ) -> Result<HashSet<String>, Error> {
-        let change_set_graph_data = self.dependency_data.get_mut(&change_set_id).unwrap();
+        let change_set_graph_data = self
+            .dependency_data
+            .get_mut(&change_set_id)
+            .ok_or(Error::DependencyDataMissing)?;
 
         let (ok_to_remove_node, wanted_by_reply_channels) =
             if let Some(node_metadata) = change_set_graph_data.get_mut(&node_id) {
@@ -96,7 +104,7 @@ impl ChangeSetGraph {
         Ok(wanted_by_reply_channels)
     }
 
-    pub fn remove_channel(&mut self, change_set_id: Id, reply_channel: &str) {
+    pub fn remove_channel(&mut self, change_set_id: Id, reply_channel: &Subject) {
         if let Some(graph) = self.dependency_data.get_mut(&change_set_id) {
             let mut to_remove = Vec::new();
             for (id, metadata) in graph.iter_mut() {
@@ -107,7 +115,9 @@ impl ChangeSetGraph {
             }
 
             for id in to_remove {
-                graph.remove(&id).unwrap();
+                if graph.remove(&id).is_none() {
+                    error!(%id, "found nothing when removing from graph by id")
+                }
             }
         }
     }
@@ -118,12 +128,15 @@ impl ChangeSetGraph {
     /// for the nodes that are being removed.
     pub fn remove_node_and_dependents(
         &mut self,
-        reply_channel: String,
+        reply_channel: Subject,
         change_set_id: Id,
         node_id: Id,
-    ) -> Result<Vec<(String, Id)>, Error> {
+    ) -> Result<Vec<(Subject, Id)>, Error> {
         let mut failure_notifications = Vec::new();
-        let change_set_graph_data = self.dependency_data.get_mut(&change_set_id).unwrap();
+        let change_set_graph_data = self
+            .dependency_data
+            .get_mut(&change_set_id)
+            .ok_or(Error::DependencyDataMissing)?;
 
         let mut node_ids_to_fail = VecDeque::new();
         node_ids_to_fail.push_back(node_id);

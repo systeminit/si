@@ -3,9 +3,10 @@
 </template>
 
 <script setup lang="ts">
+import * as _ from "lodash-es";
 import {
-  DropdownMenuItemObjectDef,
   DropdownMenu,
+  DropdownMenuItemObjectDef,
 } from "@si/vue-lib/design-system";
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
@@ -13,6 +14,7 @@ import plur from "plur";
 import { useComponentsStore } from "@/store/components.store";
 import { useFixesStore } from "@/store/fixes.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
@@ -24,6 +26,7 @@ const {
   selectedComponentId,
   selectedComponentIds,
   selectedComponent,
+  selectedComponents,
   deletableSelectedComponents,
   restorableSelectedComponents,
   selectedEdgeId,
@@ -32,7 +35,8 @@ const {
 
 function typeDisplayName(action = "delete") {
   if (selectedComponentId.value && selectedComponent.value) {
-    if (selectedComponent.value.nodeType === "component") return "Component";
+    if (selectedComponent.value.nodeType === ComponentType.Component)
+      return "Component";
     else return "Frame";
   } else if (selectedComponentIds.value.length) {
     const components =
@@ -41,7 +45,7 @@ function typeDisplayName(action = "delete") {
         : restorableSelectedComponents.value;
 
     for (const c of components) {
-      if (c.nodeType === "component") return "Component"; // if we have both frames and components, just use the word component
+      if (c.nodeType === ComponentType.Component) return "Component"; // if we have both frames and components, just use the word component
     }
 
     return "Frame";
@@ -136,6 +140,22 @@ const rightClickMenuItems = computed(() => {
     }
   }
 
+  if (
+    selectedComponents.value.length > 0 &&
+    _.every(selectedComponents.value, (c) => (c.ancestorIds?.length || 0) > 0)
+  ) {
+    items.push({
+      label: "Detach from parent(s)",
+      icon: "frame",
+      onSelect: () => {
+        // TODO: we likely want an endpoint that handles multiple?
+        _.each(selectedComponentIds.value, (id) => {
+          componentsStore.DETACH_COMPONENT(id);
+        });
+      },
+      disabled,
+    });
+  }
   if (selectedComponent.value?.hasResource) {
     items.push({
       label: "Refresh resource",
@@ -156,16 +176,19 @@ function triggerCopySelection() {
 }
 
 const modelingEventBus = componentsStore.eventBus;
+
 function triggerDeleteSelection() {
   modelingEventBus.emit("deleteSelection");
   elementPos.value = null;
 }
+
 function triggerRestoreSelection() {
   modelingEventBus.emit("restoreSelection");
   elementPos.value = null;
 }
 
 const elementPos = ref<{ x: number; y: number } | null>(null);
+
 function open(
   e: MouseEvent,
   anchorToMouse: boolean,
@@ -174,5 +197,6 @@ function open(
   if (elementPosition) elementPos.value = elementPosition;
   contextMenuRef.value?.open(e, anchorToMouse);
 }
+
 defineExpose({ open });
 </script>

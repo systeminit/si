@@ -17,16 +17,17 @@ use telemetry::prelude::*;
 use veritech_client::SensitiveContainer;
 
 use crate::{
-    diagram::node::HistoryEventMetadata,
+    history_event::HistoryEventMetadata,
     impl_standard_model,
     key_pair::KeyPairPk,
     pk,
     property_editor::schema::PropertyEditorPropWidgetKind,
     serde_impls::{base64_bytes_serde, nonce_serde},
     standard_model::{self, objects_from_rows, TypeHint},
-    standard_model_accessor, standard_model_accessor_ro, ActorView, DalContext, HistoryActor,
-    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, StandardModel, StandardModelError,
-    Tenancy, Timestamp, TransactionsError, UserPk, Visibility,
+    standard_model_accessor, standard_model_accessor_ro, ActorView, ChangeSetPk, DalContext,
+    HistoryActor, HistoryEvent, HistoryEventError, KeyPair, KeyPairError, StandardModel,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, Visibility, WsEvent,
+    WsEventResult, WsPayload,
 };
 
 const LIST_SECRET_DEFINITIONS: &str = include_str!("queries/secrets/list_secret_definitions.sql");
@@ -133,6 +134,44 @@ impl Secret {
 
     pub async fn key_pair(&self, ctx: &DalContext) -> SecretResult<KeyPair> {
         Ok(KeyPair::get_by_pk(ctx, self.key_pair_pk).await?)
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SecretCreatedPayload {
+    secret_id: SecretId,
+    change_set_pk: ChangeSetPk,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SecretUpdatedPayload {
+    secret_id: SecretId,
+    change_set_pk: ChangeSetPk,
+}
+
+impl WsEvent {
+    pub async fn secret_created(ctx: &DalContext, secret_id: SecretId) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::SecretCreated(SecretCreatedPayload {
+                secret_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
+        )
+        .await
+    }
+
+    pub async fn secret_updated(ctx: &DalContext, secret_id: SecretId) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::SecretUpdated(SecretUpdatedPayload {
+                secret_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
+        )
+        .await
     }
 }
 

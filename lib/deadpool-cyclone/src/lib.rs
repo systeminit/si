@@ -15,11 +15,13 @@
     clippy::module_name_repetitions
 )]
 
-use async_trait::async_trait;
 use deadpool::managed::{self, Metrics};
+
+use async_trait::async_trait;
 use thiserror::Error;
 
 pub use self::instance::{Instance, Spec};
+pub use crate::pool_noodle::pool_noodle::PoolNoodle;
 
 pub use cyclone_client::{
     ClientError, CycloneClient, CycloneEncryptionKey, CycloneEncryptionKeyError, ExecutionError,
@@ -34,6 +36,8 @@ pub use cyclone_core::{
 
 /// [`Instance`] implementations.
 pub mod instance;
+/// [`PoolNoodle`] implementations.
+pub mod pool_noodle;
 
 /// Type alias for using [`managed::Pool`] with Cyclone.
 pub type Pool<S> = managed::Pool<Manager<S>>;
@@ -67,7 +71,6 @@ pub enum ManagerError<T> {
 }
 
 /// [`Manager`] for creating and recycling generic [`Instance`]s.
-#[derive(Debug)]
 pub struct Manager<S> {
     spec: S,
 }
@@ -82,8 +85,9 @@ where
     }
 
     /// Peforms any necessary setup work to ensure the host can run the pool members.
-    pub async fn setup(&self) -> Result<(), S::Error> {
-        self.spec.setup().await
+    pub async fn setup(&mut self) -> Result<(), S::Error> {
+        self.spec.setup().await?;
+        Ok(())
     }
 }
 

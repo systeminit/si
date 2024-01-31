@@ -2,7 +2,7 @@
   <div
     :class="
       clsx(
-        'flex flex-row gap-xs items-center text-sm p-xs border-b',
+        'flex flex-row gap-xs items-center text-sm relative p-xs min-w-0 w-full border-b',
         themeClasses('border-neutral-200', 'border-neutral-600'),
       )
     "
@@ -15,10 +15,22 @@
         <span v-if="diff.status === 'modified'">Modified</span>
         {{ componentsStore.componentsById[diff.componentId]?.schemaName }}
       </div>
-      <div class="text-neutral-400 truncate">
+      <div
+        :class="
+          clsx(
+            'dark:text-action-300 text-action-500 truncate cursor-pointer font-bold',
+            isHover && 'underline',
+          )
+        "
+        @click="onClick"
+        @mouseenter="onHoverStart"
+        @mouseleave="onHoverEnd"
+      >
         {{ componentsStore.componentsById[diff.componentId]?.displayName }}
       </div>
-      <div class="text-neutral-400 truncate">By: {{ diff.actor }}</div>
+      <div class="text-neutral-500 dark:text-neutral-400 truncate">
+        By: {{ diff.actor }}
+      </div>
     </div>
   </div>
 </template>
@@ -26,7 +38,7 @@
 <script lang="ts" setup>
 import { themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { PropType } from "vue";
+import { PropType, computed } from "vue";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { useComponentsStore } from "@/store/components.store";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
@@ -40,7 +52,33 @@ export type DiffInfo = {
 
 const componentsStore = useComponentsStore();
 
-defineProps({
+const props = defineProps({
   diff: { type: Object as PropType<DiffInfo>, required: true },
 });
+
+function onClick() {
+  if (componentsStore.componentsById[props.diff.componentId]) {
+    componentsStore.setSelectedComponentId(props.diff.componentId);
+    componentsStore.eventBus.emit("panToComponent", {
+      componentId: props.diff.componentId,
+      center: true,
+    });
+  }
+}
+
+const isHover = computed(
+  () => componentsStore.hoveredComponentId === props.diff.componentId,
+);
+
+function onHoverStart() {
+  if (componentsStore.componentsById[props.diff.componentId]) {
+    componentsStore.setHoveredComponentId(props.diff.componentId);
+  }
+}
+
+function onHoverEnd() {
+  if (componentsStore.componentsById[props.diff.componentId]) {
+    componentsStore.setHoveredComponentId(null);
+  }
+}
 </script>

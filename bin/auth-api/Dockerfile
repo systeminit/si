@@ -83,6 +83,7 @@ FROM installer as builder
 WORKDIR /app/bin/auth-api
 RUN pnpx prisma generate
 RUN pnpm run build
+RUN echo "strict-peer-dependencies=false" > .npmrc
 
 RUN PRISMA_SKIP_POSTINSTALL_GENERATE=1 pnpm --prod --filter @si/auth-api deploy pruned
 # RUN cp -r src/prisma-client dist

@@ -4,6 +4,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ComponentId, useComponentsStore } from "./components.store";
@@ -20,6 +21,8 @@ type QualificationStats = {
 };
 
 export const useQualificationsStore = () => {
+  const featureFlagsStore = useFeatureFlagsStore();
+
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
 
@@ -54,17 +57,19 @@ export const useQualificationsStore = () => {
             _.mapValues(
               state.qualificationStatsByComponentIdRaw,
               (cs, componentId) => {
-                const { result: validationResult } =
-                  useComponentAttributesStore(componentId).schemaValidation;
-
                 let total = cs.total;
                 let succeeded = cs.succeeded;
                 let failed = cs.failed;
 
-                if (validationResult) {
-                  total += 1;
-                  if (validationResult.status === "success") succeeded += 1;
-                  else failed += 1;
+                if (featureFlagsStore.JOI_VALIDATIONS) {
+                  const { result: validationResult } =
+                    useComponentAttributesStore(componentId).schemaValidation;
+
+                  if (validationResult) {
+                    total += 1;
+                    if (validationResult.status === "success") succeeded += 1;
+                    else failed += 1;
+                  }
                 }
 
                 return {
@@ -79,14 +84,17 @@ export const useQualificationsStore = () => {
             _.mapValues(
               state.qualificationsByComponentIdRaw,
               (qualifications, componentId) => {
-                const qualificationsAndValidation = [
-                  ...qualifications,
-                  useComponentAttributesStore(componentId).schemaValidation,
-                ];
+                const compiledQualifications = qualifications;
+
+                if (featureFlagsStore.JOI_VALIDATIONS) {
+                  compiledQualifications.push(
+                    useComponentAttributesStore(componentId).schemaValidation,
+                  );
+                }
 
                 // TODO: maybe we want to sort these in the backend?
                 return _.orderBy(
-                  qualificationsAndValidation,
+                  compiledQualifications,
                   (response) =>
                     ({
                       failure: 1,
@@ -226,23 +234,16 @@ export const useQualificationsStore = () => {
 
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-            // Doesnt seem to actually do anything
-            // {
-            //   eventType: "CheckedQualifications",
-            //   callback: ({ componentId }) => {
-            //     this.FETCH_COMPONENT_QUALIFICATIONS(componentId);
-            //   },
-            // },
-            // {
-            //   eventType: "ComponentCreated",
-            //   callback: () => {
-            //     this.FETCH_QUALIFICATIONS_SUMMARY();
-            //   },
-            // },
             {
-              // TODO(nick,theo,fletcher,wendy): replace this someday.
-              eventType: "ChangeSetWritten",
-              debounce: true,
+              eventType: "ComponentUpdated",
+              callback: (data) => {
+                if (data.changeSetPk === changeSetId) {
+                  this.FETCH_QUALIFICATIONS_SUMMARY();
+                }
+              },
+            },
+            {
+              eventType: "ChangeSetApplied",
               callback: () => {
                 this.FETCH_QUALIFICATIONS_SUMMARY();
               },

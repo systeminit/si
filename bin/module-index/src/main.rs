@@ -1,16 +1,17 @@
 use color_eyre::Result;
 use module_index_server::{Config, Server};
-use telemetry_application::{
-    prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
-    TelemetryClient, TelemetryConfig,
-};
+use telemetry_application::prelude::*;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 mod args;
 
+const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
+
 fn main() -> Result<()> {
-    let thread_builder = ::std::thread::Builder::new();
+    let thread_builder = ::std::thread::Builder::new().stack_size(RT_DEFAULT_THREAD_STACK_SIZE);
     let thread_handler = thread_builder.spawn(|| {
         tokio::runtime::Builder::new_multi_thread()
+            .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
             .thread_name("bin/module-index-tokio::runtime")
             .enable_all()
             .build()?
@@ -20,6 +21,9 @@ fn main() -> Result<()> {
 }
 
 async fn async_main() -> Result<()> {
+    let shutdown_token = CancellationToken::new();
+    let task_tracker = TaskTracker::new();
+
     color_eyre::install()?;
     let config = TelemetryConfig::builder()
         .service_name("module-index")
@@ -27,21 +31,13 @@ async fn async_main() -> Result<()> {
         .log_env_var_prefix("SI")
         .app_modules(vec!["module_index", "module_index_server"])
         .build()?;
-    let telemetry = telemetry_application::init(config)?;
+    let mut telemetry = telemetry_application::init(config, &task_tracker, shutdown_token.clone())?;
     let args = args::parse();
 
-    run(args, telemetry).await
-}
-
-async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Result<()> {
     if args.verbose > 0 {
         telemetry.set_verbosity(args.verbose.into()).await?;
     }
     debug!(arguments =?args, "parsed cli arguments");
-
-    if args.disable_opentelemetry {
-        telemetry.disable_opentelemetry().await?;
-    }
 
     let config = Config::try_from(args)?;
 
@@ -57,9 +53,9 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     // this is the SeaOrm-managed Pg Pool
     let pg_pool = Server::create_db_connection(config.pg_pool()).await?;
 
-    start_tracing_level_signal_handler_task(&telemetry)?;
-
     let posthog_client = Server::start_posthog(config.posthog()).await?;
+
+    task_tracker.close();
 
     let (server, initial_shutdown_broadcast_rx) =
         Server::http(config, pg_pool, jwt_public_signing_key, posthog_client)?;
@@ -67,5 +63,15 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     server.run().await?;
 
+    // TODO(fnichol): this will eventually go into the signal handler code but at the moment in
+    // module-index's case, this is embedded in server library code which is incorrect. At this
+    // moment in the program however, axum has shut down so it's an appropriate time to cancel
+    // other remaining tasks and wait on their graceful shutdowns
+    {
+        shutdown_token.cancel();
+        task_tracker.wait().await;
+    }
+
+    info!("graceful shutdown complete.");
     Ok(())
 }

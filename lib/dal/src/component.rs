@@ -1,6 +1,8 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
+use std::collections::{HashMap, VecDeque};
+
 use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, HashMap, VecDeque};
@@ -893,6 +895,29 @@ impl WsEvent {
         WsEvent::new(
             ctx,
             WsPayload::ComponentCreated(ComponentCreatedPayload { success: true }),
+        )
+        .await
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentUpdatedPayload {
+    component_id: ComponentId,
+    change_set_pk: ChangeSetPk,
+}
+
+impl WsEvent {
+    pub async fn component_updated(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ComponentUpdated(ComponentUpdatedPayload {
+                component_id,
+                change_set_pk: ctx.visibility().change_set_pk,
+            }),
         )
         .await
     }

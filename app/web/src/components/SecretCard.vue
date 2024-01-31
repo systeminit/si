@@ -3,10 +3,10 @@
     :class="
       clsx(
         themeContainerClasses,
-        'flex flex-row flex-none items-center border-b overflow-hidden',
+        'flex flex-row flex-none items-center overflow-hidden',
         detailedListItem
-          ? 'border-neutral-200 dark:border-neutral-500 text-shade-100 dark:text-shade-0'
-          : 'h-[90px] cursor-pointer border-neutral-500 text-shade-0 hover:bg-action-800 hover:outline-blue-300 hover:outline -outline-offset-1  hover:rounded',
+          ? 'border-b border-neutral-200 dark:border-neutral-500 text-shade-100 dark:text-shade-0'
+          : 'border rounded h-[90px] cursor-pointer border-neutral-500 text-shade-0 hover:bg-action-800 hover:outline-blue-300 hover:outline -outline-offset-1  hover:rounded',
       )
     "
   >
@@ -108,7 +108,7 @@
         "
         @click="emit('edit')"
       >
-        <Icon name="settings" size="lg" />
+        <Icon name="edit" size="lg" />
       </div>
       <!-- TODO(Wendy) - here's the button we will use when we add deletion -->
       <!-- <div

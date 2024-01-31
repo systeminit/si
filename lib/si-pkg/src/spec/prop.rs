@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
-use super::{AttrFuncInputSpec, MapKeyFuncSpec, SpecError, ValidationSpec};
+use super::{AttrFuncInputSpec, MapKeyFuncSpec, SpecError};
 
 #[remain::sorted]
 #[derive(
@@ -54,7 +54,6 @@ pub struct PropSpecData {
     pub name: String,
     pub validation_format: Option<String>,
     pub default_value: Option<serde_json::Value>,
-    pub validations: Option<Vec<ValidationSpec>>,
     pub func_unique_id: Option<String>,
     pub inputs: Option<Vec<AttrFuncInputSpec>>,
     pub widget_kind: Option<PropSpecWidgetKind>,
@@ -140,7 +139,6 @@ pub struct PropSpecBuilder {
     map_key_funcs: Vec<MapKeyFuncSpec>,
     name: Option<String>,
     type_prop: Option<PropSpec>,
-    validations: Vec<ValidationSpec>,
     validation_format: Option<String>,
     widget_kind: Option<PropSpecWidgetKind>,
     widget_options: Option<serde_json::Value>,
@@ -162,7 +160,6 @@ impl Default for PropSpecBuilder {
             map_key_funcs: vec![],
             name: None,
             type_prop: None,
-            validations: vec![],
             validation_format: None,
             widget_kind: None,
             widget_options: None,
@@ -205,13 +202,6 @@ impl PropSpecBuilder {
     #[allow(unused_mut)]
     pub fn entry(&mut self, value: impl Into<PropSpec>) -> &mut Self {
         self.entries.push(value.into());
-        self
-    }
-
-    #[allow(unused_mut)]
-    pub fn validation(&mut self, value: impl Into<ValidationSpec>) -> &mut Self {
-        self.has_data = true;
-        self.validations.push(value.into());
         self
     }
 
@@ -310,7 +300,6 @@ impl PropSpecBuilder {
                 name: name.to_owned(),
                 validation_format: self.validation_format.clone(),
                 default_value: self.default_value.to_owned(),
-                validations: Some(self.validations.clone()),
                 func_unique_id: self.func_unique_id.to_owned(),
                 inputs: Some(self.inputs.clone()),
                 widget_kind: self.widget_kind,

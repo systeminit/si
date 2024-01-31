@@ -18,6 +18,7 @@ pub type CodeViewResult<T> = Result<T, CodeViewError>;
 pub enum CodeLanguage {
     Diff,
     Json,
+    String,
     Unknown,
     Yaml,
 }
@@ -29,6 +30,7 @@ impl TryFrom<String> for CodeLanguage {
         match value.to_lowercase().as_str() {
             "diff" => Ok(Self::Diff),
             "json" => Ok(Self::Json),
+            "string" => Ok(Self::String),
             "yaml" => Ok(Self::Yaml),
             "unknown" => Ok(Self::Unknown),
             _ => Err(CodeViewError::NoCodeLanguageForString(value)),

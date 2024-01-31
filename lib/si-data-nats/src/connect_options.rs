@@ -1,5 +1,9 @@
+use async_nats::{Auth, AuthError, ToServerAddrs};
 use futures::Future;
-use std::{path::PathBuf, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 use super::{Client, Result};
 
@@ -44,6 +48,7 @@ impl ConnectOptions {
     /// Connect to the NATS Server leveraging all passed options.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -56,6 +61,7 @@ impl ConnectOptions {
     /// ```
     ///
     /// ## Pass multiple URLs.
+    ///
     /// ```no_run
     /// #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -71,15 +77,45 @@ impl ConnectOptions {
     /// ```
     pub async fn connect(
         self,
-        nats_url: impl Into<String>,
+        addrs: impl ToServerAddrs,
         subject_prefix: Option<String>,
     ) -> Result<Client> {
-        Client::connect_with_options(nats_url, subject_prefix, self).await
+        Client::connect_with_options(addrs, subject_prefix, self).await
+    }
+
+    /// Creates a builder with a custom auth callback to be used when authenticating against the NATS Server.
+    /// Requires an asynchronous function that accepts nonce and returns [Auth].
+    /// It will overwrite all other auth methods used.
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::ConnectError> {
+    /// si_data_nats::ConnectOptions::with_auth_callback(move |_| async move {
+    ///     let mut auth = async_nats::Auth::new();
+    ///     auth.username = Some("derek".to_string());
+    ///     auth.password = Some("s3cr3t".to_string());
+    ///     Ok(auth)
+    /// })
+    /// .connect("demo.nats.io")
+    /// .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn with_auth_callback<F, Fut>(callback: F) -> Self
+    where
+        F: Fn(Vec<u8>) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = std::result::Result<Auth, AuthError>> + 'static + Send + Sync,
+    {
+        async_nats::ConnectOptions::with_auth_callback(callback).into()
     }
 
     /// Authenticate against NATS Server with the provided token.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -98,6 +134,7 @@ impl ConnectOptions {
     /// This can be used as a way to mix authentication methods.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -115,6 +152,7 @@ impl ConnectOptions {
     /// Authenticate against NATS Server with the provided username and password.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -129,10 +167,11 @@ impl ConnectOptions {
         async_nats::ConnectOptions::with_user_and_password(user, password).into()
     }
 
-    /// Use a builder to specify a username and password, to be used when authenticating against the NATS Server.
-    /// This can be used as a way to mix authentication methods.
+    /// Use a builder to specify a username and password, to be used when authenticating against
+    /// the NATS Server. This can be used as a way to mix authentication methods.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -150,6 +189,7 @@ impl ConnectOptions {
     /// Authenticate with an NKey. Requires an NKey Seed secret.
     ///
     /// # Example
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -165,10 +205,10 @@ impl ConnectOptions {
     }
 
     /// Use a builder to specify an NKey, to be used when authenticating against the NATS Server.
-    /// Requires an NKey Seed Secret.
-    /// This can be used as a way to mix authentication methods.
+    /// Requires an NKey Seed Secret. This can be used as a way to mix authentication methods.
     ///
     /// # Example
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -184,49 +224,118 @@ impl ConnectOptions {
         self.inner.nkey(seed).into()
     }
 
-    /// Authenticate with NATS using a `.creds` file.
-    /// Open the provided file, load its creds,
-    /// and perform the desired authentication
+    /// Authenticate with a JWT. Requires function to sign the server nonce. The signing function
+    /// is asynchronous.
     ///
     /// # Example
+    ///
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::ConnectError> {
+    /// let seed = "SUANQDPB2RUOE4ETUA26CNX7FUKE5ZZKFCQIIW63OX225F2CO7UEXTM7ZY";
+    /// let key_pair = std::sync::Arc::new(nkeys::KeyPair::from_seed(seed).unwrap());
+    /// // load jwt from creds file or other secure source
+    /// async fn load_jwt() -> std::io::Result<String> {
+    ///     todo!();
+    /// }
+    /// let jwt = load_jwt().await?;
+    /// let nc = si_data_nats::ConnectOptions::with_jwt(jwt, move |nonce| {
+    ///     let key_pair = key_pair.clone();
+    ///     async move { key_pair.sign(&nonce).map_err(async_nats::AuthError::new) }
+    /// })
+    /// .connect("localhost")
+    /// .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn with_jwt<F, Fut>(jwt: String, sign_cb: F) -> Self
+    where
+        F: Fn(Vec<u8>) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = std::result::Result<Vec<u8>, AuthError>> + 'static + Send + Sync,
+    {
+        async_nats::ConnectOptions::with_jwt(jwt, sign_cb).into()
+    }
+
+    /// Use a builder to specify a JWT, to be used when authenticating against the NATS Server.
+    /// Requires an asynchronous function to sign the server nonce. This can be used as a way to
+    /// mix authentication methods.
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), async_nats::ConnectError> {
+    /// let seed = "SUANQDPB2RUOE4ETUA26CNX7FUKE5ZZKFCQIIW63OX225F2CO7UEXTM7ZY";
+    /// let key_pair = std::sync::Arc::new(nkeys::KeyPair::from_seed(seed).unwrap());
+    /// // load jwt from creds file or other secure source
+    /// async fn load_jwt() -> std::io::Result<String> {
+    ///     todo!();
+    /// }
+    /// let jwt = load_jwt().await?;
+    /// let nc = si_data_nats::ConnectOptions::new()
+    ///     .jwt(jwt, move |nonce| {
+    ///         let key_pair = key_pair.clone();
+    ///         async move { key_pair.sign(&nonce).map_err(async_nats::AuthError::new) }
+    ///     })
+    ///     .connect("localhost")
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn jwt<F, Fut>(self, jwt: String, sign_cb: F) -> Self
+    where
+        F: Fn(Vec<u8>) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = std::result::Result<Vec<u8>, AuthError>> + 'static + Send + Sync,
+    {
+        self.inner.jwt(jwt, sign_cb).into()
+    }
+
+    /// Authenticate with NATS using a `.creds` file. Open the provided file, load its creds, and
+    /// perform the desired authentication
+    ///
+    /// # Example
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
-    /// let nc = si_data_nats::ConnectOptions::with_credentials_file("path/to/my.creds".into())
+    /// let nc = si_data_nats::ConnectOptions::with_credentials_file("path/to/my.creds")
     ///     .await?
     ///     .connect("connect.ngs.global")
     ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn with_credentials_file(path: PathBuf) -> Result<Self> {
+    pub async fn with_credentials_file(path: impl AsRef<Path>) -> Result<Self> {
         Ok(async_nats::ConnectOptions::with_credentials_file(path)
             .await?
             .into())
     }
 
-    /// Use a builder to authenticate with NATS using a `.creds` file.
-    /// Open the provided file, load its creds,
-    /// and perform the desired authentication
+    /// Use a builder to authenticate with NATS using a `.creds` file. Open the provided file, load
+    /// its creds, and perform the desired authentication
     ///
     /// # Example
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
     /// let nc = si_data_nats::ConnectOptions::new()
-    ///     .credentials("path/to/my.creds".into())
+    ///     .credentials("path/to/my.creds")
     ///     .await?
     ///     .connect("connect.ngs.global")
     ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn credentials_file(self, path: PathBuf) -> Result<Self> {
+    pub async fn credentials_file(self, path: impl AsRef<Path>) -> Result<Self> {
         Ok(self.inner.credentials_file(path).await?.into())
     }
+
     /// Authenticate with NATS using a credential str, in the creds file format.
     ///
     /// # Example
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -254,11 +363,12 @@ impl ConnectOptions {
         Ok(async_nats::ConnectOptions::with_credentials(creds)?.into())
     }
 
-    /// Use a builder to specify a credentials string, to be used when authenticating against the NATS Server.
-    /// The string should be in the credentials file format.
-    /// This can be used as a way to mix authentication methods.
+    /// Use a builder to specify a credentials string, to be used when authenticating against the
+    /// NATS Server. The string should be in the credentials file format. This can be used as a way
+    /// to mix authentication methods.
     ///
     /// # Example
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -290,6 +400,7 @@ impl ConnectOptions {
     /// Loads root certificates by providing the path to them.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -307,6 +418,7 @@ impl ConnectOptions {
     /// Loads client certificate by providing the path to it.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -321,9 +433,11 @@ impl ConnectOptions {
         self.inner.add_client_certificate(cert, key).into()
     }
 
-    /// Sets or disables TLS requirement. If TLS connection is impossible while `options.require_tls(true)` connection will return error.
+    /// Sets or disables TLS requirement. If TLS connection is impossible while
+    /// `options.require_tls(true)` connection will return error.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -338,9 +452,18 @@ impl ConnectOptions {
         self.inner.require_tls(is_required).into()
     }
 
+    /// Changes how tls connection is established.
+    ///
+    /// If `tls_first` is set, client will try to establish tls before getting info from the
+    /// server. That requires the server to enable `handshake_first` option in the config.
+    pub fn tls_first(self) -> ConnectOptions {
+        self.inner.tls_first().into()
+    }
+
     /// Sets how often Client sends PING message to the server.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # use tokio::time::Duration;
     /// # #[tokio::main]
@@ -360,6 +483,7 @@ impl ConnectOptions {
     /// connection.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -375,10 +499,10 @@ impl ConnectOptions {
     }
 
     /// Sets the capacity for `Subscribers`. Exceeding it will trigger `slow consumer` error
-    /// callback and drop messages.
-    /// Default is set to 1024 messages buffer.
+    /// callback and drop messages. Default is set to 1024 messages buffer.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -397,6 +521,7 @@ impl ConnectOptions {
     /// Default is set to 5 seconds.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -414,6 +539,7 @@ impl ConnectOptions {
     /// Sets a timeout for `Client::request`. Default value is set to 10 seconds.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -428,7 +554,8 @@ impl ConnectOptions {
         self.inner.request_timeout(timeout).into()
     }
 
-    /// Registers an asynchronous callback for errors that are received over the wire from the server.
+    /// Registers an asynchronous callback for errors that are received over the wire from the
+    /// server.
     ///
     /// # Examples
     /// As asynchronous callbacks are still not in `stable` channel, here are some examples how to
@@ -496,9 +623,11 @@ impl ConnectOptions {
         self.inner.event_callback(cb).into()
     }
 
-    /// Registers a callback for a custom reconnect delay handler that can be used to define a backoff duration strategy.
+    /// Registers a callback for a custom reconnect delay handler that can be used to define a
+    /// backoff duration strategy.
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -523,6 +652,7 @@ impl ConnectOptions {
     /// This option enables overriding it.
     ///
     /// # Examples
+    ///
     /// ```
     /// # #[tokio::main]
     /// # async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
@@ -558,6 +688,7 @@ impl ConnectOptions {
     /// Sets the name for the client.
     ///
     /// # Examples
+    ///
     /// ```
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -580,9 +711,9 @@ impl ConnectOptions {
         self.inner.ignore_discovered_servers().into()
     }
 
-    /// By default, client will pick random server to which it will try connect to.
-    /// This option disables that feature, forcing it to always respect the order
-    /// in which server addresses were passed.
+    /// By default, client will pick random server to which it will try connect to. This option
+    /// disables that feature, forcing it to always respect the order in which server addresses
+    /// were passed.
     pub fn retain_servers_order(self) -> ConnectOptions {
         self.inner.retain_servers_order().into()
     }
@@ -590,6 +721,7 @@ impl ConnectOptions {
     /// Allows passing custom rustls tls config.
     ///
     /// # Examples
+    ///
     /// ```
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), si_data_nats::Error> {
@@ -625,6 +757,7 @@ impl ConnectOptions {
     /// protocol messages.
     ///
     /// # Examples
+    ///
     /// ```
     /// # #[tokio::main]
     /// # async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {

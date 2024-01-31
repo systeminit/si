@@ -41,11 +41,13 @@ check_os_release() {
     [[ "$(cat /etc/os-release | grep 'Red Hat Enterprise Linux Server release 7')" ]] && export OS_VARIANT=redhat-7 && return 0
     [[ "$(cat /etc/os-release | grep 'Red Hat Enterprise Linux release 8')" ]] && export OS_VARIANT=redhat-8 && return 0
     [[ "$(cat /etc/os-release | grep 'Amazon Linux release 2')" ]] && export OS_VARIANT=amazon-linux-2 && return 0
+    [[ "$(cat /etc/os-release | grep 'Arch Linux')" ]] && export OS_VARIANT=arch-linux && return 0
     [[ "$(cat /etc/os-release | grep ^NAME | grep Fedora)" ]] && export OS_VARIANT=fedora && return 0
     [[ "$(cat /etc/os-release | grep ^NAME | grep Ubuntu)" ]] && export OS_VARIANT=ubuntu && return 0
     [[ "$(cat /etc/os-release | grep ^NAME | grep -i pop!_os )" ]] && export OS_VARIANT=ubuntu && return 0
     [[ "$(cat /etc/os-release | grep ^NAME | grep Debian)" ]] && export OS_VARIANT=debian && return 0
     [[ "$(cat /etc/os-release | grep ^NAME | grep Mint)" ]] && export OS_VARIANT=mint && return 0
+
     echo "Error: Operating system could not be determined or is unsupported, could not configure the OS for firecracker node" && exit 1
 
 }
@@ -83,9 +85,14 @@ install_pre_reqs() {
             # Insert OS specific setup steps here
             echo "Info: executing prereq steps for ubuntu"
         ;;
+        arch-linux)
+            echo "Info: executing prereq steps for arch linux"
+        ;;
         *)
             echo "Error: Something went wrong, OS_VARIANT determined to be: $OS_VARIANT (unsupported)" && exit 1
         ;;
+
+
     esac
 
     [[ $? != 0 ]] && echo "Error: Exit code $? returned during installation; see above error log for information"
@@ -210,6 +217,11 @@ execute_configuration_management() {
         if ! iptables -t nat -C POSTROUTING -o $(ip route get 8.8.8.8 | awk -- '{printf $5}') -j MASQUERADE; then
           iptables -t nat -A POSTROUTING -o $(ip route get 8.8.8.8 | awk -- '{printf $5}') -j MASQUERADE
         fi
+
+        # Allow forwarding in the default network namespace to allow NAT'ed traffic leave
+        # NB: iptables doesn't support -C for the rule checking of protocols
+        iptables -P FORWARD ACCEPT
+
         # Block calls to AWS Metadata not coming from the primary network
         if ! iptables -C FORWARD -d 169.254.169.254 -j DROP; then
           iptables -A FORWARD -d 169.254.169.254 -j DROP
@@ -217,6 +229,13 @@ execute_configuration_management() {
 
         # Adjust MTU to make it consistent
         ip link set dev $(ip route get 8.8.8.8 | awk -- '{printf $5}') mtu 1500
+
+        # This permits NAT from within the Jail to access the otelcol running on the external interface of the machine. Localhost is `not` resolveable from
+        # within the jail or the micro-vm directly due to /etc/hosts misalignment. Hardcoding the destination to 12.0.0.1 for the otel endpoint allows us to
+        # ship a static copy of the rootfs but allow us to keep the dynamic nature of the machine hosting. 
+        if ! iptables -t nat -C PREROUTING -p tcp --dport 4316 -d 1.0.0.1 -j DNAT --to-destination $(ip route get 8.8.8.8 | awk -- '{printf $7}'):4317; then
+          iptables -t nat -A PREROUTING -p tcp --dport 4316 -d 1.0.0.1 -j DNAT --to-destination $(ip route get 8.8.8.8 | awk -- '{printf $7}'):4317
+        fi
 
     else
         echo "Error: Unsupported or unknown configuration management tool specified, exiting."
@@ -255,6 +274,12 @@ execute_cleanup() {
             # Insert OS specific cleanup steps here
             yum -v clean all
         ;;
+
+        arch-linux)
+            # Insert OS specific cleanup steps here
+            echo "Info: Executing post-clean up for arch"          
+        ;;
+
         ubuntu)
             # Insert OS specific setup steps here
             echo "Info: Executing post-clean up for ubuntu"
@@ -268,7 +293,7 @@ execute_cleanup() {
 
 }
 
-prepare_jailers() {
+clean_jails() {
   ITERATIONS="${1:-100}" # Default to 100 jails
   DOWNLOAD_ROOTFS="${2:-false}" # Default to false
   DOWNLOAD_KERNEL="${3:-false}" # Default to false
@@ -290,31 +315,9 @@ prepare_jailers() {
         fi
         /firecracker-data/stop.sh $iter &> /dev/null &
     done
+    wait
     echo
     echo "Elapsed: $(($SECONDS / 3600))hrs $((($SECONDS / 60) % 60))min $(($SECONDS % 60))sec"
-  fi
-
-  if test -f "/firecracker-data/prepare_jailer.sh"; then
-    IN_PARALLEL=1
-    SECONDS=0
-    for (( iter=0; iter<$ITERATIONS; iter++ ))
-    do
-      echo -ne "Validating jail $(($iter + 1 )) out of $ITERATIONS ... \r"
-        # this ensures we only run n jobs in parallel at a time to avoid
-        # process locks. This is an unreliable hack.
-        # TODO(scott): we need to walk through the processes called in this script
-        # and understand where locking could occur. Parallelization can be
-        # dangerous here, but testing implies that it works.
-        if [ $(jobs -r | wc -l) -ge $IN_PARALLEL ]; then
-         wait $(jobs -r -p | head -1)
-        fi
-        /firecracker-data/prepare_jailer.sh $iter &
-    done
-    echo
-    echo "Elapsed: $(($SECONDS / 3600))hrs $((($SECONDS / 60) % 60))min $(($SECONDS % 60))sec"
-  else
-    echo "prepare_jailer.sh script not found, skipping jail creation."
-    exit 1
   fi
 }
 
@@ -382,5 +385,5 @@ check_params_set && echo -e "Installation Values found to be:\n - $VARIABLES_FIL
 check_os_release && echo -e "Operating System found to be:\n - $OS_VARIANT"
 install_pre_reqs
 execute_configuration_management $DOWNLOAD_ROOTFS $DOWNLOAD_KERNEL
-prepare_jailers $JAILS_TO_CREATE $DOWNLOAD_ROOTFS $DOWNLOAD_KERNEL $FORCE_CLEAN_JAILS
+clean_jails $JAILS_TO_CREATE $DOWNLOAD_ROOTFS $DOWNLOAD_KERNEL $FORCE_CLEAN_JAILS
 execute_cleanup

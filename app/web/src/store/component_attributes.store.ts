@@ -11,12 +11,12 @@ import {
   PropertyEditorProp,
   PropertyEditorPropKind,
   PropertyEditorSchema,
-  PropertyEditorValidation,
   PropertyEditorValue,
   PropertyEditorValues,
 } from "@/api/sdf/dal/property_editor";
 import { nilId } from "@/utils/nilId";
 import { Qualification } from "@/api/sdf/dal/qualification";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ComponentId, useComponentsStore } from "./components.store";
@@ -62,12 +62,11 @@ export type AttributeTreeItem = {
   mapKey?: string;
   arrayKey?: string;
   arrayIndex?: number;
-  validations: PropertyEditorValidation[] | undefined;
-  isValid: boolean;
-  validationError: string | undefined;
 };
 
 export const useComponentAttributesStore = (componentId: ComponentId) => {
+  const featureFlagsStore = useFeatureFlagsStore();
+
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
 
@@ -87,7 +86,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           // TODO: likely want to restructure how this data is sent and stored
           // but we'll just move into a pinia store as the first step...
           schema: null as PropertyEditorSchema | null,
-          validations: null as PropertyEditorValidation[] | null,
           values: null as PropertyEditorValues | null,
         }),
         getters: {
@@ -96,10 +94,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             const { schema, values } = state;
             if (!schema || !values) return;
 
-            const validationsByValueId = _.groupBy(
-              state.validations,
-              (v) => v.valueId,
-            );
             const valuesByValueId = state.values?.values;
             const propsByPropId = state.schema?.props;
             const rootValueId = values.rootValueId;
@@ -119,11 +113,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               // some values that we see are for props that are hidden, so we filter them out
               if (!propDef) return;
 
-              const validations = validationsByValueId[value.id as any] as
-                | PropertyEditorValidation[]
-                | undefined;
-              const failingValidation = _.find(validations, (v) => !v.valid);
-
               // console.log("HERE", value);
 
               return {
@@ -139,9 +128,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                   arrayKey: value.key,
                 }),
                 propId: value.propId,
-                validations,
-                isValid: !failingValidation,
-                validationError: failingValidation?.errors[0]?.message,
                 children: _.compact(
                   _.map(values?.childValues[valueId], (cvId, index) =>
                     getAttributeValueWithChildren(
@@ -189,6 +175,12 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           },
 
           schemaValidation(): Qualification {
+            if (!featureFlagsStore.JOI_VALIDATIONS) {
+              /* eslint-disable no-console */
+              console.warn(
+                "Trying to get schemaValidation with feature flag turned off",
+              );
+            }
             const tree = this.domainTree;
 
             const output = [];
@@ -335,23 +327,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               },
             });
           },
-          async FETCH_PROPERTY_EDITOR_VALIDATIONS() {
-            return new ApiRequest<{ validations: PropertyEditorValidation[] }>({
-              url: "component/get_property_editor_validations",
-              params: {
-                componentId: this.selectedComponentId,
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                this.validations = response.validations;
-              },
-            });
-          },
 
           reloadPropertyEditorData() {
             this.FETCH_PROPERTY_EDITOR_SCHEMA();
             this.FETCH_PROPERTY_EDITOR_VALUES();
-            this.FETCH_PROPERTY_EDITOR_VALIDATIONS();
           },
 
           async REMOVE_PROPERTY_VALUE(
@@ -368,6 +347,10 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               params: {
                 ...removePayload,
                 ...visibilityParams,
+              },
+              onSuccess() {
+                const store = useComponentAttributesStore(componentId);
+                store.reloadPropertyEditorData();
               },
             });
           },
@@ -411,6 +394,32 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 ...(isInsert ? updatePayload.insert : updatePayload.update),
                 ...visibilityParams,
               },
+              onSuccess() {
+                const store = useComponentAttributesStore(componentId);
+                store.reloadPropertyEditorData();
+              },
+              onFail() {
+                // may not work exactly right with concurrent updates... but I dont think will be a problem
+                statusStore.cancelUpdateStarted();
+              },
+            });
+          },
+          async SET_COMPONENT_TYPE(payload: SetTypeArgs) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
+            const statusStore = useStatusStore();
+            statusStore.markUpdateStarted();
+
+            return new ApiRequest<{ success: true }>({
+              method: "post",
+              url: "component/set_type",
+              params: {
+                ...payload,
+                ...visibilityParams,
+              },
               // onSuccess() {},
               onFail() {
                 // may not work exactly right with concurrent updates... but I dont think will be a problem
@@ -425,10 +434,11 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
-              eventType: "ChangeSetWritten",
+              eventType: "ComponentUpdated",
               debounce: true,
-              callback: (writtenChangeSetId) => {
-                if (writtenChangeSetId !== changeSetId) return;
+              callback: (updated) => {
+                if (updated.changeSetPk !== changeSetId) return;
+                if (updated.componentId !== this.selectedComponentId) return;
                 this.reloadPropertyEditorData();
               },
             },

@@ -20,6 +20,7 @@ telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-tungstenite = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
 base64 = { workspace = true }

@@ -17,7 +17,7 @@ pub trait Spec {
     type Error;
 
     /// Performs setup activities to prepare the host to create [Instance]s.
-    async fn setup(&self) -> result::Result<(), Self::Error>;
+    async fn setup(&mut self) -> result::Result<(), Self::Error>;
     /// Creates and launches an [`Instance`].
     ///
     /// NOTE: the method is non-consuming so that multiple Instances can be spawned from the same
@@ -311,6 +311,9 @@ pub trait Instance {
     /// # Ok::<(), TerminationError>(())
     /// ```
     async fn terminate(&mut self) -> result::Result<(), Self::Error>;
+
+    /// Get the id of the underlying child runtime
+    fn id(&self) -> u32;
 }
 
 // async fn spawn<B, E, I, S>(builder: &B) -> Result<impl Instance<Error = E>, E>

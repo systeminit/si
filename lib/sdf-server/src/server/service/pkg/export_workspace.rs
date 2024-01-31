@@ -4,7 +4,7 @@ use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
 use chrono::Utc;
-use dal::{HistoryActor, User, Visibility, Workspace, WorkspacePk, WsEvent};
+use dal::{HistoryActor, User, Visibility, Workspace, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
@@ -87,12 +87,6 @@ pub async fn export_workspace(
                     "pkg_hash": response.latest_hash,
         }),
     );
-
-    // TODO: Is this really the WsEvent we want to send right now?
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     ctx.commit().await?;
 

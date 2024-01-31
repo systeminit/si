@@ -1,17 +1,13 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { watch } from "vue";
-
-import storage from "local-storage-fallback";
 import { ApiRequest, addStoreHooks } from "@si/vue-lib/pinia";
-
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import router from "@/router";
 import { UserId } from "@/store/auth.store";
 import { nilId } from "@/utils/nilId";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { useFeatureFlagsStore } from "./feature_flags.store";
 import { useRouterStore } from "./router.store";
 
 export type ChangeSetId = string;
@@ -20,7 +16,6 @@ export type ComponentNodeId = string;
 const HEAD_ID = nilId();
 
 export function useChangeSetsStore() {
-  const featureFlagsStore = useFeatureFlagsStore();
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
 
@@ -223,7 +218,7 @@ export function useChangeSetsStore() {
         // - change_set/update_selected_change_set (was just fetching the change set info)
 
         getAutoSelectedChangeSetId() {
-          const lastChangeSetId = storage.getItem(
+          const lastChangeSetId = sessionStorage.getItem(
             `SI:LAST_CHANGE_SET/${workspacePk}`,
           );
           if (
@@ -247,12 +242,12 @@ export function useChangeSetsStore() {
         getGeneratedChangesetName() {
           let latestNum = 0;
           _.each(this.allChangeSets, (cs) => {
-            const labelNum = parseInt(cs.name.split(" ").pop() || "");
+            const labelNum = Number(cs.name.split(" ").pop());
             if (!_.isNaN(labelNum) && labelNum > latestNum) {
               latestNum = labelNum;
             }
           });
-          return `Demo ${latestNum + 1}`;
+          return `Change Set ${latestNum + 1}`;
         },
       },
       onActivated() {
@@ -263,7 +258,7 @@ export function useChangeSetsStore() {
           () => {
             // store last used change set (per workspace) in localstorage
             if (this.selectedChangeSet && workspacePk) {
-              storage.setItem(
+              sessionStorage.setItem(
                 `SI:LAST_CHANGE_SET/${workspacePk}`,
                 this.selectedChangeSet.id,
               );
@@ -279,6 +274,15 @@ export function useChangeSetsStore() {
             callback: this.FETCH_CHANGE_SETS,
           },
           {
+            eventType: "ChangeSetAbandoned",
+            callback: async (data) => {
+              if (data.changeSetPk === this.selectedChangeSetId) {
+                await this.setActiveChangeset(HEAD_ID);
+              }
+              await this.FETCH_CHANGE_SETS();
+            },
+          },
+          {
             eventType: "ChangeSetCancelled",
             callback: (data) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -289,10 +293,7 @@ export function useChangeSetsStore() {
               const changeSet = this.changeSetsById[changeSetPk];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Abandoned;
-                if (
-                  this.selectedChangeSet?.id === changeSetPk &&
-                  featureFlagsStore.MUTLIPLAYER_CHANGESET_APPLY
-                ) {
+                if (this.selectedChangeSet?.pk === changeSetPk) {
                   this.postAbandonActor = userPk;
                 }
                 this.changeSetsById[changeSetPk] = changeSet;
@@ -312,10 +313,7 @@ export function useChangeSetsStore() {
               const changeSet = this.changeSetsById[changeSetPk];
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Applied;
-                if (
-                  this.selectedChangeSet?.id === changeSetPk &&
-                  featureFlagsStore.MUTLIPLAYER_CHANGESET_APPLY
-                ) {
+                if (this.selectedChangeSet?.pk === changeSetPk) {
                   this.postApplyActor = userPk;
                 }
                 this.changeSetsById[changeSetPk] = changeSet;
@@ -373,17 +371,6 @@ export function useChangeSetsStore() {
               if (changeSet) {
                 changeSet.status = ChangeSetStatus.Open;
               }
-            },
-          },
-
-          {
-            eventType: "ChangeSetWritten",
-            debounce: true,
-            callback: (changeSetId) => {
-              // we'll update a timestamp here so individual components can watch this to trigger something if necessary
-              // hopefully with more targeted realtime updates we won't need this, but could be useful for now
-              this.changeSetsWrittenAtById[changeSetId] = new Date();
-              this.FETCH_CHANGE_SETS();
             },
           },
           {

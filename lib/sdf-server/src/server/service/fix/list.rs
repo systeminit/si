@@ -40,11 +40,12 @@ pub async fn list(
     let mut batch_views = Vec::new();
     for batch in FixBatch::list(&ctx).await? {
         let mut batch_timed_out = false;
-        // FIXME(paulo): hardcoding 5 minutes timeout to avoid hiding broken batches forever
+        // TODO(paul): REMOVE!!! hardcoding 60 minutes timeout to avoid hiding broken batches forever
         let completion_status = if let Some(status) = batch.completion_status() {
             Some(*status)
         } else if Utc::now().signed_duration_since(batch.timestamp().created_at)
-            > chrono::Duration::minutes(5)
+            > chrono::Duration::minutes(60)
+        // we should NEVER SEE THIS HAPPENING!!!
         {
             batch_timed_out = true;
             Some(FixCompletionStatus::Failure)

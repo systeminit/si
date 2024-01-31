@@ -204,7 +204,7 @@ pub async fn migrate(pg: &PgPool, content_store_pg_pool: &PgPool) -> ModelResult
 
 #[allow(clippy::too_many_arguments)]
 #[instrument(skip_all)]
-pub async fn migrate_builtins(
+pub async fn migrate_local_builtins(
     dal_pg: &PgPool,
     nats: &NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
@@ -237,7 +237,7 @@ pub async fn migrate_builtins(
     ctx.update_to_head();
     ctx.update_snapshot_to_visibility().await?;
 
-    builtins::migrate(&ctx, selected_test_builtin_schemas).await?;
+    builtins::migrate_local(&ctx, selected_test_builtin_schemas).await?;
 
     ctx.blocking_commit().await?;
 

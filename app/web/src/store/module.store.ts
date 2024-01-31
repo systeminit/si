@@ -4,6 +4,7 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
@@ -110,6 +111,8 @@ export const useModuleStore = () => {
 
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
+
+  const featureFlagsStore = useFeatureFlagsStore();
   return addStoreHooks(
     defineStore(
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/modules`,
@@ -120,12 +123,13 @@ export const useModuleStore = () => {
             ModuleName,
             LocalModuleDetails
           >,
-
           remoteModuleSearchResults: [] as RemoteModuleSummary[],
           builtinsSearchResults: [] as RemoteModuleSummary[],
           remoteModuleDetailsById: {} as Record<ModuleId, RemoteModuleDetails>,
           remoteModuleSpecsById: {} as Record<ModuleId, ModuleSpec>,
-          installingModule: false as boolean,
+          installingModuleId: null as string | null,
+          installingError: undefined as string | undefined,
+          installingLoading: false as boolean,
         }),
         getters: {
           urlSelectedModuleSlug: () => {
@@ -305,21 +309,30 @@ export const useModuleStore = () => {
           },
 
           async INSTALL_REMOTE_MODULE(moduleId: ModuleId) {
-            this.installingModule = true;
-            return new ApiRequest<{
-              success: true;
-              skippedEdges: boolean;
-              skippedAttributes: boolean;
-            }>({
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
+            this.installingModuleId = null;
+            this.installingLoading = true;
+            this.installingError = undefined;
+
+            return new ApiRequest<{ id: string }>({
               method: "post",
               url: "/pkg/install_pkg",
-              params: { id: moduleId, ...visibility },
-              onSuccess: (_response) => {
-                // response is just success, so we have to reload local modules
-                this.LOAD_LOCAL_MODULES();
+              params: {
+                id: moduleId,
+                ...visibility,
+                overrideBuiltinSchemaFeatureFlag:
+                  featureFlagsStore.OVERRIDE_SCHEMA,
+              },
+              onSuccess: (data) => {
+                this.installingModuleId = data.id;
               },
               onFail: () => {
-                this.installingModule = false;
+                this.installingModuleId = null;
+                this.installingLoading = false;
               },
             });
           },
@@ -330,8 +343,9 @@ export const useModuleStore = () => {
               url: "/pkg/reject_pkg",
               params: { id: moduleId, ...visibility },
               onSuccess: (_response) => {
-                // response is just success, so we have to reload local modules
+                // response is just success, so we have to reload the remote modules
                 this.LOAD_LOCAL_MODULES();
+                this.SEARCH_REMOTE_MODULES();
               },
             });
           },
@@ -342,8 +356,8 @@ export const useModuleStore = () => {
               url: "/pkg/set_as_builtin",
               params: { id: moduleId, ...visibility },
               onSuccess: (_response) => {
-                // response is just success, so we have to reload local modules
-                this.LOAD_LOCAL_MODULES();
+                // response is just success, so we have to reload the remote modules
+                this.SEARCH_REMOTE_MODULES();
               },
             });
           },
@@ -375,10 +389,35 @@ export const useModuleStore = () => {
             {
               eventType: "ModuleImported",
               callback: () => {
-                if (!this.installingModule) {
+                if (!this.installingModuleId) {
                   window.location.reload();
-                } else {
-                  this.installingModule = false;
+                }
+              },
+            },
+            {
+              eventType: "AsyncFinish",
+              callback: async ({ id }: { id: string }) => {
+                if (id === this.installingModuleId) {
+                  this.installingError = undefined;
+                  this.installingModuleId = null;
+                  await this.LOAD_LOCAL_MODULES();
+                  this.installingLoading = false;
+                }
+              },
+            },
+            {
+              eventType: "AsyncError",
+              callback: async ({
+                id,
+                error,
+              }: {
+                id: string;
+                error: string;
+              }) => {
+                if (id === this.installingModuleId) {
+                  this.installingLoading = false;
+                  this.installingError = error;
+                  this.installingModuleId = null;
                 }
               },
             },

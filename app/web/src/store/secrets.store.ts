@@ -7,6 +7,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { encryptMessage } from "@/utils/messageEncryption";
 import { PropertyEditorPropWidgetKind } from "@/api/sdf/dal/property_editor";
+import { nilId } from "@/utils/nilId";
 import { ActorAndTimestamp } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
@@ -210,6 +211,11 @@ export function useSecretsStore() {
             });
           },
           async UPDATE_SECRET(secret: Secret, value?: Record<string, string>) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
             if (_.isEmpty(secret.name)) {
               throw new Error("All secrets must have a name.");
             }
@@ -325,6 +331,11 @@ export function useSecretsStore() {
             value: Record<string, string>,
             description?: string,
           ) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
             if (_.isEmpty(name)) {
               throw new Error("All secrets must have a name.");
             }
@@ -414,7 +425,13 @@ export function useSecretsStore() {
               },
             });
           },
+          // This is totally unimplemented, as of 2024-01-29 -- Adam
           async DELETE_SECRET(id: SecretId) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+
             const secret = this.secretsById[id];
 
             if (_.isNil(secret)) return;
@@ -458,22 +475,28 @@ export function useSecretsStore() {
           },
         },
         onActivated() {
-          // TODO Run load secrets on websocket message too
           this.LOAD_SECRETS();
           this.GET_PUBLIC_KEY();
 
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
-              eventType: "ChangeSetWritten",
-              debounce: true,
-              callback: (writtenChangeSetId) => {
-                // ideally we wouldn't have to check this - since the topic subscription
-                // would mean we only receive the event for this changeset already...
-                // but this is fine for now
-                if (writtenChangeSetId !== changeSetId) return;
-
-                // probably want to get pushed updates instead of blindly re-fetching, but this is the first step of getting things working
+              eventType: "ChangeSetApplied",
+              callback: () => {
+                this.LOAD_SECRETS();
+              },
+            },
+            {
+              eventType: "SecretCreated",
+              callback: (data) => {
+                if (data.changeSetPk !== changeSetId) return;
+                this.LOAD_SECRETS();
+              },
+            },
+            {
+              eventType: "SecretUpdated",
+              callback: (data) => {
+                if (data.changeSetPk !== changeSetId) return;
                 this.LOAD_SECRETS();
               },
             },

@@ -1,10 +1,9 @@
 use axum::{extract::Query, Json};
-use dal::{Component, ComponentId, ResourceView, StandardModel, Visibility};
+use dal::{ComponentId, ResourceView, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use crate::service::component::ComponentError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -27,10 +26,6 @@ pub async fn get_resource(
 ) -> ComponentResult<Json<GetResourceResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let component = Component::get_by_id(&ctx, &request.component_id)
-        .await?
-        .ok_or(ComponentError::ComponentNotFound(request.component_id))?;
-
-    let resource = ResourceView::new(component.resource(&ctx).await?);
+    let resource = ResourceView::get_by_component_id(&ctx, &request.component_id).await?;
     Ok(Json(GetResourceResponse { resource }))
 }

@@ -10,6 +10,7 @@ import keyedDebouncer from "@/utils/keyedDebouncer";
 import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -69,11 +70,6 @@ export interface DetachedValidationPrototype {
   propKind: PropKind;
 }
 
-export type ComponentType =
-  | "aggregationFrame"
-  | "component"
-  | "configurationFrame";
-
 export interface ListedVariantDef {
   id: AssetId;
   name: string;
@@ -97,11 +93,12 @@ export interface VariantDef extends ListedVariantDef {
 
 export type Asset = VariantDef;
 export type AssetListEntry = ListedVariantDef;
-export type AssetSaveRequest = Visibility &
-  Omit<Asset, "createdAt" | "updatedAt" | "variantExists" | "hasComponents">;
+export type AssetSaveRequest = Visibility & {
+  overrideBuiltinSchemaFeatureFlag: boolean;
+} & Omit<Asset, "createdAt" | "updatedAt" | "variantExists" | "hasComponents">;
 export type AssetCreateRequest = Omit<
   AssetSaveRequest,
-  "id" | "definition" | "variantExists"
+  "id" | "definition" | "variantExists" | "overrideBuiltinSchemaFeatureFlag"
 >;
 export type AssetCloneRequest = Visibility & { id: AssetId };
 
@@ -244,7 +241,7 @@ export const useAssetStore = () => {
             color: this.generateMockColor(),
             description: "",
             category: "",
-            componentType: "component",
+            componentType: ComponentType.Component,
             link: "https://www.systeminit.com/",
             funcs: [],
             createdAt: new Date().toISOString(),
@@ -308,7 +305,7 @@ export const useAssetStore = () => {
               const a = this.assetsById[id];
               if (!a) return;
               this.SAVE_ASSET(a);
-            }, 2000);
+            }, 500);
           }
           const assetSaveFunc = assetSaveDebouncer(asset.id);
           if (assetSaveFunc) {
@@ -341,6 +338,8 @@ export const useAssetStore = () => {
               };
             },
             params: {
+              overrideBuiltinSchemaFeatureFlag:
+                featureFlagsStore.OVERRIDE_SCHEMA,
               ...visibility,
               ..._.omit(asset, [
                 "schemaVariantId",
@@ -403,6 +402,8 @@ export const useAssetStore = () => {
             url: "/variant_def/exec_variant_def",
             keyRequestStatusBy: assetId,
             params: {
+              overrideBuiltinSchemaFeatureFlag:
+                featureFlagsStore.OVERRIDE_SCHEMA,
               ...visibility,
               ..._.omit(asset, [
                 "schemaVariantId",
@@ -436,10 +437,29 @@ export const useAssetStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
-            eventType: "ChangeSetWritten",
-            debounce: true,
-            callback: (writtenChangeSetId) => {
-              if (writtenChangeSetId !== changeSetId) return;
+            eventType: "SchemaVariantDefinitionCreated",
+            callback: (data) => {
+              if (data.changeSetPk !== changeSetId) return;
+              this.LOAD_ASSET_LIST();
+            },
+          },
+          {
+            eventType: "SchemaVariantDefinitionCloned",
+            callback: (data) => {
+              if (data.changeSetPk !== changeSetId) return;
+              this.LOAD_ASSET_LIST();
+            },
+          },
+          {
+            eventType: "SchemaVariantDefinitionSaved",
+            callback: (data) => {
+              if (data.changeSetPk !== changeSetId) return;
+              this.LOAD_ASSET_LIST();
+            },
+          },
+          {
+            eventType: "ChangeSetApplied",
+            callback: () => {
               this.LOAD_ASSET_LIST();
             },
           },

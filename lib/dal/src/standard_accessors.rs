@@ -662,6 +662,16 @@ macro_rules! standard_model_accessor {
         );
     };
 
+    ($column:ident, Option<DateTimeUtc>, $result_type:ident $(,)?) => {
+        standard_model_accessor!(@get_column_as_option $column, DateTimeUtc);
+        standard_model_accessor!(@set_column_with_option
+            $column,
+            DateTimeUtc,
+            $crate::standard_model::TypeHint::TimestampWithTimeZone,
+            $result_type,
+        );
+    };
+
     ($column:ident, Option<$value_type:ident>, $result_type:ident $(,)?) => {
         standard_model_accessor!(@get_column_as_option $column, $value_type);
         standard_model_accessor!(@set_column_with_option

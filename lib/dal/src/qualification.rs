@@ -15,24 +15,22 @@ use crate::{
 use crate::{AttributeValue, AttributeValueId, Func};
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct QualificationSummaryForComponent {
-    component_id: ComponentId,
-    component_name: String,
-    total: i64,
-    warned: i64,
-    succeeded: i64,
-    failed: i64,
+    pub component_id: ComponentId,
+    pub component_name: String,
+    pub total: i64,
+    pub warned: i64,
+    pub succeeded: i64,
+    pub failed: i64,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct QualificationSummary {
-    total: i64,
-    succeeded: i64,
-    warned: i64,
-    failed: i64,
-    components: Vec<QualificationSummaryForComponent>,
+    pub total: i64,
+    pub succeeded: i64,
+    pub warned: i64,
+    pub failed: i64,
+    pub components: Vec<QualificationSummaryForComponent>,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -45,18 +43,15 @@ pub enum QualificationSummaryError {
     Pg(#[from] PgError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    Transaction(#[from] TransactionsError),
 }
 
 pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;
 
 impl QualificationSummary {
-    // TODO(nick): turn this into a query for performance. The original version leveraged a query,
-    // but since qualifications are now on the prop tree, there is no longer a relevant query
-    // to help here. I'd write it, but the PR replacing the prototypes and resolvers with the prop
-    // tree is getting huge.
     #[instrument(skip_all)]
     pub async fn get_summary(ctx: &DalContext) -> QualificationSummaryResult<QualificationSummary> {
-        let mut component_summaries = Vec::new();
         let mut components_succeeded = 0;
         let mut components_warned = 0;
         let mut components_failed = 0;
@@ -102,13 +97,12 @@ impl QualificationSummary {
 
             component_summaries.push(individual_summary);
         }
-
         Ok(QualificationSummary {
             total,
             succeeded: components_succeeded,
             warned: components_warned,
             failed: components_failed,
-            components: component_summaries,
+            components: qualification_summary_for_components,
         })
     }
 }

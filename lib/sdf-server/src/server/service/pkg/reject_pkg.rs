@@ -7,7 +7,7 @@ use crate::{
 };
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::{HistoryActor, User, Visibility, WsEvent};
+use dal::{HistoryActor, User, Visibility};
 use module_index_client::IndexClient;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
@@ -72,10 +72,6 @@ pub async fn reject_pkg(
         }),
     );
 
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
     ctx.commit().await?;
 
     Ok(Json(RejectPkgResponse { success: true }))

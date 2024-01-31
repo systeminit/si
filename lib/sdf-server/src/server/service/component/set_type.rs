@@ -71,11 +71,6 @@ pub async fn set_type(
         }),
     );
 
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
-
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();

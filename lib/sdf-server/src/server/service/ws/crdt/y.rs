@@ -34,7 +34,7 @@ impl Sink<Vec<u8>> for YSink {
     fn start_send(mut self: Pin<&mut Self>, payload: Vec<u8>) -> Result<(), Self::Error> {
         let (nats, channel) = (self.nats.clone(), self.channel.clone());
         self.future = Some(Box::pin(async move {
-            nats.publish(channel, payload)
+            nats.publish(channel, payload.into())
                 .await
                 .map_err(|err| Error::Other(err.into()))
         }));
@@ -76,7 +76,9 @@ impl Stream for YStream {
         match Pin::new(&mut self.0).poll_next(cx) {
             Poll::Pending => Poll::Pending,
             Poll::Ready(None) => Poll::Ready(None),
-            Poll::Ready(Some(message)) => Poll::Ready(Some(Ok(message.payload().to_owned()))),
+            Poll::Ready(Some(message)) => {
+                Poll::Ready(Some(Ok(message.into_parts().0.payload.into())))
+            }
         }
     }
 }

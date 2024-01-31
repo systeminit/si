@@ -22,12 +22,13 @@ groups = {
         "web",
     ],
 }
+
 # Add "all" group as a sorted set of all services
 _all = {}
 for group_values in groups.values():
     for value in group_values:
-        _all.update({ value: True })
-groups.update({ "all": sorted(_all.keys()) })
+        _all.update({value: True})
+groups.update({"all": sorted(_all.keys())})
 
 # Parse the CLI args to enable group names and/or individual service names
 enabled_resources = []
@@ -69,7 +70,13 @@ allow_k8s_contexts(k8s_context())
 docker_compose("./docker-compose.platform.yml")
 compose_services = ["jaeger", "nats", "otelcol", "postgres", "rabbitmq"]
 for service in compose_services:
-    dc_resource(service, labels = ["platform"])
+    if service == "jaeger":
+        links = [
+            link("http://localhost:16686", "ui"),
+        ]
+    else:
+        links = []
+    dc_resource(service, links = links, labels = ["platform"])
 
 # Locally build and run `rebaser-server`
 rebaser_target = "//bin/rebaser:rebaser"
@@ -99,10 +106,10 @@ local_resource(
     auto_init = False,
     resource_deps = [
         "otelcol",
-        "postgres"
+        "postgres",
     ],
     deps = _buck2_dep_inputs(module_index_target),
-    trigger_mode = trigger_mode
+    trigger_mode = trigger_mode,
 )
 
 # Locally build and run `council`
@@ -146,6 +153,9 @@ local_resource(
     labels = ["backend"],
     cmd = "buck2 build {}".format(veritech_target),
     serve_cmd = "SI_LOG=debug buck2 run {}".format(veritech_target),
+    # This is the serve command you might need if you want to execute on firecracker for 10 functione executions.
+    # NB: BUCK2 MUST RUN AS ROOT OR THIS WILL NOT WORK
+    # serve_cmd = "SI_LOG=debug buck2 run {} -- --cyclone-local-firecracker --cyclone-pool-size 10".format(veritech_target),
     allow_parallel = True,
     resource_deps = [
         "nats",
@@ -175,10 +185,10 @@ local_resource(
     deps = _buck2_dep_inputs(sdf_target),
     trigger_mode = trigger_mode,
     readiness_probe = probe(
-        period_secs  = 5,
+        period_secs = 5,
         http_get = http_get_action(
             port = 5156,
-            path = "/api/"
+            path = "/api/",
         ),
     ),
     links = [
@@ -198,7 +208,7 @@ local_resource(
         "sdf",
     ],
     readiness_probe = probe(
-        period_secs  = 5,
+        period_secs = 5,
         http_get = http_get_action(
             port = 8080,
         ),

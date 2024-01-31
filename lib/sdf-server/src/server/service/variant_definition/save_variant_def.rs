@@ -19,6 +19,7 @@ pub struct SaveVariantDefRequest {
     pub code: String,
     pub description: Option<String>,
     pub component_type: ComponentType,
+    pub override_builtin_schema_feature_flag: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -69,10 +70,11 @@ pub async fn save_variant_def(
         }),
     );
 
-    WsEvent::change_set_written(&ctx)
+    WsEvent::schema_variant_definition_saved(&ctx, request.id)
         .await?
         .publish_on_commit(&ctx)
         .await?;
+
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();

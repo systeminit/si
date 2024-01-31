@@ -262,8 +262,12 @@ impl RootProp {
                         "value": "component",
                     },
                     {
-                        "label": "Configuration Frame",
-                        "value": "configurationFrame",
+                        "label": "Configuration Frame (down)",
+                        "value": "configurationFrameDown",
+                    },
+                    {
+                        "label": "Configuration Frame (up)",
+                        "value": "configurationFrameUp",
                     },
                     {
                         "label": "Aggregation Frame",

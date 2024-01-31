@@ -10,7 +10,7 @@ use thiserror::Error;
 use crate::edge::EdgeKind;
 use crate::standard_model::objects_from_rows;
 use crate::{
-    impl_standard_model, pk, schema::variant::SchemaVariantError, standard_model,
+    diagram, impl_standard_model, pk, schema::variant::SchemaVariantError, standard_model,
     standard_model_accessor, standard_model_belongs_to, Component, ComponentId, HistoryEventError,
     StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
@@ -46,6 +46,8 @@ pub enum NodeError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("summary diagram update error: {0}")]
+    SummaryDiagram(String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
 }
@@ -117,7 +119,9 @@ impl Node {
                 &[ctx.tenancy(), ctx.visibility(), &kind.as_ref()],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(ctx, row).await?;
+        let object = standard_model::finish_create_from_row(ctx, row)
+            .await
+            .map_err(|e| NodeError::SummaryDiagram(e.to_string()))?;
         Ok(object)
     }
 
@@ -292,6 +296,16 @@ impl Node {
         self.set_height(ctx, height.as_ref().map(|val| val.as_ref()))
             .await?;
 
+        diagram::summary_diagram::component_update_geometry(
+            ctx,
+            self.id(),
+            x.as_ref(),
+            y.as_ref(),
+            width.as_ref(),
+            height.as_ref(),
+        )
+        .await
+        .map_err(|e| NodeError::SummaryDiagram(e.to_string()))?;
         Ok(())
     }
 }

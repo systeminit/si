@@ -107,6 +107,8 @@ pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
 
 pk!(SchemaVariantId);
 
+type DateTimeUtc = chrono::DateTime<chrono::Utc>;
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct SchemaVariant {
     id: SchemaVariantId,

@@ -24,7 +24,14 @@
       </TransitionChild>
 
       <div class="fixed inset-0 overflow-y-auto">
-        <div class="flex min-h-full items-center justify-center text-center">
+        <div
+          :class="
+            clsx(
+              'flex min-h-full items-center justify-center',
+              !noWrapper && 'text-center',
+            )
+          "
+        >
           <TransitionChild
             as="template"
             enter="duration-300 ease-out"
@@ -38,10 +45,9 @@
               :class="
                 clsx(
                   props.class,
-                  'w-full rounded text-left align-middle shadow-2xl',
-                  'flex flex-col-reverse',
+                  !noWrapper &&
+                    'w-full rounded text-left align-middle shadow-2xl flex flex-col-reverse bg-white dark:bg-neutral-900 text-shade-100 dark:text-white',
                   'transform transition-all',
-                  'bg-white dark:bg-neutral-900 text-shade-100 dark:text-white',
                   'max-h-full',
                   {
                     sm: 'max-w-sm',
@@ -56,11 +62,19 @@
               "
             >
               <div
-                class="p-sm border-t border-gray-200 dark:border-gray-900 flex flex-col place-content-center text-sm"
+                :class="
+                  clsx(
+                    'border-t border-gray-200 dark:border-gray-900 flex flex-col place-content-center text-sm',
+                    !noInnerPadding && 'p-sm',
+                  )
+                "
               >
                 <slot />
 
-                <div v-if="type === 'save'" class="py-3 flex justify-between">
+                <div
+                  v-if="type === 'save' && !noWrapper"
+                  class="py-3 flex justify-between"
+                >
                   <VButton
                     tone="destructive"
                     buttonRank="tertiary"
@@ -80,7 +94,12 @@
                 </div>
               </div>
 
-              <div class="flex justify-between items-center p-sm">
+              <div
+                v-if="!noWrapper"
+                :class="
+                  clsx('flex justify-between items-center p-sm', titleClasses)
+                "
+              >
                 <DialogTitle
                   as="p"
                   :class="
@@ -154,6 +173,9 @@ const props = defineProps({
   },
   noAutoFocus: Boolean,
   class: String,
+  noWrapper: Boolean,
+  titleClasses: String,
+  noInnerPadding: Boolean,
 });
 
 // make modal a new "theme container" but by passing no value, we reset the theme back to the root theme

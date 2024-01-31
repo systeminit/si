@@ -7,6 +7,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use tracing::trace;
 
 use async_trait::async_trait;
 use cyclone_core::{
@@ -42,6 +43,8 @@ pub enum ClientError {
     ClientUri(#[source] http::Error),
     #[error("failed to connect")]
     Connect(#[source] Box<dyn std::error::Error + Send + Sync>),
+    #[error("failed to connect to the Firecracker VM")]
+    FirecrackerConnect,
     #[error("invalid liveness status")]
     InvalidLivenessStatus(#[from] LivenessStatusParseError),
     #[error("invalid readiness status")]
@@ -199,7 +202,7 @@ impl Client<(), (), ()> {
     // select behavior over.
     pub fn uds(
         socket: impl Into<PathBuf>,
-        firecracker_connect: bool,
+        config: Arc<ClientConfig>,
     ) -> Result<Client<UnixConnector, UnixStream, PathBuf>> {
         let socket = socket.into();
         let connector = UnixConnector;
@@ -215,10 +218,6 @@ impl Client<(), (), ()> {
             .path_and_query("/")
             .build()
             .map_err(ClientError::ClientUri)?;
-        let config = Arc::new(ClientConfig {
-            firecracker_connect,
-            ..ClientConfig::default()
-        });
 
         Ok(Client {
             config,
@@ -420,17 +419,56 @@ where
         self.inner_client.request(req)
     }
 
-    async fn connect(&mut self, mut stream: Strm) -> Result<Strm> {
-        let connect_cmd = format!("CONNECT {}\n", 52);
-        stream.write_all(connect_cmd.as_bytes()).await?;
-        // We need to read off the response to clear the stream
-        let mut connect_response = Vec::<u8>::new();
-        loop {
-            let mut single_byte = vec![0; 1];
-            stream.read_exact(&mut single_byte).await?;
-            connect_response.push(single_byte[0]);
-            if single_byte == [b'\n'] {
-                break;
+    async fn connect(&mut self) -> Result<Strm> {
+        let mut stream = self
+            .connector
+            .call(self.uri.clone())
+            .await
+            .map_err(|err| ClientError::Connect(err.into()))?;
+
+        // Firecracker requires a special connection method to be inserted at the head of the
+        // stream.
+        if self.config.firecracker_connect {
+            let connect_cmd = "CONNECT 52\n";
+            let mut retries = 30;
+            let mut single_byte = vec![0u8; 1];
+
+            trace!("cyclone-execution: connecting to Firecracker");
+            stream.write_all(connect_cmd.as_bytes()).await?;
+
+            loop {
+                // We need to read off the response to clear the stream, but sometimes this connect
+                // message hangs if the VM is still being allocated when we ask.
+                stream = match tokio::time::timeout(
+                    self.config.connect_timeout,
+                    stream.read_exact(&mut single_byte),
+                )
+                .await
+                {
+                    Ok(_) => {
+                        if single_byte == [b'\n'] || single_byte == [b'\0'] {
+                            break;
+                        };
+                        stream
+                    }
+                    Err(_) => {
+                        // We timed out, let's get a new stream and try again.
+                        trace!("cyclone-execution: connect timeout, retrying");
+                        retries -= 1;
+                        stream.shutdown().await?;
+                        stream = self
+                            .connector
+                            .call(self.uri.clone())
+                            .await
+                            .map_err(|err| ClientError::Connect(err.into()))?;
+                        stream.write_all(connect_cmd.as_bytes()).await?;
+                        stream
+                    }
+                };
+
+                if retries <= 0 {
+                    return Err(ClientError::FirecrackerConnect);
+                }
             }
         }
         Ok(stream)
@@ -440,15 +478,7 @@ where
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
-        let mut stream = self
-            .connector
-            .call(self.uri.clone())
-            .await
-            .map_err(|err| ClientError::Connect(err.into()))?;
-
-        if self.config.firecracker_connect {
-            stream = self.connect(stream).await?;
-        }
+        let stream = self.connect().await?;
 
         let uri = self.new_ws_request(path_and_query)?;
         let (websocket_stream, response) = tokio_tungstenite::client_async(uri, stream)
@@ -463,14 +493,16 @@ where
 }
 
 #[derive(Debug)]
-struct ClientConfig {
-    firecracker_connect: bool,
-    watch_timeout: Duration,
+pub struct ClientConfig {
+    pub connect_timeout: Duration,
+    pub firecracker_connect: bool,
+    pub watch_timeout: Duration,
 }
 
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
+            connect_timeout: Duration::from_millis(10),
             // firecracker-setup: change firecracker_connect to "true"
             firecracker_connect: false,
             watch_timeout: Duration::from_secs(10),
@@ -489,9 +521,8 @@ mod tests {
         ComponentKind, ComponentView, CycloneDecryptionKey, FunctionResult, ProgressMessage,
         ResolverFunctionComponent, ValidationRequest,
     };
-    use cyclone_server::{Config, ConfigBuilder, Server, UdsIncomingStream};
+    use cyclone_server::{Config, ConfigBuilder, Runnable as _, Server};
     use futures::StreamExt;
-    use hyper::server::conn::AddrIncoming;
     use serde_json::json;
     use sodiumoxide::crypto::box_::PublicKey;
     use tempfile::{NamedTempFile, TempPath};
@@ -553,7 +584,7 @@ mod tests {
         builder: &mut ConfigBuilder,
         tmp_socket: &TempPath,
         key: CycloneDecryptionKey,
-    ) -> Server<UdsIncomingStream, PathBuf> {
+    ) -> Server {
         let config = builder
             .unix_domain_socket(tmp_socket)
             .try_lang_server_path(lang_server_path())
@@ -561,7 +592,7 @@ mod tests {
             .build()
             .expect("failed to build config");
 
-        Server::uds(config, Box::new(telemetry::NoopClient), key)
+        Server::from_config(config, Box::new(telemetry::NoopClient), key)
             .await
             .expect("failed to init server")
     }
@@ -572,16 +603,18 @@ mod tests {
         key: CycloneDecryptionKey,
     ) -> UdsClient {
         let server = uds_server(builder, tmp_socket, key).await;
-        let path = server.local_socket().clone();
+        let path = server
+            .local_socket()
+            .as_domain_socket()
+            .expect("expected a domain socket")
+            .to_owned();
         tokio::spawn(async move { server.run().await });
+        let config = Arc::new(ClientConfig::default());
 
-        Client::uds(path, false).expect("failed to create uds client")
+        Client::uds(path, config).expect("failed to create uds client")
     }
 
-    async fn http_server(
-        builder: &mut ConfigBuilder,
-        key: CycloneDecryptionKey,
-    ) -> Server<AddrIncoming, SocketAddr> {
+    async fn http_server(builder: &mut ConfigBuilder, key: CycloneDecryptionKey) -> Server {
         let config = builder
             .http_socket("127.0.0.1:0")
             .expect("failed to resolve socket addr")
@@ -590,7 +623,9 @@ mod tests {
             .build()
             .expect("failed to build config");
 
-        Server::http(config, Box::new(telemetry::NoopClient), key).expect("failed to init server")
+        Server::from_config(config, Box::new(telemetry::NoopClient), key)
+            .await
+            .expect("failed to init server")
     }
 
     async fn http_client_for_running_server(
@@ -598,7 +633,10 @@ mod tests {
         key: CycloneDecryptionKey,
     ) -> HttpClient {
         let server = http_server(builder, key).await;
-        let socket = *server.local_socket();
+        let socket = *server
+            .local_socket()
+            .as_socket_addr()
+            .expect("expected a socket addr");
         tokio::spawn(async move { server.run().await });
 
         Client::http(socket).expect("failed to create client")

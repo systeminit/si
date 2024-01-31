@@ -56,7 +56,7 @@ export type IconType = keyof typeof CONFIG;
 
 <!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
-import { computed, PropType } from "vue";
+import { computed } from "vue";
 import { Icon, IconSizes, IconNames, Tones } from "@si/vue-lib/design-system";
 
 // TODO: remove this after refactoring StatusMessageBox
@@ -78,15 +78,12 @@ export type Status =
 
 // NOTE - would ideally pull in the real types here but generics are not yet supported
 // could also think about breaking this into multiple components, but it's nice to keep things consistent
-const props = defineProps({
-  type: { type: String as PropType<IconType>, required: true },
-  status: { type: String },
-  size: { type: String as PropType<IconSizes> },
-  tone: {
-    type: String as PropType<Tones | "inherit">,
-    required: false,
-  },
-});
+const props = defineProps<{
+  type: string;
+  status?: string | null;
+  size?: IconSizes;
+  tone?: Tones | "inherit";
+}>();
 
 const iconName = computed<IconNames>(
   () =>

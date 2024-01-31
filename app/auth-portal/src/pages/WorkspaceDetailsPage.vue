@@ -172,6 +172,22 @@
           </Stack>
         </template>
       </div>
+      <div
+        v-if="featureFlagsStore.DELETE_WORKSPACE && canInviteUsers"
+        class="pt-md"
+      >
+        <VButton
+          iconRight="chevron--right"
+          :disabled="!canInviteUsers"
+          :requestStatus="deleteWorkspaceReqStatus"
+          loadingText="Deleting..."
+          tone="action"
+          variant="solid"
+          @click="() => deleteWorkspace()"
+        >
+          Delete Workspace
+        </VButton>
+      </div>
     </template>
   </div>
 </template>
@@ -225,6 +241,8 @@ const inviteUserReqStatus = workspacesStore.getRequestStatus(
   "INVITE_USER",
   "email",
 );
+const deleteWorkspaceReqStatus =
+  workspacesStore.getRequestStatus("DELETE_WORKSPACE");
 
 const createMode = computed(() => props.workspaceId === "new");
 const canInviteUsers = computed(
@@ -288,6 +306,17 @@ const editWorkspace = async () => {
     //   });
     // }, 500);
     return;
+  }
+};
+
+const deleteWorkspace = async () => {
+  const res = await workspacesStore.DELETE_WORKSPACE(props.workspaceId);
+  if (res.result.success) {
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    await router.push({
+      name: "dashboard",
+      params: {},
+    });
   }
 };
 

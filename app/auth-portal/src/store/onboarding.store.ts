@@ -2,9 +2,7 @@ import * as _ from "lodash-es";
 import { defineStore } from "pinia";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { watch } from "vue";
-import Axios from "axios";
 import { posthog } from "posthog-js";
-import storage from "local-storage-fallback";
 import { tracker } from "@/lib/posthog";
 import { useAuthStore } from "./auth.store";
 
@@ -29,15 +27,9 @@ export const useOnboardingStore = () => {
             authStore.user?.onboardingDetails?.vroStepsCompletedAt,
             (timestamp, _stepName) => !!timestamp,
           ),
-
-          devBackendOnline: false,
-          devFrontendOnline: false,
         };
       },
-      getters: {
-        devInstanceOnline: (state) =>
-          state.devBackendOnline && state.devFrontendOnline,
-      },
+      getters: {},
       actions: {
         handleNewFeatureFlags() {
           // check if github access gate has been lifted
@@ -66,34 +58,6 @@ export const useOnboardingStore = () => {
           //     }
           //   },
           // );
-        },
-
-        async checkDevEnvOnline() {
-          try {
-            const _req = await Axios.get("http://localhost:8080/up.txt");
-            this.devFrontendOnline = true;
-          } catch (err) {
-            this.devFrontendOnline = false;
-          }
-
-          try {
-            const _req = await Axios.get("http://localhost:5156/api/");
-            this.devBackendOnline = true;
-          } catch (err) {
-            this.devBackendOnline = false;
-          }
-
-          // this is first time user has dev setup online, track it
-          if (
-            !this.stepsCompleted.install_and_run_system_initiative &&
-            !storage.getItem("tracked-dev-env-online") &&
-            this.devFrontendOnline &&
-            this.devBackendOnline
-          ) {
-            storage.setItem("tracked-dev-env-online", "y");
-            tracker.trackEvent("dev_env_online");
-            // will toggle posthog.isFeatureEnabled("vro_dev-setup-completed") &&
-          }
         },
         async COMPLETE_TUTORIAL_STEP(step: string) {
           const authStore = useAuthStore();
@@ -136,14 +100,9 @@ export const useOnboardingStore = () => {
           { immediate: true },
         );
 
-        const checkDevEnvInterval = setInterval(this.checkDevEnvOnline, 5000);
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        this.checkDevEnvOnline();
-
         return () => {
           stopWatchLoggedIn();
           clearInterval(refreshFeatureFlagInterval);
-          clearInterval(checkDevEnvInterval);
         };
       },
     }),

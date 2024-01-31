@@ -45,6 +45,8 @@ members = [
     "lib/si-std",
     "lib/si-test-macros",
     "lib/telemetry-application-rs",
+    "lib/telemetry-http-rs",
+    "lib/telemetry-nats-rs",
     "lib/telemetry-rs",
     "lib/veritech-client",
     "lib/veritech-core",
@@ -52,7 +54,7 @@ members = [
 ]
 
 [workspace.dependencies]
-async-nats = "0.33.0"
+async-nats = { version = "0.33.0", features = ["service"] }
 async-recursion = "1.0.4"
 async-trait = "0.1.68"
 axum = { version = "0.6.18", features = ["macros", "multipart", "ws"] } # todo: upgrade this alongside hyper/http/tokio-tungstenite
@@ -120,7 +122,7 @@ regex = "1.8.1"
 remain = "0.2.8"
 reqwest = { version = "0.11.17", default-features = false, features = ["rustls-tls", "json", "multipart"] }
 ring = "=0.17.5" # Upgrading this is possible, but a pain, so we don't want to pick up every new minor version (see: https://github.com/facebook/buck2/commit/91af40b66960d003067c3d241595fb53d1e636c8)
-rustls = { version = "0.21.1" } # pinned because ring above depends on it
+rustls = { version = "0.22.2" }
 rustls-pemfile = { version = "2.0.0" }
 rust-s3 = { version = "0.34.0-rc4", default-features = false, features = ["tokio-rustls-tls"] }
 sea-orm = { version = "0.12.0", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "debug-print"] }
@@ -141,12 +143,12 @@ test-log = { version = "0.2.11", default-features = false, features = ["trace"] 
 thiserror = "1.0.40"
 tokio = { version = "1.28.0", features = ["full"] }
 tokio-postgres = { version = "0.7.8", features = ["runtime", "with-chrono-0_4", "with-serde_json-1"] }
-tokio-postgres-rustls = { version = "0.10.0" }
+tokio-postgres-rustls = { version = "0.11.0" }
 tokio-serde = { version = "0.8.0", features = ["json"] }
 tokio-stream = "0.1.14"
 tokio-test = "0.4.2"
 tokio-tungstenite = "0.20.1" # todo: pinning back from 0.21.0, upgrade this alongside hyper/http/axum/tokio-tungstenite,tower-http
-tokio-util = { version = "0.7.8", features = ["codec"] }
+tokio-util = { version = "0.7.8", features = ["codec", "rt"] }
 tokio-vsock = { version = "0.4.0"}
 toml = { version = "0.8.8" }
 tower = "0.4.13"
@@ -175,3 +177,6 @@ docker-api = { git = "https://github.com/vv9k/docker-api-rs.git", branch = "mast
 # https://github.com/durch/rust-s3/pull/372
 # Note that this helps us to narrow down the number of `ring`/`rustls` versions to 1 each
 rust-s3 = { git = "https://github.com/ScuffleTV/rust-s3.git", branch = "troy/rustls" }
+# pending a potential merge and release of
+# https://github.com/jbg/tokio-postgres-rustls/pull/18
+tokio-postgres-rustls = { git = "https://github.com/jbg/tokio-postgres-rustls.git", branch = "master" }

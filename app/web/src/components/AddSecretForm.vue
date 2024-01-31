@@ -1,14 +1,17 @@
 <template>
   <div
     :class="
-      clsx('w-full h-full flex flex-col overflow-hidden', themeContainerClasses)
+      clsx(
+        'w-full h-full grow flex flex-col overflow-hidden',
+        themeContainerClasses,
+      )
     "
   >
     <div
       v-if="addSecretReqStatus.isSuccess || editSecretReqStatus.isSuccess"
-      class="grow flex flex-row items-center"
+      class="grow flex flex-col items-center justify-center"
     >
-      <div class="w-full text-center text-2xl font-bold">
+      <div class="text-2xl font-bold w-full text-center">
         <template v-if="editingSecret">Secret Updated!</template>
         <template v-else>Secret Stored!</template>
       </div>
@@ -301,6 +304,8 @@ const updateSecret = async () => {
 const fieldInputType = (field: SecretFormSchema) => {
   if (field.widgetKind.kind === "password") {
     return "password";
+  } else if (field.widgetKind.kind === "textArea") {
+    return "textarea";
   } else {
     return "text";
   }

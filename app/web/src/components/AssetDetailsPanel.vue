@@ -140,8 +140,8 @@
       class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
     >
       <template v-if="props.assetId"
-        >Asset "{{ props.assetId }}" does not exist!</template
-      >
+        >Asset "{{ props.assetId }}" does not exist!
+      </template>
       <template v-else>Select an asset to view its details.</template>
     </div>
     <Modal
@@ -165,20 +165,21 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from "vue";
 import {
+  ErrorMessage,
+  Modal,
+  RequestStatusMessage,
+  ScrollArea,
+  Stack,
   VButton,
   VormInput,
-  RequestStatusMessage,
-  Modal,
-  ErrorMessage,
-  Stack,
-  ScrollArea,
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { FuncVariant } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
-import { useFuncStore, FuncId } from "@/store/func/funcs.store";
+import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import { nilId } from "@/utils/nilId";
 import { useComponentsStore } from "@/store/components.store";
+import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 
@@ -208,9 +209,19 @@ const openAttachModal = (warning: {
 };
 
 const componentTypeOptions = [
-  { label: "Aggregation Frame", value: "aggregationFrame" },
-  { label: "Component", value: "component" },
-  { label: "Configuration Frame", value: "configurationFrame" },
+  {
+    label: "Aggregation Frame",
+    value: ComponentType.AggregationFrame,
+  },
+  { label: "Component", value: ComponentType.Component },
+  {
+    label: "Configuration Frame (down)",
+    value: ComponentType.ConfigurationFrameDown,
+  },
+  {
+    label: "Configuration Frame (up)",
+    value: ComponentType.ConfigurationFrameUp,
+  },
 ];
 
 const attachModalRef = ref<InstanceType<typeof AssetFuncAttachModal>>();
@@ -257,19 +268,8 @@ const executeAsset = async () => {
     const result = await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
     if (result.result.success) {
       executeAssetModalRef.value?.open();
-      const {
-        schemaVariantId,
-        detachedValidationPrototypes,
-        detachedAttributePrototypes,
-      } = result.result.data;
-
-      for (const detached of detachedValidationPrototypes) {
-        detachedWarnings.value.push({
-          funcId: detached.funcId,
-          variant: FuncVariant.Validation,
-          message: `Validation ${detached.funcName} detached from asset because the property associated to it changed (Path=${detached.propPath} of Kind=${detached.propKind})`,
-        });
-      }
+      const { schemaVariantId, detachedAttributePrototypes } =
+        result.result.data;
 
       for (const detached of detachedAttributePrototypes) {
         if (

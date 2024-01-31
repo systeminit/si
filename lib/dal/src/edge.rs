@@ -25,6 +25,8 @@ use crate::{
 const LIST_PARENTS_FOR_COMPONENT: &str =
     include_str!("queries/edge/list_parents_for_component.sql");
 const LIST_CHILDREN_FOR_NODE: &str = include_str!("queries/edge/list_children_for_node.sql");
+const LIST_CHILDREN_FOR_COMPONENT: &str =
+    include_str!("queries/edge/list_children_for_component.sql");
 const LIST_FOR_COMPONENT: &str = include_str!("queries/edge/list_for_component.sql");
 const LIST_FOR_KIND: &str = include_str!("queries/edge/list_for_kind.sql");
 const FIND_DELETED_EQUIVALENT: &str = include_str!("queries/edge/find_deleted_equivalent.sql");
@@ -42,6 +44,8 @@ pub enum EdgeError {
     AttributeValueNotFound,
     #[error("component error: {0}")]
     Component(String),
+    #[error("cannot find component for id: {0}")]
+    ComponentNotFound(ComponentId),
     #[error("cannot find component for node id: {0}")]
     ComponentNotFoundForNode(NodeId),
     #[error("edge not found for id: {0}")]
@@ -72,6 +76,8 @@ pub enum EdgeError {
     Node(#[from] NodeError),
     #[error("cannot find node id: {0}")]
     NodeNotFound(NodeId),
+    #[error("cannot find parent component for id: {0}")]
+    ParentComponentNotFound(ComponentId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("cannot restore edge ({0}) to deleted node: {1}")]
@@ -86,6 +92,8 @@ pub enum EdgeError {
     SocketNotFound(SocketId),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("summary diagram error: {0}")]
+    SummaryDiagram(String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
 }
@@ -211,6 +219,9 @@ impl Edge {
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
+        diagram::summary_diagram::create_edge_entry(ctx, &object)
+            .await
+            .map_err(|e| EdgeError::SummaryDiagram(e.to_string()))?;
         Ok(object)
     }
 
@@ -323,7 +334,7 @@ impl Edge {
 
     pub async fn list_children_for_node(
         ctx: &DalContext,
-        tail_node_id: NodeId,
+        node_id: NodeId,
     ) -> EdgeResult<Vec<NodeId>> {
         let rows = ctx
             .txns()
@@ -331,34 +342,79 @@ impl Edge {
             .pg()
             .query(
                 LIST_CHILDREN_FOR_NODE,
-                &[ctx.tenancy(), ctx.visibility(), &tail_node_id],
+                &[ctx.tenancy(), ctx.visibility(), &node_id],
             )
             .await?;
-        let objects = rows
-            .into_iter()
-            .map(|row| row.get("head_node_id"))
-            .collect();
+        let objects = rows.into_iter().map(|row| row.get("node_id")).collect();
         Ok(objects)
     }
 
-    pub async fn list_parents_for_component(
+    pub async fn list_children_for_component(
         ctx: &DalContext,
-        head_component_id: ComponentId,
+        component_id: ComponentId,
     ) -> EdgeResult<Vec<ComponentId>> {
         let rows = ctx
             .txns()
             .await?
             .pg()
             .query(
-                LIST_PARENTS_FOR_COMPONENT,
-                &[ctx.tenancy(), ctx.visibility(), &head_component_id],
+                LIST_CHILDREN_FOR_COMPONENT,
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
-        let objects = rows
-            .into_iter()
-            .map(|row| row.get("tail_object_id"))
-            .collect();
+        let objects = rows.into_iter().map(|row| row.get("object_id")).collect();
         Ok(objects)
+    }
+
+    pub async fn get_parent_for_component(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> EdgeResult<Option<ComponentId>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                LIST_PARENTS_FOR_COMPONENT,
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+        let objects: Vec<ComponentId> = rows.into_iter().map(|row| row.get("object_id")).collect();
+
+        Ok(if objects.is_empty() {
+            None
+        } else {
+            // NOTE(victor) This should fail in the future, or we could auto update components for backwards compat?
+            if objects.len() > 1 {
+                warn!(
+                    "Component({}) has more than one parent edge! Obsolete diagram data",
+                    component_id
+                );
+            }
+            Some(objects[0])
+        })
+    }
+
+    pub async fn detach_component_from_parent(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> EdgeResult<ComponentId> {
+        let child_comp = Component::get_by_id(ctx, &component_id)
+            .await?
+            .ok_or(EdgeError::ComponentNotFound(component_id))?;
+
+        let parent_id = Edge::get_parent_for_component(ctx, component_id)
+            .await?
+            .ok_or(EdgeError::ParentComponentNotFound(component_id))?;
+
+        let child_edges = Edge::list_for_component(ctx, *child_comp.id()).await?;
+        for mut child_edge in child_edges {
+            if child_edge.head_component_id() == parent_id {
+                child_edge.delete_and_propagate(ctx).await?;
+            }
+        }
+
+        Ok(parent_id)
     }
 
     pub async fn list_for_component(
@@ -392,6 +448,28 @@ impl Edge {
     }
 
     pub async fn delete_and_propagate(&mut self, ctx: &DalContext) -> EdgeResult<()> {
+        let actor_user_pk = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => Some(*user_pk),
+            _ => None,
+        };
+
+        ctx.txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT * FROM edge_deletion_v1($1, $2, $3, $4)",
+                &[ctx.tenancy(), ctx.visibility(), self.id(), &actor_user_pk],
+            )
+            .await?;
+
+        diagram::summary_diagram::delete_edge_entry(ctx, self)
+            .await
+            .map_err(|e| EdgeError::SummaryDiagram(e.to_string()))?;
+
+        if *self.kind() == EdgeKind::Symbolic {
+            return Ok(());
+        }
+
         let head_component_id = *{
             let head_node = Node::get_by_id(ctx, &self.head_node_id())
                 .await?
@@ -453,20 +531,6 @@ impl Edge {
 
         edge_argument.delete_by_id(ctx).await?;
 
-        let actor_user_pk = match ctx.history_actor() {
-            HistoryActor::User(user_pk) => Some(*user_pk),
-            _ => None,
-        };
-        let _rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                "SELECT * FROM edge_deletion_v1($1, $2, $3, $4)",
-                &[ctx.tenancy(), ctx.visibility(), self.id(), &actor_user_pk],
-            )
-            .await?;
-
         let read_context = AttributeReadContext {
             prop_id: Some(PropId::NONE),
             internal_provider_id: Some(internal_provider_id),
@@ -486,6 +550,10 @@ impl Edge {
             vec![*attr_value.id()],
         ))
         .await?;
+
+        diagram::summary_diagram::delete_edge_entry(ctx, self)
+            .await
+            .map_err(|e| EdgeError::SummaryDiagram(e.to_string()))?;
 
         Ok(())
     }
@@ -510,7 +578,7 @@ impl Edge {
         let tail_node_id = &deleted_edge.tail_node_id();
         let maybe_tail_node = Node::get_by_id(ctx_with_deleted, tail_node_id).await?;
 
-        // we need to check if the head node is
+        // we need to check if either sides of the edge are not deleted
         if let Some(head_node) = maybe_head_node {
             if head_node.visibility().change_set_pk == ctx.visibility().change_set_pk
                 && head_node.visibility().deleted_at.is_some()
@@ -536,9 +604,19 @@ impl Edge {
         let head_socket_id = &deleted_edge.head_socket_id();
         let tail_socket_id = &deleted_edge.tail_socket_id();
 
+        let edge_kind = deleted_edge.kind;
+
+        diagram::summary_diagram::restore_edge_entry(ctx, &deleted_edge)
+            .await
+            .map_err(|e| EdgeError::SummaryDiagram(e.to_string()))?;
+
         // Note(victor): We hard delete the edge on the changeset so the status calculations
         // does not think it is a newly created one (Yeah yeah I know I know)
         deleted_edge.hard_delete(ctx_with_deleted).await?;
+
+        if edge_kind == EdgeKind::Symbolic {
+            return Ok(Edge::get_by_id(ctx, &edge_id).await?);
+        }
 
         // Restore the Attribute Prototype Argument
         let head_component_id = *{
@@ -620,8 +698,6 @@ impl Edge {
             vec![*attr_value.id()],
         ))
         .await?;
-
-        debug!("searching for original edge: {edge_id}");
 
         Ok(Edge::get_by_id(ctx, &edge_id).await?)
     }

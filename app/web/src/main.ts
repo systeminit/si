@@ -15,6 +15,7 @@ import "./utils/posthog";
 import router from "./router";
 import store from "./store";
 
+// this is for joi - because we are importing the source rather than the default build made for the browser
 globalThis.Buffer = Buffer;
 
 const app = createApp(App);

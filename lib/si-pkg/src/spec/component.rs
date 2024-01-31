@@ -12,6 +12,11 @@ pub enum ComponentSpecVariant {
         variant_name: String,
         //        hash: String,
     },
+    UpdateVariant {
+        schema_name: String,
+        variant_name: String,
+        //        hash: String,
+    },
     WorkspaceVariant {
         variant_unique_id: String,
     },
@@ -27,13 +32,13 @@ pub struct ComponentSpec {
     pub position: PositionSpec,
     #[builder(setter(into))]
     pub variant: ComponentSpecVariant,
-    #[builder(setter(into), default)]
+    #[builder(setter(into))]
     pub needs_destroy: bool,
-    #[builder(setter(into, strip_option), default)]
+    #[builder(setter(into))]
     pub deletion_user_pk: Option<String>,
-    #[builder(setter(into), default)]
+    #[builder(setter(into))]
     pub unique_id: String,
-    #[builder(setter(into), default)]
+    #[builder(setter(into))]
     pub deleted: bool,
 
     #[builder(setter(each(name = "attribute"), into), default)]

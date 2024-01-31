@@ -18,6 +18,16 @@ pub enum AttributeValuePath {
     OutputSocket(String),
 }
 
+impl AttributeValuePath {
+    pub fn path(&self) -> &str {
+        match self {
+            Self::Prop { path, .. } => path,
+            Self::InputSocket(path) => path,
+            Self::OutputSocket(path) => path,
+        }
+    }
+}
+
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[builder(build_fn(error = "SpecError"))]

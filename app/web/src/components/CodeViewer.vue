@@ -111,6 +111,7 @@ const CODE_PARSER_LOOKUP = {
   diff: DiffModeParser,
   json: JsonModeParser,
   yaml: YamlModeParser,
+  string: YamlModeParser,
   // TODO: what do we want to do here...?
   unknown: YamlModeParser,
 };

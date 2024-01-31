@@ -7,6 +7,7 @@ import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { ModuleId } from "@/store/module.store";
 import { nilId } from "@/utils/nilId";
 import { Visibility } from "@/api/sdf/dal/visibility";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useAuthStore, UserId } from "./auth.store";
 import { useRouterStore } from "./router.store";
 import { AuthApiRequest } from ".";
@@ -42,6 +43,8 @@ export const useWorkspacesStore = () => {
   const visibility: Visibility = {
     visibility_change_set_pk: nilId(),
   };
+
+  const featureFlagsStore = useFeatureFlagsStore();
   return addStoreHooks(
     defineStore("workspaces", {
       state: () => ({
@@ -51,6 +54,9 @@ export const useWorkspacesStore = () => {
         workspaceApprovals: {} as Record<UserId, string>,
         importCompletedAt: null as IsoDateString | null,
         importCancelledAt: null as IsoDateString | null,
+        importId: null as string | null,
+        importLoading: false as boolean,
+        importError: undefined as string | undefined,
       }),
       getters: {
         allWorkspaces: (state) => _.values(state.workspacesByPk),
@@ -115,12 +121,25 @@ export const useWorkspacesStore = () => {
         },
         async BEGIN_WORKSPACE_IMPORT(moduleId: ModuleId) {
           this.workspaceApprovals = {};
-          return new ApiRequest({
+          this.importId = null;
+          this.importLoading = true;
+          this.importError = undefined;
+          return new ApiRequest<{ id: string }>({
             method: "post",
             url: "/pkg/install_pkg",
-            params: { id: moduleId, ...visibility },
-            onSuccess: (_response) => {
+            params: {
+              id: moduleId,
+              ...visibility,
+              overrideBuiltinSchemaFeatureFlag:
+                featureFlagsStore.OVERRIDE_SCHEMA,
+            },
+            onSuccess: (data) => {
               this.workspaceImportSummary = null;
+              this.importId = data.id;
+            },
+            onFail: () => {
+              this.importId = null;
+              this.importLoading = false;
             },
           });
         },
@@ -201,6 +220,26 @@ export const useWorkspacesStore = () => {
                 this.workspaceImportSummary = null;
                 this.importCompletedAt = new Date().toISOString();
                 this.importCancelledAt = null;
+              },
+            },
+            {
+              eventType: "AsyncFinish",
+              callback: ({ id }: { id: string }) => {
+                if (id === this.importId) {
+                  this.importLoading = false;
+                  this.importError = undefined;
+                  this.importId = null;
+                }
+              },
+            },
+            {
+              eventType: "AsyncError",
+              callback: ({ id, error }: { id: string; error: string }) => {
+                if (id === this.importId) {
+                  this.importLoading = false;
+                  this.importError = error;
+                  this.importId = null;
+                }
               },
             },
           ],

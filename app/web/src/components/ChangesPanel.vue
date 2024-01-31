@@ -20,7 +20,7 @@
         <Icon name="git-branch-plus" />
         <div class="flex flex-col overflow-hidden">
           <div class="">Created Change Set</div>
-          <div class="text-neutral-400 truncate">
+          <div class="text-neutral-500 dark:text-neutral-400 truncate">
             {{
               changeSetStore.headSelected
                 ? "head"
@@ -42,7 +42,7 @@
           )
         "
       >
-        <ActionSprite
+        <ActionCard
           :action="action"
           @remove="actionsStore.REMOVE_ACTION(action.id)"
         />
@@ -74,7 +74,7 @@ import { useActionsStore } from "@/store/actions.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useComponentsStore } from "@/store/components.store";
 import ApplyHistory from "./ApplyHistory.vue";
-import ActionSprite from "./ActionSprite.vue";
+import ActionCard from "./ActionCard.vue";
 import ChangeCard from "./ChangeCard.vue";
 
 const changeSetStore = useChangeSetsStore();
