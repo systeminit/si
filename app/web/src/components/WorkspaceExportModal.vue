@@ -6,6 +6,9 @@
     @closeComplete="closeHandler"
   >
     <Stack>
+      Running: {{ moduleStore.exportingWorkspaceOperationRunning }}<br />
+      ID: {{ moduleStore.exportingWorkspaceOperationId }}
+
       <template v-if="exportReqStatus.isSuccess">
         <p>Export succeeded!</p>
         <p>
@@ -29,8 +32,9 @@
           :requestStatus="exportReqStatus"
           loadingText="Exporting your workspace..."
           @click="continueHandler"
-          >Export this workspace</VButton
         >
+          Export this workspace
+        </VButton>
       </template>
     </Stack>
   </Modal>
@@ -41,8 +45,8 @@ import {
   ErrorMessage,
   Modal,
   Stack,
-  VButton,
   useModal,
+  VButton,
 } from "@si/vue-lib/design-system";
 import { ref } from "vue";
 import { useModuleStore } from "@/store/module.store";
@@ -61,6 +65,7 @@ function open() {
 function continueHandler() {
   moduleStore.EXPORT_WORKSPACE();
 }
+
 function closeHandler() {
   moduleStore.clearRequestStatus("EXPORT_WORKSPACE");
 }

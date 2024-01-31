@@ -2,11 +2,13 @@ use super::{PkgError, PkgResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken};
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
+use axum::http::Uri;
 use axum::Json;
 use chrono::Utc;
-use dal::{HistoryActor, User, Visibility, Workspace, WorkspacePk};
+use dal::{DalContext, HistoryActor, User, Visibility, Workspace, WorkspacePk, WsEvent};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
+use ulid::Ulid;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -18,6 +20,7 @@ pub struct ExportWorkspaceRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportWorkspaceResponse {
+    pub id: Ulid,
     pub success: bool,
     pub full_path: String,
 }
@@ -32,6 +35,65 @@ pub async fn export_workspace(
 ) -> PkgResult<Json<ExportWorkspaceResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
+    let id = Ulid::new();
+
+    tokio::task::spawn(async move {
+        if let Err(err) = export_workspace_inner(
+            &ctx,
+            &original_uri,
+            PosthogClient(posthog_client),
+            RawAccessToken(raw_access_token),
+        )
+        .await
+        {
+            return handle_error(&ctx, id, err.to_string()).await;
+        }
+
+        let event = match WsEvent::async_finish(&ctx, id).await {
+            Ok(event) => event,
+            Err(err) => {
+                return error!("Unable to make ws event of finish: {err}");
+            }
+        };
+
+        if let Err(err) = event.publish_on_commit(&ctx).await {
+            return error!("Unable to publish ws event of finish: {err}");
+        };
+
+        if let Err(err) = ctx.commit().await {
+            handle_error(&ctx, id, err.to_string()).await;
+        }
+
+        async fn handle_error(ctx: &DalContext, id: Ulid, err: String) {
+            error!("Unable to export workspace: {err}");
+            match WsEvent::async_error(ctx, id, err).await {
+                Ok(event) => match event.publish_on_commit(ctx).await {
+                    Ok(()) => {}
+                    Err(err) => error!("Unable to publish ws event of error: {err}"),
+                },
+                Err(err) => {
+                    error!("Unable to make ws event of error: {err}");
+                }
+            }
+            if let Err(err) = ctx.commit().await {
+                error!("Unable to commit errors in export workspace: {err}");
+            }
+        }
+    });
+
+    Ok(Json(ExportWorkspaceResponse {
+        id,
+        success: true,
+        full_path: "Get this from module-index service".to_owned(),
+    }))
+}
+
+pub async fn export_workspace_inner(
+    ctx: &DalContext,
+    original_uri: &Uri,
+    PosthogClient(posthog_client): PosthogClient,
+    RawAccessToken(raw_access_token): RawAccessToken,
+) -> PkgResult<()> {
     let user = match ctx.history_actor() {
         HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk).await?,
         _ => None,
@@ -90,8 +152,5 @@ pub async fn export_workspace(
 
     ctx.commit().await?;
 
-    Ok(Json(ExportWorkspaceResponse {
-        success: true,
-        full_path: "Get this from module-index service".to_owned(),
-    }))
+    Ok(())
 }

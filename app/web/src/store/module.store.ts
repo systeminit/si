@@ -127,9 +127,14 @@ export const useModuleStore = () => {
           builtinsSearchResults: [] as RemoteModuleSummary[],
           remoteModuleDetailsById: {} as Record<ModuleId, RemoteModuleDetails>,
           remoteModuleSpecsById: {} as Record<ModuleId, ModuleSpec>,
+
           installingModuleId: null as string | null,
           installingError: undefined as string | undefined,
           installingLoading: false as boolean,
+
+          exportingWorkspaceOperationId: null as string | null,
+          exportingWorkspaceOperationError: undefined as string | undefined,
+          exportingWorkspaceOperationRunning: false as boolean,
         }),
         getters: {
           urlSelectedModuleSlug: () => {
@@ -363,10 +368,20 @@ export const useModuleStore = () => {
           },
 
           async EXPORT_WORKSPACE() {
-            return new ApiRequest({
+            this.exportingWorkspaceOperationId = null;
+            this.exportingWorkspaceOperationError = undefined;
+            this.exportingWorkspaceOperationRunning = true;
+
+            return new ApiRequest<{ id: string }>({
               method: "post",
               url: "/pkg/export_workspace",
               params: { ...visibility },
+              onSuccess: (response) => {
+                this.exportingWorkspaceOperationId = response.id;
+              },
+              onFail: () => {
+                this.exportingWorkspaceOperationRunning = false;
+              },
             });
           },
 
@@ -397,11 +412,18 @@ export const useModuleStore = () => {
             {
               eventType: "AsyncFinish",
               callback: async ({ id }: { id: string }) => {
+                console.log("THIS SHOULD SHOW UP");
+                console.log(this.exportingWorkspaceOperationId);
                 if (id === this.installingModuleId) {
                   this.installingError = undefined;
                   this.installingModuleId = null;
                   await this.LOAD_LOCAL_MODULES();
                   this.installingLoading = false;
+                }
+                if (id === this.exportingWorkspaceOperationId) {
+                  console.log("HERE");
+                  this.exportingWorkspaceOperationId = null;
+                  this.exportingWorkspaceOperationRunning = false;
                 }
               },
             },
@@ -418,6 +440,11 @@ export const useModuleStore = () => {
                   this.installingLoading = false;
                   this.installingError = error;
                   this.installingModuleId = null;
+                }
+                if (id === this.exportingWorkspaceOperationId) {
+                  this.exportingWorkspaceOperationError = error;
+                  this.exportingWorkspaceOperationId = null;
+                  this.exportingWorkspaceOperationRunning = false;
                 }
               },
             },
