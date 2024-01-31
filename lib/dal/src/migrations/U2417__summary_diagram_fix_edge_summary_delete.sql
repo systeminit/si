@@ -7,8 +7,6 @@ CREATE OR REPLACE FUNCTION force_component_summary_to_changeset_v1(
 ) AS
 $$
 BEGIN
-    RAISE WARNING 'Run force_component_summary_to_changeset_v1';
-
     -- First, we check to see if there is a row already for this change set. If there isn't, we copy the HEAD
     -- row with a few changes.
     IF NOT EXISTS (SELECT
@@ -16,7 +14,6 @@ BEGIN
                    WHERE component_id = this_component_id
                      AND tenancy_workspace_pk = this_tenancy_record.tenancy_workspace_pk
                      AND visibility_change_set_pk = this_visibility_record.visibility_change_set_pk) THEN
-        RAISE WARNING 'Adding component to changeset to delete';
 
         INSERT INTO summary_diagram_components (id, tenancy_workspace_pk, visibility_change_set_pk,
                                                 visibility_deleted_at, created_at, component_id,

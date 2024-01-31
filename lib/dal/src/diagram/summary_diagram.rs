@@ -446,7 +446,7 @@ pub async fn delete_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_edge_delete_v2($1, $2, $3, $4, $5)",
+            "SELECT object FROM summary_diagram_edge_delete_v1($1, $2, $3, $4, $5)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
