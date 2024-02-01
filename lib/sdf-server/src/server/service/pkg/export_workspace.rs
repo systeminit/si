@@ -21,8 +21,6 @@ pub struct ExportWorkspaceRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ExportWorkspaceResponse {
     pub id: Ulid,
-    pub success: bool,
-    pub full_path: String,
 }
 
 pub async fn export_workspace(
@@ -81,11 +79,7 @@ pub async fn export_workspace(
         }
     });
 
-    Ok(Json(ExportWorkspaceResponse {
-        id,
-        success: true,
-        full_path: "Get this from module-index service".to_owned(),
-    }))
+    Ok(Json(ExportWorkspaceResponse { id }))
 }
 
 pub async fn export_workspace_inner(

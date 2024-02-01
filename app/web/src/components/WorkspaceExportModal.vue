@@ -6,18 +6,30 @@
     @closeComplete="closeHandler"
   >
     <Stack>
-      Running: {{ moduleStore.exportingWorkspaceOperationRunning }}<br />
-      ID: {{ moduleStore.exportingWorkspaceOperationId }}
-
-      <template v-if="exportReqStatus.isSuccess">
+      <template v-if="moduleStore.exportingWorkspaceOperationRunning">
+        <p class="flex gap-1 items-center">
+          <Icon name="loader" />
+          Exporting Workspace
+        </p>
+        <p>
+          This operation is being executed in the backend
+          <br />
+          feel free to close this modal
+        </p>
+        <VButton icon="check" @click="close">Close this window</VButton>
+      </template>
+      <template v-else-if="moduleStore.exportingWorkspaceOperationId">
         <p>Export succeeded!</p>
         <p>
           You can now import this workspace by going to
           <br />
           workspace settings (gear in top right) > "Import Workspace"
         </p>
-        <VButton icon="check" @click="close">Close this window</VButton>
+        <VButton icon="refresh" @click="moduleStore.resetExportWorkspaceStatus">
+          Export Again
+        </VButton>
       </template>
+
       <template v-else>
         <p>
           You are about to export this workspace to the cloud. You will then be
@@ -43,6 +55,7 @@
 <script setup lang="ts">
 import {
   ErrorMessage,
+  Icon,
   Modal,
   Stack,
   useModal,

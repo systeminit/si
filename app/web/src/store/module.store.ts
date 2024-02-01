@@ -385,6 +385,12 @@ export const useModuleStore = () => {
             });
           },
 
+          resetExportWorkspaceStatus() {
+            this.exportingWorkspaceOperationRunning = false;
+            this.exportingWorkspaceOperationId = null;
+            this.exportingWorkspaceOperationError = undefined;
+          },
+
           async EXPORT_MODULE(exportRequest: PkgExportRequest) {
             return new ApiRequest({
               method: "post",
@@ -394,8 +400,6 @@ export const useModuleStore = () => {
           },
         },
         onActivated() {
-          if (!changeSetId) return;
-
           this.LOAD_LOCAL_MODULES();
           this.LIST_BUILTINS();
 
@@ -412,8 +416,6 @@ export const useModuleStore = () => {
             {
               eventType: "AsyncFinish",
               callback: async ({ id }: { id: string }) => {
-                console.log("THIS SHOULD SHOW UP");
-                console.log(this.exportingWorkspaceOperationId);
                 if (id === this.installingModuleId) {
                   this.installingError = undefined;
                   this.installingModuleId = null;
@@ -421,8 +423,6 @@ export const useModuleStore = () => {
                   this.installingLoading = false;
                 }
                 if (id === this.exportingWorkspaceOperationId) {
-                  console.log("HERE");
-                  this.exportingWorkspaceOperationId = null;
                   this.exportingWorkspaceOperationRunning = false;
                 }
               },
@@ -443,7 +443,6 @@ export const useModuleStore = () => {
                 }
                 if (id === this.exportingWorkspaceOperationId) {
                   this.exportingWorkspaceOperationError = error;
-                  this.exportingWorkspaceOperationId = null;
                   this.exportingWorkspaceOperationRunning = false;
                 }
               },
