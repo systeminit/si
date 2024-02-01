@@ -105,7 +105,7 @@ pub struct RootProp {
 
 impl SchemaVariant {
     /// Create and set a [`RootProp`] for the [`SchemaVariant`].
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn create_and_set_root_prop(
         &mut self,
         ctx: &DalContext,

@@ -86,7 +86,6 @@ impl_standard_model! {
 
 impl Action {
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         prototype_id: ActionPrototypeId,

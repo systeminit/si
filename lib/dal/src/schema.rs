@@ -114,8 +114,6 @@ impl_standard_model! {
 }
 
 impl Schema {
-    #[instrument(skip_all)]
-    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,

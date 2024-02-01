@@ -172,7 +172,6 @@ impl_standard_model! {
 impl Fix {
     /// Create [`Self`] and ensure it belongs to a [`FixBatch`](crate::FixBatch)
     /// since every [`fix`](Self) must belong to a [`batch`](crate::FixBatch).
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         fix_batch_id: FixBatchId,

@@ -85,7 +85,6 @@ impl_standard_model! {
 
 impl FuncBindingReturnValue {
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         unprocessed_value: Option<serde_json::Value>,

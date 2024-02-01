@@ -12,7 +12,7 @@ pub const WS_MULTIPLEXER_SUBJECT: &str = "si.>";
 
 /// A grouping of multiplexer clients needed to appease the "FromRef" implementation for "AppState". Yes, really.
 #[derive(Debug, Clone)]
-pub(crate) struct NatsMultiplexerClients {
+pub struct NatsMultiplexerClients {
     pub ws: Arc<Mutex<MultiplexerClient>>,
     pub crdt: Arc<Mutex<MultiplexerClient>>,
 }

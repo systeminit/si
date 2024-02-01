@@ -226,7 +226,7 @@ impl Server<(), ()> {
         Ok(posthog_client)
     }
 
-    #[instrument(name = "sdf.init.generate_cyclone_key_pair", skip_all)]
+    #[instrument(name = "sdf.init.generate_cyclone_key_pair", level = "info", skip_all)]
     pub async fn generate_cyclone_key_pair(
         secret_key_path: impl AsRef<Path>,
         public_key_path: impl AsRef<Path>,
@@ -236,7 +236,7 @@ impl Server<(), ()> {
             .map_err(Into::into)
     }
 
-    #[instrument(name = "sdf.init.generate_symmetric_key", skip_all)]
+    #[instrument(name = "sdf.init.generate_symmetric_key", level = "info", skip_all)]
     pub async fn generate_symmetric_key(symmetric_key_path: impl AsRef<Path>) -> Result<()> {
         SymmetricCryptoService::generate_key()
             .save(symmetric_key_path.as_ref())
@@ -244,17 +244,25 @@ impl Server<(), ()> {
             .map_err(Into::into)
     }
 
-    #[instrument(name = "sdf.init.load_jwt_public_signing_key", skip_all)]
+    #[instrument(
+        name = "sdf.init.load_jwt_public_signing_key",
+        level = "info",
+        skip_all
+    )]
     pub async fn load_jwt_public_signing_key(config: JwtConfig) -> Result<JwtPublicSigningKey> {
         Ok(JwtPublicSigningKey::from_config(config).await?)
     }
 
-    #[instrument(name = "sdf.init.decode_jwt_public_signing_key", skip_all)]
+    #[instrument(
+        name = "sdf.init.decode_jwt_public_signing_key",
+        level = "info",
+        skip_all
+    )]
     pub async fn decode_jwt_public_signing_key(key_string: String) -> Result<JwtPublicSigningKey> {
         Ok(JwtPublicSigningKey::decode(key_string).await?)
     }
 
-    #[instrument(name = "sdf.init.load_encryption_key", skip_all)]
+    #[instrument(name = "sdf.init.load_encryption_key", level = "info", skip_all)]
     pub async fn load_encryption_key(
         crypto_config: CryptoConfig,
     ) -> Result<Arc<CycloneEncryptionKey>> {
@@ -263,7 +271,7 @@ impl Server<(), ()> {
         ))
     }
 
-    #[instrument(name = "sdf.init.migrate_database", skip_all)]
+    #[instrument(name = "sdf.init.migrate_database", level = "info", skip_all)]
     pub async fn migrate_database(services_context: &ServicesContext) -> Result<()> {
         dal::migrate_all_with_progress(services_context).await?;
         migrate_builtins_from_module_index(services_context).await?;
@@ -288,14 +296,14 @@ impl Server<(), ()> {
         Ok(())
     }
 
-    #[instrument(name = "sdf.init.create_pg_pool", skip_all)]
+    #[instrument(name = "sdf.init.create_pg_pool", level = "info", skip_all)]
     pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
         let pool = PgPool::new(pg_pool_config).await?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
         Ok(pool)
     }
 
-    #[instrument(name = "sdf.init.connect_to_nats", skip_all)]
+    #[instrument(name = "sdf.init.connect_to_nats", level = "info", skip_all)]
     pub async fn connect_to_nats(nats_config: &NatsConfig) -> Result<NatsClient> {
         let client = NatsClient::new(nats_config).await?;
         debug!("successfully connected nats client");
@@ -306,7 +314,11 @@ impl Server<(), ()> {
         VeritechClient::new(nats)
     }
 
-    #[instrument(name = "sdf.init.create_symmetric_crypto_service", skip_all)]
+    #[instrument(
+        name = "sdf.init.create_symmetric_crypto_service",
+        level = "info",
+        skip_all
+    )]
     pub async fn create_symmetric_crypto_service(
         config: &SymmetricCryptoServiceConfig,
     ) -> Result<SymmetricCryptoService> {

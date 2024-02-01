@@ -1,6 +1,5 @@
 use serde::Deserialize;
 use std::collections::HashMap;
-use telemetry::prelude::*;
 
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
@@ -21,7 +20,6 @@ pub struct QualificationEntry {
 
 impl Component {
     // TODO(nick): big query potential here.
-    #[instrument(skip_all)]
     pub async fn list_qualifications(
         ctx: &DalContext,
         component_id: ComponentId,

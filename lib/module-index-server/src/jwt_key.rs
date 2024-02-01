@@ -83,7 +83,7 @@ pub enum JwtKeyError {
     Verify(String),
 }
 
-#[instrument(skip_all)]
+#[instrument(level = "debug", skip_all)]
 pub async fn validate_bearer_token(
     public_key: JwtPublicSigningKey,
     bearer_token: impl AsRef<str>,

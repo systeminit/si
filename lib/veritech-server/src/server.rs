@@ -68,7 +68,7 @@ pub struct Server {
 }
 
 impl Server {
-    #[instrument(name = "veritech.init.cyclone.http", skip(config))]
+    #[instrument(name = "veritech.init.cyclone.http", level = "info", skip_all)]
     pub async fn for_cyclone_http(config: Config) -> ServerResult<Server> {
         match config.cyclone_spec() {
             CycloneSpec::LocalHttp(_spec) => {
@@ -95,7 +95,7 @@ impl Server {
         }
     }
 
-    #[instrument(name = "veritech.init.cyclone.uds", skip(config))]
+    #[instrument(name = "veritech.init.cyclone.uds", level = "info", skip_all)]
     pub async fn for_cyclone_uds(config: Config) -> ServerResult<Server> {
         match config.cyclone_spec() {
             CycloneSpec::LocalUds(spec) => {

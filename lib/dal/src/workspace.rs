@@ -61,7 +61,6 @@ impl Workspace {
         &self.pk
     }
 
-    #[instrument(skip_all)]
     pub async fn builtin(ctx: &DalContext) -> WorkspaceResult<Self> {
         let row = ctx
             .txns()
@@ -100,7 +99,6 @@ impl Workspace {
         Ok(standard_model::option_object_from_row(row)?)
     }
 
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &mut DalContext,
         pk: WorkspacePk,

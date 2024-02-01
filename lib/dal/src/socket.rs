@@ -273,7 +273,6 @@ impl Socket {
 
     /// Finds the "Frame" [`Socket`] for a given [`Node`](crate::Node) and
     /// [`SocketEdgeKind`].
-    #[instrument(skip_all)]
     pub async fn find_frame_socket_for_node(
         ctx: &DalContext,
         node_id: NodeId,
@@ -296,7 +295,6 @@ impl Socket {
         Ok(standard_model::object_from_row(row)?)
     }
 
-    #[instrument(skip_all)]
     pub async fn find_for_internal_provider(
         ctx: &DalContext,
         internal_provider_id: InternalProviderId,
@@ -313,7 +311,6 @@ impl Socket {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    #[instrument(skip_all)]
     pub async fn find_for_external_provider(
         ctx: &DalContext,
         external_provider_id: ExternalProviderId,
@@ -331,7 +328,6 @@ impl Socket {
     }
 
     /// List all [`Sockets`](Self) for the given [`ComponentId`](crate::Component).
-    #[instrument(skip_all)]
     pub async fn list_for_component(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -350,7 +346,6 @@ impl Socket {
 
     /// Find a [`Socket`] by a provided name for a given [`SocketEdgeKind`] and
     /// a given [`NodeId`](crate::Node).
-    #[instrument(skip_all)]
     pub async fn find_by_name_for_edge_kind_and_node(
         ctx: &DalContext,
         name: impl AsRef<str>,

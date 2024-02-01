@@ -59,7 +59,6 @@ impl_standard_model! {
 }
 
 impl JobFailure {
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         kind: impl AsRef<str>,
