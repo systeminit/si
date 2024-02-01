@@ -1,21 +1,19 @@
 load("@prelude-si//:macros.bzl", "rust_library")
 
 rust_library(
-    name = "council-server",
+    name = "nats-multiplexer",
     deps = [
+        "//lib/nats-multiplexer-client:nats-multiplexer-client",
+        "//lib/nats-multiplexer-core:nats-multiplexer-core",
         "//lib/si-data-nats:si-data-nats",
-        "//lib/si-settings:si-settings",
         "//lib/telemetry-rs:telemetry",
-        "//lib/telemetry-nats-rs:telemetry-nats",
-        "//third-party/rust:derive_builder",
         "//third-party/rust:futures",
         "//third-party/rust:remain",
-        "//third-party/rust:serde",
         "//third-party/rust:serde_json",
-        "//third-party/rust:strum",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
-        "//third-party/rust:ulid",
     ],
-    srcs = glob(["src/**/*.rs"]),
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
 )

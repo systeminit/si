@@ -1,8 +1,12 @@
 /// Adapted from: https://github.com/y-crdt/yrs-warp/blob/14a1abdf9085d71b6071e27c3e53ac5d0e07735d/src/ws.rs
 use futures::{Future, Sink, Stream};
 use futures_lite::FutureExt;
-use si_data_nats::{NatsClient, Subject, Subscriber};
+use si_data_nats::{Message, NatsClient, Subject};
 use std::{pin::Pin, task::Context, task::Poll};
+use telemetry::prelude::error;
+use tokio::sync::broadcast;
+use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
+use tokio_stream::wrappers::BroadcastStream;
 use y_sync::sync::Error;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -61,11 +65,11 @@ impl Sink<Vec<u8>> for YSink {
     }
 }
 
-pub struct YStream(Subscriber);
+pub struct YStream(BroadcastStream<Message>);
 
 impl YStream {
-    pub fn new(subscription: Subscriber) -> Self {
-        Self(subscription)
+    pub fn new(receiver: broadcast::Receiver<Message>) -> Self {
+        Self(BroadcastStream::new(receiver))
     }
 }
 
@@ -76,9 +80,15 @@ impl Stream for YStream {
         match Pin::new(&mut self.0).poll_next(cx) {
             Poll::Pending => Poll::Pending,
             Poll::Ready(None) => Poll::Ready(None),
-            Poll::Ready(Some(message)) => {
-                Poll::Ready(Some(Ok(message.into_parts().0.payload.into())))
-            }
+            Poll::Ready(Some(message)) => match message {
+                Ok(message) => Poll::Ready(Some(Ok(message.into_parts().0.payload.into()))),
+                Err(error) => match error {
+                    error @ BroadcastStreamRecvError::Lagged(number_of_missed_messages) => {
+                        error!("found broadcast stream recv error: lagged and missed {number_of_missed_messages} messages");
+                        Poll::Ready(Some(Err(Error::Other(error.into()))))
+                    }
+                },
+            },
         }
     }
 }

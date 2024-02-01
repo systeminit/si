@@ -151,6 +151,8 @@ export type WsEventPayloadMap = {
   };
   ComponentCreated: {
     success: boolean;
+    componentId: string;
+    changeSetPk: string;
   };
   ComponentUpdated: {
     componentId: string;

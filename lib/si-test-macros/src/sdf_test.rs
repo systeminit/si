@@ -240,6 +240,8 @@ struct SdfTestFnSetupExpander {
     jwt_public_signing_key: Option<Rc<Ident>>,
     signup_secret: Option<Rc<Ident>>,
     posthog_client: Option<Rc<Ident>>,
+    ws_multiplexer_client: Option<Rc<Ident>>,
+    crdt_multiplexer_client: Option<Rc<Ident>>,
     router: Option<Rc<Ident>>,
     auth_token: Option<Rc<Ident>>,
     auth_token_ref: Option<Rc<Ident>>,
@@ -275,6 +277,8 @@ impl SdfTestFnSetupExpander {
             jwt_public_signing_key: None,
             signup_secret: None,
             posthog_client: None,
+            ws_multiplexer_client: None,
+            crdt_multiplexer_client: None,
             router: None,
             auth_token: None,
             auth_token_ref: None,
@@ -336,6 +340,42 @@ impl SdfTestFnSetupExpander {
         self.posthog_client.as_ref().unwrap().clone()
     }
 
+    fn setup_ws_multiplexer_client(&mut self) -> Rc<Ident> {
+        if let Some(ref ident) = self.ws_multiplexer_client {
+            return ident.clone();
+        }
+
+        let var = Ident::new("ws_multiplexer_client", Span::call_site());
+        self.code_extend(quote! {
+            let #var = {
+                let (tx, _) = ::tokio::sync::mpsc::unbounded_channel();
+                let client = ::nats_multiplexer_client::MultiplexerClient::new(tx);
+                client
+            };
+        });
+        self.ws_multiplexer_client = Some(Rc::new(var));
+
+        self.ws_multiplexer_client.as_ref().unwrap().clone()
+    }
+
+    fn setup_crdt_multiplexer_client(&mut self) -> Rc<Ident> {
+        if let Some(ref ident) = self.crdt_multiplexer_client {
+            return ident.clone();
+        }
+
+        let var = Ident::new("crdt_multiplexer_client", Span::call_site());
+        self.code_extend(quote! {
+            let #var = {
+                let (tx, _) = ::tokio::sync::mpsc::unbounded_channel();
+                let client = ::nats_multiplexer_client::MultiplexerClient::new(tx);
+                client
+            };
+        });
+        self.crdt_multiplexer_client = Some(Rc::new(var));
+
+        self.crdt_multiplexer_client.as_ref().unwrap().clone()
+    }
+
     fn setup_router(&mut self) -> Rc<Ident> {
         if let Some(ref ident) = self.router {
             return ident.clone();
@@ -349,6 +389,10 @@ impl SdfTestFnSetupExpander {
         let signup_secret = signup_secret.as_ref();
         let posthog_client = self.setup_posthog_client();
         let posthog_client = posthog_client.as_ref();
+        let ws_multiplexer_client = self.setup_ws_multiplexer_client();
+        let ws_multiplexer_client = ws_multiplexer_client.as_ref();
+        let crdt_multiplexer_client = self.setup_crdt_multiplexer_client();
+        let crdt_multiplexer_client = crdt_multiplexer_client.as_ref();
 
         let var = Ident::new("router", Span::call_site());
         self.code_extend(quote! {
@@ -359,6 +403,8 @@ impl SdfTestFnSetupExpander {
                     #jwt_public_signing_key.clone(),
                     #signup_secret.clone(),
                     #posthog_client,
+                    #ws_multiplexer_client,
+                    #crdt_multiplexer_client,
                 ).wrap_err("failed to build sdf router")?;
                 service
             };

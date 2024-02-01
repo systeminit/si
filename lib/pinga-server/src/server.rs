@@ -474,8 +474,6 @@ async fn execute_job(mut ctx_builder: DalContextBuilder, job_info: JobInfo) -> R
         ctx_builder.set_blocking();
     }
 
-    let current_span = tracing::Span::current();
-
     let job = match job_info.kind.as_str() {
         stringify!(DependentValuesUpdate) => {
             Box::new(DependentValuesUpdate::try_from(job_info.clone())?)

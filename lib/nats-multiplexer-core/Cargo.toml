@@ -1,0 +1,10 @@
+[package]
+name = "nats-multiplexer-core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+si-data-nats = { path = "../../lib/si-data-nats" }
+
+tokio = { workspace = true }

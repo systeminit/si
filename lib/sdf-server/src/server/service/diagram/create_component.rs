@@ -160,7 +160,7 @@ pub async fn create_component(
     //     );
     // }
 
-    WsEvent::component_created(&ctx)
+    WsEvent::component_created(&ctx, component.id())
         .await?
         .publish_on_commit(&ctx)
         .await?;

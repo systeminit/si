@@ -1,11 +1,12 @@
-use std::{ops::Deref, sync::Arc};
-
 use axum::extract::FromRef;
 use dal::JwtPublicSigningKey;
+use nats_multiplexer_client::MultiplexerClient;
 use si_std::SensitiveString;
-use tokio::sync::{broadcast, mpsc};
+use std::{ops::Deref, sync::Arc};
+use tokio::sync::{broadcast, mpsc, Mutex};
 
 use super::server::ShutdownSource;
+use crate::server::nats_multiplexer::NatsMultiplexerClients;
 use crate::server::service::ws::crdt::BroadcastGroups;
 
 #[derive(Clone, FromRef)]
@@ -17,6 +18,7 @@ pub struct AppState {
     posthog_client: PosthogClient,
     shutdown_broadcast: ShutdownBroadcast,
     for_tests: bool,
+    nats_multiplexer_clients: NatsMultiplexerClients,
 
     // TODO(fnichol): we're likely going to use this, but we can't allow it to be dropped because
     // that will trigger the read side and... shutdown. Cool, no?
@@ -25,6 +27,7 @@ pub struct AppState {
 }
 
 impl AppState {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         services_context: impl Into<ServicesContext>,
         signup_secret: impl Into<SignupSecret>,
@@ -33,7 +36,13 @@ impl AppState {
         shutdown_broadcast_tx: broadcast::Sender<()>,
         tmp_shutdown_tx: mpsc::Sender<ShutdownSource>,
         for_tests: bool,
+        ws_multiplexer_client: MultiplexerClient,
+        crdt_multiplexer_client: MultiplexerClient,
     ) -> Self {
+        let nats_multiplexer_clients = NatsMultiplexerClients {
+            ws: Arc::new(Mutex::new(ws_multiplexer_client)),
+            crdt: Arc::new(Mutex::new(crdt_multiplexer_client)),
+        };
         Self {
             services_context: services_context.into(),
             signup_secret: signup_secret.into(),
@@ -42,6 +51,7 @@ impl AppState {
             posthog_client: posthog_client.into(),
             shutdown_broadcast: ShutdownBroadcast(shutdown_broadcast_tx),
             for_tests,
+            nats_multiplexer_clients,
             _tmp_shutdown_tx: Arc::new(tmp_shutdown_tx),
         }
     }

@@ -114,58 +114,6 @@ async fn create_func_stub(
     Ok(func)
 }
 
-async fn create_validation_func(
-    ctx: &DalContext,
-    name: Option<String>,
-    _options: Option<CreateFuncOptions>,
-) -> FuncResult<Func> {
-    let func = create_func_stub(
-        ctx,
-        name,
-        FuncVariant::Validation,
-        FuncBackendResponseType::Validation,
-        DEFAULT_VALIDATION_CODE,
-        DEFAULT_CODE_HANDLER,
-    )
-    .await?;
-
-    //    if let Some(CreateFuncOptions::ValidationOptions {
-    //        schema_variant_id,
-    //        prop_to_validate,
-    //    }) = options
-    //    {
-    //        let mut context = ValidationPrototypeContext::builder();
-    //        let schema_id = *SchemaVariant::get_by_id(ctx, &schema_variant_id)
-    //            .await?
-    //            .ok_or(FuncError::ValidationPrototypeMissingSchemaVariant(
-    //                schema_variant_id,
-    //            ))?
-    //            .schema(ctx)
-    //            .await?
-    //            .ok_or(FuncError::ValidationPrototypeMissingSchema)?
-    //            .id();
-    //
-    //        let context = context
-    //            .set_prop_id(prop_to_validate)
-    //            .set_schema_variant_id(schema_variant_id)
-    //            .set_schema_id(schema_id)
-    //            .to_context(ctx)
-    //            .await?;
-    //
-    //        // Can we have more than one validation per prop?
-    //        if !ValidationPrototype::find_for_context(ctx, context.to_owned())
-    //            .await?
-    //            .is_empty()
-    //        {
-    //            return Err(FuncError::ValidationAlreadyExists);
-    //        }
-    //
-    //        ValidationPrototype::new(ctx, *func.id(), serde_json::json!(null), context).await?;
-    //    }
-
-    Ok(func)
-}
-
 async fn create_action_func(
     ctx: &DalContext,
     name: Option<String>,

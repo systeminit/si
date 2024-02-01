@@ -1097,6 +1097,7 @@ dependencies = [
  "si-settings",
  "strum",
  "telemetry",
+ "telemetry-nats",
  "thiserror",
  "tokio",
  "ulid",
@@ -3084,6 +3085,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "nats-multiplexer"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "nats-multiplexer-client",
+ "nats-multiplexer-core",
+ "remain",
+ "serde_json",
+ "si-data-nats",
+ "telemetry",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "nats-multiplexer-client"
+version = "0.1.0"
+dependencies = [
+ "nats-multiplexer-core",
+ "remain",
+ "si-data-nats",
+ "telemetry",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "nats-multiplexer-core"
+version = "0.1.0"
+dependencies = [
+ "si-data-nats",
+ "tokio",
+]
+
+[[package]]
 name = "nats-subscriber"
 version = "0.1.0"
 dependencies = [
@@ -4689,6 +4725,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "color-eyre",
+ "nats-multiplexer",
  "rebaser-client",
  "sdf-server",
  "telemetry-application",
@@ -4716,6 +4753,9 @@ dependencies = [
  "hyper",
  "module-index-client",
  "names",
+ "nats-multiplexer",
+ "nats-multiplexer-client",
+ "nats-subscriber",
  "nix 0.27.1",
  "once_cell",
  "pathdiff",
@@ -4740,6 +4780,7 @@ dependencies = [
  "telemetry-http",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tokio-tungstenite",
  "tower",
  "tower-http",
@@ -6174,6 +6215,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

@@ -3,6 +3,8 @@
 use std::path::PathBuf;
 
 use color_eyre::Result;
+use nats_multiplexer::Multiplexer;
+use sdf_server::server::{CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT};
 use sdf_server::{
     Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
     ServicesContext,
@@ -101,6 +103,11 @@ async fn async_main() -> Result<()> {
     // client
     let rebaser_config = RebaserClientConfig::default();
 
+    let (ws_multiplexer, ws_multiplexer_client) =
+        Multiplexer::new(&nats_conn, WS_MULTIPLEXER_SUBJECT).await?;
+    let (crdt_multiplexer, crdt_multiplexer_client) =
+        Multiplexer::new(&nats_conn, CRDT_MULTIPLEXER_SUBJECT).await?;
+
     let services_context = ServicesContext::new(
         pg_pool,
         nats_conn,
@@ -138,6 +145,10 @@ async fn async_main() -> Result<()> {
                 services_context.clone(),
                 jwt_public_signing_key,
                 posthog_client,
+                ws_multiplexer,
+                ws_multiplexer_client,
+                crdt_multiplexer,
+                crdt_multiplexer_client,
             )?;
             let _second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
@@ -157,6 +168,10 @@ async fn async_main() -> Result<()> {
                 services_context.clone(),
                 jwt_public_signing_key,
                 posthog_client,
+                ws_multiplexer,
+                ws_multiplexer_client,
+                crdt_multiplexer,
+                crdt_multiplexer_client,
             )
             .await?;
             let _second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
