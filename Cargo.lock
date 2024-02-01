@@ -6429,6 +6429,7 @@ dependencies = [
  "si-crypto",
  "si-data-nats",
  "telemetry",
+ "telemetry-nats",
  "test-log",
  "thiserror",
  "tokio",
@@ -6459,8 +6460,10 @@ dependencies = [
  "si-data-nats",
  "si-settings",
  "telemetry",
+ "telemetry-nats",
  "thiserror",
  "tokio",
+ "ulid",
  "veritech-core",
 ]
 

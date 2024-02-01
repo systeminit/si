@@ -18,6 +18,8 @@ serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-settings = { path = "../../lib/si-settings" }
 telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+ulid = { workspace = true }
 veritech-core = { path = "../../lib/veritech-core" }
