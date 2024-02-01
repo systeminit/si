@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use futures::StreamExt;
-use si_data_nats::{HeaderMap, NatsClient, Subject};
+use si_data_nats::{NatsClient, Subject};
 use telemetry::prelude::*;
-use telemetry_nats::inject_headers;
+use telemetry_nats::propagation;
 use tokio::task::JoinSet;
 
 use crate::job::{
@@ -42,8 +42,7 @@ impl NatsProcessor {
         fields()
     )]
     async fn push_all_jobs(&self, queue: JobQueue) -> JobQueueProcessorResult<()> {
-        let mut headers = HeaderMap::new();
-        inject_headers(&mut headers);
+        let headers = propagation::empty_injected_headers();
 
         while let Some(element) = queue.fetch_job().await {
             let job_info = JobInfo::new(element)?;
@@ -73,9 +72,6 @@ impl JobQueueProcessor for NatsProcessor {
 
         job_info.blocking = true;
 
-        let mut headers = HeaderMap::new();
-        inject_headers(&mut headers);
-
         let job_reply_inbox = Subject::from(self.client.new_inbox());
         let mut reply_subscriber = self
             .client
@@ -86,7 +82,7 @@ impl JobQueueProcessor for NatsProcessor {
             .publish_with_reply_and_headers(
                 self.pinga_subject.clone(),
                 job_reply_inbox,
-                headers,
+                propagation::empty_injected_headers(),
                 serde_json::to_vec(&job_info)
                     .map_err(|e| BlockingJobError::Serde(e.to_string()))?
                     .into(),

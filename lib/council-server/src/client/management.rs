@@ -5,7 +5,8 @@
 use futures::StreamExt;
 use si_data_nats::{NatsClient, Subject, Subscriber};
 use std::time::Duration;
-use telemetry::prelude::*;
+use telemetry::{prelude::*, tracing::field};
+use telemetry_nats::propagation;
 
 use crate::client::{ClientError, ClientResult};
 use crate::{ManagementResponse, SubjectGenerator};
@@ -26,9 +27,18 @@ impl ManagementClient {
     }
 
     // None means subscriber has been unsubscribed or that the connection has been closed
+    #[instrument(
+        name = "council_management_client.fetch_response",
+        level = "info",
+        skip_all,
+        fields(
+            response = Empty,
+        )
+    )]
     pub async fn fetch_response(&mut self) -> ClientResult<Option<ManagementResponse>> {
         // TODO: timeout so we don't get stuck here forever if council goes away
-        // TODO: handle message.data() empty with Status header as 503: https://github.com/nats-io/nats.go/pull/576
+        // TODO: handle message.data() empty with Status header as 503:
+        // https://github.com/nats-io/nats.go/pull/576
         let msg = loop {
             let res =
                 tokio::time::timeout(Duration::from_secs(60), self.management_subscriber.next())
@@ -37,19 +47,24 @@ impl ManagementClient {
             match res {
                 Ok(msg) => break msg,
                 Err(_) => {
-                    warn!(management_channel = ?self.management_channel, "Council client waiting for response on management channel for 60 seconds");
+                    warn!(
+                        management_channel = ?self.management_channel,
+                        "Council client waiting for response on management channel for 60 seconds",
+                    );
                 }
             }
         };
 
         match msg {
             Some(msg) => {
+                let span = Span::current();
+                propagation::associate_current_span_from_headers(msg.headers());
                 if msg.payload().is_empty() {
                     return Err(ClientError::NoListenerAvailable);
                 }
-                Ok(Some(serde_json::from_slice::<ManagementResponse>(
-                    msg.payload(),
-                )?))
+                let response = serde_json::from_slice::<ManagementResponse>(msg.payload())?;
+                span.record("response", field::debug(&response));
+                Ok(Some(response))
             }
             None => Ok(None),
         }

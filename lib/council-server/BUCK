@@ -6,6 +6,7 @@ rust_library(
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-settings:si-settings",
         "//lib/telemetry-rs:telemetry",
+        "//lib/telemetry-nats-rs:telemetry-nats",
         "//third-party/rust:derive_builder",
         "//third-party/rust:futures",
         "//third-party/rust:remain",
