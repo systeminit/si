@@ -39,7 +39,7 @@ impl StatusReceiverClient {
     /// [NATS](https://nats.io) with the appropriate subject.
     ///
     /// The request is performed in a UDP-like manner without a reply mailbox.
-    #[instrument(name = "status_receiver_client.publish", skip_all)]
+    #[instrument(name = "status_receiver_client.publish", level = "debug", skip_all)]
     pub async fn publish(&self, request: &StatusReceiverRequest) -> StatusReceiverClientResult<()> {
         self.execute_request(STATUS_RECEIVER_REQUEST_SUBJECT, request)
             .await

@@ -81,7 +81,6 @@ impl_standard_model! {
 }
 
 impl ValidationPrototype {
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         func_id: FuncId,
@@ -129,7 +128,7 @@ impl ValidationPrototype {
     }
 
     /// List all [`ValidationPrototypes`](Self) for a given [`Prop`](crate::Prop).
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn list_for_prop(
         ctx: &DalContext,
         prop_id: PropId,
@@ -149,7 +148,7 @@ impl ValidationPrototype {
     ///
     /// _You can access the [`PropId`](crate::Prop) via the [`ValidationPrototypeContext`], if
     /// needed._
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn list_for_schema_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -168,7 +167,7 @@ impl ValidationPrototype {
     }
 
     /// List all [`ValidationPrototypes`](Self) for a [`Func`](crate::Func)
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn list_for_func(
         ctx: &DalContext,
         func_id: FuncId,

@@ -134,7 +134,6 @@ impl_standard_model! {
 }
 
 impl Func {
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,

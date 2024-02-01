@@ -166,7 +166,6 @@ impl_standard_model! {
 
 impl AttributePrototype {
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         func_id: FuncId,
@@ -194,7 +193,6 @@ impl AttributePrototype {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
     pub async fn new_with_existing_value(
         ctx: &DalContext,
         func_id: FuncId,
@@ -506,7 +504,7 @@ impl AttributePrototype {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn list_prototype_funcs_by_context_and_backend_response_type(
         ctx: &DalContext,
         context: AttributeContext,
@@ -559,7 +557,7 @@ impl AttributePrototype {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn list_for_context(
         ctx: &DalContext,
         context: AttributeContext,
@@ -582,7 +580,6 @@ impl AttributePrototype {
         Ok(object)
     }
 
-    #[tracing::instrument(skip_all)]
     pub async fn find_with_parent_value_and_key_for_context(
         ctx: &DalContext,
         parent_attribute_value_id: Option<AttributeValueId>,
@@ -711,7 +708,7 @@ impl AttributePrototype {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     #[allow(clippy::too_many_arguments)]
     #[async_recursion]
     async fn create_intermediate_proxy_values(

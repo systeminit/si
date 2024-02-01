@@ -100,7 +100,7 @@ pub struct Client {
 }
 
 impl Client {
-    #[instrument(name = "client::new", skip_all, level = "debug")]
+    #[instrument(name = "client.new", skip_all, level = "debug")]
     pub async fn new(config: &NatsConfig) -> Result<Self> {
         let mut options = ConnectOptions::default();
 

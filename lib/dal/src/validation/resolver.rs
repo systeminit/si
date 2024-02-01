@@ -96,8 +96,6 @@ impl_standard_model! {
 }
 
 impl ValidationResolver {
-    #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         validation_prototype_id: ValidationPrototypeId,

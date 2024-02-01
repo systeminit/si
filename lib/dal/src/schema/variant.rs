@@ -203,7 +203,6 @@ impl_standard_model! {
 
 impl SchemaVariant {
     /// Create a [`SchemaVariant`](Self) with a [`RootProp`](crate::schema::RootProp).
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -523,7 +522,6 @@ impl SchemaVariant {
 
     /// List all direct child [`Props`](crate::Prop) of the [`Prop`](crate::Prop) corresponding
     /// to "/root/si".
-    #[instrument(skip_all)]
     pub async fn list_root_si_child_props(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -541,7 +539,6 @@ impl SchemaVariant {
     }
 
     /// Find all [`Props`](crate::Prop) for a given [`SchemaVariantId`](SchemaVariant).
-    #[instrument(skip_all)]
     pub async fn all_props(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -558,7 +555,6 @@ impl SchemaVariant {
         Ok(objects_from_rows(rows)?)
     }
 
-    #[instrument(skip_all)]
     pub async fn list_secret_defining(ctx: &DalContext) -> SchemaVariantResult<Vec<SchemaVariant>> {
         let rows = ctx
             .txns()
@@ -576,7 +572,6 @@ impl SchemaVariant {
     /// finds funcs connected at the schema variant context, ignoring any funcs connected to
     /// directly to components. Ignores any functions that have no code (these are typically
     /// intrinsics)
-    #[instrument(skip_all)]
     pub async fn all_funcs(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,

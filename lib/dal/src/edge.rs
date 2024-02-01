@@ -181,7 +181,6 @@ impl From<ComponentId> for EdgeObjectId {
 
 impl Edge {
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         kind: EdgeKind,
@@ -238,7 +237,6 @@ impl Edge {
     /// Please note that the _head_ information comes before the _tail_ information in the
     /// function parameters.
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
     pub async fn new_for_connection(
         ctx: &DalContext,
         head_node_id: NodeId,

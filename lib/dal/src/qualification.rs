@@ -50,7 +50,7 @@ pub enum QualificationSummaryError {
 pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;
 
 impl QualificationSummary {
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_summary(ctx: &DalContext) -> QualificationSummaryResult<QualificationSummary> {
         let mut components_succeeded = 0;
         let mut components_warned = 0;

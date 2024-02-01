@@ -97,7 +97,6 @@ impl_standard_model! {
 }
 
 impl AttributePrototypeArgument {
-    #[instrument(skip_all)]
     /// Create a new [`AttributePrototypeArgument`] for _intra_ [`Component`](crate::Component) use.
     pub async fn new_for_intra_component(
         ctx: &DalContext,
@@ -135,7 +134,6 @@ impl AttributePrototypeArgument {
     }
 
     /// Create a new [`AttributePrototypeArgument`] for _inter_ [`Component`](crate::Component) use.
-    #[instrument(skip_all)]
     pub async fn new_for_inter_component(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
@@ -177,7 +175,6 @@ impl AttributePrototypeArgument {
     }
 
     /// Create a new [`AttributePrototypeArgument`] for _inter_ [`Component`](crate::Component) use.
-    #[instrument(skip_all)]
     pub async fn new_explicit_internal_to_explicit_internal_inter_component(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
@@ -219,7 +216,6 @@ impl AttributePrototypeArgument {
     }
 
     /// Create a new [`AttributePrototypeArgument`] for _inter_ [`Component`](crate::Component) use.
-    #[instrument(skip_all)]
     pub async fn new_external_to_external_inter_component(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
@@ -393,7 +389,6 @@ impl AttributePrototypeArgument {
 
     /// List all [`AttributePrototypeArguments`](Self) for a given
     /// [`AttributePrototype`](crate::AttributePrototype).
-    #[tracing::instrument(skip(ctx))]
     pub async fn list_for_attribute_prototype(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,

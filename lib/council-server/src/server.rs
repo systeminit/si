@@ -315,7 +315,6 @@ pub enum Error {
     UnknownNodeId,
 }
 
-#[instrument(level = "info")]
 pub async fn register_graph_from_job(
     complete_graph: &mut ChangeSetGraph,
     reply_channel: Subject,
@@ -326,7 +325,7 @@ pub async fn register_graph_from_job(
     complete_graph.merge_dependency_graph(reply_channel, new_dependency_data, change_set_id)
 }
 
-#[instrument(level = "info", skip(nats, complete_graph))]
+#[instrument(level = "debug", skip_all)]
 pub async fn job_processed_a_value(
     nats: &NatsClient,
     complete_graph: &mut ChangeSetGraph,
@@ -350,7 +349,7 @@ pub async fn job_processed_a_value(
     Ok(())
 }
 
-#[instrument(level = "info", skip(nats, complete_graph))]
+#[instrument(level = "debug", skip_all)]
 pub async fn job_failed_processing_a_value(
     nats: &NatsClient,
     complete_graph: &mut ChangeSetGraph,
@@ -377,7 +376,6 @@ pub async fn job_failed_processing_a_value(
     Ok(())
 }
 
-#[instrument(level = "info")]
 pub async fn job_is_going_away(
     complete_graph: &mut ChangeSetGraph,
     reply_channel: Subject,

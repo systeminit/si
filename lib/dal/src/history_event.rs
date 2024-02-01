@@ -68,7 +68,6 @@ pub struct HistoryEvent {
 }
 
 impl HistoryEvent {
-    #[instrument(skip(ctx, label, message))]
     pub async fn new(
         ctx: &DalContext,
         label: impl AsRef<str>,

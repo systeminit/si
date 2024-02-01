@@ -227,7 +227,6 @@ pub struct InternalProvider {
 }
 
 impl InternalProvider {
-    #[tracing::instrument(skip(ctx))]
     pub async fn new_implicit(
         ctx: &DalContext,
         prop_id: PropId,
@@ -291,7 +290,6 @@ impl InternalProvider {
 
     /// This function will also create an _input_ [`Socket`](crate::Socket).
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(ctx, name, connection_annotations))]
     pub async fn new_explicit_with_socket(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -483,7 +481,6 @@ impl InternalProvider {
     }
 
     /// Find all [`Self`] for a given [`SchemaVariant`](crate::SchemaVariant).
-    #[tracing::instrument(skip(ctx))]
     pub async fn list_for_schema_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -501,7 +498,6 @@ impl InternalProvider {
     }
 
     /// Find all [`Self`] for a given [`SchemaVariant`](crate::SchemaVariant).
-    #[tracing::instrument(skip(ctx))]
     pub async fn list_explicit_for_schema_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -520,7 +516,6 @@ impl InternalProvider {
 
     /// Find [`Self`] with a provided name, which is not only the name of [`Self`], but also of the
     /// associated _input_ [`Socket`](crate::Socket).
-    #[instrument(skip_all)]
     pub async fn find_explicit_for_schema_variant_and_name(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -540,7 +535,6 @@ impl InternalProvider {
     }
 
     /// Find [`Self`] with a provided [`SocketId`](crate::Socket).
-    #[instrument(skip_all)]
     pub async fn find_explicit_for_socket(
         ctx: &DalContext,
         socket_id: SocketId,
@@ -558,7 +552,6 @@ impl InternalProvider {
     }
 
     /// Find all [`Self`] for a given [`AttributePrototypeId`](crate::AttributePrototype).
-    #[tracing::instrument(skip(ctx))]
     pub async fn list_for_attribute_prototype(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
@@ -615,7 +608,6 @@ impl InternalProvider {
         Ok(object_option_from_row_option(row)?)
     }
 
-    #[tracing::instrument(skip(ctx))]
     pub async fn by_socket(ctx: &DalContext) -> InternalProviderResult<HashMap<SocketId, Self>> {
         let rows = ctx
             .txns()
@@ -638,7 +630,6 @@ impl InternalProvider {
     }
 
     /// Determines if the provided [`InternalProvider`] corresponds to a "root" [`Prop`](crate::Prop).
-    #[tracing::instrument(skip(ctx))]
     pub async fn is_for_root_prop(
         ctx: &DalContext,
         internal_provider_id: InternalProviderId,

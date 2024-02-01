@@ -59,7 +59,6 @@ pub struct Id {
     id: String,
 }
 
-#[instrument(skip(wsu, nats, broadcast_groups))]
 pub async fn crdt(
     wsu: WebSocketUpgrade,
     Nats(nats): Nats,

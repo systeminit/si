@@ -87,7 +87,6 @@ pub struct FuncExecution {
 
 impl FuncExecution {
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         func: &Func,
@@ -239,7 +238,6 @@ impl FuncExecution {
         self.pk
     }
 
-    #[instrument(skip(ctx))]
     pub async fn get_by_pk(ctx: &DalContext, pk: &FuncExecutionPk) -> FuncExecutionResult<Self> {
         let row = ctx
             .txns()

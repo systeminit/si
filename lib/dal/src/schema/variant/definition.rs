@@ -393,7 +393,6 @@ impl From<SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
 }
 
 impl SchemaVariantDefinitionMetadataJson {
-    #[instrument(skip_all)]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: &str,

@@ -71,7 +71,7 @@ impl ComponentChangeStatus {
         Ok(component_stats)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn list_added(
         ctx: &DalContext,
     ) -> ChangeStatusResult<Vec<ComponentChangeStatusGroup>> {
@@ -87,7 +87,7 @@ impl ComponentChangeStatus {
         ComponentChangeStatusGroup::new_from_rows(rows, ChangeStatus::Added)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn list_deleted(
         ctx: &DalContext,
     ) -> ChangeStatusResult<Vec<ComponentChangeStatusGroup>> {
@@ -103,7 +103,7 @@ impl ComponentChangeStatus {
         ComponentChangeStatusGroup::new_from_rows(rows, ChangeStatus::Deleted)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn list_modified(
         ctx: &DalContext,
     ) -> ChangeStatusResult<Vec<ComponentChangeStatusGroup>> {

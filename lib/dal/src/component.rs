@@ -267,7 +267,6 @@ impl Component {
     /// a [`Schema`](crate::Schema) rather than
     /// a specific [`SchemaVariantId`](crate::SchemaVariant), use
     /// [`Self::new_for_default_variant_from_schema()`].
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
@@ -389,7 +388,6 @@ impl Component {
 
     /// List [`Sockets`](crate::Socket) with a given
     /// [`SocketEdgeKind`](crate::socket::SocketEdgeKind).
-    #[instrument(skip_all)]
     pub async fn list_sockets_for_kind(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -413,7 +411,6 @@ impl Component {
     }
 
     /// Find [`Self`] with a provided [`NodeId`](crate::Node).
-    #[instrument(skip_all)]
     pub async fn find_for_node(ctx: &DalContext, node_id: NodeId) -> ComponentResult<Option<Self>> {
         let row = ctx
             .txns()
@@ -434,7 +431,6 @@ impl Component {
     ///
     /// _Note:_ if the type has never been updated, this will find the _default_
     /// [`AttributeValue`](crate::AttributeValue) where the [`ComponentId`](Self) is unset.
-    #[instrument(skip_all)]
     pub async fn find_si_child_attribute_value(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -460,7 +456,6 @@ impl Component {
         Ok(object_from_row(row)?)
     }
 
-    #[instrument(skip_all)]
     pub async fn is_in_tenancy(ctx: &DalContext, id: ComponentId) -> ComponentResult<bool> {
         let row = ctx
             .txns()
@@ -477,7 +472,6 @@ impl Component {
         Ok(row.is_some())
     }
 
-    #[instrument(skip_all)]
     pub async fn list_for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -502,7 +496,6 @@ impl Component {
         Ok(results)
     }
 
-    #[instrument(skip_all)]
     pub async fn list_for_schema_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -528,7 +521,6 @@ impl Component {
     }
 
     /// Sets the "/root/si/name" for [`self`](Self).
-    #[instrument(skip_all)]
     pub async fn set_name<T: Serialize + std::fmt::Debug + std::clone::Clone>(
         &self,
         ctx: &DalContext,
@@ -582,7 +574,6 @@ impl Component {
         Ok(())
     }
 
-    #[instrument(skip_all)]
     pub async fn set_deleted_at(
         &self,
         ctx: &DalContext,
@@ -621,7 +612,6 @@ impl Component {
     }
 
     /// Return the name of the [`Component`](Self) for the provided [`ComponentId`](Self).
-    #[instrument(skip_all)]
     pub async fn find_name(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<String> {
         let component_name = ComponentView::new(ctx, component_id)
             .await?
@@ -655,7 +645,6 @@ impl Component {
     /// Grabs the [`AttributeValue`](crate::AttributeValue) corresponding to the
     /// [`RootPropChild`](crate::RootPropChild) [`Prop`](crate::Prop) for the given
     /// [`Component`](Self).
-    #[instrument(skip_all)]
     pub async fn root_prop_child_attribute_value_for_component(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -703,7 +692,7 @@ impl Component {
     /// [`AttributeValueId`](crate::AttributeValue) provided has a
     /// [`context`](crate::AttributeContext) whose least specific field corresponds to a
     /// [`PropId`](crate::Prop)._
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn list_connected_input_sockets_for_attribute_value(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -807,7 +796,6 @@ impl Component {
 
     /// Sets the field corresponding to "/root/si/type" for the [`Component`]. Possible values
     /// are limited to variants of [`ComponentType`](crate::ComponentType).
-    #[instrument(skip(ctx))]
     pub async fn set_type(
         &self,
         ctx: &DalContext,

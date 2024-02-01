@@ -72,7 +72,6 @@ impl_standard_model! {
 }
 
 impl InstalledPkg {
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,

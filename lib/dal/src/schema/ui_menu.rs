@@ -37,7 +37,6 @@ impl_standard_model! {
 }
 
 impl SchemaUiMenu {
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
@@ -78,7 +77,6 @@ impl SchemaUiMenu {
         result: SchemaResult,
     );
 
-    #[instrument(skip_all)]
     pub async fn find_for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,

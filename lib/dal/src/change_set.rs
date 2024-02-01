@@ -93,7 +93,6 @@ pub struct ChangeSet {
 }
 
 impl ChangeSet {
-    #[instrument(skip(ctx, name, note))]
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
@@ -208,7 +207,7 @@ impl ChangeSet {
         Ok(())
     }
 
-    #[instrument(skip(ctx))]
+    #[instrument(level = "debug", skip_all)]
     pub async fn apply(&mut self, ctx: &mut DalContext) -> ChangeSetResult<()> {
         let actor = serde_json::to_value(ctx.history_actor())?;
         let row = ctx
@@ -268,7 +267,7 @@ impl ChangeSet {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn list_open(ctx: &DalContext) -> ChangeSetResult<Vec<Self>> {
         let rows = ctx
             .txns()
@@ -280,7 +279,6 @@ impl ChangeSet {
         Ok(results)
     }
 
-    #[instrument(skip_all)]
     pub async fn get_by_pk(
         ctx: &DalContext,
         pk: &ChangeSetPk,

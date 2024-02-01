@@ -61,7 +61,6 @@ impl_standard_model! {
 
 impl FixResolver {
     /// Private constructor method for creating a [`FixResolver`]. Use [`Self::upsert()`] instead.
-    #[instrument(skip_all)]
     async fn new(
         ctx: &DalContext,
         action_prototype_id: ActionPrototypeId,

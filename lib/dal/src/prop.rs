@@ -294,7 +294,6 @@ impl Prop {
     /// created when the provided [`SchemaVariant`](crate::SchemaVariant) is
     /// [`finalized`](crate::SchemaVariant::finalize).
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
@@ -422,7 +421,7 @@ impl Prop {
         Ok(objects_from_rows(rows)?)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     #[async_recursion]
     pub async fn ts_type(&self, ctx: &DalContext) -> PropResult<String> {
         // XXX: Hack! The payload prop kind is a string but we're actually storing arbitrary json

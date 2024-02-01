@@ -955,7 +955,6 @@ impl AttributeValue {
                 FETCH_UPDATE_GRAPH_DATA,
                 &[&ctx.tenancy(), ctx.visibility(), &attribute_value_ids],
             )
-            .instrument(debug_span!("Graph SQL query"))
             .await?;
 
         let mut result: HashMap<AttributeValueId, Vec<AttributeValueId>> = HashMap::new();
@@ -995,13 +994,13 @@ impl AttributeValue {
     /// the "root" `Prop` of a `SchemaVariant`), then it will also enqueue a
     /// `CodeGeneration` job for the `Component`.
     #[instrument(
-    name = "attribute_value.update_from_prototype_function",
-    skip_all,
-    level = "debug",
-    fields(
-    attribute_value.id = % self.id,
-    change_set_pk = % ctx.visibility().change_set_pk,
-    )
+        name = "attribute_value.update_from_prototype_function",
+        skip_all,
+        level = "debug",
+        fields(
+            attribute_value.id = % self.id,
+            change_set_pk = % ctx.visibility().change_set_pk,
+        )
     )]
     pub async fn update_from_prototype_function(
         &mut self,

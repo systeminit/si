@@ -30,7 +30,6 @@ pub struct Visibility {
 }
 
 impl Visibility {
-    #[instrument]
     pub fn new(change_set_pk: ChangeSetPk, deleted_at: Option<DateTime<Utc>>) -> Self {
         Visibility {
             change_set_pk,
@@ -39,7 +38,6 @@ impl Visibility {
     }
 
     /// Constructs a new head [`Visibility`].
-    #[instrument]
     pub fn new_head(deleted: bool) -> Self {
         let deleted_at = match deleted {
             true => Some(Utc::now()),
@@ -71,7 +69,6 @@ impl Visibility {
     }
 
     /// Constructs a new change set `Visibility`.
-    #[instrument]
     pub fn new_change_set(change_set_pk: ChangeSetPk, deleted: bool) -> Self {
         let deleted_at = match deleted {
             true => Some(Utc::now()),
@@ -91,7 +88,6 @@ impl Visibility {
     }
 
     /// Returns true if this [`Visibility`] is in a working changeset (and not in head)
-    #[instrument]
     pub fn in_change_set(&self) -> bool {
         self.change_set_pk != ChangeSetPk::NONE
     }
@@ -100,7 +96,6 @@ impl Visibility {
         self.deleted_at.is_some()
     }
 
-    #[instrument(skip(ctx))]
     pub async fn is_visible_to(
         &self,
         ctx: &DalContext,

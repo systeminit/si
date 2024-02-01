@@ -508,7 +508,7 @@ impl DalContext {
 
     /// Copies every single row from `Self::builtin()` to our tenancy on head change-set
     /// Needed to remove universal tenancy while packages aren't a thing
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn import_builtins(&self) -> Result<(), TransactionsError> {
         self.txns()
             .await?

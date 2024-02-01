@@ -55,7 +55,7 @@ impl Client {
         self.nats.metadata().subject_prefix()
     }
 
-    #[instrument(name = "client.execute_resolver_function", skip_all)]
+    #[instrument(name = "client.execute_resolver_function", level = "info", skip_all)]
     pub async fn execute_resolver_function(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
@@ -69,7 +69,11 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.execute_resolver_function_with_subject", skip_all)]
+    #[instrument(
+        name = "client.execute_resolver_function_with_subject",
+        level = "info",
+        skip_all
+    )]
     pub async fn execute_resolver_function_with_subject(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
@@ -84,7 +88,7 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.execute_validation", skip_all)]
+    #[instrument(name = "client.execute_validation", level = "info", skip_all)]
     pub async fn execute_validation(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
@@ -98,7 +102,11 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.execute_validation_with_subject", skip_all)]
+    #[instrument(
+        name = "client.execute_validation_with_subject",
+        level = "info",
+        skip_all
+    )]
     pub async fn execute_validation_with_subject(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
@@ -113,7 +121,7 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.execute_action_run", skip_all)]
+    #[instrument(name = "client.execute_action_run", level = "info", skip_all)]
     pub async fn execute_action_run(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
@@ -127,7 +135,11 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.execute_action_run_with_subject", skip_all)]
+    #[instrument(
+        name = "client.execute_action_run_with_subject",
+        level = "info",
+        skip_all
+    )]
     pub async fn execute_action_run_with_subject(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
@@ -142,7 +154,7 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.execute_reconciliation", skip_all)]
+    #[instrument(name = "client.execute_reconciliation", level = "info" skip_all)]
     pub async fn execute_reconciliation(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
@@ -156,7 +168,11 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.execute_reconciliation_with_subject", skip_all)]
+    #[instrument(
+        name = "client.execute_reconciliation_with_subject",
+        level = "info",
+        skip_all
+    )]
     pub async fn execute_reconciliation_with_subject(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
@@ -171,7 +187,7 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.execute_reconciliation", skip_all)]
+    #[instrument(name = "client.execute_reconciliation", level = "info", skip_all)]
     pub async fn execute_schema_variant_definition(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
@@ -185,7 +201,11 @@ impl Client {
         .await
     }
 
-    #[instrument(name = "client.execute_reconciliation_with_subject", skip_all)]
+    #[instrument(
+        name = "client.execute_reconciliation_with_subject",
+        level = "info",
+        skip_all
+    )]
     pub async fn execute_schema_variant_definition_with_subject(
         &self,
         output_tx: mpsc::Sender<OutputStream>,
