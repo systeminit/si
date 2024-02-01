@@ -1,14 +1,17 @@
-use super::{PkgError, PkgResult};
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken};
-use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::http::Uri;
 use axum::Json;
 use chrono::Utc;
-use dal::{DalContext, HistoryActor, User, Visibility, Workspace, WorkspacePk, WsEvent};
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
 use ulid::Ulid;
+
+use dal::{DalContext, HistoryActor, User, Visibility, Workspace, WorkspacePk, WsEvent};
+use telemetry::prelude::*;
+
+use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken};
+use crate::server::tracking::track;
+
+use super::{PkgError, PkgResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -89,7 +92,7 @@ pub async fn export_workspace_inner(
     RawAccessToken(raw_access_token): RawAccessToken,
 ) -> PkgResult<()> {
     let user = match ctx.history_actor() {
-        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk).await?,
+        HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?,
         _ => None,
     };
 
@@ -103,7 +106,7 @@ pub async fn export_workspace_inner(
     info!("Exporting workspace backup module");
 
     let workspace_pk = ctx.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE);
-    let workspace = Workspace::get_by_pk(&ctx, &workspace_pk)
+    let workspace = Workspace::get_by_pk(ctx, &workspace_pk)
         .await?
         .ok_or(PkgError::WorkspaceNotFound(workspace_pk))?;
 
@@ -117,7 +120,7 @@ pub async fn export_workspace_inner(
         description,
     );
 
-    let module_payload = exporter.export_as_bytes(&ctx).await?;
+    let module_payload = exporter.export_as_bytes(ctx).await?;
 
     let module_index_url = match ctx.module_index_url() {
         Some(url) => url,
@@ -132,8 +135,8 @@ pub async fn export_workspace_inner(
 
     track(
         &posthog_client,
-        &ctx,
-        &original_uri,
+        ctx,
+        original_uri,
         "export_workspace",
         serde_json::json!({
                     "pkg_name": workspace.name().to_owned(),
