@@ -54,6 +54,7 @@ pk!(ChangeSetPointerId);
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ChangeSetPointer {
     pub id: ChangeSetPointerId,
+    pub pk: ChangeSetPointerId,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 
@@ -75,6 +76,7 @@ impl TryFrom<PgRow> for ChangeSetPointer {
         let status = ChangeSetStatus::try_from(status_string.as_str())?;
         Ok(Self {
             id: value.try_get("id")?,
+            pk: value.try_get("id")?,
             created_at: value.try_get("created_at")?,
             updated_at: value.try_get("updated_at")?,
             name: value.try_get("name")?,
@@ -94,6 +96,7 @@ impl ChangeSetPointer {
 
         Ok(Self {
             id: id.into(),
+            pk: id.into(),
             created_at: Utc::now(),
             updated_at: Utc::now(),
             generator: Arc::new(Mutex::new(generator)),

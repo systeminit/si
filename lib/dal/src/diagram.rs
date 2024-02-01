@@ -5,23 +5,24 @@ use std::num::{ParseFloatError, ParseIntError};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
 
+use crate::actor_view::ActorView;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
 use crate::attribute::value::AttributeValueError;
 use crate::change_status::ChangeStatus;
 use crate::component::{ComponentError, IncomingConnection};
+use crate::history_event::HistoryEventMetadata;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    AttributePrototypeId, Component, ComponentId, DalContext, ExternalProviderId,
+    history_event, AttributePrototypeId, Component, ComponentId, DalContext, ExternalProviderId,
     HistoryEventError, InternalProviderId, ProviderArity, SchemaId, SchemaVariant, SchemaVariantId,
     StandardModelError,
 };
 
-pub mod edge;
 //pub(crate) mod summary_diagram;
 
 // TODO(nick): this module eventually goes the way of the dinosaur.
@@ -128,9 +129,9 @@ pub struct SummaryDiagramComponent {
     has_resource: bool,
     parent_node_id: Option<NodeId>,
     child_node_ids: serde_json::Value,
-    //    created_info: serde_json::Value,
-    //    updated_info: serde_json::Value,
-    //    deleted_info: serde_json::Value,
+    created_info: serde_json::Value,
+    updated_info: serde_json::Value,
+    deleted_info: serde_json::Value,
 }
 
 impl SummaryDiagramComponent {
@@ -149,8 +150,8 @@ pub struct SummaryDiagramEdge {
     to_node_id: NodeId,
     to_socket_id: InternalProviderId,
     change_status: String,
-    //    created_info: serde_json::Value,
-    //    deleted_info: serde_json::Value,
+    created_info: serde_json::Value,
+    deleted_info: serde_json::Value,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -225,23 +226,19 @@ impl Diagram {
 
         let mut component_views = Vec::with_capacity(components.len());
         for component in &components {
-            diagram_edges.extend(component.incoming_connections(ctx).await?.into_iter().map(
-                |IncomingConnection {
-                     attribute_prototype_argument_id,
-                     to_component_id,
-                     to_internal_provider_id,
-                     from_component_id,
-                     from_external_provider_id,
-                 }| SummaryDiagramEdge {
-                    id: attribute_prototype_argument_id,
-                    edge_id: attribute_prototype_argument_id,
-                    from_node_id: from_component_id,
-                    from_socket_id: from_external_provider_id,
-                    to_node_id: to_component_id,
-                    to_socket_id: to_internal_provider_id,
+            for incoming_connection in component.incoming_connections(ctx).await? {
+                diagram_edges.push(SummaryDiagramEdge {
+                    id: incoming_connection.attribute_prototype_argument_id,
+                    edge_id: incoming_connection.attribute_prototype_argument_id,
+                    from_node_id: incoming_connection.from_component_id,
+                    from_socket_id: incoming_connection.from_external_provider_id,
+                    to_node_id: incoming_connection.to_component_id,
+                    to_socket_id: incoming_connection.to_internal_provider_id,
                     change_status: ChangeStatus::Added.to_string(),
-                },
-            ));
+                    created_info: serde_json::to_value(incoming_connection.created_info)?,
+                    deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
+                });
+            }
 
             let schema_variant = component.schema_variant(ctx).await?;
 
@@ -260,14 +257,14 @@ impl Diagram {
                         sockets.push(DiagramSocket {
                             id: ip.id().to_string(),
                             label: ip.name().to_string(),
-                            connection_annotations: vec![],
+                            connection_annotations: vec![ip.name().to_string()],
                             direction: DiagramSocketDirection::Input,
                             max_connections: match ip.arity() {
                                 ProviderArity::Many => None,
                                 ProviderArity::One => Some(1),
                             },
                             is_required: Some(false),
-                            node_side: DiagramSocketNodeSide::Right,
+                            node_side: DiagramSocketNodeSide::Left,
                         });
                     }
 
@@ -275,14 +272,14 @@ impl Diagram {
                         sockets.push(DiagramSocket {
                             id: ep.id().to_string(),
                             label: ep.name().to_string(),
-                            connection_annotations: vec![],
+                            connection_annotations: vec![ep.name().to_string()],
                             direction: DiagramSocketDirection::Output,
                             max_connections: match ep.arity() {
                                 ProviderArity::Many => None,
                                 ProviderArity::One => Some(1),
                             },
                             is_required: Some(false),
-                            node_side: DiagramSocketNodeSide::Left,
+                            node_side: DiagramSocketNodeSide::Right,
                         });
                     }
 
@@ -311,6 +308,25 @@ impl Diagram {
                     width: 500,
                 },
             };
+
+            let updated_info = {
+                let history_actor = ctx.history_actor();
+                let actor = ActorView::from_history_actor(ctx, *history_actor).await?;
+                serde_json::to_value(HistoryEventMetadata {
+                    actor,
+                    timestamp: component.timestamp().updated_at,
+                })?
+            };
+
+            let created_info = {
+                let history_actor = ctx.history_actor();
+                let actor = ActorView::from_history_actor(ctx, *history_actor).await?;
+                serde_json::to_value(HistoryEventMetadata {
+                    actor,
+                    timestamp: component.timestamp().created_at,
+                })?
+            };
+
             let component_view = SummaryDiagramComponent {
                 id: component.id(),
                 component_id: component.id(),
@@ -330,6 +346,9 @@ impl Diagram {
                 sockets,
                 parent_node_id: None,
                 child_node_ids: serde_json::to_value::<Vec<String>>(vec![])?,
+                updated_info,
+                created_info,
+                deleted_info: serde_json::Value::Null,
             };
 
             component_views.push(component_view);

@@ -191,9 +191,6 @@ importers:
       graphology:
         specifier: ^0.25.4
         version: 0.25.4(graphology-types@0.24.7)
-      graphology-layout:
-        specifier: ^0.6.1
-        version: 0.6.1(graphology-types@0.24.7)
       graphology-layout-forceatlas2:
         specifier: ^0.10.1
         version: 0.10.1(graphology-types@0.24.7)
@@ -252,8 +249,8 @@ importers:
         specifier: ^4.4.0
         version: 4.4.0
       sigma:
-        specifier: 3.0.0-beta.2
-        version: 3.0.0-beta.2(graphology-types@0.24.7)
+        specifier: 3.0.0-beta.5
+        version: 3.0.0-beta.5(graphology-types@0.24.7)
       tinycolor2:
         specifier: ^1.4.2
         version: 1.4.2
@@ -10416,16 +10413,6 @@ packages:
       graphology-utils: 2.5.2(graphology-types@0.24.7)
     dev: false
 
-  /graphology-layout@0.6.1(graphology-types@0.24.7):
-    resolution: {integrity: sha512-m9aMvbd0uDPffUCFPng5ibRkb2pmfNvdKjQWeZrf71RS1aOoat5874+DcyNfMeCT4aQguKC7Lj9eCbqZj/h8Ag==}
-    peerDependencies:
-      graphology-types: '>=0.19.0'
-    dependencies:
-      graphology-types: 0.24.7
-      graphology-utils: 2.5.2(graphology-types@0.24.7)
-      pandemonium: 2.4.1
-    dev: false
-
   /graphology-types@0.24.7:
     resolution: {integrity: sha512-tdcqOOpwArNjEr0gNQKCXwaNCWnQJrog14nJNQPeemcLnXQUUGrsCWpWkVKt46zLjcS6/KGoayeJfHHyPDlvwA==}
 
@@ -13695,12 +13682,6 @@ packages:
       ufo: 1.3.1
     dev: true
 
-  /mnemonist@0.39.6:
-    resolution: {integrity: sha512-A/0v5Z59y63US00cRSLiloEIw3t5G+MiKz4BhX21FI+YBJXBOGW0ohFxTxO08dsOYlzxo87T7vGfZKYp2bcAWA==}
-    dependencies:
-      obliterator: 2.0.4
-    dev: false
-
   /module-definition@4.1.0:
     resolution: {integrity: sha512-rHXi/DpMcD2qcKbPCTklDbX9lBKJrUSl971TW5l6nMpqKCIlzJqmQ8cfEF5M923h2OOLHPDVlh5pJxNyV+AJlw==}
     engines: {node: '>=12'}
@@ -14829,12 +14810,6 @@ packages:
       - bluebird
       - supports-color
     dev: true
-
-  /pandemonium@2.4.1:
-    resolution: {integrity: sha512-wRqjisUyiUfXowgm7MFH2rwJzKIr20rca5FsHXCMNm1W5YPP1hCtrZfgmQ62kP7OZ7Xt+cR858aB28lu5NX55g==}
-    dependencies:
-      mnemonist: 0.39.6
-    dev: false
 
   /parallel-transform@1.2.0:
     resolution: {integrity: sha512-P2vSmIu38uIlvdcU7fDkyrxj33gTUy/ABO5ZUbGowxNCopBq/OoD42bP4UmMrJoPyk4Uqf0mu3mtWBhHCZD8yg==}
@@ -16581,8 +16556,8 @@ packages:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
     dev: true
 
-  /sigma@3.0.0-beta.2(graphology-types@0.24.7):
-    resolution: {integrity: sha512-MfQTEJGsykg/Ont4ZhExeFd/qrInjb3dR0NLvQCncxxR0vW8ZFm06bKoVt69Ss4h5HX8b+50rOglyL6ShRND4w==}
+  /sigma@3.0.0-beta.5(graphology-types@0.24.7):
+    resolution: {integrity: sha512-lrIdp5mtwEN/axDfaKkGO7Sq9dSWxJsD3BPkQzFMEBe6T8cE1+Dcv0RWx8g9vz62xCSwcW4X2iZtkkj0xDOPJA==}
     dependencies:
       '@yomguithereal/helpers': 1.1.1
       events: 3.3.0

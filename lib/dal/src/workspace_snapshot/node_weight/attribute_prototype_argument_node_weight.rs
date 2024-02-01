@@ -8,7 +8,7 @@ use crate::{
     workspace_snapshot::{
         graph::LineageId, node_weight::NodeWeightResult, vector_clock::VectorClock,
     },
-    ComponentId,
+    ComponentId, Timestamp,
 };
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;
@@ -30,6 +30,7 @@ pub struct AttributePrototypeArgumentNodeWeight {
     vector_clock_recently_seen: VectorClock,
     vector_clock_write: VectorClock,
     targets: Option<ArgumentTargets>,
+    timestamp: Timestamp,
 }
 
 impl AttributePrototypeArgumentNodeWeight {
@@ -46,7 +47,12 @@ impl AttributePrototypeArgumentNodeWeight {
             vector_clock_first_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_recently_seen: VectorClock::new(change_set.vector_clock_id())?,
             vector_clock_write: VectorClock::new(change_set.vector_clock_id())?,
+            timestamp: Timestamp::now(),
         })
+    }
+
+    pub fn timestamp(&self) -> &Timestamp {
+        &self.timestamp
     }
 
     pub fn content_hash(&self) -> ContentHash {

@@ -32,6 +32,7 @@ pub async fn get_property_editor_values(
     // if is_component_in_tenancy && !is_component_in_visibility {
     //     return Err(ComponentError::InvalidVisibility);
     // }
+    //
 
     let prop_edit_values = PropertyEditorValues::assemble(&ctx, request.component_id).await?;
 

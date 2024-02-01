@@ -1,6 +1,6 @@
 <template>
   <div class="inset-0 absolute">
-    <template v-if="schemasReqStatus.isPending">
+    <template v-if="schemasReqStatus.isPending || addMenuReqStatus.isPending">
       <div class="w-full p-lg flex flex-col gap-2 items-center">
         <Icon name="loader" size="2xl" />
         <h2>Loading Asset Palette...</h2>
@@ -30,7 +30,7 @@
 
         <ul class="overflow-y-auto">
           <Collapsible
-            v-for="(category, categoryIndex) in filteredSchemas"
+            v-for="(category, categoryIndex) in filteredComponents"
             ref="collapsibleRefs"
             :key="categoryIndex"
             :label="category.displayName"
@@ -53,15 +53,12 @@
                     fixesAreRunning
                       ? 'hover:cursor-progress'
                       : 'hover:border-action-500 dark:hover:border-action-300 dark:text-white hover:text-action-500 dark:hover:text-action-500 hover:cursor-pointer',
-                    componentsStore.selectedInsertSchemaVariantId ===
-                      schema.schemaVariantId
+                    componentsStore.selectedInsertSchemaId === schema.id
                       ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
                       : '',
                   )
                 "
-                @mousedown.left.stop="
-                  onSelect(schema.schemaVariantId, fixesAreRunning)
-                "
+                @mousedown.left.stop="onSelect(schema.id, fixesAreRunning)"
                 @click.right.prevent
               />
             </li>
@@ -70,13 +67,13 @@
       </ScrollArea>
     </template>
 
-    <template v-if="selectedSchemaVariant">
+    <template v-if="selectedSchema">
       <Teleport to="body">
         <div
           ref="mouseNode"
           class="fixed top-0 pointer-events-none translate-x-[-50%] translate-y-[-50%] z-100"
         >
-          <NodeSkeleton :color="selectedSchemaVariant.color" />
+          <NodeSkeleton :color="selectedSchema.color" />
         </div>
       </Teleport>
     </template>
@@ -90,7 +87,11 @@ import { Collapsible, Icon, ScrollArea } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { windowListenerManager } from "@si/vue-lib";
 import SiNodeSprite from "@/components/SiNodeSprite.vue";
-import { useComponentsStore } from "@/store/components.store";
+import {
+  useComponentsStore,
+  MenuSchema,
+  NodeAddMenu,
+} from "@/store/components.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch from "@/components/SiSearch.vue";
@@ -104,6 +105,9 @@ const componentsStore = useComponentsStore();
 // TODO - probably should not need 2 requests here. currently we only use schema variants for the colors...
 const schemasReqStatus = componentsStore.getRequestStatus(
   "FETCH_AVAILABLE_SCHEMAS",
+);
+const addMenuReqStatus = componentsStore.getRequestStatus(
+  "FETCH_NODE_ADD_MENU",
 );
 
 const collapsibleRefs = ref<InstanceType<typeof Collapsible>[]>([]);
@@ -120,37 +124,13 @@ function onSearchUpdated(newFilterString: string) {
     c.toggleIsOpen(true);
   });
 }
+const addMenuData = computed(() => componentsStore.nodeAddMenu);
 
-const categories = computed(() => {
-  const categories = _.compact(
-    _.map(
-      _.groupBy(componentsStore.schemaVariants, (s) => s.category),
-      (schemaVariants, displayName) => {
-        const schemas = _.compact(
-          _.map(schemaVariants, (schemaVariant) => {
-            return {
-              displayName: schemaVariant.schemaName,
-              schemaId: schemaVariant.schemaId,
-              schemaVariantId: schemaVariant.id,
-              color: schemaVariant?.color ?? "#777",
-            };
-          }),
-        );
-        return {
-          displayName,
-          schemas: _.orderBy(schemas, "displayName"),
-        };
-      },
-    ),
-  );
-  return _.orderBy(categories, "displayName");
-});
+const filteredComponents = computed(() => {
+  if (!filterModeActive.value) return addMenuData.value;
 
-const filteredSchemas = computed(() => {
-  if (!filterModeActive.value) return categories.value;
-
-  const filteredCategories = [] as typeof categories.value;
-  _.each(categories.value, (c) => {
+  const filteredCategories = [] as NodeAddMenu;
+  _.each(addMenuData.value, (c) => {
     // if the string matches the group, add the whole thing
     if (c.displayName.toLowerCase().includes(filterStringCleaned.value)) {
       filteredCategories.push(c);
@@ -172,22 +152,20 @@ const filteredSchemas = computed(() => {
       });
     }
   });
-
-  // ensure they are ordered before returning
-  for (const filteredCategory of filteredCategories) {
-    filteredCategory.schemas = _.orderBy(
-      filteredCategory.schemas,
-      "displayName",
-    );
-  }
-  return _.orderBy(filteredCategories, "displayName");
+  return filteredCategories;
 });
 
-const selectedSchemaVariant = computed(() => {
-  if (componentsStore.selectedInsertSchemaVariantId)
-    return componentsStore.schemaVariantsById[
-      componentsStore.selectedInsertSchemaVariantId
-    ];
+const schemasById = computed(() => {
+  return addMenuData.value.reduce((p, c) => {
+    c.schemas.forEach((schema) => {
+      p[schema.id] = schema;
+    });
+    return p;
+  }, {} as Record<string, MenuSchema>);
+});
+const selectedSchema = computed(() => {
+  if (componentsStore.selectedInsertSchemaId)
+    return schemasById.value[componentsStore.selectedInsertSchemaId];
   return undefined;
 });
 const mouseNode = ref();
@@ -201,23 +179,23 @@ const updateMouseNode = (e: MouseEvent) => {
   }
 };
 
-function onSelect(schemaVariantId: string, fixesAreRunning: boolean) {
+function onSelect(schemaId: string, fixesAreRunning: boolean) {
   if (fixesAreRunning) {
     // Prevent selection while fixes are running
     return;
   }
 
-  if (componentsStore.selectedInsertSchemaVariantId === schemaVariantId) {
+  if (componentsStore.selectedInsertSchemaId === schemaId) {
     componentsStore.cancelInsert();
   } else {
-    componentsStore.setInsertSchemaVariant(schemaVariantId);
+    componentsStore.setInsertSchema(schemaId);
   }
 }
 
 const onKeyDown = (e: KeyboardEvent) => {
   if (
     (e.key === "Escape" || e.key === "Backspace") &&
-    componentsStore.selectedInsertSchemaVariantId
+    componentsStore.selectedInsertSchemaId
   ) {
     componentsStore.cancelInsert();
     e.stopPropagation();
@@ -226,7 +204,7 @@ const onKeyDown = (e: KeyboardEvent) => {
 
 const onMouseDown = (e: MouseEvent) => {
   updateMouseNode(e);
-  if (componentsStore.selectedInsertSchemaVariantId) {
+  if (componentsStore.selectedInsertSchemaId) {
     componentsStore.cancelInsert();
   }
 };

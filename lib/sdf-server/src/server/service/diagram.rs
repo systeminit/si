@@ -4,6 +4,7 @@ use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::component::ComponentError;
+use dal::node_menu::NodeMenuError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::WsEventError;
 use dal::{ChangeSetError, SchemaVariantId, StandardModelError, TransactionsError};
@@ -11,9 +12,12 @@ use thiserror::Error;
 
 use crate::server::state::AppState;
 
+use self::get_node_add_menu::get_node_add_menu;
+
 pub mod create_component;
 pub mod create_connection;
 pub mod get_diagram;
+pub mod get_node_add_menu;
 pub mod list_schema_variants;
 pub mod set_component_position;
 
@@ -57,6 +61,8 @@ pub enum DiagramError {
     InvalidSystem,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
+    #[error("node menu error: {0}")]
+    NodeMenu(#[from] NodeMenuError),
     #[error("not authorized")]
     NotAuthorized,
     #[error("paste failed")]
@@ -128,16 +134,14 @@ pub fn routes() -> Router<AppState> {
         //     "/connect_component_to_frame",
         //     post(connect_component_to_frame::connect_component_to_frame),
         // )
+        .route("/get_node_add_menu", post(get_node_add_menu))
         .route(
             "/create_connection",
             post(create_connection::create_connection),
         )
+        .route("/create_node", post(create_component::create_component))
         .route(
-            "/create_component",
-            post(create_component::create_component),
-        )
-        .route(
-            "/set_component_position",
+            "/set_node_position",
             post(set_component_position::set_component_position),
         )
         .route("/get_diagram", get(get_diagram::get_diagram))

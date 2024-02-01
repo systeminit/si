@@ -468,8 +468,8 @@ const componentsStore = useComponentsStore();
 
 const childCount = computed(() => {
   const mappedChildren = _.map(
-    props.group.def.childComponentIds,
-    (child) => useComponentsStore().componentsById[child],
+    props.group.def.childNodeIds,
+    (child) => componentsStore.componentsByNodeId[child],
   );
 
   const undeletedChildren = _.filter(mappedChildren, (child) =>
@@ -506,10 +506,10 @@ const rightSockets = computed(() =>
 const connectedEdgesBySocketKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
   _.each(props.connectedEdges, (edge) => {
-    lookup[edge.fromExternalProviderKey] ||= [];
-    lookup[edge.fromExternalProviderKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    lookup[edge.toExplicitInternalProviderKey] ||= [];
-    lookup[edge.toExplicitInternalProviderKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    lookup[edge.fromSocketKey] ||= [];
+    lookup[edge.fromSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    lookup[edge.toSocketKey] ||= [];
+    lookup[edge.toSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
   });
   return lookup;
 });
@@ -607,7 +607,7 @@ function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
 }
 
 function onClick(detailsTabSlug: string) {
-  componentsStore.setSelectedComponentId(props.group.def.id, {
+  componentsStore.setSelectedComponentId(componentId.value, {
     detailsTab: detailsTabSlug,
   });
 }

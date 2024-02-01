@@ -26,7 +26,9 @@ pub struct ActionView {
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSetView {
+    // TODO: pk and id are now identical and one of them should be removed
     pub id: ChangeSetPointerId,
+    pub pk: ChangeSetPointerId,
     pub name: String,
     pub status: ChangeSetStatus,
     pub merge_requested_at: Option<DateTime<Utc>>,
@@ -107,6 +109,7 @@ pub async fn list_open_change_sets(
         view.push(ChangeSetView {
             // TODO: remove change sets entirely!
             id: cs.id,
+            pk: cs.id,
             name: cs.name,
             status: cs.status,
             merge_requested_at: None,           // cs.merge_requested_at,

@@ -1,6 +1,6 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
-use dal::diagram::edge::DiagramEdgeViewId;
+use dal::attribute::prototype::argument::AttributePrototypeArgumentId;
 use dal::{Component, ComponentId, ExternalProviderId, InternalProviderId, User, Visibility};
 use serde::{Deserialize, Serialize};
 
@@ -10,10 +10,10 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateConnectionRequest {
-    pub from_component_id: ComponentId,
-    pub from_external_provider_id: ExternalProviderId,
-    pub to_component_id: ComponentId,
-    pub to_explicit_internal_provider_id: InternalProviderId,
+    pub from_node_id: ComponentId,
+    pub from_socket_id: ExternalProviderId,
+    pub to_node_id: ComponentId,
+    pub to_socket_id: InternalProviderId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -21,7 +21,7 @@ pub struct CreateConnectionRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateConnectionResponse {
-    pub id: DiagramEdgeViewId,
+    pub id: AttributePrototypeArgumentId,
     pub created_by: Option<User>,
     pub deleted_by: Option<User>,
 }
@@ -54,10 +54,10 @@ pub async fn create_connection(
 
     let attribute_prototype_argument_id = Component::connect(
         &ctx,
-        request.from_component_id,
-        request.from_external_provider_id,
-        request.to_component_id,
-        request.to_explicit_internal_provider_id,
+        request.from_node_id,
+        request.from_socket_id,
+        request.to_node_id,
+        request.to_socket_id,
     )
     .await?;
 

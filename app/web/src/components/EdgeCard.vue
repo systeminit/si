@@ -26,8 +26,8 @@ const componentsStore = useComponentsStore();
 const edge = computed(() => componentsStore.edgesById[props.edgeId]);
 
 const fromComponent = computed(() =>
-  edge.value?.fromComponentId
-    ? componentsStore.componentsById[edge.value.fromComponentId]
+  edge.value?.fromNodeId
+    ? componentsStore.componentsByNodeId[edge.value.fromNodeId]
     : undefined,
 );
 const fromSchema = computed(() =>
@@ -38,12 +38,12 @@ const fromSchema = computed(() =>
 const fromSocket = computed(() =>
   _.find(
     fromSchema.value?.outputSockets ?? [],
-    (s) => s.id === edge.value?.fromExternalProviderId,
+    (s) => s.id === edge.value?.fromSocketId,
   ),
 );
 const toComponent = computed(() =>
-  edge.value?.toComponentId
-    ? componentsStore.componentsById[edge.value.toComponentId]
+  edge.value?.toNodeId
+    ? componentsStore.componentsByNodeId[edge.value.toNodeId]
     : undefined,
 );
 // const toSchema = computed(

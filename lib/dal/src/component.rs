@@ -12,12 +12,14 @@ use ulid::Ulid;
 
 use content_store::{ContentHash, Store, StoreError};
 
+use crate::actor_view::ActorView;
 use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
 use crate::attribute::value::{AttributeValueError, DependentValueGraph};
 use crate::change_set_pointer::ChangeSetPointerError;
+use crate::history_event::HistoryEventMetadata;
 use crate::job::definition::DependentValuesUpdate;
 use crate::prop::{PropError, PropPath};
 use crate::provider::external::ExternalProviderError;
@@ -36,8 +38,8 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk, AttributeValue, AttributeValueId, ChangeSetPk, DalContext, ExternalProvider,
     ExternalProviderId, InternalProvider, InternalProviderId, Prop, PropId, PropKind,
-    SchemaVariant, SchemaVariantId, Timestamp, TransactionsError, WsEvent, WsEventError,
-    WsEventResult, WsPayload,
+    SchemaVariant, SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent,
+    WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod resource;
@@ -109,6 +111,8 @@ pub enum ComponentError {
     SchemaVariantNotFound(ComponentId),
     #[error("serde_json error: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
     #[error("store error: {0}")]
     Store(#[from] StoreError),
     #[error("transactions error: {0}")]
@@ -159,6 +163,8 @@ pub struct IncomingConnection {
     pub to_internal_provider_id: InternalProviderId,
     pub from_component_id: ComponentId,
     pub from_external_provider_id: ExternalProviderId,
+    pub created_info: HistoryEventMetadata,
+    pub deleted_info: Option<HistoryEventMetadata>,
 }
 
 /// A [`Component`] is an instantiation of a [`SchemaVariant`](crate::SchemaVariant).
@@ -237,6 +243,10 @@ impl Component {
 
     pub fn height(&self) -> Option<&str> {
         self.height.as_deref()
+    }
+
+    pub fn timestamp(&self) -> &Timestamp {
+        &self.timestamp
     }
 
     pub async fn materialized_view(
@@ -438,6 +448,16 @@ impl Component {
                 AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?
             {
                 let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
+
+                let created_info = {
+                    let history_actor = ctx.history_actor();
+                    let actor = ActorView::from_history_actor(ctx, *history_actor).await?;
+                    HistoryEventMetadata {
+                        actor,
+                        timestamp: apa.timestamp().created_at,
+                    }
+                };
+
                 if let Some(ArgumentTargets {
                     source_component_id,
                     ..
@@ -452,6 +472,8 @@ impl Component {
                             from_component_id: source_component_id,
                             to_internal_provider_id,
                             from_external_provider_id,
+                            created_info,
+                            deleted_info: None,
                         });
                     }
                 }

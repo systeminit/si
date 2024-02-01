@@ -371,10 +371,10 @@ const rightSockets = computed(() => {
 const connectedEdgesBySocketKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
   _.each(props.connectedEdges, (edge) => {
-    lookup[edge.fromExternalProviderKey] ||= [];
-    lookup[edge.fromExternalProviderKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    lookup[edge.toExplicitInternalProviderKey] ||= [];
-    lookup[edge.toExplicitInternalProviderKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    lookup[edge.fromSocketKey] ||= [];
+    lookup[edge.fromSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    lookup[edge.toSocketKey] ||= [];
+    lookup[edge.toSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
   });
   return lookup;
 });
@@ -498,7 +498,7 @@ function onSocketHoverEnd(_socket: DiagramSocketData) {
 }
 
 function onClick(detailsTabSlug: string) {
-  componentsStore.setSelectedComponentId(props.node.def.id, {
+  componentsStore.setSelectedComponentId(componentId.value, {
     detailsTab: detailsTabSlug,
   });
 }

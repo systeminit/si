@@ -3,15 +3,20 @@ use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
-use dal::{generate_name, Component, ComponentId, SchemaVariantId, Visibility, WsEvent};
+use dal::{
+    generate_name, Component, ComponentId, SchemaId, SchemaVariant, SchemaVariantId, Visibility,
+    WsEvent,
+};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::service::diagram::DiagramResult;
 
+use super::DiagramError;
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateComponentRequest {
-    pub schema_variant_id: SchemaVariantId,
+    pub schema_id: SchemaId,
     pub parent_id: Option<ComponentId>,
     pub x: String,
     pub y: String,
@@ -52,7 +57,15 @@ pub async fn create_component(
     // };
 
     let name = generate_name();
-    let component = Component::new(&ctx, &name, request.schema_variant_id, None).await?;
+
+    // TODO: restore the notion of a "default" schema variant
+    let variant = SchemaVariant::list_for_schema(&ctx, request.schema_id)
+        .await?
+        .into_iter()
+        .next()
+        .ok_or(DiagramError::SchemaVariantNotFound)?;
+
+    let component = Component::new(&ctx, &name, variant.id(), None).await?;
 
     // TODO(nick): restore the action prototype usage here.
     // for prototype in ActionPrototype::find_for_context_and_kind(

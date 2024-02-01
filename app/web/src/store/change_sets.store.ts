@@ -11,7 +11,6 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 import { useRouterStore } from "./router.store";
 
 export type ChangeSetId = string;
-export type ComponentNodeId = string;
 
 const HEAD_ID = nilId();
 
@@ -92,13 +91,14 @@ export function useChangeSetsStore() {
             onSuccess: (response) => {
               const changeSets = _.map(response, (rawChangeSet) => ({
                 ...rawChangeSet,
-                id: rawChangeSet.id,
+                id: rawChangeSet.pk,
               }));
               // add our "head" changeset...
               // should simplify logic elsewhere to not treat head as special
               this.changeSetsById = {
                 [HEAD_ID]: {
                   id: HEAD_ID,
+                  pk: HEAD_ID,
                   name: "head",
                   status: ChangeSetStatus.Open,
                 },
@@ -115,7 +115,7 @@ export function useChangeSetsStore() {
               changeSetName: name,
             },
             onSuccess: (response) => {
-              this.changeSetsById[response.changeSet.id] = response.changeSet;
+              this.changeSetsById[response.changeSet.pk] = response.changeSet;
             },
           });
         },
@@ -125,11 +125,10 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/abandon_change_set",
             params: {
-              // TODO(nick,zack): ensure the backend knows that this is an id now.
-              changeSetPk: this.selectedChangeSet.id,
+              changeSetPk: this.selectedChangeSet.pk,
             },
             onSuccess: (response) => {
-              // this.changeSetsById[response.changeSet.id] = response.changeSet;
+              // this.changeSetsById[response.changeSet.pk] = response.changeSet;
             },
           });
         },
@@ -139,10 +138,10 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/apply_change_set",
             params: {
-              changeSetPk: this.selectedChangeSet.id,
+              changeSetPk: this.selectedChangeSet.pk,
             },
             onSuccess: (response) => {
-              this.changeSetsById[response.changeSet.id] = response.changeSet;
+              this.changeSetsById[response.changeSet.pk] = response.changeSet;
               // could switch to head here, or could let the caller decide...
             },
           });
@@ -154,7 +153,7 @@ export function useChangeSetsStore() {
             url: "change_set/merge_vote",
             params: {
               vote,
-              visibility_change_set_pk: this.selectedChangeSet.id,
+              visibility_change_set_pk: this.selectedChangeSet.pk,
             },
           });
         },
@@ -164,7 +163,7 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/begin_approval_process",
             params: {
-              visibility_change_set_pk: this.selectedChangeSet.id,
+              visibility_change_set_pk: this.selectedChangeSet.pk,
             },
           });
         },
@@ -174,7 +173,7 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/cancel_approval_process",
             params: {
-              visibility_change_set_pk: this.selectedChangeSet.id,
+              visibility_change_set_pk: this.selectedChangeSet.pk,
             },
           });
         },
@@ -187,7 +186,7 @@ export function useChangeSetsStore() {
             url: "change_set/abandon_vote",
             params: {
               vote,
-              visibility_change_set_pk: this.selectedChangeSet.id,
+              visibility_change_set_pk: this.selectedChangeSet.pk,
             },
           });
         },
@@ -197,7 +196,7 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/begin_abandon_approval_process",
             params: {
-              visibility_change_set_pk: this.selectedChangeSet.id,
+              visibility_change_set_pk: this.selectedChangeSet.pk,
             },
           });
         },
@@ -207,7 +206,7 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/cancel_abandon_approval_process",
             params: {
-              visibility_change_set_pk: this.selectedChangeSet.id,
+              visibility_change_set_pk: this.selectedChangeSet.pk,
             },
           });
         },
@@ -232,7 +231,7 @@ export function useChangeSetsStore() {
           if (this.openChangeSets?.length <= 2) {
             // will select the single open change set or head if thats all that exists
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            return _.last(this.openChangeSets)!.id;
+            return _.last(this.openChangeSets)!.pk;
           }
 
           // can add more logic to auto select eventually...
@@ -260,7 +259,7 @@ export function useChangeSetsStore() {
             if (this.selectedChangeSet && workspacePk) {
               sessionStorage.setItem(
                 `SI:LAST_CHANGE_SET/${workspacePk}`,
-                this.selectedChangeSet.id,
+                this.selectedChangeSet.pk,
               );
             }
           },
@@ -323,7 +322,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetBeginApprovalProcess",
             callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetPk) {
+              if (this.selectedChangeSet?.pk === data.changeSetPk) {
                 this.changeSetApprovals = {};
               }
               const changeSet = this.changeSetsById[data.changeSetPk];
@@ -337,7 +336,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetCancelApprovalProcess",
             callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetPk) {
+              if (this.selectedChangeSet?.pk === data.changeSetPk) {
                 this.changeSetApprovals = {};
               }
               const changeSet = this.changeSetsById[data.changeSetPk];
@@ -350,7 +349,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetBeginAbandonProcess",
             callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetPk) {
+              if (this.selectedChangeSet?.pk === data.changeSetPk) {
                 this.changeSetApprovals = {};
               }
               const changeSet = this.changeSetsById[data.changeSetPk];
@@ -364,7 +363,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetCancelAbandonProcess",
             callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetPk) {
+              if (this.selectedChangeSet?.pk === data.changeSetPk) {
                 this.changeSetApprovals = {};
               }
               const changeSet = this.changeSetsById[data.changeSetPk];
@@ -376,7 +375,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetMergeVote",
             callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetPk) {
+              if (this.selectedChangeSet?.pk === data.changeSetPk) {
                 this.changeSetApprovals[data.userPk] = data.vote;
               }
             },
@@ -384,7 +383,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetAbandonVote",
             callback: (data) => {
-              if (this.selectedChangeSet?.id === data.changeSetPk) {
+              if (this.selectedChangeSet?.pk === data.changeSetPk) {
                 this.changeSetApprovals[data.userPk] = data.vote;
               }
             },

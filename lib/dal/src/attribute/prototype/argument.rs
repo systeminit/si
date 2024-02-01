@@ -23,7 +23,7 @@ use crate::{
         WorkspaceSnapshotError,
     },
     AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, PropId,
-    TransactionsError,
+    Timestamp, TransactionsError,
 };
 
 use self::{
@@ -85,11 +85,13 @@ pub type AttributePrototypeArgumentResult<T> = Result<T, AttributePrototypeArgum
 pub struct AttributePrototypeArgument {
     id: AttributePrototypeArgumentId,
     targets: Option<ArgumentTargets>,
+    timestamp: Timestamp,
 }
 
 impl From<AttributePrototypeArgumentNodeWeight> for AttributePrototypeArgument {
     fn from(value: AttributePrototypeArgumentNodeWeight) -> Self {
         Self {
+            timestamp: value.timestamp().to_owned(),
             id: value.id().into(),
             targets: value.targets(),
         }
@@ -103,6 +105,10 @@ impl AttributePrototypeArgument {
 
     pub fn targets(&self) -> Option<ArgumentTargets> {
         self.targets
+    }
+
+    pub fn timestamp(&self) -> &Timestamp {
+        &self.timestamp
     }
 
     pub async fn static_value_by_id(

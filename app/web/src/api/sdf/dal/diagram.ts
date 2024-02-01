@@ -2,14 +2,30 @@ import * as _ from "lodash-es";
 
 export type DiagramKind = "configuration";
 
+export type DiagramProviderMetadata = string;
+
+export interface DiagramOutputProvider {
+  id: string;
+  ty: DiagramProviderMetadata;
+}
+
 export interface DiagramOutputSocket {
   id: string;
   name: string;
+  diagramKind: DiagramKind;
+  provider: DiagramOutputProvider;
+}
+
+export interface DiagramInputProvider {
+  id: string;
+  ty: DiagramProviderMetadata;
 }
 
 export interface DiagramInputSocket {
   id: string;
   name: string;
+  diagramKind: DiagramKind;
+  provider: DiagramInputProvider;
 }
 
 export interface DiagramSchemaVariant {
@@ -19,7 +35,6 @@ export interface DiagramSchemaVariant {
   schemaName: string;
   schemaId: string;
   color: string;
-  category: string;
   inputSockets: DiagramInputSocket[];
   outputSockets: DiagramOutputSocket[];
 }

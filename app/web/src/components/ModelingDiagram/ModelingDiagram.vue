@@ -67,12 +67,8 @@ overflow hidden */
             v-for="edge in edges"
             :key="edge.uniqueKey"
             :edge="edge"
-            :fromPoint="
-              getSocketLocationInfo(edge.fromExternalProviderKey)?.center
-            "
-            :toPoint="
-              getSocketLocationInfo(edge.toExplicitInternalProviderKey)?.center
-            "
+            :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
+            :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
             :isHovered="elementIsHovered(edge)"
             :isSelected="elementIsSelected(edge)"
           />
@@ -97,12 +93,8 @@ overflow hidden */
             v-for="edge in edges"
             :key="edge.uniqueKey"
             :edge="edge"
-            :fromPoint="
-              getSocketLocationInfo(edge.fromExternalProviderKey)?.center
-            "
-            :toPoint="
-              getSocketLocationInfo(edge.toExplicitInternalProviderKey)?.center
-            "
+            :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
+            :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
             :isHovered="elementIsHovered(edge)"
             :isSelected="elementIsSelected(edge)"
           />
@@ -1364,7 +1356,7 @@ function onDragElementsMove() {
         const parent = queue.shift();
         const x = _.filter(
           groups.value,
-          (n) => n.def.parentComponentId === parent?.def.id,
+          (n) => n.def.parentNodeId === parent?.def.id,
         );
         _.each(x, (childGroup) => {
           if (cycleCheck.has(childGroup.def.id)) return;
@@ -1376,14 +1368,12 @@ function onDragElementsMove() {
       const nodeChildrenOfGroups = _.filter(
         nodes.value,
         (n) =>
-          _.find(
-            includedGroups,
-            (g) => g.def.id === n.def.parentComponentId,
-          ) !== undefined,
+          _.find(includedGroups, (g) => g.def.id === n.def.parentNodeId) !==
+          undefined,
       );
 
       const childEls = _.concat(
-        _.filter(nodes.value, (n) => n.def.parentComponentId === el.def.id),
+        _.filter(nodes.value, (n) => n.def.parentNodeId === el.def.id),
         includedGroups,
         nodeChildrenOfGroups,
       );
@@ -1622,7 +1612,7 @@ watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
   const boxDictionary: Record<string, IRect> = {};
 
   for (const group of groups.value) {
-    const childIds = group.def.childComponentIds;
+    const childIds = group.def.childNodeIds;
     if (!childIds) continue;
 
     let top;
@@ -2025,9 +2015,9 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
     (e) => e.def.changeStatus === "deleted",
   );
   const existingConnectedSocketKeys = _.map(actualExistingEdges, (edge) =>
-    edge.fromExternalProviderKey === fromSocket.uniqueKey
-      ? edge.toExplicitInternalProviderKey
-      : edge.fromExternalProviderKey,
+    edge.fromSocketKey === fromSocket.uniqueKey
+      ? edge.toSocketKey
+      : edge.fromSocketKey,
   );
   const possibleSockets = _.filter(sockets.value, (possibleToSocket) => {
     // cannot connect sockets to other sockets on same node (at least not currently)
@@ -2143,18 +2133,18 @@ async function endDrawEdge() {
     ? drawEdgeFromSocket.value
     : drawEdgeToSocket.value;
 
-  const fromComponentId = adjustedFrom.parent.def.id;
-  const fromExternalProviderId = adjustedFrom.def.id;
-  const toComponentId = adjustedTo.parent.def.id;
-  const toExplicitInternalProviderId = adjustedTo.def.id;
+  const fromNodeId = adjustedFrom.parent.def.id;
+  const fromSocketId = adjustedFrom.def.id;
+  const toNodeId = adjustedTo.parent.def.id;
+  const toSocketId = adjustedTo.def.id;
 
   const equivalentEdge = _.find(
     edges.value,
     (e) =>
-      e.def.fromComponentId === fromComponentId &&
-      e.def.fromExternalProviderId === fromExternalProviderId &&
-      e.def.toComponentId === toComponentId &&
-      e.def.toExplicitInternalProviderId === toExplicitInternalProviderId,
+      e.def.fromNodeId === fromNodeId &&
+      e.def.fromSocketId === fromSocketId &&
+      e.def.toNodeId === toNodeId &&
+      e.def.toSocketId === toSocketId,
   );
 
   // TODO: probably move this to the store?
@@ -2164,12 +2154,12 @@ async function endDrawEdge() {
   } else {
     await componentsStore.CREATE_COMPONENT_CONNECTION(
       {
-        componentId: fromComponentId,
-        externalProviderId: fromExternalProviderId,
+        nodeId: fromNodeId,
+        socketId: fromSocketId,
       },
       {
-        componentId: toComponentId,
-        explicitInternalProviderId: toExplicitInternalProviderId,
+        nodeId: toNodeId,
+        socketId: toSocketId,
       },
     );
   }
@@ -2207,7 +2197,7 @@ async function triggerPasteElements() {
 
 // ELEMENT ADDITION
 const insertElementActive = computed(
-  () => !!componentsStore.selectedInsertSchemaVariantId,
+  () => !!componentsStore.selectedInsertSchemaId,
 );
 
 async function triggerInsertElement() {
@@ -2222,32 +2212,28 @@ async function triggerInsertElement() {
     parentGroupId = hoveredElement.value.def.id;
   }
 
-  if (!componentsStore.selectedInsertSchemaVariantId)
+  if (!componentsStore.selectedInsertSchemaId)
     throw new Error("missing insert selection metadata");
 
-  const schemaVariantId = componentsStore.selectedInsertSchemaVariantId;
-  componentsStore.selectedInsertSchemaVariantId = null;
+  const schemaId = componentsStore.selectedInsertSchemaId;
+  componentsStore.selectedInsertSchemaId = null;
 
-  let parentComponentId;
+  let parentId;
 
   if (parentGroupId) {
     const parentComponent = Object.values(componentsStore.componentsById).find(
-      (c) => c.id === parentGroupId,
+      (c) => c.nodeId === parentGroupId,
     );
     if (
       parentComponent &&
       (parentComponent.nodeType !== ComponentType.AggregationFrame ||
         schemaId === parentComponent.schemaId)
     ) {
-      parentComponentId = parentGroupId;
+      parentId = parentGroupId;
     }
   }
 
-  componentsStore.CREATE_COMPONENT(
-    schemaVariantId,
-    gridPointerPos.value,
-    parentComponentId,
-  );
+  componentsStore.CREATE_COMPONENT(schemaId, gridPointerPos.value, parentId);
 }
 
 // LAYOUT REGISTRY + HELPERS ///////////////////////////////////////////////////////////
@@ -2310,7 +2296,7 @@ const groups = computed(() => {
     if (dragElementsActive.value) {
       if (
         _.intersection(
-          [g.def.id, ...(g.def.ancestorIds || [])],
+          [g.def.componentId, ...(g.def.ancestorIds || [])],
           componentsStore.selectedComponentIds,
         ).length
       ) {
@@ -2352,7 +2338,11 @@ function getDiagramElementKeyForComponentId(componentId?: ComponentId | null) {
   if (!componentId) return;
   const component = componentsStore.componentsById[componentId];
   if (component) {
-    return DiagramNodeData.generateUniqueKey(component.id);
+    // TODO: get rid of node id!
+    if (component.isGroup) {
+      return DiagramGroupData.generateUniqueKey(component.nodeId);
+    }
+    return DiagramNodeData.generateUniqueKey(component.nodeId);
   }
 }
 
@@ -2364,14 +2354,14 @@ function getDiagramElementKeyForEdgeId(edgeId?: EdgeId | null) {
 const connectedEdgesByElementKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
   _.each(edgesByKey.value, (edge) => {
-    lookup[edge.fromComponentKey] ||= [];
-    lookup[edge.fromComponentKey]!.push(edge);
-    lookup[edge.toComponentKey] ||= [];
-    lookup[edge.toComponentKey]!.push(edge);
-    lookup[edge.fromExternalProviderKey] ||= [];
-    lookup[edge.fromExternalProviderKey]!.push(edge);
-    lookup[edge.toExplicitInternalProviderKey] ||= [];
-    lookup[edge.toExplicitInternalProviderKey]!.push(edge);
+    lookup[edge.fromNodeKey] ||= [];
+    lookup[edge.fromNodeKey]!.push(edge);
+    lookup[edge.toNodeKey] ||= [];
+    lookup[edge.toNodeKey]!.push(edge);
+    lookup[edge.fromSocketKey] ||= [];
+    lookup[edge.fromSocketKey]!.push(edge);
+    lookup[edge.toSocketKey] ||= [];
+    lookup[edge.toSocketKey]!.push(edge);
   });
   return lookup;
 });
@@ -2383,10 +2373,8 @@ const connectedEdgesByElementKey = computed(() => {
 function getCenterPointOfElement(el: DiagramElementData) {
   if (el instanceof DiagramEdgeData) {
     // TODO: this logic should live on DiagramEdge class
-    const fromPoint = getSocketLocationInfo(el.fromExternalProviderKey)?.center;
-    const toPoint = getSocketLocationInfo(
-      el.toExplicitInternalProviderKey,
-    )?.center;
+    const fromPoint = getSocketLocationInfo(el.fromSocketKey)?.center;
+    const toPoint = getSocketLocationInfo(el.toSocketKey)?.center;
     if (!fromPoint || !toPoint) return;
     return pointAlongLinePct(fromPoint, toPoint, 0.5);
   } else if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {

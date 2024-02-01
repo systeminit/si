@@ -129,7 +129,7 @@ const fetchComponentsReq =
   componentsStore.getRequestStatus("FETCH_DIAGRAM_DATA");
 
 const rootComponents = computed(() => {
-  return _.filter(componentsStore.allComponents, (c) => !c.parentComponentId);
+  return _.filter(componentsStore.allComponents, (c) => !c.parentNodeId);
 });
 
 const componentsTreeFlattened = computed(() => {

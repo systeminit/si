@@ -64,7 +64,7 @@ pub mod ws_event;
 // pub mod edge;
 // pub mod fix;
 // pub mod index_map;
-// pub mod node_menu;
+pub mod node_menu;
 // pub mod prop_tree;
 // pub mod prototype_context;
 // pub mod prototype_list_for_func;

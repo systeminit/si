@@ -44,11 +44,6 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        path: ":changeSetId/viz",
-        name: "workspace-viz",
-        component: () => import("@/components/Workspace/WorkspaceViz.vue"),
-      },
-      {
         path: ":changeSetId/c",
         name: "workspace-compose",
         component: () =>

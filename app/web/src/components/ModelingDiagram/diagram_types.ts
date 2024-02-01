@@ -97,47 +97,47 @@ export class DiagramEdgeData extends DiagramElementData {
   }
 
   // helpers to get the unique key of the node and sockets this edge is connected to
-  get fromComponentKey() {
-    const comp = useComponentsStore().componentsById[this.def.fromComponentId];
+  get fromNodeKey() {
+    const comp = useComponentsStore().componentsByNodeId[this.def.fromNodeId];
     if (comp?.isGroup) {
-      return DiagramGroupData.generateUniqueKey(this.def.fromComponentId);
+      return DiagramGroupData.generateUniqueKey(this.def.fromNodeId);
     }
-    return DiagramNodeData.generateUniqueKey(this.def.fromComponentId);
+    return DiagramNodeData.generateUniqueKey(this.def.fromNodeId);
   }
 
-  get toComponentKey() {
-    const comp = useComponentsStore().componentsById[this.def.toComponentId];
+  get toNodeKey() {
+    const comp = useComponentsStore().componentsByNodeId[this.def.toNodeId];
     if (comp?.isGroup) {
-      return DiagramGroupData.generateUniqueKey(this.def.toComponentId);
+      return DiagramGroupData.generateUniqueKey(this.def.toNodeId);
     }
-    return DiagramNodeData.generateUniqueKey(this.def.toComponentId);
+    return DiagramNodeData.generateUniqueKey(this.def.toNodeId);
   }
 
-  get fromExternalProviderKey() {
-    const comp = useComponentsStore().componentsById[this.def.fromComponentId];
+  get fromSocketKey() {
+    const comp = useComponentsStore().componentsByNodeId[this.def.fromNodeId];
     if (comp?.isGroup) {
       return DiagramSocketData.generateUniqueKey(
-        DiagramGroupData.generateUniqueKey(this.def.fromComponentId),
-        this.def.fromExternalProviderId,
+        DiagramGroupData.generateUniqueKey(this.def.fromNodeId),
+        this.def.fromSocketId,
       );
     }
     return DiagramSocketData.generateUniqueKey(
-      DiagramNodeData.generateUniqueKey(this.def.fromComponentId),
-      this.def.fromExternalProviderId,
+      DiagramNodeData.generateUniqueKey(this.def.fromNodeId),
+      this.def.fromSocketId,
     );
   }
 
-  get toExplicitInternalProviderKey() {
-    const comp = useComponentsStore().componentsById[this.def.toComponentId];
+  get toSocketKey() {
+    const comp = useComponentsStore().componentsByNodeId[this.def.toNodeId];
     if (comp?.isGroup) {
       return DiagramSocketData.generateUniqueKey(
-        DiagramGroupData.generateUniqueKey(this.def.toComponentId),
-        this.def.toExplicitInternalProviderId,
+        DiagramGroupData.generateUniqueKey(this.def.toNodeId),
+        this.def.toSocketId,
       );
     }
     return DiagramSocketData.generateUniqueKey(
-      DiagramNodeData.generateUniqueKey(this.def.toComponentId),
-      this.def.toExplicitInternalProviderId,
+      DiagramNodeData.generateUniqueKey(this.def.toNodeId),
+      this.def.toSocketId,
     );
   }
 }
@@ -171,6 +171,8 @@ export enum ComponentType {
 export type DiagramNodeDef = {
   /** unique id of the node */
   id: DiagramElementId;
+  /** unique id of the node's component */
+  componentId: ComponentId;
   /** parent frame (or whatever) id */
   parentNodeId?: DiagramElementId;
   /** parent frame (or whatever) id */
@@ -204,7 +206,7 @@ export type DiagramNodeDef = {
   /** if true, node shows the `loading` overlay */
   isLoading: boolean;
   /** the list of childIds related to the node */
-  childComponentIds?: DiagramElementId[];
+  childNodeIds?: DiagramElementId[];
   /** change status of component in relation to head */
   changeStatus?: ChangeStatus;
 };
@@ -238,10 +240,10 @@ export type DiagramEdgeDef = {
   id: DiagramElementId;
   type?: string;
   name?: string;
-  fromComponentId: DiagramElementId;
-  fromExternalProviderId: DiagramElementId;
-  toComponentId: DiagramElementId;
-  toExplicitInternalProviderId: DiagramElementId;
+  fromNodeId: DiagramElementId;
+  fromSocketId: DiagramElementId;
+  toNodeId: DiagramElementId;
+  toSocketId: DiagramElementId;
   isBidirectional?: boolean;
   isInvisible?: boolean;
   /** change status of edge in relation to head */
