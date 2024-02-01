@@ -100,12 +100,6 @@ impl_standard_model! {
     history_event_message_name: "Summary Diagram Components"
 }
 
-impl SummaryDiagramComponent {
-    pub fn has_resource(&self) -> bool {
-        self.has_resource
-    }
-}
-
 pub async fn create_component_entry(
     ctx: &DalContext,
     component: &Component,
@@ -314,28 +308,6 @@ pub async fn component_list(
     Ok(objects)
 }
 
-pk!(SummaryDiagramEdgePk);
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all(serialize = "camelCase"))]
-pub struct SummaryDiagramEdge {
-    pk: SummaryDiagramEdgePk,
-    id: EdgeId,
-    #[serde(flatten)]
-    tenancy: Tenancy,
-    #[serde(flatten)]
-    timestamp: Timestamp,
-    #[serde(flatten)]
-    visibility: Visibility,
-    edge_id: EdgeId,
-    from_node_id: NodeId,
-    from_socket_id: SocketId,
-    to_node_id: NodeId,
-    to_socket_id: SocketId,
-    change_status: String,
-    created_info: serde_json::Value,
-    deleted_info: serde_json::Value,
-}
-
 impl_standard_model! {
     model: SummaryDiagramEdge,
     pk: SummaryDiagramEdgePk,
@@ -526,20 +498,6 @@ pub async fn edge_list(ctx: &DalContext) -> SummaryDiagramResult<Vec<SummaryDiag
         .await?;
     let objects: Vec<SummaryDiagramEdge> = objects_from_rows(rows)?;
     Ok(objects)
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-struct GridPoint {
-    pub x: isize,
-    pub y: isize,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-struct Size2D {
-    pub width: isize,
-    pub height: isize,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]

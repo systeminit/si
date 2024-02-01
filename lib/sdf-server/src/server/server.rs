@@ -22,6 +22,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::{io, net::SocketAddr, path::Path, path::PathBuf};
 use telemetry::prelude::*;
+use telemetry_http::{HttpMakeSpan, HttpOnResponse};
 use thiserror::Error;
 use tokio::time::Instant;
 use tokio::{
@@ -31,7 +32,7 @@ use tokio::{
     task::{JoinError, JoinSet},
     time,
 };
-use tower_http::trace::{DefaultMakeSpan, TraceLayer};
+use tower_http::trace::TraceLayer;
 use ulid::Ulid;
 use veritech_client::Client as VeritechClient;
 

@@ -9,8 +9,8 @@ use crate::{BuiltinsError, BuiltinsResult, DalContext};
 mod test_exclusive_schema_fallout;
 mod test_exclusive_schema_starfield;
 
-pub use test_exclusive_fallout::migrate_test_exclusive_fallout;
-pub use test_exclusive_starfield::migrate_test_exclusive_starfield;
+pub use test_exclusive_schema_fallout::migrate_test_exclusive_schema_fallout;
+pub use test_exclusive_schema_starfield::migrate_test_exclusive_schema_starfield;
 
 // /// Migrate [`Schemas`](crate::Schema) for production use.
 // pub async fn migrate_for_production(ctx: &DalContext) -> BuiltinsResult<()> {
@@ -139,7 +139,7 @@ impl BuiltinSchema {
 //     Ok(())
 // }
 
-async fn migrate_pkg(
+pub async fn migrate_pkg(
     ctx: &DalContext,
     pkg_filename: &str,
     schemas: Option<Vec<String>>,

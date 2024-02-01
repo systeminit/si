@@ -147,10 +147,10 @@ pub fn routes() -> Router<AppState> {
             "/get_property_editor_values",
             get(get_property_editor_values::get_property_editor_values),
         )
-        .route(
-            "/get_property_editor_validations",
-            get(get_property_editor_validations::get_property_editor_validations),
-        )
+        //.route(
+        //            "/get_property_editor_validations",
+        //            get(get_property_editor_validations::get_property_editor_validations),
+        //        )
         // .route(
         //     "/get_components_metadata",
         //     get(get_components_metadata::get_components_metadata),

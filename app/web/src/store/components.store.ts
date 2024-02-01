@@ -16,6 +16,7 @@ import {
   GridPoint,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
+import { MenuItem } from "@/api/sdf/dal/menu";
 import {
   DiagramNode,
   DiagramSchemaVariant,
@@ -40,38 +41,40 @@ import { useStatusStore } from "./status.store";
 export type ComponentId = string;
 export type ComponentNodeId = string;
 export type EdgeId = string;
-export type ProviderId = string;
-
+export type SocketId = string;
+type SchemaId = string;
 type SchemaVariantId = string;
 
 type RawComponent = {
   changeStatus: ChangeStatus;
-  childComponentIds: ComponentId[];
+  childNodeIds: ComponentNodeId[];
   color: string;
   createdInfo: ActorAndTimestamp;
   deletedInfo?: ActorAndTimestamp;
   displayName: string;
-  hasResource: boolean;
   id: ComponentId;
   nodeId: ComponentNodeId;
   nodeType: ComponentType;
   parentNodeId?: ComponentNodeId;
   position: GridPoint;
+  size?: Size2D;
+  hasResource: boolean;
   schemaCategory: string;
   schemaId: string; // TODO: probably want to move this to a different store and not load it all the time
   schemaName: string;
   schemaVariantId: string;
   schemaVariantName: string;
-  size?: Size2D;
   sockets: DiagramSocketDef[];
   updatedInfo: ActorAndTimestamp;
 };
 
 export type FullComponent = RawComponent & {
+  parentNodeId?: ComponentNodeId;
   // direct parent ID
   parentId?: ComponentId;
   // array of parent IDs
   ancestorIds?: ComponentId[];
+  childNodeIds?: ComponentNodeId[];
   childIds?: ComponentId[];
   matchesFilter: boolean;
   icon: IconNames;
@@ -80,10 +83,10 @@ export type FullComponent = RawComponent & {
 
 type Edge = {
   id: EdgeId;
-  fromComponentId: ComponentId;
-  fromExternalProviderId: ProviderId;
-  toComponentId: ComponentId;
-  toExplicitInternalProviderId: ProviderId;
+  fromNodeId: ComponentNodeId;
+  fromSocketId: SocketId;
+  toNodeId: ComponentNodeId;
+  toSocketId: SocketId;
   isInvisible?: boolean;
   /** change status of edge in relation to head */
   changeStatus?: ChangeStatus;
@@ -108,6 +111,17 @@ export type ComponentTreeNode = {
   typeIcon?: string;
   statusIcons?: StatusIconsSet;
 } & FullComponent;
+
+export type MenuSchema = {
+  id: SchemaId;
+  displayName: string;
+  color: string;
+};
+
+export type NodeAddMenu = {
+  displayName: string;
+  schemas: MenuSchema[];
+}[];
 
 const qualificationStatusToIconMap: Record<
   QualificationStatus | "notexists",
@@ -227,6 +241,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             SchemaVariantId,
             DiagramSchemaVariant
           >,
+          rawNodeAddMenu: [] as MenuItem[],
 
           copyingFrom: null as { x: number; y: number } | null,
           selectedComponentIds: [] as ComponentId[],
@@ -238,8 +253,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           panTargetComponentId: null as ComponentId | null,
 
-          // used by the diagram to track which schema variant is selected for insertion
-          selectedInsertSchemaVariantId: null as SchemaVariantId | null,
+          // used by the diagram to track which schema is selected for insertion
+          selectedInsertSchemaId: null as SchemaId | null,
 
           refreshingStatus: {} as Record<ComponentId, boolean>,
 
@@ -259,7 +274,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
           componentsById(): Record<ComponentId, FullComponent> {
             const nodeIdToComponentId = _.mapValues(
-              _.keyBy(this.rawComponentsById, (c) => c.id),
+              _.keyBy(this.rawComponentsById, (c) => c.nodeId),
               (c) => c.id,
             );
 
@@ -270,7 +285,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               const c = this.rawComponentsById[componentId];
 
               if (!c) throw new Error("what?");
-              const parentId = c.parentComponentId;
+              const parentId = c.parentNodeId
+                ? nodeIdToComponentId[c.parentNodeId]
+                : undefined;
 
               if (parentId) {
                 return getAncestorIds(parentId, [parentId, ...idsArray]);
@@ -295,10 +312,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
               return {
                 ...rc,
+                // convert "node" ids back to component ids, so we can use that in a few places
                 ancestorIds,
                 parentId: _.last(ancestorIds),
                 childIds: _.map(
-                  rc.childComponentIds,
+                  rc.childNodeIds,
                   (nodeId) => nodeIdToComponentId[nodeId],
                 ),
                 icon: typeIcon,
@@ -307,7 +325,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
           componentsByParentId(): Record<ComponentId, FullComponent[]> {
-            return _.groupBy(this.allComponents, (c) => c.parentComponentId);
+            return _.groupBy(this.allComponents, (c) =>
+              // remapping to component id... PLEASE LETS KILL NODE ID!
+              c.parentNodeId
+                ? this.componentsByNodeId[c.parentNodeId]?.id
+                : "root",
+            );
           },
           parentIdPathByComponentId(): Record<ComponentId, ComponentId[]> {
             const parentsLookup: Record<ComponentId, ComponentId[]> = {};
@@ -328,6 +351,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               processList(this.componentsByParentId.root, []);
             }
             return parentsLookup;
+          },
+
+          componentsByNodeId(): Record<ComponentNodeId, FullComponent> {
+            return _.keyBy(_.values(this.componentsById), (c) => c.nodeId);
           },
           allComponents(): FullComponent[] {
             return _.values(this.componentsById);
@@ -441,8 +468,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           diagramEdges(): DiagramEdgeDef[] {
             const validEdges = _.filter(this.allEdges, (edge) => {
               return (
-                !!this.componentsById[edge.toComponentId] &&
-                !!this.componentsById[edge.fromComponentId]
+                !!this.componentsByNodeId[edge.toNodeId] &&
+                !!this.componentsByNodeId[edge.fromNodeId]
               );
             });
 
@@ -472,7 +499,45 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
+          edgesByFromNodeId(): Record<ComponentNodeId, Edge[]> {
+            return _.groupBy(this.allEdges, (e) => e.fromNodeId);
+          },
+
+          edgesByToNodeId(): Record<ComponentNodeId, Edge[]> {
+            return _.groupBy(this.allEdges, (e) => e.toNodeId);
+          },
+
           schemaVariants: (state) => _.values(state.schemaVariantsById),
+
+          nodeAddMenu(): NodeAddMenu {
+            return _.compact(
+              _.map(this.rawNodeAddMenu, (category) => {
+                // all root level items are categories for now... will probably rework this endpoint anyway
+                if (category.kind !== "category") return null;
+                return {
+                  displayName: category.name,
+                  // TODO: add color + logo on categories?
+                  schemas: _.compact(
+                    _.map(category.items, (item) => {
+                      // ignoring "link" items - don't think these are relevant at the moment
+                      if (item.kind !== "item") return;
+
+                      // TODO: return hex code from backend...
+                      const schemaVariant = Object.values(
+                        this.schemaVariantsById,
+                      ).find((v) => v.schemaId === item.schema_id);
+                      return {
+                        displayName: item.name,
+                        id: item.schema_id,
+                        // links: item.links, // not sure this is needed?
+                        color: schemaVariant?.color ?? "#777",
+                      };
+                    }),
+                  ),
+                };
+              }),
+            );
+          },
 
           changeStatsSummary(): Record<ChangeStatus | "total", number> {
             const allChanged = _.filter(
@@ -492,18 +557,18 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           getDependentComponents: (state) => (componentId: ComponentId) => {
             // TODO: this is ugly... much of this logic is duplicated in ModelingDiagram
 
-            const connectedComponents: Record<ComponentId, ComponentId[]> = {};
+            const connectedNodes: Record<ComponentId, ComponentId[]> = {};
             _.each(_.values(state.edgesById), (edge) => {
-              const fromComponentId = edge.fromComponentId;
-              const toComponentId = edge.toComponentId;
-              connectedComponents[fromComponentId] ||= [];
-              connectedComponents[fromComponentId]!.push(toComponentId); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+              const fromNodeId = edge.fromNodeId;
+              const toNodeId = edge.toNodeId;
+              connectedNodes[fromNodeId] ||= [];
+              connectedNodes[fromNodeId]!.push(toNodeId); // eslint-disable-line @typescript-eslint/no-non-null-assertion
             });
 
             const connectedIds: ComponentId[] = [componentId];
 
             function walkGraph(id: ComponentId) {
-              const nextIds = connectedComponents[id];
+              const nextIds = connectedNodes[id];
               nextIds?.forEach((nid) => {
                 if (connectedIds.includes(nid)) return;
                 connectedIds.push(nid);
@@ -633,8 +698,22 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
+          async FETCH_NODE_ADD_MENU() {
+            return new ApiRequest<MenuItem[]>({
+              method: "post",
+              // TODO: probably combine into single call with FETCH_AVAILABLE_SCHEMAS
+              url: "diagram/get_node_add_menu",
+              params: {
+                ...visibilityParams,
+              },
+              onSuccess: (response) => {
+                this.rawNodeAddMenu = response;
+              },
+            });
+          },
+
           async SET_COMPONENT_DIAGRAM_POSITION(
-            componentId: ComponentId,
+            nodeId: ComponentNodeId,
             position: Vector2d,
             size?: Size2D,
           ) {
@@ -647,13 +726,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             return new ApiRequest<{ componentStats: ComponentStats }>({
               method: "post",
-              url: "diagram/set_component_position",
+              url: "diagram/set_node_position",
               params: {
-                componentId,
+                nodeId,
                 x: Math.round(position.x).toString(),
                 y: Math.round(position.y).toString(),
                 width,
                 height,
+                diagramKind: "configuration",
                 ...visibilityParams,
               },
               onSuccess: (response) => {
@@ -662,18 +742,18 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          setInsertSchemaVariant(schemaVariantId: SchemaVariantId) {
-            this.selectedInsertSchemaVariantId = schemaVariantId;
+          setInsertSchema(schemaId: SchemaId) {
+            this.selectedInsertSchemaId = schemaId;
             this.setSelectedComponentId(null);
           },
           cancelInsert() {
-            this.selectedInsertSchemaVariantId = null;
+            this.selectedInsertSchemaId = null;
           },
 
           async CREATE_COMPONENT(
-            schemaVariantId: string,
+            schemaId: string,
             position: Vector2d,
-            parentComponentId?: string,
+            parentNodeId?: string,
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -684,13 +764,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             return new ApiRequest<{
               componentId: ComponentId;
+              nodeId: ComponentNodeId;
             }>({
               method: "post",
-              url: "diagram/create_component",
+              url: "diagram/create_node",
               headers: { accept: "application/json" },
               params: {
-                schemaVariantId,
-                parentId: parentComponentId,
+                schemaId,
+                parentId: parentNodeId,
                 x: position.x.toString(),
                 y: position.y.toString(),
                 ...visibilityParams,
@@ -722,11 +803,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
           async CREATE_COMPONENT_CONNECTION(
-            from: { componentId: ComponentId; externalProviderId: ProviderId },
-            to: {
-              componentId: ComponentId;
-              explicitInternalProviderId: ProviderId;
-            },
+            from: { nodeId: ComponentNodeId; socketId: SocketId },
+            to: { nodeId: ComponentNodeId; socketId: SocketId },
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -738,16 +816,19 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             return new ApiRequest<{
               connection: {
                 id: string;
+                classification: "configuration";
+                destination: { nodeId: string; socketId: string };
+                source: { nodeId: string; socketId: string };
               };
               forceChangesetPk?: string;
             }>({
               method: "post",
               url: "diagram/create_connection",
               params: {
-                fromComponentId: from.componentId,
-                fromExternalProviderId: from.externalProviderId,
-                toComponentId: to.componentId,
-                toExplicitInternalProviderId: to.explicitInternalProviderId,
+                fromNodeId: from.nodeId,
+                fromSocketId: from.socketId,
+                toNodeId: to.nodeId,
+                toSocketId: to.socketId,
                 ...visibilityParams,
               },
               onSuccess: (response) => {
@@ -765,10 +846,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 const nowTs = new Date().toISOString();
                 this.edgesById[tempId] = {
                   id: tempId,
-                  fromComponentId: from.componentId,
-                  fromExternalProviderId: from.externalProviderId,
-                  toComponentId: to.componentId,
-                  toExplicitInternalProviderId: to.explicitInternalProviderId,
+                  fromNodeId: from.nodeId,
+                  fromSocketId: from.socketId,
+                  toNodeId: to.nodeId,
+                  toSocketId: to.socketId,
                   changeStatus: "added",
                   createdInfo: {
                     timestamp: nowTs,
@@ -782,8 +863,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
           async CONNECT_COMPONENT_TO_FRAME(
-            childId: ComponentId,
-            parentId: ComponentId,
+            childNodeId: ComponentNodeId,
+            parentNodeId: ComponentNodeId,
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -794,8 +875,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               method: "post",
               url: "diagram/connect_component_to_frame",
               params: {
-                childId,
-                parentId,
+                childNodeId,
+                parentNodeId,
                 ...visibilityParams,
               },
               optimistic: () => {
@@ -1294,6 +1375,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // trigger initial load
           this.FETCH_DIAGRAM_DATA();
           this.FETCH_AVAILABLE_SCHEMAS();
+          this.FETCH_NODE_ADD_MENU();
 
           // TODO: prob want to take loading state into consideration as this will set it before its loaded
           const stopWatchingUrl = watch(

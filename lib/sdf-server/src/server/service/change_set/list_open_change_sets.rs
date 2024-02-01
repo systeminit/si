@@ -1,6 +1,6 @@
 use axum::Json;
 use chrono::{DateTime, Utc};
-use dal::action::ActionId;
+//use dal::action::ActionId;
 use dal::change_set_pointer::{ChangeSetPointer, ChangeSetPointerId};
 use dal::ActionKind;
 use dal::{ActionPrototypeId, ChangeSetStatus, ComponentId, UserPk};
@@ -20,7 +20,7 @@ pub struct ActionView {
     pub name: String,
     pub component_id: ComponentId,
     pub actor: Option<String>,
-    pub parents: Vec<ActionId>,
+    pub parents: Vec<()>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]

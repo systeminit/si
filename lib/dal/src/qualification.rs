@@ -43,8 +43,6 @@ pub enum QualificationSummaryError {
     Pg(#[from] PgError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    Transaction(#[from] TransactionsError),
 }
 
 pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;
@@ -56,6 +54,8 @@ impl QualificationSummary {
         let mut components_warned = 0;
         let mut components_failed = 0;
         let mut total = 0;
+
+        let mut component_summaries = vec![];
 
         for component in Component::list(ctx).await? {
             let component_id = component.id();
@@ -102,7 +102,7 @@ impl QualificationSummary {
             succeeded: components_succeeded,
             warned: components_warned,
             failed: components_failed,
-            components: qualification_summary_for_components,
+            components: component_summaries,
         })
     }
 }

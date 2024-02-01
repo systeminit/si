@@ -6,9 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_pkg::{
-    SchemaSpec, SchemaSpecData, SchemaVariantSpecData, SiPropFuncSpecKind, ValidationSpec,
-};
+use si_pkg::{SchemaSpec, SchemaSpecData, SchemaVariantSpecData, SiPropFuncSpecKind};
 use std::collections::HashMap;
 use thiserror::Error;
 

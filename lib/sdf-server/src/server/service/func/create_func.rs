@@ -412,10 +412,6 @@ pub async fn create_func(
         }),
     );
 
-    WsEvent::func_created(&ctx, *func.id())
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();

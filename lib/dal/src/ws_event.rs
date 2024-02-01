@@ -4,9 +4,8 @@ use si_data_pg::PgError;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::action::{ActionAddedPayload, ActionRemovedPayload};
 use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
-use crate::component::ComponentCreatedPayload;
+use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
 use crate::qualification::QualificationCheckPayload;
 use crate::user::OnlinePayload;
 use crate::{
@@ -40,8 +39,8 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[serde(tag = "kind", content = "data")]
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
-    ActionAdded(ActionAddedPayload),
-    ActionRemoved(ActionRemovedPayload),
+    //    ActionAdded(ActionAddedPayload),
+    //    ActionRemoved(ActionRemovedPayload),
     AsyncError(ErrorPayload),
     AsyncFinish(FinishPayload),
     ChangeSetAbandoned(ChangeSetActorPayload),

@@ -87,11 +87,6 @@ pub async fn set_component_position(
     //     };
     // }
 
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
-
     ctx.commit().await?;
 
     Ok(Json(SetComponentPositionResponse { component }))

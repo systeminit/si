@@ -1,26 +1,28 @@
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
+use std::collections::{hash_map, HashMap};
 use std::num::{ParseFloatError, ParseIntError};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
 
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
 use crate::attribute::value::AttributeValueError;
-use crate::component::ComponentError;
-use crate::diagram::edge::DiagramEdgeView;
-use crate::diagram::node::DiagramComponentView;
+use crate::change_status::ChangeStatus;
+use crate::component::{ComponentError, IncomingConnection};
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     AttributePrototypeId, Component, ComponentId, DalContext, ExternalProviderId,
-    HistoryEventError, StandardModelError,
+    HistoryEventError, InternalProviderId, ProviderArity, SchemaId, SchemaVariant, SchemaVariantId,
+    StandardModelError,
 };
 
 pub mod edge;
-pub mod node;
+//pub(crate) mod summary_diagram;
 
 // TODO(nick): this module eventually goes the way of the dinosaur.
 // pub mod connection;
@@ -74,6 +76,8 @@ pub enum DiagramError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found")]
     SchemaVariantNotFound,
+    #[error("serde error: {0}")]
+    Serde(#[from] serde_json::Error),
     #[error("socket not found")]
     SocketNotFound,
     #[error("standard model error: {0}")]
@@ -84,172 +88,256 @@ pub enum DiagramError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
+pub type NodeId = ComponentId;
+pub type EdgeId = AttributePrototypeArgumentId;
+
 pub type DiagramResult<T> = Result<T, DiagramError>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+struct GridPoint {
+    pub x: isize,
+    pub y: isize,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct Size2D {
+    pub width: isize,
+    pub height: isize,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all(serialize = "camelCase"))]
+pub struct SummaryDiagramComponent {
+    id: ComponentId,
+    component_id: ComponentId,
+    schema_name: String,
+    schema_id: SchemaId,
+    schema_variant_id: SchemaVariantId,
+    schema_variant_name: String,
+    schema_category: String,
+    sockets: serde_json::Value,
+    node_id: NodeId,
+    display_name: String,
+    position: GridPoint,
+    size: Size2D,
+    color: String,
+    node_type: String,
+    change_status: String,
+    has_resource: bool,
+    parent_node_id: Option<NodeId>,
+    child_node_ids: serde_json::Value,
+    //    created_info: serde_json::Value,
+    //    updated_info: serde_json::Value,
+    //    deleted_info: serde_json::Value,
+}
+
+impl SummaryDiagramComponent {
+    pub fn has_resource(&self) -> bool {
+        self.has_resource
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all(serialize = "camelCase"))]
+pub struct SummaryDiagramEdge {
+    id: EdgeId,
+    edge_id: EdgeId,
+    from_node_id: NodeId,
+    from_socket_id: ExternalProviderId,
+    to_node_id: NodeId,
+    to_socket_id: InternalProviderId,
+    change_status: String,
+    //    created_info: serde_json::Value,
+    //    deleted_info: serde_json::Value,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct DiagramSocket {
+    pub id: String,
+    pub label: String,
+    pub connection_annotations: Vec<String>,
+    pub direction: DiagramSocketDirection,
+    pub max_connections: Option<usize>,
+    pub is_required: Option<bool>,
+    pub node_side: DiagramSocketNodeSide,
+}
+
+#[remain::sorted]
+#[derive(
+    AsRefStr,
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Display,
+    EnumIter,
+    EnumString,
+    Eq,
+    PartialEq,
+    Serialize,
+)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
+enum DiagramSocketDirection {
+    Bidirectional,
+    Input,
+    Output,
+}
+
+#[remain::sorted]
+#[derive(
+    AsRefStr,
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Display,
+    EnumIter,
+    EnumString,
+    Eq,
+    PartialEq,
+    Serialize,
+)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
+enum DiagramSocketNodeSide {
+    Left,
+    Right,
+}
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct Diagram {
-    pub components: Vec<DiagramComponentView>,
-    pub edges: Vec<DiagramEdgeView>,
+    pub components: Vec<SummaryDiagramComponent>,
+    pub edges: Vec<SummaryDiagramEdge>,
 }
 
 impl Diagram {
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
     /// [`Connections`](crate::Connection).
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
-        // TODO(nick): handle deleted.
-        // let ctx_with_deleted = &ctx.clone_with_delete_visibility();
+        let mut diagram_sockets: HashMap<SchemaVariantId, serde_json::Value> = HashMap::new();
+        let mut diagram_edges: Vec<SummaryDiagramEdge> = vec![];
 
-        // TODO(nick): restore listing change status.
-        // let modified = ComponentChangeStatus::list_modified(ctx).await?;
-        // debug!("modified component change status: {modified:#?}");
-
-        // let deleted_edges: Vec<Edge> = EdgeChangeStatus::list_deleted(ctx).await?;
-        //
-        // let deleted_diagram_edges = ctx
-        //     .run_with_deleted_visibility(|ctx_with_deleted| async move {
-        //         let mut deleted_diagram_edges = Vec::new();
-        //
-        //         for deleted_edge in deleted_edges {
-        //             if *deleted_edge.kind() == EdgeKind::Configuration {
-        //                 let conn = Connection::from_edge(&deleted_edge);
-        //                 let mut diagram_edge_view =
-        //                     DiagramEdgeView::from_with_change_status(conn, ChangeStatus::Deleted);
-        //                 diagram_edge_view
-        //                     .set_actor_details(&ctx_with_deleted, &deleted_edge)
-        //                     .await?;
-        //                 deleted_diagram_edges.push(diagram_edge_view);
-        //             }
-        //         }
-        //
-        //         Ok::<_, DiagramError>(deleted_diagram_edges)
-        //     })
-        //     .await?;
-        //
-        // diagram_edges.extend(deleted_diagram_edges);
-
-        // TODO(nick): ensure we can show both deleted and exiting nodes.
-        // let nodes = ctx
-        //     .run_with_deleted_visibility(|ctx_with_deleted| async move {
-        //         Node::list_live(&ctx_with_deleted, NodeKind::Configuration).await
-        //     })
-        //     .await?;
         let components = Component::list(ctx).await?;
 
         let mut component_views = Vec::with_capacity(components.len());
         for component in &components {
+            diagram_edges.extend(component.incoming_connections(ctx).await?.into_iter().map(
+                |IncomingConnection {
+                     attribute_prototype_argument_id,
+                     to_component_id,
+                     to_internal_provider_id,
+                     from_component_id,
+                     from_external_provider_id,
+                 }| SummaryDiagramEdge {
+                    id: attribute_prototype_argument_id,
+                    edge_id: attribute_prototype_argument_id,
+                    from_node_id: from_component_id,
+                    from_socket_id: from_external_provider_id,
+                    to_node_id: to_component_id,
+                    to_socket_id: to_internal_provider_id,
+                    change_status: ChangeStatus::Added.to_string(),
+                },
+            ));
+
             let schema_variant = component.schema_variant(ctx).await?;
 
-            // TODO(nick): restore this.
-            let is_modified = false;
-            // let is_modified = modified
-            //     .clone()
-            //     .iter()
-            //     .any(|s| s.component_id == *component.id());
+            let sockets = match diagram_sockets.entry(schema_variant.id()) {
+                hash_map::Entry::Vacant(entry) => {
+                    let (external_providers, internal_providers) =
+                        SchemaVariant::list_external_providers_and_explicit_internal_providers(
+                            ctx,
+                            schema_variant.id(),
+                        )
+                        .await?;
 
-            // TODO(nick): restore frames.
-            // // Get Parent Id
-            // let sockets = SocketView::list(ctx, &schema_variant).await?;
-            // let maybe_socket_to_parent = sockets.iter().find(|socket| {
-            //     socket.label == "Frame" && socket.direction == SocketDirection::Output
-            // });
+                    let mut sockets = vec![];
 
-            // let edges_with_deleted =
-            //     Edge::list_for_component(ctx_with_deleted, *component.id()).await?;
+                    for ip in internal_providers {
+                        sockets.push(DiagramSocket {
+                            id: ip.id().to_string(),
+                            label: ip.name().to_string(),
+                            connection_annotations: vec![],
+                            direction: DiagramSocketDirection::Input,
+                            max_connections: match ip.arity() {
+                                ProviderArity::Many => None,
+                                ProviderArity::One => Some(1),
+                            },
+                            is_required: Some(false),
+                            node_side: DiagramSocketNodeSide::Right,
+                        });
+                    }
 
-            // let mut parent_node_ids = Vec::new();
+                    for ep in external_providers {
+                        sockets.push(DiagramSocket {
+                            id: ep.id().to_string(),
+                            label: ep.name().to_string(),
+                            connection_annotations: vec![],
+                            direction: DiagramSocketDirection::Output,
+                            max_connections: match ep.arity() {
+                                ProviderArity::Many => None,
+                                ProviderArity::One => Some(1),
+                            },
+                            is_required: Some(false),
+                            node_side: DiagramSocketNodeSide::Left,
+                        });
+                    }
 
-            // if let Some(socket_to_parent) = maybe_socket_to_parent {
-            //     for edge in &edges_with_deleted {
-            //         if edge.tail_node_id() == *node.id()
-            //             && edge.tail_socket_id().to_string() == socket_to_parent.id
-            //             && (edge.visibility().deleted_at.is_none() || edge.deleted_implicitly())
-            //         {
-            //             let parents =
-            //                 Edge::list_parents_for_component(ctx, edge.head_component_id()).await?;
-            //             parent_node_ids.push((edge.head_node_id(), parents.len()));
-            //         }
-            //     }
-            // };
+                    let socket_value = serde_json::to_value(sockets)?;
 
-            // let parent_node_id = parent_node_ids
-            //     .into_iter()
-            //     .max_by_key(|(_, parents)| *parents)
-            //     .map(|(id, _)| id);
+                    entry.insert(socket_value.to_owned());
 
-            // // Get Child Ids
-            // let maybe_socket_from_children = sockets.iter().find(|socket| {
-            //     socket.label == "Frame" && socket.direction == SocketDirection::Input
-            // });
+                    socket_value
+                }
+                hash_map::Entry::Occupied(entry) => entry.get().to_owned(),
+            };
 
-            // let mut child_node_ids = vec![];
-            // if let Some(socket_from_children) = maybe_socket_from_children {
-            //     for edge in &edges_with_deleted {
-            //         if edge.head_node_id() == *node.id()
-            //             && edge.head_socket_id().to_string() == socket_from_children.id
-            //             && (edge.visibility().deleted_at.is_none()
-            //                 || (edge.deleted_implicitly() && edge.visibility().in_change_set()))
-            //         {
-            //             let child_node = Node::get_by_id(ctx_with_deleted, &edge.tail_node_id())
-            //                 .await?
-            //                 .ok_or(DiagramError::NodeNotFound)?;
+            let schema = SchemaVariant::schema(ctx, schema_variant.id()).await?;
 
-            //             // This is a node in the current changeset and it is not deleted
-            //             if child_node.visibility().in_change_set()
-            //                 && child_node.visibility().deleted_at.is_none()
-            //             {
-            //                 child_node_ids.push(edge.tail_node_id());
-            //                 continue;
-            //             }
+            let position = GridPoint {
+                x: component.x().parse::<f64>()?.round() as isize,
+                y: component.y().parse::<f64>()?.round() as isize,
+            };
+            let size = match (component.width(), component.height()) {
+                (Some(h), Some(w)) => Size2D {
+                    height: h.parse()?,
+                    width: w.parse()?,
+                },
+                _ => Size2D {
+                    height: 500,
+                    width: 500,
+                },
+            };
+            let component_view = SummaryDiagramComponent {
+                id: component.id(),
+                component_id: component.id(),
+                schema_name: schema.name().to_owned(),
+                schema_id: schema.id(),
+                schema_variant_id: schema_variant.id(),
+                schema_variant_name: schema_variant.name().to_owned(),
+                schema_category: schema_variant.category().to_owned(),
+                node_id: component.id(),
+                display_name: component.name(ctx).await?,
+                position,
+                size,
+                node_type: component.get_type(ctx).await?.to_string(),
+                color: component.color(ctx).await?.unwrap_or("#111111".into()),
+                change_status: ChangeStatus::Added.to_string(),
+                has_resource: false,
+                sockets,
+                parent_node_id: None,
+                child_node_ids: serde_json::to_value::<Vec<String>>(vec![])?,
+            };
 
-            //             // this is a node in the current changeset that has been marked as deleted
-            //             // now we need to check to see if it is exists in head
-            //             // if it does, then it's a ghosted node and should be included as a child
-            //             if child_node.visibility().in_change_set()
-            //                 && child_node.visibility().deleted_at.is_some()
-            //             {
-            //                 let head_ctx = &ctx.clone_with_head();
-            //                 let head_node = Node::get_by_id(head_ctx, &edge.tail_node_id()).await?;
-            //                 if head_node.is_some() {
-            //                     child_node_ids.push(edge.tail_node_id());
-            //                     continue;
-            //                 }
-            //             }
-
-            //             // if the node is in head, doesn't exist directly on the changeset
-            //             // and not marked as deleted in head, then it's also a valid child
-            //             // *Remember*: a node won't exist in the changeset until a change is
-            //             // made to a node!!
-            //             if child_node.visibility().is_head()
-            //                 && child_node.visibility().deleted_at.is_none()
-            //             {
-            //                 child_node_ids.push(edge.tail_node_id());
-            //                 continue;
-            //             }
-            //         }
-            //     }
-            // };
-
-            let parent_component_id = None;
-            let child_component_ids = Vec::new();
-
-            let view = DiagramComponentView::new(
-                ctx,
-                // TODO(nick): handle deleted.
-                // ctx_with_deleted,
-                component,
-                parent_component_id,
-                child_component_ids,
-                is_modified,
-                &schema_variant,
-            )
-            .await?;
-            component_views.push(view);
+            component_views.push(component_view);
         }
 
         // TODO(nick): restore the ability to show edges.
         Ok(Self {
-            edges: DiagramEdgeView::list(ctx).await?,
+            edges: diagram_edges,
             components: component_views,
         })
     }

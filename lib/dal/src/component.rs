@@ -1,9 +1,6 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
-use std::collections::{HashMap, VecDeque};
-
-use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, HashMap, VecDeque};
 use std::hash::Hash;
@@ -12,6 +9,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 use ulid::Ulid;
+
+use content_store::{ContentHash, Store, StoreError};
 
 use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
@@ -35,9 +34,10 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributeValue, AttributeValueId, DalContext, ExternalProvider, ExternalProviderId,
-    InternalProvider, InternalProviderId, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId,
-    Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
+    pk, AttributeValue, AttributeValueId, ChangeSetPk, DalContext, ExternalProvider,
+    ExternalProviderId, InternalProvider, InternalProviderId, Prop, PropId, PropKind,
+    SchemaVariant, SchemaVariantId, Timestamp, TransactionsError, WsEvent, WsEventError,
+    WsEventResult, WsPayload,
 };
 
 pub mod resource;

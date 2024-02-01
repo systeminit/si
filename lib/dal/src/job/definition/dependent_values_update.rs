@@ -4,10 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use council_server::ManagementResponse;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, collections::HashSet, convert::TryFrom};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::{JoinError, JoinSet};
@@ -216,122 +213,6 @@ async fn values_from_prototype_function_execution(
     attribute_value_id: AttributeValueId,
 ) -> DependentValueUpdateResult<PrototypeExecutionResult> {
     Ok(AttributeValue::execute_prototype_function(&ctx, attribute_value_id).await?)
-}
-
-#[instrument(
-    name = "dependent_values_update.update_summary_tables",
-    skip_all,
-    level = "info",
-    fields(
-        component.id = %component_id,
-    )
-)]
-async fn update_summary_tables(
-    ctx: &DalContext,
-    component_value_json: &serde_json::Value,
-    component_id: ComponentId,
-) -> JobConsumerResult<()> {
-    // Qualification summary table - if we add more summary tables, this should be extracted to its
-    // own method.
-    let mut total: i64 = 0;
-    let mut warned: i64 = 0;
-    let mut succeeded: i64 = 0;
-    let mut failed: i64 = 0;
-    let mut name: String = String::new();
-    let mut color: String = String::new();
-    let mut component_type: String = String::new();
-    let mut has_resource: bool = false;
-    let mut deleted_at: Option<String> = None;
-    let mut deleted_at_datetime: Option<DateTime<Utc>> = None;
-    if let Some(ref deleted_at) = deleted_at {
-        let deleted_at_datetime_inner: DateTime<Utc> = deleted_at.parse()?;
-        deleted_at_datetime = Some(deleted_at_datetime_inner);
-    }
-
-    if let Some(component_name) = component_value_json.pointer("/si/name") {
-        if let Some(component_name_str) = component_name.as_str() {
-            name = String::from(component_name_str);
-        }
-    }
-
-    if let Some(component_color) = component_value_json.pointer("/si/color") {
-        if let Some(component_color_str) = component_color.as_str() {
-            color = String::from(component_color_str);
-        }
-    }
-
-    if let Some(component_type_json) = component_value_json.pointer("/si/type") {
-        if let Some(component_type_str) = component_type_json.as_str() {
-            component_type = String::from(component_type_str);
-        }
-    }
-
-    if let Some(_resource) = component_value_json.pointer("/resource/payload") {
-        has_resource = true;
-    }
-
-    if let Some(deleted_at_value) = component_value_json.pointer("/deleted_at") {
-        if let Some(deleted_at_str) = deleted_at_value.as_str() {
-            deleted_at = Some(deleted_at_str.into());
-        }
-    }
-
-    if let Some(qualification_map_value) = component_value_json.pointer("/qualification") {
-        if let Some(qualification_map) = qualification_map_value.as_object() {
-            for qual_result_map_value in qualification_map.values() {
-                if let Some(qual_result_map) = qual_result_map_value.as_object() {
-                    if let Some(qual_result) = qual_result_map.get("result") {
-                        if let Some(qual_result_string) = qual_result.as_str() {
-                            total += 1;
-                            match qual_result_string {
-                                "success" => succeeded += 1,
-                                "warning" => warned += 1,
-                                "failure" => failed += 1,
-                                &_ => (),
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    let _row = ctx
-        .txns()
-        .await?
-        .pg()
-        .query_one(
-            "SELECT object FROM summary_qualification_update_v2($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-            &[
-                ctx.tenancy(),
-                ctx.visibility(),
-                &component_id,
-                &name,
-                &total,
-                &warned,
-                &succeeded,
-                &failed,
-                &deleted_at_datetime,
-            ],
-        )
-        .await?;
-
-    diagram::summary_diagram::component_update(
-        ctx,
-        &component_id,
-        name,
-        color,
-        component_type,
-        has_resource,
-        deleted_at,
-    )
-    .await?;
-
-    WsEvent::component_updated(ctx, component_id)
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
-
-    Ok(())
 }
 
 impl TryFrom<JobInfo> for DependentValuesUpdate {

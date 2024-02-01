@@ -1,7 +1,6 @@
 use content_store::Store;
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
-use telemetry::prelude::*;
 
 use crate::{
     pk,
