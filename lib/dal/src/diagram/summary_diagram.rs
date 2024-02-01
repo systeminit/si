@@ -138,7 +138,7 @@ pub async fn create_component_entry(
 
     let change_status = ChangeStatus::Added;
 
-    // This could also be refactored away from hisotry actors
+    // This could also be refactored away from history actors
     let component_status = ComponentStatus::get_by_id(ctx, component.id())
         .await?
         .ok_or_else(|| DiagramError::ComponentStatusNotFound(*component.id()))?;
@@ -280,7 +280,7 @@ pub async fn component_update(
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_component_update_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            "SELECT object FROM summary_diagram_component_update_v2($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
@@ -388,7 +388,7 @@ pub async fn create_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM summary_diagram_component_set_parent_node_id_v2($1, $2, $3, $4)",
+                "SELECT object FROM summary_diagram_component_set_parent_node_id_v3($1, $2, $3, $4)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -463,7 +463,7 @@ pub async fn delete_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM summary_diagram_component_unset_parent_node_id_v2($1, $2, $3)",
+                "SELECT object FROM summary_diagram_component_set_parent_node_id_v3($1, $2, $3, NULL)",
                 &[ctx.tenancy(), ctx.visibility(), &edge.tail_component_id()],
             )
             .await?;
@@ -501,7 +501,7 @@ pub async fn restore_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagram
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM summary_diagram_component_set_parent_node_id_v2($1, $2, $3, $4)",
+                "SELECT object FROM summary_diagram_component_set_parent_node_id_v3($1, $2, $3, $4)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
