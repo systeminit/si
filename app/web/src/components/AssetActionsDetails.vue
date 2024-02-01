@@ -3,6 +3,7 @@
     <TabGroup
       minimal
       :startSelectedTabSlug="componentsStore.detailsTabSlugs[1] || undefined"
+      marginTop="2xs"
       @update:selectedTab="onTabSelected"
     >
       <TabGroupItem label="Select" slug="actions-selection">
