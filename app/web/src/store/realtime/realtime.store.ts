@@ -179,7 +179,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
     eventMetadata: RealtimeEventMetadata,
   ) {
     // Set the "VITE_LOG_WS" environment variable to true if you want to see logs for received WsEvents.
-    if (import.meta.env.VITE_LOG_WS && eventKind !== "Cursor") {
+    if (import.meta.env.VITE_LOG_WS) {
       /* eslint-disable-next-line no-console */
       console.log("WS message", eventKind, eventData);
     }
