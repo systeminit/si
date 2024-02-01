@@ -1235,17 +1235,36 @@ async fn simple_map(ctx: &DalContext) {
     )
     .await
     .expect("could not update album AttributeValue");
+    dbg!(ctx.tenancy(), ctx.visibility(), album_value_id);
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
+
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("cannot get component view");
+
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "E como isso afeta o Grêmio?",
+                "type": "component",
+                "protected": false
+            },
+            "domain": {
+                "albums": {}
+            }
+        }], // expected
+        component_view.properties, // actual
+    );
 
     let album_item_context = base_attribute_context
         .clone()
         .set_prop_id(*album_item_prop.id())
         .to_context()
         .expect("could not create album item AttributeContext");
-    let _ = AttributeValue::insert_for_context(
+    let nocturnal_attribute_value_id = AttributeValue::insert_for_context(
         ctx,
         album_item_context,
         album_value_id,
@@ -1254,12 +1273,33 @@ async fn simple_map(ctx: &DalContext) {
     )
     .await
     .expect("could not insert album item");
+    dbg!(nocturnal_attribute_value_id);
 
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
 
-    let _ = AttributeValue::insert_for_context(
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("cannot get component view");
+
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "E como isso afeta o Grêmio?",
+                "type": "component",
+                "protected": false
+            },
+            "domain": {
+                "albums": {
+                    "black_dahlia": "nocturnal"
+                }
+            }
+        }], // expected
+        component_view.properties, // actual
+    );
+
+    let meshuggah_attribute_value_id = AttributeValue::insert_for_context(
         ctx,
         album_item_context,
         album_value_id,
@@ -1268,6 +1308,7 @@ async fn simple_map(ctx: &DalContext) {
     )
     .await
     .expect("could not insert album item");
+    dbg!(meshuggah_attribute_value_id);
 
     ctx.blocking_commit()
         .await
