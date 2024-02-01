@@ -64,15 +64,6 @@ impl FixesJob {
         Self::new_raw(ctx, fixes, batch_id, false)
     }
 
-    /// Used for creating another fix job in a "fixes" sequence.
-    fn new_iteration(
-        ctx: &DalContext,
-        fixes: HashMap<FixId, FixItem>,
-        batch_id: FixBatchId,
-    ) -> Box<Self> {
-        Self::new_raw(ctx, fixes, batch_id, true)
-    }
-
     fn new_raw(
         ctx: &DalContext,
         fixes: HashMap<FixId, FixItem>,
@@ -120,7 +111,9 @@ impl JobConsumer for FixesJob {
         skip_all,
         level = "info",
         fields(
-            // TODO(fnichol): add some?
+            batch_id=?self.batch_id,
+            fixes=?self.fixes,
+            job=?self.job,
         )
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
@@ -138,71 +131,119 @@ impl JobConsumer for FixesJob {
             return finish_batch(ctx, self.batch_id).await;
         }
 
-        let mut fix_items = Vec::new();
-        for item in fixes.values() {
-            if item.parents.is_empty() {
-                fix_items.push(item.clone());
+        // Please, let this maybe go away. If you do more than 1000 in a single apply, that's bad.
+        let total_fix_limit = 100;
+        let mut total_fix_batch_loops = 0;
+
+        loop {
+            total_fix_batch_loops += 1;
+
+            let mut fix_items = Vec::new();
+            for item in fixes.values() {
+                if item.parents.is_empty() {
+                    fix_items.push(item.clone());
+                }
             }
-        }
 
-        let mut handles = FuturesUnordered::new();
+            debug!(
+                ?fixes,
+                ?total_fix_batch_loops,
+                "Scheduled fixes for this loop"
+            );
 
-        // So we don't keep an open transaction while the tasks run, each task has its own transaction
-        // Block just in case
-        ctx.blocking_commit().await?;
+            if total_fix_batch_loops >= total_fix_limit {
+                error!(
+                    "Fix batch exceeded total fix limit loops ({total_fix_limit})! {:?}",
+                    self
+                );
+                for fix in fix_items.iter() {
+                    process_failed_fix(
+                        ctx,
+                        &mut fixes,
+                        self.batch_id,
+                        fix.id,
+                        "Failed this action - too many fixes in the batch! We tried, honest."
+                            .to_string(),
+                        Vec::new(),
+                    )
+                    .await;
+                }
+                finish_batch(ctx, self.batch_id).await?;
+                break;
+            }
 
-        for fix_item in fix_items {
-            let task_ctx = ctx
-                .to_builder()
-                .build(self.access_builder().build(self.visibility()))
-                .await?;
-            handles.push(async move {
-                let id = fix_item.id;
-                let res = tokio::task::spawn(fix_task(
-                    task_ctx,
-                    self.batch_id,
-                    fix_item,
-                    Span::current(),
-                ))
-                .await;
-                (id, res)
-            });
-        }
+            let mut handles = FuturesUnordered::new();
 
-        while let Some((id, future_result)) = handles.next().await {
-            match future_result {
-                Ok(job_consumer_result) => match job_consumer_result {
-                    Ok((fix, logs)) => {
-                        let completion_status: FixCompletionStatus = *fix
-                            .completion_status()
-                            .ok_or(FixError::EmptyCompletionStatus)?;
-                        if !matches!(completion_status, FixCompletionStatus::Success) {
+            // So we don't keep an open transaction while the tasks run, each task has its own transaction
+            // Block just in case
+            ctx.blocking_commit().await?;
+
+            for fix_item in fix_items {
+                let task_ctx = ctx
+                    .to_builder()
+                    .build(self.access_builder().build(self.visibility()))
+                    .await?;
+                handles.push(async move {
+                    let id = fix_item.id;
+                    let res = tokio::task::spawn(fix_task(
+                        task_ctx,
+                        self.batch_id,
+                        fix_item,
+                        Span::current(),
+                    ))
+                    .await;
+                    (id, res)
+                });
+            }
+
+            while let Some((id, future_result)) = handles.next().await {
+                match future_result {
+                    Ok(job_consumer_result) => match job_consumer_result {
+                        Ok((fix, logs)) => {
+                            debug!(?fix, ?logs, "fix job completed");
+                            let completion_status: FixCompletionStatus =
+                                *fix.completion_status()
+                                    .ok_or(FixError::EmptyCompletionStatus)?;
+                            if !matches!(completion_status, FixCompletionStatus::Success) {
+                                process_failed_fix(
+                                    ctx,
+                                    &mut fixes,
+                                    self.batch_id,
+                                    id,
+                                    fix.completion_message()
+                                        .map(ToOwned::to_owned)
+                                        .unwrap_or_else(|| {
+                                            format!(
+                                                "Action failed with unknown error: {completion_status}"
+                                            )
+                                        }),
+                                    logs,
+                                )
+                                .await;
+                                continue;
+                            }
+
+                            fixes.remove(&id);
+
+                            for fix in fixes.values_mut() {
+                                fix.parents.retain(|parent_id| *parent_id != id);
+                            }
+                        }
+                        Err(err) => {
+                            error!("Unable to finish fix {id}: {err}");
                             process_failed_fix(
                                 ctx,
                                 &mut fixes,
                                 self.batch_id,
                                 id,
-                                fix.completion_message()
-                                    .map(ToOwned::to_owned)
-                                    .unwrap_or_else(|| {
-                                        format!(
-                                            "Action failed with unknown error: {completion_status}"
-                                        )
-                                    }),
-                                logs,
+                                format!("Action failed: {err}"),
+                                Vec::new(),
                             )
                             .await;
-                            continue;
                         }
-
-                        fixes.remove(&id);
-
-                        for fix in fixes.values_mut() {
-                            fix.parents.retain(|parent_id| *parent_id != id);
-                        }
-                    }
+                    },
                     Err(err) => {
-                        error!("Unable to finish fix {id}: {err}");
+                        error!(?err, "Failed a fix due to an error");
                         process_failed_fix(
                             ctx,
                             &mut fixes,
@@ -212,40 +253,29 @@ impl JobConsumer for FixesJob {
                             Vec::new(),
                         )
                         .await;
-                    }
-                },
-                Err(err) => {
-                    process_failed_fix(
-                        ctx,
-                        &mut fixes,
-                        self.batch_id,
-                        id,
-                        format!("Action failed: {err}"),
-                        Vec::new(),
-                    )
-                    .await;
 
-                    match err.try_into_panic() {
-                        Ok(panic) => {
-                            std::panic::resume_unwind(panic);
-                        }
-                        Err(err) => {
-                            if err.is_cancelled() {
-                                warn!("Fix Task {id} was cancelled: {err}");
-                            } else {
-                                error!("Unknown failure in fix task {id}: {err}");
+                        match err.try_into_panic() {
+                            Ok(panic) => {
+                                std::panic::resume_unwind(panic);
+                            }
+                            Err(err) => {
+                                if err.is_cancelled() {
+                                    warn!("Fix Task {id} was cancelled: {err}");
+                                } else {
+                                    error!("Unknown failure in fix task {id}: {err}");
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        if fixes.is_empty() {
-            finish_batch(ctx, self.batch_id).await?;
-        } else {
-            ctx.enqueue_job(FixesJob::new_iteration(ctx, fixes, self.batch_id))
-                .await?;
+            ctx.commit().await?;
+
+            if fixes.is_empty() {
+                finish_batch(ctx, self.batch_id).await?;
+                break;
+            }
         }
 
         ctx.commit().await?;
@@ -290,7 +320,8 @@ async fn finish_batch(ctx: &DalContext, id: FixBatchId) -> JobConsumerResult<()>
     skip_all,
     level = "info",
     fields(
-        // TODO(fnichol): add some?
+        ?batch_id,
+        ?fix_item,
     )
 )]
 async fn fix_task(
@@ -402,7 +433,10 @@ async fn process_failed_fix_inner(
         fixes.remove(&id);
 
         if let Some(mut fix) = Fix::get_by_id(ctx, &id).await? {
-            Component::restore_and_propagate(ctx, *fix.component_id()).await?;
+            // If this was a delete, we need to un-delete ourselves.
+            if matches!(fix.action_kind(), ActionKind::Delete) {
+                Component::restore_and_propagate(ctx, *fix.component_id()).await?;
+            }
 
             if fix.started_at().is_none() {
                 fix.stamp_started(ctx).await?;
