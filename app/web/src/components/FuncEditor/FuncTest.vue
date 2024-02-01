@@ -86,6 +86,7 @@
       ref="funcTestTabsRef"
       startSelectedTabSlug="input"
       growTabsToFillWidth
+      marginTop="2xs"
     >
       <TabGroupItem label="Input" slug="input">
         <CodeViewer

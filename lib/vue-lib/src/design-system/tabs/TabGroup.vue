@@ -12,7 +12,14 @@
         ref="tabContainerRef"
         :class="
           clsx(
-            'w-full h-11 relative flex flex-row shrink-0 bg-white dark:bg-neutral-800 overflow-hidden mt-2',
+            {
+              none: '',
+              '2xs': 'mt-2xs',
+              xs: 'mt-xs',
+              sm: 'mt-sm',
+              md: 'mt-md',
+            }[marginTop],
+            'w-full h-8 relative flex flex-row shrink-0 bg-white dark:bg-neutral-800 overflow-hidden',
           )
         "
       >
@@ -41,7 +48,7 @@
             :class="
               clsx(
                 'focus:outline-none whitespace-nowrap',
-                'h-11 px-2 text-sm inline-flex items-center',
+                'h-8 px-2 text-xs inline-flex items-center',
                 growTabsToFillWidth && 'flex-grow justify-center',
                 minimal
                   ? [
@@ -189,7 +196,11 @@ const props = defineProps({
   closeable: { type: Boolean, default: false },
   firstTabMarginLeft: {
     type: String as PropType<"none" | "2xs" | "xs" | "sm" | "md">,
-    default: "xs",
+    default: "2xs",
+  },
+  marginTop: {
+    type: String as PropType<"none" | "2xs" | "xs" | "sm" | "md">,
+    default: "none",
   },
   trackingSlug: String,
   growTabsToFillWidth: { type: Boolean },

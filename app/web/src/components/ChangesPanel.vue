@@ -3,6 +3,7 @@
     rememberSelectedTabKey="proposed_right"
     trackingSlug="actions_applied"
     minimal
+    marginTop="2xs"
   >
     <TabGroupItem
       v-if="!changeSetStore.headSelected"
