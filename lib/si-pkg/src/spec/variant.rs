@@ -1,13 +1,14 @@
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, VecDeque};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
 
 use crate::spec::authentication_func::AuthenticationFuncSpec;
 
 use super::{
-    ActionFuncSpec, LeafFunctionSpec, PropSpec, PropSpecData, PropSpecWidgetKind, RootPropFuncSpec,
-    SiPropFuncSpec, SocketSpec, SpecError,
+    ActionFuncSpec, LeafFunctionSpec, MapKeyFuncSpec, PropSpec, PropSpecData, PropSpecKind,
+    PropSpecWidgetKind, RootPropFuncSpec, SiPropFuncSpec, SocketSpec, SpecError,
 };
 
 #[remain::sorted]
@@ -162,9 +163,96 @@ pub struct SchemaVariantSpec {
     pub root_prop_funcs: Vec<RootPropFuncSpec>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FlatPropSpec {
+    pub unique_id: Option<String>,
+    pub data: Option<PropSpecData>,
+    pub kind: PropSpecKind,
+    pub name: String,
+    // We assume child of maps and arrays cant be set by a function, only the whole array/map
+    pub type_prop: Option<Box<PropSpec>>,
+    pub map_key_funcs: Option<Vec<MapKeyFuncSpec>>,
+}
+
 impl SchemaVariantSpec {
     pub fn builder() -> SchemaVariantSpecBuilder {
         SchemaVariantSpecBuilder::default()
+    }
+
+    pub fn flatten_domain(&self) -> Result<HashMap<String, FlatPropSpec>, SpecError> {
+        let mut work_queue = VecDeque::new();
+        work_queue.push_back((
+            vec!["root".to_owned(), "domain".to_owned()],
+            self.domain.clone(),
+        ));
+
+        self.flatten_prop(work_queue)
+    }
+
+    pub fn flatten_secrets(&self) -> Result<HashMap<String, FlatPropSpec>, SpecError> {
+        let mut work_queue = VecDeque::new();
+        work_queue.push_back((
+            vec!["root".to_owned(), "secrets".to_owned()],
+            self.secrets.clone(),
+        ));
+
+        self.flatten_prop(work_queue)
+    }
+
+    pub fn flatten_secret_definition(&self) -> Result<HashMap<String, FlatPropSpec>, SpecError> {
+        let mut work_queue = VecDeque::new();
+        if let Some(definition) = self.secret_definition.clone() {
+            work_queue.push_back((
+                vec!["root".to_owned(), "secret_definition".to_owned()],
+                definition,
+            ));
+        }
+
+        self.flatten_prop(work_queue)
+    }
+
+    fn flatten_prop(
+        &self,
+        mut work_queue: VecDeque<(Vec<String>, PropSpec)>,
+    ) -> Result<HashMap<String, FlatPropSpec>, SpecError> {
+        let mut map = HashMap::new();
+        while let Some((path, prop)) = work_queue.pop_front() {
+            match &prop {
+                PropSpec::String { .. } => {}
+                PropSpec::Array { .. } => {}
+                PropSpec::Boolean { .. } => {}
+                PropSpec::Map { .. } => {}
+                PropSpec::Number { .. } => {}
+                PropSpec::Object { entries, .. } => {
+                    for entry in entries {
+                        let mut path = path.clone();
+                        path.push(entry.name().to_owned());
+                        work_queue.push_back((path, entry.clone()));
+                    }
+                }
+            }
+
+            map.insert(
+                path.join("/"),
+                FlatPropSpec {
+                    unique_id: prop.unique_id().map(ToOwned::to_owned),
+                    data: prop.data().cloned(),
+                    kind: prop.kind(),
+                    name: prop.name().to_owned(),
+                    type_prop: match &prop {
+                        PropSpec::Array { type_prop, .. } => Some(type_prop.clone()),
+                        PropSpec::Map { type_prop, .. } => Some(type_prop.clone()),
+                        _ => None,
+                    },
+                    map_key_funcs: match &prop {
+                        PropSpec::Map { map_key_funcs, .. } => map_key_funcs.clone(),
+                        _ => None,
+                    },
+                },
+            );
+        }
+        Ok(map)
     }
 }
 

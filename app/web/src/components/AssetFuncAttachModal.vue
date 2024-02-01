@@ -134,8 +134,8 @@ import { nilId } from "@/utils/nilId";
 import CodeEditor from "./CodeEditor.vue";
 
 const props = defineProps<{
-  schemaVariantId?: string;
-  assetId?: string;
+  schemaVariantId?: string | null;
+  assetId?: string | null;
 }>();
 
 const funcStore = useFuncStore();
@@ -165,7 +165,7 @@ const attachExisting = ref(false);
 const name = ref("");
 const funcVariant = ref(FuncVariant.Action);
 
-const selectedExistingFuncId = ref<FuncId | undefined>();
+const selectedExistingFuncId = ref<FuncId | undefined | null>();
 const selectedFuncCode = ref<string>("");
 const loadFuncDetailsReq = computed(() =>
   selectedExistingFuncId.value
@@ -258,7 +258,11 @@ const attachEnabled = computed(() => {
   return nameIsSet && hasOutput && existingSelected;
 });
 
-const open = (existing?: boolean, variant?: FuncVariant, funcId?: FuncId) => {
+const open = (
+  existing?: boolean,
+  variant?: FuncVariant | null,
+  funcId?: FuncId | null,
+) => {
   attachExisting.value = existing ?? false;
 
   name.value = "";
