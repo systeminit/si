@@ -4,8 +4,7 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line,
-    /*read_key_value_line_opt,*/ write_key_value_line, /*write_key_value_line_opt,*/
+    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
     GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
 };
 
@@ -16,7 +15,7 @@ const KEY_NAME_STR: &str = "name";
 const KEY_VARIANT_STR: &str = "variant";
 const KEY_NEEDS_DESTROY_STR: &str = "needs_destroy";
 const KEY_DELETION_USER_PK_STR: &str = "deletion_user_pk";
-// const KEY_HIDDEN_STR: &str = "hidden";
+const KEY_HIDDEN_STR: &str = "hidden";
 
 #[derive(Clone, Debug)]
 pub struct ComponentNode {
@@ -53,7 +52,7 @@ impl WriteBytes for ComponentNode {
         write_key_value_line(writer, KEY_DELETION_USER_PK_STR, deletion_user_pk_str)?;
         write_key_value_line(writer, KEY_UNIQUE_ID_STR, &self.unique_id)?;
         write_key_value_line(writer, KEY_DELETED_STR, self.deleted)?;
-        // write_key_value_line_opt(writer, KEY_HIDDEN_STR, Some(self.hidden))?;
+        write_key_value_line_opt(writer, KEY_HIDDEN_STR, Some(self.hidden))?;
 
         Ok(())
     }
@@ -81,15 +80,12 @@ impl ReadBytes for ComponentNode {
         let deleted = bool::from_str(&read_key_value_line(reader, KEY_DELETED_STR)?)
             .map_err(GraphError::parse)?;
 
-        // TODO: fix this
-        let hidden = false;
-        /*
         let hidden = read_key_value_line_opt(reader, KEY_HIDDEN_STR)
             .map_err(GraphError::parse)?
-            .map(|hidden| bool::from_str(&hidden)).transpose()
+            .map(|hidden| bool::from_str(&hidden))
+            .transpose()
             .map_err(GraphError::parse)?
             .unwrap_or_default();
-        */
 
         Ok(Some(Self {
             name,
