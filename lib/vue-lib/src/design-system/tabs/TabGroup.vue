@@ -105,7 +105,7 @@
           ref="overflowDropdownButtonRef"
           :class="
             clsx(
-              'border border-neutral-300 dark:border-neutral-600 h-full px-xs items-center flex absolute right-0 top-0 z-10 cursor-pointer',
+              'border border-neutral-300 dark:border-neutral-600 h-full px-2xs items-center flex absolute right-0 top-0 z-10 cursor-pointer',
               'bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-900',
             )
           "
