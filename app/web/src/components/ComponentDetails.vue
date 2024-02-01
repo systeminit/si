@@ -85,6 +85,7 @@
                   v-if="selectedComponentQualificationStatus"
                   type="qualification"
                   :status="selectedComponentQualificationStatus"
+                  size="sm"
                 />
               </Inline>
             </template>
