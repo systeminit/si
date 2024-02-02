@@ -12,12 +12,14 @@ use std::{
     borrow::Cow,
     env,
     fmt::{Debug, Display},
+    ops::{Deref, DerefMut},
     result::Result,
+    sync::Arc,
 };
 
 use async_trait::async_trait;
 use thiserror::Error;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 
 pub use opentelemetry::{self, trace::SpanKind};
 pub use tracing;
@@ -166,15 +168,16 @@ pub trait TelemetryClient: Clone + Send + Sync + 'static {
 }
 
 /// A telemetry type that can report its tracing level.
+#[async_trait]
 pub trait TelemetryLevel: Send + Sync {
-    fn is_debug_or_lower(&self) -> bool;
+    async fn is_debug_or_lower(&self) -> bool;
 }
 
 /// A telemetry client which holds handles to a process' tracing and OpenTelemetry setup.
 #[derive(Clone, Debug)]
 pub struct ApplicationTelemetryClient {
-    app_modules: Vec<&'static str>,
-    tracing_level: TracingLevel,
+    app_modules: Arc<Vec<&'static str>>,
+    tracing_level: Arc<Mutex<TracingLevel>>,
     update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
 }
 
@@ -185,8 +188,8 @@ impl ApplicationTelemetryClient {
         update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
     ) -> Self {
         Self {
-            app_modules,
-            tracing_level,
+            app_modules: Arc::new(app_modules),
+            tracing_level: Arc::new(Mutex::new(tracing_level)),
             update_telemetry_tx,
         }
     }
@@ -195,26 +198,32 @@ impl ApplicationTelemetryClient {
 #[async_trait]
 impl TelemetryClient for ApplicationTelemetryClient {
     async fn set_verbosity(&mut self, updated: Verbosity) -> Result<(), ClientError> {
-        match self.tracing_level {
+        let mut guard = self.tracing_level.lock().await;
+        let tracing_level = guard.deref_mut();
+
+        match tracing_level {
             TracingLevel::Verbosity {
                 ref mut verbosity, ..
             } => {
                 *verbosity = updated;
             }
             TracingLevel::Custom(_) => {
-                self.tracing_level = TracingLevel::new(updated, Some(self.app_modules.as_slice()));
+                *tracing_level = TracingLevel::new(updated, Some(self.app_modules.as_slice()));
             }
         }
 
         self.update_telemetry_tx
-            .send(TelemetryCommand::TracingLevel(self.tracing_level.clone()))?;
+            .send(TelemetryCommand::TracingLevel(tracing_level.clone()))?;
         Ok(())
     }
 
     async fn increase_verbosity(&mut self) -> Result<(), ClientError> {
-        match self.tracing_level {
+        let guard = self.tracing_level.lock().await;
+
+        match guard.deref() {
             TracingLevel::Verbosity { verbosity, .. } => {
                 let updated = verbosity.increase();
+                drop(guard);
                 self.set_verbosity(updated).await
             }
             TracingLevel::Custom(_) => Err(ClientError::CustomHasNoVerbosity),
@@ -222,9 +231,12 @@ impl TelemetryClient for ApplicationTelemetryClient {
     }
 
     async fn decrease_verbosity(&mut self) -> Result<(), ClientError> {
-        match self.tracing_level {
+        let guard = self.tracing_level.lock().await;
+
+        match guard.deref() {
             TracingLevel::Verbosity { verbosity, .. } => {
                 let updated = verbosity.decrease();
+                drop(guard);
                 self.set_verbosity(updated).await
             }
             TracingLevel::Custom(_) => Err(ClientError::CustomHasNoVerbosity),
@@ -235,17 +247,21 @@ impl TelemetryClient for ApplicationTelemetryClient {
         &mut self,
         directives: impl Into<String> + Send + 'async_trait,
     ) -> Result<(), ClientError> {
+        let mut guard = self.tracing_level.lock().await;
+        let tracing_level = guard.deref_mut();
+
         let updated = TracingLevel::custom(directives);
-        self.tracing_level = updated;
+        *tracing_level = updated;
         self.update_telemetry_tx
-            .send(TelemetryCommand::TracingLevel(self.tracing_level.clone()))?;
+            .send(TelemetryCommand::TracingLevel(tracing_level.clone()))?;
         Ok(())
     }
 }
 
+#[async_trait]
 impl TelemetryLevel for ApplicationTelemetryClient {
-    fn is_debug_or_lower(&self) -> bool {
-        self.tracing_level.is_debug_or_lower()
+    async fn is_debug_or_lower(&self) -> bool {
+        self.tracing_level.lock().await.is_debug_or_lower()
     }
 }
 
@@ -277,9 +293,9 @@ impl TelemetryClient for NoopClient {
         Ok(())
     }
 }
-
+#[async_trait]
 impl TelemetryLevel for NoopClient {
-    fn is_debug_or_lower(&self) -> bool {
+    async fn is_debug_or_lower(&self) -> bool {
         #[allow(clippy::disallowed_methods)] // NoopClient is only used in testing and this
         // environment variable is prefixed with `SI_TEST_` to denote that it's only for testing
         // purposes.

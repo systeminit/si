@@ -89,6 +89,7 @@ pub async fn ws_execute_resolver(
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
+    let telemetry_level = telemetry_level.is_debug_or_lower().await;
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<ResolverFunctionRequest> = PhantomData;
         let lang_server_success: PhantomData<LangServerResolverFunctionResultSuccess> = PhantomData;
@@ -96,7 +97,7 @@ pub async fn ws_execute_resolver(
         handle_socket(
             socket,
             lang_server_path,
-            telemetry_level.is_debug_or_lower(),
+            telemetry_level,
             key.into(),
             limit_request_guard,
             "resolverfunction".to_owned(),
@@ -116,6 +117,7 @@ pub async fn ws_execute_validation(
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
+    let telemetry_level = telemetry_level.is_debug_or_lower().await;
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<ValidationRequest> = PhantomData;
         let lang_server_success: PhantomData<LangServerValidationResultSuccess> = PhantomData;
@@ -123,7 +125,7 @@ pub async fn ws_execute_validation(
         handle_socket(
             socket,
             lang_server_path,
-            telemetry_level.is_debug_or_lower(),
+            telemetry_level,
             key.into(),
             limit_request_guard,
             "validation".to_owned(),
@@ -143,6 +145,7 @@ pub async fn ws_execute_action_run(
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
+    let telemetry_level = telemetry_level.is_debug_or_lower().await;
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<ActionRunRequest> = PhantomData;
         let lang_server_success: PhantomData<LangServerActionRunResultSuccess> = PhantomData;
@@ -150,7 +153,7 @@ pub async fn ws_execute_action_run(
         handle_socket(
             socket,
             lang_server_path,
-            telemetry_level.is_debug_or_lower(),
+            telemetry_level,
             key.into(),
             limit_request_guard,
             "actionRun".to_owned(),
@@ -170,6 +173,7 @@ pub async fn ws_execute_reconciliation(
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
+    let telemetry_level = telemetry_level.is_debug_or_lower().await;
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<ReconciliationRequest> = PhantomData;
         let lang_server_success: PhantomData<LangServerReconciliationResultSuccess> = PhantomData;
@@ -177,7 +181,7 @@ pub async fn ws_execute_reconciliation(
         handle_socket(
             socket,
             lang_server_path,
-            telemetry_level.is_debug_or_lower(),
+            telemetry_level,
             key.into(),
             limit_request_guard,
             "reconciliation".to_owned(),
@@ -197,6 +201,7 @@ pub async fn ws_execute_schema_variant_definition(
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
+    let telemetry_level = telemetry_level.is_debug_or_lower().await;
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<SchemaVariantDefinitionRequest> = PhantomData;
         let lang_server_success: PhantomData<SchemaVariantDefinitionResultSuccess> = PhantomData;
@@ -204,7 +209,7 @@ pub async fn ws_execute_schema_variant_definition(
         handle_socket(
             socket,
             lang_server_path,
-            telemetry_level.is_debug_or_lower(),
+            telemetry_level,
             key.into(),
             limit_request_guard,
             "schemaVariantDefinition".to_owned(),
