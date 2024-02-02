@@ -132,12 +132,17 @@ impl PkgExporter {
         schema_spec_builder.name(schema.name());
         schema_spec_builder.unique_id(schema.id().to_string());
 
+        let mut in_change_set = self.is_workspace_export
+            && schema.visibility().change_set_pk == ctx.visibility().change_set_pk;
         let is_deleted = schema.visibility().is_deleted();
 
         let default_variant_id = schema.default_schema_variant_id().copied();
         let mut default_variant_unique_id = None;
 
         for variant in &variants {
+            in_change_set = in_change_set
+                || (self.is_workspace_export
+                    && variant.visibility().change_set_pk == ctx.visibility().change_set_pk);
             let related_funcs = SchemaVariant::all_funcs(ctx, *variant.id()).await?;
 
             for func in &related_funcs {
@@ -181,9 +186,9 @@ impl PkgExporter {
             schema_spec_builder.variant(variant_spec);
         }
 
-        if is_deleted {
+        if in_change_set && is_deleted {
             schema_spec_builder.deleted(true);
-        } else {
+        } else if in_change_set {
             let mut data_builder = SchemaSpecData::builder();
             data_builder.name(schema.name());
             data_builder.ui_hidden(schema.ui_hidden());
@@ -223,9 +228,13 @@ impl PkgExporter {
 
         variant_spec_builder.unique_id(variant.id().to_string());
 
-        if variant.visibility().is_deleted() {
+        let in_change_set = self.is_workspace_export
+            && (variant.visibility().change_set_pk == ctx.visibility().change_set_pk
+                || schema_variant_definition.visibility().change_set_pk
+                    == ctx.visibility().change_set_pk);
+        if in_change_set && variant.visibility().is_deleted() {
             variant_spec_builder.deleted(true);
-        } else {
+        } else if in_change_set {
             let mut data_builder = SchemaVariantSpecData::builder();
 
             data_builder.name(variant.name());
@@ -443,6 +452,12 @@ impl PkgExporter {
             for (prototype, leaf_func) in
                 SchemaVariant::find_leaf_item_functions(ctx, variant_id, leaf_kind).await?
             {
+                let in_change_set = self.is_workspace_export
+                    && prototype.visibility().change_set_pk == ctx.visibility().change_set_pk;
+                if !in_change_set {
+                    continue;
+                }
+
                 let func_unique_id = self
                     .func_map
                     .get(change_set_pk.unwrap_or(ChangeSetPk::NONE), leaf_func.id())
@@ -518,7 +533,7 @@ impl PkgExporter {
                 .arity(socket.arity())
                 .ui_hidden(socket.ui_hidden());
 
-            // let mut has_custom_func = false;
+            let mut has_custom_func = false;
             if let Some(attr_proto_id) = input_socket_ip.attribute_prototype_id() {
                 let proto = AttributePrototype::get_by_id(ctx, attr_proto_id)
                     .await?
@@ -531,7 +546,7 @@ impl PkgExporter {
                     .export_input_func_and_arguments(ctx, change_set_pk, &proto)
                     .await?
                 {
-                    // has_custom_func = true;
+                    has_custom_func = true;
                     data_builder.func_unique_id(func_unique_id);
                     inputs.drain(..).for_each(|input| {
                         socket_spec_builder.input(input);
@@ -539,9 +554,11 @@ impl PkgExporter {
                 }
             }
 
-            // if has_custom_func {
-            socket_spec_builder.data(data_builder.build()?);
-            // }
+            let in_change_set = self.is_workspace_export
+                && socket.visibility().change_set_pk == ctx.visibility().change_set_pk;
+            if in_change_set || has_custom_func {
+                socket_spec_builder.data(data_builder.build()?);
+            }
 
             specs.push(socket_spec_builder.build()?);
         }
@@ -571,7 +588,7 @@ impl PkgExporter {
                 .arity(socket.arity())
                 .ui_hidden(socket.ui_hidden());
 
-            // let mut has_custom_func = false;
+            let mut has_custom_func = false;
             if let Some(attr_proto_id) = output_socket_ep.attribute_prototype_id() {
                 let proto = AttributePrototype::get_by_id(ctx, attr_proto_id)
                     .await?
@@ -584,7 +601,7 @@ impl PkgExporter {
                     .export_input_func_and_arguments(ctx, change_set_pk, &proto)
                     .await?
                 {
-                    // has_custom_func = true;
+                    has_custom_func = true;
                     data_builder.func_unique_id(func_unique_id);
                     inputs.drain(..).for_each(|input| {
                         socket_spec_builder.input(input);
@@ -592,9 +609,11 @@ impl PkgExporter {
                 }
             }
 
-            // if has_custom_func {
-            socket_spec_builder.data(data_builder.build()?);
-            // }
+            let in_change_set = self.is_workspace_export
+                && socket.visibility().change_set_pk == ctx.visibility().change_set_pk;
+            if in_change_set || has_custom_func {
+                socket_spec_builder.data(data_builder.build()?);
+            }
 
             specs.push(socket_spec_builder.build()?);
         }
@@ -615,6 +634,12 @@ impl PkgExporter {
                 .await?;
 
         for action_proto in action_prototypes {
+            let in_change_set = self.is_workspace_export
+                && action_proto.visibility().change_set_pk == ctx.visibility().change_set_pk;
+            if !in_change_set {
+                continue;
+            }
+
             let func_unique_id = self
                 .func_map
                 .get(
@@ -657,6 +682,12 @@ impl PkgExporter {
         .await?;
 
         for prototype in prototypes {
+            let in_change_set = self.is_workspace_export
+                && prototype.visibility().change_set_pk == ctx.visibility().change_set_pk;
+            if !in_change_set {
+                continue;
+            }
+
             let func_unique_id = self
                 .func_map
                 .get(
@@ -874,6 +905,11 @@ impl PkgExporter {
                     .await?
                     .pop()
             {
+                let in_change_set = self.is_workspace_export
+                    && prototype.visibility().change_set_pk == ctx.visibility().change_set_pk;
+                if in_change_set {
+                    entry.builder.has_data(true);
+                }
                 if let Some((func_unique_id, mut inputs)) = self
                     .export_input_func_and_arguments(ctx, change_set_pk, &prototype)
                     .await?
@@ -938,7 +974,14 @@ impl PkgExporter {
         )?;
 
         let apas: Vec<AttributePrototypeArgument> =
-            AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id()).await?;
+            AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id())
+                .await?
+                .into_iter()
+                .filter(|apa| {
+                    self.is_workspace_export
+                        && apa.visibility().change_set_pk == ctx.visibility().change_set_pk
+                })
+                .collect();
 
         // If the prototype func is intrinsic and has no arguments, it's one that is created by default
         // and we don't have to track it in the package
@@ -1037,44 +1080,54 @@ impl PkgExporter {
             }
         }
 
+        let in_change_set = self.is_workspace_export
+            && func.visibility().change_set_pk == ctx.visibility().change_set_pk;
+
         let mut func_spec_builder = FuncSpec::builder();
 
         func_spec_builder.name(func.name());
 
         func_spec_builder.unique_id(func.id().to_string());
-        if func.visibility().is_deleted() {
+        if in_change_set && func.visibility().is_deleted() {
             func_spec_builder.deleted(true);
             return Ok((func_spec_builder.build()?, true));
+        } else if in_change_set {
+            let mut data_builder = FuncSpecData::builder();
+
+            data_builder.name(func.name());
+
+            data_builder.display_name(func.display_name().map(ToOwned::to_owned));
+
+            data_builder.description(func.description().map(ToOwned::to_owned));
+
+            if let Some(link) = func.link() {
+                data_builder.try_link(link)?;
+            }
+            // Should we package an empty func?
+            data_builder.handler(func.handler().unwrap_or(""));
+            data_builder.code_base64(func.code_base64().unwrap_or(""));
+
+            data_builder.response_type(*func.backend_response_type());
+            data_builder.backend_kind(*func.backend_kind());
+
+            data_builder.hidden(func.hidden());
+
+            func_spec_builder.data(data_builder.build()?);
         }
-
-        let mut data_builder = FuncSpecData::builder();
-
-        data_builder.name(func.name());
-
-        data_builder.display_name(func.display_name().map(ToOwned::to_owned));
-
-        data_builder.description(func.description().map(ToOwned::to_owned));
-
-        if let Some(link) = func.link() {
-            data_builder.try_link(link)?;
-        }
-        // Should we package an empty func?
-        data_builder.handler(func.handler().unwrap_or(""));
-        data_builder.code_base64(func.code_base64().unwrap_or(""));
-
-        data_builder.response_type(*func.backend_response_type());
-        data_builder.backend_kind(*func.backend_kind());
-
-        data_builder.hidden(func.hidden());
-
-        func_spec_builder.data(data_builder.build()?);
 
         func_spec_builder.unique_id(func.id().to_string());
         if self.is_workspace_export {
             func_spec_builder.is_from_builtin(Some(func.is_builtin(ctx).await?));
         }
 
-        let args: Vec<FuncArgument> = FuncArgument::list_for_func(ctx, *func.id()).await?;
+        let args: Vec<FuncArgument> = FuncArgument::list_for_func(ctx, *func.id())
+            .await?
+            .into_iter()
+            .filter(|f| {
+                self.is_workspace_export
+                    && f.visibility().change_set_pk == ctx.visibility().change_set_pk
+            })
+            .collect();
 
         for arg in &args {
             let mut arg_builder = FuncArgumentSpec::builder();
@@ -1180,7 +1233,7 @@ impl PkgExporter {
             schema_specs.push(schema_spec);
         }
 
-        if self.is_workspace_export && self.include_components {
+        if self.include_components {
             for component in Component::list(ctx).await? {
                 let variant = component
                     .schema_variant(ctx)
