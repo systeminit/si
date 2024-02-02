@@ -188,7 +188,6 @@ impl_standard_model! {
 }
 
 impl InstalledPkgAsset {
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         pkg_asset: InstalledPkgAssetTyped,

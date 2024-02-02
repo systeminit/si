@@ -6,15 +6,30 @@
     @closeComplete="closeHandler"
   >
     <Stack>
-      <template v-if="exportReqStatus.isSuccess">
+      <template v-if="moduleStore.exportingWorkspaceOperationRunning">
+        <p class="flex gap-1 items-center">
+          <Icon name="loader" />
+          Exporting Workspace
+        </p>
+        <p>
+          This operation is being executed in the backend
+          <br />
+          feel free to close this modal
+        </p>
+        <VButton icon="check" @click="close">Close this window</VButton>
+      </template>
+      <template v-else-if="moduleStore.exportingWorkspaceOperationId">
         <p>Export succeeded!</p>
         <p>
           You can now import this workspace by going to
           <br />
           workspace settings (gear in top right) > "Import Workspace"
         </p>
-        <VButton icon="check" @click="close">Close this window</VButton>
+        <VButton icon="refresh" @click="moduleStore.resetExportWorkspaceStatus">
+          Export Again
+        </VButton>
       </template>
+
       <template v-else>
         <p>
           You are about to export this workspace to the cloud. You will then be
@@ -29,8 +44,9 @@
           :requestStatus="exportReqStatus"
           loadingText="Exporting your workspace..."
           @click="continueHandler"
-          >Export this workspace</VButton
         >
+          Export this workspace
+        </VButton>
       </template>
     </Stack>
   </Modal>
@@ -39,10 +55,11 @@
 <script setup lang="ts">
 import {
   ErrorMessage,
+  Icon,
   Modal,
   Stack,
-  VButton,
   useModal,
+  VButton,
 } from "@si/vue-lib/design-system";
 import { ref } from "vue";
 import { useModuleStore } from "@/store/module.store";
@@ -61,6 +78,7 @@ function open() {
 function continueHandler() {
   moduleStore.EXPORT_WORKSPACE();
 }
+
 function closeHandler() {
   moduleStore.clearRequestStatus("EXPORT_WORKSPACE");
 }

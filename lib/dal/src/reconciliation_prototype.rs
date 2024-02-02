@@ -120,8 +120,6 @@ impl_standard_model! {
 }
 
 impl ReconciliationPrototype {
-    #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
     pub async fn upsert(
         ctx: &DalContext,
         func_id: FuncId,

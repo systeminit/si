@@ -16,7 +16,6 @@ use crate::server::{
     state::ShutdownBroadcast,
 };
 
-#[instrument(skip(wsu, nats))]
 #[allow(clippy::unused_async)]
 pub async fn workspace_updates(
     wsu: WebSocketUpgrade,

@@ -56,7 +56,7 @@ impl_standard_model! {
 }
 
 impl FixBatch {
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn new(ctx: &DalContext, author: impl AsRef<str>, actors: &str) -> FixResult<Self> {
         let author = author.as_ref();
         let row = ctx

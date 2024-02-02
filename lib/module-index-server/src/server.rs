@@ -121,7 +121,7 @@ impl Server<(), ()> {
     }
 
     // this creates our si_data_pg::PgPool, which wont work with SeaORM
-    #[instrument(name = "module-index.init.create_pg_pool", skip_all)]
+    #[instrument(name = "module-index.init.create_pg_pool", level = "info", skip_all)]
     pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
         let pool = PgPool::new(pg_pool_config).await?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
@@ -129,7 +129,11 @@ impl Server<(), ()> {
     }
 
     // this creates the sea-orm managed db connection (also a pool)
-    #[instrument(name = "module-index.init.create_db_connection", skip_all)]
+    #[instrument(
+        name = "module-index.init.create_db_connection",
+        level = "info",
+        skip_all
+    )]
     pub async fn create_db_connection(pg_pool_config: &PgPoolConfig) -> Result<DatabaseConnection> {
         let mut opt = ConnectOptions::new(format!(
             "{protocol}://{username}:{password}@{host}:{port}/{database}",
@@ -164,7 +168,11 @@ impl Server<(), ()> {
             .await?)
     }
 
-    #[instrument(name = "sdf.init.load_jwt_public_signing_key", skip_all)]
+    #[instrument(
+        name = "sdf.init.load_jwt_public_signing_key",
+        level = "info",
+        skip_all
+    )]
     pub async fn load_jwt_public_signing_key(
         path: impl AsRef<Path>,
     ) -> Result<JwtPublicSigningKey> {

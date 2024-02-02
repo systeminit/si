@@ -1,7 +1,6 @@
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
-use telemetry::prelude::*;
 
 use super::{ComponentError, ComponentResult};
 use crate::attribute::value::AttributeValue;
@@ -22,7 +21,6 @@ struct CodeGenerationEntry {
 impl Component {
     /// List all [`CodeViews`](crate::CodeView) for based on the "code generation"
     /// [`leaves`](crate::schema::variant::leaves) for a given [`ComponentId`](Self).
-    #[instrument(skip_all)]
     pub async fn list_code_generated(
         ctx: &DalContext,
         component_id: ComponentId,

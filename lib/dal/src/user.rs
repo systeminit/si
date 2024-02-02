@@ -61,8 +61,6 @@ impl User {
     standard_model_accessor_ro!(name, String);
     standard_model_accessor_ro!(email, String);
 
-    #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         pk: UserPk,

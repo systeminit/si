@@ -31,7 +31,7 @@ impl Tenancy {
         Self { workspace_pk: None }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn check(&self, txn: &PgTxn, tenancy: &Tenancy) -> TenancyResult<bool> {
         let row = txn
             .query_one(

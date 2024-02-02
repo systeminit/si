@@ -108,7 +108,6 @@ impl_standard_model! {
 }
 
 impl Node {
-    #[instrument(skip_all)]
     pub async fn new(ctx: &DalContext, kind: &NodeKind) -> NodeResult<Self> {
         let row = ctx
             .txns()
@@ -164,7 +163,6 @@ impl Node {
     }
 
     /// Find all [`NodeIds`](Self) for a given [`NodeKind`].
-    #[instrument(skip_all)]
     pub async fn list_for_kind(ctx: &DalContext, kind: NodeKind) -> NodeResult<HashSet<NodeId>> {
         let rows = ctx
             .txns()

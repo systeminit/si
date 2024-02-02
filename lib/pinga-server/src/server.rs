@@ -100,7 +100,7 @@ pub struct Server {
 }
 
 impl Server {
-    #[instrument(name = "pinga.init.from_config", skip_all)]
+    #[instrument(name = "pinga.init.from_config", level = "info", skip_all)]
     pub async fn from_config(config: Config) -> Result<Self> {
         dal::init()?;
 
@@ -134,7 +134,7 @@ impl Server {
         )
     }
 
-    #[instrument(name = "pinga.init.from_services", skip_all)]
+    #[instrument(name = "pinga.init.from_services", level = "info", skip_all)]
     pub fn from_services(
         instance_id: impl Into<String>,
         concurrency_limit: usize,
@@ -207,38 +207,42 @@ impl Server {
         }
     }
 
-    #[instrument(name = "pinga.init.load_encryption_key", skip_all)]
+    #[instrument(name = "pinga.init.load_encryption_key", level = "info", skip_all)]
     async fn load_encryption_key(crypto_config: CryptoConfig) -> Result<Arc<CycloneEncryptionKey>> {
         Ok(Arc::new(
             CycloneEncryptionKey::from_config(crypto_config).await?,
         ))
     }
 
-    #[instrument(name = "pinga.init.connect_to_nats", skip_all)]
+    #[instrument(name = "pinga.init.connect_to_nats", level = "info", skip_all)]
     async fn connect_to_nats(nats_config: &NatsConfig) -> Result<NatsClient> {
         let client = NatsClient::new(nats_config).await?;
         debug!("successfully connected nats client");
         Ok(client)
     }
 
-    #[instrument(name = "pinga.init.create_pg_pool", skip_all)]
+    #[instrument(name = "pinga.init.create_pg_pool", level = "info", skip_all)]
     async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
         let pool = PgPool::new(pg_pool_config).await?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
         Ok(pool)
     }
 
-    #[instrument(name = "pinga.init.create_veritech_client", skip_all)]
+    #[instrument(name = "pinga.init.create_veritech_client", level = "info", skip_all)]
     fn create_veritech_client(nats: NatsClient) -> VeritechClient {
         VeritechClient::new(nats)
     }
 
-    #[instrument(name = "pinga.init.create_job_processor", skip_all)]
+    #[instrument(name = "pinga.init.create_job_processor", level = "info", skip_all)]
     fn create_job_processor(nats: NatsClient) -> Box<dyn JobQueueProcessor + Send + Sync> {
         Box::new(NatsProcessor::new(nats)) as Box<dyn JobQueueProcessor + Send + Sync>
     }
 
-    #[instrument(name = "pinga.init.create_symmetric_crypto_service", skip_all)]
+    #[instrument(
+        name = "pinga.init.create_symmetric_crypto_service",
+        level = "info",
+        skip_all
+    )]
     async fn create_symmetric_crypto_service(
         config: &SymmetricCryptoServiceConfig,
     ) -> Result<SymmetricCryptoService> {
@@ -382,14 +386,17 @@ async fn process_job_requests_task(rx: UnboundedReceiver<JobItem>, concurrency_l
 #[instrument(
     name = "execute_job_task",
     parent = &request.process_span,
+    level = "info",
     skip_all,
     fields(
+        job.blocking = request.payload.blocking,
         job.id = request.payload.id,
         job.instance = metadata.job_instance,
-        job.invoked_name = request.payload.kind,
         job.invoked_args = Empty,
+        job.invoked_name = request.payload.kind,
         job.invoked_provider = metadata.job_invoked_provider,
         job.trigger = "pubsub",
+        job.visibility = ?request.payload.visibility,
         messaging.destination = Empty,
         messaging.destination_kind = "topic",
         messaging.operation = "process",
@@ -418,23 +425,6 @@ async fn execute_job_task(
         "otel.name",
         format!("{} process", &messaging_destination).as_str(),
     );
-
-    {
-        let job_info = &request.payload;
-
-        span.record("job_info.id", &job_info.id);
-        span.record("job_info.kind", &job_info.kind);
-        if let Ok(arg_str) = serde_json::to_string(&job_info.arg) {
-            span.record("job_info.arg", arg_str);
-        }
-        if let Ok(access_builder) = serde_json::to_string(&job_info.access_builder) {
-            span.record("job_info.access_builder", access_builder);
-        }
-        if let Ok(visibility) = serde_json::to_string(&job_info.visibility) {
-            span.record("job_info.visibility", visibility);
-        }
-        span.record("job_info.blocking", job_info.blocking);
-    }
 
     let maybe_reply_channel = request.reply.clone();
     let reply_message = match execute_job(ctx_builder.clone(), request.payload).await {

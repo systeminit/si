@@ -163,7 +163,6 @@ impl Workspace {
         Ok(maybe_workspace)
     }
 
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &mut DalContext,
         pk: WorkspacePk,

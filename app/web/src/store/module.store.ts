@@ -127,9 +127,14 @@ export const useModuleStore = () => {
           builtinsSearchResults: [] as RemoteModuleSummary[],
           remoteModuleDetailsById: {} as Record<ModuleId, RemoteModuleDetails>,
           remoteModuleSpecsById: {} as Record<ModuleId, ModuleSpec>,
+
           installingModuleId: null as string | null,
           installingError: undefined as string | undefined,
           installingLoading: false as boolean,
+
+          exportingWorkspaceOperationId: null as string | null,
+          exportingWorkspaceOperationError: undefined as string | undefined,
+          exportingWorkspaceOperationRunning: false as boolean,
         }),
         getters: {
           urlSelectedModuleSlug: () => {
@@ -363,11 +368,27 @@ export const useModuleStore = () => {
           },
 
           async EXPORT_WORKSPACE() {
-            return new ApiRequest({
+            this.exportingWorkspaceOperationId = null;
+            this.exportingWorkspaceOperationError = undefined;
+            this.exportingWorkspaceOperationRunning = true;
+
+            return new ApiRequest<{ id: string }>({
               method: "post",
               url: "/pkg/export_workspace",
               params: { ...visibility },
+              onSuccess: (response) => {
+                this.exportingWorkspaceOperationId = response.id;
+              },
+              onFail: () => {
+                this.exportingWorkspaceOperationRunning = false;
+              },
             });
+          },
+
+          resetExportWorkspaceStatus() {
+            this.exportingWorkspaceOperationRunning = false;
+            this.exportingWorkspaceOperationId = null;
+            this.exportingWorkspaceOperationError = undefined;
           },
 
           async EXPORT_MODULE(exportRequest: PkgExportRequest) {
@@ -379,8 +400,6 @@ export const useModuleStore = () => {
           },
         },
         onActivated() {
-          if (!changeSetId) return;
-
           this.LOAD_LOCAL_MODULES();
           this.LIST_BUILTINS();
 
@@ -403,6 +422,9 @@ export const useModuleStore = () => {
                   await this.LOAD_LOCAL_MODULES();
                   this.installingLoading = false;
                 }
+                if (id === this.exportingWorkspaceOperationId) {
+                  this.exportingWorkspaceOperationRunning = false;
+                }
               },
             },
             {
@@ -418,6 +440,10 @@ export const useModuleStore = () => {
                   this.installingLoading = false;
                   this.installingError = error;
                   this.installingModuleId = null;
+                }
+                if (id === this.exportingWorkspaceOperationId) {
+                  this.exportingWorkspaceOperationError = error;
+                  this.exportingWorkspaceOperationRunning = false;
                 }
               },
             },

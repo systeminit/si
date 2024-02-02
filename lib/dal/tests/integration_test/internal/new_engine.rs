@@ -6,7 +6,6 @@
 mod builtins;
 mod component;
 mod connection;
-mod diagram;
 mod prop;
 mod property_editor;
 mod rebaser;

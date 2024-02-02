@@ -160,7 +160,7 @@ pub enum ModelError {
 
 pub type ModelResult<T> = Result<T, ModelError>;
 
-#[instrument(skip_all)]
+#[instrument(level = "info", skip_all)]
 pub async fn migrate_all(services_context: &ServicesContext) -> ModelResult<()> {
     migrate(
         services_context.pg_pool(),
@@ -170,7 +170,7 @@ pub async fn migrate_all(services_context: &ServicesContext) -> ModelResult<()> 
     Ok(())
 }
 
-#[instrument(skip_all)]
+#[instrument(level = "info", skip_all)]
 pub async fn migrate_all_with_progress(services_context: &ServicesContext) -> ModelResult<()> {
     let mut interval = time::interval(Duration::from_secs(5));
     let instant = Instant::now();
@@ -195,7 +195,7 @@ pub async fn migrate_all_with_progress(services_context: &ServicesContext) -> Mo
     Ok(())
 }
 
-#[instrument(skip_all)]
+#[instrument(level = "info", skip_all)]
 pub async fn migrate(pg: &PgPool, content_store_pg_pool: &PgPool) -> ModelResult<()> {
     content_store::PgStore::migrate(content_store_pg_pool).await?;
     pg.migrate(embedded::migrations::runner()).await?;
@@ -203,7 +203,7 @@ pub async fn migrate(pg: &PgPool, content_store_pg_pool: &PgPool) -> ModelResult
 }
 
 #[allow(clippy::too_many_arguments)]
-#[instrument(skip_all)]
+#[instrument(level = "info", skip_all)]
 pub async fn migrate_local_builtins(
     dal_pg: &PgPool,
     nats: &NatsClient,

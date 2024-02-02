@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     run().await
 }
 
-#[instrument(name = "main", skip_all)]
+#[instrument(name = "main", level = "info", skip_all)]
 async fn run() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     let subject = env::args()
         .nth(1)

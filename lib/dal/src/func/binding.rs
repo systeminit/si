@@ -117,7 +117,6 @@ impl_standard_model! {
 
 impl FuncBinding {
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         args: serde_json::Value,
