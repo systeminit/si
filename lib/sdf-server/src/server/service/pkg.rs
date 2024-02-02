@@ -99,9 +99,9 @@ pub enum PkgError {
     UlidDecode(#[from] ulid::DecodeError),
     #[error("Unable to parse URL: {0}")]
     Url(#[from] url::ParseError),
-    #[error("transparent")]
+    #[error(transparent)]
     User(#[from] UserError),
-    #[error("transparent")]
+    #[error(transparent)]
     Workspace(#[from] WorkspaceError),
     #[error("Could not find current workspace {0}")]
     WorkspaceNotFound(WorkspacePk),

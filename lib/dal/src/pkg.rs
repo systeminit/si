@@ -373,6 +373,10 @@ where
     pub fn insert(&mut self, change_set_pk: ChangeSetPk, key: Key, thing: Thing) -> Option<Thing> {
         self.0.entry(change_set_pk).or_default().insert(key, thing)
     }
+
+    pub fn remove(&mut self, change_set_pk: ChangeSetPk, key: &Key) -> Option<Thing> {
+        self.0.entry(change_set_pk).or_default().remove(key)
+    }
 }
 
 impl<Key, Thing> Default for ChangeSetThingMap<Key, Thing>

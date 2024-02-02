@@ -5,14 +5,11 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use dal::authentication_prototype::{
-    AuthenticationPrototype, AuthenticationPrototypeContext, AuthenticationPrototypeError,
-};
 use dal::ws_event::AttributePrototypeContextKind;
+use dal::authentication_prototype::AuthenticationPrototypeError;
 use dal::{
     attribute::prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
     func::argument::{FuncArgumentError, FuncArgumentId},
@@ -23,13 +20,13 @@ use dal::{
         SchemaVariantDefinitionError as DalSchemaVariantDefinitionError, SchemaVariantDefinitionId,
     },
     socket::SocketError,
-    ActionPrototype, ActionPrototypeContext, ActionPrototypeError, AttributeContext,
-    AttributeContextBuilderError, AttributeContextError, AttributePrototype,
-    AttributePrototypeError, AttributePrototypeId, AttributeValueError, ChangeSetError, DalContext,
-    ExternalProvider, ExternalProviderError, Func, FuncBinding, FuncBindingError, FuncError,
-    FuncId, InternalProvider, InternalProviderError, LeafInputLocation, LeafKind, Prop, PropError,
-    PropKind, SchemaError, SchemaVariant, SchemaVariantError, SchemaVariantId, SocketId,
-    StandardModel, StandardModelError, TenancyError, TransactionsError, UserError, WsEventError,
+    ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
+    AttributePrototype, AttributePrototypeError, AttributePrototypeId, AttributeValueError,
+    ChangeSetError, DalContext, ExternalProvider, ExternalProviderError, Func, FuncBinding,
+    FuncBindingError, FuncError, FuncId, InternalProvider, InternalProviderError,
+    LeafInputLocation, LeafKind, Prop, PropError, PropKind, SchemaError, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, SocketId, StandardModel, StandardModelError, TenancyError,
+    TransactionsError, UserError, WsEventError,
 };
 use si_pkg::{SiPkgError, SpecError};
 
@@ -37,8 +34,6 @@ use crate::server::state::AppState;
 use crate::service::func::FuncError as SdfFuncError;
 
 use self::save_variant_def::SaveVariantDefRequest;
-
-use super::func::get_leaf_function_inputs;
 
 pub mod clone_variant_def;
 pub mod create_variant_def;
@@ -105,9 +100,9 @@ pub enum SchemaVariantDefinitionError {
     #[error("No new asset was created")]
     NoAssetCreated,
     #[error(transparent)]
-    Pg(#[from] si_data_pg::PgError),
+    ParseUrl(#[from] url::ParseError),
     #[error(transparent)]
-    PgPool(#[from] si_data_pg::PgPoolError),
+    Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     Pkg(#[from] PkgError),
     #[error(transparent)]
@@ -138,7 +133,11 @@ pub enum SchemaVariantDefinitionError {
     StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
-    #[error("transparent")]
+    #[error("type prop missing for map or array")]
+    TypePropMissingForMapOrArray,
+    #[error(transparent)]
+    Ulid(#[from] ulid::DecodeError),
+    #[error(transparent)]
     User(#[from] UserError),
     #[error("Schema Variant Definition {0} not found")]
     VariantDefinitionNotFound(SchemaVariantDefinitionId),
@@ -442,72 +441,6 @@ pub async fn migrate_attribute_functions_to_new_schema_variant(
     Ok(invalid_attribute_prototypes)
 }
 
-pub async fn migrate_actions_to_new_schema_variant(
-    ctx: &DalContext,
-    previous_schema_variant_id: SchemaVariantId,
-    new_schema_variant_id: SchemaVariantId,
-) -> SchemaVariantDefinitionResult<()> {
-    let mut actions = ActionPrototype::find_for_context(
-        ctx,
-        ActionPrototypeContext {
-            schema_variant_id: previous_schema_variant_id,
-        },
-    )
-    .await?;
-
-    for mut action in actions.drain(..) {
-        action
-            .set_schema_variant_id(ctx, new_schema_variant_id)
-            .await?;
-    }
-
-    Ok(())
-}
-
-pub async fn migrate_authentication_funcs_to_new_schema_variant(
-    ctx: &DalContext,
-    previous_schema_variant_id: SchemaVariantId,
-    new_schema_variant_id: SchemaVariantId,
-) -> SchemaVariantDefinitionResult<()> {
-    let mut auth_funcs = AuthenticationPrototype::find_for_context(
-        ctx,
-        AuthenticationPrototypeContext {
-            schema_variant_id: previous_schema_variant_id,
-        },
-    )
-    .await?;
-
-    for mut auth_func in auth_funcs.drain(..) {
-        auth_func
-            .set_schema_variant_id(ctx, new_schema_variant_id)
-            .await?;
-    }
-
-    Ok(())
-}
-
-pub async fn migrate_leaf_functions_to_new_schema_variant(
-    ctx: &DalContext,
-    leaf_func_migrations: Vec<LeafFuncMigration>,
-    new_schema_variant_id: SchemaVariantId,
-) -> SchemaVariantDefinitionResult<()> {
-    for leaf_func_migration in leaf_func_migrations {
-        SchemaVariant::upsert_leaf_function(
-            ctx,
-            new_schema_variant_id,
-            None,
-            leaf_func_migration.leaf_kind,
-            &leaf_func_migration.input_locations,
-            &leaf_func_migration.func,
-        )
-        .await?;
-
-        // TODO: delete attribute prototypes for orphaned leaf funcs
-    }
-
-    Ok(())
-}
-
 /// Removes all attribute prototypes, values, props, internal/external providers, sockets and
 /// validation prototypes for a schema variant. Actions are migrated directly, so they are not
 /// removed.
@@ -654,73 +587,6 @@ pub struct LeafFuncMigration {
     pub func: Func,
     pub leaf_kind: LeafKind,
     pub input_locations: Vec<LeafInputLocation>,
-}
-
-pub async fn maybe_delete_schema_variant_connected_to_variant_def(
-    ctx: &DalContext,
-    variant_def: &mut SchemaVariantDefinition,
-) -> SchemaVariantDefinitionResult<(
-    Option<SchemaVariantId>,
-    Vec<LeafFuncMigration>,
-    Vec<AttributePrototypeDefinition>,
-)> {
-    let has_components = is_variant_def_locked(ctx, variant_def).await?;
-    if has_components {
-        return Err(SchemaVariantDefinitionError::VariantInUse);
-    }
-
-    let maybe_previous_schema_variant_id = variant_def.schema_variant_id().copied();
-    let mut leaf_func_migrations = vec![];
-    let attribute_prototypes = if let Some(schema_variant_id) = maybe_previous_schema_variant_id {
-        let mut variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
-            .await?
-            .ok_or(SchemaVariantDefinitionError::SchemaVariantNotFound(
-                schema_variant_id,
-                *variant_def.id(),
-            ))?;
-
-        for leaf_kind in LeafKind::iter() {
-            let leaf_funcs =
-                SchemaVariant::find_leaf_item_functions(ctx, *variant.id(), leaf_kind).await?;
-            for (_, func) in leaf_funcs {
-                let input_locations = get_leaf_function_inputs(ctx, *func.id()).await?;
-                leaf_func_migrations.push(LeafFuncMigration {
-                    func: func.to_owned(),
-                    leaf_kind,
-                    input_locations,
-                });
-            }
-        }
-
-        let mut schema =
-            variant
-                .schema(ctx)
-                .await?
-                .ok_or(SchemaVariantDefinitionError::SchemaNotFound(
-                    *variant_def.id(),
-                ))?;
-
-        let attribute_prototypes = cleanup_orphaned_objects(ctx, *variant.id()).await?;
-
-        variant.delete_by_id(ctx).await?;
-        for mut ui_menu in schema.ui_menus(ctx).await? {
-            ui_menu.delete_by_id(ctx).await?;
-        }
-        schema.delete_by_id(ctx).await?;
-
-        variant_def
-            .set_schema_variant_id(ctx, None::<SchemaVariantId>)
-            .await?;
-        attribute_prototypes
-    } else {
-        Vec::new()
-    };
-
-    Ok((
-        maybe_previous_schema_variant_id,
-        leaf_func_migrations,
-        attribute_prototypes,
-    ))
 }
 
 pub fn routes() -> Router<AppState> {

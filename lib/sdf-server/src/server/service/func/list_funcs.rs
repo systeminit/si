@@ -1,7 +1,7 @@
-use super::{FuncError, FuncResult, FuncVariant};
+use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::{Func, FuncBackendKind, FuncId, StandardModel, Visibility};
+use dal::{Func, FuncBackendKind, FuncId, FuncVariant, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]

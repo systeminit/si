@@ -154,8 +154,27 @@
           ? 'Asset Updated'
           : 'New Asset Created'
       "
-      @closeComplete="closeHandler"
+      @close="reloadBrowser"
     >
+      <ErrorMessage
+        v-for="(warning, index) in assetStore.detachmentWarnings"
+        :key="warning.message"
+        class="m-1"
+        :class="{ 'cursor-pointer': !!warning.variant }"
+        icon="alert-triangle"
+        tone="warning"
+        @click="openAttachModal(warning)"
+      >
+        {{ warning.message }}
+        <VButton
+          tone="destructive"
+          buttonRank="tertiary"
+          icon="trash"
+          size="xs"
+          @click.stop="assetStore.detachmentWarnings.splice(index, 1)"
+        />
+      </ErrorMessage>
+
       {{
         editingAsset && editingAsset.schemaVariantId
           ? "The asset you just updated will be available to use from the Assets Panel"
@@ -189,6 +208,8 @@ const props = defineProps<{
   assetId?: string;
 }>();
 
+
+
 const assetStore = useAssetStore();
 const loadAssetReqStatus = assetStore.getRequestStatus(
   "LOAD_ASSET",
@@ -197,8 +218,8 @@ const loadAssetReqStatus = assetStore.getRequestStatus(
 const executeAssetModalRef = ref();
 
 const openAttachModal = (warning: {
-  variant?: FuncVariant;
-  funcId?: FuncId;
+  variant: FuncVariant | null;
+  funcId: FuncId | null;
 }) => {
   if (!warning.variant) return;
   attachModalRef.value?.open(true, warning.variant, warning.funcId);
@@ -276,10 +297,6 @@ watch(
   },
 );
 
-const closeHandler = () => {
-  assetStore.executeAssetTaskId = undefined;
-};
-
 const cloneAsset = async () => {
   if (editingAsset.value?.id) {
     const result = await assetStore.CLONE_ASSET(editingAsset.value.id);
@@ -288,4 +305,8 @@ const cloneAsset = async () => {
     }
   }
 };
+
+function reloadBrowser() {
+  window.location.reload();
+}
 </script>
