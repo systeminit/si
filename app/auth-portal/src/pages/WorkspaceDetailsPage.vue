@@ -38,7 +38,7 @@
           label="Display Name"
           placeholder="A display name for this workspace"
           required
-          :disabled="!canInviteUsers && !createMode"
+          :disabled="!isWorkspaceOwner && !createMode"
           :maxLength="500"
         />
         <VormInput
@@ -47,13 +47,13 @@
           autocomplete="url"
           placeholder="The instance url for this workspace"
           required
-          :disabled="!canInviteUsers && !createMode"
+          :disabled="!isWorkspaceOwner && !createMode"
         />
 
         <VButton
           iconRight="chevron--right"
           :disabled="
-            validationState.isError || (!canInviteUsers && !createMode)
+            validationState.isError || (!isWorkspaceOwner && !createMode)
           "
           :requestStatus="
             createMode ? createWorkspaceReqStatus : editWorkspaceReqStatus
@@ -75,7 +75,7 @@
         </template>
         <template v-else-if="loadWorkspaceMembersReqStatus.isSuccess">
           <div class="relative">
-            <Stack v-if="canInviteUsers">
+            <Stack>
               <div class="text-lg font-bold">Members of this workspace:</div>
 
               <table
@@ -126,25 +126,10 @@
                 </tbody>
               </table>
             </Stack>
-            <div v-else class="relative h-64 w-full rounded-xl">
-              <div
-                class="absolute w-full h-full z-50 bg-caution-lines opacity-50 rounded-xl"
-              ></div>
-              <div
-                class="absolute w-full h-full z-60 flex flex-col items-center justify-center gap-sm"
-              >
-                <div
-                  class="mx-sm p-xs text-center font-bold bg-shade-100 rounded"
-                >
-                  You do not have permissions to manage the users for this
-                  workspace, please contact the workspace owner.
-                </div>
-              </div>
-            </div>
           </div>
         </template>
       </div>
-      <div v-if="featureFlagsStore.INVITE_USER && canInviteUsers" class="pt-md">
+      <div v-if="featureFlagsStore.INVITE_USER" class="pt-md">
         <template v-if="inviteUserReqStatus.isPending">
           <Icon name="loader" />
         </template>
@@ -173,12 +158,12 @@
         </template>
       </div>
       <div
-        v-if="featureFlagsStore.DELETE_WORKSPACE && canInviteUsers"
+        v-if="featureFlagsStore.DELETE_WORKSPACE && isWorkspaceOwner"
         class="pt-md"
       >
         <VButton
           iconRight="chevron--right"
-          :disabled="!canInviteUsers"
+          :disabled="!isWorkspaceOwner"
           :requestStatus="deleteWorkspaceReqStatus"
           loadingText="Deleting..."
           tone="action"
@@ -245,7 +230,7 @@ const deleteWorkspaceReqStatus =
   workspacesStore.getRequestStatus("DELETE_WORKSPACE");
 
 const createMode = computed(() => props.workspaceId === "new");
-const canInviteUsers = computed(
+const isWorkspaceOwner = computed(
   () => workspacesStore.workspacesById[props.workspaceId].role === "OWNER",
 );
 
