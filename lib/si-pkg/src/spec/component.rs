@@ -40,6 +40,8 @@ pub struct ComponentSpec {
     pub unique_id: String,
     #[builder(setter(into))]
     pub deleted: bool,
+    #[builder(setter(into))]
+    pub hidden: bool,
 
     #[builder(setter(each(name = "attribute"), into), default)]
     pub attributes: Vec<AttributeValueSpec>,

@@ -79,7 +79,7 @@ impl ComponentView {
             .await?
             .ok_or(ComponentViewError::NotFound(component_id))?;
         let schema_variant = component
-            .schema_variant(ctx)
+            .schema_variant(deleted_ctx)
             .await
             .map_err(|e| ComponentViewError::Component(e.to_string()))?
             .ok_or_else(|| ComponentViewError::NoSchemaVariant(*component.id()))?;

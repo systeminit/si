@@ -51,7 +51,8 @@ import {
   ScrollArea,
 } from "@si/vue-lib/design-system";
 import { useAssetStore, assetDisplayName } from "@/store/asset.store";
-import SiChip from "@/components/SiChip.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
+import SiChip from "./SiChip.vue";
 import CodeEditor from "./CodeEditor.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
 
@@ -59,12 +60,16 @@ const props = defineProps<{
   assetId?: string;
 }>();
 
+const featureFlagsStore = useFeatureFlagsStore();
+const isReadOnly = computed(
+  () =>
+    !!selectedAsset.value?.hasComponents && !featureFlagsStore.OVERRIDE_SCHEMA,
+);
+
 const assetStore = useAssetStore();
 const selectedAsset = computed(() =>
   props.assetId ? assetStore.assetsById[props.assetId] : undefined,
 );
-
-const isReadOnly = computed(() => !!selectedAsset.value?.hasComponents);
 
 const editingAsset = ref<string>(selectedAsset.value?.code ?? "");
 

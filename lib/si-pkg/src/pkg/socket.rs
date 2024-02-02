@@ -134,15 +134,16 @@ impl<'a> TryFrom<SiPkgSocket<'a>> for SocketSpec {
 
         if let Some(data) = &value.data {
             let mut data_builder = SocketSpecData::builder();
-            if let Some(func_unique_id) = &data.func_unique_id {
-                data_builder.func_unique_id(func_unique_id);
-            }
             data_builder
                 .kind(data.kind)
                 .name(&data.name)
                 .connection_annotations(&data.connection_annotations)
                 .arity(data.arity)
                 .ui_hidden(data.ui_hidden);
+            if let Some(func_unique_id) = &data.func_unique_id {
+                data_builder.func_unique_id(func_unique_id);
+            }
+            builder.data(data_builder.build()?);
         }
 
         Ok(builder.build()?)
