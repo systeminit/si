@@ -24,10 +24,10 @@ use dal::{
     AttributePrototype, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
     AttributePrototypeError, AttributePrototypeId, AttributeValueError, ChangeSetError,
     ComponentError, ComponentId, DalContext, ExternalProviderError, ExternalProviderId, Func,
-    FuncBackendKind, FuncBackendResponseType, FuncBindingError, FuncId, FuncVariant,
-    InternalProvider, InternalProviderError, InternalProviderId, LeafInputLocation, Prop,
-    PropError, PropId, PrototypeListForFuncError, SchemaVariant, SchemaVariantId, StandardModel,
-    StandardModelError, TenancyError, TransactionsError, WsEventError,
+    FuncBackendKind, FuncBackendResponseType, FuncBindingError, FuncId, InternalProvider,
+    InternalProviderError, InternalProviderId, LeafInputLocation, Prop, PropError, PropId,
+    PrototypeListForFuncError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
+    TenancyError, TransactionsError, WsEventError,
 };
 
 use crate::server::{impl_default_error_into_response, state::AppState};
@@ -112,6 +112,8 @@ pub enum FuncError {
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("func binding return value not found")]
     FuncBindingReturnValueMissing,
+    #[error("func {0} cannot be converted to frontend variant")]
+    FuncCannotBeTurnedIntoVariant(FuncId),
     // XXX: we will be able to remove this error once we make output sockets typed
     #[error("Cannot bind function to both an output socket and a prop")]
     FuncDestinationPropAndOutputSocket,
@@ -196,6 +198,65 @@ impl From<si_data_pg::PgPoolError> for FuncError {
 pub type FuncResult<T> = Result<T, FuncError>;
 
 impl_default_error_into_response!(FuncError);
+
+// Variants don't map 1:1 onto FuncBackendKind, since some JsAttribute functions
+// are a special case (Qualification, CodeGeneration etc)
+#[remain::sorted]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Copy)]
+pub enum FuncVariant {
+    Action,
+    Attribute,
+    Authentication,
+    CodeGeneration,
+    Qualification,
+    Reconciliation,
+    Validation,
+}
+
+impl From<FuncVariant> for FuncBackendKind {
+    fn from(value: FuncVariant) -> Self {
+        match value {
+            FuncVariant::Reconciliation => FuncBackendKind::JsReconciliation,
+            FuncVariant::Action => FuncBackendKind::JsAction,
+            FuncVariant::Validation => FuncBackendKind::JsValidation,
+            FuncVariant::Attribute | FuncVariant::CodeGeneration | FuncVariant::Qualification => {
+                FuncBackendKind::JsAttribute
+            }
+            FuncVariant::Authentication => FuncBackendKind::JsAuthentication,
+        }
+    }
+}
+
+impl TryFrom<&Func> for FuncVariant {
+    type Error = FuncError;
+
+    fn try_from(func: &Func) -> Result<Self, Self::Error> {
+        match (func.backend_kind(), func.backend_response_type()) {
+            (FuncBackendKind::JsAttribute, response_type) => match response_type {
+                FuncBackendResponseType::CodeGeneration => Ok(FuncVariant::CodeGeneration),
+                FuncBackendResponseType::Qualification => Ok(FuncVariant::Qualification),
+                _ => Ok(FuncVariant::Attribute),
+            },
+            (FuncBackendKind::JsReconciliation, _) => Ok(FuncVariant::Reconciliation),
+            (FuncBackendKind::JsAction, _) => Ok(FuncVariant::Action),
+            (FuncBackendKind::JsValidation, _) => Ok(FuncVariant::Validation),
+            (FuncBackendKind::JsAuthentication, _) => Ok(FuncVariant::Authentication),
+            (FuncBackendKind::Array, _)
+            | (FuncBackendKind::Boolean, _)
+            | (FuncBackendKind::Diff, _)
+            | (FuncBackendKind::Identity, _)
+            | (FuncBackendKind::Integer, _)
+            | (FuncBackendKind::JsSchemaVariantDefinition, _)
+            | (FuncBackendKind::Map, _)
+            | (FuncBackendKind::Object, _)
+            | (FuncBackendKind::String, _)
+            | (FuncBackendKind::Unset, _)
+            | (FuncBackendKind::Validation, _) => {
+                Err(FuncError::FuncCannotBeTurnedIntoVariant(*func.id()))
+            }
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

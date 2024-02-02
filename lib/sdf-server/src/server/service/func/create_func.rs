@@ -1,4 +1,4 @@
-use super::FuncResult;
+use super::{FuncResult, FuncVariant};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::func::FuncError;
@@ -8,8 +8,8 @@ use dal::authentication_prototype::{AuthenticationPrototype, AuthenticationProto
 use dal::{
     generate_name, ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContextBuilder,
     AttributePrototype, ChangeSet, DalContext, ExternalProviderId, Func, FuncBackendResponseType,
-    FuncId, FuncVariant, LeafInputLocation, LeafKind, PropId, SchemaVariant, SchemaVariantId,
-    StandardModel, Visibility, WsEvent,
+    FuncId, LeafInputLocation, LeafKind, PropId, SchemaVariant, SchemaVariantId, StandardModel,
+    Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 

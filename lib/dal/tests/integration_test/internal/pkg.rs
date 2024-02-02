@@ -421,10 +421,10 @@ async fn test_module_pkg_export(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
         .find(|schema| schema.name() == "Generic Frame")
         .expect("able to find generic frame");
 
-    generic_frame
+    dbg!(generic_frame
         .ui_menus(&new_ctx)
         .await
-        .expect("get ui menus for generic frame");
+        .expect("get ui menus for generic frame"));
 }
 
 #[test]
@@ -438,8 +438,8 @@ async fn test_install_pkg(ctx: &DalContext) {
         .data(
             FuncSpecData::builder()
                 .name("si:qualificationWarning")
-                .display_name("warning".to_owned())
-                .description("it warns".to_owned())
+                .display_name("warning")
+                .description("it warns")
                 .handler("qualification")
                 .code_base64(&qualification_b64)
                 .backend_kind(FuncSpecBackendKind::JsAttribute)
@@ -627,8 +627,8 @@ async fn test_install_pkg(ctx: &DalContext) {
         .data(
             FuncSpecData::builder()
                 .name("si:truthy")
-                .display_name("truth".to_owned())
-                .description("it returns true".to_owned())
+                .display_name("truth")
+                .description("it returns true")
                 .handler("truth")
                 .code_base64(&code_base64)
                 .backend_kind(FuncSpecBackendKind::JsAttribute)

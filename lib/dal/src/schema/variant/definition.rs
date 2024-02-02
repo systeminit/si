@@ -237,23 +237,6 @@ impl SchemaVariantDefinition {
         Ok(standard_model::object_option_from_row_option(row)?)
     }
 
-    pub async fn list_live(ctx: &DalContext) -> SchemaVariantDefinitionResult<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                "SELECT row_to_json(svd.*) AS object
-                 FROM schema_variant_definitions_v1($1, $2) as svd
-                 INNER JOIN schema_variants_v1($1, $2) as sv ON sv.id = svd.schema_variant_id
-                 WHERE sv.visibility_deleted_at IS NULL",
-                &[ctx.tenancy(), ctx.visibility()],
-            )
-            .await?;
-
-        Ok(standard_model::objects_from_rows(rows)?)
-    }
-
     pub async fn list_components(
         &self,
         ctx: &DalContext,

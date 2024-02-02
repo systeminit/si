@@ -123,9 +123,8 @@ impl ComponentDebugView {
     pub async fn new(ctx: &DalContext, component: &Component) -> ComponentDebugViewResult<Self> {
         let debug_view_start = Instant::now();
 
-        let deleted_ctx = &ctx.clone_with_delete_visibility();
         let schema_variant = component
-            .schema_variant(deleted_ctx)
+            .schema_variant(ctx)
             .await
             .map_err(|e| ComponentDebugViewError::Component(e.to_string()))?
             .ok_or(ComponentError::NoSchemaVariant(*component.id()))

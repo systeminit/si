@@ -7,8 +7,7 @@ use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
 use dal::{
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
-    ComponentType, Func, SchemaVariant, SchemaVariantError, SchemaVariantId, StandardModel,
-    Timestamp, Visibility,
+    ComponentType, Func, SchemaVariant, SchemaVariantId, StandardModel, Timestamp, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -97,13 +96,6 @@ pub async fn get_variant_def(
             ))?;
 
     if let Some(variant_id) = variant_id {
-        let deleted_ctx = ctx.clone_with_delete_visibility();
-        if let Some(schema_variant) = SchemaVariant::get_by_id(&deleted_ctx, &variant_id).await? {
-            if schema_variant.visibility().deleted_at.is_some() {
-                return Err(SchemaVariantError::NotFound(*schema_variant.id()))?;
-            }
-        }
-
         response.funcs = SchemaVariant::all_funcs(&ctx, variant_id)
             .await?
             .iter()

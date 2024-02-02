@@ -43,7 +43,7 @@ pub async fn list_variant_defs(
 ) -> SchemaVariantDefinitionResult<Json<ListVariantDefsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let variant_defs: Vec<ListedVariantDef> = SchemaVariantDefinition::list_live(&ctx)
+    let variant_defs: Vec<ListedVariantDef> = SchemaVariantDefinition::list(&ctx)
         .await?
         .iter()
         .map(|def| ListedVariantDef {

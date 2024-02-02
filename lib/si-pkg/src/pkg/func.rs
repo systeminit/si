@@ -299,9 +299,15 @@ impl<'a> TryFrom<SiPkgFunc<'a>> for FuncSpec {
                 .code_base64(&data.code_base64)
                 .backend_kind(data.backend_kind)
                 .response_type(data.response_type)
-                .hidden(data.hidden)
-                .display_name(data.display_name.as_ref().map(ToOwned::to_owned))
-                .description(data.description.as_ref().map(ToOwned::to_owned));
+                .hidden(data.hidden);
+
+            if let Some(display_name) = &data.display_name {
+                data_builder.display_name(display_name);
+            }
+
+            if let Some(description) = &data.description {
+                data_builder.description(description);
+            }
 
             if let Some(link) = &data.link {
                 data_builder.link(link.to_owned());
