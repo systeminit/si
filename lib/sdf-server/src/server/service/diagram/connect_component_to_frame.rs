@@ -1,6 +1,5 @@
 use std::collections::{HashMap, VecDeque};
 
-use async_recursion::async_recursion;
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use hyper::http::Uri;
@@ -34,6 +33,12 @@ pub struct CreateFrameConnectionRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CreateFrameConnectionResponse {
     pub connection: Connection,
+}
+
+// Internal struct to track work-to-process in `connect_component_sockets_to_frame_inner`.
+struct Work {
+    parent_node_id: NodeId,
+    child_node_id: NodeId,
 }
 
 // Create all valid connections between parent and child sockets
@@ -97,7 +102,6 @@ pub async fn connect_component_sockets_to_frame(
     Ok(())
 }
 
-#[async_recursion]
 async fn connect_component_sockets_to_frame_inner(
     ctx: &DalContext,
     parent_node_id: NodeId,
@@ -106,6 +110,42 @@ async fn connect_component_sockets_to_frame_inner(
     posthog_client: &crate::server::state::PosthogClient,
     connected_sockets_for_node_id: &mut HashMap<NodeId, Vec<SocketId>>,
 ) -> DiagramResult<()> {
+    let mut work_stack = Vec::new();
+
+    work_stack.push(Work {
+        parent_node_id,
+        child_node_id,
+    });
+
+    while let Some(Work {
+        parent_node_id,
+        child_node_id,
+    }) = work_stack.pop()
+    {
+        connect_component_sockets_to_frame_inner_work(
+            ctx,
+            parent_node_id,
+            child_node_id,
+            original_uri,
+            posthog_client,
+            connected_sockets_for_node_id,
+            &mut work_stack,
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+async fn connect_component_sockets_to_frame_inner_work(
+    ctx: &DalContext,
+    parent_node_id: NodeId,
+    child_node_id: NodeId,
+    original_uri: &Uri,
+    posthog_client: &crate::server::state::PosthogClient,
+    connected_sockets_for_node_id: &mut HashMap<NodeId, Vec<SocketId>>,
+    work_stack: &mut Vec<Work>,
+) -> Result<(), DiagramError> {
     let parent_component = Component::find_for_node(ctx, parent_node_id)
         .await?
         .ok_or(DiagramError::NodeNotFound(parent_node_id))?;
@@ -347,15 +387,10 @@ async fn connect_component_sockets_to_frame_inner(
         match ty {
             ComponentType::Component => {}
             ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => {
-                connect_component_sockets_to_frame_inner(
-                    ctx,
-                    *grandparent.id(),
+                work_stack.push(Work {
+                    parent_node_id: *grandparent.id(),
                     child_node_id,
-                    original_uri,
-                    posthog_client,
-                    connected_sockets_for_node_id,
-                )
-                .await?
+                });
             }
             ComponentType::AggregationFrame => unimplemented!(),
         }
