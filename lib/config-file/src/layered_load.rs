@@ -1,7 +1,7 @@
 use std::{collections::HashMap, env, ffi::OsStr, fmt::Debug};
 
 use serde::{de::DeserializeOwned, Serialize};
-use tracing::{debug, trace};
+use tracing::trace;
 
 use crate::{ConfigFileError, FileFormat, Result, ToFileFormats};
 
@@ -88,7 +88,7 @@ where
             FileFormat::Custom(unknown) => {
                 return Err(Into::into(ConfigFileError::UnknownFileFormat(
                     unknown.to_string(),
-                )))
+                )));
             }
             // If another file type is compiled in via cargo features, this arm will match
             #[allow(unreachable_patterns)]
@@ -138,7 +138,7 @@ where
     // Deserialize it into a config file struct
     let config = builder.build()?;
     let config_file = config.try_deserialize()?;
-    debug!(?config_file, "merged configuration into");
+    trace!(?config_file, "merged configuration into");
     Ok(config_file)
 }
 
