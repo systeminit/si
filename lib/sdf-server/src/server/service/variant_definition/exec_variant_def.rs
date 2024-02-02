@@ -1,34 +1,33 @@
+use std::collections::HashMap;
+
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use chrono::Utc;
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, str::FromStr};
-use strum::IntoEnumIterator;
-use telemetry::prelude::*;
 
 use dal::{
     func::intrinsics::IntrinsicFunc,
-    pkg::import_pkg_from_pkg,
-    pkg::{ImportAttributeSkip, ImportSkips, PkgExporter},
-    prop::PropPath,
+    pkg::{attach_resource_payload_to_value, import_pkg_from_pkg},
     schema::variant::definition::{
         SchemaVariantDefinition, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
     },
-    AttributePrototypeId, ChangeSet, Func, FuncBinding, FuncId, FuncVariant, HistoryActor,
-    SchemaVariant, SchemaVariantError, SchemaVariantId, StandardModel, User,
+    AttributePrototypeId, ChangeSet, Func, FuncBinding, FuncId, HistoryActor, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, StandardModel, User,
 };
 use si_pkg::{
-    FlatPropSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData,
-    PkgSpec, PropSpec, PropSpecKind, SiPkg, SocketSpecKind,
+    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, SiPkg,
 };
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
+use crate::service::variant_definition::migrate_authentication_funcs_to_new_schema_variant;
 
 use super::{
-    AttributePrototypeContextKind, SaveVariantDefRequest, SchemaVariantDefinitionError,
-    SchemaVariantDefinitionResult,
+    super::func::FuncVariant, maybe_delete_schema_variant_connected_to_variant_def,
+    migrate_actions_to_new_schema_variant, migrate_attribute_functions_to_new_schema_variant,
+    migrate_leaf_functions_to_new_schema_variant, AttributePrototypeContextKind,
+    SaveVariantDefRequest, SchemaVariantDefinitionError, SchemaVariantDefinitionResult,
 };
 
 pub type ExecVariantDefRequest = SaveVariantDefRequest;
@@ -50,7 +49,7 @@ pub struct ExecVariantDefResponse {
     pub success: bool,
     pub schema_variant_id: SchemaVariantId,
     pub func_exec_response: serde_json::Value,
-    pub skips: Vec<ImportSkips>,
+    pub detached_attribute_prototypes: Vec<AttributePrototypeView>,
 }
 
 pub async fn exec_variant_def(
@@ -82,7 +81,9 @@ pub async fn exec_variant_def(
         .ok_or(SchemaVariantDefinitionError::VariantDefinitionNotFound(
             request.id,
         ))?;
-    let maybe_previous_variant_id = variant_def.schema_variant_id().copied();
+
+    let (maybe_previous_variant_id, leaf_funcs_to_migrate, attribute_prototypes) =
+        maybe_delete_schema_variant_connected_to_variant_def(&ctx, &mut variant_def).await?;
 
     let asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
@@ -164,429 +165,105 @@ pub async fn exec_variant_def(
             .build()?
     };
 
-    // we need to change this to use the PkgImport
-    let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
-
-    let mut variant_spec = definition.to_spec(
-        metadata.clone(),
-        &identity_func_spec.unique_id,
-        &asset_func_built.unique_id,
-    )?;
-
-    let mut func_specs = Vec::new();
-    let mut initial_skips = ImportSkips::default();
-
-    if let Some(previous_schema_variant_id) = maybe_previous_variant_id {
-        let previous_variant = SchemaVariant::get_by_id(&ctx, &previous_schema_variant_id)
-            .await?
-            .ok_or(SchemaVariantError::NotFound(previous_schema_variant_id))?;
-        let mut exporter = PkgExporter::new_workspace_exporter(
-            "temporary",
-            "SystemInit".to_owned(),
-            "1.0",
-            "Temporary pkg created to update schemas",
-        );
-        variant_spec.leaf_functions = exporter
-            .export_leaf_funcs(
-                &ctx,
-                Some(ctx.visibility().change_set_pk),
-                *previous_variant.id(),
-            )
-            .await?;
-        variant_spec.action_funcs = exporter
-            .export_action_funcs(
-                &ctx,
-                Some(ctx.visibility().change_set_pk),
-                *previous_variant.id(),
-            )
-            .await?;
-        variant_spec.auth_funcs = exporter
-            .export_auth_funcs(
-                &ctx,
-                Some(ctx.visibility().change_set_pk),
-                *previous_variant.id(),
-            )
-            .await?;
-        variant_spec.si_prop_funcs = exporter
-            .export_si_prop_funcs(
-                &ctx,
-                Some(ctx.visibility().change_set_pk),
-                &previous_variant,
-            )
-            .await?;
-        variant_spec.root_prop_funcs = exporter
-            .export_root_prop_funcs(
-                &ctx,
-                Some(ctx.visibility().change_set_pk),
-                &previous_variant,
-            )
-            .await?;
-
-        'outer: for old_socket in exporter
-            .export_sockets(
-                &ctx,
-                Some(ctx.visibility().change_set_pk),
-                *previous_variant.id(),
-            )
-            .await?
-        {
-            for socket in &mut variant_spec.sockets {
-                if socket.inputs.is_empty() && socket.name == old_socket.name {
-                    socket.inputs = old_socket.inputs.clone();
-                    if let Some(data) = &mut socket.data {
-                        data.func_unique_id = old_socket
-                            .data
-                            .as_ref()
-                            .and_then(|s| s.func_unique_id.clone());
-                    } else {
-                        socket.data = old_socket.data;
-                    }
-                    continue 'outer;
-                }
-            }
-
-            if let Some(data) = &old_socket.data {
-                if let Some(func_unique_id) = &data.func_unique_id {
-                    if let Ok(func_id) = FuncId::from_str(func_unique_id) {
-                        if let Some(func) = &Func::get_by_id(&ctx, &func_id).await? {
-                            if data.kind == SocketSpecKind::Input {
-                                initial_skips.attribute_skips.push((
-                                    old_socket.name.clone(),
-                                    vec![ImportAttributeSkip::MissingInputSocket {
-                                        name: old_socket.name,
-                                        variant: func.try_into().ok(),
-                                        func_id: *func.id(),
-                                    }],
-                                ));
-                            } else {
-                                initial_skips.attribute_skips.push((
-                                    old_socket.name.clone(),
-                                    vec![ImportAttributeSkip::MissingOutputSocket {
-                                        name: old_socket.name,
-                                        variant: func.try_into().ok(),
-                                        func_id: *func.id(),
-                                    }],
-                                ));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let mut func_ids: Vec<String> = Vec::new();
-
-        exporter
-            .export_func(&ctx, Some(ctx.visibility().change_set_pk), &asset_func)
-            .await?;
-        let previous_variant_spec = exporter
-            .export_variant(
-                &ctx,
-                Some(ctx.visibility().change_set_pk),
-                &previous_variant,
-            )
-            .await?;
-        {
-            let mut previous_map = previous_variant_spec.flatten_domain()?;
-            let mut map = variant_spec.flatten_domain()?;
-            for (path, spec) in map.iter_mut() {
-                if let Some(previous_spec) = previous_map.remove(path) {
-                    if let (Some(data), Some(previous_data)) = (&mut spec.data, &previous_spec.data)
-                    {
-                        if data.inputs.as_ref().map_or(true, |i| i.is_empty())
-                            && spec.kind == previous_spec.kind
-                        {
-                            data.inputs = previous_data.inputs.clone();
-                            data.func_unique_id = previous_data.func_unique_id.clone();
-                        }
-                    } else {
-                        spec.data = previous_spec.data.clone();
-                    }
-                } else {
-                    info!("Prop missing: {path}");
-                }
-
-                if let Some(func_id) = spec.data.as_ref().and_then(|s| s.func_unique_id.clone()) {
-                    func_ids.push(func_id);
-                }
-            }
-
-            for (path, spec) in previous_map {
-                initial_skips.attribute_skips.push((
-                    spec.name.clone(),
-                    vec![ImportAttributeSkip::MissingProp {
-                        path: PropPath::from(path),
-                        variant: None,
-                        func_id: None,
-                    }],
-                ));
-            }
-
-            let mut parent_prop_spec = PropSpec::Object {
-                name: "domain".to_owned(),
-                data: None,
-                unique_id: None,
-                entries: Vec::new(),
-            };
-            recursive_prop_spec_builder("root/domain".to_owned(), &mut parent_prop_spec, &mut map)?;
-            variant_spec.domain = parent_prop_spec;
-
-            let mut previous_map = previous_variant_spec.flatten_secrets()?;
-            let mut map = variant_spec.flatten_secrets()?;
-            for (path, spec) in map.iter_mut() {
-                if let Some(previous_spec) = previous_map.remove(path) {
-                    if let (Some(data), Some(previous_data)) = (&mut spec.data, &previous_spec.data)
-                    {
-                        if data.inputs.as_ref().map_or(true, |i| i.is_empty())
-                            && spec.kind == previous_spec.kind
-                        {
-                            data.inputs = previous_data.inputs.clone();
-                            data.func_unique_id = previous_data.func_unique_id.clone();
-                        }
-                    } else {
-                        spec.data = previous_spec.data.clone();
-                    }
-                } else {
-                    info!("Prop missing: {path}");
-                }
-
-                if let Some(func_id) = spec.data.as_ref().and_then(|s| s.func_unique_id.clone()) {
-                    func_ids.push(func_id);
-                }
-            }
-
-            for (path, spec) in previous_map {
-                initial_skips.attribute_skips.push((
-                    spec.name.clone(),
-                    vec![ImportAttributeSkip::MissingProp {
-                        path: PropPath::from(path),
-                        variant: None,
-                        func_id: None,
-                    }],
-                ));
-            }
-
-            let mut parent_prop_spec = PropSpec::Object {
-                name: "secrets".to_owned(),
-                data: None,
-                unique_id: None,
-                entries: Vec::new(),
-            };
-            recursive_prop_spec_builder(
-                "root/secrets".to_owned(),
-                &mut parent_prop_spec,
-                &mut map,
-            )?;
-            variant_spec.secrets = parent_prop_spec;
-
-            let mut previous_map = previous_variant_spec.flatten_secret_definition()?;
-            let mut map = variant_spec.flatten_secret_definition()?;
-            for (path, spec) in map.iter_mut() {
-                if let Some(previous_spec) = previous_map.remove(path) {
-                    if let (Some(data), Some(previous_data)) = (&mut spec.data, &previous_spec.data)
-                    {
-                        if data.inputs.as_ref().map_or(true, |i| i.is_empty())
-                            && spec.kind == previous_spec.kind
-                        {
-                            data.inputs = previous_data.inputs.clone();
-                            data.func_unique_id = previous_data.func_unique_id.clone();
-                        }
-                    } else {
-                        spec.data = previous_spec.data.clone();
-                    }
-                } else {
-                    info!("Prop missing: {path}");
-                }
-
-                if let Some(func_id) = spec.data.as_ref().and_then(|s| s.func_unique_id.clone()) {
-                    func_ids.push(func_id);
-                }
-            }
-
-            for (path, spec) in previous_map {
-                initial_skips.attribute_skips.push((
-                    spec.name.clone(),
-                    vec![ImportAttributeSkip::MissingProp {
-                        path: PropPath::from(path),
-                        variant: None,
-                        func_id: None,
-                    }],
-                ));
-            }
-
-            if let Some(definition) = &mut variant_spec.secret_definition {
-                let mut parent_prop_spec = PropSpec::Object {
-                    name: "secret_definition".to_owned(),
-                    data: None,
-                    unique_id: None,
-                    entries: Vec::new(),
-                };
-                recursive_prop_spec_builder(
-                    "root/secret_definition".to_owned(),
-                    &mut parent_prop_spec,
-                    &mut map,
-                )?;
-                *definition = parent_prop_spec;
-            }
-
-            // TODO: make this iterative
-            fn recursive_prop_spec_builder(
-                path: String,
-                spec: &mut PropSpec,
-                map: &mut HashMap<String, FlatPropSpec>,
-            ) -> SchemaVariantDefinitionResult<()> {
-                if let Some(prop) = map.remove(&path) {
-                    *spec.data_mut() = prop.data;
-                    *spec.unique_id_mut() = prop.unique_id;
-
-                    // TODO: do we need to handle maps and arrays type props?
-                    if let PropSpec::Object { entries, .. } = spec {
-                        // TODO: improve complexity of finding children
-                        for (inner_path, inner_spec) in map.clone().into_iter() {
-                            let name = inner_path.replace(&format!("{path}/"), "");
-                            if !name.contains('/') {
-                                let mut child_spec = match inner_spec.kind {
-                                        PropSpecKind::String => PropSpec::String {
-                                            name,
-                                            data: None,
-                                            unique_id: None,
-                                        },
-                                        PropSpecKind::Number => PropSpec::Number {
-                                            name,
-                                            data: None,
-                                            unique_id: None,
-                                        },
-                                        PropSpecKind::Boolean => PropSpec::Boolean {
-                                            name,
-                                            data: None,
-                                            unique_id: None,
-                                        },
-                                        PropSpecKind::Array => PropSpec::Array {
-                                            name,
-                                            type_prop: inner_spec.type_prop.clone().ok_or(SchemaVariantDefinitionError::TypePropMissingForMapOrArray)?,
-                                            data: None,
-                                            unique_id: None,
-                                        },
-                                        PropSpecKind::Map => PropSpec::Map {
-                                            name,
-                                            type_prop: inner_spec.type_prop.clone().ok_or(SchemaVariantDefinitionError::TypePropMissingForMapOrArray)?,
-                                            map_key_funcs: inner_spec.map_key_funcs.clone(),
-                                            data: None,
-                                            unique_id: None,
-                                        },
-                                        PropSpecKind::Object => PropSpec::Object {
-                                            name,
-                                            data: None,
-                                            unique_id: None,
-                                            entries: Vec::new(),
-                                        },
-                                    };
-                                recursive_prop_spec_builder(
-                                    inner_path.clone(),
-                                    &mut child_spec,
-                                    map,
-                                )?;
-                                entries.push(child_spec);
-                            }
-                        }
-                    }
-                }
-                Ok(())
-            }
-        }
-
-        func_ids.extend(
-            variant_spec
-                .leaf_functions
-                .iter()
-                .map(|f| f.func_unique_id.clone())
-                .chain(
-                    variant_spec
-                        .action_funcs
-                        .iter()
-                        .map(|f| f.func_unique_id.clone()),
-                )
-                .chain(
-                    variant_spec
-                        .auth_funcs
-                        .iter()
-                        .map(|f| f.func_unique_id.clone()),
-                )
-                .chain(
-                    variant_spec
-                        .si_prop_funcs
-                        .iter()
-                        .map(|f| f.func_unique_id.clone()),
-                )
-                .chain(
-                    variant_spec
-                        .root_prop_funcs
-                        .iter()
-                        .map(|f| f.func_unique_id.clone()),
-                )
-                .chain(
-                    variant_spec
-                        .sockets
-                        .iter()
-                        .flat_map(|s| s.data.as_ref())
-                        .flat_map(|s| s.func_unique_id.clone()),
-                ),
-        );
-        for unique_id in func_ids {
-            if let Ok(func_id) = FuncId::from_str(&unique_id) {
-                if let Some(func) = Func::get_by_id(&ctx, &func_id).await? {
-                    let (spec, _) = exporter
-                        .export_func(&ctx, Some(ctx.visibility().change_set_pk), &func)
-                        .await?;
-                    if spec.data.is_some() {
-                        func_specs.push(spec);
-                    }
-                }
-            }
-        }
-    } else {
-        variant_def.delete_by_id(&ctx).await?;
-    }
-
-    let schema_spec = metadata.to_spec(variant_spec)?;
-
     let pkg_spec = {
-        let mut builder = PkgSpec::builder();
+        // we need to change this to use the PkgImport
+        let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
 
-        for spec in func_specs {
-            builder.func(spec);
-        }
-
-        for intrinsic in IntrinsicFunc::iter() {
-            let spec = intrinsic.to_spec()?;
-            builder.func(spec);
-        }
-
-        builder
+        let variant_spec = definition.to_spec(
+            metadata.clone(),
+            &identity_func_spec.unique_id,
+            &asset_func_built.unique_id,
+        )?;
+        let schema_spec = metadata.to_spec(variant_spec)?;
+        PkgSpec::builder()
             .name(metadata.clone().name)
             .created_by(&user_email)
+            .func(identity_func_spec)
             .func(asset_func_built.clone())
             .schema(schema_spec)
-            .version("0.0.1");
-
-        builder.build()?
+            .version("0.0.1")
+            .build()?
     };
 
     let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
 
-    let (_, schema_variant_ids, mut skips) = import_pkg_from_pkg(
+    let (_, schema_variant_ids, _) = import_pkg_from_pkg(
         &ctx,
         &pkg,
-        None,
+        Some(dal::pkg::ImportOptions {
+            schemas: None,
+            skip_import_funcs: Some(HashMap::from_iter([(
+                asset_func_built.unique_id.to_owned(),
+                asset_func.clone(),
+            )])),
+            no_record: true,
+            is_builtin: false,
+        }),
         request.override_builtin_schema_feature_flag,
     )
     .await?;
-    skips.push(initial_skips);
 
     let schema_variant_id = schema_variant_ids
         .get(0)
         .copied()
         .ok_or(SchemaVariantDefinitionError::NoAssetCreated)?;
+
+    let detached_attribute_prototypes = match maybe_previous_variant_id {
+        Some(previous_schema_variant_id) => {
+            migrate_leaf_functions_to_new_schema_variant(
+                &ctx,
+                leaf_funcs_to_migrate,
+                schema_variant_id,
+            )
+            .await?;
+            migrate_actions_to_new_schema_variant(
+                &ctx,
+                previous_schema_variant_id,
+                schema_variant_id,
+            )
+            .await?;
+            migrate_authentication_funcs_to_new_schema_variant(
+                &ctx,
+                previous_schema_variant_id,
+                schema_variant_id,
+            )
+            .await?;
+
+            let schema_variant = SchemaVariant::get_by_id(&ctx, &schema_variant_id)
+                .await?
+                .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
+
+            let attribute_prototypes = migrate_attribute_functions_to_new_schema_variant(
+                &ctx,
+                attribute_prototypes,
+                &schema_variant,
+            )
+            .await?;
+            let mut detached_attribute_prototypes = Vec::with_capacity(attribute_prototypes.len());
+
+            for attribute_prototype in attribute_prototypes {
+                let func = Func::get_by_id(&ctx, &attribute_prototype.func_id)
+                    .await?
+                    .ok_or_else(|| {
+                        SchemaVariantDefinitionError::FuncNotFound(attribute_prototype.func_id)
+                    })?;
+                detached_attribute_prototypes.push(AttributePrototypeView {
+                    id: attribute_prototype.id,
+                    func_id: attribute_prototype.func_id,
+                    func_name: func.name().to_owned(),
+                    variant: (&func).try_into().ok(),
+                    key: attribute_prototype.key,
+                    context: attribute_prototype.context,
+                });
+            }
+
+            detached_attribute_prototypes
+        }
+        None => {
+            attach_resource_payload_to_value(&ctx, schema_variant_id).await?;
+            vec![]
+        }
+    };
 
     track(
         &posthog_client,
@@ -615,7 +292,7 @@ pub async fn exec_variant_def(
             success: true,
             func_exec_response,
             schema_variant_id,
-            skips,
+            detached_attribute_prototypes,
         })?)?,
     )
 }

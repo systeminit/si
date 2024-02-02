@@ -1,8 +1,8 @@
-use super::{FuncAssociations, FuncError, FuncResult};
+use super::{FuncAssociations, FuncError, FuncResult, FuncVariant};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::func::execution::{FuncExecution, FuncExecutionState};
-use dal::{Func, FuncId, FuncVariant, StandardModel, Visibility};
+use dal::{Func, FuncId, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 use veritech_client::{FunctionResultFailure, OutputStream};
 
