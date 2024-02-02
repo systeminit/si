@@ -8,6 +8,7 @@ rust_library(
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-settings:si-settings",
+        "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
         "//lib/veritech-core:veritech-core",
         "//third-party/rust:chrono",
@@ -18,6 +19,7 @@ rust_library(
         "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
+        "//third-party/rust:ulid",
     ],
     srcs = glob(["src/**/*.rs"]),
 )
