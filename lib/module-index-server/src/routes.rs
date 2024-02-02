@@ -23,8 +23,8 @@ pub(crate) mod upsert_module_route;
 
 use super::{app_state::AppState, server::ServerError};
 
-// 20Mb upload limit
-const MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 20;
+// 512Mb upload limit
+const MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 512;
 
 #[allow(clippy::too_many_arguments)]
 pub fn routes(state: AppState) -> Router {
