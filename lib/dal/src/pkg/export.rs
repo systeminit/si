@@ -748,7 +748,7 @@ impl PkgExporter {
             let mut builder = PropSpec::builder();
 
             if !change_set_matches(change_set_pk, tree_node.visibility_change_set_pk) {
-                builder.has_data(false);
+                // builder.has_data(false);
             }
 
             builder.unique_id(prop_id);
