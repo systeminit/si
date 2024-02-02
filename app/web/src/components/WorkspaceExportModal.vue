@@ -19,12 +19,25 @@
         <VButton icon="check" @click="close">Close this window</VButton>
       </template>
       <template v-else-if="moduleStore.exportingWorkspaceOperationId">
-        <p>Export succeeded!</p>
-        <p>
-          You can now import this workspace by going to
-          <br />
-          workspace settings (gear in top right) > "Import Workspace"
-        </p>
+        <template v-if="moduleStore.exportingWorkspaceOperationError">
+          <p class="flex gap-1 items-center">
+            <Icon name="x" class="text-destructive-500" />
+
+            Export Failed!
+          </p>
+          <p>
+            {{ moduleStore.exportingWorkspaceOperationError }}
+          </p>
+        </template>
+        <template v-else>
+          <p>Export succeeded!</p>
+          <p>
+            You can now import this workspace by going to
+            <br />
+            workspace settings (gear in top right) > "Import Workspace"
+          </p>
+        </template>
+
         <VButton icon="refresh" @click="moduleStore.resetExportWorkspaceStatus">
           Export Again
         </VButton>
