@@ -720,19 +720,14 @@ async fn import_component(
     }
 
     let position = component_spec.position;
-
-    if node.x() != position.x {
-        node.set_x(ctx, position.x).await?;
-    }
-    if node.y() != position.y {
-        node.set_y(ctx, position.y).await?;
-    }
-
-    if node.height() != position.height.as_deref() {
-        node.set_height(ctx, position.height.clone()).await?;
-    }
-    if node.width() != position.width.as_deref() {
-        node.set_width(ctx, position.width.clone()).await?;
+    if node.x() != position.x
+        || node.y() != position.y
+        || node.height() != position.height.as_deref()
+        || node.width() != position.width.as_deref()
+    {
+        // Use set_geometry to ensure summary diagram gets updated positioning
+        node.set_geometry(ctx, position.x, position.y, position.width, position.height)
+            .await?;
     }
 
     let mut value_cache: HashMap<ValueCacheKey, AttributeValue> = HashMap::new();
