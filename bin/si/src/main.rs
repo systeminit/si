@@ -60,7 +60,7 @@ async fn main() -> Result<()> {
 
     let current_version = VERSION.trim();
 
-    debug!(arguments =?args, "parsed cli arguments");
+    trace!(arguments =?args, "parsed cli arguments");
 
     let (ph_client, ph_sender) = si_posthog::new().request_timeout_ms(3000).build()?;
     let (ph_done_sender, ph_done_receiver) = tokio::sync::oneshot::channel();
