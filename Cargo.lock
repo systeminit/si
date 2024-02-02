@@ -4737,7 +4737,6 @@ dependencies = [
 name = "sdf-server"
 version = "0.1.0"
 dependencies = [
- "async-recursion",
  "async-trait",
  "axum",
  "base64 0.21.7",
@@ -6706,6 +6705,7 @@ dependencies = [
  "si-crypto",
  "si-data-nats",
  "telemetry",
+ "telemetry-nats",
  "test-log",
  "thiserror",
  "tokio",
@@ -6736,8 +6736,10 @@ dependencies = [
  "si-data-nats",
  "si-settings",
  "telemetry",
+ "telemetry-nats",
  "thiserror",
  "tokio",
+ "ulid",
  "veritech-core",
 ]
 

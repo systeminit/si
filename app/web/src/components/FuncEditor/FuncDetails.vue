@@ -24,6 +24,7 @@
   >
     <TabGroup
       ref="funcDetailsTabGroupRef"
+      marginTop="2xs"
       @update:selected-tab="expandTestPanel"
     >
       <TabGroupItem label="Properties" slug="properties">

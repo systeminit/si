@@ -15,6 +15,7 @@ serde_json = { workspace = true }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 veritech-core = { path = "../../lib/veritech-core" }

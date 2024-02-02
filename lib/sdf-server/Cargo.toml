@@ -23,7 +23,6 @@ telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-http = { path = "../../lib/telemetry-http-rs" }
 veritech-client = { path = "../../lib/veritech-client" }
 
-async-recursion = { workspace = true }
 async-trait = { workspace = true }
 axum = { workspace = true }
 base64 = { workspace = true }

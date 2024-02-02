@@ -1,6 +1,7 @@
 <template>
   <TabGroup
     :startSelectedTabSlug="tabContentSlug"
+    marginTop="2xs"
     @update:selected-tab="onTabChange"
   >
     <TabGroupItem slug="assets" label="ASSETS">

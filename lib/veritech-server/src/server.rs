@@ -9,7 +9,7 @@ use deadpool_cyclone::{
 use futures::{channel::oneshot, join, StreamExt};
 use nats_subscriber::Request;
 use si_data_nats::NatsClient;
-use std::io;
+use std::{io, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
@@ -65,6 +65,7 @@ pub struct Server {
     shutdown_broadcast_tx: broadcast::Sender<()>,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
     shutdown_rx: oneshot::Receiver<()>,
+    metadata: Arc<ServerMetadata>,
 }
 
 impl Server {
@@ -117,6 +118,11 @@ impl Server {
                     .build()
                     .map_err(|err| ServerError::CycloneSpec(Box::new(err)))?;
 
+                let metadata = ServerMetadata {
+                    job_instance: config.instance_id().into(),
+                    job_invoked_provider: "si",
+                };
+
                 let graceful_shutdown_rx =
                     prepare_graceful_shutdown(shutdown_rx, shutdown_broadcast_tx.clone())?;
 
@@ -127,6 +133,7 @@ impl Server {
                     shutdown_broadcast_tx,
                     shutdown_tx,
                     shutdown_rx: graceful_shutdown_rx,
+                    metadata: Arc::new(metadata),
                 })
             }
             wrong @ CycloneSpec::LocalHttp(_) => Err(ServerError::WrongCycloneSpec(
@@ -148,30 +155,35 @@ impl Server {
     pub async fn run(self) -> ServerResult<()> {
         let _ = join!(
             process_resolver_function_requests_task(
+                self.metadata.clone(),
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_validation_requests_task(
+                self.metadata.clone(),
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_action_run_requests_task(
+                self.metadata.clone(),
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_reconciliation_requests_task(
+                self.metadata.clone(),
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_schema_variant_definition_requests_task(
+                self.metadata.clone(),
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
@@ -184,6 +196,12 @@ impl Server {
 
         Ok(())
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct ServerMetadata {
+    job_instance: String,
+    job_invoked_provider: &'static str,
 }
 
 pub struct VeritechShutdownHandle {
@@ -204,12 +222,14 @@ impl VeritechShutdownHandle {
 // their own modules.
 
 async fn process_resolver_function_requests_task(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_resolver_function_requests(
+        metadata,
         nats,
         subject_prefix,
         cyclone_pool,
@@ -222,6 +242,7 @@ async fn process_resolver_function_requests_task(
 }
 
 async fn process_resolver_function_requests(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
@@ -243,6 +264,7 @@ async fn process_resolver_function_requests(
                     Some(Ok(request)) => {
                         // Spawn a task an process the request
                         tokio::spawn(resolver_function_request_task(
+                            metadata.clone(),
                             nats.clone(),
                             cyclone_pool.clone(),
                             request,
@@ -272,6 +294,7 @@ async fn process_resolver_function_requests(
 }
 
 async fn resolver_function_request_task(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ResolverFunctionRequest>,
@@ -288,8 +311,14 @@ async fn resolver_function_request_task(
     let execution_id = cyclone_request.execution_id.clone();
     let publisher = Publisher::new(&nats, &reply_mailbox);
 
-    let function_result =
-        resolver_function_request(&publisher, cyclone_pool, cyclone_request).await;
+    let function_result = resolver_function_request(
+        metadata,
+        &publisher,
+        cyclone_pool,
+        cyclone_request,
+        &request.process_span,
+    )
+    .await;
 
     if let Err(err) = publisher.finalize_output().await {
         error!(error = ?err, "failed to finalize output by sending final message");
@@ -331,25 +360,49 @@ async fn resolver_function_request_task(
     };
 }
 
+#[instrument(
+    name = "veritech.resolver_function_request",
+    parent = process_span,
+    level = "info",
+    skip_all,
+    fields(
+        job.id = &cyclone_request.execution_id,
+        job.instance = metadata.job_instance,
+        job.invoked_name = &cyclone_request.handler,
+        job.invoked_provider = metadata.job_invoked_provider,
+        otel.kind = SpanKind::Server.as_str(),
+        otel.status_code = Empty,
+        otel.status_message = Empty,
+    )
+)]
 async fn resolver_function_request(
+    metadata: Arc<ServerMetadata>,
     publisher: &Publisher<'_>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     cyclone_request: ResolverFunctionRequest,
+    process_span: &Span,
 ) -> ServerResult<FunctionResult<ResolverFunctionResultSuccess>> {
+    let span = Span::current();
+
     let mut client = cyclone_pool
         .get()
         .await
-        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
+        .map_err(|err| span.record_err(ServerError::CyclonePool(Box::new(err))))?;
     let mut progress = client
         .execute_resolver(cyclone_request)
-        .await?
+        .await
+        .map_err(|err| span.record_err(err))?
         .start()
-        .await?;
+        .await
+        .map_err(|err| span.record_err(err))?;
 
     while let Some(msg) = progress.next().await {
         match msg {
             Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await?;
+                publisher
+                    .publish_output(&output)
+                    .await
+                    .map_err(|err| span.record_err(err))?;
             }
             Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
@@ -361,24 +414,37 @@ async fn resolver_function_request(
         }
     }
 
-    let function_result = progress.finish().await?;
+    let function_result = progress
+        .finish()
+        .await
+        .map_err(|err| span.record_err(err))?;
+
+    span.record_ok();
     Ok(function_result)
 }
 
 async fn process_validation_requests_task(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
-    if let Err(err) =
-        process_validation_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx).await
+    if let Err(err) = process_validation_requests(
+        metadata,
+        nats,
+        subject_prefix,
+        cyclone_pool,
+        shutdown_broadcast_rx,
+    )
+    .await
     {
         warn!(error = ?err, "processing validation requests failed");
     }
 }
 
 async fn process_validation_requests(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
@@ -399,6 +465,7 @@ async fn process_validation_requests(
                     Some(Ok(request)) => {
                         // Spawn a task an process the request
                         tokio::spawn(validation_request_task(
+                            metadata.clone(),
                             nats.clone(),
                             cyclone_pool.clone(),
                             request,
@@ -428,39 +495,69 @@ async fn process_validation_requests(
 }
 
 async fn validation_request_task(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ValidationRequest>,
 ) {
-    if let Err(err) = validation_request(nats, cyclone_pool, request).await {
+    let process_span = request.process_span.clone();
+    if let Err(err) = validation_request(metadata, nats, cyclone_pool, request, &process_span).await
+    {
         warn!(error = ?err, "validation execution failed");
     }
 }
 
+#[instrument(
+    name = "veritech.validation_request",
+    parent = process_span,
+    level = "info",
+    skip_all,
+    fields(
+        job.id = &request.payload.execution_id,
+        job.instance = metadata.job_instance,
+        job.invoked_name = &request.payload.handler,
+        job.invoked_provider = metadata.job_invoked_provider,
+        otel.kind = SpanKind::Server.as_str(),
+        otel.status_code = Empty,
+        otel.status_message = Empty,
+    )
+)]
 async fn validation_request(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ValidationRequest>,
+    process_span: &Span,
 ) -> ServerResult<()> {
+    let span = Span::current();
+
     let cyclone_request = request.payload;
 
-    let reply_mailbox = request.reply.ok_or(ServerError::NoReplyMailboxFound)?;
+    let reply_mailbox = request
+        .reply
+        .ok_or(ServerError::NoReplyMailboxFound)
+        .map_err(|err| span.record_err(err))?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut client = cyclone_pool
         .get()
         .await
-        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
+        .map_err(|err| span.record_err(ServerError::CyclonePool(Box::new(err))))?;
     let mut progress = client
         .execute_validation(cyclone_request)
-        .await?
+        .await
+        .map_err(|err| span.record_err(err))?
         .start()
-        .await?;
+        .await
+        .map_err(|err| span.record_err(err))?;
 
     while let Some(msg) = progress.next().await {
         match msg {
             Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await?;
+                publisher
+                    .publish_output(&output)
+                    .await
+                    .map_err(|err| span.record_err(err))?;
             }
             Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
@@ -471,21 +568,33 @@ async fn validation_request(
             }
         }
     }
-    publisher.finalize_output().await?;
+    publisher
+        .finalize_output()
+        .await
+        .map_err(|err| span.record_err(err))?;
 
-    let function_result = progress.finish().await?;
-    publisher.publish_result(&function_result).await?;
+    let function_result = progress
+        .finish()
+        .await
+        .map_err(|err| span.record_err(err))?;
+    publisher
+        .publish_result(&function_result)
+        .await
+        .map_err(|err| span.record_err(err))?;
 
+    span.record_ok();
     Ok(())
 }
 
 async fn process_schema_variant_definition_requests_task(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) = process_schema_variant_definition_requests(
+        metadata,
         nats,
         subject_prefix,
         cyclone_pool,
@@ -498,6 +607,7 @@ async fn process_schema_variant_definition_requests_task(
 }
 
 async fn process_schema_variant_definition_requests(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
@@ -519,6 +629,7 @@ async fn process_schema_variant_definition_requests(
                     Some(Ok(request)) => {
                         // Spawn a task an process the request
                         tokio::spawn(schema_variant_definition_request_task(
+                            metadata.clone(),
                             nats.clone(),
                             cyclone_pool.clone(),
                             request,
@@ -548,39 +659,71 @@ async fn process_schema_variant_definition_requests(
 }
 
 async fn schema_variant_definition_request_task(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<SchemaVariantDefinitionRequest>,
 ) {
-    if let Err(err) = schema_variant_definition_request(nats, cyclone_pool, request).await {
+    let process_span = request.process_span.clone();
+    if let Err(err) =
+        schema_variant_definition_request(metadata, nats, cyclone_pool, request, &process_span)
+            .await
+    {
         warn!(error = ?err, "schema variant definition execution failed");
     }
 }
 
+#[instrument(
+    name = "veritech.schema_variant_definition_request",
+    parent = process_span,
+    level = "info",
+    skip_all,
+    fields(
+        job.id = &request.payload.execution_id,
+        job.instance = metadata.job_instance,
+        job.invoked_name = &request.payload.handler,
+        job.invoked_provider = metadata.job_invoked_provider,
+        otel.kind = SpanKind::Server.as_str(),
+        otel.status_code = Empty,
+        otel.status_message = Empty,
+    )
+)]
 async fn schema_variant_definition_request(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<SchemaVariantDefinitionRequest>,
+    process_span: &Span,
 ) -> ServerResult<()> {
+    let span = Span::current();
+
     let cyclone_request = request.payload;
-    let reply_mailbox = request.reply.ok_or(ServerError::NoReplyMailboxFound)?;
+    let reply_mailbox = request
+        .reply
+        .ok_or(ServerError::NoReplyMailboxFound)
+        .map_err(|err| span.record_err(err))?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut client = cyclone_pool
         .get()
         .await
-        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
+        .map_err(|err| span.record_err(ServerError::CyclonePool(Box::new(err))))?;
 
     let mut progress = client
         .execute_schema_variant_definition(cyclone_request)
-        .await?
+        .await
+        .map_err(|err| span.record_err(err))?
         .start()
-        .await?;
+        .await
+        .map_err(|err| span.record_err(err))?;
 
     while let Some(msg) = progress.next().await {
         match msg {
             Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await?;
+                publisher
+                    .publish_output(&output)
+                    .await
+                    .map_err(|err| span.record_err(err))?;
             }
             Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
@@ -591,28 +734,46 @@ async fn schema_variant_definition_request(
             }
         }
     }
-    publisher.finalize_output().await?;
+    publisher
+        .finalize_output()
+        .await
+        .map_err(|err| span.record_err(err))?;
 
-    let function_result = progress.finish().await?;
-    publisher.publish_result(&function_result).await?;
+    let function_result = progress
+        .finish()
+        .await
+        .map_err(|err| span.record_err(err))?;
+    publisher
+        .publish_result(&function_result)
+        .await
+        .map_err(|err| span.record_err(err))?;
 
+    span.record_ok();
     Ok(())
 }
 
 async fn process_action_run_requests_task(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
-    if let Err(err) =
-        process_action_run_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx).await
+    if let Err(err) = process_action_run_requests(
+        metadata,
+        nats,
+        subject_prefix,
+        cyclone_pool,
+        shutdown_broadcast_rx,
+    )
+    .await
     {
         warn!(error = ?err, "processing action run requests failed");
     }
 }
 
 async fn process_action_run_requests(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
@@ -633,6 +794,7 @@ async fn process_action_run_requests(
                     Some(Ok(request)) => {
                         // Spawn a task an process the request
                         tokio::spawn(action_run_request_task(
+                            metadata.clone(),
                             nats.clone(),
                             cyclone_pool.clone(),
                             request,
@@ -662,39 +824,69 @@ async fn process_action_run_requests(
 }
 
 async fn action_run_request_task(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ActionRunRequest>,
 ) {
-    if let Err(err) = action_run_request(nats, cyclone_pool, request).await {
+    let process_span = request.process_span.clone();
+    if let Err(err) = action_run_request(metadata, nats, cyclone_pool, request, &process_span).await
+    {
         warn!(error = ?err, "action run execution failed");
     }
 }
 
+#[instrument(
+    name = "veritech.action_run_request",
+    parent = process_span,
+    level = "info",
+    skip_all,
+    fields(
+        job.id = &request.payload.execution_id,
+        job.instance = metadata.job_instance,
+        job.invoked_name = &request.payload.handler,
+        job.invoked_provider = metadata.job_invoked_provider,
+        otel.kind = SpanKind::Server.as_str(),
+        otel.status_code = Empty,
+        otel.status_message = Empty,
+    )
+)]
 async fn action_run_request(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ActionRunRequest>,
+    process_span: &Span,
 ) -> ServerResult<()> {
+    let span = Span::current();
+
     let cyclone_request = request.payload;
-    let reply_mailbox = request.reply.ok_or(ServerError::NoReplyMailboxFound)?;
+    let reply_mailbox = request
+        .reply
+        .ok_or(ServerError::NoReplyMailboxFound)
+        .map_err(|err| span.record_err(err))?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut client = cyclone_pool
         .get()
         .await
-        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
+        .map_err(|err| span.record_err(ServerError::CyclonePool(Box::new(err))))?;
 
     let mut progress = client
         .execute_action_run(cyclone_request)
-        .await?
+        .await
+        .map_err(|err| span.record_err(err))?
         .start()
-        .await?;
+        .await
+        .map_err(|err| span.record_err(err))?;
 
     while let Some(msg) = progress.next().await {
         match msg {
             Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await?;
+                publisher
+                    .publish_output(&output)
+                    .await
+                    .map_err(|err| span.record_err(err))?;
             }
             Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
@@ -705,29 +897,46 @@ async fn action_run_request(
             }
         }
     }
-    publisher.finalize_output().await?;
+    publisher
+        .finalize_output()
+        .await
+        .map_err(|err| span.record_err(err))?;
 
-    let function_result = progress.finish().await?;
-    publisher.publish_result(&function_result).await?;
+    let function_result = progress
+        .finish()
+        .await
+        .map_err(|err| span.record_err(err))?;
+    publisher
+        .publish_result(&function_result)
+        .await
+        .map_err(|err| span.record_err(err))?;
 
+    span.record_ok();
     Ok(())
 }
 
 async fn process_reconciliation_requests_task(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
-    if let Err(err) =
-        process_reconciliation_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx)
-            .await
+    if let Err(err) = process_reconciliation_requests(
+        metadata,
+        nats,
+        subject_prefix,
+        cyclone_pool,
+        shutdown_broadcast_rx,
+    )
+    .await
     {
         warn!(error = ?err, "processing reconciliation requests failed");
     }
 }
 
 async fn process_reconciliation_requests(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
@@ -748,6 +957,7 @@ async fn process_reconciliation_requests(
                     Some(Ok(request)) => {
                         // Spawn a task an process the request
                         tokio::spawn(reconciliation_request_task(
+                            metadata.clone(),
                             nats.clone(),
                             cyclone_pool.clone(),
                             request,
@@ -777,39 +987,70 @@ async fn process_reconciliation_requests(
 }
 
 async fn reconciliation_request_task(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ReconciliationRequest>,
 ) {
-    if let Err(err) = reconciliation_request(nats, cyclone_pool, request).await {
+    let process_span = request.process_span.clone();
+    if let Err(err) =
+        reconciliation_request(metadata, nats, cyclone_pool, request, &process_span).await
+    {
         warn!(error = ?err, "reconciliation execution failed");
     }
 }
 
+#[instrument(
+    name = "veritech.reconciliation_request",
+    parent = process_span,
+    level = "info",
+    skip_all,
+    fields(
+        job.id = &request.payload.execution_id,
+        job.instance = metadata.job_instance,
+        job.invoked_name = &request.payload.handler,
+        job.invoked_provider = metadata.job_invoked_provider,
+        otel.kind = SpanKind::Server.as_str(),
+        otel.status_code = Empty,
+        otel.status_message = Empty,
+    )
+)]
 async fn reconciliation_request(
+    metadata: Arc<ServerMetadata>,
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ReconciliationRequest>,
+    process_span: &Span,
 ) -> ServerResult<()> {
+    let span = Span::current();
+
     let cyclone_request = request.payload;
-    let reply_mailbox = request.reply.ok_or(ServerError::NoReplyMailboxFound)?;
+    let reply_mailbox = request
+        .reply
+        .ok_or(ServerError::NoReplyMailboxFound)
+        .map_err(|err| span.record_err(err))?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut client = cyclone_pool
         .get()
         .await
-        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
+        .map_err(|err| span.record_err(ServerError::CyclonePool(Box::new(err))))?;
 
     let mut progress = client
         .execute_reconciliation(cyclone_request)
-        .await?
+        .await
+        .map_err(|err| span.record_err(err))?
         .start()
-        .await?;
+        .await
+        .map_err(|err| span.record_err(err))?;
 
     while let Some(msg) = progress.next().await {
         match msg {
             Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await?;
+                publisher
+                    .publish_output(&output)
+                    .await
+                    .map_err(|err| span.record_err(err))?;
             }
             Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
@@ -820,11 +1061,21 @@ async fn reconciliation_request(
             }
         }
     }
-    publisher.finalize_output().await?;
+    publisher
+        .finalize_output()
+        .await
+        .map_err(|err| span.record_err(err))?;
 
-    let function_result = progress.finish().await?;
-    publisher.publish_result(&function_result).await?;
+    let function_result = progress
+        .finish()
+        .await
+        .map_err(|err| span.record_err(err))?;
+    publisher
+        .publish_result(&function_result)
+        .await
+        .map_err(|err| span.record_err(err))?;
 
+    span.record_ok();
     Ok(())
 }
 

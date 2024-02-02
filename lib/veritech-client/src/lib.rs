@@ -3,6 +3,7 @@ use nats_subscriber::{Subscriber, SubscriberError};
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::NatsClient;
 use telemetry::prelude::*;
+use telemetry_nats::propagation;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_core::{
@@ -256,8 +257,9 @@ impl Client {
             .start(&self.nats)
             .await?;
 
+        let span = Span::current();
         // Spawn a task to forward output to the sender provided by the caller
-        tokio::spawn(forward_output_task(output_subscriber, output_tx));
+        tokio::spawn(forward_output_task(output_subscriber, output_tx, span));
 
         // Submit the request message
         let subject = subject.into();
@@ -270,8 +272,15 @@ impl Client {
         let mut root_subscriber = self.nats.subscribe(reply_mailbox_root.clone()).await?;
 
         self.nats
-            .publish_with_reply(subject, reply_mailbox_root.clone(), msg.into())
+            .publish_with_reply_and_headers(
+                subject,
+                reply_mailbox_root.clone(),
+                propagation::empty_injected_headers(),
+                msg.into(),
+            )
             .await?;
+
+        let span = Span::current();
 
         tokio::select! {
             // Wait for one message on the result reply mailbox
@@ -279,16 +288,20 @@ impl Client {
                 root_subscriber.unsubscribe_after(0).await?;
                 result_subscriber.unsubscribe_after(0).await?;
                 match result? {
-                    Some(result) => Ok(result.payload),
+                    Some(result) => {
+                        span.follows_from(result.process_span);
+                        Ok(result.payload)
+                    }
                     None => Err(ClientError::NoResult)
                 }
             }
-            reply = root_subscriber.next() => {
-                match &reply {
-                    Some(maybe_msg) => {
+            maybe_msg = root_subscriber.next() => {
+                match &maybe_msg {
+                    Some(msg) => {
+                        propagation::associate_current_span_from_headers(msg.headers());
                         error!(
                             subject = reply_mailbox_root,
-                            maybe_msg = ?maybe_msg,
+                            msg = ?msg,
                             "received an unexpected message or error on reply subject prefix"
                         )
                     }
@@ -302,7 +315,7 @@ impl Client {
 
                 // In all cases, we're considering a message on this subscriber to be fatal and
                 // will return with an error
-                Err(ClientError::PublishingFailed(reply.ok_or(ClientError::RootConnectionClosed)?))
+                Err(ClientError::PublishingFailed(maybe_msg.ok_or(ClientError::RootConnectionClosed)?))
             }
         }
     }
@@ -311,10 +324,12 @@ impl Client {
 async fn forward_output_task(
     mut output_subscriber: Subscriber<OutputStream>,
     output_tx: mpsc::Sender<OutputStream>,
+    request_span: Span,
 ) {
     while let Some(msg) = output_subscriber.next().await {
         match msg {
             Ok(output) => {
+                output.process_span.follows_from(&request_span);
                 if let Err(err) = output_tx.send(output.payload).await {
                     warn!(error = ?err, "output forwarder failed to send message on channel");
                 }

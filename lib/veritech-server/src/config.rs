@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
+use ulid::Ulid;
 
 use buck2_resources::Buck2Resources;
 use deadpool_cyclone::{
@@ -51,6 +52,9 @@ pub struct Config {
     nats: NatsConfig,
 
     cyclone_spec: CycloneSpec,
+
+    #[builder(default = "random_instance_id()")]
+    instance_id: String,
 }
 
 #[remain::sorted]
@@ -118,6 +122,11 @@ impl Config {
     /// Gets a reference to the config's subject prefix.
     pub fn subject_prefix(&self) -> Option<&str> {
         self.nats.subject_prefix.as_deref()
+    }
+
+    /// Gets the config's instance ID.
+    pub fn instance_id(&self) -> &str {
+        self.instance_id.as_ref()
     }
 
     // Consumes into a [`CycloneSpec`].
@@ -473,6 +482,10 @@ fn default_pool_size() -> u16 {
 
 fn default_connect_timeout() -> u64 {
     10
+}
+
+fn random_instance_id() -> String {
+    Ulid::new().to_string()
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

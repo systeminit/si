@@ -6,6 +6,7 @@
       firstTabMarginLeft="none"
       rememberSelectedTabKey="asset-editor"
       startSelectedTabSlug="asset"
+      marginTop="xs"
       @close-tab="onTabClose"
       @update:selected-tab="onTabChange"
     >

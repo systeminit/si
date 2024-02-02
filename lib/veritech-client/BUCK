@@ -12,6 +12,7 @@ rust_library(
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-crypto:si-crypto",
         "//lib/telemetry-rs:telemetry",
+        "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/veritech-core:veritech-core",
         "//third-party/rust:futures",
         "//third-party/rust:remain",

@@ -48,6 +48,8 @@ impl IntoResponse for UpsertModuleError {
     fn into_response(self) -> Response {
         let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
 
+        error!("upsert error: {}", &error_message);
+
         let body = Json(
             serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
         );
@@ -73,8 +75,10 @@ pub async fn upsert_module_route(
     info!("Got part data");
 
     // SiPkg using old term "package" but we are dealing with a "module"
-    let loaded_module = dbg!(SiPkg::load_from_bytes(data.to_vec()))?;
-    let module_metadata = dbg!(loaded_module.metadata())?;
+    let loaded_module = SiPkg::load_from_bytes(data.to_vec())?;
+    let module_metadata = loaded_module.metadata()?;
+
+    info!("upserting module: {:?}", &module_metadata);
 
     let version = module_metadata.version().to_owned();
     let module_kind = match module_metadata.kind() {

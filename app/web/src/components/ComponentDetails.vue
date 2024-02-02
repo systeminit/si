@@ -79,12 +79,13 @@
         >
           <TabGroupItem slug="component">
             <template #label>
-              <Inline noWrap>
+              <Inline noWrap alignY="center">
                 <span>Component</span>
                 <StatusIndicatorIcon
                   v-if="selectedComponentQualificationStatus"
                   type="qualification"
                   :status="selectedComponentQualificationStatus"
+                  size="sm"
                 />
               </Inline>
             </template>
@@ -95,6 +96,7 @@
               :startSelectedTabSlug="
                 componentsStore.detailsTabSlugs[1] || undefined
               "
+              marginTop="2xs"
               @update:selectedTab="onTabSelected"
             >
               <TabGroupItem label="Attributes" slug="attributes">

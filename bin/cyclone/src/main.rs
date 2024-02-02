@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
     if args.verbose > 0 {
         telemetry.set_verbosity(args.verbose.into()).await?;
     }
-    debug!(arguments =?args, "parsed cli arguments");
+    trace!(arguments =?args, "parsed cli arguments");
 
     let decryption_key = Server::load_decryption_key(&args.decryption_key).await?;
 
