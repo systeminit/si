@@ -4,7 +4,9 @@ use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use chrono::Utc;
 use convert_case::{Case, Casing};
+use hyper::Uri;
 use serde::{Deserialize, Serialize};
+use ulid::Ulid;
 
 use dal::{
     func::intrinsics::IntrinsicFunc,
@@ -12,12 +14,13 @@ use dal::{
     schema::variant::definition::{
         SchemaVariantDefinition, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
     },
-    AttributePrototypeId, ChangeSet, Func, FuncBinding, FuncId, HistoryActor, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, StandardModel, User,
+    AttributePrototypeId, ChangeSet, DalContext, Func, FuncBinding, FuncId, HistoryActor,
+    SchemaVariant, SchemaVariantError, StandardModel, User, WsEvent,
 };
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, SiPkg,
 };
+use telemetry::prelude::error;
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -46,10 +49,11 @@ pub struct AttributePrototypeView {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ExecVariantDefResponse {
-    pub success: bool,
-    pub schema_variant_id: SchemaVariantId,
-    pub func_exec_response: serde_json::Value,
-    pub detached_attribute_prototypes: Vec<AttributePrototypeView>,
+    task_id: Ulid,
+    // pub success: bool,
+    // pub schema_variant_id: SchemaVariantId,
+    // pub func_exec_response: serde_json::Value,
+    // pub detached_attribute_prototypes: Vec<AttributePrototypeView>,
 }
 
 pub async fn exec_variant_def(
@@ -63,6 +67,71 @@ pub async fn exec_variant_def(
 
     let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
+    let task_id = Ulid::new();
+
+    tokio::task::spawn(async move {
+        if let Err(err) =
+            exec_variant_def_inner(&ctx, &request, &original_uri, PosthogClient(posthog_client))
+                .await
+        {
+            return handle_error(&ctx, task_id, err.to_string()).await;
+        }
+
+        println!("Here we go");
+
+        let event = match WsEvent::async_finish(&ctx, task_id).await {
+            Ok(event) => event,
+            Err(err) => {
+                return error!("Unable to make ws event of finish: {err}");
+            }
+        };
+
+        if let Err(err) = event.publish_on_commit(&ctx).await {
+            return error!("Unable to publish ws event of finish: {err}");
+        };
+
+        if let Err(err) = ctx.commit().await {
+            handle_error(&ctx, task_id, err.to_string()).await;
+        }
+
+        async fn handle_error(ctx: &DalContext, id: Ulid, err: String) {
+            error!("Unable to export workspace: {err}");
+            match WsEvent::async_error(ctx, id, err).await {
+                Ok(event) => match event.publish_on_commit(ctx).await {
+                    Ok(()) => {}
+                    Err(err) => error!("Unable to publish ws event of error: {err}"),
+                },
+                Err(err) => {
+                    error!("Unable to make ws event of error: {err}");
+                }
+            }
+            if let Err(err) = ctx.commit().await {
+                error!("Unable to commit errors in exec_variant_def: {err}");
+            }
+        }
+    });
+
+    let mut response = axum::response::Response::builder();
+    response = response.header("Content-Type", "application/json");
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
+
+    Ok(response.body(serde_json::to_string(&ExecVariantDefResponse { task_id })?)?)
+}
+
+fn generate_scaffold_func_name(name: String) -> String {
+    let version = Utc::now().format("%Y%m%d%H%M").to_string();
+    let generated_name = format!("{}Scaffold_{}", name.to_case(Case::Camel), version);
+    generated_name
+}
+
+pub async fn exec_variant_def_inner(
+    ctx: &DalContext,
+    request: &ExecVariantDefRequest,
+    original_uri: &Uri,
+    PosthogClient(posthog_client): PosthogClient,
+) -> SchemaVariantDefinitionResult<()> {
     let scaffold_func_name = generate_scaffold_func_name(request.name.clone());
 
     // Ensure we save all details before "exec"
@@ -234,7 +303,7 @@ pub async fn exec_variant_def(
                 .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
 
             let attribute_prototypes = migrate_attribute_functions_to_new_schema_variant(
-                &ctx,
+                ctx,
                 attribute_prototypes,
                 &schema_variant,
             )
@@ -242,7 +311,7 @@ pub async fn exec_variant_def(
             let mut detached_attribute_prototypes = Vec::with_capacity(attribute_prototypes.len());
 
             for attribute_prototype in attribute_prototypes {
-                let func = Func::get_by_id(&ctx, &attribute_prototype.func_id)
+                let func = Func::get_by_id(ctx, &attribute_prototype.func_id)
                     .await?
                     .ok_or_else(|| {
                         SchemaVariantDefinitionError::FuncNotFound(attribute_prototype.func_id)
@@ -260,14 +329,14 @@ pub async fn exec_variant_def(
             detached_attribute_prototypes
         }
         None => {
-            attach_resource_payload_to_value(&ctx, schema_variant_id).await?;
+            attach_resource_payload_to_value(ctx, schema_variant_id).await?;
             vec![]
         }
     };
 
     track(
         &posthog_client,
-        &ctx,
+        ctx,
         &original_uri,
         "exec_variant_def",
         serde_json::json!({
@@ -279,26 +348,5 @@ pub async fn exec_variant_def(
         }),
     );
 
-    ctx.commit().await?;
-
-    let mut response = axum::response::Response::builder();
-    response = response.header("Content-Type", "application/json");
-    if let Some(force_changeset_pk) = force_changeset_pk {
-        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
-    }
-
-    Ok(
-        response.body(serde_json::to_string(&ExecVariantDefResponse {
-            success: true,
-            func_exec_response,
-            schema_variant_id,
-            detached_attribute_prototypes,
-        })?)?,
-    )
-}
-
-fn generate_scaffold_func_name(name: String) -> String {
-    let version = Utc::now().format("%Y%m%d%H%M").to_string();
-    let generated_name = format!("{}Scaffold_{}", name.to_case(Case::Camel), version);
-    generated_name
+    Ok(())
 }
