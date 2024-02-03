@@ -8,7 +8,6 @@ publish = false
 [dependencies]
 async-nats = { workspace = true }
 bytes = { workspace = true }
-crossbeam-channel = { workspace = true }
 futures = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }

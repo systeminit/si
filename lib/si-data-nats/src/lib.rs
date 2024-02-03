@@ -11,7 +11,6 @@ use std::{fmt::Debug, io, sync::Arc, time::Duration};
 
 use async_nats::{subject::ToSubject, ToServerAddrs};
 use bytes::Bytes;
-use crossbeam_channel::RecvError;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -35,8 +34,6 @@ pub type NatsError = Error;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("crossbeam select error: {0}")]
-    CrossBeamChannel(#[from] RecvError),
     #[error("io error: {0}")]
     Io(#[from] io::Error),
     #[error("nats connect error: {0}")]
