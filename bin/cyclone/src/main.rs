@@ -26,7 +26,8 @@ async fn main() -> Result<()> {
         .app_modules(vec!["cyclone", "cyclone_server"])
         .custom_default_tracing_level(CUSTOM_DEFAULT_TRACING_LEVEL)
         .build()?;
-    let mut telemetry = telemetry_application::init(config, &task_tracker, shutdown_token.clone())?;
+    let (mut telemetry, telemetry_shutdown) =
+        telemetry_application::init(config, &task_tracker, shutdown_token.clone())?;
     let args = args::parse();
 
     if args.verbose > 0 {
@@ -54,6 +55,7 @@ async fn main() -> Result<()> {
     {
         shutdown_token.cancel();
         task_tracker.wait().await;
+        telemetry_shutdown.wait().await?;
     }
 
     Ok(())

@@ -1,5 +1,18 @@
+//! Telemetry propagation via HTTP headers.
+
 use http::HeaderMap;
-use telemetry::opentelemetry::{global, Context};
+use telemetry::{
+    opentelemetry::{global, Context},
+    tracing::Span,
+};
+
+/// Injects propagation telemetry into a [`HeaderMap`].
+pub fn inject_headers(headers: &mut HeaderMap) {
+    use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+    let ctx = Span::current().context();
+    inject_opentelemetry_context(&ctx, headers)
+}
 
 /// Extracts an OpenTelemetry [`Context`] from a [`HeaderMap`].
 pub fn extract_opentelemetry_context(headers: &HeaderMap) -> Context {

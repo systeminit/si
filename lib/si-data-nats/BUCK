@@ -6,7 +6,6 @@ rust_library(
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:async-nats",
         "//third-party/rust:bytes",
-        "//third-party/rust:crossbeam-channel",
         "//third-party/rust:futures",
         "//third-party/rust:remain",
         "//third-party/rust:serde",

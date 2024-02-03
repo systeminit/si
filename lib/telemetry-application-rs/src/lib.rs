@@ -8,7 +8,13 @@
 // TODO(fnichol): document all, then drop `missing_errors_doc`
 #![allow(clippy::missing_errors_doc)]
 
-use std::{borrow::Cow, env, io, ops::Deref, time::Duration};
+use std::{
+    borrow::Cow,
+    env, io,
+    ops::Deref,
+    thread,
+    time::{Duration, Instant},
+};
 
 use derive_builder::Builder;
 use opentelemetry_sdk::{
@@ -21,13 +27,15 @@ use opentelemetry_sdk::{
 use opentelemetry_semantic_conventions::resource;
 use telemetry::{
     opentelemetry::{global, trace::TraceError},
-    tracing::{debug, info, trace, warn, Subscriber},
+    prelude::*,
+    tracing::Subscriber,
     TelemetryCommand, TracingLevel, Verbosity,
 };
 use thiserror::Error;
 use tokio::{
     signal::unix::{self, SignalKind},
-    sync::mpsc,
+    sync::{mpsc, oneshot},
+    time,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing_subscriber::{
@@ -192,7 +200,7 @@ pub fn init(
     config: TelemetryConfig,
     tracker: &TaskTracker,
     shutdown_token: CancellationToken,
-) -> Result<ApplicationTelemetryClient> {
+) -> Result<(ApplicationTelemetryClient, TelemetryShutdownGuard)> {
     global::set_text_map_propagator(TraceContextPropagator::new());
     let tracing_level = default_tracing_level(&config);
     let span_events_fmt = default_span_events_fmt(&config)?;
@@ -200,9 +208,9 @@ pub fn init(
     let (subscriber, handles) = tracing_subscriber(&config, &tracing_level, span_events_fmt)?;
     subscriber.try_init()?;
 
-    let client = create_client(config, tracing_level, handles, tracker, shutdown_token)?;
+    let (client, guard) = create_client(config, tracing_level, handles, tracker, shutdown_token)?;
 
-    Ok(client)
+    Ok((client, guard))
 }
 
 fn default_tracing_level(config: &TelemetryConfig) -> TracingLevel {
@@ -352,15 +360,22 @@ fn create_client(
     handles: TelemetryHandles,
     tracker: &TaskTracker,
     shutdown_token: CancellationToken,
-) -> Result<ApplicationTelemetryClient> {
+) -> Result<(ApplicationTelemetryClient, TelemetryShutdownGuard)> {
     let (update_telemetry_tx, update_telemetry_rx) = mpsc::unbounded_channel();
 
-    let client =
-        ApplicationTelemetryClient::new(config.app_modules, tracing_level, update_telemetry_tx);
-
-    tracker.spawn(
-        TelemetryUpdateTask::new(handles, shutdown_token.clone(), update_telemetry_rx).run(),
+    let client = ApplicationTelemetryClient::new(
+        config.app_modules,
+        tracing_level,
+        update_telemetry_tx.clone(),
     );
+
+    let guard = TelemetryShutdownGuard {
+        update_telemetry_tx,
+    };
+
+    // Spawn this task free of the tracker as we want it to outlive the tracker when shutting down
+    tokio::spawn(TelemetryUpdateTask::new(handles, update_telemetry_rx).run());
+
     if config.signal_handlers {
         tracker.spawn(
             TelemetrySignalHandlerTask::create(client.clone(), shutdown_token.clone())
@@ -368,9 +383,23 @@ fn create_client(
                 .run(),
         );
     }
-    tracker.spawn(TelemetryShutdownTask::new(shutdown_token).run());
 
-    Ok(client)
+    Ok((client, guard))
+}
+
+#[must_use]
+pub struct TelemetryShutdownGuard {
+    update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
+}
+
+impl TelemetryShutdownGuard {
+    pub async fn wait(self) -> std::result::Result<(), telemetry::ClientError> {
+        let token = CancellationToken::new();
+        self.update_telemetry_tx
+            .send(TelemetryCommand::Shutdown(token.clone()))?;
+        token.cancelled().await;
+        Ok(())
+    }
 }
 
 type ReloadHandle = Box<dyn Fn(EnvFilter) -> Result<()> + Send + Sync>;
@@ -444,8 +473,8 @@ impl TelemetrySignalHandlerTask {
 
 struct TelemetryUpdateTask {
     handles: TelemetryHandles,
-    shutdown_token: CancellationToken,
     update_command_rx: mpsc::UnboundedReceiver<TelemetryCommand>,
+    is_shutdown: bool,
 }
 
 impl TelemetryUpdateTask {
@@ -453,36 +482,33 @@ impl TelemetryUpdateTask {
 
     fn new(
         handles: TelemetryHandles,
-        shutdown_token: CancellationToken,
         update_command_rx: mpsc::UnboundedReceiver<TelemetryCommand>,
     ) -> Self {
         Self {
             handles,
-            shutdown_token,
             update_command_rx,
+            is_shutdown: false,
         }
     }
 
     async fn run(mut self) {
-        loop {
-            tokio::select! {
-                _ = self.shutdown_token.cancelled() => {
-                    debug!(task = Self::NAME, "received cancellation");
-                    break;
-                }
-                Some(command) = self.update_command_rx.recv() => match command {
-                    TelemetryCommand::TracingLevel(tracing_level) => {
-                        if let Err(err) = self.update_tracing_level(tracing_level) {
-                            warn!(
-                                task = Self::NAME,
-                                error = ?err,
-                                "failed to update tracing level, using prior value",
-                            );
-                        }
+        while let Some(command) = self.update_command_rx.recv().await {
+            match command {
+                TelemetryCommand::TracingLevel(tracing_level) => {
+                    if let Err(err) = self.update_tracing_level(tracing_level) {
+                        warn!(
+                            task = Self::NAME,
+                            error = ?err,
+                            "failed to update tracing level, using prior value",
+                        );
                     }
-                },
-                else => {
-                    trace!(task = Self::NAME, "update command stream has closed");
+                }
+                TelemetryCommand::Shutdown(token) => {
+                    if !self.is_shutdown {
+                        Self::shutdown().await;
+                    }
+                    self.is_shutdown = true;
+                    token.cancel();
                     break;
                 }
             }
@@ -505,30 +531,38 @@ impl TelemetryUpdateTask {
 
         Ok(())
     }
-}
 
-struct TelemetryShutdownTask {
-    shutdown_token: CancellationToken,
-}
-
-impl TelemetryShutdownTask {
-    const NAME: &'static str = "TelemetryShutdownTask";
-
-    fn new(shutdown_token: CancellationToken) -> Self {
-        Self { shutdown_token }
-    }
-
-    async fn run(self) {
-        self.shutdown_token.cancelled().await;
-
-        debug!(task = Self::NAME, "received cancellation");
+    async fn shutdown() {
         // TODO(fnichol): call to `shutdown_tracer_provider` blocks forever when called, causing
         // the services to not gracefully shut down in time.
         //
-        // See: https://github.com/open-telemetry/opentelemetry-rust/issues/1395
+        // So guess what we're going to? Spawn it off on a thread so we don't block Tokio's
+        // reactor!
         //
-        // telemetry::opentelemetry::global::shutdown_tracer_provider();
-        debug!(task = Self::NAME, "shutdown complete");
+        // See: https://github.com/open-telemetry/opentelemetry-rust/issues/1395
+
+        let (tx, wait_on_shutdown) = oneshot::channel();
+
+        let started_at = Instant::now();
+        let _ = thread::spawn(move || {
+            telemetry::opentelemetry::global::shutdown_tracer_provider();
+            tx.send(()).ok();
+        });
+
+        let timeout = Duration::from_secs(5);
+        match time::timeout(timeout, wait_on_shutdown).await {
+            Ok(Ok(_)) => info!(
+                time_ns = (Instant::now() - started_at).as_nanos(),
+                "opentelemetry shutdown"
+            ),
+            Ok(Err(_)) => trace!("opentelmetry shutdown sender already closed"),
+            Err(_elapsed) => {
+                warn!(
+                    ?timeout,
+                    "opentelemetry shutown took too long, not waiting for full shutdown"
+                );
+            }
+        };
     }
 }
 

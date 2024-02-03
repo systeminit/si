@@ -1272,6 +1272,7 @@ dependencies = [
  "serde_json",
  "sodiumoxide",
  "telemetry",
+ "telemetry-http",
  "tempfile",
  "test-log",
  "thiserror",
@@ -1320,6 +1321,7 @@ dependencies = [
  "si-std",
  "sodiumoxide",
  "telemetry",
+ "telemetry-http",
  "thiserror",
  "tokio",
  "tokio-serde",
@@ -4968,7 +4970,6 @@ version = "0.1.0"
 dependencies = [
  "async-nats",
  "bytes 1.5.0",
- "crossbeam-channel",
  "futures",
  "nkeys 0.4.0",
  "remain",
@@ -5635,6 +5636,7 @@ dependencies = [
  "remain",
  "thiserror",
  "tokio",
+ "tokio-util",
  "tracing",
 ]
 
