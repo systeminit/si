@@ -20,6 +20,7 @@ use std::{
 use async_trait::async_trait;
 use thiserror::Error;
 use tokio::sync::{mpsc, Mutex};
+use tokio_util::sync::CancellationToken;
 
 pub use opentelemetry::{self, trace::SpanKind};
 pub use tracing;
@@ -27,9 +28,9 @@ pub use tracing;
 pub mod prelude {
     pub use super::{MessagingOperation, SpanExt, SpanKind, SpanKindExt};
     pub use tracing::{
-        self, debug, debug_span, enabled, error, event, event_enabled, field::Empty, info,
-        info_span, instrument, span, span_enabled, trace, trace_span, warn, Instrument, Level,
-        Span,
+        self, debug, debug_span, enabled, error, error_span, event, event_enabled, field::Empty,
+        info, info_span, instrument, span, span_enabled, trace, trace_span, warn, warn_span,
+        Instrument, Level, Span,
     };
 }
 
@@ -315,6 +316,7 @@ pub enum ClientError {
 #[remain::sorted]
 #[derive(Clone, Debug)]
 pub enum TelemetryCommand {
+    Shutdown(CancellationToken),
     TracingLevel(TracingLevel),
 }
 

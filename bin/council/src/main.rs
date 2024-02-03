@@ -31,7 +31,8 @@ async fn async_main() -> Result<()> {
         .log_env_var_prefix("SI")
         .app_modules(vec!["council", "council_server"])
         .build()?;
-    let mut telemetry = telemetry_application::init(config, &task_tracker, shutdown_token.clone())?;
+    let (mut telemetry, telemetry_shutdown) =
+        telemetry_application::init(config, &task_tracker, shutdown_token.clone())?;
     let args = args::parse();
 
     let (_shutdown_request_tx, shutdown_request_rx) = watch::channel(());
@@ -57,6 +58,7 @@ async fn async_main() -> Result<()> {
     {
         shutdown_token.cancel();
         task_tracker.wait().await;
+        telemetry_shutdown.wait().await?;
     }
 
     info!("graceful shutdown complete.");
