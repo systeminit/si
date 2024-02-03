@@ -13,8 +13,7 @@
 
 mod make_span;
 mod on_response;
-mod propagation;
+pub mod propagation;
 
 pub use make_span::{HttpMakeSpan, NetworkTransport};
 pub use on_response::HttpOnResponse;
-pub use propagation::{extract_opentelemetry_context, inject_opentelemetry_context};

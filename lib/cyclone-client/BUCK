@@ -4,6 +4,7 @@ rust_library(
     name = "cyclone-client",
     deps = [
         "//lib/cyclone-core:cyclone-core",
+        "//lib/telemetry-http-rs:telemetry-http",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:async-trait",
         "//third-party/rust:futures",
@@ -17,7 +18,6 @@ rust_library(
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-tungstenite",
-        "//third-party/rust:tracing",
     ],
     srcs = glob(["src/**/*.rs"]),
     test_unit_deps = [
