@@ -8,14 +8,15 @@ use hyper::Uri;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
+use dal::ws_event::{AttributePrototypeView, FinishSchemaVariantDefinitionPayload};
 use dal::{
     func::intrinsics::IntrinsicFunc,
     pkg::{attach_resource_payload_to_value, import_pkg_from_pkg},
     schema::variant::definition::{
         SchemaVariantDefinition, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
     },
-    AttributePrototypeId, ChangeSet, DalContext, Func, FuncBinding, FuncId, HistoryActor,
-    SchemaVariant, SchemaVariantError, StandardModel, User, WsEvent,
+    ChangeSet, DalContext, Func, FuncBinding, HistoryActor, SchemaVariant, SchemaVariantError,
+    SchemaVariantId, StandardModel, User, WsEvent,
 };
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, SiPkg,
@@ -27,33 +28,18 @@ use crate::server::tracking::track;
 use crate::service::variant_definition::migrate_authentication_funcs_to_new_schema_variant;
 
 use super::{
-    super::func::FuncVariant, maybe_delete_schema_variant_connected_to_variant_def,
-    migrate_actions_to_new_schema_variant, migrate_attribute_functions_to_new_schema_variant,
-    migrate_leaf_functions_to_new_schema_variant, AttributePrototypeContextKind,
-    SaveVariantDefRequest, SchemaVariantDefinitionError, SchemaVariantDefinitionResult,
+    maybe_delete_schema_variant_connected_to_variant_def, migrate_actions_to_new_schema_variant,
+    migrate_attribute_functions_to_new_schema_variant,
+    migrate_leaf_functions_to_new_schema_variant, SaveVariantDefRequest,
+    SchemaVariantDefinitionError, SchemaVariantDefinitionResult,
 };
 
 pub type ExecVariantDefRequest = SaveVariantDefRequest;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributePrototypeView {
-    pub id: AttributePrototypeId,
-    pub func_id: FuncId,
-    pub func_name: String,
-    pub variant: Option<FuncVariant>,
-    pub key: Option<String>,
-    pub context: AttributePrototypeContextKind,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct ExecVariantDefResponse {
     task_id: Ulid,
-    // pub success: bool,
-    // pub schema_variant_id: SchemaVariantId,
-    // pub func_exec_response: serde_json::Value,
-    // pub detached_attribute_prototypes: Vec<AttributePrototypeView>,
 }
 
 pub async fn exec_variant_def(
@@ -70,16 +56,30 @@ pub async fn exec_variant_def(
     let task_id = Ulid::new();
 
     tokio::task::spawn(async move {
-        if let Err(err) =
-            exec_variant_def_inner(&ctx, &request, &original_uri, PosthogClient(posthog_client))
-                .await
+        let (schema_variant_id, detached_attribute_prototypes) = match exec_variant_def_inner(
+            &ctx,
+            &request,
+            &original_uri,
+            PosthogClient(posthog_client),
+        )
+        .await
         {
-            return handle_error(&ctx, task_id, err.to_string()).await;
-        }
+            Ok(values) => values,
+            Err(err) => {
+                return handle_error(&ctx, task_id, err.to_string()).await;
+            }
+        };
 
-        println!("Here we go");
-
-        let event = match WsEvent::async_finish(&ctx, task_id).await {
+        let event = match WsEvent::schema_variant_definition_finish(
+            &ctx,
+            FinishSchemaVariantDefinitionPayload {
+                task_id,
+                schema_variant_id,
+                detached_attribute_prototypes,
+            },
+        )
+        .await
+        {
             Ok(event) => event,
             Err(err) => {
                 return error!("Unable to make ws event of finish: {err}");
@@ -131,7 +131,7 @@ pub async fn exec_variant_def_inner(
     request: &ExecVariantDefRequest,
     original_uri: &Uri,
     PosthogClient(posthog_client): PosthogClient,
-) -> SchemaVariantDefinitionResult<()> {
+) -> SchemaVariantDefinitionResult<(SchemaVariantId, Vec<AttributePrototypeView>)> {
     let scaffold_func_name = generate_scaffold_func_name(request.name.clone());
 
     // Ensure we save all details before "exec"
@@ -161,7 +161,7 @@ pub async fn exec_variant_def_inner(
     let metadata: SchemaVariantDefinitionMetadataJson = variant_def.clone().into();
 
     // Execute asset function
-    let (definition, func_exec_response) = {
+    let (definition, _) = {
         let (_, return_value) = FuncBinding::create_and_execute(
             &ctx,
             serde_json::Value::Null,
@@ -348,5 +348,5 @@ pub async fn exec_variant_def_inner(
         }),
     );
 
-    Ok(())
+    Ok((schema_variant_id, detached_attribute_prototypes))
 }

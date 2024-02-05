@@ -12,6 +12,7 @@ use thiserror::Error;
 use dal::authentication_prototype::{
     AuthenticationPrototype, AuthenticationPrototypeContext, AuthenticationPrototypeError,
 };
+use dal::ws_event::AttributePrototypeContextKind;
 use dal::{
     attribute::prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
     func::argument::{FuncArgumentError, FuncArgumentId},
@@ -236,14 +237,6 @@ pub enum AttributePrototypeArgumentKind {
     Invalid,
     Prop { kind: PropKind },
     Socket,
-}
-
-#[remain::sorted]
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(tag = "type", content = "data")]
-pub enum AttributePrototypeContextKind {
-    ExternalProvider { name: String },
-    Prop { path: String, kind: PropKind },
 }
 
 #[derive(Clone, Debug)]

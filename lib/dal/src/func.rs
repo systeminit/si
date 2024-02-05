@@ -27,6 +27,7 @@ pub mod binding_return_value;
 pub mod execution;
 pub mod identity;
 pub mod intrinsics;
+pub mod variant;
 
 pub fn is_intrinsic(name: &str) -> bool {
     intrinsics::IntrinsicFunc::iter().any(|intrinsic| intrinsic.name() == name)
@@ -45,6 +46,8 @@ pub enum FuncError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("func binding error: {0}")]
     FuncBinding(String),
+    #[error("func {0} cannot be converted to frontend variant")]
+    FuncCannotBeTurnedIntoVariant(FuncId),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     /// Could not find [`FuncArgument`](crate::FuncArgument) corresponding to the identity [`Func`].

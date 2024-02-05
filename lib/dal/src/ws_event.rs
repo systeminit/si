@@ -24,8 +24,9 @@ use crate::{
     qualification::QualificationCheckPayload,
     status::StatusMessage,
     user::{CursorPayload, OnlinePayload},
-    AttributeValueId, ChangeSetPk, ComponentId, DalContext, PropId, SchemaPk, SocketId,
-    StandardModelError, TransactionsError, WorkspacePk,
+    AttributePrototypeId, AttributeValueId, ChangeSetPk, ComponentId, DalContext, FuncId,
+    FuncVariant, PropId, PropKind, SchemaPk, SchemaVariantId, SocketId, StandardModelError,
+    TransactionsError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -88,6 +89,7 @@ pub enum WsPayload {
     SchemaCreated(SchemaPk),
     SchemaVariantDefinitionCloned(SchemaVariantDefinitionClonedPayload),
     SchemaVariantDefinitionCreated(SchemaVariantDefinitionCreatedPayload),
+    SchemaVariantDefinitionFinished(FinishSchemaVariantDefinitionPayload),
     SchemaVariantDefinitionSaved(SchemaVariantDefinitionSavedPayload),
     SecretCreated(SecretCreatedPayload),
     SecretUpdated(SecretUpdatedPayload),
@@ -196,5 +198,41 @@ impl WsEvent {
     }
     pub async fn async_finish(ctx: &DalContext, id: Ulid) -> WsEventResult<Self> {
         WsEvent::new(ctx, WsPayload::AsyncFinish(FinishPayload { id })).await
+    }
+}
+
+#[remain::sorted]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(tag = "type", content = "data")]
+pub enum AttributePrototypeContextKind {
+    ExternalProvider { name: String },
+    Prop { path: String, kind: PropKind },
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributePrototypeView {
+    pub id: AttributePrototypeId,
+    pub func_id: FuncId,
+    pub func_name: String,
+    pub variant: Option<FuncVariant>,
+    pub key: Option<String>,
+    pub context: AttributePrototypeContextKind,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FinishSchemaVariantDefinitionPayload {
+    pub task_id: Ulid,
+    pub schema_variant_id: SchemaVariantId,
+    pub detached_attribute_prototypes: Vec<AttributePrototypeView>,
+}
+
+impl WsEvent {
+    pub async fn schema_variant_definition_finish(
+        ctx: &DalContext,
+        payload: FinishSchemaVariantDefinitionPayload,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::SchemaVariantDefinitionFinished(payload)).await
     }
 }

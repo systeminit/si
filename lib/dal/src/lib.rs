@@ -57,6 +57,7 @@ pub use func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnVa
 pub use func::{
     backend::{FuncBackendError, FuncBackendKind, FuncBackendResponseType},
     binding::{FuncBinding, FuncBindingError, FuncBindingId},
+    variant::FuncVariant,
     Func, FuncError, FuncId, FuncResult,
 };
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
