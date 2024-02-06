@@ -83,6 +83,7 @@ local_resource(
     labels = ["backend"],
     cmd = "buck2 build {}".format(module_index_target),
     serve_cmd = "buck2 run {}".format(module_index_target),
+    serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     auto_init = False,
     resource_deps = [
@@ -100,6 +101,7 @@ local_resource(
     labels = ["backend"],
     cmd = "buck2 build {}".format(council_target),
     serve_cmd = "buck2 run {}".format(council_target),
+    serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     resource_deps = [
         "nats",
@@ -116,6 +118,7 @@ local_resource(
     labels = ["backend"],
     cmd = "buck2 build {}".format(pinga_target),
     serve_cmd = "buck2 run {}".format(pinga_target),
+    serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     resource_deps = [
         "council",
@@ -134,6 +137,7 @@ local_resource(
     labels = ["backend"],
     cmd = "buck2 build {}".format(veritech_target),
     serve_cmd = "SI_LOG=debug buck2 run {}".format(veritech_target),
+    serve_env = {"SI_FORCE_COLOR": "true"},
     # This is the serve command you might need if you want to execute on firecracker for 10 functione executions.
     # NB: BUCK2 MUST RUN AS ROOT OR THIS WILL NOT WORK
     # serve_cmd = "SI_LOG=debug buck2 run {} -- --cyclone-local-firecracker --cyclone-pool-size 10".format(veritech_target),
@@ -153,6 +157,7 @@ local_resource(
     labels = ["backend"],
     cmd = "buck2 build {}".format(sdf_target),
     serve_cmd = "buck2 run {}".format(sdf_target),
+    serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     resource_deps = [
         "nats",
