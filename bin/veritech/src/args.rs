@@ -17,6 +17,28 @@ pub(crate) struct Args {
     #[arg(short = 'v', long = "verbose", action = ArgAction::Count)]
     pub(crate) verbose: u8,
 
+    /// Disables ANSI coloring in log output, even if standard output refers to a terminal/TTY.
+    ///
+    /// For more details, visit: <http://no-color.org/>.
+    #[arg(
+        long,
+        env = "SI_NO_COLOR",
+        hide_env_values = true,
+        conflicts_with = "force_color"
+    )]
+    pub(crate) no_color: Option<bool>,
+
+    /// Forces ANSI coloring, even if standard output refers to a terminal/TTY.
+    ///
+    /// For more details, visit: <http://no-color.org/>.
+    #[arg(
+        long,
+        env = "SI_FORCE_COLOR",
+        hide_env_values = true,
+        conflicts_with = "no_color"
+    )]
+    pub(crate) force_color: Option<bool>,
+
     /// NATS connection URL [example: 0.0.0.0:4222]
     #[arg(long, short = 'u')]
     pub(crate) nats_url: Option<String>,
@@ -28,10 +50,6 @@ pub(crate) struct Args {
     /// NATS credentials file
     #[arg(long)]
     pub(crate) nats_creds_path: Option<String>,
-
-    /// Disable OpenTelemetry on startup
-    #[arg(long)]
-    pub(crate) disable_opentelemetry: bool,
 
     /// Cyclone runtime type: LocalProcess
     #[arg(long)]
