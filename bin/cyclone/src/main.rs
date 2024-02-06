@@ -21,20 +21,15 @@ async fn main() -> Result<()> {
     color_eyre::install()?;
     let args = args::parse();
     let (mut telemetry, telemetry_shutdown) = {
-        let mut builder = TelemetryConfig::builder();
-        builder
+        let config = TelemetryConfig::builder()
+            .force_color(args.force_color.then_some(true))
+            .no_color(args.no_color.then_some(true))
             .service_name("cyclone")
             .service_namespace("si")
             .log_env_var_prefix("SI")
             .app_modules(vec!["cyclone", "cyclone_server"])
-            .custom_default_tracing_level(CUSTOM_DEFAULT_TRACING_LEVEL);
-        if let Some(force_color) = args.force_color {
-            builder.force_color(force_color);
-        }
-        if let Some(no_color) = args.no_color {
-            builder.no_color(no_color);
-        }
-        let config = builder.build()?;
+            .custom_default_tracing_level(CUSTOM_DEFAULT_TRACING_LEVEL)
+            .build()?;
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
     };

@@ -28,23 +28,25 @@ pub(crate) struct Args {
     ///
     /// For more details, visit: <http://no-color.org/>.
     #[arg(
-        long,
+        long = "no-color",
+        default_value = "false",
         env = "SI_NO_COLOR",
         hide_env_values = true,
         conflicts_with = "force_color"
     )]
-    pub(crate) no_color: Option<bool>,
+    pub(crate) no_color: bool,
 
     /// Forces ANSI coloring, even if standard output refers to a terminal/TTY.
     ///
     /// For more details, visit: <http://no-color.org/>.
     #[arg(
-        long,
+        long = "force-color",
+        default_value = "false",
         env = "SI_FORCE_COLOR",
         hide_env_values = true,
         conflicts_with = "no_color"
     )]
-    pub(crate) force_color: Option<bool>,
+    pub(crate) force_color: bool,
 
     /// Binds service to a socket address [example: 0.0.0.0:5157]
     #[arg(long, group = "bind")]
