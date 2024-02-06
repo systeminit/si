@@ -4,9 +4,7 @@
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { FuncId } from "@/store/func/funcs.store";
 import { ChangeSetId } from "@/store/change_sets.store";
-import {
-  DetachedAttributePrototype,
-} from "@/store/asset.store";
+import { DetachedAttributePrototype } from "@/store/asset.store";
 import { ComponentId } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import { FixStatus } from "../fixes.store";

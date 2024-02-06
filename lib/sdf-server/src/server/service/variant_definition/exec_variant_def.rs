@@ -39,7 +39,8 @@ pub type ExecVariantDefRequest = SaveVariantDefRequest;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ExecVariantDefResponse {
-    task_id: Ulid,
+    pub task_id: Ulid,
+    pub success: bool,
 }
 
 pub async fn exec_variant_def(
@@ -117,7 +118,12 @@ pub async fn exec_variant_def(
         response = response.header("force_changeset_pk", force_changeset_pk.to_string());
     }
 
-    Ok(response.body(serde_json::to_string(&ExecVariantDefResponse { task_id })?)?)
+    Ok(
+        response.body(serde_json::to_string(&ExecVariantDefResponse {
+            task_id,
+            success: true,
+        })?)?,
+    )
 }
 
 fn generate_scaffold_func_name(name: String) -> String {
@@ -135,26 +141,26 @@ pub async fn exec_variant_def_inner(
     let scaffold_func_name = generate_scaffold_func_name(request.name.clone());
 
     // Ensure we save all details before "exec"
-    super::save_variant_def(&ctx, &request, Some(scaffold_func_name)).await?;
+    super::save_variant_def(ctx, request, Some(scaffold_func_name)).await?;
 
     let user = match ctx.history_actor() {
-        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk).await?,
+        HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?,
         _ => None,
     };
     let user_email = user
         .map(|user| user.email().to_owned())
         .unwrap_or("unauthenticated user email".into());
 
-    let mut variant_def = SchemaVariantDefinition::get_by_id(&ctx, &request.id)
+    let mut variant_def = SchemaVariantDefinition::get_by_id(ctx, &request.id)
         .await?
         .ok_or(SchemaVariantDefinitionError::VariantDefinitionNotFound(
             request.id,
         ))?;
 
     let (maybe_previous_variant_id, leaf_funcs_to_migrate, attribute_prototypes) =
-        maybe_delete_schema_variant_connected_to_variant_def(&ctx, &mut variant_def).await?;
+        maybe_delete_schema_variant_connected_to_variant_def(ctx, &mut variant_def).await?;
 
-    let asset_func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
+    let asset_func = Func::get_by_id(ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
     )?;
 
@@ -162,13 +168,9 @@ pub async fn exec_variant_def_inner(
 
     // Execute asset function
     let (definition, _) = {
-        let (_, return_value) = FuncBinding::create_and_execute(
-            &ctx,
-            serde_json::Value::Null,
-            *asset_func.id(),
-            vec![],
-        )
-        .await?;
+        let (_, return_value) =
+            FuncBinding::create_and_execute(ctx, serde_json::Value::Null, *asset_func.id(), vec![])
+                .await?;
 
         if let Some(error) = return_value
             .value()
@@ -257,7 +259,7 @@ pub async fn exec_variant_def_inner(
     let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
 
     let (_, schema_variant_ids, _) = import_pkg_from_pkg(
-        &ctx,
+        ctx,
         &pkg,
         Some(dal::pkg::ImportOptions {
             schemas: None,
@@ -280,25 +282,25 @@ pub async fn exec_variant_def_inner(
     let detached_attribute_prototypes = match maybe_previous_variant_id {
         Some(previous_schema_variant_id) => {
             migrate_leaf_functions_to_new_schema_variant(
-                &ctx,
+                ctx,
                 leaf_funcs_to_migrate,
                 schema_variant_id,
             )
             .await?;
             migrate_actions_to_new_schema_variant(
-                &ctx,
+                ctx,
                 previous_schema_variant_id,
                 schema_variant_id,
             )
             .await?;
             migrate_authentication_funcs_to_new_schema_variant(
-                &ctx,
+                ctx,
                 previous_schema_variant_id,
                 schema_variant_id,
             )
             .await?;
 
-            let schema_variant = SchemaVariant::get_by_id(&ctx, &schema_variant_id)
+            let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
                 .await?
                 .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
 
@@ -337,7 +339,7 @@ pub async fn exec_variant_def_inner(
     track(
         &posthog_client,
         ctx,
-        &original_uri,
+        original_uri,
         "exec_variant_def",
         serde_json::json!({
                     "variant_def_category": metadata.clone().category,
