@@ -48,6 +48,17 @@ pub(crate) struct Args {
     )]
     pub(crate) force_color: bool,
 
+    /// Prints telemetry logging as JSON lines.
+    ///
+    /// For more details, visit: <https://jsonlines.org/>.
+    #[arg(
+        long = "log-json",
+        default_value = "false",
+        env = "SI_LOG_JSON",
+        hide_env_values = true
+    )]
+    pub(crate) log_json: bool,
+
     /// Binds service to a socket address [example: 0.0.0.0:5157]
     #[arg(long, group = "bind")]
     pub(crate) bind_addr: Option<SocketAddr>,

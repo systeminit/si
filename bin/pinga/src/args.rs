@@ -45,6 +45,17 @@ pub(crate) struct Args {
     )]
     pub(crate) force_color: bool,
 
+    /// Prints telemetry logging as JSON lines.
+    ///
+    /// For more details, visit: <https://jsonlines.org/>.
+    #[arg(
+        long = "log-json",
+        default_value = "false",
+        env = "SI_LOG_JSON",
+        hide_env_values = true
+    )]
+    pub(crate) log_json: bool,
+
     /// PostgreSQL connection pool dbname [example: myapp]
     #[arg(long)]
     pub(crate) pg_dbname: Option<String>,
