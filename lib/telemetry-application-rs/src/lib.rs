@@ -122,11 +122,11 @@ pub struct TelemetryConfig {
     )]
     secondary_log_span_events_env_var: Option<String>,
 
-    #[builder(setter(into, strip_option), default = "self.default_no_color()")]
-    no_color: bool,
+    #[builder(setter(into), default = "self.default_no_color()")]
+    no_color: Option<bool>,
 
-    #[builder(setter(into, strip_option), default = "false")]
-    force_color: bool,
+    #[builder(setter(into), default = "None")]
+    force_color: Option<bool>,
 
     #[builder(default = "true")]
     signal_handlers: bool,
@@ -202,15 +202,13 @@ impl TelemetryConfigBuilder {
         }
     }
 
-    fn default_no_color(&self) -> bool {
+    fn default_no_color(&self) -> Option<bool> {
         // Checks a known/standard var as a fallback. Code upstack will check for an `SI_*`
         // prefixed version which should have a higher precendence.
         //
         // See: <http://no-color.org/>
         #[allow(clippy::disallowed_methods)] // See rationale in comment above
-        std::env::var_os("NO_COLOR")
-            .map(|value| !value.is_empty())
-            .unwrap_or(false)
+        std::env::var_os("NO_COLOR").map(|value| !value.is_empty())
     }
 }
 
@@ -407,14 +405,14 @@ fn create_client(
 }
 
 fn should_add_ansi(config: &TelemetryConfig) -> bool {
-    if config.force_color {
+    if config.force_color.filter(|fc| *fc).unwrap_or(false) {
         // If we're forcing colors, then this is unconditionally true
         true
     } else {
         // Otherwise 2 conditions must be met:
         // 1. did we *not* ask for `no_color` (or: is `no_color` unset)
         // 2. is the standard output file descriptor refer to a terminal or TTY
-        !config.no_color && io::stdout().is_terminal()
+        !config.no_color.filter(|nc| *nc).unwrap_or(false) && io::stdout().is_terminal()
     }
 }
 
