@@ -9,9 +9,8 @@
         <div
           class="flex flex-row items-center gap-2 p-xs border-b dark:border-neutral-600"
         >
-          <ErrorMessage :requestStatus="executeAssetReqStatus" />
           <VButton
-            :requestStatus="executeAssetReqStatus"
+            :loading="executeAssetTaskRunning"
             :loadingText="
               editingAsset.schemaVariantId
                 ? 'Updating Asset...'
@@ -36,7 +35,7 @@
         </div>
 
         <ErrorMessage
-          v-for="(warning, index) in detachedWarnings"
+          v-for="(warning, index) in assetStore.detachmentWarnings"
           :key="warning.message"
           class="mx-1"
           :class="{ 'cursor-pointer': !!warning.variant }"
@@ -50,7 +49,7 @@
             buttonRank="tertiary"
             icon="trash"
             size="xs"
-            @click.stop="detachedWarnings.splice(index, 1)"
+            @click.stop="assetStore.detachmentWarnings.splice(index, 1)"
           />
         </ErrorMessage>
 
@@ -66,10 +65,13 @@
           {{ disabledWarning }}
         </ErrorMessage>
 
-        <ErrorMessage
-          v-if="executeAssetReqStatus.isError"
-          :requestStatus="executeAssetReqStatus"
-        />
+        <div>
+          <!-- For now, using v-if inside a <Stack> is breaking the VormInputs below so we add indirection -->
+          <ErrorMessage v-if="executeAssetTaskError">
+            {{ executeAssetTaskError }}
+          </ErrorMessage>
+        </div>
+
         <VormInput
           id="name"
           v-model="editingAsset.name"
@@ -152,6 +154,7 @@
           ? 'Asset Updated'
           : 'New Asset Created'
       "
+      @closeComplete="closeHandler"
     >
       {{
         editingAsset && editingAsset.schemaVariantId
@@ -174,11 +177,10 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
+import { storeToRefs } from "pinia";
 import { FuncVariant } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
-import { FuncId, useFuncStore } from "@/store/func/funcs.store";
-import { nilId } from "@/utils/nilId";
-import { useComponentsStore } from "@/store/components.store";
+import { FuncId } from "@/store/func/funcs.store";
 import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
@@ -187,15 +189,9 @@ const props = defineProps<{
   assetId?: string;
 }>();
 
-const componentsStore = useComponentsStore();
 const assetStore = useAssetStore();
-const funcStore = useFuncStore();
 const loadAssetReqStatus = assetStore.getRequestStatus(
   "LOAD_ASSET",
-  props.assetId,
-);
-const executeAssetReqStatus = assetStore.getRequestStatus(
-  "EXEC_ASSET",
   props.assetId,
 );
 const executeAssetModalRef = ref();
@@ -258,60 +254,37 @@ const disabledWarning = computed(() => {
   return "";
 });
 
-const detachedWarnings = ref<
-  { message: string; funcId: FuncId; variant?: FuncVariant }[]
->([]);
+const { executeAssetTaskRunning, executeAssetTaskId, executeAssetTaskError } =
+  storeToRefs(assetStore);
 const executeAsset = async () => {
-  detachedWarnings.value = [];
-
   if (assetStore.selectedAssetId) {
-    const result = await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
-    if (result.result.success) {
-      executeAssetModalRef.value?.open();
-      const { schemaVariantId, detachedAttributePrototypes } =
-        result.result.data;
-
-      for (const detached of detachedAttributePrototypes) {
-        if (
-          detached.context.type === "ExternalProviderSocket" ||
-          detached.context.type === "InternalProviderSocket"
-        ) {
-          detachedWarnings.value.push({
-            funcId: detached.funcId,
-            variant: detached.variant ?? undefined,
-            message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Socket=${detached.context.data.name} of Kind=${detached.context.data.kind}`,
-          });
-        } else if (
-          detached.context.type === "InternalProviderProp" ||
-          detached.context.type === "Prop"
-        ) {
-          detachedWarnings.value.push({
-            funcId: detached.funcId,
-            variant: detached.variant ?? undefined,
-            message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Path=${detached.context.data.path} of Kind=${detached.context.data.kind}`,
-          });
-        }
-      }
-
-      if (schemaVariantId !== nilId()) {
-        assetStore.setSchemaVariantIdForAsset(
-          assetStore.selectedAssetId,
-          schemaVariantId,
-        );
-        // We need to reload both schemas and assets since they're stored separately
-        await assetStore.LOAD_ASSET(assetStore.selectedAssetId);
-        await componentsStore.FETCH_AVAILABLE_SCHEMAS();
-        await funcStore.FETCH_INPUT_SOURCE_LIST(schemaVariantId); // a new asset means new input sources
-      }
-    }
+    await assetStore.EXEC_ASSET(assetStore.selectedAssetId);
   }
+};
+
+watch(
+  [executeAssetTaskRunning, executeAssetTaskId, executeAssetTaskError],
+  () => {
+    // If stopped running task and have ID, we finished saving. Open notification modal.
+    if (
+      !executeAssetTaskRunning.value &&
+      executeAssetTaskId.value !== undefined &&
+      !executeAssetTaskError.value?.length
+    ) {
+      executeAssetModalRef.value?.open();
+    }
+  },
+);
+
+const closeHandler = () => {
+  assetStore.executeAssetTaskId = undefined;
 };
 
 const cloneAsset = async () => {
   if (editingAsset.value?.id) {
     const result = await assetStore.CLONE_ASSET(editingAsset.value.id);
     if (result.result.success) {
-      assetStore.selectAsset(result.result.data.id);
+      await assetStore.selectAsset(result.result.data.id);
     }
   }
 };
