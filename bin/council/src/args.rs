@@ -43,6 +43,17 @@ pub(crate) struct Args {
     )]
     pub(crate) force_color: bool,
 
+    /// Prints telemetry logging as JSON lines.
+    ///
+    /// For more details, visit: <https://jsonlines.org/>.
+    #[arg(
+        long = "log-json",
+        default_value = "false",
+        env = "SI_LOG_JSON",
+        hide_env_values = true
+    )]
+    pub(crate) log_json: bool,
+
     /// NATS connection URL [example: demo.nats.io]
     #[arg(long)]
     pub(crate) nats_url: Option<String>,

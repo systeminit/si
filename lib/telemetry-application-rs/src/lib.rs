@@ -52,7 +52,7 @@ pub use telemetry::tracing;
 pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
 
 pub mod prelude {
-    pub use super::TelemetryConfig;
+    pub use super::{ConsoleLogFormat, TelemetryConfig};
     pub use telemetry::prelude::*;
     pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
 }
@@ -127,6 +127,9 @@ pub struct TelemetryConfig {
 
     #[builder(setter(into), default = "None")]
     force_color: Option<bool>,
+
+    #[builder(setter(into), default)]
+    console_log_format: ConsoleLogFormat,
 
     #[builder(default = "true")]
     signal_handlers: bool,
@@ -224,6 +227,8 @@ pub fn init(
     let (subscriber, handles) = tracing_subscriber(&config, &tracing_level, span_events_fmt)?;
     subscriber.try_init()?;
 
+    debug!(?config, "telemetry configuration");
+
     let (client, guard) = create_client(config, tracing_level, handles, tracker, shutdown_token)?;
 
     Ok((client, guard))
@@ -306,10 +311,20 @@ fn tracing_subscriber(
     let directives = TracingDirectives::from(tracing_level);
 
     let (console_log_layer, console_log_filter_reload) = {
-        let layer = tracing_subscriber::fmt::layer()
-            .with_thread_ids(true)
-            .with_ansi(should_add_ansi(config))
-            .with_span_events(span_events_fmt);
+        let layer: Box<dyn Layer<Registry> + Send + Sync> = match config.console_log_format {
+            ConsoleLogFormat::Json => Box::new(
+                tracing_subscriber::fmt::layer()
+                    .json()
+                    .with_thread_ids(true)
+                    .with_span_events(span_events_fmt),
+            ),
+            ConsoleLogFormat::Text => Box::new(
+                tracing_subscriber::fmt::layer()
+                    .with_thread_ids(true)
+                    .with_ansi(should_add_ansi(config))
+                    .with_span_events(span_events_fmt),
+            ),
+        };
 
         let env_filter = EnvFilter::try_new(directives.as_str())?;
         let (filter, handle) = reload::Layer::new(env_filter);
@@ -413,6 +428,19 @@ fn should_add_ansi(config: &TelemetryConfig) -> bool {
         // 1. did we *not* ask for `no_color` (or: is `no_color` unset)
         // 2. is the standard output file descriptor refer to a terminal or TTY
         !config.no_color.filter(|nc| *nc).unwrap_or(false) && io::stdout().is_terminal()
+    }
+}
+
+#[remain::sorted]
+#[derive(Copy, Clone, Debug)]
+pub enum ConsoleLogFormat {
+    Json,
+    Text,
+}
+
+impl Default for ConsoleLogFormat {
+    fn default() -> Self {
+        Self::Text
     }
 }
 
