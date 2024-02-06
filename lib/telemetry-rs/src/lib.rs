@@ -30,7 +30,7 @@ pub mod prelude {
     pub use tracing::{
         self, debug, debug_span, enabled, error, error_span, event, event_enabled, field::Empty,
         info, info_span, instrument, span, span_enabled, trace, trace_span, warn, warn_span,
-        Instrument, Level, Span,
+        Id as SpanId, Instrument, Level, Span,
     };
 }
 

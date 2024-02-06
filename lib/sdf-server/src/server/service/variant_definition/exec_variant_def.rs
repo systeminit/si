@@ -21,7 +21,7 @@ use dal::{
 use si_pkg::{
     FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, SiPkg,
 };
-use telemetry::prelude::error;
+use telemetry::prelude::*;
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
@@ -56,12 +56,15 @@ pub async fn exec_variant_def(
 
     let task_id = Ulid::new();
 
+    let request_span = Span::current();
+
     tokio::task::spawn(async move {
         let (schema_variant_id, detached_attribute_prototypes) = match exec_variant_def_inner(
             &ctx,
             &request,
             &original_uri,
             PosthogClient(posthog_client),
+            request_span,
         )
         .await
         {
@@ -132,12 +135,16 @@ fn generate_scaffold_func_name(name: String) -> String {
     generated_name
 }
 
+#[instrument(name = "async_task.exec_variant_def", level = "info", skip_all)]
 pub async fn exec_variant_def_inner(
     ctx: &DalContext,
     request: &ExecVariantDefRequest,
     original_uri: &Uri,
     PosthogClient(posthog_client): PosthogClient,
+    request_span: Span,
 ) -> SchemaVariantDefinitionResult<(SchemaVariantId, Vec<AttributePrototypeView>)> {
+    Span::current().follows_from(request_span.id());
+
     let scaffold_func_name = generate_scaffold_func_name(request.name.clone());
 
     // Ensure we save all details before "exec"
