@@ -233,9 +233,9 @@
         }"
       />
 
-      <!-- package/type icon -->
+      <!--       package/type icon-->
       <DiagramIcon
-        v-if="group.def.typeIcon"
+        v-if="group.def.typeIcon && !featureFlagsStore.REMOVE_COMPONENT_ICONS"
         :icon="highlightParent ? 'frame' : group.def.typeIcon"
         :color="colors.icon"
         :size="GROUP_HEADER_ICON_SIZE"
@@ -249,7 +249,7 @@
       <v-text
         ref="titleTextRef"
         :config="{
-          x: 42,
+          x: getTextPosition(),
           y: 2,
           verticalAlign: 'top',
           align: 'left',
@@ -270,7 +270,7 @@
       <v-text
         ref="titleTextRef"
         :config="{
-          x: 42,
+          x: getTextPosition(),
           y: 20,
           verticalAlign: 'top',
           align: 'left',
@@ -402,6 +402,7 @@ import {
   SOCKET_GAP,
   SOCKET_MARGIN_TOP,
 } from "@/components/ModelingDiagram/diagram_constants";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
@@ -438,6 +439,7 @@ const props = defineProps({
 });
 
 const diagramContext = useDiagramContext();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const componentId = computed(() => props.group.def.componentId);
 const parentComponentId = computed(() => _.last(props.group.def.ancestorIds));
@@ -628,4 +630,12 @@ const highlightAsNewParent = computed(() => {
       props.group.uniqueKey
   );
 });
+
+function getTextPosition() {
+  if (featureFlagsStore.REMOVE_COMPONENT_ICONS) {
+    return 2;
+  }
+
+  return 24;
+}
 </script>
