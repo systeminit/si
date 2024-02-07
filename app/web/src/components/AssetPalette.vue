@@ -78,7 +78,7 @@
           :label="category.displayName"
           :icon="getAssetIcon(category.displayName)"
           :color="category.schemas[0]?.color || '#000'"
-          classes="bg-neutral-700 group/tree"
+          classes="bg-neutral-100 dark:bg-neutral-700 group/tree"
           labelClasses="font-bold select-none hover:text-action-500 dark:hover:text-action-300"
           enableGroupToggle
           alwaysShowArrow
@@ -88,7 +88,8 @@
           <template #icons>
             <PillCounter
               :count="category.schemas.length"
-              class="group-hover/tree:text-action-500 dark:group-hover/tree:text-action-300"
+              borderTone="action"
+              class="group-hover/tree:text-action-500 dark:group-hover/tree:text-action-300 group-hover/tree:bg-action-100 dark:group-hover/tree:bg-action-800"
             />
           </template>
           <TreeNode
@@ -97,7 +98,7 @@
             :color="schema.color"
             :classes="
               clsx(
-                'dark:text-white text-black bg-neutral-800 py-[1px]',
+                'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
                 fixesAreRunning
                   ? 'hover:cursor-progress'
                   : 'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1',
