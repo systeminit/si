@@ -23,7 +23,11 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
             },
             "domain": {
                 "name": "13700KF",
+                "universe": {
+                    "galaxies": [],
+                },
             },
+            "resource": {},
         }], // expected
         component_bag
             .component_view_properties(ctx)
@@ -48,7 +52,11 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
             },
             "domain": {
                 "name": "13700KF",
+                "universe": {
+                    "galaxies": [],
+                },
             },
+            "resource": {},
         }], // expected
         component_bag
             .component_view_properties(ctx)

@@ -73,6 +73,10 @@ use crate::{ExternalProviderId, FuncId};
 
 pub mod view;
 
+const ATTRIBUTE_VALUE_IDS_FOR_COMPONENT: &str =
+    include_str!("../queries/attribute_value/ids_for_component.sql");
+const ATTRIBUTE_VALUE_IDS_WITH_DYNAMIC_FUNCTIONS: &str =
+    include_str!("../queries/attribute_value/ids_with_dynamic_functions.sql");
 const CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_value/child_attribute_values_for_context.sql");
 const FETCH_UPDATE_GRAPH_DATA: &str =
@@ -867,6 +871,17 @@ impl AttributeValue {
 
         let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
 
+        if !context.is_component_unset() {
+            ctx.txns()
+                .await?
+                .pg()
+                .execute(
+                    "SELECT attribute_value_dependencies_update_component_v1($1, $2, $3)",
+                    &[ctx.tenancy(), ctx.visibility(), &context.component_id()],
+                )
+                .await?;
+        }
+
         // TODO(fnichol): we might want to fire off a status even at this point, however we've
         // already updated the initial attribute value, so is there much value?
 
@@ -961,6 +976,21 @@ impl AttributeValue {
         ).await?;
 
         let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
+
+        if !item_attribute_context.is_component_unset() {
+            ctx.txns()
+                .await?
+                .pg()
+                .execute(
+                    "SELECT attribute_value_dependencies_update_component_v1($1, $2, $3)",
+                    &[
+                        ctx.tenancy(),
+                        ctx.visibility(),
+                        &item_attribute_context.component_id(),
+                    ],
+                )
+                .await?;
+        }
 
         if !ctx.no_dependent_values() {
             ctx.enqueue_job(DependentValuesUpdate::new(
@@ -1078,6 +1108,46 @@ impl AttributeValue {
         Ok(result)
     }
 
+    pub async fn ids_for_component(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> AttributeValueResult<Vec<AttributeValueId>> {
+        let result = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                ATTRIBUTE_VALUE_IDS_FOR_COMPONENT,
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?
+            .iter()
+            .map(|r| r.get("attribute_value_id"))
+            .collect();
+
+        Ok(result)
+    }
+
+    pub async fn ids_using_dynamic_functions(
+        ctx: &DalContext,
+        attribute_value_ids: &Vec<AttributeValueId>,
+    ) -> AttributeValueResult<Vec<AttributeValueId>> {
+        let result = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                ATTRIBUTE_VALUE_IDS_WITH_DYNAMIC_FUNCTIONS,
+                &[ctx.tenancy(), ctx.visibility(), attribute_value_ids],
+            )
+            .await?
+            .iter()
+            .map(|r| r.get("attribute_value_id"))
+            .collect();
+
+        Ok(result)
+    }
+
     pub async fn vivify_value_and_parent_values(
         &self,
         ctx: &DalContext,
@@ -1093,6 +1163,27 @@ impl AttributeValue {
             ]).await?;
 
         Ok(row.try_get("new_attribute_value_id")?)
+    }
+
+    #[instrument(
+        name = "attribute_value.update_component_dependencies",
+        skip(ctx),
+        level = "debug"
+    )]
+    pub async fn update_component_dependencies(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> AttributeValueResult<()> {
+        ctx.txns()
+            .await?
+            .pg()
+            .execute(
+                "SELECT attribute_value_dependencies_update_component_v1($1, $2, $3)",
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+
+        Ok(())
     }
 
     /// Re-evaluates the current `AttributeValue`'s `AttributePrototype` to update the
@@ -1134,8 +1225,6 @@ impl AttributeValue {
                     .await
                     .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
 
-                debug!("InternalProvider is internal consumer");
-
                 return Ok(());
             }
         } else if self.context.is_least_specific_field_kind_prop()? {
@@ -1150,6 +1239,20 @@ impl AttributeValue {
         let attribute_prototype = self.attribute_prototype(ctx).await?.ok_or_else(|| {
             AttributeValueError::AttributePrototypeNotFound(self.id, *ctx.visibility())
         })?;
+
+        // Check if the function is one of the "si:set*", or "si:unset" functions, as these are
+        // special, and can't actually be re-run. Their values are static anyway, so re-running it
+        // wouldn't change anything. The "si:setObject", "si:setArray", and "si:setMap" functions
+        // are a bit special, however, as the "local" value will always be an empty object, array,
+        // or map.
+        let func = Func::get_by_id(ctx, &attribute_prototype.func_id())
+            .await?
+            .ok_or_else(|| {
+                AttributeValueError::MissingFunc(format!("Unable to get func for {:?}", self.id()))
+            })?;
+        if func.name().starts_with("si:set") || func.name() == "si:unset" {
+            return Ok(());
+        }
 
         // Note(victor): Secrets should never be passed to functions as arguments directly.
         // We detect if they're set as dependencies and later fetch before functions to execute
@@ -1190,8 +1293,6 @@ impl AttributeValue {
             };
         }
 
-        let func_id = attribute_prototype.func_id();
-
         // We need the associated [`ComponentId`] for this function--this is how we resolve and
         // prepare before functions
         let associated_component_id = self.context.component_id();
@@ -1200,12 +1301,12 @@ impl AttributeValue {
         let (func_binding, mut func_binding_return_value) = match FuncBinding::create_and_execute(
             ctx,
             serde_json::to_value(func_binding_args.clone())?,
-            attribute_prototype.func_id(),
+            *func.id(),
             before,
         )
         .instrument(debug_span!(
             "Func execution",
-            "func.id" = %func_id,
+            "func.id" = %func.id(),
             ?func_binding_args,
         ))
         .await

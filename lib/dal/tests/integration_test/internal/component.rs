@@ -379,6 +379,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                 "type": "component",
                 "protected": false
             },
+            "resource": {},
         }], // expected
         ekwb_component_view.properties // actual
     );
@@ -389,6 +390,10 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                 "type": "component",
                 "protected": false
             },
+            "domain": {
+                "u12a": {},
+            },
+            "resource": {},
         }], // expected
         noctua_component_view.properties // actual
     );
@@ -466,6 +471,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                     "status": "ok",
                 }
             },
+            "resource": {},
         }], // expected
         noctua_component_view.properties // actual
     );
@@ -513,6 +519,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                     "status": "ok",
                 }
             },
+            "resource": {},
         }], // expected
         noctua_component_view.properties // actual
     );
@@ -587,17 +594,18 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
 
     assert_eq!(
         serde_json::json![{
-           "si": {
-               "name": "source-updated",
-               "type": "component",
-               "color": "#ffffff",
-               "protected": false,
-           },
-           "domain": {
-               "name": "source-updated",
-               "rads": 1,
-               "active": true
-           },
+            "si": {
+                "name": "source-updated",
+                "type": "component",
+                "color": "#ffffff",
+                "protected": false,
+            },
+            "domain": {
+                "name": "source-updated",
+                "rads": 1,
+                "active": true
+            },
+            "resource": {},
         }], // expected
         fallout_bag
             .component_view_properties(ctx)
@@ -607,23 +615,24 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-           "si": {
-               "name": "destination",
-               "type": "component",
-               "color": "#ffffff",
-               "protected": false,
-           },
-           "domain": {
-               "name": "destination",
-               "universe": {
-                   "galaxies": [
-                       {
-                           "sun": "source-updated-sun",
-                           "planets": 1
-                       },
-                   ],
-               },
-           },
+            "si": {
+                "name": "destination",
+                "type": "component",
+                "color": "#ffffff",
+                "protected": false,
+            },
+            "domain": {
+                "name": "destination",
+                "universe": {
+                    "galaxies": [
+                        {
+                            "sun": "source-updated-sun",
+                            "planets": 1
+                        },
+                    ],
+                },
+            },
+            "resource": {},
         }], // expected
         starfield_bag
             .component_view_properties(ctx)
@@ -663,18 +672,19 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
 
     assert_eq!(
         serde_json::json![{
-           "si": {
-               "name": "destination",
-               "type": "component",
-               "color": "#ffffff",
-               "protected": false,
-           },
-           "domain": {
-               "name": "destination",
-               "universe": {
-                   "galaxies": [],
-               },
-           },
+            "si": {
+                "name": "destination",
+                "type": "component",
+                "color": "#ffffff",
+                "protected": false,
+            },
+            "domain": {
+                "name": "destination",
+                "universe": {
+                    "galaxies": [],
+                },
+            },
+            "resource": {},
         }], // expected
         starfield_bag
             .component_view_properties(ctx)
@@ -693,17 +703,18 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
 
     assert_eq!(
         serde_json::json![{
-           "si": {
-               "name": "source-updated",
-               "type": "component",
-               "color": "#ffffff",
-               "protected": false,
-           },
-           "domain": {
-               "name": "source-updated",
-               "rads": 1,
-               "active": true
-           },
+            "si": {
+                "name": "source-updated",
+                "type": "component",
+                "color": "#ffffff",
+                "protected": false,
+            },
+            "domain": {
+                "name": "source-updated",
+                "rads": 1,
+                "active": true
+            },
+            "resource": {},
         }], // expected
         fallout_bag
             .component_view_properties(ctx)
@@ -713,23 +724,24 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-           "si": {
-               "name": "destination",
-               "type": "component",
-               "color": "#ffffff",
-               "protected": false,
-           },
-           "domain": {
-               "name": "destination",
-               "universe": {
-                   "galaxies": [
-                       {
-                           "sun": "source-updated-sun",
-                           "planets": 1
-                       },
-                   ],
-               },
-           },
+            "si": {
+                "name": "destination",
+                "type": "component",
+                "color": "#ffffff",
+                "protected": false,
+            },
+            "domain": {
+                "name": "destination",
+                "universe": {
+                    "galaxies": [
+                        {
+                            "sun": "source-updated-sun",
+                            "planets": 1
+                        },
+                    ],
+                },
+            },
+            "resource": {},
         }], // expected
         starfield_bag
             .component_view_properties(ctx)

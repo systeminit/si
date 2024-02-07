@@ -62,6 +62,8 @@ async fn update_for_context_simple(ctx: &DalContext) {
                     "type": "component",
                     "protected": false
                 },
+                "domain": {},
+                "resource": {},
             }
         ],
         ComponentView::new(ctx, *component.id())
@@ -124,6 +126,7 @@ async fn update_for_context_simple(ctx: &DalContext) {
                 "domain": {
                     "name_prop": "Miles",
                 },
+                "resource": {},
             }
         ],
         ComponentView::new(ctx, *component.id())
@@ -158,6 +161,7 @@ async fn update_for_context_simple(ctx: &DalContext) {
                 "domain": {
                     "name_prop": "Iria",
                 },
+                "resource": {},
             }
         ],
         ComponentView::new(ctx, *component.id())
@@ -223,6 +227,8 @@ async fn insert_for_context_simple(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
+            "domain": {},
+            "resource": {},
         }],
         ComponentView::new(ctx, *component.id())
             .await
@@ -264,6 +270,7 @@ async fn insert_for_context_simple(ctx: &DalContext) {
             "domain": {
                 "array_prop": [],
             },
+            "resource": {},
         }],
         ComponentView::new(ctx, *component.id())
             .await
@@ -368,6 +375,10 @@ async fn update_for_context_object(ctx: &DalContext) {
                     "type": "component",
                     "protected": false
                 },
+                "domain": {
+                    "address": {},
+                },
+                "resource": {},
             }
         ],
         component_view.properties,
@@ -463,6 +474,7 @@ async fn update_for_context_object(ctx: &DalContext) {
                         ],
                     },
                 },
+                "resource": {},
             }
         ],
         component_view.properties,
@@ -516,6 +528,7 @@ async fn update_for_context_object(ctx: &DalContext) {
                         ],
                     },
                 },
+                "resource": {},
             }
         ],
         component_view.properties,
@@ -579,6 +592,8 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
+            "domain": {},
+            "resource": {},
         }],
         ComponentView::new(ctx, *component.id())
             .await
@@ -627,6 +642,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
                     "Component Element",
                 ],
             },
+            "resource": {},
         }],
         ComponentView::new(ctx, *component.id())
             .await
@@ -881,6 +897,7 @@ async fn use_default_prototype(ctx: &DalContext) {
                     "source": "Initial value",
                 },
             },
+            "resource": {},
         }], // expected
         ComponentView::new(ctx, *component.id())
             .await
@@ -948,6 +965,7 @@ async fn use_default_prototype(ctx: &DalContext) {
                     "source": "Initial value",
                 },
             },
+            "resource": {},
         }], // expected
         ComponentView::new(ctx, *component.id())
             .await
@@ -980,6 +998,7 @@ async fn use_default_prototype(ctx: &DalContext) {
                     "source": "Initial value",
                 },
             },
+            "resource": {},
         }], // expected
         ComponentView::new(ctx, *component.id())
             .await

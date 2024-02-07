@@ -2,7 +2,8 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use council_server::ManagementResponse;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, collections::HashSet, convert::TryFrom};
+use std::collections::HashSet;
+use std::{collections::HashMap, convert::TryFrom};
 use telemetry::prelude::*;
 use tokio::task::JoinSet;
 
@@ -151,21 +152,19 @@ impl DependentValuesUpdate {
         // Save printed output to a file and execute the following: "dot <file> -Tsvg -o <newfile>.svg"
         // println!("{}", dependency_graph_to_dot(ctx, &dependency_graph).await?);
 
-        // Remove the `AttributeValueIds` from the list of values that are in the dependencies,
-        // as we consider that one to have already been updated. This lets us check for
-        // `AttributeValuesId`s where the list of *unsatisfied* dependencies is empty.
-        let attribute_values_set: HashSet<AttributeValueId> =
-            HashSet::from_iter(self.attribute_values.iter().cloned());
-        let mut to_remove = Vec::new();
-        for (id, val) in dependency_graph.iter_mut() {
-            val.retain(|id| !attribute_values_set.contains(id));
-            if val.is_empty() {
-                to_remove.push(*id);
+        // Any of our initial inputs that aren't using one of the `si:set*`, or `si:unset`
+        // functions need to be evaluated, since we might be populating the initial functions of a
+        // `Component` during `Component` creation.
+        let avs_with_dynamic_functions: HashSet<AttributeValueId> = HashSet::from_iter(
+            AttributeValue::ids_using_dynamic_functions(ctx, &self.attribute_values)
+                .await?
+                .iter()
+                .copied(),
+        );
+        for id in &self.attribute_values {
+            if avs_with_dynamic_functions.contains(id) {
+                dependency_graph.entry(*id).or_insert_with(Vec::new);
             }
-        }
-
-        for id in to_remove {
-            dependency_graph.remove(&id);
         }
 
         debug!(?dependency_graph, "Generated dependency graph");

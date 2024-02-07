@@ -138,7 +138,7 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
                 "si": {
                     "name": "component",
                     "type": "component",
-                    "protected": false
+                    "protected": false,
                 },
                 "domain": {
                     "poop": true,
@@ -148,7 +148,8 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
                         "result": "success",
                         "message": "must be present when result is not 'success'",
                     },
-                }
+                },
+                "resource": {},
         }], // expected
         component_view.properties // actual
     );

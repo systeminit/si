@@ -330,6 +330,16 @@ impl Component {
 
         component.set_name(ctx, Some(name.as_ref())).await?;
 
+        // We need to make sure that *ALL* functions are run, not just those that directly
+        // depend on the name being set.
+        let component_av_ids = AttributeValue::ids_for_component(ctx, component.id).await?;
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            component_av_ids,
+        ))
+        .await?;
+
         diagram::summary_diagram::create_component_entry(
             ctx,
             &component,
@@ -947,7 +957,7 @@ impl Component {
     pub async fn delete_and_propagate(&mut self, ctx: &DalContext) -> ComponentResult<()> {
         // Block deletion of frames with children
         if self.get_type(ctx).await? != ComponentType::Component {
-            let connected_children = dbg!(Edge::list_children_for_component(ctx, self.id).await?);
+            let connected_children = Edge::list_children_for_component(ctx, self.id).await?;
             warn!("{:?}", connected_children);
             if !connected_children.is_empty() {
                 return Err(ComponentError::FrameHasAttachedComponents);

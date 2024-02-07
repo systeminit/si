@@ -6,7 +6,7 @@ use dal::{
     attribute::context::AttributeContextBuilder, node::NodeId, AttributeReadContext,
     AttributeValue, AttributeValueId, Component, ComponentId, ComponentView,
     ComponentViewProperties, DalContext, ExternalProviderId, InternalProviderId, Node, Prop,
-    PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
+    PropId, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
 };
 use serde_json::Value;
 use std::collections::HashMap;

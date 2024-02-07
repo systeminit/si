@@ -168,6 +168,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                     "source": "updateme",
                 },
             },
+            "resource": {},
         }], // expected
         ComponentView::new(ctx, *component.id())
             .await
@@ -231,6 +232,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                     "destination": "11-nov-2022",
                 },
             },
+            "resource": {},
         }], // expected
         ComponentView::new(ctx, *component.id())
             .await
@@ -269,6 +271,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                     "source": "h1-2023",
                 },
             },
+            "resource": {},
         }], // expected
         ComponentView::new(ctx, *component.id())
             .await
@@ -307,6 +310,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                     "source": "pain.",
                 },
             },
+            "resource": {},
         }], // expected
         ComponentView::new(ctx, *component.id())
             .await
