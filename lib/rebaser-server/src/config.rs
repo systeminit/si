@@ -115,6 +115,8 @@ impl Config {
 pub struct ConfigFile {
     #[serde(default)]
     pg: PgPoolConfig,
+    #[serde(default = "PgStoreTools::default_pool_config")]
+    content_store_pg: PgPoolConfig,
     #[serde(default)]
     nats: NatsConfig,
     #[serde(default = "default_cyclone_encryption_key_path")]
@@ -131,6 +133,7 @@ impl Default for ConfigFile {
     fn default() -> Self {
         Self {
             pg: Default::default(),
+            content_store_pg: PgStoreTools::default_pool_config(),
             nats: Default::default(),
             cyclone_encryption_key_path: default_cyclone_encryption_key_path(),
             recreate_management_stream: false,
@@ -152,6 +155,7 @@ impl TryFrom<ConfigFile> for Config {
 
         let mut config = Config::builder();
         config.pg_pool(value.pg);
+        config.content_store_pg_pool(value.content_store_pg);
         config.nats(value.nats);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.recreate_management_stream(value.recreate_management_stream);
@@ -202,10 +206,16 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         .map_err(ConfigError::development)?
         .to_string_lossy()
         .to_string();
+    let postgres_cert = resources
+        .get_ends_with("dev.postgres.root.crt")
+        .map_err(ConfigError::development)?
+        .to_string_lossy()
+        .to_string();
 
     warn!(
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
+        postgres_cert = postgres_cert.as_str(),
         "detected development run",
     );
 
@@ -215,6 +225,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
+    config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.content_store_pg.certificate_path = Some(postgres_cert.try_into()?);
 
     Ok(())
 }
@@ -228,10 +240,15 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         .join("../../lib/dal/dev.donkey.key")
         .to_string_lossy()
         .to_string();
+    let postgres_cert = Path::new(&dir)
+        .join("../../config/keys/dev.postgres.root.crt")
+        .to_string_lossy()
+        .to_string();
 
     warn!(
         cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
         symmetric_crypto_service_key = symmetric_crypto_service_key.as_str(),
+        postgres_cert = postgres_cert.as_str(),
         "detected development run",
     );
 
@@ -241,6 +258,8 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
+    config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.content_store_pg.certificate_path = Some(postgres_cert.try_into()?);
 
     Ok(())
 }
