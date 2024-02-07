@@ -46,6 +46,7 @@ pub mod resource;
 
 // pub mod code;
 // pub mod diff;
+pub mod frame;
 pub mod qualification;
 // pub mod status;
 // pub mod validation;
@@ -91,6 +92,8 @@ pub enum ComponentError {
     MapPropMissingElementProp(PropId),
     #[error("component {0} missing attribute value for qualifications")]
     MissingQualificationsValue(ComponentId),
+    #[error("found multiple parents for component: {0}")]
+    MultipleParentsForComponent(ComponentId),
     #[error("found multiple root attribute values ({0} and {1}, at minimum) for component: {2}")]
     MultipleRootAttributeValuesFound(AttributeValueId, AttributeValueId, ComponentId),
     #[error("node weight error: {0}")]
@@ -483,6 +486,25 @@ impl Component {
         Ok(incoming_edges)
     }
 
+    pub async fn parent(&self, ctx: &DalContext) -> ComponentResult<Option<ComponentId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let mut raw_sources = workspace_snapshot.incoming_sources_for_edge_weight_kind(
+            self.id,
+            EdgeWeightKindDiscriminants::FrameContains,
+        )?;
+
+        let maybe_parent = if let Some(raw_parent) = raw_sources.pop() {
+            if !raw_sources.is_empty() {
+                return Err(ComponentError::MultipleParentsForComponent(self.id));
+            }
+            Some(workspace_snapshot.get_node_weight(raw_parent)?.id().into())
+        } else {
+            None
+        };
+
+        Ok(maybe_parent)
+    }
+
     async fn get_content_with_hash(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -850,13 +872,13 @@ impl Component {
         Self::internal_provider_attribute_values_for_component_id(ctx, self.id()).await
     }
 
-    pub async fn connect(
+    async fn connect_inner(
         ctx: &DalContext,
         source_component_id: ComponentId,
         source_external_provider_id: ExternalProviderId,
         destination_component_id: ComponentId,
         destination_explicit_internal_provider_id: InternalProviderId,
-    ) -> ComponentResult<AttributePrototypeArgumentId> {
+    ) -> ComponentResult<(AttributeValueId, AttributePrototypeArgumentId)> {
         let destination_attribute_value_ids =
             InternalProvider::attribute_values_for_internal_provider_id(
                 ctx,
@@ -895,6 +917,29 @@ impl Component {
 
         AttributeValue::update_from_prototype_function(ctx, destination_attribute_value_id).await?;
 
+        Ok((
+            destination_attribute_value_id,
+            attribute_prototype_argument.id(),
+        ))
+    }
+
+    pub async fn connect(
+        ctx: &DalContext,
+        source_component_id: ComponentId,
+        source_external_provider_id: ExternalProviderId,
+        destination_component_id: ComponentId,
+        destination_explicit_internal_provider_id: InternalProviderId,
+    ) -> ComponentResult<AttributePrototypeArgumentId> {
+        let (destination_attribute_value_id, attribute_prototype_argument_id) =
+            Self::connect_inner(
+                ctx,
+                source_component_id,
+                source_external_provider_id,
+                destination_component_id,
+                destination_explicit_internal_provider_id,
+            )
+            .await?;
+
         ctx.enqueue_job(DependentValuesUpdate::new(
             ctx.access_builder(),
             *ctx.visibility(),
@@ -902,7 +947,73 @@ impl Component {
         ))
         .await?;
 
-        Ok(attribute_prototype_argument.id())
+        Ok(attribute_prototype_argument_id)
+    }
+
+    // NOTE(nick): this is probably algorithmically bad and we probably need to make it less bad.
+    /// Find all matching sockets for a given source [`Component`] and a given destination [`Component`].
+    ///
+    /// This is useful when [`attaching`](frame::Frame::attach_child_to_parent) a child [`Component`] to a parent
+    /// frame.
+    pub async fn connect_all(
+        ctx: &DalContext,
+        source_component_id: ComponentId,
+        destination_component_id: ComponentId,
+    ) -> ComponentResult<()> {
+        let source_schema_variant_id =
+            Component::schema_variant_id(ctx, source_component_id).await?;
+        let destination_schema_variant_id =
+            Component::schema_variant_id(ctx, destination_component_id).await?;
+
+        let source_external_providers =
+            ExternalProvider::list(ctx, source_schema_variant_id).await?;
+        let destination_internal_providers =
+            InternalProvider::list(ctx, destination_schema_variant_id).await?;
+
+        // TODO(nick): use annotations instead of names. Also make this less bad.
+        let mut external_providers_by_annotation: HashMap<String, ExternalProviderId> =
+            HashMap::new();
+        for source_external_provider in source_external_providers {
+            external_providers_by_annotation.insert(
+                source_external_provider.name().to_string(),
+                source_external_provider.id(),
+            );
+        }
+
+        let mut internal_providers_by_annotation: HashMap<String, InternalProviderId> =
+            HashMap::new();
+        for destination_internal_provider in destination_internal_providers {
+            internal_providers_by_annotation.insert(
+                destination_internal_provider.name().to_string(),
+                destination_internal_provider.id(),
+            );
+        }
+
+        // NOTE(nick): using the maps reliant on the name, connect all sockets we can.
+        let mut to_enqueue = Vec::new();
+        for (key, external_provider_id) in external_providers_by_annotation {
+            if let Some(internal_provider_id) = internal_providers_by_annotation.get(&key) {
+                let (attribute_value_id, _) = Self::connect_inner(
+                    ctx,
+                    source_component_id,
+                    external_provider_id,
+                    destination_component_id,
+                    *internal_provider_id,
+                )
+                .await?;
+                to_enqueue.push(attribute_value_id);
+            }
+        }
+
+        // Enqueue all the values from each connection.
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            to_enqueue,
+        ))
+        .await?;
+
+        Ok(())
     }
 }
 

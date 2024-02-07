@@ -2,11 +2,9 @@ use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
+use dal::component::frame::Frame;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
-use dal::{
-    generate_name, Component, ComponentId, SchemaId, SchemaVariant, SchemaVariantId, Visibility,
-    WsEvent,
-};
+use dal::{generate_name, Component, ComponentId, SchemaId, SchemaVariant, Visibility, WsEvent};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::service::diagram::DiagramResult;
@@ -107,7 +105,11 @@ pub async fn create_component(
         )
         .await?;
 
-    // TODO(nick): restore frames.
+    if let Some(frame_id) = request.parent_id {
+        Frame::attach_child_to_parent(&ctx, frame_id, component.id()).await?;
+    }
+
+    // TODO(nick): restore posthog logic and other potential missing frame logic.
     // if let Some(frame_id) = request.parent_id {
     //     let component_socket = Socket::find_frame_socket_for_node(
     //         &ctx,

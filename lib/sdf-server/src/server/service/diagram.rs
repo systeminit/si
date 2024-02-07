@@ -3,6 +3,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
+use dal::component::frame::FrameError;
 use dal::component::ComponentError;
 use dal::node_menu::NodeMenuError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
@@ -14,6 +15,7 @@ use crate::server::state::AppState;
 
 use self::get_node_add_menu::get_node_add_menu;
 
+mod connect_component_to_frame_new_engine;
 pub mod create_component;
 pub mod create_connection;
 pub mod get_diagram;
@@ -43,6 +45,8 @@ pub enum DiagramError {
     ContextTransaction(#[from] TransactionsError),
     #[error("dal diagram error: {0}")]
     DalDiagram(#[from] dal::diagram::DiagramError),
+    #[error("dal frame error: {0}")]
+    DalFrame(#[from] dal::component::frame::FrameError),
     #[error("dal schema error: {0}")]
     DalSchema(#[from] dal::SchemaError),
     #[error("dal schema variant error: {0}")]
@@ -130,10 +134,10 @@ pub fn routes() -> Router<AppState> {
         //     "/restore_components",
         //     post(restore_component::restore_components),
         // )
-        // .route(
-        //     "/connect_component_to_frame",
-        //     post(connect_component_to_frame::connect_component_to_frame),
-        // )
+        .route(
+            "/connect_component_to_frame",
+            post(connect_component_to_frame_new_engine::connect_component_to_frame),
+        )
         .route("/get_node_add_menu", post(get_node_add_menu))
         .route(
             "/create_connection",
