@@ -204,25 +204,11 @@ impl ComponentBag {
         .expect("cannot get attribute value")
         .expect("attribute value not found");
 
-        let parent_prop = Prop::get_by_id(ctx, &prop_id)
+        let parent_attribute_value = attribute_value
+            .parent_attribute_value(ctx)
             .await
-            .expect("could not get prop by id")
-            .expect("prop not found by id")
-            .parent_prop(ctx)
-            .await
-            .expect("could not find parent prop")
-            .expect("parent prop not found or prop does not have parent");
-        assert_eq!(&PropKind::Object, parent_prop.kind());
-        let parent_attribute_value = AttributeValue::find_for_context(
-            ctx,
-            AttributeReadContext {
-                prop_id: Some(*parent_prop.id()),
-                ..self.base_attribute_read_context
-            },
-        )
-        .await
-        .expect("cannot get attribute value")
-        .expect("attribute value not found");
+            .expect("cannot get parent attribute value")
+            .expect("no parent attribute value found");
 
         let update_attribute_context =
             AttributeContextBuilder::from(self.base_attribute_read_context)
