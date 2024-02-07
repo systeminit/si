@@ -116,6 +116,7 @@ export type MenuSchema = {
   id: SchemaId;
   displayName: string;
   color: string;
+  category: string;
 };
 
 export type NodeAddMenu = {
@@ -191,6 +192,28 @@ type PendingComponent = {
   tempId: string;
   position: Vector2d;
   componentId?: ComponentId;
+};
+
+export const getAssetIcon = (name: string) => {
+  const icons = {
+    AWS: "logo-aws",
+    "AWS EC2": "logo-aws",
+    CoreOS: "logo-coreos",
+    Docker: "logo-docker",
+    Kubernetes: "logo-k8s",
+  } as Record<string, string>;
+
+  let icon = icons[name];
+
+  if (!icon) {
+    for (const k in icons) {
+      if (name.includes(k)) {
+        icon = icons[k];
+      }
+    }
+  }
+
+  return (icon || "logo-si") as IconNames; // fallback to SI logo
 };
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
@@ -299,14 +322,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             return _.mapValues(this.rawComponentsById, (rc) => {
               // these categories should probably have a name and a different displayName (ie "aws" vs "Amazon AWS")
               // and eventually can just assume the icon is `logo-${name}`
-              const typeIcon =
-                {
-                  AWS: "logo-aws",
-                  "AWS EC2": "logo-aws",
-                  CoreOS: "logo-coreos",
-                  Docker: "logo-docker",
-                  Kubernetes: "logo-k8s",
-                }[rc?.schemaCategory || ""] || "logo-si"; // fallback to SI logo
+              const typeIcon = getAssetIcon(rc?.schemaCategory);
 
               const ancestorIds = getAncestorIds(rc.id);
 
@@ -531,6 +547,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                         id: item.schema_id,
                         // links: item.links, // not sure this is needed?
                         color: schemaVariant?.color ?? "#777",
+                        category: category.name,
                       };
                     }),
                   ),

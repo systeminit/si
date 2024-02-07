@@ -9,7 +9,13 @@
     <template v-else-if="schemasReqStatus.isSuccess">
       <ScrollArea>
         <template #top>
-          <SidebarSubpanelTitle label="Assets" icon="component-plus">
+          <SidebarSubpanelTitle icon="component-plus">
+            <template #label>
+              <div class="flex flex-row gap-xs">
+                <div>Assets</div>
+                <PillCounter :count="assetCount" borderTone="action" />
+              </div>
+            </template>
             <Icon
               v-tooltip="{
                 content:
@@ -28,7 +34,8 @@
           />
         </template>
 
-        <ul class="overflow-y-auto">
+        <!-- OLD ASSET PALETTE -->
+        <!-- <ul class="overflow-y-auto">
           <Collapsible
             v-for="(category, categoryIndex) in filteredComponents"
             ref="collapsibleRefs"
@@ -63,7 +70,60 @@
               />
             </li>
           </Collapsible>
-        </ul>
+        </ul> -->
+
+        <TreeNode
+          v-for="(category, categoryIndex) in filteredComponents"
+          :key="categoryIndex"
+          :label="category.displayName"
+          :icon="getAssetIcon(category.displayName)"
+          :color="category.schemas[0]?.color || '#000'"
+          classes="bg-neutral-100 dark:bg-neutral-700 group/tree"
+          labelClasses="font-bold select-none hover:text-action-500 dark:hover:text-action-300"
+          enableGroupToggle
+          alwaysShowArrow
+          clickLabelToToggle
+          indentationSize="none"
+        >
+          <template #icons>
+            <PillCounter
+              :count="category.schemas.length"
+              borderTone="action"
+              class="group-hover/tree:text-action-500 dark:group-hover/tree:text-action-300 group-hover/tree:bg-action-100 dark:group-hover/tree:bg-action-800"
+            />
+          </template>
+          <TreeNode
+            v-for="(schema, schemaIndex) in category.schemas"
+            :key="schemaIndex"
+            :color="schema.color"
+            :classes="
+              clsx(
+                'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
+                fixesAreRunning
+                  ? 'hover:cursor-progress'
+                  : 'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1',
+                !fixesAreRunning &&
+                  componentsStore.selectedInsertSchemaId === schema.id
+                  ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300 py-0'
+                  : 'dark:hover:text-action-300 hover:text-action-500',
+              )
+            "
+            :isSelected="componentsStore.selectedInsertSchemaId === schema.id"
+            @mousedown.left.stop="onSelect(schema.id, fixesAreRunning, $event)"
+            @click.right.prevent
+          >
+            <template #label>
+              <div>
+                {{ schema.displayName }}
+              </div>
+              <!-- <div
+                class="italic text-xs text-neutral-500 dark:text-neutral-400"
+              >
+                asset by: System Initiative
+              </div> -->
+            </template>
+          </TreeNode>
+        </TreeNode>
       </ScrollArea>
     </template>
 
@@ -82,15 +142,21 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, onMounted, onBeforeUnmount, ref } from "vue";
-import { Collapsible, Icon, ScrollArea } from "@si/vue-lib/design-system";
+import { computed, onMounted, onBeforeUnmount, ref, nextTick } from "vue";
+import {
+  Collapsible,
+  Icon,
+  PillCounter,
+  ScrollArea,
+  TreeNode,
+} from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { windowListenerManager } from "@si/vue-lib";
-import SiNodeSprite from "@/components/SiNodeSprite.vue";
 import {
   useComponentsStore,
   MenuSchema,
   NodeAddMenu,
+  getAssetIcon,
 } from "@/store/components.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
@@ -155,6 +221,16 @@ const filteredComponents = computed(() => {
   return filteredCategories;
 });
 
+const assetCount = computed(() => {
+  let count = 0;
+
+  filteredComponents.value.forEach((category) => {
+    count += category.schemas.length;
+  });
+
+  return count;
+});
+
 const schemasById = computed(() => {
   return addMenuData.value.reduce((p, c) => {
     c.schemas.forEach((schema) => {
@@ -179,7 +255,7 @@ const updateMouseNode = (e: MouseEvent) => {
   }
 };
 
-function onSelect(schemaId: string, fixesAreRunning: boolean) {
+function onSelect(schemaId: string, fixesAreRunning: boolean, e: MouseEvent) {
   if (fixesAreRunning) {
     // Prevent selection while fixes are running
     return;
@@ -189,6 +265,11 @@ function onSelect(schemaId: string, fixesAreRunning: boolean) {
     componentsStore.cancelInsert();
   } else {
     componentsStore.setInsertSchema(schemaId);
+    if (e) {
+      nextTick(() => {
+        updateMouseNode(e);
+      });
+    }
   }
 }
 
