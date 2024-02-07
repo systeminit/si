@@ -13,6 +13,11 @@ check_params_set(){
 EOF
    fi
 
+   if ! test -f /firecracker-data/decrypt_key.ext4; then
+     echo "No decryption key found at /firecracker-data/decrypt_key.ext4! This must be present in order to run functions. Exiting..." >&2
+     exit 1
+   fi
+
     echo "---------------------------------"
     echo "Values passed as inputs:"
     echo "VARIABLES_FILE=${VARIABLES_FILE:-/tmp/variables.txt}"
@@ -232,7 +237,7 @@ execute_configuration_management() {
 
         # This permits NAT from within the Jail to access the otelcol running on the external interface of the machine. Localhost is `not` resolveable from
         # within the jail or the micro-vm directly due to /etc/hosts misalignment. Hardcoding the destination to 12.0.0.1 for the otel endpoint allows us to
-        # ship a static copy of the rootfs but allow us to keep the dynamic nature of the machine hosting. 
+        # ship a static copy of the rootfs but allow us to keep the dynamic nature of the machine hosting.
         if ! iptables -t nat -C PREROUTING -p tcp --dport 4316 -d 1.0.0.1 -j DNAT --to-destination $(ip route get 8.8.8.8 | awk -- '{printf $7}'):4317; then
           iptables -t nat -A PREROUTING -p tcp --dport 4316 -d 1.0.0.1 -j DNAT --to-destination $(ip route get 8.8.8.8 | awk -- '{printf $7}'):4317
         fi
@@ -277,7 +282,7 @@ execute_cleanup() {
 
         arch-linux)
             # Insert OS specific cleanup steps here
-            echo "Info: Executing post-clean up for arch"          
+            echo "Info: Executing post-clean up for arch"
         ;;
 
         ubuntu)
@@ -313,7 +318,7 @@ clean_jails() {
         if [ $(jobs -r | wc -l) -ge $IN_PARALLEL ]; then
          wait $(jobs -r -p | head -1)
         fi
-        /firecracker-data/stop.sh $iter &> /dev/null &
+        /firecracker-data/stop.sh $iter
     done
     wait
     echo

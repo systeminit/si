@@ -57,14 +57,14 @@ type Result<T> = result::Result<T, PoolNoodleError>;
 #[derive(Debug, Error)]
 pub enum PoolNoodleError {
     /// Failed to clean a jail.
-    #[error("Failed to clean the jail")]
-    CleanJail,
+    #[error("Failed to clean the jail: `{0}`")]
+    CleanJail(String),
     /// Failed to get a new jail ID.
     #[error("Failed to get a new jail from the execution pool!")]
     ExecutionPoolStarved,
     /// Failed to prepare a new jail.
-    #[error("Failed to prepare the jail")]
-    PrepareJail,
+    #[error("Failed to prepare the jail: `{0}`")]
+    PrepareJail(String),
     /// Failed to set a jail to be cleaned.
     #[error("Failed to set a jail to be cleaned.")]
     SetClean,
@@ -157,8 +157,9 @@ impl PoolNoodle {
                                 debug!("PoolNoodle: jail readied: {}", id);
                                 me.ready.push(id);
                             }
-                            Err(_) => {
+                            Err(e) => {
                                 warn!("PoolNoodle: failed to ready jail: {}", id);
+                                warn!("{}", e);
                                 me.unprepared.push_front(id);
                             }
                         }
@@ -173,15 +174,16 @@ impl PoolNoodle {
                             // it worked!
                             Ok(_) => {
                                 debug!("PoolNoodle: jail cleaned: {}", id);
-                                me.unprepared.push_back(id);
+                                me.unprepared.push_front(id);
                                 // this jail should no longer be active, so let's make sure we
                                 // remove it
                                 me.active.remove(&id);
                             }
-                            // it did not work. We should move on to a different jail. This one will be
-                            // abandoned.
-                            Err(_) => {
+                            // it did not work. We should move on to a different jail and try this again later.                            // abandoned.
+                            Err(e) => {
                                 warn!("PoolNoodle: failed to clean jail: {}", id);
+                                warn!("{}", e);
+                                me.to_be_cleaned.push_front(id);
                             }
                         };
                     };
@@ -208,31 +210,45 @@ impl PoolNoodle {
         });
     }
 
-    /// This readies a jail. This script is place in the correct location during Veritech startup.
-    /// todo(scott): This method should be replace with a Rust-native implementation.
+    /// This readies a jail. This script is placed in the correct location during Veritech startup.
+    /// todo(scott): This method should be replaced with a Rust-native implementation.
     async fn prepare_jail(id: u32) -> Result<()> {
+        debug!("PoolNoodle: readying jail: {}", id);
         let command = String::from("/firecracker-data/prepare_jailer.sh");
-        let _status = Command::new("sudo")
-            .arg(command)
-            .arg(id.to_string())
-            .status()
-            .await
-            .map_err(|_| PoolNoodleError::PrepareJail)?;
-
-        Ok(())
-    }
-
-    /// This cleans a jail. This script is place in the correct location during Veritech startup.
-    /// todo(scott): This method should be replace with a Rust-native implementation. This could
-    /// also be made more efficient by only replacing the rootfs instead of cleaning everything.
-    async fn clean_jail(id: u32) -> Result<()> {
-        let command = String::from("/firecracker-data/stop.sh");
-        let _status = Command::new("sudo")
+        let output = Command::new("sudo")
             .arg(command)
             .arg(id.to_string())
             .output()
             .await
-            .map_err(|_| PoolNoodleError::CleanJail)?;
+            .map_err(|e| PoolNoodleError::PrepareJail(e.to_string()))?;
+
+        if !output.stderr.is_empty() {
+            return Err(PoolNoodleError::PrepareJail(
+                String::from_utf8(output.stderr).expect("This should not be empty"),
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// This cleans a jail. This script is placed in the correct location during Veritech startup.
+    /// todo(scott): This method should be replaced with a Rust-native implementation. This could
+    /// also be made more efficient by only replacing the rootfs instead of cleaning everything.
+    async fn clean_jail(id: u32) -> Result<()> {
+        debug!("PoolNoodle: cleaning jail: {}", id);
+        let command = String::from("/firecracker-data/stop.sh");
+        let output = Command::new("sudo")
+            .arg(command)
+            .arg(id.to_string())
+            .output()
+            .await
+            .map_err(|e| PoolNoodleError::CleanJail(e.to_string()))?;
+
+        if !output.stderr.is_empty() {
+            return Err(PoolNoodleError::CleanJail(
+                String::from_utf8(output.stderr).expect("This should not be empty"),
+            ));
+        }
 
         Ok(())
     }
