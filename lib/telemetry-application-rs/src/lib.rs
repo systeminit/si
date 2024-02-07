@@ -580,21 +580,31 @@ impl TelemetryUpdateTask {
         while let Some(command) = self.update_command_rx.recv().await {
             match command {
                 TelemetryCommand::TracingLevel { level, wait } => {
-                    if let Err(err) = self.update_tracing_level(level) {
-                        warn!(
-                            task = Self::NAME,
-                            error = ?err,
-                            "failed to update tracing level, using prior value",
-                        );
-                    }
-                    if let Some(tx) = wait {
-                        if let Err(err) = tx.send(()) {
+                    // We want a span around the update logging so this is transmitted to our
+                    // OpenTelemetry endpoint. We may use this span (and associated events) as a
+                    // deployment mutation event, for example adding a mark in Honeycomb.
+                    //
+                    // Also note that we're using the `in_scope` method as none of the containing
+                    // code is asynchronous--if there were async code then we'd use the
+                    // `.instrument()` combinator on the future.
+                    let span = info_span!("telemetry_update_task.update_tracing_level");
+                    span.in_scope(|| {
+                        if let Err(err) = self.update_tracing_level(level) {
                             warn!(
+                                task = Self::NAME,
                                 error = ?err,
-                                "receiver already closed when waiting on changing tracing level",
+                                "failed to update tracing level, using prior value",
                             );
                         }
-                    }
+                        if let Some(tx) = wait {
+                            if let Err(err) = tx.send(()) {
+                                warn!(
+                                    error = ?err,
+                                    "receiver already closed when waiting on changing tracing level",
+                                );
+                            }
+                        }
+                    })
                 }
                 TelemetryCommand::Shutdown(token) => {
                     if !self.is_shutdown {
