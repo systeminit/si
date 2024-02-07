@@ -178,6 +178,8 @@ pub trait TelemetryLevel: Send + Sync {
 #[derive(Clone, Debug)]
 pub struct ApplicationTelemetryClient {
     app_modules: Arc<Vec<&'static str>>,
+    interesting_modules: Arc<Vec<&'static str>>,
+    never_modules: Arc<Vec<&'static str>>,
     tracing_level: Arc<Mutex<TracingLevel>>,
     update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
 }
@@ -185,11 +187,15 @@ pub struct ApplicationTelemetryClient {
 impl ApplicationTelemetryClient {
     pub fn new(
         app_modules: Vec<&'static str>,
+        interesting_modules: Vec<&'static str>,
+        never_modules: Vec<&'static str>,
         tracing_level: TracingLevel,
         update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
     ) -> Self {
         Self {
             app_modules: Arc::new(app_modules),
+            interesting_modules: Arc::new(interesting_modules),
+            never_modules: Arc::new(never_modules),
             tracing_level: Arc::new(Mutex::new(tracing_level)),
             update_telemetry_tx,
         }
@@ -209,7 +215,12 @@ impl TelemetryClient for ApplicationTelemetryClient {
                 *verbosity = updated;
             }
             TracingLevel::Custom(_) => {
-                *tracing_level = TracingLevel::new(updated, Some(self.app_modules.as_slice()));
+                *tracing_level = TracingLevel::new(
+                    updated,
+                    Some(self.app_modules.as_slice()),
+                    Some(self.interesting_modules.as_slice()),
+                    Some(self.never_modules.as_slice()),
+                );
             }
         }
 
@@ -327,14 +338,23 @@ pub enum TracingLevel {
     Verbosity {
         verbosity: Verbosity,
         app_modules: Option<Vec<Cow<'static, str>>>,
+        interesting_modules: Option<Vec<Cow<'static, str>>>,
+        never_modules: Option<Vec<Cow<'static, str>>>,
     },
 }
 
 impl TracingLevel {
-    pub fn new(verbosity: Verbosity, app_modules: Option<impl IntoAppModules>) -> Self {
+    pub fn new(
+        verbosity: Verbosity,
+        app_modules: Option<impl IntoAppModules>,
+        interesting_modules: Option<impl IntoAppModules>,
+        never_modules: Option<impl IntoAppModules>,
+    ) -> Self {
         Self::Verbosity {
             verbosity,
             app_modules: app_modules.map(IntoAppModules::into_app_modules),
+            interesting_modules: interesting_modules.map(IntoAppModules::into_app_modules),
+            never_modules: never_modules.map(IntoAppModules::into_app_modules),
         }
     }
 
@@ -350,15 +370,16 @@ impl TracingLevel {
     }
 }
 
-#[remain::sorted]
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd)]
 #[allow(clippy::enum_variant_names)]
 pub enum Verbosity {
-    DebugAppAndInfoAll,
     InfoAll,
+    DebugAppInfoInterestingInfoAll,
+    DebugAppDebugInterestingInfoAll,
+    TraceAppDebugInterestingInfoAll,
+    TraceAppTraceInterestingInfoAll,
+    TraceAppTraceInterestingDebugAll,
     TraceAll,
-    TraceAppAndDebugAll,
-    TraceAppAndInfoAll,
 }
 
 impl Verbosity {
@@ -392,9 +413,11 @@ impl From<u8> for Verbosity {
     fn from(value: u8) -> Self {
         match value {
             0 => Self::InfoAll,
-            1 => Self::DebugAppAndInfoAll,
-            2 => Self::TraceAppAndInfoAll,
-            3 => Self::TraceAppAndDebugAll,
+            1 => Self::DebugAppInfoInterestingInfoAll,
+            2 => Self::DebugAppDebugInterestingInfoAll,
+            3 => Self::TraceAppDebugInterestingInfoAll,
+            4 => Self::TraceAppTraceInterestingInfoAll,
+            5 => Self::TraceAppTraceInterestingDebugAll,
             _ => Self::TraceAll,
         }
     }
@@ -404,10 +427,12 @@ impl From<Verbosity> for u8 {
     fn from(value: Verbosity) -> Self {
         match value {
             Verbosity::InfoAll => 0,
-            Verbosity::DebugAppAndInfoAll => 1,
-            Verbosity::TraceAppAndInfoAll => 2,
-            Verbosity::TraceAppAndDebugAll => 3,
-            Verbosity::TraceAll => 4,
+            Verbosity::DebugAppInfoInterestingInfoAll => 1,
+            Verbosity::DebugAppDebugInterestingInfoAll => 2,
+            Verbosity::TraceAppDebugInterestingInfoAll => 3,
+            Verbosity::TraceAppTraceInterestingInfoAll => 4,
+            Verbosity::TraceAppTraceInterestingDebugAll => 5,
+            Verbosity::TraceAll => 6,
         }
     }
 }

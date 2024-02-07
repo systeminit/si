@@ -17,7 +17,7 @@ pub(crate) fn parse() -> Args {
 pub(crate) struct Args {
     /// Sets the verbosity mode.
     ///
-    /// Multiple -v options increase verbosity. The maximum is 4.
+    /// Multiple -v options increase verbosity. The maximum is 6.
     #[arg(short = 'v', long = "verbose", action = ArgAction::Count)]
     pub(crate) verbose: u8,
 

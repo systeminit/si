@@ -39,6 +39,7 @@ async fn async_main() -> Result<()> {
             .service_namespace("si")
             .log_env_var_prefix("SI")
             .app_modules(vec!["council", "council_server"])
+            .interesting_modules(vec!["si_data_nats"])
             .build()?;
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?

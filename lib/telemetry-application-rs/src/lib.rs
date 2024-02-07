@@ -57,6 +57,10 @@ pub mod prelude {
     pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
 }
 
+// Rust crates that will not output span or event telemetry, no matter what the default level is
+// set to. In other words, each of these crates/modules will have `MODULE=off` as their value.
+const DEFAULT_NEVER_MODULES: &[&str] = &["h2", "hyper"];
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
@@ -88,8 +92,17 @@ pub struct TelemetryConfig {
     #[builder(setter(into))]
     service_namespace: &'static str,
 
-    #[builder(default)]
+    #[builder(setter(each(name = "app_module"), into), default)]
     app_modules: Vec<&'static str>,
+
+    #[builder(setter(each(name = "interesting_module"), into), default)]
+    interesting_modules: Vec<&'static str>,
+
+    #[builder(
+        setter(each(name = "never_module"), into),
+        default = "self.default_never_modules()"
+    )]
+    never_modules: Vec<&'static str>,
 
     #[builder(setter(into, strip_option), default = "None")]
     custom_default_tracing_level: Option<String>,
@@ -143,6 +156,10 @@ impl TelemetryConfig {
 }
 
 impl TelemetryConfigBuilder {
+    fn default_never_modules(&self) -> Vec<&'static str> {
+        DEFAULT_NEVER_MODULES.to_vec()
+    }
+
     fn default_log_env_var_prefix(
         &self,
     ) -> std::result::Result<Option<String>, TelemetryConfigBuilderError> {
@@ -227,7 +244,11 @@ pub fn init(
     let (subscriber, handles) = tracing_subscriber(&config, &tracing_level, span_events_fmt)?;
     subscriber.try_init()?;
 
-    debug!(?config, "telemetry configuration");
+    info!(
+        ?config,
+        directives = TracingDirectives::from(&tracing_level).as_str(),
+        "telemetry configuration"
+    );
 
     let (client, guard) = create_client(config, tracing_level, handles, tracker, shutdown_token)?;
 
@@ -257,7 +278,12 @@ fn default_tracing_level(config: &TelemetryConfig) -> TracingLevel {
     if let Some(ref directives) = config.custom_default_tracing_level {
         TracingLevel::custom(directives)
     } else {
-        TracingLevel::new(Verbosity::default(), Some(config.app_modules.as_ref()))
+        TracingLevel::new(
+            Verbosity::default(),
+            Some(config.app_modules.as_ref()),
+            Some(config.interesting_modules.as_ref()),
+            Some(config.never_modules.as_ref()),
+        )
     }
 }
 
@@ -397,6 +423,8 @@ fn create_client(
 
     let client = ApplicationTelemetryClient::new(
         config.app_modules,
+        config.interesting_modules,
+        config.never_modules,
         tracing_level,
         update_telemetry_tx.clone(),
     );
@@ -582,8 +610,8 @@ impl TelemetryUpdateTask {
 
         info!(
             task = Self::NAME,
-            "updated tracing levels to: {:?}",
-            directives.as_str()
+            directives = directives.as_str(),
+            "updated tracing levels",
         );
 
         Ok(())
@@ -631,7 +659,14 @@ impl From<TracingLevel> for TracingDirectives {
             TracingLevel::Verbosity {
                 verbosity,
                 app_modules,
-            } => Self::new(verbosity, &app_modules),
+                interesting_modules,
+                never_modules,
+            } => Self::new(
+                verbosity,
+                &app_modules,
+                &interesting_modules,
+                &never_modules,
+            ),
             TracingLevel::Custom(custom) => custom.into(),
         }
     }
@@ -643,70 +678,83 @@ impl From<&TracingLevel> for TracingDirectives {
             TracingLevel::Verbosity {
                 verbosity,
                 app_modules,
-            } => Self::new(*verbosity, app_modules),
+                interesting_modules,
+                never_modules,
+            } => Self::new(*verbosity, app_modules, interesting_modules, never_modules),
             TracingLevel::Custom(custom) => custom.clone().into(),
         }
     }
 }
 
 impl TracingDirectives {
-    fn new(verbosity: Verbosity, app_modules: &Option<Vec<Cow<'static, str>>>) -> Self {
+    fn new(
+        verbosity: Verbosity,
+        app_modules: &Option<Vec<Cow<'static, str>>>,
+        interesting_modules: &Option<Vec<Cow<'static, str>>>,
+        never_modules: &Option<Vec<Cow<'static, str>>>,
+    ) -> Self {
+        let app_str = |level: &str| {
+            app_modules.as_ref().map(|arr| {
+                arr.iter()
+                    .map(|m| format!("{m}={level}"))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            })
+        };
+        let interesting_str = |level: &str| {
+            interesting_modules.as_ref().map(|arr| {
+                arr.iter()
+                    .map(|m| format!("{m}={level}"))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            })
+        };
+        let never_str = never_modules.as_ref().map(|arr| {
+            arr.iter()
+                .map(|m| format!("{m}=off"))
+                .collect::<Vec<_>>()
+                .join(",")
+        });
+
+        let directives_for = |app_level: &'static str,
+                              interesting_level: &'static str,
+                              default_level: &'static str| {
+            match (
+                app_str(app_level),
+                interesting_str(interesting_level),
+                never_str,
+            ) {
+                (None, None, None) => Cow::Borrowed(default_level),
+                (None, None, Some(never)) => Cow::Owned(format!("{never},{default_level}")),
+                (None, Some(interesting), None) => {
+                    Cow::Owned(format!("{interesting},{default_level}"))
+                }
+                (None, Some(interesting), Some(never)) => {
+                    Cow::Owned(format!("{interesting},{never},{default_level}"))
+                }
+                (Some(app), None, None) => Cow::Owned(format!("{app},{default_level}")),
+                (Some(app), None, Some(never)) => {
+                    Cow::Owned(format!("{app},{never},{default_level}"))
+                }
+                (Some(app), Some(interesting), None) => {
+                    Cow::Owned(format!("{app},{interesting},{default_level}"))
+                }
+                (Some(app), Some(interesting), Some(never)) => {
+                    Cow::Owned(format!("{app},{interesting},{never},{default_level}"))
+                }
+            }
+        };
+
         let directives = match verbosity {
-            Verbosity::InfoAll => match &app_modules {
-                Some(mods) => Cow::Owned(format!(
-                    "{},{}",
-                    "info",
-                    mods.iter()
-                        .map(|m| format!("{m}=info"))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )),
-                None => Cow::Borrowed("info"),
-            },
-            Verbosity::DebugAppAndInfoAll => match &app_modules {
-                Some(mods) => Cow::Owned(format!(
-                    "{},{}",
-                    "info",
-                    mods.iter()
-                        .map(|m| format!("{m}=debug"))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )),
-                None => Cow::Borrowed("debug"),
-            },
-            Verbosity::TraceAppAndInfoAll => match &app_modules {
-                Some(mods) => Cow::Owned(format!(
-                    "{},{}",
-                    "info",
-                    mods.iter()
-                        .map(|m| format!("{m}=trace"))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )),
-                None => Cow::Borrowed("trace"),
-            },
-            Verbosity::TraceAppAndDebugAll => match &app_modules {
-                Some(mods) => Cow::Owned(format!(
-                    "{},{}",
-                    "debug",
-                    mods.iter()
-                        .map(|m| format!("{m}=trace"))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )),
-                None => Cow::Borrowed("trace"),
-            },
-            Verbosity::TraceAll => match &app_modules {
-                Some(mods) => Cow::Owned(format!(
-                    "{},{}",
-                    "trace",
-                    mods.iter()
-                        .map(|m| format!("{m}=trace"))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )),
-                None => Cow::Borrowed("trace"),
-            },
+            Verbosity::InfoAll => directives_for("info", "info", "info"),
+            Verbosity::DebugAppInfoInterestingInfoAll => directives_for("debug", "info", "info"),
+            Verbosity::DebugAppDebugInterestingInfoAll => directives_for("debug", "debug", "info"),
+            Verbosity::TraceAppDebugInterestingInfoAll => directives_for("trace", "debug", "info"),
+            Verbosity::TraceAppTraceInterestingInfoAll => directives_for("trace", "trace", "info"),
+            Verbosity::TraceAppTraceInterestingDebugAll => {
+                directives_for("trace", "trace", "debug")
+            }
+            Verbosity::TraceAll => directives_for("trace", "trace", "trace"),
         };
 
         Self(directives)
