@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
             .set_verbosity_and_wait(args.verbose.into())
             .await?;
     }
-    trace!(arguments =?args, "parsed cli arguments");
+    debug!(arguments =?args, "parsed cli arguments");
 
     let decryption_key = Server::load_decryption_key(&args.decryption_key).await?;
 

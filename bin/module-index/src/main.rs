@@ -50,7 +50,7 @@ async fn async_main() -> Result<()> {
             .set_verbosity_and_wait(args.verbose.into())
             .await?;
     }
-    trace!(arguments =?args, "parsed cli arguments");
+    debug!(arguments =?args, "parsed cli arguments");
 
     let config = Config::try_from(args)?;
 
