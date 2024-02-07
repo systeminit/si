@@ -2,20 +2,16 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 
-// Joi does not contain Joi.build() by default on browsers, so we import
-// it directly from the lib build. We also had to import node's Buffer
-// in web/main.ts for that to work
-import Joi, { Schema } from "joi/lib/index";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import {
   PropertyEditorProp,
-  PropertyEditorPropKind,
   PropertyEditorSchema,
   PropertyEditorValue,
   PropertyEditorValues,
 } from "@/api/sdf/dal/property_editor";
 import { nilId } from "@/utils/nilId";
 import { Qualification } from "@/api/sdf/dal/qualification";
+import { OutputStream } from "@/api/sdf/dal/resource";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -52,12 +48,21 @@ export interface SetTypeArgs {
   value?: unknown;
 }
 
+export interface ValidationOutput {
+  status: "Error" | "Failure" | "Success";
+  message: string;
+  logs: OutputStream;
+}
+
+export type PropertyEditorValidations = { [key: string]: ValidationOutput };
+
 export type AttributeTreeItem = {
   propDef: PropertyEditorProp;
   children: AttributeTreeItem[];
   value: PropertyEditorValue | undefined;
   valueId: string;
   parentValueId: string;
+  validation: ValidationOutput | undefined;
   propId: string;
   mapKey?: string;
   arrayKey?: string;
@@ -87,15 +92,17 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           // but we'll just move into a pinia store as the first step...
           schema: null as PropertyEditorSchema | null,
           values: null as PropertyEditorValues | null,
+          validations: null as PropertyEditorValidations | null,
         }),
         getters: {
           // recombine the schema + values + validations into a single nested tree that can be used by the attributes panel
           attributesTree: (state): AttributeTreeItem | undefined => {
-            const { schema, values } = state;
+            const { schema, values, validations } = state;
             if (!schema || !values) return;
 
-            const valuesByValueId = state.values?.values;
-            const propsByPropId = state.schema?.props;
+            const validationsByPropId = validations ?? {};
+            const valuesByValueId = values.values;
+            const propsByPropId = schema.props;
             const rootValueId = values.rootValueId;
 
             if (!valuesByValueId || !propsByPropId || !rootValueId) return;
@@ -109,6 +116,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               const value = valuesByValueId![valueId]!;
 
               const propDef = propsByPropId![value.propId as any];
+              const validation = validationsByPropId![value.propId as any];
 
               // some values that we see are for props that are hidden, so we filter them out
               if (!propDef) return;
@@ -120,6 +128,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 value,
                 valueId,
                 parentValueId,
+                validation,
                 // using isNil because its actually null (not undefined)
                 ...(indexInParentArray === undefined &&
                   !_.isNil(value.key) && { mapKey: value.key }),
@@ -175,87 +184,42 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           },
 
           schemaValidation(): Qualification {
+            const emptyQualification = {
+              title: "Schema Validation",
+              output: [],
+              result: {
+                status: "unknown" as "success" | "unknown",
+                sub_checks: [],
+              },
+            };
+
             if (!featureFlagsStore.JOI_VALIDATIONS) {
               /* eslint-disable no-console */
               console.warn(
                 "Trying to get schemaValidation with feature flag turned off",
               );
+              return emptyQualification;
             }
-            const tree = this.domainTree;
 
-            const output = [];
-            let status: "success" | "failure" | "unknown" = tree
-              ? "success"
-              : "unknown";
+            if (!this.validations) {
+              return emptyQualification;
+            }
+
+            let status: "success" | "failure" = "success";
             let failCounter = 0;
+            const output = [];
+            for (const [propId, validation] of Object.entries(
+              this.validations,
+            )) {
+              const prop = this.schema?.props[propId];
+              if (!prop) continue;
 
-            // Walk down the prop tree and calculate all validations
-            const queue = [
-              {
-                prop: tree,
-                path: tree?.propDef.name,
-              },
-            ];
-            while (queue.length > 0) {
-              const { prop, path } = queue.pop() || {};
-              if (!prop) break;
-
-              const value = prop.value?.value || null;
-              const kind = prop.propDef.kind;
-
-              prop.children.forEach((c) => {
-                let pathSuffix = "";
-
-                switch (kind) {
-                  case PropertyEditorPropKind.Array:
-                    pathSuffix = `[${c.arrayIndex}]`;
-                    break;
-                  case PropertyEditorPropKind.Map:
-                    pathSuffix = `.${c.mapKey}`;
-                    break;
-                  default:
-                    break;
-                }
-
-                queue.push({
-                  prop: c,
-                  path: `${path}/${c.propDef.name}${pathSuffix}`,
-                });
-              });
-
-              if (
-                [
-                  PropertyEditorPropKind.Array,
-                  PropertyEditorPropKind.Map,
-                  PropertyEditorPropKind.Object,
-                ].includes(kind)
-              ) {
-                continue;
-              }
-
-              const validationFormat = (
-                prop.propDef.validationFormat
-                  ? Joi.build(JSON.parse(prop.propDef.validationFormat))
-                  : Joi.any()
-              ) as Schema;
-
-              // NOTE(victor): Joi treats null as a value, so even if .required()
-              // isn't set it fails validations for typed props
-              const valueNotNull = value === null ? undefined : value;
-
-              const { error } = validationFormat.validate(valueNotNull);
-
-              const errorMessage = error?.message;
-
-              if (errorMessage) {
+              if (validation.status !== "Success") {
                 status = "failure";
-                failCounter += 1;
+                failCounter++;
               }
-              // console.log(`${path} (${kind}): value ${value}`);
-              // console.log(`${path}: ${errorMessage ?? "OK"}`);
-
               output.push({
-                line: `${path}: ${errorMessage ?? "OK"}`,
+                line: `${prop.name}: ${validation.message}`,
                 stream: "stdout",
                 level: "log",
               });
@@ -327,10 +291,23 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               },
             });
           },
+          async FETCH_PROPERTY_EDITOR_VALIDATIONS() {
+            return new ApiRequest<PropertyEditorValidations>({
+              url: "component/get_property_editor_validations",
+              params: {
+                componentId: this.selectedComponentId,
+                ...visibilityParams,
+              },
+              onSuccess: (response) => {
+                this.validations = response;
+              },
+            });
+          },
 
           reloadPropertyEditorData() {
             this.FETCH_PROPERTY_EDITOR_SCHEMA();
             this.FETCH_PROPERTY_EDITOR_VALUES();
+            this.FETCH_PROPERTY_EDITOR_VALIDATIONS();
           },
 
           async REMOVE_PROPERTY_VALUE(

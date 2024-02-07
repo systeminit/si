@@ -15,7 +15,7 @@ use crate::{
     },
     job::producer::{JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
+    DalContext, Prop, StandardModel, StatusUpdater, Visibility, WsEvent,
 };
 use crate::{FuncBindingReturnValue, InternalProvider};
 
@@ -418,7 +418,7 @@ async fn update_value(
 
     // If this is for an internal provider corresponding to a root prop for the schema variant of an existing component,
     // then we want to update summary tables.
-    if !attribute_value.context.is_component_unset()
+    let value = if !attribute_value.context.is_component_unset()
         && !attribute_value.context.is_internal_provider_unset()
         && InternalProvider::is_for_root_prop(&ctx, attribute_value.context.internal_provider_id())
             .await
@@ -435,15 +435,33 @@ async fn update_value(
                     attribute_value.context.component_id(),
                 )
                 .await?;
+
+                component_value_json.clone()
+            } else {
+                serde_json::Value::Null
             }
+        } else {
+            serde_json::Value::Null
         }
-    }
+    } else {
+        serde_json::Value::Null
+    };
 
     ctx.commit().await?;
 
     if update_result.is_ok() {
         council.processed_value(attribute_value.id().into()).await?;
     }
+
+    Prop::run_validation(
+        &ctx,
+        attribute_value.context.prop_id(),
+        attribute_value.context.component_id(),
+        value,
+    )
+    .await;
+
+    ctx.commit().await?;
 
     Ok(())
 }
