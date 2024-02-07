@@ -33,6 +33,7 @@ async fn main() -> Result<()> {
             .service_namespace("si")
             .log_env_var_prefix("SI")
             .app_modules(vec!["cyclone", "cyclone_server"])
+            .interesting_modules(vec!["cyclone_core"])
             .custom_default_tracing_level(CUSTOM_DEFAULT_TRACING_LEVEL)
             .build()?;
 

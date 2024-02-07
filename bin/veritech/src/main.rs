@@ -25,6 +25,7 @@ async fn main() -> Result<()> {
             .service_namespace("si")
             .log_env_var_prefix("SI")
             .app_modules(vec!["veritech", "veritech_server"])
+            .interesting_modules(vec!["si_data_nats"])
             .build()?;
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
