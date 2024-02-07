@@ -71,10 +71,7 @@ impl ReadBytes for PropChildNode {
             PROP_CHILD_TYPE_ATTR_FUNC_INPUTS => Self::AttrFuncInputs,
             PROP_CHILD_TYPE_MAP_KEY_FUNCS => Self::MapKeyFuncs,
             PROP_CHILD_TYPE_PROPS => Self::Props,
-            invalid_kind => {
-                dbg!(format!("invalid schema variant child kind: {invalid_kind}"));
-                return Ok(None);
-            }
+            _ => return Ok(None),
         };
 
         Ok(Some(node))
