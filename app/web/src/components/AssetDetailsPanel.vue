@@ -154,7 +154,7 @@
           ? 'Asset Updated'
           : 'New Asset Created'
       "
-      @close="reloadBrowser"
+      @close="handleModalClose"
     >
       <ErrorMessage
         v-for="(warning, index) in assetStore.detachmentWarnings"
@@ -207,8 +207,6 @@ import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 const props = defineProps<{
   assetId?: string;
 }>();
-
-
 
 const assetStore = useAssetStore();
 const loadAssetReqStatus = assetStore.getRequestStatus(
@@ -306,7 +304,9 @@ const cloneAsset = async () => {
   }
 };
 
-function reloadBrowser() {
+function handleModalClose() {
+  // We should find a way to make this work without a hard refresh, and when we do we should just run the next line
+  // assetStore.executeAssetTaskId = undefined;
   window.location.reload();
 }
 </script>

@@ -1,15 +1,15 @@
+use std::{collections::HashMap, str::FromStr};
+
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use chrono::Utc;
 use convert_case::{Case, Casing};
 use hyper::Uri;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, str::FromStr};
 use strum::IntoEnumIterator;
-use telemetry::prelude::*;
 use ulid::Ulid;
 
-use dal::ws_event::{AttributePrototypeView, FinishSchemaVariantDefinitionPayload};
+use dal::ws_event::FinishSchemaVariantDefinitionPayload;
 use dal::{
     func::intrinsics::IntrinsicFunc,
     pkg::import_pkg_from_pkg,
@@ -18,10 +18,8 @@ use dal::{
     schema::variant::definition::{
         SchemaVariantDefinition, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
     },
-    ChangeSet, DalContext, Func, FuncBinding, HistoryActor, SchemaVariant, SchemaVariantError,
-    SchemaVariantId, StandardModel, User, WsEvent,
-    AttributePrototypeId, ChangeSet, Func, FuncBinding, FuncId, FuncVariant, HistoryActor,
-    SchemaVariant, SchemaVariantError, SchemaVariantId, StandardModel, User,
+    ChangeSet, DalContext, Func, FuncBinding, FuncId, HistoryActor, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, StandardModel, User, WsEvent,
 };
 use si_pkg::{
     FlatPropSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData,
@@ -32,14 +30,7 @@ use telemetry::prelude::*;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 
-use super::{
-    AttributePrototypeContextKind, SaveVariantDefRequest, SchemaVariantDefinitionError,
-    SchemaVariantDefinitionResult,
-    maybe_delete_schema_variant_connected_to_variant_def, migrate_actions_to_new_schema_variant,
-    migrate_attribute_functions_to_new_schema_variant,
-    migrate_leaf_functions_to_new_schema_variant, SaveVariantDefRequest,
-    SchemaVariantDefinitionError, SchemaVariantDefinitionResult,
-};
+use super::{SaveVariantDefRequest, SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
 
 pub type ExecVariantDefRequest = SaveVariantDefRequest;
 
@@ -524,41 +515,41 @@ pub async fn exec_variant_def_inner(
                             let name = inner_path.replace(&format!("{path}/"), "");
                             if !name.contains('/') {
                                 let mut child_spec = match inner_spec.kind {
-                                        PropSpecKind::String => PropSpec::String {
-                                            name,
-                                            data: None,
-                                            unique_id: None,
-                                        },
-                                        PropSpecKind::Number => PropSpec::Number {
-                                            name,
-                                            data: None,
-                                            unique_id: None,
-                                        },
-                                        PropSpecKind::Boolean => PropSpec::Boolean {
-                                            name,
-                                            data: None,
-                                            unique_id: None,
-                                        },
-                                        PropSpecKind::Array => PropSpec::Array {
-                                            name,
-                                            type_prop: inner_spec.type_prop.clone().ok_or(SchemaVariantDefinitionError::TypePropMissingForMapOrArray)?,
-                                            data: None,
-                                            unique_id: None,
-                                        },
-                                        PropSpecKind::Map => PropSpec::Map {
-                                            name,
-                                            type_prop: inner_spec.type_prop.clone().ok_or(SchemaVariantDefinitionError::TypePropMissingForMapOrArray)?,
-                                            map_key_funcs: inner_spec.map_key_funcs.clone(),
-                                            data: None,
-                                            unique_id: None,
-                                        },
-                                        PropSpecKind::Object => PropSpec::Object {
-                                            name,
-                                            data: None,
-                                            unique_id: None,
-                                            entries: Vec::new(),
-                                        },
-                                    };
+                                    PropSpecKind::String => PropSpec::String {
+                                        name,
+                                        data: None,
+                                        unique_id: None,
+                                    },
+                                    PropSpecKind::Number => PropSpec::Number {
+                                        name,
+                                        data: None,
+                                        unique_id: None,
+                                    },
+                                    PropSpecKind::Boolean => PropSpec::Boolean {
+                                        name,
+                                        data: None,
+                                        unique_id: None,
+                                    },
+                                    PropSpecKind::Array => PropSpec::Array {
+                                        name,
+                                        type_prop: inner_spec.type_prop.clone().ok_or(SchemaVariantDefinitionError::TypePropMissingForMapOrArray)?,
+                                        data: None,
+                                        unique_id: None,
+                                    },
+                                    PropSpecKind::Map => PropSpec::Map {
+                                        name,
+                                        type_prop: inner_spec.type_prop.clone().ok_or(SchemaVariantDefinitionError::TypePropMissingForMapOrArray)?,
+                                        map_key_funcs: inner_spec.map_key_funcs.clone(),
+                                        data: None,
+                                        unique_id: None,
+                                    },
+                                    PropSpecKind::Object => PropSpec::Object {
+                                        name,
+                                        data: None,
+                                        unique_id: None,
+                                        entries: Vec::new(),
+                                    },
+                                };
                                 recursive_prop_spec_builder(
                                     inner_path.clone(),
                                     &mut child_spec,
@@ -679,7 +670,6 @@ pub async fn exec_variant_def_inner(
                     "variant_def_function_count":  pkg_spec.clone().funcs.len(),
         }),
     );
-
 
     Ok((schema_variant_id, skips))
 }

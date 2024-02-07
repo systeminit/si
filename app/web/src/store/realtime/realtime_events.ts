@@ -4,7 +4,7 @@
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { FuncId } from "@/store/func/funcs.store";
 import { ChangeSetId } from "@/store/change_sets.store";
-import { DetachedAttributePrototype } from "@/store/asset.store";
+import { ImportSkips } from "@/store/asset.store";
 import { ComponentId } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import { FixStatus } from "../fixes.store";
@@ -232,7 +232,7 @@ export type WsEventPayloadMap = {
   SchemaVariantDefinitionFinished: {
     taskId: string;
     schemaVariantId: string;
-    detachedAttributePrototypes: DetachedAttributePrototype[];
+    skips: ImportSkips[];
   };
   SchemaVariantDefinitionSaved: {
     schemaVariantDefinitionId: string;

@@ -38,6 +38,7 @@ export interface ImportEdgeSkip {
   type: "missingInputSocket" | "missingOutputSocket";
   data: string;
 }
+
 export type ImportAttributeSkip =
   | {
       type: "missingProp";
@@ -57,10 +58,12 @@ export type ImportAttributeSkip =
         funcId: FuncId;
       };
     };
+
 export interface ImportSkips {
   edgeSkips: ImportEdgeSkip[];
   attributeSkips: [string, ImportAttributeSkip[]][];
 }
+
 export type DetachedAttributePrototypeKind =
   | {
       type: "ExternalProviderSocket";
@@ -161,8 +164,8 @@ export const useAssetStore = () => {
 
         detachmentWarnings: [] as {
           message: string;
-          funcId: FuncId;
-          variant?: FuncVariant;
+          funcId: FuncId | null;
+          variant: FuncVariant | null;
         }[],
       }),
       getters: {
@@ -430,8 +433,6 @@ export const useAssetStore = () => {
           return new ApiRequest<
             {
               taskId: string;
-              schemaVariantId: string;
-              skips: ImportSkips[];
             },
             AssetSaveRequest
           >({
@@ -518,34 +519,44 @@ export const useAssetStore = () => {
           },
           {
             eventType: "SchemaVariantDefinitionFinished",
-            callback: async ({
-              taskId,
-              schemaVariantId,
-              detachedAttributePrototypes,
-            }) => {
+            callback: async ({ taskId, schemaVariantId, skips }) => {
               if (taskId === this.executeAssetTaskId) {
                 this.executeAssetTaskRunning = false;
                 this.executeAssetTaskError = undefined;
 
-                for (const detached of detachedAttributePrototypes) {
-                  if (
-                    detached.context.type === "ExternalProviderSocket" ||
-                    detached.context.type === "InternalProviderSocket"
-                  ) {
-                    this.detachmentWarnings.push({
-                      funcId: detached.funcId,
-                      variant: detached.variant ?? undefined,
-                      message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Socket=${detached.context.data.name} of Kind=${detached.context.data.kind}`,
-                    });
-                  } else if (
-                    detached.context.type === "InternalProviderProp" ||
-                    detached.context.type === "Prop"
-                  ) {
-                    this.detachmentWarnings.push({
-                      funcId: detached.funcId,
-                      variant: detached.variant ?? undefined,
-                      message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Path=${detached.context.data.path} of Kind=${detached.context.data.kind}`,
-                    });
+                for (const skip of skips) {
+                  for (const detached of skip.edgeSkips) {
+                    if (detached.type === "missingInputSocket") {
+                      this.detachmentWarnings.push({
+                        message: `Input Socket ${detached.data} detached from asset because the socket is gone.`,
+                        funcId: null,
+                        variant: null,
+                      });
+                    } else if (detached.type === "missingOutputSocket") {
+                      this.detachmentWarnings.push({
+                        message: `Output Socket ${detached.data} detached from asset because the socket is gone.`,
+                        variant: null,
+                        funcId: null,
+                      });
+                    }
+                  }
+
+                  for (const [name, detachedList] of skip.attributeSkips) {
+                    for (const detached of detachedList) {
+                      if (detached.type === "kindMismatch") {
+                        this.detachmentWarnings.push({
+                          message: `Prop Attribute ${name} detached from asset because the property associated to it changed. Path=${detached.data.path} of Kind=${detached.data.expectedKind} and VariantKind=${detached.data.variantKind}`,
+                          variant: detached.data.variant,
+                          funcId: detached.data.variant,
+                        });
+                      } else if (detached.type === "missingProp") {
+                        this.detachmentWarnings.push({
+                          message: `Prop Attribute ${name} detached from asset because the property associated to it is gone. Path=${detached.data.path}`,
+                          funcId: detached.data.funcId,
+                          variant: detached.data.variant,
+                        });
+                      }
+                    }
                   }
                 }
 

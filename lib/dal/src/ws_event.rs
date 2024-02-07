@@ -9,7 +9,7 @@ use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
 use crate::func::{FuncCreatedPayload, FuncDeletedPayload, FuncRevertedPayload, FuncSavedPayload};
 use crate::pkg::{
-    ImportWorkspaceVotePayload, ModuleImportedPayload, WorkspaceActorPayload,
+    ImportSkips, ImportWorkspaceVotePayload, ModuleImportedPayload, WorkspaceActorPayload,
     WorkspaceExportPayload, WorkspaceImportApprovalActorPayload, WorkspaceImportPayload,
 };
 use crate::schema::variant::definition::{
@@ -225,7 +225,7 @@ pub struct AttributePrototypeView {
 pub struct FinishSchemaVariantDefinitionPayload {
     pub task_id: Ulid,
     pub schema_variant_id: SchemaVariantId,
-    pub detached_attribute_prototypes: Vec<AttributePrototypeView>,
+    pub skips: Vec<ImportSkips>,
 }
 
 impl WsEvent {

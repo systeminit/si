@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use dal::ws_event::AttributePrototypeContextKind;
 use dal::authentication_prototype::AuthenticationPrototypeError;
+use dal::ws_event::AttributePrototypeContextKind;
 use dal::{
     attribute::prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
     func::argument::{FuncArgumentError, FuncArgumentId},

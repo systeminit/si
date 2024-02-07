@@ -1258,7 +1258,7 @@ async fn update_prototype(
     Ok(())
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportSkips {
     pub change_set_pk: ChangeSetPk,
@@ -1267,7 +1267,7 @@ pub struct ImportSkips {
 }
 
 #[remain::sorted]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", content = "data", rename_all = "camelCase")]
 pub enum ImportAttributeSkip {
     #[serde(rename_all = "camelCase")]
@@ -1298,7 +1298,7 @@ pub enum ImportAttributeSkip {
     },
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ImportEdgeSkip {
     MissingInputSocket(String),
