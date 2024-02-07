@@ -3,7 +3,16 @@
     <div
       :class="
         clsx(
-          'relative border-l-[3px] cursor-pointer group',
+          'relative cursor-pointer group',
+          {
+            none: '',
+            '2xs': 'border-l-[1px]',
+            xs: 'border-l-2',
+            sm: 'border-l-[3px]',
+            md: 'border-l-4',
+            lg: 'border-l-[6px]',
+            xl: 'border-l-8',
+          }[leftBorderSize],
           isHover &&
             'dark:outline-action-300 outline-action-500 outline z-10 -outline-offset-1',
           isSelected && themeClasses('bg-action-100', 'bg-action-900'),
@@ -102,6 +111,10 @@ defineProps({
   indentationSize: {
     type: String as PropType<"none" | "2xs" | "xs" | "sm" | "md" | "lg" | "xl">,
     default: "xs",
+  },
+  leftBorderSize: {
+    type: String as PropType<"none" | "2xs" | "xs" | "sm" | "md" | "lg" | "xl">,
+    default: "sm",
   },
   alwaysShowArrow: { type: Boolean },
 });
