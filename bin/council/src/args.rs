@@ -1,6 +1,9 @@
+use std::path::PathBuf;
+
 use clap::{ArgAction, Parser};
 
 use council_server::server::config::{Config, ConfigError, ConfigFile, StandardConfigFile};
+use si_std::SensitiveString;
 
 const NAME: &str = "council";
 
@@ -60,11 +63,11 @@ pub(crate) struct Args {
 
     /// NATS credentials string
     #[arg(long, allow_hyphen_values = true)]
-    pub(crate) nats_creds: Option<String>,
+    pub(crate) nats_creds: Option<SensitiveString>,
 
     /// NATS credentials file
     #[arg(long)]
-    pub(crate) nats_creds_path: Option<String>,
+    pub(crate) nats_creds_path: Option<PathBuf>,
 }
 
 impl TryFrom<Args> for Config {
@@ -76,10 +79,10 @@ impl TryFrom<Args> for Config {
                 config_map.set("nats.url", url);
             }
             if let Some(creds) = args.nats_creds {
-                config_map.set("nats.creds", creds);
+                config_map.set("nats.creds", creds.to_string());
             }
             if let Some(creds_file) = args.nats_creds_path {
-                config_map.set("nats.creds_file", creds_file);
+                config_map.set("nats.creds_file", creds_file.display().to_string());
             }
             config_map.set("nats.connection_name", NAME);
         })?
