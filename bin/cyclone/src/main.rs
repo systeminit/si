@@ -41,7 +41,9 @@ async fn main() -> Result<()> {
     };
 
     if args.verbose > 0 {
-        telemetry.set_verbosity(args.verbose.into()).await?;
+        telemetry
+            .set_verbosity_and_wait(args.verbose.into())
+            .await?;
     }
     trace!(arguments =?args, "parsed cli arguments");
 
