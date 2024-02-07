@@ -138,6 +138,14 @@ impl SummaryDiagramComponent {
     pub fn has_resource(&self) -> bool {
         self.has_resource
     }
+
+    pub fn parent_node_id(&self) -> Option<NodeId> {
+        self.parent_node_id
+    }
+
+    pub fn schema_name(&self) -> &str {
+        &self.schema_name
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -344,7 +352,7 @@ impl Diagram {
                 change_status: ChangeStatus::Added.to_string(),
                 has_resource: false,
                 sockets,
-                parent_node_id: None,
+                parent_node_id: component.parent(ctx).await?,
                 child_node_ids: serde_json::to_value::<Vec<String>>(vec![])?,
                 updated_info,
                 created_info,

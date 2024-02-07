@@ -28,6 +28,11 @@ pub enum EdgeWeightKind {
     /// array/map, or a field of an object. The optional [`String`] represents the key of the entry
     /// in a map.
     Contain(Option<String>),
+    /// Used to indicate parentage within frames. It does not dictate data flow. That is provided via
+    /// [`ComponentType`](crate::ComponentType).
+    ///
+    /// This replaces "Symbolic" edges and "Frame" sockets from the old engine.
+    FrameContains,
     /// Used to record the order that the elements of a container should be presented in.
     Ordering,
     /// Connects the node at the Ordering edge directly to the things it orders.

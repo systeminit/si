@@ -909,6 +909,7 @@ impl WorkspaceSnapshotGraph {
                 let color = match discrim {
                     EdgeWeightKindDiscriminants::ActionPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
+                    EdgeWeightKindDiscriminants::FrameContains => "black",
                     EdgeWeightKindDiscriminants::Ordering => "gray",
                     EdgeWeightKindDiscriminants::Ordinal => "gray",
                     EdgeWeightKindDiscriminants::Prop => "orange",
@@ -1923,6 +1924,7 @@ impl WorkspaceSnapshotGraph {
                     // Nothing to do, as these EdgeWeightKind do not encode extra information
                     // in the edge itself.
                     EdgeWeightKind::Contain(None)
+                    | EdgeWeightKind::FrameContains
                     | EdgeWeightKind::PrototypeArgument
                     | EdgeWeightKind::PrototypeArgumentValue
                     | EdgeWeightKind::Provider
