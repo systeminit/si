@@ -19,11 +19,12 @@ use std::{
 
 use async_trait::async_trait;
 use thiserror::Error;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio_util::sync::CancellationToken;
 
 pub use opentelemetry::{self, trace::SpanKind};
 pub use tracing;
+use tracing::warn;
 
 pub mod prelude {
     pub use super::{MessagingOperation, SpanExt, SpanKind, SpanKindExt};
@@ -200,11 +201,69 @@ impl ApplicationTelemetryClient {
             update_telemetry_tx,
         }
     }
-}
 
-#[async_trait]
-impl TelemetryClient for ApplicationTelemetryClient {
-    async fn set_verbosity(&mut self, updated: Verbosity) -> Result<(), ClientError> {
+    pub async fn set_verbosity_and_wait(&mut self, updated: Verbosity) -> Result<(), ClientError> {
+        let (tx, rx) = oneshot::channel();
+
+        self.set_verbosity_inner(updated, Some(tx)).await?;
+
+        if let Err(err) = rx.await {
+            warn!(error = ?err, "sender already closed while waiting on verbosity change");
+        }
+
+        Ok(())
+    }
+
+    pub async fn increase_verbosity_and_wait(&mut self) -> Result<(), ClientError> {
+        let (tx, rx) = oneshot::channel();
+
+        self.increase_verbosity_inner(Some(tx)).await?;
+
+        if let Err(err) = rx.await {
+            warn!(
+                error = ?err,
+                "sender already closed while waiting on verbosity increase change",
+            );
+        }
+
+        Ok(())
+    }
+
+    pub async fn decrease_verbosity_and_wait(&mut self) -> Result<(), ClientError> {
+        let (tx, rx) = oneshot::channel();
+
+        self.decrease_verbosity_inner(Some(tx)).await?;
+
+        if let Err(err) = rx.await {
+            warn!(
+                error = ?err,
+                "sender already closed while waiting on verbosity decrease change",
+            );
+        }
+
+        Ok(())
+    }
+
+    pub async fn set_custom_tracing_and_wait(
+        &mut self,
+        directives: impl Into<String> + Send,
+    ) -> Result<(), ClientError> {
+        let (tx, rx) = oneshot::channel();
+
+        self.set_custom_tracing_inner(directives, Some(tx)).await?;
+
+        if let Err(err) = rx.await {
+            warn!(error = ?err, "sender already closed while waiting on custom tracing change");
+        }
+
+        Ok(())
+    }
+
+    async fn set_verbosity_inner(
+        &mut self,
+        updated: Verbosity,
+        wait: Option<oneshot::Sender<()>>,
+    ) -> Result<(), ClientError> {
         let mut guard = self.tracing_level.lock().await;
         let tracing_level = guard.deref_mut();
 
@@ -225,39 +284,50 @@ impl TelemetryClient for ApplicationTelemetryClient {
         }
 
         self.update_telemetry_tx
-            .send(TelemetryCommand::TracingLevel(tracing_level.clone()))?;
+            .send(TelemetryCommand::TracingLevel {
+                level: tracing_level.clone(),
+                wait,
+            })?;
+
         Ok(())
     }
 
-    async fn increase_verbosity(&mut self) -> Result<(), ClientError> {
+    async fn increase_verbosity_inner(
+        &mut self,
+        wait: Option<oneshot::Sender<()>>,
+    ) -> Result<(), ClientError> {
         let guard = self.tracing_level.lock().await;
 
         match guard.deref() {
             TracingLevel::Verbosity { verbosity, .. } => {
                 let updated = verbosity.increase();
                 drop(guard);
-                self.set_verbosity(updated).await
+                self.set_verbosity_inner(updated, wait).await
             }
             TracingLevel::Custom(_) => Err(ClientError::CustomHasNoVerbosity),
         }
     }
 
-    async fn decrease_verbosity(&mut self) -> Result<(), ClientError> {
+    async fn decrease_verbosity_inner(
+        &mut self,
+        wait: Option<oneshot::Sender<()>>,
+    ) -> Result<(), ClientError> {
         let guard = self.tracing_level.lock().await;
 
         match guard.deref() {
             TracingLevel::Verbosity { verbosity, .. } => {
                 let updated = verbosity.decrease();
                 drop(guard);
-                self.set_verbosity(updated).await
+                self.set_verbosity_inner(updated, wait).await
             }
             TracingLevel::Custom(_) => Err(ClientError::CustomHasNoVerbosity),
         }
     }
 
-    async fn set_custom_tracing(
+    async fn set_custom_tracing_inner(
         &mut self,
-        directives: impl Into<String> + Send + 'async_trait,
+        directives: impl Into<String> + Send,
+        wait: Option<oneshot::Sender<()>>,
     ) -> Result<(), ClientError> {
         let mut guard = self.tracing_level.lock().await;
         let tracing_level = guard.deref_mut();
@@ -265,8 +335,33 @@ impl TelemetryClient for ApplicationTelemetryClient {
         let updated = TracingLevel::custom(directives);
         *tracing_level = updated;
         self.update_telemetry_tx
-            .send(TelemetryCommand::TracingLevel(tracing_level.clone()))?;
+            .send(TelemetryCommand::TracingLevel {
+                level: tracing_level.clone(),
+                wait,
+            })?;
         Ok(())
+    }
+}
+
+#[async_trait]
+impl TelemetryClient for ApplicationTelemetryClient {
+    async fn set_verbosity(&mut self, updated: Verbosity) -> Result<(), ClientError> {
+        self.set_verbosity_inner(updated, None).await
+    }
+
+    async fn increase_verbosity(&mut self) -> Result<(), ClientError> {
+        self.increase_verbosity_inner(None).await
+    }
+
+    async fn decrease_verbosity(&mut self) -> Result<(), ClientError> {
+        self.decrease_verbosity_inner(None).await
+    }
+
+    async fn set_custom_tracing(
+        &mut self,
+        directives: impl Into<String> + Send + 'async_trait,
+    ) -> Result<(), ClientError> {
+        self.set_custom_tracing_inner(directives, None).await
     }
 }
 
@@ -325,10 +420,13 @@ pub enum ClientError {
 }
 
 #[remain::sorted]
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum TelemetryCommand {
     Shutdown(CancellationToken),
-    TracingLevel(TracingLevel),
+    TracingLevel {
+        level: TracingLevel,
+        wait: Option<oneshot::Sender<()>>,
+    },
 }
 
 #[remain::sorted]

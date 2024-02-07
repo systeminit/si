@@ -579,13 +579,21 @@ impl TelemetryUpdateTask {
     async fn run(mut self) {
         while let Some(command) = self.update_command_rx.recv().await {
             match command {
-                TelemetryCommand::TracingLevel(tracing_level) => {
-                    if let Err(err) = self.update_tracing_level(tracing_level) {
+                TelemetryCommand::TracingLevel { level, wait } => {
+                    if let Err(err) = self.update_tracing_level(level) {
                         warn!(
                             task = Self::NAME,
                             error = ?err,
                             "failed to update tracing level, using prior value",
                         );
+                    }
+                    if let Some(tx) = wait {
+                        if let Err(err) = tx.send(()) {
+                            warn!(
+                                error = ?err,
+                                "receiver already closed when waiting on changing tracing level",
+                            );
+                        }
                     }
                 }
                 TelemetryCommand::Shutdown(token) => {
