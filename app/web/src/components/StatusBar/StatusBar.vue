@@ -7,6 +7,9 @@
       )
     "
   >
+    <div class="flex text-sm items-center pl-xs mr-lg w-full">
+      System&nbsp;Initiative
+    </div>
     <div class="border-l border-shade-100">
       <StatusBarDiffSummary v-if="!changeSetStore.headSelected" />
     </div>
