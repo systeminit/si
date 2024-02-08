@@ -41,6 +41,8 @@ about = "The System Initiative Launcher
 @@/                                  .(@%,               /@@
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+System Initiative
+
 ")]
 pub(crate) struct Args {
     /// The System Initiative Launcher mode
