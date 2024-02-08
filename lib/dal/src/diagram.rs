@@ -103,7 +103,7 @@ struct GridPoint {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-struct Size2D {
+pub struct Size2D {
     pub width: isize,
     pub height: isize,
 }
@@ -111,60 +111,46 @@ struct Size2D {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all(serialize = "camelCase"))]
 pub struct SummaryDiagramComponent {
-    id: ComponentId,
-    component_id: ComponentId,
-    schema_name: String,
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-    schema_variant_name: String,
-    schema_category: String,
-    sockets: serde_json::Value,
-    node_id: NodeId,
-    display_name: String,
-    position: GridPoint,
-    size: Size2D,
-    color: String,
-    node_type: String,
-    change_status: String,
-    has_resource: bool,
-    parent_node_id: Option<NodeId>,
-    child_node_ids: serde_json::Value,
-    created_info: serde_json::Value,
-    updated_info: serde_json::Value,
-    deleted_info: serde_json::Value,
-}
-
-impl SummaryDiagramComponent {
-    pub fn has_resource(&self) -> bool {
-        self.has_resource
-    }
-
-    pub fn parent_node_id(&self) -> Option<NodeId> {
-        self.parent_node_id
-    }
-
-    pub fn schema_name(&self) -> &str {
-        &self.schema_name
-    }
+    pub id: ComponentId,
+    pub component_id: ComponentId,
+    pub schema_name: String,
+    pub schema_id: SchemaId,
+    pub schema_variant_id: SchemaVariantId,
+    pub schema_variant_name: String,
+    pub schema_category: String,
+    pub sockets: serde_json::Value,
+    pub node_id: NodeId,
+    pub display_name: String,
+    pub position: GridPoint,
+    pub size: Size2D,
+    pub color: String,
+    pub node_type: String,
+    pub change_status: String,
+    pub has_resource: bool,
+    pub parent_node_id: Option<NodeId>,
+    pub child_node_ids: serde_json::Value,
+    pub created_info: serde_json::Value,
+    pub updated_info: serde_json::Value,
+    pub deleted_info: serde_json::Value,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all(serialize = "camelCase"))]
 pub struct SummaryDiagramEdge {
-    id: EdgeId,
-    edge_id: EdgeId,
-    from_node_id: NodeId,
-    from_socket_id: ExternalProviderId,
-    to_node_id: NodeId,
-    to_socket_id: InternalProviderId,
-    change_status: String,
-    created_info: serde_json::Value,
-    deleted_info: serde_json::Value,
+    pub id: EdgeId,
+    pub edge_id: EdgeId,
+    pub from_node_id: NodeId,
+    pub from_socket_id: ExternalProviderId,
+    pub to_node_id: NodeId,
+    pub to_socket_id: InternalProviderId,
+    pub change_status: String,
+    pub created_info: serde_json::Value,
+    pub deleted_info: serde_json::Value,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-struct DiagramSocket {
+pub struct DiagramSocket {
     pub id: String,
     pub label: String,
     pub connection_annotations: Vec<String>,

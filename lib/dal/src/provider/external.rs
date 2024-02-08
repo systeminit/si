@@ -26,6 +26,8 @@ pub enum ExternalProviderError {
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("found two external providers ({0} and {1}) of the same name for the same schema variant: {2}")]
+    NameCollision(ExternalProviderId, ExternalProviderId, SchemaVariantId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("store error: {0}")]
@@ -258,6 +260,37 @@ impl ExternalProvider {
         }
 
         Ok(external_providers)
+    }
+
+    // TODO(nick): this function uses the underlying list call since it needs to perform bulk content store retrieval.
+    // the analogous call for explicit internal providers is "find_explicit_with_name", but has many subtle differences.
+    // We should likely align how both of these work in the long term.
+    pub async fn find_with_name(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        schema_variant_id: SchemaVariantId,
+    ) -> ExternalProviderResult<Option<Self>> {
+        let name = name.as_ref();
+
+        // NOTE(nick): at the time of writing, we do not have connection annotations and we do not enforce provider
+        // names being unique for the same schema variant. Should we do that? That's a different question, but this
+        // function will ensure that we find one and only one based on the name.
+        let mut maybe_external_provider: Option<Self> = None;
+        for external_provider in Self::list(ctx, schema_variant_id).await? {
+            if name == external_provider.name() {
+                match maybe_external_provider {
+                    Some(already_found) => {
+                        return Err(ExternalProviderError::NameCollision(
+                            already_found.id(),
+                            external_provider.id(),
+                            schema_variant_id,
+                        ))
+                    }
+                    None => maybe_external_provider = Some(external_provider),
+                }
+            }
+        }
+        Ok(maybe_external_provider)
     }
 }
 
