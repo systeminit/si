@@ -6,7 +6,7 @@
         'flex flex-row flex-none items-center overflow-hidden',
         detailedListItem
           ? 'border-b border-neutral-200 dark:border-neutral-500 text-shade-100 dark:text-shade-0'
-          : 'border rounded h-[90px] cursor-pointer border-neutral-500 text-shade-0 hover:bg-action-800 hover:outline-blue-300 hover:outline -outline-offset-1  hover:rounded',
+          : 'border rounded h-[90px] cursor-pointer border-neutral-500 text-shade-0 hover:bg-action-800 hover:outline-blue-300 hover:outline -outline-offset-1  hover:rounded hover:outline-1',
       )
     "
   >
