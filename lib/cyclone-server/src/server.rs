@@ -236,7 +236,7 @@ fn build_service(
 
     let routes = routes(config, state, shutdown_tx).layer(
         TraceLayer::new_for_http()
-            .make_span_with(HttpMakeSpan::new().level(Level::INFO))
+            .make_span_with(HttpMakeSpan::builder().level(Level::INFO).build())
             .on_response(HttpOnResponse::new().level(Level::DEBUG)),
     );
 
