@@ -118,8 +118,11 @@ pub async fn migrate_local(
 
     // FIXME(nick): restore builtin migration functionality for all variants.
     info!("migrate minimal number of schemas for testing the new engine");
+
     schema::migrate_pkg(ctx, SI_DOCKER_IMAGE_PKG, None).await?;
     schema::migrate_pkg(ctx, SI_COREOS_PKG, None).await?;
+    schema::migrate_pkg(ctx, SI_AWS_EC2_PKG, None).await?;
+    schema::migrate_pkg(ctx, SI_AWS_PKG, None).await?;
     schema::migrate_test_exclusive_schema_starfield(ctx).await?;
     schema::migrate_test_exclusive_schema_fallout(ctx).await?;
 

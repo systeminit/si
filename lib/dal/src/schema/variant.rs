@@ -194,26 +194,6 @@ impl SchemaVariant {
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;
         let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
 
-        InternalProvider::new_explicit(
-            ctx,
-            schema_variant_id,
-            "Frame",
-            func_id,
-            ProviderArity::Many,
-            ProviderKind::Frame,
-        )
-        .await?;
-        ExternalProvider::new(
-            ctx,
-            schema_variant_id,
-            "Frame",
-            None,
-            func_id,
-            ProviderArity::Many,
-            ProviderKind::Frame,
-        )
-        .await?;
-
         let schema_variant = Self::assemble(id.into(), content);
         Ok((schema_variant, root_prop))
     }
