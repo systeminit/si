@@ -5,14 +5,6 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 mod args;
 
-// Override the default tracing level of `info` to warn.
-//
-// Note: Cyclone servers are spawned as child processes (or managed processes) of a Veritech server
-// instance so in many cases the logging output of a Cyclone server is written to the same output
-// stream (i.e. terminal, console) as the Veritech server's logging output. This higher threshold
-// is an attempt to reduce the amount of "normal" logging that is emited for Cyclone instances.
-const CUSTOM_DEFAULT_TRACING_LEVEL: &str = "warn";
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let shutdown_token = CancellationToken::new();
@@ -34,7 +26,6 @@ async fn main() -> Result<()> {
             .log_env_var_prefix("SI")
             .app_modules(vec!["cyclone", "cyclone_server"])
             .interesting_modules(vec!["cyclone_core"])
-            .custom_default_tracing_level(CUSTOM_DEFAULT_TRACING_LEVEL)
             .build()?;
 
         telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
