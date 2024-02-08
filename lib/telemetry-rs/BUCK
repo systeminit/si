@@ -8,6 +8,7 @@ rust_library(
         "//third-party/rust:remain",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
         "//third-party/rust:tracing",
     ],
     srcs = glob(["src/**/*.rs"]),

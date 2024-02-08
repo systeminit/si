@@ -1,40 +1,62 @@
+use std::{fmt, sync::Arc};
+
 use hyper::header::USER_AGENT;
 use telemetry::prelude::*;
 use tower_http::trace::MakeSpan;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
-use crate::extract_opentelemetry_context;
+use crate::propagation;
 
 /// An implementation of [`MakeSpan`] to generate [`Span`]s from incoming HTTP requests.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct HttpMakeSpan {
     level: Level,
+    path_filters: Arc<Vec<PathFilterFn>>,
 
     // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#common-attributes
     network_protocol_name: &'static str,
     network_transport: NetworkTransport,
 }
 
-impl Default for HttpMakeSpan {
+impl fmt::Debug for HttpMakeSpan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("HttpMakeSpan")
+            .field("level", &self.level)
+            .field("network_protocol_name", &self.network_protocol_name)
+            .field("network_transport", &self.network_transport)
+            .finish_non_exhaustive()
+    }
+}
+
+pub struct HttpMakeSpanBuilder {
+    level: Level,
+    path_filters: Vec<PathFilterFn>,
+    network_protocol_name: &'static str,
+    network_transport: NetworkTransport,
+}
+
+impl Default for HttpMakeSpanBuilder {
     #[inline]
     fn default() -> Self {
         Self {
             level: Level::INFO,
+            path_filters: vec![],
             network_protocol_name: "http",
             network_transport: NetworkTransport::default(),
         }
     }
 }
 
-impl HttpMakeSpan {
-    /// Creates a new `HttpMakeSpan`.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
+impl HttpMakeSpanBuilder {
     /// Sets the [`Level`] used for the tracing [`Span`].
     pub fn level(mut self, level: Level) -> Self {
         self.level = level;
+        self
+    }
+
+    /// Adds a new path filter function used when creating the tracing [`Span`].
+    pub fn path_filter(mut self, filter: PathFilterFn) -> Self {
+        self.path_filters.push(filter);
         self
     }
 
@@ -56,6 +78,25 @@ impl HttpMakeSpan {
     pub fn network_transport(mut self, nt: NetworkTransport) -> Self {
         self.network_transport = nt;
         self
+    }
+
+    /// Builds and returns a new [`HttpMakeSpan`].
+    pub fn build(self) -> HttpMakeSpan {
+        HttpMakeSpan {
+            level: self.level,
+            path_filters: Arc::new(self.path_filters),
+            network_protocol_name: self.network_protocol_name,
+            network_transport: self.network_transport,
+        }
+    }
+}
+
+type PathFilterFn = Box<dyn Fn(&str) -> Option<Level> + Send + Sync + 'static>;
+
+impl HttpMakeSpan {
+    /// Creates a new `HttpMakeSpan`.
+    pub fn builder() -> HttpMakeSpanBuilder {
+        HttpMakeSpanBuilder::default()
     }
 
     fn span_from_request<B>(&mut self, request: &hyper::Request<B>) -> Span {
@@ -129,6 +170,7 @@ impl HttpMakeSpan {
         }
 
         let uri = request.uri();
+        let uri_path = uri.path();
 
         let http_request_method = InnerMethod::from(request.method().as_str());
         let network_protocol_version = HttpVersion::from(request.version());
@@ -165,7 +207,7 @@ impl HttpMakeSpan {
                     // network.local.port = Empty,
                     // server.address = Empty,
                     // server.port = Empty,
-                    url.path = uri.path(),
+                    url.path = uri_path,
                     url.query = uri.query(),
                     url.scheme = Empty,
                     user_agent.original = Empty,
@@ -195,7 +237,12 @@ impl HttpMakeSpan {
             };
         }
 
-        let span = match (InnerLevel::from(self.level), http_request_method) {
+        let level = match self.path_filters.iter().find_map(|f| f(uri_path)) {
+            Some(custom_level) => custom_level,
+            None => self.level,
+        };
+
+        let span = match (InnerLevel::from(level), http_request_method) {
             (InnerLevel::Error, InnerMethod::Options) => inner!(Level::ERROR, "OPTIONS"),
             (InnerLevel::Error, InnerMethod::Get) => inner!(Level::ERROR, "GET"),
             (InnerLevel::Error, InnerMethod::Post) => inner!(Level::ERROR, "POST"),
@@ -260,7 +307,9 @@ impl HttpMakeSpan {
 
         // Extract OpenTelemetry parent span metadata from the request headers (if it exists) and
         // associate it with this request span
-        span.set_parent(extract_opentelemetry_context(request.headers()));
+        span.set_parent(propagation::extract_opentelemetry_context(
+            request.headers(),
+        ));
 
         span
     }

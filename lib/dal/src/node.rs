@@ -1,3 +1,4 @@
+use crate::ws_event::{WsEvent, WsEventError};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
@@ -50,6 +51,8 @@ pub enum NodeError {
     SummaryDiagram(String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type NodeResult<T> = Result<T, NodeError>;
@@ -304,6 +307,18 @@ impl Node {
         )
         .await
         .map_err(|e| NodeError::SummaryDiagram(e.to_string()))?;
+        let component = self
+            .component(ctx)
+            .await?
+            .ok_or(NodeError::ComponentIsNone)?;
+
+        let component_id = component.id();
+
+        WsEvent::component_updated(ctx, *component_id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+
         Ok(())
     }
 }

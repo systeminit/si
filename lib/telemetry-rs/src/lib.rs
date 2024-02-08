@@ -12,22 +12,26 @@ use std::{
     borrow::Cow,
     env,
     fmt::{Debug, Display},
+    ops::{Deref, DerefMut},
     result::Result,
+    sync::Arc,
 };
 
 use async_trait::async_trait;
 use thiserror::Error;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio_util::sync::CancellationToken;
 
 pub use opentelemetry::{self, trace::SpanKind};
 pub use tracing;
+use tracing::warn;
 
 pub mod prelude {
     pub use super::{MessagingOperation, SpanExt, SpanKind, SpanKindExt};
     pub use tracing::{
-        self, debug, debug_span, enabled, error, event, event_enabled, field::Empty, info,
-        info_span, instrument, span, span_enabled, trace, trace_span, warn, Instrument, Level,
-        Span,
+        self, debug, debug_span, enabled, error, error_span, event, event_enabled, field::Empty,
+        info, info_span, instrument, span, span_enabled, trace, trace_span, warn, warn_span,
+        Id as SpanId, Instrument, Level, Span,
     };
 }
 
@@ -166,86 +170,205 @@ pub trait TelemetryClient: Clone + Send + Sync + 'static {
 }
 
 /// A telemetry type that can report its tracing level.
+#[async_trait]
 pub trait TelemetryLevel: Send + Sync {
-    fn is_debug_or_lower(&self) -> bool;
+    async fn is_debug_or_lower(&self) -> bool;
 }
 
 /// A telemetry client which holds handles to a process' tracing and OpenTelemetry setup.
 #[derive(Clone, Debug)]
 pub struct ApplicationTelemetryClient {
-    app_modules: Vec<&'static str>,
-    tracing_level: TracingLevel,
+    app_modules: Arc<Vec<&'static str>>,
+    interesting_modules: Arc<Vec<&'static str>>,
+    never_modules: Arc<Vec<&'static str>>,
+    tracing_level: Arc<Mutex<TracingLevel>>,
     update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
 }
 
 impl ApplicationTelemetryClient {
     pub fn new(
         app_modules: Vec<&'static str>,
+        interesting_modules: Vec<&'static str>,
+        never_modules: Vec<&'static str>,
         tracing_level: TracingLevel,
         update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
     ) -> Self {
         Self {
-            app_modules,
-            tracing_level,
+            app_modules: Arc::new(app_modules),
+            interesting_modules: Arc::new(interesting_modules),
+            never_modules: Arc::new(never_modules),
+            tracing_level: Arc::new(Mutex::new(tracing_level)),
             update_telemetry_tx,
         }
     }
-}
 
-#[async_trait]
-impl TelemetryClient for ApplicationTelemetryClient {
-    async fn set_verbosity(&mut self, updated: Verbosity) -> Result<(), ClientError> {
-        match self.tracing_level {
+    pub async fn set_verbosity_and_wait(&mut self, updated: Verbosity) -> Result<(), ClientError> {
+        let (tx, rx) = oneshot::channel();
+
+        self.set_verbosity_inner(updated, Some(tx)).await?;
+
+        if let Err(err) = rx.await {
+            warn!(error = ?err, "sender already closed while waiting on verbosity change");
+        }
+
+        Ok(())
+    }
+
+    pub async fn increase_verbosity_and_wait(&mut self) -> Result<(), ClientError> {
+        let (tx, rx) = oneshot::channel();
+
+        self.increase_verbosity_inner(Some(tx)).await?;
+
+        if let Err(err) = rx.await {
+            warn!(
+                error = ?err,
+                "sender already closed while waiting on verbosity increase change",
+            );
+        }
+
+        Ok(())
+    }
+
+    pub async fn decrease_verbosity_and_wait(&mut self) -> Result<(), ClientError> {
+        let (tx, rx) = oneshot::channel();
+
+        self.decrease_verbosity_inner(Some(tx)).await?;
+
+        if let Err(err) = rx.await {
+            warn!(
+                error = ?err,
+                "sender already closed while waiting on verbosity decrease change",
+            );
+        }
+
+        Ok(())
+    }
+
+    pub async fn set_custom_tracing_and_wait(
+        &mut self,
+        directives: impl Into<String> + Send,
+    ) -> Result<(), ClientError> {
+        let (tx, rx) = oneshot::channel();
+
+        self.set_custom_tracing_inner(directives, Some(tx)).await?;
+
+        if let Err(err) = rx.await {
+            warn!(error = ?err, "sender already closed while waiting on custom tracing change");
+        }
+
+        Ok(())
+    }
+
+    async fn set_verbosity_inner(
+        &mut self,
+        updated: Verbosity,
+        wait: Option<oneshot::Sender<()>>,
+    ) -> Result<(), ClientError> {
+        let mut guard = self.tracing_level.lock().await;
+        let tracing_level = guard.deref_mut();
+
+        match tracing_level {
             TracingLevel::Verbosity {
                 ref mut verbosity, ..
             } => {
                 *verbosity = updated;
             }
             TracingLevel::Custom(_) => {
-                self.tracing_level = TracingLevel::new(updated, Some(self.app_modules.as_slice()));
+                *tracing_level = TracingLevel::new(
+                    updated,
+                    Some(self.app_modules.as_slice()),
+                    Some(self.interesting_modules.as_slice()),
+                    Some(self.never_modules.as_slice()),
+                );
             }
         }
 
         self.update_telemetry_tx
-            .send(TelemetryCommand::TracingLevel(self.tracing_level.clone()))?;
+            .send(TelemetryCommand::TracingLevel {
+                level: tracing_level.clone(),
+                wait,
+            })?;
+
         Ok(())
     }
 
-    async fn increase_verbosity(&mut self) -> Result<(), ClientError> {
-        match self.tracing_level {
+    async fn increase_verbosity_inner(
+        &mut self,
+        wait: Option<oneshot::Sender<()>>,
+    ) -> Result<(), ClientError> {
+        let guard = self.tracing_level.lock().await;
+
+        match guard.deref() {
             TracingLevel::Verbosity { verbosity, .. } => {
                 let updated = verbosity.increase();
-                self.set_verbosity(updated).await
+                drop(guard);
+                self.set_verbosity_inner(updated, wait).await
             }
             TracingLevel::Custom(_) => Err(ClientError::CustomHasNoVerbosity),
         }
     }
 
-    async fn decrease_verbosity(&mut self) -> Result<(), ClientError> {
-        match self.tracing_level {
+    async fn decrease_verbosity_inner(
+        &mut self,
+        wait: Option<oneshot::Sender<()>>,
+    ) -> Result<(), ClientError> {
+        let guard = self.tracing_level.lock().await;
+
+        match guard.deref() {
             TracingLevel::Verbosity { verbosity, .. } => {
                 let updated = verbosity.decrease();
-                self.set_verbosity(updated).await
+                drop(guard);
+                self.set_verbosity_inner(updated, wait).await
             }
             TracingLevel::Custom(_) => Err(ClientError::CustomHasNoVerbosity),
         }
+    }
+
+    async fn set_custom_tracing_inner(
+        &mut self,
+        directives: impl Into<String> + Send,
+        wait: Option<oneshot::Sender<()>>,
+    ) -> Result<(), ClientError> {
+        let mut guard = self.tracing_level.lock().await;
+        let tracing_level = guard.deref_mut();
+
+        let updated = TracingLevel::custom(directives);
+        *tracing_level = updated;
+        self.update_telemetry_tx
+            .send(TelemetryCommand::TracingLevel {
+                level: tracing_level.clone(),
+                wait,
+            })?;
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl TelemetryClient for ApplicationTelemetryClient {
+    async fn set_verbosity(&mut self, updated: Verbosity) -> Result<(), ClientError> {
+        self.set_verbosity_inner(updated, None).await
+    }
+
+    async fn increase_verbosity(&mut self) -> Result<(), ClientError> {
+        self.increase_verbosity_inner(None).await
+    }
+
+    async fn decrease_verbosity(&mut self) -> Result<(), ClientError> {
+        self.decrease_verbosity_inner(None).await
     }
 
     async fn set_custom_tracing(
         &mut self,
         directives: impl Into<String> + Send + 'async_trait,
     ) -> Result<(), ClientError> {
-        let updated = TracingLevel::custom(directives);
-        self.tracing_level = updated;
-        self.update_telemetry_tx
-            .send(TelemetryCommand::TracingLevel(self.tracing_level.clone()))?;
-        Ok(())
+        self.set_custom_tracing_inner(directives, None).await
     }
 }
 
+#[async_trait]
 impl TelemetryLevel for ApplicationTelemetryClient {
-    fn is_debug_or_lower(&self) -> bool {
-        self.tracing_level.is_debug_or_lower()
+    async fn is_debug_or_lower(&self) -> bool {
+        self.tracing_level.lock().await.is_debug_or_lower()
     }
 }
 
@@ -277,9 +400,9 @@ impl TelemetryClient for NoopClient {
         Ok(())
     }
 }
-
+#[async_trait]
 impl TelemetryLevel for NoopClient {
-    fn is_debug_or_lower(&self) -> bool {
+    async fn is_debug_or_lower(&self) -> bool {
         #[allow(clippy::disallowed_methods)] // NoopClient is only used in testing and this
         // environment variable is prefixed with `SI_TEST_` to denote that it's only for testing
         // purposes.
@@ -297,9 +420,13 @@ pub enum ClientError {
 }
 
 #[remain::sorted]
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum TelemetryCommand {
-    TracingLevel(TracingLevel),
+    Shutdown(CancellationToken),
+    TracingLevel {
+        level: TracingLevel,
+        wait: Option<oneshot::Sender<()>>,
+    },
 }
 
 #[remain::sorted]
@@ -309,14 +436,23 @@ pub enum TracingLevel {
     Verbosity {
         verbosity: Verbosity,
         app_modules: Option<Vec<Cow<'static, str>>>,
+        interesting_modules: Option<Vec<Cow<'static, str>>>,
+        never_modules: Option<Vec<Cow<'static, str>>>,
     },
 }
 
 impl TracingLevel {
-    pub fn new(verbosity: Verbosity, app_modules: Option<impl IntoAppModules>) -> Self {
+    pub fn new(
+        verbosity: Verbosity,
+        app_modules: Option<impl IntoAppModules>,
+        interesting_modules: Option<impl IntoAppModules>,
+        never_modules: Option<impl IntoAppModules>,
+    ) -> Self {
         Self::Verbosity {
             verbosity,
             app_modules: app_modules.map(IntoAppModules::into_app_modules),
+            interesting_modules: interesting_modules.map(IntoAppModules::into_app_modules),
+            never_modules: never_modules.map(IntoAppModules::into_app_modules),
         }
     }
 
@@ -332,15 +468,16 @@ impl TracingLevel {
     }
 }
 
-#[remain::sorted]
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd)]
 #[allow(clippy::enum_variant_names)]
 pub enum Verbosity {
-    DebugAppAndInfoAll,
     InfoAll,
+    DebugAppInfoInterestingInfoAll,
+    DebugAppDebugInterestingInfoAll,
+    TraceAppDebugInterestingInfoAll,
+    TraceAppTraceInterestingInfoAll,
+    TraceAppTraceInterestingDebugAll,
     TraceAll,
-    TraceAppAndDebugAll,
-    TraceAppAndInfoAll,
 }
 
 impl Verbosity {
@@ -374,9 +511,11 @@ impl From<u8> for Verbosity {
     fn from(value: u8) -> Self {
         match value {
             0 => Self::InfoAll,
-            1 => Self::DebugAppAndInfoAll,
-            2 => Self::TraceAppAndInfoAll,
-            3 => Self::TraceAppAndDebugAll,
+            1 => Self::DebugAppInfoInterestingInfoAll,
+            2 => Self::DebugAppDebugInterestingInfoAll,
+            3 => Self::TraceAppDebugInterestingInfoAll,
+            4 => Self::TraceAppTraceInterestingInfoAll,
+            5 => Self::TraceAppTraceInterestingDebugAll,
             _ => Self::TraceAll,
         }
     }
@@ -386,10 +525,12 @@ impl From<Verbosity> for u8 {
     fn from(value: Verbosity) -> Self {
         match value {
             Verbosity::InfoAll => 0,
-            Verbosity::DebugAppAndInfoAll => 1,
-            Verbosity::TraceAppAndInfoAll => 2,
-            Verbosity::TraceAppAndDebugAll => 3,
-            Verbosity::TraceAll => 4,
+            Verbosity::DebugAppInfoInterestingInfoAll => 1,
+            Verbosity::DebugAppDebugInterestingInfoAll => 2,
+            Verbosity::TraceAppDebugInterestingInfoAll => 3,
+            Verbosity::TraceAppTraceInterestingInfoAll => 4,
+            Verbosity::TraceAppTraceInterestingDebugAll => 5,
+            Verbosity::TraceAll => 6,
         }
     }
 }

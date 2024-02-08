@@ -13,7 +13,7 @@ function retry() {
   do
      $1 && break
      n=$((n+1))
-     sleep 5
+     sleep 1
   done
 }
 

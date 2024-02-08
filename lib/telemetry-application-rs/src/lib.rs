@@ -8,7 +8,14 @@
 // TODO(fnichol): document all, then drop `missing_errors_doc`
 #![allow(clippy::missing_errors_doc)]
 
-use std::{borrow::Cow, env, io, ops::Deref, time::Duration};
+use std::{
+    borrow::Cow,
+    env,
+    io::{self, IsTerminal},
+    ops::Deref,
+    thread,
+    time::{Duration, Instant},
+};
 
 use derive_builder::Builder;
 use opentelemetry_sdk::{
@@ -21,13 +28,15 @@ use opentelemetry_sdk::{
 use opentelemetry_semantic_conventions::resource;
 use telemetry::{
     opentelemetry::{global, trace::TraceError},
-    tracing::{debug, info, trace, warn, Subscriber},
+    prelude::*,
+    tracing::Subscriber,
     TelemetryCommand, TracingLevel, Verbosity,
 };
 use thiserror::Error;
 use tokio::{
     signal::unix::{self, SignalKind},
-    sync::mpsc,
+    sync::{mpsc, oneshot},
+    time,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing_subscriber::{
@@ -43,10 +52,14 @@ pub use telemetry::tracing;
 pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
 
 pub mod prelude {
-    pub use super::TelemetryConfig;
+    pub use super::{ConsoleLogFormat, TelemetryConfig};
     pub use telemetry::prelude::*;
     pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
 }
+
+// Rust crates that will not output span or event telemetry, no matter what the default level is
+// set to. In other words, each of these crates/modules will have `MODULE=off` as their value.
+const DEFAULT_NEVER_MODULES: &[&str] = &["h2", "hyper"];
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -79,8 +92,17 @@ pub struct TelemetryConfig {
     #[builder(setter(into))]
     service_namespace: &'static str,
 
-    #[builder(default)]
+    #[builder(setter(each(name = "app_module"), into), default)]
     app_modules: Vec<&'static str>,
+
+    #[builder(setter(each(name = "interesting_module"), into), default)]
+    interesting_modules: Vec<&'static str>,
+
+    #[builder(
+        setter(each(name = "never_module"), into),
+        default = "self.default_never_modules()"
+    )]
+    never_modules: Vec<&'static str>,
 
     #[builder(setter(into, strip_option), default = "None")]
     custom_default_tracing_level: Option<String>,
@@ -113,6 +135,15 @@ pub struct TelemetryConfig {
     )]
     secondary_log_span_events_env_var: Option<String>,
 
+    #[builder(setter(into), default = "self.default_no_color()")]
+    no_color: Option<bool>,
+
+    #[builder(setter(into), default = "None")]
+    force_color: Option<bool>,
+
+    #[builder(setter(into), default)]
+    console_log_format: ConsoleLogFormat,
+
     #[builder(default = "true")]
     signal_handlers: bool,
 }
@@ -125,6 +156,10 @@ impl TelemetryConfig {
 }
 
 impl TelemetryConfigBuilder {
+    fn default_never_modules(&self) -> Vec<&'static str> {
+        DEFAULT_NEVER_MODULES.to_vec()
+    }
+
     fn default_log_env_var_prefix(
         &self,
     ) -> std::result::Result<Option<String>, TelemetryConfigBuilderError> {
@@ -186,13 +221,22 @@ impl TelemetryConfigBuilder {
             Some(None) | None => None,
         }
     }
+
+    fn default_no_color(&self) -> Option<bool> {
+        // Checks a known/standard var as a fallback. Code upstack will check for an `SI_*`
+        // prefixed version which should have a higher precendence.
+        //
+        // See: <http://no-color.org/>
+        #[allow(clippy::disallowed_methods)] // See rationale in comment above
+        std::env::var_os("NO_COLOR").map(|value| !value.is_empty())
+    }
 }
 
 pub fn init(
     config: TelemetryConfig,
     tracker: &TaskTracker,
     shutdown_token: CancellationToken,
-) -> Result<ApplicationTelemetryClient> {
+) -> Result<(ApplicationTelemetryClient, TelemetryShutdownGuard)> {
     global::set_text_map_propagator(TraceContextPropagator::new());
     let tracing_level = default_tracing_level(&config);
     let span_events_fmt = default_span_events_fmt(&config)?;
@@ -200,9 +244,15 @@ pub fn init(
     let (subscriber, handles) = tracing_subscriber(&config, &tracing_level, span_events_fmt)?;
     subscriber.try_init()?;
 
-    let client = create_client(config, tracing_level, handles, tracker, shutdown_token)?;
+    info!(
+        ?config,
+        directives = TracingDirectives::from(&tracing_level).as_str(),
+        "telemetry configuration"
+    );
 
-    Ok(client)
+    let (client, guard) = create_client(config, tracing_level, handles, tracker, shutdown_token)?;
+
+    Ok((client, guard))
 }
 
 fn default_tracing_level(config: &TelemetryConfig) -> TracingLevel {
@@ -228,7 +278,12 @@ fn default_tracing_level(config: &TelemetryConfig) -> TracingLevel {
     if let Some(ref directives) = config.custom_default_tracing_level {
         TracingLevel::custom(directives)
     } else {
-        TracingLevel::new(Verbosity::default(), Some(config.app_modules.as_ref()))
+        TracingLevel::new(
+            Verbosity::default(),
+            Some(config.app_modules.as_ref()),
+            Some(config.interesting_modules.as_ref()),
+            Some(config.never_modules.as_ref()),
+        )
     }
 }
 
@@ -282,9 +337,20 @@ fn tracing_subscriber(
     let directives = TracingDirectives::from(tracing_level);
 
     let (console_log_layer, console_log_filter_reload) = {
-        let layer = tracing_subscriber::fmt::layer()
-            .with_thread_ids(true)
-            .with_span_events(span_events_fmt);
+        let layer: Box<dyn Layer<Registry> + Send + Sync> = match config.console_log_format {
+            ConsoleLogFormat::Json => Box::new(
+                tracing_subscriber::fmt::layer()
+                    .json()
+                    .with_thread_ids(true)
+                    .with_span_events(span_events_fmt),
+            ),
+            ConsoleLogFormat::Text => Box::new(
+                tracing_subscriber::fmt::layer()
+                    .with_thread_ids(true)
+                    .with_ansi(should_add_ansi(config))
+                    .with_span_events(span_events_fmt),
+            ),
+        };
 
         let env_filter = EnvFilter::try_new(directives.as_str())?;
         let (filter, handle) = reload::Layer::new(env_filter);
@@ -352,15 +418,24 @@ fn create_client(
     handles: TelemetryHandles,
     tracker: &TaskTracker,
     shutdown_token: CancellationToken,
-) -> Result<ApplicationTelemetryClient> {
+) -> Result<(ApplicationTelemetryClient, TelemetryShutdownGuard)> {
     let (update_telemetry_tx, update_telemetry_rx) = mpsc::unbounded_channel();
 
-    let client =
-        ApplicationTelemetryClient::new(config.app_modules, tracing_level, update_telemetry_tx);
-
-    tracker.spawn(
-        TelemetryUpdateTask::new(handles, shutdown_token.clone(), update_telemetry_rx).run(),
+    let client = ApplicationTelemetryClient::new(
+        config.app_modules,
+        config.interesting_modules,
+        config.never_modules,
+        tracing_level,
+        update_telemetry_tx.clone(),
     );
+
+    let guard = TelemetryShutdownGuard {
+        update_telemetry_tx,
+    };
+
+    // Spawn this task free of the tracker as we want it to outlive the tracker when shutting down
+    tokio::spawn(TelemetryUpdateTask::new(handles, update_telemetry_rx).run());
+
     if config.signal_handlers {
         tracker.spawn(
             TelemetrySignalHandlerTask::create(client.clone(), shutdown_token.clone())
@@ -368,9 +443,48 @@ fn create_client(
                 .run(),
         );
     }
-    tracker.spawn(TelemetryShutdownTask::new(shutdown_token).run());
 
-    Ok(client)
+    Ok((client, guard))
+}
+
+fn should_add_ansi(config: &TelemetryConfig) -> bool {
+    if config.force_color.filter(|fc| *fc).unwrap_or(false) {
+        // If we're forcing colors, then this is unconditionally true
+        true
+    } else {
+        // Otherwise 2 conditions must be met:
+        // 1. did we *not* ask for `no_color` (or: is `no_color` unset)
+        // 2. is the standard output file descriptor refer to a terminal or TTY
+        !config.no_color.filter(|nc| *nc).unwrap_or(false) && io::stdout().is_terminal()
+    }
+}
+
+#[remain::sorted]
+#[derive(Copy, Clone, Debug)]
+pub enum ConsoleLogFormat {
+    Json,
+    Text,
+}
+
+impl Default for ConsoleLogFormat {
+    fn default() -> Self {
+        Self::Text
+    }
+}
+
+#[must_use]
+pub struct TelemetryShutdownGuard {
+    update_telemetry_tx: mpsc::UnboundedSender<TelemetryCommand>,
+}
+
+impl TelemetryShutdownGuard {
+    pub async fn wait(self) -> std::result::Result<(), telemetry::ClientError> {
+        let token = CancellationToken::new();
+        self.update_telemetry_tx
+            .send(TelemetryCommand::Shutdown(token.clone()))?;
+        token.cancelled().await;
+        Ok(())
+    }
 }
 
 type ReloadHandle = Box<dyn Fn(EnvFilter) -> Result<()> + Send + Sync>;
@@ -444,8 +558,8 @@ impl TelemetrySignalHandlerTask {
 
 struct TelemetryUpdateTask {
     handles: TelemetryHandles,
-    shutdown_token: CancellationToken,
     update_command_rx: mpsc::UnboundedReceiver<TelemetryCommand>,
+    is_shutdown: bool,
 }
 
 impl TelemetryUpdateTask {
@@ -453,36 +567,51 @@ impl TelemetryUpdateTask {
 
     fn new(
         handles: TelemetryHandles,
-        shutdown_token: CancellationToken,
         update_command_rx: mpsc::UnboundedReceiver<TelemetryCommand>,
     ) -> Self {
         Self {
             handles,
-            shutdown_token,
             update_command_rx,
+            is_shutdown: false,
         }
     }
 
     async fn run(mut self) {
-        loop {
-            tokio::select! {
-                _ = self.shutdown_token.cancelled() => {
-                    debug!(task = Self::NAME, "received cancellation");
-                    break;
-                }
-                Some(command) = self.update_command_rx.recv() => match command {
-                    TelemetryCommand::TracingLevel(tracing_level) => {
-                        if let Err(err) = self.update_tracing_level(tracing_level) {
+        while let Some(command) = self.update_command_rx.recv().await {
+            match command {
+                TelemetryCommand::TracingLevel { level, wait } => {
+                    // We want a span around the update logging so this is transmitted to our
+                    // OpenTelemetry endpoint. We may use this span (and associated events) as a
+                    // deployment mutation event, for example adding a mark in Honeycomb.
+                    //
+                    // Also note that we're using the `in_scope` method as none of the containing
+                    // code is asynchronous--if there were async code then we'd use the
+                    // `.instrument()` combinator on the future.
+                    let span = info_span!("telemetry_update_task.update_tracing_level");
+                    span.in_scope(|| {
+                        if let Err(err) = self.update_tracing_level(level) {
                             warn!(
                                 task = Self::NAME,
                                 error = ?err,
                                 "failed to update tracing level, using prior value",
                             );
                         }
+                        if let Some(tx) = wait {
+                            if let Err(err) = tx.send(()) {
+                                warn!(
+                                    error = ?err,
+                                    "receiver already closed when waiting on changing tracing level",
+                                );
+                            }
+                        }
+                    })
+                }
+                TelemetryCommand::Shutdown(token) => {
+                    if !self.is_shutdown {
+                        Self::shutdown().await;
                     }
-                },
-                else => {
-                    trace!(task = Self::NAME, "update command stream has closed");
+                    self.is_shutdown = true;
+                    token.cancel();
                     break;
                 }
             }
@@ -499,36 +628,44 @@ impl TelemetryUpdateTask {
 
         info!(
             task = Self::NAME,
-            "updated tracing levels to: {:?}",
-            directives.as_str()
+            directives = directives.as_str(),
+            "updated tracing levels",
         );
 
         Ok(())
     }
-}
 
-struct TelemetryShutdownTask {
-    shutdown_token: CancellationToken,
-}
-
-impl TelemetryShutdownTask {
-    const NAME: &'static str = "TelemetryShutdownTask";
-
-    fn new(shutdown_token: CancellationToken) -> Self {
-        Self { shutdown_token }
-    }
-
-    async fn run(self) {
-        self.shutdown_token.cancelled().await;
-
-        debug!(task = Self::NAME, "received cancellation");
+    async fn shutdown() {
         // TODO(fnichol): call to `shutdown_tracer_provider` blocks forever when called, causing
         // the services to not gracefully shut down in time.
         //
-        // See: https://github.com/open-telemetry/opentelemetry-rust/issues/1395
+        // So guess what we're going to? Spawn it off on a thread so we don't block Tokio's
+        // reactor!
         //
-        // telemetry::opentelemetry::global::shutdown_tracer_provider();
-        debug!(task = Self::NAME, "shutdown complete");
+        // See: https://github.com/open-telemetry/opentelemetry-rust/issues/1395
+
+        let (tx, wait_on_shutdown) = oneshot::channel();
+
+        let started_at = Instant::now();
+        let _ = thread::spawn(move || {
+            telemetry::opentelemetry::global::shutdown_tracer_provider();
+            tx.send(()).ok();
+        });
+
+        let timeout = Duration::from_secs(5);
+        match time::timeout(timeout, wait_on_shutdown).await {
+            Ok(Ok(_)) => info!(
+                time_ns = (Instant::now() - started_at).as_nanos(),
+                "opentelemetry shutdown"
+            ),
+            Ok(Err(_)) => trace!("opentelmetry shutdown sender already closed"),
+            Err(_elapsed) => {
+                warn!(
+                    ?timeout,
+                    "opentelemetry shutown took too long, not waiting for full shutdown"
+                );
+            }
+        };
     }
 }
 
@@ -540,7 +677,14 @@ impl From<TracingLevel> for TracingDirectives {
             TracingLevel::Verbosity {
                 verbosity,
                 app_modules,
-            } => Self::new(verbosity, &app_modules),
+                interesting_modules,
+                never_modules,
+            } => Self::new(
+                verbosity,
+                &app_modules,
+                &interesting_modules,
+                &never_modules,
+            ),
             TracingLevel::Custom(custom) => custom.into(),
         }
     }
@@ -552,70 +696,83 @@ impl From<&TracingLevel> for TracingDirectives {
             TracingLevel::Verbosity {
                 verbosity,
                 app_modules,
-            } => Self::new(*verbosity, app_modules),
+                interesting_modules,
+                never_modules,
+            } => Self::new(*verbosity, app_modules, interesting_modules, never_modules),
             TracingLevel::Custom(custom) => custom.clone().into(),
         }
     }
 }
 
 impl TracingDirectives {
-    fn new(verbosity: Verbosity, app_modules: &Option<Vec<Cow<'static, str>>>) -> Self {
+    fn new(
+        verbosity: Verbosity,
+        app_modules: &Option<Vec<Cow<'static, str>>>,
+        interesting_modules: &Option<Vec<Cow<'static, str>>>,
+        never_modules: &Option<Vec<Cow<'static, str>>>,
+    ) -> Self {
+        let app_str = |level: &str| {
+            app_modules.as_ref().map(|arr| {
+                arr.iter()
+                    .map(|m| format!("{m}={level}"))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            })
+        };
+        let interesting_str = |level: &str| {
+            interesting_modules.as_ref().map(|arr| {
+                arr.iter()
+                    .map(|m| format!("{m}={level}"))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            })
+        };
+        let never_str = never_modules.as_ref().map(|arr| {
+            arr.iter()
+                .map(|m| format!("{m}=off"))
+                .collect::<Vec<_>>()
+                .join(",")
+        });
+
+        let directives_for = |app_level: &'static str,
+                              interesting_level: &'static str,
+                              default_level: &'static str| {
+            match (
+                app_str(app_level),
+                interesting_str(interesting_level),
+                never_str,
+            ) {
+                (None, None, None) => Cow::Borrowed(default_level),
+                (None, None, Some(never)) => Cow::Owned(format!("{never},{default_level}")),
+                (None, Some(interesting), None) => {
+                    Cow::Owned(format!("{interesting},{default_level}"))
+                }
+                (None, Some(interesting), Some(never)) => {
+                    Cow::Owned(format!("{interesting},{never},{default_level}"))
+                }
+                (Some(app), None, None) => Cow::Owned(format!("{app},{default_level}")),
+                (Some(app), None, Some(never)) => {
+                    Cow::Owned(format!("{app},{never},{default_level}"))
+                }
+                (Some(app), Some(interesting), None) => {
+                    Cow::Owned(format!("{app},{interesting},{default_level}"))
+                }
+                (Some(app), Some(interesting), Some(never)) => {
+                    Cow::Owned(format!("{app},{interesting},{never},{default_level}"))
+                }
+            }
+        };
+
         let directives = match verbosity {
-            Verbosity::InfoAll => match &app_modules {
-                Some(mods) => Cow::Owned(format!(
-                    "{},{}",
-                    "info",
-                    mods.iter()
-                        .map(|m| format!("{m}=info"))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )),
-                None => Cow::Borrowed("info"),
-            },
-            Verbosity::DebugAppAndInfoAll => match &app_modules {
-                Some(mods) => Cow::Owned(format!(
-                    "{},{}",
-                    "info",
-                    mods.iter()
-                        .map(|m| format!("{m}=debug"))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )),
-                None => Cow::Borrowed("debug"),
-            },
-            Verbosity::TraceAppAndInfoAll => match &app_modules {
-                Some(mods) => Cow::Owned(format!(
-                    "{},{}",
-                    "info",
-                    mods.iter()
-                        .map(|m| format!("{m}=trace"))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )),
-                None => Cow::Borrowed("trace"),
-            },
-            Verbosity::TraceAppAndDebugAll => match &app_modules {
-                Some(mods) => Cow::Owned(format!(
-                    "{},{}",
-                    "debug",
-                    mods.iter()
-                        .map(|m| format!("{m}=trace"))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )),
-                None => Cow::Borrowed("trace"),
-            },
-            Verbosity::TraceAll => match &app_modules {
-                Some(mods) => Cow::Owned(format!(
-                    "{},{}",
-                    "trace",
-                    mods.iter()
-                        .map(|m| format!("{m}=trace"))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )),
-                None => Cow::Borrowed("trace"),
-            },
+            Verbosity::InfoAll => directives_for("info", "info", "info"),
+            Verbosity::DebugAppInfoInterestingInfoAll => directives_for("debug", "info", "info"),
+            Verbosity::DebugAppDebugInterestingInfoAll => directives_for("debug", "debug", "info"),
+            Verbosity::TraceAppDebugInterestingInfoAll => directives_for("trace", "debug", "info"),
+            Verbosity::TraceAppTraceInterestingInfoAll => directives_for("trace", "trace", "info"),
+            Verbosity::TraceAppTraceInterestingDebugAll => {
+                directives_for("trace", "trace", "debug")
+            }
+            Verbosity::TraceAll => directives_for("trace", "trace", "trace"),
         };
 
         Self(directives)

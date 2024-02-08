@@ -30,8 +30,9 @@ rust_binary(
     name = "veritech",
     edition = "2021",
     deps = [
-        "//lib/veritech-server:veritech-server",
+        "//lib/si-std:si-std",
         "//lib/telemetry-application-rs:telemetry-application",
+        "//lib/veritech-server:veritech-server",
         "//third-party/rust:clap",
         "//third-party/rust:color-eyre",
         "//third-party/rust:tokio",

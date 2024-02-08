@@ -46,6 +46,9 @@ export { default as PanelResizingHandle } from "./panels/PanelResizingHandle.vue
 export { default as TabGroup } from "./tabs/TabGroup.vue";
 export { default as TabGroupItem } from "./tabs/TabGroupItem.vue";
 
+// ./tree
+export { default as TreeNode } from "./tree/TreeNode.vue";
+
 // ./utils
 export * from "./utils/color_utils";
 export * from "./utils/size_utils";

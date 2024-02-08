@@ -11,19 +11,32 @@ async fn main() -> Result<()> {
     let task_tracker = TaskTracker::new();
 
     color_eyre::install()?;
-    let config = TelemetryConfig::builder()
-        .service_name("veritech")
-        .service_namespace("si")
-        .log_env_var_prefix("SI")
-        .app_modules(vec!["veritech", "veritech_server"])
-        .build()?;
-    let mut telemetry = telemetry_application::init(config, &task_tracker, shutdown_token.clone())?;
     let args = args::parse();
+    let (mut telemetry, telemetry_shutdown) = {
+        let config = TelemetryConfig::builder()
+            .force_color(args.force_color.then_some(true))
+            .no_color(args.no_color.then_some(true))
+            .console_log_format(
+                args.log_json
+                    .then_some(ConsoleLogFormat::Json)
+                    .unwrap_or_default(),
+            )
+            .service_name("veritech")
+            .service_namespace("si")
+            .log_env_var_prefix("SI")
+            .app_modules(vec!["veritech", "veritech_server"])
+            .interesting_modules(vec!["si_data_nats"])
+            .build()?;
+
+        telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
+    };
 
     if args.verbose > 0 {
-        telemetry.set_verbosity(args.verbose.into()).await?;
+        telemetry
+            .set_verbosity_and_wait(args.verbose.into())
+            .await?;
     }
-    trace!(arguments =?args, "parsed cli arguments");
+    debug!(arguments =?args, "parsed cli arguments");
 
     let config = Config::try_from(args)?;
 
@@ -45,6 +58,7 @@ async fn main() -> Result<()> {
     {
         shutdown_token.cancel();
         task_tracker.wait().await;
+        telemetry_shutdown.wait().await?;
     }
 
     info!("graceful shutdown complete.");

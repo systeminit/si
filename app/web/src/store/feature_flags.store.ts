@@ -15,6 +15,8 @@ const FLAG_MAPPING = {
   DONT_BLOCK_ON_ACTIONS: "dont_block_on_actions",
   OVERRIDE_SCHEMA: "override_schema",
   JOI_VALIDATIONS: "joi_validations",
+  SHOW_EDGES_ON_SELECT: "show_edges_on_select",
+  REMOVE_COMPONENT_ICONS: "remove_component_icons",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;

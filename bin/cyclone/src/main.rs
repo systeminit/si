@@ -19,20 +19,33 @@ async fn main() -> Result<()> {
     let task_tracker = TaskTracker::new();
 
     color_eyre::install()?;
-    let config = TelemetryConfig::builder()
-        .service_name("cyclone")
-        .service_namespace("si")
-        .log_env_var_prefix("SI")
-        .app_modules(vec!["cyclone", "cyclone_server"])
-        .custom_default_tracing_level(CUSTOM_DEFAULT_TRACING_LEVEL)
-        .build()?;
-    let mut telemetry = telemetry_application::init(config, &task_tracker, shutdown_token.clone())?;
     let args = args::parse();
+    let (mut telemetry, telemetry_shutdown) = {
+        let config = TelemetryConfig::builder()
+            .force_color(args.force_color.then_some(true))
+            .no_color(args.no_color.then_some(true))
+            .console_log_format(
+                args.log_json
+                    .then_some(ConsoleLogFormat::Json)
+                    .unwrap_or_default(),
+            )
+            .service_name("cyclone")
+            .service_namespace("si")
+            .log_env_var_prefix("SI")
+            .app_modules(vec!["cyclone", "cyclone_server"])
+            .interesting_modules(vec!["cyclone_core"])
+            .custom_default_tracing_level(CUSTOM_DEFAULT_TRACING_LEVEL)
+            .build()?;
+
+        telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
+    };
 
     if args.verbose > 0 {
-        telemetry.set_verbosity(args.verbose.into()).await?;
+        telemetry
+            .set_verbosity_and_wait(args.verbose.into())
+            .await?;
     }
-    trace!(arguments =?args, "parsed cli arguments");
+    debug!(arguments =?args, "parsed cli arguments");
 
     let decryption_key = Server::load_decryption_key(&args.decryption_key).await?;
 
@@ -54,6 +67,7 @@ async fn main() -> Result<()> {
     {
         shutdown_token.cancel();
         task_tracker.wait().await;
+        telemetry_shutdown.wait().await?;
     }
 
     Ok(())

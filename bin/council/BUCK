@@ -9,6 +9,7 @@ rust_binary(
     name = "council",
     deps = [
         "//lib/council-server:council-server",
+        "//lib/si-std:si-std",
         "//lib/telemetry-application-rs:telemetry-application",
         "//third-party/rust:clap",
         "//third-party/rust:color-eyre",

@@ -4,6 +4,7 @@
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { FuncId } from "@/store/func/funcs.store";
 import { ChangeSetId } from "@/store/change_sets.store";
+import { DetachedAttributePrototype } from "@/store/asset.store";
 import { ComponentId } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
 import { FixStatus } from "../fixes.store";
@@ -189,12 +190,6 @@ export type WsEventPayloadMap = {
     error: string;
   };
 
-  // Old fake status update
-  // UpdateStatus: {
-  //   global: GlobalUpdateStatus;
-  //   components?: ComponentUpdateStatus[];
-  // };
-
   StatusUpdate: {
     pk: StatusUpdatePk;
     status: AttributeValueStatus | "statusStarted" | "statusFinished";
@@ -233,6 +228,11 @@ export type WsEventPayloadMap = {
   SchemaVariantDefinitionCloned: {
     schemaVariantDefinitionId: string;
     changeSetPk: ChangeSetId;
+  };
+  SchemaVariantDefinitionFinished: {
+    taskId: string;
+    schemaVariantId: string;
+    detachedAttributePrototypes: DetachedAttributePrototype[];
   };
   SchemaVariantDefinitionSaved: {
     schemaVariantDefinitionId: string;

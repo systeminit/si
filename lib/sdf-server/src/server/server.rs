@@ -526,9 +526,19 @@ fn build_service_inner(
         crdt_multiplexer_client,
     );
 
+    let path_filter = Box::new(|path: &str| match path {
+        "/api/" => Some(Level::TRACE),
+        _ => None,
+    });
+
     let routes = routes(state).layer(
         TraceLayer::new_for_http()
-            .make_span_with(HttpMakeSpan::new().level(Level::INFO))
+            .make_span_with(
+                HttpMakeSpan::builder()
+                    .level(Level::INFO)
+                    .path_filter(path_filter)
+                    .build(),
+            )
             .on_response(HttpOnResponse::new().level(Level::DEBUG)),
     );
 

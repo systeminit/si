@@ -16,8 +16,8 @@ rust_library(
         "//third-party/rust:tracing-subscriber",
     ],
     env = {
-        "CARGO_PKG_NAME": "telemetry-application" ,
-        "CARGO_PKG_VERSION": "0.1.0" ,
+        "CARGO_PKG_NAME": "telemetry-application",
+        "CARGO_PKG_VERSION": "0.1.0",
     },
     srcs = glob(["src/**/*.rs"]),
 )

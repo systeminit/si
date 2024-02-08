@@ -25,21 +25,34 @@ async fn async_main() -> Result<()> {
     let task_tracker = TaskTracker::new();
 
     color_eyre::install()?;
-    let config = TelemetryConfig::builder()
-        .service_name("council")
-        .service_namespace("si")
-        .log_env_var_prefix("SI")
-        .app_modules(vec!["council", "council_server"])
-        .build()?;
-    let mut telemetry = telemetry_application::init(config, &task_tracker, shutdown_token.clone())?;
     let args = args::parse();
+    let (mut telemetry, telemetry_shutdown) = {
+        let config = TelemetryConfig::builder()
+            .force_color(args.force_color.then_some(true))
+            .no_color(args.no_color.then_some(true))
+            .console_log_format(
+                args.log_json
+                    .then_some(ConsoleLogFormat::Json)
+                    .unwrap_or_default(),
+            )
+            .service_name("council")
+            .service_namespace("si")
+            .log_env_var_prefix("SI")
+            .app_modules(vec!["council", "council_server"])
+            .interesting_modules(vec!["si_data_nats"])
+            .build()?;
 
-    let (_shutdown_request_tx, shutdown_request_rx) = watch::channel(());
+        telemetry_application::init(config, &task_tracker, shutdown_token.clone())?
+    };
 
     if args.verbose > 0 {
-        telemetry.set_verbosity(args.verbose.into()).await?;
+        telemetry
+            .set_verbosity_and_wait(args.verbose.into())
+            .await?;
     }
-    trace!(arguments =?args, "parsed cli arguments");
+    debug!(arguments =?args, "parsed cli arguments");
+
+    let (_shutdown_request_tx, shutdown_request_rx) = watch::channel(());
 
     task_tracker.close();
 
@@ -57,6 +70,7 @@ async fn async_main() -> Result<()> {
     {
         shutdown_token.cancel();
         task_tracker.wait().await;
+        telemetry_shutdown.wait().await?;
     }
 
     info!("graceful shutdown complete.");

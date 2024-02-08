@@ -71,21 +71,15 @@ pub enum LocalUdsInstanceError {
     /// Docker api not found
     #[error("no docker api")]
     DockerAPINotFound,
-    /// Failed to parse the Firecracker PID file.
-    #[error("failed to parse the firecracker pid file")]
-    FirecrackerPidParse(#[source] std::num::ParseIntError),
-    /// Failed to read the Firecracker PID file.
-    #[error("failed to open the firecracker pid file")]
-    FirecrackerPidRead(#[source] io::Error),
-    /// Failed to write the Firecracker PID file.
-    #[error("failed to write the firecracker pid file")]
-    FirecrackerPidWrite(#[source] io::Error),
     /// Failed to create firecracker-setup file.
     #[error("failed to create firecracker-setup file")]
     FirecrackerSetupCreate(#[source] io::Error),
     /// Failed to set permissions on the firecracker-setup file.
     #[error("failed to set permissions on the firecracker-setup file")]
     FirecrackerSetupPermissions(#[source] io::Error),
+    /// Failed to run firecracker-setup file.
+    #[error("failed to run firecracker-setup file: {0}")]
+    FirecrackerSetupRun(String),
     /// Failed to write to firecracker-setup file.
     #[error("failed to write to firecracker-setup file")]
     FirecrackerSetupWrite(#[source] io::Error),
@@ -960,13 +954,24 @@ async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
         .map_err(LocalUdsInstanceError::FirecrackerSetupPermissions)?;
 
     // Spawn the shell process
-    let _status = Command::new("sudo")
+    let output = Command::new("sudo")
         .arg(command)
         .arg("-j")
         .arg(&spec.pool_size.to_string())
         .arg("-rk")
-        .status()
-        .await;
+        .spawn()
+        .map_err(|e| LocalUdsInstanceError::FirecrackerSetupRun(e.to_string()))
+        .expect("Failed to start firecracker-setup")
+        .wait_with_output()
+        .await
+        .map_err(|e| LocalUdsInstanceError::FirecrackerSetupRun(e.to_string()))
+        .expect("Failed to run firecracker-setup");
+
+    if !output.status.success() {
+        return Err(LocalUdsInstanceError::FirecrackerSetupRun(
+            String::from_utf8(output.stderr).expect("This should not be empty"),
+        ));
+    }
 
     spec.pool_noodle.start();
     Ok(())

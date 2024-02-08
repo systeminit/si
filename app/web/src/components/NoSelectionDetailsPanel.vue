@@ -22,11 +22,14 @@
         "
       >
         <ApplyChangeSetButton class="grow" />
-        <strong
-          class="text-action-300 bg-action-100 text-lg rounded-2xl px-3 border border-action-300"
-        >
-          {{ 1 + diffs.length + _.keys(actionsStore.proposedActions).length }}
-        </strong>
+        <PillCounter
+          tone="action"
+          :count="
+            1 + diffs.length + _.keys(actionsStore.proposedActions).length
+          "
+          size="xl"
+          class="bg-action-100 dark:bg-action-800 px-3 font-bold"
+        />
       </div>
     </template>
 
@@ -55,6 +58,7 @@ import {
   TabGroupItem,
   themeClasses,
   ScrollArea,
+  PillCounter,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";

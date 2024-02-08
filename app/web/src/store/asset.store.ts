@@ -11,6 +11,7 @@ import router from "@/router";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
+import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -130,6 +131,16 @@ export const useAssetStore = () => {
         assetList: [] as AssetListEntry[],
         assetsById: {} as Record<AssetId, Asset>,
         openAssetFuncIds: {} as { [key: AssetId]: FuncId[] },
+
+        executeAssetTaskId: undefined as string | undefined,
+        executeAssetTaskRunning: false as boolean,
+        executeAssetTaskError: undefined as string | undefined,
+
+        detachmentWarnings: [] as {
+          message: string;
+          funcId: FuncId;
+          variant?: FuncVariant;
+        }[],
       }),
       getters: {
         assets: (state) => _.values(state.assetsById),
@@ -255,7 +266,6 @@ export const useAssetStore = () => {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
           if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
-
           return new ApiRequest<
             { id: AssetId; success: boolean },
             AssetCreateRequest
@@ -388,13 +398,15 @@ export const useAssetStore = () => {
           if (changeSetsStore.headSelected)
             changeSetsStore.creatingChangeSet = true;
 
+          this.executeAssetTaskRunning = true;
+          this.executeAssetTaskError = undefined;
+          this.executeAssetTaskId = undefined;
+          this.detachmentWarnings = [];
+
           const asset = this.assetsById[assetId];
           return new ApiRequest<
             {
-              success: true;
-              schemaVariantId: string;
-              detachedAttributePrototypes: DetachedAttributePrototype[];
-              detachedValidationPrototypes: DetachedValidationPrototype[];
+              taskId: string;
             },
             AssetSaveRequest
           >({
@@ -412,22 +424,8 @@ export const useAssetStore = () => {
                 "updatedAt",
               ]),
             },
-            onFail(response) {
-              const rawMessage = response?.error?.message;
-              if (typeof rawMessage === "string") {
-                const match = rawMessage.match(
-                  "function execution result failure:.*message=(.*?),",
-                )?.[1];
-
-                if (match) {
-                  return {
-                    error: {
-                      ...response?.error,
-                      message: match,
-                    },
-                  };
-                }
-              }
+            onSuccess: (response) => {
+              this.executeAssetTaskId = response.taskId;
             },
           });
         },
@@ -461,6 +459,82 @@ export const useAssetStore = () => {
             eventType: "ChangeSetApplied",
             callback: () => {
               this.LOAD_ASSET_LIST();
+            },
+          },
+          {
+            eventType: "AsyncError",
+            callback: ({ id, error }) => {
+              if (id === this.executeAssetTaskId) {
+                this.executeAssetTaskRunning = false;
+                this.executeAssetTaskId = undefined;
+
+                let errorMessage = error;
+                {
+                  const match = error.match(
+                    "function execution result failure:.*message=(.*?),",
+                  )?.[1];
+
+                  if (match) {
+                    errorMessage = match;
+                  }
+                }
+                {
+                  const match = error.match(
+                    "func execution failure error: (.*)",
+                  )?.[1];
+
+                  if (match) {
+                    errorMessage = match;
+                  }
+                }
+                this.executeAssetTaskError = errorMessage;
+              }
+            },
+          },
+          {
+            eventType: "SchemaVariantDefinitionFinished",
+            callback: async ({
+              taskId,
+              schemaVariantId,
+              detachedAttributePrototypes,
+            }) => {
+              if (taskId === this.executeAssetTaskId) {
+                this.executeAssetTaskRunning = false;
+                this.executeAssetTaskError = undefined;
+
+                for (const detached of detachedAttributePrototypes) {
+                  if (
+                    detached.context.type === "ExternalProviderSocket" ||
+                    detached.context.type === "InternalProviderSocket"
+                  ) {
+                    this.detachmentWarnings.push({
+                      funcId: detached.funcId,
+                      variant: detached.variant ?? undefined,
+                      message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Socket=${detached.context.data.name} of Kind=${detached.context.data.kind}`,
+                    });
+                  } else if (
+                    detached.context.type === "InternalProviderProp" ||
+                    detached.context.type === "Prop"
+                  ) {
+                    this.detachmentWarnings.push({
+                      funcId: detached.funcId,
+                      variant: detached.variant ?? undefined,
+                      message: `Attribute ${detached.funcName} detached from asset because the property associated to it changed. Path=${detached.context.data.path} of Kind=${detached.context.data.kind}`,
+                    });
+                  }
+                }
+
+                if (schemaVariantId !== nilId() && this.selectedAssetId) {
+                  this.setSchemaVariantIdForAsset(
+                    this.selectedAssetId,
+                    schemaVariantId,
+                  );
+                  // We need to reload both schemas and assets since they're stored separately
+                  await this.LOAD_ASSET(this.selectedAssetId);
+                  await useComponentsStore().FETCH_AVAILABLE_SCHEMAS();
+                  await useFuncStore().FETCH_INPUT_SOURCE_LIST(schemaVariantId); // a new asset means new input sources
+                }
+              }
             },
           },
         ]);

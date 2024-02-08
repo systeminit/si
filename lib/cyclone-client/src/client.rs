@@ -7,7 +7,6 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use tracing::trace;
 
 use async_trait::async_trait;
 use cyclone_core::{
@@ -27,12 +26,17 @@ use hyper::{
     Body, Method, Request, Response, StatusCode, Uri,
 };
 use hyperlocal::{UnixClientExt, UnixConnector, UnixStream};
+use telemetry::prelude::*;
+use telemetry_http::propagation;
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     net::TcpStream,
 };
-use tokio_tungstenite::WebSocketStream;
+use tokio_tungstenite::{
+    tungstenite::{client::IntoClientRequest, handshake::client::Request as WsRequest},
+    WebSocketStream,
+};
 
 use crate::{execution, ping, watch, Execution, PingExecution, Watch};
 
@@ -71,6 +75,8 @@ pub enum ClientError {
     Response(#[source] hyper::Error),
     #[error("failed to resolve socket addrs")]
     SocketAddrResolve(#[source] std::io::Error),
+    #[error("failed to create a tungstenite http request")]
+    TungsteniteRequest(#[source] tokio_tungstenite::tungstenite::Error),
     #[error("unexpected status code: {0}")]
     UnexpectedStatusCode(StatusCode),
     #[error("client is not healthy")]
@@ -385,33 +391,30 @@ where
         Ok(Request::builder().uri(uri))
     }
 
-    fn new_ws_request<P>(&self, path_and_query: P) -> Result<Uri>
+    fn new_ws_request<P>(&self, path_and_query: P) -> Result<WsRequest>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
         let uri = self.ws_request_uri(path_and_query)?;
 
-        // Tokio Tungstenite now requires that the request be perfectly created
-        // for websocket upgrades. If you use a URL, everything works.
+        let mut request = uri
+            .into_client_request()
+            .map_err(ClientError::TungsteniteRequest)?;
+        propagation::inject_headers(request.headers_mut());
 
-        //let request = Request::builder()
-        //    .uri(uri)
-        //    .method(Method::GET)
-        //    .body(())
-        //    .map_err(ClientError::Request)?;
-
-        Ok(uri)
+        Ok(request)
     }
 
     async fn get<P>(&self, path_and_query: P) -> Result<Response<Body>>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
-        let request = self
-            .new_http_request(path_and_query)?
-            .method(Method::GET)
-            .body(Body::empty())
-            .map_err(ClientError::Request)?;
+        let mut builder = self.new_http_request(path_and_query)?.method(Method::GET);
+        match builder.headers_mut() {
+            Some(headers) => propagation::inject_headers(headers),
+            None => trace!("request builder has an error"),
+        };
+        let request = builder.body(Body::empty()).map_err(ClientError::Request)?;
         self.request(request).await.map_err(ClientError::Response)
     }
 
@@ -480,8 +483,8 @@ where
     {
         let stream = self.connect().await?;
 
-        let uri = self.new_ws_request(path_and_query)?;
-        let (websocket_stream, response) = tokio_tungstenite::client_async(uri, stream)
+        let request = self.new_ws_request(path_and_query)?;
+        let (websocket_stream, response) = tokio_tungstenite::client_async(request, stream)
             .await
             .map_err(ClientError::WebsocketConnection)?;
         if response.status() != StatusCode::SWITCHING_PROTOCOLS {

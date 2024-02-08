@@ -13,6 +13,7 @@ path = "src/main.rs"
 nats-multiplexer = { path = "../../lib/nats-multiplexer" }
 rebaser-client = { path = "../../lib/rebaser-client" }
 sdf-server = { path = "../../lib/sdf-server" }
+si-std = { path = "../../lib/si-std" }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }
 
 clap = { workspace = true }

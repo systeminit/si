@@ -20,13 +20,44 @@ pub(crate) fn parse() -> Args {
 pub(crate) struct Args {
     /// Sets the verbosity mode.
     ///
-    /// Multiple -v options increase verbosity. The maximum is 4.
+    /// Multiple -v options increase verbosity. The maximum is 6.
     #[arg(short = 'v', long = "verbose", action = ArgAction::Count)]
     pub(crate) verbose: u8,
 
-    /// Disable OpenTelemetry on startup
-    #[arg(long)]
-    pub(crate) disable_opentelemetry: bool,
+    /// Disables ANSI coloring in log output, even if standard output refers to a terminal/TTY.
+    ///
+    /// For more details, visit: <http://no-color.org/>.
+    #[arg(
+        long = "no-color",
+        default_value = "false",
+        env = "SI_NO_COLOR",
+        hide_env_values = true,
+        conflicts_with = "force_color"
+    )]
+    pub(crate) no_color: bool,
+
+    /// Forces ANSI coloring, even if standard output refers to a terminal/TTY.
+    ///
+    /// For more details, visit: <http://no-color.org/>.
+    #[arg(
+        long = "force-color",
+        default_value = "false",
+        env = "SI_FORCE_COLOR",
+        hide_env_values = true,
+        conflicts_with = "no_color"
+    )]
+    pub(crate) force_color: bool,
+
+    /// Prints telemetry logging as JSON lines.
+    ///
+    /// For more details, visit: <https://jsonlines.org/>.
+    #[arg(
+        long = "log-json",
+        default_value = "false",
+        env = "SI_LOG_JSON",
+        hide_env_values = true
+    )]
+    pub(crate) log_json: bool,
 
     /// Binds service to a socket address [example: 0.0.0.0:5157]
     #[arg(long, group = "bind")]

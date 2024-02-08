@@ -21,7 +21,8 @@ export const sdfApiInstance = Axios.create({
   },
   baseURL: API_HTTP_URL,
 });
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (typeof window !== "undefined") (window as any).sdf = sdfApiInstance;
 function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
   // inject auth token from the store as a custom header
   const authStore = useAuthStore();

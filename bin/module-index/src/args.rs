@@ -1,5 +1,8 @@
+use std::path::PathBuf;
+
 use clap::{ArgAction, Parser};
 use module_index_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
+use si_std::SensitiveString;
 
 const NAME: &str = "module_index";
 
@@ -17,9 +20,44 @@ pub(crate) fn parse() -> Args {
 pub(crate) struct Args {
     /// Sets the verbosity mode.
     ///
-    /// Multiple -v options increase verbosity. The maximum is 4.
+    /// Multiple -v options increase verbosity. The maximum is 6.
     #[arg(short = 'v', long = "verbose", action = ArgAction::Count)]
     pub(crate) verbose: u8,
+
+    /// Disables ANSI coloring in log output, even if standard output refers to a terminal/TTY.
+    ///
+    /// For more details, visit: <http://no-color.org/>.
+    #[arg(
+        long = "no-color",
+        default_value = "false",
+        env = "SI_NO_COLOR",
+        hide_env_values = true,
+        conflicts_with = "force_color"
+    )]
+    pub(crate) no_color: bool,
+
+    /// Forces ANSI coloring, even if standard output refers to a terminal/TTY.
+    ///
+    /// For more details, visit: <http://no-color.org/>.
+    #[arg(
+        long = "force-color",
+        default_value = "false",
+        env = "SI_FORCE_COLOR",
+        hide_env_values = true,
+        conflicts_with = "no_color"
+    )]
+    pub(crate) force_color: bool,
+
+    /// Prints telemetry logging as JSON lines.
+    ///
+    /// For more details, visit: <https://jsonlines.org/>.
+    #[arg(
+        long = "log-json",
+        default_value = "false",
+        env = "SI_LOG_JSON",
+        hide_env_values = true
+    )]
+    pub(crate) log_json: bool,
 
     /// PostgreSQL connection pool dbname [example: myapp]
     #[arg(long, env)]
@@ -43,15 +81,15 @@ pub(crate) struct Args {
 
     /// PostgreSQL connection pool password [example: dbuser]
     #[arg(long, env)]
-    pub(crate) pg_password: Option<String>,
+    pub(crate) pg_password: Option<SensitiveString>,
 
     /// PostgreSQL connection certification path
     #[arg(long)]
-    pub(crate) pg_cert_path: Option<String>,
+    pub(crate) pg_cert_path: Option<PathBuf>,
 
     /// PostgreSQL connection certification base64 string
     #[arg(long)]
-    pub(crate) pg_cert_base64: Option<String>,
+    pub(crate) pg_cert_base64: Option<SensitiveString>,
 
     /// The address and port to bind the HTTP server to [example: 0.0.0.0:80]
     #[arg(long, env)]
@@ -59,7 +97,7 @@ pub(crate) struct Args {
 
     /// The s3 bucket access key id
     #[arg(long, env)]
-    pub(crate) s3_access_key_id: Option<String>,
+    pub(crate) s3_access_key_id: Option<SensitiveString>,
 
     /// The s3 bucket
     #[arg(long, env)]
@@ -71,7 +109,7 @@ pub(crate) struct Args {
 
     /// The s3 bucket secret access key
     #[arg(long, env)]
-    pub(crate) s3_secret_access_key: Option<String>,
+    pub(crate) s3_secret_access_key: Option<SensitiveString>,
 
     /// The s3 bucket path prefix
     #[arg(long, env)]
@@ -79,15 +117,9 @@ pub(crate) struct Args {
 
     /// The path to the JWT public signing key
     #[arg(long, env)]
-    pub(crate) jwt_public_key: Option<String>,
-
+    pub(crate) jwt_public_key: Option<SensitiveString>,
     // /// Database migration mode on startup
     // #[arg(long, value_parser = PossibleValuesParser::new(MigrationMode::variants()))]
-
-    // pub(crate) migration_mode: Option<String>,
-    /// Disable OpenTelemetry on startup
-    #[arg(long)]
-    pub(crate) disable_opentelemetry: bool,
 }
 
 impl TryFrom<Args> for Config {
@@ -111,23 +143,23 @@ impl TryFrom<Args> for Config {
                 config_map.set("pg.user", user);
             }
             if let Some(password) = args.pg_password {
-                config_map.set("pg.password", password);
+                config_map.set("pg.password", password.to_string());
             }
-            if let Some(cert) = args.pg_cert_path {
-                config_map.set("pg.certificate_path", cert);
+            if let Some(cert_path) = args.pg_cert_path {
+                config_map.set("pg.certificate_path", cert_path.display().to_string());
             }
             if let Some(cert) = args.pg_cert_base64 {
-                config_map.set("pg.certificate_base64", cert);
+                config_map.set("pg.certificate_base64", cert.to_string());
             }
             if let Some(socket_addr) = args.socket_addr {
                 config_map.set("socket_addr", socket_addr);
             }
 
             if let Some(s3_access_key_id) = args.s3_access_key_id {
-                config_map.set("s3.access_key_id", s3_access_key_id);
+                config_map.set("s3.access_key_id", s3_access_key_id.to_string());
             }
             if let Some(s3_secret_access_key) = args.s3_secret_access_key {
-                config_map.set("s3.secret_access_key", s3_secret_access_key);
+                config_map.set("s3.secret_access_key", s3_secret_access_key.to_string());
             }
             if let Some(s3_bucket) = args.s3_bucket {
                 config_map.set("s3.bucket", s3_bucket);
@@ -139,7 +171,7 @@ impl TryFrom<Args> for Config {
                 config_map.set("s3.path_prefix", s3_path_prefix);
             }
             if let Some(jwt_public_key) = args.jwt_public_key {
-                config_map.set("jwt_signing_public_key_path", jwt_public_key);
+                config_map.set("jwt_signing_public_key_path", jwt_public_key.to_string());
             }
 
             // if let Some(migration_mode) = args.migration_mode {
