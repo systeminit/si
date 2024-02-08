@@ -1,5 +1,6 @@
 use std::{fmt, sync::Arc};
 
+use axum::extract::MatchedPath;
 use hyper::header::USER_AGENT;
 use telemetry::prelude::*;
 use tower_http::trace::MakeSpan;
@@ -171,6 +172,10 @@ impl HttpMakeSpan {
 
         let uri = request.uri();
         let uri_path = uri.path();
+        let matched_path = request
+            .extensions()
+            .get::<MatchedPath>()
+            .map(|mp| mp.as_str());
 
         let http_request_method = InnerMethod::from(request.method().as_str());
         let network_protocol_version = HttpVersion::from(request.version());
@@ -220,12 +225,7 @@ impl HttpMakeSpan {
                     //
 
                     otel.kind = SpanKind::Server.as_str(),
-                    // TODO(fnichol): would love this to be "{method} {route}" but should limit
-                    // detail in route to preserve low cardinality.
-                    //
-                    // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#method-placeholder
-                    // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name
-                    otel.name = $name,
+                    otel.name = Empty,
                     // Default for OpenTelemetry status is `Unset` which should map to an empty/unset
                     // tracing value.
                     //
@@ -294,6 +294,19 @@ impl HttpMakeSpan {
             (InnerLevel::Trace, InnerMethod::Patch) => inner!(Level::TRACE, "PATCH"),
             (InnerLevel::Trace, InnerMethod::Other) => inner!(Level::TRACE, "HTTP"),
         };
+
+        // Ideally this to be "{method} {route}" but ultimately should limit detail in route to
+        // preserve low cardinality.
+        //
+        // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#method-placeholder
+        // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name
+        span.record(
+            "otel.name",
+            match matched_path {
+                Some(path) => format!("{} {}", http_request_method.as_str(), path),
+                None => http_request_method.as_str().to_owned(),
+            },
+        );
 
         if let Some(url_scheme) = uri.scheme() {
             span.record("url.scheme", url_scheme.as_str());

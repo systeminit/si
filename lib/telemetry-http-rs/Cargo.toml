@@ -6,6 +6,7 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+axum = { workspace = true }
 http = { workspace = true }
 hyper = { workspace = true }
 remain = { workspace = true }

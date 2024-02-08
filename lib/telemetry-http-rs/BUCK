@@ -4,6 +4,7 @@ rust_library(
     name = "telemetry-http",
     deps = [
         "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:axum",
         "//third-party/rust:http",
         "//third-party/rust:hyper",
         "//third-party/rust:remain",
