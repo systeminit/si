@@ -21,6 +21,7 @@ use cyclone_core::{
 use hyper::StatusCode;
 use serde::{de::DeserializeOwned, Serialize};
 use telemetry::prelude::*;
+use telemetry_http::ParentSpan;
 
 use super::extract::LimitRequestGuard;
 use crate::{
@@ -67,17 +68,34 @@ pub async fn ws_watch(
 pub async fn ws_execute_ping(
     wsu: WebSocketUpgrade,
     limit_request_guard: LimitRequestGuard,
+    Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
-    async fn handle_socket(mut socket: WebSocket, _limit_request_guard: LimitRequestGuard) {
+    async fn handle_socket(
+        mut socket: WebSocket,
+        request_span: Span,
+        _limit_request_guard: LimitRequestGuard,
+    ) {
+        let mut has_errored = false;
+
         if let Err(ref err) = socket.send(ws::Message::Text("pong".to_string())).await {
+            request_span.record_err(err);
             warn!("client disconnected; error={}", err);
+            has_errored = true;
         }
         if let Err(ref err) = socket.close().await {
+            request_span.record_err(err);
             warn!("server failed to close websocket; error={}", err);
+            has_errored = true;
+        }
+
+        if !has_errored {
+            request_span.record_ok();
         }
     }
 
-    wsu.on_upgrade(move |socket| handle_socket(socket, limit_request_guard))
+    wsu.on_upgrade(move |socket| {
+        handle_socket(socket, request_span.into_inner(), limit_request_guard)
+    })
 }
 
 #[allow(clippy::unused_async)]
@@ -87,6 +105,7 @@ pub async fn ws_execute_resolver(
     State(key): State<DecryptionKey>,
     State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
+    Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
     let telemetry_level = telemetry_level.is_debug_or_lower().await;
@@ -104,6 +123,7 @@ pub async fn ws_execute_resolver(
             request,
             lang_server_success,
             success,
+            request_span.into_inner(),
         )
     })
 }
@@ -115,6 +135,7 @@ pub async fn ws_execute_validation(
     State(key): State<DecryptionKey>,
     State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
+    Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
     let telemetry_level = telemetry_level.is_debug_or_lower().await;
@@ -132,6 +153,7 @@ pub async fn ws_execute_validation(
             request,
             lang_server_success,
             success,
+            request_span.into_inner(),
         )
     })
 }
@@ -143,6 +165,7 @@ pub async fn ws_execute_action_run(
     State(key): State<DecryptionKey>,
     State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
+    Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
     let telemetry_level = telemetry_level.is_debug_or_lower().await;
@@ -160,6 +183,7 @@ pub async fn ws_execute_action_run(
             request,
             lang_server_success,
             success,
+            request_span.into_inner(),
         )
     })
 }
@@ -171,6 +195,7 @@ pub async fn ws_execute_reconciliation(
     State(key): State<DecryptionKey>,
     State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
+    Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
     let telemetry_level = telemetry_level.is_debug_or_lower().await;
@@ -188,6 +213,7 @@ pub async fn ws_execute_reconciliation(
             request,
             lang_server_success,
             success,
+            request_span.into_inner(),
         )
     })
 }
@@ -199,6 +225,7 @@ pub async fn ws_execute_schema_variant_definition(
     State(key): State<DecryptionKey>,
     State(telemetry_level): State<TelemetryLevel>,
     limit_request_guard: LimitRequestGuard,
+    Extension(request_span): Extension<ParentSpan>,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
     let telemetry_level = telemetry_level.is_debug_or_lower().await;
@@ -216,10 +243,18 @@ pub async fn ws_execute_schema_variant_definition(
             request,
             lang_server_success,
             success,
+            request_span.into_inner(),
         )
     })
 }
 
+#[instrument(
+    name = "web_socket.handle_socket",
+    parent = &request_span,
+    level = "info",
+    skip_all,
+    fields()
+)]
 #[allow(clippy::too_many_arguments)]
 async fn handle_socket<Request, LangServerSuccess, Success>(
     mut socket: WebSocket,
@@ -231,6 +266,7 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
     _request_marker: PhantomData<Request>,
     _lang_server_success_marker: PhantomData<LangServerSuccess>,
     success_marker: PhantomData<Success>,
+    request_span: Span,
 ) where
     Request: DecryptRequest + Serialize + DeserializeOwned + Unpin + fmt::Debug,
     Success: Serialize + Unpin + fmt::Debug,
@@ -243,10 +279,15 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
             Ok(started) => started,
             Err(err) => {
                 warn!(error = ?err, "failed to start protocol");
+                request_span.record_err(&err);
                 if let Err(err) =
                     fail_to_process(socket, "failed to start protocol", success_marker).await
                 {
-                    warn!(error = ?err, kind = std::any::type_name::<Request>(), "failed to fail execute function");
+                    warn!(
+                        error = ?err,
+                        kind = std::any::type_name::<Request>(),
+                        "failed to fail execute function",
+                    );
                 };
                 return;
             }
@@ -256,6 +297,7 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
         Ok(processed) => processed,
         Err(err) => {
             warn!(error = ?err, "failed to process protocol");
+            request_span.record_err(&err);
             if let Err(err) = fail_to_process(
                 socket,
                 format!("failed to process protocol: {err:?}"),
@@ -263,14 +305,22 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
             )
             .await
             {
-                warn!(error = ?err, kind = std::any::type_name::<Request>(), "failed to fail execute function");
+                warn!(
+                    error = ?err,
+                    kind = std::any::type_name::<Request>(),
+                    "failed to fail execute function",
+                );
             };
             return;
         }
     };
     if let Err(err) = proto.finish(socket).await {
+        request_span.record_err(&err);
         warn!(error = ?err, "failed to finish protocol");
+        return;
     }
+
+    request_span.record_ok();
 }
 
 async fn fail_to_process<Success: Serialize>(

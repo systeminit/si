@@ -10,14 +10,12 @@ use cyclone_core::{CycloneDecryptionKey, CycloneDecryptionKeyError};
 use hyper::server::accept::Accept;
 use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::{prelude::*, TelemetryLevel};
-use telemetry_http::{HttpMakeSpan, HttpOnResponse};
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     signal::unix,
     sync::{mpsc, oneshot},
 };
-use tower_http::trace::TraceLayer;
 
 use crate::{
     routes::routes, state::AppState, Config, IncomingStream, UdsIncomingStream,
@@ -234,11 +232,7 @@ fn build_service(
 
     let state = AppState::new(config.lang_server_path(), decryption_key, telemetry_level);
 
-    let routes = routes(config, state, shutdown_tx).layer(
-        TraceLayer::new_for_http()
-            .make_span_with(HttpMakeSpan::builder().level(Level::INFO).build())
-            .on_response(HttpOnResponse::new().level(Level::DEBUG)),
-    );
+    let routes = routes(config, state, shutdown_tx);
 
     let graceful_shutdown_rx = prepare_graceful_shutdown(shutdown_rx)?;
 

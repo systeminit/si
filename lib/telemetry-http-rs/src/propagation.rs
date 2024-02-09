@@ -2,7 +2,7 @@
 
 use http::HeaderMap;
 use telemetry::{
-    opentelemetry::{global, Context},
+    opentelemetry::{global, trace::TraceContextExt, Context},
     tracing::Span,
 };
 
@@ -12,6 +12,35 @@ pub fn inject_headers(headers: &mut HeaderMap) {
 
     let ctx = Span::current().context();
     inject_opentelemetry_context(&ctx, headers)
+}
+
+/// Associates the current [`Span`] with propagation telemetry in an optional [`HeaderMap`].
+pub fn associate_current_span_from_headers<'a>(headers: impl Into<Option<&'a HeaderMap>>) {
+    use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+    if let Some(headers) = headers.into() {
+        let span_ctx = extract_opentelemetry_context(headers)
+            .span()
+            .span_context()
+            .clone();
+        Span::current().add_link(span_ctx);
+    }
+}
+
+/// Set the parent of the current [`Span`] from propagation telemetry in an optional [`HeaderMap`].
+pub fn parent_span_from_headers<'a>(span: &Span, headers: impl Into<Option<&'a HeaderMap>>) {
+    use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+    if let Some(headers) = headers.into() {
+        let span_ctx = extract_opentelemetry_context(headers);
+        span.set_parent(span_ctx);
+    }
+}
+
+/// Set the parent of a [`Span`] from propagation telemetry in an optional [`HeaderMap`].
+#[inline]
+pub fn parent_current_span_from_headers<'a>(headers: impl Into<Option<&'a HeaderMap>>) {
+    parent_span_from_headers(&Span::current(), headers)
 }
 
 /// Extracts an OpenTelemetry [`Context`] from a [`HeaderMap`].
