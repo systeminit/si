@@ -19,6 +19,7 @@ const FLAG_MAPPING = {
   SECRETS: "secrets",
   SHOW_EDGES_ON_SELECT: "show_edges_on_select",
   WORKSPACE_BACKUPS: "workspaceBackups",
+  SEARCH_FILTERS: "search-filters",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
