@@ -9,7 +9,6 @@ const FLAG_MAPPING = {
   MODULES_TAB: "modules_tab",
   SECRETS: "secrets",
   INVITE_USER: "invite_user",
-  SECRETS_MANAGEMENT: "secrets_management",
   WORKSPACE_BACKUPS: "workspaceBackups",
   COPY_PASTE: "copy_paste",
   DONT_BLOCK_ON_ACTIONS: "dont_block_on_actions",

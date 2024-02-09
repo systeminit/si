@@ -1,8 +1,8 @@
 use super::{is_variant_def_locked, SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
+use crate::service::func::compile_return_types;
 use crate::service::func::list_funcs::ListedFuncView;
-use crate::service::func::{compile_return_types, compile_return_types_2};
 use axum::extract::OriginalUri;
 use axum::{extract::Query, Json};
 use dal::{
@@ -15,7 +15,6 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct GetVariantDefRequest {
     pub id: SchemaVariantDefinitionId,
-    pub has_secrets_enabled: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -116,19 +115,11 @@ pub async fn get_variant_def(
             .collect();
     }
 
-    let types = if request.has_secrets_enabled {
-        compile_return_types_2(
-            *asset_func.backend_response_type(),
-            *asset_func.backend_kind(),
-        )
-    } else {
-        compile_return_types(
-            *asset_func.backend_response_type(),
-            *asset_func.backend_kind(),
-        )
-    };
-
-    response.types = types.to_string();
+    response.types = compile_return_types(
+        *asset_func.backend_response_type(),
+        *asset_func.backend_kind(),
+    )
+    .to_string();
 
     track(
         &posthog_client,

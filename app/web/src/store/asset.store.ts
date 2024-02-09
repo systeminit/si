@@ -366,14 +366,12 @@ export const useAssetStore = () => {
             Asset,
             Visibility & {
               id: AssetId;
-              hasSecretsEnabled: boolean;
             }
           >({
             url: "/variant_def/get_variant_def",
             keyRequestStatusBy: assetId,
             params: {
               id: assetId,
-              hasSecretsEnabled: featureFlagsStore.SECRETS,
               ...visibility,
             },
             onSuccess: (response) => {
