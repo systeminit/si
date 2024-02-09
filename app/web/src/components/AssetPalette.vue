@@ -126,7 +126,7 @@ import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch from "@/components/SiSearch.vue";
 
-defineProps<{ fixesAreRunning: boolean; }>();
+defineProps<{ fixesAreRunning: boolean }>();
 
 const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used
