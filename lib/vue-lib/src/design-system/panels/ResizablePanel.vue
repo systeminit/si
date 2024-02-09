@@ -20,7 +20,7 @@
     "
     :style="{
       ...(resizeable && {
-        [isTopOrBottom ? 'height' : 'width']: `${currentSize}px`,
+        [isTopOrBottom ? 'height' : 'width']: `${displaySize}px`,
       }),
     }"
   >
@@ -28,45 +28,62 @@
       v-if="resizeable"
       class="si-panel__resizer"
       :panelSide="side"
+      :collapsed="collapsed"
       @resize-start="onResizeStart"
       @resize-move="onResizeMove"
       @resize-end="onResizeEnd"
       @resize-reset="resetSize"
+      @collapse-toggle="collapseToggle"
     />
-    <div class="si-panel__inner absolute w-full h-full flex flex-col">
+    <div
+      v-if="!collapsed && !panelOpeningFromCollapse"
+      class="si-panel__inner absolute w-full h-full flex flex-col"
+    >
       <!-- most uses will just have a single child -->
       <slot />
 
       <!-- but here we give the option for 2 resizable child sections within -->
       <div
         v-if="$slots.subpanel1"
+        ref="subpanel1Ref"
         :style="{
           height: disableSubpanelResizing
             ? 'auto'
-            : `${subpanelSplitPercent * 100}%`,
+            : `${displaySubpanelSplitPercent * 100}%`,
         }"
-        class="relative overflow-hidden"
+        :class="clsx('relative', !subpanelResizing && 'transition-[height]')"
       >
-        <slot name="subpanel1" />
+        <div class="relative overflow-hidden w-full h-full">
+          <slot name="subpanel1" />
+        </div>
+        <PanelResizingHandle
+          v-if="
+            $slots.subpanel1 && $slots.subpanel2 && !disableSubpanelResizing
+          "
+          :panelSide="isTopOrBottom ? 'left' : 'top'"
+          :class="isTopOrBottom ? 'h-full' : 'w-full'"
+          :collapsed="subpanelCollapsed"
+          @resize-start="onSubpanelResizeStart"
+          @resize-move="onSubpanelResizeMove"
+          @resize-end="onSubpanelResizeEnd"
+          @resize-reset="onSubpanelResizeReset"
+          @collapse-toggle="onSubpanelCollapseToggle"
+        />
       </div>
-      <PanelResizingHandle
-        v-if="$slots.subpanel1 && $slots.subpanel2 && !disableSubpanelResizing"
-        :panelSide="isTopOrBottom ? 'left' : 'top'"
-        :class="isTopOrBottom ? 'h-full' : 'w-full'"
-        :style="{ top: `${subpanelSplitPercent * 100}%` }"
-        @resize-start="onSubpanelResizeStart"
-        @resize-move="onSubpanelResizeMove"
-        @resize-reset="onSubpanelResizeReset"
-      />
 
       <div
         v-if="$slots.subpanel2"
         :style="{
           height: disableSubpanelResizing
             ? 'auto'
-            : `${100 - subpanelSplitPercent * 100}%`,
+            : `${100 - displaySubpanelSplitPercent * 100}%`,
         }"
-        class="grow relative overflow-hidden"
+        :class="
+          clsx(
+            'grow relative overflow-hidden',
+            !subpanelResizing && 'transition-[height]',
+          )
+        "
       >
         <slot name="subpanel2" />
       </div>
@@ -104,6 +121,13 @@ const isTopOrBottom = computed(
 
 const panelRef = ref<HTMLDivElement>();
 const currentSize = ref(0);
+const displaySize = computed(() => {
+  if (collapsed.value) return 0;
+  else return currentSize.value;
+});
+const collapsed = ref(false);
+const panelOpeningFromCollapse = ref(false);
+const panelOpeningFromCollapseTimeout = ref<number>();
 
 const setSize = (newSize: number) => {
   let finalSize = newSize;
@@ -182,6 +206,16 @@ const resetSize = (useDefaultSize = true) => {
   }
 };
 
+const collapseToggle = () => {
+  collapsed.value = !collapsed.value;
+  if (!collapsed.value) {
+    panelOpeningFromCollapse.value = true;
+    panelOpeningFromCollapseTimeout.value = window.setTimeout(() => {
+      panelOpeningFromCollapse.value = false;
+    }, 150);
+  }
+};
+
 const onWindowResize = () => {
   // may change the size because min/max ratio of window size may have changed
   if (props.resizeable) setSize(currentSize.value);
@@ -193,6 +227,10 @@ const windowResizeObserver = new ResizeObserver(debounceForResize);
 
 // subpanel resizing
 const subpanelSplitPercent = ref(props.defaultSubpanelSplit);
+const displaySubpanelSplitPercent = computed(() => {
+  if (subpanelCollapsed.value) return 100;
+  else return subpanelSplitPercent.value;
+});
 
 onMounted(() => {
   const storedSplit = window.localStorage.getItem(
@@ -201,12 +239,18 @@ onMounted(() => {
   if (storedSplit) subpanelSplitPercent.value = parseFloat(storedSplit);
 });
 
+const subpanel1Ref = ref();
+const subpanelResizing = ref(false);
+const subpanelCollapsed = ref(false);
+const subpanelOpeningFromCollapse = ref(false);
+const subpanelOpeningFromCollapseTimeout = ref<number>();
 const totalAvailableSize = ref(0);
 const subpanel1SizePx = computed(
   () => totalAvailableSize.value * subpanelSplitPercent.value,
 );
 let subpanelResizeStartPanel1Size: number;
 function onSubpanelResizeStart() {
+  subpanelResizing.value = true;
   const boundingRect = panelRef.value?.getBoundingClientRect();
   if (!boundingRect) return;
   totalAvailableSize.value = isTopOrBottom.value
@@ -239,6 +283,18 @@ function setSubpanelSplit(newSplitPercent: number) {
     );
   }
 }
+function onSubpanelResizeEnd() {
+  subpanelResizing.value = false;
+}
+function onSubpanelCollapseToggle() {
+  subpanelCollapsed.value = !subpanelCollapsed.value;
+  if (!subpanelCollapsed.value) {
+    subpanelOpeningFromCollapse.value = true;
+    subpanelOpeningFromCollapseTimeout.value = window.setTimeout(() => {
+      subpanelOpeningFromCollapse.value = false;
+    }, 150) as number;
+  }
+}
 
 onMounted(() => {
   if (props.resizeable) {
@@ -256,6 +312,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   windowResizeObserver.unobserve(document.body);
+  if (panelOpeningFromCollapseTimeout.value) {
+    clearTimeout(panelOpeningFromCollapseTimeout.value);
+  }
 });
 
 defineExpose({
