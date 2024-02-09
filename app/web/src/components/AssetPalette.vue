@@ -16,15 +16,28 @@
                 <PillCounter :count="assetCount" borderTone="action" />
               </div>
             </template>
-            <Icon
-              v-tooltip="{
-                content:
-                  'Drag the assets that you wish to include in your application into the canvas to the right.',
-                theme: 'w-380',
-              }"
-              class="cursor-pointer"
-              name="question-circle"
-            />
+            <div class="flex flex-row items-center gap-xs">
+              <Icon
+                v-tooltip="{
+                  content:
+                    'Drag the assets that you wish to include in your application into the canvas to the right.',
+                  theme: 'w-380',
+                }"
+                class="cursor-pointer hover:text-shade-100 dark:hover:text-shade-0"
+                name="question-circle"
+              />
+              <Icon
+                name="double-arrow-left"
+                :class="
+                  clsx(
+                    '-rotate-90 hover:border hover:border-action-500 dark:hover:border-action-300 cursor-pointer rounded-md',
+                    collapsed && 'text-action-500 dark:text-action-300',
+                  )
+                "
+                size="lg"
+                @click="emit('collapse-toggle')"
+              />
+            </div>
           </SidebarSubpanelTitle>
 
           <SiSearch
@@ -162,7 +175,7 @@ import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch from "@/components/SiSearch.vue";
 
-defineProps<{ fixesAreRunning: boolean }>();
+defineProps<{ fixesAreRunning: boolean; collapsed: boolean }>();
 
 const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used
@@ -305,4 +318,8 @@ onBeforeUnmount(() => {
   windowListenerManager.removeEventListener("keydown", onKeyDown);
   windowListenerManager.removeEventListener("mousedown", onMouseDown);
 });
+
+const emit = defineEmits<{
+  (e: "collapse-toggle"): void;
+}>();
 </script>

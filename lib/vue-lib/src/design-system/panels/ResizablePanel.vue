@@ -35,6 +35,7 @@
       @resize-reset="resetSize"
       @collapse-toggle="collapseToggle"
     />
+    <!-- We blank out the contents of the ResizeablePanel while it is collapsing or opening from collapse to prevent messiness with the elements inside -->
     <div
       v-if="!collapsed && !panelOpeningFromCollapse"
       class="si-panel__inner absolute w-full h-full flex flex-col"
@@ -67,7 +68,7 @@
           @resize-move="onSubpanelResizeMove"
           @resize-end="onSubpanelResizeEnd"
           @resize-reset="onSubpanelResizeReset"
-          @collapse-toggle="onSubpanelCollapseToggle"
+          @collapse-toggle="subpanelCollapseToggle"
         />
       </div>
 
@@ -286,7 +287,7 @@ function setSubpanelSplit(newSplitPercent: number) {
 function onSubpanelResizeEnd() {
   subpanelResizing.value = false;
 }
-function onSubpanelCollapseToggle() {
+function subpanelCollapseToggle() {
   subpanelCollapsed.value = !subpanelCollapsed.value;
   if (!subpanelCollapsed.value) {
     subpanelOpeningFromCollapse.value = true;
@@ -322,5 +323,9 @@ defineExpose({
   maximize,
   resetSize,
   maxSize: props.maxSize,
+  collapseToggle,
+  collapsed,
+  subpanelCollapseToggle,
+  subpanelCollapsed,
 });
 </script>

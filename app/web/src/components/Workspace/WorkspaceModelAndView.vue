@@ -2,6 +2,7 @@
 <template>
   <!-- left panel - outline + asset palette -->
   <ResizablePanel
+    ref="leftResizablePanelRef"
     rememberSizeKey="changeset-and-asset"
     side="left"
     :minSize="250"
@@ -17,6 +18,8 @@
       <AssetPalette
         class="border-t dark:border-neutral-600"
         :fixesAreRunning="fixesAreRunning"
+        :collapsed="leftResizablePanelRef?.subpanelCollapsed || false"
+        @collapse-toggle="leftResizablePanelRef?.subpanelCollapseToggle"
       />
     </template>
   </ResizablePanel>
@@ -114,6 +117,8 @@ onMounted(() => {
     openCollapsible.value = false;
   }
 });
+
+const leftResizablePanelRef = ref();
 
 const contextMenuRef = ref<InstanceType<typeof ModelingRightClickMenu>>();
 

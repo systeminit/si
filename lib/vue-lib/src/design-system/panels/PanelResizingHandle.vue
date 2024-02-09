@@ -54,12 +54,12 @@
       :class="
         clsx(
           'absolute shadow-md cursor-pointer z-50',
-          panelSide === 'left' && 'top-1/2 translate-y-[-50%] rounded-r',
+          panelSide === 'left' && 'top-1/2 translate-y-[-50%] rounded-r-md',
           panelSide === 'right' &&
-            'top-1/2 left-full translate-y-[-50%] translate-x-[-100%]  rounded-l',
+            'top-1/2 left-full translate-y-[-50%] translate-x-[-100%]  rounded-l-md',
           panelSide === 'top' &&
-            'left-1/2 top-full translate-x-[-50%] translate-y-[-100%] rounded-l',
-          panelSide === 'bottom' && 'left-1/2 translate-x-[-50%] rounded-r',
+            'left-1/2 top-full translate-x-[-50%] translate-y-[-100%] rounded-l-md',
+          panelSide === 'bottom' && 'left-1/2 translate-x-[-50%] rounded-r-md',
           'w-7 h-7 bg-neutral-100 dark:bg-neutral-800 hover:bg-action-200 dark:hover:bg-action-900',
           'border border-action-500 dark:border-action-300',
           !panelIsVertical && 'rotate-90',
