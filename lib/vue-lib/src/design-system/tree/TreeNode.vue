@@ -14,7 +14,7 @@
             xl: 'border-l-8',
           }[leftBorderSize],
           isHover &&
-            'dark:outline-action-300 outline-action-500 outline z-10 -outline-offset-1',
+            'dark:outline-action-300 outline-action-500 outline z-10 -outline-offset-1 outline-1',
           isSelected && themeClasses('bg-action-100', 'bg-action-900'),
           classes,
         )

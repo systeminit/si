@@ -12,7 +12,7 @@
           'relative border-b border-l-[2px] cursor-pointer group',
           themeClasses('border-neutral-200', 'border-neutral-600'),
           isHover &&
-            'dark:outline-action-300 outline-action-500 outline z-10 -outline-offset-1',
+            'dark:outline-action-300 outline-action-500 outline z-10 -outline-offset-1 outline-1',
           isSelected && themeClasses('bg-action-100', 'bg-action-900'),
         )
       "

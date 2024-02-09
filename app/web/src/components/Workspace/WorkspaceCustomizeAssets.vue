@@ -1,6 +1,16 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <ResizablePanel rememberSizeKey="func-picker" side="left" :minSize="300">
+  <component
+    :is="
+      featureFlagsStore.RESIZABLE_PANEL_UPGRADE
+        ? ResizablePanel
+        : ResizablePanelOld
+    "
+    ref="leftResizablePanelRef"
+    rememberSizeKey="func-picker"
+    side="left"
+    :minSize="300"
+  >
     <template #subpanel1>
       <div class="flex flex-col h-full">
         <div class="relative flex-grow">
@@ -13,7 +23,8 @@
     <template #subpanel2>
       <AssetFuncListPanel :assetId="assetStore.selectedAssetId" />
     </template>
-  </ResizablePanel>
+  </component>
+
   <div
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 font-semi-bold flex flex-col relative"
   >
@@ -24,8 +35,14 @@
       />
     </div>
   </div>
-  <ResizablePanel
-    ref="rightPanelRef"
+
+  <component
+    :is="
+      featureFlagsStore.RESIZABLE_PANEL_UPGRADE
+        ? ResizablePanel
+        : ResizablePanelOld
+    "
+    ref="rightResizablePanelRef"
     rememberSizeKey="func-details"
     side="right"
     :minSize="200"
@@ -44,7 +61,7 @@
           singleModelScreen
           testPanelEnabled
           @detached="onDetach"
-          @expand-panel="rightPanelRef?.maximize()"
+          @expand-panel="rightResizablePanelRef?.maximize()"
         />
         <!-- the key here is to force remounting so we get the proper asset
         request statuses -->
@@ -61,15 +78,16 @@
         Select an asset to edit it.
       </div>
     </div>
-  </ResizablePanel>
+  </component>
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from "vue";
-import { ResizablePanel } from "@si/vue-lib/design-system";
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { ResizablePanel, ResizablePanelOld } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AssetListPanel from "../AssetListPanel.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
 import AssetEditorTabs from "../AssetEditorTabs.vue";
@@ -78,11 +96,44 @@ import AssetFuncListPanel from "../AssetFuncListPanel.vue";
 import FuncDetails from "../FuncEditor/FuncDetails.vue";
 
 const funcStore = useFuncStore();
-
+const featureFlagsStore = useFeatureFlagsStore();
 const assetStore = useAssetStore();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 
-const rightPanelRef = ref<InstanceType<typeof ResizablePanel>>();
+const leftResizablePanelRef = ref();
+const rightResizablePanelRef = ref();
+
+const onKeyDown = async (e: KeyboardEvent) => {
+  if (
+    featureFlagsStore.RESIZABLE_PANEL_UPGRADE &&
+    e.altKey &&
+    e.shiftKey &&
+    leftResizablePanelRef.value &&
+    rightResizablePanelRef.value
+  ) {
+    if (
+      leftResizablePanelRef.value.collapsed &&
+      rightResizablePanelRef.value.collapsed
+    ) {
+      // Open all panels
+      leftResizablePanelRef.value.collapseSet(false);
+      rightResizablePanelRef.value.collapseSet(false);
+      leftResizablePanelRef.value.subpanelCollapseSet(false);
+    } else {
+      // Close all panels
+      leftResizablePanelRef.value.collapseSet(true);
+      rightResizablePanelRef.value.collapseSet(true);
+    }
+  }
+};
+
+onMounted(() => {
+  window.addEventListener("keydown", onKeyDown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeyDown);
+});
 
 watch(
   [

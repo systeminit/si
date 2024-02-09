@@ -16,15 +16,17 @@
                 <PillCounter :count="assetCount" borderTone="action" />
               </div>
             </template>
-            <Icon
-              v-tooltip="{
-                content:
-                  'Drag the assets that you wish to include in your application into the canvas to the right.',
-                theme: 'w-380',
-              }"
-              class="cursor-pointer"
-              name="question-circle"
-            />
+            <div class="flex flex-row items-center gap-xs">
+              <Icon
+                v-tooltip="{
+                  content:
+                    'Drag the assets that you wish to include in your application into the canvas to the right.',
+                  theme: 'w-380',
+                }"
+                class="cursor-pointer hover:text-shade-100 dark:hover:text-shade-0"
+                name="question-circle"
+              />
+            </div>
           </SidebarSubpanelTitle>
 
           <SiSearch
@@ -33,44 +35,6 @@
             @search="onSearchUpdated"
           />
         </template>
-
-        <!-- OLD ASSET PALETTE -->
-        <!-- <ul class="overflow-y-auto">
-          <Collapsible
-            v-for="(category, categoryIndex) in filteredComponents"
-            ref="collapsibleRefs"
-            :key="categoryIndex"
-            :label="category.displayName"
-            as="li"
-            contentAs="ul"
-            class="select-none"
-          >
-            <li
-              v-for="(schema, schemaIndex) in category.schemas"
-              :key="schemaIndex"
-              class="select-none border-b-2 dark:border-neutral-600"
-              data-cy="asset_card"
-            >
-              <SiNodeSprite
-                :color="schema.color"
-                :name="schema.displayName"
-                :class="
-                  clsx(
-                    'border border-transparent',
-                    fixesAreRunning
-                      ? 'hover:cursor-progress'
-                      : 'hover:border-action-500 dark:hover:border-action-300 dark:text-white hover:text-action-500 dark:hover:text-action-500 hover:cursor-pointer',
-                    componentsStore.selectedInsertSchemaId === schema.id
-                      ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
-                      : '',
-                  )
-                "
-                @mousedown.left.stop="onSelect(schema.id, fixesAreRunning)"
-                @click.right.prevent
-              />
-            </li>
-          </Collapsible>
-        </ul> -->
 
         <TreeNode
           v-for="(category, categoryIndex) in filteredComponents"
@@ -101,7 +65,7 @@
                 'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
                 fixesAreRunning
                   ? 'hover:cursor-progress'
-                  : 'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1',
+                  : 'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
                 !fixesAreRunning &&
                   componentsStore.selectedInsertSchemaId === schema.id
                   ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300 py-0'
@@ -113,7 +77,7 @@
             @click.right.prevent
           >
             <template #label>
-              <div>
+              <div class="text-sm">
                 {{ schema.displayName }}
               </div>
               <!-- <div

@@ -41,6 +41,8 @@ export * from "./modals/modal_utils";
 // ./panels
 export { default as ResizablePanel } from "./panels/ResizablePanel.vue";
 export { default as PanelResizingHandle } from "./panels/PanelResizingHandle.vue";
+export { default as ResizablePanelOld } from "./panels/ResizablePanelOld.vue";
+export { default as PanelResizingHandleOld } from "./panels/PanelResizingHandleOld.vue";
 
 // ./tabs
 export { default as TabGroup } from "./tabs/TabGroup.vue";

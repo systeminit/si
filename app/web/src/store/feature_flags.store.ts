@@ -17,6 +17,7 @@ const FLAG_MAPPING = {
   JOI_VALIDATIONS: "joi_validations",
   SHOW_EDGES_ON_SELECT: "show_edges_on_select",
   REMOVE_COMPONENT_ICONS: "remove_component_icons",
+  RESIZABLE_PANEL_UPGRADE: "resizable-panel-upgrade",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
