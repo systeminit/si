@@ -1,4 +1,5 @@
 pub use limit_requests::{LimitRequest, LimitRequestLayer};
+pub use web_socket_trace::{WebSocketTrace, WebSocketTraceLayer};
 
 mod limit_requests {
     use std::{
@@ -151,5 +152,134 @@ mod limit_requests {
                 Poll::Pending => Poll::Pending,
             }
         }
+    }
+}
+
+mod web_socket_trace {
+    use std::{
+        future::Future,
+        pin::Pin,
+        task::{Context, Poll},
+    };
+
+    use axum::{body::Body, extract::MatchedPath, http::Request, response::Response};
+    use pin_project_lite::pin_project;
+    use telemetry::prelude::*;
+    use telemetry_http::{propagation, ParentSpan};
+    use tower::{Layer, Service};
+
+    // Vendored and modified from futures_core::task::poll::ready
+    macro_rules! ready {
+        ($e:expr $(,)?) => {
+            match $e {
+                ::std::task::Poll::Ready(t) => t,
+                ::std::task::Poll::Pending => return ::std::task::Poll::Pending,
+            }
+        };
+    }
+
+    #[derive(Clone, Debug)]
+    pub struct WebSocketTraceLayer;
+
+    impl WebSocketTraceLayer {
+        pub fn new() -> Self {
+            Self
+        }
+    }
+
+    impl<S> Layer<S> for WebSocketTraceLayer {
+        type Service = WebSocketTrace<S>;
+
+        fn layer(&self, inner: S) -> Self::Service {
+            WebSocketTrace::new(inner)
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    pub struct WebSocketTrace<S> {
+        inner: S,
+    }
+
+    impl<S> WebSocketTrace<S> {
+        pub fn new(inner: S) -> Self {
+            Self { inner }
+        }
+    }
+
+    impl<S> Service<Request<Body>> for WebSocketTrace<S>
+    where
+        S: Service<Request<Body>, Response = Response> + Send + 'static,
+        S::Future: Send + 'static,
+    {
+        type Response = S::Response;
+        type Error = S::Error;
+        type Future = ResponseFuture<S::Future>;
+
+        fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            self.inner.poll_ready(cx)
+        }
+
+        fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+            let span = span_from_request(&req);
+
+            req.extensions_mut().insert(ParentSpan::new(span.clone()));
+
+            let response = {
+                let _guard = span.enter();
+                self.inner.call(req)
+            };
+
+            ResponseFuture { inner: response }
+        }
+    }
+
+    pin_project! {
+        #[derive(Debug)]
+        pub struct ResponseFuture<S> {
+            #[pin]
+            inner: S,
+        }
+    }
+
+    impl<F, T, E> Future for ResponseFuture<F>
+    where
+        F: Future<Output = Result<T, E>>,
+    {
+        type Output = Result<T, E>;
+
+        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            let this = self.project();
+            let result = ready!(this.inner.poll(cx));
+
+            Poll::Ready(result)
+        }
+    }
+
+    fn span_from_request(req: &Request<Body>) -> Span {
+        let span = span!(
+            Level::INFO,
+            "GET websocket",
+            otel.kind = SpanKind::Server.as_str(),
+            otel.name = Empty,
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+        );
+
+        let method = req.method().as_str();
+        let matched_path = req.extensions().get::<MatchedPath>().map(|mp| mp.as_str());
+
+        span.record(
+            "otel.name",
+            match matched_path {
+                Some(path) => format!("WS {method} {path}"),
+                None => format!("WS {method}"),
+            },
+        );
+
+        // Extract OpenTelemetry parent span metadata from the request headers (if it exists) and
+        // associate it with this request span
+        propagation::parent_span_from_headers(&span, req.headers());
+
+        span
     }
 }
