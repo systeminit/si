@@ -27,6 +27,7 @@
                 name="question-circle"
               />
               <Icon
+                v-if="featureFlagsStore.RESIZABLE_PANEL_UPGRADE"
                 name="double-arrow-left"
                 :class="
                   clsx(
@@ -174,8 +175,11 @@ import {
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch from "@/components/SiSearch.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 defineProps<{ fixesAreRunning: boolean; collapsed: boolean }>();
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used

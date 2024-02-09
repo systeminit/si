@@ -1,6 +1,15 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <ResizablePanel rememberSizeKey="func-picker" side="left" :minSize="300">
+  <component
+    :is="
+      featureFlagsStore.RESIZABLE_PANEL_UPGRADE
+        ? ResizablePanel
+        : ResizablePanelOld
+    "
+    rememberSizeKey="func-picker"
+    side="left"
+    :minSize="300"
+  >
     <template #subpanel1>
       <div class="flex flex-col h-full">
         <div class="relative flex-grow">
@@ -13,7 +22,8 @@
     <template #subpanel2>
       <AssetFuncListPanel :assetId="assetStore.selectedAssetId" />
     </template>
-  </ResizablePanel>
+  </component>
+
   <div
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 font-semi-bold flex flex-col relative"
   >
@@ -24,7 +34,13 @@
       />
     </div>
   </div>
-  <ResizablePanel
+
+  <component
+    :is="
+      featureFlagsStore.RESIZABLE_PANEL_UPGRADE
+        ? ResizablePanel
+        : ResizablePanelOld
+    "
     ref="rightPanelRef"
     rememberSizeKey="func-details"
     side="right"
@@ -61,15 +77,16 @@
         Select an asset to edit it.
       </div>
     </div>
-  </ResizablePanel>
+  </component>
 </template>
 
 <script lang="ts" setup>
 import { ref, watch } from "vue";
-import { ResizablePanel } from "@si/vue-lib/design-system";
+import { ResizablePanel, ResizablePanelOld } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AssetListPanel from "../AssetListPanel.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
 import AssetEditorTabs from "../AssetEditorTabs.vue";
@@ -78,7 +95,7 @@ import AssetFuncListPanel from "../AssetFuncListPanel.vue";
 import FuncDetails from "../FuncEditor/FuncDetails.vue";
 
 const funcStore = useFuncStore();
-
+const featureFlagsStore = useFeatureFlagsStore();
 const assetStore = useAssetStore();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 

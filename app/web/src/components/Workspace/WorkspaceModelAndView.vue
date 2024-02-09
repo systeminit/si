@@ -1,7 +1,12 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
   <!-- left panel - outline + asset palette -->
-  <ResizablePanel
+  <component
+    :is="
+      featureFlagsStore.RESIZABLE_PANEL_UPGRADE
+        ? ResizablePanel
+        : ResizablePanelOld
+    "
     ref="leftResizablePanelRef"
     rememberSizeKey="changeset-and-asset"
     side="left"
@@ -22,7 +27,7 @@
         @collapse-toggle="leftResizablePanelRef?.subpanelCollapseToggle"
       />
     </template>
-  </ResizablePanel>
+  </component>
 
   <div
     class="grow h-full relative bg-neutral-50 dark:bg-neutral-900"
@@ -48,7 +53,13 @@
   </div>
 
   <!-- Right panel (selection details) -->
-  <ResizablePanel
+  <component
+    :is="
+      featureFlagsStore.RESIZABLE_PANEL_UPGRADE
+        ? ResizablePanel
+        : ResizablePanelOld
+    "
+    ref="rightResizablePanelRef"
     rememberSizeKey="details-panel"
     side="right"
     :defaultSize="400"
@@ -67,7 +78,7 @@
       />
       <NoSelectionDetailsPanel v-else />
     </div>
-  </ResizablePanel>
+  </component>
 
   <ModelingRightClickMenu ref="contextMenuRef" />
   <DeleteSelectionModal />
@@ -76,8 +87,8 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed, onMounted, ref } from "vue";
-import { ResizablePanel } from "@si/vue-lib/design-system";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { ResizablePanel, ResizablePanelOld } from "@si/vue-lib/design-system";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import { useComponentsStore, FullComponent } from "@/store/components.store";
 import { useFixesStore } from "@/store/fixes.store";
@@ -85,6 +96,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import FixProgressOverlay from "@/components/FixProgressOverlay.vue";
 import { usePresenceStore } from "@/store/presence.store";
 import { useSecretsStore } from "@/store/secrets.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import { RightClickElementEvent } from "../ModelingDiagram/diagram_types";
@@ -96,6 +108,7 @@ import ModelingRightClickMenu from "../ModelingView/ModelingRightClickMenu.vue";
 import DeleteSelectionModal from "../ModelingView/DeleteSelectionModal.vue";
 import RestoreSelectionModal from "../ModelingView/RestoreSelectionModal.vue";
 
+const featureFlagsStore = useFeatureFlagsStore();
 const changeSetStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
 const fixesStore = useFixesStore();
@@ -108,6 +121,28 @@ const fixesAreRunning = computed(
     changeSetStore.getRequestStatus("APPLY_CHANGE_SET").value.isPending,
 );
 
+const onKeyDown = async (e: KeyboardEvent) => {
+  if (
+    e.key === "Alt" &&
+    leftResizablePanelRef.value &&
+    rightResizablePanelRef.value
+  ) {
+    if (
+      leftResizablePanelRef.value.collapsed &&
+      rightResizablePanelRef.value.collapsed
+    ) {
+      // Open all panels
+      leftResizablePanelRef.value.collapseSet(false);
+      rightResizablePanelRef.value.collapseSet(false);
+      leftResizablePanelRef.value.subpanelCollapseSet(false);
+    } else {
+      // Close all panels
+      leftResizablePanelRef.value.collapseSet(true);
+      rightResizablePanelRef.value.collapseSet(true);
+    }
+  }
+};
+
 const openCollapsible = ref(true);
 onMounted(() => {
   if (changeSetStore.headSelected) {
@@ -116,9 +151,16 @@ onMounted(() => {
   } else {
     openCollapsible.value = false;
   }
+
+  window.addEventListener("keydown", onKeyDown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeyDown);
 });
 
 const leftResizablePanelRef = ref();
+const rightResizablePanelRef = ref();
 
 const contextMenuRef = ref<InstanceType<typeof ModelingRightClickMenu>>();
 
