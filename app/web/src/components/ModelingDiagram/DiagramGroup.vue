@@ -636,6 +636,6 @@ function getTextPosition() {
     return 2;
   }
 
-  return 24;
+  return 42;
 }
 </script>
