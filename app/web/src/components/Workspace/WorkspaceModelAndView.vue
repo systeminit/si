@@ -23,8 +23,6 @@
       <AssetPalette
         class="border-t dark:border-neutral-600"
         :fixesAreRunning="fixesAreRunning"
-        :collapsed="leftResizablePanelRef?.subpanelCollapsed || false"
-        @collapse-toggle="leftResizablePanelRef?.subpanelCollapseToggle"
       />
     </template>
   </component>
@@ -121,9 +119,14 @@ const fixesAreRunning = computed(
     changeSetStore.getRequestStatus("APPLY_CHANGE_SET").value.isPending,
 );
 
+const leftResizablePanelRef = ref();
+const rightResizablePanelRef = ref();
+
 const onKeyDown = async (e: KeyboardEvent) => {
   if (
-    e.key === "Alt" &&
+    featureFlagsStore.RESIZABLE_PANEL_UPGRADE &&
+    e.altKey &&
+    e.shiftKey &&
     leftResizablePanelRef.value &&
     rightResizablePanelRef.value
   ) {
@@ -158,9 +161,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeyDown);
 });
-
-const leftResizablePanelRef = ref();
-const rightResizablePanelRef = ref();
 
 const contextMenuRef = ref<InstanceType<typeof ModelingRightClickMenu>>();
 

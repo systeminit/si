@@ -26,18 +26,6 @@
                 class="cursor-pointer hover:text-shade-100 dark:hover:text-shade-0"
                 name="question-circle"
               />
-              <Icon
-                v-if="featureFlagsStore.RESIZABLE_PANEL_UPGRADE"
-                name="double-arrow-left"
-                :class="
-                  clsx(
-                    '-rotate-90 hover:border hover:border-action-500 dark:hover:border-action-300 cursor-pointer rounded-md',
-                    collapsed && 'text-action-500 dark:text-action-300',
-                  )
-                "
-                size="lg"
-                @click="emit('collapse-toggle')"
-              />
             </div>
           </SidebarSubpanelTitle>
 
@@ -47,44 +35,6 @@
             @search="onSearchUpdated"
           />
         </template>
-
-        <!-- OLD ASSET PALETTE -->
-        <!-- <ul class="overflow-y-auto">
-          <Collapsible
-            v-for="(category, categoryIndex) in filteredComponents"
-            ref="collapsibleRefs"
-            :key="categoryIndex"
-            :label="category.displayName"
-            as="li"
-            contentAs="ul"
-            class="select-none"
-          >
-            <li
-              v-for="(schema, schemaIndex) in category.schemas"
-              :key="schemaIndex"
-              class="select-none border-b-2 dark:border-neutral-600"
-              data-cy="asset_card"
-            >
-              <SiNodeSprite
-                :color="schema.color"
-                :name="schema.displayName"
-                :class="
-                  clsx(
-                    'border border-transparent',
-                    fixesAreRunning
-                      ? 'hover:cursor-progress'
-                      : 'hover:border-action-500 dark:hover:border-action-300 dark:text-white hover:text-action-500 dark:hover:text-action-500 hover:cursor-pointer',
-                    componentsStore.selectedInsertSchemaId === schema.id
-                      ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
-                      : '',
-                  )
-                "
-                @mousedown.left.stop="onSelect(schema.id, fixesAreRunning)"
-                @click.right.prevent
-              />
-            </li>
-          </Collapsible>
-        </ul> -->
 
         <TreeNode
           v-for="(category, categoryIndex) in filteredComponents"
@@ -175,11 +125,8 @@ import {
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch from "@/components/SiSearch.vue";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
-defineProps<{ fixesAreRunning: boolean; collapsed: boolean }>();
-
-const featureFlagsStore = useFeatureFlagsStore();
+defineProps<{ fixesAreRunning: boolean; }>();
 
 const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used
@@ -322,8 +269,4 @@ onBeforeUnmount(() => {
   windowListenerManager.removeEventListener("keydown", onKeyDown);
   windowListenerManager.removeEventListener("mousedown", onMouseDown);
 });
-
-const emit = defineEmits<{
-  (e: "collapse-toggle"): void;
-}>();
 </script>

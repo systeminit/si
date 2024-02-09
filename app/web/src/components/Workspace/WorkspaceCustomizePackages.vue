@@ -6,6 +6,7 @@
         ? ResizablePanel
         : ResizablePanelOld
     "
+    ref="leftResizablePanelRef"
     rememberSizeKey="func-picker"
     side="left"
     :minSize="300"
@@ -31,6 +32,7 @@
         ? ResizablePanel
         : ResizablePanelOld
     "
+    ref="rightResizablePanelRef"
     rememberSizeKey="func-details"
     side="right"
     :minSize="200"
@@ -42,7 +44,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computed } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { ResizablePanel, ResizablePanelOld } from "@si/vue-lib/design-system";
 import ModuleListPanel from "@/components/modules/ModuleListPanel.vue";
 import ModuleDisplay from "@/components/modules/ModuleDisplay.vue";
@@ -55,4 +57,39 @@ import CustomizeTabs from "../CustomizeTabs.vue";
 const featureFlagsStore = useFeatureFlagsStore();
 const moduleStore = useModuleStore();
 const moduleSlug = computed(() => moduleStore.urlSelectedModuleSlug);
+
+const leftResizablePanelRef = ref();
+const rightResizablePanelRef = ref();
+
+const onKeyDown = async (e: KeyboardEvent) => {
+  if (
+    featureFlagsStore.RESIZABLE_PANEL_UPGRADE &&
+    e.altKey &&
+    e.shiftKey &&
+    leftResizablePanelRef.value &&
+    rightResizablePanelRef.value
+  ) {
+    if (
+      leftResizablePanelRef.value.collapsed &&
+      rightResizablePanelRef.value.collapsed
+    ) {
+      // Open all panels
+      leftResizablePanelRef.value.collapseSet(false);
+      rightResizablePanelRef.value.collapseSet(false);
+      leftResizablePanelRef.value.subpanelCollapseSet(false);
+    } else {
+      // Close all panels
+      leftResizablePanelRef.value.collapseSet(true);
+      rightResizablePanelRef.value.collapseSet(true);
+    }
+  }
+};
+
+onMounted(() => {
+  window.addEventListener("keydown", onKeyDown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeyDown);
+});
 </script>

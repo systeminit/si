@@ -37,8 +37,12 @@
     />
     <!-- We blank out the contents of the ResizeablePanel while it is collapsing or opening from collapse to prevent messiness with the elements inside -->
     <div
-      v-if="!collapsed && !panelOpeningFromCollapse"
-      class="si-panel__inner absolute w-full h-full flex flex-col"
+      :class="
+        clsx(
+          'si-panel__inner absolute w-full h-full flex flex-col',
+          (collapsed || panelOpeningFromCollapse) && 'opacity-0',
+        )
+      "
     >
       <!-- most uses will just have a single child -->
       <slot />
@@ -97,6 +101,11 @@ import { computed, onBeforeUnmount, onMounted, PropType, ref } from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import PanelResizingHandle from "./PanelResizingHandle.vue";
+
+// This variable determines how long after uncollapsing the main panel the panel's content should show
+// We hide the panel content while it is collapsing or uncollapsing to avoid the content inside from displaying in jenky ways
+// The CSS animation takes ~150ms, so this number should be equal to or less than that number
+const PANEL_COLLAPSE_HIDE_CONTENT_TIME = 140;
 
 const props = defineProps({
   rememberSizeKey: { type: String, required: true },
@@ -213,7 +222,7 @@ const collapseSet = (collapse: boolean) => {
     panelOpeningFromCollapse.value = true;
     panelOpeningFromCollapseTimeout.value = window.setTimeout(() => {
       panelOpeningFromCollapse.value = false;
-    }, 150);
+    }, PANEL_COLLAPSE_HIDE_CONTENT_TIME);
   }
 };
 
@@ -297,7 +306,7 @@ function subpanelCollapseSet(collapse: boolean) {
     subpanelOpeningFromCollapse.value = true;
     subpanelOpeningFromCollapseTimeout.value = window.setTimeout(() => {
       subpanelOpeningFromCollapse.value = false;
-    }, 150) as number;
+    }, PANEL_COLLAPSE_HIDE_CONTENT_TIME) as number;
   }
 }
 function subpanelCollapseToggle() {

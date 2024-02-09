@@ -101,7 +101,7 @@
         ></div>
 
         <div
-          v-if="showOverflowDropdown"
+          v-if="showOverflowDropdown && !disableOverflowDropdown"
           ref="overflowDropdownButtonRef"
           :class="
             clsx(
@@ -205,6 +205,7 @@ const props = defineProps({
   trackingSlug: String,
   growTabsToFillWidth: { type: Boolean },
   minimal: { type: Boolean },
+  disableOverflowDropdown: { type: Boolean },
 });
 
 const emit = defineEmits<{

@@ -34,7 +34,10 @@
     </template>
 
     <div class="absolute inset-0">
-      <TabGroup startSelectedTabSlug="changes" marginTop="2xs">
+      <TabGroup
+        startSelectedTabSlug="changes"
+        marginTop="2xs"
+      >
         <TabGroupItem label="Changes" slug="changes">
           <ChangesPanel />
         </TabGroupItem>

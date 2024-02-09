@@ -6,6 +6,7 @@
         ? ResizablePanel
         : ResizablePanelOld
     "
+    ref="leftResizablePanelRef"
     rememberSizeKey="func-picker"
     side="left"
     :minSize="300"
@@ -41,7 +42,7 @@
         ? ResizablePanel
         : ResizablePanelOld
     "
-    ref="rightPanelRef"
+    ref="rightResizablePanelRef"
     rememberSizeKey="func-details"
     side="right"
     :minSize="200"
@@ -60,7 +61,7 @@
           singleModelScreen
           testPanelEnabled
           @detached="onDetach"
-          @expand-panel="rightPanelRef?.maximize()"
+          @expand-panel="rightResizablePanelRef?.maximize()"
         />
         <!-- the key here is to force remounting so we get the proper asset
         request statuses -->
@@ -81,7 +82,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from "vue";
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { ResizablePanel, ResizablePanelOld } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
@@ -99,7 +100,40 @@ const featureFlagsStore = useFeatureFlagsStore();
 const assetStore = useAssetStore();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 
-const rightPanelRef = ref<InstanceType<typeof ResizablePanel>>();
+const leftResizablePanelRef = ref();
+const rightResizablePanelRef = ref();
+
+const onKeyDown = async (e: KeyboardEvent) => {
+  if (
+    featureFlagsStore.RESIZABLE_PANEL_UPGRADE &&
+    e.altKey &&
+    e.shiftKey &&
+    leftResizablePanelRef.value &&
+    rightResizablePanelRef.value
+  ) {
+    if (
+      leftResizablePanelRef.value.collapsed &&
+      rightResizablePanelRef.value.collapsed
+    ) {
+      // Open all panels
+      leftResizablePanelRef.value.collapseSet(false);
+      rightResizablePanelRef.value.collapseSet(false);
+      leftResizablePanelRef.value.subpanelCollapseSet(false);
+    } else {
+      // Close all panels
+      leftResizablePanelRef.value.collapseSet(true);
+      rightResizablePanelRef.value.collapseSet(true);
+    }
+  }
+};
+
+onMounted(() => {
+  window.addEventListener("keydown", onKeyDown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeyDown);
+});
 
 watch(
   [
