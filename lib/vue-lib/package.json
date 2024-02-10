@@ -58,7 +58,7 @@
     "pinia": "^2.1.7",
     "posthog-js": "^1.51.4",
     "tailwindcss-capsize": "^3.0.3",
-    "vue": "^3.3.12",
+    "vue": "^3.4.15",
     "vue-router": "^4.2.5",
     "vue-safe-teleport": "^0.1.2"
   },
@@ -77,6 +77,6 @@
     "unplugin-icons": "^0.17.1",
     "vite": "^5.0.10",
     "vite-svg-loader": "^3.4.0",
-    "vue-tsc": "^1.1.7"
+    "vue-tsc": "^1.8.27"
   }
 }
