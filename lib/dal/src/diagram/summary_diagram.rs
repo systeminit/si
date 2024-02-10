@@ -490,7 +490,7 @@ pub async fn restore_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagram
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM restore_edge_by_id_v1($1, $2, $3)",
+            "SELECT object FROM restore_summary_edge_by_id_v1($1, $2, $3)",
             &[ctx.tenancy(), ctx.visibility(), &deleted_edge.id()],
         )
         .await?;
