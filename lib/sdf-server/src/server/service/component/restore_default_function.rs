@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use dal::{
     AttributeValue, AttributeValueError, AttributeValueId, ChangeSet, Component, Prop,
-    StandardModel, Visibility, WsEvent,
+    StandardModel, Visibility,
 };
 
 use crate::server::{
@@ -71,11 +71,6 @@ pub async fn restore_default_function(
             }),
         );
     }
-
-    WsEvent::change_set_written(&ctx)
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
 
     ctx.commit().await?;
 

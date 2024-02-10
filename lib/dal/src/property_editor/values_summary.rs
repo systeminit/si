@@ -182,13 +182,13 @@ impl PropertyEditorValuesSummary {
                     "SELECT object FROM property_editor_values_summary_create_or_update_v1($1, $2, $3, $4)",
                     &[ctx.tenancy(), ctx.visibility(), &component_id, &property_editor_values],
                 )
-                    .await?;
+                .await?;
 
             standard_model::object_from_row::<Self>(row)
                 .map_err(Into::into)
                 .map(|summary| summary.property_editor_values().clone())
         } else {
-            Err(PropertyEditorError::RootPropNotFound).map_err(Into::into)
+            Err(Into::into(PropertyEditorError::RootPropNotFound))
         }
     }
 }

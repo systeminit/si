@@ -505,7 +505,6 @@ import AttributesPanelItem from "./AttributesPanelItem.vue"; // eslint-disable-l
 import { useAttributesPanelContext } from "./AttributesPanel.vue";
 import CodeEditor from "../CodeEditor.vue";
 import SecretsModal from "../SecretsModal.vue";
-import SourceIcon from "./SourceIcon.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
 
 const props = defineProps({
