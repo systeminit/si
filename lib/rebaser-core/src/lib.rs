@@ -1,28 +1,31 @@
-//! This library exists to ensure that rebaser-client does not depend on rebaser-server and vice
-//! versa. Keeping the dependency chain intact is important because rebaser-server depends on the
-//! dal and the dal (really anyone) must be able to use the rebaser-client.
-//!
-//! This library also contains tests for rebaser-client and rebaser-server interaction.
+//! This library exists to ensure that crate "rebaser-client" crate does not depend on the "rebaser-server" crate and
+//! vice versa. Keeping the dependency chain intact is important because "rebaser-server" depends on the
+//! dal. The dal, and any crate other than "rebaser-server" and this crate, must be able to use the "rebaser-client".
 
 #![warn(
-    missing_debug_implementations,
-    missing_docs,
-    unreachable_pub,
     bad_style,
+    clippy::missing_panics_doc,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unwrap_in_result,
+    clippy::unwrap_used,
     dead_code,
     improper_ctypes,
-    non_shorthand_field_patterns,
+    missing_debug_implementations,
+    missing_docs,
     no_mangle_generic_items,
+    non_shorthand_field_patterns,
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
+    rust_2018_idioms,
     unconditional_recursion,
+    unreachable_pub,
     unused,
     unused_allocation,
     unused_comparisons,
     unused_parens,
-    while_true,
-    clippy::missing_panics_doc
+    while_true
 )]
 
 use serde::Deserialize;
@@ -30,28 +33,15 @@ use serde::Serialize;
 use serde_json::Value;
 use ulid::Ulid;
 
-/// The action for the rebaser management loop.
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ManagementMessageAction {
-    /// Close the inner rebaser loop for a change set. If it has already been closed, this is a
-    /// no-op.
-    CloseChangeSet,
-    /// Open the inner rebaser loop for a change set. If one already exists, it is a no-op.
-    OpenChangeSet,
-}
+mod messaging_config;
+mod subject;
 
-/// The message that the rebaser management consumer expects in the server.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ManagementMessage {
-    /// The ID of the change set wishing to be operated on.
-    pub change_set_id: Ulid,
-    /// The action to instruct the management loop to perform.
-    pub action: ManagementMessageAction,
-}
+pub use messaging_config::RebaserMessagingConfig;
+pub use subject::SubjectGenerator;
 
-/// The message that the server's listener loop uses to perform a rebase.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ChangeSetMessage {
+/// The message that the server receives to perform a rebase.
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+pub struct RequestRebaseMessage {
     /// Corresponds to the change set whose pointer is to be updated.
     pub to_rebase_change_set_id: Ulid,
     /// Corresponds to the workspace snapshot that will be the "onto" workspace snapshot when
@@ -63,15 +53,15 @@ pub struct ChangeSetMessage {
     pub onto_vector_clock_id: Ulid,
 }
 
-/// The message shape that the rebaser change set loop will use for replying to the client.
+/// The message that the server sends back to the requester.
 #[derive(Debug, Serialize, Deserialize)]
-pub enum ChangeSetReplyMessage {
-    /// Processing the delivery and performing updates was successful.
+pub enum ReplyRebaseMessage {
+    /// Processing the request and performing updates were both successful. Additionally, no conflicts were found.
     Success {
         /// The serialized updates performed when rebasing.
         updates_performed: Value,
     },
-    /// Conflicts found when processing the delivery.
+    /// Conflicts found when processing the request.
     ConflictsFound {
         /// A serialized list of the conflicts found during detection.
         conflicts_found: Value,
@@ -79,59 +69,9 @@ pub enum ChangeSetReplyMessage {
         /// once conflict was found.
         updates_found_and_skipped: Value,
     },
-    /// Error encountered when processing the delivery.
+    /// Error encountered when processing the request.
     Error {
         /// The error message.
         message: String,
     },
-}
-
-/// A generator that provides stream names in a centralized location.
-#[allow(missing_debug_implementations)]
-pub struct StreamNameGenerator;
-
-impl StreamNameGenerator {
-    /// Returns the name of the management stream.
-    pub fn management(stream_prefix: Option<impl AsRef<str>>) -> String {
-        Self::assemble_with_prefix("rebaser-management", stream_prefix)
-    }
-
-    /// Returns the name of the stream that the rebaser will reply to for messages sent to the
-    /// management stream from a specific client.
-    pub fn management_reply(client_id: Ulid, stream_prefix: Option<impl AsRef<str>>) -> String {
-        Self::assemble_with_prefix(
-            format!("rebaser-management-reply-{client_id}"),
-            stream_prefix,
-        )
-    }
-
-    /// Returns the name of a stream for a given change set.
-    pub fn change_set(change_set_id: Ulid, stream_prefix: Option<impl AsRef<str>>) -> String {
-        Self::assemble_with_prefix(format!("rebaser-{change_set_id}"), stream_prefix)
-    }
-
-    /// Returns the name of the stream that the rebaser will reply to for messages sent to a change
-    /// set stream from a specific client.
-    pub fn change_set_reply(
-        change_set_id: Ulid,
-        client_id: Ulid,
-        stream_prefix: Option<impl AsRef<str>>,
-    ) -> String {
-        Self::assemble_with_prefix(
-            format!("rebaser-{change_set_id}-reply-{client_id}"),
-            stream_prefix,
-        )
-    }
-
-    fn assemble_with_prefix(
-        base_stream_name: impl AsRef<str>,
-        maybe_stream_prefix: Option<impl AsRef<str>>,
-    ) -> String {
-        let base_stream_name = base_stream_name.as_ref();
-        if let Some(stream_prefix) = maybe_stream_prefix {
-            format!("{}-{base_stream_name}", stream_prefix.as_ref())
-        } else {
-            base_stream_name.to_string()
-        }
-    }
 }

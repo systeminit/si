@@ -16,10 +16,14 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::Mutex;
 
+use crate::jetstream::Context;
+
 mod connect_options;
 mod message;
-pub mod service;
 mod subscriber;
+
+pub mod jetstream;
+pub mod service;
 
 pub use async_nats::{
     connection::State, header, header::HeaderMap, rustls, status, subject, Auth, AuthError,
@@ -999,6 +1003,33 @@ impl Client {
     /// Gets a reference to the client's metadata.
     pub fn metadata(&self) -> &ConnectionMetadata {
         self.metadata.as_ref()
+    }
+
+    /// Consumes self to create a [Jetstream](https://docs.nats.io/nats-concepts/jetstream) context.
+    #[instrument(
+    name = "client::to_jetstream_ctx",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.client_id = Empty,
+            messaging.nats.server.id = Empty,
+            messaging.nats.server.name = Empty,
+            messaging.nats.server.version = Empty,
+            messaging.system = Empty,
+            messaging.url = Empty,
+            network.peer.address = Empty,
+            network.protocol.name = Empty,
+            network.protocol.version = Empty,
+            network.transport = Empty,
+            otel.kind = SpanKind::Client.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            server.address = Empty,
+            server.port = Empty,
+        )
+    )]
+    pub fn to_jetstream_ctx(self) -> Context {
+        Context::new(self)
     }
 }
 

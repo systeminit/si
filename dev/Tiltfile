@@ -8,10 +8,8 @@ groups = {
         "nats",
         "otelcol",
         "postgres",
-        "rabbitmq",
     ],
     "backend": [
-        "council",
         "pinga",
         "veritech",
         "sdf",
@@ -68,7 +66,7 @@ allow_k8s_contexts(k8s_context())
 
 # Use Docker Compose to provide the platform services
 docker_compose("./docker-compose.platform.yml")
-compose_services = ["jaeger", "nats", "otelcol", "postgres", "rabbitmq"]
+compose_services = ["jaeger", "nats", "otelcol", "postgres"]
 for service in compose_services:
     if service == "jaeger":
         links = [
@@ -87,9 +85,9 @@ local_resource(
     serve_cmd = "buck2 run {}".format(rebaser_target),
     allow_parallel = True,
     resource_deps = [
+        "nats",
         "otelcol",
         "postgres",
-        "rabbitmq"
     ],
     deps = _buck2_dep_inputs(rebaser_target),
     trigger_mode = trigger_mode
@@ -113,23 +111,6 @@ local_resource(
     trigger_mode = trigger_mode,
 )
 
-# Locally build and run `council`
-council_target = "//bin/council:council"
-local_resource(
-    "council",
-    labels = ["backend"],
-    cmd = "buck2 build {}".format(council_target),
-    serve_cmd = "buck2 run {}".format(council_target),
-    serve_env = {"SI_FORCE_COLOR": "true"},
-    allow_parallel = True,
-    resource_deps = [
-        "nats",
-        "otelcol",
-    ],
-    deps = _buck2_dep_inputs(council_target),
-    trigger_mode = trigger_mode,
-)
-
 # Locally build and run `pinga`
 pinga_target = "//bin/pinga:pinga"
 local_resource(
@@ -140,7 +121,6 @@ local_resource(
     serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     resource_deps = [
-        "council",
         "nats",
         "otelcol",
         "veritech",
@@ -184,7 +164,6 @@ local_resource(
         "pinga",
         "postgres",
         "veritech",
-        "rabbitmq",
         "rebaser",
     ],
     deps = _buck2_dep_inputs(sdf_target),

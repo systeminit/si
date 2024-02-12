@@ -1,15 +1,9 @@
-use dal::change_set_pointer::ChangeSetPointerError;
-use dal::workspace_snapshot::WorkspaceSnapshotError;
-use dal::{
-    job::consumer::JobConsumerError, InitializationError, JobFailureError, JobQueueProcessor,
-    NatsProcessor, TransactionsError,
-};
-use nats_subscriber::SubscriberError;
+use dal::{InitializationError, JobQueueProcessor, NatsProcessor};
+use rebaser_core::RebaserMessagingConfig;
 use si_crypto::SymmetricCryptoServiceConfig;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
-use si_rabbitmq::{Config as SiRabbitMqConfig, RabbitError};
 use std::{io, path::Path, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -22,64 +16,35 @@ use tokio::{
 };
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey, CycloneEncryptionKeyError};
 
+use crate::server::core_loop::CoreLoopSetupError;
 use crate::Config;
 
-mod change_set_loop;
-mod management_loop;
+mod core_loop;
+mod rebase;
 
 #[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
-    #[error("change set pointer error: {0}")]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    #[error("core loop setup error: {0}")]
+    CoreLoopSetup(#[from] CoreLoopSetupError),
     #[error("error when loading encryption key: {0}")]
     CycloneEncryptionKey(#[from] CycloneEncryptionKeyError),
     #[error(transparent)]
     Initialization(#[from] InitializationError),
     #[error(transparent)]
-    JobConsumer(#[from] JobConsumerError),
-    #[error(transparent)]
-    JobFailure(#[from] Box<JobFailureError>),
-    #[error("missing management message contents")]
-    MissingManagementMessageContents,
-    #[error("missing management message \"reply_to\" field")]
-    MissingManagementMessageReplyTo,
-    #[error(transparent)]
     Nats(#[from] NatsError),
     #[error(transparent)]
     PgPool(#[from] Box<PgPoolError>),
-    #[error("rabbit error {0}")]
-    Rabbit(#[from] RabbitError),
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
-    #[error(transparent)]
-    Subscriber(#[from] SubscriberError),
     #[error("symmetric crypto error: {0}")]
     SymmetricCrypto(#[from] SymmetricCryptoError),
-    #[error(transparent)]
-    Transactions(#[from] Box<TransactionsError>),
-    #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 impl From<PgPoolError> for ServerError {
     fn from(e: PgPoolError) -> Self {
         Self::PgPool(Box::new(e))
-    }
-}
-
-impl From<JobFailureError> for ServerError {
-    fn from(e: JobFailureError) -> Self {
-        Self::JobFailure(Box::new(e))
-    }
-}
-
-impl From<TransactionsError> for ServerError {
-    fn from(e: TransactionsError) -> Self {
-        Self::Transactions(Box::new(e))
     }
 }
 
@@ -103,11 +68,8 @@ pub struct Server {
     /// An internal graceful shutdown receiver handle which the server's main thread uses to stop
     /// accepting work when a shutdown event is in progress.
     graceful_shutdown_rx: oneshot::Receiver<()>,
-    /// If enabled, re-create the RabbitMQ Stream. If disabled, create the Stream if it does not
-    /// exist.
-    recreate_management_stream: bool,
-    /// The configuration for the si-rabbitmq library
-    rabbitmq_config: SiRabbitMqConfig,
+    /// The messaging configuration
+    messaging_config: RebaserMessagingConfig,
     /// The pg pool for the content store
     content_store_pg_pool: PgPool,
 }
@@ -127,7 +89,7 @@ impl Server {
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
-        let rabbitmq_config = config.rabbitmq_config();
+        let messaging_config = config.messaging_config();
 
         Self::from_services(
             encryption_key,
@@ -136,8 +98,7 @@ impl Server {
             veritech,
             job_processor,
             symmetric_crypto_service,
-            config.recreate_management_stream(),
-            rabbitmq_config.to_owned(),
+            messaging_config.to_owned(),
             content_store_pg_pool,
         )
     }
@@ -152,8 +113,7 @@ impl Server {
         veritech: VeritechClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         symmetric_crypto_service: SymmetricCryptoService,
-        recreate_management_stream: bool,
-        rabbitmq_config: SiRabbitMqConfig,
+        messaging_config: RebaserMessagingConfig,
         content_store_pg_pool: PgPool,
     ) -> ServerResult<Self> {
         // An mpsc channel which can be used to externally shut down the server.
@@ -169,7 +129,6 @@ impl Server {
             prepare_graceful_shutdown(external_shutdown_rx, shutdown_watch_tx)?;
 
         Ok(Server {
-            recreate_management_stream,
             pg_pool,
             nats,
             veritech,
@@ -179,7 +138,7 @@ impl Server {
             shutdown_watch_rx,
             external_shutdown_tx,
             graceful_shutdown_rx,
-            rabbitmq_config,
+            messaging_config,
             content_store_pg_pool,
         })
     }
@@ -187,8 +146,7 @@ impl Server {
     /// The primary function for running the server. This should be called when deciding to run
     /// the server as a task, in a standalone binary, etc.
     pub async fn run(self) -> ServerResult<()> {
-        management_loop::management_loop_infallible_wrapper(
-            self.recreate_management_stream,
+        core_loop::setup_and_run_core_loop(
             self.pg_pool,
             self.nats,
             self.veritech,
@@ -196,10 +154,10 @@ impl Server {
             self.symmetric_crypto_service,
             self.encryption_key,
             self.shutdown_watch_rx,
-            self.rabbitmq_config,
+            self.messaging_config,
             self.content_store_pg_pool,
         )
-        .await;
+        .await?;
 
         let _ = self.graceful_shutdown_rx.await;
         info!("received and processed graceful shutdown, terminating server instance");
