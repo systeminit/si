@@ -161,6 +161,8 @@ pub enum ComponentError {
     Qualification(#[from] QualificationError),
     #[error("qualification result for {0} on component {1} has no value")]
     QualificationResultEmpty(String, ComponentId),
+    #[error("cannot restore non deleted component with id: {0}")]
+    RestoringNonDeleted(ComponentId),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
@@ -982,7 +984,7 @@ impl Component {
             .await?
             .pg()
             .query(
-                "SELECT * FROM component_restore_and_propagate_v1($1, $2, $3)",
+                "SELECT * FROM component_restore_and_propagate_v2($1, $2, $3)",
                 &[ctx.tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
