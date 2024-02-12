@@ -3,11 +3,11 @@ use std::{env, path::Path};
 use buck2_resources::Buck2Resources;
 use content_store::PgStoreTools;
 use derive_builder::Builder;
+use rebaser_core::RebaserMessagingConfig;
 use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
-use si_rabbitmq::Config as SiRabbitMqConfig;
 use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -48,13 +48,10 @@ pub struct Config {
 
     cyclone_encryption_key_path: CanonicalFile,
 
-    #[builder(default = "false")]
-    recreate_management_stream: bool,
-
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
 
     #[builder(default)]
-    rabbitmq_config: SiRabbitMqConfig,
+    messaging_config: RebaserMessagingConfig,
 
     #[builder(default = "PgStoreTools::default_pool_config()")]
     content_store_pg_pool: PgPoolConfig,
@@ -88,19 +85,14 @@ impl Config {
         self.cyclone_encryption_key_path.as_path()
     }
 
-    /// Gets the toggle on if the RabbitMQ Stream will be re-created
-    pub fn recreate_management_stream(&self) -> bool {
-        self.recreate_management_stream
-    }
-
     /// Gets a reference to the symmetric crypto service.
     pub fn symmetric_crypto_service(&self) -> &SymmetricCryptoServiceConfig {
         &self.symmetric_crypto_service
     }
 
-    /// Gets a reference to the config for the SiRabbitMqConfig
-    pub fn rabbitmq_config(&self) -> &SiRabbitMqConfig {
-        &self.rabbitmq_config
+    /// Gets a reference to the messaging config
+    pub fn messaging_config(&self) -> &RebaserMessagingConfig {
+        &self.messaging_config
     }
 
     /// Gets a reference to the config's content store pg pool.
@@ -121,12 +113,10 @@ pub struct ConfigFile {
     nats: NatsConfig,
     #[serde(default = "default_cyclone_encryption_key_path")]
     cyclone_encryption_key_path: String,
-    #[serde(default = "default_recreate_management_stream")]
-    recreate_management_stream: bool,
     #[serde(default = "default_symmetric_crypto_config")]
     symmetric_crypto_service: SymmetricCryptoServiceConfigFile,
     #[serde(default)]
-    rabbitmq_config: SiRabbitMqConfig,
+    messaging_config: RebaserMessagingConfig,
 }
 
 impl Default for ConfigFile {
@@ -136,9 +126,8 @@ impl Default for ConfigFile {
             content_store_pg: PgStoreTools::default_pool_config(),
             nats: Default::default(),
             cyclone_encryption_key_path: default_cyclone_encryption_key_path(),
-            recreate_management_stream: false,
             symmetric_crypto_service: default_symmetric_crypto_config(),
-            rabbitmq_config: Default::default(),
+            messaging_config: Default::default(),
         }
     }
 }
@@ -158,7 +147,6 @@ impl TryFrom<ConfigFile> for Config {
         config.content_store_pg_pool(value.content_store_pg);
         config.nats(value.nats);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
-        config.recreate_management_stream(value.recreate_management_stream);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.build().map_err(Into::into)
     }
@@ -166,10 +154,6 @@ impl TryFrom<ConfigFile> for Config {
 
 fn default_cyclone_encryption_key_path() -> String {
     "/run/rebaser/cyclone_encryption.key".to_string()
-}
-
-fn default_recreate_management_stream() -> bool {
-    false
 }
 
 fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {

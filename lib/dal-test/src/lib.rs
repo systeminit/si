@@ -366,7 +366,7 @@ impl TestContextBuilder {
                 .await?;
 
         let mut rebaser_config = RebaserClientConfig::default();
-        rebaser_config.set_stream_prefix(universal_prefix);
+        rebaser_config.set_subject_prefix(universal_prefix);
 
         Ok(TestContext {
             config,
@@ -524,7 +524,6 @@ pub fn rebaser_server(services_context: &ServicesContext) -> Result<rebaser_serv
         services_context.veritech().clone(),
         services_context.job_processor(),
         services_context.symmetric_crypto_service().clone(),
-        false,
         services_context.rebaser_config().clone(),
         services_context.content_store_pg_pool().clone(),
     )

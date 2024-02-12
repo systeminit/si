@@ -2,9 +2,9 @@ use std::{mem, path::PathBuf, sync::Arc};
 
 use content_store::{PgStore, StoreError};
 use futures::Future;
-use rebaser_client::ChangeSetReplyMessage;
 use rebaser_client::ClientError as RebaserClientError;
 use rebaser_client::Config as RebaserClientConfig;
+use rebaser_client::ReplyRebaseMessage;
 use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
@@ -206,6 +206,7 @@ impl ConnectionState {
 
     async fn commit(
         self,
+        tenancy: &Tenancy,
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Self, Option<Conflicts>), TransactionsError> {
         match self {
@@ -214,7 +215,7 @@ impl ConnectionState {
                 Ok((self, None))
             }
             Self::Transactions(txns) => {
-                let (conns, conflicts) = txns.commit_into_conns(rebase_request).await?;
+                let (conns, conflicts) = txns.commit_into_conns(tenancy, rebase_request).await?;
                 Ok((Self::Connections(conns), conflicts))
             }
             Self::Invalid => Err(TransactionsError::TxnCommit),
@@ -223,6 +224,7 @@ impl ConnectionState {
 
     async fn blocking_commit(
         self,
+        tenancy: &Tenancy,
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Self, Option<Conflicts>), TransactionsError> {
         match self {
@@ -231,7 +233,9 @@ impl ConnectionState {
                 Ok((self, None))
             }
             Self::Transactions(txns) => {
-                let (conns, conflicts) = txns.blocking_commit_into_conns(rebase_request).await?;
+                let (conns, conflicts) = txns
+                    .blocking_commit_into_conns(tenancy, rebase_request)
+                    .await?;
                 Ok((Self::Connections(conns), conflicts))
             }
             Self::Invalid => Err(TransactionsError::TxnCommit),
@@ -375,6 +379,8 @@ impl DalContext {
         rebase_request: RebaseRequest,
     ) -> Result<Option<Conflicts>, TransactionsError> {
         rebase(
+            &self.tenancy,
+            self.services_context.nats_conn.clone(),
             self.services_context().rebaser_config.clone(),
             rebase_request,
         )
@@ -389,7 +395,7 @@ impl DalContext {
             self.blocking_commit_internal(rebase_request).await?
         } else {
             let mut guard = self.conns_state.lock().await;
-            let (new_guard, conflicts) = guard.take().commit(rebase_request).await?;
+            let (new_guard, conflicts) = guard.take().commit(&self.tenancy, rebase_request).await?;
             *guard = new_guard;
 
             conflicts
@@ -404,7 +410,10 @@ impl DalContext {
     ) -> Result<Option<Conflicts>, TransactionsError> {
         let mut guard = self.conns_state.lock().await;
 
-        let (new_guard, conflicts) = guard.take().blocking_commit(rebase_request).await?;
+        let (new_guard, conflicts) = guard
+            .take()
+            .blocking_commit(&self.tenancy, rebase_request)
+            .await?;
         *guard = new_guard;
 
         Ok(conflicts)
@@ -1067,19 +1076,22 @@ pub struct Conflicts {
     updates_found_and_skipped: Vec<Update>,
 }
 
+// TODO(nick): we need to determine the long term vision for tenancy-scoped subjects. We're leaking the tenancy into
+// the connection state functions. I believe it is fine for now since rebasing is a very specific use case, but we may
+// not want it long term.
 async fn rebase(
+    tenancy: &Tenancy,
+    nats: NatsClient,
     rebaser_config: RebaserClientConfig,
     rebase_request: RebaseRequest,
 ) -> Result<Option<Conflicts>, TransactionsError> {
     let start = Instant::now();
-    let mut rebaser_client = rebaser_client::Client::new(rebaser_config).await?;
-    info!("got rebaser client: {:?}", start.elapsed());
 
-    rebaser_client
-        .open_stream_for_change_set(rebase_request.to_rebase_change_set_id.into())
-        .await?;
-    info!("opened stream: {:?} ", start.elapsed());
+    // TODO(nick): make this cleaner.
+    let workspace_id = tenancy.workspace_pk().unwrap_or(WorkspacePk::NONE).into();
+    let rebaser_client = rebaser_client::Client::new(nats, rebaser_config, workspace_id);
 
+    info!("got client and requesting rebase: {:?}", start.elapsed());
     let response = rebaser_client
         .request_rebase(
             rebase_request.to_rebase_change_set_id.into(),
@@ -1087,16 +1099,16 @@ async fn rebase(
             rebase_request.onto_vector_clock_id.into(),
         )
         .await?;
-    info!("got reply: {:?}", start.elapsed());
+    info!("got response from rebaser: {:?}", start.elapsed());
 
     match response {
-        ChangeSetReplyMessage::Success { .. } => Ok(None),
-        ChangeSetReplyMessage::Error { message } => Err(TransactionsError::RebaseFailed(
+        ReplyRebaseMessage::Success { .. } => Ok(None),
+        ReplyRebaseMessage::Error { message } => Err(TransactionsError::RebaseFailed(
             rebase_request.onto_workspace_snapshot_id,
             rebase_request.to_rebase_change_set_id,
             message,
         )),
-        ChangeSetReplyMessage::ConflictsFound {
+        ReplyRebaseMessage::ConflictsFound {
             conflicts_found,
             updates_found_and_skipped,
         } => {
@@ -1147,6 +1159,7 @@ impl Transactions {
     )]
     pub async fn commit_into_conns(
         self,
+        tenancy: &Tenancy,
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
@@ -1154,7 +1167,13 @@ impl Transactions {
 
         let conflicts = if let Some(rebase_request) = rebase_request {
             let start = Instant::now();
-            let conflicts = rebase(self.rebaser_config.clone(), rebase_request).await?;
+            let conflicts = rebase(
+                tenancy,
+                nats_conn.clone(),
+                self.rebaser_config.clone(),
+                rebase_request,
+            )
+            .await?;
             info!("rebase took: {:?}", start.elapsed());
             conflicts
         } else {
@@ -1177,6 +1196,7 @@ impl Transactions {
     )]
     pub async fn blocking_commit_into_conns(
         self,
+        tenancy: &Tenancy,
         rebase_request: Option<RebaseRequest>,
     ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
@@ -1184,7 +1204,13 @@ impl Transactions {
 
         let conflicts = if let Some(rebase_request) = rebase_request {
             info!("rebase request");
-            rebase(self.rebaser_config.clone(), rebase_request).await?
+            rebase(
+                tenancy,
+                nats_conn.clone(),
+                self.rebaser_config.clone(),
+                rebase_request,
+            )
+            .await?
         } else {
             None
         };

@@ -4,13 +4,13 @@ rust_library(
     name = "rebaser-client",
     deps = [
         "//lib/rebaser-core:rebaser-core",
-        "//lib/si-rabbitmq:si-rabbitmq",
+        "//lib/si-data-nats:si-data-nats",
         "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:futures",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
-        "//third-party/rust:tokio",
         "//third-party/rust:ulid",
     ],
     srcs = glob([

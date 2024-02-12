@@ -39,12 +39,3 @@ services:
       - "55679:55679"
     depends_on:
       - jaeger
-
-  rabbitmq:
-    image: systeminit/rabbitmq:stable
-    environment:
-      # NOTE(nick,zack): the formatting here is very particular, likely due to whitespaces.
-      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbitmq_stream advertised_host localhost"
-    ports:
-      - "5552:5552"
-      - "15672:15672"
