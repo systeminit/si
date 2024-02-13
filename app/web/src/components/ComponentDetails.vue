@@ -31,7 +31,6 @@
         />
         <div class="pr-xs shrink-0">
           <VButton
-            v-if="selectedComponent.hasResource"
             icon="refresh"
             size="sm"
             variant="ghost"

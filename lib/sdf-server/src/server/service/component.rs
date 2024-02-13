@@ -35,6 +35,7 @@ pub mod json;
 pub mod list_qualifications;
 pub mod refresh;
 pub mod resource_domain_diff;
+mod set_import_id;
 pub mod set_type;
 pub mod update_property_editor_value;
 
@@ -157,6 +158,7 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/get_code", get(get_code::get_code))
         .route("/get_resource", get(get_resource::get_resource))
+        .route("/set_import_id", post(set_import_id::set_import_id))
         .route("/get_actions", get(get_actions::get_actions))
         .route("/get_diff", get(get_diff::get_diff))
         .route(

@@ -101,6 +101,8 @@ pub struct RootProp {
     pub qualification_prop_id: PropId,
     /// The deleted_at prop on [`self`](Self).
     pub deleted_at_prop_id: PropId,
+    /// The import_id prop on [`self`](Self).
+    pub import_id_prop_id: PropId,
 }
 
 impl SchemaVariant {
@@ -142,6 +144,7 @@ impl SchemaVariant {
 
         let resource_prop_id = Self::setup_resource(ctx, root_prop_id, self.id).await?;
         let resource_value_prop_id = Self::setup_resource_value(ctx, root_prop_id, self).await?;
+        let import_id_prop_id = Self::setup_import_id(ctx, root_prop_id, self).await?;
         let code_prop_id = Self::setup_code(ctx, root_prop_id, self.id).await?;
         let qualification_prop_id = Self::setup_qualification(ctx, root_prop_id, self.id).await?;
         let deleted_at_prop_id = Self::setup_deleted_at(ctx, root_prop_id, self.id).await?;
@@ -156,6 +159,7 @@ impl SchemaVariant {
             domain_prop_id: *domain_prop.id(),
             resource_value_prop_id,
             resource_prop_id,
+            import_id_prop_id,
             secrets_prop_id,
             code_prop_id,
             qualification_prop_id,
@@ -311,6 +315,25 @@ impl SchemaVariant {
         SchemaVariant::create_implicit_internal_providers(ctx, *schema_variant.id()).await?;
 
         Ok(*resource_value_prop.id())
+    }
+
+    async fn setup_import_id(
+        ctx: &DalContext,
+        parent_prop_id: PropId,
+        schema_variant: &mut SchemaVariant,
+    ) -> SchemaVariantResult<PropId> {
+        let schema_variant_id = *schema_variant.id();
+        let mut import_id = Prop::new_without_ui_optionals(
+            ctx,
+            "import_id",
+            PropKind::String,
+            schema_variant_id,
+            Some(parent_prop_id),
+        )
+        .await?;
+        import_id.set_hidden(ctx, true).await?;
+
+        Ok(*import_id.id())
     }
 
     async fn setup_resource(

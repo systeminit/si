@@ -58,6 +58,22 @@
         </template>
       </CodeViewer>
       <div v-else class="flex flex-col items-center p-sm">
+<!--        <RequestStatusMessage-->
+<!--            v-if="setImportIdReqStatus.isPending"-->
+<!--            :requestStatus="setImportIdReqStatus"-->
+<!--        />-->
+        <VormInput
+            v-model="importId"
+            type="text"
+            label="Import ID"
+        />
+        <VButton
+            label="Set Resource ID"
+            tone="neutral"
+            icon="clipboard-copy"
+            size="md"
+            @click="setImportId()"
+        />
         <div class="w-64"><EmptyStateIcon name="no-changes" /></div>
         <div class="w-full text-center text-xl text-neutral-400">
           This component does not have a resource associated with it
@@ -68,8 +84,8 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, watch } from "vue";
-import { ErrorMessage, Timestamp } from "@si/vue-lib/design-system";
+import { computed, ref, watch } from "vue";
+import {ErrorMessage, RequestStatusMessage, Timestamp, VButton, VormInput} from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeViewer from "./CodeViewer.vue";
@@ -89,9 +105,22 @@ const resourceReqStatus = componentsStore.getRequestStatus(
   selectedComponentId,
 );
 
+// const setImportIdReqStatus = componentsStore.getRequestStatus(
+//     "SET_COMPONENT_IMPORT_ID",
+//     selectedComponentId,
+// );
+
 const selectedComponentResource = computed(
   () => componentsStore.selectedComponentResource,
 );
+
+const importId = ref<string | undefined>();
+
+const setImportId = async () => {
+  if (importId.value) {
+    await componentsStore.SET_COMPONENT_IMPORT_ID(selectedComponentId.value, importId.value);
+  }
+};
 
 watch(
   [() => changeSetsStore.selectedChangeSetLastWrittenAt],

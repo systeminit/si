@@ -1141,6 +1141,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               },
             });
           },
+          async SET_COMPONENT_IMPORT_ID(
+              componentId: string,
+              value: unknown) {
+
+            return new ApiRequest<{ success: true }>({
+              method: "post",
+              url: "component/set_import_id",
+              params: {
+                componentId,
+                value,
+                ...visibilityParams,
+              },
+            });
+          },
 
           async PASTE_COMPONENTS(
             componentIds: ComponentId[],
