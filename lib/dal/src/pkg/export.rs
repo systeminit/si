@@ -115,6 +115,10 @@ impl PkgExporter {
         }
     }
 
+    fn new_standalone_variant_exporter() -> Self {
+        Self::new_module_exporter("", "", None::<String>, "", vec![])
+    }
+
     pub async fn export_as_bytes(&mut self, ctx: &DalContext) -> PkgResult<Vec<u8>> {
         match self.kind {
             SiPkgKind::Module => info!("Building module package"),
@@ -145,40 +149,19 @@ impl PkgExporter {
         }
 
         let in_change_set = std_model_change_set_matches(change_set_pk, schema);
-        let is_deleted = schema.visibility().is_deleted();
+        let schema_is_deleted = schema.visibility().is_deleted();
 
         let default_variant_id = schema.default_schema_variant_id().copied();
         let mut default_variant_unique_id = None;
 
         for variant in &variants {
-            let related_funcs = SchemaVariant::all_funcs(ctx, *variant.id()).await?;
+            let (variant_funcs, variant_head_funcs) = self
+                .export_funcs_for_variant(ctx, change_set_pk, *variant.id())
+                .await?;
+            funcs.extend(variant_funcs);
+            head_funcs.extend(variant_head_funcs);
 
-            for func in &related_funcs {
-                if change_set_pk.is_some()
-                    && change_set_pk.as_ref().expect("some is ensured") != &ChangeSetPk::NONE
-                    && self.func_map.get(ChangeSetPk::NONE, func.id()).is_none()
-                    && func.visibility().change_set_pk == ChangeSetPk::NONE
-                {
-                    let (func_spec, _) =
-                        self.export_func(ctx, Some(ChangeSetPk::NONE), func).await?;
-                    self.func_map
-                        .insert(ChangeSetPk::NONE, *func.id(), func_spec.to_owned());
-                    head_funcs.push(func_spec);
-                } else {
-                    let (func_spec, include) = self.export_func(ctx, change_set_pk, func).await?;
-                    self.func_map.insert(
-                        change_set_pk.unwrap_or(ChangeSetPk::NONE),
-                        *func.id(),
-                        func_spec.to_owned(),
-                    );
-
-                    if include {
-                        funcs.push(func_spec);
-                    }
-                }
-            }
-
-            if !is_deleted {
+            if !schema_is_deleted {
                 let variant_spec = self.export_variant(ctx, change_set_pk, variant).await?;
                 self.variant_map.insert(
                     change_set_pk.unwrap_or(ChangeSetPk::NONE),
@@ -196,7 +179,7 @@ impl PkgExporter {
             }
         }
 
-        if in_change_set && is_deleted {
+        if in_change_set && schema_is_deleted {
             schema_spec_builder.deleted(true);
         } else if in_change_set {
             let mut data_builder = SchemaSpecData::builder();
@@ -220,6 +203,23 @@ impl PkgExporter {
         let schema_spec = schema_spec_builder.build()?;
 
         Ok((schema_spec, funcs, head_funcs))
+    }
+
+    /// Exports just a single schema variant and the functions connected to it.
+    /// Visiblity is taken from the context, so this will export the schema
+    /// variant according to the normal rules of visibility.
+    pub async fn export_variant_standalone(
+        ctx: &DalContext,
+        variant: &SchemaVariant,
+    ) -> PkgResult<(SchemaVariantSpec, Vec<FuncSpec>)> {
+        let mut exporter = Self::new_standalone_variant_exporter();
+        let (funcs, _) = exporter
+            .export_funcs_for_variant(ctx, None, *variant.id())
+            .await?;
+
+        let variant_spec = exporter.export_variant(ctx, None, variant).await?;
+
+        Ok((variant_spec, funcs))
     }
 
     async fn export_variant(
@@ -1671,6 +1671,43 @@ impl PkgExporter {
         let pkg = SiPkg::load_from_spec(spec)?;
 
         Ok(pkg)
+    }
+
+    async fn export_funcs_for_variant(
+        &mut self,
+        ctx: &DalContext,
+        change_set_pk: Option<ChangeSetPk>,
+        schema_variant_id: SchemaVariantId,
+    ) -> PkgResult<(Vec<FuncSpec>, Vec<FuncSpec>)> {
+        let related_funcs = SchemaVariant::all_funcs(ctx, schema_variant_id).await?;
+        let mut head_funcs = vec![];
+        let mut funcs = vec![];
+
+        for func in &related_funcs {
+            if change_set_pk.is_some()
+                && change_set_pk.as_ref().expect("some is ensured") != &ChangeSetPk::NONE
+                && self.func_map.get(ChangeSetPk::NONE, func.id()).is_none()
+                && func.visibility().change_set_pk == ChangeSetPk::NONE
+            {
+                let (func_spec, _) = self.export_func(ctx, Some(ChangeSetPk::NONE), func).await?;
+                self.func_map
+                    .insert(ChangeSetPk::NONE, *func.id(), func_spec.to_owned());
+                head_funcs.push(func_spec);
+            } else {
+                let (func_spec, include) = self.export_func(ctx, change_set_pk, func).await?;
+                self.func_map.insert(
+                    change_set_pk.unwrap_or(ChangeSetPk::NONE),
+                    *func.id(),
+                    func_spec.to_owned(),
+                );
+
+                if include {
+                    funcs.push(func_spec);
+                }
+            }
+        }
+
+        Ok((funcs, head_funcs))
     }
 }
 

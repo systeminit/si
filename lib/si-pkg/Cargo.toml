@@ -7,6 +7,7 @@ edition = "2021"
 base64.workspace = true
 chrono = { workspace = true }
 derive_builder = { workspace = true }
+indexmap = { workspace = true }
 object-tree = { path = "../../lib/object-tree" }
 petgraph = { workspace = true }
 remain = { workspace = true }

@@ -26,7 +26,7 @@ pub enum AttrFuncInputSpecKind {
 }
 
 #[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum AttrFuncInputSpec {
     InputSocket {
@@ -75,6 +75,13 @@ impl AttrFuncInputSpec {
             Self::InputSocket { name, .. } => name.as_str(),
             Self::OutputSocket { name, .. } => name.as_str(),
             Self::Prop { name, .. } => name.as_str(),
+        }
+    }
+
+    pub fn prop_path(&self) -> Option<&str> {
+        match self {
+            Self::Prop { prop_path, .. } => Some(prop_path.as_str()),
+            _ => None,
         }
     }
 }

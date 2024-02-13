@@ -1,9 +1,13 @@
+use std::collections::HashSet;
+
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{AsRefStr, Display, EnumIter, EnumString, IntoEnumIterator};
 use url::Url;
 
-use crate::spec::authentication_func::AuthenticationFuncSpec;
+use crate::{
+    spec::authentication_func::AuthenticationFuncSpec, MergeSkip, PropSpecKind, SocketSpecKind,
+};
 
 use super::{
     ActionFuncSpec, LeafFunctionSpec, PropSpec, PropSpecData, PropSpecWidgetKind, RootPropFuncSpec,
@@ -74,6 +78,16 @@ impl SchemaVariantSpecPropRoot {
             Self::ResourceValue => &["root", "resource_value"],
             Self::SecretDefinition => &["root", "secret_definition"],
             Self::Secrets => &["root", "secrets"],
+        }
+    }
+
+    pub fn maybe_from_str(leaf_name: &str) -> Option<SchemaVariantSpecPropRoot> {
+        match leaf_name {
+            "domain" => Some(SchemaVariantSpecPropRoot::Domain),
+            "resource_value" => Some(SchemaVariantSpecPropRoot::ResourceValue),
+            "secret_definition" => Some(SchemaVariantSpecPropRoot::SecretDefinition),
+            "secrets" => Some(SchemaVariantSpecPropRoot::Secrets),
+            _ => None,
         }
     }
 }
@@ -165,6 +179,160 @@ pub struct SchemaVariantSpec {
 impl SchemaVariantSpec {
     pub fn builder() -> SchemaVariantSpecBuilder {
         SchemaVariantSpecBuilder::default()
+    }
+
+    fn get_root_prop(&self, root: SchemaVariantSpecPropRoot) -> Option<&PropSpec> {
+        match root {
+            SchemaVariantSpecPropRoot::Domain => Some(&self.domain),
+            SchemaVariantSpecPropRoot::ResourceValue => Some(&self.resource_value),
+            SchemaVariantSpecPropRoot::SecretDefinition => self.secret_definition.as_ref(),
+            SchemaVariantSpecPropRoot::Secrets => Some(&self.secrets),
+        }
+    }
+
+    fn input_sockets(&self) -> Vec<String> {
+        self.sockets
+            .iter()
+            .filter_map(|socket_spec| match socket_spec.kind() {
+                Some(SocketSpecKind::Input) => Some(socket_spec.name.to_owned()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn output_sockets(&self) -> Vec<String> {
+        self.sockets
+            .iter()
+            .filter_map(|socket_spec| match socket_spec.kind() {
+                Some(SocketSpecKind::Output) => Some(socket_spec.name.to_owned()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn make_fake_root_prop(&self) -> PropSpec {
+        let mut root = PropSpec::builder();
+        root.kind(PropSpecKind::Object).name("root");
+        for root_prop_kind in SchemaVariantSpecPropRoot::iter() {
+            if let Some(prop_spec) = self.get_root_prop(root_prop_kind) {
+                root.entry(prop_spec.clone());
+            }
+        }
+
+        root.build().expect("failure to build is a logic error")
+    }
+
+    /// Makes a best effort to merge the prototypes of `other_spec` into `self`,
+    /// producing a new `SchemaVariantSpec`. The prop tree for `self` is taken as
+    /// the source of truth. Props present in `other_spec` but not present in
+    /// `self` are considered removed, and the types from `self` take priority.
+    /// This works by walking the prop tree in self and trying to find the
+    /// equivalent prop in other. If an equivalent prop in other is found, the
+    /// attribute functions for that prop are copied over to self. Then, all
+    /// other functions are copied over, if they have matching props (or
+    /// providers) in self.
+    pub fn merge_prototypes_from(&self, other_spec: &Self) -> (Self, Vec<MergeSkip>) {
+        let mut schema_variant_builder = SchemaVariantSpec::builder();
+        schema_variant_builder.name(&self.name);
+        schema_variant_builder.data = Some(self.data.clone());
+        schema_variant_builder.sockets = Some(self.sockets.clone());
+
+        let self_input_sockets = self.input_sockets();
+        let self_output_sockets = self.output_sockets();
+
+        // The inputs to these prototypes will always be available so we just copy
+        schema_variant_builder.action_funcs = Some(other_spec.action_funcs.clone());
+        schema_variant_builder.auth_funcs = Some(other_spec.auth_funcs.clone());
+        schema_variant_builder.leaf_functions = Some(other_spec.leaf_functions.clone());
+
+        // These are fake root props that include all the "root prop children"
+        // (domain, resource_value, etc) as entries
+        let self_root_prop = self.make_fake_root_prop();
+        let other_root_prop = other_spec.make_fake_root_prop();
+
+        let (new_root, mut merge_skips) =
+            self_root_prop.merge_with(&other_root_prop, &self_input_sockets, &self_output_sockets);
+
+        schema_variant_builder.replace_roots(new_root);
+
+        let missing_props: HashSet<String> = merge_skips
+            .iter()
+            .filter_map(|skip| match skip {
+                MergeSkip::PropMissing(path) => Some(path.to_owned()),
+                _ => None,
+            })
+            .collect();
+
+        for si_prop_func in &other_spec.si_prop_funcs {
+            let path = PropSpec::make_path(&si_prop_func.kind.prop_path(), None);
+            let si_prop_skips = PropSpec::get_input_mismatches(
+                &path,
+                crate::InputMismatchTruth::MissingPropSet(&missing_props),
+                &si_prop_func.inputs,
+                &si_prop_func.func_unique_id,
+                &self_input_sockets,
+                &self_output_sockets,
+            );
+
+            if si_prop_skips.is_empty() {
+                schema_variant_builder.si_prop_func(si_prop_func.to_owned());
+            } else {
+                merge_skips.extend(si_prop_skips);
+            }
+        }
+
+        for root_prop_func in &other_spec.root_prop_funcs {
+            let path = PropSpec::make_path(root_prop_func.prop.path_parts(), None);
+            let root_prop_skips = PropSpec::get_input_mismatches(
+                &path,
+                crate::InputMismatchTruth::MissingPropSet(&missing_props),
+                &root_prop_func.inputs,
+                &root_prop_func.func_unique_id,
+                &self_input_sockets,
+                &self_output_sockets,
+            );
+
+            if root_prop_skips.is_empty() {
+                schema_variant_builder.root_prop_func(root_prop_func.to_owned());
+            } else {
+                merge_skips.extend(root_prop_skips);
+            }
+        }
+
+        merge_skips.extend(
+            other_spec
+                .input_sockets()
+                .iter()
+                .filter_map(|input_socket| {
+                    if !self_input_sockets.contains(input_socket) {
+                        Some(MergeSkip::InputSocketMissing {
+                            socket_name: input_socket.to_owned(),
+                        })
+                    } else {
+                        None
+                    }
+                }),
+        );
+
+        merge_skips.extend(
+            other_spec
+                .output_sockets()
+                .iter()
+                .filter_map(|output_socket| {
+                    if !self_output_sockets.contains(output_socket) {
+                        Some(MergeSkip::OutputSocketMissing {
+                            socket_name: output_socket.to_owned(),
+                        })
+                    } else {
+                        None
+                    }
+                }),
+        );
+
+        (
+            schema_variant_builder.build().expect("should build"),
+            merge_skips,
+        )
     }
 }
 
@@ -266,6 +434,28 @@ impl SchemaVariantSpecBuilder {
         self.prop(SchemaVariantSpecPropRoot::ResourceValue, item)
     }
 
+    pub fn replace_roots(&mut self, new_root: PropSpec) -> &mut Self {
+        for child in new_root.direct_children() {
+            match SchemaVariantSpecPropRoot::maybe_from_str(child.name()) {
+                Some(SchemaVariantSpecPropRoot::Domain) => {
+                    self.domain = Some(child.to_owned());
+                }
+                Some(SchemaVariantSpecPropRoot::ResourceValue) => {
+                    self.resource_value = Some(child.to_owned());
+                }
+                Some(SchemaVariantSpecPropRoot::SecretDefinition) => {
+                    self.secret_definition = Some(Some(child.to_owned()));
+                }
+                Some(SchemaVariantSpecPropRoot::Secrets) => {
+                    self.secrets = Some(child.to_owned());
+                }
+                None => {}
+            }
+        }
+
+        self
+    }
+
     #[allow(unused_mut)]
     pub fn prop(
         &mut self,
@@ -321,5 +511,210 @@ impl SchemaVariantSpecBuilder {
             ),
         };
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{ActionFuncSpecKind, AttrFuncInputSpec, LeafInputLocation, LeafKind};
+
+    use super::*;
+
+    #[test]
+    fn test_schema_variant_merge() {
+        let mercedes_dantes_beloved_path =
+            PropSpec::make_path(&["root", "domain", "mercedes", "dantes_beloved"], None);
+        let si_name_path = PropSpec::make_path(&["root", "si", "name"], None);
+
+        let sv_1 = SchemaVariantSpec::builder()
+            .name("v0")
+            .unique_id("monte_cristo_sv_1")
+            .data(
+                SchemaVariantSpecData::builder()
+                    .name("v0")
+                    .color("#ffff00")
+                    .func_unique_id("cristo_1")
+                    .build()
+                    .expect("build variant spec data"),
+            )
+            .domain_prop(
+                PropSpec::builder()
+                    .name("edmond_dantes")
+                    .kind(PropSpecKind::String)
+                    .func_unique_id("set_edmond_dantes")
+                    .input(
+                        AttrFuncInputSpec::builder()
+                            .kind(crate::AttrFuncInputSpecKind::Prop)
+                            .name("beloved")
+                            .prop_path(mercedes_dantes_beloved_path.clone())
+                            .build()
+                            .expect("func input"),
+                    )
+                    .build()
+                    .expect("build prop"),
+            )
+            .domain_prop(
+                PropSpec::builder()
+                    .name("mercedes")
+                    .kind(PropSpecKind::Object)
+                    .entry(
+                        PropSpec::builder()
+                            .name("dantes_beloved")
+                            .kind(PropSpecKind::Boolean)
+                            .func_unique_id("set_dantes_beloved")
+                            .input(
+                                AttrFuncInputSpec::builder()
+                                    .kind(crate::AttrFuncInputSpecKind::Prop)
+                                    .name("si_name")
+                                    .prop_path(si_name_path.clone())
+                                    .build()
+                                    .expect("beloved input from si name"),
+                            )
+                            .build()
+                            .expect("build prop"),
+                    )
+                    .entry(
+                        PropSpec::builder()
+                            .name("mother_of")
+                            .kind(PropSpecKind::Object)
+                            .entry(
+                                PropSpec::builder()
+                                    .name("albert_de_morcef")
+                                    .kind(PropSpecKind::Number)
+                                    .build()
+                                    .expect("brop puild"),
+                            )
+                            .build()
+                            .expect("prop build"),
+                    )
+                    .build()
+                    .expect("build prop"),
+            )
+            .action_func(
+                ActionFuncSpec::builder()
+                    .kind(ActionFuncSpecKind::Create)
+                    .func_unique_id("create_monte_cristo")
+                    .build()
+                    .expect("action func spec"),
+            )
+            .action_func(
+                ActionFuncSpec::builder()
+                    .kind(ActionFuncSpecKind::Refresh)
+                    .func_unique_id("refresh_monte_cristo")
+                    .build()
+                    .expect("action func spec"),
+            )
+            .leaf_function(
+                LeafFunctionSpec::builder()
+                    .func_unique_id("qualify_cristo")
+                    .leaf_kind(LeafKind::Qualification)
+                    .inputs(vec![LeafInputLocation::Domain])
+                    .build()
+                    .expect("build leaf func"),
+            )
+            .build()
+            .expect("build sv");
+
+        let sv_2 = SchemaVariantSpec::builder()
+            .name("v1")
+            .unique_id("monte_cristo_sv_1")
+            .data(
+                SchemaVariantSpecData::builder()
+                    .name("v0")
+                    .color("#ffff00")
+                    .func_unique_id("cristo_2")
+                    .build()
+                    .expect("build variant spec data"),
+            )
+            .domain_prop(
+                PropSpec::builder()
+                    .name("edmond_dantes")
+                    .kind(PropSpecKind::String)
+                    .build()
+                    .expect("build prop"),
+            )
+            .domain_prop(
+                PropSpec::builder()
+                    .name("mercedes")
+                    .kind(PropSpecKind::Object)
+                    .entry(
+                        PropSpec::builder()
+                            .name("dantes_beloved")
+                            .kind(PropSpecKind::Boolean)
+                            .build()
+                            .expect("build prop"),
+                    )
+                    .build()
+                    .expect("build prop"),
+            )
+            .build()
+            .expect("build sv");
+
+        let (merged_sv, skips) = sv_2.merge_prototypes_from(&sv_1);
+
+        assert_eq!(
+            &[
+                MergeSkip::PropMissing(PropSpec::make_path(
+                    &["root", "domain", "mercedes", "mother_of"],
+                    None
+                )),
+                MergeSkip::PropMissing(PropSpec::make_path(
+                    &[
+                        "root",
+                        "domain",
+                        "mercedes",
+                        "mother_of",
+                        "albert_de_morcef"
+                    ],
+                    None
+                ))
+            ],
+            skips.as_slice()
+        );
+
+        assert_eq!(2, merged_sv.action_funcs.len());
+        assert_eq!(1, merged_sv.leaf_functions.len());
+
+        let edmond_dantes_path = PropSpec::make_path(&["domain", "edmond_dantes"], None);
+
+        let dantes_prop_spec = merged_sv
+            .domain
+            .build_prop_spec_index_map()
+            .get(&edmond_dantes_path)
+            .expect("should exist in the map")
+            .0;
+
+        assert_eq!(Some("set_edmond_dantes"), dantes_prop_spec.func_unique_id());
+        assert_eq!(
+            Some(mercedes_dantes_beloved_path.as_str()),
+            dantes_prop_spec
+                .inputs()
+                .expect("has inputs")
+                .iter()
+                .next()
+                .expect("has an input")
+                .prop_path()
+        );
+
+        let mercedes_path_under_domain =
+            PropSpec::make_path(&["domain", "mercedes", "dantes_beloved"], None);
+        let beloved_spec = merged_sv
+            .domain
+            .build_prop_spec_index_map()
+            .get(&mercedes_path_under_domain)
+            .expect("should exist in the map")
+            .0;
+
+        assert_eq!(Some("set_dantes_beloved"), beloved_spec.func_unique_id());
+        assert_eq!(
+            Some(si_name_path.as_str()),
+            beloved_spec
+                .inputs()
+                .expect("has inputs")
+                .iter()
+                .next()
+                .expect("has an input")
+                .prop_path()
+        );
     }
 }

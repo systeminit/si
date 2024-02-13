@@ -165,14 +165,20 @@ impl Func {
 
     /// Creates a new [`Func`] from [`self`](Func). All relevant fields are duplicated, but rows
     /// existing on relationship tables (e.g. "belongs_to" or "many_to_many") are not.
-    pub async fn duplicate(&self, ctx: &DalContext) -> FuncResult<Self> {
-        // Generate a unique name and make sure it's not in use
+    pub async fn duplicate(&self, ctx: &DalContext, new_name: Option<String>) -> FuncResult<Self> {
+        // Generate a unique name and make sure it's not in use, unless we were
+        // passed in a name, in which case just use that
         let mut new_unique_name;
-        loop {
-            new_unique_name = format!("{}{}", self.name(), generate_unique_id(4));
-            if Self::find_by_name(ctx, &new_unique_name).await?.is_none() {
-                break;
-            };
+        match new_name {
+            Some(new_name) => {
+                new_unique_name = new_name;
+            }
+            None => loop {
+                new_unique_name = format!("{}{}", self.name(), generate_unique_id(4));
+                if Self::find_by_name(ctx, &new_unique_name).await?.is_none() {
+                    break;
+                };
+            },
         }
 
         let mut new_func = Self::new(

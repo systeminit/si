@@ -98,4 +98,8 @@ impl SocketSpec {
     pub fn builder() -> SocketSpecBuilder {
         SocketSpecBuilder::default()
     }
+
+    pub fn kind(&self) -> Option<SocketSpecKind> {
+        self.data.as_ref().map(|data| data.kind)
+    }
 }

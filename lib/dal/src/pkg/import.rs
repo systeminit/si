@@ -55,7 +55,7 @@ use crate::{
 use super::{PkgError, PkgResult};
 
 #[derive(Clone, Debug)]
-enum Thing {
+pub enum Thing {
     ActionPrototype(ActionPrototype),
     AuthPrototype(AuthenticationPrototype),
     AttributePrototypeArgument(AttributePrototypeArgument),
@@ -68,7 +68,7 @@ enum Thing {
     Socket(Box<(Socket, Option<InternalProvider>, Option<ExternalProvider>)>),
 }
 
-type ThingMap = super::ChangeSetThingMap<String, Thing>;
+pub type ThingMap = super::ChangeSetThingMap<String, Thing>;
 
 #[derive(Clone, Debug, Default)]
 pub struct ImportOptions {
@@ -81,6 +81,8 @@ pub struct ImportOptions {
     /// in the UI. They will be marked as such.
     pub is_builtin: bool,
 }
+
+const SPECIAL_CASE_FUNCS: [&str; 2] = ["si:resourcePayloadToValue", "si:normalizeToArray"];
 
 #[allow(clippy::too_many_arguments)]
 async fn import_change_set(
@@ -104,9 +106,8 @@ async fn import_change_set(
         // This is a hack because the hash of the intrinsics has changed from the version in the
         // packages. We also apply this to si:resourcePayloadToValue since it should be an
         // intrinsic but is only in our packages
-        let special_case_funcs = ["si:resourcePayloadToValue", "si:normalizeToArray"];
         if func::is_intrinsic(func_spec.name())
-            || special_case_funcs.contains(&func_spec.name())
+            || SPECIAL_CASE_FUNCS.contains(&func_spec.name())
             || func_spec.is_from_builtin().unwrap_or(false)
         {
             let hash = func_spec.hash();
@@ -1485,7 +1486,7 @@ async fn update_func(
     Ok(())
 }
 
-async fn import_func(
+pub async fn import_func(
     ctx: &DalContext,
     change_set_pk: ChangeSetPk,
     func_spec: &FuncSpec,
@@ -2459,7 +2460,29 @@ async fn update_schema_variant(
     Ok(())
 }
 
-async fn import_schema_variant(
+/// Duplicate all the functions, and return a thing_map with them included, so
+/// that we can import a standalone schema variant.
+pub async fn clone_and_import_funcs(ctx: &DalContext, funcs: Vec<FuncSpec>) -> PkgResult<ThingMap> {
+    let mut thing_map = ThingMap::new();
+
+    for func_spec in funcs {
+        let func = if func::is_intrinsic(&func_spec.name)
+            || SPECIAL_CASE_FUNCS.contains(&func_spec.name.as_str())
+        {
+            Func::find_by_name(ctx, &func_spec.name)
+                .await?
+                .ok_or(PkgError::MissingIntrinsicFunc(func_spec.name.to_owned()))?
+        } else {
+            create_func(ctx, &func_spec).await?
+        };
+
+        thing_map.insert(ChangeSetPk::NONE, func_spec.unique_id, Thing::Func(func));
+    }
+
+    Ok(thing_map)
+}
+
+pub async fn import_schema_variant(
     ctx: &DalContext,
     change_set_pk: ChangeSetPk,
     schema: &mut Schema,

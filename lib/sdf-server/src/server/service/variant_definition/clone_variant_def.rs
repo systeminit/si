@@ -81,7 +81,7 @@ pub async fn clone_variant_def(
     let func = Func::get_by_id(&ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
     )?;
-    let duplicated_func = func.duplicate(&ctx).await?;
+    let duplicated_func = func.duplicate(&ctx, None).await?;
 
     let variant_def = SchemaVariantDefinition::new(
         &ctx,
