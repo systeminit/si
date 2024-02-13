@@ -499,9 +499,9 @@ impl SchemaVariantDefinitionJson {
         metadata: SchemaVariantDefinitionMetadataJson,
         identity_func_unique_id: &str,
         asset_func_spec_unique_id: &str,
+        name: &str,
     ) -> SchemaVariantDefinitionResult<SchemaVariantSpec> {
         let mut builder = SchemaVariantSpec::builder();
-        let name = "v0";
         builder.name(name);
 
         let mut data_builder = SchemaVariantSpecData::builder();

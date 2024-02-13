@@ -234,7 +234,8 @@ impl SchemaVariantSpec {
     pub fn merge_prototypes_from(&self, other_spec: &Self) -> (Self, Vec<MergeSkip>) {
         let mut schema_variant_builder = SchemaVariantSpec::builder();
         schema_variant_builder.name(&self.name);
-        schema_variant_builder.data = Some(self.data.to_owned());
+        schema_variant_builder.data = Some(self.data.clone());
+        schema_variant_builder.sockets = Some(self.sockets.clone());
 
         let self_input_sockets = self.input_sockets();
         let self_output_sockets = self.output_sockets();
@@ -303,7 +304,7 @@ impl SchemaVariantSpec {
                 .input_sockets()
                 .iter()
                 .filter_map(|input_socket| {
-                    if !self_input_sockets.contains(&input_socket) {
+                    if !self_input_sockets.contains(input_socket) {
                         Some(MergeSkip::InputSocketMissing {
                             socket_name: input_socket.to_owned(),
                         })
@@ -318,7 +319,7 @@ impl SchemaVariantSpec {
                 .output_sockets()
                 .iter()
                 .filter_map(|output_socket| {
-                    if !self_output_sockets.contains(&output_socket) {
+                    if !self_output_sockets.contains(output_socket) {
                         Some(MergeSkip::OutputSocketMissing {
                             socket_name: output_socket.to_owned(),
                         })

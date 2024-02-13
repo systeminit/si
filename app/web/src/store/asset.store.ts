@@ -96,10 +96,15 @@ export type Asset = VariantDef;
 export type AssetListEntry = ListedVariantDef;
 export type AssetSaveRequest = Visibility & {
   overrideBuiltinSchemaFeatureFlag: boolean;
+  multiVariantEditingFlag: boolean;
 } & Omit<Asset, "createdAt" | "updatedAt" | "variantExists" | "hasComponents">;
 export type AssetCreateRequest = Omit<
   AssetSaveRequest,
-  "id" | "definition" | "variantExists" | "overrideBuiltinSchemaFeatureFlag"
+  | "id"
+  | "definition"
+  | "variantExists"
+  | "overrideBuiltinSchemaFeatureFlag"
+  | "multiVariantEditingFlag"
 >;
 export type AssetCloneRequest = Visibility & { id: AssetId };
 
@@ -350,6 +355,7 @@ export const useAssetStore = () => {
             params: {
               overrideBuiltinSchemaFeatureFlag:
                 featureFlagsStore.OVERRIDE_SCHEMA,
+              multiVariantEditingFlag: featureFlagsStore.MULTI_VARIANT_EDITING,
               ...visibility,
               ..._.omit(asset, [
                 "schemaVariantId",
@@ -414,6 +420,7 @@ export const useAssetStore = () => {
             params: {
               overrideBuiltinSchemaFeatureFlag:
                 featureFlagsStore.OVERRIDE_SCHEMA,
+              multiVariantEditingFlag: featureFlagsStore.MULTI_VARIANT_EDITING,
               ...visibility,
               ..._.omit(asset, [
                 "schemaVariantId",

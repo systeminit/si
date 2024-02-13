@@ -427,6 +427,7 @@ impl ScenarioHarness {
             description: None,
             visibility: *visibility,
             override_builtin_schema_feature_flag: true,
+            multi_variant_editing_flag: false,
         };
 
         let response: ExecVariantDefResponse = self
@@ -455,6 +456,7 @@ impl ScenarioHarness {
             description: None,
             visibility: *visibility,
             override_builtin_schema_feature_flag: true,
+            multi_variant_editing_flag: true,
         };
         let response: SaveVariantDefResponse = self
             .query_post("/api/variant_def/save_variant_def", &request)

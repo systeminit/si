@@ -199,7 +199,10 @@ async fn duplicate(ctx: &DalContext) {
         .await
         .expect("could not set handler");
 
-    let new_func = func.duplicate(ctx).await.expect("could not duplicate func");
+    let new_func = func
+        .duplicate(ctx, None)
+        .await
+        .expect("could not duplicate func");
 
     // Ensure the ID is new.
     assert_ne!(

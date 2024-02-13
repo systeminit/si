@@ -396,25 +396,23 @@ impl PropSpec {
                         other_kind,
                         self_kind,
                     });
-                } else {
-                    if let (Some(func_unique_id), Some(other_inputs)) =
-                        (other_prop_spec.func_unique_id(), other_prop_spec.inputs())
-                    {
-                        let mismatches = Self::get_input_mismatches(
-                            &current_path,
-                            InputMismatchTruth::PropSpecMap(&self_map),
-                            other_inputs.as_slice(),
-                            func_unique_id,
-                            input_sockets,
-                            output_sockets,
-                        );
+                } else if let (Some(func_unique_id), Some(other_inputs)) =
+                    (other_prop_spec.func_unique_id(), other_prop_spec.inputs())
+                {
+                    let mismatches = Self::get_input_mismatches(
+                        current_path,
+                        InputMismatchTruth::PropSpecMap(&self_map),
+                        other_inputs.as_slice(),
+                        func_unique_id,
+                        input_sockets,
+                        output_sockets,
+                    );
 
-                        if mismatches.is_empty() {
-                            current_prop_spec_builder.func_unique_id(func_unique_id);
-                            current_prop_spec_builder.inputs(other_inputs.to_owned());
-                        } else {
-                            merge_skips.extend(mismatches);
-                        }
+                    if mismatches.is_empty() {
+                        current_prop_spec_builder.func_unique_id(func_unique_id);
+                        current_prop_spec_builder.inputs(other_inputs.to_owned());
+                    } else {
+                        merge_skips.extend(mismatches);
                     }
                 }
             }
@@ -453,7 +451,7 @@ impl PropSpec {
         }
 
         // unreachable, but the compiler doesn't know this
-        return (self.to_owned(), vec![]);
+        (self.to_owned(), vec![])
     }
 }
 

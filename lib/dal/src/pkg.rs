@@ -33,8 +33,8 @@ use crate::{
     WsEvent, WsEventResult, WsPayload,
 };
 
-mod export;
-mod import;
+pub mod export;
+pub mod import;
 
 #[remain::sorted]
 #[derive(Debug, Error)]

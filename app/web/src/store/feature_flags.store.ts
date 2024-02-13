@@ -6,17 +6,19 @@ import { posthog } from "@/utils/posthog";
 // translation from store key to posthog feature flag name
 const FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
-  MODULES_TAB: "modules_tab",
-  SECRETS: "secrets",
-  INVITE_USER: "invite_user",
-  WORKSPACE_BACKUPS: "workspaceBackups",
+  // STORE_FLAG_NAME: "posthogFlagName",
   COPY_PASTE: "copy_paste",
   DONT_BLOCK_ON_ACTIONS: "dont_block_on_actions",
-  OVERRIDE_SCHEMA: "override_schema",
+  INVITE_USER: "invite_user",
   JOI_VALIDATIONS: "joi_validations",
-  SHOW_EDGES_ON_SELECT: "show_edges_on_select",
+  MODULES_TAB: "modules_tab",
+  MULTI_VARIANT_EDITING: "multiVariantEditing",
+  OVERRIDE_SCHEMA: "override_schema",
   REMOVE_COMPONENT_ICONS: "remove_component_icons",
   RESIZABLE_PANEL_UPGRADE: "resizable-panel-upgrade",
+  SECRETS: "secrets",
+  SHOW_EDGES_ON_SELECT: "show_edges_on_select",
+  WORKSPACE_BACKUPS: "workspaceBackups",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
@@ -41,6 +43,8 @@ export function useFeatureFlagsStore() {
           });
         });
         // You can override feature flags while working on a feature by setting them to true here
+
+        // this.MULTI_VARIANT_EDITING = true;
 
         // Make sure to remove the override before committing your code!
       },
