@@ -2,6 +2,7 @@ load(
     "@prelude-si//:macros.bzl",
     "alias",
     "test_suite",
+    "tilt_docker_compose_pull",
     "tilt_docker_compose_stop",
     "tilt_down",
     "tilt_up",
@@ -30,6 +31,12 @@ tilt_up(
     args = [
         "platform"
     ],
+)
+
+# Pull for new Docker images
+tilt_docker_compose_pull(
+    name = "pull",
+    docker_compose_file = "docker-compose.platform.yml",
 )
 
 # Stop any remaining/running services while attempting to preserve persistent state
