@@ -1,4 +1,7 @@
+use std::collections::{HashMap, HashSet};
+
 use derive_builder::UninitializedFieldError;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use url::Url;
@@ -109,9 +112,348 @@ pub enum PropSpec {
     },
 }
 
+#[remain::sorted]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum MergeSkip {
+    FuncInputInputSocketMissing {
+        prop_path: String,
+        missing_socket_name: String,
+        input_name: String,
+        func_unique_id: String,
+    },
+    FuncInputOutputSocketMissing {
+        prop_path: String,
+        missing_socket_name: String,
+        input_name: String,
+        func_unique_id: String,
+    },
+    FuncInputPropMissing {
+        prop_path: String,
+        input_name: String,
+        missing_prop_path: String,
+        func_unique_id: String,
+    },
+    InputSocketMissing {
+        socket_name: String,
+    },
+    OutputSocketMissing {
+        socket_name: String,
+    },
+    PropKindMismatch {
+        path: String,
+        other_kind: PropSpecKind,
+        self_kind: PropSpecKind,
+    },
+    PropMissing(String),
+}
+
+pub const PROP_PATH_SEPARATOR: &str = "\x0B";
+const SI_PATH: &str = "root\x0Bsi";
+
+pub(crate) enum InputMismatchTruth<'a, 'b> {
+    PropSpecMap(&'a IndexMap<String, (&'b PropSpec, Option<String>)>),
+    MissingPropSet(&'a HashSet<String>),
+}
+
 impl PropSpec {
     pub fn builder() -> PropSpecBuilder {
         PropSpecBuilder::default()
+    }
+
+    pub(crate) fn to_builder_without_children(&self) -> PropSpecBuilder {
+        let mut builder = PropSpec::builder();
+        builder.name(self.name()).kind(self.kind());
+        if let Some(data) = self.data() {
+            if let Some(validation_format) = data.validation_format.as_deref() {
+                builder.validation_format(validation_format);
+            }
+            if let Some(default_value) = data.default_value.as_ref() {
+                builder.default_value(default_value.to_owned());
+            }
+            if let Some(func_unique_id) = data.func_unique_id.as_deref() {
+                builder.func_unique_id(func_unique_id);
+            }
+            if let Some(inputs) = data.inputs.as_ref() {
+                builder.inputs(inputs.to_owned());
+            }
+            if let Some(widget_kind) = data.widget_kind.as_ref() {
+                builder.widget_kind(widget_kind.to_owned());
+            }
+            if let Some(widget_options) = data.widget_options.as_ref() {
+                builder.widget_options(widget_options.to_owned());
+            }
+            if let Some(doc_link) = data.doc_link.as_ref() {
+                builder.doc_link(doc_link.to_owned());
+            }
+            if let Some(docs) = data.documentation.as_deref() {
+                builder.documentation(docs);
+            }
+        }
+
+        if let PropSpec::Map {
+            map_key_funcs: Some(map_key_funcs),
+            ..
+        } = self
+        {
+            builder.map_key_funcs(map_key_funcs.to_owned());
+        }
+
+        builder
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Array { name, .. }
+            | Self::Boolean { name, .. }
+            | Self::Map { name, .. }
+            | Self::Number { name, .. }
+            | Self::Object { name, .. }
+            | Self::String { name, .. } => name.as_str(),
+        }
+    }
+
+    pub fn kind(&self) -> PropSpecKind {
+        match self {
+            Self::Array { .. } => PropSpecKind::Array,
+            Self::Boolean { .. } => PropSpecKind::Boolean,
+            Self::Map { .. } => PropSpecKind::Map,
+            Self::Number { .. } => PropSpecKind::Number,
+            Self::Object { .. } => PropSpecKind::Object,
+            Self::String { .. } => PropSpecKind::String,
+        }
+    }
+
+    pub fn data(&self) -> Option<&PropSpecData> {
+        match self {
+            Self::Array { data, .. }
+            | Self::Boolean { data, .. }
+            | Self::Map { data, .. }
+            | Self::Number { data, .. }
+            | Self::Object { data, .. }
+            | Self::String { data, .. } => data.as_ref(),
+        }
+    }
+
+    pub fn inputs(&self) -> Option<&Vec<AttrFuncInputSpec>> {
+        self.data().and_then(|data| data.inputs.as_ref())
+    }
+
+    pub fn func_unique_id(&self) -> Option<&str> {
+        self.data().and_then(|data| data.func_unique_id.as_deref())
+    }
+
+    pub fn direct_children(&self) -> Vec<&PropSpec> {
+        // would be better to just produce an iterator here
+        match self {
+            Self::Boolean { .. } | Self::Number { .. } | Self::String { .. } => vec![],
+            Self::Object { entries, .. } => entries.iter().collect(),
+            Self::Map { type_prop, .. } | Self::Array { type_prop, .. } => vec![type_prop.as_ref()],
+        }
+    }
+
+    pub(crate) fn make_path(parts: &[impl Into<String> + Clone], with_sep: Option<&str>) -> String {
+        parts
+            .iter()
+            .map(|part| part.clone().into())
+            .collect::<Vec<String>>()
+            .join(with_sep.unwrap_or(PROP_PATH_SEPARATOR))
+    }
+
+    /// Process a PropSpec tree into a mapping between the path of the prop and the PropSpec and a list of its direct child paths
+    pub(crate) fn build_prop_spec_index_map(
+        &self,
+    ) -> IndexMap<String, (&PropSpec, Option<String>)> {
+        let mut prop_map = IndexMap::new();
+
+        let mut prop_queue = Vec::from([(self, self.name().to_owned(), None)]);
+        while let Some((current_prop, current_path, maybe_parent)) = prop_queue.pop() {
+            let children = current_prop.direct_children();
+            let children_as_paths: Vec<String> = children
+                .iter()
+                .map(|&prop_spec| Self::make_path(&[current_path.as_str(), prop_spec.name()], None))
+                .collect();
+
+            prop_queue.extend(children.into_iter().enumerate().map(|(idx, spec)| {
+                (
+                    spec,
+                    children_as_paths
+                        .get(idx)
+                        .expect("this index will exist")
+                        .to_owned(),
+                    Some(current_path.to_owned()),
+                )
+            }));
+
+            prop_map.insert(current_path, (current_prop, maybe_parent));
+        }
+
+        prop_map
+    }
+
+    pub(crate) fn get_input_mismatches(
+        current_path: &str,
+        prop_truth: InputMismatchTruth,
+        other_inputs: &[AttrFuncInputSpec],
+        func_unique_id: &str,
+        input_sockets: &[String],
+        output_sockets: &[String],
+    ) -> Vec<MergeSkip> {
+        let mut merge_skips = vec![];
+
+        for input in other_inputs {
+            match input {
+                AttrFuncInputSpec::Prop {
+                    prop_path, name, ..
+                } => {
+                    // If we take a prop from the SI tree as an input we won't
+                    // be present in the prop map but will exist when the schema
+                    // variant is created
+                    if prop_path.starts_with(SI_PATH) {
+                        continue;
+                    }
+
+                    let prop_is_missing = match prop_truth {
+                        InputMismatchTruth::MissingPropSet(missing_prop_set) => {
+                            missing_prop_set.contains(prop_path)
+                        }
+                        InputMismatchTruth::PropSpecMap(prop_spec_map) => {
+                            !prop_spec_map.contains_key(prop_path)
+                        }
+                    };
+
+                    if prop_is_missing {
+                        merge_skips.push(MergeSkip::FuncInputPropMissing {
+                            prop_path: current_path.to_string(),
+                            input_name: name.to_owned(),
+                            missing_prop_path: prop_path.to_owned(),
+                            func_unique_id: func_unique_id.to_string(),
+                        })
+                    }
+                }
+                AttrFuncInputSpec::InputSocket {
+                    name, socket_name, ..
+                } => {
+                    if !input_sockets.contains(socket_name) {
+                        merge_skips.push(MergeSkip::FuncInputInputSocketMissing {
+                            prop_path: current_path.to_string(),
+                            input_name: name.to_owned(),
+                            missing_socket_name: socket_name.to_owned(),
+                            func_unique_id: func_unique_id.to_string(),
+                        })
+                    }
+                }
+                AttrFuncInputSpec::OutputSocket {
+                    name, socket_name, ..
+                } => {
+                    if !output_sockets.contains(socket_name) {
+                        merge_skips.push(MergeSkip::FuncInputOutputSocketMissing {
+                            prop_path: current_path.to_string(),
+                            input_name: name.to_owned(),
+                            missing_socket_name: socket_name.to_owned(),
+                            func_unique_id: func_unique_id.to_string(),
+                        })
+                    }
+                }
+            }
+        }
+
+        merge_skips
+    }
+
+    pub fn merge_with(
+        &self,
+        other: &PropSpec,
+        input_sockets: &[String],
+        output_sockets: &[String],
+    ) -> (PropSpec, Vec<MergeSkip>) {
+        let other_map = other.build_prop_spec_index_map();
+        let mut self_map = self.build_prop_spec_index_map();
+        self_map.reverse(); // reversing this means we walk it leaves to parents
+
+        let mut merge_skips: Vec<MergeSkip> = other_map
+            .keys()
+            .filter_map(|path| {
+                if self_map.contains_key(path) {
+                    None
+                } else {
+                    Some(MergeSkip::PropMissing(path.to_owned()))
+                }
+            })
+            .collect();
+
+        let mut child_map: HashMap<String, Vec<PropSpec>> = HashMap::new();
+        for (current_path, (current_prop_spec, maybe_parent_path)) in &self_map {
+            let mut current_prop_spec_builder = current_prop_spec.to_builder_without_children();
+
+            // Merge in the inputs from the matching prop in other, if it exists
+            if let Some(&(other_prop_spec, _)) = other_map.get(current_path) {
+                let other_kind = other_prop_spec.kind();
+                let self_kind = current_prop_spec.kind();
+
+                if other_kind != self_kind {
+                    merge_skips.push(MergeSkip::PropKindMismatch {
+                        path: current_path.to_owned(),
+                        other_kind,
+                        self_kind,
+                    });
+                } else {
+                    if let (Some(func_unique_id), Some(other_inputs)) =
+                        (other_prop_spec.func_unique_id(), other_prop_spec.inputs())
+                    {
+                        let mismatches = Self::get_input_mismatches(
+                            &current_path,
+                            InputMismatchTruth::PropSpecMap(&self_map),
+                            other_inputs.as_slice(),
+                            func_unique_id,
+                            input_sockets,
+                            output_sockets,
+                        );
+
+                        if mismatches.is_empty() {
+                            current_prop_spec_builder.func_unique_id(func_unique_id);
+                            current_prop_spec_builder.inputs(other_inputs.to_owned());
+                        } else {
+                            merge_skips.extend(mismatches);
+                        }
+                    }
+                }
+            }
+
+            match current_prop_spec.kind() {
+                PropSpecKind::Map | PropSpecKind::Array => {
+                    if let Some(children) = child_map.get(current_path) {
+                        if let Some(type_child) = children.get(0) {
+                            current_prop_spec_builder.type_prop(type_child.to_owned());
+                        }
+                    }
+                }
+                PropSpecKind::Object => {
+                    if let Some(children) = child_map.get(current_path) {
+                        for entry in children {
+                            current_prop_spec_builder.entry(entry.to_owned());
+                        }
+                    }
+                }
+                _ => {}
+            }
+
+            let current_prop = current_prop_spec_builder
+                .build()
+                .expect("failure here is a programming error");
+
+            match maybe_parent_path {
+                Some(parent_path) => {
+                    child_map
+                        .entry(parent_path.to_owned())
+                        .and_modify(|children| children.push(current_prop.clone()))
+                        .or_insert_with(|| vec![current_prop]);
+                }
+                None => return (current_prop, merge_skips),
+            }
+        }
+
+        // unreachable, but the compiler doesn't know this
+        return (self.to_owned(), vec![]);
     }
 }
 
@@ -225,10 +567,15 @@ impl PropSpecBuilder {
         self
     }
 
-    #[allow(unused_mut)]
     pub fn input(&mut self, value: impl Into<AttrFuncInputSpec>) -> &mut Self {
         self.has_data = true;
         self.inputs.push(value.into());
+        self
+    }
+
+    pub fn inputs(&mut self, inputs: Vec<AttrFuncInputSpec>) -> &mut Self {
+        self.has_data = true;
+        self.inputs = inputs;
         self
     }
 
@@ -260,6 +607,12 @@ impl PropSpecBuilder {
     pub fn map_key_func(&mut self, value: impl Into<MapKeyFuncSpec>) -> &mut Self {
         self.has_data = true;
         self.map_key_funcs.push(value.into());
+        self
+    }
+
+    pub fn map_key_funcs(&mut self, value: Vec<MapKeyFuncSpec>) -> &mut Self {
+        self.has_data = true;
+        self.map_key_funcs = value;
         self
     }
 
@@ -371,5 +724,182 @@ impl TryFrom<PropSpecBuilder> for PropSpec {
 
     fn try_from(value: PropSpecBuilder) -> Result<Self, Self::Error> {
         value.build()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_prop_merge() {
+        let prop_a_path = PropSpec::make_path(&["root", "a"], None);
+        let prop_b_path = PropSpec::make_path(&["root", "b"], None);
+        let prop_c_path = PropSpec::make_path(&["root", "c"], None);
+        let pride_path = PropSpec::make_path(&["root", "objét d'art", "l'orgueil"], None);
+
+        let prop_b_input_spec = AttrFuncInputSpec::Prop {
+            name: "arg_1".into(),
+            prop_path: prop_a_path.to_owned(),
+            unique_id: None,
+            deleted: false,
+        };
+
+        let prop_tree_a = PropSpec::builder()
+            .name("root")
+            .kind(PropSpecKind::Object)
+            .entry(
+                PropSpec::builder()
+                    .name("a")
+                    .kind(PropSpecKind::String)
+                    .func_unique_id("function_2")
+                    .input(AttrFuncInputSpec::Prop {
+                        name: "arg_1".into(),
+                        prop_path: prop_c_path.to_owned(),
+                        unique_id: None,
+                        deleted: false,
+                    })
+                    .build()
+                    .expect("able to build prop a"),
+            )
+            .entry(
+                PropSpec::builder()
+                    .name("b")
+                    .kind(PropSpecKind::Number)
+                    .func_unique_id("function_1")
+                    .input(prop_b_input_spec.to_owned())
+                    .build()
+                    .expect("able to build prop b"),
+            )
+            .entry(
+                PropSpec::builder()
+                    .name("c")
+                    .kind(PropSpecKind::String)
+                    .build()
+                    .expect("able to build prop a"),
+            )
+            .entry(
+                PropSpec::builder()
+                    .name("objét d'art")
+                    .kind(PropSpecKind::Object)
+                    .entry(
+                        PropSpec::builder()
+                            .name("l'orgueil")
+                            .kind(PropSpecKind::Number)
+                            .build()
+                            .expect("before the fall"),
+                    )
+                    .entry(
+                        PropSpec::builder()
+                            .name("un morceau")
+                            .kind(PropSpecKind::Object)
+                            .entry(
+                                PropSpec::builder()
+                                    .name("le couleur? bleu")
+                                    .kind(PropSpecKind::Number)
+                                    .build()
+                                    .expect("should build"),
+                            )
+                            .build()
+                            .expect("morceau?"),
+                    )
+                    .build()
+                    .expect("objét?"),
+            )
+            .build()
+            .expect("able to build");
+
+        let prop_tree_b = PropSpec::builder()
+            .name("root")
+            .kind(PropSpecKind::Object)
+            .entry(
+                PropSpec::builder()
+                    .name("a")
+                    .kind(PropSpecKind::String)
+                    .build()
+                    .expect("able to build prop a"),
+            )
+            .entry(
+                PropSpec::builder()
+                    .name("b")
+                    .kind(PropSpecKind::Number)
+                    .build()
+                    .expect("able to build prop b"),
+            )
+            .entry(
+                PropSpec::builder()
+                    .name("objét d'art")
+                    .kind(PropSpecKind::Object)
+                    .entry(
+                        PropSpec::builder()
+                            .name("un morceau")
+                            .kind(PropSpecKind::Object)
+                            .entry(
+                                PropSpec::builder()
+                                    .name("le couleur? bleu")
+                                    .kind(PropSpecKind::Number)
+                                    .build()
+                                    .expect("should build"),
+                            )
+                            .build()
+                            .expect("morceau?"),
+                    )
+                    .build()
+                    .expect("objét?"),
+            )
+            .entry(
+                PropSpec::builder()
+                    .name("objét de fart")
+                    .kind(PropSpecKind::Object)
+                    .entry(
+                        PropSpec::builder()
+                            .name("un morceau de pet")
+                            .kind(PropSpecKind::Object)
+                            .entry(
+                                PropSpec::builder()
+                                    .name("un chien")
+                                    .kind(PropSpecKind::String)
+                                    .build()
+                                    .expect("a dog?"),
+                            )
+                            .build()
+                            .expect("morceau?"),
+                    )
+                    .build()
+                    .expect("objét?"),
+            )
+            .build()
+            .expect("able to build");
+
+        let (merged_prop_root, merge_skips) = prop_tree_b.merge_with(&prop_tree_a, &[], &[]);
+
+        // Confirm merge skips are correct
+        assert_eq!(
+            &[
+                MergeSkip::PropMissing(pride_path),
+                MergeSkip::PropMissing(prop_c_path.to_owned()),
+                MergeSkip::FuncInputPropMissing {
+                    prop_path: prop_a_path,
+                    input_name: "arg_1".into(),
+                    missing_prop_path: prop_c_path,
+                    func_unique_id: "function_2".into(),
+                }
+            ],
+            merge_skips.as_slice(),
+            "correct merge skips reported"
+        );
+
+        let prop_b_after_merge = merged_prop_root
+            .build_prop_spec_index_map()
+            .get(&prop_b_path)
+            .expect("prop b present in new prop spec")
+            .to_owned()
+            .0;
+        // Confirm attribute function copied over
+        assert_eq!(
+            Some(&vec![prop_b_input_spec]),
+            prop_b_after_merge.inputs(),
+            "attribute function for prop b copied over in merge"
+        );
     }
 }
