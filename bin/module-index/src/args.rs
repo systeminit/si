@@ -79,10 +79,6 @@ pub(crate) struct Args {
     #[arg(long, env)]
     pub(crate) pg_user: Option<String>,
 
-    /// PostgreSQL connection pool password [example: dbuser]
-    #[arg(long, env)]
-    pub(crate) pg_password: Option<SensitiveString>,
-
     /// PostgreSQL connection certification path
     #[arg(long)]
     pub(crate) pg_cert_path: Option<PathBuf>,
@@ -141,9 +137,6 @@ impl TryFrom<Args> for Config {
             }
             if let Some(user) = args.pg_user {
                 config_map.set("pg.user", user);
-            }
-            if let Some(password) = args.pg_password {
-                config_map.set("pg.password", password.to_string());
             }
             if let Some(cert_path) = args.pg_cert_path {
                 config_map.set("pg.certificate_path", cert_path.display().to_string());
