@@ -356,6 +356,10 @@ where
         Self(change_set_map)
     }
 
+    pub fn get_change_set_map(&self, change_set_pk: ChangeSetPk) -> Option<&HashMap<Key, Thing>> {
+        self.0.get(&change_set_pk)
+    }
+
     pub fn get(&self, change_set_pk: ChangeSetPk, key: &Key) -> Option<&Thing> {
         match self.0.get(&change_set_pk) {
             Some(change_set_map) => change_set_map.get(key).or_else(|| {

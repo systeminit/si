@@ -103,7 +103,7 @@ pub async fn exec_variant_def(
         }
 
         async fn handle_error(ctx: &DalContext, id: Ulid, err: String) {
-            error!("Unable to export workspace: {err}");
+            error!("Unable to exec variant def: {err}");
             match WsEvent::async_error(ctx, id, err).await {
                 Ok(event) => match event.publish_on_commit(ctx).await {
                     Ok(()) => {}
