@@ -33,7 +33,7 @@ use crate::{
 
 use super::{PkgError, PkgResult};
 
-type FuncSpecMap = super::ChangeSetThingMap<FuncId, FuncSpec>;
+pub type FuncSpecMap = super::ChangeSetThingMap<FuncId, FuncSpec>;
 type VariantSpecMap = super::ChangeSetThingMap<SchemaVariantId, SchemaVariantSpec>;
 type ComponentMap = super::ChangeSetThingMap<ComponentId, ComponentSpec>;
 
@@ -213,11 +213,19 @@ impl PkgExporter {
         variant: &SchemaVariant,
     ) -> PkgResult<(SchemaVariantSpec, Vec<FuncSpec>)> {
         let mut exporter = Self::new_standalone_variant_exporter();
-        let (funcs, _) = exporter
-            .export_funcs_for_variant(ctx, None, *variant.id())
-            .await?;
 
+        exporter
+            .export_funcs_for_variant(ctx, Some(ChangeSetPk::NONE), *variant.id())
+            .await?;
         let variant_spec = exporter.export_variant(ctx, None, variant).await?;
+
+        let funcs = match exporter
+            .func_spec_map()
+            .get_change_set_map(ChangeSetPk::NONE)
+        {
+            Some(funcs) => funcs.values().map(ToOwned::to_owned).collect(),
+            None => vec![],
+        };
 
         Ok((variant_spec, funcs))
     }
@@ -1174,6 +1182,34 @@ impl PkgExporter {
         Ok((func_spec, include_in_export))
     }
 
+    async fn add_func_to_map(
+        &mut self,
+        ctx: &DalContext,
+        change_set_pk: Option<ChangeSetPk>,
+        func: &Func,
+    ) -> PkgResult<(FuncSpec, bool)> {
+        let (spec, include) = match IntrinsicFunc::maybe_from_str(func.name()) {
+            Some(intrinsic) => {
+                let spec = intrinsic.to_spec()?;
+
+                (spec, true)
+            }
+            None => self.export_func(ctx, change_set_pk, func).await?,
+        };
+
+        self.func_map.insert(
+            change_set_pk.unwrap_or(ChangeSetPk::NONE),
+            *func.id(),
+            spec.clone(),
+        );
+
+        Ok((spec, include))
+    }
+
+    pub fn func_spec_map(&self) -> &FuncSpecMap {
+        &self.func_map
+    }
+
     /// If change_set_pk is None, we export everything in the changeset without checking for
     /// differences from HEAD. Otherwise we attempt to only export the data specific to the
     /// requested change_set
@@ -1214,18 +1250,14 @@ impl PkgExporter {
                     .await?
                     .ok_or(PkgError::MissingIntrinsicFunc(intrinsic_name.to_string()))?;
 
-                let intrinsic_spec = intrinsic.to_spec()?;
-                self.func_map.insert(
-                    change_set_pk.unwrap_or(ChangeSetPk::NONE),
-                    *intrinsic_func.id(),
-                    intrinsic_spec.clone(),
-                );
+                let (spec, _) = self
+                    .add_func_to_map(ctx, change_set_pk, &intrinsic_func)
+                    .await?;
 
-                func_specs.push(intrinsic_spec);
+                func_specs.push(spec);
             }
         }
 
-        // XXX: make this SQL query
         let mut schemas = vec![];
         for schema in Schema::list(ctx).await? {
             let add_schema = if let Some(schema_ids) = &self.schema_ids {
@@ -1529,22 +1561,17 @@ impl PkgExporter {
 
                 if func.visibility().change_set_pk == ChangeSetPk::NONE {
                     let (func_spec, _) = self
-                        .export_func(ctx, Some(ChangeSetPk::NONE), &func)
+                        .add_func_to_map(ctx, Some(ChangeSetPk::NONE), &func)
                         .await?;
-                    let unique_id = func_spec.unique_id.to_owned();
-                    self.func_map
-                        .insert(ChangeSetPk::NONE, func_id, func_spec.to_owned());
+
+                    let unique_id = func_spec.unique_id.clone();
+
                     head_funcs.push(func_spec);
 
                     unique_id
                 } else {
-                    let (func_spec, _) = self.export_func(ctx, change_set_pk, &func).await?;
-                    let unique_id = func_spec.unique_id.to_owned();
-                    self.func_map.insert(
-                        change_set_pk.unwrap_or(ChangeSetPk::NONE),
-                        func_id,
-                        func_spec.to_owned(),
-                    );
+                    let (func_spec, _) = self.add_func_to_map(ctx, change_set_pk, &func).await?;
+                    let unique_id = func_spec.unique_id.clone();
                     funcs.push(func_spec);
 
                     unique_id
@@ -1689,17 +1716,12 @@ impl PkgExporter {
                 && self.func_map.get(ChangeSetPk::NONE, func.id()).is_none()
                 && func.visibility().change_set_pk == ChangeSetPk::NONE
             {
-                let (func_spec, _) = self.export_func(ctx, Some(ChangeSetPk::NONE), func).await?;
-                self.func_map
-                    .insert(ChangeSetPk::NONE, *func.id(), func_spec.to_owned());
+                let (func_spec, _) = self
+                    .add_func_to_map(ctx, Some(ChangeSetPk::NONE), func)
+                    .await?;
                 head_funcs.push(func_spec);
             } else {
-                let (func_spec, include) = self.export_func(ctx, change_set_pk, func).await?;
-                self.func_map.insert(
-                    change_set_pk.unwrap_or(ChangeSetPk::NONE),
-                    *func.id(),
-                    func_spec.to_owned(),
-                );
+                let (func_spec, include) = self.add_func_to_map(ctx, change_set_pk, func).await?;
 
                 if include {
                     funcs.push(func_spec);
