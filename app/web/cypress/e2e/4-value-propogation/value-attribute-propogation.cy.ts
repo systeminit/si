@@ -11,7 +11,8 @@ describe('Value Propogation', () => {
     // Go to the Production Synthetic Workspace
     cy.visit('https://app.systeminit.com/w/01HPMKZZ0DF54B12FNBF6Z7704/head')
 
-    // Check UI has prompted for Create Change Set
+    // Check UI has prompted for Create Change Set, this sometimes doesn't happen
+    // I have no idea why but it breaks the test
     cy.contains('Create change set', { timeout: 10000 }).should('be.visible');
 
     cy.url().then(currentUrl => {
