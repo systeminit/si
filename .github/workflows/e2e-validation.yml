@@ -39,4 +39,5 @@ jobs:
         run: |
           cd app/web
           pnpm i
+          cypress --version
           pnpm run cypress:run -- --spec "cypress/e2e/4-value-propogation/value-attribute-propogation.cy.ts"
