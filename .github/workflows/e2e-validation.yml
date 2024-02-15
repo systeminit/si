@@ -30,4 +30,5 @@ jobs:
       - name: Run Cypress tests
         run: |
           wget -qO- https://get.pnpm.io/install.sh | ENV="$HOME/.bashrc" SHELL="$(which bash)" bash -
+          source /home/runner/.bashrc
           cd app/web && pnpm install dev && pnpm run cypress:run -- --spec "cypress/e2e/4-value-propogation/value-attribute-propogation.cy.ts"
