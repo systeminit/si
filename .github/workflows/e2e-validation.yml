@@ -35,5 +35,5 @@ jobs:
       - name: Run Cypress tests
         run: |
           cd app/web
-          pnpm install dev
+          pnpm i
           #pnpm run cypress:run -- --spec "cypress/e2e/4-value-propogation/value-attribute-propogation.cy.ts"
