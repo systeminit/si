@@ -27,8 +27,13 @@ jobs:
           echo "VITE_AUTH0_PASSWORD=${VITE_AUTH0_PASSWORD}" >> env.local
           echo "VITE_AUTH0_USERNAME=${VITE_AUTH0_USERNAME}" >> env.local
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+            version: 8.10.5
+
       - name: Run Cypress tests
         run: |
-          wget -qO- https://get.pnpm.io/install.sh | ENV="$HOME/.bashrc" SHELL="$(which bash)" bash -
-          source /home/runner/.bashrc
-          cd app/web && pnpm install dev && pnpm run cypress:run -- --spec "cypress/e2e/4-value-propogation/value-attribute-propogation.cy.ts"
+          cd app/web
+          pnpm install dev
+          pnpm run cypress:run -- --spec "cypress/e2e/4-value-propogation/value-attribute-propogation.cy.ts"
