@@ -24,8 +24,8 @@ jobs:
         run: |
           cd app/web
           cp .env .env.local
-          echo "VITE_AUTH0_PASSWORD=${VITE_AUTH0_PASSWORD}" >> .env.local
-          echo "VITE_AUTH0_USERNAME=${VITE_AUTH0_USERNAME}" >> .env.local
+          echo "VITE_AUTH0_PASSWORD=${{ secrets.VITE_AUTH0_PASSWORD }}" >> .env.local
+          echo "VITE_AUTH0_USERNAME=${{ secrets.VITE_AUTH0_USERNAME }}" >> .env.local
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
