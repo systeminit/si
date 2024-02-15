@@ -16,6 +16,10 @@ Cypress.Commands.add("loginToAuth0", (username: string, password: string) => {
   cy.session(
     `auth0-${username}`,
     () => {
+
+      cy.visit("https://app.systeminit.com/");
+      cy.wait(3000);
+
       // App landing page redirects to Auth0.
       cy.visit("/");
       cy.log('At homepage')
