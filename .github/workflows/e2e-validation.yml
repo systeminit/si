@@ -28,4 +28,4 @@ jobs:
           echo "VITE_AUTH0_USERNAME=${VITE_AUTH0_USERNAME}" >> env.local
 
       - name: Run Cypress tests
-        run: cd app/web && npm install && npm run cypress:run -- --spec "cypress/e2e/4-value-propogation/value-attribute-propogation.cy.ts"
+        run: cd app/web && pnpm install dev && pnpm run cypress:run -- --spec "cypress/e2e/4-value-propogation/value-attribute-propogation.cy.ts"
