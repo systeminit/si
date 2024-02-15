@@ -84,7 +84,7 @@ export const useQualificationsStore = () => {
             _.mapValues(
               state.qualificationsByComponentIdRaw,
               (qualifications, componentId) => {
-                const compiledQualifications = qualifications;
+                const compiledQualifications = _.cloneDeep(qualifications);
 
                 if (featureFlagsStore.JOI_VALIDATIONS) {
                   compiledQualifications.push(

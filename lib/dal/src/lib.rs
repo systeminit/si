@@ -106,6 +106,10 @@ use telemetry::prelude::*;
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserPk, UserResult};
+pub use validation::resolver::{
+    ValidationOutput, ValidationResolver, ValidationResolverError, ValidationResolverId,
+    ValidationStatus,
+};
 use veritech_client::CycloneEncryptionKey;
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, WorkspaceSignup};
@@ -159,6 +163,7 @@ pub mod tasks;
 pub mod tenancy;
 pub mod timestamp;
 pub mod user;
+pub mod validation;
 pub mod visibility;
 pub mod workspace;
 pub mod ws_event;

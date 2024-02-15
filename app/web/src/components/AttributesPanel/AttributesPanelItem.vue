@@ -352,6 +352,17 @@
       <!-- <Icon name="none" class="p-[3px] mx-[2px]" /> -->
     </div>
 
+    <div
+      v-if="
+        props.attributeDef.validation &&
+        props.attributeDef.validation?.status !== 'Success'
+      "
+      :style="{ paddingLeft: indentPx }"
+      class="text-red-400 mt-1"
+    >
+      {{ props.attributeDef.validation.message }}
+    </div>
+
     <Modal
       v-if="widgetKind === 'textArea' || widgetKind === 'codeEditor'"
       ref="editModalRef"

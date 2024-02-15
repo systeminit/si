@@ -12,8 +12,8 @@ use crate::{
     fix::FixError, func::binding_return_value::FuncBindingReturnValueError,
     job::producer::BlockingJobError, job::producer::JobProducerError, status::StatusUpdaterError,
     AccessBuilder, ActionPrototypeError, ActionPrototypeId, AttributeValueError, ComponentError,
-    ComponentId, DalContext, DalContextBuilder, FixBatchId, FixResolverError, StandardModelError,
-    TransactionsError, Visibility, WsEventError,
+    ComponentId, DalContext, DalContextBuilder, FixBatchId, FixResolverError, PropError,
+    StandardModelError, TransactionsError, Visibility, WsEventError,
 };
 
 #[remain::sorted]
@@ -69,6 +69,8 @@ pub enum JobConsumerError {
     PgError(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
+    #[error(transparent)]
+    Prop(#[from] PropError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]

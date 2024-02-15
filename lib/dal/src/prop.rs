@@ -1,4 +1,5 @@
 use async_recursion::async_recursion;
+use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_pg::PgError;
@@ -7,6 +8,8 @@ use std::collections::VecDeque;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::mpsc;
+use veritech_client::FunctionResult;
 
 use crate::standard_model::{
     finish_create_from_row, object_option_from_row_option, objects_from_rows,
@@ -23,8 +26,9 @@ use crate::{
     property_editor::schema::WidgetKind,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     AttributeContext, AttributeContextBuilder, AttributeContextBuilderError,
-    AttributePrototypeError, AttributeReadContext, DalContext, Func, FuncError, FuncId,
-    HistoryEventError, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
+    AttributePrototypeError, AttributeReadContext, ComponentId, DalContext, Func, FuncError,
+    FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
+    Timestamp, ValidationOutput, ValidationResolver, ValidationResolverError, ValidationStatus,
     Visibility,
 };
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, TransactionsError};
@@ -117,6 +121,8 @@ impl From<String> for PropPath {
 }
 
 const ALL_ANCESTOR_PROPS: &str = include_str!("queries/prop/all_ancestor_props.sql");
+const FIND_VALIDATIONS_FOR_COMPONENT: &str =
+    include_str!("queries/prop/find_validations_for_component.sql");
 const FIND_ROOT_PROP_FOR_PROP: &str = include_str!("queries/prop/root_prop_for_prop.sql");
 const FIND_PROP_IN_TREE: &str = include_str!("queries/prop/find_prop_in_tree.sql");
 
@@ -165,6 +171,10 @@ pub enum PropError {
     StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    ValidationResolver(#[from] Box<ValidationResolverError>),
+    #[error(transparent)]
+    Veritech(#[from] veritech_client::ClientError),
 }
 
 pub type PropResult<T> = Result<T, PropError>;
@@ -658,11 +668,109 @@ impl Prop {
         }
     }
 
+    pub async fn validation_props(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> PropResult<Vec<Prop>> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                FIND_VALIDATIONS_FOR_COMPONENT,
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(row)?)
+    }
+
     pub async fn set_default_diff(&mut self, ctx: &DalContext) -> PropResult<()> {
         let func = Func::find_by_attr(ctx, "name", &"si:diff")
             .await?
             .pop()
             .ok_or(PropError::DefaultDiffFunctionNotFound)?;
         self.set_diff_func_id(ctx, Some(*func.id())).await
+    }
+
+    pub async fn run_validation(
+        ctx: &DalContext,
+        prop_id: PropId,
+        component_id: ComponentId,
+        value: serde_json::Value,
+    ) {
+        if let Err(err) = Self::run_validation_fallible(ctx, prop_id, component_id, &value).await {
+            error!("Unable to run validation for prop {prop_id} and component {component_id} with value {value:#?}: {err}");
+        }
+    }
+
+    async fn run_validation_fallible(
+        ctx: &DalContext,
+        prop_id: PropId,
+        component_id: ComponentId,
+        value: &serde_json::Value,
+    ) -> PropResult<()> {
+        if let Some(prop) = Prop::get_by_id(ctx, &prop_id).await? {
+            if let Some(validation_format) = prop.validation_format() {
+                let function = "const main = (object) => {
+                    const schema: Schema = Joi.build(JSON.parse(object.format));
+                    return { result: schema.validate(object.value) };
+                }";
+                let code_base64 = general_purpose::STANDARD_NO_PAD.encode(function);
+                let (output_tx, mut rx) = mpsc::channel(64);
+                let veritech = ctx.veritech().clone();
+                let request = veritech_client::ResolverFunctionRequest {
+                    execution_id: "vagnermoura".to_owned(),
+                    handler: "main".to_owned(),
+                    component: veritech_client::ResolverFunctionComponent {
+                        data: veritech_client::ComponentView {
+                            properties: serde_json::json!({ "format": serde_json::to_value(validation_format)?, "value": value }),
+                            ..Default::default()
+                        },
+                        parents: Vec::new(),
+                    },
+                    response_type: veritech_client::ResolverFunctionResponseType::Object,
+                    code_base64,
+                    before: Vec::new(),
+                };
+                let value = veritech
+                    .execute_resolver_function(output_tx, &request)
+                    .await?;
+                let mut logs = Vec::new();
+                while let Some(log) = rx.recv().await {
+                    logs.push(log);
+                }
+
+                let value = match value {
+                    FunctionResult::Failure(err) => ValidationOutput {
+                        status: ValidationStatus::Failure,
+                        message: format!("{}: {}", err.error.kind, err.error.message),
+                        logs,
+                    },
+                    FunctionResult::Success(data)
+                        if dbg!(&data.data).pointer("/result/error").is_some() =>
+                    {
+                        ValidationOutput {
+                            status: ValidationStatus::Error,
+                            message: data
+                                .data
+                                .pointer("/result/error/details/0/message")
+                                .map(String::deserialize)
+                                .unwrap_or_else(|| serde_json::to_string_pretty(&data.data))?,
+                            logs,
+                        }
+                    }
+                    FunctionResult::Success(_) => ValidationOutput {
+                        status: ValidationStatus::Success,
+                        message: "OK".to_owned(),
+                        logs,
+                    },
+                };
+                ValidationResolver::upsert(ctx, prop_id, component_id, &value)
+                    .await
+                    .map_err(Box::new)?;
+            }
+        }
+        Ok(())
     }
 }

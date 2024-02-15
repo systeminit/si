@@ -791,6 +791,14 @@ impl AttributeValue {
             .await?;
         }
 
+        Prop::run_validation(
+            ctx,
+            context.prop_id(),
+            context.component_id(),
+            value.clone().unwrap_or_default(),
+        )
+        .await;
+
         Ok((value, new_attribute_value_id))
     }
 

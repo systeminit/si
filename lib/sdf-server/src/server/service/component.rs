@@ -14,7 +14,8 @@ use dal::{
     AttributePrototypeArgumentError, AttributePrototypeError, AttributeValueError, ChangeSetError,
     ComponentError as DalComponentError, ComponentId, DiagramError, ExternalProviderError,
     FuncBindingError, FuncError, InternalProviderError, PropId, ReconciliationPrototypeError,
-    SchemaError as DalSchemaError, StandardModelError, TransactionsError, WsEventError,
+    SchemaError as DalSchemaError, StandardModelError, TransactionsError, ValidationResolverError,
+    WsEventError,
 };
 use thiserror::Error;
 
@@ -28,6 +29,7 @@ pub mod get_code;
 pub mod get_components_metadata;
 pub mod get_diff;
 pub mod get_property_editor_schema;
+pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
 pub mod get_resource;
 pub mod insert_property_editor_value;
@@ -123,6 +125,8 @@ pub enum ComponentError {
     SystemIdRequired,
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    ValidationResolver(#[from] ValidationResolverError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -166,6 +170,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/get_property_editor_values",
             get(get_property_editor_values::get_property_editor_values),
+        )
+        .route(
+            "/get_property_editor_validations",
+            get(get_property_editor_validations::get_property_editor_validations),
         )
         .route(
             "/update_property_editor_value",

@@ -35,9 +35,9 @@ use crate::{
     AttributePrototype, AttributePrototypeArgumentError, AttributePrototypeError,
     AttributePrototypeId, AttributeReadContext, ComponentType, DalContext, EdgeError,
     ExternalProviderError, FixError, FixId, Func, FuncBackendKind, FuncError, HistoryActor,
-    HistoryEventError, IndexMap, Node, NodeError, PropError, RootPropChild, Schema, SchemaError,
-    SchemaId, Socket, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
-    UserPk, Visibility, WorkspaceError, WsEvent, WsEventResult, WsPayload,
+    HistoryEventError, IndexMap, Node, NodeError, Prop, PropError, RootPropChild, Schema,
+    SchemaError, SchemaId, Socket, StandardModel, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, UserPk, Visibility, WorkspaceError, WsEvent, WsEventResult, WsPayload,
 };
 use crate::{AttributeValueId, QualificationError};
 use crate::{Edge, FixResolverError, NodeKind};
@@ -316,6 +316,10 @@ impl Component {
         node.set_component(ctx, component.id()).await?;
 
         component.set_name(ctx, Some(name.as_ref())).await?;
+
+        for prop in Prop::validation_props(ctx, *component.id()).await? {
+            Prop::run_validation(ctx, *prop.id(), *component.id(), serde_json::Value::Null).await;
+        }
 
         diagram::summary_diagram::create_component_entry(
             ctx,
