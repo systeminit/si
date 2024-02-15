@@ -1,0 +1,31 @@
+name: Cypress E2E Tests
+
+on:
+  push:
+    branches:
+      - feat/add-synthetic-workflow
+  #schedule:
+  #  - cron: '*/15 * * * *'  # Runs every 15 minutes
+
+jobs:
+  cypress-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Setup authentication for vite
+        run: |
+          cd app/web
+          cp .env .env.local
+          echo "VITE_AUTH0_PASSWORD=${VITE_AUTH0_PASSWORD}" >> env.local
+          echo "VITE_AUTH0_USERNAME=${VITE_AUTH0_USERNAME}" >> env.local
+
+      - name: Run Cypress tests
+        run: cd app/web && npm install && npm run cypress:run -- --spec "cypress/e2e/4-value-propogation/value-attribute-propogation.cy.ts"
