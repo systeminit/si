@@ -26,6 +26,9 @@ jobs:
           cp .env .env.local
           echo "VITE_AUTH0_PASSWORD=${VITE_AUTH0_PASSWORD}" >> env.local
           echo "VITE_AUTH0_USERNAME=${VITE_AUTH0_USERNAME}" >> env.local
+          sed -i 's/^DEV_HOST=.*/DEV_HOST=app.systeminit.com/' env.local
+          sed -i 's/^DEV_PORT=.*/DEV_PORT=443/' env.local
+          sed -i 's|^DEV_API_PROXY_URL=.*|DEV_API_PROXY_URL=https://app.systeminit.com|' env.local
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
