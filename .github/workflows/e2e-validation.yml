@@ -1,6 +1,7 @@
 name: Cypress E2E Tests
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
