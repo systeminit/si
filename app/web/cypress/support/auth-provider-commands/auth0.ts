@@ -17,8 +17,8 @@ Cypress.Commands.add("loginToAuth0", (username: string, password: string) => {
     `auth0-${username}`,
     () => {
 
-      cy.visit("https://app.systeminit.com/");
-      cy.wait(3000);
+      //cy.visit("https://app.systeminit.com/");
+      //cy.wait(3000);
 
       // App landing page redirects to Auth0.
       cy.visit("/");
@@ -27,18 +27,18 @@ Cypress.Commands.add("loginToAuth0", (username: string, password: string) => {
       cy.url().should("contain", import.meta.env.VITE_AUTH0_DOMAIN);
 
       // Login on Auth0.
-      //cy.origin(import.meta.env.VITE_AUTH0_DOMAIN, { args }, ({ username, password }) => {
+      cy.origin(import.meta.env.VITE_AUTH0_DOMAIN, { args }, ({ username, password }) => {
         cy.get("input#username").type(username);
         cy.contains('Continue').click();
         cy.get("input#password").type(password).type('{enter}');
 
-      //});
+      });
 
       // Ensure Auth0 has redirected us back to the auth portal.
       cy.url().should("contain", import.meta.env.VITE_AUTH_PORTAL_URL);
 
       // click the link to go back to the local app
-      //cy.origin(import.meta.env.VITE_AUTH_PORTAL_URL, () => {
+      cy.origin(import.meta.env.VITE_AUTH_PORTAL_URL, () => {
 
         //todo: use a more reliable way to get the link to navigate back to
         cy.contains('div', 'Role: Owner')
@@ -47,7 +47,7 @@ Cypress.Commands.add("loginToAuth0", (username: string, password: string) => {
           .then(($href) => {
             cy.visit($href);
           });
-      //});
+      });
     },
     {
       validate: () => {
