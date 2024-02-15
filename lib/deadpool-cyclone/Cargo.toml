@@ -10,9 +10,9 @@ async-trait = { workspace = true }
 bollard = { workspace = true }
 cyclone-client = { path = "../cyclone-client" }
 cyclone-core = { path = "../cyclone-core" }
-deadpool = { workspace = true }
 derive_builder = { workspace = true }
 futures = { workspace = true }
+indexmap = { workspace = true }
 nix = { workspace = true }
 rand = {workspace = true }
 remain = { workspace = true }
