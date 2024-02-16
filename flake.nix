@@ -47,6 +47,7 @@
           lld
           makeWrapper
           nodejs
+          deno
           pnpm
           protobuf
           python3
