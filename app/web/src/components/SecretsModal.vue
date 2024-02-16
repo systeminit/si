@@ -40,7 +40,6 @@
       <AddSecretForm
         v-if="addingSecret"
         :definitionId="definitionId"
-        forceDark
         @save="selectSecret"
         @cancel="cancelAddSecretForm"
       />

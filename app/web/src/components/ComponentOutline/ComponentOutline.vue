@@ -16,7 +16,9 @@
         <!-- search bar - dont need to show if no components -->
         <SiSearch
           v-if="rootComponents.length"
+          ref="searchRef"
           autoSearch
+          :filters="searchFiltersWithCounts"
           @search="onSearchUpdated"
         />
       </template>
@@ -98,7 +100,7 @@ import {
 } from "vue";
 import * as _ from "lodash-es";
 import { ErrorMessage, Icon, ScrollArea } from "@si/vue-lib/design-system";
-import SiSearch from "@/components/SiSearch.vue";
+import SiSearch, { Filter } from "@/components/SiSearch.vue";
 import {
   ComponentId,
   useComponentsStore,
@@ -106,11 +108,13 @@ import {
 } from "@/store/components.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 
+import { useQualificationsStore } from "@/store/qualifications.store";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
 
 defineProps<{ fixesAreRunning: boolean }>();
 
+const searchRef = ref<InstanceType<typeof SiSearch>>();
 const outlineRef = ref<HTMLElement>();
 
 const emit = defineEmits<{
@@ -124,6 +128,7 @@ const emit = defineEmits<{
 }>();
 
 const componentsStore = useComponentsStore();
+const qualificationsStore = useQualificationsStore();
 
 const fetchComponentsReq =
   componentsStore.getRequestStatus("FETCH_DIAGRAM_DATA");
@@ -149,26 +154,100 @@ const componentsTreeFlattened = computed(() => {
   return flat;
 });
 
-const filterString = ref("");
-const filterStringCleaned = computed(() =>
-  filterString.value.trim().toLowerCase(),
+const searchString = ref("");
+const searchStringCleaned = computed(() =>
+  searchString.value.trim().toLowerCase(),
 );
-const filterModeActive = computed(() => !!filterStringCleaned.value);
+const filterModeActive = computed(
+  () => !!(searchStringCleaned.value || searchRef.value?.filteringActive),
+);
 
 const filteredComponents = computed(() => {
   if (!filterModeActive.value) return [];
-  return _.filter(componentsStore.allComponents, (c) => {
-    if (c.displayName.toLowerCase().includes(filterStringCleaned.value))
-      return true;
-    if (c.schemaName.toLowerCase().includes(filterStringCleaned.value))
-      return true;
-    return false;
-  });
+  let filteredComponents = filterComponentArrayBySearchString(
+    componentsStore.allComponents,
+  );
+
+  if (searchRef.value?.filteringActive) {
+    searchFiltersWithCounts.value.forEach((filter, index) => {
+      if (searchRef.value?.activeFilters[index]) {
+        filteredComponents = _.filter(filteredComponents, (component) =>
+          filterArrays[index]?.value.includes(component),
+        ) as FullComponent[];
+      }
+    });
+  }
+  return filteredComponents;
 });
 
 function onSearchUpdated(newFilterString: string) {
-  filterString.value = newFilterString;
+  searchString.value = newFilterString;
 }
+
+const newComponents = computed(() =>
+  componentsTreeFlattened.value.filter(
+    (component) => component.changeStatus === "added",
+  ),
+);
+
+const diffComponents = computed(() =>
+  componentsTreeFlattened.value.filter(
+    (component) => component.changeStatus === "modified",
+  ),
+);
+
+const failedQualificationComponents = computed(() =>
+  componentsTreeFlattened.value.filter(
+    (component) =>
+      qualificationsStore.qualificationStatusByComponentId[component.id] ===
+      "failure",
+  ),
+);
+
+const filterComponentArrayBySearchString = (components: FullComponent[]) => {
+  return _.filter(components, (c) => {
+    if (c.displayName.toLowerCase().includes(searchStringCleaned.value))
+      return true;
+    if (c.schemaName.toLowerCase().includes(searchStringCleaned.value))
+      return true;
+    return false;
+  });
+};
+
+const searchFiltersWithCounts = computed(() => {
+  const searchFilters: Array<Filter> = [
+    {
+      name: "New",
+      iconTone: "success",
+      iconName: "plus",
+      count: filterComponentArrayBySearchString(newComponents.value).length,
+    },
+    {
+      name: "Diff",
+      iconTone: "warning",
+      iconName: "tilde",
+      count: filterComponentArrayBySearchString(diffComponents.value).length,
+    },
+    {
+      name: "Qualifications",
+      iconTone: "destructive",
+      iconName: "x-hex-outline",
+      count: filterComponentArrayBySearchString(
+        failedQualificationComponents.value,
+      ).length,
+    },
+    // TODO - Add filter for resource status
+    // { name: "Resources", iconTone: "destructive", iconName: "x-hex", count: 0 },
+  ];
+
+  return searchFilters;
+});
+
+const filterArrays = [
+  newComponents,
+  diffComponents,
+  failedQualificationComponents,
+];
 
 function itemClickHandler(e: MouseEvent, id: ComponentId, tabSlug?: string) {
   const component = componentsStore.componentsById[id];
