@@ -1,11 +1,33 @@
 use std::{fmt, sync::Arc};
 
+use axum::extract::MatchedPath;
 use hyper::header::USER_AGENT;
 use telemetry::prelude::*;
 use tower_http::trace::MakeSpan;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use crate::propagation;
+
+/// Marker type which informs [`HttpMakeSpan`] to skip OpenTelemetry propagation header extraction.
+#[derive(Clone, Debug)]
+pub struct ParentSpan(Span);
+
+impl ParentSpan {
+    /// Creates a new ParentSpan with the given [`Span`].
+    pub fn new(span: Span) -> Self {
+        Self(span)
+    }
+
+    /// Consumes into the inner [`Span`].
+    pub fn into_inner(self) -> Span {
+        self.0
+    }
+
+    /// Returns a reference to the [`Span`].
+    pub fn as_span(&self) -> &Span {
+        &self.0
+    }
+}
 
 /// An implementation of [`MakeSpan`] to generate [`Span`]s from incoming HTTP requests.
 #[derive(Clone)]
@@ -169,8 +191,17 @@ impl HttpMakeSpan {
             }
         }
 
+        let parent_span = request
+            .extensions()
+            .get::<ParentSpan>()
+            .map(|s| s.as_span());
+
         let uri = request.uri();
         let uri_path = uri.path();
+        let matched_path = request
+            .extensions()
+            .get::<MatchedPath>()
+            .map(|mp| mp.as_str());
 
         let http_request_method = InnerMethod::from(request.method().as_str());
         let network_protocol_version = HttpVersion::from(request.version());
@@ -179,61 +210,113 @@ impl HttpMakeSpan {
         // argument to be static. Meaning we can't just pass `self.level` and a dynamic name.
         macro_rules! inner {
             ($level:expr, $name:expr) => {
-                ::telemetry::tracing::span!(
-                    $level,
-                    $name,
+                match parent_span {
+                    Some(parent_span) => {
+                        ::telemetry::tracing::span!(
+                            parent: parent_span,
+                            $level,
+                            $name,
 
-                    // Common HTTP attributes
-                    //
-                    // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#common-attributes
+                            // Common HTTP attributes
+                            //
+                            // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#common-attributes
 
-                    http.request.method = http_request_method.as_str(),
-                    // http.response.header.<key>
-                    http.response.status_code = Empty,
-                    // network.peer.address = Empty,
-                    // network.peer.port = Empty,
-                    network.protocol.name = self.network_protocol_name,
-                    network.protocol.version = network_protocol_version.as_str(),
-                    network.transport = self.network_transport.as_str(),
+                            http.request.method = http_request_method.as_str(),
+                            // http.response.header.<key>
+                            http.response.status_code = Empty,
+                            // network.peer.address = Empty,
+                            // network.peer.port = Empty,
+                            network.protocol.name = self.network_protocol_name,
+                            network.protocol.version = network_protocol_version.as_str(),
+                            network.transport = self.network_transport.as_str(),
 
-                    // HTTP Server semantic conventions
-                    //
-                    // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#http-server
+                            // HTTP Server semantic conventions
+                            //
+                            // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#http-server
 
-                    // client.address = Empty,
-                    // client.port = Empty,
-                    // http.request.header.<key>
-                    // network.local.address = Empty,
-                    // network.local.port = Empty,
-                    // server.address = Empty,
-                    // server.port = Empty,
-                    url.path = uri_path,
-                    url.query = uri.query(),
-                    url.scheme = Empty,
-                    user_agent.original = Empty,
+                            // client.address = Empty,
+                            // client.port = Empty,
+                            // http.request.header.<key>
+                            // network.local.address = Empty,
+                            // network.local.port = Empty,
+                            // server.address = Empty,
+                            // server.port = Empty,
+                            url.path = uri_path,
+                            url.query = uri.query(),
+                            url.scheme = Empty,
+                            user_agent.original = Empty,
 
-                    // Set special `otel.*` fields which tracing-opentelemetry will use when
-                    // transmitting traces via OpenTelemetry protocol
-                    //
-                    // See:
-                    // https://docs.rs/tracing-opentelemetry/0.22.0/tracing_opentelemetry/#special-fields
-                    //
+                            // Set special `otel.*` fields which tracing-opentelemetry will use when
+                            // transmitting traces via OpenTelemetry protocol
+                            //
+                            // See:
+                            // https://docs.rs/tracing-opentelemetry/0.22.0/tracing_opentelemetry/#special-fields
+                            //
 
-                    otel.kind = SpanKind::Server.as_str(),
-                    // TODO(fnichol): would love this to be "{method} {route}" but should limit
-                    // detail in route to preserve low cardinality.
-                    //
-                    // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#method-placeholder
-                    // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name
-                    otel.name = $name,
-                    // Default for OpenTelemetry status is `Unset` which should map to an empty/unset
-                    // tracing value.
-                    //
-                    // See: https://docs.rs/opentelemetry/0.21.0/opentelemetry/trace/enum.Status.html
-                    otel.status_code = Empty,
-                    // Only set if status_code == Error
-                    otel.status_message = Empty,
-                )
+                            otel.kind = SpanKind::Server.as_str(),
+                            otel.name = Empty,
+                            // Default for OpenTelemetry status is `Unset` which should map to an empty/unset
+                            // tracing value.
+                            //
+                            // See: https://docs.rs/opentelemetry/0.21.0/opentelemetry/trace/enum.Status.html
+                            otel.status_code = Empty,
+                            // Only set if status_code == Error
+                            otel.status_message = Empty,
+                        )
+                    }
+                    None => {
+                        ::telemetry::tracing::span!(
+                            $level,
+                            $name,
+
+                            // Common HTTP attributes
+                            //
+                            // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#common-attributes
+
+                            http.request.method = http_request_method.as_str(),
+                            // http.response.header.<key>
+                            http.response.status_code = Empty,
+                            // network.peer.address = Empty,
+                            // network.peer.port = Empty,
+                            network.protocol.name = self.network_protocol_name,
+                            network.protocol.version = network_protocol_version.as_str(),
+                            network.transport = self.network_transport.as_str(),
+
+                            // HTTP Server semantic conventions
+                            //
+                            // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#http-server
+
+                            // client.address = Empty,
+                            // client.port = Empty,
+                            // http.request.header.<key>
+                            // network.local.address = Empty,
+                            // network.local.port = Empty,
+                            // server.address = Empty,
+                            // server.port = Empty,
+                            url.path = uri_path,
+                            url.query = uri.query(),
+                            url.scheme = Empty,
+                            user_agent.original = Empty,
+
+                            // Set special `otel.*` fields which tracing-opentelemetry will use when
+                            // transmitting traces via OpenTelemetry protocol
+                            //
+                            // See:
+                            // https://docs.rs/tracing-opentelemetry/0.22.0/tracing_opentelemetry/#special-fields
+                            //
+
+                            otel.kind = SpanKind::Server.as_str(),
+                            otel.name = Empty,
+                            // Default for OpenTelemetry status is `Unset` which should map to an empty/unset
+                            // tracing value.
+                            //
+                            // See: https://docs.rs/opentelemetry/0.21.0/opentelemetry/trace/enum.Status.html
+                            otel.status_code = Empty,
+                            // Only set if status_code == Error
+                            otel.status_message = Empty,
+                        )
+                    }
+                }
             };
         }
 
@@ -295,6 +378,19 @@ impl HttpMakeSpan {
             (InnerLevel::Trace, InnerMethod::Other) => inner!(Level::TRACE, "HTTP"),
         };
 
+        // Ideally this to be "{method} {route}" but ultimately should limit detail in route to
+        // preserve low cardinality.
+        //
+        // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#method-placeholder
+        // See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name
+        span.record(
+            "otel.name",
+            match matched_path {
+                Some(path) => format!("{} {}", http_request_method.as_str(), path),
+                None => http_request_method.as_str().to_owned(),
+            },
+        );
+
         if let Some(url_scheme) = uri.scheme() {
             span.record("url.scheme", url_scheme.as_str());
         }
@@ -305,11 +401,13 @@ impl HttpMakeSpan {
             );
         }
 
-        // Extract OpenTelemetry parent span metadata from the request headers (if it exists) and
-        // associate it with this request span
-        span.set_parent(propagation::extract_opentelemetry_context(
-            request.headers(),
-        ));
+        if parent_span.is_none() {
+            // Extract OpenTelemetry parent span metadata from the request headers (if it exists) and
+            // associate it with this request span
+            span.set_parent(propagation::extract_opentelemetry_context(
+                request.headers(),
+            ));
+        }
 
         span
     }

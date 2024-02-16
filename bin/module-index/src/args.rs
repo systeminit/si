@@ -79,10 +79,6 @@ pub(crate) struct Args {
     #[arg(long, env)]
     pub(crate) pg_user: Option<String>,
 
-    /// PostgreSQL connection pool password [example: dbuser]
-    #[arg(long, env)]
-    pub(crate) pg_password: Option<SensitiveString>,
-
     /// PostgreSQL connection certification path
     #[arg(long)]
     pub(crate) pg_cert_path: Option<PathBuf>,
@@ -117,7 +113,7 @@ pub(crate) struct Args {
 
     /// The path to the JWT public signing key
     #[arg(long, env)]
-    pub(crate) jwt_public_key: Option<SensitiveString>,
+    pub(crate) jwt_public_key: Option<String>,
     // /// Database migration mode on startup
     // #[arg(long, value_parser = PossibleValuesParser::new(MigrationMode::variants()))]
 }
@@ -141,9 +137,6 @@ impl TryFrom<Args> for Config {
             }
             if let Some(user) = args.pg_user {
                 config_map.set("pg.user", user);
-            }
-            if let Some(password) = args.pg_password {
-                config_map.set("pg.password", password.to_string());
             }
             if let Some(cert_path) = args.pg_cert_path {
                 config_map.set("pg.certificate_path", cert_path.display().to_string());

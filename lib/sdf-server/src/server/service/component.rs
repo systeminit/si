@@ -7,13 +7,15 @@ use axum::{
 use dal::attribute::value::AttributeValueError;
 use dal::component::ComponentId;
 use dal::property_editor::PropertyEditorError;
-use dal::ComponentError as DalComponentError;
+use dal::validation::resolver::ValidationResolverError;
 use dal::TransactionsError;
+use dal::{ComponentError as DalComponentError, StandardModelError};
 use thiserror::Error;
 
 use crate::server::state::AppState;
 
 pub mod get_property_editor_schema;
+pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
 pub mod update_property_editor_value;
 
@@ -109,14 +111,16 @@ pub enum ComponentError {
     // SchemaVariantNotFound,
     // #[error("serde json error: {0}")]
     // SerdeJson(#[from] serde_json::Error),
-    // #[error(transparent)]
-    // StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
     // #[error("system id is required: ident_nil_v1() was provided")]
     // SystemIdRequired,
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     // #[error("ws event error: {0}")]
     // WsEvent(#[from] WsEventError),
+    #[error("validation resolver error: {0}")]
+    ValidationResolver(#[from] ValidationResolverError),
 }
 
 pub type ComponentResult<T> = std::result::Result<T, ComponentError>;

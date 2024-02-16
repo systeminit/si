@@ -7,6 +7,7 @@ use si_data_pg::PgPoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
+use crate::prop::PropError;
 use crate::{
     attribute::value::AttributeValueError,
     job::definition::dependent_values_update::DependentValueUpdateError,
@@ -56,6 +57,8 @@ pub enum JobConsumerError {
     // NoSchemaVariantFound(ComponentId),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
+    #[error(transparent)]
+    Prop(#[from] PropError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]

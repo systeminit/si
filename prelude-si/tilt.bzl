@@ -44,6 +44,43 @@ tilt_down = rule(
     },
 )
 
+def tilt_docker_compose_pull_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
+    docker_compose_file = "{}/{}".format(
+        ctx.label.package,
+        ctx.attrs.docker_compose_file,
+    )
+
+    run_cmd_args = cmd_args([
+        "docker",
+        "compose",
+        "--file",
+        docker_compose_file,
+        "pull",
+    ])
+    run_cmd_args.add(ctx.attrs.services)
+
+    args_file = ctx.actions.write("docker-compose-args.txt", run_cmd_args)
+
+    return [
+        DefaultInfo(default_output = args_file),
+        RunInfo(run_cmd_args),
+    ]
+
+tilt_docker_compose_pull = rule(
+    impl = tilt_docker_compose_pull_impl,
+    attrs = {
+        "docker_compose_file": attrs.string(
+            default = "docker-compose.yml",
+            doc = """The Tiltfile to run.""",
+        ),
+        "services": attrs.list(
+            attrs.string(),
+            default = [],
+            doc = """Pull Docker images.""",
+        ),
+    },
+)
+
 def tilt_docker_compose_stop_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
     docker_compose_file = "{}/{}".format(
         ctx.label.package,

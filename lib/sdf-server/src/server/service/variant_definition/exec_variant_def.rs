@@ -4,6 +4,9 @@ use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use chrono::Utc;
 use convert_case::{Case, Casing};
+use dal::component::ComponentKind;
+use dal::pkg::import::{clone_and_import_funcs, import_schema_variant};
+use dal::pkg::PkgExporter;
 use hyper::Uri;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
@@ -19,7 +22,8 @@ use dal::{
     SchemaVariantId, StandardModel, User, WsEvent,
 };
 use si_pkg::{
-    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, SiPkg,
+    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, MergeSkip, PkgSpec,
+    SchemaVariantSpec, SiPkg,
 };
 use telemetry::prelude::*;
 
@@ -99,7 +103,7 @@ pub async fn exec_variant_def(
         }
 
         async fn handle_error(ctx: &DalContext, id: Ulid, err: String) {
-            error!("Unable to export workspace: {err}");
+            error!("Unable to exec variant def: {err}");
             match WsEvent::async_error(ctx, id, err).await {
                 Ok(event) => match event.publish_on_commit(ctx).await {
                     Ok(()) => {}
@@ -135,6 +139,148 @@ fn generate_scaffold_func_name(name: String) -> String {
     generated_name
 }
 
+async fn execute_asset_func(
+    ctx: &DalContext,
+    asset_func: &Func,
+) -> SchemaVariantDefinitionResult<SchemaVariantDefinitionJson> {
+    let (_, return_value) =
+        FuncBinding::create_and_execute(ctx, serde_json::Value::Null, *asset_func.id(), vec![])
+            .await?;
+
+    if let Some(error) = return_value
+        .value()
+        .ok_or(SchemaVariantDefinitionError::FuncExecution(
+            *asset_func.id(),
+        ))?
+        .as_object()
+        .ok_or(SchemaVariantDefinitionError::FuncExecution(
+            *asset_func.id(),
+        ))?
+        .get("error")
+        .and_then(|e| e.as_str())
+    {
+        return Err(SchemaVariantDefinitionError::FuncExecutionFailure(
+            error.to_owned(),
+        ));
+    }
+
+    let func_resp = return_value
+        .value()
+        .ok_or(SchemaVariantDefinitionError::FuncExecution(
+            *asset_func.id(),
+        ))?
+        .as_object()
+        .ok_or(SchemaVariantDefinitionError::FuncExecution(
+            *asset_func.id(),
+        ))?
+        .get("definition")
+        .ok_or(SchemaVariantDefinitionError::FuncExecution(
+            *asset_func.id(),
+        ))?;
+
+    Ok(serde_json::from_value::<SchemaVariantDefinitionJson>(
+        func_resp.to_owned(),
+    )?)
+}
+
+#[allow(clippy::result_large_err)]
+fn build_asset_func_spec(asset_func: &Func) -> SchemaVariantDefinitionResult<FuncSpec> {
+    let mut schema_variant_func_spec = FuncSpec::builder();
+    schema_variant_func_spec.name(asset_func.name());
+    schema_variant_func_spec.unique_id(asset_func.id().to_string());
+    let mut func_spec_data_builder = FuncSpecData::builder();
+    func_spec_data_builder
+        .name(asset_func.name())
+        .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
+        .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
+        .hidden(asset_func.hidden());
+    if let Some(code) = asset_func.code_plaintext()? {
+        func_spec_data_builder.code_plaintext(code);
+    }
+    if let Some(handler) = asset_func.handler() {
+        func_spec_data_builder.handler(handler.to_string());
+    }
+    if let Some(description) = asset_func.description() {
+        func_spec_data_builder.description(description.to_string());
+    }
+    if let Some(display_name) = asset_func.display_name() {
+        func_spec_data_builder.display_name(display_name.to_string());
+    }
+
+    Ok(schema_variant_func_spec
+        .data(func_spec_data_builder.build()?)
+        .build()?)
+}
+
+fn inc_variant_name(name: &str) -> String {
+    let (prefix, suffix) = name.split_at(1);
+
+    let new_suffix = match suffix.parse::<i64>() {
+        Ok(number) => (number + 1).to_string(),
+        Err(_) => format!("{}_new", suffix),
+    };
+
+    format!("{}{}", prefix, new_suffix)
+}
+
+async fn build_variant_spec_based_on_existing_variant(
+    ctx: &DalContext,
+    definition: SchemaVariantDefinitionJson,
+    asset_func_spec: &FuncSpec,
+    metadata: &SchemaVariantDefinitionMetadataJson,
+    existing_variant_id: SchemaVariantId,
+) -> SchemaVariantDefinitionResult<(SchemaVariantSpec, Vec<MergeSkip>, Vec<FuncSpec>)> {
+    let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
+
+    let existing_variant = SchemaVariant::get_by_id(ctx, &existing_variant_id)
+        .await?
+        .ok_or(SchemaVariantError::NotFound(existing_variant_id))?;
+
+    let new_name = inc_variant_name(existing_variant.name());
+
+    let variant_spec = definition.to_spec(
+        metadata.clone(),
+        &identity_func_spec.unique_id,
+        &asset_func_spec.unique_id,
+        &new_name,
+    )?;
+
+    let (existing_variant_spec, variant_funcs) =
+        PkgExporter::export_variant_standalone(ctx, &existing_variant).await?;
+
+    let (merged_variant, skips) = variant_spec.merge_prototypes_from(&existing_variant_spec);
+
+    Ok((merged_variant, skips, variant_funcs))
+}
+
+#[allow(clippy::result_large_err)]
+fn build_pkg_spec_for_variant(
+    definition: SchemaVariantDefinitionJson,
+    asset_func_spec: &FuncSpec,
+    metadata: &SchemaVariantDefinitionMetadataJson,
+    user_email: &str,
+) -> SchemaVariantDefinitionResult<PkgSpec> {
+    // we need to change this to use the PkgImport
+    let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
+
+    let variant_spec = definition.to_spec(
+        metadata.clone(),
+        &identity_func_spec.unique_id,
+        &asset_func_spec.unique_id,
+        "v0",
+    )?;
+    let schema_spec = metadata.to_spec(variant_spec)?;
+
+    Ok(PkgSpec::builder()
+        .name(metadata.clone().name)
+        .created_by(user_email)
+        .func(identity_func_spec)
+        .func(asset_func_spec.clone())
+        .schema(schema_spec)
+        .version("0.0.1")
+        .build()?)
+}
+
 #[instrument(name = "async_task.exec_variant_def", level = "info", skip_all)]
 pub async fn exec_variant_def_inner(
     ctx: &DalContext,
@@ -143,29 +289,49 @@ pub async fn exec_variant_def_inner(
     PosthogClient(posthog_client): PosthogClient,
     request_span: Span,
 ) -> SchemaVariantDefinitionResult<(SchemaVariantId, Vec<AttributePrototypeView>)> {
-    Span::current().follows_from(request_span.id());
+    let current_span = Span::current();
+    let span = current_span.follows_from(request_span.id());
 
-    let scaffold_func_name = generate_scaffold_func_name(request.name.clone());
-
-    // Ensure we save all details before "exec"
-    super::save_variant_def(ctx, request, Some(scaffold_func_name)).await?;
-
-    let user = match ctx.history_actor() {
-        HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?,
+    let user_email = match ctx.history_actor() {
+        HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk)
+            .await?
+            .map(|user| user.email().to_owned()),
         _ => None,
-    };
-    let user_email = user
-        .map(|user| user.email().to_owned())
-        .unwrap_or("unauthenticated user email".into());
+    }
+    .unwrap_or("unauthenticated user email".into());
 
-    let mut variant_def = SchemaVariantDefinition::get_by_id(ctx, &request.id)
+    let current_variant_def = SchemaVariantDefinition::get_by_id(ctx, &request.id)
         .await?
         .ok_or(SchemaVariantDefinitionError::VariantDefinitionNotFound(
             request.id,
         ))?;
 
-    let (maybe_previous_variant_id, leaf_funcs_to_migrate, attribute_prototypes) =
-        maybe_delete_schema_variant_connected_to_variant_def(ctx, &mut variant_def).await?;
+    // Exec forks here if the multi variant editing flag is on and the definition is for an existing asset
+    if let Some(&current_schema_variant_id) = current_variant_def.schema_variant_id() {
+        if request.multi_variant_editing_flag {
+            return exec_variant_def_multi_variant_editing(
+                ctx,
+                request.to_owned(),
+                original_uri,
+                posthog_client,
+                span,
+                user_email,
+                current_variant_def,
+                current_schema_variant_id,
+            )
+            .await;
+        }
+    }
+
+    let scaffold_func_name = generate_scaffold_func_name(request.name.clone());
+
+    // Ensure we save all details before "exec"
+    super::save_variant_def(ctx, request, Some(scaffold_func_name)).await?;
+    let mut variant_def = SchemaVariantDefinition::get_by_id(ctx, &request.id)
+        .await?
+        .ok_or(SchemaVariantDefinitionError::VariantDefinitionNotFound(
+            request.id,
+        ))?;
 
     let asset_func = Func::get_by_id(ctx, &variant_def.func_id()).await?.ok_or(
         SchemaVariantDefinitionError::FuncNotFound(variant_def.func_id()),
@@ -173,95 +339,14 @@ pub async fn exec_variant_def_inner(
 
     let metadata: SchemaVariantDefinitionMetadataJson = variant_def.clone().into();
 
-    // Execute asset function
-    let (definition, _) = {
-        let (_, return_value) =
-            FuncBinding::create_and_execute(ctx, serde_json::Value::Null, *asset_func.id(), vec![])
-                .await?;
+    let (maybe_previous_variant_id, leaf_funcs_to_migrate, attribute_prototypes) =
+        maybe_delete_schema_variant_connected_to_variant_def(ctx, &mut variant_def).await?;
 
-        if let Some(error) = return_value
-            .value()
-            .ok_or(SchemaVariantDefinitionError::FuncExecution(
-                *asset_func.id(),
-            ))?
-            .as_object()
-            .ok_or(SchemaVariantDefinitionError::FuncExecution(
-                *asset_func.id(),
-            ))?
-            .get("error")
-            .and_then(|e| e.as_str())
-        {
-            return Err(SchemaVariantDefinitionError::FuncExecutionFailure(
-                error.to_owned(),
-            ));
-        }
-
-        let func_resp = return_value
-            .value()
-            .ok_or(SchemaVariantDefinitionError::FuncExecution(
-                *asset_func.id(),
-            ))?
-            .as_object()
-            .ok_or(SchemaVariantDefinitionError::FuncExecution(
-                *asset_func.id(),
-            ))?
-            .get("definition")
-            .ok_or(SchemaVariantDefinitionError::FuncExecution(
-                *asset_func.id(),
-            ))?;
-
-        (
-            serde_json::from_value::<SchemaVariantDefinitionJson>(func_resp.to_owned())?,
-            func_resp.to_owned(),
-        )
-    };
-
-    let asset_func_built = {
-        let mut schema_variant_func_spec = FuncSpec::builder();
-        schema_variant_func_spec.name(asset_func.name());
-        schema_variant_func_spec.unique_id(asset_func.id().to_string());
-        let mut func_spec_data_builder = FuncSpecData::builder();
-        func_spec_data_builder
-            .name(asset_func.name())
-            .backend_kind(FuncSpecBackendKind::JsSchemaVariantDefinition)
-            .response_type(FuncSpecBackendResponseType::SchemaVariantDefinition)
-            .hidden(asset_func.hidden());
-        if let Some(code) = asset_func.code_plaintext()? {
-            func_spec_data_builder.code_plaintext(code);
-        }
-        if let Some(handler) = asset_func.handler() {
-            func_spec_data_builder.handler(handler.to_string());
-        }
-        if let Some(description) = asset_func.description() {
-            func_spec_data_builder.description(description.to_string());
-        }
-        if let Some(display_name) = asset_func.display_name() {
-            func_spec_data_builder.display_name(display_name.to_string());
-        }
-        schema_variant_func_spec
-            .data(func_spec_data_builder.build()?)
-            .build()?
-    };
-
-    let pkg_spec = {
-        // we need to change this to use the PkgImport
-        let identity_func_spec = IntrinsicFunc::Identity.to_spec()?;
-
-        let variant_spec = definition.to_spec(
-            metadata.clone(),
-            &identity_func_spec.unique_id,
-            &asset_func_built.unique_id,
-        )?;
-        let schema_spec = metadata.to_spec(variant_spec)?;
-        PkgSpec::builder()
-            .name(metadata.clone().name)
-            .created_by(&user_email)
-            .func(identity_func_spec)
-            .func(asset_func_built.clone())
-            .schema(schema_spec)
-            .version("0.0.1")
-            .build()?
-    };
+    // Execute asset function to get schema variant definition
+    let asset_func_built = build_asset_func_spec(&asset_func)?;
+    let definition = execute_asset_func(ctx, &asset_func).await?;
+    let pkg_spec =
+        build_pkg_spec_for_variant(definition, &asset_func_built, &metadata, &user_email)?;
 
     let pkg = SiPkg::load_from_spec(pkg_spec.clone())?;
 
@@ -352,10 +437,145 @@ pub async fn exec_variant_def_inner(
                     "variant_def_category": metadata.clone().category,
                     "variant_def_name": metadata.clone().name,
                     "variant_def_version": pkg_spec.clone().version,
-                    "variant_def_schema_count":  pkg_spec.clone().schemas.len(),
                     "variant_def_function_count":  pkg_spec.clone().funcs.len(),
+                    "multi_variant_editing": false,
         }),
     );
 
     Ok((schema_variant_id, detached_attribute_prototypes))
+}
+
+#[instrument(
+    name = "async_task.exec_variant_def_multi_variant_editing",
+    level = "info",
+    skip_all
+)]
+#[allow(clippy::too_many_arguments)]
+pub async fn exec_variant_def_multi_variant_editing(
+    ctx: &DalContext,
+    request: ExecVariantDefRequest,
+    original_uri: &Uri,
+    posthog_client: crate::server::state::PosthogClient,
+    span: &Span,
+    user_email: String,
+    current_variant_def: SchemaVariantDefinition,
+    current_schema_variant_id: SchemaVariantId,
+) -> SchemaVariantDefinitionResult<(SchemaVariantId, Vec<AttributePrototypeView>)> {
+    Span::current().follows_from(span.id());
+
+    // we need asset func drafts or some similar concept so that we don't write
+    // to the last asset func before we get here
+    let current_asset_func = Func::get_by_id(ctx, &current_variant_def.func_id())
+        .await?
+        .ok_or(SchemaVariantDefinitionError::FuncNotFound(
+            current_variant_def.func_id(),
+        ))?;
+
+    let scaffold_func_name = generate_scaffold_func_name(request.name.clone());
+    let new_asset_func = current_asset_func
+        .duplicate(ctx, Some(scaffold_func_name))
+        .await?;
+
+    let mut new_definition = SchemaVariantDefinition::new(
+        ctx,
+        request.name,
+        request.menu_name,
+        request.category,
+        request.link,
+        request.color,
+        ComponentKind::Standard,
+        request.description,
+        *new_asset_func.id(),
+    )
+    .await?;
+
+    let metadata = new_definition.clone().into();
+
+    // Execute asset function to get schema variant prop tree etc
+    let definition = execute_asset_func(ctx, &new_asset_func).await?;
+    let asset_func_built = build_asset_func_spec(&new_asset_func)?;
+    let (new_variant_spec, skips, variant_funcs) = build_variant_spec_based_on_existing_variant(
+        ctx,
+        definition,
+        &asset_func_built,
+        &metadata,
+        current_schema_variant_id,
+    )
+    .await?;
+
+    dbg!(skips);
+
+    let schema_spec = metadata.to_spec(new_variant_spec)?;
+    let pkg_spec = PkgSpec::builder()
+        .name(&metadata.name)
+        .created_by(user_email)
+        .funcs(variant_funcs.clone())
+        .func(asset_func_built)
+        .schema(schema_spec)
+        .version("0")
+        .build()?;
+
+    // Copy some data here for sending to posthog track
+    let variant_def_version = pkg_spec.version.to_owned();
+    let variant_def_function_count = pkg_spec.funcs.len();
+    let variant_def_category = metadata.category.to_owned();
+    let variant_def_name = metadata.name.to_owned();
+
+    let pkg = SiPkg::load_from_spec(pkg_spec)?;
+
+    let mut schema = SchemaVariant::get_by_id(ctx, &current_schema_variant_id)
+        .await?
+        .ok_or(SchemaVariantError::NotFound(current_schema_variant_id))?
+        .schema(ctx)
+        .await?
+        .ok_or(SchemaVariantError::MissingSchema(current_schema_variant_id))?;
+
+    let pkg_variant = pkg
+        .schemas()?
+        .into_iter()
+        .next()
+        .ok_or(SchemaVariantDefinitionError::PkgMissingSchema)?
+        .variants()?
+        .into_iter()
+        .next()
+        .ok_or(SchemaVariantDefinitionError::PkgMissingSchemaVariant)?;
+
+    let mut thing_map = clone_and_import_funcs(ctx, variant_funcs).await?;
+    let new_schema_variant = import_schema_variant(
+        ctx,
+        ctx.visibility().change_set_pk,
+        &mut schema,
+        &pkg_variant,
+        None,
+        &mut thing_map,
+        &pkg.metadata()?,
+    )
+    .await?
+    .ok_or(SchemaVariantDefinitionError::NoAssetCreated)?;
+
+    let schema_variant_id = *new_schema_variant.id();
+
+    new_definition
+        .set_schema_variant_id(ctx, Some(schema_variant_id))
+        .await?;
+
+    schema
+        .set_default_schema_variant_id(ctx, Some(schema_variant_id))
+        .await?;
+
+    track(
+        &posthog_client,
+        ctx,
+        original_uri,
+        "exec_variant_def",
+        serde_json::json!({
+                    "variant_def_category": variant_def_category,
+                    "variant_def_name": variant_def_name,
+                    "variant_def_version": variant_def_version,
+                    "variant_def_function_count": variant_def_function_count,
+                    "multi_variant_editing": true,
+        }),
+    );
+
+    Ok((schema_variant_id, vec![]))
 }

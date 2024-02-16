@@ -48,15 +48,6 @@ UNION ALL
 UNION ALL
 
 (SELECT DISTINCT ON (funcs.id) funcs.id as id, row_to_json(funcs.*) AS object
- FROM validation_prototypes_v1($1, $2) vp
-          JOIN funcs_v1($1, $2) funcs
-               ON vp.func_id = funcs.id
- WHERE vp.schema_variant_id = $3
-   AND funcs.code_sha256 != '0')
-
-UNION ALL
-
-(SELECT DISTINCT ON (funcs.id) funcs.id as id, row_to_json(funcs.*) AS object
  FROM action_prototypes_v1($1, $2) action_prototypes
           JOIN funcs_v1($1, $2) funcs
                ON funcs.id = action_prototypes.func_id

@@ -93,6 +93,7 @@ import Password from "~icons/material-symbols-light/password";
 import Key from "~icons/material-symbols/key";
 import Scissors from "~icons/clarity/scissors-solid";
 import Frame from "~icons/iconamoon/frame-light";
+import MaterialSymbolsKeyboardDoubleArrowLeftRounded from "~icons/material-symbols/keyboard-double-arrow-left-rounded";
 
 import BracketsCurly from "~icons/ph/brackets-curly";
 import BracketsSquare from "~icons/ph/brackets-square";
@@ -206,6 +207,7 @@ export const ICONS = Object.freeze({
   docs: Docs,
   "dots-horizontal": DotsHorizontal,
   "dots-vertical": DotsVertical,
+  "double-arrow-left": MaterialSymbolsKeyboardDoubleArrowLeftRounded,
   download: Download,
   edit: Pencil,
   "empty-square": EmptySquare,

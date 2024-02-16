@@ -51,6 +51,7 @@ pub mod standard_pk;
 pub mod tenancy;
 pub mod timestamp;
 pub mod user;
+pub mod validation;
 pub mod visibility;
 pub mod workspace;
 pub mod workspace_snapshot;

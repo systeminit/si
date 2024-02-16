@@ -38,11 +38,7 @@
         <TabGroupItem label="Changes" slug="changes">
           <ChangesPanel />
         </TabGroupItem>
-        <TabGroupItem
-          v-if="featureFlagsStore.SECRETS_MANAGEMENT"
-          label="Secrets"
-          slug="secrets"
-        >
+        <TabGroupItem label="Secrets" slug="secrets">
           <SecretsPanel />
         </TabGroupItem>
       </TabGroup>
@@ -64,7 +60,6 @@ import clsx from "clsx";
 import ApplyChangeSetButton from "@/components/ApplyChangeSetButton.vue";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useActionsStore } from "@/store/actions.store";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import ChangesPanel from "./ChangesPanel.vue";
@@ -72,7 +67,6 @@ import SecretsPanel from "./SecretsPanel.vue";
 
 const changeSetStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const actionsStore = useActionsStore();
 
 const diffs = computed(() => {

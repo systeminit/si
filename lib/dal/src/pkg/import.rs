@@ -44,7 +44,7 @@ enum Thing {
     Socket(Box<(Option<InternalProvider>, Option<ExternalProvider>)>),
 }
 
-type ThingMap = super::ChangeSetThingMap<String, Thing>;
+pub type ThingMap = super::ChangeSetThingMap<String, Thing>;
 
 #[derive(Clone, Debug, Default)]
 pub struct ImportOptions {
@@ -57,6 +57,8 @@ pub struct ImportOptions {
     /// in the UI. They will be marked as such.
     pub is_builtin: bool,
 }
+
+const SPECIAL_CASE_FUNCS: [&str; 2] = ["si:resourcePayloadToValue", "si:normalizeToArray"];
 
 #[allow(clippy::too_many_arguments)]
 async fn import_change_set(
@@ -81,9 +83,8 @@ async fn import_change_set(
         // This is a hack because the hash of the intrinsics has changed from the version in the
         // packages. We also apply this to si:resourcePayloadToValue since it should be an
         // intrinsic but is only in our packages
-        let special_case_funcs = ["si:resourcePayloadToValue", "si:normalizeToArray"];
         if func::is_intrinsic(func_spec.name())
-            || special_case_funcs.contains(&func_spec.name())
+            || SPECIAL_CASE_FUNCS.contains(&func_spec.name())
             || func_spec.is_from_builtin().unwrap_or(false)
         {
             if let Some(func_id) = Func::find_by_name(ctx, func_spec.name()).await? {
@@ -1556,7 +1557,7 @@ async fn update_func(
     Ok(func)
 }
 
-async fn import_func(
+pub async fn import_func(
     ctx: &DalContext,
     change_set_pk: Option<ChangeSetPk>,
     func_spec: &SiPkgFunc<'_>,

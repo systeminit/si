@@ -90,10 +90,12 @@ shfmt_check = _shfmt_check
 
 load(
     "@prelude-si//macros:tilt.bzl",
+    _tilt_docker_compose_pull = "tilt_docker_compose_pull",
     _tilt_docker_compose_stop = "tilt_docker_compose_stop",
     _tilt_down = "tilt_down",
     _tilt_up = "tilt_up",
 )
+tilt_docker_compose_pull = _tilt_docker_compose_pull
 tilt_docker_compose_stop = _tilt_docker_compose_stop
 tilt_down = _tilt_down
 tilt_up = _tilt_up

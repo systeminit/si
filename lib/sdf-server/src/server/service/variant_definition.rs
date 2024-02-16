@@ -110,6 +110,10 @@ pub enum SchemaVariantDefinitionError {
     PgPool(#[from] si_data_pg::PgPoolError),
     #[error(transparent)]
     Pkg(#[from] PkgError),
+    #[error("constructed package has no schema node")]
+    PkgMissingSchema,
+    #[error("constructed package has no schema variant node")]
+    PkgMissingSchemaVariant,
     #[error(transparent)]
     Prop(#[from] PropError),
     #[error(transparent)]

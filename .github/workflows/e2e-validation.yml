@@ -1,0 +1,53 @@
+name: Cypress E2E Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '*/15 * * * *'  # Runs every 15 minutes
+
+jobs:
+  cypress-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18.18.2'
+
+      - name: Setup authentication for vite & other synthetic test variables
+        working-directory: app/web
+        run: |
+          cp .env .env.local
+          echo "VITE_AUTH0_USERNAME=${{ secrets.VITE_AUTH0_USERNAME }}" >> .env.local                           # Production Synthetic User Email
+          echo "VITE_AUTH0_PASSWORD=${{ secrets.VITE_AUTH0_PASSWORD }}" >> .env.local                           # Production Synthetic User Password
+          echo "VITE_SI_WORKSPACE_URL=${{ vars.VITE_PROD_SI_WORKSPACE_URL }}" >> .env.local                     # Production Synthetic Workspace URL
+          echo "VITE_SI_WORKSPACE_ID=${{ vars.VITE_PROD_SI_WORKSPACE_ID }}" >> .env.local                       # Production Synthetic Workspace ID
+          echo "VITE_SI_PROPAGATION_COMPONENT_A=${{ vars.VITE_PROD_SI_PROPAGATION_COMPONENT_A }}" >> .env.local # Production Propagation Test Component A [from]
+          echo "VITE_SI_PROPAGATION_COMPONENT_B=${{ vars.VITE_PROD_SI_PROPAGATION_COMPONENT_B }}" >> .env.local # Production Propagation Test Component B [to]
+          
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+            version: 8.10.5
+
+      - name: Run Cypress tests
+        working-directory: app/web
+        run: |
+          pnpm i
+          pnpm install cypress
+          npx cypress run --spec "cypress/e2e/4-value-propogation/value-attribute-propogation.cy.ts" --record --key ${{ secrets.CYPRESS_RECORD_KEY }}
+
+      # TODO(johnrwatson): Enable this when we're happy with the synthetic above
+      #- name: Send PagerDuty alert on failure
+      #  if: ${{ failure() }}
+      #  uses: Entle/action-pagerduty-alert@0.2.0
+      #  with:
+      #    pagerduty-integration-key: '${{ secrets.PAGERDUTY_INTEGRATION_KEY }}'
+      #    pagerduty-dedup-key: github_workflow_failed

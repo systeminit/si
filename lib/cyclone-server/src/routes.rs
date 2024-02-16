@@ -2,13 +2,15 @@ use std::sync::Arc;
 
 use axum::{routing::get, Extension, Router};
 use telemetry::prelude::*;
+use telemetry_http::{HttpMakeSpan, HttpOnResponse};
 use tokio::sync::mpsc;
-use tower_http::compression::CompressionLayer;
+use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
 use crate::{
     extract::RequestLimiter,
     handlers,
     state::{AppState, WatchKeepalive},
+    tower::WebSocketTraceLayer,
     watch, Config, ShutdownSource,
 };
 
@@ -17,16 +19,30 @@ pub fn routes(
     state: AppState,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
 ) -> Router {
+    let http_trace_layer = TraceLayer::new_for_http()
+        .make_span_with(HttpMakeSpan::builder().level(Level::INFO).build())
+        .on_response(HttpOnResponse::new().level(Level::DEBUG));
+    let web_socket_trace_layer = WebSocketTraceLayer::new();
+
     let mut router: Router<AppState> = Router::new()
         .route(
             "/liveness",
-            get(handlers::liveness).head(handlers::liveness),
+            get(handlers::liveness)
+                .head(handlers::liveness)
+                .layer(http_trace_layer.clone()),
         )
         .route(
             "/readiness",
-            get(handlers::readiness).head(handlers::readiness),
+            get(handlers::readiness)
+                .head(handlers::readiness)
+                .layer(http_trace_layer.clone()),
         )
-        .nest("/execute", execute_routes(config, shutdown_tx.clone()))
+        .nest(
+            "/execute",
+            execute_routes(config, shutdown_tx.clone())
+                .layer(http_trace_layer.clone())
+                .layer(web_socket_trace_layer),
+        )
         .layer(CompressionLayer::new());
 
     if let Some(watch_timeout) = config.watch() {
@@ -43,7 +59,12 @@ pub fn routes(
 
         router = router.merge(
             Router::new()
-                .route("/watch", get(handlers::ws_watch))
+                .nest(
+                    "/watch",
+                    Router::new()
+                        .route("/", get(handlers::ws_watch))
+                        .layer(http_trace_layer),
+                )
                 .layer(Extension(Arc::new(watch_keepalive))),
         );
     }

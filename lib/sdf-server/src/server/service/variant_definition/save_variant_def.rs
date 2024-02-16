@@ -7,7 +7,7 @@ use dal::ComponentType;
 use dal::{schema::variant::definition::SchemaVariantDefinitionId, ChangeSet, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SaveVariantDefRequest {
     pub id: SchemaVariantDefinitionId,
@@ -20,6 +20,7 @@ pub struct SaveVariantDefRequest {
     pub description: Option<String>,
     pub component_type: ComponentType,
     pub override_builtin_schema_feature_flag: bool,
+    pub multi_variant_editing_flag: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

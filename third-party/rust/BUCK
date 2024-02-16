@@ -586,7 +586,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -631,7 +631,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -660,7 +660,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -945,7 +945,7 @@ cargo.rust_library(
         ":heck-0.4.1",
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -1863,23 +1863,23 @@ cargo.rust_library(
 
 alias(
     name = "clap",
-    actual = ":clap-4.5.0",
+    actual = ":clap-4.5.1",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "clap-4.5.0.crate",
-    sha256 = "80c21025abd42669a92efc996ef13cfb2c5c627858421ea58d5c3b331a6c134f",
-    strip_prefix = "clap-4.5.0",
-    urls = ["https://crates.io/api/v1/crates/clap/4.5.0/download"],
+    name = "clap-4.5.1.crate",
+    sha256 = "c918d541ef2913577a0f9566e9ce27cb35b6df072075769e0b26cb5a554520da",
+    strip_prefix = "clap-4.5.1",
+    urls = ["https://crates.io/api/v1/crates/clap/4.5.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "clap-4.5.0",
-    srcs = [":clap-4.5.0.crate"],
+    name = "clap-4.5.1",
+    srcs = [":clap-4.5.1.crate"],
     crate = "clap",
-    crate_root = "clap-4.5.0.crate/src/lib.rs",
+    crate_root = "clap-4.5.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "color",
@@ -1895,24 +1895,24 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":clap_builder-4.5.0",
+        ":clap_builder-4.5.1",
         ":clap_derive-4.5.0",
     ],
 )
 
 http_archive(
-    name = "clap_builder-4.5.0.crate",
-    sha256 = "458bf1f341769dfcf849846f65dffdf9146daa56bcd2a47cb4e1de9915567c99",
-    strip_prefix = "clap_builder-4.5.0",
-    urls = ["https://crates.io/api/v1/crates/clap_builder/4.5.0/download"],
+    name = "clap_builder-4.5.1.crate",
+    sha256 = "9f3e7391dad68afb0c2ede1bf619f579a3dc9c2ec67f089baa397123a2f3d1eb",
+    strip_prefix = "clap_builder-4.5.1",
+    urls = ["https://crates.io/api/v1/crates/clap_builder/4.5.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "clap_builder-4.5.0",
-    srcs = [":clap_builder-4.5.0.crate"],
+    name = "clap_builder-4.5.1",
+    srcs = [":clap_builder-4.5.1.crate"],
     crate = "clap_builder",
-    crate_root = "clap_builder-4.5.0.crate/src/lib.rs",
+    crate_root = "clap_builder-4.5.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "color",
@@ -1955,7 +1955,7 @@ cargo.rust_library(
         ":heck-0.4.1",
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -3116,7 +3116,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -3224,7 +3224,7 @@ cargo.rust_library(
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
         ":strsim-0.10.0",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -3270,7 +3270,7 @@ cargo.rust_library(
     deps = [
         ":darling_core-0.20.6",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -4178,7 +4178,7 @@ cargo.rust_library(
         ":num-traits-0.2.18",
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -4790,7 +4790,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -5938,6 +5938,12 @@ cargo.rust_library(
     ],
 )
 
+alias(
+    name = "indexmap",
+    actual = ":indexmap-2.2.3",
+    visibility = ["PUBLIC"],
+)
+
 http_archive(
     name = "indexmap-2.2.3.crate",
     sha256 = "233cf39063f058ea2caae4091bf4a3ef70a653afbc026f5c4a4135d114e3c177",
@@ -6042,7 +6048,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -7043,7 +7049,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -8467,7 +8473,7 @@ cargo.rust_library(
         ":proc-macro-error-1.0.4",
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -8494,7 +8500,7 @@ cargo.rust_library(
         ":proc-macro2-1.0.78",
         ":proc-macro2-diagnostics-0.10.1",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -8959,7 +8965,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -9289,7 +9295,7 @@ cargo.rust_library(
         ":heck-0.4.1",
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -9628,7 +9634,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
         ":yansi-1.0.0-rc.1",
     ],
 )
@@ -10030,7 +10036,7 @@ cargo.rust_library(
         ":quote-1.0.35",
         ":refinery-core-0.8.12",
         ":regex-1.10.3",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -10235,7 +10241,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -11614,23 +11620,23 @@ cargo.rust_library(
 
 alias(
     name = "rustls-pemfile",
-    actual = ":rustls-pemfile-2.0.0",
+    actual = ":rustls-pemfile-2.1.0",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "rustls-pemfile-2.0.0.crate",
-    sha256 = "35e4980fa29e4c4b212ffb3db068a564cbf560e51d3944b7c88bd8bf5bec64f4",
-    strip_prefix = "rustls-pemfile-2.0.0",
-    urls = ["https://crates.io/api/v1/crates/rustls-pemfile/2.0.0/download"],
+    name = "rustls-pemfile-2.1.0.crate",
+    sha256 = "3c333bb734fcdedcea57de1602543590f545f127dc8b533324318fd492c5c70b",
+    strip_prefix = "rustls-pemfile-2.1.0",
+    urls = ["https://crates.io/api/v1/crates/rustls-pemfile/2.1.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "rustls-pemfile-2.0.0",
-    srcs = [":rustls-pemfile-2.0.0.crate"],
+    name = "rustls-pemfile-2.1.0",
+    srcs = [":rustls-pemfile-2.1.0.crate"],
     crate = "rustls_pemfile",
-    crate_root = "rustls-pemfile-2.0.0.crate/src/lib.rs",
+    crate_root = "rustls-pemfile-2.1.0.crate/src/lib.rs",
     edition = "2018",
     features = [
         "default",
@@ -11876,7 +11882,7 @@ cargo.rust_library(
         ":proc-macro-error-1.0.4",
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -11978,7 +11984,7 @@ cargo.rust_library(
         ":heck-0.4.1",
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
         ":unicode-ident-1.0.12",
     ],
 )
@@ -12354,7 +12360,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -12453,7 +12459,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -12624,7 +12630,7 @@ cargo.rust_library(
         ":darling-0.20.6",
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -12648,7 +12654,7 @@ cargo.rust_library(
         ":darling-0.20.6",
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -13570,7 +13576,7 @@ cargo.rust_library(
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
         ":rustversion-1.0.14",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -13662,23 +13668,23 @@ cargo.rust_library(
 
 alias(
     name = "syn",
-    actual = ":syn-2.0.48",
+    actual = ":syn-2.0.49",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "syn-2.0.48.crate",
-    sha256 = "0f3531638e407dfc0814761abb7c00a5b54992b849452a0646b7f65c9f770f3f",
-    strip_prefix = "syn-2.0.48",
-    urls = ["https://crates.io/api/v1/crates/syn/2.0.48/download"],
+    name = "syn-2.0.49.crate",
+    sha256 = "915aea9e586f80826ee59f8453c1101f9d1c4b3964cd2460185ee8e299ada496",
+    strip_prefix = "syn-2.0.49",
+    urls = ["https://crates.io/api/v1/crates/syn/2.0.49/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "syn-2.0.48",
-    srcs = [":syn-2.0.48.crate"],
+    name = "syn-2.0.49",
+    srcs = [":syn-2.0.49.crate"],
     crate = "syn",
-    crate_root = "syn-2.0.48.crate/src/lib.rs",
+    crate_root = "syn-2.0.49.crate/src/lib.rs",
     edition = "2021",
     features = [
         "clone-impls",
@@ -14008,7 +14014,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -14030,7 +14036,7 @@ cargo.rust_binary(
         ":bytes-1.5.0",
         ":chrono-0.4.34",
         ":ciborium-0.2.2",
-        ":clap-4.5.0",
+        ":clap-4.5.1",
         ":color-eyre-0.6.2",
         ":colored-2.1.0",
         ":comfy-table-7.1.0",
@@ -14054,6 +14060,7 @@ cargo.rust_binary(
         ":hyper-0.14.28",
         ":hyperlocal-0.8.0",
         ":iftree-1.0.4",
+        ":indexmap-2.2.3",
         ":indicatif-0.17.8",
         ":indoc-2.0.4",
         ":inquire-0.6.2",
@@ -14089,7 +14096,7 @@ cargo.rust_binary(
         ":ring-0.17.5",
         ":rust-s3-0.34.0-rc4",
         ":rustls-0.22.2",
-        ":rustls-pemfile-2.0.0",
+        ":rustls-pemfile-2.1.0",
         ":sea-orm-0.12.14",
         ":self-replace-1.3.7",
         ":serde-1.0.196",
@@ -14101,7 +14108,7 @@ cargo.rust_binary(
         ":sodiumoxide-0.2.7",
         ":stream-cancel-0.8.2",
         ":strum-0.25.0",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
         ":tar-0.4.40",
         ":tempfile-3.10.0",
         ":test-log-0.2.14",
@@ -14175,7 +14182,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -14486,7 +14493,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -14940,7 +14947,7 @@ cargo.rust_library(
         ":serde-1.0.196",
         ":serde_spanned-0.6.5",
         ":toml_datetime-0.6.5",
-        ":toml_edit-0.22.5",
+        ":toml_edit-0.22.6",
     ],
 )
 
@@ -14992,18 +14999,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "toml_edit-0.22.5.crate",
-    sha256 = "99e68c159e8f5ba8a28c4eb7b0c0c190d77bb479047ca713270048145a9ad28a",
-    strip_prefix = "toml_edit-0.22.5",
-    urls = ["https://crates.io/api/v1/crates/toml_edit/0.22.5/download"],
+    name = "toml_edit-0.22.6.crate",
+    sha256 = "2c1b5fd4128cc8d3e0cb74d4ed9a9cc7c7284becd4df68f5f940e1ad123606f6",
+    strip_prefix = "toml_edit-0.22.6",
+    urls = ["https://crates.io/api/v1/crates/toml_edit/0.22.6/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "toml_edit-0.22.5",
-    srcs = [":toml_edit-0.22.5.crate"],
+    name = "toml_edit-0.22.6",
+    srcs = [":toml_edit-0.22.6.crate"],
     crate = "toml_edit",
-    crate_root = "toml_edit-0.22.5.crate/src/lib.rs",
+    crate_root = "toml_edit-0.22.6.crate/src/lib.rs",
     edition = "2021",
     features = [
         "display",
@@ -15278,7 +15285,7 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )
 
@@ -16835,6 +16842,6 @@ cargo.rust_library(
     deps = [
         ":proc-macro2-1.0.78",
         ":quote-1.0.35",
-        ":syn-2.0.48",
+        ":syn-2.0.49",
     ],
 )

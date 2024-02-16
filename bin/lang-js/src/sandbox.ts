@@ -28,11 +28,11 @@ function commonSandbox(executionId: string): Sandbox {
     zlib,
     fetch,
     siExec: makeExec(executionId),
-    // Is there any risk leaking this function plainly here? It smells like a risk for RCE outside of the sandbox
     YAML: { stringify: yaml.dump },
-    os, // This certainly is bad
-    fs, // This certainly is bad
-    path, // This certainly is bad
+    os,
+    fs,
+    path,
+    Joi,
   };
 }
 
@@ -47,7 +47,6 @@ function schemaVariantDefinitionSandbox(): Sandbox {
     MapKeyFuncBuilder: assetBuilder.MapKeyFuncBuilder,
     PropWidgetDefinitionBuilder: assetBuilder.PropWidgetDefinitionBuilder,
     SiPropValueFromDefinitionBuilder: assetBuilder.SiPropValueFromDefinitionBuilder,
-    Joi,
   };
 }
 

@@ -73,7 +73,13 @@ const props = defineProps({
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const vormInputParent = getCurrentInstance()?.parent as any;
-const parentInputType = vormInputParent?.exposed?.vormInputType;
+
+// NOTE - having some issues with vue deciding when to reuse inputs from within Stack
+// which was causing this exposed data to be incorrect... instead using the props directly seems to fix it
+
+// const parentInputType = vormInputParent?.exposed?.vormInputType; // this causes some issues in very specific cases
+const parentInputType = vormInputParent.props.type; // this seems to work fine
+
 const parentValue = computed(() =>
   unref(vormInputParent?.exposed?.currentValue),
 );
