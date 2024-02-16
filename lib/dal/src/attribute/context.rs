@@ -157,6 +157,17 @@ impl AttributeContext {
         AttributeContextBuilder::new()
     }
 
+    /// Use this when you want this exact context but with the provided
+    /// component id instead
+    pub fn clone_with_component_id(&self, component_id: ComponentId) -> Self {
+        Self {
+            prop_id: self.prop_id,
+            internal_provider_id: self.internal_provider_id,
+            external_provider_id: self.external_provider_id,
+            component_id,
+        }
+    }
+
     pub fn prop_id(&self) -> PropId {
         self.prop_id
     }

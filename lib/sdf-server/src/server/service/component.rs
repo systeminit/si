@@ -5,8 +5,9 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    change_status::ChangeStatusError, component::ComponentViewError, ActionPrototypeError,
-    PropError,
+    change_status::ChangeStatusError,
+    component::{migrate::ComponentMigrateError, ComponentViewError},
+    ActionPrototypeError, PropError,
 };
 use dal::{
     component::view::debug::ComponentDebugViewError, node::NodeError,
@@ -35,6 +36,7 @@ pub mod get_resource;
 pub mod insert_property_editor_value;
 pub mod json;
 pub mod list_qualifications;
+pub mod migrate_to_default_variant;
 pub mod refresh;
 pub mod resource_domain_diff;
 pub mod set_type;
@@ -67,6 +69,8 @@ pub enum ComponentError {
     ComponentDebug(String),
     #[error("component debug view error: {0}")]
     ComponentDebugView(#[from] ComponentDebugViewError),
+    #[error("component migration error: {0}")]
+    ComponentMigrate(#[from] ComponentMigrateError),
     #[error("component name not found")]
     ComponentNameNotFound,
     #[error("component not found for id: {0}")]
@@ -196,4 +200,8 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/debug", get(debug::debug_component))
         .route("/json", get(json::json))
+        .route(
+            "/migrate_to_default_variant",
+            post(migrate_to_default_variant::migrate_to_default_variant),
+        )
 }

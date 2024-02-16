@@ -44,6 +44,7 @@ use crate::{Edge, FixResolverError, NodeKind};
 
 pub mod code;
 pub mod diff;
+pub mod migrate;
 pub mod qualification;
 pub mod resource;
 pub mod status;
@@ -332,6 +333,51 @@ impl Component {
         .map_err(|e| ComponentError::SummaryDiagram(e.to_string()))?;
 
         Ok((component, node))
+    }
+
+    pub async fn root_attribute_value(&self, ctx: &DalContext) -> ComponentResult<AttributeValue> {
+        let schema_variant = self
+            .schema_variant(ctx)
+            .await?
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
+        let root_prop_id = *schema_variant
+            .root_prop_id()
+            .ok_or(PropError::NotFoundAtPath("root".into(), *ctx.visibility()))?;
+
+        let value_context = AttributeReadContext {
+            prop_id: Some(root_prop_id),
+            component_id: Some(self.id),
+            ..Default::default()
+        };
+
+        Ok(AttributeValue::find_for_context(ctx, value_context)
+            .await?
+            .ok_or(AttributeValueError::NotFoundForReadContext(value_context))?)
+    }
+
+    pub async fn respin(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        schema_variant_id: SchemaVariantId,
+    ) -> ComponentResult<Self> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                "SELECT object FROM component_respin_v1($1, $2, $3, $4)",
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &component_id,
+                    &schema_variant_id,
+                ],
+            )
+            .await?;
+
+        let component: Component = standard_model::finish_create_from_row(ctx, row).await?;
+
+        Ok(component)
     }
 
     /// A secondary constructor method that finds the default
