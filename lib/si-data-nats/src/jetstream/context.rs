@@ -1,4 +1,4 @@
-use async_nats::jetstream::stream::{Config, Stream};
+use async_nats::jetstream::stream::{Config, RetentionPolicy, Stream};
 use async_nats::{jetstream, HeaderMap};
 use bytes::Bytes;
 
@@ -32,8 +32,8 @@ impl Context {
         }
     }
 
-    /// Finds or creates a stream.
-    pub async fn get_or_create_stream(
+    /// Finds or creates a stream with a [`WorkQueue`](RetentionPolicy::WorkQueue) retention policy.
+    pub async fn get_or_create_work_queue_stream(
         &self,
         name: impl Into<String>,
         subjects: Vec<String>,
@@ -49,9 +49,7 @@ impl Context {
                 name,
                 subjects,
                 max_messages: DEFAULT_MAX_MESSAGES,
-                // TODO(nick): for the rebaser, we must have a work queue retention policy. This is temporary, just for
-                // the first pass. I hope this comment doesn't come back to haunt me.
-                // retention: RetentionPolicy::WorkQueue,
+                retention: RetentionPolicy::WorkQueue,
                 ..Default::default()
             })
             .await?;

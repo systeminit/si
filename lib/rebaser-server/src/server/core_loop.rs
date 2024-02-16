@@ -74,15 +74,15 @@ pub(crate) async fn setup_and_run_core_loop(
     let jetstream_ctx = nats.clone().to_jetstream_ctx();
     info!(%subject_all, %subject_root, "finding or creating stream");
     let rebaser_jetstream_stream = jetstream_ctx
-        .get_or_create_stream(&subject_root, vec![subject_all.clone()])
+        .get_or_create_work_queue_stream(&subject_root, vec![subject_all.clone()])
         .await?;
 
-    info!(%subject_all, %subject_root, ?rebaser_jetstream_stream, "finding or creating durable consumer");
+    info!(%subject_all, %subject_root, "finding or creating durable consumer");
     let consumer = jetstream_ctx
         .get_or_create_durable_consumer(&rebaser_jetstream_stream, &subject_root)
         .await?;
 
-    info!(?consumer, "getting stream from consumer");
+    info!(%subject_all, %subject_root, "getting stream from consumer");
     let stream = consumer.stream().await?;
 
     info!("getting dal context builder");
@@ -148,32 +148,34 @@ async fn core_loop_infallible(
             continue;
         };
 
-        let mut ctx = match ctx_builder.build_default().await {
-            Ok(ctx) => ctx,
-            Err(err) => {
-                // NOTE(nick): we may actually want to bubble up the failure here.
-                error!(error = ?err, "unable to build dal context");
-                continue;
-            }
-        };
-        ctx.update_visibility(Visibility::new_head(false));
-        ctx.update_tenancy(Tenancy::new(WorkspacePk::NONE));
-
-        // TODO(nick): decide if we want this to remain blocking.
-        let start = Instant::now();
-        perform_rebase_and_reply_infallible(&mut ctx, request_message, reply_subject).await;
-        info!("perform rebase and reply total: {:?}", start.elapsed());
+        tokio::spawn(perform_rebase_and_reply_infallible(
+            ctx_builder.clone(),
+            request_message,
+            reply_subject,
+        ));
     }
 }
 
 async fn perform_rebase_and_reply_infallible(
-    ctx: &mut DalContext,
+    ctx_builder: DalContextBuilder,
     message: RequestRebaseMessage,
     reply_subject: impl ToSubject,
 ) {
+    let start = Instant::now();
+
+    let mut ctx = match ctx_builder.build_default().await {
+        Ok(ctx) => ctx,
+        Err(err) => {
+            error!(error = ?err, "unable to build dal context");
+            return;
+        }
+    };
+    ctx.update_visibility(Visibility::new_head(false));
+    ctx.update_tenancy(Tenancy::new(WorkspacePk::NONE));
+
     let reply_subject = reply_subject.to_subject();
 
-    let reply_message = perform_rebase(ctx, message).await.unwrap_or_else(|err| {
+    let reply_message = perform_rebase(&mut ctx, message).await.unwrap_or_else(|err| {
         error!(error = ?err, ?message, ?reply_subject, "performing rebase failed, attempting to reply");
         ReplyRebaseMessage::Error {
             message: err.to_string(),
@@ -194,4 +196,5 @@ async fn perform_rebase_and_reply_infallible(
             error!(error = ?serialization_err, %reply_subject, "failed to serialize reply message");
         }
     }
+    info!("perform rebase and reply total: {:?}", start.elapsed());
 }
