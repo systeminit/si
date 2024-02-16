@@ -8,7 +8,8 @@ export default defineConfig({
       on('file:preprocessor', vitePreprocessor(path.resolve('./vite.config.ts'),
       ))
     },
-    baseUrl: 'http://localhost:8080',
+    // Hotfix, needs amended
+    baseUrl: 'https://app.systeminit.com',
     chromeWebSecurity: false,
     viewportHeight: 1000,
     viewportWidth: 1500,
