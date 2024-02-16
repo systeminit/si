@@ -262,6 +262,11 @@ impl_standard_model! {
     history_event_message_name: "Attribute Value"
 }
 
+pub struct ComponentValuePayload {
+    pub attribute_value: AttributeValue,
+    pub maybe_parent_attribute_value_id: Option<AttributeValueId>,
+}
+
 impl AttributeValue {
     #[instrument(level = "debug", skip(ctx, key), fields(key))]
     pub async fn new(
@@ -437,6 +442,43 @@ impl AttributeValue {
             .await?;
 
         Ok(standard_model::option_object_from_row(row)?)
+    }
+
+    pub async fn find_all_values_for_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> AttributeValueResult<Vec<ComponentValuePayload>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT DISTINCT ON (av.id)
+                    row_to_json(av.*) AS av_object,
+                    avbtav.belongs_to_id AS parent_attribute_value_id
+            FROM attribute_values_v1($1, $2) AS av
+            LEFT JOIN attribute_value_belongs_to_attribute_value_v1($1, $2) as avbtav
+                ON av.id = avbtav.object_id
+            WHERE attribute_context_component_id = $3",
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+
+        let mut result = vec![];
+        for row in rows {
+            let av_json: serde_json::Value = row.try_get("av_object")?;
+            let attribute_value: Self = serde_json::from_value(av_json)?;
+
+            let maybe_parent_attribute_value_id: Option<AttributeValueId> =
+                row.try_get("parent_attribute_value_id")?;
+
+            result.push(ComponentValuePayload {
+                attribute_value,
+                maybe_parent_attribute_value_id,
+            });
+        }
+
+        Ok(result)
     }
 
     /// Find [`Self`] with a given parent value and key.
