@@ -748,7 +748,7 @@ impl Prop {
                         logs,
                     },
                     FunctionResult::Success(data)
-                        if dbg!(&data.data).pointer("/result/error").is_some() =>
+                        if data.data.pointer("/result/error").is_some() =>
                     {
                         ValidationOutput {
                             status: ValidationStatus::Error,
