@@ -1,6 +1,7 @@
 import { Command } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
 import { awsGenerate } from "./asset_generator.ts";
-import { renderAsset, renderCodeGen, renderCreate } from "./render.ts";
+import { makeRefreshOptions } from "./resource_generator.ts";
+import { renderAsset, renderCodeGen, renderCreate, renderRefresh } from "./render.ts";
 
 export async function run() {
   const command = new Command()
@@ -33,7 +34,19 @@ export async function run() {
     .action(async (_options, awsService, awsCommand) => {
       const result = await renderCreate({ provider: "aws", awsService, awsCommand });
       console.log(result);
+    })
+    .command("refresh")
+    .description("generate a refresh function from an aws cli skeleton")
+    .arguments("<awsService:string> <awsCommand:string>")
+    .option("--input <input:string>", "awsInputPath:siPropertiesPath; constructs CLI json data", { collect: true, required: true })
+    .option("--output <output:string>", "[siResourcePath:]awsOutputPath; constructs resource object", { collect: true, required: true })
+    .action(async (options, awsService, awsCommand) => {
+      const refreshOptions = makeRefreshOptions(options);
+      const result = await renderRefresh({ provider: "aws", awsService, awsCommand, inputs: refreshOptions.inputs, outputs: refreshOptions.outputs });
+      console.log(result);
     });
+
+  ;
 
   const _result = await command.parse(Deno.args);
 }

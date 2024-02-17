@@ -10,6 +10,8 @@ import { partial as stringPartial } from "./templates/string.ts";
 import { partial as renderPropPartial } from "./templates/renderProp.ts";
 import { partial as codeGenMainPartial } from "./templates/codeGenMain.ts";
 import { partial as createMainPartial } from "./templates/createMain.ts";
+import { partial as refreshMainPartial } from "./templates/refreshMain.ts";
+import { RefreshInput, RefreshOutput } from "./resource_generator.ts";
 
 type RenderProvider = "aws";
 
@@ -28,6 +30,7 @@ export function useEta(): Eta {
   eta.loadTemplate("@renderPropPartial", renderPropPartial);
   eta.loadTemplate("@codeGenMain", codeGenMainPartial);
   eta.loadTemplate("@createMain", createMainPartial);
+  eta.loadTemplate("@refreshMain", refreshMainPartial);
   return eta;
 }
 
@@ -82,5 +85,19 @@ export async function renderCreate(options: RenderCreateOptions): Promise<string
   const eta = useEta();
   const create = eta.render("@createMain", { options });
   return await fmt(create);
+}
+
+export interface RenderRefreshOptions {
+  provider: "aws";
+  awsService: string;
+  awsCommand: string;
+  inputs: Array<RefreshInput>;
+  outputs: Array<RefreshOutput>;
+};
+
+export async function renderRefresh(options: RenderRefreshOptions): Promise<string> {
+  const eta = useEta();
+  const refresh = eta.render("@refreshMain", options);
+  return await fmt(refresh);
 }
 
