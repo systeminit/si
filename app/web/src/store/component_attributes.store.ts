@@ -11,7 +11,6 @@ import {
 } from "@/api/sdf/dal/property_editor";
 import { nilId } from "@/utils/nilId";
 import { Qualification } from "@/api/sdf/dal/qualification";
-import { OutputStream } from "@/api/sdf/dal/resource";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -48,10 +47,17 @@ export interface SetTypeArgs {
   value?: unknown;
 }
 
+export interface OutputStream {
+  stream: string;
+  level: string;
+  group: string | null;
+  message: string;
+}
+
 export interface ValidationOutput {
   status: "Error" | "Failure" | "Success";
   message: string;
-  logs: OutputStream;
+  logs: OutputStream[];
 }
 
 export type PropertyEditorValidations = { [key: string]: ValidationOutput };

@@ -149,11 +149,24 @@
       </div>
     </div>
 
-    <div v-else class="attributes-panel-item__item-inner">
-      <div
-        class="attributes-panel-item__item-label"
-        :style="{ paddingLeft: indentPx }"
-      >
+    <div
+      v-else
+      class="attributes-panel-item__item-inner"
+      :style="{ paddingLeft: indentPx }"
+    >
+      <div class="attributes-panel-item__item-label">
+        <Icon
+          v-if="
+            props.attributeDef.validation &&
+            props.attributeDef.validation.status !== 'Success'
+          "
+          :name="showValidationDetails ? 'chevron--down' : 'chevron--right'"
+          size="sm"
+          tone="error"
+          class="cursor-pointer"
+          @click="showValidationDetails = !showValidationDetails"
+        />
+
         <Icon
           v-if="isChildOfMap || isChildOfArray"
           class="attributes-panel-item__nested-arrow-icon"
@@ -209,6 +222,11 @@
 
       <div
         class="attributes-panel-item__input-wrap"
+        :class="{
+          'force-border-red-400':
+            props.attributeDef.validation &&
+            props.attributeDef.validation.status !== 'Success',
+        }"
         @mouseover="onHoverStart"
         @mouseleave="onHoverEnd"
       >
@@ -350,17 +368,35 @@
         /> -->
       </div>
       <!-- <Icon name="none" class="p-[3px] mx-[2px]" /> -->
+
+      <Icon
+        v-if="props.attributeDef.validation?.status === 'Success'"
+        name="check"
+        tone="success"
+        class="mr-2"
+      />
+      <Icon
+        v-else-if="props.attributeDef.validation"
+        name="x"
+        tone="error"
+        class="mr-2"
+      />
     </div>
 
     <div
-      v-if="
-        props.attributeDef.validation &&
-        props.attributeDef.validation?.status !== 'Success'
-      "
-      :style="{ paddingLeft: indentPx }"
-      class="text-red-400 mt-1"
+      v-if="showValidationDetails && props.attributeDef.validation"
+      :style="{ marginLeft: indentPx }"
+      class="text-red-400 flex flex-col bg-black pl-3 border-y border-red-400 pb-1 mt-1"
     >
-      {{ props.attributeDef.validation.message }}
+      <p class="my-3">{{ props.attributeDef.validation.message }}</p>
+
+      <span
+        v-for="(output, index) in props.attributeDef.validation.logs"
+        :key="index"
+        class="text-sm break-all text-warning-500"
+      >
+        <p v-if="output.stream !== 'output'">{{ output.message }}</p>
+      </span>
     </div>
 
     <Modal
@@ -415,6 +451,7 @@ const props = defineProps({
 });
 
 const isOpen = ref(true);
+const showValidationDetails = ref(false);
 
 const rootCtx = useAttributesPanelContext();
 
@@ -519,6 +556,7 @@ function resetNewValueToCurrentValue() {
   newValueString.value = currentValue.value?.toString() || "";
   const valAsNumber = parseFloat(currentValue.value?.toString() || "");
   newValueNumber.value = Number.isNaN(valAsNumber) ? undefined : valAsNumber;
+  showValidationDetails.value = false;
 }
 watch(currentValue, resetNewValueToCurrentValue, { immediate: true });
 
@@ -833,6 +871,9 @@ function secretSelectedHandler(newSecret: Secret) {
   }
 }
 
+.force-border-red-400 {
+  border-color: rgb(251 113 133 / var(--tw-border-opacity)) !important;
+}
 .attributes-panel-item__input-wrap {
   position: relative;
   border: 1px solid var(--input-border-color);

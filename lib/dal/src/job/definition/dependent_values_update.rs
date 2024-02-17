@@ -418,28 +418,28 @@ async fn update_value(
 
     // If this is for an internal provider corresponding to a root prop for the schema variant of an existing component,
     // then we want to update summary tables.
-    let value = if !attribute_value.context.is_component_unset()
-        && !attribute_value.context.is_internal_provider_unset()
-        && InternalProvider::is_for_root_prop(&ctx, attribute_value.context.internal_provider_id())
-            .await
-            .unwrap()
+    let value = if let Some(fbrv) =
+        FuncBindingReturnValue::get_by_id(&ctx, &attribute_value.func_binding_return_value_id())
+            .await?
     {
-        if let Some(fbrv) =
-            FuncBindingReturnValue::get_by_id(&ctx, &attribute_value.func_binding_return_value_id())
-                .await?
-        {
-            if let Some(component_value_json) = fbrv.unprocessed_value() {
+        if let Some(component_value_json) = fbrv.unprocessed_value() {
+            if !attribute_value.context.is_component_unset()
+                && !attribute_value.context.is_internal_provider_unset()
+                && InternalProvider::is_for_root_prop(
+                    &ctx,
+                    attribute_value.context.internal_provider_id(),
+                )
+                .await
+                .unwrap()
+            {
                 update_summary_tables(
                     &ctx,
                     component_value_json,
                     attribute_value.context.component_id(),
                 )
                 .await?;
-
-                component_value_json.clone()
-            } else {
-                serde_json::Value::Null
             }
+            component_value_json.clone()
         } else {
             serde_json::Value::Null
         }
