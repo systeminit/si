@@ -833,7 +833,7 @@ async fn use_default_prototype(ctx: &DalContext) {
         .expect("attribute value not found");
 
         let source_attribute_value = AttributeValue::find_for_context(
-            &ctx,
+            ctx,
             AttributeReadContext {
                 prop_id: Some(*destination_prop.id()),
                 component_id: Some(*component.id()),
@@ -846,7 +846,7 @@ async fn use_default_prototype(ctx: &DalContext) {
 
         let value =
             serde_json::to_value("Initial value").expect("could not convert to serde_json::Value");
-        let (_, updated_source_attribute_value_id) = AttributeValue::update_for_context(
+        AttributeValue::update_for_context(
             ctx,
             *source_attribute_value.id(),
             Some(*object_attribute_value.id()),
@@ -917,20 +917,6 @@ async fn use_default_prototype(ctx: &DalContext) {
         .await
         .expect("Unable to get container attribute value")
         .expect("AttributeValue not found");
-
-        // println!("Destination Attribute Value");
-        // dbg!(destination_attribute_value
-        //     .attribute_prototype(&ctx)
-        //     .await
-        //     .unwrap());
-        // dbg!(destination_attribute_value
-        //     .attribute_prototype(&ctx)
-        //     .await
-        //     .unwrap()
-        //     .unwrap()
-        //     .argument_values(&ctx, destination_attribute_value.context)
-        //     .await
-        //     .unwrap());
 
         let (_, overridden_attribute_value_id) = AttributeValue::update_for_context(
             ctx,
