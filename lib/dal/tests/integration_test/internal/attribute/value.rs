@@ -1,5 +1,3 @@
-use dal::{AttributePrototypeArgument, InternalProvider};
-use dal_test::helpers::setup_identity_func;
 use pretty_assertions_sorted::assert_eq;
 
 use dal::{
@@ -7,7 +5,9 @@ use dal::{
     AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
     StandardModel,
 };
+use dal::{AttributePrototypeArgument, InternalProvider};
 use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::helpers::setup_identity_func;
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
