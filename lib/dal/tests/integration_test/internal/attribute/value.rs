@@ -1,5 +1,3 @@
-use dal::{AttributePrototypeArgument, InternalProvider};
-use dal_test::helpers::setup_identity_func;
 use pretty_assertions_sorted::assert_eq;
 
 use dal::{
@@ -7,7 +5,9 @@ use dal::{
     AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
     StandardModel,
 };
+use dal::{AttributePrototypeArgument, InternalProvider};
 use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::helpers::setup_identity_func;
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
@@ -712,6 +712,8 @@ async fn list_payload(ctx: &DalContext) {
 
 #[test]
 async fn use_default_prototype(ctx: &DalContext) {
+    let (identity_func_id, _, _, identity_func_argument_id) = setup_identity_func(ctx).await;
+
     let mut schema = create_schema(ctx).await;
     let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
@@ -758,261 +760,197 @@ async fn use_default_prototype(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
+    // Create connection between source and destination props
+    {
+        let destination_attribute_value = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext {
+                prop_id: Some(*destination_prop.id()),
+                ..AttributeReadContext::default()
+            },
+        )
+        .await
+        .expect("cannot get attribute value")
+        .expect("attribute value not found");
+
+        // Find the prototype corresponding to the "destination" value (that corresponds to the
+        // "destination" prop)
+        let updated_destination_attribute_value =
+            AttributeValue::get_by_id(ctx, destination_attribute_value.id())
+                .await
+                .expect("cannot find attribute value")
+                .expect("attribute value not found");
+        let mut destination_attribute_prototype = updated_destination_attribute_value
+            .attribute_prototype(ctx)
+            .await
+            .expect("cannot find attribute prototype")
+            .expect("attribute prototype not found");
+
+        // Now, update the "destination" field's corresponding prototype to use the identity function
+        // and the source internal provider.
+        let source_internal_provider = InternalProvider::find_for_prop(ctx, *source_prop.id())
+            .await
+            .expect("could not get internal provider")
+            .expect("internal provider not found");
+        destination_attribute_prototype
+            .set_func_id(ctx, identity_func_id)
+            .await
+            .expect("could not set func id on attribute prototype");
+
+        // With the "source" internal provider in hand and the "destination" attribute prototype setup,
+        // we can create an argument for the latter prototype.
+        let _argument = AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *destination_attribute_prototype.id(),
+            identity_func_argument_id,
+            *source_internal_provider.id(),
+        )
+        .await
+        .expect("could not create attribute prototype argument");
+
+        ctx.blocking_commit()
+            .await
+            .expect("could not commit & run jobs");
+    }
+
     let (component, _) =
         Component::new_for_default_variant_from_schema(ctx, "starfield", *schema.id())
             .await
             .expect("unable to create component");
 
-    // This context can also be used for generating component views.
-    let base_attribute_read_context = AttributeReadContext {
-        prop_id: None,
-        component_id: Some(*component.id()),
-        ..AttributeReadContext::default()
+    // Initialize the value corresponding to the "source" prop.
+    {
+        let object_attribute_value = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext {
+                prop_id: Some(*object_prop.id()),
+                component_id: Some(*component.id()),
+                ..AttributeReadContext::default()
+            },
+        )
+        .await
+        .expect("cannot get attribute value")
+        .expect("attribute value not found");
+
+        let source_attribute_value = AttributeValue::find_for_context(
+            &ctx,
+            AttributeReadContext {
+                prop_id: Some(*destination_prop.id()),
+                component_id: Some(*component.id()),
+                ..AttributeReadContext::default()
+            },
+        )
+        .await
+        .expect("cannot get attribute value")
+        .expect("attribute value not found");
+
+        let value =
+            serde_json::to_value("Initial value").expect("could not convert to serde_json::Value");
+        let (_, updated_source_attribute_value_id) = AttributeValue::update_for_context(
+            ctx,
+            *source_attribute_value.id(),
+            Some(*object_attribute_value.id()),
+            AttributeContextBuilder::from(AttributeReadContext {
+                prop_id: Some(*source_prop.id()),
+                component_id: Some(*component.id()),
+                ..AttributeReadContext::default()
+            })
+            .to_context()
+            .expect("could not convert builder to attribute context"),
+            Some(value),
+            None,
+        )
+        .await
+        .expect("cannot update value for context");
+
+        ctx.blocking_commit()
+            .await
+            .expect("could not commit & run jobs");
+    }
+
+    // Ensure that both source and destination were updated.
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "starfield",
+                "type": "component",
+                "protected": false
+            },
+            "domain": {
+                "object": {
+                    "destination": "Initial value",
+                    "source": "Initial value",
+                },
+            },
+        }], // expected
+        ComponentView::new(ctx, *component.id())
+            .await
+            .expect("cannot get component view")
+            .properties // actual
+    );
+
+    // Override value on destination.
+    let overriden_destination_av_id = {
+        let destination_prop_read_ctx = AttributeReadContext {
+            prop_id: Some(*destination_prop.id()),
+            component_id: Some(*component.id()),
+            ..AttributeReadContext::default()
+        };
+
+        let destination_write_context = AttributeContextBuilder::from(destination_prop_read_ctx)
+            .to_context()
+            .expect("Unable to create destination write context");
+        let destination_attribute_value =
+            AttributeValue::find_for_context(ctx, destination_prop_read_ctx)
+                .await
+                .expect("Unable to get current destination")
+                .expect("AttributeValue not found");
+
+        let parent_attribute_value_id = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext {
+                prop_id: Some(*object_prop.id()),
+                component_id: Some(*component.id()),
+                ..AttributeReadContext::default()
+            },
+        )
+        .await
+        .expect("Unable to get container attribute value")
+        .expect("AttributeValue not found");
+
+        // println!("Destination Attribute Value");
+        // dbg!(destination_attribute_value
+        //     .attribute_prototype(&ctx)
+        //     .await
+        //     .unwrap());
+        // dbg!(destination_attribute_value
+        //     .attribute_prototype(&ctx)
+        //     .await
+        //     .unwrap()
+        //     .unwrap()
+        //     .argument_values(&ctx, destination_attribute_value.context)
+        //     .await
+        //     .unwrap());
+
+        let (_, overridden_attribute_value_id) = AttributeValue::update_for_context(
+            ctx,
+            *destination_attribute_value.id(),
+            Some(*parent_attribute_value_id.id()),
+            destination_write_context,
+            Some(serde_json::json!("Overridden value")),
+            None,
+        )
+        .await
+        .expect("Unable to update AttributeValue");
+
+        ctx.blocking_commit()
+            .await
+            .expect("could not commit & run jobs");
+
+        overridden_attribute_value_id
     };
 
-    // Initialize the value corresponding to the "source" prop.
-    let unset_object_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(*object_prop.id()),
-            ..base_attribute_read_context
-        },
-    )
-    .await
-    .expect("cannot get attribute value")
-    .expect("attribute value not found");
-    let source_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(*source_prop.id()),
-            ..base_attribute_read_context
-        },
-    )
-    .await
-    .expect("cannot get attribute value")
-    .expect("attribute value not found");
-    let source_prop_context = AttributeContextBuilder::from(base_attribute_read_context)
-        .set_prop_id(*source_prop.id())
-        .to_context()
-        .expect("could not convert builder to attribute context");
-    let value = serde_json::to_value("updateme").expect("could not convert to serde_json::Value");
-    let (_, updated_source_attribute_value_id) = AttributeValue::update_for_context(
-        ctx,
-        *source_attribute_value.id(),
-        Some(*unset_object_attribute_value.id()),
-        source_prop_context,
-        Some(value),
-        None,
-    )
-    .await
-    .expect("cannot update value for context");
-
-    // Initialize the value corresponding to the "destination" prop.
-    let set_object_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(*object_prop.id()),
-            ..base_attribute_read_context
-        },
-    )
-    .await
-    .expect("cannot get attribute value")
-    .expect("attribute value not found");
-    let destination_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(*destination_prop.id()),
-            ..base_attribute_read_context
-        },
-    )
-    .await
-    .expect("cannot get attribute value")
-    .expect("attribute value not found");
-    let destination_prop_context = AttributeContextBuilder::from(base_attribute_read_context)
-        .set_prop_id(*destination_prop.id())
-        .to_context()
-        .expect("could not convert builder to attribute context");
-    let value =
-        serde_json::to_value("11-nov-2022").expect("could not convert to serde_json::Value");
-    let (_, updated_destination_attribute_value_id) = AttributeValue::update_for_context(
-        ctx,
-        *destination_attribute_value.id(),
-        Some(*set_object_attribute_value.id()),
-        destination_prop_context,
-        Some(value),
-        None,
-    )
-    .await
-    .expect("cannot set value for context");
-
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
-
-    // Ensure that our rendered data matches what was intended.
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "starfield",
-                "type": "component",
-                "protected": false
-            },
-            "domain": {
-                "object": {
-                    "destination": "11-nov-2022",
-                    "source": "updateme",
-                },
-            },
-        }], // expected
-        ComponentView::new(ctx, *component.id())
-            .await
-            .expect("cannot get component view")
-            .properties // actual
-    );
-
-    // Find the prototype corresponding to the "destination" value (that corresponds to the
-    // "destination" prop. Assemble what we need to update the "destination" prototype to use the
-    // identity function.
-    let updated_destination_attribute_value =
-        AttributeValue::get_by_id(ctx, &updated_destination_attribute_value_id)
-            .await
-            .expect("cannot find attribute value")
-            .expect("attribute value not found");
-    let mut destination_attribute_prototype = updated_destination_attribute_value
-        .attribute_prototype(ctx)
-        .await
-        .expect("cannot find attribute prototype")
-        .expect("attribute prototype not found");
-    let (identity_func_id, _, _, identity_func_identity_argument_id) =
-        setup_identity_func(ctx).await;
-
-    // Now, update the "destination" field's corresponding prototype to use the identity function
-    // and the source internal provider.
-    let source_internal_provider = InternalProvider::find_for_prop(ctx, *source_prop.id())
-        .await
-        .expect("could not get internal provider")
-        .expect("internal provider not found");
-    destination_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
-        .await
-        .expect("could not set func id on attribute prototype");
-
-    // With the "source" internal provider in hand and the "destination" attribute prototype setup,
-    // we can create an argument for the latter prototype.
-    let _argument = AttributePrototypeArgument::new_for_intra_component(
-        ctx,
-        *destination_attribute_prototype.id(),
-        identity_func_identity_argument_id,
-        *source_internal_provider.id(),
-    )
-    .await
-    .expect("could not create attribute prototype argument");
-
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
-
-    // Ensure that the shape has not changed after creating the provider and updating the prototype.
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "starfield",
-                "type": "component",
-                "protected": false
-            },
-            "domain": {
-                "object": {
-                    "source": "updateme",
-                    "destination": "11-nov-2022",
-                },
-            },
-        }], // expected
-        ComponentView::new(ctx, *component.id())
-            .await
-            .expect("cannot get component view")
-            .properties // actual
-    );
-
-    // Update the source field.
-    let value = serde_json::to_value("h1-2023").expect("could not convert to serde_json::Value");
-    let (_, _twice_updated_source_attribute_value_id) = AttributeValue::update_for_context(
-        ctx,
-        updated_source_attribute_value_id,
-        Some(*set_object_attribute_value.id()),
-        source_prop_context,
-        Some(value),
-        None,
-    )
-    .await
-    .expect("could not update attribute value");
-
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
-
-    // Observe that both the source and destination fields were updated.
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "starfield",
-                "type": "component",
-                "protected": false
-            },
-            "domain": {
-                "object": {
-                    "destination": "h1-2023",
-                    "source": "h1-2023",
-                },
-            },
-        }], // expected
-        ComponentView::new(ctx, *component.id())
-            .await
-            .expect("cannot get component view")
-            .properties // actual
-    );
-
-    // Break the link for the destination.
-    let destination_write_context = AttributeContextBuilder::new()
-        .set_prop_id(*destination_prop.id())
-        .set_component_id(*component.id())
-        .to_context()
-        .expect("Unable to create destination write context");
-    let destination_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(*destination_prop.id()),
-            ..base_attribute_read_context
-        },
-    )
-    .await
-    .expect("Unable to get current destination")
-    .expect("AttributeValue not found");
-    let parent_attribute_value_id = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(*object_prop.id()),
-            ..base_attribute_read_context
-        },
-    )
-    .await
-    .expect("Unable to get container attribute value")
-    .expect("AttributeValue not found");
-    let (_, overridden_attribute_value_id) = AttributeValue::update_for_context(
-        ctx,
-        *destination_attribute_value.id(),
-        Some(*parent_attribute_value_id.id()),
-        destination_write_context,
-        Some(serde_json::json!("Overridden value")),
-        None,
-    )
-    .await
-    .expect("Unable to update AttributeValue");
-
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
-
-    // Observe that both the source and destination fields were updated.
+    // Observe that the destination field has been updated.
     assert_eq!(
         serde_json::json![{
             "si": {
@@ -1023,7 +961,7 @@ async fn use_default_prototype(ctx: &DalContext) {
             "domain": {
                 "object": {
                     "destination": "Overridden value",
-                    "source": "h1-2023",
+                    "source": "Initial value",
                 },
             },
         }], // expected
@@ -1033,15 +971,18 @@ async fn use_default_prototype(ctx: &DalContext) {
             .properties // actual
     );
 
-    AttributeValue::use_default_prototype(ctx, overridden_attribute_value_id)
-        .await
-        .expect("Unable to clear override");
+    // Reset destination to value from source
+    {
+        AttributeValue::use_default_prototype(ctx, overriden_destination_av_id)
+            .await
+            .expect("Unable to clear override");
 
-    ctx.blocking_commit()
-        .await
-        .expect("could not commit & run jobs");
+        ctx.blocking_commit()
+            .await
+            .expect("could not commit & run jobs");
+    }
 
-    // Observe that both the source and destination fields were updated.
+    // Observe that destination fields is back to value from source.
     assert_eq!(
         serde_json::json![{
             "si": {
@@ -1051,8 +992,8 @@ async fn use_default_prototype(ctx: &DalContext) {
             },
             "domain": {
                 "object": {
-                    "destination": "Overridden value",
-                    "source": "h1-2023",
+                    "destination": "Initial value",
+                    "source": "Initial value",
                 },
             },
         }], // expected
