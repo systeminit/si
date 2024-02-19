@@ -1,7 +1,8 @@
 import { Command } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
 import { awsGenerate } from "./asset_generator.ts";
 import { makeRefreshOptions } from "./resource_generator.ts";
-import { renderAsset, renderCodeGen, renderCreate, renderRefresh } from "./render.ts";
+import { renderAsset, renderCodeGen, renderCreate, renderDelete, renderRefresh } from "./render.ts";
+import { makeDeleteOptions } from "./resource_generator.ts";
 
 export async function run() {
   const command = new Command()
@@ -44,7 +45,18 @@ export async function run() {
       const refreshOptions = makeRefreshOptions(options);
       const result = await renderRefresh({ provider: "aws", awsService, awsCommand, inputs: refreshOptions.inputs, outputs: refreshOptions.outputs });
       console.log(result);
+    })
+    .command("delete")
+    .description("generate a delete function from an aws cli skeleton")
+    .arguments("<awsService:string> <awsCommand:string>")
+    .option("--input <input:string>", "awsInputPath:siPropertiesPath; constructs CLI json data", { collect: true, required: true })
+    .action(async (options, awsService, awsCommand) => {
+      const deleteOptions = makeDeleteOptions(options);
+      const result = await renderDelete({ provider: "aws", awsService, awsCommand, inputs: deleteOptions.inputs });
+      console.log(result);
     });
+
+  ;
 
   ;
 
