@@ -49,7 +49,7 @@ export function makeRefreshOptions(options: { input: Array<string>, output: Arra
   return refreshOptions;
 }
 
-export function makeDeleteOptions(options: { input: Array<string> }): DeleteOptions {
+export function makeDeleteOrActionOptions(options: { input: Array<string> }): DeleteOptions {
   const deleteOptions: RefreshOptions = { inputs: [], outputs: [] };
   for (const input of options.input) {
     const argInput = parseInputOption(input);
@@ -57,4 +57,3 @@ export function makeDeleteOptions(options: { input: Array<string> }): DeleteOpti
   }
   return deleteOptions;
 }
-

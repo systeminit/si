@@ -12,6 +12,7 @@ import { partial as codeGenMainPartial } from "./templates/codeGenMain.ts";
 import { partial as createMainPartial } from "./templates/createMain.ts";
 import { partial as refreshMainPartial } from "./templates/refreshMain.ts";
 import { partial as deleteMainPartial } from "./templates/deleteMain.ts";
+import { partial as actionMainPartial } from "./templates/actionMain.ts";
 import { ArgInput, ArgOutput } from "./resource_generator.ts";
 
 type RenderProvider = "aws";
@@ -33,6 +34,7 @@ export function useEta(): Eta {
   eta.loadTemplate("@createMain", createMainPartial);
   eta.loadTemplate("@refreshMain", refreshMainPartial);
   eta.loadTemplate("@deleteMain", deleteMainPartial);
+  eta.loadTemplate("@actionMain", actionMainPartial);
   return eta;
 }
 
@@ -110,9 +112,16 @@ export interface RenderDeleteOptions {
   inputs: Array<ArgInput>;
 }
 
+export type RenderActionOptions = RenderDeleteOptions;
+
 export async function renderDelete(options: RenderDeleteOptions): Promise<string> {
   const eta = useEta();
   const deletetemp = eta.render("@deleteMain", options);
   return await fmt(deletetemp);
 }
 
+export async function renderAction(options: RenderActionOptions): Promise<string> {
+  const eta = useEta();
+  const actiontemp = eta.render("@actionMain", options);
+  return await fmt(actiontemp);
+}
