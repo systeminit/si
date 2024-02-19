@@ -11,7 +11,9 @@ import { partial as renderPropPartial } from "./templates/renderProp.ts";
 import { partial as codeGenMainPartial } from "./templates/codeGenMain.ts";
 import { partial as createMainPartial } from "./templates/createMain.ts";
 import { partial as refreshMainPartial } from "./templates/refreshMain.ts";
-import { RefreshInput, RefreshOutput } from "./resource_generator.ts";
+import { partial as deleteMainPartial } from "./templates/deleteMain.ts";
+import { partial as actionMainPartial } from "./templates/actionMain.ts";
+import { ArgInput, ArgOutput } from "./resource_generator.ts";
 
 type RenderProvider = "aws";
 
@@ -31,6 +33,8 @@ export function useEta(): Eta {
   eta.loadTemplate("@codeGenMain", codeGenMainPartial);
   eta.loadTemplate("@createMain", createMainPartial);
   eta.loadTemplate("@refreshMain", refreshMainPartial);
+  eta.loadTemplate("@deleteMain", deleteMainPartial);
+  eta.loadTemplate("@actionMain", actionMainPartial);
   return eta;
 }
 
@@ -91,8 +95,8 @@ export interface RenderRefreshOptions {
   provider: "aws";
   awsService: string;
   awsCommand: string;
-  inputs: Array<RefreshInput>;
-  outputs: Array<RefreshOutput>;
+  inputs: Array<ArgInput>;
+  outputs: Array<ArgOutput>;
 };
 
 export async function renderRefresh(options: RenderRefreshOptions): Promise<string> {
@@ -101,3 +105,23 @@ export async function renderRefresh(options: RenderRefreshOptions): Promise<stri
   return await fmt(refresh);
 }
 
+export interface RenderDeleteOptions {
+  provider: "aws";
+  awsService: string;
+  awsCommand: string;
+  inputs: Array<ArgInput>;
+}
+
+export type RenderActionOptions = RenderDeleteOptions;
+
+export async function renderDelete(options: RenderDeleteOptions): Promise<string> {
+  const eta = useEta();
+  const deletetemp = eta.render("@deleteMain", options);
+  return await fmt(deletetemp);
+}
+
+export async function renderAction(options: RenderActionOptions): Promise<string> {
+  const eta = useEta();
+  const actiontemp = eta.render("@actionMain", options);
+  return await fmt(actiontemp);
+}
