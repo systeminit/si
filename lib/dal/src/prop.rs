@@ -728,7 +728,7 @@ impl Prop {
                     handler: "main".to_owned(),
                     component: veritech_client::ResolverFunctionComponent {
                         data: veritech_client::ComponentView {
-                            properties: serde_json::json!({ "format": serde_json::to_value(dbg!(validation_format))?, "value": dbg!(value) }),
+                            properties: serde_json::json!({ "format": serde_json::to_value(validation_format)?, "value": value }),
                             ..Default::default()
                         },
                         parents: Vec::new(),
