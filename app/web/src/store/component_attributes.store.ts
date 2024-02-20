@@ -223,7 +223,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               const prop = this.schema?.props[propId];
               if (!prop) continue;
 
-              for (const [key, validation] of validations) {
+              for (const [, validation] of validations) {
                 if (validation.status !== "Success") {
                   status = "failure";
                   failCounter++;
