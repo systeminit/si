@@ -400,10 +400,10 @@ impl SchemaVariantSpecBuilder {
 
     fn default_resource_value() -> PropSpec {
         PropSpec::Object {
-            name: "value".to_string(),
+            name: "resource_value".to_string(),
             unique_id: None,
             data: Some(PropSpecData {
-                name: "value".to_string(),
+                name: "resource_value".to_string(),
                 default_value: None,
                 func_unique_id: None,
                 inputs: None,

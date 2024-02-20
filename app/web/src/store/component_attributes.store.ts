@@ -11,7 +11,6 @@ import {
 } from "@/api/sdf/dal/property_editor";
 import { nilId } from "@/utils/nilId";
 import { Qualification } from "@/api/sdf/dal/qualification";
-import { OutputStream } from "@/api/sdf/dal/resource";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -48,13 +47,22 @@ export interface SetTypeArgs {
   value?: unknown;
 }
 
+export interface OutputStream {
+  stream: string;
+  level: string;
+  group: string | null;
+  message: string;
+}
+
 export interface ValidationOutput {
   status: "Error" | "Failure" | "Success";
   message: string;
-  logs: OutputStream;
+  logs: OutputStream[];
 }
 
-export type PropertyEditorValidations = { [key: string]: ValidationOutput };
+export type PropertyEditorValidations = {
+  [key: string]: [string | null, ValidationOutput][];
+};
 
 export type AttributeTreeItem = {
   propDef: PropertyEditorProp;
@@ -62,7 +70,7 @@ export type AttributeTreeItem = {
   value: PropertyEditorValue | undefined;
   valueId: string;
   parentValueId: string;
-  validation: ValidationOutput | undefined;
+  validations: [string | null, ValidationOutput][];
   propId: string;
   mapKey?: string;
   arrayKey?: string;
@@ -116,7 +124,8 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               const value = valuesByValueId![valueId]!;
 
               const propDef = propsByPropId![value.propId as any];
-              const validation = validationsByPropId![value.propId as any];
+              const validations =
+                validationsByPropId![value.propId as any] ?? [];
 
               // some values that we see are for props that are hidden, so we filter them out
               if (!propDef) return;
@@ -128,7 +137,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 value,
                 valueId,
                 parentValueId,
-                validation,
+                validations,
                 // using isNil because its actually null (not undefined)
                 ...(indexInParentArray === undefined &&
                   !_.isNil(value.key) && { mapKey: value.key }),
@@ -208,21 +217,23 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             let status: "success" | "failure" = "success";
             let failCounter = 0;
             const output = [];
-            for (const [propId, validation] of Object.entries(
+            for (const [propId, validations] of Object.entries(
               this.validations,
             )) {
               const prop = this.schema?.props[propId];
               if (!prop) continue;
 
-              if (validation.status !== "Success") {
-                status = "failure";
-                failCounter++;
+              for (const [, validation] of validations) {
+                if (validation.status !== "Success") {
+                  status = "failure";
+                  failCounter++;
+                }
+                output.push({
+                  line: `${prop.name}: ${validation.message}`,
+                  stream: "stdout",
+                  level: "log",
+                });
               }
-              output.push({
-                line: `${prop.name}: ${validation.message}`,
-                stream: "stdout",
-                level: "log",
-              });
             }
 
             return {

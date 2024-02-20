@@ -215,7 +215,7 @@ impl PkgExporter {
         let mut exporter = Self::new_standalone_variant_exporter();
 
         exporter
-            .export_funcs_for_variant(ctx, Some(ChangeSetPk::NONE), *variant.id())
+            .export_funcs_for_variant(ctx, None, *variant.id())
             .await?;
         let variant_spec = exporter.export_variant(ctx, None, variant).await?;
 

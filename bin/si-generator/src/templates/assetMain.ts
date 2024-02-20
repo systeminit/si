@@ -19,15 +19,24 @@ function main() {
       .build();
   asset.addInputSocket(regionSocket);
 
-  const regionProp = new PropBuilder()
-      .setKind("string")
-      .setName("region")
-      .setValueFrom(new ValueFromBuilder()
-          .setKind("inputSocket")
-          .setSocketName("Region")
-          .build())
+  // Add any props needed for information that isn't
+  // strictly part of the object domain here.
+  const extraProp = new PropBuilder()
+      .setKind("object")
+      .setName("extra")
+      .addChild(
+         new PropBuilder()
+        .setKind("string")
+        .setName("Region")
+        .setValueFrom(new ValueFromBuilder()
+            .setKind("inputSocket")
+            .setSocketName("Region")
+            .build()
+        ).build()
+      )
       .build();
-  asset.addProp(regionProp);
+
+  asset.addProp(extraProp);
 <% } %>
 
   return asset.build();

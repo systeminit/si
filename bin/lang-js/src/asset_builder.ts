@@ -498,7 +498,7 @@ export interface PropDefinition {
   hidden?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   defaultValue?: any;
-  validationFormat: string; // A JSON.stringify()-ed Joi.Descriptor
+  validationFormat?: string; // A JSON.stringify()-ed Joi.Descriptor
   mapKeyFuncs?: MapKeyFunc[];
 }
 
@@ -546,12 +546,6 @@ export interface IPropBuilder {
  */
 export class PropBuilder implements IPropBuilder {
   prop = <PropDefinition>{};
-
-  constructor() {
-    this.prop = <PropDefinition>{
-      validationFormat: JSON.stringify(Joi.any().describe()),
-    };
-  }
 
   /**
    * Adds a child to an object type prop

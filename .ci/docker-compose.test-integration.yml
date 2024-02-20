@@ -7,6 +7,7 @@ services:
     environment:
       - "SI_TEST_PG_HOSTNAME=postgres"
       - "SI_TEST_NATS_URL=nats"
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
     depends_on:
       - postgres
       - nats
