@@ -39,22 +39,11 @@
         }"
       />
 
-      <!-- package/type icon -->
-      <DiagramIcon
-        v-if="node.def.typeIcon && !featureFlagsStore.REMOVE_COMPONENT_ICONS"
-        :icon="node.def.typeIcon"
-        :color="colors.icon"
-        :size="22"
-        :x="-halfWidth + 5"
-        :y="5"
-        origin="top-left"
-      />
-
       <!-- header text -->
       <v-text
         ref="titleTextRef"
         :config="{
-          x: -halfWidth + getTextPosition() + 8,
+          x: -halfWidth + 10,
           y: 4,
           verticalAlign: 'top',
           align: 'left',
@@ -71,7 +60,7 @@
       <v-text
         ref="subtitleTextRef"
         :config="{
-          x: -halfWidth + getTextPosition() + 8,
+          x: -halfWidth + 10,
           y: headerTextHeight + 6,
           verticalAlign: 'top',
           align: 'left',
@@ -277,7 +266,6 @@ import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
 import { getToneColorHex, useTheme } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import {
   DiagramEdgeData,
   DiagramElementUniqueKey,
@@ -321,7 +309,6 @@ const emit = defineEmits<{
 }>();
 
 const componentsStore = useComponentsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const componentId = computed(() => props.node.def.componentId);
 
 const diffIconHover = ref(false);
@@ -503,13 +490,5 @@ function onClick(detailsTabSlug: string) {
   componentsStore.setSelectedComponentId(componentId.value, {
     detailsTab: detailsTabSlug,
   });
-}
-
-function getTextPosition() {
-  if (featureFlagsStore.REMOVE_COMPONENT_ICONS) {
-    return 2;
-  }
-
-  return 24;
 }
 </script>
