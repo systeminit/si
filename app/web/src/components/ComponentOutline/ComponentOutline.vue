@@ -162,11 +162,20 @@ const filterModeActive = computed(
   () => !!(searchStringCleaned.value || searchRef.value?.filteringActive),
 );
 
-const filteredComponents = computed(() => {
-  if (!filterModeActive.value) return [];
-  let filteredComponents = filterComponentArrayBySearchString(
-    componentsStore.allComponents,
-  );
+const filterComponentArrayBySearchString = (components: FullComponent[]) => {
+  return _.filter(components, (c) => {
+    if (c.displayName.toLowerCase().includes(searchStringCleaned.value))
+      return true;
+    if (c.schemaName.toLowerCase().includes(searchStringCleaned.value))
+      return true;
+    return false;
+  });
+};
+
+const filterComponentArrayBySearchStringAndFilters = (
+  components: FullComponent[],
+) => {
+  let filteredComponents = filterComponentArrayBySearchString(components);
 
   if (searchRef.value?.filteringActive) {
     searchFiltersWithCounts.value.forEach((filter, index) => {
@@ -178,6 +187,13 @@ const filteredComponents = computed(() => {
     });
   }
   return filteredComponents;
+};
+
+const filteredComponents = computed(() => {
+  if (!filterModeActive.value) return [];
+  return filterComponentArrayBySearchStringAndFilters(
+    componentsStore.allComponents,
+  );
 });
 
 function onSearchUpdated(newFilterString: string) {
@@ -204,35 +220,27 @@ const failedQualificationComponents = computed(() =>
   ),
 );
 
-const filterComponentArrayBySearchString = (components: FullComponent[]) => {
-  return _.filter(components, (c) => {
-    if (c.displayName.toLowerCase().includes(searchStringCleaned.value))
-      return true;
-    if (c.schemaName.toLowerCase().includes(searchStringCleaned.value))
-      return true;
-    return false;
-  });
-};
-
 const searchFiltersWithCounts = computed(() => {
   const searchFilters: Array<Filter> = [
     {
       name: "New",
       iconTone: "success",
       iconName: "plus",
-      count: filterComponentArrayBySearchString(newComponents.value).length,
+      count: filterComponentArrayBySearchStringAndFilters(newComponents.value)
+        .length,
     },
     {
       name: "Diff",
       iconTone: "warning",
       iconName: "tilde",
-      count: filterComponentArrayBySearchString(diffComponents.value).length,
+      count: filterComponentArrayBySearchStringAndFilters(diffComponents.value)
+        .length,
     },
     {
       name: "Qualifications",
       iconTone: "destructive",
       iconName: "x-hex-outline",
-      count: filterComponentArrayBySearchString(
+      count: filterComponentArrayBySearchStringAndFilters(
         failedQualificationComponents.value,
       ).length,
     },
