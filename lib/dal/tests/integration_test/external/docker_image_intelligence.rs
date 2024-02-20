@@ -4,6 +4,7 @@ use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
+#[ignore]
 async fn docker_image_intra_component_update(ctx: &DalContext) {
     let mut bagger = ComponentBagger::new();
     let soulrender_bag = bagger

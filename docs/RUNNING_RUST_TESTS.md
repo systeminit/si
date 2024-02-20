@@ -133,9 +133,9 @@ SI_TEST_BUILTIN_SCHEMAS=Schema One,Schema Two buck2 run <crate>:test-integration
 > Note: you may not want to wrap your list in `"` characters, depending on your development environment as they may
 > be unintentionally included in the list item(s).
 
-If you want migrations to run as they would by default, remove the environment variable or set it to `"all"` or `"true"`
+If you want migrations to run as they would by default, remove the environment variable or set it to `"test"` or `"true"`
 (or some variant of them).
 
 ```shell
-SI_TEST_BUILTIN_SCHEMAS=all buck2 run <crate>:test-integration -- <pattern>
+SI_TEST_BUILTIN_SCHEMAS=test buck2 run <crate>:test-integration -- <pattern>
 ```
