@@ -486,4 +486,16 @@ function onVimExit() {
 .cm-editor .cm-gutter {
   font-size: 14px;
 }
+
+.cm-editor .cm-ySelectionInfo {
+  position: absolute;
+  color: black;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.cm-editor > .cm-scroller {
+  overflow-x: hidden;
+}
 </style>
