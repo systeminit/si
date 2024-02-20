@@ -316,7 +316,7 @@ interface PropDefinition {
     valueFrom?: ValueFrom;
     hidden?: boolean;
     defaultValue?: any;
-    validationFormat: string;
+    validationFormat?: string;
     mapKeyFuncs?: MapKeyFunc[];
 }
 interface IPropBuilder {

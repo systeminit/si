@@ -833,13 +833,16 @@ impl AttributeValue {
             .await?;
         }
 
-        Prop::run_validation(
-            ctx,
-            context.prop_id(),
-            context.component_id(),
-            value.clone().unwrap_or_default(),
-        )
-        .await;
+        if let Some(av) = AttributeValue::get_by_id(ctx, &new_attribute_value_id).await? {
+            Prop::run_validation(
+                ctx,
+                context.prop_id(),
+                context.component_id(),
+                av.key(),
+                value.clone().unwrap_or_default(),
+            )
+            .await;
+        }
 
         Ok((value, new_attribute_value_id))
     }
@@ -920,6 +923,17 @@ impl AttributeValue {
                 vec![new_attribute_value_id],
             ))
             .await?;
+        }
+
+        if let Some(av) = AttributeValue::get_by_id(ctx, &new_attribute_value_id).await? {
+            Prop::run_validation(
+                ctx,
+                av.context.prop_id(),
+                av.context.component_id(),
+                av.key(),
+                value.clone().unwrap_or_default(),
+            )
+            .await;
         }
 
         Ok(new_attribute_value_id)

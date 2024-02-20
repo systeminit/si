@@ -156,10 +156,7 @@
     >
       <div class="attributes-panel-item__item-label">
         <Icon
-          v-if="
-            props.attributeDef.validation &&
-            props.attributeDef.validation.status !== 'Success'
-          "
+          v-if="validation && validation.status !== 'Success'"
           :name="showValidationDetails ? 'chevron--down' : 'chevron--right'"
           size="sm"
           tone="error"
@@ -223,9 +220,8 @@
       <div
         class="attributes-panel-item__input-wrap"
         :class="{
-          'force-border-red-400':
-            props.attributeDef.validation &&
-            props.attributeDef.validation.status !== 'Success',
+          'force-border-red-400': validation && validation.status !== 'Success',
+          'my-1': validation && validation.status !== 'Success',
         }"
         @mouseover="onHoverStart"
         @mouseleave="onHoverEnd"
@@ -370,28 +366,23 @@
       <!-- <Icon name="none" class="p-[3px] mx-[2px]" /> -->
 
       <Icon
-        v-if="props.attributeDef.validation?.status === 'Success'"
+        v-if="validation?.status === 'Success'"
         name="check"
         tone="success"
         class="mr-2"
       />
-      <Icon
-        v-else-if="props.attributeDef.validation"
-        name="x"
-        tone="error"
-        class="mr-2"
-      />
+      <Icon v-else-if="validation" name="x" tone="error" class="mr-2" />
     </div>
 
     <div
-      v-if="showValidationDetails && props.attributeDef.validation"
+      v-if="showValidationDetails && validation"
       :style="{ marginLeft: indentPx }"
-      class="text-red-400 flex flex-col bg-black pl-3 border-y border-red-400 pb-1 mt-1"
+      class="text-red-400 flex flex-col bg-black pl-3 border-y border-red-400 pb-1 my-1"
     >
-      <p class="my-3">{{ props.attributeDef.validation.message }}</p>
+      <p class="my-3">{{ validation.message }}</p>
 
       <span
-        v-for="(output, index) in props.attributeDef.validation.logs"
+        v-for="(output, index) in validation.logs"
         :key="index"
         class="text-sm break-all text-warning-500"
       >
@@ -583,6 +574,14 @@ function removeChildHandler() {
     key: getKey(),
   });
 }
+
+const validation = computed(
+  () =>
+    (_.find(
+      props.attributeDef?.validations,
+      ([key]) => key === (getKey() ?? null),
+    ) ?? [])[1],
+);
 
 function getKey() {
   if (isChildOfMap.value) return props.attributeDef?.mapKey;
