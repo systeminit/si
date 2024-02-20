@@ -2,7 +2,9 @@ use std::num::{ParseFloatError, ParseIntError};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use si_data_pg::PgError;
@@ -13,12 +15,13 @@ use crate::edge::{EdgeId, EdgeKind};
 use crate::history_event::HistoryEventMetadata;
 use crate::schema::SchemaUiMenu;
 use crate::socket::SocketEdgeKind;
-use crate::standard_model::objects_from_rows;
+use crate::standard_model::{self, objects_from_rows};
 use crate::{
-    history_event, impl_standard_model, pk, ActorView, Component, ComponentError, ComponentId,
-    ComponentStatus, DalContext, DiagramError, Edge, EdgeError, HistoryActor, Node, NodeId, Schema,
-    SchemaError, SchemaId, SchemaVariant, SchemaVariantId, SocketArity, SocketId, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
+    history_event, impl_standard_model, pk, standard_model_accessor, ActorView, Component,
+    ComponentError, ComponentId, ComponentStatus, DalContext, DiagramError, Edge, EdgeError,
+    HistoryActor, HistoryEventError, Node, NodeId, Schema, SchemaError, SchemaId, SchemaVariant,
+    SchemaVariantId, SocketArity, SocketId, StandardModel, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, Visibility,
 };
 
 const LIST_SUMMARY_DIAGRAM_COMPONENTS: &str =
@@ -37,6 +40,8 @@ pub enum SummaryDiagramError {
     Diagram(#[from] DiagramError),
     #[error(transparent)]
     Edge(#[from] EdgeError),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
     #[error("no timestamp for deleting an edge when one was expected; bug!")]
     NoTimestamp,
     #[error(transparent)]
@@ -104,6 +109,46 @@ impl SummaryDiagramComponent {
     pub fn has_resource(&self) -> bool {
         self.has_resource
     }
+
+    pub async fn get_for_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> SummaryDiagramResult<Option<Self>> {
+        let maybe_row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                "SELECT DISTINCT ON (sdc.id)
+            row_to_json(sdc.*) AS object
+            FROM summary_diagram_components_v1($1, $2) AS sdc
+            WHERE component_id=$3 LIMIT 1",
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+
+        Ok(standard_model::option_object_from_row(maybe_row)?)
+    }
+
+    standard_model_accessor!(sockets, Json<JsonValue>, SummaryDiagramResult);
+}
+
+pub async fn update_socket_summary(
+    ctx: &DalContext,
+    component: &Component,
+) -> SummaryDiagramResult<()> {
+    if let Some(mut summary_component) =
+        SummaryDiagramComponent::get_for_component_id(ctx, *component.id()).await?
+    {
+        if let Some(schema_variant) = component.schema_variant(ctx).await? {
+            let sockets = DiagramSocket::list(ctx, &schema_variant).await?;
+            summary_component
+                .set_sockets(ctx, serde_json::to_value(sockets)?)
+                .await?;
+        }
+    }
+
+    Ok(())
 }
 
 pub async fn create_component_entry(

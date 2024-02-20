@@ -17,6 +17,7 @@ use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::code_view::CodeViewError;
+use crate::diagram::summary_diagram::update_socket_summary;
 use crate::edge::EdgeKind;
 use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::{FuncBindingReturnValueError, FuncBindingReturnValueId};
@@ -376,6 +377,10 @@ impl Component {
             .await?;
 
         let component: Component = standard_model::finish_create_from_row(ctx, row).await?;
+        // TODO: we may also need to do an update to the `has_resource` property of the summary
+        update_socket_summary(ctx, &component)
+            .await
+            .map_err(|err| ComponentError::SummaryDiagram(err.to_string()))?;
 
         Ok(component)
     }
