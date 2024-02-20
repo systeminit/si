@@ -17,7 +17,6 @@ const FLAG_MAPPING = {
   REMOVE_COMPONENT_ICONS: "remove_component_icons",
   RESIZABLE_PANEL_UPGRADE: "resizable-panel-upgrade",
   SECRETS: "secrets",
-  SHOW_EDGES_ON_SELECT: "show_edges_on_select",
   WORKSPACE_BACKUPS: "workspaceBackups",
 };
 
