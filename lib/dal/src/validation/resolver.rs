@@ -68,6 +68,7 @@ pub struct ValidationResolver {
     id: ValidationResolverId,
     prop_id: PropId,
     component_id: ComponentId,
+    key: Option<String>,
     value: serde_json::Value,
     #[serde(flatten)]
     tenancy: Tenancy,
@@ -91,6 +92,7 @@ impl ValidationResolver {
         ctx: &DalContext,
         prop_id: PropId,
         component_id: ComponentId,
+        key: Option<&str>,
         value: &ValidationOutput,
     ) -> ValidationResolverResult<Self> {
         let row = ctx
@@ -98,12 +100,13 @@ impl ValidationResolver {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM validation_resolver_upsert_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM validation_resolver_upsert_v2($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &prop_id,
                     &component_id,
+                    &key,
                     &serde_json::to_value(value)?,
                 ],
             )
@@ -118,4 +121,5 @@ impl ValidationResolver {
 
     standard_model_accessor!(prop_id, Pk(PropId), ValidationResolverResult);
     standard_model_accessor!(component_id, Pk(ComponentId), ValidationResolverResult);
+    standard_model_accessor!(key, Option<String>, ValidationResolverResult);
 }

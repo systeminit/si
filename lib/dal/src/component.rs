@@ -317,7 +317,14 @@ impl Component {
         node.set_component(ctx, component.id()).await?;
 
         for prop in Prop::validation_props(ctx, *component.id()).await? {
-            Prop::run_validation(ctx, *prop.id(), *component.id(), serde_json::Value::Null).await;
+            Prop::run_validation(
+                ctx,
+                *prop.id(),
+                *component.id(),
+                None,
+                serde_json::Value::Null,
+            )
+            .await;
         }
 
         component.set_name(ctx, Some(name.as_ref())).await?;

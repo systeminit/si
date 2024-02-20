@@ -457,6 +457,7 @@ async fn update_value(
         &ctx,
         attribute_value.context.prop_id(),
         attribute_value.context.component_id(),
+        attribute_value.key(),
         value,
     )
     .await;

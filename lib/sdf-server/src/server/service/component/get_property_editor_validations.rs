@@ -15,7 +15,8 @@ pub struct GetPropertyEditorValidationsRequest {
     pub visibility: Visibility,
 }
 
-pub type GetPropertyEditorValidationsResponse = HashMap<PropId, ValidationOutput>;
+pub type GetPropertyEditorValidationsResponse =
+    HashMap<PropId, Vec<(Option<String>, ValidationOutput)>>;
 
 pub async fn get_property_editor_validations(
     HandlerContext(builder): HandlerContext,
@@ -24,12 +25,15 @@ pub async fn get_property_editor_validations(
 ) -> ComponentResult<Json<GetPropertyEditorValidationsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut validations = HashMap::new();
+    let mut validations: GetPropertyEditorValidationsResponse = HashMap::new();
 
     for resolver in
         ValidationResolver::find_by_attr(&ctx, "component_id", &request.component_id).await?
     {
-        validations.insert(resolver.prop_id(), resolver.value()?);
+        validations
+            .entry(resolver.prop_id())
+            .or_default()
+            .push((resolver.key().map(ToOwned::to_owned), resolver.value()?));
     }
 
     Ok(Json(validations))

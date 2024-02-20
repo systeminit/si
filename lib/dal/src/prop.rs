@@ -697,9 +697,12 @@ impl Prop {
         ctx: &DalContext,
         prop_id: PropId,
         component_id: ComponentId,
+        key: Option<&str>,
         value: serde_json::Value,
     ) {
-        if let Err(err) = Self::run_validation_fallible(ctx, prop_id, component_id, &value).await {
+        if let Err(err) =
+            Self::run_validation_fallible(ctx, prop_id, component_id, key, &value).await
+        {
             error!("Unable to run validation for prop {prop_id} and component {component_id} with value {value:#?}: {err}");
         }
     }
@@ -708,6 +711,7 @@ impl Prop {
         ctx: &DalContext,
         prop_id: PropId,
         component_id: ComponentId,
+        key: Option<&str>,
         value: &serde_json::Value,
     ) -> PropResult<()> {
         if let Some(prop) = Prop::get_by_id(ctx, &prop_id).await? {
@@ -766,7 +770,7 @@ impl Prop {
                         logs,
                     },
                 };
-                ValidationResolver::upsert(ctx, prop_id, component_id, &value)
+                ValidationResolver::upsert(ctx, prop_id, component_id, key, &value)
                     .await
                     .map_err(Box::new)?;
             }
