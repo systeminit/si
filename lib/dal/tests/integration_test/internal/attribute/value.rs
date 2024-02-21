@@ -708,322 +708,320 @@ async fn list_payload(ctx: &DalContext) {
     assert_eq!(si_name_value, domain_name_value);
 }
 
-// FIXME(victor,paulo): Commit 3 on this test is taking 20 minutes when builtins are merged.
-// We should fix this before re-adding it.
-// #[test]
-// async fn use_default_prototype(ctx: &DalContext) {
-//     let initial_time = std::time::Instant::now();
-//     let mut last_checkpoint = initial_time.elapsed();
-//
-//     let (identity_func_id, _, _, identity_func_argument_id) = setup_identity_func(ctx).await;
-//
-//     let mut schema = create_schema(ctx).await;
-//     let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
-//     schema
-//         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-//         .await
-//         .expect("cannot set default schema variant");
-//     let schema_variant_id = *schema_variant.id();
-//
-//     // domain: Object
-//     // └─ object: Object
-//     //    ├─ source: String
-//     //    └─ destination: String
-//     let object_prop = dal_test::test_harness::create_prop_without_ui_optionals(
-//         ctx,
-//         "object",
-//         PropKind::Object,
-//         schema_variant_id,
-//         Some(root_prop.domain_prop_id),
-//     )
-//     .await;
-//     let source_prop = dal_test::test_harness::create_prop_without_ui_optionals(
-//         ctx,
-//         "source",
-//         PropKind::String,
-//         schema_variant_id,
-//         Some(*object_prop.id()),
-//     )
-//     .await;
-//     let destination_prop = dal_test::test_harness::create_prop_without_ui_optionals(
-//         ctx,
-//         "destination",
-//         PropKind::String,
-//         schema_variant_id,
-//         Some(*object_prop.id()),
-//     )
-//     .await;
-//
-//     schema_variant
-//         .finalize(ctx, None)
-//         .await
-//         .expect("cannot finalize SchemaVariant");
-//
-//     println!("Commit 1 at {:?}", initial_time.elapsed());
-//     last_checkpoint = initial_time.elapsed();
-//     ctx.blocking_commit()
-//         .await
-//         .expect("could not commit & run jobs");
-//     println!(
-//         "Executed in {:?}, {:?} since start",
-//         initial_time.elapsed() - last_checkpoint,
-//         initial_time.elapsed()
-//     );
-//
-//     // Create connection between source and destination props
-//     {
-//         let destination_attribute_value = AttributeValue::find_for_context(
-//             ctx,
-//             AttributeReadContext {
-//                 prop_id: Some(*destination_prop.id()),
-//                 ..AttributeReadContext::default()
-//             },
-//         )
-//         .await
-//         .expect("cannot get attribute value")
-//         .expect("attribute value not found");
-//
-//         // Find the prototype corresponding to the "destination" value (that corresponds to the
-//         // "destination" prop)
-//         let updated_destination_attribute_value =
-//             AttributeValue::get_by_id(ctx, destination_attribute_value.id())
-//                 .await
-//                 .expect("cannot find attribute value")
-//                 .expect("attribute value not found");
-//         let mut destination_attribute_prototype = updated_destination_attribute_value
-//             .attribute_prototype(ctx)
-//             .await
-//             .expect("cannot find attribute prototype")
-//             .expect("attribute prototype not found");
-//
-//         // Now, update the "destination" field's corresponding prototype to use the identity function
-//         // and the source internal provider.
-//         let source_internal_provider = InternalProvider::find_for_prop(ctx, *source_prop.id())
-//             .await
-//             .expect("could not get internal provider")
-//             .expect("internal provider not found");
-//         destination_attribute_prototype
-//             .set_func_id(ctx, identity_func_id)
-//             .await
-//             .expect("could not set func id on attribute prototype");
-//
-//         // With the "source" internal provider in hand and the "destination" attribute prototype setup,
-//         // we can create an argument for the latter prototype.
-//         let _argument = AttributePrototypeArgument::new_for_intra_component(
-//             ctx,
-//             *destination_attribute_prototype.id(),
-//             identity_func_argument_id,
-//             *source_internal_provider.id(),
-//         )
-//         .await
-//         .expect("could not create attribute prototype argument");
-//
-//         println!("Commit 2 at {:?}", initial_time.elapsed());
-//         last_checkpoint = initial_time.elapsed();
-//         ctx.blocking_commit()
-//             .await
-//             .expect("could not commit & run jobs");
-//         println!(
-//             "Executed in {:?}, {:?} since start",
-//             initial_time.elapsed() - last_checkpoint,
-//             initial_time.elapsed()
-//         );
-//     }
-//
-//     let (component, _) =
-//         Component::new_for_default_variant_from_schema(ctx, "starfield", *schema.id())
-//             .await
-//             .expect("unable to create component");
-//
-//     // Initialize the value corresponding to the "source" prop.
-//     {
-//         let object_attribute_value = AttributeValue::find_for_context(
-//             ctx,
-//             AttributeReadContext {
-//                 prop_id: Some(*object_prop.id()),
-//                 component_id: Some(*component.id()),
-//                 ..AttributeReadContext::default()
-//             },
-//         )
-//         .await
-//         .expect("cannot get attribute value")
-//         .expect("attribute value not found");
-//
-//         let source_attribute_value = AttributeValue::find_for_context(
-//             ctx,
-//             AttributeReadContext {
-//                 prop_id: Some(*destination_prop.id()),
-//                 component_id: Some(*component.id()),
-//                 ..AttributeReadContext::default()
-//             },
-//         )
-//         .await
-//         .expect("cannot get attribute value")
-//         .expect("attribute value not found");
-//
-//         let value =
-//             serde_json::to_value("Initial value").expect("could not convert to serde_json::Value");
-//         AttributeValue::update_for_context(
-//             ctx,
-//             *source_attribute_value.id(),
-//             Some(*object_attribute_value.id()),
-//             AttributeContextBuilder::from(AttributeReadContext {
-//                 prop_id: Some(*source_prop.id()),
-//                 component_id: Some(*component.id()),
-//                 ..AttributeReadContext::default()
-//             })
-//             .to_context()
-//             .expect("could not convert builder to attribute context"),
-//             Some(value),
-//             None,
-//         )
-//         .await
-//         .expect("cannot update value for context");
-//
-//         println!("Commit 3 at {:?}", initial_time.elapsed());
-//         last_checkpoint = initial_time.elapsed();
-//         ctx.blocking_commit()
-//             .await
-//             .expect("could not commit & run jobs");
-//         println!(
-//             "Executed in {:?}, {:?} since start",
-//             initial_time.elapsed() - last_checkpoint,
-//             initial_time.elapsed()
-//         );
-//     }
-//
-//     // Ensure that both source and destination were updated.
-//     assert_eq!(
-//         serde_json::json![{
-//             "si": {
-//                 "name": "starfield",
-//                 "type": "component",
-//                 "protected": false
-//             },
-//             "domain": {
-//                 "object": {
-//                     "destination": "Initial value",
-//                     "source": "Initial value",
-//                 },
-//             },
-//         }], // expected
-//         ComponentView::new(ctx, *component.id())
-//             .await
-//             .expect("cannot get component view")
-//             .properties // actual
-//     );
-//
-//     // Override value on destination.
-//     let overriden_destination_av_id = {
-//         let destination_prop_read_ctx = AttributeReadContext {
-//             prop_id: Some(*destination_prop.id()),
-//             component_id: Some(*component.id()),
-//             ..AttributeReadContext::default()
-//         };
-//
-//         let destination_write_context = AttributeContextBuilder::from(destination_prop_read_ctx)
-//             .to_context()
-//             .expect("Unable to create destination write context");
-//         let destination_attribute_value =
-//             AttributeValue::find_for_context(ctx, destination_prop_read_ctx)
-//                 .await
-//                 .expect("Unable to get current destination")
-//                 .expect("AttributeValue not found");
-//
-//         let parent_attribute_value_id = AttributeValue::find_for_context(
-//             ctx,
-//             AttributeReadContext {
-//                 prop_id: Some(*object_prop.id()),
-//                 component_id: Some(*component.id()),
-//                 ..AttributeReadContext::default()
-//             },
-//         )
-//         .await
-//         .expect("Unable to get container attribute value")
-//         .expect("AttributeValue not found");
-//
-//         let (_, overridden_attribute_value_id) = AttributeValue::update_for_context(
-//             ctx,
-//             *destination_attribute_value.id(),
-//             Some(*parent_attribute_value_id.id()),
-//             destination_write_context,
-//             Some(serde_json::json!("Overridden value")),
-//             None,
-//         )
-//         .await
-//         .expect("Unable to update AttributeValue");
-//
-//         println!("Commit 4 at {:?}", initial_time.elapsed());
-//         last_checkpoint = initial_time.elapsed();
-//         ctx.blocking_commit()
-//             .await
-//             .expect("could not commit & run jobs");
-//         println!(
-//             "Executed in {:?}, {:?} since start",
-//             initial_time.elapsed() - last_checkpoint,
-//             initial_time.elapsed()
-//         );
-//
-//         overridden_attribute_value_id
-//     };
-//
-//     // Observe that the destination field has been updated.
-//     assert_eq!(
-//         serde_json::json![{
-//             "si": {
-//                 "name": "starfield",
-//                 "type": "component",
-//                 "protected": false
-//             },
-//             "domain": {
-//                 "object": {
-//                     "destination": "Overridden value",
-//                     "source": "Initial value",
-//                 },
-//             },
-//         }], // expected
-//         ComponentView::new(ctx, *component.id())
-//             .await
-//             .expect("cannot get component view")
-//             .properties // actual
-//     );
-//
-//     // Reset destination to value from source
-//     {
-//         AttributeValue::use_default_prototype(ctx, overriden_destination_av_id)
-//             .await
-//             .expect("Unable to clear override");
-//
-//         println!("Commit 5 at {:?}", initial_time.elapsed());
-//         last_checkpoint = initial_time.elapsed();
-//         ctx.blocking_commit()
-//             .await
-//             .expect("could not commit & run jobs");
-//         println!(
-//             "Executed in {:?}, {:?} since start",
-//             initial_time.elapsed() - last_checkpoint,
-//             initial_time.elapsed()
-//         );
-//     }
-//
-//     // Observe that destination fields is back to value from source.
-//     assert_eq!(
-//         serde_json::json![{
-//             "si": {
-//                 "name": "starfield",
-//                 "type": "component",
-//                 "protected": false
-//             },
-//             "domain": {
-//                 "object": {
-//                     "destination": "Initial value",
-//                     "source": "Initial value",
-//                 },
-//             },
-//         }], // expected
-//         ComponentView::new(ctx, *component.id())
-//             .await
-//             .expect("cannot get component view")
-//             .properties // actual
-//     );
-// }
+#[test]
+async fn use_default_prototype(ctx: &DalContext) {
+    let initial_time = std::time::Instant::now();
+    let mut last_checkpoint = initial_time.elapsed();
+
+    let (identity_func_id, _, _, identity_func_argument_id) = setup_identity_func(ctx).await;
+
+    let mut schema = create_schema(ctx).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+        .await
+        .expect("cannot set default schema variant");
+    let schema_variant_id = *schema_variant.id();
+
+    // domain: Object
+    // └─ object: Object
+    //    ├─ source: String
+    //    └─ destination: String
+    let object_prop = dal_test::test_harness::create_prop_without_ui_optionals(
+        ctx,
+        "object",
+        PropKind::Object,
+        schema_variant_id,
+        Some(root_prop.domain_prop_id),
+    )
+    .await;
+    let source_prop = dal_test::test_harness::create_prop_without_ui_optionals(
+        ctx,
+        "source",
+        PropKind::String,
+        schema_variant_id,
+        Some(*object_prop.id()),
+    )
+    .await;
+    let destination_prop = dal_test::test_harness::create_prop_without_ui_optionals(
+        ctx,
+        "destination",
+        PropKind::String,
+        schema_variant_id,
+        Some(*object_prop.id()),
+    )
+    .await;
+
+    schema_variant
+        .finalize(ctx, None)
+        .await
+        .expect("cannot finalize SchemaVariant");
+
+    println!("Commit 1 at {:?}", initial_time.elapsed());
+    last_checkpoint = initial_time.elapsed();
+    ctx.blocking_commit()
+        .await
+        .expect("could not commit & run jobs");
+    println!(
+        "Executed in {:?}, {:?} since start",
+        initial_time.elapsed() - last_checkpoint,
+        initial_time.elapsed()
+    );
+
+    // Create connection between source and destination props
+    {
+        let destination_attribute_value = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext {
+                prop_id: Some(*destination_prop.id()),
+                ..AttributeReadContext::default()
+            },
+        )
+        .await
+        .expect("cannot get attribute value")
+        .expect("attribute value not found");
+
+        // Find the prototype corresponding to the "destination" value (that corresponds to the
+        // "destination" prop)
+        let updated_destination_attribute_value =
+            AttributeValue::get_by_id(ctx, destination_attribute_value.id())
+                .await
+                .expect("cannot find attribute value")
+                .expect("attribute value not found");
+        let mut destination_attribute_prototype = updated_destination_attribute_value
+            .attribute_prototype(ctx)
+            .await
+            .expect("cannot find attribute prototype")
+            .expect("attribute prototype not found");
+
+        // Now, update the "destination" field's corresponding prototype to use the identity function
+        // and the source internal provider.
+        let source_internal_provider = InternalProvider::find_for_prop(ctx, *source_prop.id())
+            .await
+            .expect("could not get internal provider")
+            .expect("internal provider not found");
+        destination_attribute_prototype
+            .set_func_id(ctx, identity_func_id)
+            .await
+            .expect("could not set func id on attribute prototype");
+
+        // With the "source" internal provider in hand and the "destination" attribute prototype setup,
+        // we can create an argument for the latter prototype.
+        let _argument = AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *destination_attribute_prototype.id(),
+            identity_func_argument_id,
+            *source_internal_provider.id(),
+        )
+        .await
+        .expect("could not create attribute prototype argument");
+
+        println!("Commit 2 at {:?}", initial_time.elapsed());
+        last_checkpoint = initial_time.elapsed();
+        ctx.blocking_commit()
+            .await
+            .expect("could not commit & run jobs");
+        println!(
+            "Executed in {:?}, {:?} since start",
+            initial_time.elapsed() - last_checkpoint,
+            initial_time.elapsed()
+        );
+    }
+
+    let (component, _) =
+        Component::new_for_default_variant_from_schema(ctx, "starfield", *schema.id())
+            .await
+            .expect("unable to create component");
+
+    // Initialize the value corresponding to the "source" prop.
+    {
+        let object_attribute_value = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext {
+                prop_id: Some(*object_prop.id()),
+                component_id: Some(*component.id()),
+                ..AttributeReadContext::default()
+            },
+        )
+        .await
+        .expect("cannot get attribute value")
+        .expect("attribute value not found");
+
+        let source_attribute_value = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext {
+                prop_id: Some(*destination_prop.id()),
+                component_id: Some(*component.id()),
+                ..AttributeReadContext::default()
+            },
+        )
+        .await
+        .expect("cannot get attribute value")
+        .expect("attribute value not found");
+
+        let value =
+            serde_json::to_value("Initial value").expect("could not convert to serde_json::Value");
+        AttributeValue::update_for_context(
+            ctx,
+            *source_attribute_value.id(),
+            Some(*object_attribute_value.id()),
+            AttributeContextBuilder::from(AttributeReadContext {
+                prop_id: Some(*source_prop.id()),
+                component_id: Some(*component.id()),
+                ..AttributeReadContext::default()
+            })
+            .to_context()
+            .expect("could not convert builder to attribute context"),
+            Some(value),
+            None,
+        )
+        .await
+        .expect("cannot update value for context");
+
+        println!("Commit 3 at {:?}", initial_time.elapsed());
+        last_checkpoint = initial_time.elapsed();
+        ctx.blocking_commit()
+            .await
+            .expect("could not commit & run jobs");
+        println!(
+            "Executed in {:?}, {:?} since start",
+            initial_time.elapsed() - last_checkpoint,
+            initial_time.elapsed()
+        );
+    }
+
+    // Ensure that both source and destination were updated.
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "starfield",
+                "type": "component",
+                "protected": false
+            },
+            "domain": {
+                "object": {
+                    "destination": "Initial value",
+                    "source": "Initial value",
+                },
+            },
+        }], // expected
+        ComponentView::new(ctx, *component.id())
+            .await
+            .expect("cannot get component view")
+            .properties // actual
+    );
+
+    // Override value on destination.
+    let overriden_destination_av_id = {
+        let destination_prop_read_ctx = AttributeReadContext {
+            prop_id: Some(*destination_prop.id()),
+            component_id: Some(*component.id()),
+            ..AttributeReadContext::default()
+        };
+
+        let destination_write_context = AttributeContextBuilder::from(destination_prop_read_ctx)
+            .to_context()
+            .expect("Unable to create destination write context");
+        let destination_attribute_value =
+            AttributeValue::find_for_context(ctx, destination_prop_read_ctx)
+                .await
+                .expect("Unable to get current destination")
+                .expect("AttributeValue not found");
+
+        let parent_attribute_value_id = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext {
+                prop_id: Some(*object_prop.id()),
+                component_id: Some(*component.id()),
+                ..AttributeReadContext::default()
+            },
+        )
+        .await
+        .expect("Unable to get container attribute value")
+        .expect("AttributeValue not found");
+
+        let (_, overridden_attribute_value_id) = AttributeValue::update_for_context(
+            ctx,
+            *destination_attribute_value.id(),
+            Some(*parent_attribute_value_id.id()),
+            destination_write_context,
+            Some(serde_json::json!("Overridden value")),
+            None,
+        )
+        .await
+        .expect("Unable to update AttributeValue");
+
+        println!("Commit 4 at {:?}", initial_time.elapsed());
+        last_checkpoint = initial_time.elapsed();
+        ctx.blocking_commit()
+            .await
+            .expect("could not commit & run jobs");
+        println!(
+            "Executed in {:?}, {:?} since start",
+            initial_time.elapsed() - last_checkpoint,
+            initial_time.elapsed()
+        );
+
+        overridden_attribute_value_id
+    };
+
+    // Observe that the destination field has been updated.
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "starfield",
+                "type": "component",
+                "protected": false
+            },
+            "domain": {
+                "object": {
+                    "destination": "Overridden value",
+                    "source": "Initial value",
+                },
+            },
+        }], // expected
+        ComponentView::new(ctx, *component.id())
+            .await
+            .expect("cannot get component view")
+            .properties // actual
+    );
+
+    // Reset destination to value from source
+    {
+        AttributeValue::use_default_prototype(ctx, overriden_destination_av_id)
+            .await
+            .expect("Unable to clear override");
+
+        println!("Commit 5 at {:?}", initial_time.elapsed());
+        last_checkpoint = initial_time.elapsed();
+        ctx.blocking_commit()
+            .await
+            .expect("could not commit & run jobs");
+        println!(
+            "Executed in {:?}, {:?} since start",
+            initial_time.elapsed() - last_checkpoint,
+            initial_time.elapsed()
+        );
+    }
+
+    // Observe that destination fields is back to value from source.
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "starfield",
+                "type": "component",
+                "protected": false
+            },
+            "domain": {
+                "object": {
+                    "destination": "Initial value",
+                    "source": "Initial value",
+                },
+            },
+        }], // expected
+        ComponentView::new(ctx, *component.id())
+            .await
+            .expect("cannot get component view")
+            .properties // actual
+    );
+}
