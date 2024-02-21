@@ -62,7 +62,7 @@ impl Component {
             let code_map: HashMap<String, CodeGenerationEntry> =
                 serde_json::from_value(code_map_value)?;
 
-            for entry in code_map.values() {
+            for (func_name, entry) in code_map {
                 // When a new code gen function is craeted the code/format entries will not yet be
                 // set, so just ignore them in the loop here. Function return value type checking
                 // should ensure that the executed function does not unset these itself.
@@ -90,7 +90,7 @@ impl Component {
 
                 let message = entry.message.clone();
 
-                code_views.push(CodeView::new(language, code, message));
+                code_views.push(CodeView::new(language, code, message, Some(func_name)));
             }
         } else {
             return Ok((vec![], false));
