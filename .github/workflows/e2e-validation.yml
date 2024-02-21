@@ -42,7 +42,7 @@ jobs:
         run: |
           pnpm i
           pnpm install cypress
-          npx cypress run --spec "cypress/e2e/4-value-propogation/value-attribute-propogation.cy.ts" --record --key ${{ secrets.CYPRESS_RECORD_KEY }}
+          npx cypress run --spec "cypress/e2e/**"
 
       # TODO(johnrwatson): Enable this when we're happy with the synthetic above
       #- name: Send PagerDuty alert on failure
