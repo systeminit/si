@@ -939,7 +939,7 @@ watch(
     if (!panToComponent) return;
 
     const key =
-      panToComponent.nodeType === ComponentType.Component
+      panToComponent.componentType === ComponentType.Component
         ? DiagramNodeData.generateUniqueKey(panToComponent.id)
         : DiagramGroupData.generateUniqueKey(panToComponent.id);
 
@@ -1237,7 +1237,7 @@ function endDragElements() {
 
     // dragging onto root - ie detach from all parents
     if (!cursorWithinGroupKey.value) {
-      if (el.def.parentNodeId) {
+      if (el.def.parentId) {
         componentsStore.DETACH_COMPONENT(el.def.componentId);
       }
     } else {
@@ -1245,7 +1245,7 @@ function endDragElements() {
         cursorWithinGroupKey.value
       ] as DiagramGroupData;
 
-      if (el.def.parentComponentId !== newParent?.def.componentId) {
+      if (el.def.parentId !== newParent?.def.componentId) {
         componentsStore.CONNECT_COMPONENT_TO_FRAME(el.def.id, newParent.def.id);
       }
     }
@@ -1265,7 +1265,7 @@ function endDragElements() {
       // for now only dealing with nodes... will be fixed later
       const childEls = _.filter(
         [...nodes.value, ...groups.value],
-        (n) => n.def.parentNodeId === el.def.id,
+        (n) => n.def.parentId === el.def.id,
       );
       _.each(childEls, (childEl) => {
         sendMovedElementPosition({
@@ -1353,7 +1353,7 @@ function onDragElementsMove() {
         const parent = queue.shift();
         const x = _.filter(
           groups.value,
-          (n) => n.def.parentNodeId === parent?.def.id,
+          (n) => n.def.parentId === parent?.def.id,
         );
         _.each(x, (childGroup) => {
           if (cycleCheck.has(childGroup.def.id)) return;
@@ -1362,17 +1362,11 @@ function onDragElementsMove() {
         });
       }
 
-      const nodeChildrenOfGroups = _.filter(
-        nodes.value,
-        (n) =>
-          _.find(includedGroups, (g) => g.def.id === n.def.parentNodeId) !==
-          undefined,
-      );
-
-      const childEls = _.concat(
-        _.filter(nodes.value, (n) => n.def.parentNodeId === el.def.id),
-        includedGroups,
-        nodeChildrenOfGroups,
+      // TODO(victor) This can be optimized
+      const childEls: DiagramNodeData[] = _.compact(
+        _.map(el.def.childIds, (childId) =>
+          nodes.value.find((n) => n.def.id === childId),
+        ),
       );
 
       const actualParentDelta = vectorBetween(
@@ -1609,7 +1603,7 @@ watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
   const boxDictionary: Record<string, IRect> = {};
 
   for (const group of groups.value) {
-    const childIds = group.def.childNodeIds;
+    const childIds = group.def.childIds;
     if (!childIds) continue;
 
     let top;
@@ -1922,7 +1916,7 @@ function onResizeMove() {
   }
 
   // Make sure the frame doesn't get larger than parent
-  const parentId = node.parentComponentId;
+  const parentId = node.parentId;
 
   if (parentId) {
     // Resized element with top-left corner xy coordinates instead of top-center
@@ -2127,17 +2121,17 @@ async function endDrawEdge() {
     ? drawEdgeFromSocket.value
     : drawEdgeToSocket.value;
 
-  const fromNodeId = adjustedFrom.parent.def.id;
+  const fromComponentId = adjustedFrom.parent.def.id;
   const fromSocketId = adjustedFrom.def.id;
-  const toNodeId = adjustedTo.parent.def.id;
+  const toComponentId = adjustedTo.parent.def.id;
   const toSocketId = adjustedTo.def.id;
 
   const equivalentEdge = _.find(
     edges.value,
     (e) =>
-      e.def.fromNodeId === fromNodeId &&
+      e.def.fromComponentId === fromComponentId &&
       e.def.fromSocketId === fromSocketId &&
-      e.def.toNodeId === toNodeId &&
+      e.def.toComponentId === toComponentId &&
       e.def.toSocketId === toSocketId,
   );
 
@@ -2148,11 +2142,11 @@ async function endDrawEdge() {
   } else {
     await componentsStore.CREATE_COMPONENT_CONNECTION(
       {
-        nodeId: fromNodeId,
+        componentId: fromComponentId,
         socketId: fromSocketId,
       },
       {
-        nodeId: toNodeId,
+        componentId: toComponentId,
         socketId: toSocketId,
       },
     );
@@ -2216,11 +2210,11 @@ async function triggerInsertElement() {
 
   if (parentGroupId) {
     const parentComponent = Object.values(componentsStore.componentsById).find(
-      (c) => c.nodeId === parentGroupId,
+      (c) => c.id === parentGroupId,
     );
     if (
       parentComponent &&
-      (parentComponent.nodeType !== ComponentType.AggregationFrame ||
+      (parentComponent.componentType !== ComponentType.AggregationFrame ||
         schemaId === parentComponent.schemaId)
     ) {
       parentId = parentGroupId;
@@ -2269,7 +2263,7 @@ const nodes = computed(() =>
   _.map(
     _.filter(
       componentsStore.diagramNodes,
-      (n) => n.nodeType === ComponentType.Component,
+      (n) => n.componentType === ComponentType.Component,
     ),
     (nodeDef) => new DiagramNodeData(nodeDef),
   ),
@@ -2278,7 +2272,7 @@ const groups = computed(() => {
   const allGroups = _.map(
     _.filter(
       componentsStore.diagramNodes,
-      (n) => n.nodeType !== ComponentType.Component,
+      (n) => n.componentType !== ComponentType.Component,
     ),
     (groupDef) => new DiagramGroupData(groupDef),
   );
@@ -2332,11 +2326,10 @@ function getDiagramElementKeyForComponentId(componentId?: ComponentId | null) {
   if (!componentId) return;
   const component = componentsStore.componentsById[componentId];
   if (component) {
-    // TODO: get rid of node id!
     if (component.isGroup) {
-      return DiagramGroupData.generateUniqueKey(component.nodeId);
+      return DiagramGroupData.generateUniqueKey(component.id);
     }
-    return DiagramNodeData.generateUniqueKey(component.nodeId);
+    return DiagramNodeData.generateUniqueKey(component.id);
   }
 }
 

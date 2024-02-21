@@ -20,8 +20,8 @@ use dal::schema::variant::definition::SchemaVariantDefinitionId;
 use dal::{
     property_editor::values::PropertyEditorValue, socket::SocketEdgeKind, AttributeValue,
     AttributeValueId, ComponentId, ComponentType, ComponentView, ComponentViewProperties,
-    DalContext, Diagram, NodeId, Prop, PropKind, Schema, SchemaId, SchemaVariantId, Socket,
-    StandardModel, Visibility,
+    DalContext, Diagram, Prop, PropKind, Schema, SchemaId, SchemaVariantId, Socket, StandardModel,
+    Visibility,
 };
 use names::{Generator, Name};
 use sdf_server::service::change_set::list_queued_actions::{
@@ -71,7 +71,6 @@ use crate::service_tests::{
 /// for use in scenario tests.
 struct ComponentBag {
     pub component_id: ComponentId,
-    pub node_id: NodeId,
 }
 
 struct AssetBag {
@@ -90,7 +89,6 @@ impl From<CreateNodeResponse> for ComponentBag {
     fn from(response: CreateNodeResponse) -> Self {
         Self {
             component_id: response.component_id,
-            node_id: response.node_id,
         }
     }
 }
@@ -365,40 +363,40 @@ impl ScenarioHarness {
         response
     }
 
-    /// Create a "connection" between two [`Nodes`](dal::Node) via a matching
+    /// Create a "connection" between two [`Components`](dal::Component) via a matching
     /// [`Socket`](dal::Socket).
     pub async fn create_connection(
         &self,
         ctx: &DalContext,
-        source_node_id: NodeId,
-        destination_node_id: NodeId,
+        source_component_id: ComponentId,
+        destination_component_id: ComponentId,
         shared_socket_name: &str,
     ) {
         ctx.blocking_commit().await.expect("unable to commit");
 
-        let source_socket = Socket::find_by_name_for_edge_kind_and_node(
+        let source_socket = Socket::find_by_name_for_edge_kind_and_component(
             ctx,
             shared_socket_name,
             SocketEdgeKind::ConfigurationOutput,
-            source_node_id,
+            source_component_id,
         )
         .await
         .expect("could not perform query")
         .expect("could not find socket");
-        let destination_socket = Socket::find_by_name_for_edge_kind_and_node(
+        let destination_socket = Socket::find_by_name_for_edge_kind_and_component(
             ctx,
             shared_socket_name,
             SocketEdgeKind::ConfigurationInput,
-            destination_node_id,
+            destination_component_id,
         )
         .await
         .expect("could not perform query")
         .expect("could not find socket");
 
         let request = CreateConnectionRequest {
-            from_node_id: source_node_id,
+            from_component_id: source_component_id,
             from_socket_id: *source_socket.id(),
-            to_node_id: destination_node_id,
+            to_component_id: destination_component_id,
             to_socket_id: *destination_socket.id(),
             visibility: *ctx.visibility(),
         };
@@ -484,13 +482,13 @@ impl ScenarioHarness {
         save_variant_def_response.into()
     }
 
-    /// Create a [`Component`](dal::Component) and [`Node`](dal::Node) for a given
-    /// [`Schema`](dal::Schema). Optionally "place" the [`Node`](dal::Node) into a "frame".
-    pub async fn create_node(
+    /// Create a [`Component`](dal::Component) for a given
+    /// [`Schema`](dal::Schema). Optionally "place" the [`Component`](dal::Component) into a "frame".
+    pub async fn create_component(
         &mut self,
         visibility: &Visibility,
         schema_name: &str,
-        frame_node_id: Option<NodeId>,
+        frame_id: Option<ComponentId>,
     ) -> ComponentBag {
         let schema_id = *self
             .schemas
@@ -498,7 +496,7 @@ impl ScenarioHarness {
             .expect("could not find schema by name");
         let request = CreateNodeRequest {
             schema_id,
-            parent_id: frame_node_id,
+            parent_id: frame_id,
             x: "0".to_string(),
             y: "0".to_string(),
             visibility: *visibility,

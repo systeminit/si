@@ -3,8 +3,7 @@ use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use dal::component::frame::{Connection, Frame};
-use dal::diagram::NodeId;
-use dal::{ChangeSet, Visibility};
+use dal::{ChangeSet, ComponentId, Visibility};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 
@@ -13,8 +12,8 @@ use super::DiagramResult;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateFrameConnectionRequest {
-    pub child_node_id: NodeId,
-    pub parent_node_id: NodeId,
+    pub child_id: ComponentId,
+    pub parent_id: ComponentId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -39,7 +38,7 @@ pub async fn connect_component_to_frame(
     let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     // Connect children to parent through frame edge
-    Frame::attach_child_to_parent(&ctx, request.parent_node_id, request.child_node_id).await?;
+    Frame::attach_child_to_parent(&ctx, request.parent_id, request.child_id).await?;
 
     ctx.commit().await?;
 

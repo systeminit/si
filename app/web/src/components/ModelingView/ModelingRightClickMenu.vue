@@ -35,7 +35,7 @@ const {
 
 function typeDisplayName(action = "delete") {
   if (selectedComponentId.value && selectedComponent.value) {
-    if (selectedComponent.value.nodeType === ComponentType.Component)
+    if (selectedComponent.value.componentType === ComponentType.Component)
       return "Component";
     else return "Frame";
   } else if (selectedComponentIds.value.length) {
@@ -45,7 +45,7 @@ function typeDisplayName(action = "delete") {
         : restorableSelectedComponents.value;
 
     for (const c of components) {
-      if (c.nodeType === ComponentType.Component) return "Component"; // if we have both frames and components, just use the word component
+      if (c.componentType === ComponentType.Component) return "Component"; // if we have both frames and components, just use the word component
     }
 
     return "Frame";

@@ -1,7 +1,8 @@
 use axum::Router;
+use pretty_assertions_sorted::assert_eq;
+
 use dal::FixCompletionStatus;
 use dal_test::{sdf_test, AuthToken, DalContextHead};
-use pretty_assertions_sorted::assert_eq;
 
 use crate::service_tests::scenario::ScenarioHarness;
 
@@ -27,9 +28,11 @@ async fn model_and_fix_flow_aws_key_pair(
         .await;
 
     // Create all AWS components.
-    let region = harness.create_node(ctx.visibility(), "Region", None).await;
+    let region = harness
+        .create_component(ctx.visibility(), "Region", None)
+        .await;
     let key_pair = harness
-        .create_node(ctx.visibility(), "Key Pair", Some(region.node_id))
+        .create_component(ctx.visibility(), "Key Pair", Some(region.component_id))
         .await;
 
     // Update property editor values.

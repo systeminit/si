@@ -26,8 +26,8 @@ const componentsStore = useComponentsStore();
 const edge = computed(() => componentsStore.edgesById[props.edgeId]);
 
 const fromComponent = computed(() =>
-  edge.value?.fromNodeId
-    ? componentsStore.componentsByNodeId[edge.value.fromNodeId]
+  edge.value?.fromComponentId
+    ? componentsStore.componentsById[edge.value.fromComponentId]
     : undefined,
 );
 const fromSchema = computed(() =>
@@ -42,8 +42,8 @@ const fromSocket = computed(() =>
   ),
 );
 const toComponent = computed(() =>
-  edge.value?.toNodeId
-    ? componentsStore.componentsByNodeId[edge.value.toNodeId]
+  edge.value?.toComponentId
+    ? componentsStore.componentsById[edge.value.toComponentId]
     : undefined,
 );
 // const toSchema = computed(
@@ -78,10 +78,12 @@ const toComponent = computed(() =>
     margin-left: (-@socket-size / 2 - 1);
     left: 0;
   }
+
   &::before {
     top: 0;
     margin-top: -(@socket-size / 2);
   }
+
   &::after {
     margin-bottom: -(@socket-size / 2);
     bottom: 0;

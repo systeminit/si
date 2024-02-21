@@ -143,9 +143,12 @@ pub fn routes() -> Router<AppState> {
             "/create_connection",
             post(create_connection::create_connection),
         )
-        .route("/create_node", post(create_component::create_component))
         .route(
-            "/set_node_position",
+            "/create_component",
+            post(create_component::create_component),
+        )
+        .route(
+            "/set_component_position",
             post(set_component_position::set_component_position),
         )
         .route("/get_diagram", get(get_diagram::get_diagram))

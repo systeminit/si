@@ -39,28 +39,38 @@ async fn fix_flow_deletion(
         .create_change_set_and_update_ctx(&mut ctx, "poop2")
         .await;
     let boaster = harness
-        .create_node(ctx.visibility(), schema_name, None)
+        .create_component(ctx.visibility(), schema_name, None)
         .await;
     let derke = harness
-        .create_node(ctx.visibility(), schema_name, None)
+        .create_component(ctx.visibility(), schema_name, None)
         .await;
     let alfajer = harness
-        .create_node(ctx.visibility(), schema_name, None)
+        .create_component(ctx.visibility(), schema_name, None)
         .await;
     let leo = harness
-        .create_node(ctx.visibility(), schema_name, None)
+        .create_component(ctx.visibility(), schema_name, None)
         .await;
     let chronicle = harness
-        .create_node(ctx.visibility(), schema_name, None)
+        .create_component(ctx.visibility(), schema_name, None)
         .await;
     harness
-        .create_connection(&ctx, alfajer.node_id, boaster.node_id, "universal")
+        .create_connection(
+            &ctx,
+            alfajer.component_id,
+            boaster.component_id,
+            "universal",
+        )
         .await;
     harness
-        .create_connection(&ctx, boaster.node_id, leo.node_id, "universal")
+        .create_connection(&ctx, boaster.component_id, leo.component_id, "universal")
         .await;
     harness
-        .create_connection(&ctx, alfajer.node_id, chronicle.node_id, "universal")
+        .create_connection(
+            &ctx,
+            alfajer.component_id,
+            chronicle.component_id,
+            "universal",
+        )
         .await;
 
     let actions = harness

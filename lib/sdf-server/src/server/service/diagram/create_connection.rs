@@ -10,9 +10,9 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateConnectionRequest {
-    pub from_node_id: ComponentId,
+    pub from_component_id: ComponentId,
     pub from_socket_id: OutputSocketId,
-    pub to_node_id: ComponentId,
+    pub to_component_id: ComponentId,
     pub to_socket_id: InputSocketId,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -39,9 +39,9 @@ pub async fn create_connection(
 
     let attribute_prototype_argument_id = Component::connect(
         &ctx,
-        request.from_node_id,
+        request.from_component_id,
         request.from_socket_id,
-        request.to_node_id,
+        request.to_component_id,
         request.to_socket_id,
     )
     .await?;

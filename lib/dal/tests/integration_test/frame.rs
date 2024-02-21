@@ -83,8 +83,8 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
     let mut fallout_parent_node_id = None;
     for component in diagram.components {
         match component.schema_name.as_str() {
-            "starfield" => starfield_parent_node_id = Some(component.parent_node_id),
-            "fallout" => fallout_parent_node_id = Some(component.parent_node_id),
+            "starfield" => starfield_parent_node_id = Some(component.parent_id),
+            "fallout" => fallout_parent_node_id = Some(component.parent_id),
             schema_name => panic!(
                 "unexpected schema name for diagram component: {0}",
                 schema_name
@@ -156,7 +156,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             new_era_taylor_swift.id(),                   // expected
             new_era_taylor_swift_assembled.component_id  // actual
         );
-        assert!(new_era_taylor_swift_assembled.parent_node_id.is_none());
+        assert!(new_era_taylor_swift_assembled.parent_id.is_none());
     }
 
     // Scenario 2: create a kelce component and attach to swifty frame
@@ -201,11 +201,11 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             travis_kelce_assembled.component_id  // actual
         );
 
-        assert!(new_era_taylor_swift_assembled.parent_node_id.is_none());
+        assert!(new_era_taylor_swift_assembled.parent_id.is_none());
         assert_eq!(
             new_era_taylor_swift.id(), // expected
             travis_kelce_assembled
-                .parent_node_id
+                .parent_id
                 .expect("no parent node id")  // actual
         );
     }
@@ -257,12 +257,12 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             country_era_taylor_swift_assembled.component_id  // actual
         );
 
-        assert!(new_era_taylor_swift_assembled.parent_node_id.is_none());
-        assert!(country_era_taylor_swift_assembled.parent_node_id.is_none());
+        assert!(new_era_taylor_swift_assembled.parent_id.is_none());
+        assert!(country_era_taylor_swift_assembled.parent_id.is_none());
         assert_eq!(
             new_era_taylor_swift.id(), // expected
             travis_kelce_assembled
-                .parent_node_id
+                .parent_id
                 .expect("no parent node id")  // actual
         );
     }
@@ -325,18 +325,18 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             mama_kelce_assembled.component_id  // actual
         );
 
-        assert!(new_era_taylor_swift_assembled.parent_node_id.is_none());
-        assert!(country_era_taylor_swift_assembled.parent_node_id.is_none());
+        assert!(new_era_taylor_swift_assembled.parent_id.is_none());
+        assert!(country_era_taylor_swift_assembled.parent_id.is_none());
         assert_eq!(
             new_era_taylor_swift.id(), // expected
             travis_kelce_assembled
-                .parent_node_id
+                .parent_id
                 .expect("no parent node id")  // actual
         );
         assert_eq!(
             country_era_taylor_swift.id(), // expected
             mama_kelce_assembled
-                .parent_node_id
+                .parent_id
                 .expect("no parent node id")  // actual
         );
     }
@@ -397,23 +397,23 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             mama_kelce_assembled.component_id  // actual
         );
 
-        assert!(new_era_taylor_swift_assembled.parent_node_id.is_none());
+        assert!(new_era_taylor_swift_assembled.parent_id.is_none());
         assert_eq!(
             new_era_taylor_swift.id(),
             country_era_taylor_swift_assembled
-                .parent_node_id
+                .parent_id
                 .expect("no parent node id")
         );
         assert_eq!(
             new_era_taylor_swift.id(), // expected
             travis_kelce_assembled
-                .parent_node_id
+                .parent_id
                 .expect("no parent node id")  // actual
         );
         assert_eq!(
             country_era_taylor_swift.id(), // expected
             mama_kelce_assembled
-                .parent_node_id
+                .parent_id
                 .expect("no parent node id")  // actual
         );
     }

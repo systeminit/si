@@ -456,8 +456,8 @@ const componentsStore = useComponentsStore();
 
 const childCount = computed(() => {
   const mappedChildren = _.map(
-    props.group.def.childNodeIds,
-    (child) => componentsStore.componentsByNodeId[child],
+    props.group.def.childIds,
+    (child) => componentsStore.componentsById[child],
   );
 
   const undeletedChildren = _.filter(mappedChildren, (child) =>

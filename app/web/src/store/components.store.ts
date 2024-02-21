@@ -47,15 +47,13 @@ type SchemaVariantId = string;
 
 type RawComponent = {
   changeStatus: ChangeStatus;
-  childNodeIds: ComponentNodeId[];
   color: string;
   createdInfo: ActorAndTimestamp;
   deletedInfo?: ActorAndTimestamp;
   displayName: string;
   id: ComponentId;
-  nodeId: ComponentNodeId;
-  nodeType: ComponentType;
-  parentNodeId?: ComponentNodeId;
+  componentType: ComponentType;
+  parentId?: ComponentId;
   position: GridPoint;
   size?: Size2D;
   hasResource: boolean;
@@ -69,13 +67,9 @@ type RawComponent = {
 };
 
 export type FullComponent = RawComponent & {
-  parentNodeId?: ComponentNodeId;
-  // direct parent ID
-  parentId?: ComponentId;
   // array of parent IDs
   ancestorIds?: ComponentId[];
-  childNodeIds?: ComponentNodeId[];
-  childIds?: ComponentId[];
+  childIds: ComponentId[];
   matchesFilter: boolean;
   icon: IconNames;
   isGroup: false;
@@ -83,9 +77,9 @@ export type FullComponent = RawComponent & {
 
 type Edge = {
   id: EdgeId;
-  fromNodeId: ComponentNodeId;
+  fromComponentId: ComponentId;
   fromSocketId: SocketId;
-  toNodeId: ComponentNodeId;
+  toComponentId: ComponentId;
   toSocketId: SocketId;
   isInvisible?: boolean;
   /** change status of edge in relation to head */
@@ -296,11 +290,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               : null;
           },
           componentsById(): Record<ComponentId, FullComponent> {
-            const nodeIdToComponentId = _.mapValues(
-              _.keyBy(this.rawComponentsById, (c) => c.nodeId),
-              (c) => c.id,
-            );
-
             const getAncestorIds = (
               componentId: ComponentId,
               idsArray = [] as ComponentId[],
@@ -308,9 +297,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               const c = this.rawComponentsById[componentId];
 
               if (!c) throw new Error("what?");
-              const parentId = c.parentNodeId
-                ? nodeIdToComponentId[c.parentNodeId]
-                : undefined;
+              const parentId = c.parentId;
 
               if (parentId) {
                 return getAncestorIds(parentId, [parentId, ...idsArray]);
@@ -326,27 +313,27 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
               const ancestorIds = getAncestorIds(rc.id);
 
+              const childIds = [];
+              for (const { id: childId, parentId } of _.values(
+                this.rawComponentsById,
+              )) {
+                if (rc.id === parentId) {
+                  childIds.push(childId);
+                }
+              }
+
               return {
                 ...rc,
-                // convert "node" ids back to component ids, so we can use that in a few places
                 ancestorIds,
                 parentId: _.last(ancestorIds),
-                childIds: _.map(
-                  rc.childNodeIds,
-                  (nodeId) => nodeIdToComponentId[nodeId],
-                ),
+                childIds,
                 icon: typeIcon,
-                isGroup: rc.nodeType !== ComponentType.Component,
+                isGroup: rc.componentType !== ComponentType.Component,
               } as FullComponent;
             });
           },
           componentsByParentId(): Record<ComponentId, FullComponent[]> {
-            return _.groupBy(this.allComponents, (c) =>
-              // remapping to component id... PLEASE LETS KILL NODE ID!
-              c.parentNodeId
-                ? this.componentsByNodeId[c.parentNodeId]?.id
-                : "root",
-            );
+            return _.groupBy(this.allComponents, (c) => c.parentId ?? "root");
           },
           parentIdPathByComponentId(): Record<ComponentId, ComponentId[]> {
             const parentsLookup: Record<ComponentId, ComponentId[]> = {};
@@ -367,10 +354,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               processList(this.componentsByParentId.root, []);
             }
             return parentsLookup;
-          },
-
-          componentsByNodeId(): Record<ComponentNodeId, FullComponent> {
-            return _.keyBy(_.values(this.componentsById), (c) => c.nodeId);
           },
           allComponents(): FullComponent[] {
             return _.values(this.componentsById);
@@ -460,7 +443,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ..._.omit(component, "parentId"),
                 // swapping "id" to be node id and passing along component id separately for the diagram
                 // this is gross and needs to go, but will happen later
-                id: component.nodeId,
+                id: component.id,
                 componentId: component.id,
                 parentComponentId: component.parentId,
                 title: component.displayName,
@@ -484,14 +467,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           diagramEdges(): DiagramEdgeDef[] {
             const validEdges = _.filter(this.allEdges, (edge) => {
               return (
-                !!this.componentsByNodeId[edge.toNodeId] &&
-                !!this.componentsByNodeId[edge.fromNodeId]
+                !!this.componentsById[edge.toComponentId] &&
+                !!this.componentsById[edge.fromComponentId]
               );
             });
 
             // If edge connects inside ancestry, don't show
             return _.map(validEdges, (edge) => {
-              const fromComponent = this.componentsByNodeId[edge.fromNodeId];
+              const fromComponent = this.componentsById[edge.fromComponentId];
               if (!fromComponent)
                 throw Error(`Not finding from node for edge ${edge.id}`);
               const fromParentage = [
@@ -499,7 +482,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...(fromComponent.ancestorIds ?? []),
               ];
 
-              const toComponent = this.componentsByNodeId[edge.toNodeId];
+              const toComponent = this.componentsById[edge.toComponentId];
               if (!toComponent)
                 throw Error(`Not finding to node for edge ${edge.id}`);
               const toParentage = [
@@ -513,14 +496,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
               return { ...edge, isInvisible };
             });
-          },
-
-          edgesByFromNodeId(): Record<ComponentNodeId, Edge[]> {
-            return _.groupBy(this.allEdges, (e) => e.fromNodeId);
-          },
-
-          edgesByToNodeId(): Record<ComponentNodeId, Edge[]> {
-            return _.groupBy(this.allEdges, (e) => e.toNodeId);
           },
 
           schemaVariants: (state) => _.values(state.schemaVariantsById),
@@ -574,18 +549,19 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           getDependentComponents: (state) => (componentId: ComponentId) => {
             // TODO: this is ugly... much of this logic is duplicated in ModelingDiagram
 
-            const connectedNodes: Record<ComponentId, ComponentId[]> = {};
-            _.each(_.values(state.edgesById), (edge) => {
-              const fromNodeId = edge.fromNodeId;
-              const toNodeId = edge.toNodeId;
-              connectedNodes[fromNodeId] ||= [];
-              connectedNodes[fromNodeId]!.push(toNodeId); // eslint-disable-line @typescript-eslint/no-non-null-assertion
-            });
+            const connectedComponents: Record<ComponentId, ComponentId[]> = {};
+            _.each(
+              _.values(state.edgesById),
+              ({ fromComponentId, toComponentId }) => {
+                connectedComponents[fromComponentId] ||= [];
+                connectedComponents[fromComponentId]!.push(toComponentId); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+              },
+            );
 
             const connectedIds: ComponentId[] = [componentId];
 
             function walkGraph(id: ComponentId) {
-              const nextIds = connectedNodes[id];
+              const nextIds = connectedComponents[id];
               nextIds?.forEach((nid) => {
                 if (connectedIds.includes(nid)) return;
                 connectedIds.push(nid);
@@ -628,29 +604,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...visibilityParams,
               },
               onSuccess: (response) => {
-                // This is us calculating the childNodeIds
-                for (let x = 0; x < response.components.length; x++) {
-                  const c = response.components[x];
-                  if (c?.parentNodeId) {
-                    for (let y = 0; y < response.components.length; y++) {
-                      if (response.components[y]?.nodeId === c.parentNodeId) {
-                        if (
-                          response.components[y]?.childNodeIds.indexOf(
-                            c.nodeId,
-                          ) === -1
-                        ) {
-                          response.components[y]?.childNodeIds.push(c.nodeId);
-                        } else {
-                          if (_.isEmpty(response.components[y]?.childNodeIds)) {
-                            // @ts-ignore - we know this exists, we just checked
-                            response.components[y].childNodeIds = [c.nodeId];
-                          }
-                        }
-                        break;
-                      }
-                    }
-                  }
-                }
                 this.rawComponentsById = _.keyBy(response.components, "id");
                 this.edgesById = _.keyBy(response.edges, "id");
 
@@ -730,7 +683,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async SET_COMPONENT_DIAGRAM_POSITION(
-            nodeId: ComponentNodeId,
+            componentId: ComponentId,
             position: Vector2d,
             size?: Size2D,
           ) {
@@ -743,9 +696,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             return new ApiRequest<{ componentStats: ComponentStats }>({
               method: "post",
-              url: "diagram/set_node_position",
+              url: "diagram/set_component_position",
               params: {
-                nodeId,
+                componentId,
                 x: Math.round(position.x).toString(),
                 y: Math.round(position.y).toString(),
                 width,
@@ -770,7 +723,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async CREATE_COMPONENT(
             schemaId: string,
             position: Vector2d,
-            parentNodeId?: string,
+            parentId?: string,
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -784,11 +737,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               nodeId: ComponentNodeId;
             }>({
               method: "post",
-              url: "diagram/create_node",
+              url: "diagram/create_component",
               headers: { accept: "application/json" },
               params: {
                 schemaId,
-                parentId: parentNodeId,
+                parentId,
                 x: position.x.toString(),
                 y: position.y.toString(),
                 ...visibilityParams,
@@ -820,8 +773,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
           async CREATE_COMPONENT_CONNECTION(
-            from: { nodeId: ComponentNodeId; socketId: SocketId },
-            to: { nodeId: ComponentNodeId; socketId: SocketId },
+            from: { componentId: ComponentNodeId; socketId: SocketId },
+            to: { componentId: ComponentNodeId; socketId: SocketId },
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -842,9 +795,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               method: "post",
               url: "diagram/create_connection",
               params: {
-                fromNodeId: from.nodeId,
+                fromComponentId: from.componentId,
                 fromSocketId: from.socketId,
-                toNodeId: to.nodeId,
+                toComponentId: to.componentId,
                 toSocketId: to.socketId,
                 ...visibilityParams,
               },
@@ -863,9 +816,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 const nowTs = new Date().toISOString();
                 this.edgesById[tempId] = {
                   id: tempId,
-                  fromNodeId: from.nodeId,
+                  fromComponentId: from.componentId,
                   fromSocketId: from.socketId,
-                  toNodeId: to.nodeId,
+                  toComponentId: to.componentId,
                   toSocketId: to.socketId,
                   changeStatus: "added",
                   createdInfo: {
@@ -880,8 +833,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
           async CONNECT_COMPONENT_TO_FRAME(
-            childNodeId: ComponentNodeId,
-            parentNodeId: ComponentNodeId,
+            childId: ComponentId,
+            parentId: ComponentId,
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
@@ -892,20 +845,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               method: "post",
               url: "diagram/connect_component_to_frame",
               params: {
-                childNodeId,
-                parentNodeId,
+                childId,
+                parentId,
                 ...visibilityParams,
               },
               optimistic: () => {
-                const component =
-                  this.rawComponentsById[
-                    this.componentsByNodeId[childNodeId]?.id || ""
-                  ];
+                const component = this.rawComponentsById[childId];
                 if (!component) return;
-                const prevParentId = component?.parentNodeId;
-                component.parentNodeId = parentNodeId;
+                const prevParentId = component?.parentId;
+                component.parentId = parentId;
                 return () => {
-                  component.parentNodeId = prevParentId;
+                  component.parentId = prevParentId;
                 };
               },
             });
@@ -926,10 +876,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               optimistic: () => {
                 const component = this.rawComponentsById[componentId];
                 if (!component) return;
-                const prevParentId = component?.parentNodeId;
-                delete component.parentNodeId;
+                const prevParentId = component?.parentId;
+                delete component.parentId;
                 return () => {
-                  component.parentNodeId = prevParentId;
+                  component.parentId = prevParentId;
                 };
               },
             });
@@ -1209,9 +1159,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               params: {
                 componentIds,
                 ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                // this.componentDiffsById[componentId] = response.componentDiff;
               },
               optimistic: () => {
                 for (const componentId of componentIds) {

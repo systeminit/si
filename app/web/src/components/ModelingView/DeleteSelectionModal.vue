@@ -75,8 +75,8 @@ import {
   ErrorMessage,
   Modal,
   Stack,
-  VButton,
   useModal,
+  VButton,
 } from "@si/vue-lib/design-system";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
@@ -94,8 +94,8 @@ const { open: openModal, close } = useModal(modalRef);
 const deletionBlockedReason = computed(() => {
   const deletionSubjectHasChildren =
     componentsStore.selectedComponents?.filter((el) => {
-      const activeChildren = el.childNodeIds.filter((childId) => {
-        const child = componentsStore.componentsByNodeId[childId];
+      const activeChildren = el.childIds.filter((childId) => {
+        const child = componentsStore.componentsById[childId];
         return _.isNil(child?.deletedInfo);
       });
       return activeChildren.length > 0;

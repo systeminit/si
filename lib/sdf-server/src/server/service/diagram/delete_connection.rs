@@ -1,7 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::edge::EdgeId;
-use dal::{ChangeSet, Connection, Edge, Node, Socket, Visibility};
+use dal::{ChangeSet, Component, Connection, Edge, Socket, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -34,10 +34,7 @@ pub async fn delete_connection(
         .ok_or(DiagramError::EdgeNotFound)?;
 
     let conn = Connection::from_edge(&edge);
-    let from_component_schema = Node::get_by_id(&ctx, &conn.source.node_id)
-        .await?
-        .ok_or(DiagramError::NodeNotFound(conn.source.node_id))?
-        .component(&ctx)
+    let from_component_schema = Component::get_by_id(&ctx, &conn.source.component_id)
         .await?
         .ok_or(DiagramError::ComponentNotFound)?
         .schema(&ctx)
@@ -48,10 +45,7 @@ pub async fn delete_connection(
         .await?
         .ok_or(DiagramError::SocketNotFound)?;
 
-    let to_component_schema = Node::get_by_id(&ctx, &conn.destination.node_id)
-        .await?
-        .ok_or(DiagramError::NodeNotFound(conn.destination.node_id))?
-        .component(&ctx)
+    let to_component_schema = Component::get_by_id(&ctx, &conn.destination.component_id)
         .await?
         .ok_or(DiagramError::ComponentNotFound)?
         .schema(&ctx)
@@ -70,12 +64,12 @@ pub async fn delete_connection(
         &original_uri,
         "delete_connection",
         serde_json::json!({
-            "from_node_id": conn.source.node_id,
-            "from_node_schema_name": from_component_schema.name(),
+            "from_component_id": conn.source.component_id,
+            "from_component_schema_name": from_component_schema.name(),
             "from_socket_id": conn.source.socket_id,
             "from_socket_name": &from_socket.name(),
-            "to_node_id": conn.destination.node_id,
-            "to_node_schema_name": to_component_schema.name(),
+            "to_component_id": conn.destination.component_id,
+            "to_component_schema_name": to_component_schema.name(),
             "to_socket_id": conn.destination.socket_id,
             "to_socket_name":  &to_socket.name(),
         }),

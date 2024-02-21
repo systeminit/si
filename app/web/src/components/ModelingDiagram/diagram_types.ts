@@ -17,8 +17,6 @@ export type SideAndCornerIdentifiers =
   | "bottom-left";
 export type EdgeDisplayMode = "EDGES_OVER" | "EDGES_UNDER";
 
-export type DiagramElementTypes = "node" | "socket" | "edge";
-
 export type DiagramElementUniqueKey = string;
 
 export abstract class DiagramElementData {
@@ -95,45 +93,45 @@ export class DiagramEdgeData extends DiagramElementData {
 
   // helpers to get the unique key of the node and sockets this edge is connected to
   get fromNodeKey() {
-    const comp = useComponentsStore().componentsByNodeId[this.def.fromNodeId];
+    const comp = useComponentsStore().componentsById[this.def.fromComponentId];
     if (comp?.isGroup) {
-      return DiagramGroupData.generateUniqueKey(this.def.fromNodeId);
+      return DiagramGroupData.generateUniqueKey(this.def.fromComponentId);
     }
-    return DiagramNodeData.generateUniqueKey(this.def.fromNodeId);
+    return DiagramNodeData.generateUniqueKey(this.def.fromComponentId);
   }
 
   get toNodeKey() {
-    const comp = useComponentsStore().componentsByNodeId[this.def.toNodeId];
+    const comp = useComponentsStore().componentsById[this.def.toComponentId];
     if (comp?.isGroup) {
-      return DiagramGroupData.generateUniqueKey(this.def.toNodeId);
+      return DiagramGroupData.generateUniqueKey(this.def.toComponentId);
     }
-    return DiagramNodeData.generateUniqueKey(this.def.toNodeId);
+    return DiagramNodeData.generateUniqueKey(this.def.toComponentId);
   }
 
   get fromSocketKey() {
-    const comp = useComponentsStore().componentsByNodeId[this.def.fromNodeId];
+    const comp = useComponentsStore().componentsById[this.def.fromComponentId];
     if (comp?.isGroup) {
       return DiagramSocketData.generateUniqueKey(
-        DiagramGroupData.generateUniqueKey(this.def.fromNodeId),
+        DiagramGroupData.generateUniqueKey(this.def.fromComponentId),
         this.def.fromSocketId,
       );
     }
     return DiagramSocketData.generateUniqueKey(
-      DiagramNodeData.generateUniqueKey(this.def.fromNodeId),
+      DiagramNodeData.generateUniqueKey(this.def.fromComponentId),
       this.def.fromSocketId,
     );
   }
 
   get toSocketKey() {
-    const comp = useComponentsStore().componentsByNodeId[this.def.toNodeId];
+    const comp = useComponentsStore().componentsById[this.def.toComponentId];
     if (comp?.isGroup) {
       return DiagramSocketData.generateUniqueKey(
-        DiagramGroupData.generateUniqueKey(this.def.toNodeId),
+        DiagramGroupData.generateUniqueKey(this.def.toComponentId),
         this.def.toSocketId,
       );
     }
     return DiagramSocketData.generateUniqueKey(
-      DiagramNodeData.generateUniqueKey(this.def.toNodeId),
+      DiagramNodeData.generateUniqueKey(this.def.toComponentId),
       this.def.toSocketId,
     );
   }
@@ -172,12 +170,10 @@ export enum ComponentType {
 export type DiagramNodeDef = {
   /** unique id of the node */
   id: DiagramElementId;
-  /** unique id of the node's component */
+  /** same as id */
   componentId: ComponentId;
   /** parent frame (or whatever) id */
-  parentNodeId?: DiagramElementId;
-  /** parent frame (or whatever) id */
-  parentComponentId?: ComponentId;
+  parentId?: DiagramElementId;
   /** list of ancestor component ids */
   ancestorIds?: ComponentId[];
   /** node type within the context of the diagram */
@@ -201,13 +197,13 @@ export type DiagramNodeDef = {
   /** icon (name/slug) used to help convey node type */
   typeIcon?: string | null;
   /** type of node - define if this is a simple component or a type of frame */
-  nodeType: ComponentType;
+  componentType: ComponentType;
   /** array of icons (slug and colors) to show statuses */
   statusIcons?: DiagramStatusIcon[];
   /** if true, node shows the `loading` overlay */
   isLoading: boolean;
   /** the list of childIds related to the node */
-  childNodeIds?: DiagramElementId[];
+  childIds?: DiagramElementId[];
   /** change status of component in relation to head */
   changeStatus?: ChangeStatus;
 };
@@ -232,18 +228,13 @@ export type DiagramSocketDef = {
   // shape
 };
 
-export type DiagramContent = {
-  nodes: DiagramNodeDef[];
-  edges: DiagramEdgeDef[];
-};
-
 export type DiagramEdgeDef = {
   id: DiagramElementId;
   type?: string;
   name?: string;
-  fromNodeId: DiagramElementId;
+  fromComponentId: DiagramElementId;
   fromSocketId: DiagramElementId;
-  toNodeId: DiagramElementId;
+  toComponentId: DiagramElementId;
   toSocketId: DiagramElementId;
   isBidirectional?: boolean;
   isInvisible?: boolean;
