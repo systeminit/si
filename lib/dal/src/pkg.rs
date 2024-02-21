@@ -28,9 +28,9 @@ use crate::{
     AttributeReadContext, AttributeValueError, ChangeSetError, ChangeSetPk, ComponentError,
     ComponentId, DalContext, EdgeError, ExternalProviderError, ExternalProviderId, FuncBackendKind,
     FuncBackendResponseType, FuncBindingReturnValueError, FuncError, FuncId, InternalProviderError,
-    InternalProviderId, NodeError, PropError, PropId, PropKind, SchemaError, SchemaId,
-    SchemaVariantError, SchemaVariantId, StandardModelError, UserPk, WorkspaceError, WorkspacePk,
-    WsEvent, WsEventResult, WsPayload,
+    InternalProviderId, PropError, PropId, PropKind, SchemaError, SchemaId, SchemaVariantError,
+    SchemaVariantId, StandardModelError, UserPk, WorkspaceError, WorkspacePk, WsEvent,
+    WsEventResult, WsPayload,
 };
 
 pub mod export;
@@ -181,8 +181,6 @@ pub enum PkgError {
     MissingSocketName(String, SocketEdgeKind),
     #[error("Unique id missing for node in workspace backup: {0}")]
     MissingUniqueIdForNode(String),
-    #[error(transparent)]
-    Node(#[from] NodeError),
     #[error("Package with that hash already installed: {0}")]
     PackageAlreadyInstalled(String),
     #[error(transparent)]

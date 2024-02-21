@@ -341,10 +341,9 @@ async fn setup_esp(ctx: &DalContext) -> (ComponentBag, PropId, PropId, ExternalP
         .await
         .expect("could not commit & run jobs");
 
-    let (component, node) =
-        Component::new_for_default_variant_from_schema(ctx, "esp", *schema.id())
-            .await
-            .expect("unable to create component");
+    let component = Component::new_for_default_variant_from_schema(ctx, "esp", *schema.id())
+        .await
+        .expect("unable to create component");
 
     ctx.blocking_commit()
         .await
@@ -355,7 +354,6 @@ async fn setup_esp(ctx: &DalContext) -> (ComponentBag, PropId, PropId, ExternalP
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),
         component_id: *component.id(),
-        node_id: *node.id(),
         base_attribute_read_context: AttributeReadContext {
             prop_id: None,
             component_id: Some(*component.id()),
@@ -476,10 +474,9 @@ async fn setup_swings(ctx: &DalContext) -> (ComponentBag, PropId, InternalProvid
         .await
         .expect("could not commit & run jobs");
 
-    let (component, node) =
-        Component::new_for_default_variant_from_schema(ctx, "swings", *schema.id())
-            .await
-            .expect("unable to create component");
+    let component = Component::new_for_default_variant_from_schema(ctx, "swings", *schema.id())
+        .await
+        .expect("unable to create component");
 
     ctx.blocking_commit()
         .await
@@ -498,7 +495,6 @@ async fn setup_swings(ctx: &DalContext) -> (ComponentBag, PropId, InternalProvid
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
             component_id: *component.id(),
-            node_id: *node.id(),
             base_attribute_read_context,
         },
         *destination_prop.id(),
@@ -676,7 +672,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     .await
     .expect("cannot create prototype argument for destination");
 
-    let (source_component, _) = Component::new_for_default_variant_from_schema(
+    let source_component = Component::new_for_default_variant_from_schema(
         ctx,
         "Source Component",
         *source_schema.id(),
@@ -714,7 +710,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
             .properties,
     );
 
-    let (destination_component, _) = Component::new_for_default_variant_from_schema(
+    let destination_component = Component::new_for_default_variant_from_schema(
         ctx,
         "Destination Component",
         *destination_schema.id(),

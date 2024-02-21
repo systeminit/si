@@ -2,13 +2,11 @@ use dal::{
     component::ComponentKind,
     func::{binding::FuncBinding, FuncId},
     key_pair::KeyPairPk,
-    node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind, EncryptedSecret, Func,
-    FuncBackendKind, FuncBackendResponseType, KeyPair, Node, Prop, PropId, PropKind, Schema,
-    SchemaId, SchemaVariantId, Secret, StandardModel, User, UserPk, Visibility, Workspace,
-    WorkspacePk,
+    FuncBackendKind, FuncBackendResponseType, KeyPair, Prop, PropId, PropKind, Schema, SchemaId,
+    SchemaVariantId, Secret, StandardModel, User, UserPk, Visibility, Workspace, WorkspacePk,
 };
 use names::{Generator, Name};
 
@@ -134,10 +132,9 @@ pub async fn create_component_and_schema(ctx: &DalContext) -> Component {
         .await
         .expect("unable to finalize schema variant");
     let name = generate_fake_name();
-    let (component, _) = Component::new(ctx, &name, *schema_variant.id())
+    Component::new(ctx, &name, *schema_variant.id())
         .await
-        .expect("cannot create component");
-    component
+        .expect("cannot create component")
 }
 
 pub async fn create_component_for_schema_variant(
@@ -145,22 +142,16 @@ pub async fn create_component_for_schema_variant(
     schema_variant_id: &SchemaVariantId,
 ) -> Component {
     let name = generate_fake_name();
-    let (component, _) = Component::new(ctx, &name, *schema_variant_id)
+    Component::new(ctx, &name, *schema_variant_id)
         .await
-        .expect("cannot create component");
-    component
+        .expect("cannot create component")
 }
 
 pub async fn create_component_for_schema(ctx: &DalContext, schema_id: &SchemaId) -> Component {
     let name = generate_fake_name();
-    let (component, _) = Component::new_for_default_variant_from_schema(ctx, &name, *schema_id)
+    Component::new_for_default_variant_from_schema(ctx, &name, *schema_id)
         .await
-        .expect("cannot create component");
-    component
-}
-
-pub async fn create_node(ctx: &DalContext, node_kind: &NodeKind) -> Node {
-    Node::new(ctx, node_kind).await.expect("cannot create node")
+        .expect("cannot create component")
 }
 
 pub async fn create_func(ctx: &DalContext) -> Func {

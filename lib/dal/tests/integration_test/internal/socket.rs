@@ -50,7 +50,7 @@ async fn set_required(ctx: &DalContext) {
 }
 
 #[test]
-async fn find_frame_socket_for_node(ctx: &DalContext) {
+async fn find_frame_socket_for_component(ctx: &DalContext) {
     let schema = create_schema(ctx).await;
     let (mut schema_variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0")
         .await
@@ -59,7 +59,7 @@ async fn find_frame_socket_for_node(ctx: &DalContext) {
         .finalize(ctx, None)
         .await
         .expect("cannot finalize schema variant");
-    let (_, node) = Component::new(ctx, "Hog Island", *schema_variant.id())
+    let component = Component::new(ctx, "Hog Island", *schema_variant.id())
         .await
         .expect("could not create component");
 
@@ -91,14 +91,20 @@ async fn find_frame_socket_for_node(ctx: &DalContext) {
         maybe_expected_input_socket_id.expect("did not find expected input socket id");
 
     // Test our query.
-    let found_output_socket =
-        Socket::find_frame_socket_for_node(ctx, *node.id(), SocketEdgeKind::ConfigurationOutput)
-            .await
-            .expect("could not find frame socket for component");
-    let found_input_socket =
-        Socket::find_frame_socket_for_node(ctx, *node.id(), SocketEdgeKind::ConfigurationInput)
-            .await
-            .expect("could not find frame socket for component");
+    let found_output_socket = Socket::find_frame_socket_for_component(
+        ctx,
+        *component.id(),
+        SocketEdgeKind::ConfigurationOutput,
+    )
+    .await
+    .expect("could not find frame socket for component");
+    let found_input_socket = Socket::find_frame_socket_for_component(
+        ctx,
+        *component.id(),
+        SocketEdgeKind::ConfigurationInput,
+    )
+    .await
+    .expect("could not find frame socket for component");
     assert_eq!(
         expected_output_socket_id, // expected
         *found_output_socket.id(), // actual
@@ -147,7 +153,7 @@ async fn list_for_component(ctx: &DalContext) {
         .finalize(ctx, None)
         .await
         .expect("cannot finalize schema variant");
-    let (component, _) = Component::new(ctx, "Hog Island", *schema_variant.id())
+    let component = Component::new(ctx, "Hog Island", *schema_variant.id())
         .await
         .expect("could not create component");
 
@@ -213,25 +219,25 @@ async fn find_by_name_for_edge_kind_and_node(ctx: &DalContext) {
         .finalize(ctx, None)
         .await
         .expect("cannot finalize schema variant");
-    let (_component, node) = Component::new(ctx, "Hog Island", *schema_variant.id())
+    let component = Component::new(ctx, "Hog Island", *schema_variant.id())
         .await
         .expect("could not create component");
 
     // Test our query.
-    let found_output_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let found_output_socket = Socket::find_by_name_for_edge_kind_and_component(
         ctx,
         "output",
         SocketEdgeKind::ConfigurationOutput,
-        *node.id(),
+        *component.id(),
     )
     .await
     .expect("could not perform query")
     .expect("socket not found");
-    let found_input_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let found_input_socket = Socket::find_by_name_for_edge_kind_and_component(
         ctx,
         "input",
         SocketEdgeKind::ConfigurationInput,
-        *node.id(),
+        *component.id(),
     )
     .await
     .expect("could not perform query")

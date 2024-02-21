@@ -39,7 +39,7 @@ async fn update_for_context_simple(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let (component, _) =
+    let component =
         Component::new_for_default_variant_from_schema(ctx, "Basic component", *schema.id())
             .await
             .expect("Unable to create component");
@@ -205,7 +205,7 @@ async fn insert_for_context_simple(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let (component, _) =
+    let component =
         Component::new_for_default_variant_from_schema(ctx, "Array Component", *schema.id())
             .await
             .expect("Unable to create component");
@@ -354,7 +354,7 @@ async fn update_for_context_object(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let (component, _) =
+    let component =
         Component::new_for_default_variant_from_schema(ctx, "Basic component", *schema.id())
             .await
             .expect("Unable to create component");
@@ -570,7 +570,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let (component, _) =
+    let component =
         Component::new_for_default_variant_from_schema(ctx, "Array Component", *schema.id())
             .await
             .expect("Unable to create component");

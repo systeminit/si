@@ -179,9 +179,9 @@ pub async fn migrate_component_to_schema_variant(
         if let (Some(tail_socket_id), Some(head_socket_id)) = (tail_socket_id, head_socket_id) {
             Connection::new(
                 ctx,
-                edge.tail_node_id(),
+                edge.tail_component_id(),
                 tail_socket_id,
-                edge.head_node_id(),
+                edge.head_component_id(),
                 head_socket_id,
                 *edge.kind(),
             )

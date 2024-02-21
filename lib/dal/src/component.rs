@@ -1,9 +1,11 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use chrono::{DateTime, Utc};
+use rand::prelude::SliceRandom;
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
@@ -30,18 +32,18 @@ use crate::standard_model::object_from_row;
 use crate::ws_event::WsEventError;
 use crate::ChangeSetPk;
 use crate::{
-    diagram, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
-    standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
-    AttributePrototype, AttributePrototypeArgumentError, AttributePrototypeError,
-    AttributePrototypeId, AttributeReadContext, ComponentType, DalContext, EdgeError,
-    ExternalProviderError, FixError, FixId, Func, FuncBackendKind, FuncError, HistoryActor,
-    HistoryEventError, IndexMap, Node, NodeError, Prop, PropError, RootPropChild, Schema,
-    SchemaError, SchemaId, Socket, StandardModel, StandardModelError, Tenancy, Timestamp,
-    TransactionsError, UserPk, Visibility, WorkspaceError, WsEvent, WsEventResult, WsPayload,
+    diagram, impl_standard_model, pk, provider::internal::InternalProviderError, standard_model,
+    standard_model_accessor, standard_model_belongs_to, ActionPrototypeError, AttributeContext,
+    AttributeContextBuilderError, AttributeContextError, AttributePrototype,
+    AttributePrototypeArgumentError, AttributePrototypeError, AttributePrototypeId,
+    AttributeReadContext, ComponentType, DalContext, EdgeError, ExternalProviderError, FixError,
+    FixId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError, IndexMap, Prop,
+    PropError, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, Visibility, WorkspaceError,
+    WsEvent, WsEventResult, WsPayload,
 };
 use crate::{AttributeValueId, QualificationError};
-use crate::{Edge, FixResolverError, NodeKind};
+use crate::{Edge, FixResolverError};
 
 pub mod code;
 pub mod diff;
@@ -137,18 +139,12 @@ pub enum ComponentError {
     NameIsUnset(ComponentId),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
-    #[error("node error: {0}")]
-    NodeError(#[from] NodeError),
-    #[error("node not found for component: {0}")]
-    NodeNotFoundForComponent(ComponentId),
     #[error("no schema for component {0}")]
     NoSchema(ComponentId),
     #[error("no schema variant for component {0}")]
     NoSchemaVariant(ComponentId),
     #[error("component not found: {0}")]
     NotFound(ComponentId),
-    #[error("not found for node: {0}")]
-    NotFoundForNode(NodeId),
     /// A parent [`AttributeValue`](crate::AttributeValue) was not found for the specified
     /// [`AttributeValueId`](crate::AttributeValue).
     #[error("parent attribute value not found for attribute value: {0}")]
@@ -187,7 +183,6 @@ pub enum ComponentError {
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
-const FIND_FOR_NODE: &str = include_str!("queries/component/find_for_node.sql");
 const FIND_SI_CHILD_PROP_ATTRIBUTE_VALUE: &str =
     include_str!("queries/component/find_si_child_attribute_value.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str = include_str!("queries/component/list_for_schema_variant.sql");
@@ -246,6 +241,10 @@ pub struct Component {
     deletion_user_pk: Option<UserPk>,
     needs_destroy: bool,
     hidden: bool,
+    x: String,
+    y: String,
+    width: Option<String>,
+    height: Option<String>,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -265,7 +264,7 @@ impl_standard_model! {
 
 impl Component {
     /// The primary constructor method for creating [`Components`](Self). It returns a new
-    /// [`Component`] with a corresponding [`Node`](crate::Node).
+    /// [`Component`].
     ///
     /// If you would like to use the default [`SchemaVariant`](crate::SchemaVariant) for
     /// a [`Schema`](crate::Schema) rather than
@@ -276,7 +275,7 @@ impl Component {
         ctx: &DalContext,
         name: impl AsRef<str>,
         schema_variant_id: SchemaVariantId,
-    ) -> ComponentResult<(Self, Node)> {
+    ) -> ComponentResult<Self> {
         let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
             .await?
             .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
@@ -313,11 +312,6 @@ impl Component {
 
         let component: Component = standard_model::finish_create_from_row(ctx, row).await?;
 
-        // Need to flesh out node so that the template data is also included in the node we
-        // persist. But it isn't, - our node is anemic.
-        let node = Node::new(ctx, &NodeKind::Configuration).await?;
-        node.set_component(ctx, component.id()).await?;
-
         for prop in Prop::validation_props(ctx, *component.id()).await? {
             Prop::run_validation(
                 ctx,
@@ -341,17 +335,11 @@ impl Component {
         ))
         .await?;
 
-        diagram::summary_diagram::create_component_entry(
-            ctx,
-            &component,
-            &node,
-            &schema,
-            &schema_variant,
-        )
-        .await
-        .map_err(|e| ComponentError::SummaryDiagram(e.to_string()))?;
+        diagram::summary_diagram::create_component_entry(ctx, &component, &schema, &schema_variant)
+            .await
+            .map_err(|e| ComponentError::SummaryDiagram(e.to_string()))?;
 
-        Ok((component, node))
+        Ok(component)
     }
 
     pub async fn root_attribute_value(&self, ctx: &DalContext) -> ComponentResult<AttributeValue> {
@@ -410,7 +398,7 @@ impl Component {
         ctx: &DalContext,
         name: impl AsRef<str>,
         schema_id: SchemaId,
-    ) -> ComponentResult<(Self, Node)> {
+    ) -> ComponentResult<Self> {
         let schema = Schema::get_by_id(ctx, &schema_id)
             .await?
             .ok_or(SchemaError::NotFound(schema_id))?;
@@ -426,6 +414,10 @@ impl Component {
     standard_model_accessor!(needs_destroy, bool, ComponentResult);
     standard_model_accessor!(hidden, bool, ComponentResult);
     standard_model_accessor!(deletion_user_pk, Option<Pk(UserPk)>, ComponentResult);
+    standard_model_accessor!(x, String, ComponentResult);
+    standard_model_accessor!(y, String, ComponentResult);
+    standard_model_accessor!(width, Option<String>, ComponentResult);
+    standard_model_accessor!(height, Option<String>, ComponentResult);
 
     standard_model_belongs_to!(
         lookup_fn: schema,
@@ -446,14 +438,6 @@ impl Component {
         model_table: "schema_variants",
         belongs_to_id: SchemaVariantId,
         returns: SchemaVariant,
-        result: ComponentResult,
-    );
-
-    standard_model_has_many!(
-        lookup_fn: node,
-        table: "node_belongs_to_component",
-        model_table: "nodes",
-        returns: Node,
         result: ComponentResult,
     );
 
@@ -483,17 +467,6 @@ impl Component {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
-    }
-
-    /// Find [`Self`] with a provided [`NodeId`](crate::Node).
-    pub async fn find_for_node(ctx: &DalContext, node_id: NodeId) -> ComponentResult<Option<Self>> {
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_opt(FIND_FOR_NODE, &[ctx.tenancy(), ctx.visibility(), &node_id])
-            .await?;
-        Ok(standard_model::object_option_from_row_option(row)?)
     }
 
     /// Find the [`AttributeValue`](crate::AttributeValue) whose
@@ -546,7 +519,6 @@ impl Component {
             .await?;
         Ok(row.is_some())
     }
-
     pub async fn list_for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -645,6 +617,40 @@ impl Component {
             None,
         )
         .await?;
+
+        Ok(())
+    }
+
+    pub async fn set_geometry(
+        &mut self,
+        ctx: &DalContext,
+        x: impl AsRef<str>,
+        y: impl AsRef<str>,
+        width: Option<impl AsRef<str>>,
+        height: Option<impl AsRef<str>>,
+    ) -> ComponentResult<()> {
+        self.set_x(ctx, x.as_ref()).await?;
+        self.set_y(ctx, y.as_ref()).await?;
+        self.set_width(ctx, width.as_ref().map(|val| val.as_ref()))
+            .await?;
+        self.set_height(ctx, height.as_ref().map(|val| val.as_ref()))
+            .await?;
+
+        diagram::summary_diagram::component_update_geometry(
+            ctx,
+            self.id(),
+            x.as_ref(),
+            y.as_ref(),
+            width.as_ref(),
+            height.as_ref(),
+        )
+        .await
+        .map_err(|e| ComponentError::SummaryDiagram(e.to_string()))?;
+
+        WsEvent::component_updated(ctx, self.id)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
 
         Ok(())
     }
@@ -885,19 +891,19 @@ impl Component {
         component_type: ComponentType,
     ) -> ComponentResult<()> {
         //when we change the component_type we need to do 2 things:
-        //1. remove all symbollic edges to children of that component (for example if changing from a up/down frame)
-        //2. if the component has a parent, we need to create a symbollic edge between what was formerly grandparent -> child relationships
+        //1. remove all symbolic edges to children of that component (for example if changing from a up/down frame)
+        //2. if the component has a parent, we need to create a symbolic edge between what was formerly grandparent -> child relationships
 
         let edges = Edge::list_for_component(ctx, self.id).await?;
         let mut children_of_frame_connections = Vec::new();
-        let mut maybe_grandparent_node_id: Option<Edge> = None;
+        let mut maybe_edge_to_grandpa: Option<Edge> = None;
 
         for mut edge in edges {
             if *edge.kind() == EdgeKind::Symbolic {
                 if edge.tail_component_id() == self.id {
-                    // this node is a tail, so this edge is to a grandparent
+                    // this component is a tail, so this edge is to a grandparent
                     // let's grab the edge so we can create edges between any children this component has
-                    maybe_grandparent_node_id = Some(edge.clone());
+                    maybe_edge_to_grandpa = Some(edge.clone());
                 } else if edge.head_component_id() == self.id {
                     children_of_frame_connections.push(edge.clone());
                     edge.delete_and_propagate(ctx).await?;
@@ -905,14 +911,14 @@ impl Component {
             }
         }
 
-        //lets create the new symbolic edges from grandparent -> child
+        //let's create the new symbolic edges from grandparent -> child
         for edge in children_of_frame_connections {
-            if let Some(parent_edge) = &maybe_grandparent_node_id {
+            if let Some(parent_edge) = &maybe_edge_to_grandpa {
                 let _new_edge = Edge::new_for_connection(
                     ctx,
-                    parent_edge.head_node_id(),
+                    parent_edge.head_component_id(),
                     parent_edge.head_socket_id(),
-                    edge.tail_node_id(),
+                    edge.tail_component_id(),
                     edge.tail_socket_id(),
                     EdgeKind::Symbolic,
                 )
@@ -1035,11 +1041,11 @@ impl Component {
 
             if let Some(socket_to_parent) = maybe_socket_to_parent {
                 for edge in &edges_with_deleted {
-                    if edge.tail_object_id() == (*component.id()).into()
+                    if edge.tail_component_id() == *component.id()
                         && edge.tail_socket_id() == *socket_to_parent.id()
                         && (edge.visibility().deleted_at.is_some() && edge.deleted_implicitly())
                     {
-                        maybe_deleted_parent_id = Some(edge.head_object_id().into());
+                        maybe_deleted_parent_id = Some(edge.head_component_id());
                         break;
                     }
                 }
@@ -1359,6 +1365,45 @@ impl Component {
         }
 
         Ok(())
+    }
+
+    pub async fn build_graph(
+        ctx: &DalContext,
+        shuffle_edges: bool,
+    ) -> ComponentResult<HashMap<ComponentId, HashSet<ComponentId>>> {
+        let total_start = std::time::Instant::now();
+        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
+
+        // Gather all components with at least one edge.
+        let mut edges = Edge::list_for_kind(ctx_with_deleted, EdgeKind::Configuration).await?;
+        if shuffle_edges {
+            edges.shuffle(&mut thread_rng());
+        }
+
+        // Populate the components map based on all configuration edges. The "key" is every
+        // component with at least one edge. The "value" is a set of components that the "key"
+        // component depends on (i.e. the set of components are sources/tails in edges and the "key"
+        // component is the destination/head edges).
+        let mut components: HashMap<ComponentId, HashSet<ComponentId>> = HashMap::new();
+        for edge in edges {
+            components
+                .entry(edge.head_component_id())
+                .or_default()
+                .insert(edge.tail_component_id());
+        }
+
+        // Add all floating components (those without edges).
+        for potential_floating_component in Self::list(ctx_with_deleted).await? {
+            if components.get(potential_floating_component.id()).is_none() {
+                components.insert(*potential_floating_component.id(), HashSet::new());
+            }
+        }
+
+        debug!(
+            "listing topologically sorted configuration components with stable ordering took {:?}",
+            total_start.elapsed()
+        );
+        Ok(components)
     }
 }
 

@@ -91,7 +91,7 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let (component, _) = Component::new(ctx, "component", schema_variant_id)
+    let component = Component::new(ctx, "component", schema_variant_id)
         .await
         .expect("cannot create component");
 

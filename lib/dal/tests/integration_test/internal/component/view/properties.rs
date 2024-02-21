@@ -93,7 +93,7 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let (component, _) = Component::new(ctx, "component", schema_variant_id)
+    let component = Component::new(ctx, "component", schema_variant_id)
         .await
         .expect("cannot create component");
 

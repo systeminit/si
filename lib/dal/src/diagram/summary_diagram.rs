@@ -19,8 +19,8 @@ use crate::standard_model::{self, objects_from_rows};
 use crate::{
     history_event, impl_standard_model, pk, standard_model_accessor, ActorView, Component,
     ComponentError, ComponentId, ComponentStatus, DalContext, DiagramError, Edge, EdgeError,
-    HistoryActor, HistoryEventError, Node, NodeId, Schema, SchemaError, SchemaId, SchemaVariant,
-    SchemaVariantId, SocketArity, SocketId, StandardModel, StandardModelError, Tenancy, Timestamp,
+    HistoryActor, HistoryEventError, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId,
+    SocketArity, SocketId, StandardModel, StandardModelError, Tenancy, Timestamp,
     TransactionsError, Visibility,
 };
 
@@ -81,16 +81,14 @@ pub struct SummaryDiagramComponent {
     schema_variant_name: String,
     schema_category: String,
     sockets: serde_json::Value,
-    node_id: NodeId,
     display_name: String,
     position: GridPoint,
     size: Size2D,
     color: String,
-    node_type: String,
     change_status: String,
     has_resource: bool,
-    parent_node_id: Option<NodeId>,
-    child_node_ids: serde_json::Value,
+    parent_component_id: Option<ComponentId>,
+    child_component_ids: serde_json::Value,
     created_info: serde_json::Value,
     updated_info: serde_json::Value,
     deleted_info: serde_json::Value,
@@ -154,7 +152,6 @@ pub async fn update_socket_summary(
 pub async fn create_component_entry(
     ctx: &DalContext,
     component: &Component,
-    node: &Node,
     schema: &Schema,
     schema_variant: &SchemaVariant,
 ) -> SummaryDiagramResult<()> {
@@ -164,10 +161,10 @@ pub async fn create_component_entry(
     let sockets = DiagramSocket::list(ctx, schema_variant).await?;
     let display_name = component.name(ctx).await?;
     let position = GridPoint {
-        x: node.x().parse::<f64>()?.round() as isize,
-        y: node.y().parse::<f64>()?.round() as isize,
+        x: component.x().parse::<f64>()?.round() as isize,
+        y: component.y().parse::<f64>()?.round() as isize,
     };
-    let size = if let (Some(w), Some(h)) = (node.width(), node.height()) {
+    let size = if let (Some(w), Some(h)) = (component.width(), component.height()) {
         Size2D {
             height: h.parse()?,
             width: w.parse()?,
@@ -179,7 +176,6 @@ pub async fn create_component_entry(
         }
     };
     let color = component.color(ctx).await?.unwrap_or("#111111".to_string());
-    let node_type = component.get_type(ctx).await?;
 
     let change_status = ChangeStatus::Added;
 
@@ -212,7 +208,7 @@ pub async fn create_component_entry(
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_component_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)",
+            "SELECT object FROM summary_diagram_component_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
@@ -223,12 +219,10 @@ pub async fn create_component_entry(
                 &schema_variant.name(),
                 &schema_category_name,
                 &serde_json::to_value(sockets)?,
-                node.id(),
                 &display_name,
                 &serde_json::to_value(position)?,
                 &serde_json::to_value(size)?,
                 &color,
-                &node_type.to_string(),
                 &change_status.to_string(),
                 &false,
                 &serde_json::to_value(created_info)?,
@@ -242,7 +236,7 @@ pub async fn create_component_entry(
 
 pub async fn component_update_geometry(
     ctx: &DalContext,
-    node_id: &NodeId,
+    component_id: &ComponentId,
     x: impl AsRef<str>,
     y: impl AsRef<str>,
     width: Option<impl AsRef<str>>,
@@ -264,8 +258,7 @@ pub async fn component_update_geometry(
         }
     };
 
-    let _row = ctx
-        .txns()
+    ctx.txns()
         .await?
         .pg()
         .query_one(
@@ -273,7 +266,7 @@ pub async fn component_update_geometry(
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
-                &node_id,
+                &component_id,
                 &serde_json::to_value(position)?,
                 &serde_json::to_value(size)?,
             ],
@@ -372,9 +365,9 @@ pub struct SummaryDiagramEdge {
     #[serde(flatten)]
     visibility: Visibility,
     edge_id: EdgeId,
-    from_node_id: NodeId,
+    from_component_id: ComponentId,
     from_socket_id: SocketId,
-    to_node_id: NodeId,
+    to_component_id: ComponentId,
     to_socket_id: SocketId,
     change_status: String,
     created_info: serde_json::Value,
@@ -417,9 +410,9 @@ pub async fn create_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
                 ctx.tenancy(),
                 ctx.visibility(),
                 &edge.id(),
-                &edge.tail_node_id(),
+                &edge.tail_component_id(),
                 &edge.tail_socket_id(),
-                &edge.head_node_id(),
+                &edge.head_component_id(),
                 &edge.head_socket_id(),
                 &serde_json::to_value(created_info)?,
             ],
@@ -438,7 +431,7 @@ pub async fn create_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
                     ctx.tenancy(),
                     ctx.visibility(),
                     &edge.tail_component_id(),
-                    &edge.head_node_id(),
+                    &edge.head_component_id(),
                 ],
             )
             .await?;
@@ -551,7 +544,7 @@ pub async fn restore_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagram
                     ctx.tenancy(),
                     ctx.visibility(),
                     &edge.tail_component_id(),
-                    &edge.head_node_id(),
+                    &edge.head_component_id(),
                 ],
             )
             .await?;

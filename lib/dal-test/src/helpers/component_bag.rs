@@ -3,10 +3,10 @@
 //! helper functions for them by leveraging the cached information.
 
 use dal::{
-    attribute::context::AttributeContextBuilder, node::NodeId, AttributeReadContext,
-    AttributeValue, AttributeValueId, Component, ComponentId, ComponentView,
-    ComponentViewProperties, DalContext, ExternalProviderId, InternalProviderId, Node, Prop,
-    PropId, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
+    attribute::context::AttributeContextBuilder, AttributeReadContext, AttributeValue,
+    AttributeValueId, Component, ComponentId, ComponentView, ComponentViewProperties, DalContext,
+    ExternalProviderId, InternalProviderId, Prop, PropId, PropKind, Schema, SchemaId,
+    SchemaVariant, SchemaVariantId, StandardModel,
 };
 use serde_json::Value;
 use std::collections::HashMap;
@@ -48,7 +48,7 @@ impl ComponentBagger {
                 (*schema.id(), *schema_variant_id)
             });
 
-        let (component, node) = Component::new(ctx, component_name, *schema_variant_id)
+        let component = Component::new(ctx, component_name, *schema_variant_id)
             .await
             .expect("could not create component");
 
@@ -56,7 +56,6 @@ impl ComponentBagger {
             schema_id: *schema_id,
             schema_variant_id: *schema_variant_id,
             component_id: *component.id(),
-            node_id: *node.id(),
             base_attribute_read_context: AttributeReadContext {
                 prop_id: None,
                 component_id: Some(*component.id()),
@@ -73,7 +72,6 @@ pub struct ComponentBag {
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
     pub component_id: ComponentId,
-    pub node_id: NodeId,
     /// An [`AttributeReadContext`] that can be used for generating a [`ComponentView`].
     pub base_attribute_read_context: AttributeReadContext,
 }
@@ -81,14 +79,6 @@ pub struct ComponentBag {
 impl ComponentBag {
     pub fn bagger() -> ComponentBagger {
         ComponentBagger::default()
-    }
-
-    /// Gets the [`Node`](dal::Node) for [`self`](ComponentBag).
-    pub async fn node(&self, ctx: &DalContext) -> Node {
-        Node::get_by_id(ctx, &self.node_id)
-            .await
-            .expect("could not perform get by id")
-            .expect("not found")
     }
 
     /// Gets the [`Component`](dal::Component) for [`self`](ComponentBag).

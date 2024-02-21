@@ -43,8 +43,8 @@ use crate::{
     socket::SocketEdgeKind,
     ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContext, AttributeContextBuilder,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeId, AttributeReadContext,
-    AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentId,
-    DalContext, Edge, ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncError, FuncId,
+    AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentError, ComponentId,
+    DalContext, Edge, EdgeError, ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncError, FuncId,
     InternalProvider, InternalProviderError, InternalProviderId, LeafKind, Node, Prop, PropId,
     PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket,
     StandardModel, Tenancy, UserPk, Workspace, WorkspacePk,
@@ -57,7 +57,7 @@ pub enum Thing {
     ActionPrototype(ActionPrototype),
     AuthPrototype(AuthenticationPrototype),
     AttributePrototypeArgument(AttributePrototypeArgument),
-    Component((Component, Node)),
+    Component(Component),
     Edge(Edge),
     Func(Func),
     FuncArgument(FuncArgument),
@@ -297,8 +297,8 @@ async fn import_edge(
         _ => {
             if !edge_spec.deleted {
                 let head_component_unique_id = edge_spec.to_component_unique_id.clone();
-                let (_, head_node) = match thing_map.get(change_set_pk, &head_component_unique_id) {
-                    Some(Thing::Component((component, node))) => (component, node),
+                let head_component = match thing_map.get(change_set_pk, &head_component_unique_id) {
+                    Some(Thing::Component(component)) => component,
                     _ => {
                         return Err(PkgError::MissingComponentForEdge(
                             head_component_unique_id,
@@ -309,8 +309,8 @@ async fn import_edge(
                 };
 
                 let tail_component_unique_id = edge_spec.from_component_unique_id.clone();
-                let (_, tail_node) = match thing_map.get(change_set_pk, &tail_component_unique_id) {
-                    Some(Thing::Component((component, node))) => (component, node),
+                let tail_component = match thing_map.get(change_set_pk, &tail_component_unique_id) {
+                    Some(Thing::Component(component)) => component,
                     _ => {
                         return Err(PkgError::MissingComponentForEdge(
                             tail_component_unique_id,
@@ -320,11 +320,11 @@ async fn import_edge(
                     }
                 };
 
-                let to_socket = match Socket::find_by_name_for_edge_kind_and_node(
+                let to_socket = match Socket::find_by_name_for_edge_kind_and_component(
                     ctx,
                     &edge_spec.to_socket_name,
                     SocketEdgeKind::ConfigurationInput,
-                    *head_node.id(),
+                    *head_component.id(),
                 )
                 .await?
                 {
@@ -336,11 +336,11 @@ async fn import_edge(
                     }
                 };
 
-                let from_socket = match Socket::find_by_name_for_edge_kind_and_node(
+                let from_socket = match Socket::find_by_name_for_edge_kind_and_component(
                     ctx,
                     &edge_spec.from_socket_name,
                     SocketEdgeKind::ConfigurationOutput,
-                    *tail_node.id(),
+                    *tail_component.id(),
                 )
                 .await?
                 {
@@ -355,9 +355,9 @@ async fn import_edge(
                 Some(
                     Edge::new_for_connection(
                         ctx,
-                        *head_node.id(),
+                        *head_component.id(),
                         *to_socket.id(),
-                        *tail_node.id(),
+                        *tail_component.id(),
                         *from_socket.id(),
                         match edge_spec.edge_kind {
                             EdgeSpecKind::Configuration => EdgeKind::Configuration,
@@ -469,24 +469,20 @@ async fn import_component(
         }
     };
 
-    let (mut component, mut node) =
-        match thing_map.get(change_set_pk, &component_spec.unique_id.clone()) {
-            Some(Thing::Component((existing_component, node))) => {
-                (existing_component.to_owned(), node.to_owned())
-            }
-            _ => {
-                let (component, node) =
-                    Component::new(ctx, component_spec.name.clone(), *variant.id()).await?;
+    let mut component = match thing_map.get(change_set_pk, &component_spec.unique_id.clone()) {
+        Some(Thing::Component(existing_component)) => existing_component.to_owned(),
+        _ => {
+            let component = Component::new(ctx, component_spec.name.clone(), *variant.id()).await?;
 
-                thing_map.insert(
-                    change_set_pk,
-                    component_spec.unique_id.clone(),
-                    Thing::Component((component.to_owned(), node.to_owned())),
-                );
+            thing_map.insert(
+                change_set_pk,
+                component_spec.unique_id.clone(),
+                Thing::Component(component.to_owned()),
+            );
 
-                (component, node)
-            }
-        };
+            component
+        }
+    };
 
     let mut exporter = PkgExporter::new_workspace_exporter(
         "temporary",
@@ -510,13 +506,14 @@ async fn import_component(
     }
 
     let position = component_spec.position;
-    if node.x() != position.x
-        || node.y() != position.y
-        || node.height() != position.height.as_deref()
-        || node.width() != position.width.as_deref()
+    if component.x() != position.x
+        || component.y() != position.y
+        || component.height() != position.height.as_deref()
+        || component.width() != position.width.as_deref()
     {
         // Use set_geometry to ensure summary diagram gets updated positioning
-        node.set_geometry(ctx, position.x, position.y, position.width, position.height)
+        component
+            .set_geometry(ctx, position.x, position.y, position.width, position.height)
             .await?;
     }
 

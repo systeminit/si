@@ -85,7 +85,7 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let (component, _) = Component::new(ctx, "component", *schema_variant.id())
+    let component = Component::new(ctx, "component", *schema_variant.id())
         .await
         .expect("cannot create component");
 
@@ -228,7 +228,7 @@ async fn code_generation_can_handle_string_formats(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let (component, _) = Component::new(ctx, "component", *schema_variant.id())
+    let component = Component::new(ctx, "component", *schema_variant.id())
         .await
         .expect("cannot create component");
 
@@ -453,13 +453,13 @@ async fn all_code_generation_attribute_values(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let (navi_component, _) = Component::new(ctx, "navi", *navi_schema_variant.id())
+    let navi_component = Component::new(ctx, "navi", *navi_schema_variant.id())
         .await
         .expect("cannot create component");
-    let (_kru_one_component, _) = Component::new(ctx, "kru-one", *kru_schema_variant.id())
+    Component::new(ctx, "kru-one", *kru_schema_variant.id())
         .await
         .expect("cannot create component");
-    let (_kru_two_component, _) = Component::new(ctx, "kru-two", *kru_schema_variant.id())
+    Component::new(ctx, "kru-two", *kru_schema_variant.id())
         .await
         .expect("cannot create component");
 

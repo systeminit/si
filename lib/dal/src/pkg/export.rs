@@ -1443,18 +1443,13 @@ impl PkgExporter {
             return Ok(None);
         }
 
-        let node = component
-            .node(ctx)
-            .await?
-            .pop()
-            .ok_or(PkgError::ComponentMissingNode(*component.id()))?;
         component_spec_builder.variant(component_variant);
 
         let mut position_spec_builder = PositionSpec::builder();
-        position_spec_builder.x(node.x());
-        position_spec_builder.y(node.y());
-        position_spec_builder.height(node.height().map(Into::into));
-        position_spec_builder.width(node.width().map(Into::into));
+        position_spec_builder.x(component.x());
+        position_spec_builder.y(component.y());
+        position_spec_builder.height(component.height().map(Into::into));
+        position_spec_builder.width(component.width().map(Into::into));
         component_spec_builder.position(position_spec_builder.build()?);
 
         component_spec_builder.needs_destroy(component.needs_destroy());

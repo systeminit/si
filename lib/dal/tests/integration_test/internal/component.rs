@@ -31,7 +31,7 @@ async fn new(ctx: &DalContext) {
 }
 
 #[test]
-async fn new_for_schema_variant_with_node(ctx: &DalContext) {
+async fn new_for_schema_variant(ctx: &DalContext) {
     let schema = create_schema(ctx).await;
     let mut schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema_variant
@@ -39,19 +39,13 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext) {
         .await
         .expect("could not finalize schema variant");
 
-    let (component, node) = Component::new(ctx, "mastodon", *schema_variant.id())
+    let component = Component::new(ctx, "mastodon", *schema_variant.id())
         .await
         .expect("cannot create component");
 
-    // Test the find for node query.
-    let found_component = Component::find_for_node(ctx, *node.id())
+    Component::get_by_id(ctx, component.id())
         .await
-        .expect("could not find component for node")
-        .expect("component for node not found");
-    assert_eq!(
-        *found_component.id(), // actual
-        *component.id()        // expected
-    );
+        .expect("to find created component");
 }
 
 #[test]
@@ -63,12 +57,9 @@ async fn name_from_context(ctx: &DalContext) {
         .await
         .expect("could not finalize schema variant");
 
-    let (component, _) = Component::new(ctx, "mastodon", *schema_variant.id())
+    let component = Component::new(ctx, "mastodon", *schema_variant.id())
         .await
         .expect("cannot create component");
-    let _ = Component::new(ctx, "wooly mammoth", *schema_variant.id())
-        .await
-        .expect("cannot create second component");
 
     let component_name = component
         .name(ctx)
@@ -96,7 +87,7 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext) {
         .await
         .expect("could not create new change set");
     ctx.update_visibility(Visibility::new(new_change_set.pk, None));
-    let (component, _) = Component::new(ctx, generate_name(), *schema_variant.id())
+    let component = Component::new(ctx, generate_name(), *schema_variant.id())
         .await
         .expect("could not create component");
     let component_id = *component.id();
@@ -341,10 +332,10 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
         .expect("could not create new change set");
     ctx.update_visibility(Visibility::new(new_change_set.pk, None));
 
-    let (ekwb_component, _) = Component::new(ctx, "ekwb", *ekwb_schema_variant.id())
+    let ekwb_component = Component::new(ctx, "ekwb", *ekwb_schema_variant.id())
         .await
         .expect("cannot create component");
-    let (noctua_component, _) = Component::new(ctx, "noctua", *noctua_schema_variant.id())
+    let noctua_component = Component::new(ctx, "noctua", *noctua_schema_variant.id())
         .await
         .expect("cannot create component");
     let ekwb_component_id = *ekwb_component.id();
@@ -542,20 +533,20 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         .create_component(ctx, "destination", "starfield")
         .await;
 
-    let from_fallout_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let from_fallout_socket = Socket::find_by_name_for_edge_kind_and_component(
         ctx,
         "fallout",
         SocketEdgeKind::ConfigurationOutput,
-        fallout_bag.node_id,
+        fallout_bag.component_id,
     )
     .await
     .expect("could not perform socket find'")
     .expect("could not find fallout socket");
-    let to_fallout_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let to_fallout_socket = Socket::find_by_name_for_edge_kind_and_component(
         ctx,
         "fallout",
         SocketEdgeKind::ConfigurationInput,
-        starfield_bag.node_id,
+        starfield_bag.component_id,
     )
     .await
     .expect("could not perform socket find'")
@@ -563,9 +554,9 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
 
     let _connection = Connection::new(
         ctx,
-        fallout_bag.node_id,
+        fallout_bag.component_id,
         *from_fallout_socket.id(),
-        starfield_bag.node_id,
+        starfield_bag.component_id,
         *to_fallout_socket.id(),
         EdgeKind::Configuration,
     )

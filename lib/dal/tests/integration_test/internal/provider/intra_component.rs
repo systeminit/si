@@ -63,10 +63,9 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let (component, _) =
-        Component::new_for_default_variant_from_schema(ctx, "starfield", *schema.id())
-            .await
-            .expect("unable to create component");
+    let component = Component::new_for_default_variant_from_schema(ctx, "starfield", *schema.id())
+        .await
+        .expect("unable to create component");
 
     // This context can also be used for generating component views.
     let base_attribute_read_context = AttributeReadContext {
@@ -428,7 +427,7 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
     .await
     .expect("could not create attribute prototype argument");
 
-    let (component, _) = Component::new(ctx, "valkyrie-queen", *schema_variant.id())
+    let component = Component::new(ctx, "valkyrie-queen", *schema_variant.id())
         .await
         .expect("unable to create component");
 

@@ -1,22 +1,21 @@
-use serde::{Deserialize, Serialize};
-use si_data_pg::PgError;
 use std::num::{ParseFloatError, ParseIntError};
-use strum::{AsRefStr, Display, EnumString};
 
+use serde::{Deserialize, Serialize};
+use strum::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 
+use si_data_pg::PgError;
+
 use crate::change_status::ChangeStatusError;
-
 use crate::diagram::summary_diagram::{SummaryDiagramComponent, SummaryDiagramEdge};
-
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
-    AttributeValueError, ComponentError, ComponentId, DalContext, EdgeError, NodeError, NodeId,
-    NodeKind, PropError, SchemaError, SocketId, StandardModelError,
+    AttributeValueError, ComponentError, ComponentId, DalContext, EdgeError, PropError,
+    SchemaError, SocketId, StandardModelError,
 };
 
 pub mod connection;
@@ -59,12 +58,6 @@ pub enum DiagramError {
     InternalProvider(#[from] InternalProviderError),
     #[error("internal provider not found for socket id: {0}")]
     InternalProviderNotFoundForSocket(SocketId),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
-    #[error("node not found")]
-    NodeNotFound,
-    #[error("no node positions found for node ({0}) and kind ({1})")]
-    NoNodePositionsFound(NodeId, NodeKind),
     #[error(transparent)]
     ParseFloat(#[from] ParseFloatError),
     #[error(transparent)]
@@ -119,7 +112,7 @@ pub struct Diagram {
 }
 
 impl Diagram {
-    /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
+    /// Assemble a [`Diagram`](Self) based on existing [`Components`](crate::Component) and
     /// [`Connections`](crate::Connection).
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
         let components = summary_diagram::component_list(ctx)

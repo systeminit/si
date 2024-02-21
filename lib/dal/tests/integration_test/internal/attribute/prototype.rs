@@ -389,10 +389,9 @@ async fn remove_component_specific(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let (component, _) =
-        Component::new_for_default_variant_from_schema(ctx, "toddhoward", *schema.id())
-            .await
-            .expect("cannot create component");
+    let component = Component::new_for_default_variant_from_schema(ctx, "toddhoward", *schema.id())
+        .await
+        .expect("cannot create component");
 
     ctx.blocking_commit()
         .await

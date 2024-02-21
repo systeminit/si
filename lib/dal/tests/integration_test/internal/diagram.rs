@@ -1,11 +1,12 @@
-use dal::edge::EdgeKind;
-use dal::{socket::SocketEdgeKind, Connection, DalContext, Diagram, Node, Socket, StandardModel};
-use dal_test::helpers::component_bag::ComponentBagger;
-use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
+use dal::edge::EdgeKind;
+use dal::{socket::SocketEdgeKind, Connection, DalContext, Diagram, Socket, StandardModel};
+use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::test;
+
 #[test]
-async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
+async fn create_component_and_check_intra_component_intelligence(ctx: &DalContext) {
     let mut bagger = ComponentBagger::new();
     let component_bag = bagger.create_component(ctx, "13700KF", "starfield").await;
 
@@ -37,10 +38,12 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
             .expect("could not convert to value") // actual
     );
 
-    let mut node = component_bag.node(ctx).await;
-    node.set_geometry(ctx, "0", "0", Some("500"), Some("500"))
+    component_bag
+        .component(ctx)
         .await
-        .expect("Could not set node geometry");
+        .set_geometry(ctx, "0", "0", Some("500"), Some("500"))
+        .await
+        .expect("Could not set component geometry");
 
     assert_eq!(
         serde_json::json![{
@@ -73,48 +76,44 @@ async fn get_diagram_and_create_and_delete_connection(ctx: &DalContext) {
     let fallout_bag = bagger.create_component(ctx, "tail", "fallout").await;
     let starfield_bag = bagger.create_component(ctx, "head", "starfield").await;
 
-    let output_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let output_socket = Socket::find_by_name_for_edge_kind_and_component(
         ctx,
         "bethesda",
         SocketEdgeKind::ConfigurationOutput,
-        fallout_bag.node_id,
+        fallout_bag.component_id,
     )
     .await
     .expect("could not perform socket find'")
     .expect("could not find socket");
-    let input_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let input_socket = Socket::find_by_name_for_edge_kind_and_component(
         ctx,
         "bethesda",
         SocketEdgeKind::ConfigurationInput,
-        starfield_bag.node_id,
+        starfield_bag.component_id,
     )
     .await
     .expect("could not perform socket find'")
     .expect("could not find socket");
 
-    let mut fallout_node = Node::get_by_id(ctx, &fallout_bag.node_id)
+    fallout_bag
+        .component(ctx)
         .await
-        .expect("could not find node")
-        .expect("node not found");
-    fallout_node
         .set_geometry(ctx, "123", "-10", Some("500"), Some("500"))
         .await
-        .expect("cannot set node geometry");
+        .expect("cannot set geometry");
 
-    let mut starfield_node = Node::get_by_id(ctx, &starfield_bag.node_id)
+    starfield_bag
+        .component(ctx)
         .await
-        .expect("could not find node")
-        .expect("node not found");
-    starfield_node
         .set_geometry(ctx, "124", "-11", Some("500"), Some("500"))
         .await
-        .expect("cannot set node geometry");
+        .expect("cannot set component geometry");
 
     let connection = Connection::new(
         ctx,
-        fallout_bag.node_id,
+        fallout_bag.component_id,
         *output_socket.id(),
-        starfield_bag.node_id,
+        starfield_bag.component_id,
         *input_socket.id(),
         EdgeKind::Configuration,
     )
@@ -123,7 +122,7 @@ async fn get_diagram_and_create_and_delete_connection(ctx: &DalContext) {
 
     let diagram = Diagram::assemble(ctx).await.expect("cannot find diagram");
 
-    // Check the nodes.
+    // Check the component count.
     assert_eq!(diagram.components().len(), 2);
 
     // Check the connection on the diagram.
@@ -131,9 +130,12 @@ async fn get_diagram_and_create_and_delete_connection(ctx: &DalContext) {
     assert_eq!(connection.id, diagram.edges()[0].edge_id());
 
     // Check the connection itself.
-    assert_eq!(connection.source.node_id, fallout_bag.node_id);
+    assert_eq!(connection.source.component_id, fallout_bag.component_id);
     assert_eq!(connection.source.socket_id, *output_socket.id());
-    assert_eq!(connection.destination.node_id, starfield_bag.node_id);
+    assert_eq!(
+        connection.destination.component_id,
+        starfield_bag.component_id
+    );
     assert_eq!(connection.destination.socket_id, *input_socket.id());
 
     // Delete the connection
@@ -144,7 +146,7 @@ async fn get_diagram_and_create_and_delete_connection(ctx: &DalContext) {
     // let's reassemble the diagram to get the update
     let diagram = Diagram::assemble(ctx).await.expect("cannot find diagram");
 
-    // Check the nodes.
+    // Check the component count.
     assert_eq!(diagram.components().len(), 2);
 
     // Check that no connections exist on the diagram.

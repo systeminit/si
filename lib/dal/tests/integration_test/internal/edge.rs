@@ -1,7 +1,5 @@
 use dal::{
-    edge::{EdgeKind, EdgeObjectId, VertexObjectKind},
-    socket::SocketEdgeKind,
-    Connection, DalContext, Edge, Socket, StandardModel,
+    edge::EdgeKind, socket::SocketEdgeKind, Connection, DalContext, Edge, Socket, StandardModel,
 };
 use dal_test::helpers::component_bag::ComponentBagger;
 use dal_test::test;
@@ -13,20 +11,20 @@ async fn new(ctx: &DalContext) {
     let fallout_bag = bagger.create_component(ctx, "tail", "fallout").await;
     let starfield_bag = bagger.create_component(ctx, "head", "starfield").await;
 
-    let output_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let output_socket = Socket::find_by_name_for_edge_kind_and_component(
         ctx,
         "Frame",
         SocketEdgeKind::ConfigurationOutput,
-        fallout_bag.node_id,
+        fallout_bag.component_id,
     )
     .await
     .expect("could not perform socket find'")
     .expect("could not find socket");
-    let input_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let input_socket = Socket::find_by_name_for_edge_kind_and_component(
         ctx,
         "Frame",
         SocketEdgeKind::ConfigurationInput,
-        starfield_bag.node_id,
+        starfield_bag.component_id,
     )
     .await
     .expect("could not perform socket find'")
@@ -35,13 +33,9 @@ async fn new(ctx: &DalContext) {
     Edge::new(
         ctx,
         EdgeKind::Symbolic,
-        starfield_bag.node_id,
-        VertexObjectKind::Configuration,
-        EdgeObjectId::from(starfield_bag.component_id),
+        starfield_bag.component_id,
         *input_socket.id(),
-        fallout_bag.node_id,
-        VertexObjectKind::Configuration,
-        EdgeObjectId::from(fallout_bag.component_id),
+        fallout_bag.component_id,
         *output_socket.id(),
     )
     .await
@@ -67,20 +61,20 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
     let from_fallout = bagger.create_component(ctx, "from", "fallout").await;
     let to_starfield = bagger.create_component(ctx, "to", "starfield").await;
 
-    let output_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let output_socket = Socket::find_by_name_for_edge_kind_and_component(
         ctx,
         "bethesda",
         SocketEdgeKind::ConfigurationOutput,
-        from_fallout.node_id,
+        from_fallout.component_id,
     )
     .await
     .expect("could not perform socket find'")
     .expect("could not find socket");
-    let input_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let input_socket = Socket::find_by_name_for_edge_kind_and_component(
         ctx,
         "bethesda",
         SocketEdgeKind::ConfigurationInput,
-        to_starfield.node_id,
+        to_starfield.component_id,
     )
     .await
     .expect("could not perform socket find'")
@@ -88,9 +82,9 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
 
     let connection = Connection::new(
         ctx,
-        from_fallout.node_id,
+        from_fallout.component_id,
         *output_socket.id(),
-        to_starfield.node_id,
+        to_starfield.component_id,
         *input_socket.id(),
         EdgeKind::Configuration,
     )
@@ -142,7 +136,7 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    // Check that the field of the head node is empty.
+    // Check that the field of the head component is empty.
     assert_eq!(
         serde_json::json![{
              "si": {
@@ -225,20 +219,20 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let from_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let from_socket = Socket::find_by_name_for_edge_kind_and_component(
         ctx,
         "fallout",
         SocketEdgeKind::ConfigurationOutput,
-        three_bag.node_id,
+        three_bag.component_id,
     )
     .await
     .expect("could not perform socket find")
     .expect("could not find socket");
-    let to_socket = Socket::find_by_name_for_edge_kind_and_node(
+    let to_socket = Socket::find_by_name_for_edge_kind_and_component(
         ctx,
         "fallout",
         SocketEdgeKind::ConfigurationInput,
-        starfield_bag.node_id,
+        starfield_bag.component_id,
     )
     .await
     .expect("could not perform socket find")
@@ -246,9 +240,9 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
 
     let connect_from_three = Connection::new(
         ctx,
-        three_bag.node_id,
+        three_bag.component_id,
         *from_socket.id(),
-        starfield_bag.node_id,
+        starfield_bag.component_id,
         *to_socket.id(),
         EdgeKind::Configuration,
     )
@@ -257,9 +251,9 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
 
     let connect_from_new_vegas = Connection::new(
         ctx,
-        new_vegas_bag.node_id,
+        new_vegas_bag.component_id,
         *from_socket.id(),
-        starfield_bag.node_id,
+        starfield_bag.component_id,
         *to_socket.id(),
         EdgeKind::Configuration,
     )

@@ -1,23 +1,23 @@
 use serde::{Deserialize, Serialize};
-use si_data_pg::PgError;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
-use telemetry::prelude::*;
 use thiserror::Error;
 
+use si_data_pg::PgError;
 use si_pkg::SocketSpecArity;
+use telemetry::prelude::*;
 
 use crate::{
     impl_standard_model, label_list::ToLabelList, pk, standard_model, standard_model_accessor,
     standard_model_belongs_to, standard_model_many_to_many, ComponentId, DalContext, DiagramKind,
     ExternalProvider, ExternalProviderId, HistoryEventError, InternalProvider, InternalProviderId,
-    NodeId, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
+    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
     TransactionsError, Visibility,
 };
 
-const FIND_BY_NAME_FOR_EDGE_KIND_AND_NODE: &str =
-    include_str!("queries/socket/find_by_name_for_edge_kind_and_node.sql");
-const FIND_FRAME_SOCKET_FOR_NODE: &str =
-    include_str!("queries/socket/find_frame_socket_for_node.sql");
+const FIND_BY_NAME_FOR_EDGE_KIND_AND_COMPONENT: &str =
+    include_str!("queries/socket/find_by_name_for_edge_kind_and_component.sql");
+const FIND_FRAME_SOCKET_FOR_COMPONENT: &str =
+    include_str!("queries/socket/find_frame_socket_for_component.sql");
 const LIST_FOR_COMPONENT: &str = include_str!("queries/socket/list_for_component.sql");
 const FIND_FOR_INTERNAL_PROVIDER: &str =
     include_str!("queries/socket/find_for_internal_provider.sql");
@@ -271,11 +271,11 @@ impl Socket {
         result: SocketResult,
     );
 
-    /// Finds the "Frame" [`Socket`] for a given [`Node`](crate::Node) and
+    /// Finds the "Frame" [`Socket`] for a given [`Component`](crate::Component) and
     /// [`SocketEdgeKind`].
-    pub async fn find_frame_socket_for_node(
+    pub async fn find_frame_socket_for_component(
         ctx: &DalContext,
-        node_id: NodeId,
+        component_id: ComponentId,
         socket_edge_kind: SocketEdgeKind,
     ) -> SocketResult<Self> {
         let row = ctx
@@ -283,11 +283,11 @@ impl Socket {
             .await?
             .pg()
             .query_one(
-                FIND_FRAME_SOCKET_FOR_NODE,
+                FIND_FRAME_SOCKET_FOR_COMPONENT,
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
-                    &node_id,
+                    &component_id,
                     &socket_edge_kind.as_ref(),
                 ],
             )
@@ -345,12 +345,12 @@ impl Socket {
     }
 
     /// Find a [`Socket`] by a provided name for a given [`SocketEdgeKind`] and
-    /// a given [`NodeId`](crate::Node).
-    pub async fn find_by_name_for_edge_kind_and_node(
+    /// a given [`ComponentId`](crate::Component).
+    pub async fn find_by_name_for_edge_kind_and_component(
         ctx: &DalContext,
         name: impl AsRef<str>,
         socket_edge_kind: SocketEdgeKind,
-        node_id: NodeId,
+        component_id: ComponentId,
     ) -> SocketResult<Option<Self>> {
         let name = name.as_ref();
         let maybe_row = ctx
@@ -358,13 +358,13 @@ impl Socket {
             .await?
             .pg()
             .query_opt(
-                FIND_BY_NAME_FOR_EDGE_KIND_AND_NODE,
+                FIND_BY_NAME_FOR_EDGE_KIND_AND_COMPONENT,
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &name,
                     &socket_edge_kind.as_ref(),
-                    &node_id,
+                    &component_id,
                 ],
             )
             .await?;

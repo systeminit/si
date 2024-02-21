@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use si_data_pg::PgError;
@@ -8,9 +9,9 @@ use telemetry::prelude::*;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor_ro, ActionKind,
     ActionPrototype, ActionPrototypeError, ActionPrototypeId, ChangeSetPk, Component,
-    ComponentError, ComponentId, DalContext, HistoryActor, HistoryEventError, Node, NodeError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, Visibility,
-    WsEvent, WsEventError, WsEventResult, WsPayload,
+    ComponentError, ComponentId, DalContext, HistoryActor, HistoryEventError, StandardModel,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, Visibility, WsEvent,
+    WsEventError, WsEventResult, WsPayload,
 };
 
 const FIND_FOR_CHANGE_SET: &str = include_str!("./queries/action/find_for_change_set.sql");
@@ -28,8 +29,6 @@ pub enum ActionError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("in head")]
     InHead,
-    #[error(transparent)]
-    Node(#[from] NodeError),
     #[error("action not found: {0}")]
     NotFound(ActionId),
     #[error("pg error: {0}")]
@@ -172,17 +171,13 @@ impl Action {
 
         let ctx_with_deleted = &ctx.clone_with_delete_visibility();
 
-        let nodes_graph = Node::build_graph(ctx, false).await?;
+        let components_graph = Component::build_graph(ctx, false).await?;
         let mut actions_graph: HashMap<ActionId, (ActionKind, Vec<ActionId>)> = HashMap::new();
 
-        for (node_id, parent_ids) in nodes_graph {
-            let node = Node::get_by_id(ctx_with_deleted, &node_id)
+        for (component_id, parent_ids) in components_graph {
+            let component = Component::get_by_id(ctx_with_deleted, &component_id)
                 .await?
-                .ok_or(NodeError::NotFound(node_id))?;
-            let component = node
-                .component(ctx_with_deleted)
-                .await?
-                .ok_or(NodeError::ComponentIsNone)?;
+                .ok_or(ComponentError::NotFound(component_id))?;
 
             if component.is_destroyed() {
                 continue;
@@ -278,14 +273,10 @@ impl Action {
                 }
             }
 
-            for parent_node_id in parent_ids {
-                let parent_node = Node::get_by_id(ctx_with_deleted, &parent_node_id)
+            for parent_component_id in parent_ids {
+                let parent_component = Component::get_by_id(ctx_with_deleted, &parent_component_id)
                     .await?
-                    .ok_or(NodeError::NotFound(parent_node_id))?;
-                let parent_component = parent_node
-                    .component(ctx_with_deleted)
-                    .await?
-                    .ok_or(NodeError::ComponentIsNone)?;
+                    .ok_or(ComponentError::NotFound(parent_component_id))?;
 
                 if parent_component.is_destroyed() {
                     continue;

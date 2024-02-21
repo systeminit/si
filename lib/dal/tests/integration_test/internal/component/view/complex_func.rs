@@ -211,7 +211,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         .expect("could not commit & run jobs");
 
     // Now that everything is set up, create the component.
-    let (component, _) = Component::new(ctx, "god-of-war", *schema_variant.id())
+    let component = Component::new(ctx, "god-of-war", *schema_variant.id())
         .await
         .expect("unable to create component");
 
@@ -554,7 +554,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
 
     // Create the component and cache what we need to insert into the map.
     // prototype argument for each item.
-    let (component, _) = Component::new(ctx, "the-game-awards-2022", *schema_variant.id())
+    let component = Component::new(ctx, "the-game-awards-2022", *schema_variant.id())
         .await
         .expect("unable to create component");
     let component_id = *component.id();

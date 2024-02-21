@@ -1,33 +1,31 @@
-//! This module contains [`Edge`], the mathematical "edge" between two [`Nodes`](crate::Node) in a
+//! This module contains [`Edge`], the mathematical "edge" between two [`Components`](crate::Component) in a
 //! graph.
 
 use serde::{Deserialize, Serialize};
+use strum::{AsRefStr, Display, EnumString};
+use thiserror::Error;
+
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use strum::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
-use thiserror::Error;
 
 use crate::func::argument::FuncArgumentError;
 use crate::job::definition::DependentValuesUpdate;
-use crate::node::NodeId;
 use crate::socket::SocketError;
 use crate::standard_model::objects_from_rows;
 use crate::{
     diagram, impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
     AttributeReadContext, AttributeValue, AttributeValueError, ComponentId, ExternalProviderError,
-    Func, FuncError, HistoryActor, HistoryEventError, InternalProviderError, Node, PropId, Socket,
+    Func, FuncError, HistoryActor, HistoryEventError, InternalProviderError, PropId, Socket,
     StandardModel, StandardModelError, Tenancy, Timestamp, UserPk, Visibility,
 };
 use crate::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, Component, DalContext,
-    ExternalProvider, ExternalProviderId, InternalProvider, InternalProviderId, NodeError,
-    TransactionsError,
+    ExternalProvider, ExternalProviderId, InternalProvider, InternalProviderId, TransactionsError,
 };
 
 const LIST_PARENTS_FOR_COMPONENT: &str =
     include_str!("queries/edge/list_parents_for_component.sql");
-const LIST_CHILDREN_FOR_NODE: &str = include_str!("queries/edge/list_children_for_node.sql");
 const LIST_CHILDREN_FOR_COMPONENT: &str =
     include_str!("queries/edge/list_children_for_component.sql");
 const LIST_FOR_COMPONENT: &str = include_str!("queries/edge/list_for_component.sql");
@@ -49,8 +47,6 @@ pub enum EdgeError {
     Component(String),
     #[error("cannot find component for id: {0}")]
     ComponentNotFound(ComponentId),
-    #[error("cannot find component for node id: {0}")]
-    ComponentNotFoundForNode(NodeId),
     #[error("edge not found for id: {0}")]
     EdgeNotFound(EdgeId),
     #[error("external provider error: {0}")]
@@ -75,16 +71,12 @@ pub enum EdgeError {
     InternalProviderNotFoundForSocket(SocketId),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
-    #[error("cannot find node id: {0}")]
-    NodeNotFound(NodeId),
     #[error("cannot find parent component for id: {0}")]
     ParentComponentNotFound(ComponentId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("cannot restore edge ({0}) to deleted node: {1}")]
-    RestoringAnEdgeToDeletedNode(EdgeId, NodeId),
+    #[error("cannot restore edge ({0}) to deleted component: {1}")]
+    RestoringAnEdgeToDeletedComponent(EdgeId, ComponentId),
     #[error("cannot restore non deleted edge with id: {0}")]
     RestoringNonDeletedEdge(EdgeId),
     #[error("error serializing/deserializing json: {0}")]
@@ -103,16 +95,6 @@ pub enum EdgeError {
 
 pub type EdgeResult<T> = Result<T, EdgeError>;
 
-/// Used to dictate what [`EdgeKinds`](EdgeKind) can be for the head and tail of an [`Edges`](Edge).
-#[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Display, EnumString, AsRefStr)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum VertexObjectKind {
-    /// Used for [`Nodes`](crate::Node) of [`NodeKind::Configuration`](crate::NodeKind::Configuration).
-    Configuration,
-}
-
 /// The kind of an [`Edge`](Edge). This provides the ability to categorize [`Edges`](Edge)
 /// and create [`EdgeKind`](Self)-specific graphs.
 #[remain::sorted]
@@ -130,20 +112,15 @@ pub enum EdgeKind {
 pk!(EdgeId);
 pk!(EdgePk);
 
-/// A mathematical edge between a head and a tail [`Node`](crate::Node).
+/// A mathematical edge between a head and a tail [`Component`](crate::Component).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Edge {
     pk: EdgePk,
     id: EdgeId,
     kind: EdgeKind,
-    // NOTE: Would love to flatten this, but serde doesn't allow flatten and rename.
-    head_node_id: NodeId,
-    head_object_kind: VertexObjectKind,
-    head_object_id: EdgeObjectId,
+    head_component_id: ComponentId,
     head_socket_id: SocketId,
-    tail_node_id: NodeId,
-    tail_object_kind: VertexObjectKind,
-    tail_object_id: EdgeObjectId,
+    tail_component_id: ComponentId,
     tail_socket_id: SocketId,
     creation_user_pk: Option<UserPk>,
     deletion_user_pk: Option<UserPk>,
@@ -165,32 +142,14 @@ impl_standard_model! {
     history_event_message_name: "Edge"
 }
 
-pk!(EdgeObjectId);
-
-impl From<EdgeObjectId> for ComponentId {
-    fn from(id: EdgeObjectId) -> Self {
-        Self::from(id.into_inner())
-    }
-}
-
-impl From<ComponentId> for EdgeObjectId {
-    fn from(id: ComponentId) -> Self {
-        Self::from(id.into_inner())
-    }
-}
-
 impl Edge {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         kind: EdgeKind,
-        head_node_id: NodeId,
-        head_object_kind: VertexObjectKind,
-        head_object_id: EdgeObjectId,
+        head_component_id: ComponentId,
         head_socket_id: SocketId,
-        tail_node_id: NodeId,
-        tail_object_kind: VertexObjectKind,
-        tail_object_id: EdgeObjectId,
+        tail_component_id: ComponentId,
         tail_socket_id: SocketId,
     ) -> EdgeResult<Self> {
         let actor_user_pk = match ctx.history_actor() {
@@ -203,18 +162,14 @@ impl Edge {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM edge_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+                "SELECT object FROM edge_create_v2($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &kind.to_string(),
-                    &head_node_id,
-                    &head_object_kind.to_string(),
-                    &head_object_id,
+                    &head_component_id,
                     &head_socket_id,
-                    &tail_node_id,
-                    &tail_object_kind.to_string(),
-                    &tail_object_id,
+                    &tail_component_id,
                     &tail_socket_id,
                     &actor_user_pk,
                 ],
@@ -239,9 +194,9 @@ impl Edge {
     #[allow(clippy::too_many_arguments)]
     pub async fn new_for_connection(
         ctx: &DalContext,
-        head_node_id: NodeId,
+        head_component_id: ComponentId,
         head_socket_id: SocketId,
-        tail_node_id: NodeId,
+        tail_component_id: ComponentId,
         tail_socket_id: SocketId,
         edge_kind: EdgeKind,
     ) -> EdgeResult<Self> {
@@ -256,9 +211,9 @@ impl Edge {
                     &[
                         ctx.tenancy(),
                         &ctx.visibility().change_set_pk,
-                        &head_node_id,
+                        &head_component_id,
                         &head_socket_id,
-                        &tail_node_id,
+                        &tail_component_id,
                         &tail_socket_id,
                     ],
                 )
@@ -271,14 +226,14 @@ impl Edge {
         }
 
         // Otherwise create a new one
-        let head_component = Component::find_for_node(ctx, head_node_id)
+        let head_component = Component::get_by_id(ctx, &head_component_id)
             .await
             .map_err(|err| EdgeError::Component(err.to_string()))?
-            .ok_or(NodeError::ComponentIsNone)?;
-        let tail_component = Component::find_for_node(ctx, tail_node_id)
+            .ok_or(EdgeError::ComponentNotFound(head_component_id))?;
+        let tail_component = Component::get_by_id(ctx, &tail_component_id)
             .await
             .map_err(|err| EdgeError::Component(err.to_string()))?
-            .ok_or(NodeError::ComponentIsNone)?;
+            .ok_or(EdgeError::ComponentNotFound(tail_component_id))?;
 
         let head_explicit_internal_provider =
             InternalProvider::find_explicit_for_socket(ctx, head_socket_id)
@@ -301,17 +256,12 @@ impl Edge {
             .await?;
         }
 
-        // NOTE(nick): a lot of hardcoded values here that'll likely need to be adjusted.
         let edge = Edge::new(
             ctx,
             edge_kind,
-            head_node_id,
-            VertexObjectKind::Configuration,
-            EdgeObjectId::from(*head_component.id()),
+            *head_component.id(),
             head_socket_id,
-            tail_node_id,
-            VertexObjectKind::Configuration,
-            EdgeObjectId::from(*tail_component.id()),
+            *tail_component.id(),
             tail_socket_id,
         )
         .await?;
@@ -321,34 +271,13 @@ impl Edge {
     standard_model_accessor!(kind, Enum(EdgeKind), EdgeResult);
 
     // Sockets
-    standard_model_accessor!(head_node_id, Pk(NodeId), EdgeResult);
-    standard_model_accessor!(head_object_kind, Enum(VertexObjectKind), EdgeResult);
-    standard_model_accessor!(head_object_id, Pk(EdgeObjectId), EdgeResult);
+    standard_model_accessor!(head_component_id, Pk(ComponentId), EdgeResult);
     standard_model_accessor!(head_socket_id, Pk(SocketId), EdgeResult);
-    standard_model_accessor!(tail_node_id, Pk(NodeId), EdgeResult);
-    standard_model_accessor!(tail_object_kind, Enum(VertexObjectKind), EdgeResult);
-    standard_model_accessor!(tail_object_id, Pk(EdgeObjectId), EdgeResult);
+    standard_model_accessor!(tail_component_id, Pk(ComponentId), EdgeResult);
     standard_model_accessor!(tail_socket_id, Pk(SocketId), EdgeResult);
     standard_model_accessor!(creation_user_pk, Option<Pk(UserPk)>, EdgeResult);
     standard_model_accessor!(deletion_user_pk, Option<Pk(UserPk)>, EdgeResult);
     standard_model_accessor!(deleted_implicitly, bool, EdgeResult);
-
-    pub async fn list_children_for_node(
-        ctx: &DalContext,
-        node_id: NodeId,
-    ) -> EdgeResult<Vec<NodeId>> {
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                LIST_CHILDREN_FOR_NODE,
-                &[ctx.tenancy(), ctx.visibility(), &node_id],
-            )
-            .await?;
-        let objects = rows.into_iter().map(|row| row.get("node_id")).collect();
-        Ok(objects)
-    }
 
     pub async fn list_children_for_component(
         ctx: &DalContext,
@@ -471,28 +400,6 @@ impl Edge {
             return Ok(());
         }
 
-        let head_component_id = *{
-            let head_node = Node::get_by_id(ctx, &self.head_node_id())
-                .await?
-                .ok_or(EdgeError::NodeNotFound(self.head_node_id))?;
-            head_node
-                .component(ctx)
-                .await?
-                .ok_or(EdgeError::ComponentNotFoundForNode(self.tail_node_id))?
-                .id()
-        };
-
-        let tail_component_id = *{
-            let tail_node = Node::get_by_id(ctx, &self.tail_node_id())
-                .await?
-                .ok_or(EdgeError::NodeNotFound(self.tail_node_id))?;
-            tail_node
-                .component(ctx)
-                .await?
-                .ok_or(EdgeError::ComponentNotFoundForNode(self.tail_node_id))?
-                .id()
-        };
-
         // This code assumes that every connection is established between a tail external provider and
         // a head (explicit) internal provider. That might not be the case, but it true in practice for the present state of the interface
         // (aggr frame connection to children shouldn't go through this path)
@@ -524,8 +431,8 @@ impl Edge {
             ctx,
             external_provider.id(),
             &internal_provider_id,
-            &tail_component_id,
-            &head_component_id,
+            &self.tail_component_id,
+            &self.head_component_id,
         )
         .await?
         .ok_or(EdgeError::AttributePrototypeNotFound)?;
@@ -536,7 +443,7 @@ impl Edge {
             prop_id: Some(PropId::NONE),
             internal_provider_id: Some(internal_provider_id),
             external_provider_id: Some(ExternalProviderId::NONE),
-            component_id: Some(head_component_id),
+            component_id: Some(self.head_component_id),
         };
 
         let mut attr_value = AttributeValue::find_for_context(ctx, read_context)
@@ -586,32 +493,29 @@ impl Edge {
             return Err(EdgeError::RestoringNonDeletedEdge(edge_id));
         }
 
-        // check if the head or tail are marked as deleted
-        // if this is the case, error out here
-        let head_node_id = &deleted_edge.head_node_id();
-        let maybe_head_node = Node::get_by_id(ctx_with_deleted, head_node_id).await?;
-        let tail_node_id = &deleted_edge.tail_node_id();
-        let maybe_tail_node = Node::get_by_id(ctx_with_deleted, tail_node_id).await?;
-
         // we need to check if either sides of the edge are not deleted
-        if let Some(head_node) = maybe_head_node {
-            if head_node.visibility().change_set_pk == ctx.visibility().change_set_pk
-                && head_node.visibility().deleted_at.is_some()
+        if let Some(head_component) =
+            Component::get_by_id(ctx_with_deleted, &deleted_edge.head_component_id).await?
+        {
+            if head_component.visibility().change_set_pk == ctx.visibility().change_set_pk
+                && head_component.visibility().deleted_at.is_some()
             {
-                return Err(EdgeError::RestoringAnEdgeToDeletedNode(
+                return Err(EdgeError::RestoringAnEdgeToDeletedComponent(
                     edge_id,
-                    *head_node.id(),
+                    *head_component.id(),
                 ));
             }
         }
 
-        if let Some(tail_node) = maybe_tail_node {
-            if tail_node.visibility().change_set_pk == ctx.visibility().change_set_pk
-                && tail_node.visibility().deleted_at.is_some()
+        if let Some(tail_component) =
+            Component::get_by_id(ctx_with_deleted, &deleted_edge.tail_component_id).await?
+        {
+            if tail_component.visibility().change_set_pk == ctx.visibility().change_set_pk
+                && tail_component.visibility().deleted_at.is_some()
             {
-                return Err(EdgeError::RestoringAnEdgeToDeletedNode(
+                return Err(EdgeError::RestoringAnEdgeToDeletedComponent(
                     edge_id,
-                    *tail_node.id(),
+                    *tail_component.id(),
                 ));
             }
         }
@@ -627,6 +531,8 @@ impl Edge {
 
         // Note(victor): We hard delete the edge on the changeset so the status calculations
         // does not think it is a newly created one (Yeah yeah I know I know)
+        let deleted_edge_tail_component_id = deleted_edge.tail_component_id();
+        let deleted_edge_head_component_id = deleted_edge.head_component_id();
         deleted_edge.hard_delete(ctx_with_deleted).await?;
 
         if edge_kind == EdgeKind::Symbolic {
@@ -634,27 +540,6 @@ impl Edge {
         }
 
         // Restore the Attribute Prototype Argument
-        let head_component_id = *{
-            let head_node = Node::get_by_id(ctx_with_deleted, head_node_id)
-                .await?
-                .ok_or(EdgeError::NodeNotFound(*head_node_id))?;
-            head_node
-                .component(ctx_with_deleted)
-                .await?
-                .ok_or(EdgeError::ComponentNotFoundForNode(*head_node_id))?
-                .id()
-        };
-
-        let tail_component_id = *{
-            let tail_node = Node::get_by_id(ctx_with_deleted, tail_node_id)
-                .await?
-                .ok_or(EdgeError::NodeNotFound(*tail_node_id))?;
-            tail_node
-                .component(ctx_with_deleted)
-                .await?
-                .ok_or(EdgeError::ComponentNotFoundForNode(*tail_node_id))?
-                .id()
-        };
 
         // This code assumes that every connection is established between a tail external provider and
         // a head (explicit) internal provider. That might not be the case, but it true in practice for the present state of the interface
@@ -687,8 +572,8 @@ impl Edge {
             ctx_with_deleted,
             &external_provider_id,
             &internal_provider_id,
-            &tail_component_id,
-            &head_component_id,
+            &deleted_edge_tail_component_id,
+            &deleted_edge_head_component_id,
         )
         .await?
         .ok_or(EdgeError::AttributePrototypeNotFound)?;
@@ -700,7 +585,7 @@ impl Edge {
             prop_id: Some(PropId::NONE),
             internal_provider_id: Some(InternalProviderId::NONE),
             external_provider_id: Some(external_provider_id),
-            component_id: Some(tail_component_id),
+            component_id: Some(deleted_edge_tail_component_id),
         };
 
         let attr_value = AttributeValue::find_for_context(ctx_with_deleted, read_context)
@@ -739,7 +624,7 @@ impl Edge {
     /// - _"head":_ where the connection is going to
     /// - _"tail":_ where the connection is coming from
     ///
-    /// Currently this func only supports connecting via the identity [`Func`](crate::Func), refactoring
+    /// Currently, this func only supports connecting via the identity [`Func`](crate::Func), refactoring
     /// is necessary to support other transformation functions for edge connections.
     pub async fn connect_providers_for_components(
         ctx: &DalContext,
@@ -872,13 +757,5 @@ impl Edge {
         )
         .await?;
         Ok(())
-    }
-
-    pub fn head_component_id(&self) -> ComponentId {
-        self.head_object_id().into()
-    }
-
-    pub fn tail_component_id(&self) -> ComponentId {
-        self.tail_object_id().into()
     }
 }

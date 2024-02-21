@@ -493,7 +493,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
 async fn only_string_props(ctx: &DalContext) {
     let (_schema, schema_variant, bohemian_prop, killer_prop, root_prop) =
         create_schema_with_string_props(ctx).await;
-    let (component, _) = Component::new(ctx, "capoeira", *schema_variant.id())
+    let component = Component::new(ctx, "capoeira", *schema_variant.id())
         .await
         .expect("Unable to create component");
 
@@ -580,7 +580,7 @@ async fn only_string_props(ctx: &DalContext) {
 async fn one_object_prop(ctx: &DalContext) {
     let (_schema, schema_variant, queen_prop, killer_prop, bohemian_prop, root_prop) =
         create_schema_with_object_and_string_prop(ctx).await;
-    let (component, _) = Component::new(ctx, "santos dumont", *schema_variant.id())
+    let component = Component::new(ctx, "santos dumont", *schema_variant.id())
         .await
         .expect("Unable to create component");
 
@@ -696,7 +696,7 @@ async fn nested_object_prop(ctx: &DalContext) {
         dust_prop,
         root_prop,
     ) = create_schema_with_nested_objects_and_string_prop(ctx).await;
-    let (component, _) = Component::new(ctx, "free ronaldinho", *schema_variant.id())
+    let component = Component::new(ctx, "free ronaldinho", *schema_variant.id())
         .await
         .expect("Unable to create component");
 
@@ -850,7 +850,7 @@ async fn simple_array_of_strings(ctx: &DalContext) {
     let (_schema, schema_variant, sammy_prop, album_prop, root_prop) =
         create_schema_with_array_of_string_props(ctx).await;
 
-    let (component, _) = Component::new(ctx, "tim maia", *schema_variant.id())
+    let component = Component::new(ctx, "tim maia", *schema_variant.id())
         .await
         .expect("Unable to create component");
 
@@ -950,7 +950,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
         song_name_prop,
         root_prop,
     ) = create_schema_with_nested_array_objects(ctx).await;
-    let (component, _) = Component::new(
+    let component = Component::new(
         ctx,
         "An Integralist Doesn't Run, It Flies",
         *schema_variant.id(),
@@ -1200,7 +1200,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
 async fn simple_map(ctx: &DalContext) {
     let (_schema, schema_variant, album_prop, album_item_prop, root_prop) =
         create_simple_map(ctx).await;
-    let (component, _) = Component::new(ctx, "E como isso afeta o Grêmio?", *schema_variant.id())
+    let component = Component::new(ctx, "E como isso afeta o Grêmio?", *schema_variant.id())
         .await
         .expect("Unable to create component");
 
@@ -1354,7 +1354,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
         song_map_item_prop,
         root_prop,
     ) = create_schema_with_nested_array_objects_and_a_map(ctx).await;
-    let (component, _) = Component::new(ctx, "E como isso afeta o Grêmio?", *schema_variant.id())
+    let component = Component::new(ctx, "E como isso afeta o Grêmio?", *schema_variant.id())
         .await
         .expect("Unable to create component");
 

@@ -5,14 +5,14 @@ use crate::diagram::DiagramResult;
 use crate::edge::{Edge, EdgeId, EdgeKind};
 use crate::socket::{SocketEdgeKind, SocketId};
 use crate::{
-    node::NodeId, Component, ComponentError, DalContext, DiagramError, Socket, SocketArity,
+    Component, ComponentError, ComponentId, DalContext, DiagramError, Socket, SocketArity,
     StandardModel, User,
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Vertex {
-    pub node_id: NodeId,
+    pub component_id: ComponentId,
     pub socket_id: SocketId,
 }
 
@@ -31,22 +31,22 @@ impl Connection {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
-        from_node_id: NodeId,
+        from_component_id: ComponentId,
         from_socket_id: SocketId,
-        to_node_id: NodeId,
+        to_component_id: ComponentId,
         to_socket_id: SocketId,
         edge_kind: EdgeKind,
     ) -> DiagramResult<Self> {
-        let from_component = Component::find_for_node(ctx, from_node_id)
+        let from_component = Component::get_by_id(ctx, &from_component_id)
             .await?
-            .ok_or(ComponentError::NotFoundForNode(from_node_id))?;
+            .ok_or(ComponentError::NotFound(from_component_id))?;
         let from_socket = Socket::get_by_id(ctx, &from_socket_id)
             .await?
             .ok_or(DiagramError::SocketNotFound)?;
 
-        let to_component = Component::find_for_node(ctx, to_node_id)
+        let to_component = Component::get_by_id(ctx, &to_component_id)
             .await?
-            .ok_or(ComponentError::NotFoundForNode(to_node_id))?;
+            .ok_or(ComponentError::NotFound(to_component_id))?;
         let to_socket = Socket::get_by_id(ctx, &to_socket_id)
             .await?
             .ok_or(DiagramError::SocketNotFound)?;
@@ -56,9 +56,9 @@ impl Connection {
         for edge in &edges {
             let same_sockets =
                 edge.tail_socket_id() == from_socket_id && edge.head_socket_id() == to_socket_id;
-            let same_nodes =
-                edge.tail_node_id() == from_node_id && edge.head_node_id() == to_node_id;
-            if same_sockets && same_nodes {
+            let same_components = edge.tail_component_id() == from_component_id
+                && edge.head_component_id() == to_component_id;
+            if same_sockets && same_components {
                 return Ok(Connection::from_edge(edge));
             }
         }
@@ -74,7 +74,7 @@ impl Connection {
         );
 
         if *to_socket.arity() == SocketArity::One {
-            // Removes all connections for origin node since we are replacing it
+            // Removes all connections for origin component since we are replacing it
 
             let replaced_edges = edges
                 .iter()
@@ -82,8 +82,8 @@ impl Connection {
 
             for replaced_edge in replaced_edges {
                 for edge in &edges {
-                    if edge.tail_node_id() == replaced_edge.tail_node_id()
-                        || edge.head_node_id() == replaced_edge.tail_node_id()
+                    if edge.tail_component_id() == replaced_edge.tail_component_id()
+                        || edge.head_component_id() == replaced_edge.tail_component_id()
                     {
                         let socket = Socket::get_by_id(ctx, &edge.head_socket_id())
                             .await?
@@ -100,9 +100,9 @@ impl Connection {
 
         let edge = Edge::new_for_connection(
             ctx,
-            to_node_id,
+            to_component_id,
             to_socket_id,
-            from_node_id,
+            from_component_id,
             from_socket_id,
             edge_kind,
         )
@@ -113,30 +113,30 @@ impl Connection {
 
     pub async fn new_to_parent(
         ctx: &DalContext,
-        child_node_id: NodeId,
-        parent_node_id: NodeId,
+        child_component_id: ComponentId,
+        parent_component_id: ComponentId,
     ) -> DiagramResult<Self> {
         // TODO check if child already has parent and block connection
 
-        let from_socket = Socket::find_frame_socket_for_node(
+        let from_socket = Socket::find_frame_socket_for_component(
             ctx,
-            child_node_id,
+            child_component_id,
             SocketEdgeKind::ConfigurationOutput,
         )
         .await?;
 
-        let to_socket = Socket::find_frame_socket_for_node(
+        let to_socket = Socket::find_frame_socket_for_component(
             ctx,
-            parent_node_id,
+            parent_component_id,
             SocketEdgeKind::ConfigurationInput,
         )
         .await?;
 
         Self::new(
             ctx,
-            child_node_id,
+            child_component_id,
             *from_socket.id(),
-            parent_node_id,
+            parent_component_id,
             *to_socket.id(),
             EdgeKind::Symbolic,
         )
@@ -148,11 +148,11 @@ impl Connection {
             id: *edge.id(),
             classification: *edge.kind(),
             source: Vertex {
-                node_id: edge.tail_node_id(),
+                component_id: edge.tail_component_id(),
                 socket_id: edge.tail_socket_id(),
             },
             destination: Vertex {
-                node_id: edge.head_node_id(),
+                component_id: edge.head_component_id(),
                 socket_id: edge.head_socket_id(),
             },
             created_by: None,

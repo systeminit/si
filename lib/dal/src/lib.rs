@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use rand::Rng;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
-use si_crypto::SymmetricCryptoService;
 use strum::{Display, EnumString, EnumVariantNames};
 use thiserror::Error;
 use tokio::time;
@@ -68,8 +67,6 @@ pub use job_failure::{JobFailure, JobFailureError, JobFailureResult};
 pub use jwt_key::JwtPublicSigningKey;
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
-pub use node::NodeId;
-pub use node::{Node, NodeError, NodeKind};
 pub use node_menu::NodeMenuError;
 pub use prop::{Prop, PropError, PropId, PropKind, PropPk, PropResult};
 pub use prototype_context::HasPrototypeContext;
@@ -95,6 +92,7 @@ pub use secret::{
     DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretPk,
     SecretResult, SecretVersion,
 };
+use si_crypto::SymmetricCryptoService;
 use si_data_nats::{NatsClient, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolError};
 pub use socket::{Socket, SocketArity, SocketId};
@@ -140,7 +138,6 @@ pub mod job_failure;
 pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
-pub mod node;
 pub mod node_menu;
 pub mod pkg;
 pub mod prop;
