@@ -28,6 +28,8 @@ use si_pkg::{
     SocketSpecData, SocketSpecKind, SpecError,
 };
 
+const DEFS_FOR_DEFAULT_VARIANTS: &str = include_str!("../../queries/defs_for_default_variants.sql");
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SchemaVariantDefinitionError {
@@ -197,6 +199,22 @@ impl SchemaVariantDefinition {
             .await?;
 
         Ok(standard_model::finish_create_from_row(ctx, row).await?)
+    }
+
+    pub async fn list_for_default_variants(
+        ctx: &DalContext,
+    ) -> SchemaVariantDefinitionResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                DEFS_FOR_DEFAULT_VARIANTS,
+                &[ctx.tenancy(), ctx.visibility()],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 
     pub async fn get_by_func_id(
