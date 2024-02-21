@@ -6,7 +6,7 @@ describe("Login", () => {
   it("lets the user log in", () => {
     cy.loginToAuth0(import.meta.env.VITE_AUTH0_USERNAME, import.meta.env.VITE_AUTH0_PASSWORD);
     cy.visit("/");
-    // check that you're on head
+    // check that you're on head i.e. that you were redirected correctly
     cy.url().should("contain", "head");
   });
 

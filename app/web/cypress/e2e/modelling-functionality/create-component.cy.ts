@@ -22,6 +22,18 @@ describe('Create Components', () => {
     //check to make sure a component has been added to the outliner
     cy.get('[class="component-outline-node"]', { timeout: 10000 }).contains('AWS Credential').should('be.visible');
 
+    // Click the button to destroy changeset
+    cy.get('nav.navbar button.vbutton.--variant-ghost.--size-sm.--tone-action')
+    .eq(1) // Selects the second button (index starts from 0 for create changeset button)
+    .click();
+
+    // Wait for the delete panel to appear
+    cy.wait(1000);
+
+    // Then click the agree button in the UI
+    cy.get('button.vbutton.--variant-solid.--size-md.--tone-destructive')
+    .click();
+
   })
 })
 
