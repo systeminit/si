@@ -12,9 +12,9 @@ use veritech_client::CycloneValueEncryptError;
 use crate::func::argument::FuncArgumentError;
 use crate::{
     generate_unique_id, impl_standard_model, pk, standard_model, standard_model_accessor,
-    standard_model_accessor_ro, ChangeSetPk, DalContext, FuncBinding, HistoryEventError,
-    SecretError, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
-    Visibility, WorkspacePk, WsEvent, WsEventResult, WsPayload,
+    standard_model_accessor_ro, ChangeSetPk, DalContext, FuncArgument, FuncBinding,
+    HistoryEventError, SecretError, StandardModel, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, Visibility, WorkspacePk, WsEvent, WsEventResult, WsPayload,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -161,6 +161,29 @@ impl Func {
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
+    }
+
+    pub async fn duplicate_with_args(
+        &self,
+        ctx: &DalContext,
+        name: Option<String>,
+    ) -> FuncResult<Self> {
+        let args = FuncArgument::list_for_func(ctx, *self.id()).await?;
+
+        let dup = self.duplicate(ctx, name).await?;
+
+        for arg in args {
+            FuncArgument::new(
+                ctx,
+                arg.name(),
+                *arg.kind(),
+                arg.element_kind().map(ToOwned::to_owned),
+                dup.id,
+            )
+            .await?;
+        }
+
+        Ok(dup)
     }
 
     /// Creates a new [`Func`] from [`self`](Func). All relevant fields are duplicated, but rows
