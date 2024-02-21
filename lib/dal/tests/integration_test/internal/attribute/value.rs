@@ -2,10 +2,11 @@ use pretty_assertions_sorted::assert_eq;
 
 use dal::{
     attribute::context::AttributeContextBuilder, component::view::ComponentView, generate_name,
-    AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
-    StandardModel,
+    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
+    DalContext, InternalProvider, PropKind, StandardModel,
 };
 use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::helpers::setup_identity_func;
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},

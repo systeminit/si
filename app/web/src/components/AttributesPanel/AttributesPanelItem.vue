@@ -518,7 +518,6 @@ import { useAttributesPanelContext } from "./AttributesPanel.vue";
 import CodeEditor from "../CodeEditor.vue";
 import SecretsModal from "../SecretsModal.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
-import SourceIcon from "./SourceIcon.vue";
 
 const props = defineProps({
   parentPath: { type: String },
