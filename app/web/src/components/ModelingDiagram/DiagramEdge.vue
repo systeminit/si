@@ -89,7 +89,6 @@ import {
   useTheme,
 } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { SELECTION_COLOR, SOCKET_SIZE } from "./diagram_constants";
 import { DiagramEdgeData } from "./diagram_types";
 import { pointAlongLinePct, pointAlongLinePx } from "./utils/math";
@@ -117,8 +116,6 @@ const props = defineProps({
 const emit = defineEmits(["hover:start", "hover:end"]);
 
 const { theme } = useTheme();
-
-const featureFlagsStore = useFeatureFlagsStore();
 
 const diagramContext = useDiagramContext();
 const { drawEdgeState } = diagramContext;
@@ -176,19 +173,13 @@ const selectedNodeId = computed(
 const mainLineOpacity = computed(() => {
   if (willDeleteIfPendingEdgeCreated.value) return 0.3;
   if (isDeleted.value) return 0.75;
-
-  if (featureFlagsStore.SHOW_EDGES_ON_SELECT) {
-    if (
-      props.edge.def.fromNodeId === selectedNodeId.value ||
-      props.edge.def.toNodeId === selectedNodeId.value
-    ) {
-      return 0.8;
-    } else {
-      return 0.1;
-    }
-  } else {
-    return 1;
+  if (
+    props.edge.def.fromNodeId === selectedNodeId.value ||
+    props.edge.def.toNodeId === selectedNodeId.value
+  ) {
+    return 0.8;
   }
+  return 0.1;
 });
 
 const componentsStore = useComponentsStore();
