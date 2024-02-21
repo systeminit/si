@@ -43,19 +43,20 @@ pub async fn list_variant_defs(
 ) -> SchemaVariantDefinitionResult<Json<ListVariantDefsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let variant_defs: Vec<ListedVariantDef> = SchemaVariantDefinition::list(&ctx)
-        .await?
-        .iter()
-        .map(|def| ListedVariantDef {
-            // TODO: Ensure we pass an actor for created / updated / deleted to the frontend
-            id: def.id().to_owned(),
-            name: def.name().to_owned(),
-            menu_name: def.menu_name().map(|menu_name| menu_name.to_owned()),
-            category: def.category().to_owned(),
-            color: def.color().to_owned(),
-            timestamp: def.timestamp().to_owned(),
-        })
-        .collect();
+    let variant_defs: Vec<ListedVariantDef> =
+        SchemaVariantDefinition::list_for_default_variants(&ctx)
+            .await?
+            .iter()
+            .map(|def| ListedVariantDef {
+                // TODO: Ensure we pass an actor for created / updated / deleted to the frontend
+                id: def.id().to_owned(),
+                name: def.name().to_owned(),
+                menu_name: def.menu_name().map(|menu_name| menu_name.to_owned()),
+                category: def.category().to_owned(),
+                color: def.color().to_owned(),
+                timestamp: def.timestamp().to_owned(),
+            })
+            .collect();
 
     track(
         &posthog_client,
