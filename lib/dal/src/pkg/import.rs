@@ -2473,7 +2473,20 @@ pub async fn clone_and_import_funcs(ctx: &DalContext, funcs: Vec<FuncSpec>) -> P
                 .await?
                 .ok_or(PkgError::MissingIntrinsicFunc(func_spec.name.to_owned()))?
         } else {
-            create_func(ctx, &func_spec).await?
+            let func = create_func(ctx, &func_spec).await?;
+
+            if !func_spec.arguments.is_empty() {
+                import_func_arguments(
+                    ctx,
+                    ChangeSetPk::NONE,
+                    *func.id(),
+                    &func_spec.arguments,
+                    &mut thing_map,
+                )
+                .await?;
+            }
+
+            func
         };
 
         thing_map.insert(ChangeSetPk::NONE, func_spec.unique_id, Thing::Func(func));
