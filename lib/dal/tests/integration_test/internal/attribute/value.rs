@@ -710,9 +710,6 @@ async fn list_payload(ctx: &DalContext) {
 
 #[test]
 async fn use_default_prototype(ctx: &DalContext) {
-    let initial_time = std::time::Instant::now();
-    let mut last_checkpoint = initial_time.elapsed();
-
     let (identity_func_id, _, _, identity_func_argument_id) = setup_identity_func(ctx).await;
 
     let mut schema = create_schema(ctx).await;
@@ -757,16 +754,9 @@ async fn use_default_prototype(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
-    println!("Commit 1 at {:?}", initial_time.elapsed());
-    last_checkpoint = initial_time.elapsed();
     ctx.blocking_commit()
         .await
         .expect("could not commit & run jobs");
-    println!(
-        "Executed in {:?}, {:?} since start",
-        initial_time.elapsed() - last_checkpoint,
-        initial_time.elapsed()
-    );
 
     // Create connection between source and destination props
     {
@@ -816,16 +806,9 @@ async fn use_default_prototype(ctx: &DalContext) {
         .await
         .expect("could not create attribute prototype argument");
 
-        println!("Commit 2 at {:?}", initial_time.elapsed());
-        last_checkpoint = initial_time.elapsed();
         ctx.blocking_commit()
             .await
             .expect("could not commit & run jobs");
-        println!(
-            "Executed in {:?}, {:?} since start",
-            initial_time.elapsed() - last_checkpoint,
-            initial_time.elapsed()
-        );
     }
 
     let (component, _) =
@@ -878,16 +861,9 @@ async fn use_default_prototype(ctx: &DalContext) {
         .await
         .expect("cannot update value for context");
 
-        println!("Commit 3 at {:?}", initial_time.elapsed());
-        last_checkpoint = initial_time.elapsed();
         ctx.blocking_commit()
             .await
             .expect("could not commit & run jobs");
-        println!(
-            "Executed in {:?}, {:?} since start",
-            initial_time.elapsed() - last_checkpoint,
-            initial_time.elapsed()
-        );
     }
 
     // Ensure that both source and destination were updated.
@@ -951,17 +927,9 @@ async fn use_default_prototype(ctx: &DalContext) {
         .await
         .expect("Unable to update AttributeValue");
 
-        println!("Commit 4 at {:?}", initial_time.elapsed());
-        last_checkpoint = initial_time.elapsed();
         ctx.blocking_commit()
             .await
             .expect("could not commit & run jobs");
-        println!(
-            "Executed in {:?}, {:?} since start",
-            initial_time.elapsed() - last_checkpoint,
-            initial_time.elapsed()
-        );
-
         overridden_attribute_value_id
     };
 
@@ -992,16 +960,9 @@ async fn use_default_prototype(ctx: &DalContext) {
             .await
             .expect("Unable to clear override");
 
-        println!("Commit 5 at {:?}", initial_time.elapsed());
-        last_checkpoint = initial_time.elapsed();
         ctx.blocking_commit()
             .await
             .expect("could not commit & run jobs");
-        println!(
-            "Executed in {:?}, {:?} since start",
-            initial_time.elapsed() - last_checkpoint,
-            initial_time.elapsed()
-        );
     }
 
     // Observe that destination fields is back to value from source.
