@@ -4,7 +4,7 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use dal::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeContext};
 use dal::{
-    generate_name, ActionKind, ChangeSetPk, DalContext, ExternalProviderId, Func,
+    generate_name, ActionKind, ChangeSet, DalContext, ExternalProviderId, Func,
     FuncBackendResponseType, FuncId, PropId, SchemaVariantId, Visibility,
 };
 use serde::{Deserialize, Serialize};
@@ -301,7 +301,7 @@ pub async fn create_func(
     OriginalUri(original_uri): OriginalUri,
     Json(request): Json<CreateFuncRequest>,
 ) -> FuncResult<impl IntoResponse> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     if let Some(name) = request.name.as_deref() {
         if dal::func::is_intrinsic(name)
@@ -311,8 +311,7 @@ pub async fn create_func(
         }
     }
 
-    // let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
-    let force_changeset_pk: Option<ChangeSetPk> = None;
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     let func = match request.variant {
         FuncVariant::Attribute => {

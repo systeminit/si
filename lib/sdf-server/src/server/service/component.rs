@@ -8,7 +8,7 @@ use dal::attribute::value::AttributeValueError;
 use dal::component::ComponentId;
 use dal::property_editor::PropertyEditorError;
 use dal::validation::resolver::ValidationResolverError;
-use dal::TransactionsError;
+use dal::{ChangeSetError, TransactionsError};
 use dal::{ComponentError as DalComponentError, StandardModelError};
 use thiserror::Error;
 
@@ -49,8 +49,8 @@ pub enum ComponentError {
     AttributeValue(#[from] AttributeValueError),
     // #[error("attribute value not found")]
     // AttributeValueNotFound,
-    // #[error("change set error: {0}")]
-    // ChangeSet(#[from] ChangeSetError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     // #[error("change status error: {0}")]
     // ChangeStatus(#[from] ChangeStatusError),
     // #[error("component debug view error: {0}")]

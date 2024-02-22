@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use dal::change_set_pointer::{ChangeSetPointer, ChangeSetPointerId};
-use dal::{DalContext, UserClaim, Visibility};
+use dal::{DalContext, UserClaim};
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::{claims::Claims, reexports::coarsetime::Duration};
 use names::{Generator, Name};
@@ -80,7 +80,7 @@ pub async fn create_change_set_and_update_ctx(
         )
         .await
         .expect("could not update pointer");
-    ctx.update_visibility(Visibility::new_for_change_set_pointer(change_set.id));
+    ctx.update_visibility_v2(&change_set);
     ctx.update_snapshot_to_visibility()
         .await
         .expect("could not update snapshot to visibility");

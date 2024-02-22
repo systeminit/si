@@ -4,14 +4,13 @@ use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgRow};
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, standard_model, standard_model_accessor_ro, ChangeSetPk, DalContext, HistoryActor,
-    HistoryEvent, HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp,
-    TransactionsError, UserError, Visibility, WorkspaceSnapshot,
+    pk, standard_model, standard_model_accessor_ro, DalContext, HistoryActor, HistoryEvent,
+    HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    UserError, WorkspaceSnapshot,
 };
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
@@ -208,10 +207,7 @@ impl Workspace {
 
         // TODO(nick,zack,jacob): convert visibility (or get rid of it?) to use our the new change set id.
         // should set_change_set_pointer and set_workspace_snapshot happen in update_visibility?
-        ctx.update_visibility(Visibility::new(
-            ChangeSetPk::from(Ulid::from(change_set_id)),
-            None,
-        ));
+        ctx.update_visibility_v2(&change_set);
         ctx.update_snapshot_to_visibility().await?;
 
         let _history_event = HistoryEvent::new(
