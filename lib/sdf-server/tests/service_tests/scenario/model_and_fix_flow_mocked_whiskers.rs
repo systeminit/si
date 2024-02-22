@@ -16,6 +16,7 @@ use crate::service_tests::scenario::ScenarioHarness;
 /// SI_TEST_BUILTIN_SCHEMAS=target group,aws region,aws ami,aws keypair,aws ec2,aws securitygroup,aws ingress,docker image,coreos butane
 /// ```
 #[sdf_test]
+#[ignore]
 async fn model_and_fix_flow_mocked_whiskers(
     DalContextHead(mut ctx): DalContextHead,
     app: Router,

@@ -12,7 +12,7 @@
               v-if="selectedComponentCode.length > 1"
               class="text-lg font-bold pb-xs px-xs"
             >
-              Code Output {{ index + 1 }}:
+              Code Output {{ item.func ?? index + 1 }}:
             </div>
             <ErrorMessage v-if="item.message" class="mx-1 mb-2">
               {{ item.message }}

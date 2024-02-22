@@ -42,7 +42,14 @@ jobs:
         run: |
           pnpm i
           pnpm install cypress
-          npx cypress run --spec "cypress/e2e/4-value-propogation/value-attribute-propogation.cy.ts" --record --key ${{ secrets.CYPRESS_RECORD_KEY }}
+          npx cypress run --spec "cypress/e2e/**"
+
+      - name: 'Upload Cypress Recordings to Github'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-recordings
+          path: app/web/cypress/videos/**/*.mp4
+          retention-days: 5
 
       # TODO(johnrwatson): Enable this when we're happy with the synthetic above
       #- name: Send PagerDuty alert on failure

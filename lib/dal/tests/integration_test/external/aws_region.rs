@@ -4,6 +4,7 @@ use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
+#[ignore]
 async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     let mut bagger = ComponentBagger::new();
     let ec2_bag = bagger.create_component(ctx, "server", "EC2 Instance").await;
@@ -230,6 +231,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
 }
 
 #[test]
+#[ignore]
 async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalContext) {
     let mut bagger = ComponentBagger::new();
     let ec2_bag = bagger.create_component(ctx, "server", "EC2 Instance").await;

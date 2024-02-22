@@ -46,12 +46,18 @@ pub struct CodeView {
     /// Used to avoid showing stale data
     pub code: Option<String>,
     pub message: Option<String>,
+    pub func: Option<String>,
 }
 
 impl CodeView {
-    pub fn new(language: CodeLanguage, code: Option<String>, message: Option<String>) -> Self {
-        let code = code.map(Into::into);
+    pub fn new(
+        language: CodeLanguage,
+        code: Option<String>,
+        message: Option<String>,
+        func: Option<String>,
+    ) -> Self {
         CodeView {
+            func,
             language,
             code,
             message,

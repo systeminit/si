@@ -988,6 +988,18 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
+          async MIGRATE_COMPONENT(componentId: ComponentId) {
+            return new ApiRequest({
+              url: "component/migrate_to_default_variant",
+              keyRequestStatusBy: componentId,
+              method: "post",
+              params: {
+                componentId,
+                ...visibilityParams,
+              },
+            });
+          },
+
           async DELETE_EDGE(edgeId: EdgeId) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");

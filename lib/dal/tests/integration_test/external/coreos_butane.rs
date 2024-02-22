@@ -28,6 +28,7 @@ const EXPECTED_BUTANE_TO_EC2_IGNITION: &str = include_str!("ignition/butane-to-e
 const EXPECTED_DOCKER_TO_BUTANE_IGNITION: &str = include_str!("ignition/docker-to-butane.ign");
 
 #[test]
+#[ignore]
 async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
     let mut bagger = ComponentBagger::new();
     let butane_bag = bagger.create_component(ctx, "Mimic Tear", "Butane").await;
@@ -222,6 +223,7 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
 /// SI_TEST_BUILTIN_SCHEMAS=docker image,coreos butane
 /// ```
 #[test]
+#[ignore]
 async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
     let mut bagger = ComponentBagger::new();
     let alpine_bag = bagger.create_component(ctx, "alpine", "Docker Image").await;

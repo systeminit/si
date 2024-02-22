@@ -707,9 +707,9 @@ fn determine_selected_test_builtin_schemas() -> SelectedTestBuiltinSchemas {
                 // If we receive any keywords indicating that we need to return early, let's do so.
                 if &cleaned == "none" || &cleaned == "false" {
                     return SelectedTestBuiltinSchemas::None;
-                } else if &cleaned == "all" || &cleaned == "true" {
+                } else if &cleaned == "all" {
                     return SelectedTestBuiltinSchemas::All;
-                } else if &cleaned == "test" {
+                } else if &cleaned == "test" || &cleaned == "true" {
                     return SelectedTestBuiltinSchemas::Test;
                 }
 
@@ -721,7 +721,7 @@ fn determine_selected_test_builtin_schemas() -> SelectedTestBuiltinSchemas {
         }
         Err(_) => {
             // If the variable is unset, then we migrate everything. This is the default behavior.
-            SelectedTestBuiltinSchemas::All
+            SelectedTestBuiltinSchemas::Test
         }
     }
 }
