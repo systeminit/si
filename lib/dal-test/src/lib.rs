@@ -50,6 +50,7 @@ const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
 const ENV_VAR_PG_USER: &str = "SI_TEST_PG_USER";
 const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
 const ENV_VAR_BUILTIN_SCHEMAS: &str = "SI_TEST_BUILTIN_SCHEMAS";
+const ENV_VAR_KEEP_OLD_DBS: &str = "SI_TEST_KEEP_OLD_DBS";
 
 pub static COLOR_EYRE_INIT: Once = Once::new();
 
@@ -527,10 +528,14 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .await
         .wrap_err("failed to connect to database, is it running and available?")?;
 
-    info!("dropping old test-specific databases");
-    drop_old_test_databases(services_ctx.pg_pool())
-        .await
-        .wrap_err("failed to drop old databases")?;
+    #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test and
+    // all are prefixed with `SI_TEST_`
+    if !env::var(ENV_VAR_KEEP_OLD_DBS).is_ok_and(|v| !v.is_empty()) {
+        info!("dropping old test-specific databases");
+        drop_old_test_databases(services_ctx.pg_pool())
+            .await
+            .wrap_err("failed to drop old databases")?;
+    }
 
     // Ensure the database is totally clean, then run all migrations
     info!("dropping and re-creating the database schema");
