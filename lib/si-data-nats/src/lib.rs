@@ -1133,6 +1133,38 @@ impl NatsTxn {
     }
 
     #[instrument(
+        name = "transaction.publish_immediately",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.destination.name = Empty,
+            otel.kind = SpanKind::Internal.as_str(),
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+        )
+    )]
+    pub async fn publish_immediately<T>(&self, subject: impl ToSubject, object: &T) -> Result<()>
+    where
+        T: Serialize + Debug,
+    {
+        let span = Span::current();
+        span.follows_from(&self.tx_span);
+
+        let subject = subject.to_subject();
+        span.record("messaging.destination.name", subject.as_str());
+        let json: serde_json::Value = serde_json::to_value(object)
+            .map_err(|err| span.record_err(self.tx_span.record_err(Error::Serialize(err))))?;
+        let msg = serde_json::to_vec(&json)
+            .map_err(|err| span.record_err(self.tx_span.record_err(Error::Serialize(err))))?;
+        self.client
+            .publish(subject, msg.into())
+            .await
+            .map_err(|err| span.record_err(self.tx_span.record_err(err)))?;
+
+        Ok(())
+    }
+
+    #[instrument(
         name = "transaction.commit_into_conn",
         skip_all,
         level = "debug",
