@@ -6,9 +6,9 @@ load(
 docker_image(
     name = "otelcol",
     srcs = {
-        "config.yaml": "component/otelcol",
-        "honeycomb-config.yaml": "component/otelcol",
-        "docker-entrypoint.sh": "component/otelcol",
+        "config.yaml": ".",
+        "honeycomb-config.yaml": ".",
+        "docker-entrypoint.sh": ".",
     },
     build_args = {
         "BASE_VERSION": "0.74.0",

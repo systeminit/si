@@ -1,0 +1,34 @@
+pkgs_path = "/tmp"
+
+[crypto]
+encryption_key_base64 = "$SI_ENCRYPTION_KEY_BASE64"
+decryption_key_base64 = "$SI_DECRYPTION_KEY_BASE64"
+
+[cyclone]
+connect_timeout = 100
+pool_size = 100
+runtime_strategy = "LocalFirecracker"
+
+[jwt_signing_public_key]
+key_base64 = "$SI_JWT_KEY_BASE64"
+
+[nats]
+creds = """
+$SI_NATS_CREDS
+"""
+url = "$SI_NATS_URL"
+
+[pg]
+user = "si"
+password = "$SI_PG_PASSWORD"
+dbname = "$SI_PG_DB"
+application_name = "$SI_SERVICE"
+hostname = "localhost"
+port = 5432
+pool_max_size = 500
+
+[service]
+port = 5156
+
+[symmetric_crypto_service]
+active_key_base64 = "$SI_ACTIVE_KEY_BASE64"
