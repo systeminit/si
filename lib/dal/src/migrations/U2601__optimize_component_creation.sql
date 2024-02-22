@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION component_create_v2(
+CREATE OR REPLACE FUNCTION component_create_v3(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_user_pk ident,
@@ -18,6 +18,7 @@ DECLARE
     this_internal_provider                  RECORD;
     this_internal_providers                 internal_providers[];
     this_new_attribute_value                jsonb;
+    this_new_attribute_value_id             ident;
     this_parent_attribute_value_id          ident;
     this_prop_attribute_value               RECORD;
     this_schema_id                          ident;
@@ -175,13 +176,15 @@ BEGIN
     SELECT array_agg(ap.*)
     INTO STRICT this_attribute_prototypes
     FROM attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
-    WHERE ap.attribute_context_internal_provider_id = ANY (SELECT id FROM UNNEST(this_internal_providers))
-          OR ap.attribute_context_prop_id = ANY (SELECT prop_id FROM UNNEST(this_internal_providers));
+    WHERE (ap.attribute_context_internal_provider_id = ANY (SELECT id FROM UNNEST(this_internal_providers))
+           OR ap.attribute_context_prop_id = ANY (SELECT prop_id FROM UNNEST(this_internal_providers)))
+          AND ap.attribute_context_component_id = ident_nil_v1();
 
     SELECT array_agg(av.*)
     INTO STRICT this_attribute_values
     FROM attribute_values_v1(this_tenancy, this_visibility) AS av
-    WHERE av.attribute_context_prop_id = ANY (SELECT prop_id FROM UNNEST(this_internal_providers));
+    WHERE av.attribute_context_prop_id = ANY (SELECT prop_id FROM UNNEST(this_internal_providers))
+          AND av.attribute_context_component_id = ident_nil_v1();
 
     -- Implicit Internal Providers
     FOREACH this_internal_provider IN ARRAY this_internal_providers
@@ -347,6 +350,20 @@ BEGIN
             this_visibility,
             this_attribute_value_id,
             this_parent_attribute_value_id
+        );
+    END LOOP;
+
+    -- Make sure we've populated the dependency graph for this (new) component.
+    FOR this_new_attribute_value_id IN
+        SELECT av.id
+        FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+        WHERE av.attribute_context_component_id = this_new_row.id
+    LOOP
+        PERFORM attribute_value_dependencies_update_v1(
+            this_tenancy_record.tenancy_workspace_pk,
+            this_visibility_record.visibility_change_set_pk,
+            this_visibility_record.visibility_deleted_at,
+            this_new_attribute_value_id
         );
     END LOOP;
 

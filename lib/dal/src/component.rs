@@ -300,7 +300,7 @@ impl Component {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM component_create_v2($1, $2, $3, $4, $5)",
+                "SELECT object FROM component_create_v3($1, $2, $3, $4, $5)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
