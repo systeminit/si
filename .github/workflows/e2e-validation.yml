@@ -4,14 +4,19 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - feat/add-more-synthetics
   schedule:
-    - cron: '*/15 * * * *'  # Runs every 15 minutes
+    - cron: '*/5 * * * *'  # Runs every 5 minutes
 
 jobs:
   cypress-tests:
     runs-on: ubuntu-latest
-
+    strategy:
+      # don't fail the entire matrix on failure
+      fail-fast: false
+      matrix:
+        # run copies of the current job in parallel
+        containers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -31,7 +36,8 @@ jobs:
           echo "VITE_SI_WORKSPACE_ID=${{ vars.VITE_PROD_SI_WORKSPACE_ID }}" >> .env.local                       # Production Synthetic Workspace ID
           echo "VITE_SI_PROPAGATION_COMPONENT_A=${{ vars.VITE_PROD_SI_PROPAGATION_COMPONENT_A }}" >> .env.local # Production Propagation Test Component A [from]
           echo "VITE_SI_PROPAGATION_COMPONENT_B=${{ vars.VITE_PROD_SI_PROPAGATION_COMPONENT_B }}" >> .env.local # Production Propagation Test Component B [to]
-          
+          echo "VITE_SI_CYPRESS_MULTIPLIER=${{ vars.VITE_PROD_SI_CYPRESS_MULTIPLIER }}" >> .env.local                                                    # Set Execution to 10 iterations
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -46,8 +52,9 @@ jobs:
 
       - name: 'Upload Cypress Recordings to Github'
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: cypress-recordings
+          name: cypress-recordings-run-${{ matrix.containers }}
           path: app/web/cypress/videos/**/*.mp4
           retention-days: 5
 
