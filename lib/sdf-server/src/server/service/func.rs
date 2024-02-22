@@ -5,11 +5,11 @@ use axum::{
 };
 use dal::authentication_prototype::AuthenticationPrototypeError;
 use dal::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
-use dal::WsEventError;
 use dal::{
     workspace_snapshot::WorkspaceSnapshotError, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncId, TransactionsError,
 };
+use dal::{ChangeSetError, WsEventError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -66,8 +66,8 @@ pub enum FuncError {
     AuthenticationPrototype(#[from] AuthenticationPrototypeError),
     //     #[error("attribute value missing")]
     //     AttributeValueMissing,
-    //     #[error("change set error: {0}")]
-    //     ChangeSet(#[from] ChangeSetError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     //     #[error("component error: {0}")]
     //     Component(#[from] ComponentError),
     //     #[error("component missing schema variant")]

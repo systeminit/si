@@ -6,7 +6,9 @@ use si_data_pg::{PgError, PgPoolError};
 use strum::{Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 
+use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError};
 use crate::standard_model::{object_option_from_row_option, objects_from_rows};
 use crate::{
     pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy,
@@ -29,6 +31,8 @@ const CANCEL_ABANDON_FLOW: &str = include_str!("queries/change_set/cancel_abando
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
+    #[error("change set pointer error: {0}")]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
     #[error("invalid user actor pk")]
@@ -311,24 +315,26 @@ impl ChangeSet {
     //     Ok(result)
     // }
 
-    // pub async fn force_new(ctx: &mut DalContext) -> ChangeSetResult<Option<ChangeSetPk>> {
-    //     Ok(if ctx.visibility().is_head() {
-    //         let change_set = Self::new(ctx, Self::generate_name(), None).await?;
+    pub async fn force_new(ctx: &mut DalContext) -> ChangeSetResult<Option<ChangeSetPk>> {
+        Ok(if ctx.visibility().is_head() {
+            // TODO(nick): eventually unify this logic under one interface.
+            let change_set = ChangeSetPointer::fork_head(ctx, Self::generate_name()).await?;
+            ctx.update_visibility_v2(&change_set);
+            ctx.update_snapshot_to_visibility().await?;
 
-    //         let new_visibility = Visibility::new(change_set.pk, ctx.visibility().deleted_at);
+            // TODO(nick): replace this with the new change set stuff.
+            let fake_pk = ChangeSetPk::from(Ulid::from(change_set.id));
 
-    //         ctx.update_visibility(new_visibility);
+            WsEvent::change_set_created(ctx, fake_pk)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
 
-    //         WsEvent::change_set_created(ctx, change_set.pk)
-    //             .await?
-    //             .publish_on_commit(ctx)
-    //             .await?;
-
-    //         Some(change_set.pk)
-    //     } else {
-    //         None
-    //     })
-    // }
+            Some(fake_pk)
+        } else {
+            None
+        })
+    }
 }
 
 impl WsEvent {

@@ -1,9 +1,9 @@
 use axum::response::IntoResponse;
 use axum::Json;
-use dal::SecretView;
 use dal::{
     key_pair::KeyPairPk, EncryptedSecret, SecretAlgorithm, SecretVersion, Visibility, WsEvent,
 };
+use dal::{ChangeSet, SecretView};
 use serde::{Deserialize, Serialize};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -31,10 +31,9 @@ pub async fn create_secret(
     AccessBuilder(request_tx): AccessBuilder,
     Json(request): Json<CreateSecretRequest>,
 ) -> SecretResult<impl IntoResponse> {
-    let ctx = builder.build(request_tx.build(request.visibility)).await?;
+    let mut ctx = builder.build(request_tx.build(request.visibility)).await?;
 
-    // TODO(nick): restore this with the new engine.
-    // let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     let secret = EncryptedSecret::new(
         &ctx,
@@ -55,12 +54,10 @@ pub async fn create_secret(
 
     ctx.commit().await?;
 
-    let response = axum::response::Response::builder();
-
-    // TODO(nick): restore this with the new engine.
-    // if let Some(force_changeset_pk) = force_changeset_pk {
-    //     response = response.header("force_changeset_pk", force_changeset_pk.to_string());
-    // }
+    let mut response = axum::response::Response::builder();
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
 
     let secret = SecretView::from_secret(&ctx, secret).await?;
 

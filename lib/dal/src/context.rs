@@ -21,7 +21,6 @@ use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
-use crate::Workspace;
 use crate::{
     change_set_pointer::{ChangeSetPointer, ChangeSetPointerId},
     job::{
@@ -32,6 +31,7 @@ use crate::{
     workspace_snapshot::WorkspaceSnapshotError,
     HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk, WorkspaceSnapshot,
 };
+use crate::{ChangeSetPk, Workspace};
 
 /// A context type which contains handles to common core service dependencies.
 ///
@@ -565,6 +565,14 @@ impl DalContext {
     /// Updates this context with a new [`Visibility`].
     pub fn update_visibility(&mut self, visibility: Visibility) {
         self.visibility = visibility;
+    }
+
+    /// Updates this context with a new [`Visibility`], specific to the new engine.
+    pub fn update_visibility_v2(&mut self, change_set_v2: &ChangeSetPointer) {
+        self.update_visibility(Visibility::new(
+            ChangeSetPk::from(Ulid::from(change_set_v2.id)),
+            None,
+        ));
     }
 
     /// Runs a block of code with "deleted" [`Visibility`] DalContext using the same transactions
