@@ -40,10 +40,15 @@ pub use tracing_subscriber;
 pub mod helpers;
 pub mod test_harness;
 
+const DEFAULT_TEST_PG_USER: &str = "si_test";
+const DEFAULT_TEST_PG_PORT_STR: &str = "6432";
+
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 const ENV_VAR_MODULE_INDEX_URL: &str = "SI_TEST_MODULE_INDEX_URL";
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
+const ENV_VAR_PG_USER: &str = "SI_TEST_PG_USER";
+const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
 const ENV_VAR_BUILTIN_SCHEMAS: &str = "SI_TEST_BUILTIN_SCHEMAS";
 
 pub static COLOR_EYRE_INIT: Once = Once::new();
@@ -113,12 +118,19 @@ impl Config {
             config.pg.hostname = value;
         }
         config.pg.dbname = env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| pg_dbname.to_string());
+        config.pg.user =
+            env::var(ENV_VAR_PG_USER).unwrap_or_else(|_| DEFAULT_TEST_PG_USER.to_string());
+        config.pg.port = env::var(ENV_VAR_PG_PORT)
+            .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
+            .parse()?;
         config.pg.pool_max_size *= 32;
         config.pg.certificate_path = Some(config.postgres_key_path.clone().try_into()?);
 
         if let Ok(value) = env::var(ENV_VAR_MODULE_INDEX_URL) {
             config.module_index_url = value;
         }
+
+        debug!(?config, "test config");
 
         Ok(config)
     }

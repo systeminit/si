@@ -6,6 +6,10 @@ services:
     image: systeminit/ci-base:stable
     environment:
       - "SI_TEST_PG_HOSTNAME=postgres"
+      # NOTE: We want to set this to the default postgres port as the tests run
+      # in *this* container and we're accessing postgres in a peer container
+      # and not using the external port mapping.
+      - "SI_TEST_PG_PORT=5432"
       - "SI_TEST_NATS_URL=nats"
       - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
     depends_on:
@@ -14,14 +18,23 @@ services:
       - jaeger
       - otelcol
 
+  # NOTE: this db is the same configuration as `postgres-test` under
+  # `dev/docker-compose.platform.yml`. In the CI environment, there should be
+  # *no* need for the `postgres` service as we aren't running the full service
+  # stack.
   postgres:
     image: systeminit/postgres:stable
     environment:
       - "POSTGRES_PASSWORD=bugbear"
       - "PGPASSWORD=bugbear"
-      - "POSTGRES_USER=si"
-      - "POSTGRES_DB=si"
-      - "POSTGRES_MULTIPLE_DBS=si_test,si_test_dal,si_test_sdf_server,si_auth,si_module_index"
+      - "POSTGRES_USER=si_test"
+      - "POSTGRES_DB=si_test"
+      - "POSTGRES_MULTIPLE_DBS=si_test_dal,si_test_sdf_server"
+    command:
+      - "-c"
+      - "fsync=off"
+    ports:
+      - "6432:5432"
 
   nats:
     image: systeminit/nats:stable
