@@ -1,5 +1,5 @@
 use axum::Json;
-use dal::{Component, ComponentId, SchemaVariant, Visibility, WsEvent};
+use dal::{Component, ComponentId, SchemaVariant, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;

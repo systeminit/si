@@ -71,11 +71,12 @@ pub mod node_menu;
 // pub mod prototype_list_for_func;
 pub mod qualification;
 // pub mod reconciliation_prototype;
-// pub mod secret;
+pub mod secret;
 // pub mod status;
 //pub mod tasks;
 
 pub use action_prototype::{ActionKind, ActionPrototype, ActionPrototypeId};
+pub use actor_view::ActorView;
 pub use attribute::{
     prototype::{AttributePrototype, AttributePrototypeId},
     value::{AttributeValue, AttributeValueId},
@@ -107,6 +108,10 @@ pub use provider::ProviderArity;
 pub use provider::ProviderKind;
 pub use schema::variant::root_prop::component_type::ComponentType;
 pub use schema::{Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId};
+pub use secret::SecretError;
+pub use secret::SecretId;
+pub use secret::SecretView;
+pub use secret::{EncryptedSecret, SecretAlgorithm, SecretVersion};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};

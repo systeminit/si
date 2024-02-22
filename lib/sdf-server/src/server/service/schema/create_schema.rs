@@ -1,6 +1,6 @@
 use axum::Json;
 use dal::ComponentKind;
-use dal::{Schema, Visibility, WsEvent};
+use dal::{Schema, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::SchemaResult;

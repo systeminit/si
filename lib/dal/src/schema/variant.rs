@@ -35,8 +35,8 @@ use crate::{
     pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
     AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProvider,
-    ExternalProviderId, Func, FuncId, InternalProvider, Prop, PropId, PropKind, ProviderArity,
-    ProviderKind, Schema, SchemaError, SchemaId, Timestamp, TransactionsError,
+    ExternalProviderId, Func, FuncId, InternalProvider, Prop, PropId, PropKind, Schema,
+    SchemaError, SchemaId, Timestamp, TransactionsError,
 };
 use crate::{FuncBackendResponseType, InternalProviderId};
 
@@ -192,7 +192,7 @@ impl SchemaVariant {
 
         let schema_variant_id: SchemaVariantId = id.into();
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;
-        let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
+        let _func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
 
         let schema_variant = Self::assemble(id.into(), content);
         Ok((schema_variant, root_prop))
