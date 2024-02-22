@@ -53,7 +53,7 @@ services:
 
   vector:
     container_name: vector
-    image: timberio/vector:0.X-alpine
+    image: timberio/vector:0.X-debian
     profiles: [council, pinga, sdf, veritech]
     ports:
       - 8686:8686
