@@ -1,0 +1,17 @@
+sources:
+  docker:
+    type: "docker_logs"
+  $SI_SERVICE-journal:
+    type: "journald"
+    include_units: ["$SI_SERVICE"]
+
+sinks:
+  cloudwatch:
+    type: "aws_cloudwatch_logs"
+    inputs: ["$SI_SERVICE-journal"]
+    compression: "gzip"
+    encoding:
+      codec: "json"
+    region: "us-east-1"
+    group_name: "/ec2/$SI_HOSTENV-$SI_SERVICE"
+    stream_name: "{{ host }}"

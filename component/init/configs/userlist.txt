@@ -1,0 +1,2 @@
+"si" "$SI_PG_PASSWORD"
+"admin" "$SI_BOUNCER_ADMIN_PASSWORD"
