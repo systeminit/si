@@ -46,6 +46,7 @@ check_os_release() {
     [[ "$(cat /etc/os-release | grep 'Red Hat Enterprise Linux Server release 7')" ]] && export OS_VARIANT=redhat-7 && return 0
     [[ "$(cat /etc/os-release | grep 'Red Hat Enterprise Linux release 8')" ]] && export OS_VARIANT=redhat-8 && return 0
     [[ "$(cat /etc/os-release | grep 'Amazon Linux release 2')" ]] && export OS_VARIANT=amazon-linux-2 && return 0
+    [[ "$(cat /etc/os-release | grep 'Amazon Linux 2023')" ]] && export OS_VARIANT=amazon-linux-2023 && return 0
     [[ "$(cat /etc/os-release | grep 'Arch Linux')" ]] && export OS_VARIANT=arch-linux && return 0
     [[ "$(cat /etc/os-release | grep ^NAME | grep Fedora)" ]] && export OS_VARIANT=fedora && return 0
     [[ "$(cat /etc/os-release | grep ^NAME | grep Ubuntu)" ]] && export OS_VARIANT=ubuntu && return 0
@@ -83,6 +84,10 @@ install_pre_reqs() {
             sudo yum -v update -y
         ;;
         amazon-linux-2)
+            # Insert OS specific setup steps here
+            sudo yum -v update -y
+        ;;
+        amazon-linux-2023)
             # Insert OS specific setup steps here
             sudo yum -v update -y
         ;;
@@ -279,7 +284,10 @@ execute_cleanup() {
             # Insert OS specific cleanup steps here
             yum -v clean all
         ;;
-
+        amazon-linux-2023)
+            # Insert OS specific cleanup steps here
+            yum -v clean all
+        ;;
         arch-linux)
             # Insert OS specific cleanup steps here
             echo "Info: Executing post-clean up for arch"
