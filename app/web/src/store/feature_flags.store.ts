@@ -18,6 +18,7 @@ const FLAG_MAPPING = {
   SECRETS: "secrets",
   WORKSPACE_BACKUPS: "workspaceBackups",
   SEARCH_FILTERS: "search-filters",
+  STATUSBAR_RESOURCE_COUNT: "statusbar_resource_count",
 };
 
 type FeatureFlags = keyof typeof FLAG_MAPPING;
