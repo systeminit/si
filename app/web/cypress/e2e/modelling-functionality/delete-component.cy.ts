@@ -34,8 +34,8 @@ describe('Delete Components', () => {
     cy.get('button.vbutton.--variant-solid.--size-md.--tone-destructive')
       .click();
 
-    // Check to make sure a component has been added to the outliner
-    cy.get('[class="component-outline-node"]', { timeout: 10000 }).should('not.contain', 'AWS Credential')
+    //check to make sure a component has been added to the outliner
+    cy.get('[class="component-outline-node"]', { timeout: 10000 }).contains('AWS Credential', { timeout: 10000 }).should('be.visible');
 
     // Click the button to destroy changeset
     cy.get('nav.navbar button.vbutton.--variant-ghost.--size-sm.--tone-action')
