@@ -271,6 +271,7 @@ impl Component {
     /// a [`Schema`](crate::Schema) rather than
     /// a specific [`SchemaVariantId`](crate::SchemaVariant), use
     /// [`Self::new_for_default_variant_from_schema()`].
+    #[instrument(level = "info", skip(ctx, name), fields(name = name.as_ref()))]
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
