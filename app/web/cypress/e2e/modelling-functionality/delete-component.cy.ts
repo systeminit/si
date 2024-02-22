@@ -13,7 +13,7 @@ describe('Delete Components', () => {
       .click();
 
     // Find the AWS Credential
-    cy.get('[data-cy="asset_card', { timeout: 10000 }).contains('AWS Credential').should('be.visible').as('awsCred')
+    cy.get('[data-cy="asset_card', { timeout: 10000 }).contains('AWS Credential', { timeout: 10000 }).should('be.visible').as('awsCred')
 
     // Find the canvas to get a location to drag to
     cy.get('canvas').first().as('konvaStage');
@@ -23,7 +23,7 @@ describe('Delete Components', () => {
 
     // Check to make sure a component has been added to the outliner
     cy.get('[class="component-outline-node"]', { timeout: 10000 }).
-      contains('AWS Credential')
+      contains('AWS Credential', { timeout: 10000 })
       .should('be.visible')
       .rightclick();
 
