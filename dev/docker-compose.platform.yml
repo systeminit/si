@@ -9,9 +9,23 @@ services:
       - "PGPASSWORD=bugbear"
       - "POSTGRES_USER=si"
       - "POSTGRES_DB=si"
-      - "POSTGRES_MULTIPLE_DBS=si_test,si_test_dal,si_test_sdf_server,si_auth,si_module_index"
+      - "POSTGRES_MULTIPLE_DBS=si_auth,si_module_index"
     ports:
       - "5432:5432"
+
+  postgres-test:
+    image: systeminit/postgres:stable
+    environment:
+      - "POSTGRES_PASSWORD=bugbear"
+      - "PGPASSWORD=bugbear"
+      - "POSTGRES_USER=si_test"
+      - "POSTGRES_DB=si_test"
+      - "POSTGRES_MULTIPLE_DBS=si_test_dal,si_test_sdf_server"
+    command:
+      - "-c"
+      - "fsync=off"
+    ports:
+      - "6432:5432"
 
   nats:
     image: systeminit/nats:stable
