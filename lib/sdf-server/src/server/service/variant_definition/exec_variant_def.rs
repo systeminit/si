@@ -11,6 +11,7 @@ use hyper::Uri;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
+use crate::service::async_route::handle_error;
 use dal::ws_event::{AttributePrototypeView, FinishSchemaVariantDefinitionPayload};
 use dal::{
     func::intrinsics::IntrinsicFunc,
@@ -74,7 +75,7 @@ pub async fn exec_variant_def(
         {
             Ok(values) => values,
             Err(err) => {
-                return handle_error(&ctx, task_id, err.to_string()).await;
+                return handle_error(&ctx, original_uri, task_id, err).await;
             }
         };
 
@@ -90,32 +91,16 @@ pub async fn exec_variant_def(
         {
             Ok(event) => event,
             Err(err) => {
-                return error!("Unable to make ws event of finish: {err}");
+                return handle_error(&ctx, original_uri, task_id, err).await;
             }
         };
 
         if let Err(err) = event.publish_on_commit(&ctx).await {
-            return error!("Unable to publish ws event of finish: {err}");
+            return handle_error(&ctx, original_uri, task_id, err).await;
         };
 
         if let Err(err) = ctx.commit().await {
-            handle_error(&ctx, task_id, err.to_string()).await;
-        }
-
-        async fn handle_error(ctx: &DalContext, id: Ulid, err: String) {
-            error!("Unable to exec variant def: {err}");
-            match WsEvent::async_error(ctx, id, err).await {
-                Ok(event) => match event.publish_on_commit(ctx).await {
-                    Ok(()) => {}
-                    Err(err) => error!("Unable to publish ws event of error: {err}"),
-                },
-                Err(err) => {
-                    error!("Unable to make ws event of error: {err}");
-                }
-            }
-            if let Err(err) = ctx.commit().await {
-                error!("Unable to commit errors in exec_variant_def: {err}");
-            }
+            handle_error(&ctx, original_uri, task_id, err).await;
         }
     });
 

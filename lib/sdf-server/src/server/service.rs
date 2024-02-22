@@ -1,3 +1,4 @@
+pub mod async_route;
 pub mod change_set;
 pub mod component;
 pub mod diagram;

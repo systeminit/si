@@ -17,6 +17,7 @@ use veritech_client::ResourceStatus;
 
 use super::{DiagramError, DiagramResult};
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::service::async_route::handle_error;
 use crate::server::tracking::track;
 use crate::service::diagram::connect_component_to_frame::connect_component_sockets_to_frame;
 
@@ -183,36 +184,20 @@ pub async fn paste_components(
         )
         .await
         {
-            handle_error(&ctx, id, err.to_string()).await;
+            handle_error(&ctx, original_uri, id, err).await;
         } else {
             match WsEvent::async_finish(&ctx, id).await {
                 Ok(event) => match event.publish_on_commit(&ctx).await {
                     Ok(()) => {
                         if let Err(err) = ctx.commit().await {
-                            handle_error(&ctx, id, err.to_string()).await;
+                            handle_error(&ctx, original_uri, id, err).await;
                         }
                     }
-                    Err(err) => error!("Unable to publish ws event of finish: {err}"),
+                    Err(err) => handle_error(&ctx, original_uri, id, err).await,
                 },
                 Err(err) => {
-                    error!("Unable to make ws event of finish: {err}");
+                    handle_error(&ctx, original_uri, id, err).await;
                 }
-            }
-        }
-
-        async fn handle_error(ctx: &DalContext, id: Ulid, err: String) {
-            error!("Unable to paste components: {err}");
-            match WsEvent::async_error(ctx, id, err).await {
-                Ok(event) => match event.publish_on_commit(ctx).await {
-                    Ok(()) => {}
-                    Err(err) => error!("Unable to publish ws event of error: {err}"),
-                },
-                Err(err) => {
-                    error!("Unable to make ws event of error: {err}");
-                }
-            }
-            if let Err(err) = ctx.commit().await {
-                error!("Unable to commit errors in paste components: {err}");
             }
         }
     });

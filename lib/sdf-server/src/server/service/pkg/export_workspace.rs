@@ -10,6 +10,7 @@ use telemetry::prelude::*;
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient, RawAccessToken};
 use crate::server::tracking::track;
+use crate::service::async_route::handle_error;
 
 use super::{PkgError, PkgResult};
 
@@ -47,38 +48,22 @@ pub async fn export_workspace(
         )
         .await
         {
-            return handle_error(&ctx, id, err.to_string()).await;
+            return handle_error(&ctx, original_uri, id, err).await;
         }
 
         let event = match WsEvent::async_finish(&ctx, id).await {
             Ok(event) => event,
             Err(err) => {
-                return error!("Unable to make ws event of finish: {err}");
+                return handle_error(&ctx, original_uri, id, err).await;
             }
         };
 
         if let Err(err) = event.publish_on_commit(&ctx).await {
-            return error!("Unable to publish ws event of finish: {err}");
+            return handle_error(&ctx, original_uri, id, err).await;
         };
 
         if let Err(err) = ctx.commit().await {
-            handle_error(&ctx, id, err.to_string()).await;
-        }
-
-        async fn handle_error(ctx: &DalContext, id: Ulid, err: String) {
-            error!("Unable to export workspace: {err}");
-            match WsEvent::async_error(ctx, id, err).await {
-                Ok(event) => match event.publish_on_commit(ctx).await {
-                    Ok(()) => {}
-                    Err(err) => error!("Unable to publish ws event of error: {err}"),
-                },
-                Err(err) => {
-                    error!("Unable to make ws event of error: {err}");
-                }
-            }
-            if let Err(err) = ctx.commit().await {
-                error!("Unable to commit errors in export workspace: {err}");
-            }
+            handle_error(&ctx, original_uri, id, err).await;
         }
     });
 
