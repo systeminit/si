@@ -36,12 +36,13 @@ pub use color_eyre::{
     eyre::{eyre, Result, WrapErr},
 };
 pub use si_test_macros::{dal_test as test, sdf_test};
+pub use signup::WorkspaceSignup;
 pub use telemetry;
 pub use tracing_subscriber;
 
 pub mod helpers;
 mod signup;
-// pub mod test_harness;
+pub mod test_harness;
 
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 const ENV_VAR_MODULE_INDEX_URL: &str = "SI_TEST_MODULE_INDEX_URL";

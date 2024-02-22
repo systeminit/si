@@ -27,8 +27,8 @@ This guide provides the minimum steps for preparing changes for the new engine.
 1. `cargo check --all-targets --all-features`
 1. `cargo fmt`
 1. `cargo clippy --all-targets --all-features`
-1. `buck2 run //lib/dal:test-unit -- workspace_snapshot::graph`
-1. `buck2 run //lib/dal:test-integration -- new_engine`
+1. `buck2 run //lib/dal:test-unit`
+1. `buck2 run //lib/dal:test-integration` _(side note: bring back tests as they become relevant again)_
 1. `buck2 build //lib/... //bin/pinga //bin/sdf //bin/rebaser //bin/veritech //bin/council`
 1. `buck2 run dev:up` and test the application by hand
 

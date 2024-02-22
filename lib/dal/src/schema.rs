@@ -233,6 +233,26 @@ impl Schema {
         Ok(schemas)
     }
 
+    /// Lists all [`Schemas`](Schema) by ID in the workspace.
+    pub async fn list_ids(ctx: &DalContext) -> SchemaResult<Vec<SchemaId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+        let schema_category_index_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Schema)?;
+        let schema_node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            schema_category_index_id,
+            EdgeWeightKindDiscriminants::Use,
+        )?;
+
+        let mut schema_ids = Vec::new();
+        for index in schema_node_indices {
+            let raw_id = workspace_snapshot.get_node_weight(index)?.id();
+            schema_ids.push(raw_id.into());
+        }
+
+        Ok(schema_ids)
+    }
+
     // NOTE(nick): this assumes that schema names are unique.
     pub async fn find_by_name(
         ctx: &DalContext,
