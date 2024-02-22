@@ -1,25 +1,30 @@
-use std::fmt;
-
 use base64::{engine::general_purpose, Engine};
-use content_store::{Store, StoreError};
+use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
+use si_data_pg::PgError;
 use si_hash::Hash;
 use sodiumoxide::crypto::{
     box_::{PublicKey, SecretKey},
     sealedbox,
 };
+use std::collections::HashMap;
+use std::fmt;
 use strum::{AsRefStr, Display, EnumDiscriminants, EnumString};
-use thiserror::Error;
-
-use si_data_pg::PgError;
 use telemetry::prelude::*;
+use thiserror::Error;
+use ulid::Ulid;
 use veritech_client::SensitiveContainer;
 
 use crate::change_set_pointer::ChangeSetPointerError;
-use crate::workspace_snapshot::content_address::ContentAddress;
-use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::prop::{PropError, PropPath};
+use crate::schema::variant::root_prop::RootPropChild;
+use crate::schema::variant::SchemaVariantError;
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::edge_weight::{
+    EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
+};
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
@@ -30,14 +35,12 @@ use crate::{
     pk,
     property_editor::schema::PropertyEditorPropWidgetKind,
     serde_impls::{base64_bytes_serde, nonce_serde},
-    standard_model::{self, objects_from_rows, TypeHint},
+    standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_accessor_ro, ActorView, ChangeSetPk, DalContext,
-    HistoryActor, HistoryEvent, HistoryEventError, KeyPair, KeyPairError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, Visibility, WsEvent,
-    WsEventResult, WsPayload,
+    HistoryActor, HistoryEvent, HistoryEventError, KeyPair, KeyPairError, Prop, PropId,
+    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, UserPk, Visibility, WsEvent, WsEventResult, WsPayload,
 };
-
-const LIST_SECRET_DEFINITIONS: &str = include_str!("queries/secrets/list_secret_definitions.sql");
 
 /// Error type for Secrets.
 #[remain::sorted]
@@ -61,6 +64,10 @@ pub enum SecretError {
     NodeWeight(#[from] NodeWeightError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("secret not found: {0}")]
     SecretNotFound(SecretId),
     #[error("standard model error: {0}")]
@@ -156,26 +163,17 @@ impl Secret {
     // is not used where it shouldn't be.
     pub async fn new(
         ctx: &DalContext,
-        new_encrypted_secret: EncryptedSecret,
+        secret_id: SecretId,
+        content: SecretContentV1,
     ) -> SecretResult<Self> {
-        let content = SecretContentV1 {
-            timestamp: new_encrypted_secret.timestamp,
-            created_by: new_encrypted_secret.created_by,
-            updated_by: new_encrypted_secret.updated_by,
-            pk: new_encrypted_secret.pk,
-            key_pair_pk: new_encrypted_secret.key_pair_pk,
-            name: new_encrypted_secret.name,
-            definition: new_encrypted_secret.definition,
-            description: new_encrypted_secret.description,
-        };
         let hash = ctx
             .content_store()
             .lock()
             .await
             .add(&SecretContent::V1(content.clone()))?;
 
+        let id = Ulid::from(secret_id);
         let change_set = ctx.change_set_pointer()?;
-        let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Secret(hash))?;
 
         // Attach secret to the category.
@@ -202,34 +200,149 @@ impl Secret {
         self.id
     }
 
-    // Update the underlying `encrypted_secrets` table rather than attempting to update the
-    // `secrets` view
-    pub async fn set_name(
-        &mut self,
-        ctx: &DalContext,
-        value: impl Into<String>,
-    ) -> SecretResult<()> {
-        let value = value.into();
-        let _updated_at = standard_model::update(
-            ctx,
-            "encrypted_secrets",
-            "name",
-            &self.id(),
-            &value,
-            TypeHint::Text,
-        )
-        .await?;
-        let _history_event = HistoryEvent::new(
-            ctx,
-            EncryptedSecret::history_event_label(vec!["updated"]),
-            EncryptedSecret::history_event_message("updated"),
-            &serde_json::json!({"pk": self.pk, "field": "name", "value": &value}),
-        )
-        .await?;
-        self.name = value;
+    pub fn pk(&self) -> SecretPk {
+        self.pk
+    }
+
+    pub fn name(&self) -> &str {
+        self.name.as_ref()
+    }
+
+    pub fn definition(&self) -> &str {
+        self.definition.as_ref()
+    }
+
+    pub fn description(&self) -> &Option<String> {
+        &self.description
+    }
+
+    pub async fn get_by_id(ctx: &DalContext, id: SecretId) -> SecretResult<Self> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let ulid: Ulid = id.into();
+        let node_index = workspace_snapshot.get_node_index_by_id(ulid)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        let content: SecretContent = ctx
+            .content_store()
+            .lock()
+            .await
+            .get(&hash)
+            .await?
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
+
+        // NOTE(nick): if we had a v2, then there would be migration logic here.
+        let SecretContent::V1(inner) = content;
+
+        Ok(Self::assemble(id, inner))
+    }
+
+    pub async fn list(ctx: &DalContext) -> SecretResult<Vec<Self>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+        let mut secrets = vec![];
+        let secret_category_node_id =
+            workspace_snapshot.get_category_node(None, CategoryNodeKind::Secret)?;
+
+        let secret_node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            secret_category_node_id,
+            EdgeWeightKindDiscriminants::Use,
+        )?;
+
+        let mut node_weights = vec![];
+        let mut hashes = vec![];
+        for index in secret_node_indices {
+            let node_weight = workspace_snapshot
+                .get_node_weight(index)?
+                .get_content_node_weight_of_kind(ContentAddressDiscriminants::Secret)?;
+            hashes.push(node_weight.content_hash());
+            node_weights.push(node_weight);
+        }
+
+        let contents: HashMap<ContentHash, SecretContent> = ctx
+            .content_store()
+            .lock()
+            .await
+            .get_bulk(hashes.as_slice())
+            .await?;
+
+        for node_weight in node_weights {
+            match contents.get(&node_weight.content_hash()) {
+                Some(content) => {
+                    // NOTE(nick): if we had a v2, then there would be migration logic here.
+                    let SecretContent::V1(inner) = content;
+
+                    secrets.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
+            }
+        }
+
+        Ok(secrets)
+    }
+
+    // TODO(nick): we need to decide the order of operations for referential secrets and encrypted ones.
+    pub async fn update(ctx: &DalContext, encrypted_secret: &EncryptedSecret) -> SecretResult<()> {
+        let raw_id = Ulid::from(encrypted_secret.id);
+        let mut referential_secret = Self::get_by_id(ctx, encrypted_secret.id).await?;
+
+        let before = SecretContentV1::from(referential_secret.clone());
+
+        // Only update fields that are updated when encrypted secrets are updated.
+        referential_secret.timestamp = encrypted_secret.timestamp;
+        referential_secret.updated_by = encrypted_secret.updated_by;
+        referential_secret.name = encrypted_secret.name.clone();
+        referential_secret.description = Some(encrypted_secret.definition.clone());
+        referential_secret.key_pair_pk = encrypted_secret.key_pair_pk;
+
+        let after = SecretContentV1::from(referential_secret);
+
+        if before != after {
+            let hash = ctx
+                .content_store()
+                .lock()
+                .await
+                .add(&SecretContent::V1(after.clone()))?;
+
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+            workspace_snapshot.update_content(ctx.change_set_pointer()?, raw_id, hash)?;
+        }
 
         Ok(())
     }
+
+    // TODO(nick): this was only used in tests. We should decide how the referential secrets and encrypted secrets
+    // interfaces behave with one another in the long term.
+    // // Update the underlying `encrypted_secrets` table rather than attempting to update the
+    // // `secrets` view
+    // pub async fn set_name(
+    //     &mut self,
+    //     ctx: &DalContext,
+    //     value: impl Into<String>,
+    // ) -> SecretResult<()> {
+    //     let value = value.into();
+    //     let _updated_at = standard_model::update(
+    //         ctx,
+    //         "encrypted_secrets",
+    //         "name",
+    //         &self.id(),
+    //         &value,
+    //         TypeHint::Text,
+    //     )
+    //     .await?;
+    //     let _history_event = HistoryEvent::new(
+    //         ctx,
+    //         EncryptedSecret::history_event_label(vec!["updated"]),
+    //         EncryptedSecret::history_event_message("updated"),
+    //         &serde_json::json!({"pk": self.pk, "field": "name", "value": &value}),
+    //     )
+    //     .await?;
+    //     self.name = value;
+    //
+    //     Ok(())
+    // }
 
     pub async fn key_pair(&self, ctx: &DalContext) -> SecretResult<KeyPair> {
         Ok(KeyPair::get_by_pk(ctx, self.key_pair_pk).await?)
@@ -405,6 +518,37 @@ impl_standard_model! {
     history_event_message_name: "Encrypted Secret"
 }
 
+/// A transient type between [`EncryptedSecret`] and [`Secret`].
+///
+/// Like [`Secret`], this type does not contain any encrypted information nor any encryption metadata and is
+/// therefore safe to expose via external API.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+struct DeserializedEncryptedSecret {
+    pk: SecretPk,
+    id: SecretId,
+    name: String,
+    key_pair_pk: KeyPairPk,
+    definition: String,
+    description: Option<String>,
+    #[serde(flatten)]
+    tenancy: Tenancy,
+    #[serde(flatten)]
+    timestamp: Timestamp,
+    created_by: Option<UserPk>,
+    updated_by: Option<UserPk>,
+    #[serde(flatten)]
+    visibility: Visibility,
+}
+
+impl_standard_model! {
+    model: DeserializedEncryptedSecret,
+    pk: SecretPk,
+    id: SecretId,
+    table_name: "secrets",
+    history_event_label_base: "secret",
+    history_event_message_name: "Secret"
+}
+
 impl EncryptedSecret {
     /// Creates a new encrypted secret and returns a corresponding [`Secret`] representation.
     #[allow(clippy::too_many_arguments, clippy::new_ret_no_self)]
@@ -426,7 +570,6 @@ impl EncryptedSecret {
         };
 
         let (double_crypted, nonce, key_hash) = ctx.symmetric_crypto_service().encrypt(crypted);
-
         let row = ctx
             .txns()
             .await?
@@ -449,9 +592,25 @@ impl EncryptedSecret {
                 ],
             )
             .await?;
-        let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
 
-        let referential_secret = Secret::new(ctx, object).await?;
+        let object: DeserializedEncryptedSecret =
+            standard_model::finish_create_from_row(ctx, row).await?;
+
+        let referential_secret = Secret::new(
+            ctx,
+            object.id,
+            SecretContentV1 {
+                timestamp: object.timestamp,
+                created_by: object.created_by,
+                updated_by: object.updated_by,
+                pk: object.pk,
+                key_pair_pk: object.key_pair_pk,
+                name: object.name,
+                definition: object.definition,
+                description: object.description,
+            },
+        )
+        .await?;
 
         Ok(referential_secret)
     }
@@ -646,15 +805,63 @@ pub struct SecretDefinitionView {
 }
 
 impl SecretDefinitionView {
-    pub async fn list(ctx: &DalContext) -> SecretResult<Vec<SecretDefinitionView>> {
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(LIST_SECRET_DEFINITIONS, &[ctx.tenancy(), ctx.visibility()])
-            .await?;
+    pub async fn list(ctx: &DalContext) -> SecretResult<Vec<Self>> {
+        let schema_variant_ids = SchemaVariant::list_ids(ctx).await?;
 
-        Ok(objects_from_rows(rows)?)
+        let secret_definition_path = PropPath::new(["root", "secret_definition"]);
+        let mut views = Vec::new();
+
+        for schema_variant_id in schema_variant_ids {
+            let maybe_secret_definition_prop_id =
+                Prop::find_prop_id_by_path_opt(ctx, schema_variant_id, &secret_definition_path)
+                    .await?;
+
+            // We have found a schema variant with a secret definition!
+            if let Some(secret_definition_prop_id) = maybe_secret_definition_prop_id {
+                let view =
+                    Self::assemble(ctx, schema_variant_id, secret_definition_prop_id).await?;
+                views.push(view);
+            }
+        }
+
+        Ok(views)
+    }
+
+    async fn assemble(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        secret_definition_prop_id: PropId,
+    ) -> SecretResult<Self> {
+        // Now, find all the fields of the definition.
+        let field_prop_ids =
+            Prop::direct_child_prop_ids_by_id(ctx, secret_definition_prop_id).await?;
+
+        // Assemble the form data views.
+        let mut form_data_views = Vec::new();
+        for field_prop_id in field_prop_ids {
+            let field_prop = Prop::get_by_id(ctx, field_prop_id).await?;
+            form_data_views.push(SecretFormDataView {
+                name: field_prop.name,
+                kind: field_prop.kind.to_string(),
+                widget_kind: PropertyEditorPropWidgetKind::new(
+                    field_prop.widget_kind,
+                    field_prop.widget_options,
+                ),
+            });
+        }
+
+        // Get the name from the secrets map entry prop.
+        let secrets_map_prop_id =
+            SchemaVariant::find_root_child_prop_id(ctx, schema_variant_id, RootPropChild::Secrets)
+                .await?;
+        let secrets_map_prop = Prop::get_by_id(ctx, secrets_map_prop_id).await?;
+        let entry_prop_id = secrets_map_prop.element_prop_id(ctx).await?;
+        let entry_prop = Prop::get_by_id(ctx, entry_prop_id).await?;
+
+        Ok(Self {
+            secret_definition: entry_prop.name,
+            form_data: form_data_views,
+        })
     }
 }
 

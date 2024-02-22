@@ -108,6 +108,7 @@ pub use provider::ProviderArity;
 pub use provider::ProviderKind;
 pub use schema::variant::root_prop::component_type::ComponentType;
 pub use schema::{Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId};
+pub use secret::Secret;
 pub use secret::SecretError;
 pub use secret::SecretId;
 pub use secret::SecretView;

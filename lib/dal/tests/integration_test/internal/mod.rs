@@ -18,7 +18,7 @@ mod new_engine;
 // mod property_editor;
 // mod provider;
 // mod schema;
-// mod secret;
+mod secret;
 // mod socket;
 // mod standard_model;
 // mod status_update;

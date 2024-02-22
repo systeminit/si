@@ -1,10 +1,8 @@
-use dal::{
-    DalContext, EncryptedSecret, Secret, SecretAlgorithm, SecretVersion, StandardModel,
-    WorkspaceSignup,
-};
+use dal::{DalContext, EncryptedSecret, Secret, SecretAlgorithm, SecretVersion, StandardModel};
 use dal_test::{
     test,
     test_harness::{create_secret, generate_fake_name},
+    WorkspaceSignup,
 };
 
 #[test]
@@ -41,8 +39,7 @@ async fn secret_get_by_id(ctx: &DalContext, nw: &WorkspaceSignup) {
 
     let secret = Secret::get_by_id(ctx, og_secret.id())
         .await
-        .expect("failed to get secret")
-        .expect("failed to find secret in current tenancy and visibility");
+        .expect("failed to get secret");
     assert_eq!(secret, og_secret);
 }
 
@@ -50,12 +47,12 @@ async fn secret_get_by_id(ctx: &DalContext, nw: &WorkspaceSignup) {
 async fn encrypted_secret_get_by_id(ctx: &DalContext, nw: &WorkspaceSignup) {
     let secret = create_secret(ctx, nw.key_pair.pk()).await;
 
-    let encrypted_secret = EncryptedSecret::get_by_id(ctx, secret.id())
+    let encrypted_secret = EncryptedSecret::get_by_id(ctx, &secret.id())
         .await
         .expect("failed to get encrypted secret")
         .expect("failed to find encrypted secret in current tenancy and visibility");
-    assert_eq!(secret.id(), encrypted_secret.id());
-    assert_eq!(secret.pk(), encrypted_secret.pk());
+    assert_eq!(secret.id(), *encrypted_secret.id());
+    assert_eq!(secret.pk(), *encrypted_secret.pk());
     assert_eq!(secret.name(), encrypted_secret.name());
     assert_eq!(
         secret.description().as_deref(),
@@ -64,19 +61,20 @@ async fn encrypted_secret_get_by_id(ctx: &DalContext, nw: &WorkspaceSignup) {
     assert_eq!(secret.definition(), encrypted_secret.definition());
 }
 
-#[test]
-async fn secret_update_name(ctx: &DalContext, nw: &WorkspaceSignup) {
-    let mut secret = create_secret(ctx, nw.key_pair.pk()).await;
-
-    let original_name = secret.name().to_string();
-    secret
-        .set_name(ctx, "even-more-secret")
-        .await
-        .expect("failed to set name");
-
-    assert_ne!(secret.name(), original_name);
-    assert_eq!(secret.name(), "even-more-secret");
-}
+// TODO(nick): this is unused in sdf.
+// #[test]
+// async fn secret_update_name(ctx: &DalContext, nw: &WorkspaceSignup) {
+//     let mut secret = create_secret(ctx, nw.key_pair.pk()).await;
+//
+//     let original_name = secret.name().to_string();
+//     secret
+//         .set_name(ctx, "even-more-secret")
+//         .await
+//         .expect("failed to set name");
+//
+//     assert_ne!(secret.name(), original_name);
+//     assert_eq!(secret.name(), "even-more-secret");
+// }
 
 #[test]
 async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
@@ -102,7 +100,7 @@ async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
     .await
     .expect("failed to create encrypted secret");
 
-    let decrypted = EncryptedSecret::get_by_id(ctx, secret.id())
+    let decrypted = EncryptedSecret::get_by_id(ctx, &secret.id())
         .await
         .expect("failed to fetch encrypted secret")
         .expect("failed to find encrypted secret for tenancy and/or visibility")

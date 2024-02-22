@@ -29,6 +29,7 @@ use crate::workspace_snapshot::edge_weight::{
 };
 use crate::workspace_snapshot::graph::NodeIndex;
 
+use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -272,6 +273,32 @@ impl SchemaVariant {
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &root_prop_child.prop_path())
                 .await?,
         )
+    }
+
+    /// Lists all [`SchemaVariants`](SchemaVariant) by ID in the workspace.
+    pub async fn list_ids(ctx: &DalContext) -> SchemaVariantResult<Vec<SchemaVariantId>> {
+        let schema_ids = Schema::list_ids(ctx).await?;
+
+        let mut schema_variant_ids = Vec::new();
+
+        for schema_id in schema_ids {
+            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+            let schema_variant_node_indices = workspace_snapshot
+                .outgoing_targets_for_edge_weight_kind(
+                    schema_id,
+                    EdgeWeightKindDiscriminants::Use,
+                )?;
+
+            for schema_variant_node_index in schema_variant_node_indices {
+                let raw_id = workspace_snapshot
+                    .get_node_weight(schema_variant_node_index)?
+                    .id();
+                schema_variant_ids.push(raw_id.into());
+            }
+        }
+
+        Ok(schema_variant_ids)
     }
 
     pub async fn list_for_schema(
