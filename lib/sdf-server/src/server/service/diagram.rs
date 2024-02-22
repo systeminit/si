@@ -3,7 +3,6 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::component::frame::FrameError;
 use dal::component::ComponentError;
 use dal::node_menu::NodeMenuError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;

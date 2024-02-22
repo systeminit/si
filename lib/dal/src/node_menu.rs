@@ -4,12 +4,12 @@
 
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use std::collections::{hash_map, HashMap};
+use std::collections::HashMap;
 use thiserror::Error;
 
 use crate::schema::variant::SchemaVariantError;
 use crate::{DalContext, Schema, SchemaVariant};
-use crate::{SchemaError, SchemaId, StandardModel, StandardModelError};
+use crate::{SchemaError, SchemaId, StandardModelError};
 
 #[allow(clippy::large_enum_variant)]
 #[remain::sorted]
@@ -104,7 +104,7 @@ pub struct GenerateMenuItem {
 
 impl GenerateMenuItem {
     /// Generates raw items and initializes menu items as an empty vec.
-    pub async fn new(ctx: &DalContext, include_ui_hidden: bool) -> NodeMenuResult<Self> {
+    pub async fn new(ctx: &DalContext, _include_ui_hidden: bool) -> NodeMenuResult<Self> {
         let mut item_map: HashMap<String, Vec<MenuItem>> = HashMap::new();
 
         for schema in Schema::list(ctx).await? {

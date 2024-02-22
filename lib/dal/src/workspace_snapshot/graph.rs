@@ -953,6 +953,7 @@ impl WorkspaceSnapshotGraph {
                             ContentAddressDiscriminants::Root => "black",
                             ContentAddressDiscriminants::Schema => "black",
                             ContentAddressDiscriminants::SchemaVariant => "black",
+                            ContentAddressDiscriminants::Secret => "black",
                             ContentAddressDiscriminants::StaticArgumentValue => "green",
                             ContentAddressDiscriminants::ValidationPrototype => "black",
                         };
@@ -978,6 +979,7 @@ impl WorkspaceSnapshotGraph {
                         }
                         CategoryNodeKind::Func => ("Funcs (Category)".to_string(), "black"),
                         CategoryNodeKind::Schema => ("Schemas (Category)".to_string(), "black"),
+                        CategoryNodeKind::Secret => ("Secrets (Category)".to_string(), "black"),
                     },
                     NodeWeight::Func(func_node_weight) => {
                         (format!("Func\n{}", func_node_weight.name()), "black")
@@ -1533,6 +1535,7 @@ impl WorkspaceSnapshotGraph {
         algo::toposort(&self.graph, None).is_ok()
     }
 
+    #[allow(dead_code)]
     fn is_on_path_between(&self, start: NodeIndex, end: NodeIndex, node: NodeIndex) -> bool {
         algo::has_path_connecting(&self.graph, start, node, None)
             && algo::has_path_connecting(&self.graph, node, end, None)

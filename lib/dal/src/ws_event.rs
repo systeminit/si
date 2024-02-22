@@ -7,6 +7,7 @@ use ulid::Ulid;
 use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
 use crate::qualification::QualificationCheckPayload;
+use crate::secret::{SecretCreatedPayload, SecretUpdatedPayload};
 use crate::user::OnlinePayload;
 use crate::{
     func::binding::LogLinePayload, pkg::ModuleImportedPayload, user::CursorPayload, ChangeSetPk,
@@ -71,8 +72,8 @@ pub enum WsPayload {
     // SchemaVariantDefinitionCreated(SchemaVariantDefinitionCreatedPayload),
     // SchemaVariantDefinitionFinished(FinishSchemaVariantDefinitionPayload),
     // SchemaVariantDefinitionSaved(SchemaVariantDefinitionSavedPayload),
-    // SecretCreated(SecretCreatedPayload),
-    // SecretUpdated(SecretUpdatedPayload),
+    SecretCreated(SecretCreatedPayload),
+    SecretUpdated(SecretUpdatedPayload),
     // StatusUpdate(StatusMessage),
     // WorkspaceExported(WorkspaceExportPayload),
     // WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),

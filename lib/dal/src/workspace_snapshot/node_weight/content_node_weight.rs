@@ -139,6 +139,7 @@ impl ContentNodeWeight {
             ContentAddress::Root => return Err(NodeWeightError::CannotUpdateRootNodeContentHash),
             ContentAddress::Schema(_) => ContentAddress::Schema(content_hash),
             ContentAddress::SchemaVariant(_) => ContentAddress::SchemaVariant(content_hash),
+            ContentAddress::Secret(_) => ContentAddress::Secret(content_hash),
             ContentAddress::StaticArgumentValue(_) => {
                 ContentAddress::StaticArgumentValue(content_hash)
             }

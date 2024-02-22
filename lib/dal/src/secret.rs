@@ -1,6 +1,7 @@
 use std::fmt;
 
 use base64::{engine::general_purpose, Engine};
+use content_store::{Store, StoreError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
@@ -9,13 +10,19 @@ use sodiumoxide::crypto::{
     box_::{PublicKey, SecretKey},
     sealedbox,
 };
-use strum::{AsRefStr, Display, EnumString};
+use strum::{AsRefStr, Display, EnumDiscriminants, EnumString};
 use thiserror::Error;
 
 use si_data_pg::PgError;
 use telemetry::prelude::*;
 use veritech_client::SensitiveContainer;
 
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::workspace_snapshot::content_address::ContentAddress;
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     history_event::HistoryEventMetadata,
     impl_standard_model,
@@ -36,26 +43,36 @@ const LIST_SECRET_DEFINITIONS: &str = include_str!("queries/secrets/list_secret_
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SecretError {
+    #[error("change set pointer error: {0}")]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error("error when decrypting crypted secret")]
     DecryptionFailed,
     #[error("error deserializing message: {0}")]
     DeserializeMessage(#[source] serde_json::Error),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("key pair error: {0}")]
     KeyPair(#[from] KeyPairError),
     #[error("key pair not found for secret")]
     KeyPairNotFound,
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("secret not found: {0}")]
     SecretNotFound(SecretId),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("content store error: {0}")]
+    Store(#[from] StoreError),
     #[error("symmetric crypto error: {0}")]
     SymmetricCrypto(#[from] SymmetricCryptoError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 /// Result type for Secrets.
@@ -70,33 +87,120 @@ pk!(SecretId);
 /// therefore safe to expose via external API.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Secret {
-    pk: SecretPk,
     id: SecretId,
-    name: String,
-    key_pair_pk: KeyPairPk,
-    definition: String,
-    description: Option<String>,
-    #[serde(flatten)]
-    tenancy: Tenancy,
+
+    // TODO(nick): evaluate how these three fields will work with the new engine.
     #[serde(flatten)]
     timestamp: Timestamp,
     created_by: Option<UserPk>,
     updated_by: Option<UserPk>,
-    #[serde(flatten)]
-    visibility: Visibility,
+
+    pk: SecretPk,
+    key_pair_pk: KeyPairPk,
+    name: String,
+    definition: String,
+    description: Option<String>,
 }
 
-impl_standard_model! {
-    model: Secret,
+#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum SecretContent {
+    V1(SecretContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct SecretContentV1 {
+    timestamp: Timestamp,
+    created_by: Option<UserPk>,
+    updated_by: Option<UserPk>,
+
     pk: SecretPk,
-    id: SecretId,
-    table_name: "secrets",
-    history_event_label_base: "secret",
-    history_event_message_name: "Secret"
+    key_pair_pk: KeyPairPk,
+    name: String,
+    definition: String,
+    description: Option<String>,
+}
+
+impl From<Secret> for SecretContentV1 {
+    fn from(value: Secret) -> Self {
+        Self {
+            timestamp: value.timestamp,
+            created_by: value.created_by,
+            updated_by: value.updated_by,
+            pk: value.pk,
+            key_pair_pk: value.key_pair_pk,
+            name: value.name,
+            definition: value.definition,
+            description: value.description,
+        }
+    }
 }
 
 impl Secret {
-    standard_model_accessor_ro!(name, str);
+    pub fn assemble(id: SecretId, inner: SecretContentV1) -> Self {
+        Self {
+            id,
+            timestamp: inner.timestamp,
+            created_by: inner.created_by,
+            updated_by: inner.updated_by,
+            pk: inner.pk,
+            key_pair_pk: inner.key_pair_pk,
+            name: inner.name,
+            definition: inner.definition,
+            description: inner.description,
+        }
+    }
+
+    // TODO(nick): to maintain API compatibility with main, we need "EncryptedSecret::new" to create
+    // this. We may want the opposite to happen in the future. We should decide this after the
+    // switchover. Let's consume the object for now to help ensure the underlying "encrypted secret"
+    // is not used where it shouldn't be.
+    pub async fn new(
+        ctx: &DalContext,
+        new_encrypted_secret: EncryptedSecret,
+    ) -> SecretResult<Self> {
+        let content = SecretContentV1 {
+            timestamp: new_encrypted_secret.timestamp,
+            created_by: new_encrypted_secret.created_by,
+            updated_by: new_encrypted_secret.updated_by,
+            pk: new_encrypted_secret.pk,
+            key_pair_pk: new_encrypted_secret.key_pair_pk,
+            name: new_encrypted_secret.name,
+            definition: new_encrypted_secret.definition,
+            description: new_encrypted_secret.description,
+        };
+        let hash = ctx
+            .content_store()
+            .lock()
+            .await
+            .add(&SecretContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Secret(hash))?;
+
+        // Attach secret to the category.
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+            workspace_snapshot.add_node(node_weight)?;
+
+            // Root --> Secret Category --> Secret (this)
+            let secret_category_id =
+                workspace_snapshot.get_category_node(None, CategoryNodeKind::Secret)?;
+            workspace_snapshot.add_edge(
+                secret_category_id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                id,
+            )?;
+        }
+
+        let secret = Self::assemble(id.into(), content);
+
+        Ok(secret)
+    }
+
+    pub fn id(&self) -> SecretId {
+        self.id
+    }
 
     // Update the underlying `encrypted_secrets` table rather than attempting to update the
     // `secrets` view
@@ -106,31 +210,26 @@ impl Secret {
         value: impl Into<String>,
     ) -> SecretResult<()> {
         let value = value.into();
-        let updated_at = standard_model::update(
+        let _updated_at = standard_model::update(
             ctx,
             "encrypted_secrets",
             "name",
-            self.id(),
+            &self.id(),
             &value,
             TypeHint::Text,
         )
         .await?;
         let _history_event = HistoryEvent::new(
             ctx,
-            Self::history_event_label(vec!["updated"]),
-            Self::history_event_message("updated"),
+            EncryptedSecret::history_event_label(vec!["updated"]),
+            EncryptedSecret::history_event_message("updated"),
             &serde_json::json!({"pk": self.pk, "field": "name", "value": &value}),
         )
         .await?;
-        self.timestamp.updated_at = updated_at;
         self.name = value;
 
         Ok(())
     }
-
-    // Once created, these object fields are to be considered immutable
-    standard_model_accessor_ro!(definition, String);
-    standard_model_accessor_ro!(description, Option<String>);
 
     pub async fn key_pair(&self, ctx: &DalContext) -> SecretResult<KeyPair> {
         Ok(KeyPair::get_by_pk(ctx, self.key_pair_pk).await?)
@@ -240,11 +339,9 @@ impl From<EncryptedSecret> for Secret {
             key_pair_pk: value.key_pair_pk,
             definition: value.definition,
             description: value.description,
-            tenancy: value.tenancy,
             timestamp: value.timestamp,
             created_by: value.created_by,
-            updated_by: value.updated_by,
-            visibility: value.visibility,
+            updated_by: None,
         }
     }
 }
@@ -352,9 +449,11 @@ impl EncryptedSecret {
                 ],
             )
             .await?;
-        let object: Secret = standard_model::finish_create_from_row(ctx, row).await?;
+        let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
 
-        Ok(object)
+        let referential_secret = Secret::new(ctx, object).await?;
+
+        Ok(referential_secret)
     }
 
     standard_model_accessor!(name, String, SecretResult);

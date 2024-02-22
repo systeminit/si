@@ -22,6 +22,7 @@ pub enum ContentAddress {
     Root,
     Schema(ContentHash),
     SchemaVariant(ContentHash),
+    Secret(ContentHash),
     StaticArgumentValue(ContentHash),
     ValidationPrototype(ContentHash),
 }
@@ -41,6 +42,7 @@ impl ContentAddress {
             | ContentAddress::Prop(id)
             | ContentAddress::Schema(id)
             | ContentAddress::SchemaVariant(id)
+            | ContentAddress::Secret(id)
             | ContentAddress::StaticArgumentValue(id)
             | ContentAddress::ValidationPrototype(id) => Some(*id),
         }

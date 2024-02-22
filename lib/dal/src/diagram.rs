@@ -11,14 +11,14 @@ use crate::attribute::prototype::argument::{
 };
 use crate::attribute::value::AttributeValueError;
 use crate::change_status::ChangeStatus;
-use crate::component::{ComponentError, IncomingConnection};
+use crate::component::ComponentError;
 use crate::history_event::HistoryEventMetadata;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    history_event, AttributePrototypeId, Component, ComponentId, DalContext, ExternalProviderId,
+    AttributePrototypeId, Component, ComponentId, DalContext, ExternalProviderId,
     HistoryEventError, InternalProviderId, ProviderArity, SchemaId, SchemaVariant, SchemaVariantId,
     StandardModelError,
 };

@@ -1,9 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use base64::{engine::general_purpose, Engine};
-use dal::{
-    func::argument::FuncArgument, DalContext, Func, FuncBackendKind, FuncId, Visibility, WsEvent,
-};
+use dal::{func::argument::FuncArgument, DalContext, Func, FuncBackendKind, FuncId, Visibility};
 use dal::{ChangeSetPk, FuncBackendResponseType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;

@@ -156,6 +156,8 @@ impl WorkspaceSnapshot {
         let func_node_index = graph.add_category_node(change_set, CategoryNodeKind::Func)?;
         let schema_node_index = graph.add_category_node(change_set, CategoryNodeKind::Schema)?;
 
+        let secret_node_index = graph.add_category_node(change_set, CategoryNodeKind::Secret)?;
+
         // Connect them to root.
         graph.add_edge(
             graph.root(),
@@ -171,6 +173,11 @@ impl WorkspaceSnapshot {
             graph.root(),
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
             schema_node_index,
+        )?;
+        graph.add_edge(
+            graph.root(),
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            secret_node_index,
         )?;
 
         // We do not care about any field other than "working_copy" because "write" will populate

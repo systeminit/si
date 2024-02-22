@@ -13,6 +13,7 @@ pub enum CategoryNodeKind {
     Component,
     Func,
     Schema,
+    Secret,
 }
 
 #[derive(Clone, Serialize, Deserialize)]

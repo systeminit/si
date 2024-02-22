@@ -5,7 +5,7 @@ use base64::Engine;
 use dal::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeContext};
 use dal::{
     generate_name, ActionKind, ChangeSetPk, DalContext, ExternalProviderId, Func,
-    FuncBackendResponseType, FuncId, PropId, SchemaVariantId, Visibility, WsEvent,
+    FuncBackendResponseType, FuncId, PropId, SchemaVariantId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 

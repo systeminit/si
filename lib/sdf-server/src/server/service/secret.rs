@@ -1,12 +1,13 @@
+use axum::routing::get;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, patch, post},
+    routing::post,
     Json, Router,
 };
 use dal::{
-    ChangeSetError, DiagramError, KeyPairError, SecretId, StandardModelError, TransactionsError,
-    UserError, WorkspacePk, WsEventError,
+    ChangeSetError, KeyPairError, StandardModelError, TransactionsError, UserError, WorkspacePk,
+    WsEventError,
 };
 use thiserror::Error;
 
@@ -14,8 +15,8 @@ use crate::server::state::AppState;
 
 pub mod create_secret;
 pub mod get_public_key;
-pub mod list_secrets;
-pub mod update_secret;
+// pub mod list_secrets;
+// pub mod update_secret;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -24,8 +25,8 @@ pub enum SecretError {
     ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     ContextTransactions(#[from] TransactionsError),
-    #[error(transparent)]
-    Diagram(#[from] DiagramError),
+    // #[error(transparent)]
+    // Diagram(#[from] DiagramError),
     #[error("Hyper error: {0}")]
     Hyper(#[from] hyper::http::Error),
     #[error(transparent)]
@@ -36,8 +37,8 @@ pub enum SecretError {
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     Secret(#[from] dal::SecretError),
-    #[error("definition not found for secret: {0}")]
-    SecretWithInvalidDefinition(SecretId),
+    // #[error("definition not found for secret: {0}")]
+    // SecretWithInvalidDefinition(SecretId),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
@@ -73,6 +74,6 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/get_public_key", get(get_public_key::get_public_key))
         .route("/", post(create_secret::create_secret))
-        .route("/", get(list_secrets::list_secrets))
-        .route("/", patch(update_secret::update_secret))
+    // .route("/", get(list_secrets::list_secrets))
+    // .route("/", patch(update_secret::update_secret))
 }
