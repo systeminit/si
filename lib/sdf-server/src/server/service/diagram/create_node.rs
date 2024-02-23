@@ -2,7 +2,6 @@ use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
-use dal::node::NodeId;
 use dal::{
     action_prototype::ActionPrototypeContextField, generate_name_from_schema_name, Action,
     ActionKind, ActionPrototype, ActionPrototypeContext, ChangeSet, Component, ComponentId, Schema,
@@ -18,7 +17,7 @@ use crate::service::diagram::{DiagramError, DiagramResult};
 #[serde(rename_all = "camelCase")]
 pub struct CreateNodeRequest {
     pub schema_id: SchemaId,
-    pub parent_id: Option<NodeId>,
+    pub parent_id: Option<ComponentId>,
     pub x: String,
     pub y: String,
     #[serde(flatten)]
@@ -29,7 +28,6 @@ pub struct CreateNodeRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CreateNodeResponse {
     pub component_id: ComponentId,
-    pub node_id: NodeId,
 }
 
 pub async fn create_node(
@@ -52,7 +50,7 @@ pub async fn create_node(
         .default_schema_variant_id()
         .ok_or(DiagramError::SchemaVariantNotFound)?;
 
-    let (component, mut node) = Component::new(&ctx, &name, *schema_variant_id).await?;
+    let mut component = Component::new(&ctx, &name, *schema_variant_id).await?;
 
     for prototype in ActionPrototype::find_for_context_and_kind(
         &ctx,
@@ -83,20 +81,21 @@ pub async fn create_node(
         );
     }
 
-    node.set_geometry(
-        &ctx,
-        request.x.clone(),
-        request.y.clone(),
-        Some("500"),
-        Some("500"),
-    )
-    .await?;
+    component
+        .set_geometry(
+            &ctx,
+            request.x.clone(),
+            request.y.clone(),
+            Some("500"),
+            Some("500"),
+        )
+        .await?;
 
     if let Some(frame_id) = request.parent_id {
         connect_component_sockets_to_frame(
             &ctx,
             frame_id,
-            *node.id(),
+            *component.id(),
             &original_uri,
             &posthog_client,
         )
@@ -131,6 +130,5 @@ pub async fn create_node(
     response = response.header("content-type", "application/json");
     Ok(response.body(serde_json::to_string(&CreateNodeResponse {
         component_id: *component.id(),
-        node_id: *node.id(),
     })?)?)
 }

@@ -4,21 +4,21 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use thiserror::Error;
+
 use dal::{
     change_status::ChangeStatusError,
     component::{migrate::ComponentMigrateError, ComponentViewError},
     ActionPrototypeError, PropError,
 };
 use dal::{
-    component::view::debug::ComponentDebugViewError, node::NodeError,
-    property_editor::PropertyEditorError, AttributeContextBuilderError,
-    AttributePrototypeArgumentError, AttributePrototypeError, AttributeValueError, ChangeSetError,
-    ComponentError as DalComponentError, ComponentId, DiagramError, ExternalProviderError,
-    FuncBindingError, FuncError, InternalProviderError, PropId, ReconciliationPrototypeError,
-    SchemaError as DalSchemaError, StandardModelError, TransactionsError, ValidationResolverError,
-    WsEventError,
+    component::view::debug::ComponentDebugViewError, property_editor::PropertyEditorError,
+    AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
+    AttributeValueError, ChangeSetError, ComponentError as DalComponentError, ComponentId,
+    DiagramError, ExternalProviderError, FuncBindingError, FuncError, InternalProviderError,
+    PropId, ReconciliationPrototypeError, SchemaError as DalSchemaError, StandardModelError,
+    TransactionsError, ValidationResolverError, WsEventError,
 };
-use thiserror::Error;
 
 use crate::{server::state::AppState, service::schema::SchemaError};
 
@@ -102,8 +102,6 @@ pub enum ComponentError {
     KeyNotFound,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]

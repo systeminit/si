@@ -5,12 +5,12 @@ use axum::{response::IntoResponse, Json};
 use hyper::http::Uri;
 use serde::{Deserialize, Serialize};
 
-use dal::edge::{EdgeKind, EdgeObjectId, VertexObjectKind};
+use dal::edge::EdgeKind;
 use dal::job::definition::DependentValuesUpdate;
 use dal::socket::{SocketEdgeKind, SocketKind};
 use dal::{
-    node::NodeId, AttributeReadContext, AttributeValue, ChangeSet, Component, ComponentError,
-    Connection, DalContext, Edge, EdgeError, ExternalProvider, InternalProvider, Node, SocketId,
+    AttributeReadContext, AttributeValue, ChangeSet, Component, ComponentError, ComponentId,
+    Connection, DalContext, Edge, EdgeError, ExternalProvider, InternalProvider, SocketId,
     StandardModel, Visibility,
 };
 use dal::{ComponentType, Socket};
@@ -23,8 +23,8 @@ use super::{DiagramError, DiagramResult};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateFrameConnectionRequest {
-    pub child_node_id: NodeId,
-    pub parent_node_id: NodeId,
+    pub child_component_id: ComponentId,
+    pub parent_component_id: ComponentId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -37,54 +37,55 @@ pub struct CreateFrameConnectionResponse {
 
 // Internal struct to track work-to-process in `connect_component_sockets_to_frame_inner`.
 struct Work {
-    parent_node_id: NodeId,
-    child_node_id: NodeId,
+    parent_id: ComponentId,
+    child_id: ComponentId,
 }
 
 // Create all valid connections between parent and child sockets
 pub async fn connect_component_sockets_to_frame(
     ctx: &DalContext,
-    parent_node_id: NodeId,
-    child_node_id: NodeId,
+    parent_id: ComponentId,
+    child_id: ComponentId,
     original_uri: &Uri,
     posthog_client: &crate::server::state::PosthogClient,
 ) -> DiagramResult<()> {
     // We stored connected sockets to ensure we connect children's sockets only to the nearest valid ancestor socket
-    let mut connected_sockets_for_node_id: HashMap<NodeId, Vec<SocketId>> = HashMap::new();
+    let mut connected_sockets_for_component_id: HashMap<ComponentId, Vec<SocketId>> =
+        HashMap::new();
 
-    connected_sockets_for_node_id
-        .entry(child_node_id)
+    connected_sockets_for_component_id
+        .entry(child_id)
         .or_default();
-    connected_sockets_for_node_id
-        .entry(parent_node_id)
+    connected_sockets_for_component_id
+        .entry(parent_id)
         .or_default();
 
-    Connection::new_to_parent(ctx, child_node_id, parent_node_id).await?;
+    Connection::new_to_parent(ctx, child_id, parent_id).await?;
 
     connect_component_sockets_to_frame_inner(
         ctx,
-        parent_node_id,
-        child_node_id,
+        parent_id,
+        child_id,
         original_uri,
         posthog_client,
-        &mut connected_sockets_for_node_id,
+        &mut connected_sockets_for_component_id,
     )
     .await?;
 
-    // Now we have to propagate the children of child_node_id
-    let mut sorted_children: VecDeque<(NodeId, NodeId)> =
-        Edge::list_children_for_node(ctx, child_node_id)
+    // Now we have to propagate the children this child
+    let mut sorted_children: VecDeque<(ComponentId, ComponentId)> =
+        Edge::list_children_for_component(ctx, child_id)
             .await?
             .into_iter()
-            .map(|grandchild_node_id| (child_node_id, grandchild_node_id))
+            .map(|grandchild_component_id| (child_id, grandchild_component_id))
             .collect();
 
     // Goes down new child's children list, trying to connect them to their new ancestors' Configuration Sockets
-    while let Some((parent_node_id, child_node_id)) = sorted_children.pop_front() {
+    while let Some((this_parent_id, this_child_id)) = sorted_children.pop_front() {
         connect_component_sockets_to_frame_inner(
             ctx,
-            parent_node_id,
-            child_node_id,
+            this_parent_id,
+            this_child_id,
             original_uri,
             posthog_client,
             &mut HashMap::new(),
@@ -92,10 +93,10 @@ pub async fn connect_component_sockets_to_frame(
         .await?;
 
         sorted_children.extend(
-            Edge::list_children_for_node(ctx, child_node_id)
+            Edge::list_children_for_component(ctx, this_child_id)
                 .await?
                 .into_iter()
-                .map(|grandchild_node_id| (child_node_id, grandchild_node_id)),
+                .map(|grandchild_id| (this_child_id, grandchild_id)),
         );
     }
 
@@ -104,31 +105,31 @@ pub async fn connect_component_sockets_to_frame(
 
 async fn connect_component_sockets_to_frame_inner(
     ctx: &DalContext,
-    parent_node_id: NodeId,
-    child_node_id: NodeId,
+    parent_id: ComponentId,
+    child_id: ComponentId,
     original_uri: &Uri,
     posthog_client: &crate::server::state::PosthogClient,
-    connected_sockets_for_node_id: &mut HashMap<NodeId, Vec<SocketId>>,
+    connected_sockets_for_component_id: &mut HashMap<ComponentId, Vec<SocketId>>,
 ) -> DiagramResult<()> {
     let mut work_stack = Vec::new();
 
     work_stack.push(Work {
-        parent_node_id,
-        child_node_id,
+        parent_id,
+        child_id,
     });
 
     while let Some(Work {
-        parent_node_id,
-        child_node_id,
+        parent_id,
+        child_id,
     }) = work_stack.pop()
     {
         connect_component_sockets_to_frame_inner_work(
             ctx,
-            parent_node_id,
-            child_node_id,
+            parent_id,
+            child_id,
             original_uri,
             posthog_client,
-            connected_sockets_for_node_id,
+            connected_sockets_for_component_id,
             &mut work_stack,
         )
         .await?;
@@ -139,22 +140,22 @@ async fn connect_component_sockets_to_frame_inner(
 
 async fn connect_component_sockets_to_frame_inner_work(
     ctx: &DalContext,
-    parent_node_id: NodeId,
-    child_node_id: NodeId,
+    parent_component_id: ComponentId,
+    child_component_id: ComponentId,
     original_uri: &Uri,
     posthog_client: &crate::server::state::PosthogClient,
-    connected_sockets_for_node_id: &mut HashMap<NodeId, Vec<SocketId>>,
+    connected_sockets_for_component_id: &mut HashMap<ComponentId, Vec<SocketId>>,
     work_stack: &mut Vec<Work>,
 ) -> Result<(), DiagramError> {
-    let parent_component = Component::find_for_node(ctx, parent_node_id)
+    let parent_component = Component::get_by_id(ctx, &parent_component_id)
         .await?
-        .ok_or(DiagramError::NodeNotFound(parent_node_id))?;
+        .ok_or(DiagramError::ComponentNotFound)?;
 
     let parent_sockets = Socket::list_for_component(ctx, *parent_component.id()).await?;
 
-    let child_component = Component::find_for_node(ctx, child_node_id)
+    let child_component = Component::get_by_id(ctx, &child_component_id)
         .await?
-        .ok_or(DiagramError::NodeNotFound(child_node_id))?;
+        .ok_or(DiagramError::ComponentNotFound)?;
 
     for parent_socket in &parent_sockets {
         if parent_socket.kind() == &SocketKind::Frame {
@@ -187,13 +188,9 @@ async fn connect_component_sockets_to_frame_inner_work(
                         Edge::new(
                             ctx,
                             EdgeKind::Configuration,
-                            child_node_id,
-                            VertexObjectKind::Configuration,
-                            EdgeObjectId::from(*child_component.id()),
+                            *child_component.id(),
                             *parent_socket.id(),
-                            parent_node_id,
-                            VertexObjectKind::Configuration,
-                            EdgeObjectId::from(*parent_component.id()),
+                            *parent_component.id(),
                             *parent_socket.id(),
                         )
                         .await?;
@@ -236,13 +233,9 @@ async fn connect_component_sockets_to_frame_inner_work(
                         Edge::new(
                             ctx,
                             EdgeKind::Configuration,
-                            parent_node_id,
-                            VertexObjectKind::Configuration,
-                            EdgeObjectId::from(*parent_component.id()),
+                            parent_component_id,
                             *parent_socket.id(),
-                            child_node_id,
-                            VertexObjectKind::Configuration,
-                            EdgeObjectId::from(*child_component.id()),
+                            child_component_id,
                             *parent_socket.id(),
                         )
                         .await?;
@@ -282,14 +275,14 @@ async fn connect_component_sockets_to_frame_inner_work(
                     // Configuration frames down and up behave similarly, only connecting either child to parent vs
                     // parent to child sockets. So we assign destination and source entities here
                     let (
-                        source_node_id,
+                        source_component_id,
                         source_socket,
-                        dest_node_id,
+                        dest_component_id,
                         destination_component_id,
                         dest_socket,
                     ) = if component_type == ComponentType::ConfigurationFrameDown {
-                        let used_socket = connected_sockets_for_node_id
-                            .get(&child_node_id)
+                        let used_socket = connected_sockets_for_component_id
+                            .get(&child_component_id)
                             .into_iter()
                             .flatten()
                             .any(|socket_id| child_socket.id() == socket_id);
@@ -298,17 +291,17 @@ async fn connect_component_sockets_to_frame_inner_work(
                         }
 
                         (
-                            parent_node_id,
+                            parent_component_id,
                             parent_socket,
-                            child_node_id,
+                            child_component_id,
                             *child_component.id(),
                             child_socket,
                         )
                     } else {
                         (
-                            child_node_id,
+                            child_component_id,
                             child_socket,
-                            parent_node_id,
+                            parent_component_id,
                             *parent_component.id(),
                             parent_socket,
                         )
@@ -320,16 +313,16 @@ async fn connect_component_sockets_to_frame_inner_work(
                     ) {
                         // TODO(victor): Refactor to match on connection annotations.
                         if source_provider.name() == dest_provider.name() {
-                            connected_sockets_for_node_id
-                                .entry(dest_node_id)
+                            connected_sockets_for_component_id
+                                .entry(dest_component_id)
                                 .or_default()
                                 .push(*dest_socket.id());
 
                             Connection::new(
                                 ctx,
-                                source_node_id,
+                                source_component_id,
                                 *source_socket.id(),
-                                dest_node_id,
+                                dest_component_id,
                                 *dest_socket.id(),
                                 EdgeKind::Configuration,
                             )
@@ -379,17 +372,12 @@ async fn connect_component_sockets_to_frame_inner_work(
             .ok_or(ComponentError::NotFound(grandparent_id))?;
         let ty = grandparent.get_type(ctx).await?;
 
-        let grandparent = grandparent
-            .node(ctx)
-            .await?
-            .pop()
-            .ok_or(ComponentError::NodeNotFoundForComponent(grandparent_id))?;
         match ty {
             ComponentType::Component => {}
             ComponentType::ConfigurationFrameDown | ComponentType::ConfigurationFrameUp => {
                 work_stack.push(Work {
-                    parent_node_id: *grandparent.id(),
-                    child_node_id,
+                    parent_id: *grandparent.id(),
+                    child_id: child_component_id,
                 });
             }
             ComponentType::AggregationFrame => unimplemented!(),
@@ -407,16 +395,16 @@ async fn connect_component_sockets_to_frame_inner_work(
             .await?
             .ok_or(DiagramError::SchemaNotFound)?;
 
-        let from_socket = Socket::find_frame_socket_for_node(
+        let from_socket = Socket::find_frame_socket_for_component(
             ctx,
-            child_node_id,
+            child_component_id,
             SocketEdgeKind::ConfigurationOutput,
         )
         .await?;
 
-        let to_socket = Socket::find_frame_socket_for_node(
+        let to_socket = Socket::find_frame_socket_for_component(
             ctx,
-            parent_node_id,
+            parent_component_id,
             SocketEdgeKind::ConfigurationInput,
         )
         .await?;
@@ -441,8 +429,8 @@ async fn connect_component_sockets_to_frame_inner_work(
     Ok(())
 }
 
-/// Create a [`Connection`](dal::Connection) with a _to_ [`Socket`](dal::Socket) and
-/// [`Node`](dal::Node) and a _from_ [`Socket`](dal::Socket) and [`Node`](dal::Node).
+/// Create a [`Connection`] with a _to_ [`Socket`] and
+/// [`Component`] and a _from_ [`Socket`] and [`Component`].
 /// Creating a change set if on head.
 pub async fn connect_component_to_frame(
     HandlerContext(builder): HandlerContext,
@@ -457,10 +445,7 @@ pub async fn connect_component_to_frame(
 
     // Detach from previous parent
     {
-        let child_component = Node::get_by_id(&ctx, &request.child_node_id)
-            .await?
-            .ok_or(DiagramError::NodeNotFound(request.child_node_id))?
-            .component(&ctx)
+        let child_component = Component::get_by_id(&ctx, &request.child_component_id)
             .await?
             .ok_or(DiagramError::ComponentNotFound)?;
 
@@ -470,13 +455,12 @@ pub async fn connect_component_to_frame(
             Edge::detach_component_from_parent(&ctx, *child_component.id()).await?;
         }
     }
-    println!("Done det");
 
     // Connect children to parent through frame edge
     connect_component_sockets_to_frame(
         &ctx,
-        request.parent_node_id,
-        request.child_node_id,
+        request.parent_component_id,
+        request.child_component_id,
         &original_uri,
         &posthog_client,
     )

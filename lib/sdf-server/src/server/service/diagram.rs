@@ -6,11 +6,11 @@ use axum::Router;
 use dal::provider::external::ExternalProviderError as DalExternalProviderError;
 use dal::socket::{SocketError, SocketId};
 use dal::{
-    component::ComponentViewError, node::NodeId, schema::variant::SchemaVariantError, ActionError,
+    component::ComponentViewError, schema::variant::SchemaVariantError, ActionError,
     ActionPrototypeError, AttributeContextBuilderError, AttributeValueError, ChangeSetError,
     ComponentError, ComponentType, DiagramError as DalDiagramError, EdgeError,
-    InternalProviderError, NodeError, NodeKind, NodeMenuError, SchemaError as DalSchemaError,
-    SchemaVariantId, StandardModelError, TransactionsError,
+    InternalProviderError, NodeMenuError, SchemaError as DalSchemaError, SchemaVariantId,
+    StandardModelError, TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
 use std::num::ParseFloatError;
@@ -53,7 +53,7 @@ pub enum DiagramError {
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("component not found")]
-    ComponentNotFound,
+    ComponentNotFound, // TODO Add ComponentId to this error
     #[error("component view error: {0}")]
     ComponentView(#[from] ComponentViewError),
     #[error(transparent)]
@@ -82,24 +82,16 @@ pub enum DiagramError {
     InternalProviderNotFoundForSocket(SocketId),
     #[error("invalid component type ({0:?}) for frame")]
     InvalidComponentTypeForFrame(ComponentType),
-    #[error("invalid parent node kind {0:?}")]
-    InvalidParentNode(NodeKind),
     #[error("invalid request")]
     InvalidRequest,
     #[error("invalid system")]
     InvalidSystem,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
     #[error("node menu error: {0}")]
     NodeMenu(#[from] NodeMenuError),
-    #[error("node not found: {0}")]
-    NodeNotFound(NodeId),
     #[error("not authorized")]
     NotAuthorized,
-    #[error("parent node not found {0}")]
-    ParentNodeNotFound(NodeId),
     #[error("parse int: {0}")]
     ParseFloat(#[from] ParseFloatError),
     #[error("paste failed")]
