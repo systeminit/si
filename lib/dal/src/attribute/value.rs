@@ -599,9 +599,12 @@ impl AttributeValue {
     ) -> AttributeValueResult<Vec<AttributeValuePayload>> {
         let schema_variant_id = match context.component_id {
             Some(component_id) if component_id != ComponentId::NONE => {
-                let component = Component::get_by_id(ctx, &component_id)
-                    .await?
-                    .ok_or(AttributeValueError::ComponentNotFoundById(component_id))?;
+                // We get the component even if it gets deleted because we may still need to operate with
+                // attribute values of soft deleted components
+                let component =
+                    Component::get_by_id(&ctx.clone_with_delete_visibility(), &component_id)
+                        .await?
+                        .ok_or(AttributeValueError::ComponentNotFoundById(component_id))?;
                 let schema_variant = component
                     .schema_variant(ctx)
                     .await
