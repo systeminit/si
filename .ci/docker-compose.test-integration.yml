@@ -33,8 +33,6 @@ services:
     command:
       - "-c"
       - "fsync=off"
-    ports:
-      - "6432:5432"
 
   nats:
     image: systeminit/nats:stable
