@@ -85,6 +85,7 @@ pub struct SummaryDiagramComponent {
     position: GridPoint,
     size: Size2D,
     color: String,
+    node_type: String,
     change_status: String,
     has_resource: bool,
     parent_id: Option<ComponentId>,

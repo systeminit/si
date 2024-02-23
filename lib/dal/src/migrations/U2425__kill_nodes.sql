@@ -150,7 +150,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL STABLE;
 
-CREATE OR REPLACE FUNCTION component_restore_and_propagate_v1(
+CREATE OR REPLACE FUNCTION component_restore_and_propagate_v3(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_component_id ident
@@ -167,7 +167,14 @@ DECLARE
     internal_provider_id         ident;
     external_provider_id         ident;
     this_visibility_with_deleted jsonb;
+
 BEGIN
+    -- Don't run this for components on HEAD
+    IF (this_visibility ->> 'visibility_change_set_pk')::ident = ident_nil_v1() THEN
+        RAISE WARNING 'Trying to restore component (%) on HEAD', this_component_id;
+        RETURN;
+    END IF;
+
     this_visibility_with_deleted := this_visibility || jsonb_build_object('visibility_deleted_at', now());
 
     -- Outgoing Edges
@@ -222,5 +229,3 @@ BEGIN
     PERFORM hard_delete_by_pk_v1('components', target_pk);
 END;
 $$ LANGUAGE PLPGSQL STABLE;
-
-

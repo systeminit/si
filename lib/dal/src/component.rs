@@ -15,35 +15,35 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
 
+use crate::{
+    ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributePrototype,
+    AttributePrototypeArgumentError, AttributePrototypeError, AttributePrototypeId, AttributeReadContext,
+    ComponentType, DalContext, diagram,
+    EdgeError, ExternalProviderError, FixError,
+    FixId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError,
+    impl_standard_model, IndexMap, pk, Prop, PropError, provider::internal::InternalProviderError, RootPropChild, Schema,
+    SchemaError, SchemaId, Socket, standard_model, standard_model_accessor, standard_model_belongs_to, StandardModel,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, Visibility, WorkspaceError,
+    WsEvent, WsEventResult, WsPayload,
+};
+use crate::{AttributeValueId, QualificationError};
+use crate::{Edge, FixResolverError};
 use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
+use crate::ChangeSetPk;
 use crate::code_view::CodeViewError;
 use crate::diagram::summary_diagram::update_socket_summary;
 use crate::edge::EdgeKind;
 use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::{FuncBindingReturnValueError, FuncBindingReturnValueId};
 use crate::job::definition::DependentValuesUpdate;
-use crate::schema::variant::root_prop::SiPropChild;
-use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
+use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
+use crate::schema::variant::root_prop::SiPropChild;
 use crate::socket::{SocketEdgeKind, SocketError};
 use crate::standard_model::object_from_row;
 use crate::ws_event::WsEventError;
-use crate::ChangeSetPk;
-use crate::{
-    diagram, impl_standard_model, pk, provider::internal::InternalProviderError, standard_model,
-    standard_model_accessor, standard_model_belongs_to, ActionPrototypeError, AttributeContext,
-    AttributeContextBuilderError, AttributeContextError, AttributePrototype,
-    AttributePrototypeArgumentError, AttributePrototypeError, AttributePrototypeId,
-    AttributeReadContext, ComponentType, DalContext, EdgeError, ExternalProviderError, FixError,
-    FixId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError, IndexMap, Prop,
-    PropError, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, Visibility, WorkspaceError,
-    WsEvent, WsEventResult, WsPayload,
-};
-use crate::{AttributeValueId, QualificationError};
-use crate::{Edge, FixResolverError};
 
 pub mod code;
 pub mod diff;
@@ -1071,7 +1071,7 @@ impl Component {
             .await?
             .pg()
             .query(
-                "SELECT * FROM component_restore_and_propagate_v2($1, $2, $3)",
+                "SELECT * FROM component_restore_and_propagate_v3($1, $2, $3)",
                 &[ctx.tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
