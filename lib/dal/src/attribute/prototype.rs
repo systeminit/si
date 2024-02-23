@@ -11,26 +11,27 @@
 
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use telemetry::prelude::*;
-use thiserror::Error;
 
 use crate::{
     attribute::{
         context::{AttributeContext, AttributeContextError},
         value::{AttributeValue, AttributeValueError, AttributeValueId},
     },
-    func::FuncId,
+    AttributePrototypeArgument,
+    AttributePrototypeArgumentError,
+    AttributeReadContext, ComponentId, DalContext, ExternalProvider, ExternalProviderId,
     func::{
         binding::{FuncBindingError, FuncBindingId},
         binding_return_value::{FuncBindingReturnValueError, FuncBindingReturnValueId},
-    },
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
-    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributeReadContext, ComponentId,
-    DalContext, ExternalProvider, ExternalProviderId, Func, FuncBackendResponseType,
-    HistoryEventError, InternalProvider, InternalProviderId, Prop, PropId, PropKind,
-    SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    }, Func, func::FuncId, FuncBackendResponseType,
+    HistoryEventError, impl_standard_model, InternalProvider, InternalProviderId, pk,
+    Prop, PropId, PropKind, SchemaVariantId, standard_model, standard_model_accessor,
+    standard_model_has_many, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
     Visibility,
 };
 
@@ -41,9 +42,6 @@ const ARGUMENT_VALUES_BY_NAME_FOR_HEAD_COMPONENT_ID: &str = include_str!(
 );
 const ATTRIBUTE_VALUES_IN_CONTEXT_OR_GREATER: &str =
     include_str!("../queries/attribute_prototype/attribute_values_in_context_or_greater.sql");
-const LIST_BY_HEAD_FROM_EXTERNAL_PROVIDER_USE_WITH_TAIL: &str = include_str!(
-    "../queries/attribute_prototype/list_by_head_from_external_provider_use_with_tail.sql"
-);
 const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
     include_str!("../queries/attribute_prototype/list_from_internal_provider_use.sql");
 const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype/list_for_context.sql");
@@ -145,14 +143,6 @@ pub struct AttributePrototype {
     func_id: FuncId,
     /// An optional key used for tracking parentage.
     pub key: Option<String>,
-}
-
-/// This object is used for
-/// [`AttributePrototype::list_by_head_from_external_provider_use_with_tail()`].
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AttributePrototypeGroupByHeadComponentId {
-    pub head_component_id: ComponentId,
-    pub attribute_prototype: AttributePrototype,
 }
 
 impl_standard_model! {
@@ -620,43 +610,6 @@ impl AttributePrototype {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
-    }
-
-    /// List [`Vec<Self>`] that depend on a provided [`ExternalProviderId`](crate::ExternalProvider)
-    /// and _tail_ [`ComponentId`](crate::Component).
-    pub async fn list_by_head_from_external_provider_use_with_tail(
-        ctx: &DalContext,
-        external_provider_id: ExternalProviderId,
-        tail_component_id: ComponentId,
-    ) -> AttributePrototypeResult<Vec<AttributePrototypeGroupByHeadComponentId>> {
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                LIST_BY_HEAD_FROM_EXTERNAL_PROVIDER_USE_WITH_TAIL,
-                &[
-                    ctx.tenancy(),
-                    ctx.visibility(),
-                    &external_provider_id,
-                    &tail_component_id,
-                ],
-            )
-            .await?;
-
-        let mut result = Vec::new();
-        for row in rows.into_iter() {
-            let head_component_id: ComponentId = row.try_get("head_component_id")?;
-
-            let attribute_prototype_json: serde_json::Value = row.try_get("object")?;
-            let attribute_prototype = serde_json::from_value(attribute_prototype_json)?;
-
-            result.push(AttributePrototypeGroupByHeadComponentId {
-                head_component_id,
-                attribute_prototype,
-            });
-        }
-        Ok(result)
     }
 
     pub async fn argument_values(

@@ -1,24 +1,25 @@
-use base64::{engine::general_purpose, Engine};
+use base64::{Engine, engine::general_purpose};
 use serde::{Deserialize, Serialize};
+use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
+use thiserror::Error;
+
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use si_hash::Hash;
-use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
 use telemetry::prelude::*;
-use thiserror::Error;
 
 use crate::{
-    pk,
-    serde_impls::{base64_bytes_serde, nonce_serde},
-    standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, Timestamp,
+    DalContext,
+    HistoryEvent,
+    HistoryEventError, pk, serde_impls::{base64_bytes_serde, nonce_serde}, standard_model_accessor_ro, Timestamp,
     TransactionsError, Workspace, WorkspaceError, WorkspacePk,
 };
 
 mod key_pair_box_public_key_serde;
 
-const PUBLIC_KEY_GET_CURRENT: &str = include_str!("./queries/public_key_get_current.sql");
-const KEY_PAIR_GET_BY_PK: &str = include_str!("queries/key_pair_get_by_pk.sql");
+const PUBLIC_KEY_GET_CURRENT: &str = include_str!("queries/key_pair/public_key_get_current.sql");
+const KEY_PAIR_GET_BY_PK: &str = include_str!("queries/key_pair/key_pair_get_by_pk.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]

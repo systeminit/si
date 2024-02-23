@@ -87,7 +87,7 @@ pub struct SummaryDiagramComponent {
     color: String,
     change_status: String,
     has_resource: bool,
-    parent_component_id: Option<ComponentId>,
+    parent_id: Option<ComponentId>,
     created_info: serde_json::Value,
     updated_info: serde_json::Value,
     deleted_info: serde_json::Value,
@@ -208,7 +208,7 @@ pub async fn create_component_entry(
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_component_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)",
+            "SELECT object FROM summary_diagram_component_create_v2($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),

@@ -1,34 +1,31 @@
-use serde::{Deserialize, Serialize};
-use si_data_pg::PgError;
 use std::collections::HashMap;
-use telemetry::prelude::*;
+
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::func::binding::FuncBindingId;
-use crate::func::binding_return_value::FuncBindingReturnValueId;
-use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
+use si_data_pg::PgError;
+use telemetry::prelude::*;
+
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
-    standard_model_has_many, AttributePrototype, AttributePrototypeError, ComponentId, DiagramKind,
-    FuncId, HistoryEventError, InternalProviderId, StandardModel, StandardModelError, Tenancy,
+    AttributePrototype, AttributePrototypeError, ComponentId, DiagramKind, FuncId,
+    HistoryEventError, impl_standard_model, InternalProviderId, pk, standard_model,
+    standard_model_accessor, standard_model_accessor_ro, standard_model_has_many, StandardModel, StandardModelError, Tenancy,
     Timestamp, TransactionsError, Visibility,
 };
 use crate::{
     AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributePrototypeId,
     DalContext, SchemaId, SchemaVariantId,
 };
+use crate::func::binding::FuncBindingId;
+use crate::func::binding_return_value::FuncBindingReturnValueId;
+use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
 
 const BY_SOCKET: &str = include_str!("../queries/external_provider/by_socket.sql");
-const LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_TAIL_COMPONENT_ID: &str = include_str!(
-    "../queries/external_provider/list_for_attribute_prototype_with_tail_component_id.sql"
-);
 const FIND_FOR_SCHEMA_VARIANT_AND_NAME: &str =
     include_str!("../queries/external_provider/find_for_schema_variant_and_name.sql");
 const FIND_FOR_SOCKET: &str = include_str!("../queries/external_provider/find_for_socket.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/external_provider/list_for_schema_variant.sql");
-const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
-    include_str!("../queries/external_provider/list_from_internal_provider_use.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -253,48 +250,6 @@ impl ExternalProvider {
             )
             .await?;
         Ok(standard_model::object_option_from_row_option(row)?)
-    }
-
-    /// Find all [`Self`] for a given [`AttributePrototypeId`](crate::AttributePrototype).
-    pub async fn list_for_attribute_prototype_with_tail_component_id(
-        ctx: &DalContext,
-        attribute_prototype_id: AttributePrototypeId,
-        tail_component_id: ComponentId,
-    ) -> ExternalProviderResult<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_TAIL_COMPONENT_ID,
-                &[
-                    ctx.tenancy(),
-                    ctx.visibility(),
-                    &attribute_prototype_id,
-                    &tail_component_id,
-                ],
-            )
-            .await?;
-        Ok(standard_model::objects_from_rows(rows)?)
-    }
-
-    /// Find all [`Self`] that have
-    /// [`AttributePrototypeArguments`](crate::AttributePrototypeArgument) referencing the provided
-    /// [`InternalProviderId`](crate::InternalProvider).
-    pub async fn list_from_internal_provider_use(
-        ctx: &DalContext,
-        internal_provider_id: InternalProviderId,
-    ) -> ExternalProviderResult<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                LIST_FROM_INTERNAL_PROVIDER_USE,
-                &[ctx.tenancy(), ctx.visibility(), &internal_provider_id],
-            )
-            .await?;
-        Ok(standard_model::objects_from_rows(rows)?)
     }
 
     pub async fn by_socket(ctx: &DalContext) -> ExternalProviderResult<HashMap<SocketId, Self>> {

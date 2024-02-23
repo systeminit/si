@@ -1,16 +1,16 @@
 use pretty_assertions_sorted::assert_eq;
 
 use dal::{
-    attribute::context::AttributeContextBuilder, component::view::ComponentView, generate_name,
-    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
-    DalContext, InternalProvider, PropKind, StandardModel,
+    attribute::context::AttributeContextBuilder, AttributeContext, AttributePrototypeArgument,
+    AttributeReadContext, AttributeValue, Component, component::view::ComponentView, DalContext,
+    generate_name, InternalProvider, PropKind, StandardModel,
 };
-use dal_test::helpers::component_bag::ComponentBagger;
-use dal_test::helpers::setup_identity_func;
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
 };
+use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::helpers::setup_identity_func;
 
 #[test]
 async fn update_for_context_simple(ctx: &DalContext) {
@@ -828,10 +828,9 @@ async fn use_default_prototype(ctx: &DalContext) {
             .expect("could not commit & run jobs");
     }
 
-    let (component, _) =
-        Component::new_for_default_variant_from_schema(ctx, "starfield", *schema.id())
-            .await
-            .expect("unable to create component");
+    let component = Component::new_for_default_variant_from_schema(ctx, "starfield", *schema.id())
+        .await
+        .expect("unable to create component");
 
     // Initialize the value corresponding to the "source" prop.
     {

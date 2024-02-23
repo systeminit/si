@@ -3,7 +3,7 @@ ALTER TABLE summary_diagram_components
     DROP node_id,
     DROP child_node_ids;
 ALTER TABLE summary_diagram_components
-    RENAME parent_node_id TO parent_component_id;
+    RENAME parent_node_id TO parent_id;
 
 CREATE OR REPLACE PROCEDURE force_component_summary_to_changeset_v3(
     this_tenancy_record tenancy_record_v1,
@@ -27,7 +27,7 @@ BEGIN
                                                 schema_id, schema_variant_id,
                                                 schema_variant_name, schema_category, position, size, color, node_type,
                                                 change_status, has_resource, created_info, updated_info, deleted_info,
-                                                sockets, parent_component_id)
+                                                sockets, parent_id)
         SELECT id,
                tenancy_workspace_pk,
                this_visibility_record.visibility_change_set_pk AS visibility_change_set_pk,
@@ -50,7 +50,7 @@ BEGIN
                updated_info,
                deleted_info,
                sockets,
-               parent_component_id
+               parent_id
         FROM summary_diagram_components
         WHERE id = this_component_id
           AND tenancy_workspace_pk = this_tenancy_record.tenancy_workspace_pk
@@ -93,14 +93,14 @@ BEGIN
                                             component_id, display_name, schema_name,
                                             schema_id, schema_variant_id, schema_variant_name, schema_category,
                                             position, size, color, node_type, change_status, has_resource, created_info,
-                                            updated_info, deleted_info, sockets, child_node_ids)
+                                            updated_info, deleted_info, sockets)
     VALUES (this_id, this_tenancy_record.tenancy_workspace_pk, this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
             this_id, this_display_name, this_schema_name, this_schema_id, this_schema_variant_id,
             this_schema_variant_name,
             this_schema_category, this_position, this_size, this_color, this_node_type, this_change_status,
             this_has_resource, this_created_info, this_updated_info, this_deleted_info,
-            this_sockets, jsonb_build_array())
+            this_sockets)
     RETURNING * INTO this_new_row;
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -229,7 +229,7 @@ BEGIN
     END IF;
 
     UPDATE summary_diagram_components
-    SET parent_component_id=this_parent_component_id,
+    SET parent_id=this_parent_component_id,
         change_status=this_change_status
     WHERE component_id = this_component_id
       AND tenancy_workspace_pk = this_tenancy_record.tenancy_workspace_pk

@@ -8,7 +8,6 @@ DELETE
 FROM standard_models
 where table_name = 'node_belongs_to_component';
 DROP FUNCTION node_create_v1;
--- undo standard_model_table_constraints_v1 for node
 
 -- MODIFY EDGES
 ALTER TABLE edges
@@ -56,7 +55,13 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
--- MODIFY COMPONENT QUERIES
+ALTER TABLE components
+    ADD COLUMN x      text NOT NULL DEFAULT '0',
+    ADD COLUMN y      text NOT NULL DEFAULT '0',
+    ADD COLUMN width  text,
+    ADD COLUMN height text;
+
+
 CREATE OR REPLACE FUNCTION component_delete_and_propagate_v2(
     this_tenancy jsonb,
     this_visibility jsonb,
@@ -81,13 +86,13 @@ BEGIN
 
     -- Outgoing Edges
     FOR target_id, peer_component_id, internal_provider_id, external_provider_id IN
-        SELECT e.id, e.head_object_id, sbtip.belongs_to_id, sbtep.belongs_to_id
+        SELECT e.id, e.head_component_id, sbtip.belongs_to_id, sbtep.belongs_to_id
         FROM edges_v1(this_tenancy, this_visibility) e
                  LEFT JOIN socket_belongs_to_internal_provider_v1(this_tenancy, this_visibility) sbtip
                            ON sbtip.object_id = e.head_socket_id
                  LEFT JOIN socket_belongs_to_external_provider_v1(this_tenancy, this_visibility) sbtep
                            ON sbtep.object_id = e.head_socket_id
-        WHERE e.tail_object_id = this_component_id
+        WHERE e.tail_component_id = this_component_id
         LOOP
             SELECT delete_by_id_v1('edges', this_tenancy, this_visibility, target_id) INTO deleted_timestamp;
 
@@ -111,7 +116,7 @@ BEGIN
     FOR target_id, table_name IN
         SELECT id, 'edges' as table_name -- Incoming Edges
         FROM edges_v1(this_tenancy, this_visibility)
-        WHERE head_object_id = this_component_id
+        WHERE head_component_id = this_component_id
         LOOP
         -- In the future, we'll possibly want to deal differently with edges that don't exist on HEAD vs the ones that do
         -- we don't make that distinction right now
@@ -167,11 +172,11 @@ BEGIN
 
     -- Outgoing Edges
     FOR target_pk, peer_component_id, internal_provider_id, external_provider_id IN
-        SELECT e.pk, e.head_object_id, sbtip.belongs_to_id, sbtep.belongs_to_id
+        SELECT e.pk, e.head_component_id, sbtip.belongs_to_id, sbtep.belongs_to_id
         FROM edges_v1(this_tenancy, this_visibility_with_deleted) e
                  LEFT JOIN socket_belongs_to_internal_provider sbtip ON sbtip.object_id = e.head_socket_id
                  LEFT JOIN socket_belongs_to_external_provider sbtep ON sbtep.object_id = e.head_socket_id
-        WHERE tail_object_id = this_component_id
+        WHERE tail_component_id = this_component_id
           AND e.visibility_deleted_at IS NOT NULL
           AND e.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
         LOOP
@@ -193,7 +198,7 @@ BEGIN
         FROM edges_v1(this_tenancy, this_visibility_with_deleted) e
                  LEFT JOIN socket_belongs_to_internal_provider sbtip ON sbtip.object_id = e.head_socket_id
                  LEFT JOIN socket_belongs_to_external_provider sbtep ON sbtep.object_id = e.head_socket_id
-        WHERE head_object_id = this_component_id
+        WHERE head_component_id = this_component_id
           AND e.visibility_deleted_at IS NOT NULL
           AND e.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
         LOOP
