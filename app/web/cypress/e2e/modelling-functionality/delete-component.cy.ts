@@ -10,12 +10,16 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
     it('should pick up an AWS Credential add then delete it from the diagram', () => {
       cy.visit('/')
 
-      cy.contains('Create change set', { timeout: 30000 })
-      .should('be.visible')
+      cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', 'Change Set 1');
+      
+      cy.get('#vorm-input-3').clear().type(import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
 
-      cy.get('#vorm-input-3', { timeout: 30000 }).clear().type(import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
+      cy.get('#vorm-input-3', { timeout: 30000 }).should('have.value', import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
 
       cy.contains('Create change set', { timeout: 30000 }).click();
+
+      // Give time to redirect onto the new changeset
+      cy.url().should('not.include', 'head', { timeout: 10000 });
 
       // Find the AWS Credential
       cy.get('[data-cy="asset_card', { timeout: 30000 }).contains('AWS Credential', { timeout: 30000 }).should('be.visible').as('awsCred')
