@@ -6,7 +6,7 @@ on:
     branches:
       - feat/add-more-synthetics
   schedule:
-    - cron: '*/5 * * * *'  # Runs every 5 minutes
+    - cron: '*/15 * * * *'  # Runs every 5 minutes
 
 jobs:
   cypress-tests:
@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         # run copies of the current job in parallel
-        containers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        containers: [1, 2] #, 3, 4, 5, 6, 7, 8, 9, 10] - temp disabled mass
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
