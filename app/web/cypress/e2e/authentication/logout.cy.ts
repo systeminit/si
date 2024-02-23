@@ -1,12 +1,12 @@
 Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VITE_SI_CYPRESS_MULTIPLIER : 1, () => {
-  describe("Logout", () => {
+  describe("logout", () => {
     beforeEach(() => {
       cy.visit("/");
       cy.loginToAuth0(import.meta.env.VITE_AUTH0_USERNAME, import.meta.env.VITE_AUTH0_PASSWORD);
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
     });
 
-    it("Log Out", () => {
+    it("log_out", () => {
       cy.visit("/");
       cy.contains('Create change set', { timeout: 10000 }).should('be.visible').click();
       cy.get('[aria-label="Profile"]').should('exist').click();

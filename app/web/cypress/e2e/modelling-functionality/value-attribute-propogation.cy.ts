@@ -2,13 +2,13 @@
 ///<reference path="../global.d.ts"/>
 
 Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VITE_SI_CYPRESS_MULTIPLIER : 1, () => {
-  describe('Value Propagation', () => {
+  describe('component', () => {
     beforeEach(function () {
       cy.loginToAuth0(import.meta.env.VITE_AUTH0_USERNAME, import.meta.env.VITE_AUTH0_PASSWORD);
       cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
     });
 
-    it('change value on component A and check it propogates to component B', () => {
+    it('value_propagation', () => {
 
       console.log(import.meta.env.VITE_UUID);
       cy.log(import.meta.env.VITE_UUID);
