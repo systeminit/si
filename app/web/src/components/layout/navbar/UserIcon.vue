@@ -2,7 +2,12 @@
   <div class="relative h-8 w-8">
     <div
       v-tooltip="tooltip"
-      class="h-8 w-8 border-2 rounded-full cursor-pointer flex-none bg-shade-100 overflow-hidden"
+      :class="
+        clsx(
+          'h-8 w-8 border-2 rounded-full cursor-pointer flex-none bg-shade-100 overflow-hidden',
+          hasHoverState && 'hover:scale-105',
+        )
+      "
       :style="`border-color: ${color}`"
     >
       <!-- TODO(Wendy) - This should check for and pull the image of the user in question, not the current user's image! -->
@@ -56,6 +61,7 @@ const props = defineProps({
   user: { type: Object as PropType<UserInfo>, required: true },
   changeSetStarSide: { type: Boolean },
   hideChangesetStar: { type: Boolean },
+  hasHoverState: { type: Boolean },
 });
 
 const color = computed(() => {
