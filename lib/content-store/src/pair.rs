@@ -40,33 +40,28 @@ impl TryFrom<PgRow> for ContentPair {
 }
 
 impl ContentPair {
+    #[instrument(name = "content_store.content_pair.new", level = "debug", skip_all)]
+    pub(crate) async fn new(
+        pg_pool: &PgPool,
+        key: ContentHash,
+        value: &[u8],
+    ) -> ContentPairResult<()> {
+        let client = pg_pool.get().await?;
+        client
+            .query(
+                "INSERT INTO content_pairs (key, value) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                &[&key.to_string(), &value],
+            )
+            .await?;
+        Ok(())
+    }
+
     pub(crate) fn value(&self) -> &[u8] {
         &self.value
     }
 
     pub(crate) fn key(&self) -> ContentPairResult<ContentHash> {
         Ok(ContentHash::from_str(self.key.as_str())?)
-    }
-
-    pub(crate) async fn find_or_create(
-        pg_pool: &PgPool,
-        key: ContentHash,
-        value: &[u8],
-    ) -> ContentPairResult<Self> {
-        let content_pair = match Self::find(pg_pool, &key).await? {
-            Some(found_content_pair) => found_content_pair,
-            None => {
-                let client = pg_pool.get().await?;
-                let row = client
-                    .query_one(
-                        "INSERT INTO content_pairs (key, value) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING *",
-                        &[&key.to_string(), &value],
-                    )
-                    .await?;
-                Self::try_from(row)?
-            }
-        };
-        Ok(content_pair)
     }
 
     pub(crate) async fn find(

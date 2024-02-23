@@ -155,7 +155,6 @@ impl WorkspaceSnapshot {
             graph.add_category_node(change_set, CategoryNodeKind::Component)?;
         let func_node_index = graph.add_category_node(change_set, CategoryNodeKind::Func)?;
         let schema_node_index = graph.add_category_node(change_set, CategoryNodeKind::Schema)?;
-
         let secret_node_index = graph.add_category_node(change_set, CategoryNodeKind::Secret)?;
 
         // Connect them to root.
