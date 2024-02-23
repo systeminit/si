@@ -988,7 +988,7 @@ impl Component {
             .await?
             .pg()
             .query(
-                "SELECT * FROM component_delete_and_propagate_v1($1, $2, $3, $4, $5)",
+                "SELECT * FROM component_delete_and_propagate_v2($1, $2, $3, $4, $5)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
