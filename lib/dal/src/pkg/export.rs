@@ -1350,6 +1350,12 @@ impl PkgExporter {
                         edge.tail_component_id(),
                     ))?
                     .clone();
+
+                // Do not attempt to recreate edges for deleted components
+                if to_component_spec.deleted || from_component_spec.deleted {
+                    continue;
+                }
+
                 edge_specs.push(
                     self.export_edge(ctx, &edge, &to_component_spec, &from_component_spec)
                         .await?,
