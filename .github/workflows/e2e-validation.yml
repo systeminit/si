@@ -26,8 +26,8 @@ jobs:
       - name: Setup authentication for vite & other synthetic test variables
         working-directory: app/web
         run: |
-          apt update
-          apt install uuid -y
+          sudo apt update
+          sudo apt install uuid -y
           cp .env .env.local
           echo "VITE_AUTH0_USERNAME=${{ secrets.VITE_AUTH0_USERNAME }}" >> .env.local                           # Production Synthetic User Email
           echo "VITE_AUTH0_PASSWORD=${{ secrets.VITE_AUTH0_PASSWORD }}" >> .env.local                           # Production Synthetic User Password
