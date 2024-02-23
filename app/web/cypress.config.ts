@@ -15,6 +15,6 @@ export default defineConfig({
     viewportWidth: 1500,
   },
   projectId: "k8tgfj",
-  video: true
+  video: true,
 })
 

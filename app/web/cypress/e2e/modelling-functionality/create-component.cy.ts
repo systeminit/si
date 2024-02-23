@@ -9,7 +9,10 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
 
     it('should pick up an AWS Credential and move it onto the diagram', () => {
       cy.visit('/')
-      cy.contains('Create change set', { timeout: 30000 }).should('be.visible').click();
+
+      cy.get('#vorm-input-3', { timeout: 30000 }).clear().type(import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
+
+      cy.contains('Create change set', { timeout: 30000 }).click();
 
       // Find the AWS Credential
       cy.get('[data-cy="asset_card', { timeout: 30000 }).contains('AWS Credential').should('be.visible').as('awsCred')
