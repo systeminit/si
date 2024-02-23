@@ -2,16 +2,18 @@ name: Cypress E2E Tests
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
   schedule:
-    - cron: '*/15 * * * *'  # Runs every 15 minutes
+    - cron: '*/15 * * * *'  # Runs every 5 minutes
 
 jobs:
   cypress-tests:
     runs-on: ubuntu-latest
-
+    strategy:
+      # don't fail the entire matrix on failure
+      fail-fast: false
+      matrix:
+        # run copies of the current job in parallel
+        containers: [1] # , 2, 3, 4, 5, 6, 7, 8, 9, 10] - temp disabled mass
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -24,6 +26,8 @@ jobs:
       - name: Setup authentication for vite & other synthetic test variables
         working-directory: app/web
         run: |
+          sudo apt update
+          sudo apt install uuid -y
           cp .env .env.local
           echo "VITE_AUTH0_USERNAME=${{ secrets.VITE_AUTH0_USERNAME }}" >> .env.local                           # Production Synthetic User Email
           echo "VITE_AUTH0_PASSWORD=${{ secrets.VITE_AUTH0_PASSWORD }}" >> .env.local                           # Production Synthetic User Password
@@ -31,7 +35,9 @@ jobs:
           echo "VITE_SI_WORKSPACE_ID=${{ vars.VITE_PROD_SI_WORKSPACE_ID }}" >> .env.local                       # Production Synthetic Workspace ID
           echo "VITE_SI_PROPAGATION_COMPONENT_A=${{ vars.VITE_PROD_SI_PROPAGATION_COMPONENT_A }}" >> .env.local # Production Propagation Test Component A [from]
           echo "VITE_SI_PROPAGATION_COMPONENT_B=${{ vars.VITE_PROD_SI_PROPAGATION_COMPONENT_B }}" >> .env.local # Production Propagation Test Component B [to]
-          
+          echo "VITE_SI_CYPRESS_MULTIPLIER=${{ vars.VITE_PROD_SI_CYPRESS_MULTIPLIER }}" >> .env.local           # Set Execution to 10 iterations
+          echo "VITE_UUID=$(uuid)" >> .env.local                                                                # UUID for test validation
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -46,8 +52,9 @@ jobs:
 
       - name: 'Upload Cypress Recordings to Github'
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: cypress-recordings
+          name: cypress-recordings-run-${{ matrix.containers }}
           path: app/web/cypress/videos/**/*.mp4
           retention-days: 5
 

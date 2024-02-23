@@ -1,12 +1,13 @@
 // @ts-check
 ///<reference path="../global.d.ts"/>
 
-describe('Validates Get Summary', () => {
+describe('web', () => {
     beforeEach(function () {
       cy.loginToAuth0(import.meta.env.VITE_AUTH0_USERNAME, import.meta.env.VITE_AUTH0_PASSWORD);
+      cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
     });
   
-    it('Checks get_summary loads with a 200', () => {
+    it('get_summary', () => {
   
       // Go to the Synthetic Workspace
       cy.visit(import.meta.env.VITE_SI_WORKSPACE_URL + '/w/' + import.meta.env.VITE_SI_WORKSPACE_ID + '/head')

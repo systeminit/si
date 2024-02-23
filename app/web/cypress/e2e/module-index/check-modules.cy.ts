@@ -1,8 +1,8 @@
 // @ts-check
 ///<reference path="../global.d.ts"/>
 
-describe('Module Index Validate mdoules', () => {
-    it('Should have at least 40 modules', () => {
+describe('module_index', () => {
+    it('more_than_40_modules', () => {
       cy.request('https://module-index.systeminit.com/builtins').then((response) => {
         // Ensure that the response status is 200
         expect(response.status).to.eq(200);
