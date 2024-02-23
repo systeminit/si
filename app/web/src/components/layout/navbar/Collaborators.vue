@@ -15,6 +15,8 @@
           :tooltip="userTooltips[index]"
           :user="user"
           class="absolute translate-x-[-50%]"
+          hasHoverState
+          @click="goToUserChangeSet(user)"
         />
       </div>
     </template>
@@ -93,15 +95,20 @@
 import * as _ from "lodash-es";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import clsx from "clsx";
+import { useRoute, useRouter } from "vue-router";
 import Popover from "@/components/Popover.vue";
 import SiSearch from "@/components/SiSearch.vue";
 import { usePresenceStore } from "@/store/presence.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
 
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
+const featureFlagsStore = useFeatureFlagsStore();
+const router = useRouter();
+const route = useRoute();
 
 export type UserInfo = {
   name: string;
@@ -260,4 +267,22 @@ const filteredUsers = computed(() => {
     );
   } else return sortedUsers.value;
 });
+
+function goToUserChangeSet(user: UserInfo) {
+  if (
+    !user ||
+    !user.changeset ||
+    !featureFlagsStore.NAVIGATE_FROM_COLLABORATOR_LINK
+  )
+    return;
+
+  router.push({
+    name: "change-set-home",
+    params: {
+      ...route.params,
+      changeSetId: changeSetsStore.changeSetsById[user.changeset]?.id || "auto",
+    },
+    query: route.query,
+  });
+}
 </script>
