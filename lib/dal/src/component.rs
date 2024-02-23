@@ -271,6 +271,7 @@ impl Component {
     /// a [`Schema`](crate::Schema) rather than
     /// a specific [`SchemaVariantId`](crate::SchemaVariant), use
     /// [`Self::new_for_default_variant_from_schema()`].
+    #[instrument(level = "info", skip(ctx, name), fields(name = name.as_ref()))]
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
@@ -299,7 +300,7 @@ impl Component {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM component_create_v2($1, $2, $3, $4, $5)",
+                "SELECT object FROM component_create_v3($1, $2, $3, $4, $5)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
