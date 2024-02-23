@@ -289,7 +289,7 @@ impl WorkspaceSnapshotGraph {
         from_node_index: NodeIndex,
         edge_weight: EdgeWeight,
         to_node_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<EdgeIndex> {
+    ) -> WorkspaceSnapshotGraphResult<(EdgeIndex, Option<(EdgeIndex, NodeIndex, NodeIndex)>)> {
         let _start = std::time::Instant::now();
         let new_edge_index = self.add_edge(from_node_index, edge_weight, to_node_index)?;
 
@@ -300,10 +300,10 @@ impl WorkspaceSnapshotGraph {
         // by the `to_node_index` to the ordering. Also point the ordering node at the thing with
         // an `Ordinal` edge, so that Ordering nodes must be touched *after* the things they order
         // in a depth first search
-        if let Some(container_ordering_node_index) =
+        let (maybe_ordinal_edge_information) = if let Some(container_ordering_node_index) =
             self.ordering_node_index_for_container(from_node_index)?
         {
-            self.add_edge(
+            let ordinal_edge_index = self.add_edge(
                 container_ordering_node_index,
                 EdgeWeight::new(change_set, EdgeWeightKind::Ordinal)?,
                 to_node_index,
@@ -327,9 +327,17 @@ impl WorkspaceSnapshotGraph {
                 self.add_node(NodeWeight::Ordering(new_container_ordering_node_weight))?;
                 self.replace_references(container_ordering_node_index)?;
             }
-        }
 
-        Ok(new_edge_index)
+            Some((
+                ordinal_edge_index,
+                container_ordering_node_index,
+                to_node_index,
+            ))
+        } else {
+            None
+        };
+
+        Ok((new_edge_index, maybe_ordinal_edge_information))
     }
 
     pub fn add_ordered_node(

@@ -298,12 +298,13 @@ impl WorkspaceSnapshot {
     ) -> WorkspaceSnapshotResult<EdgeIndex> {
         let from_node_index = self.working_copy.get_node_index_by_id(from_node_id)?;
         let to_node_index = self.working_copy.get_node_index_by_id(to_node_id)?;
-        Ok(self.working_copy.add_ordered_edge(
+        let (edge_index, _) = self.working_copy.add_ordered_edge(
             change_set,
             from_node_index,
             edge_weight,
             to_node_index,
-        )?)
+        )?;
+        Ok(edge_index)
     }
 
     pub async fn detect_conflicts_and_updates(

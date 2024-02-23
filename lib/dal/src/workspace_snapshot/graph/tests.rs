@@ -3150,7 +3150,7 @@ mod test {
             .expect("Unable to add ordered prop 5");
         let new_edge_weight = EdgeWeight::new(initial_change_set, EdgeWeightKind::Use)
             .expect("Unable to create EdgeWeight");
-        initial_graph
+        let (_, maybe_ordinal_edge_information) = initial_graph
             .add_ordered_edge(
                 initial_change_set,
                 initial_graph
@@ -3160,6 +3160,24 @@ mod test {
                 ordered_prop_5_index,
             )
             .expect("Unable to add container prop -> ordered prop 5 edge");
+        let (
+            ordinal_edge_index,
+            source_node_index_for_ordinal_edge,
+            destination_node_index_for_ordinal_edge,
+        ) = maybe_ordinal_edge_information.expect("ordinal edge information not found");
+        let ordinal_edge_weight = initial_graph
+            .graph
+            .edge_weight(ordinal_edge_index)
+            .expect("could not get edge weight for index")
+            .to_owned();
+        let source_node_id_for_ordinal_edge = initial_graph
+            .get_node_weight(source_node_index_for_ordinal_edge)
+            .expect("could not get node weight")
+            .id();
+        let destination_node_id_for_ordinal_edge = initial_graph
+            .get_node_weight(destination_node_index_for_ordinal_edge)
+            .expect("could not get node weight")
+            .id();
 
         new_graph.dot();
 
@@ -3201,6 +3219,15 @@ mod test {
                         .expect("Unable to get old ordering NodeIndex")
                         .expect("Ordering NodeIndex not found"),
                 },
+                Update::NewEdge {
+                    source: new_graph
+                        .get_node_index_by_id(source_node_id_for_ordinal_edge)
+                        .expect("could not get node index by id"),
+                    destination: initial_graph
+                        .get_node_index_by_id(destination_node_id_for_ordinal_edge)
+                        .expect("could not get node index by id"),
+                    edge_weight: ordinal_edge_weight,
+                }
             ],
             updates
         );
@@ -3427,7 +3454,7 @@ mod test {
             .expect("Unable to add ordered prop 5");
         let new_edge_weight = EdgeWeight::new(initial_change_set, EdgeWeightKind::Use)
             .expect("Unable to create EdgeWeight");
-        initial_graph
+        let (_, maybe_ordinal_edge_information) = initial_graph
             .add_ordered_edge(
                 initial_change_set,
                 initial_graph
@@ -3437,6 +3464,24 @@ mod test {
                 ordered_prop_5_index,
             )
             .expect("Unable to add container prop -> ordered prop 5 edge");
+        let (
+            ordinal_edge_index,
+            source_node_index_for_ordinal_edge,
+            destination_node_index_for_ordinal_edge,
+        ) = maybe_ordinal_edge_information.expect("ordinal edge information not found");
+        let ordinal_edge_weight = initial_graph
+            .graph
+            .edge_weight(ordinal_edge_index)
+            .expect("could not get edge weight for index")
+            .to_owned();
+        let source_node_id_for_ordinal_edge = initial_graph
+            .get_node_weight(source_node_index_for_ordinal_edge)
+            .expect("could not get node weight")
+            .id();
+        let destination_node_id_for_ordinal_edge = initial_graph
+            .get_node_weight(destination_node_index_for_ordinal_edge)
+            .expect("could not get node weight")
+            .id();
 
         new_graph.dot();
 
@@ -3470,15 +3515,26 @@ mod test {
             conflicts
         );
         assert_eq!(
-            vec![Update::NewEdge {
-                source: new_graph
-                    .get_node_index_by_id(container_prop_id)
-                    .expect("Unable to get new_graph container NodeIndex"),
-                destination: initial_graph
-                    .get_node_index_by_id(ordered_prop_5_id)
-                    .expect("Unable to get ordered prop 5 NodeIndex"),
-                edge_weight: new_edge_weight,
-            }],
+            vec![
+                Update::NewEdge {
+                    source: new_graph
+                        .get_node_index_by_id(container_prop_id)
+                        .expect("Unable to get new_graph container NodeIndex"),
+                    destination: initial_graph
+                        .get_node_index_by_id(ordered_prop_5_id)
+                        .expect("Unable to get ordered prop 5 NodeIndex"),
+                    edge_weight: new_edge_weight,
+                },
+                Update::NewEdge {
+                    source: new_graph
+                        .get_node_index_by_id(source_node_id_for_ordinal_edge)
+                        .expect("could not get node index by id"),
+                    destination: initial_graph
+                        .get_node_index_by_id(destination_node_id_for_ordinal_edge)
+                        .expect("could not get node index by id"),
+                    edge_weight: ordinal_edge_weight,
+                }
+            ],
             updates
         );
     }
@@ -3711,7 +3767,7 @@ mod test {
 
         let new_edge_weight = EdgeWeight::new(initial_change_set, EdgeWeightKind::Use)
             .expect("Unable to create EdgeWeight");
-        initial_graph
+        let (_, maybe_ordinal_edge_information) = initial_graph
             .add_ordered_edge(
                 initial_change_set,
                 initial_graph
@@ -3721,6 +3777,24 @@ mod test {
                 ordered_prop_5_index,
             )
             .expect("Unable to add container prop -> ordered prop 5 edge");
+        let (
+            ordinal_edge_index,
+            source_node_index_for_ordinal_edge,
+            destination_node_index_for_ordinal_edge,
+        ) = maybe_ordinal_edge_information.expect("ordinal edge information not found");
+        let ordinal_edge_weight = initial_graph
+            .graph
+            .edge_weight(ordinal_edge_index)
+            .expect("could not get edge weight for index")
+            .to_owned();
+        let source_node_id_for_ordinal_edge = initial_graph
+            .get_node_weight(source_node_index_for_ordinal_edge)
+            .expect("could not get node weight")
+            .id();
+        let destination_node_id_for_ordinal_edge = initial_graph
+            .get_node_weight(destination_node_index_for_ordinal_edge)
+            .expect("could not get node weight")
+            .id();
 
         initial_graph.cleanup();
         initial_graph.dot();
@@ -3738,15 +3812,26 @@ mod test {
 
         assert_eq!(Vec::<Conflict>::new(), conflicts);
         assert_eq!(
-            vec![Update::NewEdge {
-                source: new_graph
-                    .get_node_index_by_id(container_prop_id)
-                    .expect("Unable to get new_graph container NodeIndex"),
-                destination: initial_graph
-                    .get_node_index_by_id(ordered_prop_5_id)
-                    .expect("Unable to get ordered prop 5 NodeIndex"),
-                edge_weight: new_edge_weight,
-            }],
+            vec![
+                Update::NewEdge {
+                    source: new_graph
+                        .get_node_index_by_id(container_prop_id)
+                        .expect("Unable to get new_graph container NodeIndex"),
+                    destination: initial_graph
+                        .get_node_index_by_id(ordered_prop_5_id)
+                        .expect("Unable to get ordered prop 5 NodeIndex"),
+                    edge_weight: new_edge_weight,
+                },
+                Update::NewEdge {
+                    source: new_graph
+                        .get_node_index_by_id(source_node_id_for_ordinal_edge)
+                        .expect("could not get node index by id"),
+                    destination: initial_graph
+                        .get_node_index_by_id(destination_node_id_for_ordinal_edge)
+                        .expect("could not get node index by id"),
+                    edge_weight: ordinal_edge_weight,
+                }
+            ],
             updates
         );
     }
