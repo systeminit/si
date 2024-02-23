@@ -4,11 +4,18 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
-use telemetry::prelude::*;
 use thiserror::Error;
 
 use si_data_pg::PgError;
+use telemetry::prelude::*;
 
+use crate::{
+    ActorView, Component, ComponentError, ComponentId, ComponentStatus, DalContext,
+    DiagramError, Edge, EdgeError, history_event, HistoryActor, HistoryEventError, impl_standard_model,
+    pk, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId, SocketArity,
+    SocketId, standard_model_accessor, StandardModel, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, Visibility,
+};
 use crate::change_status::ChangeStatus;
 use crate::diagram::DiagramResult;
 use crate::edge::{EdgeId, EdgeKind};
@@ -16,13 +23,6 @@ use crate::history_event::HistoryEventMetadata;
 use crate::schema::SchemaUiMenu;
 use crate::socket::SocketEdgeKind;
 use crate::standard_model::{self, objects_from_rows};
-use crate::{
-    history_event, impl_standard_model, pk, standard_model_accessor, ActorView, Component,
-    ComponentError, ComponentId, ComponentStatus, DalContext, DiagramError, Edge, EdgeError,
-    HistoryActor, HistoryEventError, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId,
-    SocketArity, SocketId, StandardModel, StandardModelError, Tenancy, Timestamp,
-    TransactionsError, Visibility,
-};
 
 const LIST_SUMMARY_DIAGRAM_COMPONENTS: &str =
     include_str!("../queries/summary_diagram/list_summary_diagram_components.sql");
@@ -88,7 +88,6 @@ pub struct SummaryDiagramComponent {
     change_status: String,
     has_resource: bool,
     parent_component_id: Option<ComponentId>,
-    child_component_ids: serde_json::Value,
     created_info: serde_json::Value,
     updated_info: serde_json::Value,
     deleted_info: serde_json::Value,
@@ -176,6 +175,7 @@ pub async fn create_component_entry(
         }
     };
     let color = component.color(ctx).await?.unwrap_or("#111111".to_string());
+    let node_type = component.get_type(ctx).await?;
 
     let change_status = ChangeStatus::Added;
 
@@ -208,7 +208,7 @@ pub async fn create_component_entry(
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_component_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)",
+            "SELECT object FROM summary_diagram_component_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
@@ -223,6 +223,7 @@ pub async fn create_component_entry(
                 &serde_json::to_value(position)?,
                 &serde_json::to_value(size)?,
                 &color,
+                &node_type.to_string(),
                 &change_status.to_string(),
                 &false,
                 &serde_json::to_value(created_info)?,
@@ -262,7 +263,7 @@ pub async fn component_update_geometry(
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_component_update_geometry_v2($1, $2, $3, $4, $5)",
+            "SELECT object FROM summary_diagram_component_update_geometry_v3($1, $2, $3, $4, $5)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
@@ -318,7 +319,7 @@ pub async fn component_update(
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_component_update_v2($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            "SELECT object FROM summary_diagram_component_update_v3($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
@@ -405,7 +406,7 @@ pub async fn create_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_edge_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+            "SELECT object FROM summary_diagram_edge_create_v2($1, $2, $3, $4, $5, $6, $7, $8)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
@@ -421,12 +422,11 @@ pub async fn create_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
 
     // If this is a symbolic edge, we need to set the relevant summary diagram component row's parent node id.
     if edge.kind() == &EdgeKind::Symbolic {
-        ctx
-            .txns()
+        ctx.txns()
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM summary_diagram_component_set_parent_node_id_v3($1, $2, $3, $4)",
+                "SELECT object FROM summary_diagram_component_set_parent_id_v1($1, $2, $3, $4)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -484,7 +484,7 @@ pub async fn delete_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_edge_delete_v1($1, $2, $3, $4, $5)",
+            "SELECT object FROM summary_diagram_edge_delete_v2($1, $2, $3, $4, $5)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
@@ -501,7 +501,7 @@ pub async fn delete_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagramR
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM summary_diagram_component_set_parent_node_id_v3($1, $2, $3, NULL)",
+                "SELECT object FROM summary_diagram_component_set_parent_id_v1($1, $2, $3, NULL)",
                 &[ctx.tenancy(), ctx.visibility(), &edge.tail_component_id()],
             )
             .await?;
@@ -533,13 +533,13 @@ pub async fn restore_edge_entry(ctx: &DalContext, edge: &Edge) -> SummaryDiagram
         )
         .await?;
 
-    // If this is a symbolic edge, we need to update the relevant summary diagram component row's parent node id.
+    // If this is a symbolic edge, we need to update the relevant summary diagram component row's parent id.
     if edge.kind() == &EdgeKind::Symbolic {
         ctx.txns()
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM summary_diagram_component_set_parent_node_id_v3($1, $2, $3, $4)",
+                "SELECT object FROM summary_diagram_component_set_parent_id_v1($1, $2, $3, $4)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),

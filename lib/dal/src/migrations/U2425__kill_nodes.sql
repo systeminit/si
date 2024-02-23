@@ -1,15 +1,25 @@
 -- DROP NODES
 DROP TABLE nodes CASCADE;
 DROP TABLE node_belongs_to_component CASCADE;
-DELETE FROM standard_models where table_name = 'nodes';
-DELETE FROM standard_models where table_name = 'node_belongs_to_component';
+DELETE
+FROM standard_models
+where table_name = 'nodes';
+DELETE
+FROM standard_models
+where table_name = 'node_belongs_to_component';
 DROP FUNCTION node_create_v1;
- -- undo standard_model_table_constraints_v1 for node
+-- undo standard_model_table_constraints_v1 for node
 
 -- MODIFY EDGES
-ALTER TABLE edges DROP head_node_id, DROP head_object_kind, DROP tail_node_id, DROP tail_object_kind;
-ALTER TABLE edges RENAME head_object_id TO head_component_id;
-ALTER TABLE edges RENAME tail_object_id TO tail_component_id;
+ALTER TABLE edges
+    DROP head_node_id,
+    DROP head_object_kind,
+    DROP tail_node_id,
+    DROP tail_object_kind;
+ALTER TABLE edges
+    RENAME head_object_id TO head_component_id;
+ALTER TABLE edges
+    RENAME tail_object_id TO tail_component_id;
 
 CREATE OR REPLACE FUNCTION edge_create_v2(
     this_tenancy jsonb,
@@ -147,13 +157,11 @@ CREATE OR REPLACE FUNCTION component_restore_and_propagate_v1(
 AS
 $$
 DECLARE
-    table_name                   text;
     target_pk                    ident;
     peer_component_id            ident;
     internal_provider_id         ident;
     external_provider_id         ident;
     this_visibility_with_deleted jsonb;
-
 BEGIN
     this_visibility_with_deleted := this_visibility || jsonb_build_object('visibility_deleted_at', now());
 
@@ -211,7 +219,3 @@ END;
 $$ LANGUAGE PLPGSQL STABLE;
 
 
--- MODIFY SUMMARY
- -- summary_diagram_edge_create_v1
--- summary_diagram_component_set_parent_node_id_v3 (set parent_component_id)
--- summary_diagram_component_create_v1
