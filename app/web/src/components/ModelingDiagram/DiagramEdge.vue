@@ -166,16 +166,16 @@ const centerPoint = computed(() => {
   return pointAlongLinePct(props.fromPoint, props.toPoint, 0.5);
 });
 
-const selectedNodeId = computed(
-  () => componentsStore.selectedComponent?.nodeId,
+const selectedComponentId = computed(
+  () => componentsStore.selectedComponent?.id,
 );
 
 const mainLineOpacity = computed(() => {
   if (willDeleteIfPendingEdgeCreated.value) return 0.3;
   if (isDeleted.value) return 0.75;
   if (
-    props.edge.def.fromNodeId === selectedNodeId.value ||
-    props.edge.def.toNodeId === selectedNodeId.value
+    props.edge.def.fromComponentId === selectedComponentId.value ||
+    props.edge.def.toComponentId === selectedComponentId.value
   ) {
     return 0.8;
   }
