@@ -4,6 +4,7 @@
 describe("Check Workspace Dashboard", () => {
   beforeEach(() => {
     cy.visit("/");
+    cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
   });
 
   it("lets the user go to their dashboard and click into a workspace", () => {

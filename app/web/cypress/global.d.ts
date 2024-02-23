@@ -19,6 +19,11 @@ declare namespace Cypress {
      */
     loginToAuth0(username: string, password: string): Chainable<any>;
 
+    /**
+     * Sends Posthog Event for User Identification/Test Identification in Posthog
+    */
+    sendPosthogEvent(event: string, eventKey: string, eventData: string): Chainable<any>;
+
     dragTo(sourceElement: string, targetElement: string): void;
   }
 }

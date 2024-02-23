@@ -26,6 +26,8 @@ jobs:
       - name: Setup authentication for vite & other synthetic test variables
         working-directory: app/web
         run: |
+          apt update
+          apt install uuid -y
           cp .env .env.local
           echo "VITE_AUTH0_USERNAME=${{ secrets.VITE_AUTH0_USERNAME }}" >> .env.local                           # Production Synthetic User Email
           echo "VITE_AUTH0_PASSWORD=${{ secrets.VITE_AUTH0_PASSWORD }}" >> .env.local                           # Production Synthetic User Password
@@ -33,7 +35,8 @@ jobs:
           echo "VITE_SI_WORKSPACE_ID=${{ vars.VITE_PROD_SI_WORKSPACE_ID }}" >> .env.local                       # Production Synthetic Workspace ID
           echo "VITE_SI_PROPAGATION_COMPONENT_A=${{ vars.VITE_PROD_SI_PROPAGATION_COMPONENT_A }}" >> .env.local # Production Propagation Test Component A [from]
           echo "VITE_SI_PROPAGATION_COMPONENT_B=${{ vars.VITE_PROD_SI_PROPAGATION_COMPONENT_B }}" >> .env.local # Production Propagation Test Component B [to]
-          echo "VITE_SI_CYPRESS_MULTIPLIER=${{ vars.VITE_PROD_SI_CYPRESS_MULTIPLIER }}" >> .env.local                                                    # Set Execution to 10 iterations
+          echo "VITE_SI_CYPRESS_MULTIPLIER=${{ vars.VITE_PROD_SI_CYPRESS_MULTIPLIER }}" >> .env.local           # Set Execution to 10 iterations
+          echo "VITE_UUID="$(uuid)"                                                                             # UUID for test validation
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2

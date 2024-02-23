@@ -4,6 +4,7 @@
 describe('Validates Get Summary', () => {
     beforeEach(function () {
       cy.loginToAuth0(import.meta.env.VITE_AUTH0_USERNAME, import.meta.env.VITE_AUTH0_PASSWORD);
+      cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
     });
   
     it('Checks get_summary loads with a 200', () => {
