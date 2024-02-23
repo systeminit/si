@@ -70,13 +70,21 @@
         <div class="relative">
           <template v-if="editingSecret && !replacingSecret">
             <div
-              class="absolute w-full h-full z-50 bg-caution-lines opacity-80"
+              :class="
+                clsx(
+                  'absolute w-full h-full z-50 opacity-80',
+                  themeClasses(
+                    'bg-caution-lines-light',
+                    'bg-caution-lines-dark',
+                  ),
+                )
+              "
             ></div>
             <div
               class="absolute w-full h-full z-60 flex flex-col items-center justify-center gap-sm"
             >
               <div
-                class="mx-sm p-xs text-center font-bold bg-shade-100 rounded"
+                class="mx-sm p-xs text-center font-bold dark:bg-shade-100 bg-shade-0 rounded"
               >
                 You cannot edit the encrypted data stored in this secret, but
                 you can replace it with new data.

@@ -1,33 +1,36 @@
 <template>
-  <div
-    :class="`flex flex-col items-start p-xs ml-lg bg-white dark:bg-neutral-800 text-sm border-neutral-200 dark:border-neutral-600 overflow-hidden ${
-      props.hideTopBorder ? '' : 'border-t'
-    }`"
+  <TreeNode
+    leftBorderSize="xl"
+    :color="theme === 'dark' ? '#525252' : '#E5E5E5'"
+    staticContentClasses="border-b border-neutral-200 dark:border-neutral-600"
   >
-    <div class="flex flex-row items-center text-sm overflow-hidden w-full">
-      <StatusIndicatorIcon type="fix" :status="fix.status" />
-      <div class="flex flex-col pl-xs flex-shrink overflow-hidden flex-grow">
-        <div>{{ `${fix.displayName}` }}</div>
-        <div
-          ref="componentNameRef"
-          v-tooltip="componentNameTooltip"
-          :class="
-            clsx(
-              'truncate cursor-pointer',
-              componentsStore.componentsById[fix.componentId]
-                ? 'dark:text-action-300 text-action-500 hover:underline font-bold'
-                : 'text-neutral-500 dark:text-neutral-400 line-through',
-              isHover && 'underline',
-            )
-          "
-          @click="onClick"
-          @mouseenter="onHoverStart"
-          @mouseleave="onHoverEnd"
-        >
-          {{ `${fix.componentName}` }}
+    <template #label>
+      <div class="flex flex-row items-center text-sm overflow-hidden w-full">
+        <StatusIndicatorIcon type="fix" :status="fix.status" />
+        <div class="flex flex-col pl-xs flex-shrink overflow-hidden flex-grow">
+          <div>{{ `${fix.displayName}` }}</div>
+          <div
+            ref="componentNameRef"
+            v-tooltip="componentNameTooltip"
+            :class="
+              clsx(
+                'truncate cursor-pointer',
+                componentsStore.componentsById[fix.componentId]
+                  ? 'dark:text-action-300 text-action-500 hover:underline font-bold'
+                  : 'text-neutral-500 dark:text-neutral-400 line-through',
+                isHover && 'underline',
+              )
+            "
+            @click="onClick"
+            @mouseenter="onHoverStart"
+            @mouseleave="onHoverEnd"
+          >
+            {{ `${fix.componentName}` }}
+          </div>
         </div>
       </div>
-
+    </template>
+    <template #icons>
       <div
         v-if="fix.resource"
         class="dark:text-action-300 text-action-500 flex-none cursor-pointer flex flex-row gap-xs"
@@ -46,61 +49,66 @@
           "
           :details="fix.resource.logs"
         />
-        <FixCardIconButton
+        <IconButton
           v-if="fix.resource?.data"
           tooltip="show code"
           rotate="down"
           icon="code-pop"
           iconHover="code-pop-square"
+          noBorderOnHover
           :selected="codeViewerShowing"
           @click="toggleCodeViewerShowing"
         />
       </div>
-    </div>
-
-    <div
-      v-if="codeViewerShowing && fix.resource?.data"
-      class="relative w-full mt-xs"
-    >
-      <CodeViewer
-        :code="JSON.stringify(fix.resource.data, null, 2)"
-        class="dark:text-neutral-50 text-neutral-900"
+    </template>
+    <template #staticContent>
+      <div
+        v-if="codeViewerShowing && fix.resource?.data"
+        class="relative w-full"
       >
-        <template #title>
-          <div class="font-bold">
-            {{ fix.resource.message ?? "Resource Code" }}
-            <FixDetails
-              v-if="fix.resource.logs && fix.resource.logs.length > 0"
-              :health="fix.resource.status"
-              :message="
-                [
-                  `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
-                  fix.resource.message ?? '',
-                ].filter((f) => f.length > 0)
-              "
-              :details="fix.resource.logs"
-            />
-          </div>
-        </template>
-      </CodeViewer>
-    </div>
-  </div>
+        <CodeViewer
+          :code="JSON.stringify(fix.resource.data, null, 2)"
+          class="dark:text-neutral-50 text-neutral-900"
+        >
+          <template #title>
+            <div class="font-bold">
+              {{ fix.resource.message ?? "Resource Code" }}
+              <FixDetails
+                v-if="fix.resource.logs && fix.resource.logs.length > 0"
+                :health="fix.resource.status"
+                :message="
+                  [
+                    `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
+                    fix.resource.message ?? '',
+                  ].filter((f) => f.length > 0)
+                "
+                :details="fix.resource.logs"
+              />
+            </div>
+          </template>
+        </CodeViewer>
+      </div>
+    </template>
+  </TreeNode>
 </template>
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { PropType, computed, ref } from "vue";
+import { TreeNode, useTheme } from "@si/vue-lib/design-system";
 import { Fix } from "@/store/fixes.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeViewer from "./CodeViewer.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import FixDetails from "./FixDetails.vue";
-import FixCardIconButton from "./FixCardIconButton.vue";
+import IconButton from "./IconButton.vue";
 
 const changeSetsStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
+
+const { theme } = useTheme();
 
 const props = defineProps({
   fix: { type: Object as PropType<Fix>, required: true },

@@ -10,7 +10,7 @@
           "
         />
       </SidebarSubpanelTitle>
-      <ComponentCard :componentId="selectedComponent.id" class="m-xs" />
+      <ComponentCard :componentId="selectedComponent.id" titleCard />
 
       <div
         v-if="currentStatus && currentStatus.isUpdating"

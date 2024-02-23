@@ -449,7 +449,7 @@ const profileMenuRef = ref<InstanceType<typeof DropdownMenu>>();
   overflow-wrap: break-word;
 }
 
-.bg-caution-lines {
+.bg-caution-lines-dark {
   background: repeating-linear-gradient(
     -45deg,
     #000,

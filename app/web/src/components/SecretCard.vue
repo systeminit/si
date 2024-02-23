@@ -2,7 +2,6 @@
   <div
     :class="
       clsx(
-        themeContainerClasses,
         'flex flex-row flex-none items-center overflow-hidden text-shade-100 dark:text-shade-0',
         detailedListItem
           ? 'border-b border-neutral-200 dark:border-neutral-500'
@@ -87,52 +86,24 @@
         </div>
       </div>
     </div>
-    <div
-      v-if="detailedListItem"
-      class="pr-sm flex flex-col gap-xs self-stretch"
-    >
-      <!-- TODO(Wendy) - this button is a mock, will wire it up soon! -->
-      <div
-        :class="
-          clsx(
-            'grow flex items-center cursor-pointer',
-            themeClasses(
-              'hover:text-action-500 text-neutral-400',
-              'hover:text-action-400',
-            ),
-          )
-        "
+    <div v-if="detailedListItem" class="pr-sm flex flex-col gap-xs">
+      <IconButton
+        icon="edit"
+        tooltip="Edit"
+        iconTone="action"
+        iconIdleTone="neutral"
         @click="emit('edit')"
-      >
-        <Icon name="edit" size="lg" />
-      </div>
-      <!-- TODO(Wendy) - here's the button we will use when we add deletion -->
-      <!-- <div
-        :class="
-          clsx(
-            'grow flex items-center cursor-pointer hover:text-destructive-500',
-            themeClasses('text-neutral-400', ''),
-          )
-        "
-      >
-        <Icon name="trash" size="lg" />
-      </div> -->
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  Icon,
-  Timestamp,
-  themeClasses,
-  useThemeContainer,
-} from "@si/vue-lib/design-system";
+import { Timestamp } from "@si/vue-lib/design-system";
 import { PropType } from "vue";
 import clsx from "clsx";
 import { Secret } from "../store/secrets.store";
-
-const { themeContainerClasses } = useThemeContainer("dark");
+import IconButton from "./IconButton.vue";
 
 defineProps({
   secret: { type: Object as PropType<Secret>, required: true },

@@ -35,9 +35,22 @@
           :name="isOpen ? 'chevron--down' : 'chevron--right'"
           size="lg"
         />
+        <div
+          v-if="slots.primaryIcon"
+          :class="
+            clsx(
+              'mr-xs flex-none',
+              enableGroupToggle &&
+                !alwaysShowArrow &&
+                'group-hover:scale-0 transition-all',
+            )
+          "
+        >
+          <slot name="primaryIcon" />
+        </div>
         <Icon
-          v-if="icon"
-          :name="icon"
+          v-else-if="primaryIcon"
+          :name="primaryIcon"
           size="md"
           :class="
             clsx(
@@ -49,7 +62,7 @@
           "
         />
 
-        <div class="flex flex-col select-none overflow-hidden py-xs">
+        <div class="flex flex-col select-none overflow-hidden py-2xs">
           <slot name="label">{{ label }}</slot>
         </div>
         <!-- group open/close controls -->
@@ -89,25 +102,29 @@
     >
       <slot />
     </div>
+    <div :class="staticContentClasses">
+      <slot name="staticContent" />
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { PropType, ref } from "vue";
+import { PropType, ref, useSlots } from "vue";
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { Icon, IconNames, themeClasses } from "..";
 
-defineProps({
+const props = defineProps({
   label: { type: String },
   clickLabelToToggle: { type: Boolean },
   color: { type: String, default: "#000" },
-  icon: { type: String as PropType<IconNames> },
+  primaryIcon: { type: String as PropType<IconNames> },
   isSelected: { type: Boolean },
   isHover: { type: Boolean },
   enableGroupToggle: { type: Boolean },
   classes: { type: String },
   labelClasses: { type: String },
+  staticContentClasses: { type: String },
   indentationSize: {
     type: String as PropType<"none" | "2xs" | "xs" | "sm" | "md" | "lg" | "xl">,
     default: "xs",
@@ -117,10 +134,12 @@ defineProps({
     default: "sm",
   },
   alwaysShowArrow: { type: Boolean },
+  defaultOpen: { type: Boolean, default: true },
 });
 
 const nodeRef = ref<HTMLElement>();
-const isOpen = ref(true);
+const isOpen = ref(props.defaultOpen);
+const slots = useSlots();
 
 const toggleOpen = (enabled = true) => {
   if (!enabled) return;

@@ -133,7 +133,17 @@ const realtimeStore = useRealtimeStore();
   background-color: rgb(0, 0, 0);
 }
 
-.bg-caution-lines {
+.bg-caution-lines-light {
+  background: repeating-linear-gradient(
+    -45deg,
+    #fff,
+    #fff 10px,
+    #ccc 10px,
+    #ccc 20px
+  );
+}
+
+.bg-caution-lines-dark {
   background: repeating-linear-gradient(
     -45deg,
     #000,
