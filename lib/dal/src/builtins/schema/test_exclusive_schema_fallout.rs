@@ -203,7 +203,6 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
             schemas: Some(vec!["fallout".into()]),
             ..Default::default()
         }),
-        true,
     )
     .await?;
 

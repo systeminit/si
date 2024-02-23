@@ -347,7 +347,6 @@ pub async fn exec_variant_def_inner(
             no_record: true,
             is_builtin: false,
         }),
-        request.override_builtin_schema_feature_flag,
     )
     .await?;
 

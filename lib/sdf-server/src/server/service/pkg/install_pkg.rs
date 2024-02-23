@@ -22,7 +22,6 @@ use ulid::Ulid;
 #[serde(rename_all = "camelCase")]
 pub struct InstallPkgRequest {
     pub id: Ulid,
-    pub override_builtin_schema_feature_flag: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -101,13 +100,7 @@ async fn install_pkg_inner(
 
     let pkg = SiPkg::load_from_bytes(pkg_data)?;
     let metadata = pkg.metadata()?;
-    let (_, svs, _import_skips) = import_pkg_from_pkg(
-        ctx,
-        &pkg,
-        None, // TODO: add is_builtin option
-        request.override_builtin_schema_feature_flag,
-    )
-    .await?;
+    let (_, svs, _import_skips) = import_pkg_from_pkg(ctx, &pkg, None).await?;
 
     track(
         &posthog_client,

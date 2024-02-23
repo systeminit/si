@@ -4,7 +4,6 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRouterStore } from "./router.store";
@@ -112,7 +111,6 @@ export const useModuleStore = () => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
 
-  const featureFlagsStore = useFeatureFlagsStore();
   return addStoreHooks(
     defineStore(
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/modules`,
@@ -329,8 +327,6 @@ export const useModuleStore = () => {
               params: {
                 id: moduleId,
                 ...visibility,
-                overrideBuiltinSchemaFeatureFlag:
-                  featureFlagsStore.OVERRIDE_SCHEMA,
               },
               onSuccess: (data) => {
                 this.installingModuleId = data.id;
