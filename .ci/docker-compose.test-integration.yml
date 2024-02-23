@@ -33,6 +33,8 @@ services:
     command:
       - "-c"
       - "fsync=off"
+      - "-c"
+      - "full_page_writes=off"
 
   nats:
     image: systeminit/nats:stable
