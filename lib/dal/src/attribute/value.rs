@@ -69,6 +69,7 @@ use crate::{
     InternalProviderId, Prop, PropError, PropId, PropKind, StandardModel, StandardModelError,
     Tenancy, Timestamp, TransactionsError, Visibility, WsEventError,
 };
+use crate::{ExternalProviderId, FuncId};
 
 pub mod view;
 
@@ -87,6 +88,10 @@ const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
     include_str!("../queries/attribute_value/list_payload_for_read_context.sql");
 const LIST_PAYLOAD_FOR_READ_CONTEXT_AND_ROOT: &str =
     include_str!("../queries/attribute_value/list_payload_for_read_context_and_root.sql");
+const FIND_CONTROLLING_FUNCS: &str =
+    include_str!("../queries/attribute_value/find_controlling_funcs.sql");
+const LIST_ATTRIBUTES_WITH_OVERRIDDEN: &str =
+    include_str!("../queries/attribute_value/list_attributes_with_overridden.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -165,6 +170,8 @@ pub enum AttributeValueError {
     MissingFuncBinding(FuncBindingId),
     #[error("func binding return value not found")]
     MissingFuncBindingReturnValue,
+    #[error("func information not found for attribute value id: {0}")]
+    MissingFuncInformation(AttributeValueId),
     #[error("missing value from func binding return value for attribute value id: {0}")]
     MissingValueFromFuncBindingReturnValue(AttributeValueId),
     #[error("nats txn error: {0}")]
@@ -592,9 +599,12 @@ impl AttributeValue {
     ) -> AttributeValueResult<Vec<AttributeValuePayload>> {
         let schema_variant_id = match context.component_id {
             Some(component_id) if component_id != ComponentId::NONE => {
-                let component = Component::get_by_id(ctx, &component_id)
-                    .await?
-                    .ok_or(AttributeValueError::ComponentNotFoundById(component_id))?;
+                // We get the component even if it gets deleted because we may still need to operate with
+                // attribute values of soft deleted components
+                let component =
+                    Component::get_by_id(&ctx.clone_with_delete_visibility(), &component_id)
+                        .await?
+                        .ok_or(AttributeValueError::ComponentNotFoundById(component_id))?;
                 let schema_variant = component
                     .schema_variant(ctx)
                     .await
@@ -705,6 +715,42 @@ impl AttributeValue {
             ));
         }
         Ok(result)
+    }
+
+    // Eventually, this should be usable for *ALL* Component AttributeValues, but
+    // there isn't much point in supporting not-Prop AttributeValues until there
+    // is a way to assign functions other than the identity function to them.
+    pub async fn use_default_prototype(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_one(
+                "SELECT attribute_value_use_default_prototype_v1($1, $2, $3) AS changed",
+                &[ctx.tenancy(), ctx.visibility(), &attribute_value_id],
+            )
+            .await?;
+
+        if row.get("changed") {
+            // Update from prototype & trigger dependent values update
+            let mut av = AttributeValue::get_by_id(ctx, &attribute_value_id)
+                .await?
+                .ok_or_else(|| {
+                    AttributeValueError::NotFound(attribute_value_id, *ctx.visibility())
+                })?;
+            av.update_from_prototype_function(ctx).await?;
+            ctx.enqueue_job(DependentValuesUpdate::new(
+                ctx.access_builder(),
+                *ctx.visibility(),
+                vec![attribute_value_id],
+            ))
+            .await?;
+        }
+
+        Ok(())
     }
 
     /// Update the [`AttributeValue`] for a specific [`AttributeContext`] to the given value. If the
@@ -1052,11 +1098,6 @@ impl AttributeValue {
     /// Re-evaluates the current `AttributeValue`'s `AttributePrototype` to update the
     /// `FuncBinding`, and `FuncBindingReturnValue`, reflecting the current inputs to
     /// the function.
-    ///
-    /// If the `AttributeValue` represents the `InternalProvider` for a `Prop` that
-    /// does not have a parent `Prop` (this is typically the `InternalProvider` for
-    /// the "root" `Prop` of a `SchemaVariant`), then it will also enqueue a
-    /// `CodeGeneration` job for the `Component`.
     #[instrument(
         name = "attribute_value.update_from_prototype_function",
         skip_all,
@@ -1286,6 +1327,110 @@ impl AttributeValue {
         }
 
         Ok(row.try_get("new_proxy_value_ids")?)
+    }
+
+    /// Get the controlling function id for a particular attribute value by it's id
+    /// This function id may be for a function on a parent of the attribute value
+    pub async fn get_controlling_func_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> AttributeValueResult<HashMap<AttributeValueId, (FuncId, AttributeValueId, String)>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                FIND_CONTROLLING_FUNCS,
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+
+        #[derive(Clone, Debug, Deserialize)]
+        struct FuncInfo {
+            func_id: FuncId,
+            func_name: String,
+            attribute_value_id: AttributeValueId,
+            parent_av_ids: Vec<AttributeValueId>,
+        }
+
+        let func_infos: Vec<FuncInfo> = standard_model::objects_from_rows(rows)?;
+        let func_info_by_attribute_value_id: HashMap<AttributeValueId, FuncInfo> = func_infos
+            .iter()
+            .map(|info| (info.attribute_value_id, info.clone()))
+            .collect();
+        let mut result = HashMap::new();
+
+        for (attribute_value_id, func_info) in &func_info_by_attribute_value_id {
+            let mut ancestor_func_info = func_info.clone();
+            // The parent AV IDs are populated root -> leaf, but we're most interested
+            // in walking them leaf -> root.
+            let mut parent_av_ids = func_info.parent_av_ids.clone();
+            parent_av_ids.reverse();
+            for ancestor_av_id in parent_av_ids {
+                if let Some(parent_func_info) = func_info_by_attribute_value_id.get(&ancestor_av_id)
+                {
+                    if !parent_func_info.func_name.starts_with("si:set")
+                        && !parent_func_info.func_name.starts_with("si:unset")
+                    {
+                        ancestor_func_info = parent_func_info.clone();
+                        break;
+                    }
+                }
+            }
+            result.insert(
+                *attribute_value_id,
+                (
+                    ancestor_func_info.func_id,
+                    ancestor_func_info.attribute_value_id,
+                    ancestor_func_info.func_name,
+                ),
+            );
+        }
+
+        Ok(result)
+    }
+
+    /// Get all attribute value ids with a boolean for each telling whether it is using a different prototype from the schema variant
+    pub async fn list_attributes_with_overridden(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> AttributeValueResult<HashMap<AttributeValueId, bool>> {
+        let component_av_ctx = AttributeReadContext {
+            prop_id: None,
+            internal_provider_id: Some(InternalProviderId::NONE),
+            external_provider_id: Some(ExternalProviderId::NONE),
+            component_id: Some(component_id),
+        };
+
+        let prop_av_ctx = AttributeReadContext {
+            prop_id: None,
+            internal_provider_id: Some(InternalProviderId::NONE),
+            external_provider_id: Some(ExternalProviderId::NONE),
+            component_id: Some(ComponentId::NONE),
+        };
+
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                LIST_ATTRIBUTES_WITH_OVERRIDDEN,
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &prop_av_ctx,
+                    &component_av_ctx,
+                    &component_id,
+                ],
+            )
+            .await?;
+
+        let result: HashMap<AttributeValueId, bool> = HashMap::from_iter(
+            rows.iter()
+                .map(|row| (row.get("attribute_value_id"), row.get("overridden"))),
+        );
+
+        Ok(result)
     }
 }
 

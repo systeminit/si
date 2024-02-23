@@ -13,6 +13,7 @@ use crate::{
 
 pub mod schema;
 pub mod values;
+pub mod values_summary;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -31,6 +32,8 @@ pub enum PropertyEditorError {
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("property editor values summary: {0}")]
+    PropertyEditorValuesSummary(String),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
     #[error("root prop not found for schema variant")]

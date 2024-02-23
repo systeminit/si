@@ -127,9 +127,10 @@ const realtimeStore = useRealtimeStore();
   padding-right: 0;
 }
 
-.v-popper--theme-html > .v-popper__wrapper > .v-popper__inner {
+.v-popper--theme-html > .v-popper__wrapper > .v-popper__inner,
+.v-popper--theme-attribute-source-icon > .v-popper__wrapper > .v-popper__inner {
   border-radius: 0.5rem !important;
-  background-color: rgba(0, 0, 0, 0.9);
+  background-color: rgb(0, 0, 0);
 }
 
 .bg-caution-lines {

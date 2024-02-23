@@ -6,7 +6,6 @@ import { posthog } from "@/utils/posthog";
 // translation from store key to posthog feature flag name
 const FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
-  // STORE_FLAG_NAME: "posthogFlagName",
   COPY_PASTE: "copy_paste",
   DONT_BLOCK_ON_ACTIONS: "dont_block_on_actions",
   INVITE_USER: "invite_user",
@@ -18,6 +17,7 @@ const FLAG_MAPPING = {
   SECRETS: "secrets",
   WORKSPACE_BACKUPS: "workspaceBackups",
   SEARCH_FILTERS: "search-filters",
+  INDICATORS_MANUAL_FUNCTION_SOCKET: "indicators_manual_function_socket",
   STATUSBAR_RESOURCE_COUNT: "statusbar_resource_count",
 };
 

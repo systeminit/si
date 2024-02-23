@@ -1,12 +1,5 @@
 <template>
-  <div
-    :class="
-      clsx(
-        'w-full h-full grow flex flex-col overflow-hidden',
-        themeContainerClasses,
-      )
-    "
-  >
+  <div class="w-full h-full grow flex flex-col overflow-hidden">
     <div
       v-if="addSecretReqStatus.isSuccess || editSecretReqStatus.isSuccess"
       class="grow flex flex-col items-center justify-center"
@@ -124,10 +117,8 @@
       <div
         :class="
           clsx(
-            'flex-none w-full flex flex-row p-xs gap-xs',
-            forceDark ? 'bg-shade-100' : 'bg-shade-0',
-            !forceDark &&
-              (mainDivScrolling ? 'dark:bg-shade-100' : 'dark:bg-neutral-800'),
+            'flex-none w-full flex flex-row p-xs gap-xs bg-shade-0',
+            mainDivScrolling ? 'dark:bg-shade-100' : 'dark:bg-neutral-800',
           )
         "
       >
@@ -171,7 +162,6 @@ import {
   VButton,
   useValidatedInputGroup,
   ErrorMessage,
-  useThemeContainer,
   themeClasses,
 } from "@si/vue-lib/design-system";
 import { PropType, ref, computed, onMounted, onBeforeUnmount } from "vue";
@@ -213,12 +203,7 @@ const props = defineProps({
   hideCancelButton: {
     type: Boolean,
   },
-  forceDark: { type: Boolean },
 });
-
-const { themeContainerClasses } = useThemeContainer(
-  props.forceDark ? "dark" : undefined,
-);
 
 const secretsStore = useSecretsStore();
 

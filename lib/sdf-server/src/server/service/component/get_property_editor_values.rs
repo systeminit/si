@@ -21,7 +21,7 @@ pub async fn get_property_editor_values(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetPropertyEditorValuesRequest>,
-) -> ComponentResult<Json<GetPropertyEditorValuesResponse>> {
+) -> ComponentResult<Json<serde_json::Value>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let is_component_in_tenancy = Component::is_in_tenancy(&ctx, request.component_id).await?;

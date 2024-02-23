@@ -522,7 +522,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
 async fn create_delete_and_restore_components(ctx: &mut DalContext) {
     let mut bagger = ComponentBagger::new();
 
-    // Restoration is only a well defined operation for objects that existed on HEAD at some point
+    // Restoration is only a well-defined operation for objects that existed on HEAD at some point
     // so for this test, we need to create and merge the component before running delete and restore
 
     let mut change_set = ChangeSet::new(ctx, generate_name(), None)
