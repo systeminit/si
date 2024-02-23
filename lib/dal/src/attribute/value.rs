@@ -1250,7 +1250,14 @@ impl AttributeValue {
             .ok_or_else(|| {
                 AttributeValueError::MissingFunc(format!("Unable to get func for {:?}", self.id()))
             })?;
-        if func.name().starts_with("si:set") || func.name() == "si:unset" {
+        if func.name() == "si:setObject"
+            || func.name() == "si:setMap"
+            || func.name() == "si:setArray"
+            || func.name() == "si:setString"
+            || func.name() == "si:setInteger"
+            || func.name() == "si:setBoolean"
+            || func.name() == "si:unset"
+        {
             return Ok(());
         }
 
@@ -1470,8 +1477,13 @@ impl AttributeValue {
             for ancestor_av_id in parent_av_ids {
                 if let Some(parent_func_info) = func_info_by_attribute_value_id.get(&ancestor_av_id)
                 {
-                    if !parent_func_info.func_name.starts_with("si:set")
-                        && !parent_func_info.func_name.starts_with("si:unset")
+                    if !(parent_func_info.func_name == "si:setObject"
+                        || parent_func_info.func_name == "si:setMap"
+                        || parent_func_info.func_name == "si:setArray"
+                        || parent_func_info.func_name == "si:setString"
+                        || parent_func_info.func_name == "si:setInteger"
+                        || parent_func_info.func_name == "si:setBoolean"
+                        || parent_func_info.func_name == "si:unset")
                     {
                         ancestor_func_info = parent_func_info.clone();
                         break;

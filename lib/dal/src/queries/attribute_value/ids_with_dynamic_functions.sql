@@ -6,6 +6,11 @@ FROM attribute_value_belongs_to_attribute_prototype_v1($1, $2) AS avbtap
         ON funcs.id = ap.func_id
 WHERE avbtap.object_id = ANY($3)
     AND NOT (
-        funcs.name LIKE 'si:set%'
+        funcs.name = 'si:setString'
+        OR funcs.name = 'si:setObject'
+        OR funcs.name = 'si:setMap'
+        OR funcs.name = 'si:setArray'
+        OR funcs.name = 'si:setInteger'
+        OR funcs.name = 'si:setBoolean'
         OR funcs.name = 'si:unset'
     );

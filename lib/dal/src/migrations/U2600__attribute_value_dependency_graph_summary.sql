@@ -156,7 +156,13 @@ BEGIN
         -- If the prototype's func isn't one of the 'si:set*', or 'si:unset', then it's a
         -- "dynamic" function. We also need to update the InternalProvider for any child props
         -- to have this AttributeValue as a dependency.
-        SELECT funcs.name NOT LIKE 'si:set%' AND funcs.name != 'si:unset'
+        SELECT NOT (funcs.name = 'si:setObject'
+            OR funcs.name = 'si:setMap'
+            OR funcs.name = 'si:setArray'
+            OR funcs.name = 'si:setString'
+            OR funcs.name = 'si:setInteger'
+            OR funcs.name = 'si:setBoolean'
+            OR funcs.name = 'si:unset')
         INTO this_non_builtin_func
         FROM funcs_v1(this_tenancy, this_visibility) AS funcs
             INNER JOIN attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
@@ -245,7 +251,13 @@ BEGIN
                 -- Check if this AV is from a "dynamic" function (one that has arguments). If it is, then
                 -- it should be considered as a source for this InternalProvider, as it will be populating
                 -- **ALL** Prop AttributeValues below it (and we are "below" it).
-                SELECT funcs.name NOT LIKE 'si:set%' AND funcs.name != 'si:unset'
+                SELECT NOT (funcs.name = 'si:setObject'
+                    OR funcs.name = 'si:setMap'
+                    OR funcs.name = 'si:setArray'
+                    OR funcs.name = 'si:setString'
+                    OR funcs.name = 'si:setInteger'
+                    OR funcs.name = 'si:setBoolean'
+                    OR funcs.name = 'si:unset')
                 INTO this_non_builtin_func
                 FROM funcs_v1(this_tenancy, this_visibility) AS funcs
                     INNER JOIN attribute_prototypes_v1(this_tenancy, this_visibility) AS ap

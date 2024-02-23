@@ -132,8 +132,13 @@ impl PropertyEditorValuesSummary {
 
             let is_from_external_source = sockets.iter().any(|(_socket, has_edge)| *has_edge);
 
-            let is_controlled_by_intrinsic_func = work_controlling_func_name.starts_with("si:set")
-                || work_controlling_func_name.starts_with("si:unset");
+            let is_controlled_by_intrinsic_func = work_controlling_func_name == "si:setObject"
+                || work_controlling_func_name == "si:setMap"
+                || work_controlling_func_name == "si:setArray"
+                || work_controlling_func_name == "si:setString"
+                || work_controlling_func_name == "si:setInteger"
+                || work_controlling_func_name == "si:setBoolean"
+                || work_controlling_func_name == "si:unset";
 
             let overridden = overrides
                 .get(&work_attribute_value_id)
