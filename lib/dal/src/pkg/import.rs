@@ -398,7 +398,9 @@ async fn import_edge(
         if edge.visibility().is_deleted() && !edge_spec.deleted {
             Edge::restore_by_id(ctx, *edge.id()).await?;
         } else if !edge.visibility().is_deleted() && edge_spec.deleted {
-            edge.delete_and_propagate(ctx).await?;
+            // ignore errors here, since they mostly occur if we've already deleted a node that
+            // this is an edge to
+            let _ = edge.delete_and_propagate(ctx).await;
         }
 
         thing_map.insert(
