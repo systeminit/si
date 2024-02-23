@@ -24,6 +24,8 @@ services:
     command:
       - "-c"
       - "fsync=off"
+      - "-c"
+      - "full_page_writes=off"
     ports:
       - "6432:5432"
 
