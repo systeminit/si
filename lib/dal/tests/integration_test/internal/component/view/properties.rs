@@ -110,11 +110,16 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
             "si": {
                 "name": "component",
                 "type": "component",
-                "protected": false
+                "protected": false,
             },
+            "domain": {},
             "code": {
-                "test:codeGeneration": {}
+                "test:codeGeneration": {
+                    "code": "",
+                    "format": "json",
+                },
             },
+            "resource": {},
         }], // expected
         component_view.properties // actual
     );
@@ -126,8 +131,10 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
             "si": {
                 "name": "component",
                 "type": "component",
-                "protected": false
+                "protected": false,
             },
+            "domain": {},
+            "resource": {},
         }], // expected
         component_view_properties
             .drop_code()
@@ -177,17 +184,18 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
             "si": {
                 "name": "component",
                 "type": "component",
-                "protected": false
+                "protected": false,
             },
             "code": {
                 "test:codeGeneration": {
                     "code": "canoe",
                     "format": "json",
-                }
+                },
             },
             "domain": {
-                "poop": "canoe"
+                "poop": "canoe",
             },
+            "resource": {},
         }], // expected
         component_view.properties // actual
     );
@@ -199,11 +207,12 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
             "si": {
                 "name": "component",
                 "type": "component",
-                "protected": false
+                "protected": false,
             },
             "domain": {
-                "poop": "canoe"
-            }
+                "poop": "canoe",
+            },
+            "resource": {},
         }], // expected
         component_view_properties
             .drop_code()

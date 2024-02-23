@@ -76,7 +76,6 @@ pub async fn migrate_component_to_schema_variant(
 
     let mut json_for_new_sv = build_empty_json_for_prop_tree(ctx, schema_variant_id).await?;
     serde_value_merge_in_place_recursive(&mut json_for_new_sv, original_component_view);
-    dbg!(&json_for_new_sv);
 
     // Call update for context on the root attribute value of the new
     // component with the constructed attribute view. We use

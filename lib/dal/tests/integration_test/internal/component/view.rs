@@ -568,7 +568,8 @@ async fn only_string_props(ctx: &DalContext) {
                 "domain": {
                     "killer_queen": "woohoo",
                     "bohemian_rhapsody": "Galileo"
-                }
+                },
+                "resource": {},
             }
         ], // expected
         component_view.properties, // actual
@@ -676,7 +677,8 @@ async fn one_object_prop(ctx: &DalContext) {
                     "killer_queen": "woohoo",
                     "bohemian_rhapsody": "Galileo"
                 }
-            }
+            },
+            "resource": {},
         }], // expected
         component_view.properties, // actual
     );
@@ -825,17 +827,18 @@ async fn nested_object_prop(ctx: &DalContext) {
                 "si": {
                     "name": "free ronaldinho",
                     "type": "component",
-                    "protected": false
+                    "protected": false,
                 },
                 "domain": {
                     "queen": {
                         "killer_queen": "cake",
                         "under_pressure": {
-                            "another_one_bites_the_dust": "another one gone"
+                            "another_one_bites_the_dust": "another one gone",
                         },
-                        "bohemian_rhapsody": "scaramouche"
-                    }
-                }
+                        "bohemian_rhapsody": "scaramouche",
+                    },
+                },
+                "resource": {},
             }
         ],
         component_view.properties,
@@ -923,11 +926,12 @@ async fn simple_array_of_strings(ctx: &DalContext) {
                 "si": {
                     "name": "tim maia",
                     "type": "component",
-                    "protected": false
+                    "protected": false,
                 },
                 "domain": {
-                    "sammy_hagar": ["standing_hampton", "voa"]
-                }
+                    "sammy_hagar": ["standing_hampton", "voa"],
+                },
+                "resource": {},
             }
         ],
         component_view.properties,
@@ -1166,7 +1170,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
             "si": {
                 "name": "An Integralist Doesn't Run, It Flies",
                 "type": "component",
-                "protected": false
+                "protected": false,
             },
             "domain": {
                 "sammy_hagar": [
@@ -1174,18 +1178,19 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
                         "album": "standing_hampton",
                         "songs": [
                             "fall in love again",
-                            "surrender"
-                        ]
+                            "surrender",
+                        ],
                     },
                     {
                         "album": "voa",
                         "songs": [
                             "eagles fly",
-                            "can't drive 55"
-                        ]
-                    }
-                ]
-            }
+                            "can't drive 55",
+                        ],
+                    },
+                ],
+            },
+            "resource": {},
         }], // expected
         component_view.properties, // actual
     );
@@ -1240,12 +1245,31 @@ async fn simple_map(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("cannot get component view");
+
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "E como isso afeta o Grêmio?",
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "albums": {},
+            },
+            "resource": {},
+        }], // expected
+        component_view.properties, // actual
+    );
+
     let album_item_context = base_attribute_context
         .clone()
         .set_prop_id(*album_item_prop.id())
         .to_context()
         .expect("could not create album item AttributeContext");
-    let _ = AttributeValue::insert_for_context(
+    let _nocturnal_attribute_value_id = AttributeValue::insert_for_context(
         ctx,
         album_item_context,
         album_value_id,
@@ -1259,7 +1283,28 @@ async fn simple_map(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let _ = AttributeValue::insert_for_context(
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("cannot get component view");
+
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "E como isso afeta o Grêmio?",
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "albums": {
+                    "black_dahlia": "nocturnal",
+                },
+            },
+            "resource": {},
+        }], // expected
+        component_view.properties, // actual
+    );
+
+    let _meshuggah_attribute_value_id = AttributeValue::insert_for_context(
         ctx,
         album_item_context,
         album_value_id,
@@ -1282,14 +1327,15 @@ async fn simple_map(ctx: &DalContext) {
             "si": {
                 "name": "E como isso afeta o Grêmio?",
                 "type": "component",
-                "protected": false
+                "protected": false,
             },
             "domain": {
                 "albums": {
                     "meshuggah": "destroy erase improve",
-                    "black_dahlia": "nocturnal"
-                }
-            }
+                    "black_dahlia": "nocturnal",
+                },
+            },
+            "resource": {},
         }], // expected
         component_view.properties, // actual
     );
@@ -1454,7 +1500,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
             "si": {
                 "name": "E como isso afeta o Grêmio?",
                 "type": "component",
-                "protected": false
+                "protected": false,
             },
             "domain": {
                 "sammy_hagar": [
@@ -1464,8 +1510,9 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
                             { "surrender": "ok", "fall in love again": "good" },
                         ]
                     },
-                ]
-            }
+                ],
+            },
+            "resource": {},
         }], // expected
         component_view.properties, // actual
     );

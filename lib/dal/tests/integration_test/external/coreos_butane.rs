@@ -163,6 +163,7 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
                     "format": "json",
                 },
             },
+            "resource": {},
         }], // expected
         butane_bag
             .component_view_properties(ctx)

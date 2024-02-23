@@ -2,7 +2,7 @@ use pretty_assertions_sorted::assert_eq;
 
 use dal::{
     socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, Component, ComponentView, DalContext, Edge, ExternalProvider,
+    AttributeValue, AttributeView, Component, ComponentView, DalContext, Edge, ExternalProvider,
     ExternalProviderId, InternalProvider, InternalProviderId, PropId, PropKind, StandardModel,
 };
 use dal_test::{
@@ -27,6 +27,8 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     let (swings_bag, _destination_prop_id, swings_explicit_internal_provider_id) =
         setup_swings(ctx).await;
 
+    ctx.blocking_commit().await.expect("Unable to commit");
+
     // Ensure setup went as expected.
     assert_eq!(
         serde_json::json![{
@@ -41,6 +43,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                     "intermediate": "zero-intermediate",
                 },
             },
+            "resource": {},
         }], // expected
         esp_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -51,6 +54,8 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
+            "domain": {},
+            "resource": {},
         }], // expected
         swings_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -108,6 +113,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                     "intermediate": "one",
                 },
             },
+            "resource": {},
         }], // expected
         esp_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -118,6 +124,8 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
+            "domain": {},
+            "resource": {},
         }], // expected
         swings_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -138,6 +146,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                     "source": "one",
                 },
             },
+            "resource": {},
         }], // expected
         esp_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -148,6 +157,8 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
+            "domain": {},
+            "resource": {},
         }], // expected
         swings_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -181,6 +192,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                     "source": "one",
                 },
             },
+            "resource": {},
         }], // expected
         esp_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -191,6 +203,8 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "type": "component",
                 "protected": false
             },
+            "domain": {},
+            "resource": {},
         }], // expected
         swings_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -218,6 +232,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                     "source": "two",
                 },
             },
+            "resource": {},
         }], // expected
         esp_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -231,6 +246,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
             "domain": {
                 "destination": "two",
             },
+            "resource": {},
         }], // expected
         swings_bag.component_view_properties_raw(ctx).await // actual
     );
@@ -686,6 +702,10 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                     "type": "component",
                     "protected": false
                 },
+                "domain": {
+                    "base_object": {},
+                },
+                "resource": {},
             }
         ],
         ComponentView::new(ctx, *source_component.id())
@@ -712,8 +732,12 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Destination Component",
                     "type": "component",
-                    "protected": false
+                    "protected": false,
                 },
+                "domain": {
+                    "parent_object": {},
+                },
+                "resource": {},
             }
         ],
         ComponentView::new(ctx, *destination_component.id())
@@ -802,12 +826,77 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                         "foo_string": "deep update",
                     },
                 },
+                "resource": {},
             }
         ],
         ComponentView::new(ctx, *source_component.id())
             .await
             .expect("cannot get source component view")
             .properties,
+    );
+
+    assert_eq!(
+        &serde_json::json![{
+            "root": {
+                "si": {
+                    "name": "Source Component",
+                    "type": "component",
+                    "protected": false
+                },
+                "domain": {
+                    "base_object": {
+                        "foo_string": "deep update",
+                    },
+                },
+                "resource": {},
+            },
+        }],
+        AttributeView::new(
+            ctx,
+            AttributeReadContext {
+                component_id: Some(*source_component.id()),
+                prop_id: None,
+                internal_provider_id: Some(InternalProviderId::NONE),
+                external_provider_id: Some(ExternalProviderId::NONE),
+            },
+            None
+        )
+        .await
+        .expect("Unable to generate AttributeView")
+        .value(),
+    );
+
+    assert_eq!(
+        &serde_json::json![{
+            "root": {
+                "si": {
+                    "name": "Destination Component",
+                    "type": "component",
+                    "protected": false,
+                },
+                "domain": {
+                    "parent_object": {
+                        "base_object": {
+                            "foo_string": "deep update",
+                        },
+                    },
+                },
+                "resource": {},
+            },
+        }],
+        AttributeView::new(
+            ctx,
+            AttributeReadContext {
+                component_id: Some(*destination_component.id()),
+                prop_id: None,
+                internal_provider_id: Some(InternalProviderId::NONE),
+                external_provider_id: Some(ExternalProviderId::NONE),
+            },
+            None
+        )
+        .await
+        .expect("Unable to generate AttributeView")
+        .value(),
     );
 
     assert_eq!(
@@ -825,6 +914,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                         },
                     },
                 },
+                "resource": {},
             }
         ],
         ComponentView::new(ctx, *destination_component.id())
@@ -893,6 +983,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                         "bar_string": "another update",
                     },
                 },
+                "resource": {},
             }
         ],
         ComponentView::new(ctx, *source_component.id())
@@ -917,6 +1008,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                         },
                     },
                 },
+                "resource": {},
             }
         ],
         ComponentView::new(ctx, *destination_component.id())

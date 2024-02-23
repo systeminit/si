@@ -30,6 +30,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "soulrender",
             },
+            "resource": {},
         }], // expected
         soulrender_bag
             .component_view_properties(ctx)
@@ -49,6 +50,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "bloodscythe",
             },
+            "resource": {},
         }], // expected
         bloodscythe_bag
             .component_view_properties(ctx)
@@ -86,6 +88,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "soulrender"
             },
+            "resource": {},
         }], // expected
         soulrender_bag
             .component_view_properties(ctx)
@@ -106,6 +109,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "bloodscythe-updated"
             },
+            "resource": {},
         }], // expected
         bloodscythe_bag
             .component_view_properties(ctx)
@@ -140,6 +144,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "soulrender-updated",
             },
+            "resource": {},
         }], // expected
         soulrender_bag
             .component_view_properties(ctx)
@@ -159,6 +164,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "bloodscythe-updated",
             },
+            "resource": {},
         }], // expected
         bloodscythe_bag
             .component_view_properties(ctx)

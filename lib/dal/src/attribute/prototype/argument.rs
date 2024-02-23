@@ -117,7 +117,7 @@ impl AttributePrototypeArgument {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM attribute_prototype_argument_create_v2($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -158,7 +158,7 @@ impl AttributePrototypeArgument {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM attribute_prototype_argument_create_v2($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -199,7 +199,7 @@ impl AttributePrototypeArgument {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM attribute_prototype_argument_create_v2($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -240,7 +240,7 @@ impl AttributePrototypeArgument {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM attribute_prototype_argument_create_v2($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),

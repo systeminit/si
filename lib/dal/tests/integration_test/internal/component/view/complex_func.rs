@@ -229,14 +229,15 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
                 "si": {
                     "name": "god-of-war",
                     "type": "component",
-                    "protected": false
+                    "protected": false,
                 },
                 "domain": {
                     "ragnarok": {
                         "atreus": "canoe",
-                        "kratos": "poop"
-                    }
-                }
+                        "kratos": "poop",
+                    },
+                },
+                "resource": {},
             }
         ],
         component_view.properties,
@@ -246,7 +247,11 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         Some(serde_json::json!["POOP"]),
         dump_value(
             ctx,
-            AttributeReadContext::default_with_external_provider(*external_provider.id()),
+            AttributeReadContext {
+                external_provider_id: Some(*external_provider.id()),
+                component_id: Some(*component.id()),
+                ..Default::default()
+            },
         )
         .await,
         "ensure external provider gets value of kratos internal provider in upper case",
@@ -257,7 +262,11 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         Some(serde_json::json![{}]),
         dump_value(
             ctx,
-            AttributeReadContext::default_with_prop(*ragnarok_prop.id()),
+            AttributeReadContext {
+                prop_id: Some(*ragnarok_prop.id()),
+                component_id: Some(*component.id()),
+                ..Default::default()
+            },
         )
         .await,
         "ensure ragnarok prop gets expected value of {{}}",
@@ -267,7 +276,11 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         Some(serde_json::json!["poop"]),
         dump_value(
             ctx,
-            AttributeReadContext::default_with_prop(*kratos_prop.id()),
+            AttributeReadContext {
+                prop_id: Some(*kratos_prop.id()),
+                component_id: Some(*component.id()),
+                ..Default::default()
+            },
         )
         .await,
         "ensure kratos prop gets expected value",
@@ -277,7 +290,11 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         Some(serde_json::json!["canoe"]),
         dump_value(
             ctx,
-            AttributeReadContext::default_with_prop(*atreus_prop.id()),
+            AttributeReadContext {
+                prop_id: Some(*atreus_prop.id()),
+                component_id: Some(*component.id()),
+                ..Default::default()
+            },
         )
         .await,
         "ensure atreus prop gets expected value",
@@ -290,7 +307,11 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         }]),
         dump_value(
             ctx,
-            AttributeReadContext::default_with_internal_provider(*ragnarok_provider.id()),
+            AttributeReadContext {
+                internal_provider_id: Some(*ragnarok_provider.id()),
+                component_id: Some(*component.id()),
+                ..Default::default()
+            }
         )
         .await
     );
@@ -299,7 +320,11 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         Some(serde_json::json!["poop"]),
         dump_value(
             ctx,
-            AttributeReadContext::default_with_internal_provider(*kratos_provider.id()),
+            AttributeReadContext {
+                internal_provider_id: Some(*kratos_provider.id()),
+                component_id: Some(*component.id()),
+                ..Default::default()
+            },
         )
         .await,
         "ensure internal provider for kratos prop gets expected value"
@@ -309,7 +334,11 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         Some(serde_json::json!["canoe"]),
         dump_value(
             ctx,
-            AttributeReadContext::default_with_internal_provider(*atreus_provider.id()),
+            AttributeReadContext {
+                internal_provider_id: Some(*atreus_provider.id()),
+                component_id: Some(*component.id()),
+                ..Default::default()
+            },
         )
         .await,
         "ensure internal provider for atreus prop gets expected value"
@@ -641,7 +670,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
                 "si": {
                     "name": "the-game-awards-2022",
                     "type": "component",
-                    "protected": false
+                    "protected": false,
                 },
                 "domain": {
                     "map": {
@@ -652,6 +681,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
                     },
                     "concat": "first",
                 },
+                "resource": {},
             }
         ],
         component_view.properties
@@ -729,7 +759,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
                 "si": {
                     "name": "the-game-awards-2022",
                     "type": "component",
-                    "protected": false
+                    "protected": false,
                 },
                 "domain": {
                     "map": {
@@ -743,7 +773,8 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
                         },
                     },
                     "concat": "second",
-                }
+                },
+                "resource": {},
             }
         ], // expected
         component_view.properties // actual
