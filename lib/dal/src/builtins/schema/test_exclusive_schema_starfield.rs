@@ -312,7 +312,6 @@ pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> Builti
             schemas: Some(vec!["starfield".into()]),
             ..Default::default()
         }),
-        true,
     )
     .await?;
 

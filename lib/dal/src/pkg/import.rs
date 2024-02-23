@@ -24,7 +24,6 @@ use crate::{
     func::{
         self,
         argument::{FuncArgumentError, FuncArgumentKind},
-        backend::js_action::ActionRunResult,
         binding::FuncBinding,
         binding_return_value::FuncBindingReturnValue,
     },
@@ -44,12 +43,11 @@ use crate::{
     socket::SocketEdgeKind,
     ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContext, AttributeContextBuilder,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeId, AttributeReadContext,
-    AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentError,
-    ComponentId, DalContext, Edge, EdgeError, ExternalProvider, ExternalProviderId, Func,
-    FuncArgument, FuncError, FuncId, InternalProvider, InternalProviderError, InternalProviderId,
-    LeafKind, Node, NodeError, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, Socket, StandardModel, Tenancy, UserPk, Workspace,
-    WorkspacePk,
+    AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentId,
+    DalContext, Edge, ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncError, FuncId,
+    InternalProvider, InternalProviderError, InternalProviderId, LeafKind, Node, Prop, PropId,
+    PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket,
+    StandardModel, Tenancy, UserPk, Workspace, WorkspacePk,
 };
 
 use super::{PkgError, PkgResult};
@@ -96,7 +94,6 @@ async fn import_change_set(
     installed_pkg_id: Option<InstalledPkgId>,
     thing_map: &mut ThingMap,
     options: &ImportOptions,
-    override_builtin_schema_feature_flag: bool,
 ) -> PkgResult<(
     Vec<SchemaVariantId>,
     Vec<(String, Vec<ImportAttributeSkip>)>,
@@ -206,217 +203,7 @@ async fn import_change_set(
 
     let mut installed_schema_variant_ids = vec![];
 
-    let mut schemas_to_upgrade = Vec::new();
-    let mut schemas_to_create = Vec::new();
-
-    // Code level feature flag to allow updating any schema by simpling installing a package with a schema of the same name
-    // This existis mostly to help debugging
-    // Should always be `false` in production
-    let update_even_if_not_builtin = false;
-
-    'spec: for schema_spec in schemas {
-        match &options.schemas {
-            None => {}
-            Some(schemas) => {
-                if !schemas.contains(&schema_spec.name().to_string().to_lowercase()) {
-                    continue;
-                }
-            }
-        }
-
-        if (update_even_if_not_builtin || options.is_builtin)
-            && override_builtin_schema_feature_flag
-        {
-            for schema in Schema::find_by_attr(ctx, "name", &schema_spec.name()).await? {
-                for variant_spec in &schema_spec.variants()? {
-                    for variant in schema.variants(ctx).await? {
-                        if variant.name() != variant_spec.name() {
-                            continue;
-                        }
-
-                        let should_update = if let Some(pkg_created_at) = variant.pkg_created_at() {
-                            metadata
-                                .created_at()
-                                .signed_duration_since(pkg_created_at)
-                                .num_seconds()
-                                > 0
-                        } else {
-                            true
-                        };
-
-                        if should_update
-                            && (update_even_if_not_builtin || variant.is_builtin(ctx).await?)
-                        {
-                            schemas_to_upgrade.push((schema_spec, schema, variant));
-                            continue 'spec;
-                        }
-                    }
-                }
-            }
-        }
-
-        schemas_to_create.push(schema_spec);
-    }
-
-    let has_upgrade = !schemas_to_upgrade.is_empty();
-    let mut exported_components = Vec::new();
-    let mut exporter = PkgExporter::new_workspace_exporter(
-        "temporary",
-        "SystemInit".to_owned(),
-        "1.0",
-        "Temporary pkg created to update schemas",
-    );
-    for (schema_spec, mut schema, mut schema_variant) in schemas_to_upgrade {
-        info!(
-            "upgrading schema '{}:{}' from {}",
-            schema_spec.name(),
-            schema_variant.name(),
-            metadata.name(),
-        );
-        for mut component in Component::list_for_schema(ctx, *schema.id()).await? {
-            let component_spec = ComponentSpecVariant::UpdateVariant {
-                schema_name: schema.name().to_owned(),
-                variant_name: schema_variant.name().to_owned(),
-            };
-            let (comp_spec, func_specs, head_func_specs) =
-                if let Some((comp_spec, func_specs, head_func_specs)) = exporter
-                    .export_component(ctx, Some(change_set_pk), &component, component_spec)
-                    .await?
-                {
-                    (comp_spec, func_specs, head_func_specs)
-                } else {
-                    continue;
-                };
-
-            let mut edges = Vec::new();
-            for mut edge in Edge::list_for_component(ctx, *component.id()).await? {
-                let from_component = if edge.head_component_id() == *component.id() {
-                    component.clone()
-                } else {
-                    Component::find_for_node(ctx, edge.head_node_id())
-                        .await
-                        .map_err(|err| EdgeError::Component(err.to_string()))?
-                        .ok_or(NodeError::ComponentIsNone)?
-                };
-                let from_component_spec = ComponentSpecVariant::UpdateVariant {
-                    schema_name: from_component
-                        .schema(ctx)
-                        .await?
-                        .ok_or_else(|| ComponentError::NoSchema(*from_component.id()))?
-                        .name()
-                        .to_owned(),
-                    variant_name: from_component
-                        .schema_variant(ctx)
-                        .await?
-                        .ok_or(ComponentError::NoSchemaVariant(*from_component.id()))?
-                        .name()
-                        .to_owned(),
-                };
-                let from_component_spec = if let Some((comp_spec, _func_specs, _head_func_specs)) =
-                    exporter
-                        .export_component(
-                            ctx,
-                            Some(change_set_pk),
-                            &from_component,
-                            from_component_spec,
-                        )
-                        .await?
-                {
-                    comp_spec
-                } else {
-                    continue;
-                };
-
-                let to_component = if edge.tail_component_id() == *component.id() {
-                    component.clone()
-                } else {
-                    Component::find_for_node(ctx, edge.tail_node_id())
-                        .await
-                        .map_err(|err| EdgeError::Component(err.to_string()))?
-                        .ok_or(NodeError::ComponentIsNone)?
-                };
-                let to_component_spec = ComponentSpecVariant::UpdateVariant {
-                    schema_name: to_component
-                        .schema(ctx)
-                        .await?
-                        .ok_or_else(|| ComponentError::NoSchema(*to_component.id()))?
-                        .name()
-                        .to_owned(),
-                    variant_name: to_component
-                        .schema_variant(ctx)
-                        .await?
-                        .ok_or(ComponentError::NoSchemaVariant(*to_component.id()))?
-                        .name()
-                        .to_owned(),
-                };
-                let to_component_spec = if let Some((comp_spec, _func_specs, _head_func_specs)) =
-                    exporter
-                        .export_component(
-                            ctx,
-                            Some(change_set_pk),
-                            &to_component,
-                            to_component_spec,
-                        )
-                        .await?
-                {
-                    comp_spec
-                } else {
-                    continue;
-                };
-
-                let edge_spec = exporter
-                    .export_edge(ctx, &edge, &to_component_spec, &from_component_spec)
-                    .await?;
-                edges.push(edge_spec);
-
-                edge.delete_by_id(ctx).await?;
-            }
-
-            let ctx_with_deleted = &ctx.clone_with_delete_visibility();
-            component.set_hidden(ctx, true).await?;
-            component.delete_by_id(ctx).await?;
-            component.set_needs_destroy(ctx_with_deleted, false).await?;
-            component
-                .set_resource_raw(ctx_with_deleted, ActionRunResult::default(), false)
-                .await?;
-            exported_components.push((comp_spec, func_specs, head_func_specs, edges));
-        }
-
-        if let Some(mut definition) =
-            SchemaVariantDefinition::get_by_schema_variant_id(ctx, schema_variant.id()).await?
-        {
-            definition.delete_by_id(ctx).await?;
-        }
-        schema_variant.delete_by_id(ctx).await?;
-        schema.delete_by_id(ctx).await?;
-
-        let (_, schema_variant_ids) = import_schema(
-            ctx,
-            change_set_pk,
-            schema_spec,
-            installed_pkg_id,
-            thing_map,
-            metadata,
-        )
-        .await?;
-
-        installed_schema_variant_ids.extend(schema_variant_ids);
-    }
-
-    if has_upgrade {
-        for func in Func::list(ctx).await? {
-            thing_map.insert(change_set_pk, func.id().to_string(), Thing::Func(func));
-        }
-    }
-
-    for (comp_spec, _func_specs, _head_func_specs, edges) in exported_components {
-        let _skips = import_component(ctx, change_set_pk, comp_spec, thing_map, true).await?;
-        for edge in edges {
-            let _skips = import_edge(ctx, change_set_pk, &edge, thing_map).await?;
-        }
-    }
-
-    for schema_spec in schemas_to_create {
+    for schema_spec in schemas {
         match &options.schemas {
             None => {}
             Some(schemas) => {
@@ -1274,7 +1061,6 @@ pub async fn import_pkg_from_pkg(
     ctx: &DalContext,
     pkg: &SiPkg,
     options: Option<ImportOptions>,
-    override_builtin_schema_feature_flag: bool,
 ) -> PkgResult<(
     Option<InstalledPkgId>,
     Vec<SchemaVariantId>,
@@ -1317,7 +1103,6 @@ pub async fn import_pkg_from_pkg(
                 installed_pkg_id,
                 &mut change_set_things,
                 &options,
-                override_builtin_schema_feature_flag,
             )
             .await?;
 
@@ -1361,7 +1146,6 @@ pub async fn import_pkg_from_pkg(
                 installed_pkg_id,
                 &mut change_set_things,
                 &options,
-                override_builtin_schema_feature_flag,
             )
             .await?;
 
@@ -1393,7 +1177,6 @@ pub async fn import_pkg_from_pkg(
                     installed_pkg_id,
                     &mut change_set_things,
                     &options,
-                    override_builtin_schema_feature_flag,
                 )
                 .await?;
 
@@ -1417,15 +1200,11 @@ pub async fn import_pkg_from_pkg(
     }
 }
 
-pub async fn import_pkg(
-    ctx: &DalContext,
-    pkg_file_path: impl AsRef<Path>,
-    override_builtin_schema_feature_flag: bool,
-) -> PkgResult<SiPkg> {
+pub async fn import_pkg(ctx: &DalContext, pkg_file_path: impl AsRef<Path>) -> PkgResult<SiPkg> {
     println!("Importing package from {:?}", pkg_file_path.as_ref());
     let pkg = SiPkg::load_from_file(&pkg_file_path).await?;
 
-    import_pkg_from_pkg(ctx, &pkg, None, override_builtin_schema_feature_flag).await?;
+    import_pkg_from_pkg(ctx, &pkg, None).await?;
 
     Ok(pkg)
 }

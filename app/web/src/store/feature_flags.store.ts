@@ -12,7 +12,6 @@ const FLAG_MAPPING = {
   JOI_VALIDATIONS: "joi_validations",
   MODULES_TAB: "modules_tab",
   MULTI_VARIANT_EDITING: "multiVariantEditing",
-  OVERRIDE_SCHEMA: "override_schema",
   RESIZABLE_PANEL_UPGRADE: "resizable-panel-upgrade",
   SECRETS: "secrets",
   WORKSPACE_BACKUPS: "workspaceBackups",
