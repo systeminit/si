@@ -130,7 +130,7 @@ impl Store for PgStore {
     async fn write(&mut self) -> StoreResult<()> {
         for (key, item) in self.inner.iter_mut() {
             if !item.written {
-                ContentPair::find_or_create(&self.pg_pool, key.to_owned(), &item.value).await?;
+                ContentPair::new(&self.pg_pool, key.to_owned(), &item.value).await?;
                 item.written = true;
             }
         }
