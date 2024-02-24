@@ -509,7 +509,13 @@
 import * as _ from "lodash-es";
 import { computed, PropType, ref, watch } from "vue";
 import clsx from "clsx";
-import { Icon, IconNames, Modal, themeClasses, VButton } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  IconNames,
+  Modal,
+  themeClasses,
+  VButton,
+} from "@si/vue-lib/design-system";
 import {
   AttributeTreeItem,
   useComponentAttributesStore,
