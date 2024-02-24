@@ -4,7 +4,6 @@
 describe("workspace", () => {
   beforeEach(() => {
     cy.visit("/");
-    cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
   });
 
   it("dashboard_redirect", () => {
@@ -12,6 +11,7 @@ describe("workspace", () => {
 
     // Go to the Synthetic User's Dashboard
     cy.visit(import.meta.env.VITE_AUTH_PORTAL_URL + '/dashboard')
+    cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
 
     cy.wait(5000)
 
