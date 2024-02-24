@@ -14,7 +14,7 @@
 
       <div
         v-if="currentStatus && currentStatus.isUpdating"
-        class="flex flex-row items-center gap-xs pl-xs"
+        class="flex flex-row items-center gap-xs pl-xs pb-xs"
       >
         <!-- currently updating -->
         <Icon name="loader" size="lg" class="text-action-500 shrink-0" />
