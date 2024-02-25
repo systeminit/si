@@ -3,11 +3,15 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    socket::SocketError, AttributeContextError, AttributePrototype,
-    AttributePrototypeArgumentError, AttributePrototypeError, AttributeValue, AttributeValueError,
-    AttributeValueId, Component, ComponentError, ComponentId, ComponentView, Connection,
-    DalContext, DiagramError, Edge, EdgeError, InternalProvider, InternalProviderError, PropError,
-    PropKind, SchemaVariant, SchemaVariantId, Socket, SocketId, StandardModel, StandardModelError,
+    property_editor::values_summary::{
+        PropertyEditorValuesSummary, PropertyEditorValuesSummaryError,
+    },
+    socket::SocketError,
+    AttributeContextError, AttributePrototype, AttributePrototypeArgumentError,
+    AttributePrototypeError, AttributeValue, AttributeValueError, AttributeValueId, Component,
+    ComponentError, ComponentId, ComponentView, Connection, DalContext, DiagramError, Edge,
+    EdgeError, InternalProvider, InternalProviderError, PropError, PropKind, SchemaVariant,
+    SchemaVariantId, Socket, SocketId, StandardModel, StandardModelError,
 };
 
 use super::{ComponentResult, ComponentViewError};
@@ -35,6 +39,8 @@ pub enum ComponentMigrateError {
     Edge(#[from] EdgeError),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
+    #[error("property editor value summary error: {0}")]
+    PropertyEditorValuesSummary(#[from] PropertyEditorValuesSummaryError),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
@@ -94,63 +100,12 @@ pub async fn migrate_component_to_schema_variant(
         )
         .await?;
 
-        // If a schema variant level prototype exists for this value's context,
-        // reset the value to use that prototype and we're done. But we also
-        // need to emit all the internal provider values, since those aren't
-        // being emitted by the update_for_context if we don't propagate
-        // dependent values (but we don't want to propagate dependent values
-        // until the prototypes are fixed)
-        for value in AttributeValue::find_all_values_for_component_id(ctx, component_id)
-            .await?
-            .iter_mut()
-        {
-            let value_context = value.attribute_value.context;
-            let variant_context = value_context.clone_with_component_id(ComponentId::NONE);
-            if let Some(variant_prototype) = AttributePrototype::find_for_context_and_key(
-                ctx,
-                variant_context,
-                &value.attribute_value.key,
-            )
-            .await?
-            .into_iter()
-            .next()
-            {
-                if value
-                    .attribute_value
-                    .context
-                    .is_least_specific_field_kind_internal_provider()?
-                {
-                    let internal_provider = InternalProvider::get_by_id(
-                        ctx,
-                        &value.attribute_value.context.internal_provider_id(),
-                    )
-                    .await?
-                    .ok_or_else(|| {
-                        AttributeValueError::InternalProviderNotFound(
-                            value.attribute_value.context.internal_provider_id(),
-                        )
-                    })?;
-                    if internal_provider.is_internal_consumer() {
-                        // Prototypes for implicit internal providers are set by implicit emit,
-                        // but they also don't matter since we don't exec their functions
-                        internal_provider
-                            .implicit_emit(ctx, &mut value.attribute_value)
-                            .await?;
-                    } else {
-                        value
-                            .attribute_value
-                            .set_attribute_prototype(ctx, variant_prototype.id())
-                            .await?;
-                    }
-                } else {
-                    value
-                        .attribute_value
-                        .set_attribute_prototype(ctx, variant_prototype.id())
-                        .await?;
-                }
-            }
-        }
+        restore_prototypes_and_implicit_values(ctx, component_id).await?;
     }
+
+    AttributeValue::remove_dependency_summaries_for_deleted_values(ctx).await?;
+    AttributeValue::update_component_dependencies(ctx, component_id).await?;
+    PropertyEditorValuesSummary::create_or_update_component_entry(ctx, component_id).await?;
 
     // Restore edges if matching sockets exist in the migrated component This
     // should probably use the connection annotation for matching, instead of
@@ -186,6 +141,70 @@ pub async fn migrate_component_to_schema_variant(
                 *edge.kind(),
             )
             .await?;
+        }
+    }
+
+    Ok(())
+}
+
+// If a schema variant level prototype exists for this value's context,
+// reset the value to use that prototype and we're done. But we also
+// need to emit all the internal provider values, since those aren't
+// being emitted by the update_for_context if we don't propagate
+// dependent values (but we don't want to propagate dependent values
+// until the prototypes are fixed)
+pub async fn restore_prototypes_and_implicit_values(
+    ctx: &DalContext,
+    component_id: ComponentId,
+) -> ComponentMigrateResult<()> {
+    for value in AttributeValue::find_all_values_for_component_id(ctx, component_id)
+        .await?
+        .iter_mut()
+    {
+        let value_context = value.attribute_value.context;
+        let variant_context = value_context.clone_with_component_id(ComponentId::NONE);
+        if let Some(variant_prototype) = AttributePrototype::find_for_context_and_key(
+            ctx,
+            variant_context,
+            &value.attribute_value.key,
+        )
+        .await?
+        .into_iter()
+        .next()
+        {
+            if value
+                .attribute_value
+                .context
+                .is_least_specific_field_kind_internal_provider()?
+            {
+                let internal_provider = InternalProvider::get_by_id(
+                    ctx,
+                    &value.attribute_value.context.internal_provider_id(),
+                )
+                .await?
+                .ok_or_else(|| {
+                    AttributeValueError::InternalProviderNotFound(
+                        value.attribute_value.context.internal_provider_id(),
+                    )
+                })?;
+                if internal_provider.is_internal_consumer() {
+                    // Prototypes for implicit internal providers are set by implicit emit,
+                    // but they also don't matter since we don't exec their functions
+                    internal_provider
+                        .implicit_emit(ctx, &mut value.attribute_value)
+                        .await?;
+                } else {
+                    value
+                        .attribute_value
+                        .set_attribute_prototype(ctx, variant_prototype.id())
+                        .await?;
+                }
+            } else {
+                value
+                    .attribute_value
+                    .set_attribute_prototype(ctx, variant_prototype.id())
+                    .await?;
+            }
         }
     }
 
@@ -240,7 +259,7 @@ pub async fn build_empty_json_for_prop_tree(
     Ok(result)
 }
 
-fn serde_value_merge_in_place_recursive(a: &mut serde_json::Value, b: serde_json::Value) {
+pub fn serde_value_merge_in_place_recursive(a: &mut serde_json::Value, b: serde_json::Value) {
     match (a, b) {
         (a @ &mut serde_json::Value::Object(_), serde_json::Value::Object(b)) => {
             let a = a.as_object_mut().unwrap();

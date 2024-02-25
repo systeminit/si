@@ -1545,6 +1545,21 @@ impl AttributeValue {
 
         Ok(result)
     }
+
+    pub async fn remove_dependency_summaries_for_deleted_values(
+        ctx: &DalContext,
+    ) -> AttributeValueResult<()> {
+        ctx.txns()
+            .await?
+            .pg()
+            .execute(
+                "SELECT clear_dependencies_for_deleted_values_v1($1, $2)",
+                &[ctx.tenancy(), ctx.visibility()],
+            )
+            .await?;
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
