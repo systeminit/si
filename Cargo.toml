@@ -30,6 +30,7 @@ members = [
     "lib/nats-multiplexer-client",
     "lib/nats-multiplexer-core",
     "lib/nats-subscriber",
+    "lib/naxum",
     "lib/object-tree",
     "lib/pinga-server",
     "lib/rebaser-client",
@@ -193,7 +194,7 @@ tokio-tungstenite = "0.20.1" # todo: pinning back from 0.21.0, upgrade this alon
 tokio-util = { version = "0.7.8", features = ["codec", "rt"] }
 tokio-vsock = { version = "0.4.0" }
 toml = { version = "0.8.8" }
-tower = "0.4.13"
+tower = { version = "0.4.13", features = ["full"] }
 tower-http = { version = "0.4", features = [
     "compression-br",
     "compression-deflate",
