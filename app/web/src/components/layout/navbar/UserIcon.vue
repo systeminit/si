@@ -1,11 +1,14 @@
 <template>
-  <div class="relative h-8 w-8">
+  <div :class="clsx('relative h-8 w-8', hasHoverState && 'hover:z-50')">
     <div
       v-tooltip="tooltip"
       :class="
         clsx(
           'h-8 w-8 border-2 rounded-full cursor-pointer flex-none bg-shade-100 overflow-hidden',
-          hasHoverState && 'hover:scale-105',
+          hasHoverState && 'hover:outline hover:outline-2',
+          hasHoverState && forceDark
+            ? 'hover:outline-action-300'
+            : 'dark:hover:outline-action-300 hover:outline-action-500',
         )
       "
       :style="`border-color: ${color}`"
@@ -17,7 +20,7 @@
         :src="user.pictureUrl"
         referrerpolicy="no-referrer"
       />
-      <Icon v-else name="user-circle" size="full" />
+      <Icon v-else name="user-circle" size="full" class="text-shade-0" />
     </div>
     <div
       v-if="user.status === 'idle'"
@@ -62,6 +65,7 @@ const props = defineProps({
   changeSetStarSide: { type: Boolean },
   hideChangesetStar: { type: Boolean },
   hasHoverState: { type: Boolean },
+  forceDark: { type: Boolean },
 });
 
 const color = computed(() => {
