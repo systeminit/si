@@ -109,7 +109,8 @@ impl PropertyEditorValuesSummary {
         let attribute_value_controlling_func_info =
             AttributeValue::get_controlling_func_id(ctx, component_id).await?;
 
-        let overrides = AttributeValue::list_attributes_with_overridden(ctx, component_id).await?;
+        //let overrides = AttributeValue::list_attributes_with_overridden(ctx, component_id).await?;
+        let overrides: HashMap<AttributeValueId, bool> = HashMap::new();
 
         for work in work_queue {
             let work_attribute_value_id = *work.attribute_value.id();
