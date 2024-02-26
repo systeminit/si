@@ -5597,6 +5597,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-service"
+version = "0.1.0"
+dependencies = [
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "si-settings"
 version = "0.1.0"
 dependencies = [

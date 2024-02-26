@@ -44,6 +44,7 @@ members = [
     "lib/si-layer-cache",
     "lib/si-pkg",
     "lib/si-posthog-rs",
+    "lib/si-service",
     "lib/si-settings",
     "lib/si-std",
     "lib/si-test-macros",
