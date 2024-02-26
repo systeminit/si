@@ -11,9 +11,9 @@ use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
-    standard_model_has_many, AttributePrototype, AttributePrototypeError, ComponentId, DiagramKind,
-    FuncId, HistoryEventError, InternalProviderId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, TransactionsError, Visibility,
+    standard_model_has_many, AttributePrototype, AttributePrototypeError, DiagramKind, FuncId,
+    HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    Visibility,
 };
 use crate::{
     AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributePrototypeId,
