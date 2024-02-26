@@ -8,6 +8,7 @@ pub mod extract;
 pub mod handler;
 mod make_service;
 mod message;
+pub mod middleware;
 pub mod response;
 pub mod serve;
 mod service_ext;
