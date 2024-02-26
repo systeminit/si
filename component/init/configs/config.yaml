@@ -13,7 +13,7 @@ exporters:
   otlp:
     endpoint: "api.honeycomb.io:443"
     headers:
-      "x-honeycomb-team": "$HONEYCOMB_API_KEY"
+      "x-honeycomb-team": "$SI_HONEYCOMB_API_KEY"
 
 extensions:
   zpages:
