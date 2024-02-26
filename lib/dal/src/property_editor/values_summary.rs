@@ -8,8 +8,8 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, AttributeReadContext,
-    AttributeValue, AttributeValueError, AttributeValueId, Component, ComponentError, ComponentId,
-    DalContext, HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp,
+    AttributeValue, AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext,
+    FuncId, HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp,
     TransactionsError, Visibility,
 };
 
@@ -110,32 +110,36 @@ impl PropertyEditorValuesSummary {
                 .position(|attribute_value_id| attribute_value_id == avp.attribute_value.id())
                 .unwrap_or(0)
         });
-        let attribute_value_controlling_func_info =
-            AttributeValue::get_controlling_func_id(ctx, component_id).await?;
+
+        //let attribute_value_controlling_func_info =
+        //AttributeValue::get_controlling_func_id(ctx, component_id).await?;
 
         //let overrides = AttributeValue::list_attributes_with_overridden(ctx, component_id).await?;
         let overrides: HashMap<AttributeValueId, bool> = HashMap::new();
 
         for work in work_queue {
             let work_attribute_value_id = *work.attribute_value.id();
-            let (
-                work_controlling_func_id,
-                work_controlling_attribute_value_id,
-                work_controlling_func_name,
-            ) = attribute_value_controlling_func_info
-                .get(&work_attribute_value_id)
-                .ok_or(AttributeValueError::MissingForId(work_attribute_value_id))?;
+            let work_controlling_func_name = "si:setObject";
+            let work_controlling_attribute_value_id = &work_attribute_value_id;
+            let work_controlling_func_id = &FuncId::NONE;
+            //            let (
+            //                work_controlling_func_id,
+            //                work_controlling_attribute_value_id,
+            //                work_controlling_func_name,
+            //            ) = attribute_value_controlling_func_info
+            //                .get(&work_attribute_value_id)
+            //                .ok_or(AttributeValueError::MissingForId(work_attribute_value_id))?;
 
-            let sockets = Component::list_input_sockets_for_attribute_value(
-                ctx,
-                work_attribute_value_id,
-                component_id,
-            )
-            .await?;
+            //            let sockets = Component::list_input_sockets_for_attribute_value(
+            //                ctx,
+            //                work_attribute_value_id,
+            //                component_id,
+            //            )
+            //            .await?;
 
-            let can_be_set_by_socket: bool = !sockets.is_empty();
+            let can_be_set_by_socket: bool = false; // !sockets.is_empty();
 
-            let is_from_external_source = sockets.iter().any(|(_socket, has_edge)| *has_edge);
+            let is_from_external_source = false; // sockets.iter().any(|(_socket, has_edge)| *has_edge);
 
             let is_controlled_by_intrinsic_func = work_controlling_func_name == "si:setObject"
                 || work_controlling_func_name == "si:setMap"
