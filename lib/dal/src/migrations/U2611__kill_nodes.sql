@@ -1,3 +1,31 @@
+-- Migrate node data to components
+ALTER TABLE components
+    ADD COLUMN x      text NOT NULL DEFAULT '0',
+    ADD COLUMN y      text NOT NULL DEFAULT '0',
+    ADD COLUMN width  text,
+    ADD COLUMN height text;
+
+UPDATE components c
+SET x      = n.x,
+    y      = n.y,
+    width  = n.width,
+    height = n.height
+FROM node_belongs_to_component nbtc
+         JOIN nodes n on
+    nbtc.object_id = n.id AND
+    n.visibility_change_set_pk = nbtc.visibility_change_set_pk AND
+    n.tenancy_workspace_pk = nbtc.tenancy_workspace_pk
+WHERE nbtc.belongs_to_id = c.id
+  AND nbtc.visibility_change_set_pk = c.visibility_change_set_pk
+  AND nbtc.tenancy_workspace_pk = c.tenancy_workspace_pk;
+
+UPDATE summary_diagram_components sc
+SET parent_node_id = nbtc.belongs_to_id -- parent_node_id gets renamed to parent_id in the next migration
+FROM node_belongs_to_component nbtc
+WHERE nbtc.object_id = sc.parent_node_id
+  AND nbtc.tenancy_workspace_pk = sc.tenancy_workspace_pk
+  AND nbtc.visibility_change_set_pk = sc.visibility_change_set_pk;
+
 -- DROP NODES
 DROP TABLE nodes CASCADE;
 DROP TABLE node_belongs_to_component CASCADE;
@@ -54,12 +82,6 @@ BEGIN
     object := row_to_json(this_new_row);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
-
-ALTER TABLE components
-    ADD COLUMN x      text NOT NULL DEFAULT '0',
-    ADD COLUMN y      text NOT NULL DEFAULT '0',
-    ADD COLUMN width  text,
-    ADD COLUMN height text;
 
 CREATE OR REPLACE FUNCTION component_delete_and_propagate_v3(
     this_tenancy jsonb,
