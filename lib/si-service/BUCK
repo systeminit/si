@@ -4,6 +4,7 @@ rust_library(
     name = "si-service",
     deps = [
         "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:color-eyre",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-util",

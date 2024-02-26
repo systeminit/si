@@ -1149,6 +1149,7 @@ dependencies = [
  "clap 4.5.2",
  "color-eyre",
  "council-server",
+ "si-service",
  "si-std",
  "telemetry-application",
  "tokio",
@@ -5600,6 +5601,7 @@ dependencies = [
 name = "si-service"
 version = "0.1.0"
 dependencies = [
+ "color-eyre",
  "telemetry",
  "thiserror",
  "tokio",

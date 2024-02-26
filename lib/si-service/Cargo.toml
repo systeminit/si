@@ -6,6 +6,7 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+color-eyre = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }

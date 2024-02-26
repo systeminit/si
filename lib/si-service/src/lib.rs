@@ -16,4 +16,7 @@
     clippy::module_name_repetitions
 )]
 
+pub mod rt;
 pub mod shutdown;
+
+pub use color_eyre::{self, eyre::Error, Result};
