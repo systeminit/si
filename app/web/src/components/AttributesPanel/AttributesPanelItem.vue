@@ -11,6 +11,7 @@
       '--collapsed': canHaveChildren && !isOpen,
     }"
   >
+    <!-- SECTION HEADER -->
     <div
       v-if="canHaveChildren"
       @mouseover.stop="onSectionHoverStart"
@@ -171,6 +172,7 @@
       </div>
     </div>
 
+    <!-- INDIVIDUAL PROP INSIDE A SECTION -->
     <div
       v-else
       class="attributes-panel-item__item-inner"
@@ -317,7 +319,14 @@
             @keydown.enter="(e) => e.metaKey && updateValue()"
           />
           <Icon
-            v-if="!propControlledByParent"
+            v-if="propControlledByParent"
+            name="external-link"
+            class="attributes-panel-item__popout-view-button"
+            title="View in popup"
+            @click="viewModalRef?.open()"
+          />
+          <Icon
+            v-else
             name="external-link"
             class="attributes-panel-item__popout-edit-button"
             title="Edit in popup"
@@ -408,6 +417,7 @@
           "
           :class="
             clsx(
+              'attributes-panel-item__blocked-overlay',
               'absolute top-0 w-full h-full z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50',
               themeClasses('bg-caution-lines-light', 'bg-caution-lines-dark'),
             )
@@ -425,6 +435,7 @@
       <Icon v-else-if="validation" name="x" tone="error" class="mr-2" />
     </div>
 
+    <!-- VALIDATION DETAILS -->
     <div
       v-if="showValidationDetails && validation"
       :style="{ marginLeft: indentPx }"
@@ -441,6 +452,7 @@
       </span>
     </div>
 
+    <!-- MODAL FOR EDITING A PROP -->
     <Modal
       v-if="widgetKind === 'textArea' || widgetKind === 'codeEditor'"
       ref="editModalRef"
@@ -463,6 +475,35 @@
       <!-- <VButton @click="editModalRef?.close">Save</VButton> -->
     </Modal>
 
+    <!-- MODAL FOR VIEWING A PROP WHICH CANNOT BE EDITED -->
+    <Modal
+      v-if="widgetKind === 'textArea' || widgetKind === 'codeEditor'"
+      ref="viewModalRef"
+      size="4xl"
+      :title="`View value - ${propLabel}`"
+      class="attributes-panel-item__view-value-modal"
+    >
+      <div class="pb-xs text-destructive-500 font-bold">
+        This value cannot currently be edited because
+        {{
+          propControlledByParent
+            ? "it is being controlled by a parent function."
+            : "it is being driven by a socket."
+        }}
+      </div>
+      <div class="attributes-panel-item__view-value-modal-code-wrap">
+        <template v-if="widgetKind === 'textArea'">
+          <pre class="attributes-panel-item__edit-value-modal__view-text">
+          {{ newValueString }}
+          </pre>
+        </template>
+        <template v-else-if="widgetKind === 'codeEditor'">
+          <CodeViewer :code="newValueString" />
+        </template>
+      </div>
+    </Modal>
+
+    <!-- MODAL FOR WHEN YOU CLICK A PROP WHICH IS CONTROLLED BY A PARENT OR SOCKET -->
     <Modal
       ref="confirmEditModalRef"
       :title="
@@ -529,6 +570,7 @@ import { useAttributesPanelContext } from "./AttributesPanel.vue";
 import CodeEditor from "../CodeEditor.vue";
 import SecretsModal from "../SecretsModal.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
+import CodeViewer from "../CodeViewer.vue";
 
 const props = defineProps({
   parentPath: { type: String },
@@ -844,6 +886,7 @@ const isSectionHover = computed(
   () => rootCtx.hoverSectionValueId.value === props.attributeDef.valueId,
 );
 
+const viewModalRef = ref<InstanceType<typeof Modal>>();
 const editModalRef = ref<InstanceType<typeof Modal>>();
 const secretModalRef = ref<InstanceType<typeof SecretsModal>>();
 const secretsStore = useSecretsStore();
@@ -1142,6 +1185,7 @@ const editOverride = ref(false);
 // small icon buttons
 .attributes-panel-item__action-icons .icon,
 .attributes-panel-item__popout-edit-button,
+.attributes-panel-item__popout-view-button,
 .attributes-panel-item__new-child-button {
   width: 20px;
   height: 20px;
@@ -1176,7 +1220,8 @@ const editOverride = ref(false);
     }
   }
 }
-.attributes-panel-item__popout-edit-button {
+.attributes-panel-item__popout-edit-button,
+.attributes-panel-item__popout-view-button {
   position: absolute;
   right: 4px;
   bottom: 4px;
@@ -1188,6 +1233,12 @@ const editOverride = ref(false);
   .attributes-panel-item.--input.--hover & {
     display: block;
   }
+}
+
+.attributes-panel-item__input-wrap:hover
+  .attributes-panel-item__popout-view-button {
+  display: block;
+  z-index: 51;
 }
 
 .attributes-panel-item__add-child-row {
@@ -1336,15 +1387,25 @@ const editOverride = ref(false);
   }
 }
 
-.attributes-panel-item__edit-value-modal {
+.attributes-panel-item__edit-value-modal,
+.attributes-panel-item__view-value-modal {
   textarea {
     @apply focus:ring-0 focus:ring-offset-0;
+    border: none;
+  }
+
+  .attributes-panel-item__edit-value-modal__view-text {
+    padding: 0.5rem;
+    border: 1px solid var(--input-border-color);
+  }
+
+  textarea,
+  .attributes-panel-item__edit-value-modal__view-text {
     background: transparent;
     width: 100%;
     height: 100%;
     overflow: auto;
     position: absolute;
-    border: none;
     font-size: 14px;
     line-height: 20px;
     font-family: monospace;
@@ -1352,12 +1413,17 @@ const editOverride = ref(false);
     display: block;
   }
 }
-.attributes-panel-item__edit-value-modal-code-wrap {
+.attributes-panel-item__edit-value-modal-code-wrap,
+.attributes-panel-item__view-value-modal-code-wrap {
   height: 40vh;
   position: relative;
-  border: 1px solid var(--input-focus-border-color);
   background: var(--input-focus-bg-color);
-  // margin-bottom: @spacing-px[xs];
+}
+.attributes-panel-item__edit-value-modal-code-wrap {
+  border: 1px solid var(--input-focus-border-color);
+}
+.attributes-panel-item__view-value-modal-code-wrap {
+  border: 1px solid var(--input-border-color);
 }
 
 .attributes-panel-item__map-key-error {
