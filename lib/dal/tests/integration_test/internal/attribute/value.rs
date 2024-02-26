@@ -1,16 +1,16 @@
 use pretty_assertions_sorted::assert_eq;
 
 use dal::{
-    attribute::context::AttributeContextBuilder, AttributeContext, AttributePrototypeArgument,
-    AttributeReadContext, AttributeValue, Component, component::view::ComponentView, DalContext,
-    generate_name, InternalProvider, PropKind, StandardModel,
+    attribute::context::AttributeContextBuilder, component::view::ComponentView, generate_name,
+    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
+    DalContext, InternalProvider, PropKind, StandardModel,
 };
+use dal_test::helpers::component_bag::ComponentBagger;
+use dal_test::helpers::setup_identity_func;
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
 };
-use dal_test::helpers::component_bag::ComponentBagger;
-use dal_test::helpers::setup_identity_func;
 
 #[test]
 async fn update_for_context_simple(ctx: &DalContext) {

@@ -9,13 +9,6 @@ use thiserror::Error;
 use si_data_pg::PgError;
 use telemetry::prelude::*;
 
-use crate::{
-    ActorView, Component, ComponentError, ComponentId, ComponentStatus, DalContext,
-    DiagramError, Edge, EdgeError, history_event, HistoryActor, HistoryEventError, impl_standard_model,
-    pk, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId, SocketArity,
-    SocketId, standard_model_accessor, StandardModel, StandardModelError, Tenancy, Timestamp,
-    TransactionsError, Visibility,
-};
 use crate::change_status::ChangeStatus;
 use crate::diagram::DiagramResult;
 use crate::edge::{EdgeId, EdgeKind};
@@ -23,6 +16,13 @@ use crate::history_event::HistoryEventMetadata;
 use crate::schema::SchemaUiMenu;
 use crate::socket::SocketEdgeKind;
 use crate::standard_model::{self, objects_from_rows};
+use crate::{
+    history_event, impl_standard_model, pk, standard_model_accessor, ActorView, Component,
+    ComponentError, ComponentId, ComponentStatus, DalContext, DiagramError, Edge, EdgeError,
+    HistoryActor, HistoryEventError, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId,
+    SocketArity, SocketId, StandardModel, StandardModelError, Tenancy, Timestamp,
+    TransactionsError, Visibility,
+};
 
 const LIST_SUMMARY_DIAGRAM_COMPONENTS: &str =
     include_str!("../queries/summary_diagram/list_summary_diagram_components.sql");

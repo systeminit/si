@@ -6,19 +6,19 @@ use thiserror::Error;
 use si_data_pg::PgError;
 use telemetry::prelude::*;
 
+use crate::func::binding::FuncBindingId;
+use crate::func::binding_return_value::FuncBindingReturnValueId;
+use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
 use crate::{
-    AttributePrototype, AttributePrototypeError, ComponentId, DiagramKind, FuncId,
-    HistoryEventError, impl_standard_model, InternalProviderId, pk, standard_model,
-    standard_model_accessor, standard_model_accessor_ro, standard_model_has_many, StandardModel, StandardModelError, Tenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
+    standard_model_has_many, AttributePrototype, AttributePrototypeError, ComponentId, DiagramKind,
+    FuncId, HistoryEventError, InternalProviderId, StandardModel, StandardModelError, Tenancy,
     Timestamp, TransactionsError, Visibility,
 };
 use crate::{
     AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributePrototypeId,
     DalContext, SchemaId, SchemaVariantId,
 };
-use crate::func::binding::FuncBindingId;
-use crate::func::binding_return_value::FuncBindingReturnValueId;
-use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
 
 const BY_SOCKET: &str = include_str!("../queries/external_provider/by_socket.sql");
 const FIND_FOR_SCHEMA_VARIANT_AND_NAME: &str =

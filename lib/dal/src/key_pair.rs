@@ -1,4 +1,4 @@
-use base64::{Engine, engine::general_purpose};
+use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
 use thiserror::Error;
@@ -10,9 +10,9 @@ use si_hash::Hash;
 use telemetry::prelude::*;
 
 use crate::{
-    DalContext,
-    HistoryEvent,
-    HistoryEventError, pk, serde_impls::{base64_bytes_serde, nonce_serde}, standard_model_accessor_ro, Timestamp,
+    pk,
+    serde_impls::{base64_bytes_serde, nonce_serde},
+    standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, Timestamp,
     TransactionsError, Workspace, WorkspaceError, WorkspacePk,
 };
 
