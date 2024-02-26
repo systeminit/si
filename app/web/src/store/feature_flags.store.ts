@@ -45,8 +45,6 @@ export function useFeatureFlagsStore() {
         // You can override feature flags while working on a feature by setting them to true here
 
         // this.MULTI_VARIANT_EDITING = true;
-        this.INDICATORS_MANUAL_FUNCTION_SOCKET = true;
-        this.NAVIGATE_FROM_COLLABORATOR_LINK = true;
 
         // Make sure to remove the override before committing your code!
       },
