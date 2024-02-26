@@ -59,6 +59,7 @@ services:
       - 8686:8686
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /var/log/journal:/var/log/journal
       - config:/etc/vector/
     depends_on:
       init:

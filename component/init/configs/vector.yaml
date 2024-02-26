@@ -4,6 +4,7 @@ sources:
   $SI_SERVICE-journal:
     type: "journald"
     include_units: ["$SI_SERVICE"]
+    journal_directory: "/var/log/journal"
 
 sinks:
   cloudwatch:
