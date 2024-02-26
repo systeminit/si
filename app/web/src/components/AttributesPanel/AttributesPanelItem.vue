@@ -75,7 +75,7 @@
               >
             </span>
           </div>
-          <div
+          <!-- <div
             :class="
               clsx(
                 'border dark:group-hover/header:hover:text-action-500 group-hover/header:hover:text-action-300 rounded p-[1px] m-[2px] w-5 h-5 cursor-pointer',
@@ -86,7 +86,7 @@
             "
           >
             <Icon v-tooltip="sourceTooltip" :name="sourceIcon" size="none" />
-          </div>
+          </div> -->
           <SourceIconWithTooltip
             v-if="
               featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
@@ -406,7 +406,12 @@
               ? `${propName} is set via a function from an ancestor`
               : `${propName} is set via an input socket`
           "
-          class="absolute top-0 w-full h-full bg-caution-lines z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50"
+          :class="
+            clsx(
+              'absolute top-0 w-full h-full z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50',
+              themeClasses('bg-caution-lines-light', 'bg-caution-lines-dark'),
+            )
+          "
           @click="openConfirmEditModal"
         />
       </div>
@@ -504,7 +509,13 @@
 import * as _ from "lodash-es";
 import { computed, PropType, ref, watch } from "vue";
 import clsx from "clsx";
-import { Icon, IconNames, Modal, VButton } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  IconNames,
+  Modal,
+  themeClasses,
+  VButton,
+} from "@si/vue-lib/design-system";
 import {
   AttributeTreeItem,
   useComponentAttributesStore,
@@ -1297,7 +1308,6 @@ const editOverride = ref(false);
 // SECRETS
 .attributes-panel-item__secret-value-wrap {
   padding: 4px;
-  color: white;
 }
 .attributes-panel-item__secret-value {
   background: @colors-action-700;

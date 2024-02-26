@@ -2,10 +2,13 @@
   <div ref="outlineRef" class="flex flex-col">
     <ScrollArea>
       <template #top>
-        <SidebarSubpanelTitle
-          label="Diagram Outline"
-          icon="bullet-list-indented"
-        >
+        <SidebarSubpanelTitle icon="bullet-list-indented">
+          <template #label>
+            <div class="flex flex-row gap-xs items-center">
+              <div>Diagram Outline</div>
+              <PillCounter :count="componentCount" borderTone="action" />
+            </div>
+          </template>
           <Icon
             v-if="fetchComponentsReq.isPending || fixesAreRunning"
             name="loader"
@@ -99,7 +102,12 @@ import {
   ref,
 } from "vue";
 import * as _ from "lodash-es";
-import { ErrorMessage, Icon, ScrollArea } from "@si/vue-lib/design-system";
+import {
+  ErrorMessage,
+  Icon,
+  PillCounter,
+  ScrollArea,
+} from "@si/vue-lib/design-system";
 import SiSearch, { Filter } from "@/components/SiSearch.vue";
 import {
   ComponentId,
@@ -153,6 +161,8 @@ const componentsTreeFlattened = computed(() => {
   });
   return flat;
 });
+
+const componentCount = computed(() => componentsTreeFlattened.value.length);
 
 const searchString = ref("");
 const searchStringCleaned = computed(() =>

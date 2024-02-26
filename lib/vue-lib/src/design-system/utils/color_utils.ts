@@ -8,7 +8,8 @@ export const COLOR_PALETTE = colorsJson;
 const TONES = {
   action: {
     colorHex: COLOR_PALETTE.action[500],
-    bgColorClass: tw`bg-action-500`,
+    bgColorClassLight: tw`bg-action-500`,
+    bgColorClassDark: tw`bg-action-300`,
     textColorClassLight: tw`text-action-500`,
     textColorClassDark: tw`text-action-300`,
     borderColorClassLight: tw`border-action-500`,
@@ -85,6 +86,7 @@ export function getToneTextColorClass(tone: Tones) {
   const { theme } = useTheme();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const toneSettings = TONES[tone] as any;
+
   if (theme.value === "dark")
     return toneSettings.textColorClassDark || toneSettings.textColorClass;
   return toneSettings.textColorClassLight || toneSettings.textColorClass;
