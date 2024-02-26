@@ -94,8 +94,12 @@ const LIST_PAYLOAD_FOR_READ_CONTEXT_AND_ROOT: &str =
     include_str!("../queries/attribute_value/list_payload_for_read_context_and_root.sql");
 const FIND_CONTROLLING_FUNCS: &str =
     include_str!("../queries/attribute_value/find_controlling_funcs.sql");
-const LIST_ATTRIBUTES_WITH_OVERRIDDEN: &str =
-    include_str!("../queries/attribute_value/list_attributes_with_overridden.sql");
+const LIST_ATTRIBUTES_WITH_PROP_AND_PROTO_FOR_COMPONENT: &str = include_str!(
+    "../queries/attribute_value/list_attributes_with_prop_and_proto_for_component.sql"
+);
+const LIST_SCHEMA_VARIANT_PROP_AND_PROTO_FOR_COMPONENT: &str = include_str!(
+    "../queries/attribute_value/list_schema_variant_prop_and_prototype_for_component.sql"
+);
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -1503,17 +1507,49 @@ impl AttributeValue {
         Ok(result)
     }
 
-    /// Get all attribute value ids with a boolean for each telling whether it is using a different prototype from the schema variant
+    /// Get all attribute value ids with a boolean for each telling whether it is using a different
+    /// prototype from the schema variant
     pub async fn list_attributes_with_overridden(
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> AttributeValueResult<HashMap<AttributeValueId, bool>> {
+        #[derive(Debug)]
+        struct AttributePropAndProtoForComponent {
+            attribute_value_id: AttributeValueId,
+            prop_id: PropId,
+            prototype_id: AttributePrototypeId,
+        }
+
         let component_av_ctx = AttributeReadContext {
             prop_id: None,
             internal_provider_id: Some(InternalProviderId::NONE),
             external_provider_id: Some(ExternalProviderId::NONE),
             component_id: Some(component_id),
         };
+
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                LIST_ATTRIBUTES_WITH_PROP_AND_PROTO_FOR_COMPONENT,
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &component_av_ctx,
+                    &component_id,
+                ],
+            )
+            .await?;
+
+        let mut component_attr_protos = vec![];
+        for row in rows {
+            component_attr_protos.push(AttributePropAndProtoForComponent {
+                attribute_value_id: row.get("attribute_value_id"),
+                prop_id: row.get("prop_id"),
+                prototype_id: row.get("prototype_id"),
+            });
+        }
 
         let prop_av_ctx = AttributeReadContext {
             prop_id: None,
@@ -1527,21 +1563,22 @@ impl AttributeValue {
             .await?
             .pg()
             .query(
-                LIST_ATTRIBUTES_WITH_OVERRIDDEN,
-                &[
-                    ctx.tenancy(),
-                    ctx.visibility(),
-                    &prop_av_ctx,
-                    &component_av_ctx,
-                    &component_id,
-                ],
+                LIST_SCHEMA_VARIANT_PROP_AND_PROTO_FOR_COMPONENT,
+                &[ctx.tenancy(), ctx.visibility(), &prop_av_ctx, &component_id],
             )
             .await?;
 
-        let result: HashMap<AttributeValueId, bool> = HashMap::from_iter(
+        let sv_prop_to_prototype_map: HashMap<PropId, AttributePrototypeId> = HashMap::from_iter(
             rows.iter()
-                .map(|row| (row.get("attribute_value_id"), row.get("overridden"))),
+                .map(|row| (row.get("prop_id"), row.get("prototype_id"))),
         );
+
+        let mut result = HashMap::new();
+        for component_attr_proto in component_attr_protos {
+            let overridden = sv_prop_to_prototype_map.get(&component_attr_proto.prop_id)
+                != Some(&component_attr_proto.prototype_id);
+            result.insert(component_attr_proto.attribute_value_id, overridden);
+        }
 
         Ok(result)
     }
