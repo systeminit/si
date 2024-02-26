@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 color-eyre = { workspace = true }
 telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-application = { path = "../../lib/telemetry-application-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }

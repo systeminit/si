@@ -1152,8 +1152,6 @@ dependencies = [
  "si-service",
  "si-std",
  "telemetry-application",
- "tokio",
- "tokio-util",
 ]
 
 [[package]]
@@ -5603,6 +5601,7 @@ version = "0.1.0"
 dependencies = [
  "color-eyre",
  "telemetry",
+ "telemetry-application",
  "thiserror",
  "tokio",
  "tokio-util",

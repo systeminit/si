@@ -20,3 +20,14 @@ pub mod rt;
 pub mod shutdown;
 
 pub use color_eyre::{self, eyre::Error, Result};
+pub use telemetry_application;
+pub use tokio_util::{sync::CancellationToken, task::TaskTracker};
+
+/// A "prelude" for crates implementing services/server binaries.
+pub mod prelude {
+    pub use std::future::IntoFuture as _;
+
+    pub use color_eyre::Result;
+    pub use telemetry_application::prelude::*;
+    pub use tokio_util::{sync::CancellationToken, task::TaskTracker};
+}
