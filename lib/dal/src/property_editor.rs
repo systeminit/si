@@ -3,8 +3,9 @@
 //! and mutating said properties.
 
 use serde::{Deserialize, Serialize};
-use si_data_pg::PgError;
 use thiserror::Error;
+
+use si_data_pg::PgError;
 
 use crate::{
     pk, schema::variant::SchemaVariantError, AttributeValueError, AttributeValueId, ComponentError,
@@ -24,8 +25,6 @@ pub enum PropertyEditorError {
     BadAttributeReadContext(String),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    #[error("component not found")]
-    ComponentNotFound,
     #[error("no value(s) found for property editor prop id: {0}")]
     NoValuesFoundForPropertyEditorProp(PropertyEditorPropId),
     #[error("pg error: {0}")]

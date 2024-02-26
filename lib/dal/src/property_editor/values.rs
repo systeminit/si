@@ -1,9 +1,10 @@
 //! This module contains the ability to construct values reflecting the latest state of a
 //! [`Component`](crate::Component)'s properties.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 
 use crate::property_editor::{PropertyEditorError, PropertyEditorResult};
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
@@ -22,11 +23,22 @@ impl PropertyEditorValues {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> PropertyEditorResult<serde_json::Value> {
-        super::values_summary::PropertyEditorValuesSummary::get_by_id(ctx, &component_id)
-            .await
-            .map_err(|e| PropertyEditorError::PropertyEditorValuesSummary(e.to_string()))?
-            .map(|v| v.property_editor_values().clone())
-            .ok_or(PropertyEditorError::ComponentNotFound)
+        if let Some(summary) =
+            super::values_summary::PropertyEditorValuesSummary::get_by_id(ctx, &component_id)
+                .await
+                .map_err(|e| PropertyEditorError::PropertyEditorValuesSummary(e.to_string()))?
+                .map(|v| v.property_editor_values().clone())
+        {
+            return Ok(summary);
+        }
+
+        // If there's no values summary, calculate it live and return it
+        super::values_summary::PropertyEditorValuesSummary::create_or_update_component_entry(
+            ctx,
+            component_id,
+        )
+        .await
+        .map_err(|e| PropertyEditorError::PropertyEditorValuesSummary(e.to_string()))
     }
 }
 
