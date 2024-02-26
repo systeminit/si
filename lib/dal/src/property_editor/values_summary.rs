@@ -72,7 +72,11 @@ impl PropertyEditorValuesSummary {
         Json<JsonValue>,
         PropertyEditorValuesSummaryResult
     );
-
+    #[instrument(
+        name = "summary.prop_editor_values.create_or_update",
+        level = "debug",
+        skip_all
+    )]
     pub async fn create_or_update_component_entry(
         ctx: &DalContext,
         component_id: ComponentId,
