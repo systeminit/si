@@ -7,6 +7,7 @@ use convert_case::{Case, Casing};
 use dal::component::ComponentKind;
 use dal::pkg::import::{clone_and_import_funcs, import_schema_variant};
 use dal::pkg::PkgExporter;
+use dal::Component;
 use hyper::Uri;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
@@ -546,6 +547,16 @@ pub async fn exec_variant_def_multi_variant_editing(
     schema
         .set_default_schema_variant_id(ctx, Some(schema_variant_id))
         .await?;
+
+    // We just changed the default schema variant, so we need to mark all the
+    // component summaries as not using the default variant
+    dal::diagram::falsify_using_default_variant_for_components_of_schema(ctx, *schema.id()).await?;
+    for component in Component::list_for_schema(ctx, *schema.id()).await? {
+        WsEvent::component_updated(ctx, *component.id())
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+    }
 
     track(
         &posthog_client,

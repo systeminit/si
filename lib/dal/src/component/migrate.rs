@@ -3,6 +3,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
+    diagram::{self, summary_diagram::SummaryDiagramError},
     property_editor::values_summary::{
         PropertyEditorValuesSummary, PropertyEditorValuesSummaryError,
     },
@@ -45,6 +46,8 @@ pub enum ComponentMigrateError {
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("summary diagram error: {0}")]
+    SummaryDiagram(#[from] SummaryDiagramError),
 }
 
 pub type ComponentMigrateResult<T> = Result<T, ComponentMigrateError>;
@@ -103,9 +106,21 @@ pub async fn migrate_component_to_schema_variant(
         restore_prototypes_and_implicit_values(ctx, component_id).await?;
     }
 
+    // Update all the cached summaries for the new component, this part is pretty expensive
     AttributeValue::remove_dependency_summaries_for_deleted_values(ctx).await?;
     AttributeValue::update_component_dependencies(ctx, component_id).await?;
     PropertyEditorValuesSummary::create_or_update_component_entry(ctx, component_id).await?;
+    diagram::summary_diagram::update_socket_summary(ctx, &new_component).await?;
+    diagram::summary_diagram::component_update(
+        ctx,
+        &component_id,
+        new_component.name(ctx).await?,
+        new_component.color(ctx).await?.unwrap_or_default(),
+        new_component.get_type(ctx).await?,
+        new_component.resource(ctx).await?.payload.is_some(),
+        None,
+    )
+    .await?;
 
     // Restore edges if matching sockets exist in the migrated component This
     // should probably use the connection annotation for matching, instead of

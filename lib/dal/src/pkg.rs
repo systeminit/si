@@ -14,6 +14,7 @@ use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecE
 
 use crate::authentication_prototype::AuthenticationPrototypeError;
 use crate::component::migrate::ComponentMigrateError;
+use crate::diagram::summary_diagram::SummaryDiagramError;
 use crate::property_editor::values_summary::PropertyEditorValuesSummaryError;
 use crate::{
     component::view::debug::ComponentDebugViewError,
@@ -225,6 +226,8 @@ pub enum PkgError {
     StandardModelMissingBelongsTo(&'static str, &'static str, String),
     #[error("standard model relationship {0} found multiple belongs_to for {1} with id {2}")]
     StandardModelMultipleBelongsTo(&'static str, &'static str, String),
+    #[error("summary diagram error: {0}")]
+    SummaryDiagram(#[from] SummaryDiagramError),
     #[error(transparent)]
     UlidDecode(#[from] ulid::DecodeError),
     #[error("unable to export component: {0}")]
