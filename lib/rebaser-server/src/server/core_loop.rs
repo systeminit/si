@@ -148,11 +148,13 @@ async fn core_loop_infallible(
             continue;
         };
 
-        tokio::spawn(perform_rebase_and_reply_infallible(
-            ctx_builder.clone(),
-            request_message,
-            reply_subject,
-        ));
+        let ctx_builder = ctx_builder.clone();
+        tokio::spawn(async move {
+            perform_rebase_and_reply_infallible(ctx_builder, request_message, reply_subject).await;
+            if let Err(err) = message.ack_with(AckKind::Ack).await {
+                error!(?message, ?err, "failing acking message");
+            }
+        });
     }
 }
 
