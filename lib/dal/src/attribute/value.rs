@@ -1108,6 +1108,7 @@ impl AttributeValue {
         Ok(result)
     }
 
+    #[instrument(level = "info", skip_all)]
     pub async fn ids_for_component(
         ctx: &DalContext,
         component_id: ComponentId,

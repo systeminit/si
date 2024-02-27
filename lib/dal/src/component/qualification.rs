@@ -121,6 +121,10 @@ impl Component {
             }
         }
 
+        if let Some(view) = QualificationView::new_for_validations(ctx, component_id).await? {
+            qualification_views.push(view);
+        }
+
         qualification_views.sort();
         // We want the "all fields valid" to always be first
         results.extend(qualification_views);

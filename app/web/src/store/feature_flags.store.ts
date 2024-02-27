@@ -9,7 +9,6 @@ const FLAG_MAPPING = {
   COPY_PASTE: "copy_paste",
   DONT_BLOCK_ON_ACTIONS: "dont_block_on_actions",
   INVITE_USER: "invite_user",
-  JOI_VALIDATIONS: "joi_validations",
   MODULES_TAB: "modules_tab",
   MULTI_VARIANT_EDITING: "multiVariantEditing",
   RESIZABLE_PANEL_UPGRADE: "resizable-panel-upgrade",

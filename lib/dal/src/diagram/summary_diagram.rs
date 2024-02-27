@@ -151,6 +151,7 @@ pub async fn update_socket_summary(
     Ok(())
 }
 
+#[instrument(level = "info", skip_all)]
 pub async fn create_component_entry(
     ctx: &DalContext,
     component: &Component,

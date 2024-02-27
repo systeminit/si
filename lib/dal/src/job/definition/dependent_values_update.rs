@@ -17,7 +17,8 @@ use crate::{
     },
     job::producer::{JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    DalContext, Prop, StandardModel, StatusUpdater, Visibility, WsEvent,
+    DalContext, Prop, StandardModel, StatusUpdater, ValidationResolver, ValidationStatus,
+    Visibility, WsEvent,
 };
 use crate::{FuncBindingReturnValue, InternalProvider};
 
@@ -475,7 +476,7 @@ async fn update_value(
         component.id = %component_id,
     )
 )]
-async fn update_summary_tables(
+pub async fn update_summary_tables(
     ctx: &DalContext,
     component_value_json: &serde_json::Value,
     component_id: ComponentId,
@@ -544,6 +545,27 @@ async fn update_summary_tables(
             }
         }
     }
+
+    let mut success = None;
+    for resolver in ValidationResolver::find_by_attr(ctx, "component_id", &component_id).await? {
+        if success.is_none() {
+            success = Some(true);
+        }
+
+        if resolver.value()?.status != ValidationStatus::Success {
+            success = Some(false);
+        }
+    }
+
+    if let Some(success) = success {
+        total += 1;
+        if success {
+            succeeded += 1;
+        } else {
+            failed += 1;
+        }
+    }
+
     let _row = ctx
         .txns()
         .await?

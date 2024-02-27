@@ -16,20 +16,22 @@ use crate::standard_model::{
 };
 use crate::{
     attribute::{prototype::AttributePrototype, value::AttributeValue},
+    component::ComponentViewError,
     func::{
         binding::{FuncBinding, FuncBindingError},
         binding_return_value::FuncBindingReturnValueError,
     },
     impl_standard_model,
+    job::consumer::JobConsumerError,
     label_list::ToLabelList,
     pk,
     property_editor::schema::WidgetKind,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     AttributeContext, AttributeContextBuilder, AttributeContextBuilderError,
-    AttributePrototypeError, AttributeReadContext, ComponentId, DalContext, Func, FuncError,
-    FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, ValidationOutput, ValidationResolver, ValidationResolverError, ValidationStatus,
-    Visibility,
+    AttributePrototypeError, AttributeReadContext, ComponentId, ComponentView, DalContext, Func,
+    FuncError, FuncId, HistoryEventError, SchemaVariantId, StandardModel, StandardModelError,
+    Tenancy, Timestamp, ValidationOutput, ValidationResolver, ValidationResolverError,
+    ValidationStatus, Visibility,
 };
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType, TransactionsError};
 
@@ -137,6 +139,8 @@ pub enum PropError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("AttributeValue error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error(transparent)]
+    ComponentView(#[from] Box<ComponentViewError>),
     #[error("default diff function not found")]
     DefaultDiffFunctionNotFound,
     #[error("expected child prop not found with name {0}")]
@@ -149,6 +153,8 @@ pub enum PropError {
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error(transparent)]
+    JobConsumer(#[from] Box<JobConsumerError>),
     #[error("Map prop {0} is missing element child")]
     MapMissingElementChild(PropId),
     #[error("missing a func: {0}")]
@@ -693,6 +699,7 @@ impl Prop {
         self.set_diff_func_id(ctx, Some(*func.id())).await
     }
 
+    #[instrument(level = "info", skip_all)]
     pub async fn run_validation(
         ctx: &DalContext,
         prop_id: PropId,
@@ -774,6 +781,18 @@ impl Prop {
                     .await
                     .map_err(Box::new)?;
             }
+
+            let component_value_json = ComponentView::new(ctx, component_id)
+                .await
+                .map_err(Box::new)?
+                .properties;
+            crate::job::definition::dependent_values_update::update_summary_tables(
+                ctx,
+                &component_value_json,
+                component_id,
+            )
+            .await
+            .map_err(Box::new)?;
         }
         Ok(())
     }
