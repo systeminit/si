@@ -42,6 +42,10 @@ export interface DeletePropertyEditorValueArgs {
   key?: string;
 }
 
+export interface ResetPropertyEditorValueArgs {
+  attributeValueId: string;
+}
+
 export interface SetTypeArgs {
   componentId: string;
   value?: unknown;
@@ -336,10 +340,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 ...removePayload,
                 ...visibilityParams,
               },
-              onSuccess() {
-                const store = useComponentAttributesStore(componentId);
-                store.reloadPropertyEditorData();
-              },
             });
           },
 
@@ -382,10 +382,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                 ...(isInsert ? updatePayload.insert : updatePayload.update),
                 ...visibilityParams,
               },
-              onSuccess() {
-                const store = useComponentAttributesStore(componentId);
-                store.reloadPropertyEditorData();
-              },
               onFail() {
                 // may not work exactly right with concurrent updates... but I dont think will be a problem
                 statusStore.cancelUpdateStarted();
@@ -412,6 +408,22 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               onFail() {
                 // may not work exactly right with concurrent updates... but I dont think will be a problem
                 statusStore.cancelUpdateStarted();
+              },
+            });
+          },
+          async RESET_PROPERTY_VALUE(
+            resetPayload: ResetPropertyEditorValueArgs,
+          ) {
+            if (changeSetsStore.creatingChangeSet)
+              throw new Error("race, wait until the change set is created");
+            if (changeSetId === nilId())
+              changeSetsStore.creatingChangeSet = true;
+            return new ApiRequest<{ success: true }>({
+              method: "post",
+              url: "component/restore_default_function",
+              params: {
+                ...resetPayload,
+                ...visibilityParams,
               },
             });
           },

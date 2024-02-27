@@ -109,8 +109,8 @@ pub enum ComponentError {
     SchemaNotFound,
     // #[error("schema variant not found")]
     // SchemaVariantNotFound,
-    // #[error("serde json error: {0}")]
-    // SerdeJson(#[from] serde_json::Error),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     // #[error("system id is required: ident_nil_v1() was provided")]

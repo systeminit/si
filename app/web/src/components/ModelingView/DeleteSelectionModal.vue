@@ -20,10 +20,21 @@
         </template>
         <template v-else>
           <div class="pb-xs">
-            You're about to delete the following component(s):
+            You are about to delete
+            {{
+              componentsStore.deletableSelectedComponents.length > 1
+                ? "the following components"
+                : "this component"
+            }}:
           </div>
           <div
-            class="flex-grow overflow-y-auto border border-neutral-300 dark:border-neutral-700 p-xs"
+            :class="
+              clsx(
+                'flex-grow overflow-y-auto border-neutral-300 dark:border-neutral-700 p-xs',
+                componentsStore.deletableSelectedComponents.length > 1 &&
+                  'border',
+              )
+            "
           >
             <Stack spacing="xs">
               <ComponentCard
@@ -69,6 +80,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
+import clsx from "clsx";
 import { useComponentsStore } from "@/store/components.store";
 import ComponentCard from "../ComponentCard.vue";
 import EdgeCard from "../EdgeCard.vue";

@@ -142,7 +142,8 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
                 },
                 "domain": {
                     "poop": "canoe",
-                }
+                },
+                "resource": {},
         }], // expected
         component_view.properties // actual
     );
@@ -284,7 +285,8 @@ async fn code_generation_can_handle_string_formats(ctx: &DalContext) {
                 },
                 "domain": {
                     "poop": "canoe",
-                }
+                },
+                "resource": {},
         }], // expected
         component_view.properties // actual
     );
@@ -524,7 +526,8 @@ async fn all_code_generation_attribute_values(ctx: &DalContext) {
                 },
                 "domain": {
                     "ange1": "omen",
-                }
+                },
+                "resource": {},
         }], // expected
         component_view.properties // actual
     );

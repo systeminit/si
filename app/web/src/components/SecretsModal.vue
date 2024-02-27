@@ -115,7 +115,7 @@ import AddSecretForm from "./AddSecretForm.vue";
 
 const modalRef = ref();
 
-const { themeContainerClasses } = useThemeContainer("dark");
+const { themeContainerClasses } = useThemeContainer();
 
 const props = defineProps<{ definitionId: SecretDefinitionId }>();
 

@@ -1,0 +1,12 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+)
+
+docker_image(
+    name = "init",
+    srcs = {
+        "docker-entrypoint.sh": ".",
+        "configs/": ".",
+    },
+)

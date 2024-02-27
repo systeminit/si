@@ -25,6 +25,8 @@ pub enum SchemaVariantDefinitionError {
     //     CouldNotGetUiMenu(SchemaId),
     //     #[error("error decoding code_base64: {0}")]
     //     Decode(#[from] base64::DecodeError),
+    #[error("default variant not found: {0}")]
+    DefaultVariantNotFound(String),
     //     #[error("history event error: {0}")]
     //     HistoryEvent(#[from] HistoryEventError),
     //     #[error("{0} is not a valid hex color string")]
@@ -469,33 +471,39 @@ impl SchemaVariantDefinitionJson {
     pub fn metadata_from_spec(
         schema_spec: SchemaSpec,
     ) -> SchemaVariantDefinitionResult<SchemaVariantDefinitionMetadataJson> {
-        if schema_spec.variants.len() > 1 {
-            return Err(SchemaVariantDefinitionError::MoreThanOneVariant);
-        }
-
-        let variant_spec = schema_spec
-            .variants
-            .get(0)
-            .ok_or(SchemaVariantDefinitionError::NoVariants)?;
-
         let schema_data = schema_spec.data.unwrap_or(SchemaSpecData {
             name: schema_spec.name.to_owned(),
-            default_schema_variant: variant_spec.unique_id.to_owned(),
+            default_schema_variant: None,
             category: "".into(),
             category_name: None,
             ui_hidden: false,
         });
 
-        let variant_spec_data = variant_spec
-            .data
-            .to_owned()
-            .unwrap_or(SchemaVariantSpecData {
-                name: "v0".into(),
-                color: None,
-                link: None,
-                component_type: si_pkg::SchemaVariantSpecComponentType::Component,
-                func_unique_id: "0".into(),
-            });
+        let default_variant_spec = match schema_data.default_schema_variant {
+            Some(default_variant_unique_id) => schema_spec
+                .variants
+                .iter()
+                .find(|variant| variant.unique_id.as_deref() == Some(&default_variant_unique_id))
+                .ok_or(SchemaVariantDefinitionError::DefaultVariantNotFound(
+                    default_variant_unique_id,
+                ))?,
+            None => schema_spec
+                .variants
+                .last()
+                .ok_or(SchemaVariantDefinitionError::NoVariants)?,
+        };
+
+        let variant_spec_data =
+            default_variant_spec
+                .data
+                .to_owned()
+                .unwrap_or(SchemaVariantSpecData {
+                    name: "v0".into(),
+                    color: None,
+                    link: None,
+                    component_type: si_pkg::SchemaVariantSpecComponentType::Component,
+                    func_unique_id: "0".into(),
+                });
 
         let metadata = SchemaVariantDefinitionMetadataJson {
             name: schema_spec.name,

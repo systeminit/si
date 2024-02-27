@@ -152,6 +152,7 @@ pub async fn migrate_pkg(
 
     let root_hash = pkg.hash()?.to_string();
     if InstalledPkg::find_by_hash(ctx, &root_hash).await?.is_none() {
+        // TODO(nick): decide what to do with override builtin schema feature flag.
         import_pkg_from_pkg(
             ctx,
             &pkg,

@@ -7,7 +7,6 @@ import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { ModuleId } from "@/store/module.store";
 import { nilId } from "@/utils/nilId";
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useAuthStore, UserId } from "./auth.store";
 import { useRouterStore } from "./router.store";
 import { AuthApiRequest } from ".";
@@ -44,7 +43,6 @@ export const useWorkspacesStore = () => {
     visibility_change_set_pk: nilId(),
   };
 
-  const featureFlagsStore = useFeatureFlagsStore();
   return addStoreHooks(
     defineStore("workspaces", {
       state: () => ({
@@ -130,8 +128,6 @@ export const useWorkspacesStore = () => {
             params: {
               id: moduleId,
               ...visibility,
-              overrideBuiltinSchemaFeatureFlag:
-                featureFlagsStore.OVERRIDE_SCHEMA,
             },
             onSuccess: (data) => {
               this.workspaceImportSummary = null;

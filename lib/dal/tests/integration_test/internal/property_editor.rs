@@ -110,10 +110,12 @@ async fn property_editor_value(ctx: &DalContext) {
         .await
         .expect("could not commit & run jobs");
 
-    let property_editor_values =
+    let property_editor_values: PropertyEditorValues = serde_json::from_value(
         PropertyEditorValues::for_component(ctx, component_bag.component_id)
             .await
-            .expect("cannot create property editor values from context");
+            .expect("cannot create property editor values from context"),
+    )
+    .expect("Unable to parse result");
 
     let mut si_name_value = None;
     let mut domain_name_value = None;

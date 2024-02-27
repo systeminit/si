@@ -127,12 +127,23 @@ const realtimeStore = useRealtimeStore();
   padding-right: 0;
 }
 
-.v-popper--theme-html > .v-popper__wrapper > .v-popper__inner {
+.v-popper--theme-html > .v-popper__wrapper > .v-popper__inner,
+.v-popper--theme-attribute-source-icon > .v-popper__wrapper > .v-popper__inner {
   border-radius: 0.5rem !important;
-  background-color: rgba(0, 0, 0, 0.9);
+  background-color: rgb(0, 0, 0);
 }
 
-.bg-caution-lines {
+.bg-caution-lines-light {
+  background: repeating-linear-gradient(
+    -45deg,
+    #fff,
+    #fff 10px,
+    #ccc 10px,
+    #ccc 20px
+  );
+}
+
+.bg-caution-lines-dark {
   background: repeating-linear-gradient(
     -45deg,
     #000,

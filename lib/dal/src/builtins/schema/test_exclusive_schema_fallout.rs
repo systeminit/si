@@ -196,6 +196,7 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
         .build()?;
 
     let fallout_pkg = SiPkg::load_from_spec(fallout_spec)?;
+    // TODO(nick): decide what to do with override schema builtin featuee flag.
     import_pkg_from_pkg(
         ctx,
         &fallout_pkg,

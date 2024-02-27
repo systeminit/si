@@ -11,7 +11,9 @@ use crate::property_editor::PropertyEditorResult;
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 
-use crate::{AttributeValue, AttributeValueId, Component, ComponentId, DalContext, Prop, PropId};
+use crate::{
+    AttributeValue, AttributeValueId, Component, ComponentId, DalContext, FuncId, Prop, PropId,
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,8 +47,13 @@ impl PropertyEditorValues {
                     .value(ctx)
                     .await?
                     .unwrap_or(Value::Null),
-                // TODO(nick): restore how this boolean was detected.
+                // TODO(nick): restore all these fields below.
                 is_from_external_source: false,
+                can_be_set_by_socket: false,
+                is_controlled_by_intrinsic_func: false,
+                controlling_func_id: Default::default(),
+                controlling_attribute_value_id: Default::default(),
+                overridden: false,
             },
         );
 
@@ -100,8 +107,13 @@ impl PropertyEditorValues {
                         .value(ctx)
                         .await?
                         .unwrap_or(Value::Null),
-                    // TODO(nick): restore how this boolean was detected.
+                    // TODO(nick): restore all the fields below.
                     is_from_external_source: false,
+                    can_be_set_by_socket: false,
+                    is_controlled_by_intrinsic_func: false,
+                    controlling_func_id: Default::default(),
+                    controlling_attribute_value_id: Default::default(),
+                    overridden: false,
                 };
 
                 // Load the work queue with the child attribute value.
@@ -128,10 +140,15 @@ impl PropertyEditorValues {
 #[serde(rename_all = "camelCase")]
 pub struct PropertyEditorValue {
     pub id: PropertyEditorValueId,
-    prop_id: PropertyEditorPropId,
+    pub prop_id: PropertyEditorPropId,
     pub key: Option<String>,
-    value: Value,
-    is_from_external_source: bool,
+    pub value: Value,
+    pub is_from_external_source: bool,
+    pub can_be_set_by_socket: bool,
+    pub is_controlled_by_intrinsic_func: bool,
+    pub controlling_func_id: FuncId,
+    pub controlling_attribute_value_id: AttributeValueId,
+    pub overridden: bool,
 }
 
 impl PropertyEditorValue {
@@ -151,5 +168,35 @@ impl PropertyEditorValue {
     pub async fn prop(&self, ctx: &DalContext) -> PropertyEditorResult<Prop> {
         let prop = Prop::get_by_id(ctx, self.prop_id.into()).await?;
         Ok(prop)
+    }
+}
+
+impl postgres_types::ToSql for PropertyEditorValues {
+    fn to_sql(
+        &self,
+        ty: &postgres_types::Type,
+        out: &mut postgres_types::private::BytesMut,
+    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>>
+    where
+        Self: Sized,
+    {
+        let json = serde_json::to_value(self)?;
+        postgres_types::ToSql::to_sql(&json, ty, out)
+    }
+
+    fn accepts(ty: &postgres_types::Type) -> bool
+    where
+        Self: Sized,
+    {
+        ty == &postgres_types::Type::JSONB
+    }
+
+    fn to_sql_checked(
+        &self,
+        ty: &postgres_types::Type,
+        out: &mut postgres_types::private::BytesMut,
+    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+        let json = serde_json::to_value(self)?;
+        postgres_types::ToSql::to_sql(&json, ty, out)
     }
 }

@@ -50,6 +50,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "domain": {
                 "region": "us-east-2",
             },
+            "resource": {},
         }], // expected
         region_bag
             .component_view_properties(ctx)
@@ -78,6 +79,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                     "format": "json",
                 },
             },
+            "resource": {},
         }], // expected
         ec2_bag
             .component_view_properties(ctx)
@@ -133,6 +135,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "domain": {
                 "region": "us-east-2"
             },
+            "resource": {},
         }], // expected
         region_bag
             .component_view_properties(ctx)
@@ -161,6 +164,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                     "format": "json",
                 },
             },
+            "resource": {},
         }], // expected
         ec2_bag
             .component_view_properties(ctx)
@@ -191,6 +195,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "domain": {
                 "region": "us-west-2"
             },
+            "resource": {},
         }], // expected
         region_bag
             .component_view_properties(ctx)
@@ -220,6 +225,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                     "format": "json",
                 },
             },
+            "resource": {},
         }], // expected
         ec2_bag
             .component_view_properties(ctx)
@@ -289,6 +295,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
             "domain": {
                 "region": "us-east-2",
             },
+            "resource": {},
         }], // expected
         region_bag
             .component_view_properties(ctx)
@@ -317,6 +324,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                     "format": "json",
                 },
             },
+            "resource": {},
         }], // expected
         ec2_bag
             .component_view_properties(ctx)
@@ -372,6 +380,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
             "domain": {
                 "region": "us-east-2"
             },
+            "resource": {},
         }], // expected
         region_bag
             .component_view_properties(ctx)
@@ -400,6 +409,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                     "format": "json",
                 },
             },
+            "resource": {},
         }], // expected
         ec2_bag
             .component_view_properties(ctx)
@@ -430,6 +440,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
             "domain": {
                 "region": "us-west-2"
             },
+            "resource": {},
         }], // expected
         region_bag
             .component_view_properties(ctx)
@@ -459,6 +470,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                     "format": "json",
                 },
             },
+            "resource": {},
         }], // expected
         ec2_bag
             .component_view_properties(ctx)

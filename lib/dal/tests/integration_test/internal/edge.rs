@@ -111,16 +111,20 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
 
     assert_eq!(
         serde_json::json![{
-           "si": {
-               "name": "to",
-               "type": "component",
-               "color": "#ffffff",
-               "protected": false,
-           },
-           "domain": {
-               "name": "to",
-               "attributes": "foo",
-           },
+            "si": {
+                "name": "to",
+                "type": "component",
+                "color": "#ffffff",
+                "protected": false,
+            },
+            "domain": {
+                "name": "to",
+                "attributes": "foo",
+                "universe": {
+                    "galaxies": [],
+                },
+            },
+            "resource": {},
         }], // expected
         to_starfield
             .component_view_properties(ctx)
@@ -141,15 +145,19 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
     // Check that the field of the head node is empty.
     assert_eq!(
         serde_json::json![{
-            "si": {
-               "name": "to",
-               "type": "component",
-               "color": "#ffffff",
-               "protected": false,
-           },
-           "domain": {
-               "name": "to",
-           },
+             "si": {
+                "name": "to",
+                "type": "component",
+                "color": "#ffffff",
+                "protected": false,
+            },
+            "domain": {
+                "name": "to",
+                "universe": {
+                    "galaxies": [],
+                },
+            },
+            "resource": {},
         }], // expected
         to_starfield
             .component_view_properties(ctx)
@@ -170,16 +178,20 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
     // Check that the value has "returned".
     assert_eq!(
         serde_json::json![{
-           "si": {
-               "name": "to",
-               "type": "component",
-               "color": "#ffffff",
-               "protected": false,
-           },
-           "domain": {
-               "name": "to",
-               "attributes": "foo",
-           },
+            "si": {
+                "name": "to",
+                "type": "component",
+                "color": "#ffffff",
+                "protected": false,
+            },
+            "domain": {
+                "name": "to",
+                "attributes": "foo",
+                "universe": {
+                    "galaxies": [],
+                },
+            },
+            "resource": {},
         }], // expected
         to_starfield
             .component_view_properties(ctx)
@@ -265,27 +277,28 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
 
     assert_eq!(
         serde_json::json![{
-           "si": {
-               "name": "destination",
-               "type": "component",
-               "color": "#ffffff",
-               "protected": false,
-           },
-           "domain": {
-               "name": "destination",
-               "universe": {
-                   "galaxies": [
-                       {
-                           "sun": "three-sun",
-                           "planets": 2
-                       },
-                       {
-                           "sun": "new vegas-sun",
-                           "planets": 1
-                       },
-                   ],
-               },
-           },
+            "si": {
+                "name": "destination",
+                "type": "component",
+                "color": "#ffffff",
+                "protected": false,
+            },
+            "domain": {
+                "name": "destination",
+                "universe": {
+                    "galaxies": [
+                        {
+                            "sun": "three-sun",
+                            "planets": 2
+                        },
+                        {
+                            "sun": "new vegas-sun",
+                            "planets": 1
+                        },
+                    ],
+                },
+            },
+            "resource": {},
         }], // expected
         starfield_bag
             .component_view_properties(ctx)
@@ -305,23 +318,24 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
 
     assert_eq!(
         serde_json::json![{
-           "si": {
-               "name": "destination",
-               "type": "component",
-               "color": "#ffffff",
-               "protected": false,
-           },
-           "domain": {
-               "name": "destination",
-               "universe": {
-                   "galaxies": [
-                       {
-                           "sun": "new vegas-sun",
-                           "planets": 1
-                       },
-                   ],
-               },
-           },
+            "si": {
+                "name": "destination",
+                "type": "component",
+                "color": "#ffffff",
+                "protected": false,
+            },
+            "domain": {
+                "name": "destination",
+                "universe": {
+                    "galaxies": [
+                        {
+                            "sun": "new vegas-sun",
+                            "planets": 1
+                        },
+                    ],
+                },
+            },
+            "resource": {},
         }], // expected
         starfield_bag
             .component_view_properties(ctx)
@@ -339,18 +353,19 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
 
     assert_eq!(
         serde_json::json![{
-           "si": {
-               "name": "destination",
-               "type": "component",
-               "color": "#ffffff",
-               "protected": false,
-           },
-           "domain": {
-               "name": "destination",
-               "universe": {
-                   "galaxies": [],
-               },
-           },
+            "si": {
+                "name": "destination",
+                "type": "component",
+                "color": "#ffffff",
+                "protected": false,
+            },
+            "domain": {
+                "name": "destination",
+                "universe": {
+                    "galaxies": [],
+                },
+            },
+            "resource": {},
         }], // expected
         starfield_bag
             .component_view_properties(ctx)

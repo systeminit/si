@@ -144,6 +144,10 @@ pub struct SchemaVariantSpec {
     #[serde(default)]
     pub deleted: bool,
 
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub is_builtin: bool,
+
     #[builder(setter(each(name = "action_func"), into), default)]
     pub action_funcs: Vec<ActionFuncSpec>,
 

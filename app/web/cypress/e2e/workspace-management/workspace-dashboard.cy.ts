@@ -1,16 +1,17 @@
 // @ts-check
 ///<reference path="../global.d.ts"/>
 
-describe("Check Workspace Dashboard", () => {
+describe("workspace", () => {
   beforeEach(() => {
     cy.visit("/");
   });
 
-  it("lets the user go to their dashboard and click into a workspace", () => {
+  it("dashboard_redirect", () => {
     cy.loginToAuth0(import.meta.env.VITE_AUTH0_USERNAME, import.meta.env.VITE_AUTH0_PASSWORD);
 
     // Go to the Synthetic User's Dashboard
     cy.visit(import.meta.env.VITE_AUTH_PORTAL_URL + '/dashboard')
+    cy.sendPosthogEvent(Cypress.currentTest.titlePath.join("/"), "test_uuid", import.meta.env.VITE_UUID ? import.meta.env.VITE_UUID: "local");
 
     cy.wait(5000)
 

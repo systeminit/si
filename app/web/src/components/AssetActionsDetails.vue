@@ -59,12 +59,8 @@
           </div>
           <span class="text-xl">No actions history</span>
         </div>
-        <ul v-else class="flex flex-col gap-2xs p-xs">
-          <li
-            v-for="(fixBatch, index) in filteredBatches"
-            :key="index"
-            class="bg-black p-xs"
-          >
+        <ul v-else class="flex flex-col">
+          <li v-for="(fixBatch, index) in filteredBatches" :key="index">
             <ApplyHistoryItem :fixBatch="fixBatch" :collapse="false" />
           </li>
         </ul>

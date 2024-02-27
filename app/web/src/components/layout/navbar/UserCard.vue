@@ -7,6 +7,8 @@
       :user="user"
       changeSetStarSide
       :hideChangesetStar="hideChangesetInfo"
+      :hasHoverState="iconHasHoverState"
+      @click="emit('iconClicked')"
     />
 
     <div class="flex flex-col min-w-0">
@@ -41,5 +43,10 @@ const changeSetsStore = useChangeSetsStore();
 defineProps({
   user: { type: Object as PropType<UserInfo>, required: true },
   hideChangesetInfo: { type: Boolean },
+  iconHasHoverState: { type: Boolean },
 });
+
+const emit = defineEmits<{
+  (e: "iconClicked"): void;
+}>();
 </script>

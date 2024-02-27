@@ -59,6 +59,8 @@ pub enum JobConsumerError {
     PgPool(#[from] PgPoolError),
     #[error(transparent)]
     Prop(#[from] PropError),
+    // #[error(transparent)]
+    // PropertyEditorValuesSummary(#[from] PropertyEditorValuesSummaryError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]

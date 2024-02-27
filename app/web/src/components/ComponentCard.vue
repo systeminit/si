@@ -3,7 +3,8 @@
     v-if="component"
     :class="
       clsx(
-        'rounded-md p-xs border-l-4 border relative',
+        'p-xs border-l-4 border relative',
+        titleCard ? 'mb-xs' : 'rounded-md',
         component.changeStatus === 'deleted' && 'opacity-70',
       )
     "
@@ -55,6 +56,7 @@ import {
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 const props = defineProps({
+  titleCard: { type: Boolean },
   componentId: { type: String as PropType<ComponentId>, required: true },
 });
 

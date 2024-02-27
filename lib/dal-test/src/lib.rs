@@ -44,12 +44,18 @@ pub mod helpers;
 mod signup;
 pub mod test_harness;
 
+const DEFAULT_TEST_PG_USER: &str = "si_test";
+const DEFAULT_TEST_PG_PORT_STR: &str = "6432";
+
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 const ENV_VAR_MODULE_INDEX_URL: &str = "SI_TEST_MODULE_INDEX_URL";
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
 const ENV_VAR_CONTENT_STORE_PG_DBNAME: &str = "SI_TEST_CONTENT_STORE_PG_DBNAME";
+const ENV_VAR_PG_USER: &str = "SI_TEST_PG_USER";
+const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
 const ENV_VAR_BUILTIN_SCHEMAS: &str = "SI_TEST_BUILTIN_SCHEMAS";
+const ENV_VAR_KEEP_OLD_DBS: &str = "SI_TEST_KEEP_OLD_DBS";
 
 pub static COLOR_EYRE_INIT: Once = Once::new();
 
@@ -127,6 +133,11 @@ impl Config {
             config.pg.hostname = value;
         }
         config.pg.dbname = env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| pg_dbname.to_string());
+        config.pg.user =
+            env::var(ENV_VAR_PG_USER).unwrap_or_else(|_| DEFAULT_TEST_PG_USER.to_string());
+        config.pg.port = env::var(ENV_VAR_PG_PORT)
+            .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
+            .parse()?;
         config.pg.pool_max_size *= 32;
         config.pg.certificate_path = Some(config.postgres_key_path.clone().try_into()?);
 
@@ -135,6 +146,11 @@ impl Config {
         }
         config.content_store_pg_pool.dbname = env::var(ENV_VAR_CONTENT_STORE_PG_DBNAME)
             .unwrap_or_else(|_| content_store_pg_dbname.to_string());
+        config.content_store_pg_pool.user =
+            env::var(ENV_VAR_PG_USER).unwrap_or_else(|_| DEFAULT_TEST_PG_USER.to_string());
+        config.content_store_pg_pool.port = env::var(ENV_VAR_PG_PORT)
+            .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
+            .parse()?;
         config.content_store_pg_pool.pool_max_size *= 32;
         config.content_store_pg_pool.certificate_path =
             Some(config.postgres_key_path.clone().try_into()?);
@@ -142,6 +158,8 @@ impl Config {
         if let Ok(value) = env::var(ENV_VAR_MODULE_INDEX_URL) {
             config.module_index_url = value;
         }
+
+        debug!(?config, "test config");
 
         Ok(config)
     }
@@ -606,22 +624,26 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .await
         .wrap_err("failed to connect to database, is it running and available?")?;
 
-    info!("testing global Content Store database connection");
+    info!("testing global content store database connection");
     services_ctx
         .content_store_pg_pool()
         .test_connection()
         .await
         .wrap_err("failed to connect to content store database, is it running and available?")?;
 
-    info!("dropping old test-specific databases for dal");
-    drop_old_test_databases(services_ctx.pg_pool())
-        .await
-        .wrap_err("failed to drop old databases")?;
+    #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test and
+    // all are prefixed with `SI_TEST_`
+    if !env::var(ENV_VAR_KEEP_OLD_DBS).is_ok_and(|v| !v.is_empty()) {
+        info!("dropping old test-specific databases for dal");
+        drop_old_test_databases(services_ctx.pg_pool())
+            .await
+            .wrap_err("failed to drop old databases")?;
 
-    info!("dropping old test-specific content store databases");
-    drop_old_test_databases(services_ctx.content_store_pg_pool())
-        .await
-        .wrap_err("failed to drop old content store databases")?;
+        info!("dropping old test-specific content store databases");
+        drop_old_test_databases(services_ctx.content_store_pg_pool())
+            .await
+            .wrap_err("failed to drop old test-specific content store databases")?;
+    }
 
     // Ensure the database is totally clean, then run all migrations
     info!("dropping and re-creating the database schema");

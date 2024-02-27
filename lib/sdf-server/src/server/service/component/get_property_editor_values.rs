@@ -21,7 +21,7 @@ pub async fn get_property_editor_values(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetPropertyEditorValuesRequest>,
-) -> ComponentResult<Json<GetPropertyEditorValuesResponse>> {
+) -> ComponentResult<Json<serde_json::Value>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     // TODO(nick): restore functionality.
@@ -35,6 +35,9 @@ pub async fn get_property_editor_values(
     //
 
     let prop_edit_values = PropertyEditorValues::assemble(&ctx, request.component_id).await?;
+
+    // TODO(nick): this is temporary since main uses a serialized payload from the summary table.
+    let prop_edit_values = serde_json::to_value(prop_edit_values)?;
 
     Ok(Json(prop_edit_values))
 }

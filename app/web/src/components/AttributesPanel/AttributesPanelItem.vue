@@ -11,6 +11,7 @@
       '--collapsed': canHaveChildren && !isOpen,
     }"
   >
+    <!-- SECTION HEADER -->
     <div
       v-if="canHaveChildren"
       @mouseover.stop="onSectionHoverStart"
@@ -34,7 +35,7 @@
         </div>
 
         <div
-          class="attributes-panel-item__section-header"
+          class="attributes-panel-item__section-header group/header"
           :style="{ marginLeft: indentPx }"
           @click="toggleOpen(true)"
         >
@@ -49,7 +50,7 @@
             :name="icon"
             size="none"
           />
-          <div class="attributes-panel-item__section-header-label">
+          <div class="attributes-panel-item__section-header-label mr-xs">
             <template v-if="isChildOfArray">
               {{ propName }}[{{ attributeDef.arrayIndex }}]
             </template>
@@ -75,6 +76,28 @@
               >
             </span>
           </div>
+          <!-- <div
+            :class="
+              clsx(
+                'border dark:group-hover/header:hover:text-action-500 group-hover/header:hover:text-action-300 rounded p-[1px] m-[2px] w-5 h-5 cursor-pointer',
+                sourceOverridden
+                  ? ' text-warning-500 dark:text-warning-300 border-warning-500 dark:border-warning-300 dark:group-hover/header:hover:border-action-500 group-hover/header:hover:border-action-300 dark:group-hover/header:text-shade-100 dark:group-hover/header:border-shade-100 group-hover/header:text-shade-0 group-hover/header:border-shade-0'
+                  : 'border-transparent',
+              )
+            "
+          >
+            <Icon v-tooltip="sourceTooltip" :name="sourceIcon" size="none" />
+          </div> -->
+          <SourceIconWithTooltip
+            v-if="
+              featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
+              !(widgetKind === 'secret')
+            "
+            :icon="sourceIcon"
+            :overridden="sourceOverridden"
+            :tooltipText="sourceTooltip"
+            header
+          />
           <div class="attributes-panel-item__action-icons">
             <!-- <Icon
               :name="isOpen ? 'collapse-row' : 'expand-row'"
@@ -149,6 +172,7 @@
       </div>
     </div>
 
+    <!-- INDIVIDUAL PROP INSIDE A SECTION -->
     <div
       v-else
       class="attributes-panel-item__item-inner"
@@ -202,8 +226,18 @@
             class="attributes-panel-item__delete-child-button hover:scale-125"
             @click="removeChildHandler"
           >
-            <Icon name="trash" size="none" />
+            <Icon name="trash" size="xs" />
           </button>
+
+          <SourceIconWithTooltip
+            v-if="
+              featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
+              !(widgetKind === 'secret')
+            "
+            :icon="sourceIcon"
+            :overridden="sourceOverridden"
+            :tooltipText="sourceTooltip"
+          />
 
           <a
             v-if="fullPropDef.docLink"
@@ -227,13 +261,19 @@
         @mouseleave="onHoverEnd"
       >
         <Icon
-          v-if="noValue && !iconShouldBeHidden && !isFocus && !valueFromSocket"
+          v-if="
+            noValue && !iconShouldBeHidden && !isFocus && !propPopulatedBySocket
+          "
           :name="icon"
           size="sm"
           class="attributes-panel-item__type-icon"
         />
         <Icon
-          v-if="currentValue !== null && !valueFromSocket"
+          v-if="
+            currentValue !== null &&
+            !propPopulatedBySocket &&
+            !propControlledByParent
+          "
           name="x-circle"
           class="attributes-panel-item__unset-button"
           @click="unsetHandler"
@@ -279,6 +319,14 @@
             @keydown.enter="(e) => e.metaKey && updateValue()"
           />
           <Icon
+            v-if="propControlledByParent"
+            name="external-link"
+            class="attributes-panel-item__popout-view-button"
+            title="View in popup"
+            @click="viewModalRef?.open()"
+          />
+          <Icon
+            v-else
             name="external-link"
             class="attributes-panel-item__popout-edit-button"
             title="Edit in popup"
@@ -353,17 +401,30 @@
           />
         </template>
         <template v-else>
-          <div class="py-[4px] px-[8px] text-sm">
-            {{ widgetKind }}
-          </div>
+          <div class="py-[4px] px-[8px] text-sm">{{ widgetKind }}</div>
         </template>
-        <!-- <div
-          v-if="valueFromSocket"
-          v-tooltip="`${propName} is set via its input socket.`"
-          class="absolute top-0 w-full h-full bg-caution-lines z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50"
-        /> -->
+        <div
+          v-if="
+            propControlledByParent ||
+            (featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
+              propPopulatedBySocket &&
+              !editOverride)
+          "
+          v-tooltip="
+            propControlledByParent
+              ? `${propName} is set via a function from an ancestor`
+              : `${propName} is set via an input socket`
+          "
+          :class="
+            clsx(
+              'attributes-panel-item__blocked-overlay',
+              'absolute top-0 w-full h-full z-50 text-center flex flex-row items-center justify-center cursor-pointer opacity-50',
+              themeClasses('bg-caution-lines-light', 'bg-caution-lines-dark'),
+            )
+          "
+          @click="openConfirmEditModal"
+        />
       </div>
-      <!-- <Icon name="none" class="p-[3px] mx-[2px]" /> -->
 
       <Icon
         v-if="validation?.status === 'Success'"
@@ -374,6 +435,7 @@
       <Icon v-else-if="validation" name="x" tone="error" class="mr-2" />
     </div>
 
+    <!-- VALIDATION DETAILS -->
     <div
       v-if="showValidationDetails && validation"
       :style="{ marginLeft: indentPx }"
@@ -390,6 +452,7 @@
       </span>
     </div>
 
+    <!-- MODAL FOR EDITING A PROP -->
     <Modal
       v-if="widgetKind === 'textArea' || widgetKind === 'codeEditor'"
       ref="editModalRef"
@@ -411,6 +474,75 @@
       </div>
       <!-- <VButton @click="editModalRef?.close">Save</VButton> -->
     </Modal>
+
+    <!-- MODAL FOR VIEWING A PROP WHICH CANNOT BE EDITED -->
+    <Modal
+      v-if="widgetKind === 'textArea' || widgetKind === 'codeEditor'"
+      ref="viewModalRef"
+      size="4xl"
+      :title="`View value - ${propLabel}`"
+      class="attributes-panel-item__view-value-modal"
+    >
+      <div class="pb-xs text-destructive-500 font-bold">
+        This value cannot currently be edited because
+        {{
+          propControlledByParent
+            ? "it is being controlled by a parent function."
+            : "it is being driven by a socket."
+        }}
+      </div>
+      <div class="attributes-panel-item__view-value-modal-code-wrap">
+        <template v-if="widgetKind === 'textArea'">
+          <pre class="attributes-panel-item__edit-value-modal__view-text">
+          {{ newValueString }}
+          </pre>
+        </template>
+        <template v-else-if="widgetKind === 'codeEditor'">
+          <CodeViewer :code="newValueString" />
+        </template>
+      </div>
+    </Modal>
+
+    <!-- MODAL FOR WHEN YOU CLICK A PROP WHICH IS CONTROLLED BY A PARENT OR SOCKET -->
+    <Modal
+      ref="confirmEditModalRef"
+      :title="
+        propControlledByParent
+          ? `You Cannot Edit Prop &quot;${propName}&quot;`
+          : 'Are You Sure?'
+      "
+    >
+      <div class="pb-sm">
+        <template v-if="propControlledByParent">
+          You cannot edit prop "{{ propName }}" because it is populated by a
+          function from an ancestor prop.
+        </template>
+        <template v-else>
+          Editing the prop "{{ propName }}" directly will override the socket
+          which is currently setting its value.
+        </template>
+      </div>
+      <div class="flex gap-sm">
+        <VButton
+          icon="x"
+          tone="shade"
+          variant="ghost"
+          :class="propControlledByParent ? 'flex-grow' : ''"
+          @click="closeConfirmEditModal"
+        >
+          Cancel
+        </VButton>
+        <VButton
+          v-if="!propControlledByParent"
+          icon="edit"
+          tone="action"
+          class="flex-grow"
+          @click="confirmEdit"
+        >
+          Confirm
+        </VButton>
+      </div>
+    </Modal>
   </div>
 </template>
 
@@ -418,7 +550,13 @@
 import * as _ from "lodash-es";
 import { computed, PropType, ref, watch } from "vue";
 import clsx from "clsx";
-import { Icon, IconNames, Modal } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  IconNames,
+  Modal,
+  themeClasses,
+  VButton,
+} from "@si/vue-lib/design-system";
 import {
   AttributeTreeItem,
   useComponentAttributesStore,
@@ -426,10 +564,13 @@ import {
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { Secret, useSecretsStore } from "@/store/secrets.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AttributesPanelItem from "./AttributesPanelItem.vue"; // eslint-disable-line import/no-self-import
 import { useAttributesPanelContext } from "./AttributesPanel.vue";
 import CodeEditor from "../CodeEditor.vue";
 import SecretsModal from "../SecretsModal.vue";
+import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
+import CodeViewer from "../CodeViewer.vue";
 
 const props = defineProps({
   parentPath: { type: String },
@@ -440,6 +581,8 @@ const props = defineProps({
   // number of prop keys to show while collapsed
   numPreviewProps: { type: Number, default: 3 },
 });
+
+const featureFlagsStore = useFeatureFlagsStore();
 
 const isOpen = ref(true);
 const showValidationDetails = ref(false);
@@ -538,8 +681,55 @@ const noValue = computed(
 const iconShouldBeHidden = computed(
   () => icon.value === "input-type-select" || icon.value === "check",
 );
-const valueFromSocket = computed(
+
+const propPopulatedBySocket = computed(
   () => props.attributeDef.value?.isFromExternalSource,
+);
+const propHasSocket = computed(
+  () => props.attributeDef.value?.canBeSetBySocket,
+);
+const propSetByFunc = computed(
+  () =>
+    !props.attributeDef.value?.isControlledByIntrinsicFunc &&
+    !propHasSocket.value &&
+    !propPopulatedBySocket.value,
+);
+
+const sourceIcon = computed(() => {
+  if (propPopulatedBySocket.value) return "circle-full";
+  else if (propSetByFunc.value) return "func";
+  else if (propHasSocket.value) return "circle-empty";
+  else return "cursor";
+});
+
+const sourceOverridden = computed(() => props.attributeDef.value?.overridden);
+
+const sourceTooltip = computed(() => {
+  if (sourceOverridden.value) {
+    if (propPopulatedBySocket.value) {
+      return `${propName.value} has been overriden to be set via a populated socket`;
+    } else if (propSetByFunc.value) {
+      return `${propName.value} has been overriden to be set by a dynamic function`;
+    } else if (propHasSocket.value) {
+      return `${propName.value} has been overriden to be set via an empty socket`;
+    }
+    return `${propName.value} has been set manually`;
+  } else {
+    if (propPopulatedBySocket.value) {
+      return `${propName.value} is set via a populated socket`;
+    } else if (propSetByFunc.value) {
+      return `${propName.value} is set by a dynamic function`;
+    } else if (propHasSocket.value) {
+      return `${propName.value} is set via an empty socket`;
+    }
+    return `${propName.value} can be set manually`;
+  }
+});
+
+const propControlledByParent = computed(
+  () =>
+    props.attributeDef.value?.id !==
+    props.attributeDef.value?.controllingAttributeValueId,
 );
 
 function resetNewValueToCurrentValue() {
@@ -609,18 +799,22 @@ function addChildHandler() {
   newMapChildKey.value = "";
 }
 function unsetHandler() {
-  // TODO: figure out number handling
-  // also clarify how we want to handle null/undefined versus empty string
   newValueBoolean.value = false;
   newValueString.value = "";
-  attributesStore.UPDATE_PROPERTY_VALUE({
-    update: {
-      attributeValueId: props.attributeDef.valueId,
-      parentAttributeValueId: props.attributeDef.parentValueId,
-      propId: props.attributeDef.propId,
-      componentId,
-      value: null,
-    },
+
+  // TODO(Wendy) - OLD CODE, REMOVE ONCE RESET_PROPERTY_VALUE IS WIRED UP TO THE BACKEND
+  // attributesStore.UPDATE_PROPERTY_VALUE({
+  //   update: {
+  //     attributeValueId: props.attributeDef.valueId,
+  //     parentAttributeValueId: props.attributeDef.parentValueId,
+  //     propId: props.attributeDef.propId,
+  //     componentId,
+  //     value: null,
+  //   },
+  // });
+
+  attributesStore.RESET_PROPERTY_VALUE({
+    attributeValueId: props.attributeDef.valueId,
   });
 }
 function updateValue() {
@@ -664,7 +858,9 @@ const isHover = ref(false);
 const isFocus = ref(false);
 
 function onHoverStart() {
-  isHover.value = true;
+  if (!propControlledByParent.value) {
+    isHover.value = true;
+  }
 }
 function onHoverEnd() {
   isHover.value = false;
@@ -690,6 +886,7 @@ const isSectionHover = computed(
   () => rootCtx.hoverSectionValueId.value === props.attributeDef.valueId,
 );
 
+const viewModalRef = ref<InstanceType<typeof Modal>>();
 const editModalRef = ref<InstanceType<typeof Modal>>();
 const secretModalRef = ref<InstanceType<typeof SecretsModal>>();
 const secretsStore = useSecretsStore();
@@ -712,6 +909,27 @@ function secretSelectedHandler(newSecret: Secret) {
   updateValue();
   secretModalRef.value?.close();
 }
+
+const confirmEditModalRef = ref<InstanceType<typeof Modal>>();
+
+const openConfirmEditModal = () => {
+  if (confirmEditModalRef.value) {
+    confirmEditModalRef.value.open();
+  }
+};
+
+const closeConfirmEditModal = () => {
+  if (confirmEditModalRef.value) {
+    confirmEditModalRef.value.close();
+  }
+};
+
+const confirmEdit = () => {
+  editOverride.value = true;
+  closeConfirmEditModal();
+};
+
+const editOverride = ref(false);
 </script>
 
 <style lang="less">
@@ -854,6 +1072,7 @@ function secretSelectedHandler(newSecret: Secret) {
   flex-shrink: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   padding: 4px 0; // fixes cut off descenders
   i {
     font-style: normal;
@@ -966,6 +1185,7 @@ function secretSelectedHandler(newSecret: Secret) {
 // small icon buttons
 .attributes-panel-item__action-icons .icon,
 .attributes-panel-item__popout-edit-button,
+.attributes-panel-item__popout-view-button,
 .attributes-panel-item__new-child-button {
   width: 20px;
   height: 20px;
@@ -1000,18 +1220,25 @@ function secretSelectedHandler(newSecret: Secret) {
     }
   }
 }
-.attributes-panel-item__popout-edit-button {
+.attributes-panel-item__popout-edit-button,
+.attributes-panel-item__popout-view-button {
   position: absolute;
   right: 4px;
   bottom: 4px;
   display: none;
-  z-index: 102;
+  z-index: 49;
   transform: scaleX(-1);
 
   .attributes-panel-item.--input.--focus &,
   .attributes-panel-item.--input.--hover & {
     display: block;
   }
+}
+
+.attributes-panel-item__input-wrap:hover
+  .attributes-panel-item__popout-view-button {
+  display: block;
+  z-index: 51;
 }
 
 .attributes-panel-item__add-child-row {
@@ -1132,7 +1359,6 @@ function secretSelectedHandler(newSecret: Secret) {
 // SECRETS
 .attributes-panel-item__secret-value-wrap {
   padding: 4px;
-  color: white;
 }
 .attributes-panel-item__secret-value {
   background: @colors-action-700;
@@ -1161,15 +1387,25 @@ function secretSelectedHandler(newSecret: Secret) {
   }
 }
 
-.attributes-panel-item__edit-value-modal {
+.attributes-panel-item__edit-value-modal,
+.attributes-panel-item__view-value-modal {
   textarea {
     @apply focus:ring-0 focus:ring-offset-0;
+    border: none;
+  }
+
+  .attributes-panel-item__edit-value-modal__view-text {
+    padding: 0.5rem;
+    border: 1px solid var(--input-border-color);
+  }
+
+  textarea,
+  .attributes-panel-item__edit-value-modal__view-text {
     background: transparent;
     width: 100%;
     height: 100%;
     overflow: auto;
     position: absolute;
-    border: none;
     font-size: 14px;
     line-height: 20px;
     font-family: monospace;
@@ -1177,12 +1413,17 @@ function secretSelectedHandler(newSecret: Secret) {
     display: block;
   }
 }
-.attributes-panel-item__edit-value-modal-code-wrap {
+.attributes-panel-item__edit-value-modal-code-wrap,
+.attributes-panel-item__view-value-modal-code-wrap {
   height: 40vh;
   position: relative;
-  border: 1px solid var(--input-focus-border-color);
   background: var(--input-focus-bg-color);
-  // margin-bottom: @spacing-px[xs];
+}
+.attributes-panel-item__edit-value-modal-code-wrap {
+  border: 1px solid var(--input-focus-border-color);
+}
+.attributes-panel-item__view-value-modal-code-wrap {
+  border: 1px solid var(--input-border-color);
 }
 
 .attributes-panel-item__map-key-error {
@@ -1196,8 +1437,13 @@ function secretSelectedHandler(newSecret: Secret) {
   display: flex;
   flex-direction: row;
   margin-left: auto;
+  align-items: center;
   flex: none;
   gap: 0.25rem;
   margin-right: 0.25rem;
+}
+
+.attributes-panel-item__static-icons > * {
+  cursor: pointer;
 }
 </style>

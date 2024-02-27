@@ -94,6 +94,7 @@
             <!-- change status -->
             <StatusIndicatorIcon
               class="hover:scale-110"
+              size="sm"
               type="change"
               :status="hasChanges"
               @click.stop="onClick($event, 'diff')"
@@ -101,11 +102,12 @@
 
             <!-- Qualification Status -->
             <!-- TODO: make click open details panel -->
-            <Icon v-if="isDestroyed" name="none" />
+            <Icon v-if="isDestroyed" name="none" size="sm" />
             <StatusIndicatorIcon
               v-else
               class="hover:scale-110"
               type="qualification"
+              size="sm"
               :status="qualificationStatus || 'notexists'"
               @click.stop="onClick($event, 'qualifications')"
             />
@@ -117,9 +119,10 @@
               class="hover:scale-110"
               type="resource"
               status="exists"
+              size="sm"
               @click.stop="onClick($event, 'resource')"
             />
-            <Icon v-else name="none" />
+            <Icon v-else name="none" size="sm" />
 
             <!-- Actions Menu
             <Icon name="chevron--right" /> -->

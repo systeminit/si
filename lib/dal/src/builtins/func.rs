@@ -55,6 +55,7 @@ pub async fn migrate_intrinsics(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .is_none()
     {
+        // TODO(nick): decide what to do with override builtin schema feature flag.
         import_pkg_from_pkg(ctx, &intrinsics_pkg, None, true).await?;
         ctx.blocking_commit().await?;
     }

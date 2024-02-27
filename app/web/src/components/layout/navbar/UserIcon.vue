@@ -1,8 +1,16 @@
 <template>
-  <div class="relative h-8 w-8">
+  <div :class="clsx('relative h-8 w-8', hasHoverState && 'hover:z-50')">
     <div
       v-tooltip="tooltip"
-      class="h-8 w-8 border-2 rounded-full cursor-pointer flex-none bg-shade-100 overflow-hidden"
+      :class="
+        clsx(
+          'h-8 w-8 border-2 rounded-full cursor-pointer flex-none bg-shade-100 overflow-hidden',
+          hasHoverState && 'hover:outline hover:outline-2',
+          hasHoverState && forceDark
+            ? 'hover:outline-action-300'
+            : 'dark:hover:outline-action-300 hover:outline-action-500',
+        )
+      "
       :style="`border-color: ${color}`"
     >
       <!-- TODO(Wendy) - This should check for and pull the image of the user in question, not the current user's image! -->
@@ -12,7 +20,7 @@
         :src="user.pictureUrl"
         referrerpolicy="no-referrer"
       />
-      <Icon v-else name="user-circle" size="full" />
+      <Icon v-else name="user-circle" size="full" class="text-shade-0" />
     </div>
     <div
       v-if="user.status === 'idle'"
@@ -56,6 +64,8 @@ const props = defineProps({
   user: { type: Object as PropType<UserInfo>, required: true },
   changeSetStarSide: { type: Boolean },
   hideChangesetStar: { type: Boolean },
+  hasHoverState: { type: Boolean },
+  forceDark: { type: Boolean },
 });
 
 const color = computed(() => {

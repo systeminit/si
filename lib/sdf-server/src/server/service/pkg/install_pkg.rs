@@ -5,6 +5,7 @@ use crate::server::extract::RawAccessToken;
 use crate::server::tracking::track;
 use crate::{
     server::extract::{AccessBuilder, HandlerContext, PosthogClient},
+    service::async_route::handle_error,
     service::pkg::PkgError,
 };
 use axum::extract::OriginalUri;
@@ -15,14 +16,12 @@ use dal::{DalContext, HistoryActor, User, WorkspacePk};
 use module_index_client::IndexClient;
 use serde::{Deserialize, Serialize};
 use si_pkg::{SiPkg, SiPkgKind};
-use telemetry::prelude::*;
 use ulid::Ulid;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InstallPkgRequest {
     pub id: Ulid,
-    pub override_builtin_schema_feature_flag: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -56,38 +55,22 @@ pub async fn install_pkg(
         )
         .await
         {
-            handle_error(&ctx, id, err.to_string()).await;
+            handle_error(&ctx, original_uri, id, err).await;
         } else {
             match WsEvent::async_finish(&ctx, id).await {
                 Ok(event) => match event.publish_on_commit(&ctx).await {
                     Ok(()) => {
                         if let Err(err) = ctx.commit().await {
-                            handle_error(&ctx, id, err.to_string()).await;
+                            handle_error(&ctx, original_uri, id, err).await;
                         }
                     }
                     Err(err) => {
-                        error!("Unable to publish ws event of finish in install pkg: {err}")
+                        handle_error(&ctx, original_uri, id, err).await;
                     }
                 },
                 Err(err) => {
-                    error!("Unable to make ws event of finish in install pkg: {err}");
+                    handle_error(&ctx, original_uri, id, err).await;
                 }
-            }
-        }
-
-        async fn handle_error(ctx: &DalContext, id: Ulid, err: String) {
-            error!("Unable to install pkg: {err}");
-            match WsEvent::async_error(ctx, id, err).await {
-                Ok(event) => match event.publish_on_commit(ctx).await {
-                    Ok(()) => {}
-                    Err(err) => error!("Unable to publish ws event of error in install pkg: {err}"),
-                },
-                Err(err) => {
-                    error!("Unable to make ws event of error in install pkg: {err}");
-                }
-            }
-            if let Err(err) = ctx.commit().await {
-                error!("Unable to commit errors in install pkg: {err}");
             }
         }
     });
@@ -117,13 +100,7 @@ async fn install_pkg_inner(
 
     let pkg = SiPkg::load_from_bytes(pkg_data)?;
     let metadata = pkg.metadata()?;
-    let (_, svs, _import_skips) = import_pkg_from_pkg(
-        ctx,
-        &pkg,
-        None, // TODO: add is_builtin option
-        request.override_builtin_schema_feature_flag,
-    )
-    .await?;
+    let (_, svs, _import_skips) = import_pkg_from_pkg(ctx, &pkg, None).await?;
 
     track(
         &posthog_client,

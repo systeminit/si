@@ -410,6 +410,8 @@ async fn remove_component_specific(ctx: &DalContext) {
                     "type": "component",
                     "protected": false
                 },
+                "domain": {},
+                "resource": {},
             }
         ],
         component_view.properties,
@@ -498,7 +500,9 @@ async fn remove_component_specific(ctx: &DalContext) {
 
             // Perform removal on the prototype.
             assert!(
-                dbg!(AttributePrototype::remove(ctx, updated_prototype.id(), false).await).is_ok()
+                AttributePrototype::remove(ctx, updated_prototype.id(), false)
+                    .await
+                    .is_ok()
             );
 
             ctx.blocking_commit()

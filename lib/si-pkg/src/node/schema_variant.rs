@@ -18,6 +18,7 @@ const KEY_LINK_STR: &str = "link";
 const KEY_NAME_STR: &str = "name";
 const KEY_COMPONENT_TYPE_STR: &str = "component_type";
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";
+const KEY_IS_BUILTIN_STR: &str = "is_builtin";
 
 #[derive(Clone, Debug)]
 pub struct SchemaVariantData {
@@ -34,6 +35,7 @@ pub struct SchemaVariantNode {
     pub data: Option<SchemaVariantData>,
     pub unique_id: Option<String>,
     pub deleted: bool,
+    pub is_builtin: bool,
 }
 
 impl NameStr for SchemaVariantNode {
@@ -61,6 +63,8 @@ impl WriteBytes for SchemaVariantNode {
         }
 
         write_common_fields(writer, self.unique_id.as_deref(), self.deleted)?;
+
+        write_key_value_line(writer, KEY_IS_BUILTIN_STR, self.is_builtin)?;
 
         Ok(())
     }
@@ -104,11 +108,17 @@ impl ReadBytes for SchemaVariantNode {
 
         let (unique_id, deleted) = read_common_fields(reader)?;
 
+        let is_builtin = match read_key_value_line_opt(reader, KEY_IS_BUILTIN_STR)? {
+            None => false,
+            Some(is_builtin_str) => bool::from_str(&is_builtin_str).map_err(GraphError::parse)?,
+        };
+
         Ok(Some(Self {
             name,
             data,
             unique_id,
             deleted,
+            is_builtin,
         }))
     }
 }
@@ -161,6 +171,7 @@ impl NodeChild for SchemaVariantSpec {
                 }),
                 unique_id: self.unique_id.to_owned(),
                 deleted: self.deleted,
+                is_builtin: self.is_builtin,
             }),
             children,
         )

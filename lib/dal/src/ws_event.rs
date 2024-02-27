@@ -153,11 +153,31 @@ impl WsEvent {
         self.workspace_pk
     }
 
+    fn workspace_subject(&self) -> String {
+        format!("si.workspace_pk.{}.event", self.workspace_pk)
+    }
+
     /// Publishes the [`event`](Self) to the [`NatsTxn`](si_data_nats::NatsTxn). When the
     /// transaction is committed, the [`event`](Self) will be published for external use.
     pub async fn publish_on_commit(&self, ctx: &DalContext) -> WsEventResult<()> {
-        let subject = format!("si.workspace_pk.{}.event", self.workspace_pk);
-        ctx.txns().await?.nats().publish(subject, &self).await?;
+        ctx.txns()
+            .await?
+            .nats()
+            .publish(self.workspace_subject(), &self)
+            .await?;
+        Ok(())
+    }
+
+    /// Publishes the [`event`](Self) immediately to the Nats stream, without
+    /// waiting for the transactions to commit. Care should be taken to avoid
+    /// sending data to the frontend, such as object ids, that will only be
+    /// valid if the transaction commits successfully.
+    pub async fn publish_immediately(&self, ctx: &DalContext) -> WsEventResult<()> {
+        ctx.txns()
+            .await?
+            .nats()
+            .publish_immediately(self.workspace_subject(), &self)
+            .await?;
         Ok(())
     }
 }

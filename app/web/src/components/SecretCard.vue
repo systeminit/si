@@ -2,11 +2,10 @@
   <div
     :class="
       clsx(
-        themeContainerClasses,
-        'flex flex-row flex-none items-center overflow-hidden',
+        'flex flex-row flex-none items-center overflow-hidden text-shade-100 dark:text-shade-0',
         detailedListItem
-          ? 'border-b border-neutral-200 dark:border-neutral-500 text-shade-100 dark:text-shade-0'
-          : 'border rounded h-[90px] cursor-pointer border-neutral-500 text-shade-0 hover:bg-action-800 hover:outline-blue-300 hover:outline -outline-offset-1  hover:rounded hover:outline-1',
+          ? 'border-b border-neutral-200 dark:border-neutral-500'
+          : 'border rounded h-[90px] cursor-pointer border-neutral-500 dark:hover:bg-action-700 hover:bg-action-100 dark:hover:outline-action-300 hover:outline-action-500 hover:outline -outline-offset-1',
       )
     "
   >
@@ -25,10 +24,8 @@
         v-if="secret.updatedInfo"
         :class="
           clsx(
-            'text-xs',
-            detailedListItem
-              ? 'text-neutral-500 dark:text-neutral-300'
-              : 'text-neutral-300 truncate',
+            'text-xs text-neutral-500 dark:text-neutral-300',
+            !detailedListItem && 'truncate',
           )
         "
       >
@@ -45,10 +42,8 @@
         v-if="!secret.updatedInfo || detailedListItem"
         :class="
           clsx(
-            'text-xs',
-            detailedListItem
-              ? 'text-neutral-500 dark:text-neutral-300'
-              : 'text-neutral-300 truncate',
+            'text-xs text-neutral-500 dark:text-neutral-300',
+            !detailedListItem && 'truncate',
           )
         "
       >
@@ -91,52 +86,24 @@
         </div>
       </div>
     </div>
-    <div
-      v-if="detailedListItem"
-      class="pr-sm flex flex-col gap-xs self-stretch"
-    >
-      <!-- TODO(Wendy) - this button is a mock, will wire it up soon! -->
-      <div
-        :class="
-          clsx(
-            'grow flex items-center cursor-pointer',
-            themeClasses(
-              'hover:text-action-500 text-neutral-400',
-              'hover:text-action-400',
-            ),
-          )
-        "
+    <div v-if="detailedListItem" class="pr-sm flex flex-col gap-xs">
+      <IconButton
+        icon="edit"
+        tooltip="Edit"
+        iconTone="action"
+        iconIdleTone="neutral"
         @click="emit('edit')"
-      >
-        <Icon name="edit" size="lg" />
-      </div>
-      <!-- TODO(Wendy) - here's the button we will use when we add deletion -->
-      <!-- <div
-        :class="
-          clsx(
-            'grow flex items-center cursor-pointer hover:text-destructive-500',
-            themeClasses('text-neutral-400', ''),
-          )
-        "
-      >
-        <Icon name="trash" size="lg" />
-      </div> -->
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  Icon,
-  Timestamp,
-  themeClasses,
-  useThemeContainer,
-} from "@si/vue-lib/design-system";
+import { Timestamp } from "@si/vue-lib/design-system";
 import { PropType } from "vue";
 import clsx from "clsx";
 import { Secret } from "../store/secrets.store";
-
-const { themeContainerClasses } = useThemeContainer("dark");
+import IconButton from "./IconButton.vue";
 
 defineProps({
   secret: { type: Object as PropType<Secret>, required: true },

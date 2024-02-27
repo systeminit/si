@@ -43,6 +43,7 @@ pub struct SiPkgSchema<'a> {
     data: Option<SiPkgSchemaData>,
     unique_id: Option<String>,
     deleted: bool,
+    is_builtin: bool,
 
     hash: Hash,
 
@@ -76,6 +77,7 @@ impl<'a> SiPkgSchema<'a> {
             }),
             unique_id: schema_node.unique_id,
             deleted: schema_node.deleted,
+            is_builtin: schema_node.is_builtin,
             hash: schema_hashed_node.hash(),
             source: Source::new(graph, node_idx),
         };
@@ -93,6 +95,10 @@ impl<'a> SiPkgSchema<'a> {
 
     pub fn deleted(&self) -> bool {
         self.deleted
+    }
+
+    pub fn is_builtin(&self) -> bool {
+        self.is_builtin
     }
 
     pub fn data(&self) -> Option<&SiPkgSchemaData> {

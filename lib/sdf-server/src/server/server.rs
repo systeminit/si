@@ -419,6 +419,7 @@ async fn install_builtins(
         let (pkg_name, res) = res?;
         match res {
             Ok(pkg) => {
+                // TODO(nick): decide what to do with the override schema builtin flag in the new engine.
                 if let Err(err) = dal::pkg::import_pkg_from_pkg(
                     &ctx,
                     &pkg,

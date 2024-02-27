@@ -1,0 +1,36 @@
+#!/bin/bash
+
+export SI_SERVICE={}
+export SI_HOSTENV={}
+export SI_VERSION={}
+
+wget https://artifacts.systeminit.com/$SI_SERVICE/${SI_VERSION}/omnibus/linux/$(arch)/$SI_SERVICE-${SI_VERSION}-omnibus-linux-$(arch).tar.gz -O - | tar -xzvf - -C /
+
+mkdir -p /run/app
+wget https://raw.githubusercontent.com/systeminit/si/main/component/deploy/docker-compose.yaml -O /run/app/docker-compose.yaml
+
+docker-compose -f /run/app/docker-compose.yaml --profile $SI_SERVICE up --wait
+
+cat << EOF > /etc/systemd/system/$SI_SERVICE.service
+
+[Unit]
+Description=$SI_SERVICE
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/$SI_SERVICE
+
+Type=exec
+Restart=always
+
+[Install]
+WantedBy=default.target
+RequiredBy=network.target
+EOF
+
+systemctl enable --now $SI_SERVICE
+
+HONEYCOMB_API_KEY=$(aws secretsmanager get-secret-value --region us-east-1 --secret-id ${SI_HOSTENV}-honeycomb-api-key | jq -r '.SecretString')
+curl https://api.honeycomb.io/1/markers/$SI_SERVICE -X POST \
+    -H "X-Honeycomb-Team: $HONEYCOMB_API_KEY" \
+    -d '{"message":" '"$SI_SERVICE $SI_VERSION replica deployed!"' ", "type":"deploy"}'

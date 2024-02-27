@@ -1,9 +1,10 @@
 <template>
   <div class="flex-none w-6 h-6">
-    <FixCardIconButton
+    <IconButton
       tooltip="see logs"
       icon="logs-pop"
       iconHover="logs-pop-square"
+      noBorderOnHover
       :selected="modalRef?.isOpen"
       @click="modalRef.open()"
     />
@@ -60,7 +61,7 @@
 import { ref, computed } from "vue";
 import { Icon, IconNames, Modal } from "@si/vue-lib/design-system";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
-import FixCardIconButton from "./FixCardIconButton.vue";
+import IconButton from "./IconButton.vue";
 
 const props = defineProps<{
   health: ResourceHealth | null;

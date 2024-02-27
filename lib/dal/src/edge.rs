@@ -540,6 +540,20 @@ impl Edge {
             .await?
             .ok_or(EdgeError::AttributeValueNotFound)?;
 
+        ctx.txns()
+            .await?
+            .pg()
+            .execute(
+                "SELECT attribute_value_dependencies_update_v1($1, $2, $3, $4)",
+                &[
+                    &ctx.tenancy().workspace_pk(),
+                    &ctx.visibility().change_set_pk,
+                    &ctx.visibility().deleted_at,
+                    &attr_value.id(),
+                ],
+            )
+            .await?;
+
         attr_value.update_from_prototype_function(ctx).await?;
 
         ctx.enqueue_job(DependentValuesUpdate::new(
@@ -689,6 +703,20 @@ impl Edge {
         let attr_value = AttributeValue::find_for_context(ctx_with_deleted, read_context)
             .await?
             .ok_or(EdgeError::AttributeValueNotFound)?;
+
+        ctx.txns()
+            .await?
+            .pg()
+            .execute(
+                "SELECT attribute_value_dependencies_update_v1($1, $2, $3, $4)",
+                &[
+                    &ctx.tenancy().workspace_pk(),
+                    &ctx.visibility().change_set_pk,
+                    &ctx.visibility().deleted_at,
+                    attr_value.id(),
+                ],
+            )
+            .await?;
 
         ctx.enqueue_job(DependentValuesUpdate::new(
             ctx.access_builder(),
