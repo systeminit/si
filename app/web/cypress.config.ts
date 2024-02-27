@@ -5,9 +5,19 @@ import vitePreprocessor from 'cypress-vite'
 export default defineConfig({
   e2e: {
     setupNodeEvents(on, config) {
-      on('file:preprocessor', vitePreprocessor(path.resolve('./vite.config.ts'),
-      ))
+      on('file:preprocessor', 
+        vitePreprocessor(
+          path.resolve('./vite.config.ts'),
+        )
+      ),
+      on('task', {
+        log(message) {
+          console.log(message)
+          return null
+        }
+      })
     },
+    
     // Hotfix, needs amended
     baseUrl: 'https://app.systeminit.com',
     chromeWebSecurity: false,
