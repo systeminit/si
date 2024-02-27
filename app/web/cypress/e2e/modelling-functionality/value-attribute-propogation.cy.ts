@@ -45,14 +45,15 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
       // attribute value for Integer
       const randomNumber = Math.floor(Math.random() * 100) + 1;
 
+      cy.intercept('POST', '/api/component/update_property_editor_value').as('updatePropertyEditorValue');
+
       // Find the attribute for the Integer Input
       cy.get('.attributes-panel-item__input-wrap input[type="number"]')
       .clear()
       .type(randomNumber.toString() + '{enter}') // type the new value
 
-      // This will have auto-directed us onto a changeset, give it a few seconds
-      // to load up
-      cy.wait(3000)
+      // Intercept the API call and alias it
+      cy.wait('@updatePropertyEditorValue', { timeout: 60000 }).its('response.statusCode').should('eq', 200);
 
       cy.url().then(currentUrl => {
         // Construct a new URL with desired query parameters for selecting 
@@ -64,10 +65,10 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
       });
 
       // Wait for the values to propagate
-      cy.wait(30000);
+      cy.wait(60000);
 
       // Validate that the value has propogated through the system
-      cy.get('.attributes-panel-item__input-wrap input[type="number"]')
+      cy.get('.attributes-panel-item__input-wrap input[type="number"]', { timeout: 30000 })
       .should('have.value', randomNumber.toString(), { timeout: 30000 });
 
       // Click the button to destroy changeset
