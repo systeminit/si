@@ -420,10 +420,10 @@ async fn test_module_pkg_export(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
         .find(|schema| schema.name() == "Generic Frame")
         .expect("able to find generic frame");
 
-    dbg!(generic_frame
+    generic_frame
         .ui_menus(&new_ctx)
         .await
-        .expect("get ui menus for generic frame"));
+        .expect("get ui menus for generic frame");
 }
 
 #[test]

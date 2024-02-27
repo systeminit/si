@@ -55,6 +55,7 @@ pub struct SiPkgSchemaVariant<'a> {
     data: Option<SiPkgSchemaVariantData>,
     unique_id: Option<String>,
     deleted: bool,
+    is_builtin: bool,
 
     hash: Hash,
 
@@ -119,6 +120,7 @@ impl<'a> SiPkgSchemaVariant<'a> {
             }),
             unique_id: schema_variant_node.unique_id,
             deleted: schema_variant_node.deleted,
+            is_builtin: schema_variant_node.is_builtin,
             hash: schema_variant_hashed_node.hash(),
             source: Source::new(graph, node_idx),
         };
@@ -144,6 +146,10 @@ impl<'a> SiPkgSchemaVariant<'a> {
 
     pub fn deleted(&self) -> bool {
         self.deleted
+    }
+
+    pub fn is_builtin(&self) -> bool {
+        self.is_builtin
     }
 
     impl_variant_children_from_graph!(sockets, SchemaVariantChildNode::Sockets, SiPkgSocket);

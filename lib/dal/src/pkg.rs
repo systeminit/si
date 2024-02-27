@@ -13,6 +13,8 @@ pub use import::{
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
 
 use crate::authentication_prototype::AuthenticationPrototypeError;
+use crate::component::migrate::ComponentMigrateError;
+use crate::property_editor::values_summary::PropertyEditorValuesSummaryError;
 use crate::{
     component::view::debug::ComponentDebugViewError,
     func::{
@@ -85,6 +87,8 @@ pub enum PkgError {
     ComponentDebugView(#[from] ComponentDebugViewError),
     #[error("component import can only happen during a workspace import")]
     ComponentImportWithoutChangeSet,
+    #[error("component migration error: {0}")]
+    ComponentMigrate(#[from] ComponentMigrateError),
     #[error("could not find schema {0} for package component {1}")]
     ComponentMissingBuiltinSchema(String, String),
     #[error("could not find schema {0} with variant {1} for package component {2}")]
@@ -149,6 +153,10 @@ pub enum PkgError {
     MissingAttributePrototypeFunc(AttributePrototypeId, FuncId),
     #[error("Missing value for context {0:?}")]
     MissingAttributeValueForContext(AttributeReadContext),
+    #[error("Missing builtin schema {0}")]
+    MissingBuiltinSchema(String),
+    #[error("Missing builtin schema variant {0}")]
+    MissingBuiltinSchemaVariant(String),
     #[error("Missing a func map for changeset {0}")]
     MissingChangeSetFuncMap(ChangeSetPk),
     #[error("Missing component {0} for edge from {1} to {2}")]
@@ -191,6 +199,8 @@ pub enum PkgError {
     PkgSpec(#[from] SpecError),
     #[error(transparent)]
     Prop(#[from] PropError),
+    #[error("property editor value summary error: {0}")]
+    PropertyEditorValuesSummary(#[from] PropertyEditorValuesSummaryError),
     #[error("prop spec structure is invalid: {0}")]
     PropSpecChildrenInvalid(String),
     #[error(transparent)]

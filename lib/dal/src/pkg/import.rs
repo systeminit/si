@@ -1,23 +1,23 @@
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    path::Path,
-    str::FromStr,
-};
+use std::{collections::HashMap, path::Path, str::FromStr};
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
 use si_pkg::{
-    AttrFuncInputSpec, AttributeValuePath, AttributeValueSpec, ComponentSpec, ComponentSpecVariant,
-    EdgeSpec, EdgeSpecKind, FuncArgumentSpec, FuncSpec, FuncSpecData, SchemaVariantSpecPropRoot,
-    SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView, SiPkgAuthFunc, SiPkgComponent, SiPkgEdge,
-    SiPkgError, SiPkgFunc, SiPkgKind, SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData,
-    SiPkgSchema, SiPkgSchemaData, SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
+    AttributeValuePath, ComponentSpec, ComponentSpecVariant, EdgeSpec, EdgeSpecKind,
+    FuncArgumentSpec, FuncSpec, FuncSpecData, SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc,
+    SiPkgAttrFuncInputView, SiPkgAuthFunc, SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc,
+    SiPkgKind, SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema,
+    SiPkgSchemaData, SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
 };
 use telemetry::prelude::*;
 
-use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeContext};
+use crate::{
+    authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeContext},
+    component::{self},
+    property_editor::values_summary::PropertyEditorValuesSummary,
+};
 use crate::{
     component::ComponentKind,
     edge::EdgeKind,
@@ -31,7 +31,6 @@ use crate::{
         InstalledPkg, InstalledPkgAsset, InstalledPkgAssetKind, InstalledPkgAssetTyped,
         InstalledPkgId,
     },
-    pkg::PkgExporter,
     prop::PropPath,
     schema::{
         variant::{
@@ -41,13 +40,13 @@ use crate::{
         SchemaUiMenu,
     },
     socket::SocketEdgeKind,
-    ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContext, AttributeContextBuilder,
+    ActionKind, ActionPrototype, ActionPrototypeContext, AttributeContextBuilder,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeId, AttributeReadContext,
-    AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, ComponentId,
-    DalContext, Edge, ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncError, FuncId,
-    InternalProvider, InternalProviderError, InternalProviderId, LeafKind, Node, Prop, PropId,
-    PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantError, SchemaVariantId, Socket,
-    StandardModel, Tenancy, UserPk, Workspace, WorkspacePk,
+    AttributeValue, AttributeValueError, ChangeSet, ChangeSetPk, Component, DalContext, Edge,
+    ExternalProvider, ExternalProviderId, Func, FuncArgument, FuncError, FuncId, InternalProvider,
+    InternalProviderError, LeafKind, Node, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, Socket, StandardModel, Tenancy, UserPk, Workspace,
+    WorkspacePk,
 };
 
 use super::{PkgError, PkgResult};
@@ -232,8 +231,6 @@ async fn import_change_set(
         installed_schema_variant_ids.extend(schema_variant_ids);
     }
 
-    println!("Finished Imports: {}", Utc::now());
-
     let mut component_attribute_skips = vec![];
     for component_spec in components {
         let component_spec: SiPkgComponent<'_> = component_spec.clone();
@@ -261,29 +258,19 @@ async fn import_change_set(
         }
     }
 
+    AttributeValue::remove_dependency_summaries_for_deleted_values(ctx).await?;
+    for component in Component::list(ctx).await? {
+        AttributeValue::update_component_dependencies(ctx, *component.id()).await?;
+        PropertyEditorValuesSummary::create_or_update_component_entry(ctx, *component.id()).await?;
+    }
+
+    info!("Finished Imports: {}", Utc::now());
+
     Ok((
         installed_schema_variant_ids,
         component_attribute_skips,
         edge_skips,
     ))
-}
-
-#[derive(Eq, PartialEq, Hash, Debug, Clone)]
-struct ValueCacheKey {
-    context: AttributeContext,
-}
-
-impl ValueCacheKey {
-    pub fn new(component_id: ComponentId, prop_id: PropId) -> Self {
-        let mut context_builder = AttributeContextBuilder::new();
-        context_builder
-            .set_prop_id(prop_id)
-            .set_component_id(component_id);
-
-        Self {
-            context: context_builder.to_context_unchecked(),
-        }
-    }
 }
 
 async fn import_edge(
@@ -416,7 +403,7 @@ async fn import_edge(
 async fn import_component(
     ctx: &DalContext,
     change_set_pk: ChangeSetPk,
-    mut component_spec: ComponentSpec,
+    component_spec: ComponentSpec,
     thing_map: &mut ThingMap,
     force_resource_patch: bool,
 ) -> PkgResult<Vec<ImportAttributeSkip>> {
@@ -469,38 +456,34 @@ async fn import_component(
         }
     };
 
-    let (mut component, mut node) =
-        match thing_map.get(change_set_pk, &component_spec.unique_id.clone()) {
-            Some(Thing::Component((existing_component, node))) => {
+    let (mut component, mut node) = match thing_map
+        .get(change_set_pk, &component_spec.unique_id.clone())
+    {
+        Some(Thing::Component((existing_component, node))) => {
+            if Component::schema_variant_id(ctx, *existing_component.id()).await? != *variant.id() {
+                // If the component exists already, but the schema variant is
+                // different, we need to respin the component to the change-set
+                // specific schema variant
+                (
+                    Component::respin(ctx, *existing_component.id(), *variant.id()).await?,
+                    node.to_owned(),
+                )
+            } else {
                 (existing_component.to_owned(), node.to_owned())
             }
-            _ => {
-                let (component, node) =
-                    Component::new(ctx, component_spec.name.clone(), *variant.id()).await?;
+        }
+        _ => {
+            let (component, node) =
+                Component::new(ctx, component_spec.name.clone(), *variant.id()).await?;
 
-                thing_map.insert(
-                    change_set_pk,
-                    component_spec.unique_id.clone(),
-                    Thing::Component((component.to_owned(), node.to_owned())),
-                );
+            thing_map.insert(
+                change_set_pk,
+                component_spec.unique_id.clone(),
+                Thing::Component((component.to_owned(), node.to_owned())),
+            );
 
-                (component, node)
-            }
-        };
-
-    let mut exporter = PkgExporter::new_workspace_exporter(
-        "temporary",
-        "SystemInit".to_owned(),
-        "1.0",
-        "Temporary pkg created to update schemas",
-    );
-    let new_component_spec = if let Some((comp_spec, _, _)) = exporter
-        .export_component(ctx, Some(change_set_pk), &component, component_spec.variant)
-        .await?
-    {
-        comp_spec
-    } else {
-        return Err(PkgError::UnableToExportComponent(*component.id()));
+            (component, node)
+        }
     };
 
     if component.name(ctx).await? != component_spec.name {
@@ -520,142 +503,39 @@ async fn import_component(
             .await?;
     }
 
-    let mut value_cache: HashMap<ValueCacheKey, AttributeValue> = HashMap::new();
-    let mut prop_cache: HashMap<String, Option<Prop>> = HashMap::new();
-
-    let mut skips = vec![];
-
-    for attribute in component_spec.input_sockets {
-        if let Some(skip) = import_component_attribute(
-            ctx,
-            change_set_pk,
-            &component,
-            &variant,
-            &attribute,
-            &mut value_cache,
-            &mut prop_cache,
-            thing_map,
-        )
-        .await?
-        {
-            skips.push(skip);
-        }
-    }
-
-    for attribute in component_spec.output_sockets {
-        if let Some(skip) = import_component_attribute(
-            ctx,
-            change_set_pk,
-            &component,
-            &variant,
-            &attribute,
-            &mut value_cache,
-            &mut prop_cache,
-            thing_map,
-        )
-        .await?
-        {
-            skips.push(skip);
-        }
-    }
-
-    let mut resource_value = None;
-
-    let mut default_json = serde_json::json!({});
-    let mut work_queue: VecDeque<Prop> = vec![variant
-        .root_prop(ctx)
-        .await?
-        .ok_or_else(|| PkgError::MissingRootProp(*variant.id()))?]
-    .into_iter()
-    .collect();
-    while let Some(prop) = work_queue.pop_front() {
-        if matches!(prop.kind(), PropKind::Object) {
-            work_queue.extend(prop.child_props(ctx).await?);
-        }
-
-        let path = prop.path();
-        let mut parts = path.as_parts();
-        if parts.len() <= 1 {
-            continue;
-        }
-
-        // Join will convert it into a prepended / if there is anything after it,
-        // otherwise its an empty string
-        parts[0] = "";
-        let parent_path = parts[..parts.len() - 1].join("/");
-        let last_part = parts[parts.len() - 1].to_string();
-
-        if let Some(value) = default_json.pointer_mut(&parent_path) {
-            if let Some(object) = value.as_object_mut() {
-                object.insert(
-                    last_part,
-                    match prop.kind() {
-                        PropKind::String => serde_json::Value::Null,
-                        PropKind::Boolean => serde_json::Value::Null,
-                        PropKind::Integer => serde_json::Value::Null,
-                        PropKind::Array => serde_json::json!([]),
-                        PropKind::Map => serde_json::json!({}),
-                        PropKind::Object => serde_json::json!({}),
-                    },
-                );
-            } else {
-                return Err(PkgError::JsonValueIsNotAnObject(value.clone()));
-            }
-        } else {
-            return Err(PkgError::JsonPointerNotFound(default_json, parent_path));
-        }
-    }
-
+    let mut component_root_implicit_value =
+        component::migrate::build_empty_json_for_prop_tree(ctx, *variant.id()).await?;
     let imported_json = component_spec.attributes[0]
         .implicit_value
         .as_ref()
         .cloned()
         .unwrap_or(serde_json::Value::Null);
-    merge(&mut default_json, imported_json);
-    if default_json != serde_json::Value::Null {
-        component_spec.attributes[0].implicit_value = Some(default_json);
-    }
+    component::migrate::serde_value_merge_in_place_recursive(
+        &mut component_root_implicit_value,
+        imported_json,
+    );
 
-    fn merge(a: &mut serde_json::Value, b: serde_json::Value) {
-        match (a, b) {
-            (a @ &mut serde_json::Value::Object(_), serde_json::Value::Object(b)) => {
-                let a = a.as_object_mut().unwrap();
-                for (k, v) in b {
-                    merge(a.entry(k).or_insert(serde_json::Value::Null), v);
-                }
-            }
-            (a, b) => *a = b,
-        }
-    }
-
-    let mut attributes = component_spec.attributes.clone();
-    for attribute in &new_component_spec.attributes {
-        if !attributes
-            .iter()
-            .any(|av_spec| av_spec.path.path() == attribute.path.path())
-        {
-            attributes.push(attribute.clone());
-        }
-    }
-
-    for attribute in &attributes {
-        if let Some(skip) = import_component_attribute(
+    if component_root_implicit_value != serde_json::Value::Null {
+        let root_attribute_value = component.root_attribute_value(ctx).await?;
+        AttributeValue::update_for_context_without_propagating_dependent_values(
             ctx,
-            change_set_pk,
-            &component,
-            &variant,
-            attribute,
-            &mut value_cache,
-            &mut prop_cache,
-            thing_map,
+            *root_attribute_value.id(),
+            None,
+            root_attribute_value.context,
+            Some(component_root_implicit_value),
+            None,
         )
-        .await?
-        {
-            skips.push(skip);
-        }
+        .await?;
+
+        component::migrate::restore_prototypes_and_implicit_values(ctx, *component.id()).await?;
+    }
+
+    let mut resource_value = None;
+    for attribute in &component_spec.attributes {
         if let AttributeValuePath::Prop { path, .. } = &attribute.path {
             if path == &PropPath::new(["root", "resource"]).to_string() {
                 resource_value = attribute.implicit_value.clone();
+                break;
             }
         }
     }
@@ -678,355 +558,7 @@ async fn import_component(
         component.delete_and_propagate(ctx).await?;
     }
 
-    Ok(skips)
-}
-
-fn get_prop_kind_for_value(value: Option<&serde_json::Value>) -> Option<PropKind> {
-    match value {
-        Some(serde_json::Value::Array(_)) => Some(PropKind::Array),
-        Some(serde_json::Value::Bool(_)) => Some(PropKind::Boolean),
-        Some(serde_json::Value::Number(_)) => Some(PropKind::Integer),
-        Some(serde_json::Value::Object(_)) => Some(PropKind::Object),
-        Some(serde_json::Value::String(_)) => Some(PropKind::String),
-
-        _ => None,
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-async fn import_component_attribute(
-    ctx: &DalContext,
-    change_set_pk: ChangeSetPk,
-    component: &Component,
-    variant: &SchemaVariant,
-    attribute: &AttributeValueSpec,
-    value_cache: &mut HashMap<ValueCacheKey, AttributeValue>,
-    prop_cache: &mut HashMap<String, Option<Prop>>,
-    thing_map: &mut ThingMap,
-) -> PkgResult<Option<ImportAttributeSkip>> {
-    match &attribute.path {
-        AttributeValuePath::Prop { path, key, index } => {
-            if attribute.parent_path.is_none() && (key.is_some() || index.is_some()) {
-                return Err(PkgError::AttributeValueWithKeyOrIndexButNoParent);
-            }
-
-            let prop = match prop_cache.get(path) {
-                Some(prop) => prop.to_owned(),
-                None => {
-                    let prop = Prop::find_prop_by_path_opt(
-                        ctx,
-                        *variant.id(),
-                        &PropPath::from(path.to_owned()),
-                    )
-                    .await?;
-                    prop_cache.insert(path.to_owned(), prop.to_owned());
-
-                    prop
-                }
-            };
-
-            struct ParentData {
-                attribute_value: Option<AttributeValue>,
-            }
-
-            match prop {
-                Some(prop) => {
-                    // Do not write attributes for the resource or props under the resource tree if
-                    // in a change set. Let them fall back to the head version
-                    if change_set_pk != ChangeSetPk::NONE
-                        && prop
-                            .path()
-                            .is_descendant_of(&PropPath::new(["root", "resource"]))
-                    {
-                        return Ok(None);
-                    }
-
-                    // Validate type if possible
-                    let expected_prop_kind = get_prop_kind_for_value(attribute.value.as_ref());
-                    if let Some(expected_kind) = expected_prop_kind {
-                        if expected_kind
-                            != match prop.kind() {
-                                PropKind::Map | PropKind::Object => PropKind::Object,
-                                other => *other,
-                            }
-                        {
-                            // We have to special case the root/resource/payload prop because it is
-                            // typed as a string but we write arbitrary json to it
-                            if prop.path() != PropPath::new(["root", "resource", "payload"]) {
-                                return Ok(Some(ImportAttributeSkip::KindMismatch {
-                                    path: PropPath::from(path),
-                                    expected_kind,
-                                    variant_kind: *prop.kind(),
-                                }));
-                            }
-                        }
-                    }
-
-                    if index.is_some() || key.is_some() {
-                        return Ok(None);
-                    }
-
-                    let parent_data =
-                        if let Some(AttributeValuePath::Prop { path, .. }) = &attribute.parent_path
-                        {
-                            let parent_prop = prop_cache.get(path).and_then(|p| p.as_ref()).ok_or(
-                                PkgError::AttributeValueParentPropNotFound(path.to_owned()),
-                            )?;
-
-                            let parent_value_cache_key =
-                                ValueCacheKey::new(*component.id(), *parent_prop.id());
-
-                            let parent_av = match value_cache.get(&parent_value_cache_key) {
-                                Some(parent_av) => parent_av.to_owned(),
-                                // If we don't have a parent in the cache it means we're under a map or
-                                // array and currently we don't support custom attribute functions at
-                                // that depth
-                                None => return Ok(None),
-                            };
-
-                            ParentData {
-                                attribute_value: Some(parent_av.to_owned()),
-                            }
-                        } else {
-                            ParentData {
-                                attribute_value: None,
-                            }
-                        };
-
-                    let context = AttributeReadContext {
-                        prop_id: Some(*prop.id()),
-                        internal_provider_id: Some(InternalProviderId::NONE),
-                        external_provider_id: Some(ExternalProviderId::NONE),
-                        component_id: Some(*component.id()),
-                    };
-
-                    let parent_av_id = parent_data.attribute_value.as_ref().map(|av| *av.id());
-                    let maybe_av = AttributeValue::find_with_parent_and_key_for_context(
-                        ctx,
-                        parent_av_id,
-                        key.to_owned(),
-                        context,
-                    )
-                    .await?;
-
-                    let mut updated_av = match maybe_av {
-                        Some(av) => {
-                            // Write the entire root implicit value, which will write all child
-                            // values and properly emit the remaining implicit values
-                            if prop.path().as_str() == "root" {
-                                let current_context = av.context;
-                                let context = AttributeContext::builder()
-                                    .set_prop_id(current_context.prop_id())
-                                    .set_internal_provider_id(
-                                        current_context.internal_provider_id(),
-                                    )
-                                    .set_external_provider_id(
-                                        current_context.external_provider_id(),
-                                    )
-                                    .set_component_id(*component.id())
-                                    .to_context_unchecked();
-
-                                let (_, new_av_id) = AttributeValue::update_for_context(
-                                    ctx,
-                                    *av.id(),
-                                    None,
-                                    context,
-                                    if attribute.implicit_value.is_some() {
-                                        attribute.implicit_value.clone()
-                                    } else {
-                                        attribute.value.clone()
-                                    },
-                                    None,
-                                )
-                                .await?;
-
-                                AttributeValue::get_by_id(ctx, &new_av_id).await?.ok_or(
-                                    AttributeValueError::NotFound(
-                                        new_av_id,
-                                        ctx.visibility().to_owned(),
-                                    ),
-                                )?
-                            } else {
-                                av
-                            }
-                        }
-                        None => return Ok(None),
-                    };
-
-                    // Ensure the prototype is not set to the intrinsic value
-                    update_prototype(
-                        ctx,
-                        change_set_pk,
-                        *variant.id(),
-                        attribute,
-                        &mut updated_av,
-                        thing_map,
-                    )
-                    .await?;
-
-                    let this_cache_key = ValueCacheKey::new(*component.id(), *prop.id());
-
-                    value_cache.insert(this_cache_key, updated_av);
-                }
-                None => {
-                    // collect missing props and log them
-                    return Ok(Some(ImportAttributeSkip::MissingProp(PropPath::from(path))));
-                }
-            }
-        }
-        // We skip writing output socket values since they will be written in the dependent value
-        // update
-        AttributeValuePath::InputSocket(_) | AttributeValuePath::OutputSocket(_) => {}
-    }
-
-    Ok(None)
-}
-
-async fn get_ip_for_input(
-    ctx: &DalContext,
-    schema_variant_id: SchemaVariantId,
-    input: &AttrFuncInputSpec,
-) -> PkgResult<Option<InternalProviderId>> {
-    Ok(match input {
-        AttrFuncInputSpec::Prop { prop_path, .. } => {
-            let input_source_prop = match Prop::find_prop_by_path_opt(
-                ctx,
-                schema_variant_id,
-                &PropPath::from(prop_path),
-            )
-            .await?
-            {
-                Some(p) => p,
-                None => return Ok(None),
-            };
-
-            let ip = InternalProvider::find_for_prop(ctx, *input_source_prop.id())
-                .await?
-                .ok_or(PkgError::MissingInternalProviderForProp(
-                    *input_source_prop.id(),
-                ))?;
-
-            Some(*ip.id())
-        }
-        AttrFuncInputSpec::InputSocket { socket_name, .. } => {
-            let explicit_ip = match InternalProvider::find_explicit_for_schema_variant_and_name(
-                ctx,
-                schema_variant_id,
-                &socket_name,
-            )
-            .await?
-            {
-                Some(ip) => ip,
-                None => return Ok(None),
-            };
-
-            Some(*explicit_ip.id())
-        }
-        AttrFuncInputSpec::OutputSocket { .. } => None,
-    })
-}
-
-#[allow(clippy::too_many_arguments)]
-async fn update_prototype(
-    ctx: &DalContext,
-    change_set_pk: ChangeSetPk,
-    schema_variant_id: SchemaVariantId,
-    attribute_spec: &AttributeValueSpec,
-    attribute_value: &mut AttributeValue,
-    thing_map: &mut ThingMap,
-) -> PkgResult<()> {
-    let attribute_func =
-        match thing_map.get(change_set_pk, &attribute_spec.func_unique_id.to_owned()) {
-            Some(Thing::Func(func)) => func,
-            _ => {
-                return Err(PkgError::MissingFuncUniqueId(
-                    attribute_spec.func_unique_id.to_string(),
-                ));
-            }
-        };
-
-    let mut prototype = attribute_value
-        .attribute_prototype(ctx)
-        .await?
-        .ok_or(AttributeValueError::MissingAttributePrototype)?;
-
-    if prototype.func_id() != *attribute_func.id() {
-        prototype.set_func_id(ctx, attribute_func.id()).await?;
-    }
-
-    let inputs = &attribute_spec.inputs;
-
-    let mut current_apas =
-        AttributePrototypeArgument::list_for_attribute_prototype(ctx, *prototype.id()).await?;
-
-    if inputs.is_empty() && !current_apas.is_empty() {
-        for apa in current_apas.iter_mut() {
-            apa.delete_by_id(ctx).await?;
-        }
-    } else if !inputs.is_empty() {
-        let mut processed_inputs = HashSet::new();
-        for apa in current_apas.iter_mut() {
-            let func_arg = FuncArgument::get_by_id(ctx, &apa.func_argument_id())
-                .await?
-                .ok_or(PkgError::MissingFuncArgumentById(apa.func_argument_id()))?;
-
-            let matching_input = inputs.iter().find(|input| input.name() == func_arg.name());
-
-            match matching_input {
-                Some(input) => {
-                    if let Some(ip_id) = get_ip_for_input(ctx, schema_variant_id, input).await? {
-                        if apa.internal_provider_id() != ip_id {
-                            apa.set_internal_provider_id(ctx, ip_id).await?;
-                        }
-                    }
-
-                    processed_inputs.insert(input.name());
-                }
-                None => apa.delete_by_id(ctx).await?,
-            }
-        }
-
-        for input in inputs {
-            let name = input.name();
-
-            if processed_inputs.contains(name) {
-                continue;
-            }
-
-            let func_arg = FuncArgument::find_by_name_for_func(ctx, name, *attribute_func.id())
-                .await?
-                .ok_or(PkgError::MissingFuncArgument(
-                    name.into(),
-                    *attribute_func.id(),
-                ))?;
-
-            if let Some(ip_id) = get_ip_for_input(ctx, schema_variant_id, input).await? {
-                match AttributePrototypeArgument::list_for_attribute_prototype(ctx, *prototype.id())
-                    .await?
-                    .iter()
-                    .find(|apa| apa.func_argument_id() == *func_arg.id())
-                {
-                    Some(apa) => {
-                        if apa.internal_provider_id() != ip_id {
-                            let mut apa = apa.to_owned();
-                            apa.set_internal_provider_id(ctx, ip_id).await?;
-                        }
-                    }
-                    None => {
-                        AttributePrototypeArgument::new_for_intra_component(
-                            ctx,
-                            *prototype.id(),
-                            *func_arg.id(),
-                            ip_id,
-                        )
-                        .await?;
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(())
+    Ok(vec![])
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -1511,55 +1043,74 @@ async fn import_schema(
 ) -> PkgResult<(Option<SchemaId>, Vec<SchemaVariantId>)> {
     let hash = schema_spec.hash().to_string();
     let schema = {
-        let existing_schema =
-            InstalledPkgAsset::list_for_kind_and_hash(ctx, InstalledPkgAssetKind::Schema, &hash)
+        // If this is a workspace backup and the schema is a builtin, then it's
+        // in the backup *only* because it has a custom schema variant.  We
+        // expect that the builtin schema is already imported, so we use that.
+        // If it's missing, we're erroring out, but what we should do is try and
+        // find the missing builtin schema on the remote module index, and then
+        // import that.
+        if metadata.kind() == SiPkgKind::WorkspaceBackup && schema_spec.is_builtin() {
+            let existing_schema = Schema::find_by_name_builtin(ctx, schema_spec.name())
                 .await?
-                .pop();
+                .ok_or(PkgError::MissingBuiltinSchema(
+                    schema_spec.name().to_owned(),
+                ))?;
 
-        if let Some(installed_schema_record) = existing_schema {
-            match installed_schema_record.as_installed_schema()? {
-                InstalledPkgAssetTyped::Schema { id, .. } => {
-                    match Schema::get_by_id(ctx, &id).await? {
-                        Some(schema) => Some(schema),
-                        None => return Err(PkgError::InstalledSchemaMissing(id)),
-                    }
-                }
-                _ => unreachable!(),
-            }
+            Some(existing_schema)
         } else {
-            match schema_spec
-                .unique_id()
-                .and_then(|unique_id| thing_map.get(change_set_pk, &unique_id.to_owned()))
-            {
-                Some(Thing::Schema(schema)) => {
-                    let mut schema = schema.to_owned();
+            let existing_schema = InstalledPkgAsset::list_for_kind_and_hash(
+                ctx,
+                InstalledPkgAssetKind::Schema,
+                &hash,
+            )
+            .await?
+            .pop();
 
-                    if schema_spec.deleted() {
-                        schema.delete_by_id(ctx).await?;
-                        // delete all schema children?
-
-                        None
-                    } else {
-                        if let Some(data) = schema_spec.data() {
-                            update_schema(ctx, &mut schema, data).await?;
+            if let Some(installed_schema_record) = existing_schema {
+                match installed_schema_record.as_installed_schema()? {
+                    InstalledPkgAssetTyped::Schema { id, .. } => {
+                        match Schema::get_by_id(ctx, &id).await? {
+                            Some(schema) => Some(schema),
+                            None => return Err(PkgError::InstalledSchemaMissing(id)),
                         }
-
-                        Some(schema)
                     }
+                    _ => unreachable!(),
                 }
-                _ => {
-                    if schema_spec.deleted() {
-                        None
-                    } else {
-                        Some(
-                            create_schema(
-                                ctx,
-                                schema_spec
-                                    .data()
-                                    .ok_or(PkgError::DataNotFound("schema".into()))?,
+            } else {
+                match schema_spec
+                    .unique_id()
+                    .and_then(|unique_id| thing_map.get(change_set_pk, &unique_id.to_owned()))
+                {
+                    Some(Thing::Schema(schema)) => {
+                        let mut schema = schema.to_owned();
+
+                        if schema_spec.deleted() {
+                            schema.delete_by_id(ctx).await?;
+                            // delete all schema children?
+
+                            None
+                        } else {
+                            if let Some(data) = schema_spec.data() {
+                                update_schema(ctx, &mut schema, data).await?;
+                            }
+
+                            Some(schema)
+                        }
+                    }
+                    _ => {
+                        if schema_spec.deleted() {
+                            None
+                        } else {
+                            Some(
+                                create_schema(
+                                    ctx,
+                                    schema_spec
+                                        .data()
+                                        .ok_or(PkgError::DataNotFound("schema".into()))?,
+                                )
+                                .await?,
                             )
-                            .await?,
-                        )
+                        }
                     }
                 }
             }
@@ -1567,8 +1118,8 @@ async fn import_schema(
     };
 
     if let Some(mut schema) = schema {
-        // Even if the asset is already installed, we write a record of the asset installation so that
-        // we can track the installed packages that share schemas.
+        // Even if the asset is already installed, we write a record of the asset
+        // installation so that we can track the installed packages that share schemas.
         if let Some(installed_pkg_id) = installed_pkg_id {
             InstalledPkgAsset::new(
                 ctx,
@@ -1601,20 +1152,22 @@ async fn import_schema(
             if let Some(variant) = variant {
                 installed_schema_variant_ids.push(*variant.id());
 
+                let schema_default_variant_id = schema_spec
+                    .data()
+                    .as_ref()
+                    .and_then(|data| data.default_schema_variant());
+
+                set_default_schema_variant_id(
+                    ctx,
+                    &mut schema,
+                    schema_default_variant_id,
+                    variant_spec.unique_id(),
+                    *variant.id(),
+                )
+                .await?;
+
                 if let Some(variant_spec_data) = variant_spec.data() {
                     let func_unique_id = variant_spec_data.func_unique_id().to_owned();
-
-                    set_default_schema_variant_id(
-                        ctx,
-                        &mut schema,
-                        schema_spec
-                            .data()
-                            .as_ref()
-                            .and_then(|data| data.default_schema_variant()),
-                        variant_spec.unique_id(),
-                        *variant.id(),
-                    )
-                    .await?;
 
                     if let Thing::Func(asset_func) =
                         thing_map
@@ -2285,6 +1838,21 @@ pub async fn import_schema_variant(
     thing_map: &mut ThingMap,
     metadata: &SiPkgMetadata,
 ) -> PkgResult<Option<SchemaVariant>> {
+    // Builtin variants should already be imported, so we can just find it and
+    // return it.  However, what we *should* do is check to see if the installed
+    // variant is the one we want, and if not, find the missing builtin variant
+    // on the remote module index, and then import that.
+    if metadata.kind() == SiPkgKind::WorkspaceBackup && variant_spec.is_builtin() {
+        let variant = schema
+            .find_variant_by_name(ctx, variant_spec.name())
+            .await?
+            .ok_or(PkgError::MissingBuiltinSchemaVariant(
+                variant_spec.name().to_owned(),
+            ))?;
+
+        return Ok(Some(variant));
+    }
+
     let hash = variant_spec.hash().to_string();
     let mut schema_variant = {
         let existing_schema_variant = InstalledPkgAsset::list_for_kind_and_hash(

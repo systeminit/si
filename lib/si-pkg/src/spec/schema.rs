@@ -40,6 +40,9 @@ pub struct SchemaSpec {
     #[builder(setter(into), default)]
     #[serde(default)]
     pub deleted: bool,
+    #[builder(setter(into), default)]
+    #[serde(default)]
+    pub is_builtin: bool,
 
     #[builder(setter(each(name = "variant", into)), default)]
     pub variants: Vec<SchemaVariantSpec>,

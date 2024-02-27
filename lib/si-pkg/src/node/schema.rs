@@ -17,6 +17,7 @@ const KEY_CATEGORY_NAME_STR: &str = "category_name";
 const KEY_NAME_STR: &str = "name";
 const KEY_UI_HIDDEN_STR: &str = "ui_hidden";
 const KEY_DEFAULT_SCHEMA_VARIANT_STR: &str = "default_schema_variant";
+const KEY_IS_BUILTIN_STR: &str = "is_builtin";
 
 #[derive(Clone, Debug)]
 pub struct SchemaData {
@@ -33,6 +34,7 @@ pub struct SchemaNode {
     pub data: Option<SchemaData>,
     pub unique_id: Option<String>,
     pub deleted: bool,
+    pub is_builtin: bool,
 }
 
 impl NameStr for SchemaNode {
@@ -61,6 +63,8 @@ impl WriteBytes for SchemaNode {
         }
 
         write_common_fields(writer, self.unique_id.as_deref(), self.deleted)?;
+
+        write_key_value_line_opt(writer, KEY_IS_BUILTIN_STR, Some(self.is_builtin))?;
 
         Ok(())
     }
@@ -99,11 +103,17 @@ impl ReadBytes for SchemaNode {
 
         let (unique_id, deleted) = read_common_fields(reader)?;
 
+        let is_builtin = match read_key_value_line_opt(reader, KEY_IS_BUILTIN_STR)? {
+            None => false,
+            Some(is_builtin_str) => bool::from_str(&is_builtin_str).map_err(GraphError::parse)?,
+        };
+
         Ok(Some(Self {
             name,
             data,
             unique_id,
             deleted,
+            is_builtin,
         }))
     }
 }
@@ -123,6 +133,7 @@ impl NodeChild for SchemaSpec {
                 name: self.name.to_string(),
                 unique_id: self.unique_id.as_ref().cloned(),
                 deleted: self.deleted,
+                is_builtin: self.is_builtin,
                 data: self.data.as_ref().map(|data| SchemaData {
                     name: data.name.to_owned(),
                     category: data.category.to_owned(),

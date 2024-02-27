@@ -141,6 +141,7 @@ impl PkgExporter {
         let variants = schema.variants(ctx).await?;
         let mut funcs = vec![];
         let mut head_funcs = vec![];
+        let schema_is_builtin = schema.is_builtin(ctx).await?;
 
         let mut schema_spec_builder = SchemaSpec::builder();
         schema_spec_builder.name(schema.name());
@@ -155,14 +156,22 @@ impl PkgExporter {
         let mut default_variant_unique_id = None;
 
         for variant in &variants {
-            let (variant_funcs, variant_head_funcs) = self
-                .export_funcs_for_variant(ctx, change_set_pk, *variant.id())
-                .await?;
-            funcs.extend(variant_funcs);
-            head_funcs.extend(variant_head_funcs);
+            let variant_is_builtin = variant.is_builtin(ctx).await?;
+
+            // For workspace exports, we don't need the funcs for the builtin
+            // variants, since they will be installed as part of sdf boot
+            if !(variant_is_builtin && self.is_workspace_export) {
+                let (variant_funcs, variant_head_funcs) = self
+                    .export_funcs_for_variant(ctx, change_set_pk, *variant.id())
+                    .await?;
+                funcs.extend(variant_funcs);
+                head_funcs.extend(variant_head_funcs);
+            }
 
             if !schema_is_deleted {
-                let variant_spec = self.export_variant(ctx, change_set_pk, variant).await?;
+                let variant_spec = self
+                    .export_variant(ctx, change_set_pk, variant, variant_is_builtin)
+                    .await?;
                 self.variant_map.insert(
                     change_set_pk.unwrap_or(ChangeSetPk::NONE),
                     *variant.id(),
@@ -200,6 +209,8 @@ impl PkgExporter {
             schema_spec_builder.data(data_builder.build()?);
         }
 
+        schema_spec_builder.is_builtin(schema_is_builtin);
+
         let schema_spec = schema_spec_builder.build()?;
 
         Ok((schema_spec, funcs, head_funcs))
@@ -217,7 +228,7 @@ impl PkgExporter {
         exporter
             .export_funcs_for_variant(ctx, None, *variant.id())
             .await?;
-        let variant_spec = exporter.export_variant(ctx, None, variant).await?;
+        let variant_spec = exporter.export_variant(ctx, None, variant, false).await?;
 
         let funcs = match exporter
             .func_spec_map()
@@ -235,18 +246,26 @@ impl PkgExporter {
         ctx: &DalContext,
         change_set_pk: Option<ChangeSetPk>,
         variant: &SchemaVariant,
+        variant_is_builtin: bool,
     ) -> PkgResult<SchemaVariantSpec> {
         let mut variant_spec_builder = SchemaVariantSpec::builder();
         variant_spec_builder.name(variant.name());
+        variant_spec_builder.is_builtin(variant_is_builtin);
+
+        if self.is_workspace_export {
+            variant_spec_builder.unique_id(variant.id().to_string());
+
+            // Is this a builtin variant inside a workspace export? Don't export the variant but we
+            // need a unique id in case this variant is the default.
+            if variant_is_builtin {
+                return Ok(variant_spec_builder.build()?);
+            }
+        }
 
         let schema_variant_definition =
             SchemaVariantDefinition::get_by_schema_variant_id(ctx, variant.id())
                 .await?
                 .ok_or(PkgError::MissingSchemaVariantDefinition(*variant.id()))?;
-
-        if self.is_workspace_export {
-            variant_spec_builder.unique_id(variant.id().to_string());
-        }
 
         if std_model_change_set_matches(change_set_pk, variant)
             || std_model_change_set_matches(change_set_pk, &schema_variant_definition)
@@ -1260,16 +1279,22 @@ impl PkgExporter {
 
         let mut schemas = vec![];
         for schema in Schema::list(ctx).await? {
-            let add_schema = if let Some(schema_ids) = &self.schema_ids {
-                schema_ids.contains(schema.id())
-            } else if self.is_workspace_export {
-                !schema.is_builtin(ctx).await?
-            } else {
-                true
-            };
+            if self
+                .schema_ids
+                .as_ref()
+                .map(|schema_ids| schema_ids.contains(schema.id()))
+                .unwrap_or(true)
+            {
+                // Are we a builtin schema with only one variant? If so we don't have a
+                // user-modified variant, so we can skip. This only applies to workspace exports
+                if self.is_workspace_export
+                    && schema.is_builtin(ctx).await?
+                    && schema.variants(ctx).await?.len() == 1
+                {
+                    continue;
+                }
 
-            if add_schema {
-                schemas.push(schema);
+                schemas.push(schema)
             }
         }
 
@@ -1634,7 +1659,7 @@ impl PkgExporter {
         Ok((builder.build()?, funcs, head_funcs))
     }
 
-    pub async fn export(&mut self, ctx: &DalContext) -> PkgResult<SiPkg> {
+    pub async fn export_as_spec(&mut self, ctx: &DalContext) -> PkgResult<PkgSpec> {
         let mut pkg_spec_builder = PkgSpec::builder();
         pkg_spec_builder
             .name(&self.name)
@@ -1700,7 +1725,11 @@ impl PkgExporter {
             }
         }
 
-        let spec = pkg_spec_builder.build()?;
+        Ok(pkg_spec_builder.build()?)
+    }
+
+    pub async fn export(&mut self, ctx: &DalContext) -> PkgResult<SiPkg> {
+        let spec = self.export_as_spec(ctx).await?;
         let pkg = SiPkg::load_from_spec(spec)?;
 
         Ok(pkg)
