@@ -14,6 +14,8 @@ use tracing::{trace, warn};
 
 use crate::{message::MessageHead, response::Response};
 
+const MAX_FAILED_MESSAGES: usize = 4;
+
 pub fn serve<M, S, T, E, R>(stream: T, make_service: M) -> Serve<M, S, T, E, R>
 where
     M: for<'a> Service<IncomingMessage<'a, R>, Error = Infallible, Response = S>,
@@ -125,13 +127,28 @@ where
             token.cancel();
         });
 
+        let mut failed_count = 0;
+
         private::ServeFuture(Box::pin(async move {
             loop {
                 let msg = tokio::select! {
-                    msg = next_message(&mut stream) => {
+                    msg = next_message(&mut stream, failed_count) => {
                         match msg {
-                            Some(msg) => msg,
-                            None => continue,
+                            Some(Ok(msg)) => {
+                                failed_count = 0;
+                                msg
+                            },
+                            Some(Err(err)) => {
+                                // TODO(fnichol): this level might need to be `trace!()`, just
+                                // unclear at the moment
+                                warn!(error = ?err, "failed to read next message from stream");
+                                failed_count += 1;
+                                continue;
+                            },
+                            None => {
+                                trace!("stream is closed, breaking out of loop");
+                                break;
+                            },
                         }
                     }
                     _ = graceful_token.cancelled() => {
@@ -172,18 +189,25 @@ where
     }
 }
 
-async fn next_message<T, E, R>(stream: &mut T) -> Option<R>
+async fn next_message<T, E, R>(stream: &mut T, failed_count: usize) -> Option<Result<R, E>>
 where
     T: Stream<Item = Result<R, E>> + Unpin + Send + 'static,
     E: error::Error,
     R: MessageHead + Send + 'static,
 {
     match stream.try_next().await {
-        Ok(maybe) => maybe,
+        Ok(maybe) => Ok(maybe).transpose(),
         Err(err) => {
-            // TODO(fnichol): this level might need to be `trace!()`, just unclear at the moment
-            warn!(error = ?err, "failed to resolve next message in stream");
-            None
+            if failed_count > MAX_FAILED_MESSAGES {
+                warn!(
+                    error = ?err,
+                    "failed to read message in after {} consecutive failures; closing stream",
+                    failed_count,
+                );
+                None
+            } else {
+                Some(Err(err))
+            }
         }
     }
 }
