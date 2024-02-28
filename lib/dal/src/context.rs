@@ -1,4 +1,4 @@
-use std::{mem, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, collections::HashSet, mem, path::PathBuf, sync::Arc};
 
 use futures::Future;
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,8 @@ use crate::{
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
         queue::JobQueue,
     },
-    AttributeValueId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
+    AttributeValueId, ChangeSetPk, ComponentId, HistoryActor, StandardModel, Tenancy, TenancyError,
+    Visibility,
 };
 
 /// A context type which contains handles to common core service dependencies.
@@ -405,6 +406,21 @@ impl DalContext {
         new
     }
 
+    pub async fn enqueue_dependencies_update_component(
+        &self,
+        component_id: ComponentId,
+    ) -> Result<(), TransactionsError> {
+        self.txns()
+            .await?
+            .enqueue_dependencies_update_component(
+                *self.tenancy(),
+                self.visibility().change_set_pk,
+                component_id,
+            )
+            .await;
+        Ok(())
+    }
+
     pub async fn enqueue_job(
         &self,
         job: Box<dyn JobProducer + Sync + Send>,
@@ -789,6 +805,9 @@ pub struct Transactions {
     nats_txn: NatsTxn,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     job_queue: JobQueue,
+    #[allow(clippy::type_complexity)]
+    dependencies_update_component:
+        Arc<Mutex<HashMap<(Tenancy, ChangeSetPk), HashSet<ComponentId>>>>,
 }
 
 impl Transactions {
@@ -803,6 +822,7 @@ impl Transactions {
             nats_txn,
             job_processor,
             job_queue: JobQueue::new(),
+            dependencies_update_component: Default::default(),
         }
     }
 
@@ -825,6 +845,7 @@ impl Transactions {
         fields()
     )]
     pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
+        self.run_dependencies_update_component().await?;
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
         self.job_processor.process_queue(self.job_queue).await?;
@@ -842,6 +863,7 @@ impl Transactions {
         fields()
     )]
     pub async fn blocking_commit_into_conns(self) -> Result<Connections, TransactionsError> {
+        self.run_dependencies_update_component().await?;
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
         self.job_processor
@@ -871,6 +893,37 @@ impl Transactions {
     /// encountered to the caller.
     pub async fn rollback(self) -> Result<(), TransactionsError> {
         let _ = self.rollback_into_conns().await?;
+        Ok(())
+    }
+
+    pub async fn enqueue_dependencies_update_component(
+        &self,
+        tenancy: Tenancy,
+        change_set_pk: ChangeSetPk,
+        component_id: ComponentId,
+    ) {
+        self.dependencies_update_component
+            .lock()
+            .await
+            .entry((tenancy, change_set_pk))
+            .or_default()
+            .insert(component_id);
+    }
+
+    async fn run_dependencies_update_component(&self) -> Result<(), TransactionsError> {
+        for ((tenancy, change_set_pk), component_ids) in
+            std::mem::take(&mut *self.dependencies_update_component.lock().await)
+        {
+            for component_id in component_ids {
+                let visibility = Visibility::new(change_set_pk, None);
+                self.pg()
+                    .execute(
+                        "SELECT attribute_value_dependencies_update_component_v1($1, $2, $3)",
+                        &[&tenancy, &visibility, &component_id],
+                    )
+                    .await?;
+            }
+        }
         Ok(())
     }
 }
