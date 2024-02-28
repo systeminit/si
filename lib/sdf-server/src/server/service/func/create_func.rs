@@ -2,10 +2,10 @@ use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use base64::engine::general_purpose;
 use base64::Engine;
-use dal::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeContext};
+use dal::authentication_prototype::AuthenticationPrototypeContext;
 use dal::{
     generate_name, ActionKind, ChangeSet, DalContext, ExternalProviderId, Func,
-    FuncBackendResponseType, FuncId, PropId, SchemaVariantId, Visibility,
+    FuncBackendResponseType, FuncId, PropId, SchemaVariant, SchemaVariantId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -283,12 +283,7 @@ async fn create_authentication_func(
     .await?;
 
     if let Some(CreateFuncOptions::AuthenticationOptions { schema_variant_id }) = options {
-        AuthenticationPrototype::new(
-            ctx,
-            func.id,
-            AuthenticationPrototypeContext { schema_variant_id },
-        )
-        .await?;
+        SchemaVariant::new_authentication_prototype(ctx, func.id, schema_variant_id).await?;
     }
 
     Ok(func)

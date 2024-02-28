@@ -5,9 +5,10 @@ use axum::{
 };
 use dal::authentication_prototype::AuthenticationPrototypeError;
 use dal::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
+use dal::schema::variant::SchemaVariantError;
 use dal::{
     workspace_snapshot::WorkspaceSnapshotError, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncId, TransactionsError,
+    FuncBackendResponseType, FuncId, SchemaVariantId, TransactionsError,
 };
 use dal::{ChangeSetError, WsEventError};
 use serde::{Deserialize, Serialize};
@@ -143,8 +144,8 @@ pub enum FuncError {
     //     PrototypeContext(#[from] PrototypeContextError),
     //     #[error("prototype list for func error: {0}")]
     //     PrototypeListForFunc(#[from] PrototypeListForFuncError),
-    //     #[error("schema variant error: {0}")]
-    //     SchemaVariant(#[from] SchemaVariantError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     //     #[error("schema variant missing schema")]
     //     SchemaVariantMissingSchema(SchemaVariantId),
     //     #[error("Could not find schema variant for prop {0}")]
@@ -295,6 +296,10 @@ pub enum FuncAssociations {
     Attribute {
         prototypes: Vec<AttributePrototypeView>,
         arguments: Vec<FuncArgumentView>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Authentication {
+        schema_variant_ids: Vec<SchemaVariantId>,
     },
     //     #[serde(rename_all = "camelCase")]
     //     CodeGeneration {
@@ -554,28 +559,24 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
         //             });
         //             (associations, input_type)
         //         }
-        //         FuncBackendKind::JsAuthentication => {
-        //             let schema_variant_ids = AuthenticationPrototype::find_for_func(ctx, *func.id())
-        //                 .await?
-        //                 .iter()
-        //                 .map(|p| p.schema_variant_id())
-        //                 .collect();
+        FuncBackendKind::JsAuthentication => {
+            let schema_variant_ids = Func::list_schema_variants_for_auth_func(ctx, func.id).await?;
 
-        //             (
-        //                 Some(FuncAssociations::Authentication { schema_variant_ids }),
-        //                 concat!(
-        //                     "type Input = Record<string, unknown>;\n",
-        //                     "\n",
-        //                     "declare namespace requestStorage {\n",
-        //                     "    function setEnv(key: string, value: any);\n",
-        //                     "    function setItem(key: string, value: any);\n",
-        //                     "    function deleteEnv(key: string);\n",
-        //                     "    function deleteItem(key: string);\n",
-        //                     "}",
-        //                 )
-        //                 .to_owned(),
-        //             )
-        //         }
+            (
+                Some(FuncAssociations::Authentication { schema_variant_ids }),
+                concat!(
+                    "type Input = Record<string, unknown>;\n",
+                    "\n",
+                    "declare namespace requestStorage {\n",
+                    "    function setEnv(key: string, value: any);\n",
+                    "    function setItem(key: string, value: any);\n",
+                    "    function deleteEnv(key: string);\n",
+                    "    function deleteItem(key: string);\n",
+                    "}",
+                )
+                .to_owned(),
+            )
+        }
         _ => (None, String::new()),
     };
     //

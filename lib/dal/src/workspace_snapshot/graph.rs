@@ -916,6 +916,7 @@ impl WorkspaceSnapshotGraph {
                 let discrim: EdgeWeightKindDiscriminants = edgeref.weight().kind().into();
                 let color = match discrim {
                     EdgeWeightKindDiscriminants::ActionPrototype => "black",
+                    EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
                     EdgeWeightKindDiscriminants::FrameContains => "black",
                     EdgeWeightKindDiscriminants::Ordering => "gray",
@@ -926,9 +927,9 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKindDiscriminants::PrototypeArgumentValue => "green",
                     EdgeWeightKindDiscriminants::Provider => "red",
                     EdgeWeightKindDiscriminants::Proxy => "gray",
-                    EdgeWeightKindDiscriminants::Use => "black",
                     EdgeWeightKindDiscriminants::Root => "black",
                     EdgeWeightKindDiscriminants::Socket => "purple",
+                    EdgeWeightKindDiscriminants::Use => "black",
                 };
 
                 match edgeref.weight().kind() {
@@ -1934,7 +1935,8 @@ impl WorkspaceSnapshotGraph {
 
                     // Nothing to do, as these EdgeWeightKind do not encode extra information
                     // in the edge itself.
-                    EdgeWeightKind::Contain(None)
+                    EdgeWeightKind::AuthenticationPrototype
+                    | EdgeWeightKind::Contain(None)
                     | EdgeWeightKind::FrameContains
                     | EdgeWeightKind::PrototypeArgument
                     | EdgeWeightKind::PrototypeArgumentValue

@@ -504,6 +504,23 @@ impl SchemaVariant {
         Ok(())
     }
 
+    pub async fn new_authentication_prototype(
+        ctx: &DalContext,
+        func_id: FuncId,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<()> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        workspace_snapshot.add_edge(
+            schema_variant_id,
+            EdgeWeight::new(
+                ctx.change_set_pointer()?,
+                EdgeWeightKind::AuthenticationPrototype,
+            )?,
+            func_id,
+        )?;
+        Ok(())
+    }
+
     #[allow(dead_code)]
     async fn get_content(
         ctx: &DalContext,
