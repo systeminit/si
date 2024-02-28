@@ -59,6 +59,9 @@ where
     R: MessageHead,
 {
     fn make_span(&mut self, req: &R) -> Span {
+        let reply = req.reply().map(|r| r.as_str()).unwrap_or_default();
+        let status = req.status().map(|s| s.as_u16()).unwrap_or_default();
+
         // This ugly macro is needed, unfortunately, because `tracing::span!`
         // required the level argument to be static. Meaning we can't just pass
         // `self.level`.
@@ -69,8 +72,8 @@ where
                         $level,
                         "receive message",
                         subject = req.subject().as_str(),
-                        reply = ?req.reply(),
-                        status = ?req.status(),
+                        reply = reply,
+                        status = status,
                         length = req.length(),
                         headers = ?req.headers(),
                     )
@@ -79,8 +82,8 @@ where
                         $level,
                         "receive message",
                         subject = req.subject().as_str(),
-                        reply = ?req.reply(),
-                        status = ?req.status(),
+                        reply = reply,
+                        status = status,
                         length = req.length(),
                     )
                 }

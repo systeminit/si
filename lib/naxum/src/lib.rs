@@ -15,7 +15,8 @@ mod service_ext;
 
 pub use self::cancellation::wait_on_cancelled;
 pub use self::error::Error;
-pub use self::message::MessageHead;
+pub use self::make_service::IntoMakeService;
+pub use self::message::{Head, MessageHead};
 pub use self::serve::serve;
 pub use self::service_ext::ServiceExt;
 pub use async_trait::async_trait;
