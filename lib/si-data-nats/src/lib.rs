@@ -7,7 +7,7 @@
 )]
 #![allow(clippy::missing_errors_doc)]
 
-use std::{fmt::Debug, io, sync::Arc, time::Duration};
+use std::{fmt::Debug, hash, io, ops, sync::Arc, time::Duration};
 
 use async_nats::{subject::ToSubject, ToServerAddrs};
 use bytes::Bytes;
@@ -26,7 +26,7 @@ pub mod jetstream;
 pub mod service;
 
 pub use async_nats::{
-    connection::State, header, header::HeaderMap, rustls, status, subject, Auth, AuthError,
+    self, connection::State, header, header::HeaderMap, rustls, status, subject, Auth, AuthError,
     HeaderName, HeaderValue, ServerAddr, ServerInfo, Subject,
 };
 pub use connect_options::ConnectOptions;
@@ -101,6 +101,11 @@ pub struct Client {
 }
 
 impl Client {
+    // TODO(fnichol): refactor
+    pub fn as_inner(&self) -> &async_nats::Client {
+        &self.inner
+    }
+
     #[instrument(name = "client.new", skip_all, level = "debug")]
     pub async fn new(config: &NatsConfig) -> Result<Self> {
         let mut options = ConnectOptions::default();
@@ -1398,5 +1403,37 @@ impl From<Request> for async_nats::Request {
             r = r.inbox(inbox);
         }
         r
+    }
+}
+
+/// A hashable [`Subject`].
+///
+/// Note: an upstream change to `Subject` to derive `Hash` would avoid this type.
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct HashableSubject(Subject);
+
+impl hash::Hash for HashableSubject {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+impl ops::Deref for HashableSubject {
+    type Target = Subject;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl From<Subject> for HashableSubject {
+    fn from(value: Subject) -> Self {
+        Self(value)
+    }
+}
+
+impl ToSubject for HashableSubject {
+    fn to_subject(&self) -> Subject {
+        self.0.clone()
     }
 }
