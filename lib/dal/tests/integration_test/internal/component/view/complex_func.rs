@@ -1,7 +1,6 @@
 use pretty_assertions_sorted::assert_eq;
 
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
-use dal::job::definition::DependentValuesUpdate;
 use dal::{
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
     ComponentView, DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
@@ -198,13 +197,9 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         .await
         .expect("could not update from prototype function");
 
-    ctx.enqueue_job(DependentValuesUpdate::new(
-        ctx.access_builder(),
-        *ctx.visibility(),
-        vec![*attribute_value_for_prototype.id()],
-    ))
-    .await
-    .expect("failed to enqueue job");
+    ctx.enqueue_dependent_values_update(vec![*attribute_value_for_prototype.id()])
+        .await
+        .expect("failed to enqueue job");
 
     ctx.blocking_commit()
         .await

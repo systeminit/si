@@ -59,9 +59,7 @@ use crate::{
             FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
         },
     },
-    impl_standard_model,
-    job::definition::DependentValuesUpdate,
-    pk,
+    impl_standard_model, pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     AttributeContextError, AttributePrototypeArgumentError, Component, ComponentId, DalContext,
@@ -746,12 +744,8 @@ impl AttributeValue {
                     AttributeValueError::NotFound(attribute_value_id, *ctx.visibility())
                 })?;
             av.update_from_prototype_function(ctx).await?;
-            ctx.enqueue_job(DependentValuesUpdate::new(
-                ctx.access_builder(),
-                *ctx.visibility(),
-                vec![attribute_value_id],
-            ))
-            .await?;
+            ctx.enqueue_dependent_values_update(vec![attribute_value_id])
+                .await?;
         }
 
         Ok(())
@@ -886,12 +880,8 @@ impl AttributeValue {
         // already updated the initial attribute value, so is there much value?
 
         if propagate_dependent_values && !ctx.no_dependent_values() {
-            ctx.enqueue_job(DependentValuesUpdate::new(
-                ctx.access_builder(),
-                *ctx.visibility(),
-                vec![new_attribute_value_id],
-            ))
-            .await?;
+            ctx.enqueue_dependent_values_update(vec![new_attribute_value_id])
+                .await?;
         }
 
         if let Some(av) = AttributeValue::get_by_id(ctx, &new_attribute_value_id).await? {
@@ -993,12 +983,8 @@ impl AttributeValue {
         }
 
         if !ctx.no_dependent_values() {
-            ctx.enqueue_job(DependentValuesUpdate::new(
-                ctx.access_builder(),
-                *ctx.visibility(),
-                vec![new_attribute_value_id],
-            ))
-            .await?;
+            ctx.enqueue_dependent_values_update(vec![new_attribute_value_id])
+                .await?;
         }
 
         if let Some(av) = AttributeValue::get_by_id(ctx, &new_attribute_value_id).await? {

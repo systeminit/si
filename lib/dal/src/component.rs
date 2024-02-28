@@ -21,7 +21,6 @@ use crate::diagram::summary_diagram::update_socket_summary;
 use crate::edge::EdgeKind;
 use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::{FuncBindingReturnValueError, FuncBindingReturnValueId};
-use crate::job::definition::DependentValuesUpdate;
 use crate::schema::variant::root_prop::SiPropChild;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
@@ -334,12 +333,8 @@ impl Component {
         // We need to make sure that *ALL* functions are run, not just those that directly
         // depend on the name being set.
         let component_av_ids = AttributeValue::ids_for_component(ctx, component.id).await?;
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            component_av_ids,
-        ))
-        .await?;
+        ctx.enqueue_dependent_values_update(component_av_ids)
+            .await?;
 
         diagram::summary_diagram::create_component_entry(
             ctx,
@@ -1000,12 +995,7 @@ impl Component {
 
         let ids = attr_values.iter().map(|av| *av.id()).collect();
 
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            ids,
-        ))
-        .await?;
+        ctx.enqueue_dependent_values_update(ids).await?;
 
         Ok(())
     }
@@ -1077,12 +1067,7 @@ impl Component {
 
         let ids = attr_values.iter().map(|av| *av.id()).collect();
 
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            ids,
-        ))
-        .await?;
+        ctx.enqueue_dependent_values_update(ids).await?;
 
         diagram::summary_diagram::component_update(
             ctx,

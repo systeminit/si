@@ -1,17 +1,35 @@
 use super::producer::JobProducer;
-use std::{collections::VecDeque, sync::Arc};
+use crate::{AccessBuilder, AttributeValueId, ChangeSetPk, DependentValuesUpdate, Visibility};
+use std::{collections::HashMap, collections::HashSet, collections::VecDeque, sync::Arc};
 use tokio::sync::Mutex;
 
+type DependentValuesUpdates =
+    Arc<Mutex<HashMap<(ChangeSetPk, AccessBuilder), HashSet<AttributeValueId>>>>;
 #[derive(Debug, Clone, Default)]
 pub struct JobQueue {
     queue: Arc<Mutex<VecDeque<Box<dyn JobProducer + Send + Sync>>>>,
+    dependent_values_update_ids: DependentValuesUpdates,
 }
 
 impl JobQueue {
     pub fn new() -> Self {
         Self {
             queue: Default::default(),
+            dependent_values_update_ids: Default::default(),
         }
+    }
+
+    pub async fn enqueue_dependent_values_update(
+        &self,
+        change_set_pk: ChangeSetPk,
+        access_builder: AccessBuilder,
+        ids: Vec<AttributeValueId>,
+    ) {
+        let mut lock = self.dependent_values_update_ids.lock().await;
+
+        lock.entry((change_set_pk, access_builder))
+            .or_default()
+            .extend(ids);
     }
 
     pub async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
@@ -21,22 +39,48 @@ impl JobQueue {
     }
 
     pub async fn fetch_job(&self) -> Option<Box<dyn JobProducer + Send + Sync>> {
-        self.queue.lock().await.pop_front()
+        match self.queue.lock().await.pop_front() {
+            Some(job) => Some(job),
+            None => self
+                .fetch_dependent_values_update()
+                .await
+                .map(|job| job as Box<dyn JobProducer + Send + Sync>),
+        }
     }
 
-    pub async fn empty(&self) -> VecDeque<Box<dyn JobProducer + Send + Sync>> {
-        std::mem::take(&mut *self.queue.lock().await)
+    pub async fn fetch_dependent_values_update(&self) -> Option<Box<DependentValuesUpdate>> {
+        let key = self
+            .dependent_values_update_ids
+            .lock()
+            .await
+            .keys()
+            .next()
+            .copied();
+        if let Some((change_set_pk, access_builder)) = key {
+            let maybe_ids: Option<HashSet<AttributeValueId>> = self
+                .dependent_values_update_ids
+                .lock()
+                .await
+                .remove(&(change_set_pk, access_builder));
+            maybe_ids.map(|ids| {
+                DependentValuesUpdate::new(
+                    access_builder,
+                    Visibility::new(change_set_pk, None),
+                    ids.into_iter().collect(),
+                )
+            })
+        } else {
+            None
+        }
     }
 
     pub async fn is_empty(&self) -> bool {
         self.queue.lock().await.is_empty()
+            && self.dependent_values_update_ids.lock().await.is_empty()
     }
 
     pub async fn size(&self) -> usize {
         self.queue.lock().await.len()
-    }
-
-    pub async fn drain(&self) -> Vec<Box<dyn JobProducer + Send + Sync>> {
-        self.queue.lock().await.drain(0..).collect()
+            + (!self.dependent_values_update_ids.lock().await.is_empty() as usize)
     }
 }

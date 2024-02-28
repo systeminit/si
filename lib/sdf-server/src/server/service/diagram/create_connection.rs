@@ -2,9 +2,8 @@ use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::edge::EdgeKind;
 use dal::{
-    job::definition::DependentValuesUpdate, node::NodeId, socket::SocketId, AttributeReadContext,
-    AttributeValue, ChangeSet, Connection, InternalProvider, Node, Socket, StandardModel,
-    Visibility, WsEvent,
+    node::NodeId, socket::SocketId, AttributeReadContext, AttributeValue, ChangeSet, Connection,
+    InternalProvider, Node, Socket, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -121,12 +120,8 @@ pub async fn create_connection(
         .update_from_prototype_function(&ctx)
         .await?;
 
-    ctx.enqueue_job(DependentValuesUpdate::new(
-        ctx.access_builder(),
-        *ctx.visibility(),
-        vec![*to_attribute_value.id()],
-    ))
-    .await?;
+    ctx.enqueue_dependent_values_update(vec![*to_attribute_value.id()])
+        .await?;
 
     track(
         &posthog_client,

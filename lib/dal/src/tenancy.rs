@@ -14,7 +14,7 @@ pub enum TenancyError {
 
 pub type TenancyResult<T> = Result<T, TenancyError>;
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Tenancy {
     #[serde(rename = "tenancy_workspace_pk")]
     workspace_pk: Option<WorkspacePk>,

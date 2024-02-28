@@ -6,7 +6,6 @@ use hyper::http::Uri;
 use serde::{Deserialize, Serialize};
 
 use dal::edge::{EdgeKind, EdgeObjectId, VertexObjectKind};
-use dal::job::definition::DependentValuesUpdate;
 use dal::socket::{SocketEdgeKind, SocketKind};
 use dal::{
     node::NodeId, AttributeReadContext, AttributeValue, ChangeSet, Component, ComponentError,
@@ -211,12 +210,8 @@ async fn connect_component_sockets_to_frame_inner_work(
                                     attribute_value_context,
                                 ))?;
 
-                        ctx.enqueue_job(DependentValuesUpdate::new(
-                            ctx.access_builder(),
-                            *ctx.visibility(),
-                            vec![*attribute_value.id()],
-                        ))
-                        .await?;
+                        ctx.enqueue_dependent_values_update(vec![*attribute_value.id()])
+                            .await?;
                     }
                     SocketEdgeKind::ConfigurationOutput => {
                         let provider = ExternalProvider::find_for_socket(ctx, *parent_socket.id())
@@ -260,12 +255,8 @@ async fn connect_component_sockets_to_frame_inner_work(
                                     attribute_value_context,
                                 ))?;
 
-                        ctx.enqueue_job(DependentValuesUpdate::new(
-                            ctx.access_builder(),
-                            *ctx.visibility(),
-                            vec![*attribute_value.id()],
-                        ))
-                        .await?;
+                        ctx.enqueue_dependent_values_update(vec![*attribute_value.id()])
+                            .await?;
                     }
                 }
             }
@@ -358,12 +349,8 @@ async fn connect_component_sockets_to_frame_inner_work(
                                 .update_from_prototype_function(ctx)
                                 .await?;
 
-                            ctx.enqueue_job(DependentValuesUpdate::new(
-                                ctx.access_builder(),
-                                *ctx.visibility(),
-                                vec![*dest_attribute_value.id()],
-                            ))
-                            .await?;
+                            ctx.enqueue_dependent_values_update(vec![*dest_attribute_value.id()])
+                                .await?;
                         }
                     }
                 }
