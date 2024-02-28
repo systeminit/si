@@ -37,7 +37,7 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
         .rightclick();
 
       // Click the second dropdown menu item
-      cy.get('#dropdown-menu-item-2').click();
+      cy.get('[class="truncate"]').contains("Delete Frame").parent().parent().click();
 
       // Click the destroy button
       cy.get('button.vbutton.--variant-solid.--size-md.--tone-destructive')

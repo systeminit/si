@@ -94,6 +94,7 @@ pub struct SummaryDiagramComponent {
     created_info: serde_json::Value,
     updated_info: serde_json::Value,
     deleted_info: serde_json::Value,
+    using_default_variant: bool,
 }
 
 impl_standard_model! {
@@ -207,12 +208,14 @@ pub async fn create_component_entry(
         }
     }
 
+    let using_default_variant = schema.default_schema_variant_id() == Some(schema_variant.id());
+
     let _row = ctx
         .txns()
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_component_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)",
+            "SELECT object FROM summary_diagram_component_create_v2($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),
@@ -234,9 +237,26 @@ pub async fn create_component_entry(
                 &serde_json::to_value(created_info)?,
                 &serde_json::to_value(updated_info)?,
                 &serde_json::to_value(deleted_info)?,
+                &using_default_variant,
             ],
         )
         .await?;
+    Ok(())
+}
+
+pub async fn falsify_using_default_variant_for_components_of_schema(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+) -> SummaryDiagramResult<()> {
+    ctx.txns()
+        .await?
+        .pg()
+        .execute(
+            "SELECT falsify_using_default_variant_for_components_of_schema_v1($1, $2, $3)",
+            &[ctx.tenancy(), ctx.visibility(), &schema_id],
+        )
+        .await?;
+
     Ok(())
 }
 
@@ -325,7 +345,7 @@ pub async fn component_update(
         .await?
         .pg()
         .query_one(
-            "SELECT object FROM summary_diagram_component_update_v2($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            "SELECT object FROM summary_diagram_component_update_v3($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
             &[
                 ctx.tenancy(),
                 ctx.visibility(),

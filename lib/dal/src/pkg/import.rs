@@ -15,7 +15,7 @@ use telemetry::prelude::*;
 
 use crate::{
     authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeContext},
-    component::{self},
+    component, diagram,
     property_editor::values_summary::PropertyEditorValuesSummary,
 };
 use crate::{
@@ -258,10 +258,35 @@ async fn import_change_set(
         }
     }
 
-    AttributeValue::remove_dependency_summaries_for_deleted_values(ctx).await?;
-    for component in Component::list(ctx).await? {
-        AttributeValue::update_component_dependencies(ctx, *component.id()).await?;
-        PropertyEditorValuesSummary::create_or_update_component_entry(ctx, *component.id()).await?;
+    if !components.is_empty() {
+        info!("calculating cached data for imported components.");
+        AttributeValue::remove_dependency_summaries_for_deleted_values(ctx).await?;
+        for component in Component::list(ctx).await? {
+            info!("calculating cached data for component {:?}", component.id());
+            AttributeValue::update_component_dependencies(ctx, *component.id()).await?;
+            PropertyEditorValuesSummary::create_or_update_component_entry(ctx, *component.id())
+                .await?;
+            diagram::summary_diagram::update_socket_summary(ctx, &component).await?;
+
+            // We want the serde representation of the deleted_at value since it's
+            // identical to what we send to the database
+            let deleted_at_value = match component.visibility().deleted_at {
+                Some(deleted_at) => Some(serde_json::to_value(deleted_at)?),
+                None => None,
+            }
+            .map(|v| v.to_string());
+
+            diagram::summary_diagram::component_update(
+                ctx,
+                component.id(),
+                component.name(ctx).await?,
+                component.color(ctx).await?.unwrap_or_default(),
+                component.get_type(ctx).await?,
+                component.resource(ctx).await?.payload.is_some(),
+                deleted_at_value,
+            )
+            .await?;
+        }
     }
 
     info!("Finished Imports: {}", Utc::now());
@@ -407,6 +432,7 @@ async fn import_component(
     thing_map: &mut ThingMap,
     force_resource_patch: bool,
 ) -> PkgResult<Vec<ImportAttributeSkip>> {
+    info!("importing component {:?}", component_spec.name);
     let variant = match &component_spec.variant {
         ComponentSpecVariant::BuiltinVariant {
             schema_name,
@@ -461,6 +487,11 @@ async fn import_component(
     {
         Some(Thing::Component((existing_component, node))) => {
             if Component::schema_variant_id(ctx, *existing_component.id()).await? != *variant.id() {
+                info!(
+                    "respining component {:?} onto variant {}",
+                    existing_component.id(),
+                    variant.name()
+                );
                 // If the component exists already, but the schema variant is
                 // different, we need to respin the component to the change-set
                 // specific schema variant
@@ -513,6 +544,11 @@ async fn import_component(
     component::migrate::serde_value_merge_in_place_recursive(
         &mut component_root_implicit_value,
         imported_json,
+    );
+
+    info!(
+        "component root implicit value: {:?}",
+        &component_root_implicit_value
     );
 
     if component_root_implicit_value != serde_json::Value::Null {

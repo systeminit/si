@@ -21,6 +21,8 @@ use crate::{
 
 pub mod connection;
 pub(crate) mod summary_diagram;
+pub use summary_diagram::falsify_using_default_variant_for_components_of_schema;
+pub use summary_diagram::{SummaryDiagramError, SummaryDiagramResult};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
