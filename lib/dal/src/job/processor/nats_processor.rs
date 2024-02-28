@@ -178,7 +178,11 @@ impl JobQueueProcessor for NatsProcessor {
         let span = Span::current();
         span.record("queue.size", queue.size().await);
 
-        self.block_on_jobs(queue.drain().await)
+        let mut jobs = Vec::with_capacity(queue.size().await);
+        while let Some(element) = queue.fetch_job().await {
+            jobs.push(element);
+        }
+        self.block_on_jobs(jobs)
             .instrument(info_span!("nats_processor.block_on_jobs"))
             .await?;
 

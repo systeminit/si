@@ -1,7 +1,6 @@
 use dal::{
     attribute::context::AttributeContextBuilder,
     func::argument::{FuncArgument, FuncArgumentKind},
-    job::definition::DependentValuesUpdate,
     provider::internal::InternalProvider,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
     ComponentView, DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
@@ -534,13 +533,9 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
         .update_from_prototype_function(ctx)
         .await
         .expect("update from proto func");
-    ctx.enqueue_job(DependentValuesUpdate::new(
-        ctx.access_builder(),
-        *ctx.visibility(),
-        vec![*freya_value.id()],
-    ))
-    .await
-    .expect("failed to enqueue job");
+    ctx.enqueue_dependent_values_update(vec![*freya_value.id()])
+        .await
+        .expect("unable to enqueue dependent values update");
 
     ctx.blocking_commit()
         .await

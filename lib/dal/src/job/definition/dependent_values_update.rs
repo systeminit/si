@@ -212,12 +212,8 @@ impl DependentValuesUpdate {
                 .values_completed(ctx, self.attribute_values.clone())
                 .await;
 
-            ctx.enqueue_job(DependentValuesUpdate::new(
-                self.access_builder,
-                self.visibility,
-                self.attribute_values.clone(),
-            ))
-            .await?;
+            ctx.enqueue_dependent_values_update(self.attribute_values.clone())
+                .await?;
         }
 
         // No matter what, we need to finish the updater

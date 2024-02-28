@@ -9,7 +9,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::func::argument::FuncArgumentError;
-use crate::job::definition::DependentValuesUpdate;
 use crate::node::NodeId;
 use crate::socket::SocketError;
 use crate::standard_model::objects_from_rows;
@@ -559,12 +558,8 @@ impl Edge {
 
         attr_value.update_from_prototype_function(ctx).await?;
 
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            vec![*attr_value.id()],
-        ))
-        .await?;
+        ctx.enqueue_dependent_values_update(vec![*attr_value.id()])
+            .await?;
 
         diagram::summary_diagram::delete_edge_entry(ctx, self)
             .await
@@ -721,12 +716,8 @@ impl Edge {
             )
             .await?;
 
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            vec![*attr_value.id()],
-        ))
-        .await?;
+        ctx.enqueue_dependent_values_update(vec![*attr_value.id()])
+            .await?;
 
         Ok(Edge::get_by_id(ctx, &edge_id).await?)
     }

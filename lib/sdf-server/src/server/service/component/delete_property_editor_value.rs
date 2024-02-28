@@ -3,8 +3,8 @@ use crate::service::component::{ComponentError, ComponentResult};
 use axum::response::IntoResponse;
 use axum::Json;
 use dal::{
-    AttributeReadContext, AttributeValue, AttributeValueId, ChangeSet, ComponentId,
-    DependentValuesUpdate, Prop, PropId, PropKind, StandardModel, Visibility, WsEvent,
+    AttributeReadContext, AttributeValue, AttributeValueId, ChangeSet, ComponentId, Prop, PropId,
+    PropKind, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -92,12 +92,8 @@ pub async fn delete_property_editor_value(
         av.delete_by_id(&ctx).await?;
     }
 
-    ctx.enqueue_job(DependentValuesUpdate::new(
-        ctx.access_builder(),
-        *ctx.visibility(),
-        vec![*parent_av.id()],
-    ))
-    .await?;
+    ctx.enqueue_dependent_values_update(vec![*parent_av.id()])
+        .await?;
 
     ctx.commit().await?;
 

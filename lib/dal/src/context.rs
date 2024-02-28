@@ -12,11 +12,12 @@ use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
 use crate::{
     job::{
+        definition::{FixesJob, RefreshJob},
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
         queue::JobQueue,
     },
-    HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
+    AttributeValueId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
 };
 
 /// A context type which contains handles to common core service dependencies.
@@ -406,9 +407,35 @@ impl DalContext {
 
     pub async fn enqueue_job(
         &self,
-        job: Box<dyn JobProducer + Send + Sync>,
+        job: Box<dyn JobProducer + Sync + Send>,
     ) -> Result<(), TransactionsError> {
         self.txns().await?.job_queue.enqueue_job(job).await;
+        Ok(())
+    }
+
+    pub async fn enqueue_fix(&self, job: Box<FixesJob>) -> Result<(), TransactionsError> {
+        self.txns().await?.job_queue.enqueue_job(job).await;
+        Ok(())
+    }
+
+    pub async fn enqueue_refresh(&self, job: Box<RefreshJob>) -> Result<(), TransactionsError> {
+        self.txns().await?.job_queue.enqueue_job(job).await;
+        Ok(())
+    }
+
+    pub async fn enqueue_dependent_values_update(
+        &self,
+        ids: Vec<AttributeValueId>,
+    ) -> Result<(), TransactionsError> {
+        self.txns()
+            .await?
+            .job_queue
+            .enqueue_dependent_values_update(
+                self.visibility().change_set_pk,
+                self.access_builder(),
+                ids,
+            )
+            .await;
         Ok(())
     }
 
@@ -548,7 +575,7 @@ impl Default for RequestContext {
 }
 
 /// A request context builder which requires a [`Visibility`] to be completed.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct AccessBuilder {
     /// A suitable tenancy for the consuming DAL objects.
     tenancy: Tenancy,
