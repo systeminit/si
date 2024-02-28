@@ -3,7 +3,7 @@ name: Cypress E2E Tests
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/15 * * * *'  # Runs every 5 minutes
+    - cron: '*/5 * * * *'  # Runs every 5 minutes
 
 jobs:
   cypress-tests:
@@ -43,12 +43,17 @@ jobs:
         with:
             version: 8.10.5
 
-      - name: Run Cypress tests
+      - name: Install Cypress
         working-directory: app/web
         run: |
           pnpm i
           pnpm install cypress
-          npx cypress run --spec "cypress/e2e/**"
+          
+      - uses: nick-fields/retry@v2
+        with:
+          max_attempts: 3
+          timeout_minutes: 20
+          command: cd app/web && npx cypress run --spec "cypress/e2e/**"
 
       - name: 'Upload Cypress Recordings to Github'
         uses: actions/upload-artifact@v4
@@ -58,10 +63,7 @@ jobs:
           path: app/web/cypress/videos/**/*.mp4
           retention-days: 5
 
-      # TODO(johnrwatson): Enable this when we're happy with the synthetic above
-      #- name: Send PagerDuty alert on failure
-      #  if: ${{ failure() }}
-      #  uses: Entle/action-pagerduty-alert@0.2.0
-      #  with:
-      #    pagerduty-integration-key: '${{ secrets.PAGERDUTY_INTEGRATION_KEY }}'
-      #    pagerduty-dedup-key: github_workflow_failed
+      - name: Send Slack Failure Webhook
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data "{\"text\": \":si: Failed Cypress E2E Test for Production: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" ${{ secrets.SLACK_WEBHOOK_URL }}
