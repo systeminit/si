@@ -22,7 +22,7 @@ Cypress._.times(import.meta.env.VITE_SI_CYPRESS_MULTIPLIER ? import.meta.env.VIT
       cy.url().should('not.include', 'head', { timeout: 10000 });
 
       // Find the AWS Credential
-      cy.get('[data-cy="asset_card', { timeout: 30000 }).contains('AWS Credential', { timeout: 30000 }).should('be.visible').as('awsCred')
+      cy.get('div[class="tree-node"]', { timeout: 30000 }).contains('AWS Credential').should('be.visible').as('awsCred')
 
       // Find the canvas to get a location to drag to
       cy.get('canvas').first().as('konvaStage');
