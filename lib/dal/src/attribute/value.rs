@@ -866,13 +866,7 @@ impl AttributeValue {
         let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
 
         if !context.is_component_unset() {
-            ctx.txns()
-                .await?
-                .pg()
-                .execute(
-                    "SELECT attribute_value_dependencies_update_component_v1($1, $2, $3)",
-                    &[ctx.tenancy(), ctx.visibility(), &context.component_id()],
-                )
+            ctx.enqueue_dependencies_update_component(context.component_id())
                 .await?;
         }
 
@@ -968,17 +962,7 @@ impl AttributeValue {
         let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
 
         if !item_attribute_context.is_component_unset() {
-            ctx.txns()
-                .await?
-                .pg()
-                .execute(
-                    "SELECT attribute_value_dependencies_update_component_v1($1, $2, $3)",
-                    &[
-                        ctx.tenancy(),
-                        ctx.visibility(),
-                        &item_attribute_context.component_id(),
-                    ],
-                )
+            ctx.enqueue_dependencies_update_component(item_attribute_context.component_id())
                 .await?;
         }
 
