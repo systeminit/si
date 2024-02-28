@@ -1,6 +1,6 @@
 use si_pkg::{
-    SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView, SiPkgComponent,
-    SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
+    SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView, SiPkgAuthFunc,
+    SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
     SiPkgLeafFunction, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema, SiPkgSchemaData,
     SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
 };
@@ -11,6 +11,7 @@ use tokio::sync::Mutex;
 use crate::attribute::prototype::argument::{
     value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
 };
+use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
 use crate::prop::PropParent;
 use crate::{func::intrinsics::IntrinsicFunc, ComponentKind, ProviderKind};
 use crate::{
@@ -31,8 +32,8 @@ use super::{PkgError, PkgResult};
 
 #[derive(Clone, Debug)]
 enum Thing {
-    #[allow(dead_code)]
     ActionPrototype(ActionPrototype),
+    AuthPrototype(AuthenticationPrototype),
     // AttributePrototypeArgument(AttributePrototypeArgument),
     // Component((Component, Node)),
     // Edge(Edge),
@@ -2348,6 +2349,80 @@ async fn import_action_func(
     Ok(prototype)
 }
 
+async fn import_auth_func(
+    ctx: &DalContext,
+    change_set_pk: Option<ChangeSetPk>,
+    func_spec: &SiPkgAuthFunc<'_>,
+    schema_variant_id: SchemaVariantId,
+    thing_map: &ThingMap,
+) -> PkgResult<Option<AuthenticationPrototype>> {
+    let prototype = match thing_map.get(change_set_pk, &func_spec.func_unique_id().to_owned()) {
+        Some(Thing::Func(func)) => {
+            let func_id = func.id;
+
+            if let Some(unique_id) = func_spec.unique_id() {
+                match thing_map.get(change_set_pk, &unique_id.to_owned()) {
+                    Some(Thing::AuthPrototype(_prototype)) => {
+                        todo!("workspace import paths not yet implemented");
+                        // AuthenticationPrototype is represented by just and edge,
+                        // Since the info that matters is only then func_id and the schema_variant_id
+                        // Do we need to update it?
+
+                        // let mut prototype = prototype.to_owned();
+                        //
+                        // if func_spec.deleted() {
+                        //     prototype.delete_by_id(ctx).await?;
+                        // } else {
+                        //     update_authentication_prototype(
+                        //         ctx,
+                        //         &mut prototype,
+                        //         func_id,
+                        //         schema_variant_id,
+                        //     )
+                        //     .await?;
+                        // }
+                        //
+                        // Some(prototype)
+                    }
+                    _ => {
+                        if func_spec.deleted() {
+                            None
+                        } else {
+                            SchemaVariant::new_authentication_prototype(
+                                ctx,
+                                func_id,
+                                schema_variant_id,
+                            )
+                            .await?;
+
+                            Some(AuthenticationPrototype {
+                                id: AuthenticationPrototypeId::generate(),
+                                func_id,
+                                schema_variant_id,
+                            })
+                        }
+                    }
+                }
+            } else {
+                SchemaVariant::new_authentication_prototype(ctx, func_id, schema_variant_id)
+                    .await?;
+                Some(AuthenticationPrototype {
+                    id: AuthenticationPrototypeId::generate(),
+                    func_id,
+                    schema_variant_id,
+                })
+            }
+        }
+        _ => {
+            return Err(PkgError::MissingFuncUniqueId(
+                func_spec.func_unique_id().into(),
+            ));
+        }
+    };
+
+    Ok(prototype)
+}
+
 #[derive(Default, Clone, Debug)]
 struct CreatePropsSideEffects {
     attr_funcs: Vec<AttrFuncInfo>,
@@ -2659,6 +2734,25 @@ async fn import_schema_variant(
                         change_set_pk,
                         unique_id.to_owned(),
                         Thing::ActionPrototype(prototype),
+                    );
+                }
+            }
+
+            for auth_func in &variant_spec.auth_funcs()? {
+                let prototype = import_auth_func(
+                    ctx,
+                    change_set_pk,
+                    auth_func,
+                    schema_variant.id(),
+                    thing_map,
+                )
+                .await?;
+
+                if let (Some(prototype), Some(unique_id)) = (prototype, auth_func.unique_id()) {
+                    thing_map.insert(
+                        change_set_pk,
+                        unique_id.to_owned(),
+                        Thing::AuthPrototype(prototype),
                     );
                 }
             }

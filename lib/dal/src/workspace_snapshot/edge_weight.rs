@@ -24,6 +24,9 @@ pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 pub enum EdgeWeightKind {
     /// A function used by a [`SchemaVariant`] to perform an action that affects its resource
     ActionPrototype(ActionKind),
+    /// A function defined for a secret defining [`SchemaVariant`] to be executed before funcs on
+    /// components that have a secret of that kind  
+    AuthenticationPrototype,
     /// An [`AttributeValue`] "contained" by another [`AttributeValue`], such as an entry in an
     /// array/map, or a field of an object. The optional [`String`] represents the key of the entry
     /// in a map.

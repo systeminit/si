@@ -10,13 +10,14 @@ use ulid::Ulid;
 
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::intrinsics::IntrinsicFunc;
+use crate::schema::variant::SchemaVariantResult;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, DalContext, Timestamp, TransactionsError};
+use crate::{pk, DalContext, SchemaVariantId, Timestamp, TransactionsError};
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
@@ -425,6 +426,24 @@ impl Func {
         }
 
         Ok(funcs)
+    }
+
+    pub async fn list_schema_variants_for_auth_func(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> SchemaVariantResult<Vec<SchemaVariantId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+        let mut schema_variant_ids = vec![];
+
+        for node_id in workspace_snapshot.incoming_sources_for_edge_weight_kind(
+            func_id,
+            EdgeWeightKindDiscriminants::AuthenticationPrototype,
+        )? {
+            schema_variant_ids.push(workspace_snapshot.get_node_weight(node_id)?.id().into())
+        }
+
+        Ok(schema_variant_ids)
     }
 }
 

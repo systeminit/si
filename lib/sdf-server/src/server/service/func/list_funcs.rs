@@ -49,6 +49,7 @@ pub async fn list_funcs(
         FuncBackendKind::JsAction,
         FuncBackendKind::JsAttribute,
         FuncBackendKind::JsValidation,
+        FuncBackendKind::JsAuthentication,
     ];
 
     let try_func_views: Vec<FuncResult<ListedFuncView>> = funcs
