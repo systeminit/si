@@ -1,3 +1,4 @@
+pub mod delay;
 pub mod trace;
 
 #[non_exhaustive]
