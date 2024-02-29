@@ -81,6 +81,7 @@ use super::prototype::argument::{
 pub mod dependent_value_graph;
 pub mod view;
 
+use crate::func::before::{before_funcs_for_component, BeforeFuncError};
 pub use dependent_value_graph::DependentValueGraph;
 
 #[remain::sorted]
@@ -110,6 +111,8 @@ pub enum AttributeValueError {
     AttributeValueMultiplePropEdges(AttributeValueId),
     #[error("attribute value {0} has more than one provider edge")]
     AttributeValueMultipleProviderEdges(AttributeValueId),
+    #[error("before func error: {0}")]
+    BeforeFunc(String),
     #[error("Cannot create nested values for {0} since it is not the value for a prop")]
     CannotCreateNestedValuesForNonPropValues(AttributeValueId),
     #[error("Cannot create attribute value for provider without component id")]
@@ -596,16 +599,18 @@ impl AttributeValue {
             serde_json::to_value(prepared_func_binding_args)?
         };
 
-        // TODO: We need the associated [`ComponentId`] for this function--this is how we resolve and
+        // We need the associated [`ComponentId`] for this function--this is how we resolve and
         // prepare before functions
-        // let associated_component_id = self.context.component_id();
-        // let before = before_funcs_for_component(ctx, &associated_component_id).await?;
+        let associated_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
+        let before = before_funcs_for_component(ctx, &associated_component_id)
+            .await
+            .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
 
         let (_, func_binding_return_value) = match FuncBinding::create_and_execute(
             ctx,
             prepared_func_binding_args.clone(),
             prototype_func_id,
-            vec![], // todo: restore before funcs
+            before,
         )
         .instrument(debug_span!(
             "Func execution",
@@ -1671,33 +1676,34 @@ impl AttributeValue {
             None => serde_json::Value::Null,
         };
 
-        let (_, func_binding_return_value) = match FuncBinding::create_and_execute(
-            ctx,
-            func_binding_args.clone(),
-            func_id,
-            vec![], // todo: restore before funcs
-        )
-        .instrument(debug_span!(
-            "Func execution",
-            "func.id" = %func_id,
-            ?func_binding_args,
-        ))
-        .await
-        {
-            Ok(function_return_value) => function_return_value,
-            Err(FuncBindingError::FuncBackendResultFailure {
-                kind,
-                message,
-                backend,
-            }) => {
-                return Err(AttributeValueError::FuncBackendResultFailure {
+        let associated_component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
+        let before = before_funcs_for_component(ctx, &associated_component_id)
+            .await
+            .map_err(|e| AttributeValueError::BeforeFunc(e.to_string()))?;
+
+        let (_, func_binding_return_value) =
+            match FuncBinding::create_and_execute(ctx, func_binding_args.clone(), func_id, before)
+                .instrument(debug_span!(
+                    "Func execution",
+                    "func.id" = %func_id,
+                    ?func_binding_args,
+                ))
+                .await
+            {
+                Ok(function_return_value) => function_return_value,
+                Err(FuncBindingError::FuncBackendResultFailure {
                     kind,
                     message,
                     backend,
-                });
-            }
-            Err(err) => Err(err)?,
-        };
+                }) => {
+                    return Err(AttributeValueError::FuncBackendResultFailure {
+                        kind,
+                        message,
+                        backend,
+                    });
+                }
+                Err(err) => Err(err)?,
+            };
 
         Self::set_real_values(
             ctx,

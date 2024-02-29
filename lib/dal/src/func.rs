@@ -10,20 +10,25 @@ use ulid::Ulid;
 
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::intrinsics::IntrinsicFunc;
-use crate::schema::variant::SchemaVariantResult;
+use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, DalContext, SchemaVariantId, Timestamp, TransactionsError};
+use crate::{
+    pk, ComponentError, DalContext, PropId, SchemaVariantId, SecretError, Timestamp,
+    TransactionsError,
+};
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncError {
+    #[error("attribute value error: {0}")]
+    AttributeValue(String),
     #[error("base64 decode error: {0}")]
     Base64Decode(#[from] base64::DecodeError),
     #[error("change set error: {0}")]
@@ -57,6 +62,7 @@ pub mod binding;
 pub mod binding_return_value;
 pub mod execution;
 // pub mod identity;
+pub mod before;
 pub mod intrinsics;
 
 impl From<Func> for FuncContentV1 {

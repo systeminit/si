@@ -86,7 +86,7 @@ pk!(PropId);
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct WidgetOption {
     label: String,
-    value: String,
+    pub value: String,
 }
 
 pub type WidgetOptions = Vec<WidgetOption>;
@@ -665,6 +665,15 @@ impl Prop {
             .get_node_weight(current_node_index)?
             .id()
             .into())
+    }
+
+    pub async fn find_prop_by_path(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        path: &PropPath,
+    ) -> PropResult<Self> {
+        let prop_id = Self::find_prop_id_by_path(ctx, schema_variant_id, path).await?;
+        Self::get_by_id(ctx, prop_id).await
     }
 
     pub async fn set_prototype_id(
