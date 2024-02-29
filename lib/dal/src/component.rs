@@ -954,6 +954,8 @@ impl Component {
     }
 
     pub async fn delete_and_propagate(&mut self, ctx: &DalContext) -> ComponentResult<()> {
+        let deletion_time = Utc::now();
+
         // Block deletion of frames with children
         if self.get_type(ctx).await? != ComponentType::Component {
             let connected_children = Edge::list_children_for_component(ctx, self.id).await?;
@@ -963,7 +965,7 @@ impl Component {
             }
         }
 
-        self.set_deleted_at(ctx, Some(Utc::now())).await?;
+        self.set_deleted_at(ctx, Some(deletion_time)).await?;
 
         if self.get_protected(ctx).await? {
             return Err(ComponentError::ComponentProtected(self.id));
@@ -980,7 +982,7 @@ impl Component {
             .await?
             .pg()
             .query(
-                "SELECT * FROM component_delete_and_propagate_v1($1, $2, $3, $4, $5)",
+                "SELECT * FROM component_delete_and_propagate_v3($1, $2, $3, $4, $5)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -999,6 +1001,18 @@ impl Component {
         let ids = attr_values.iter().map(|av| *av.id()).collect();
 
         ctx.enqueue_dependent_values_update(ids).await?;
+
+        diagram::summary_diagram::component_update(
+            ctx,
+            self.id(),
+            self.name(ctx).await?,
+            self.color(ctx).await?.unwrap_or_default(),
+            self.get_type(ctx).await?,
+            self.resource(ctx).await?.payload.is_some(),
+            Some(deletion_time.to_string()),
+        )
+        .await
+        .map_err(|e| ComponentError::SummaryDiagram(e.to_string()))?;
 
         Ok(())
     }
