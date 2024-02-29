@@ -910,6 +910,7 @@ impl Transactions {
             .insert(component_id);
     }
 
+    #[instrument(level = "info", skip_all)]
     async fn run_dependencies_update_component(&self) -> Result<(), TransactionsError> {
         for ((tenancy, change_set_pk), component_ids) in
             std::mem::take(&mut *self.dependencies_update_component.lock().await)

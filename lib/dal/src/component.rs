@@ -299,7 +299,7 @@ impl Component {
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM component_create_v3($1, $2, $3, $4, $5)",
+                "SELECT object FROM component_create_v4($1, $2, $3, $4, $5)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -311,6 +311,9 @@ impl Component {
             .await?;
 
         let component: Component = standard_model::finish_create_from_row(ctx, row).await?;
+
+        ctx.enqueue_dependencies_update_component(*component.id())
+            .await?;
 
         // Need to flesh out node so that the template data is also included in the node we
         // persist. But it isn't, - our node is anemic.
