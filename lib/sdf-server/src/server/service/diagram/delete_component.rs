@@ -136,24 +136,15 @@ pub async fn delete_components(
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut force_changeset_pk = None;
-    if ctx.visibility().is_head() {
-        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
-
-        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
-
-        ctx.update_visibility(new_visibility);
-
-        force_changeset_pk = Some(change_set.pk);
-
-        WsEvent::change_set_created(&ctx, change_set.pk)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
-    };
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     for component_id in request.component_ids {
         delete_single_component(&ctx, component_id, &original_uri, &posthog_client).await?;
+
+        WsEvent::component_updated(&ctx, component_id)
+            .await?
+            .publish_on_commit(&ctx)
+            .await?;
     }
 
     ctx.commit().await?;
