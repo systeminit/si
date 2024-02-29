@@ -6,8 +6,8 @@ use color_eyre::Result;
 use nats_multiplexer::Multiplexer;
 use sdf_server::server::{CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT};
 use sdf_server::{
-    Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
-    ServicesContext,
+    Cache, Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode,
+    Server, ServicesContext,
 };
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -121,6 +121,8 @@ async fn async_main() -> Result<()> {
     let (crdt_multiplexer, crdt_multiplexer_client) =
         Multiplexer::new(&nats_conn, CRDT_MULTIPLEXER_SUBJECT).await?;
 
+    let cache = Cache::default();
+
     let services_context = ServicesContext::new(
         pg_pool,
         nats_conn,
@@ -132,6 +134,7 @@ async fn async_main() -> Result<()> {
         symmetric_crypto_service,
         rebaser_config,
         content_store_pg_pool,
+        cache,
     );
 
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {

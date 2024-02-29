@@ -1,4 +1,6 @@
-use dal::{InitializationError, JobQueueProcessor, NatsProcessor};
+use dal::{
+    workspace_snapshot::cache::Cache, InitializationError, JobQueueProcessor, NatsProcessor,
+};
 use rebaser_core::RebaserMessagingConfig;
 use si_crypto::SymmetricCryptoServiceConfig;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService};
@@ -72,6 +74,8 @@ pub struct Server {
     messaging_config: RebaserMessagingConfig,
     /// The pg pool for the content store
     content_store_pg_pool: PgPool,
+    /// A cache of workspace snapshots, node weights, etc
+    cache: Cache,
 }
 
 impl Server {
@@ -91,6 +95,8 @@ impl Server {
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let messaging_config = config.messaging_config();
 
+        let cache = Cache::default();
+
         Self::from_services(
             encryption_key,
             nats,
@@ -100,6 +106,7 @@ impl Server {
             symmetric_crypto_service,
             messaging_config.to_owned(),
             content_store_pg_pool,
+            cache,
         )
     }
 
@@ -115,6 +122,7 @@ impl Server {
         symmetric_crypto_service: SymmetricCryptoService,
         messaging_config: RebaserMessagingConfig,
         content_store_pg_pool: PgPool,
+        cache: Cache,
     ) -> ServerResult<Self> {
         // An mpsc channel which can be used to externally shut down the server.
         let (external_shutdown_tx, external_shutdown_rx) = mpsc::channel(4);
@@ -140,6 +148,7 @@ impl Server {
             graceful_shutdown_rx,
             messaging_config,
             content_store_pg_pool,
+            cache,
         })
     }
 
@@ -156,6 +165,7 @@ impl Server {
             self.shutdown_watch_rx,
             self.messaging_config,
             self.content_store_pg_pool,
+            self.cache,
         )
         .await?;
 

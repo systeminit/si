@@ -25,6 +25,7 @@ iftree = { workspace = true }
 itertools = { workspace = true }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }
+moka = { workspace = true }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 object-tree = { path = "../../lib/object-tree" }
 once_cell = { workspace = true }

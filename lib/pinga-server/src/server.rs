@@ -6,6 +6,7 @@ use dal::{
         definition::DependentValuesUpdate,
         producer::BlockingJobError,
     },
+    workspace_snapshot::cache::Cache,
     DalContext, DalContextBuilder, InitializationError, JobFailure, JobFailureError,
     JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
 };
@@ -114,6 +115,8 @@ impl Server {
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let rebaser_config = RebaserClientConfig::default();
 
+        let cache = Cache::default();
+
         let services_context = ServicesContext::new(
             pg_pool,
             nats.clone(),
@@ -125,6 +128,7 @@ impl Server {
             symmetric_crypto_service,
             rebaser_config,
             content_store_pg_pool,
+            cache,
         );
 
         Self::from_services(

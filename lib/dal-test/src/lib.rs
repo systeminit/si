@@ -13,6 +13,7 @@ use content_store::PgStoreTools;
 use dal::{
     builtins::SelectedTestBuiltinSchemas,
     job::processor::{JobQueueProcessor, NatsProcessor},
+    workspace_snapshot::cache::Cache,
     DalContext, JwtPublicSigningKey, ServicesContext,
 };
 use derive_builder::Builder;
@@ -218,6 +219,9 @@ pub struct TestContext {
 
     /// The configuration for the rebaser client used in tests
     rebaser_config: RebaserClientConfig,
+
+    /// A cache of workspace snapshots, node weights, etc
+    cache: Cache,
 }
 
 impl TestContext {
@@ -298,6 +302,7 @@ impl TestContext {
             self.symmetric_crypto_service.clone(),
             self.rebaser_config.clone(),
             self.content_store_pg_pool.clone(),
+            self.cache.clone(),
         )
     }
 
@@ -387,6 +392,8 @@ impl TestContextBuilder {
         let mut rebaser_config = RebaserClientConfig::default();
         rebaser_config.set_subject_prefix(universal_prefix);
 
+        let cache = Cache::default();
+
         Ok(TestContext {
             config,
             pg_pool,
@@ -396,6 +403,7 @@ impl TestContextBuilder {
             symmetric_crypto_service,
             rebaser_config,
             content_store_pg_pool,
+            cache,
         })
     }
 
@@ -545,6 +553,7 @@ pub fn rebaser_server(services_context: &ServicesContext) -> Result<rebaser_serv
         services_context.symmetric_crypto_service().clone(),
         services_context.rebaser_config().clone(),
         services_context.content_store_pg_pool().clone(),
+        services_context.cache(),
     )
     .wrap_err("failed to create Rebaser server")?;
 
@@ -686,6 +695,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         services_ctx.symmetric_crypto_service(),
         services_ctx.rebaser_config().clone(),
         services_ctx.content_store_pg_pool(),
+        services_ctx.cache(),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;

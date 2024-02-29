@@ -20,7 +20,7 @@ use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
-use crate::workspace_snapshot::WorkspaceSnapshotId;
+use crate::workspace_snapshot::{self, WorkspaceSnapshotId};
 use crate::{
     change_set_pointer::{ChangeSetPointer, ChangeSetPointerId},
     job::{
@@ -59,6 +59,8 @@ pub struct ServicesContext {
     rebaser_config: RebaserClientConfig,
     /// Content store
     content_store_pg_pool: PgPool,
+    /// The shared cache of snapshots, change set pointers, node weights, etc.
+    cache: workspace_snapshot::cache::Cache,
 }
 
 impl ServicesContext {
@@ -75,6 +77,7 @@ impl ServicesContext {
         symmetric_crypto_service: SymmetricCryptoService,
         rebaser_config: RebaserClientConfig,
         content_store_pg_pool: PgPool,
+        cache: workspace_snapshot::cache::Cache,
     ) -> Self {
         Self {
             pg_pool,
@@ -87,6 +90,7 @@ impl ServicesContext {
             symmetric_crypto_service,
             rebaser_config,
             content_store_pg_pool,
+            cache,
         }
     }
 
@@ -146,6 +150,11 @@ impl ServicesContext {
     /// Builds and returns a new [`content_store::PgStore`]
     pub async fn content_store(&self) -> content_store::StoreResult<PgStore> {
         PgStore::new(self.content_store_pg_pool().clone()).await
+    }
+
+    /// Returns a clone of the shared cache of snapshots, change set pointers, node weights, etc.
+    pub fn cache(&self) -> workspace_snapshot::cache::Cache {
+        self.cache.clone()
     }
 
     /// Builds and returns a new [`Connections`].
@@ -288,6 +297,8 @@ pub struct DalContext {
     workspace_snapshot: Option<Arc<RwLock<WorkspaceSnapshot>>>,
     /// The change set pointer for this context
     change_set_pointer: Option<ChangeSetPointer>,
+    /// The shared cache of snapshots, change set pointers, node weights, etc.
+    cache: workspace_snapshot::cache::Cache,
 }
 
 impl DalContext {
@@ -317,6 +328,10 @@ impl DalContext {
             .unwrap_or(ChangeSetPointerId::NONE);
 
         Ok(cs_id)
+    }
+
+    pub fn cache(&self) -> &workspace_snapshot::cache::Cache {
+        &self.cache
     }
 
     pub async fn update_snapshot_to_visibility(&mut self) -> Result<(), TransactionsError> {
@@ -884,6 +899,7 @@ impl DalContextBuilder {
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set_pointer: None,
+            cache: self.services_context.cache(),
         })
     }
 
@@ -906,6 +922,7 @@ impl DalContextBuilder {
             content_store: Arc::new(Mutex::new(content_store)),
             workspace_snapshot: None,
             change_set_pointer: None,
+            cache: self.services_context.cache(),
         })
     }
 
@@ -927,6 +944,7 @@ impl DalContextBuilder {
             content_store: Arc::new(Mutex::new(content_store)),
             workspace_snapshot: None,
             change_set_pointer: None,
+            cache: self.services_context.cache(),
         };
 
         ctx.update_snapshot_to_visibility().await?;

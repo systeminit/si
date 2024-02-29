@@ -15,7 +15,7 @@
 pub mod server;
 pub use server::{
     build_service, build_service_for_tests, detect_and_configure_development,
-    job_processor::JobProcessorClientCloser, job_processor::JobProcessorConnector, service, Config,
-    ConfigError, ConfigFile, IncomingStream, JobQueueProcessor, MigrationMode, NatsProcessor,
-    Server, ServicesContext, StandardConfig, StandardConfigFile,
+    job_processor::JobProcessorClientCloser, job_processor::JobProcessorConnector, service, Cache,
+    Config, ConfigError, ConfigFile, IncomingStream, JobQueueProcessor, MigrationMode,
+    NatsProcessor, Server, ServicesContext, StandardConfig, StandardConfigFile,
 };

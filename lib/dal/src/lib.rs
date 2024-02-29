@@ -16,6 +16,7 @@ use thiserror::Error;
 use tokio::time;
 use tokio::time::Instant;
 use veritech_client::CycloneEncryptionKey;
+use workspace_snapshot::cache::Cache;
 
 use crate::builtins::SelectedTestBuiltinSchemas;
 
@@ -223,6 +224,7 @@ pub async fn migrate_local_builtins(
     symmetric_crypto_service: &SymmetricCryptoService,
     rebaser_config: RebaserClientConfig,
     content_store_pg_pool: &PgPool,
+    cache: Cache,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         dal_pg.clone(),
@@ -235,6 +237,7 @@ pub async fn migrate_local_builtins(
         symmetric_crypto_service.clone(),
         rebaser_config,
         content_store_pg_pool.clone(),
+        cache.clone(),
     );
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;

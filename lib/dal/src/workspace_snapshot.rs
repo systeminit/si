@@ -21,6 +21,7 @@
 //     clippy::missing_panics_doc
 // )]
 
+pub mod cache;
 pub mod conflict;
 pub mod content_address;
 pub mod edge_weight;

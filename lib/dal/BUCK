@@ -38,6 +38,7 @@ rust_library(
         "//third-party/rust:itertools",
         "//third-party/rust:jwt-simple",
         "//third-party/rust:lazy_static",
+        "//third-party/rust:moka",
         "//third-party/rust:once_cell",
         "//third-party/rust:paste",
         "//third-party/rust:petgraph",
