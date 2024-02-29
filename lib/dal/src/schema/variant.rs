@@ -29,7 +29,6 @@ use crate::workspace_snapshot::edge_weight::{
 };
 use crate::workspace_snapshot::graph::NodeIndex;
 
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
@@ -908,5 +907,23 @@ impl SchemaVariant {
         };
 
         Ok(Schema::get_by_id(ctx, schema_id).await?)
+    }
+
+    pub async fn list_auth_func_ids_for_schema_variant(
+        ctx: &DalContext,
+        variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Vec<FuncId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+        let mut auth_funcs = vec![];
+
+        for node_id in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            variant_id,
+            EdgeWeightKindDiscriminants::AuthenticationPrototype,
+        )? {
+            auth_funcs.push(workspace_snapshot.get_node_weight(node_id)?.id().into())
+        }
+
+        Ok(auth_funcs)
     }
 }
