@@ -12,7 +12,7 @@ sinks:
     inputs: ["$SI_SERVICE-journal"]
     compression: "gzip"
     encoding:
-      codec: "json"
+      codec: "text"
     region: "us-east-1"
     group_name: "/ec2/$SI_HOSTENV-$SI_SERVICE"
     stream_name: "{{ host }}"
