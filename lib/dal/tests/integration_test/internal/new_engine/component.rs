@@ -60,10 +60,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
 
     // Update image
     let image_av_id = property_values
-        .values
-        .iter()
-        .find(|(_, v)| v.prop_id() == image_prop_id)
-        .map(|(_, pvalue)| pvalue.attribute_value_id())
+        .find_by_prop_id(image_prop_id)
         .expect("can't find default attribute value for ExposedPorts");
 
     let image_value = serde_json::json!("fiona/apple");
@@ -72,10 +69,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
         .expect("able to update image prop with 'fiona/apple'");
 
     let exposed_port_attribute_value_id = property_values
-        .values
-        .iter()
-        .find(|(_, v)| v.prop_id() == exposed_ports_prop_id)
-        .map(|(_, pvalue)| pvalue.attribute_value_id())
+        .find_by_prop_id(exposed_ports_prop_id)
         .expect("can't find default attribute value for ExposedPorts");
 
     // Insert it unset first (to mimick frontend)
@@ -90,26 +84,14 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
         .expect("able to list prop values");
 
     let (fetched_image_value, image_av_id_again) = property_values
-        .values
-        .iter()
-        .find(|(_, v)| v.prop_id() == image_prop_id)
-        .map(|(_, v)| (v.value(), v.attribute_value_id()))
+        .find_with_value_by_prop_id(image_prop_id)
         .expect("able to get image av id from pvalues");
 
     assert_eq!(image_av_id, image_av_id_again);
     assert_eq!(image_value, fetched_image_value);
 
-    let mut inserted_attribute_values: Vec<AttributeValueId> = property_values
-        .values
-        .iter()
-        .filter_map(|(_, v)| {
-            if v.prop_id() == exposed_ports_elem_prop_id {
-                Some(v.attribute_value_id())
-            } else {
-                None
-            }
-        })
-        .collect();
+    let mut inserted_attribute_values: Vec<AttributeValueId> =
+        property_values.list_by_prop_id(exposed_ports_elem_prop_id);
 
     assert_eq!(1, inserted_attribute_values.len());
     let pvalues_inserted_attribute_value_id =
@@ -135,26 +117,14 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
         .expect("able to list prop values");
 
     let (fetched_image_value, image_av_id_again) = property_values
-        .values
-        .iter()
-        .find(|(_, v)| v.prop_id() == image_prop_id)
-        .map(|(_, v)| (v.value(), v.attribute_value_id()))
+        .find_with_value_by_prop_id(image_prop_id)
         .expect("able to get image av id from pvalues");
 
     assert_eq!(image_av_id, image_av_id_again);
     assert_eq!(image_value, fetched_image_value);
 
-    let mut inserted_attribute_values: Vec<(serde_json::Value, AttributeValueId)> = property_values
-        .values
-        .iter()
-        .filter_map(|(_, v)| {
-            if v.prop_id() == exposed_ports_elem_prop_id {
-                Some((v.value(), v.attribute_value_id()))
-            } else {
-                None
-            }
-        })
-        .collect();
+    let mut inserted_attribute_values =
+        property_values.list_with_values_by_prop_id(exposed_ports_elem_prop_id);
     assert_eq!(1, inserted_attribute_values.len());
     let (inserted_value, pvalues_inserted_attribute_value_id) =
         inserted_attribute_values.pop().expect("get our av id");
@@ -173,17 +143,8 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
         .await
         .expect("able to list prop values");
 
-    let mut inserted_attribute_values: Vec<(serde_json::Value, AttributeValueId)> = property_values
-        .values
-        .iter()
-        .filter_map(|(_, v)| {
-            if v.prop_id() == exposed_ports_elem_prop_id {
-                Some((v.value(), v.attribute_value_id()))
-            } else {
-                None
-            }
-        })
-        .collect();
+    let mut inserted_attribute_values =
+        property_values.list_with_values_by_prop_id(exposed_ports_elem_prop_id);
     assert_eq!(1, inserted_attribute_values.len());
     let (inserted_value, pvalues_inserted_attribute_value_id) =
         inserted_attribute_values.pop().expect("get our av id");
@@ -202,17 +163,8 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
         .await
         .expect("able to list prop values");
 
-    let mut inserted_attribute_values: Vec<(serde_json::Value, AttributeValueId)> = property_values
-        .values
-        .iter()
-        .filter_map(|(_, v)| {
-            if v.prop_id() == exposed_ports_elem_prop_id {
-                Some((v.value(), v.attribute_value_id()))
-            } else {
-                None
-            }
-        })
-        .collect();
+    let mut inserted_attribute_values =
+        property_values.list_with_values_by_prop_id(exposed_ports_elem_prop_id);
     assert_eq!(1, inserted_attribute_values.len());
     let (inserted_value, pvalues_inserted_attribute_value_id) =
         inserted_attribute_values.pop().expect("get our av id");
