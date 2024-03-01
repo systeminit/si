@@ -136,6 +136,70 @@ impl PropertyEditorValues {
             values,
         })
     }
+
+    /// Finds the [`AttributeValueId`](AttributeValue) for a given [`PropId`](Prop).
+    ///
+    /// This is useful for non-maps and non-array [`Props`](Prop).
+    pub fn find_by_prop_id(&self, prop_id: PropId) -> Option<AttributeValueId> {
+        self.values
+            .iter()
+            .find(|(_, property_editor_value)| property_editor_value.prop_id() == prop_id)
+            .map(|(_, found_property_editor_value)| {
+                found_property_editor_value.attribute_value_id()
+            })
+    }
+
+    /// Finds the [`AttributeValueId`](AttributeValue) and the [`Value`] corresponding to it for a
+    /// given [`PropId`](Prop).
+    ///
+    /// This is useful for non-maps and non-array [`Props`](Prop).
+    pub fn find_with_value_by_prop_id(&self, prop_id: PropId) -> Option<(Value, AttributeValueId)> {
+        self.values
+            .iter()
+            .find(|(_, property_editor_value)| property_editor_value.prop_id() == prop_id)
+            .map(|(_, found_property_editor_value)| {
+                (
+                    found_property_editor_value.value.to_owned(),
+                    found_property_editor_value.attribute_value_id(),
+                )
+            })
+    }
+
+    /// Lists the [`AttributeValueIds`](AttributeValue) for a given [`PropId`](Prop).
+    ///
+    /// This is useful for map and array [`Props`](Prop).
+    pub fn list_by_prop_id(&self, prop_id: PropId) -> Vec<AttributeValueId> {
+        self.values
+            .iter()
+            .filter_map(|(_, property_editor_value)| {
+                if property_editor_value.prop_id() == prop_id {
+                    Some(property_editor_value.attribute_value_id())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Lists the [`AttributeValueIds`](AttributeValue) and the [`Values`] corresponding to them for
+    /// a given [`PropId`](Prop).
+    ///
+    /// This is useful for map and array [`Props`](Prop).
+    pub fn list_with_values_by_prop_id(&self, prop_id: PropId) -> Vec<(Value, AttributeValueId)> {
+        self.values
+            .iter()
+            .filter_map(|(_, property_editor_value)| {
+                if property_editor_value.prop_id() == prop_id {
+                    Some((
+                        property_editor_value.value(),
+                        property_editor_value.attribute_value_id(),
+                    ))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

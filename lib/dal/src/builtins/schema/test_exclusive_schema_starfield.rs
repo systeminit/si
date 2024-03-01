@@ -409,7 +409,6 @@ pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> Builti
         .build()?;
 
     let starfield_pkg = SiPkg::load_from_spec(starfield_spec)?;
-    // TODO(nick): decide what to do with override schema builtin featuee flag.
     import_pkg_from_pkg(
         ctx,
         &starfield_pkg,
@@ -417,7 +416,6 @@ pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> Builti
             schemas: Some(vec!["starfield".into()]),
             ..Default::default()
         }),
-        true,
     )
     .await?;
 

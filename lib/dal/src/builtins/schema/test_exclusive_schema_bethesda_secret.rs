@@ -115,7 +115,6 @@ pub async fn migrate_test_exclusive_schema_bethesda_secret(ctx: &DalContext) -> 
         .build()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
-    // TODO(nick): decide what to do with override schema builtin featuee flag.
     import_pkg_from_pkg(
         ctx,
         &pkg,
@@ -123,7 +122,6 @@ pub async fn migrate_test_exclusive_schema_bethesda_secret(ctx: &DalContext) -> 
             schemas: Some(vec![name.into()]),
             ..Default::default()
         }),
-        true,
     )
     .await?;
 

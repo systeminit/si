@@ -95,10 +95,7 @@ async fn secret_definition_works_with_dummy_qualification(
             .await
             .expect("unable to list prop values");
         let reference_to_secret_attribute_value_id = property_values
-            .values
-            .iter()
-            .find(|(_, v)| v.prop_id() == reference_to_secret_prop.id)
-            .map(|(_, pvalue)| pvalue.attribute_value_id())
+            .find_by_prop_id(reference_to_secret_prop.id)
             .expect("unable to find attribute value");
 
         let fail_value =
@@ -180,11 +177,8 @@ async fn secret_definition_works_with_dummy_qualification(
             .await
             .expect("unable to list prop values");
         let reference_to_secret_attribute_value_id = property_values
-            .values
-            .iter()
-            .find(|(_, v)| v.prop_id() == reference_to_secret_prop.id)
-            .map(|(_, pvalue)| pvalue.attribute_value_id())
-            .expect("unable to find attribute value");
+            .find_by_prop_id(reference_to_secret_prop.id)
+            .expect("could not find attribute value");
 
         let success_value =
             serde_json::json!(secret_that_will_pass_the_qualification.id().to_string());

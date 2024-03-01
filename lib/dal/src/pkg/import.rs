@@ -1359,7 +1359,6 @@ pub async fn import_pkg_from_pkg(
     ctx: &DalContext,
     pkg: &SiPkg,
     options: Option<ImportOptions>,
-    _override_builtin_schema_feature_flag: bool,
 ) -> PkgResult<(
     Option<InstalledPkgId>,
     Vec<SchemaVariantId>,
@@ -1495,7 +1494,7 @@ pub async fn import_pkg(ctx: &DalContext, pkg_file_path: impl AsRef<Path>) -> Pk
     println!("Importing package from {:?}", pkg_file_path.as_ref());
     let pkg = SiPkg::load_from_file(&pkg_file_path).await?;
 
-    import_pkg_from_pkg(ctx, &pkg, None, true).await?;
+    import_pkg_from_pkg(ctx, &pkg, None).await?;
 
     Ok(pkg)
 }
