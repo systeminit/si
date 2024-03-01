@@ -1013,7 +1013,7 @@ const setSource = (source: SourceKind) => {
   if (source === "manually") {
     const value = props.attributeDef.value?.value ?? null;
 
-    console.log(value);
+    // console.log(value);
 
     attributesStore.UPDATE_PROPERTY_VALUE({
       update: {
