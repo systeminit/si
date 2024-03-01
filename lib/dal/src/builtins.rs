@@ -125,6 +125,7 @@ pub async fn migrate_local(
     schema::migrate_pkg(ctx, SI_AWS_PKG, None).await?;
     schema::migrate_test_exclusive_schema_starfield(ctx).await?;
     schema::migrate_test_exclusive_schema_fallout(ctx).await?;
+    schema::migrate_test_exclusive_schema_bethesda_secret(ctx).await?;
 
     // match selected_test_builtin_schemas {
     //     Some(found_selected_test_builtin_schemas) => {

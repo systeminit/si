@@ -1,11 +1,8 @@
-use dal::component::frame::{Frame, FrameError, FrameResult};
-use dal::diagram::{
-    Diagram, DiagramResult, DiagramSocket, EdgeId, NodeId, Size2D, SummaryDiagramComponent,
-    SummaryDiagramEdge,
-};
+use dal::component::frame::{Frame, FrameError};
+use dal::diagram::{Diagram, DiagramResult, EdgeId, SummaryDiagramComponent, SummaryDiagramEdge};
 use dal::{
-    AttributeValue, Component, ComponentId, DalContext, ExternalProvider, ExternalProviderId,
-    InternalProvider, InternalProviderId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    AttributeValue, Component, DalContext, ExternalProvider, InternalProvider, Schema,
+    SchemaVariant,
 };
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -58,7 +55,7 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
         .expect("could not get type attribute value id");
 
     AttributeValue::update(
-        &ctx,
+        ctx,
         type_attribute_value_id,
         Some(serde_json::json!["ConfigurationFrameDown"]),
     )
@@ -181,7 +178,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
         Component::new(ctx, first_ami_component_name, ami_schema_variant_id, None)
             .await
             .expect("could not create component");
-    Frame::attach_child_to_parent(&ctx, first_region_frame.id(), first_ami_component.id())
+    Frame::attach_child_to_parent(ctx, first_region_frame.id(), first_ami_component.id())
         .await
         .expect("could not attach child to parent");
 
@@ -294,7 +291,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
         Component::new(ctx, second_ami_component_name, ami_schema_variant_id, None)
             .await
             .expect("could not create component");
-    Frame::attach_child_to_parent(&ctx, second_region_frame.id(), second_ami_component.id())
+    Frame::attach_child_to_parent(ctx, second_region_frame.id(), second_ami_component.id())
         .await
         .expect("could not attach child to parent");
 
@@ -374,7 +371,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
     .await
     .expect("could not create component");
     Frame::attach_child_to_parent(
-        &ctx,
+        ctx,
         first_region_frame.id(),
         first_ec2_instance_component.id(),
     )

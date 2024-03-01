@@ -81,7 +81,7 @@ use super::prototype::argument::{
 pub mod dependent_value_graph;
 pub mod view;
 
-use crate::func::before::{before_funcs_for_component, BeforeFuncError};
+use crate::func::before::before_funcs_for_component;
 pub use dependent_value_graph::DependentValueGraph;
 
 #[remain::sorted]

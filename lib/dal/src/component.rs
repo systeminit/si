@@ -88,8 +88,6 @@ pub enum ComponentError {
     InternalProvider(#[from] InternalProviderError),
     #[error("internal provider {0} has more than one attribute value")]
     InternalProviderTooManyAttributeValues(InternalProviderId),
-    #[error("map prop {0} has no element prop")]
-    MapPropMissingElementProp(PropId),
     #[error("component {0} missing attribute value for qualifications")]
     MissingQualificationsValue(ComponentId),
     #[error("found multiple parents for component: {0}")]
@@ -396,12 +394,8 @@ impl Component {
                         }
                     }
                     PropKind::Map => {
-                        let element_prop_id = Prop::direct_child_prop_ids_by_id(ctx, prop_id)
-                            .await?
-                            .iter()
-                            .next()
-                            .copied()
-                            .ok_or(ComponentError::MapPropMissingElementProp(prop_id))?;
+                        let element_prop_id =
+                            Prop::direct_single_child_prop_id(ctx, prop_id).await?;
 
                         for (key, _) in Prop::prototypes_by_key(ctx, element_prop_id).await? {
                             if key.is_some() {

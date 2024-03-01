@@ -37,6 +37,8 @@ impl PropertyEditorValues {
         let root_prop_id = AttributeValue::prop(ctx, root_attribute_value_id).await?;
         let root_attribute_value = AttributeValue::get_by_id(ctx, root_attribute_value_id).await?;
 
+        let controlling_func_id = FuncId::NONE;
+
         values.insert(
             root_property_editor_value_id,
             PropertyEditorValue {
@@ -50,9 +52,9 @@ impl PropertyEditorValues {
                 // TODO(nick): restore all these fields below.
                 is_from_external_source: false,
                 can_be_set_by_socket: false,
-                is_controlled_by_intrinsic_func: false,
-                controlling_func_id: Default::default(),
-                controlling_attribute_value_id: Default::default(),
+                is_controlled_by_intrinsic_func: true,
+                controlling_func_id,
+                controlling_attribute_value_id: root_property_editor_value_id.into(),
                 overridden: false,
             },
         );
@@ -110,9 +112,9 @@ impl PropertyEditorValues {
                     // TODO(nick): restore all the fields below.
                     is_from_external_source: false,
                     can_be_set_by_socket: false,
-                    is_controlled_by_intrinsic_func: false,
-                    controlling_func_id: Default::default(),
-                    controlling_attribute_value_id: Default::default(),
+                    is_controlled_by_intrinsic_func: true,
+                    controlling_func_id,
+                    controlling_attribute_value_id: child_property_editor_value_id.into(),
                     overridden: false,
                 };
 

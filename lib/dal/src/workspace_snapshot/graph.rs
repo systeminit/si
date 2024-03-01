@@ -300,7 +300,7 @@ impl WorkspaceSnapshotGraph {
         // by the `to_node_index` to the ordering. Also point the ordering node at the thing with
         // an `Ordinal` edge, so that Ordering nodes must be touched *after* the things they order
         // in a depth first search
-        let (maybe_ordinal_edge_information) = if let Some(container_ordering_node_index) =
+        let maybe_ordinal_edge_information = if let Some(container_ordering_node_index) =
             self.ordering_node_index_for_container(from_node_index)?
         {
             let ordinal_edge_index = self.add_edge(

@@ -10,17 +10,14 @@ use ulid::Ulid;
 
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::intrinsics::IntrinsicFunc;
-use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
+use crate::schema::variant::SchemaVariantResult;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{
-    pk, ComponentError, DalContext, PropId, SchemaVariantId, SecretError, Timestamp,
-    TransactionsError,
-};
+use crate::{pk, DalContext, SchemaVariantId, Timestamp, TransactionsError};
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 

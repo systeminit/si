@@ -4,6 +4,7 @@
 //! For all tests in this module, provide "SI_TEST_BUILTIN_SCHEMAS=none" or "SI_TEST_BUILTIN_SCHEMAS=test" as an
 //! environment variable.
 
+mod before_funcs;
 mod builtins;
 mod component;
 mod connection;

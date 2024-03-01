@@ -6,9 +6,11 @@ use crate::installed_pkg::InstalledPkg;
 use crate::pkg::{import_pkg_from_pkg, ImportOptions};
 use crate::{BuiltinsError, BuiltinsResult, DalContext};
 
+mod test_exclusive_schema_bethesda_secret;
 mod test_exclusive_schema_fallout;
 mod test_exclusive_schema_starfield;
 
+pub use test_exclusive_schema_bethesda_secret::migrate_test_exclusive_schema_bethesda_secret;
 pub use test_exclusive_schema_fallout::migrate_test_exclusive_schema_fallout;
 pub use test_exclusive_schema_starfield::migrate_test_exclusive_schema_starfield;
 
@@ -32,6 +34,7 @@ pub use test_exclusive_schema_starfield::migrate_test_exclusive_schema_starfield
 #[remain::sorted]
 #[derive(Debug, Copy, Clone, AsRefStr, Display, EnumIter, EnumString, Eq, PartialEq)]
 pub enum BuiltinSchema {
+    BethesdaSecret,
     Fallout,
     Starfield,
 }
@@ -39,6 +42,7 @@ pub enum BuiltinSchema {
 impl BuiltinSchema {
     pub fn real_schema_name(&self) -> &'static str {
         match self {
+            BuiltinSchema::BethesdaSecret => "bethesda-secret",
             BuiltinSchema::Fallout => "fallout",
             BuiltinSchema::Starfield => "starfield",
         }

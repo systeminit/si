@@ -46,8 +46,6 @@ use crate::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SecretError {
-    #[error("Bad /root/secrets object for secret defining schema variant: {0}")]
-    BadSecretsArrayForDefinition(SchemaVariantId),
     #[error("change set pointer error: {0}")]
     ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error("error when decrypting crypted secret")]
@@ -835,8 +833,7 @@ impl SecretDefinitionView {
         secret_definition_prop_id: PropId,
     ) -> SecretResult<Self> {
         // Now, find all the fields of the definition.
-        let field_prop_ids =
-            Prop::direct_child_prop_ids_by_id(ctx, secret_definition_prop_id).await?;
+        let field_prop_ids = Prop::direct_child_prop_ids(ctx, secret_definition_prop_id).await?;
 
         // Assemble the form data views.
         let mut form_data_views = Vec::new();
@@ -857,16 +854,7 @@ impl SecretDefinitionView {
             SchemaVariant::find_root_child_prop_id(ctx, schema_variant_id, RootPropChild::Secrets)
                 .await?;
 
-        let mut secrets = Prop::direct_child_prop_ids_by_id(ctx, secrets_prop_id).await?;
-
-        let entry_prop_id = secrets
-            .pop()
-            .ok_or(SecretError::BadSecretsArrayForDefinition(schema_variant_id))?;
-
-        if !secrets.is_empty() {
-            return Err(SecretError::BadSecretsArrayForDefinition(schema_variant_id));
-        }
-
+        let entry_prop_id = Prop::direct_single_child_prop_id(ctx, secrets_prop_id).await?;
         let entry_prop = Prop::get_by_id(ctx, entry_prop_id).await?;
 
         Ok(Self {
