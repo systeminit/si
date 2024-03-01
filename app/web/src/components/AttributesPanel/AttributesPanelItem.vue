@@ -26,11 +26,22 @@
         }"
       >
         <div
-          class="attributes-panel-item__section-toggle"
+          :class="
+            clsx(
+              'attributes-panel-item__section-toggle',
+              headerHasContent && 'cursor-pointer',
+            )
+          "
           @click="toggleOpen()"
         >
           <Icon
-            :name="isOpen ? 'chevron--down' : 'chevron--right'"
+            :name="
+              headerHasContent
+                ? isOpen
+                  ? 'chevron--down'
+                  : 'chevron--right'
+                : 'none'
+            "
             size="inherit"
           />
         </div>
@@ -98,6 +109,7 @@
           <template
             v-if="
               propSource !== 'manually' &&
+              attributeDef.value?.ancestorManual &&
               featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET
             "
           >
@@ -130,13 +142,16 @@
 
       <!-- LEFT BORDER LINE -->
       <div
-        v-show="isOpen"
+        v-show="isOpen && headerHasContent"
         class="attributes-panel-item__left-border"
         :style="{ marginLeft: indentPx, zIndex: headerZIndex }"
       />
 
       <!-- CHILDREN -->
-      <div v-show="isOpen" class="attributes-panel-item__children">
+      <div
+        v-show="isOpen && headerHasContent"
+        class="attributes-panel-item__children"
+      >
         <template v-if="attributeDef.children.length">
           <!-- <div class="w-[50%] h-[1px] bg-shade-0 ml-auto"></div> -->
           <AttributesPanelItem
@@ -628,6 +643,13 @@ const headerMainLabelTooltip = computed(() => {
 const isOpen = ref(true); // ref(props.attributeDef.children.length > 0);
 const showValidationDetails = ref(false);
 
+const headerHasContent = computed(() => {
+  return (
+    props.attributeDef.children.length ||
+    ((isArray.value || isMap.value) && propManual.value)
+  );
+});
+
 const rootCtx = useAttributesPanelContext();
 
 // not reactive - and we know it's populated - since the parent will rerender if it changes
@@ -989,7 +1011,19 @@ const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const setSource = (source: SourceKind) => {
   if (source === "manually") {
-    // TODO(Wendy) - Here's where we can put logic for disconnecting this prop from its socket or function so it can be set manually
+    const value = props.attributeDef.value?.value ?? null;
+
+    console.log(value);
+
+    attributesStore.UPDATE_PROPERTY_VALUE({
+      update: {
+        attributeValueId: props.attributeDef.valueId,
+        parentAttributeValueId: props.attributeDef.parentValueId,
+        propId: props.attributeDef.propId,
+        componentId,
+        value,
+      },
+    });
   } else if (source === "via socket") {
     // TODO(Wendy) - Here's where we can put logic for selecting a socket to connect to this prop
   } else {
@@ -1061,7 +1095,6 @@ const setSource = (source: SourceKind) => {
 
 .attributes-panel-item__section-toggle {
   background-color: var(--toggle-controls-bg-color);
-  cursor: pointer;
   position: absolute;
   width: @header-height;
   height: @header-height;
