@@ -6,6 +6,7 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 
 use crate::{
+    diagram::summary_diagram::{SummaryDiagramComponent, SummaryDiagramError},
     impl_standard_model, pk, standard_model, standard_model_accessor_ro, ActionKind,
     ActionPrototype, ActionPrototypeError, ActionPrototypeId, ChangeSetPk, Component,
     ComponentError, ComponentId, DalContext, HistoryActor, HistoryEventError, Node, NodeError,
@@ -38,6 +39,8 @@ pub enum ActionError {
     PrototypeNotFound(ActionPrototypeId),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("summary diagram error: {0}")]
+    SummaryDiagram(#[from] SummaryDiagramError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
@@ -209,7 +212,13 @@ impl Action {
                     .flatten()
                     .map(|a| *a.id())
             };
-            let resource = component.resource(ctx).await?.payload;
+            let has_resource = if let Some(summary) =
+                SummaryDiagramComponent::get_for_component_id(ctx, *component.id()).await?
+            {
+                summary.has_resource()
+            } else {
+                component.resource(ctx).await?.payload.is_some()
+            };
 
             // Figure out internal dependencies for actions of this component
             //
@@ -227,7 +236,7 @@ impl Action {
                     // Initial deletions happen if there is a resource and a create action, so it deletes before creating
                     match kind {
                         ActionKind::Create => {
-                            if resource.is_some() {
+                            if has_resource {
                                 let ids = action_ids_by_kind(ActionKind::Delete);
                                 actions_graph
                                     .entry(*action.id())
@@ -238,8 +247,7 @@ impl Action {
                         }
                         ActionKind::Delete => {
                             // If there is a resource and a create, this is a initial deletion, so no parent
-                            if resource.is_none()
-                                || action_ids_by_kind(ActionKind::Create).count() == 0
+                            if !has_resource || action_ids_by_kind(ActionKind::Create).count() == 0
                             {
                                 // Every other action kind is a parent
                                 let ids = actions_by_kind
@@ -256,9 +264,7 @@ impl Action {
                         }
                         ActionKind::Refresh | ActionKind::Other => {
                             // If there is a resource and a create, delete actions will be initial, so our parent
-                            if resource.is_some()
-                                && action_ids_by_kind(ActionKind::Create).count() > 0
-                            {
+                            if has_resource && action_ids_by_kind(ActionKind::Create).count() > 0 {
                                 let ids = action_ids_by_kind(ActionKind::Delete);
                                 actions_graph
                                     .entry(*action.id())
