@@ -50,57 +50,21 @@ pub async fn before_funcs_for_component(
         let secrets_prop =
             SchemaVariant::find_root_child_prop_id(ctx, schema_variant, RootPropChild::Secrets)
                 .await?;
-        Prop::direct_child_prop_ids_by_id(ctx, secrets_prop).await?
+        Prop::direct_child_prop_ids(ctx, secrets_prop).await?
     };
+
+    let secret_definition_path = PropPath::new(["root", "secret_definition"]);
+    let secret_path = PropPath::new(["root", "secrets"]);
 
     let mut funcs_and_secrets = vec![];
     for secret_prop_id in secret_props {
-        let secret_prop = Prop::get_by_id(ctx, secret_prop_id).await?;
-
-        let auth_funcs = {
-            let secret_definition_name = secret_prop
-                .widget_options
-                .ok_or(BeforeFuncError::NoWidgetOptionsOnSecretProp(secret_prop_id))?
-                .pop()
-                .ok_or(BeforeFuncError::NoWidgetOptionsOnSecretProp(secret_prop_id))?
-                .value;
-
-            let secret_definition_path = PropPath::new(["root", "secret_definition"]);
-            let secret_path = PropPath::new(["root", "secrets"]);
-
-            let mut auth_funcs = vec![];
-            for schema_variant_id in SchemaVariant::list_ids(ctx).await? {
-                if Prop::find_prop_id_by_path_opt(ctx, schema_variant_id, &secret_definition_path)
-                    .await?
-                    .is_none()
-                {
-                    continue;
-                }
-
-                let prop_name = Prop::find_prop_by_path(ctx, schema_variant_id, &secret_path)
-                    .await?
-                    .name;
-
-                if prop_name != secret_definition_name {
-                    continue;
-                }
-
-                for auth_func_id in
-                    SchemaVariant::list_auth_func_ids_for_schema_variant(ctx, schema_variant_id)
-                        .await?
-                {
-                    auth_funcs.push(
-                        Func::get_by_id(ctx, auth_func_id)
-                            .await
-                            .map_err(|e| BeforeFuncError::Func(e.to_string()))?,
-                    )
-                }
-
-                break;
-            }
-
-            auth_funcs
-        };
+        let auth_funcs = auth_funcs_for_secret_prop_id(
+            ctx,
+            secret_prop_id,
+            &secret_definition_path,
+            &secret_path,
+        )
+        .await?;
 
         let av_ids = Prop::attribute_values_for_prop_id(ctx, secret_prop_id).await?;
         let mut maybe_secret_id = None;
@@ -148,4 +112,54 @@ pub async fn before_funcs_for_component(
     }
 
     Ok(results)
+}
+
+/// This _private_ method gathers the authentication functions for a given [`PropId`](Prop) underneath "/root/secrets".
+async fn auth_funcs_for_secret_prop_id(
+    ctx: &DalContext,
+    secret_prop_id: PropId,
+    secret_definition_path: &PropPath,
+    secret_path: &PropPath,
+) -> BeforeFuncResult<Vec<Func>> {
+    let secret_prop = Prop::get_by_id(ctx, secret_prop_id).await?;
+
+    let secret_definition_name = secret_prop
+        .widget_options
+        .ok_or(BeforeFuncError::NoWidgetOptionsOnSecretProp(secret_prop_id))?
+        .pop()
+        .ok_or(BeforeFuncError::NoWidgetOptionsOnSecretProp(secret_prop_id))?
+        .value;
+
+    let mut auth_funcs = vec![];
+    for secret_defining_sv_id in SchemaVariant::list_ids(ctx).await? {
+        if Prop::find_prop_id_by_path_opt(ctx, secret_defining_sv_id, secret_definition_path)
+            .await?
+            .is_none()
+        {
+            continue;
+        }
+
+        let secrets_prop = Prop::find_prop_by_path(ctx, secret_defining_sv_id, secret_path).await?;
+
+        let secret_child_prop_id = Prop::direct_single_child_prop_id(ctx, secrets_prop.id).await?;
+        let secret_child_prop = Prop::get_by_id(ctx, secret_child_prop_id).await?;
+
+        if secret_child_prop.name != secret_definition_name {
+            continue;
+        }
+
+        for auth_func_id in
+            SchemaVariant::list_auth_func_ids_for_schema_variant(ctx, secret_defining_sv_id).await?
+        {
+            auth_funcs.push(
+                Func::get_by_id(ctx, auth_func_id)
+                    .await
+                    .map_err(|e| BeforeFuncError::Func(e.to_string()))?,
+            )
+        }
+
+        break;
+    }
+
+    Ok(auth_funcs)
 }

@@ -66,6 +66,10 @@ pub enum PropError {
     Serde(#[from] serde_json::Error),
     #[error("can only set default values for scalars (string, integer, boolean), prop {0} is {1}")]
     SetDefaultForNonScalar(PropId, PropKind),
+    #[error("for parent prop {0}, there is a child prop {1} that has unexpected siblings: {2:?}")]
+    SingleChildPropHasUnexpectedSiblings(PropId, PropId, Vec<PropId>),
+    #[error("no single child prop found for parent: {0}")]
+    SingleChildPropNotFound(PropId),
     #[error("store error: {0}")]
     Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
@@ -391,7 +395,7 @@ impl Prop {
         }
     }
 
-    pub async fn direct_child_prop_ids_by_id(
+    pub async fn direct_child_prop_ids(
         ctx: &DalContext,
         prop_id: PropId,
     ) -> PropResult<Vec<PropId>> {
@@ -412,6 +416,32 @@ impl Prop {
                     .map(|prop_node| prop_node.id().into())
             })
             .collect())
+    }
+
+    /// Finds and expects a single child [`Prop`]. If zero or more than one [`Prop`] is found, an error is returned.
+    ///
+    /// This is most useful for maps and arrays, but can also be useful for objects with single fields
+    /// (e.g. "/root/secrets" under certain scenarios).
+    pub async fn direct_single_child_prop_id(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<PropId> {
+        let mut direct_child_prop_ids_should_only_be_one =
+            Self::direct_child_prop_ids(ctx, prop_id).await?;
+
+        let single_child_prop_id = direct_child_prop_ids_should_only_be_one
+            .pop()
+            .ok_or(PropError::SingleChildPropNotFound(prop_id))?;
+
+        if !direct_child_prop_ids_should_only_be_one.is_empty() {
+            return Err(PropError::SingleChildPropHasUnexpectedSiblings(
+                prop_id,
+                single_child_prop_id,
+                direct_child_prop_ids_should_only_be_one,
+            ));
+        }
+
+        Ok(single_child_prop_id)
     }
 
     pub async fn path_by_id(ctx: &DalContext, prop_id: PropId) -> PropResult<PropPath> {

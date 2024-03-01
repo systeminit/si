@@ -2,7 +2,6 @@ use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use base64::engine::general_purpose;
 use base64::Engine;
-use dal::authentication_prototype::AuthenticationPrototypeContext;
 use dal::{
     generate_name, ActionKind, ChangeSet, DalContext, ExternalProviderId, Func,
     FuncBackendResponseType, FuncId, PropId, SchemaVariant, SchemaVariantId, Visibility,

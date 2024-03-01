@@ -3,7 +3,6 @@ mod rebase;
 #[cfg(test)]
 mod test {
     use content_store::ContentHash;
-    use content_store::Store;
     use petgraph::graph::NodeIndex;
     use petgraph::visit::EdgeRef;
     use petgraph::Outgoing;

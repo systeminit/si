@@ -100,7 +100,7 @@ async fn connect_components(ctx: &mut DalContext) {
         .expect("update_snapshot_to_visibility");
 
     // Connect the components!
-    let inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect(
         ctx,
         oysters_component.id(),
         external_provider.id(),
@@ -117,7 +117,7 @@ async fn connect_components(ctx: &mut DalContext) {
         .expect("update_snapshot_to_visibility");
 
     // Connect component 2
-    let inter_component_attribute_prototype_argument_id = Component::connect(
+    let _inter_component_attribute_prototype_argument_id = Component::connect(
         ctx,
         lunch_component.id(),
         external_provider.id(),
@@ -164,7 +164,7 @@ async fn connect_components(ctx: &mut DalContext) {
     }
 
     // Assemble the diagram and check the edges.
-    let mut diagram = Diagram::assemble(ctx)
+    let diagram = Diagram::assemble(ctx)
         .await
         .expect("could not assemble the diagram");
     assert_eq!(2, diagram.edges.len());
