@@ -41,6 +41,7 @@ members = [
     "lib/si-data-nats",
     "lib/si-data-pg",
     "lib/si-hash",
+    "lib/si-layer-cache",
     "lib/si-pkg",
     "lib/si-posthog-rs",
     "lib/si-settings",
@@ -81,6 +82,7 @@ comfy-table = { version = "7.0.1", features = [
 config = { version = "0.13.4", default-features = false, features = ["toml"] }
 console = "0.15.7"
 convert_case = "0.6.0"
+criterion = { version = "0.3", features = [ "async_tokio" ] }
 crossbeam-channel = "0.5.8"
 deadpool = { version = "0.10.0", features = ["rt_tokio_1"] }
 deadpool-postgres = "0.12.1"
@@ -114,6 +116,7 @@ jwt-simple = { version = "0.12.6", default-features = false, features = [
     "pure-rust",
 ] }
 lazy_static = "1.4.0"
+moka = { version = "0.12.5", features = [ "future" ] }
 names = { version = "0.14.0", default-features = false }
 nix = { version = "0.27.1", features = ["process", "signal"] }
 nkeys = "0.4.0"
@@ -164,6 +167,7 @@ serde_json = { version = "1.0.96", features = ["preserve_order"] }
 serde_url_params = "0.2.1"
 serde_with = "3.0.0"
 serde_yaml = "0.9.21"
+sled = "0.34.7"
 sodiumoxide = "0.2.7"
 stream-cancel = "0.8.1"
 strum = { version = "0.25.0", features = ["derive"] }

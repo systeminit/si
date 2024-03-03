@@ -1,0 +1,32 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-layer-cache",
+    deps = [
+        "//third-party/rust:serde",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:moka",
+        "//third-party/rust:sled",
+        "//third-party/rust:lazy_static",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)
+
+rust_test(
+    name = "test-integration",
+    deps = [
+        ":si-layer-cache",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tempfile",
+        "//third-party/rust:criterion",
+    ],
+    srcs = glob([
+        "tests/**/*.rs",
+    ]),
+    crate_root = "tests/integration.rs",
+    env = {
+        "CARGO_PKG_NAME": "integration",
+    },
+)
