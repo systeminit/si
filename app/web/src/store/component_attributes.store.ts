@@ -122,6 +122,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             function getAttributeValueWithChildren(
               valueId: string,
               parentValueId: string,
+              ancestorManual = true,
               indexInParentArray?: number,
             ): AttributeTreeItem | undefined {
               /* eslint-disable @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-explicit-any */
@@ -135,6 +136,12 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               if (!propDef) return;
 
               // console.log("HERE", value);
+
+              value.ancestorManual = ancestorManual;
+              const isAncestorManual =
+                ancestorManual &&
+                value.isControlledByIntrinsicFunc &&
+                !(value.canBeSetBySocket || value.isFromExternalSource);
 
               return {
                 propDef,
@@ -155,6 +162,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                     getAttributeValueWithChildren(
                       cvId,
                       valueId,
+                      isAncestorManual,
                       propDef.kind === "array" ? index : undefined,
                     ),
                   ),

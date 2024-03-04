@@ -11,12 +11,13 @@
       '--collapsed': canHaveChildren && !isOpen,
     }"
   >
-    <!-- SECTION HEADER -->
+    <!-- SECTION -->
     <div
       v-if="canHaveChildren"
       @mouseover.stop="onSectionHoverStart"
       @mouseleave="onSectionHoverEnd"
     >
+      <!-- HEADER -->
       <div
         class="attributes-panel-item__section-header-wrap"
         :style="{
@@ -25,17 +26,28 @@
         }"
       >
         <div
-          class="attributes-panel-item__section-toggle"
+          :class="
+            clsx(
+              'attributes-panel-item__section-toggle',
+              headerHasContent && 'cursor-pointer',
+            )
+          "
           @click="toggleOpen()"
         >
           <Icon
-            :name="isOpen ? 'chevron--down' : 'chevron--right'"
+            :name="
+              headerHasContent
+                ? isOpen
+                  ? 'chevron--down'
+                  : 'chevron--right'
+                : 'none'
+            "
             size="inherit"
           />
         </div>
 
         <div
-          class="attributes-panel-item__section-header group/header"
+          class="attributes-panel-item__section-header"
           :style="{ marginLeft: indentPx }"
           @click="toggleOpen(true)"
         >
@@ -50,18 +62,24 @@
             :name="icon"
             size="none"
           />
-          <div class="attributes-panel-item__section-header-label mr-xs">
-            <template v-if="isChildOfArray">
-              {{ propName }}[{{ attributeDef.arrayIndex }}]
-            </template>
-            <template v-else-if="isChildOfMap">
-              <span>{{ attributeDef.mapKey }}</span>
-            </template>
-            <template v-else>
-              <span>{{ fullPropDef.name }}</span>
-            </template>
+          <div class="attributes-panel-item__section-header-label">
+            <div
+              ref="headerMainLabelRef"
+              v-tooltip="headerMainLabelTooltip"
+              class="attributes-panel-item__section-header-label-main leading-loose"
+            >
+              <template v-if="isChildOfArray">
+                {{ propName }}[{{ attributeDef.arrayIndex }}]
+              </template>
+              <template v-else-if="isChildOfMap">
+                {{ attributeDef.mapKey }}
+              </template>
+              <template v-else>
+                {{ fullPropDef.name }}
+              </template>
+            </div>
 
-            <span
+            <div
               v-if="isMap || isArray"
               class="attributes-panel-item__section-header-child-count"
             >
@@ -74,20 +92,8 @@
               <template v-else
                 >({{ attributeDef.children.length }} items)</template
               >
-            </span>
+            </div>
           </div>
-          <!-- <div
-            :class="
-              clsx(
-                'border dark:group-hover/header:hover:text-action-500 group-hover/header:hover:text-action-300 rounded p-[1px] m-[2px] w-5 h-5 cursor-pointer',
-                sourceOverridden
-                  ? ' text-warning-500 dark:text-warning-300 border-warning-500 dark:border-warning-300 dark:group-hover/header:hover:border-action-500 group-hover/header:hover:border-action-300 dark:group-hover/header:text-shade-100 dark:group-hover/header:border-shade-100 group-hover/header:text-shade-0 group-hover/header:border-shade-0'
-                  : 'border-transparent',
-              )
-            "
-          >
-            <Icon v-tooltip="sourceTooltip" :name="sourceIcon" size="none" />
-          </div> -->
           <SourceIconWithTooltip
             v-if="
               featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET &&
@@ -98,25 +104,54 @@
             :tooltipText="sourceTooltip"
             header
           />
-          <div class="attributes-panel-item__action-icons">
-            <!-- <Icon
-              :name="isOpen ? 'collapse-row' : 'expand-row'"
-              @click.stop="toggleOpen"
-            /> -->
-            <!-- <Icon v-if="isChildOfArray || isChildOfMap" name="trash" />
-            <Icon v-if="isChildOfArray" name="arrow--up" />
-            <Icon v-if="isChildOfArray" name="arrow--down" /> -->
-          </div>
+          <!-- DROPDOWN MENU FOR SELECT SOURCE -->
+          <!-- TODO(Wendy) - currently we hide this menu if the prop is set manually since you can't select another option yet -->
+          <template
+            v-if="
+              propSource !== 'manually' &&
+              attributeDef.value?.ancestorManual &&
+              featureFlagsStore.INDICATORS_MANUAL_FUNCTION_SOCKET
+            "
+          >
+            <div
+              class="attributes-panel-item__section-header-source-select"
+              @click="sourceSelectMenuRef?.open($event)"
+            >
+              <div>set:</div>
+              <div
+                class="flex flex-row items-center border pl-2xs pr-[2px] h-4 text-xs"
+              >
+                <div class="flex-none whitespace-nowrap">{{ propSource }}</div>
+                <Icon name="chevron--down" size="sm" />
+              </div>
+            </div>
+            <DropdownMenu ref="sourceSelectMenuRef">
+              <!-- TODO(Wendy) - Currently you can't switch to anything but manually -->
+              <template v-for="source in sourceKinds" :key="source">
+                <DropdownMenuItem
+                  v-if="source === 'manually' || propSource === source"
+                  :label="source"
+                  :checked="propSource === source"
+                  @click="setSource(source)"
+                />
+              </template>
+            </DropdownMenu>
+          </template>
         </div>
       </div>
 
+      <!-- LEFT BORDER LINE -->
       <div
-        v-show="isOpen"
+        v-show="isOpen && headerHasContent"
         class="attributes-panel-item__left-border"
         :style="{ marginLeft: indentPx, zIndex: headerZIndex }"
       />
 
-      <div v-show="isOpen" class="attributes-panel-item__children">
+      <!-- CHILDREN -->
+      <div
+        v-show="isOpen && headerHasContent"
+        class="attributes-panel-item__children"
+      >
         <template v-if="attributeDef.children.length">
           <!-- <div class="w-[50%] h-[1px] bg-shade-0 ml-auto"></div> -->
           <AttributesPanelItem
@@ -126,49 +161,59 @@
             :level="level + 1"
           />
         </template>
-
-        <div
-          v-if="isArray || isMap"
-          class="attributes-panel-item__add-child-row"
-          :style="{ marginLeft: indentPx }"
+        <!-- <div
+          v-else
+          :style="{
+            marginLeft: `${HEADER_HEIGHT + INDENT_SIZE * (props.level + 1)}px`,
+          }"
         >
-          <Icon
-            class="attributes-panel-item__nested-arrow-icon"
-            name="nested-arrow-right"
-            size="none"
-          />
+          This prop does not currently have any children.
+        </div> -->
 
-          <input
-            v-if="isMap"
-            v-model="newMapChildKey"
-            type="text"
-            placeholder="key"
-            :class="
-              clsx(
-                'attributes-panel-item__new-child-key-input',
-                isMapKeyError &&
-                  'attributes-panel-item__new-child-key-input__error',
-              )
-            "
-            @blur="clearKeyError"
-            @keyup.enter="addChildHandler"
-          />
-
-          <button
-            class="attributes-panel-item__new-child-button"
-            @click="addChildHandler"
+        <template v-if="(isArray || isMap) && propManual">
+          <div
+            class="attributes-panel-item__add-child-row"
+            :style="{ marginLeft: indentPx }"
           >
-            <Icon name="plus" size="none" />
-            {{ isArray ? "Add array item" : "Add map item" }}
-          </button>
-        </div>
-        <div
-          v-if="isMap && isMapKeyError"
-          :style="{ marginLeft: indentPx }"
-          class="attributes-panel-item__map-key-error"
-        >
-          You must enter a valid key.
-        </div>
+            <Icon
+              class="attributes-panel-item__nested-arrow-icon"
+              name="nested-arrow-right"
+              size="none"
+            />
+
+            <input
+              v-if="isMap"
+              v-model="newMapChildKey"
+              type="text"
+              placeholder="key"
+              :class="
+                clsx(
+                  'attributes-panel-item__new-child-key-input',
+                  isMapKeyError &&
+                    'attributes-panel-item__new-child-key-input__error',
+                )
+              "
+              @blur="clearKeyError"
+              @keyup.enter="addChildHandler"
+            />
+
+            <button
+              class="attributes-panel-item__new-child-button"
+              @click="addChildHandler"
+            >
+              <Icon name="plus" size="none" />
+              {{ isArray ? "Add array item" : "Add map item" }}
+            </button>
+          </div>
+
+          <div
+            v-if="isMap && isMapKeyError"
+            :style="{ marginLeft: indentPx }"
+            class="attributes-panel-item__map-key-error"
+          >
+            You must enter a valid key.
+          </div>
+        </template>
       </div>
     </div>
 
@@ -212,13 +257,6 @@
           name="question-circle"
           class="attributes-panel-item__help-icon"
         /> -->
-
-        <div class="attributes-panel-item__action-icons">
-          <!-- <Icon v-if="isChildOfArray || isChildOfMap" name="trash" size="sm" />
-          <Icon v-if="isChildOfArray" name="arrow--up" size="sm" />
-          <Icon v-if="isChildOfArray" name="arrow--down" size="sm" />
-          <Icon v-if="isChildOfMap" name="edit" size="sm" /> -->
-        </div>
 
         <div class="attributes-panel-item__static-icons">
           <button
@@ -551,6 +589,8 @@ import * as _ from "lodash-es";
 import { computed, PropType, ref, watch } from "vue";
 import clsx from "clsx";
 import {
+  DropdownMenu,
+  DropdownMenuItem,
   Icon,
   IconNames,
   Modal,
@@ -572,6 +612,9 @@ import SecretsModal from "../SecretsModal.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
 import CodeViewer from "../CodeViewer.vue";
 
+const sourceKinds = ["manually", "via socket", "via attribute func"] as const;
+export type SourceKind = (typeof sourceKinds)[number];
+
 const props = defineProps({
   parentPath: { type: String },
   attributeDef: { type: Object as PropType<AttributeTreeItem>, required: true },
@@ -584,8 +627,28 @@ const props = defineProps({
 
 const featureFlagsStore = useFeatureFlagsStore();
 
-const isOpen = ref(true);
+const headerMainLabelRef = ref();
+const headerMainLabelTooltip = computed(() => {
+  if (!headerMainLabelRef.value) return;
+
+  if (
+    headerMainLabelRef.value.clientWidth < headerMainLabelRef.value.scrollWidth
+  ) {
+    return {
+      content: headerMainLabelRef.value.textContent,
+    };
+  } else return {};
+});
+
+const isOpen = ref(true); // ref(props.attributeDef.children.length > 0);
 const showValidationDetails = ref(false);
+
+const headerHasContent = computed(() => {
+  return (
+    props.attributeDef.children.length ||
+    ((isArray.value || isMap.value) && propManual.value)
+  );
+});
 
 const rootCtx = useAttributesPanelContext();
 
@@ -694,6 +757,19 @@ const propSetByFunc = computed(
     !propHasSocket.value &&
     !propPopulatedBySocket.value,
 );
+const propManual = computed(
+  () =>
+    !(
+      propPopulatedBySocket.value ||
+      propHasSocket.value ||
+      propSetByFunc.value
+    ),
+);
+const propSource = computed<SourceKind>(() => {
+  if (propHasSocket.value || propPopulatedBySocket.value) return "via socket";
+  else if (propSetByFunc.value) return "via attribute func";
+  else return "manually";
+});
 
 const sourceIcon = computed(() => {
   if (propPopulatedBySocket.value) return "circle-full";
@@ -930,6 +1006,30 @@ const confirmEdit = () => {
 };
 
 const editOverride = ref(false);
+
+const sourceSelectMenuRef = ref<InstanceType<typeof DropdownMenu>>();
+
+const setSource = (source: SourceKind) => {
+  if (source === "manually") {
+    const value = props.attributeDef.value?.value ?? null;
+
+    // console.log(value);
+
+    attributesStore.UPDATE_PROPERTY_VALUE({
+      update: {
+        attributeValueId: props.attributeDef.valueId,
+        parentAttributeValueId: props.attributeDef.parentValueId,
+        propId: props.attributeDef.propId,
+        componentId,
+        value,
+      },
+    });
+  } else if (source === "via socket") {
+    // TODO(Wendy) - Here's where we can put logic for selecting a socket to connect to this prop
+  } else {
+    // TODO(Wendy) - Here's where we can put logic for selecting an attribute function to populate this prop
+  }
+};
 </script>
 
 <style lang="less">
@@ -969,21 +1069,32 @@ const editOverride = ref(false);
   background: var(--header-bg-color);
   color: var(--header-text-color);
   display: flex;
+  flex-direction: row;
+  gap: 4px;
   align-items: center;
   border-bottom: 1px solid var(--panel-bg-color);
   user-select: none;
+  padding-right: 4px;
+}
+
+.attributes-panel-item__section-header-label-main {
+  flex-basis: 0px;
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .attributes-panel-item__section-header-child-count {
   font-style: italic;
-  margin-left: 12px;
+  margin-right: 4px;
   font-size: 12px;
   opacity: 0.5;
+  flex: none;
 }
 
 .attributes-panel-item__section-toggle {
   background-color: var(--toggle-controls-bg-color);
-  cursor: pointer;
   position: absolute;
   width: @header-height;
   height: @header-height;
@@ -1010,6 +1121,15 @@ const editOverride = ref(false);
   }
 }
 
+.attributes-panel-item__section-header-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  white-space: nowrap;
+  gap: 4px;
+  min-width: 0;
+}
+
 .attributes-panel-item__nested-arrow-icon {
   width: 14px;
   height: 14px;
@@ -1017,7 +1137,6 @@ const editOverride = ref(false);
 .attributes-panel-item__type-icon {
   height: 100%;
   padding: 2px;
-  margin-right: @spacing-px[xs];
   position: relative;
 }
 
@@ -1161,8 +1280,8 @@ const editOverride = ref(false);
 .attributes-panel-item__action-icons {
   gap: 4px;
   padding: 4px;
-  margin-left: 10px;
-  margin-right: 10px;
+  margin-left: 4px;
+  margin-right: 4px;
 
   .attributes-panel-item__item-inner & {
     position: absolute;
@@ -1175,10 +1294,26 @@ const editOverride = ref(false);
 
   .attributes-panel-item__section-header & {
     display: none;
-    margin-left: 30px;
   }
   .attributes-panel-item__section-header:hover & {
     display: flex;
+  }
+}
+
+.attributes-panel-item__section-header-source-select {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  cursor: pointer;
+}
+
+.attributes-panel-item__section-header-source-select > div {
+  .attributes-panel-item__section-header:hover & {
+    body.dark & {
+      border-color: black;
+    }
   }
 }
 

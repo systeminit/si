@@ -3,7 +3,7 @@
     :is="linkTo ? RouterLink : 'button'"
     v-tooltip="{
       content: tooltipText,
-      delay: { show: 10, hide: 100 },
+      delay: { show: 0, hide: 100 },
       instantMove: true,
     }"
     :to="linkTo"

@@ -350,4 +350,10 @@ provide(AttributesPanelContextInjectionKey, {
     z-index: 3;
   }
 }
+
+.picker_editor input {
+  body.dark & {
+    color: white;
+  }
+}
 </style>
