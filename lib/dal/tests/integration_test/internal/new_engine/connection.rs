@@ -139,8 +139,7 @@ async fn connect_components(ctx: &mut DalContext) {
         .attribute_values_for_prop(ctx, &["root", "domain", "systemd", "units"])
         .await
         .expect("able to get values for units")
-        .iter()
-        .next()
+        .first()
         .copied()
         .expect("has a value");
 

@@ -203,9 +203,12 @@ impl ExternalProvider {
         let mut result = vec![];
         for node_index in node_indices {
             let node_weight = workspace_snapshot.get_node_weight(node_index)?;
-            if let Some(_) = node_weight.get_option_content_node_weight_of_kind(
-                ContentAddressDiscriminants::ExternalProvider,
-            ) {
+            if node_weight
+                .get_option_content_node_weight_of_kind(
+                    ContentAddressDiscriminants::ExternalProvider,
+                )
+                .is_some()
+            {
                 result.push(node_weight.id().into())
             }
         }

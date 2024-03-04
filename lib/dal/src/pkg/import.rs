@@ -31,7 +31,7 @@ use crate::{AttributePrototype, AttributePrototypeId};
 use super::{PkgError, PkgResult};
 
 #[derive(Clone, Debug)]
-enum Thing {
+pub(crate) enum Thing {
     ActionPrototype(ActionPrototype),
     AuthPrototype(AuthenticationPrototype),
     // AttributePrototypeArgument(AttributePrototypeArgument),

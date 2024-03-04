@@ -35,8 +35,7 @@ impl Component {
                     .as_slice(),
             )
             .await?
-            .iter()
-            .next()
+            .first()
             .copied()
             .ok_or(ComponentError::MissingQualificationsValue(component_id))?;
 

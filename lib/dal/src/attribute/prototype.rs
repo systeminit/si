@@ -339,7 +339,7 @@ impl AttributePrototype {
             .into());
         }
 
-        Ok(match maybe_value_idxs.get(0).copied() {
+        Ok(match maybe_value_idxs.first().copied() {
             Some(value_idx) => {
                 if let NodeWeight::AttributeValue(av_node_weight) =
                     workspace_snapshot.get_node_weight(value_idx)?

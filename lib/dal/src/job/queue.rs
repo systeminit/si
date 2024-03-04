@@ -1,5 +1,6 @@
 use super::producer::JobProducer;
-use crate::{AccessBuilder, AttributeValueId, ChangeSetPk, DependentValuesUpdate, Visibility};
+use crate::job::definition::DependentValuesUpdate;
+use crate::{AccessBuilder, AttributeValueId, ChangeSetPk, Visibility};
 use std::{collections::HashMap, collections::HashSet, collections::VecDeque, sync::Arc};
 use tokio::sync::Mutex;
 

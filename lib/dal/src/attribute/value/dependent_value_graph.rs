@@ -129,7 +129,7 @@ impl DependentValueGraph {
     pub async fn debug_dot(&self, ctx: &DalContext, suffix: Option<&str>) {
         let mut is_for_map = HashMap::new();
 
-        for (attribute_value_id, _) in &self.id_to_index_map {
+        for attribute_value_id in self.id_to_index_map.keys() {
             let is_for: String = match AttributeValue::is_for(ctx, *attribute_value_id)
                 .await
                 .expect("able to get value is for")
@@ -153,7 +153,8 @@ impl DependentValueGraph {
                 let attribute_value_id = *attribute_value_id;
                 let is_for = is_for_map.clone();
 
-                let is_for_string = (&is_for.clone())
+                let is_for_string = is_for
+                    .clone()
                     .get(&attribute_value_id)
                     .map(ToOwned::to_owned)
                     .expect("is for exists for every value");

@@ -2291,7 +2291,7 @@ mod test {
         assert_eq!(1, updates.len());
 
         assert!(matches!(
-            updates.get(0).expect("should be there"),
+            updates.first().expect("should be there"),
             Update::RemoveEdge { .. }
         ));
     }

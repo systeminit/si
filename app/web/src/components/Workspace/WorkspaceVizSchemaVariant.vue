@@ -8,7 +8,6 @@ import { DirectedGraph } from "graphology";
 import Sigma from "sigma";
 import FA2Layout from "graphology-layout-forceatlas2/worker";
 import forceAtlas2 from "graphology-layout-forceatlas2";
-import noverlap, { NoverlapLayoutParameters } from "graphology-layout-noverlap";
 import { useVizStore } from "@/store/viz.store";
 
 const vizStore = useVizStore();
