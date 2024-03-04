@@ -14,7 +14,7 @@ use crate::{
     job::producer::BlockingJobError, job::producer::JobProducerError, status::StatusUpdaterError,
     AccessBuilder, ActionPrototypeError, ActionPrototypeId, AttributeValueError, ComponentError,
     ComponentId, DalContext, DalContextBuilder, FixBatchId, FixResolverError, PropError,
-    StandardModelError, TransactionsError, Visibility, WsEventError,
+    StandardModelError, TransactionsError, ValidationResolverError, Visibility, WsEventError,
 };
 
 #[remain::sorted]
@@ -88,6 +88,8 @@ pub enum JobConsumerError {
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     UlidDecode(#[from] ulid::DecodeError),
+    #[error(transparent)]
+    ValidationResolver(#[from] ValidationResolverError),
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
 }

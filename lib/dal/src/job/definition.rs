@@ -1,4 +1,4 @@
-mod dependent_values_update;
+pub mod dependent_values_update;
 mod fix;
 mod refresh;
 
