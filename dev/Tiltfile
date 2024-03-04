@@ -11,11 +11,11 @@ groups = {
         "postgres-test",
     ],
     "backend": [
-        "council",
         "pinga",
         "veritech",
         "sdf",
         "module-index",
+        "rebaser",
     ],
     "frontend": [
         "web",
@@ -77,6 +77,23 @@ for service in compose_services:
         links = []
     dc_resource(service, links = links, labels = ["platform"])
 
+# Locally build and run `rebaser-server`
+rebaser_target = "//bin/rebaser:rebaser"
+local_resource(
+    "rebaser",
+    labels = ["backend"],
+    cmd = "buck2 build {}".format(rebaser_target),
+    serve_cmd = "buck2 run {}".format(rebaser_target),
+    allow_parallel = True,
+    resource_deps = [
+        "nats",
+        "otelcol",
+        "postgres",
+    ],
+    deps = _buck2_dep_inputs(rebaser_target),
+    trigger_mode = trigger_mode
+)
+
 # Locally build and run `module-index`
 module_index_target = "//bin/module-index:module-index"
 local_resource(
@@ -95,23 +112,6 @@ local_resource(
     trigger_mode = trigger_mode,
 )
 
-# Locally build and run `council`
-council_target = "//bin/council:council"
-local_resource(
-    "council",
-    labels = ["backend"],
-    cmd = "buck2 build {}".format(council_target),
-    serve_cmd = "buck2 run {}".format(council_target),
-    serve_env = {"SI_FORCE_COLOR": "true"},
-    allow_parallel = True,
-    resource_deps = [
-        "nats",
-        "otelcol",
-    ],
-    deps = _buck2_dep_inputs(council_target),
-    trigger_mode = trigger_mode,
-)
-
 # Locally build and run `pinga`
 pinga_target = "//bin/pinga:pinga"
 local_resource(
@@ -122,7 +122,6 @@ local_resource(
     serve_env = {"SI_FORCE_COLOR": "true"},
     allow_parallel = True,
     resource_deps = [
-        "council",
         "nats",
         "otelcol",
         "veritech",
@@ -166,6 +165,7 @@ local_resource(
         "pinga",
         "postgres",
         "veritech",
+        "rebaser",
     ],
     deps = _buck2_dep_inputs(sdf_target),
     trigger_mode = trigger_mode,

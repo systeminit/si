@@ -10,18 +10,15 @@ use thiserror::Error;
 
 use crate::func::argument::FuncArgumentError;
 use crate::node::NodeId;
-use crate::socket::SocketError;
 use crate::standard_model::objects_from_rows;
 use crate::{
-    diagram, impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
-    AttributeReadContext, AttributeValue, AttributeValueError, ComponentId, ExternalProviderError,
-    Func, FuncError, HistoryActor, HistoryEventError, InternalProviderError, Node, PropId, Socket,
+    impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
+    AttributeValue, ComponentId, Func, HistoryActor, HistoryEventError, Node, PropId, Socket,
     StandardModel, StandardModelError, Tenancy, Timestamp, UserPk, Visibility,
 };
 use crate::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError, Component, DalContext,
-    ExternalProvider, ExternalProviderId, InternalProvider, InternalProviderId, NodeError,
-    TransactionsError,
+    Component, DalContext, ExternalProvider, ExternalProviderId, InternalProvider,
+    InternalProviderId, TransactionsError,
 };
 
 const LIST_PARENTS_FOR_COMPONENT: &str =

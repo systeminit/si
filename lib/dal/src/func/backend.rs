@@ -1,15 +1,17 @@
 use async_trait::async_trait;
+use tokio::sync::mpsc;
+
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::mpsc;
 use veritech_client::{
     ActionRunResultSuccess, BeforeFunction, Client as VeritechClient, FunctionResult, OutputStream,
     ResolverFunctionResponseType,
 };
 
-use crate::{label_list::ToLabelList, DalContext, Func, FuncId, PropKind, StandardModel};
+use crate::label_list::ToLabelList;
+use crate::{DalContext, Func, FuncId, PropKind};
 
 pub mod array;
 pub mod boolean;
@@ -233,11 +235,13 @@ pub trait FuncDispatch: std::fmt::Debug {
     ) -> FuncBackendResult<Box<Self>> {
         let args = Self::Args::deserialize(args)?;
         let code_base64 = func
-            .code_base64()
-            .ok_or_else(|| FuncBackendError::DispatchMissingBase64(*func.id()))?;
+            .code_base64
+            .as_deref()
+            .ok_or_else(|| FuncBackendError::DispatchMissingBase64(func.id))?;
         let handler = func
-            .handler()
-            .ok_or_else(|| FuncBackendError::DispatchMissingHandler(*func.id()))?;
+            .handler
+            .as_deref()
+            .ok_or_else(|| FuncBackendError::DispatchMissingHandler(func.id))?;
         let value = Self::new(context, code_base64, handler, args, before);
         Ok(value)
     }

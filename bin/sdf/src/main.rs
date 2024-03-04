@@ -12,6 +12,8 @@ use sdf_server::{
 use telemetry_application::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
+use rebaser_client::Config as RebaserClientConfig;
+
 mod args;
 
 type JobProcessor = sdf_server::NatsProcessor;
@@ -99,14 +101,20 @@ async fn async_main() -> Result<()> {
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
+    let content_store_pg_pool = Server::create_pg_pool(config.content_store_pg_pool()).await?;
+
     let veritech = Server::create_veritech_client(nats_conn.clone());
 
     let symmetric_crypto_service =
         Server::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
 
-    let pkgs_path: PathBuf = config.pkgs_path().try_into()?;
+    let pkgs_path: PathBuf = config.pkgs_path().into();
 
     let module_index_url = config.module_index_url().to_string();
+
+    // TODO: accept command line arguments and or environment variables to configure the rebaser
+    // client
+    let rebaser_config = RebaserClientConfig::default();
 
     let (ws_multiplexer, ws_multiplexer_client) =
         Multiplexer::new(&nats_conn, WS_MULTIPLEXER_SUBJECT).await?;
@@ -122,6 +130,8 @@ async fn async_main() -> Result<()> {
         Some(pkgs_path),
         Some(module_index_url),
         symmetric_crypto_service,
+        rebaser_config,
+        content_store_pg_pool,
     );
 
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
@@ -153,15 +163,15 @@ async fn async_main() -> Result<()> {
                 crdt_multiplexer,
                 crdt_multiplexer_client,
             )?;
-            let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
+            let _second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
-            Server::start_resource_refresh_scheduler(
-                services_context.clone(),
-                initial_shutdown_broadcast_rx,
-            )
-            .await;
+            // Server::start_resource_refresh_scheduler(
+            //     services_context.clone(),
+            //     initial_shutdown_broadcast_rx,
+            // )
+            // .await;
 
-            Server::start_status_updater(services_context, second_shutdown_broadcast_rx).await?;
+            // Server::start_status_updater(services_context, second_shutdown_broadcast_rx).await?;
 
             server.run().await?;
         }
@@ -177,15 +187,15 @@ async fn async_main() -> Result<()> {
                 crdt_multiplexer_client,
             )
             .await?;
-            let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
+            let _second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
-            Server::start_resource_refresh_scheduler(
-                services_context.clone(),
-                initial_shutdown_broadcast_rx,
-            )
-            .await;
+            // Server::start_resource_refresh_scheduler(
+            //     services_context.clone(),
+            //     initial_shutdown_broadcast_rx,
+            // )
+            // .await;
 
-            Server::start_status_updater(services_context, second_shutdown_broadcast_rx).await?;
+            // Server::start_status_updater(services_context, second_shutdown_broadcast_rx).await?;
 
             server.run().await?;
         }

@@ -1181,7 +1181,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION import_builtins_v1(destination_tenancy jsonb)
+CREATE OR REPLACE FUNCTION import_builtins_v1(destination_tenancy jsonb, source_workspace_pk ident)
 RETURNS VOID AS
 $$
 DECLARE
@@ -1189,7 +1189,6 @@ DECLARE
     destination_tenancy_record tenancy_record_v1;
     this_table_name             regclass;
     insert_column_names         text;
-    source_workspace_pk         ident;
 BEGIN
     destination_tenancy_record = tenancy_json_to_columns_v1(destination_tenancy);
     FOR standard_model IN SELECT * FROM standard_models
@@ -1202,10 +1201,6 @@ BEGIN
               AND information_schema.columns.column_name NOT IN ('pk', 'created_at', 'tenancy_workspace_pk', 'visibility_change_set_pk')
               AND information_schema.columns.is_generated = 'NEVER'
             INTO insert_column_names;
-
-            SELECT (object ->> 'pk')::ident
-            INTO source_workspace_pk
-            FROM workspace_find_or_create_builtin_v1();
 
             -- No history events for this update
             EXECUTE format('INSERT INTO %1$I (tenancy_workspace_pk,

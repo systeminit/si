@@ -4,29 +4,14 @@ use si_data_pg::PgError;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::action::{ActionAddedPayload, ActionRemovedPayload};
 use crate::change_set::{ChangeSetActorPayload, ChangeSetMergeVotePayload};
 use crate::component::{ComponentCreatedPayload, ComponentUpdatedPayload};
-use crate::func::{FuncCreatedPayload, FuncDeletedPayload, FuncRevertedPayload, FuncSavedPayload};
-use crate::pkg::{
-    ImportWorkspaceVotePayload, ModuleImportedPayload, WorkspaceActorPayload,
-    WorkspaceExportPayload, WorkspaceImportApprovalActorPayload, WorkspaceImportPayload,
-};
-use crate::schema::variant::definition::{
-    SchemaVariantDefinitionClonedPayload, SchemaVariantDefinitionCreatedPayload,
-    SchemaVariantDefinitionSavedPayload,
-};
+use crate::qualification::QualificationCheckPayload;
 use crate::secret::{SecretCreatedPayload, SecretUpdatedPayload};
+use crate::user::OnlinePayload;
 use crate::{
-    component::{code::CodeGeneratedPayload, resource::ResourceRefreshedPayload},
-    fix::{batch::FixBatchReturn, FixReturn},
-    func::binding::LogLinePayload,
-    qualification::QualificationCheckPayload,
-    status::StatusMessage,
-    user::{CursorPayload, OnlinePayload},
-    AttributePrototypeId, AttributeValueId, ChangeSetPk, ComponentId, DalContext, FuncId,
-    FuncVariant, PropId, PropKind, SchemaPk, SchemaVariantId, SocketId, StandardModelError,
-    TransactionsError, WorkspacePk,
+    func::binding::LogLinePayload, pkg::ModuleImportedPayload, user::CursorPayload, ChangeSetPk,
+    DalContext, PropId, StandardModelError, TransactionsError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -55,8 +40,8 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[serde(tag = "kind", content = "data")]
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
-    ActionAdded(ActionAddedPayload),
-    ActionRemoved(ActionRemovedPayload),
+    //    ActionAdded(ActionAddedPayload),
+    //    ActionRemoved(ActionRemovedPayload),
     AsyncError(ErrorPayload),
     AsyncFinish(FinishPayload),
     ChangeSetAbandoned(ChangeSetActorPayload),
@@ -71,33 +56,29 @@ pub enum WsPayload {
     ChangeSetMergeVote(ChangeSetMergeVotePayload),
     ChangeSetWritten(ChangeSetPk),
     CheckedQualifications(QualificationCheckPayload),
-    CodeGenerated(CodeGeneratedPayload),
+    // CodeGenerated(CodeGeneratedPayload),
     ComponentCreated(ComponentCreatedPayload),
     ComponentUpdated(ComponentUpdatedPayload),
     Cursor(CursorPayload),
-    FixBatchReturn(FixBatchReturn),
-    FixReturn(FixReturn),
-    FuncCreated(FuncCreatedPayload),
-    FuncDeleted(FuncDeletedPayload),
-    FuncReverted(FuncRevertedPayload),
-    FuncSaved(FuncSavedPayload),
-    ImportWorkspaceVote(ImportWorkspaceVotePayload),
+    // FixBatchReturn(FixBatchReturn),
+    // FixReturn(FixReturn),
+    // ImportWorkspaceVote(ImportWorkspaceVotePayload),
     LogLine(LogLinePayload),
     ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),
-    ResourceRefreshed(ResourceRefreshedPayload),
-    SchemaCreated(SchemaPk),
-    SchemaVariantDefinitionCloned(SchemaVariantDefinitionClonedPayload),
-    SchemaVariantDefinitionCreated(SchemaVariantDefinitionCreatedPayload),
-    SchemaVariantDefinitionFinished(FinishSchemaVariantDefinitionPayload),
-    SchemaVariantDefinitionSaved(SchemaVariantDefinitionSavedPayload),
+    // ResourceRefreshed(ResourceRefreshedPayload),
+    // SchemaCreated(SchemaPk),
+    // SchemaVariantDefinitionCloned(SchemaVariantDefinitionClonedPayload),
+    // SchemaVariantDefinitionCreated(SchemaVariantDefinitionCreatedPayload),
+    // SchemaVariantDefinitionFinished(FinishSchemaVariantDefinitionPayload),
+    // SchemaVariantDefinitionSaved(SchemaVariantDefinitionSavedPayload),
     SecretCreated(SecretCreatedPayload),
     SecretUpdated(SecretUpdatedPayload),
-    StatusUpdate(StatusMessage),
-    WorkspaceExported(WorkspaceExportPayload),
-    WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
-    WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),
-    WorkspaceImported(WorkspaceImportPayload),
+    // StatusUpdate(StatusMessage),
+    // WorkspaceExported(WorkspaceExportPayload),
+    // WorkspaceImportBeginApprovalProcess(WorkspaceImportApprovalActorPayload),
+    // WorkspaceImportCancelApprovalProcess(WorkspaceActorPayload),
+    // WorkspaceImported(WorkspaceImportPayload),
 }
 
 #[remain::sorted]
@@ -106,33 +87,35 @@ pub enum WsPayload {
 pub enum StatusValueKind {
     Attribute(PropId),
     CodeGen,
-    InputSocket(SocketId),
+    // TODO(nick): sockets are no more, so replace this with the provider id.
+    // InputSocket(SocketId),
     Internal,
-    OutputSocket(SocketId),
+    // TODO(nick): sockets are no more, so replace this with the provider id.
+    // OutputSocket(SocketId),
     Qualification,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, Eq, Hash, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct AttributeValueStatusUpdate {
-    value_id: AttributeValueId,
-    component_id: ComponentId,
-    value_kind: StatusValueKind,
-}
+// #[derive(Deserialize, Serialize, Debug, Clone, Copy, Eq, Hash, PartialEq)]
+// #[serde(rename_all = "camelCase")]
+// pub struct AttributeValueStatusUpdate {
+//     value_id: AttributeValueId,
+//     component_id: ComponentId,
+//     value_kind: StatusValueKind,
+// }
 
-impl AttributeValueStatusUpdate {
-    pub fn new(
-        value_id: AttributeValueId,
-        component_id: ComponentId,
-        value_kind: StatusValueKind,
-    ) -> Self {
-        Self {
-            value_id,
-            component_id,
-            value_kind,
-        }
-    }
-}
+// impl AttributeValueStatusUpdate {
+//     pub fn new(
+//         value_id: AttributeValueId,
+//         component_id: ComponentId,
+//         value_kind: StatusValueKind,
+//     ) -> Self {
+//         Self {
+//             value_id,
+//             component_id,
+//             value_kind,
+//         }
+//     }
+// }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 pub struct WsEvent {
@@ -195,7 +178,6 @@ impl WsEvent {
             .nats()
             .publish_immediately(self.workspace_subject(), &self)
             .await?;
-
         Ok(())
     }
 }
@@ -222,38 +204,38 @@ impl WsEvent {
     }
 }
 
-#[remain::sorted]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(tag = "type", content = "data")]
-pub enum AttributePrototypeContextKind {
-    ExternalProvider { name: String },
-    Prop { path: String, kind: PropKind },
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct AttributePrototypeView {
-    pub id: AttributePrototypeId,
-    pub func_id: FuncId,
-    pub func_name: String,
-    pub variant: Option<FuncVariant>,
-    pub key: Option<String>,
-    pub context: AttributePrototypeContextKind,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct FinishSchemaVariantDefinitionPayload {
-    pub task_id: Ulid,
-    pub schema_variant_id: SchemaVariantId,
-    pub detached_attribute_prototypes: Vec<AttributePrototypeView>,
-}
-
-impl WsEvent {
-    pub async fn schema_variant_definition_finish(
-        ctx: &DalContext,
-        payload: FinishSchemaVariantDefinitionPayload,
-    ) -> WsEventResult<Self> {
-        WsEvent::new(ctx, WsPayload::SchemaVariantDefinitionFinished(payload)).await
-    }
-}
+// #[remain::sorted]
+// #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+// #[serde(tag = "type", content = "data")]
+// pub enum AttributePrototypeContextKind {
+//     ExternalProvider { name: String },
+//     Prop { path: String, kind: PropKind },
+// }
+//
+// #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+// #[serde(rename_all = "camelCase")]
+// pub struct AttributePrototypeView {
+//     pub id: AttributePrototypeId,
+//     pub func_id: FuncId,
+//     pub func_name: String,
+//     pub variant: Option<FuncVariant>,
+//     pub key: Option<String>,
+//     pub context: AttributePrototypeContextKind,
+// }
+//
+// #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+// #[serde(rename_all = "camelCase")]
+// pub struct FinishSchemaVariantDefinitionPayload {
+//     pub task_id: Ulid,
+//     pub schema_variant_id: SchemaVariantId,
+//     pub detached_attribute_prototypes: Vec<AttributePrototypeView>,
+// }
+//
+// impl WsEvent {
+//     pub async fn schema_variant_definition_finish(
+//         ctx: &DalContext,
+//         payload: FinishSchemaVariantDefinitionPayload,
+//     ) -> WsEventResult<Self> {
+//         WsEvent::new(ctx, WsPayload::SchemaVariantDefinitionFinished(payload)).await
+//     }
+// }

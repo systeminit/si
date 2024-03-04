@@ -1,9 +1,9 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{qualification::QualificationView, Component, ComponentId, StandardModel, Visibility};
+use dal::{qualification::QualificationView, Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::{ComponentError, ComponentResult};
+use super::ComponentResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -23,13 +23,6 @@ pub async fn list_qualifications(
 ) -> ComponentResult<Json<QualificationResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let is_component_in_tenancy = Component::is_in_tenancy(&ctx, request.component_id).await?;
-    let is_component_in_visibility = Component::get_by_id(&ctx, &request.component_id)
-        .await?
-        .is_some();
-    if is_component_in_tenancy && !is_component_in_visibility {
-        return Err(ComponentError::InvalidVisibility);
-    }
     let qualifications = Component::list_qualifications(&ctx, request.component_id).await?;
 
     Ok(Json(qualifications))

@@ -1,25 +1,38 @@
 use std::{collections::HashMap, collections::HashSet, mem, path::PathBuf, sync::Arc};
 
+use content_store::{PgStore, StoreError};
 use futures::Future;
+use rebaser_client::ClientError as RebaserClientError;
+use rebaser_client::Config as RebaserClientConfig;
+use rebaser_client::ReplyRebaseMessage;
 use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::RwLock;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
+use tokio::time::Instant;
+use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
+use crate::workspace_snapshot::conflict::Conflict;
+use crate::workspace_snapshot::update::Update;
+use crate::workspace_snapshot::vector_clock::VectorClockId;
+use crate::workspace_snapshot::WorkspaceSnapshotId;
 use crate::{
+    change_set_pointer::{ChangeSetPointer, ChangeSetPointerId},
     job::{
-        definition::{FixesJob, RefreshJob},
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
         queue::JobQueue,
     },
-    AttributeValueId, ChangeSetPk, ComponentId, HistoryActor, StandardModel, Tenancy, TenancyError,
-    Visibility,
+    workspace_snapshot::WorkspaceSnapshotError,
+    AttributeValueId, ComponentId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
+    WorkspacePk, WorkspaceSnapshot,
 };
+use crate::{ChangeSetPk, Workspace};
 
 /// A context type which contains handles to common core service dependencies.
 ///
@@ -43,6 +56,10 @@ pub struct ServicesContext {
     module_index_url: Option<String>,
     /// A service that can encrypt and decrypt values with a set of symmetric keys
     symmetric_crypto_service: SymmetricCryptoService,
+    /// Config for the the rebaser service
+    rebaser_config: RebaserClientConfig,
+    /// Content store
+    content_store_pg_pool: PgPool,
 }
 
 impl ServicesContext {
@@ -57,6 +74,8 @@ impl ServicesContext {
         pkgs_path: Option<PathBuf>,
         module_index_url: Option<String>,
         symmetric_crypto_service: SymmetricCryptoService,
+        rebaser_config: RebaserClientConfig,
+        content_store_pg_pool: PgPool,
     ) -> Self {
         Self {
             pg_pool,
@@ -67,6 +86,8 @@ impl ServicesContext {
             pkgs_path,
             module_index_url,
             symmetric_crypto_service,
+            rebaser_config,
+            content_store_pg_pool,
         }
     }
 
@@ -104,8 +125,8 @@ impl ServicesContext {
     }
 
     /// Get a reference to the module index url
-    pub fn module_index_url(&self) -> &Option<String> {
-        &self.module_index_url
+    pub fn module_index_url(&self) -> Option<&str> {
+        self.module_index_url.as_deref()
     }
 
     /// Get a reference to the symmetric encryption service
@@ -113,12 +134,34 @@ impl ServicesContext {
         &self.symmetric_crypto_service
     }
 
+    /// Gets a reference to the rebaser client configuration
+    pub fn rebaser_config(&self) -> &RebaserClientConfig {
+        &self.rebaser_config
+    }
+
+    /// Gets a reference to the content store pg pool
+    pub fn content_store_pg_pool(&self) -> &PgPool {
+        &self.content_store_pg_pool
+    }
+
+    /// Builds and returns a new [`content_store::PgStore`]
+    pub async fn content_store(&self) -> content_store::StoreResult<PgStore> {
+        PgStore::new(self.content_store_pg_pool().clone()).await
+    }
+
     /// Builds and returns a new [`Connections`].
     pub async fn connections(&self) -> PgPoolResult<Connections> {
         let pg_conn = self.pg_pool.get().await?;
         let nats_conn = self.nats_conn.clone();
         let job_processor = self.job_processor.clone();
-        Ok(Connections::new(pg_conn, nats_conn, job_processor))
+        let rebaser_config = self.rebaser_config.clone();
+
+        Ok(Connections::new(
+            pg_conn,
+            nats_conn,
+            job_processor,
+            rebaser_config,
+        ))
     }
 }
 
@@ -162,29 +205,39 @@ impl ConnectionState {
         }
     }
 
-    async fn commit(self) -> Result<Self, TransactionsError> {
+    async fn commit(
+        self,
+        tenancy: &Tenancy,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<(Self, Option<Conflicts>), TransactionsError> {
         match self {
             Self::Connections(_) => {
                 trace!("no active transactions present when commit was called, taking no action");
-                Ok(self)
+                Ok((self, None))
             }
             Self::Transactions(txns) => {
-                let conns = txns.commit_into_conns().await?;
-                Ok(Self::Connections(conns))
+                let (conns, conflicts) = txns.commit_into_conns(tenancy, rebase_request).await?;
+                Ok((Self::Connections(conns), conflicts))
             }
             Self::Invalid => Err(TransactionsError::TxnCommit),
         }
     }
 
-    async fn blocking_commit(self) -> Result<Self, TransactionsError> {
+    async fn blocking_commit(
+        self,
+        tenancy: &Tenancy,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<(Self, Option<Conflicts>), TransactionsError> {
         match self {
             Self::Connections(_) => {
                 trace!("no active transactions present when commit was called, taking no action");
-                Ok(self)
+                Ok((self, None))
             }
             Self::Transactions(txns) => {
-                let conns = txns.blocking_commit_into_conns().await?;
-                Ok(Self::Connections(conns))
+                let (conns, conflicts) = txns
+                    .blocking_commit_into_conns(tenancy, rebase_request)
+                    .await?;
+                Ok((Self::Connections(conns), conflicts))
             }
             Self::Invalid => Err(TransactionsError::TxnCommit),
         }
@@ -204,6 +257,8 @@ impl ConnectionState {
         }
     }
 }
+
+pub enum DalContextError {}
 
 /// A context type which holds references to underlying services, transactions, and context for DAL objects.
 #[derive(Clone, Debug)]
@@ -225,6 +280,15 @@ pub struct DalContext {
     /// Determines if we should not enqueue dependent value update jobs for attribute updates in
     /// this context. Useful for builtin migrations, since we don't care about attribute values propagation then.
     no_dependent_values: bool,
+    /// The content-addressable [`store`](content_store::Store) used by the "dal".
+    ///
+    /// This should be configurable in the future, but for now, the only kind of store used is the
+    /// [`PgStore`](content_store::PgStore).
+    content_store: Arc<Mutex<PgStore>>,
+    /// The workspace snapshot for this context
+    workspace_snapshot: Option<Arc<RwLock<WorkspaceSnapshot>>>,
+    /// The change set pointer for this context
+    change_set_pointer: Option<ChangeSetPointer>,
 }
 
 impl DalContext {
@@ -238,6 +302,124 @@ impl DalContext {
         }
     }
 
+    pub async fn get_workspace_default_change_set_id(
+        &self,
+    ) -> Result<ChangeSetPointerId, TransactionsError> {
+        let workspace = Workspace::get_by_pk(
+            self,
+            &self.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE),
+        )
+        .await
+        // use a proper error
+        .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?;
+
+        let cs_id = workspace
+            .map(|workspace| workspace.default_change_set_id())
+            .unwrap_or(ChangeSetPointerId::NONE);
+
+        Ok(cs_id)
+    }
+
+    pub async fn update_snapshot_to_visibility(&mut self) -> Result<(), TransactionsError> {
+        let change_set_id = match self.change_set_id() {
+            ChangeSetPointerId::NONE => self.get_workspace_default_change_set_id().await?,
+            other => other,
+        };
+
+        let change_set_pointer = ChangeSetPointer::find(self, change_set_id)
+            .await
+            .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
+            .ok_or(TransactionsError::ChangeSetPointerNotFound(
+                self.change_set_id(),
+            ))?;
+
+        let workspace_snapshot =
+            WorkspaceSnapshot::find_for_change_set(self, change_set_pointer.id)
+                .await
+                .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
+
+        self.set_change_set_pointer(change_set_pointer)?;
+        self.set_workspace_snapshot(workspace_snapshot);
+
+        Ok(())
+    }
+
+    pub async fn write_snapshot(&self) -> Result<Option<WorkspaceSnapshotId>, TransactionsError> {
+        if let Some(snapshot) = &self.workspace_snapshot {
+            let vector_clock_id = self.change_set_pointer()?.vector_clock_id();
+
+            Ok(Some(
+                snapshot
+                    .write()
+                    .await
+                    .write(self, vector_clock_id)
+                    .await
+                    .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?,
+            ))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn get_rebase_request(
+        &self,
+        onto_workspace_snapshot_id: WorkspaceSnapshotId,
+    ) -> Result<RebaseRequest, TransactionsError> {
+        let vector_clock_id = self.change_set_pointer()?.vector_clock_id();
+        Ok(RebaseRequest {
+            onto_workspace_snapshot_id,
+            // the vector clock id of the current change set is just the id
+            // of the current change set
+            to_rebase_change_set_id: self.change_set_id(),
+            onto_vector_clock_id: vector_clock_id,
+        })
+    }
+
+    pub async fn do_rebase_request(
+        &self,
+        rebase_request: RebaseRequest,
+    ) -> Result<Option<Conflicts>, TransactionsError> {
+        rebase(
+            &self.tenancy,
+            self.services_context.nats_conn.clone(),
+            self.services_context().rebaser_config.clone(),
+            rebase_request,
+        )
+        .await
+    }
+
+    async fn commit_internal(
+        &self,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<Option<Conflicts>, TransactionsError> {
+        let conflicts = if self.blocking {
+            self.blocking_commit_internal(rebase_request).await?
+        } else {
+            let mut guard = self.conns_state.lock().await;
+            let (new_guard, conflicts) = guard.take().commit(&self.tenancy, rebase_request).await?;
+            *guard = new_guard;
+
+            conflicts
+        };
+
+        Ok(conflicts)
+    }
+
+    async fn blocking_commit_internal(
+        &self,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<Option<Conflicts>, TransactionsError> {
+        let mut guard = self.conns_state.lock().await;
+
+        let (new_guard, conflicts) = guard
+            .take()
+            .blocking_commit(&self.tenancy, rebase_request)
+            .await?;
+        *guard = new_guard;
+
+        Ok(conflicts)
+    }
+
     pub fn to_builder(&self) -> DalContextBuilder {
         DalContextBuilder {
             services_context: self.services_context.clone(),
@@ -247,15 +429,68 @@ impl DalContext {
     }
 
     /// Consumes all inner transactions and committing all changes made within them.
-    pub async fn commit(&self) -> Result<(), TransactionsError> {
-        if self.blocking {
-            self.blocking_commit().await?;
+    pub async fn commit(&self) -> Result<Option<Conflicts>, TransactionsError> {
+        let rebase_request = match self.write_snapshot().await? {
+            Some(workspace_snapshot_id) => Some(self.get_rebase_request(workspace_snapshot_id)?),
+            None => None,
+        };
+
+        Ok(if self.blocking {
+            self.blocking_commit_internal(rebase_request).await?
         } else {
-            let mut guard = self.conns_state.lock().await;
-            *guard = guard.take().commit().await?;
+            self.commit_internal(rebase_request).await?
+        })
+    }
+
+    pub async fn commit_no_rebase(&self) -> Result<(), TransactionsError> {
+        if self.blocking {
+            self.blocking_commit_internal(None).await?;
+        } else {
+            self.commit_internal(None).await?;
         }
 
         Ok(())
+    }
+
+    pub fn change_set_pointer(&self) -> Result<&ChangeSetPointer, TransactionsError> {
+        match self.change_set_pointer.as_ref() {
+            Some(csp_ref) => Ok(csp_ref),
+            None => Err(TransactionsError::ChangeSetPointerNotSet),
+        }
+    }
+
+    /// Fetch the change set pointer for the current change set visibility
+    /// Should only be called by DalContextBuilder or by ourselves if changing visibility or
+    /// refetching after a commit
+    pub fn set_change_set_pointer(
+        &mut self,
+        change_set_pointer: ChangeSetPointer,
+    ) -> Result<&ChangeSetPointer, TransactionsError> {
+        // "fork" a new change set pointer for this dal context "edit session". This gives us a new
+        // Ulid generator and new vector clock id so that concurrent editing conflicts can be
+        // resolved by the rebaser. This change set pointer is not persisted to the database (the
+        // rebaser will persist a new one if it can)
+        self.change_set_pointer = Some(
+            change_set_pointer
+                .editing_changeset()
+                .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?,
+        );
+
+        self.change_set_pointer()
+    }
+
+    pub fn set_workspace_snapshot(&mut self, workspace_snapshot: WorkspaceSnapshot) {
+        self.workspace_snapshot = Some(Arc::new(RwLock::new(workspace_snapshot)));
+    }
+
+    /// Fetch the workspace snapshot for the current visibility
+    pub fn workspace_snapshot(
+        &self,
+    ) -> Result<&Arc<RwLock<WorkspaceSnapshot>>, WorkspaceSnapshotError> {
+        match &self.workspace_snapshot {
+            Some(workspace_snapshot) => Ok(workspace_snapshot),
+            None => Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched),
+        }
     }
 
     pub fn blocking(&self) -> bool {
@@ -276,12 +511,14 @@ impl DalContext {
 
     /// Consumes all inner transactions, committing all changes made within them, and
     /// blocks until all queued jobs have reported as finishing.
-    pub async fn blocking_commit(&self) -> Result<(), TransactionsError> {
-        let mut guard = self.conns_state.lock().await;
+    pub async fn blocking_commit(&self) -> Result<Option<Conflicts>, TransactionsError> {
+        info!("blocking_commit");
+        let rebase_request = match self.write_snapshot().await? {
+            Some(workspace_snapshot_id) => Some(self.get_rebase_request(workspace_snapshot_id)?),
+            None => None,
+        };
 
-        *guard = guard.take().blocking_commit().await?;
-
-        Ok(())
+        self.blocking_commit_internal(rebase_request).await
     }
 
     /// Rolls all inner transactions back, discarding all changes made within them.
@@ -329,6 +566,14 @@ impl DalContext {
     /// Updates this context with a new [`Visibility`].
     pub fn update_visibility(&mut self, visibility: Visibility) {
         self.visibility = visibility;
+    }
+
+    /// Updates this context with a new [`Visibility`], specific to the new engine.
+    pub fn update_visibility_v2(&mut self, change_set_v2: &ChangeSetPointer) {
+        self.update_visibility(Visibility::new(
+            ChangeSetPk::from(Ulid::from(change_set_v2.id)),
+            None,
+        ));
     }
 
     /// Runs a block of code with "deleted" [`Visibility`] DalContext using the same transactions
@@ -429,15 +674,16 @@ impl DalContext {
         Ok(())
     }
 
-    pub async fn enqueue_fix(&self, job: Box<FixesJob>) -> Result<(), TransactionsError> {
-        self.txns().await?.job_queue.enqueue_job(job).await;
-        Ok(())
-    }
+    // pub async fn enqueue_fix(&self, job: Box<FixesJob>) -> Result<(), TransactionsError> {
+    //     self.txns().await?.job_queue.enqueue_job(job).await;
+    //     Ok(())
+    // }
+    //
 
-    pub async fn enqueue_refresh(&self, job: Box<RefreshJob>) -> Result<(), TransactionsError> {
-        self.txns().await?.job_queue.enqueue_job(job).await;
-        Ok(())
-    }
+    // pub async fn enqueue_refresh(&self, job: Box<RefreshJob>) -> Result<(), TransactionsError> {
+    //     self.txns().await?.job_queue.enqueue_job(job).await;
+    //     Ok(())
+    // }
 
     pub async fn enqueue_dependent_values_update(
         &self,
@@ -535,6 +781,11 @@ impl DalContext {
         self.services_context.module_index_url.as_deref()
     }
 
+    /// Gets a reference to the content store.
+    pub fn content_store(&self) -> &Arc<Mutex<PgStore>> {
+        &self.content_store
+    }
+
     /// Determines if a standard model object matches the tenancy of the current context and
     /// is in the same visibility.
     pub async fn check_tenancy<T: StandardModel>(
@@ -553,12 +804,22 @@ impl DalContext {
     /// Needed to remove universal tenancy while packages aren't a thing
     #[instrument(level = "debug", skip_all)]
     pub async fn import_builtins(&self) -> Result<(), TransactionsError> {
-        self.txns()
-            .await?
-            .pg()
-            .execute("SELECT import_builtins_v1($1)", &[self.tenancy()])
-            .await?;
+        // TODO(nick,zack,jacob): restore the ability to "import builtins" via the graph work.
+        // let source_workspace_pk = WorkspacePk::NONE;
+        // self.txns()
+        //     .await?
+        //     .pg()
+        //     .execute(
+        //         "SELECT import_builtins_v1($1, $2)",
+        //         &[self.tenancy(), &source_workspace_pk],
+        //     )
+        //     .await?;
         Ok(())
+    }
+
+    // NOTE(nick,zack,jacob): likely a temporary func to get the change set id from the visibility.
+    pub fn change_set_id(&self) -> ChangeSetPointerId {
+        ChangeSetPointerId::from(Ulid::from(self.visibility.change_set_pk))
     }
 
     pub fn access_builder(&self) -> AccessBuilder {
@@ -649,9 +910,12 @@ pub struct DalContextBuilder {
 }
 
 impl DalContextBuilder {
-    /// Contructs and returns a new [`DalContext`] using a default [`RequestContext`].
+    /// Constructs and returns a new [`DalContext`] using a default [`RequestContext`].
     pub async fn build_default(&self) -> Result<DalContext, TransactionsError> {
         let conns = self.services_context.connections().await?;
+        // should we move this into Connections?
+        let content_store = self.services_context.content_store().await?;
+
         Ok(DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
@@ -659,16 +923,21 @@ impl DalContextBuilder {
             tenancy: Tenancy::new_empty(),
             visibility: Visibility::new_head(false),
             history_actor: HistoryActor::SystemInit,
+            content_store: Arc::new(Mutex::new(content_store)),
             no_dependent_values: self.no_dependent_values,
+            workspace_snapshot: None,
+            change_set_pointer: None,
         })
     }
 
-    /// Contructs and returns a new [`DalContext`] using a [`RequestContext`].
+    /// Constructs and returns a new [`DalContext`] using a [`RequestContext`].
     pub async fn build_head(
         &self,
         access_builder: AccessBuilder,
     ) -> Result<DalContext, TransactionsError> {
         let conns = self.services_context.connections().await?;
+        let content_store = self.services_context.content_store().await?;
+
         Ok(DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
@@ -677,16 +946,20 @@ impl DalContextBuilder {
             history_actor: access_builder.history_actor,
             visibility: Visibility::new_head(false),
             no_dependent_values: self.no_dependent_values,
+            content_store: Arc::new(Mutex::new(content_store)),
+            workspace_snapshot: None,
+            change_set_pointer: None,
         })
     }
 
-    /// Contructs and returns a new [`DalContext`] using a [`RequestContext`].
+    /// Constructs and returns a new [`DalContext`] using a [`RequestContext`].
     pub async fn build(
         &self,
         request_context: RequestContext,
     ) -> Result<DalContext, TransactionsError> {
         let conns = self.services_context.connections().await?;
-        Ok(DalContext {
+        let content_store = self.services_context.content_store().await?;
+        let mut ctx = DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
@@ -694,7 +967,14 @@ impl DalContextBuilder {
             visibility: request_context.visibility,
             history_actor: request_context.history_actor,
             no_dependent_values: self.no_dependent_values,
-        })
+            content_store: Arc::new(Mutex::new(content_store)),
+            workspace_snapshot: None,
+            change_set_pointer: None,
+        };
+
+        ctx.update_snapshot_to_visibility().await?;
+
+        Ok(ctx)
     }
 
     /// Gets a reference to the PostgreSQL connection pool.
@@ -730,6 +1010,12 @@ impl DalContextBuilder {
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum TransactionsError {
+    #[error("change set error: {0}")]
+    ChangeSet(String),
+    #[error("change set pointer not found for change set id: {0}")]
+    ChangeSetPointerNotFound(ChangeSetPointerId),
+    #[error("Change set pointer not set on DalContext")]
+    ChangeSetPointerNotSet,
     #[error(transparent)]
     JobQueueProcessor(#[from] JobQueueProcessorError),
     #[error(transparent)]
@@ -738,16 +1024,26 @@ pub enum TransactionsError {
     Pg(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
+    #[error("rebase of snapshot {0} change set id {1} failed {2}")]
+    RebaseFailed(WorkspaceSnapshotId, ChangeSetPointerId, String),
+    #[error(transparent)]
+    RebaserClient(#[from] RebaserClientError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+    #[error("store error: {0}")]
+    Store(#[from] StoreError),
     #[error(transparent)]
     Tenancy(#[from] TenancyError),
+    #[error("Unable to acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
     #[error("cannot commit transactions on invalid connections state")]
     TxnCommit,
     #[error("cannot rollback transactions on invalid connections state")]
     TxnRollback,
     #[error("cannot start transactions without connections; state={0}")]
     TxnStart(&'static str),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(String),
 }
 
 /// A type which holds ownership over connections that can be used to start transactions.
@@ -755,6 +1051,7 @@ pub enum TransactionsError {
 pub struct Connections {
     pg_conn: InstrumentedClient,
     nats_conn: NatsClient,
+    rebaser_config: RebaserClientConfig,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
 }
 
@@ -765,10 +1062,12 @@ impl Connections {
         pg_conn: InstrumentedClient,
         nats_conn: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+        rebaser_config: RebaserClientConfig,
     ) -> Self {
         Self {
             pg_conn,
             nats_conn,
+            rebaser_config,
             job_processor,
         }
     }
@@ -778,8 +1077,14 @@ impl Connections {
         let pg_txn = PgTxn::create(self.pg_conn).await?;
         let nats_txn = self.nats_conn.transaction();
         let job_processor = self.job_processor;
+        let rebaser_config = self.rebaser_config;
 
-        Ok(Transactions::new(pg_txn, nats_txn, job_processor))
+        Ok(Transactions::new(
+            pg_txn,
+            nats_txn,
+            job_processor,
+            rebaser_config,
+        ))
     }
 
     /// Gets a reference to a PostgreSQL connection.
@@ -803,11 +1108,72 @@ pub struct Transactions {
     pg_txn: PgTxn,
     /// A NATS transaction.
     nats_txn: NatsTxn,
+    /// Rebaser client
+    rebaser_config: RebaserClientConfig,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     job_queue: JobQueue,
     #[allow(clippy::type_complexity)]
     dependencies_update_component:
         Arc<Mutex<HashMap<(Tenancy, ChangeSetPk), HashSet<ComponentId>>>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct RebaseRequest {
+    pub to_rebase_change_set_id: ChangeSetPointerId,
+    pub onto_workspace_snapshot_id: WorkspaceSnapshotId,
+    pub onto_vector_clock_id: VectorClockId,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Conflicts {
+    conflicts_found: Vec<Conflict>,
+    updates_found_and_skipped: Vec<Update>,
+}
+
+// TODO(nick): we need to determine the long term vision for tenancy-scoped subjects. We're leaking the tenancy into
+// the connection state functions. I believe it is fine for now since rebasing is a very specific use case, but we may
+// not want it long term.
+async fn rebase(
+    tenancy: &Tenancy,
+    nats: NatsClient,
+    rebaser_config: RebaserClientConfig,
+    rebase_request: RebaseRequest,
+) -> Result<Option<Conflicts>, TransactionsError> {
+    let start = Instant::now();
+
+    // TODO(nick): make this cleaner.
+    let workspace_id = tenancy.workspace_pk().unwrap_or(WorkspacePk::NONE).into();
+    let rebaser_client = rebaser_client::Client::new(nats, rebaser_config, workspace_id);
+
+    info!("got client and requesting rebase: {:?}", start.elapsed());
+    let response = rebaser_client
+        .request_rebase(
+            rebase_request.to_rebase_change_set_id.into(),
+            rebase_request.onto_workspace_snapshot_id.into(),
+            rebase_request.onto_vector_clock_id.into(),
+        )
+        .await?;
+    info!("got response from rebaser: {:?}", start.elapsed());
+
+    match response {
+        ReplyRebaseMessage::Success { .. } => Ok(None),
+        ReplyRebaseMessage::Error { message } => Err(TransactionsError::RebaseFailed(
+            rebase_request.onto_workspace_snapshot_id,
+            rebase_request.to_rebase_change_set_id,
+            message,
+        )),
+        ReplyRebaseMessage::ConflictsFound {
+            conflicts_found,
+            updates_found_and_skipped,
+        } => {
+            let conflicts = Conflicts {
+                conflicts_found: serde_json::from_value(conflicts_found)?,
+                updates_found_and_skipped: serde_json::from_value(updates_found_and_skipped)?,
+            };
+
+            Ok(Some(conflicts))
+        }
+    }
 }
 
 impl Transactions {
@@ -816,10 +1182,12 @@ impl Transactions {
         pg_txn: PgTxn,
         nats_txn: NatsTxn,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+        rebaser_config: RebaserClientConfig,
     ) -> Self {
         Self {
             pg_txn,
             nats_txn,
+            rebaser_config,
             job_processor,
             job_queue: JobQueue::new(),
             dependencies_update_component: Default::default(),
@@ -844,14 +1212,33 @@ impl Transactions {
         skip_all,
         fields()
     )]
-    pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
-        self.run_dependencies_update_component().await?;
+    pub async fn commit_into_conns(
+        self,
+        tenancy: &Tenancy,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
-        self.job_processor.process_queue(self.job_queue).await?;
-        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
 
-        Ok(conns)
+        let conflicts = if let Some(rebase_request) = rebase_request {
+            let start = Instant::now();
+            let conflicts = rebase(
+                tenancy,
+                nats_conn.clone(),
+                self.rebaser_config.clone(),
+                rebase_request,
+            )
+            .await?;
+            info!("rebase took: {:?}", start.elapsed());
+            conflicts
+        } else {
+            None
+        };
+
+        self.job_processor.process_queue(self.job_queue).await?;
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
+
+        Ok((conns, conflicts))
     }
 
     /// Consumes all inner transactions, committing all changes made within them, and returns
@@ -862,16 +1249,33 @@ impl Transactions {
         skip_all,
         fields()
     )]
-    pub async fn blocking_commit_into_conns(self) -> Result<Connections, TransactionsError> {
-        self.run_dependencies_update_component().await?;
+    pub async fn blocking_commit_into_conns(
+        self,
+        tenancy: &Tenancy,
+        rebase_request: Option<RebaseRequest>,
+    ) -> Result<(Connections, Option<Conflicts>), TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
+
+        let conflicts = if let Some(rebase_request) = rebase_request {
+            info!("rebase request");
+            rebase(
+                tenancy,
+                nats_conn.clone(),
+                self.rebaser_config.clone(),
+                rebase_request,
+            )
+            .await?
+        } else {
+            None
+        };
+
         self.job_processor
             .blocking_process_queue(self.job_queue)
             .await?;
-        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
 
-        Ok(conns)
+        Ok((conns, conflicts))
     }
 
     /// Rolls all inner transactions back, discarding all changes made within them, and returns
@@ -882,7 +1286,7 @@ impl Transactions {
     pub async fn rollback_into_conns(self) -> Result<Connections, TransactionsError> {
         let pg_conn = self.pg_txn.rollback_into_conn().await?;
         let nats_conn = self.nats_txn.rollback_into_conn().await?;
-        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor, self.rebaser_config);
 
         Ok(conns)
     }

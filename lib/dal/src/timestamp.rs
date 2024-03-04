@@ -22,4 +22,11 @@ impl Timestamp {
             updated_at: now,
         }
     }
+
+    pub fn assemble(created_at: DateTime<Utc>, updated_at: DateTime<Utc>) -> Self {
+        Self {
+            created_at,
+            updated_at,
+        }
+    }
 }

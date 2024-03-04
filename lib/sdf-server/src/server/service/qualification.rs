@@ -11,8 +11,8 @@ use thiserror::Error;
 
 use dal::{qualification::QualificationSummaryError, WsEventError};
 use dal::{
-    AttributeValueError, ComponentError, ComponentId, FuncError, FuncId, SchemaError, SchemaId,
-    StandardModelError, TenancyError, TransactionsError,
+    ComponentError, ComponentId, FuncId, SchemaError, SchemaId, StandardModelError, TenancyError,
+    TransactionsError,
 };
 
 use crate::server::state::AppState;
@@ -29,16 +29,12 @@ pub mod get_summary;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum QualificationError {
-    #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
     #[error("base64 decode error: {0}")]
     Base64Decode(#[from] base64::DecodeError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("component not found: {0}")]
     ComponentNotFound(ComponentId),
-    #[error("func error: {0}")]
-    Func(#[from] FuncError),
     #[error("func code not found: {0}")]
     FuncCodeNotFound(FuncId),
     #[error("func not found")]

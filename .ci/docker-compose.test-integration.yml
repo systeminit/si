@@ -29,7 +29,7 @@ services:
       - "PGPASSWORD=bugbear"
       - "POSTGRES_USER=si_test"
       - "POSTGRES_DB=si_test"
-      - "POSTGRES_MULTIPLE_DBS=si_test_dal,si_test_sdf_server"
+      - "POSTGRES_MULTIPLE_DBS=si_test_content_store,si_test_dal,si_test_sdf_server"
     command:
       - "-c"
       - "fsync=off"

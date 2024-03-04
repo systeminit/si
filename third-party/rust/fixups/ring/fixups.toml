@@ -1,3 +1,12 @@
+# NOTE(nick,jacob): adding cargo env. Original vendored file continues below.
+cargo_env = true
+
+# vendored-date: 2023-05-03
+# project: https://github.com/facebook/buck2
+# commit-hash: f24bf491d4ee266e1ccb444919bce598ba88ad8a
+# commit-date: 2023-02-21T07:04:43-0800
+# source: https://github.com/facebook/buck2/blob/f24bf491d4ee266e1ccb444919bce598ba88ad8a/shim/third-party/rust/fixups/rings/fixups.toml
+
 # Copied from fbsource fixup.
 
 buildscript = []

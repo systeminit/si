@@ -420,7 +420,7 @@ impl PropSpec {
             match current_prop_spec.kind() {
                 PropSpecKind::Map | PropSpecKind::Array => {
                     if let Some(children) = child_map.get(current_path) {
-                        if let Some(type_child) = children.get(0) {
+                        if let Some(type_child) = children.first() {
                             current_prop_spec_builder.type_prop(type_child.to_owned());
                         }
                     }

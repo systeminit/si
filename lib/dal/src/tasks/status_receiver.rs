@@ -15,9 +15,9 @@ use thiserror::Error;
 use tokio::sync::broadcast;
 
 use crate::{
-    AttributeValue, AttributeValueError, AttributeValueId, Component, ComponentId, DalContext,
-    DalContextBuilder, ServicesContext, StandardModel, StandardModelError, Tenancy,
-    TransactionsError, Visibility, WsEvent,
+    attribute::value::AttributeValueError, AttributeValue, AttributeValueId, Component,
+    ComponentId, DalContext, DalContextBuilder, ServicesContext, StandardModel, StandardModelError,
+    Tenancy, TransactionsError, Visibility, WsEvent,
 };
 
 pub mod client;
@@ -181,13 +181,8 @@ impl StatusReceiver {
         let mut seen_code_generation_components: HashSet<ComponentId> = HashSet::new();
         for dependent_value in flattened_dependent_graph {
             if code_generation_attribute_values.contains(dependent_value) {
-                let attribute_value = AttributeValue::get_by_id(&ctx, dependent_value)
-                    .await?
-                    .ok_or(AttributeValueError::NotFound(
-                        *dependent_value,
-                        *ctx.visibility(),
-                    ))?;
-                let component_id = attribute_value.context.component_id();
+                let attribute_value = AttributeValue::get_by_id(&ctx, *dependent_value)?;
+                let component_id = AttributeValue::component_id(&ctx, *dependent_value)?;
                 if component_id != ComponentId::NONE
                     && !seen_code_generation_components.contains(&component_id)
                 {

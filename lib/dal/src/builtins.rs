@@ -9,20 +9,12 @@ use thiserror::Error;
 
 use si_pkg::{SiPkgError, SpecError};
 
-use crate::func::argument::FuncArgumentError;
-use crate::func::binding::FuncBindingError;
-use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::func::FuncError;
 use crate::installed_pkg::InstalledPkgError;
 use crate::pkg::PkgError;
-use crate::provider::external::ExternalProviderError;
-use crate::provider::internal::InternalProviderError;
-use crate::schema::variant::definition::SchemaVariantDefinitionError;
-use crate::schema::variant::SchemaVariantError;
-use crate::socket::SocketError;
+// use crate::schema::variant::definition::SchemaVariantDefinitionError;
 use crate::{
-    AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
-    AttributeReadContext, AttributeValueError, AttributeValueId, DalContext, ExternalProviderId,
-    FuncError, InternalProviderId, PropError, PropId, SchemaError, SchemaVariantId,
+    AttributeValueId, DalContext, ExternalProviderId, InternalProviderId, PropId, SchemaVariantId,
     StandardModelError, TransactionsError,
 };
 
@@ -43,36 +35,18 @@ pub const SI_AWS_LB_TARGET_GROUP_PKG: &str = "si-aws-lb-target-group-2023-12-05.
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum BuiltinsError {
-    #[error("attribute context builder error: {0}")]
-    AttributeContextBuilder(#[from] AttributeContextBuilderError),
-    #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
-    #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
     #[error("attribute value not found by id: {0}")]
     AttributeValueNotFound(AttributeValueId),
-    #[error("attribute value not found for attribute read context: {0:?}")]
-    AttributeValueNotFoundForContext(AttributeReadContext),
     #[error("builtin {0} missing func argument {1}")]
     BuiltinMissingFuncArgument(String, String),
     #[error("explicit internal provider not found by name: {0}")]
     ExplicitInternalProviderNotFound(String),
-    #[error("external provider error: {0}")]
-    ExternalProvider(#[from] ExternalProviderError),
     #[error("external provider not found by name: {0}")]
     ExternalProviderNotFound(String),
     #[error("Filesystem IO error: {0}")]
     FilesystemIO(#[from] std::io::Error),
-    #[error("func error: {0}")]
+    #[error(transparent)]
     Func(#[from] FuncError),
-    #[error("func argument error: {0}")]
-    FuncArgument(#[from] FuncArgumentError),
-    #[error("func binding error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
-    #[error("func binding return value error: {0}")]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("json error {1} at file {0}")]
     FuncJson(String, serde_json::Error),
     #[error("Func Metadata error: {0}")]
@@ -83,8 +57,6 @@ pub enum BuiltinsError {
     ImplicitInternalProviderNotFoundForProp(PropId),
     #[error(transparent)]
     InstalledPkg(#[from] InstalledPkgError),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
     #[error("missing attribute prototype for attribute value")]
     MissingAttributePrototypeForAttributeValue,
     #[error("missing attribute prototype for explicit internal provider: {0}")]
@@ -95,28 +67,18 @@ pub enum BuiltinsError {
     MissingPkgsPath,
     #[error(transparent)]
     Pkg(#[from] PkgError),
-    #[error("prop error: {0}")]
-    Prop(#[from] PropError),
     #[error("prop cache not found: {0}")]
     PropCacheNotFound(SchemaVariantId),
     #[error("prop not bound by id: {0}")]
     PropNotFound(PropId),
     #[error("Regex parsing error: {0}")]
     Regex(#[from] regex::Error),
-    #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
-    #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
-    #[error("schema variant definition error")]
-    SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("encountered serde json error for func ({0}): {1}")]
     SerdeJsonErrorForFunc(String, serde_json::Error),
     #[error(transparent)]
     SiPkg(#[from] SiPkgError),
-    #[error("socket error: {0}")]
-    Socket(#[from] SocketError),
     #[error(transparent)]
     Spec(#[from] SpecError),
     #[error("standard model error: {0}")]
@@ -146,23 +108,35 @@ pub enum SelectedTestBuiltinSchemas {
 /// Migrate all local "builtins" in a definitive order.
 pub async fn migrate_local(
     ctx: &DalContext,
-    selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
+    _selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
 ) -> BuiltinsResult<()> {
     info!("migrating intrinsic functions");
     func::migrate_intrinsics(ctx).await?;
-    info!("migrating builtin functions");
-    func::migrate(ctx).await?;
+    info!("intrinsics migrated");
+    // info!("migrating builtin functions");
+    // func::migrate(ctx).await?;
 
-    match selected_test_builtin_schemas {
-        Some(found_selected_test_builtin_schemas) => {
-            schema::migrate_local_only_test_schemas(ctx, found_selected_test_builtin_schemas)
-                .await?;
-        }
-        None => {
-            schema::migrate_local_all_schemas(ctx).await?;
-        }
-    }
+    // FIXME(nick): restore builtin migration functionality for all variants.
+    info!("migrate minimal number of schemas for testing the new engine");
 
-    info!("completed migrating functions, workflows and schemas");
+    schema::migrate_pkg(ctx, SI_DOCKER_IMAGE_PKG, None).await?;
+    schema::migrate_pkg(ctx, SI_COREOS_PKG, None).await?;
+    schema::migrate_pkg(ctx, SI_AWS_EC2_PKG, None).await?;
+    schema::migrate_pkg(ctx, SI_AWS_PKG, None).await?;
+    schema::migrate_test_exclusive_schema_starfield(ctx).await?;
+    schema::migrate_test_exclusive_schema_fallout(ctx).await?;
+    schema::migrate_test_exclusive_schema_bethesda_secret(ctx).await?;
+
+    // match selected_test_builtin_schemas {
+    //     Some(found_selected_test_builtin_schemas) => {
+    //         schema::migrate_local_only_test_schemas(ctx, found_selected_test_builtin_schemas)
+    //            .await?;
+    //     }
+    //     None => {
+    //         schema::migrate_local_all_schemas(ctx).await?;
+    //     }
+    // }
+
+    // info!("completed migrating functions, workflows and schemas");
     Ok(())
 }

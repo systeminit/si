@@ -1,6 +1,7 @@
 use std::{env, path::Path};
 
 use buck2_resources::Buck2Resources;
+use content_store::PgStoreTools;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_crypto::{CryptoConfig, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
@@ -9,10 +10,9 @@ use si_data_pg::PgPoolConfig;
 use si_std::CanonicalFileError;
 use telemetry::prelude::*;
 use thiserror::Error;
-
-pub use si_crypto::CycloneKeyPair;
-pub use si_settings::{StandardConfig, StandardConfigFile};
 use ulid::Ulid;
+
+pub use si_settings::{StandardConfig, StandardConfigFile};
 
 const DEFAULT_CONCURRENCY_LIMIT: usize = 5;
 
@@ -56,6 +56,9 @@ pub struct Config {
 
     #[builder(default = "SymmetricCryptoServiceConfig::default()")]
     symmetric_crypto_service: SymmetricCryptoServiceConfig,
+
+    #[builder(default = "PgStoreTools::default_pool_config()")]
+    content_store_pg_pool: PgPoolConfig,
 }
 
 impl StandardConfig for Config {
@@ -99,12 +102,20 @@ impl Config {
     pub fn instance_id(&self) -> &str {
         self.instance_id.as_ref()
     }
+
+    /// Gets a reference to the config's content store pg pool.
+    #[must_use]
+    pub fn content_store_pg_pool(&self) -> &PgPoolConfig {
+        &self.content_store_pg_pool
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConfigFile {
     #[serde(default)]
     pg: PgPoolConfig,
+    #[serde(default = "PgStoreTools::default_pool_config")]
+    content_store_pg: PgPoolConfig,
     #[serde(default)]
     nats: NatsConfig,
     #[serde(default)]
@@ -121,6 +132,7 @@ impl Default for ConfigFile {
     fn default() -> Self {
         Self {
             pg: Default::default(),
+            content_store_pg: PgStoreTools::default_pool_config(),
             nats: Default::default(),
             concurrency_limit: default_concurrency_limit(),
             crypto: Default::default(),
@@ -142,6 +154,7 @@ impl TryFrom<ConfigFile> for Config {
 
         let mut config = Config::builder();
         config.pg_pool(value.pg);
+        config.content_store_pg_pool(value.content_store_pg);
         config.nats(value.nats);
         config.crypto(value.crypto);
         config.concurrency(value.concurrency_limit);
@@ -210,7 +223,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
-    config.pg.certificate_path = Some(postgres_key.try_into()?);
+    config.pg.certificate_path = Some(postgres_key.clone().try_into()?);
+    config.content_store_pg.certificate_path = Some(postgres_key.try_into()?);
 
     Ok(())
 }
@@ -242,7 +256,8 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
-    config.pg.certificate_path = Some(postgres_key.try_into()?);
+    config.pg.certificate_path = Some(postgres_key.clone().try_into()?);
+    config.content_store_pg.certificate_path = Some(postgres_key.try_into()?);
 
     Ok(())
 }

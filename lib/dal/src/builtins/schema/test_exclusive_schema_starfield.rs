@@ -151,6 +151,31 @@ pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> Builti
         )
         .build()?;
 
+    let starfield_kripke_func_code = "async function hesperus_is_phosphorus(input) {
+            if input.hesperus === \"hesperus\" { return \"phosphorus\"; }
+            else return \"not hesperus\";
+        }";
+    let starfield_kripke_func_name = "hesperus_is_phosphorus";
+    let starfield_kripke_func = FuncSpec::builder()
+        .name(starfield_kripke_func_name)
+        .unique_id(starfield_kripke_func_name)
+        .data(
+            FuncSpecData::builder()
+                .name(starfield_kripke_func_name)
+                .code_plaintext(starfield_kripke_func_code)
+                .handler(starfield_kripke_func_name)
+                .backend_kind(FuncSpecBackendKind::JsAttribute)
+                .response_type(FuncSpecBackendResponseType::String)
+                .build()?,
+        )
+        .argument(
+            FuncArgumentSpec::builder()
+                .name("hesperus")
+                .kind(FuncArgumentKind::String)
+                .build()?,
+        )
+        .build()?;
+
     let starfield_schema = SchemaSpec::builder()
         .name("starfield")
         .data(
@@ -210,6 +235,84 @@ pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> Builti
                                 .kind(AttrFuncInputSpecKind::InputSocket)
                                 .name("identity")
                                 .socket_name("bethesda")
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("possible_world_a")
+                        .kind(PropKind::Object)
+                        .entry(
+                            PropSpec::builder()
+                                .name("wormhole_1")
+                                .kind(PropKind::Object)
+                                .entry(
+                                    PropSpec::builder()
+                                        .name("wormhole_2")
+                                        .kind(PropKind::Object)
+                                        .entry(
+                                            PropSpec::builder()
+                                                .name("wormhole_3")
+                                                .kind(PropKind::Object)
+                                                .entry(
+                                                    PropSpec::builder()
+                                                        .kind(PropKind::String)
+                                                        .name("rigid_designator")
+                                                        .build()?,
+                                                )
+                                                .build()?,
+                                        )
+                                        .build()?,
+                                )
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .domain_prop(
+                    PropSpec::builder()
+                        .name("possible_world_b")
+                        .kind(PropKind::Object)
+                        .entry(
+                            PropSpec::builder()
+                                .name("wormhole_1")
+                                .kind(PropKind::Object)
+                                .entry(
+                                    PropSpec::builder()
+                                        .name("wormhole_2")
+                                        .kind(PropKind::Object)
+                                        .entry(
+                                            PropSpec::builder()
+                                                .name("wormhole_3")
+                                                .kind(PropKind::Object)
+                                                .entry(
+                                                    PropSpec::builder()
+                                                        .kind(PropKind::String)
+                                                        .name("naming_and_necessity")
+                                                        .func_unique_id(
+                                                            &starfield_kripke_func.unique_id,
+                                                        )
+                                                        .input(
+                                                            AttrFuncInputSpec::builder()
+                                                                .kind(AttrFuncInputSpecKind::Prop)
+                                                                .name("hesperus")
+                                                                .prop_path(PropPath::new([
+                                                                    "root",
+                                                                    "domain",
+                                                                    "possible_world_a",
+                                                                    "wormhole_1",
+                                                                    "wormhole_2",
+                                                                    "wormhole_3",
+                                                                    "rigid_designator",
+                                                                ]))
+                                                                .build()?,
+                                                        )
+                                                        .build()?,
+                                                )
+                                                .build()?,
+                                        )
+                                        .build()?,
+                                )
                                 .build()?,
                         )
                         .build()?,
@@ -301,6 +404,7 @@ pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> Builti
         .func(fallout_entries_to_galaxies_transform_func)
         .func(starfield_authoring_schema_func)
         .func(starfield_resource_payload_to_value_func)
+        .func(starfield_kripke_func)
         .schema(starfield_schema)
         .build()?;
 

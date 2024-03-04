@@ -3,18 +3,22 @@
 //! and mutating said properties.
 
 use serde::{Deserialize, Serialize};
+use si_data_pg::PgError;
 use thiserror::Error;
 
-use si_data_pg::PgError;
-
+use crate::attribute::value::AttributeValueError;
+use crate::prop::PropError;
+use crate::workspace_snapshot::node_weight::NodeWeightError;
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, schema::variant::SchemaVariantError, AttributeValueError, AttributeValueId, ComponentError,
-    PropError, PropId, SchemaVariantId, StandardModelError, TransactionsError,
+    pk, AttributeValueId, ComponentError, PropId, SchemaVariantId, StandardModelError,
+    TransactionsError,
 };
 
 pub mod schema;
 pub mod values;
-pub mod values_summary;
+
+// pub mod validations;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -25,20 +29,16 @@ pub enum PropertyEditorError {
     BadAttributeReadContext(String),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("component not found")]
+    ComponentNotFound,
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
     #[error("no value(s) found for property editor prop id: {0}")]
     NoValuesFoundForPropertyEditorProp(PropertyEditorPropId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
-    #[error("property editor values summary: {0}")]
-    PropertyEditorValuesSummary(String),
-    #[error("prop not found for id: {0}")]
-    PropNotFound(PropId),
-    #[error("root prop not found for schema variant")]
-    RootPropNotFound,
-    #[error("schema variant: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found: {0}")]
     SchemaVariantNotFound(SchemaVariantId),
     #[error("error serializing/deserializing json: {0}")]
@@ -49,6 +49,10 @@ pub enum PropertyEditorError {
     TooManyValuesFoundForPropertyEditorProp(PropertyEditorPropId),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;

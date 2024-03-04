@@ -29,6 +29,11 @@ pub(crate) fn expand(item: ItemFn, args: Args) -> TokenStream {
 fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
     let mut expander = DalTestFnSetupExpander::new();
 
+    expander.setup_start_veritech_server();
+    expander.setup_start_pinga_server();
+    expander.setup_start_council_server();
+    expander.setup_start_rebaser_server();
+
     for param in params {
         match param {
             FnArg::Typed(pat_type) => match &*pat_type.ty {
@@ -76,6 +81,11 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
                             }
                             "PingaShutdownHandle" => {
                                 let var = expander.setup_pinga_shutdown_handle();
+                                let var = var.as_ref();
+                                expander.push_arg(parse_quote! {#var});
+                            }
+                            "RebaserShutdownHandle" => {
+                                let var = expander.setup_rebaser_shutdown_handle();
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
@@ -166,14 +176,15 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> DalTestFnSetup {
         }
     }
 
-    if expander.has_args() {
-        // TODO(fnichol): we can use a macro attribute to opt-out and not run a veritech server in
-        // the future, but for now (as before), every test starts with its own veritech server with
-        // a randomized subject prefix
-        expander.setup_start_veritech_server();
-        expander.setup_start_pinga_server();
-        expander.setup_start_council_server();
-    }
+    // if expander.has_args() {
+    //     // TODO(fnichol): we can use a macro attribute to opt-out and not run a veritech server in
+    //     // the future, but for now (as before), every test starts with its own veritech server with
+    //     // a randomized subject prefix
+    //     expander.setup_start_veritech_server();
+    //     expander.setup_start_pinga_server();
+    //     expander.setup_start_council_server();
+    //     expander.setup_start_rebaser_server();
+    // }
 
     expander.finish()
 }
@@ -200,6 +211,9 @@ struct DalTestFnSetupExpander {
     pinga_server: Option<Rc<Ident>>,
     pinga_shutdown_handle: Option<Rc<Ident>>,
     start_pinga_server: Option<()>,
+    rebaser_server: Option<Rc<Ident>>,
+    rebaser_shutdown_handle: Option<Rc<Ident>>,
+    start_rebaser_server: Option<()>,
     veritech_server: Option<Rc<Ident>>,
     veritech_shutdown_handle: Option<Rc<Ident>>,
     start_veritech_server: Option<()>,
@@ -226,6 +240,9 @@ impl DalTestFnSetupExpander {
             pinga_server: None,
             pinga_shutdown_handle: None,
             start_pinga_server: None,
+            rebaser_server: None,
+            rebaser_shutdown_handle: None,
+            start_rebaser_server: None,
             veritech_server: None,
             veritech_shutdown_handle: None,
             start_veritech_server: None,
@@ -241,6 +258,7 @@ impl DalTestFnSetupExpander {
         }
     }
 
+    #[allow(dead_code)]
     fn has_args(&self) -> bool {
         !self.args.is_empty()
     }
@@ -316,6 +334,30 @@ impl FnSetupExpander for DalTestFnSetupExpander {
 
     fn set_start_pinga_server(&mut self, value: Option<()>) {
         self.start_pinga_server = value;
+    }
+
+    fn rebaser_server(&self) -> Option<&Rc<Ident>> {
+        self.rebaser_server.as_ref()
+    }
+
+    fn set_rebaser_server(&mut self, value: Option<Rc<Ident>>) {
+        self.rebaser_server = value;
+    }
+
+    fn rebaser_shutdown_handle(&self) -> Option<&Rc<Ident>> {
+        self.rebaser_shutdown_handle.as_ref()
+    }
+
+    fn set_rebaser_shutdown_handle(&mut self, value: Option<Rc<Ident>>) {
+        self.rebaser_shutdown_handle = value;
+    }
+
+    fn start_rebaser_server(&self) -> Option<()> {
+        self.start_rebaser_server
+    }
+
+    fn set_start_rebaser_server(&mut self, value: Option<()>) {
+        self.start_rebaser_server = value;
     }
 
     fn veritech_server(&self) -> Option<&Rc<Ident>> {

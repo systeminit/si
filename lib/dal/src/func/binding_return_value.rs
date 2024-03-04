@@ -16,9 +16,13 @@ use crate::{
     Visibility,
 };
 
+use super::FuncError;
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncBindingReturnValueError {
+    #[error("Func error: {0}")]
+    Func(#[from] FuncError),
     #[error("func binding error: {0}")]
     FuncBinding(String),
     #[error("function execution error: {0}")]
@@ -168,9 +172,7 @@ impl FuncBindingReturnValue {
         &self,
         ctx: &DalContext,
     ) -> FuncBindingReturnValueResult<FuncMetadataView> {
-        let func = Func::get_by_id(ctx, &self.func_id)
-            .await?
-            .ok_or(FuncBindingReturnValueError::FuncNotFound(self.func_id))?;
+        let func = Func::get_by_id(ctx, self.func_id).await?;
         Ok(func.metadata_view())
     }
 }

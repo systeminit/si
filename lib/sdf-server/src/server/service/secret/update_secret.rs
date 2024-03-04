@@ -2,8 +2,8 @@ use axum::response::IntoResponse;
 use axum::Json;
 use dal::secret::SecretView;
 use dal::{
-    key_pair::KeyPairPk, ChangeSet, EncryptedSecret, SecretAlgorithm, SecretVersion, Visibility,
-    WsEvent,
+    key_pair::KeyPairPk, ChangeSet, EncryptedSecret, Secret, SecretAlgorithm, SecretVersion,
+    Visibility, WsEvent,
 };
 use dal::{HistoryActor, SecretError, SecretId, StandardModel};
 use serde::{Deserialize, Serialize};
@@ -66,6 +66,10 @@ pub async fn update_secret(
         secret.set_version(&ctx, new_data.version).await?;
         secret.set_algorithm(&ctx, new_data.algorithm).await?;
     }
+
+    // TODO(nick): unify this with the encrypted secrets stuff. For now, let's update the referential secret
+    // as a side effect.
+    Secret::update(&ctx, &secret).await?;
 
     WsEvent::secret_updated(&ctx, *secret.id())
         .await?

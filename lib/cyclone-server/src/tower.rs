@@ -1,5 +1,4 @@
-pub use limit_requests::{LimitRequest, LimitRequestLayer};
-pub use web_socket_trace::{WebSocketTrace, WebSocketTraceLayer};
+pub use web_socket_trace::WebSocketTraceLayer;
 
 mod limit_requests {
     use std::{

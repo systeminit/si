@@ -8,6 +8,7 @@ members = [
     "bin/cyclone",
     "bin/module-index",
     "bin/pinga",
+    "bin/rebaser",
     "bin/sdf",
     "bin/si",
     "bin/veritech",
@@ -15,6 +16,7 @@ members = [
     "lib/buck2-resources",
     "lib/bytes-lines-codec",
     "lib/config-file",
+    "lib/content-store",
     "lib/council-server",
     "lib/cyclone-client",
     "lib/cyclone-core",
@@ -30,7 +32,11 @@ members = [
     "lib/nats-subscriber",
     "lib/object-tree",
     "lib/pinga-server",
+    "lib/rebaser-client",
+    "lib/rebaser-core",
+    "lib/rebaser-server",
     "lib/sdf-server",
+    "lib/si-cbor",
     "lib/si-crypto",
     "lib/si-data-nats",
     "lib/si-data-pg",
@@ -124,6 +130,7 @@ pathdiff = "0.2.1"
 petgraph = { version = "0.6.3", features = ["serde-1"] }
 pin-project-lite = "0.2.9"
 podman-api = "0.10"
+postcard = { version = "1.0.8", features = ["use-std"] }
 postgres-types = { version = "0.2.5", features = ["derive"] }
 pretty_assertions_sorted = "1.2.1"
 proc-macro2 = "1.0.56"

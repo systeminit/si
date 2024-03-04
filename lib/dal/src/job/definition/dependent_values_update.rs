@@ -1,26 +1,42 @@
-use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use council_server::ManagementResponse;
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::{collections::HashMap, convert::TryFrom};
-use telemetry::prelude::*;
-use tokio::task::JoinSet;
+use std::{
+    collections::{HashMap, HashSet},
+    convert::TryFrom,
+};
 
-use crate::property_editor;
-use crate::tasks::StatusReceiverClient;
-use crate::tasks::StatusReceiverRequest;
-use crate::{diagram, ComponentId};
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
+use thiserror::Error;
+use tokio::task::{JoinError, JoinSet};
+
+//use crate::tasks::StatusReceiverClient;
+//use crate::tasks::StatusReceiverRequest;
 use crate::{
+    attribute::value::{
+        dependent_value_graph::DependentValueGraph, AttributeValueError, PrototypeExecutionResult,
+    },
     job::consumer::{
         JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
     },
     job::producer::{JobProducer, JobProducerResult},
-    AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    DalContext, Prop, StandardModel, StatusUpdater, ValidationResolver, ValidationStatus,
-    Visibility, WsEvent,
+    AccessBuilder, AttributeValue, AttributeValueId, DalContext,
+    /*WsEvent*/
+    TransactionsError, /*StatusUpdater,*/
+    Visibility,
 };
-use crate::{FuncBindingReturnValue, InternalProvider};
+
+#[remain::sorted]
+#[derive(Debug, Error)]
+pub enum DependentValueUpdateError {
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
+    #[error(transparent)]
+    TokioTask(#[from] JoinError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
+}
+
+pub type DependentValueUpdateResult<T> = Result<T, DependentValueUpdateError>;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct DependentValuesUpdateArgs {
@@ -49,19 +65,12 @@ impl DependentValuesUpdate {
         visibility: Visibility,
         attribute_values: Vec<AttributeValueId>,
     ) -> Box<Self> {
-        // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to force non deleted visibility in the future.
-        let visibility = visibility.to_non_deleted();
-
         Box::new(Self {
             attribute_values,
             access_builder,
             visibility,
             job: None,
         })
-    }
-
-    fn job_id(&self) -> Option<String> {
-        self.job.as_ref().map(|j| j.id.clone())
     }
 }
 
@@ -98,513 +107,112 @@ impl JobConsumer for DependentValuesUpdate {
         )
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
-        let jid = council_server::Id::from_string(&self.job_id().unwrap())?;
-        let mut council = council_server::Client::new(
-            ctx.nats_conn().clone(),
-            ctx.nats_conn()
-                .metadata()
-                .subject_prefix()
-                .map(|p| p.to_string()),
-            jid,
-            self.visibility().change_set_pk.into(),
-        )
-        .await?;
-        let pub_council = council.clone_into_pub();
-        let council_management = council_server::ManagementClient::new(
-            ctx.nats_conn(),
-            ctx.nats_conn()
-                .metadata()
-                .subject_prefix()
-                .map(|p| p.to_string()),
-        )
-        .await?;
-
-        let res = self
-            .inner_run(ctx, &mut council, pub_council, council_management)
-            .await;
-
-        council.bye().await?;
-
-        res
+        Ok(self.inner_run(ctx).await?)
     }
 }
 
 impl DependentValuesUpdate {
-    async fn inner_run(
-        &self,
-        ctx: &mut DalContext,
-        council: &mut council_server::Client,
-        pub_council: council_server::PubClient,
-        mut management_council: council_server::ManagementClient,
-    ) -> JobConsumerResult<()> {
-        // TODO(nick,paulo,zack,jacob): ensure we do not _have_ to do this in the future.
-        ctx.update_without_deleted_visibility();
-
-        let mut status_updater = StatusUpdater::initialize(ctx).await;
+    async fn inner_run(&self, ctx: &mut DalContext) -> DependentValueUpdateResult<()> {
+        let start = tokio::time::Instant::now();
 
         let mut dependency_graph =
-            AttributeValue::dependent_value_graph(ctx, &self.attribute_values).await?;
+            DependentValueGraph::for_values(ctx, self.attribute_values.clone()).await?;
 
-        // The dependent_value_graph is read-only, so we can safely rollback the inner txns, to
-        // make sure we don't hold open txns unnecessarily
-        ctx.rollback().await?;
-
-        // NOTE(nick,jacob): uncomment this for debugging.
-        // Save printed output to a file and execute the following: "dot <file> -Tsvg -o <newfile>.svg"
-        // println!("{}", dependency_graph_to_dot(ctx, &dependency_graph).await?);
-
-        // Any of our initial inputs that aren't using one of the `si:set*`, or `si:unset`
-        // functions need to be evaluated, since we might be populating the initial functions of a
-        // `Component` during `Component` creation.
-        let avs_with_dynamic_functions: HashSet<AttributeValueId> = HashSet::from_iter(
-            AttributeValue::ids_using_dynamic_functions(ctx, &self.attribute_values)
-                .await?
-                .iter()
-                .copied(),
+        debug!(
+            "DependentValueGraph calculation took: {:?}",
+            start.elapsed()
         );
-        for id in &self.attribute_values {
-            if avs_with_dynamic_functions.contains(id) {
-                dependency_graph.entry(*id).or_insert_with(Vec::new);
+
+        // Remove the first set of independent_values since they should already have had their functions executed
+        for value in dependency_graph.independent_values() {
+            dependency_graph.remove_value(value);
+        }
+
+        let mut seen_ids = HashSet::new();
+        let mut task_id_to_av_id = HashMap::new();
+        let mut update_join_set = JoinSet::new();
+
+        let mut independent_value_ids = dependency_graph.independent_values();
+
+        loop {
+            if independent_value_ids.is_empty() && task_id_to_av_id.is_empty() {
+                break;
             }
+
+            for attribute_value_id in &independent_value_ids {
+                let attribute_value_id = attribute_value_id.to_owned(); // release our borrow
+
+                if !seen_ids.contains(&attribute_value_id) {
+                    let join_handle = update_join_set.spawn(
+                        values_from_prototype_function_execution(ctx.clone(), attribute_value_id),
+                    );
+                    task_id_to_av_id.insert(join_handle.id(), attribute_value_id);
+                    seen_ids.insert(attribute_value_id);
+                }
+            }
+
+            // Wait for a task to finish
+            if let Some(join_result) = update_join_set.join_next_with_id().await {
+                let (task_id, execution_result) = join_result?;
+                if let Some(finished_value_id) = task_id_to_av_id.remove(&task_id) {
+                    match execution_result {
+                        Ok(execution_values) => {
+                            match AttributeValue::set_values_from_execution_result(
+                                ctx,
+                                finished_value_id,
+                                execution_values,
+                            )
+                            .await
+                            {
+                                // Remove the value, so that any values that dependent on it will
+                                // become independent values (once all other dependencies are removed)
+                                Ok(_) => dependency_graph.remove_value(finished_value_id),
+                                Err(err) => {
+                                    error!("error setting values from executed prototype function for AttributeValue {finished_value_id}: {err}");
+                                    dependency_graph.cycle_on_self(finished_value_id);
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            // By adding an outgoing edge from the failed node to itself it will
+                            // never appear in the `independent_values` call above since that looks for
+                            // nodes *without* outgoing edges. Thus we will never try to re-execute
+                            // the function for this value, nor will we execute anything in the
+                            // dependency graph connected to this value
+
+                            error!("error executing prototype function for AttributeValue {finished_value_id}: {err}");
+                            dependency_graph.cycle_on_self(finished_value_id);
+                        }
+                    }
+                }
+            }
+
+            independent_value_ids = dependency_graph.independent_values();
         }
 
-        debug!(?dependency_graph, "Generated dependency graph");
-
-        if dependency_graph.is_empty() {
-            return Ok(());
-        }
-
-        // Cache the original dependency graph to send the status receiver.
-        let original_dependency_graph = dependency_graph.clone();
-
-        council
-            .register_dependency_graph(
-                dependency_graph
-                    .iter()
-                    .map(|(key, value)| (key.into(), value.iter().map(Into::into).collect()))
-                    .collect(),
-            )
-            .await?;
-
-        let mut enqueued: Vec<AttributeValueId> = dependency_graph.keys().copied().collect();
-        enqueued.extend(dependency_graph.values().flatten().copied());
-        status_updater.values_queued(ctx, enqueued).await;
-
-        // Status updater reads from the database and uses its own connection from the pg_pool to
-        // do writes
-        ctx.rollback().await?;
-
-        let mut update_tasks = JoinSet::new();
-
-        // This is the core loop. Use both the individual and the management subscription to determine what to do next.
-        let needs_restart = tokio::select! {
-            result = self.listen(ctx, council, pub_council, dependency_graph, &mut status_updater, &mut update_tasks) => result,
-            management_result = self.listen_management(&mut management_council) => management_result,
-        }?;
-
-        // If we need to restart, we need to stop what we are doing, tell the status update that we are stopping, and
-        // then re-enqueue ourselves.
-        if needs_restart {
-            update_tasks.abort_all();
-
-            info!(?self.attribute_values, "aborted update tasks and restarting job");
-
-            status_updater
-                .values_completed(ctx, self.attribute_values.clone())
-                .await;
-
-            ctx.enqueue_dependent_values_update(self.attribute_values.clone())
-                .await?;
-        }
-
-        // No matter what, we need to finish the updater
-        status_updater.finish(ctx).await;
-
-        let client = StatusReceiverClient::new(ctx.nats_conn().clone()).await;
-        if let Err(e) = client
-            .publish(&StatusReceiverRequest {
-                visibility: *ctx.visibility(),
-                tenancy: *ctx.tenancy(),
-                dependent_graph: original_dependency_graph,
-            })
-            .await
-        {
-            error!("could not publish status receiver request: {:?}", e);
-        }
+        debug!("DependentValuesUpdate took: {:?}", start.elapsed());
 
         ctx.commit().await?;
 
         Ok(())
     }
-
-    #[instrument(
-        name = "dependent_values_update.listen",
-        level = "info",
-        skip_all,
-        fields()
-    )]
-    async fn listen(
-        &self,
-        ctx: &DalContext,
-        council: &mut council_server::Client,
-        pub_council: council_server::PubClient,
-        mut dependency_graph: HashMap<AttributeValueId, Vec<AttributeValueId>>,
-        status_updater: &mut StatusUpdater,
-        update_tasks: &mut JoinSet<JobConsumerResult<()>>,
-    ) -> JobConsumerResult<bool> {
-        let ctx_builder = ctx.to_builder();
-        let mut needs_restart = false;
-
-        while !dependency_graph.is_empty() {
-            match council.fetch_response().await? {
-                Some(response) => match response {
-                    council_server::Response::OkToProcess { node_ids } => {
-                        debug!(?node_ids, job_id = ?self.job_id(), "Ok to start processing nodes");
-                        for node_id in node_ids {
-                            let id = AttributeValueId::from(node_id);
-
-                            status_updater.values_running(ctx, vec![id]).await;
-                            // Status updater reads from the database and uses its own connection
-                            // from the pg_pool to do writes
-                            ctx.rollback().await?;
-
-                            let task_ctx = ctx_builder
-                                .build(self.access_builder().build(self.visibility()))
-                                .await?;
-
-                            let attribute_value = AttributeValue::get_by_id(&task_ctx, &id)
-                                .await?
-                                .ok_or_else(|| {
-                                    AttributeValueError::NotFound(id, self.visibility())
-                                })?;
-                            update_tasks.spawn(update_value(
-                                task_ctx,
-                                attribute_value,
-                                pub_council.clone(),
-                                Span::current(),
-                            ));
-                        }
-                    }
-                    council_server::Response::BeenProcessed { node_id } => {
-                        debug!(?node_id, job_id = ?self.job_id(), "Node has been processed by a job");
-                        let id = AttributeValueId::from(node_id);
-                        dependency_graph.remove(&id);
-
-                        // Send a completed status for this value and *remove* it from the hash
-                        status_updater.values_completed(ctx, vec![id]).await;
-
-                        ctx.commit().await?;
-                    }
-                    council_server::Response::Failed { node_id } => {
-                        debug!(?node_id, job_id = ?self.job_id(), "Node failed on another job");
-                        let id = AttributeValueId::from(node_id);
-                        dependency_graph.remove(&id);
-
-                        // Send a completed status for this value and *remove* it from the hash
-                        status_updater.values_completed(ctx, vec![id]).await;
-                        // Status updater reads from the database and uses its own connection from
-                        // the pg_pool to do writes
-                        ctx.rollback().await?;
-                    }
-                    council_server::Response::Restart => {
-                        info!("received response that job needs restart");
-                        needs_restart = true;
-
-                        // Ejecto seato cuz.
-                        break;
-                    }
-                    council_server::Response::Shutdown => break,
-                },
-                None => {
-                    // FIXME(nick): reconnect. Same "FIXME" as the one found in the original listener.
-                    warn!("subscriber has been unsubscribed or the connection has been closed");
-                    break;
-                }
-            }
-
-            ctx.commit().await?;
-
-            // If we get `None` back from the `JoinSet` that means that there are no
-            // further tasks in the `JoinSet` for us to wait on. This should only happen
-            // after we've stopped adding new tasks to the `JoinSet`, which means either:
-            //   * We have completely walked the initial graph, and have visited every
-            //     node.
-            //   * We've encountered a cycle that means we can no longer make any
-            //     progress on walking the graph.
-            // In both cases, there isn't anything more we can do, so we can stop looking
-            // at the graph to find more work.
-            while let Some(future_result) = update_tasks.join_next().await {
-                // We get back a `Some<Result<Result<..>>>`. We've already unwrapped the
-                // `Some`, the outermost `Result` is a `JoinError` to let us know if
-                // anything went wrong in joining the task.
-                match future_result {
-                    // We have successfully updated a value
-                    Ok(Ok(())) => {}
-                    // There was an error (with our code) when updating the value
-                    Ok(Err(err)) => {
-                        warn!(error = ?err, "error updating value");
-                        return Err(err);
-                    }
-                    // There was a Tokio JoinSet error when joining the task back (i.e. likely
-                    // I/O error)
-                    Err(err) => {
-                        warn!(error = ?err, "error when joining update task");
-                        return Err(err.into());
-                    }
-                }
-            }
-        }
-
-        Ok(needs_restart)
-    }
-
-    #[instrument(
-        name = "dependent_values_update.listen_management",
-        level = "info",
-        skip_all,
-        fields()
-    )]
-    async fn listen_management(
-        &self,
-        council_management: &mut council_server::ManagementClient,
-    ) -> JobConsumerResult<bool> {
-        let needs_restart = match council_management.fetch_response().await? {
-            Some(management_response) => match management_response {
-                ManagementResponse::Restart => true,
-            },
-            None => {
-                // FIXME(nick): reconnect. Same "FIXME" as the one found in the original listener.
-                warn!(
-                    "management subscriber has been unsubscribed or the connection has been closed"
-                );
-                false
-            }
-        };
-        info!("received management response that job needs restart");
-        Ok(needs_restart)
-    }
 }
 
-/// Wrapper around `AttributeValue.update_from_prototype_function(&ctx)` to get it to
+/// Wrapper around `AttributeValue.values_from_prototype_function_execution(&ctx)` to get it to
 /// play more nicely with being spawned into a `JoinSet`.
 #[instrument(
-    name = "dependent_values_update.update_value",
-    parent = &parent_span,
+    name = "dependent_values_update.values_from_prototype_function_execution",
     skip_all,
     level = "info",
     fields(
-        attribute_value.id = %attribute_value.id(),
+        attribute_value.id = %attribute_value_id,
     )
 )]
-async fn update_value(
+async fn values_from_prototype_function_execution(
     ctx: DalContext,
-    mut attribute_value: AttributeValue,
-    council: council_server::PubClient,
-    parent_span: Span,
-) -> JobConsumerResult<()> {
-    let update_result = attribute_value.update_from_prototype_function(&ctx).await;
-    // We don't propagate the error up, because we want the rest of the nodes in the graph to make progress
-    // if they are able to.
-    if update_result.is_err() {
-        error!(?update_result, attribute_value_id = %attribute_value.id(), "Error updating AttributeValue");
-        council
-            .failed_processing_value(attribute_value.id().into())
-            .await?;
-        ctx.rollback().await?;
-    }
-
-    // If this is for an internal provider corresponding to a root prop for the schema variant of an existing component,
-    // then we want to update summary tables.
-    let value = if let Some(fbrv) =
-        FuncBindingReturnValue::get_by_id(&ctx, &attribute_value.func_binding_return_value_id())
-            .await?
-    {
-        if let Some(component_value_json) = fbrv.unprocessed_value() {
-            if !attribute_value.context.is_component_unset()
-                && !attribute_value.context.is_internal_provider_unset()
-                && InternalProvider::is_for_root_prop(
-                    &ctx,
-                    attribute_value.context.internal_provider_id(),
-                )
-                .await
-                .unwrap()
-            {
-                update_summary_tables(
-                    &ctx,
-                    component_value_json,
-                    attribute_value.context.component_id(),
-                )
-                .await?;
-            }
-            component_value_json.clone()
-        } else {
-            serde_json::Value::Null
-        }
-    } else {
-        serde_json::Value::Null
-    };
-
-    ctx.commit().await?;
-
-    if update_result.is_ok() {
-        council.processed_value(attribute_value.id().into()).await?;
-    }
-
-    Prop::run_validation(
-        &ctx,
-        attribute_value.context.prop_id(),
-        attribute_value.context.component_id(),
-        attribute_value.key(),
-        value,
-    )
-    .await;
-
-    ctx.commit().await?;
-
-    Ok(())
-}
-
-#[instrument(
-    name = "dependent_values_update.update_summary_tables",
-    skip_all,
-    level = "info",
-    fields(
-        component.id = %component_id,
-    )
-)]
-pub async fn update_summary_tables(
-    ctx: &DalContext,
-    component_value_json: &serde_json::Value,
-    component_id: ComponentId,
-) -> JobConsumerResult<()> {
-    // Qualification summary table - if we add more summary tables, this should be extracted to its
-    // own method.
-    let mut total: i64 = 0;
-    let mut warned: i64 = 0;
-    let mut succeeded: i64 = 0;
-    let mut failed: i64 = 0;
-    let mut name: String = String::new();
-    let mut color: String = String::new();
-    let mut component_type: String = String::new();
-    let mut has_resource: bool = false;
-    let mut deleted_at: Option<String> = None;
-    let mut deleted_at_datetime: Option<DateTime<Utc>> = None;
-    if let Some(ref deleted_at) = deleted_at {
-        let deleted_at_datetime_inner: DateTime<Utc> = deleted_at.parse()?;
-        deleted_at_datetime = Some(deleted_at_datetime_inner);
-    }
-
-    if let Some(component_name) = component_value_json.pointer("/si/name") {
-        if let Some(component_name_str) = component_name.as_str() {
-            name = String::from(component_name_str);
-        }
-    }
-
-    if let Some(component_color) = component_value_json.pointer("/si/color") {
-        if let Some(component_color_str) = component_color.as_str() {
-            color = String::from(component_color_str);
-        }
-    }
-
-    if let Some(component_type_json) = component_value_json.pointer("/si/type") {
-        if let Some(component_type_str) = component_type_json.as_str() {
-            component_type = String::from(component_type_str);
-        }
-    }
-
-    if let Some(_resource) = component_value_json.pointer("/resource/payload") {
-        has_resource = true;
-    }
-
-    if let Some(deleted_at_value) = component_value_json.pointer("/deleted_at") {
-        if let Some(deleted_at_str) = deleted_at_value.as_str() {
-            deleted_at = Some(deleted_at_str.into());
-        }
-    }
-
-    if let Some(qualification_map_value) = component_value_json.pointer("/qualification") {
-        if let Some(qualification_map) = qualification_map_value.as_object() {
-            for qual_result_map_value in qualification_map.values() {
-                if let Some(qual_result_map) = qual_result_map_value.as_object() {
-                    if let Some(qual_result) = qual_result_map.get("result") {
-                        if let Some(qual_result_string) = qual_result.as_str() {
-                            total += 1;
-                            match qual_result_string {
-                                "success" => succeeded += 1,
-                                "warning" => warned += 1,
-                                "failure" => failed += 1,
-                                &_ => (),
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    let mut success = None;
-    for resolver in ValidationResolver::find_by_attr(ctx, "component_id", &component_id).await? {
-        if success.is_none() {
-            success = Some(true);
-        }
-
-        if resolver.value()?.status != ValidationStatus::Success {
-            success = Some(false);
-        }
-    }
-
-    if let Some(success) = success {
-        total += 1;
-        if success {
-            succeeded += 1;
-        } else {
-            failed += 1;
-        }
-    }
-
-    let _row = ctx
-        .txns()
-        .await?
-        .pg()
-        .query_one(
-            "SELECT object FROM summary_qualification_update_v2($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-            &[
-                ctx.tenancy(),
-                ctx.visibility(),
-                &component_id,
-                &name,
-                &total,
-                &warned,
-                &succeeded,
-                &failed,
-                &deleted_at_datetime,
-            ],
-        )
-        .await?;
-
-    diagram::summary_diagram::component_update(
-        ctx,
-        &component_id,
-        name,
-        color,
-        component_type,
-        has_resource,
-        deleted_at,
-    )
-    .await?;
-
-    property_editor::values_summary::PropertyEditorValuesSummary::create_or_update_component_entry(
-        ctx,
-        component_id,
-    )
-    .await?;
-
-    WsEvent::component_updated(ctx, component_id)
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
-
-    Ok(())
+    attribute_value_id: AttributeValueId,
+) -> DependentValueUpdateResult<PrototypeExecutionResult> {
+    Ok(AttributeValue::execute_prototype_function(&ctx, attribute_value_id).await?)
 }
 
 impl TryFrom<JobInfo> for DependentValuesUpdate {
@@ -619,42 +227,4 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
             job: Some(job),
         })
     }
-}
-
-#[allow(unused)]
-async fn dependency_graph_to_dot(
-    ctx: &DalContext,
-    graph: &HashMap<AttributeValueId, Vec<AttributeValueId>>,
-) -> AttributeValueResult<String> {
-    let mut node_definitions = String::new();
-    for attr_val_id in graph.keys() {
-        let attr_val = AttributeValue::get_by_id(ctx, attr_val_id)
-            .await?
-            .ok_or_else(|| AttributeValueError::NotFound(*attr_val_id, *ctx.visibility()))?;
-        let prop_id = attr_val.context.prop_id();
-        let internal_provider_id = attr_val.context.internal_provider_id();
-        let external_provider_id = attr_val.context.external_provider_id();
-        let component_id = attr_val.context.component_id();
-        node_definitions.push_str(&format!(
-            "\"{attr_val_id}\"[label=\"\\lAttribute Value: {attr_val_id}\\n\\lProp: {prop_id}\\lInternal Provider: {internal_provider_id}\\lExternal Provider: {external_provider_id}\\lComponent: {component_id}\"];",
-        ));
-    }
-
-    let mut node_graph = String::new();
-    for (attr_val, inputs) in graph {
-        let dependencies = format!(
-            "{{{dep_list}}}",
-            dep_list = inputs
-                .iter()
-                .map(|i| format!("\"{i}\""))
-                .collect::<Vec<String>>()
-                .join(" ")
-        );
-        let dependency_line = format!("{dependencies} -> \"{attr_val}\";",);
-        node_graph.push_str(&dependency_line);
-    }
-
-    let dot_digraph = format!("digraph G {{{node_definitions}{node_graph}}}");
-
-    Ok(dot_digraph)
 }

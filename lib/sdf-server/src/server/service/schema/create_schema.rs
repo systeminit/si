@@ -1,8 +1,10 @@
+use axum::Json;
+use dal::ComponentKind;
+use dal::{Schema, Visibility};
+use serde::{Deserialize, Serialize};
+
 use super::SchemaResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use axum::Json;
-use dal::{component::ComponentKind, Schema, Visibility};
-use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -26,7 +28,7 @@ pub async fn create_schema(
 ) -> SchemaResult<Json<CreateSchemaResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let schema = Schema::new(&ctx, &request.name, &ComponentKind::Standard).await?;
+    let schema = Schema::new(&ctx, &request.name, ComponentKind::Standard).await?;
     let response = CreateSchemaResponse { schema };
 
     ctx.commit().await?;

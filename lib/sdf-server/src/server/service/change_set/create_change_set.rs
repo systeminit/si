@@ -1,6 +1,6 @@
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::ChangeSet;
+use dal::change_set_pointer::ChangeSetPointer;
 use serde::{Deserialize, Serialize};
 
 use super::ChangeSetResult;
@@ -16,7 +16,7 @@ pub struct CreateChangeSetRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateChangeSetResponse {
-    pub change_set: ChangeSet,
+    pub change_set: ChangeSetPointer,
 }
 
 pub async fn create_change_set(
@@ -29,7 +29,8 @@ pub async fn create_change_set(
     let ctx = builder.build_head(access_builder).await?;
 
     let change_set_name = &request.change_set_name;
-    let change_set = ChangeSet::new(&ctx, change_set_name, None).await?;
+
+    let change_set_pointer = ChangeSetPointer::fork_head(&ctx, change_set_name).await?;
 
     track(
         &posthog_client,
@@ -41,7 +42,9 @@ pub async fn create_change_set(
         }),
     );
 
-    ctx.commit().await?;
+    ctx.commit_no_rebase().await?;
 
-    Ok(Json(CreateChangeSetResponse { change_set }))
+    Ok(Json(CreateChangeSetResponse {
+        change_set: change_set_pointer,
+    }))
 }

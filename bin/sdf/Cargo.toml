@@ -10,11 +10,13 @@ name = "sdf"
 path = "src/main.rs"
 
 [dependencies]
-clap = { workspace = true }
-color-eyre = { workspace = true }
 nats-multiplexer = { path = "../../lib/nats-multiplexer" }
+rebaser-client = { path = "../../lib/rebaser-client" }
 sdf-server = { path = "../../lib/sdf-server" }
 si-std = { path = "../../lib/si-std" }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }
+
+clap = { workspace = true }
+color-eyre = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
