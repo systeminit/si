@@ -28,7 +28,7 @@ function commonSandbox(executionId: string): Sandbox {
     zlib,
     fetch,
     siExec: makeExec(executionId),
-    YAML: { stringify: yaml.dump },
+    YAML: { stringify: yaml.dump, parse: yaml.load },
     os,
     fs,
     path,

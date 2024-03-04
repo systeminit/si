@@ -28,7 +28,7 @@ pub enum HistoryEventError {
 pub type HistoryEventResult<T> = Result<T, HistoryEventError>;
 
 #[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, StrumDisplay, Clone, Copy)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, StrumDisplay, Clone, Copy, Hash)]
 pub enum HistoryActor {
     SystemInit,
     User(UserPk),

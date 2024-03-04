@@ -14,7 +14,7 @@ pub mod component_type;
 /// This enum contains the subtree names for every direct child [`Prop`](crate::Prop) of
 /// [`RootProp`](RootProp). Not all children will be of the same [`PropKind`](crate::PropKind).
 #[remain::sorted]
-#[derive(AsRefStr, EnumIter, EnumString, EnumDisplay)]
+#[derive(AsRefStr, EnumIter, EnumString, EnumDisplay, Debug)]
 pub enum RootPropChild {
     /// Corresponds to the "/root/code" subtree.
     Code,

@@ -116,6 +116,7 @@ export interface PropertyEditorValue {
   overridden: boolean;
   controllingFuncId: string;
   controllingAttributeValueId: string;
+  ancestorManual: boolean;
   // TODO(Wendy) - we also need the default funcId and funcName for this prop to tell the user the default func that was overriden
 }
 

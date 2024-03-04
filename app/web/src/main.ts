@@ -24,6 +24,9 @@ app.use(createHead());
 app.use(router);
 app.use(store);
 
+// set the default tooltip delay to show and hide faster
+FloatingVue.options.themes.tooltip.delay = { show: 10, hide: 100 };
+
 // we attach to the #app-layout div (in AppLayout.vue) to stay within an overflow hidden div and not mess with page scrollbars
 app.use(FloatingVue, {
   container: "#app-layout",
@@ -32,10 +35,13 @@ app.use(FloatingVue, {
       $extend: "tooltip",
       html: true,
     },
-    "user-info": {
+    "instant-show": {
       $extend: "tooltip",
-      delay: { show: 10, hide: 100 },
       instantMove: true,
+      delay: { show: 0, hide: 100 },
+    },
+    "user-info": {
+      $extend: "instant-show",
       html: true,
     },
     "w-380": {

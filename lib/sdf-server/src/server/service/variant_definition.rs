@@ -9,12 +9,11 @@ use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use dal::authentication_prototype::{
-    AuthenticationPrototype, AuthenticationPrototypeContext, AuthenticationPrototypeError,
-};
-use dal::ws_event::AttributePrototypeContextKind;
 use dal::{
     attribute::prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
+    authentication_prototype::{
+        AuthenticationPrototype, AuthenticationPrototypeContext, AuthenticationPrototypeError,
+    },
     func::argument::{FuncArgumentError, FuncArgumentId},
     installed_pkg::InstalledPkgError,
     pkg::PkgError,
@@ -23,13 +22,15 @@ use dal::{
         SchemaVariantDefinitionError as DalSchemaVariantDefinitionError, SchemaVariantDefinitionId,
     },
     socket::SocketError,
+    ws_event::AttributePrototypeContextKind,
     ActionPrototype, ActionPrototypeContext, ActionPrototypeError, AttributeContext,
     AttributeContextBuilderError, AttributeContextError, AttributePrototype,
-    AttributePrototypeError, AttributePrototypeId, AttributeValueError, ChangeSetError, DalContext,
-    ExternalProvider, ExternalProviderError, Func, FuncBinding, FuncBindingError, FuncError,
-    FuncId, InternalProvider, InternalProviderError, LeafInputLocation, LeafKind, Prop, PropError,
-    PropKind, SchemaError, SchemaVariant, SchemaVariantError, SchemaVariantId, SocketId,
-    StandardModel, StandardModelError, TenancyError, TransactionsError, UserError, WsEventError,
+    AttributePrototypeError, AttributePrototypeId, AttributeValueError, ChangeSetError,
+    ComponentError as DalComponentError, DalContext, ExternalProvider, ExternalProviderError, Func,
+    FuncBinding, FuncBindingError, FuncError, FuncId, InternalProvider, InternalProviderError,
+    LeafInputLocation, LeafKind, Prop, PropError, PropKind, SchemaError, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, SocketId, StandardModel, StandardModelError, TenancyError,
+    TransactionsError, UserError, WsEventError,
 };
 use si_pkg::{SiPkgError, SpecError};
 
@@ -70,6 +71,8 @@ pub enum SchemaVariantDefinitionError {
     ContextTransaction(#[from] TransactionsError),
     #[error("error creating schema variant from definition: {0}")]
     CouldNotCreateSchemaVariantFromDefinition(String),
+    #[error("component error: {0}")]
+    DalComponent(#[from] DalComponentError),
     #[error(transparent)]
     ExternalProvider(#[from] ExternalProviderError),
     #[error("external provider not found for socket: {0}")]
@@ -140,6 +143,8 @@ pub enum SchemaVariantDefinitionError {
     Spec(#[from] SpecError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error("summary diagram error: {0}")]
+    SummaryDiagram(#[from] dal::diagram::SummaryDiagramError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
     #[error("transparent")]

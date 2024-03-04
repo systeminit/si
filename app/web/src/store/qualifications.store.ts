@@ -3,8 +3,6 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { useComponentAttributesStore } from "@/store/component_attributes.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ComponentId, useComponentsStore } from "./components.store";
@@ -21,8 +19,6 @@ type QualificationStats = {
 };
 
 export const useQualificationsStore = () => {
-  const featureFlagsStore = useFeatureFlagsStore();
-
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
 
@@ -33,16 +29,13 @@ export const useQualificationsStore = () => {
       `ws${workspaceId || "NONE"}/cs${changeSetId || "NONE"}/qualifications`,
       {
         state: () => ({
-          // stats per component - this is the raw data
-          // we may change this to store qualification ids and individual statuses to make realtime updates easier
-          // NOTE(victor) Use the qualificationStatsByComponentId getter, it has validation data
-          qualificationStatsByComponentIdRaw: {} as Record<
+          qualificationStatsByComponentId: {} as Record<
             ComponentId,
             QualificationStats
           >,
 
           // NOTE(victor) Use the qualificationsByComponentId getter, it has validation data
-          qualificationsByComponentIdRaw: {} as Record<
+          qualificationsByComponentId: {} as Record<
             ComponentId,
             Qualification[]
           >,
@@ -50,62 +43,6 @@ export const useQualificationsStore = () => {
           checkedQualificationsAt: null as Date | null,
         }),
         getters: {
-          // NOTE(victor) the following two getters only exist because Joi validations
-          // run on the frontend. If all qualification data goes back
-          // to coming from the API we can delete both *Raw entries from state
-          qualificationStatsByComponentId: (state) =>
-            _.mapValues(
-              state.qualificationStatsByComponentIdRaw,
-              (cs, componentId) => {
-                let total = cs.total;
-                let succeeded = cs.succeeded;
-                let failed = cs.failed;
-
-                if (featureFlagsStore.JOI_VALIDATIONS) {
-                  const { result: validationResult } =
-                    useComponentAttributesStore(componentId).schemaValidation;
-
-                  if (validationResult) {
-                    total += 1;
-                    if (validationResult.status === "success") succeeded += 1;
-                    else failed += 1;
-                  }
-                }
-
-                return {
-                  ...cs,
-                  total,
-                  succeeded,
-                  failed,
-                };
-              },
-            ),
-          qualificationsByComponentId: (state) =>
-            _.mapValues(
-              state.qualificationsByComponentIdRaw,
-              (qualifications, componentId) => {
-                const compiledQualifications = _.cloneDeep(qualifications);
-
-                if (featureFlagsStore.JOI_VALIDATIONS) {
-                  compiledQualifications.push(
-                    useComponentAttributesStore(componentId).schemaValidation,
-                  );
-                }
-
-                // TODO: maybe we want to sort these in the backend?
-                return _.orderBy(
-                  compiledQualifications,
-                  (response) =>
-                    ({
-                      failure: 1,
-                      warning: 2,
-                      unknown: 3,
-                      success: 4,
-                    }[response.result?.status || "unknown"]),
-                );
-              },
-            ),
-
           // single status per component
           qualificationStatusByComponentId(): Record<
             ComponentId,
@@ -193,7 +130,7 @@ export const useQualificationsStore = () => {
                   "componentId",
                 );
 
-                this.qualificationStatsByComponentIdRaw = _.mapValues(
+                this.qualificationStatsByComponentId = _.mapValues(
                   byComponentId,
                   ({ total, succeeded, warned, failed }) => ({
                     // transform the data slightly to add "running" so we can avoid recalculating again elsewhere
@@ -222,7 +159,7 @@ export const useQualificationsStore = () => {
                 visibility_change_set_pk: changeSetId,
               },
               onSuccess: (response) => {
-                this.qualificationsByComponentIdRaw[componentId] = response;
+                this.qualificationsByComponentId[componentId] = response;
               },
             });
           },

@@ -97,6 +97,7 @@ impl QualificationSummary {
 
             component_summaries.push(individual_summary);
         }
+
         Ok(QualificationSummary {
             total,
             succeeded: components_succeeded,
@@ -122,6 +123,8 @@ pub enum QualificationError {
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    ValidationResolver(#[from] ValidationResolverError),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default, PartialEq, Eq)]
@@ -228,6 +231,52 @@ impl QualificationView {
             output,
             result,
             qualification_name: qualification_name.to_string(),
+        }))
+    }
+
+    pub async fn new_for_validations(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> Result<Option<Self>, QualificationError> {
+        let mut output = Vec::new();
+
+        let mut status = QualificationSubCheckStatus::Success;
+
+        let mut fail_counter = 0;
+        for resolver in ValidationResolver::find_by_attr(ctx, "component_id", &component_id).await?
+        {
+            let value = resolver.value()?;
+            if value.status != ValidationStatus::Success {
+                status = QualificationSubCheckStatus::Failure;
+                fail_counter += 1;
+
+                if let Some(prop) = Prop::get_by_id(ctx, &resolver.prop_id()).await? {
+                    output.push(QualificationOutputStreamView {
+                        stream: "stdout".to_owned(),
+                        level: "log".to_owned(),
+                        line: format!("{}: {}", prop.name(), value.message),
+                    });
+                }
+            }
+        }
+
+        let result = Some(QualificationResult {
+            status,
+            title: None,
+            link: None,
+            sub_checks: vec![QualificationSubCheck {
+                description: format!("Component has {fail_counter} invalid value(s)."),
+                status,
+            }],
+        });
+
+        Ok(Some(QualificationView {
+            title: "Schema Validations".to_owned(),
+            description: None,
+            link: None,
+            output,
+            result,
+            qualification_name: "validations".to_owned(),
         }))
     }
 }

@@ -1,4 +1,4 @@
-use std::{mem, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, collections::HashSet, mem, path::PathBuf, sync::Arc};
 
 use content_store::{PgStore, StoreError};
 use futures::Future;
@@ -24,6 +24,7 @@ use crate::workspace_snapshot::WorkspaceSnapshotId;
 use crate::{
     change_set_pointer::{ChangeSetPointer, ChangeSetPointerId},
     job::{
+        definition::{FixesJob, RefreshJob},
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
         queue::JobQueue,
@@ -650,11 +651,52 @@ impl DalContext {
         new
     }
 
+    pub async fn enqueue_dependencies_update_component(
+        &self,
+        component_id: ComponentId,
+    ) -> Result<(), TransactionsError> {
+        self.txns()
+            .await?
+            .enqueue_dependencies_update_component(
+                *self.tenancy(),
+                self.visibility().change_set_pk,
+                component_id,
+            )
+            .await;
+        Ok(())
+    }
+
     pub async fn enqueue_job(
         &self,
-        job: Box<dyn JobProducer + Send + Sync>,
+        job: Box<dyn JobProducer + Sync + Send>,
     ) -> Result<(), TransactionsError> {
         self.txns().await?.job_queue.enqueue_job(job).await;
+        Ok(())
+    }
+
+    pub async fn enqueue_fix(&self, job: Box<FixesJob>) -> Result<(), TransactionsError> {
+        self.txns().await?.job_queue.enqueue_job(job).await;
+        Ok(())
+    }
+
+    pub async fn enqueue_refresh(&self, job: Box<RefreshJob>) -> Result<(), TransactionsError> {
+        self.txns().await?.job_queue.enqueue_job(job).await;
+        Ok(())
+    }
+
+    pub async fn enqueue_dependent_values_update(
+        &self,
+        ids: Vec<AttributeValueId>,
+    ) -> Result<(), TransactionsError> {
+        self.txns()
+            .await?
+            .job_queue
+            .enqueue_dependent_values_update(
+                self.visibility().change_set_pk,
+                self.access_builder(),
+                ids,
+            )
+            .await;
         Ok(())
     }
 
@@ -809,7 +851,7 @@ impl Default for RequestContext {
 }
 
 /// A request context builder which requires a [`Visibility`] to be completed.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct AccessBuilder {
     /// A suitable tenancy for the consuming DAL objects.
     tenancy: Tenancy,
@@ -1144,6 +1186,7 @@ impl Transactions {
             rebaser_config,
             job_processor,
             job_queue: JobQueue::new(),
+            dependencies_update_component: Default::default(),
         }
     }
 
@@ -1250,6 +1293,38 @@ impl Transactions {
     /// encountered to the caller.
     pub async fn rollback(self) -> Result<(), TransactionsError> {
         let _ = self.rollback_into_conns().await?;
+        Ok(())
+    }
+
+    pub async fn enqueue_dependencies_update_component(
+        &self,
+        tenancy: Tenancy,
+        change_set_pk: ChangeSetPk,
+        component_id: ComponentId,
+    ) {
+        self.dependencies_update_component
+            .lock()
+            .await
+            .entry((tenancy, change_set_pk))
+            .or_default()
+            .insert(component_id);
+    }
+
+    #[instrument(level = "info", skip_all)]
+    async fn run_dependencies_update_component(&self) -> Result<(), TransactionsError> {
+        for ((tenancy, change_set_pk), component_ids) in
+            std::mem::take(&mut *self.dependencies_update_component.lock().await)
+        {
+            for component_id in component_ids {
+                let visibility = Visibility::new(change_set_pk, None);
+                self.pg()
+                    .execute(
+                        "SELECT attribute_value_dependencies_update_component_v1($1, $2, $3)",
+                        &[&tenancy, &visibility, &component_id],
+                    )
+                    .await?;
+            }
+        }
         Ok(())
     }
 }

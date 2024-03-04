@@ -1314,18 +1314,19 @@ impl PkgExporter {
                     .await?
                     .ok_or(ComponentError::NoSchemaVariant(*component.id()))?;
 
-                let component_variant = match self
-                    .variant_map
-                    .get(change_set_pk.unwrap_or(ChangeSetPk::NONE), variant.id())
-                {
-                    Some(variant_spec) => ComponentSpecVariant::WorkspaceVariant {
+                let component_variant = match (
+                    self.variant_map
+                        .get(change_set_pk.unwrap_or(ChangeSetPk::NONE), variant.id()),
+                    variant.is_builtin(ctx).await?,
+                ) {
+                    (Some(variant_spec), false) => ComponentSpecVariant::WorkspaceVariant {
                         variant_unique_id: variant_spec
                             .unique_id
                             .as_ref()
                             .unwrap_or(&variant.id().to_string())
                             .to_owned(),
                     },
-                    None => {
+                    _ => {
                         let schema = component
                             .schema(ctx)
                             .await?

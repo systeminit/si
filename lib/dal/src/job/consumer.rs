@@ -72,6 +72,8 @@ pub enum JobConsumerError {
     #[error(transparent)]
     UlidDecode(#[from] ulid::DecodeError),
     #[error(transparent)]
+    ValidationResolver(#[from] ValidationResolverError),
+    #[error(transparent)]
     WsEvent(#[from] WsEventError),
 }
 

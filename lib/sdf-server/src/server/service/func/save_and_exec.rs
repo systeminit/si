@@ -5,9 +5,9 @@ use super::{
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{response::IntoResponse, Json};
 use dal::{
-    job::definition::DependentValuesUpdate, ActionPrototype, AttributePrototype, AttributeValue,
-    AttributeValueError, AttributeValueId, ChangeSet, Component, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, RootPropChild, SchemaVariant, StandardModel, WsEvent,
+    ActionPrototype, AttributePrototype, AttributeValue, AttributeValueError, AttributeValueId,
+    ChangeSet, Component, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
+    RootPropChild, SchemaVariant, StandardModel, WsEvent,
 };
 
 async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()> {
@@ -101,12 +101,7 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
             }
         }
 
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            value_ids,
-        ))
-        .await?;
+        ctx.enqueue_dependent_values_update(value_ids).await?;
     }
 
     Ok(())

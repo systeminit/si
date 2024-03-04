@@ -37,17 +37,15 @@ pub struct ListQueuedActionsResponse {
 
 pub async fn list_queued_actions(
     HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
+    AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListQueuedActionsRequest>,
 ) -> ChangeSetResult<Json<ListQueuedActionsResponse>> {
-    let ctx = builder.build_head(access_builder).await?;
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let change_set = ChangeSet::get_by_pk(&ctx, &request.visibility.change_set_pk)
+    let change_set = ChangeSet::get_by_pk(&ctx, &ctx.visibility().change_set_pk)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
 
-    let ctx =
-        ctx.clone_with_new_visibility(Visibility::new(change_set.pk, ctx.visibility().deleted_at));
     let mut actions = HashMap::new();
     for (
         _,

@@ -10,8 +10,6 @@ import {
   PropertyEditorValues,
 } from "@/api/sdf/dal/property_editor";
 import { nilId } from "@/utils/nilId";
-import { Qualification } from "@/api/sdf/dal/qualification";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ComponentId, useComponentsStore } from "./components.store";
@@ -82,8 +80,6 @@ export type AttributeTreeItem = {
 };
 
 export const useComponentAttributesStore = (componentId: ComponentId) => {
-  const featureFlagsStore = useFeatureFlagsStore();
-
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
 
@@ -122,6 +118,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             function getAttributeValueWithChildren(
               valueId: string,
               parentValueId: string,
+              ancestorManual = true,
               indexInParentArray?: number,
             ): AttributeTreeItem | undefined {
               /* eslint-disable @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-explicit-any */
@@ -135,6 +132,12 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               if (!propDef) return;
 
               // console.log("HERE", value);
+
+              value.ancestorManual = ancestorManual;
+              const isAncestorManual =
+                ancestorManual &&
+                value.isControlledByIntrinsicFunc &&
+                !(value.canBeSetBySocket || value.isFromExternalSource);
 
               return {
                 propDef,
@@ -155,6 +158,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
                     getAttributeValueWithChildren(
                       cvId,
                       valueId,
+                      isAncestorManual,
                       propDef.kind === "array" ? index : undefined,
                     ),
                   ),
@@ -194,65 +198,6 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             if (!componentId) return;
             const componentsStore = useComponentsStore();
             return componentsStore.componentsById[componentId];
-          },
-
-          schemaValidation(): Qualification {
-            const emptyQualification = {
-              title: "Schema Validation",
-              output: [],
-              result: {
-                status: "unknown" as "success" | "unknown",
-                sub_checks: [],
-              },
-            };
-
-            if (!featureFlagsStore.JOI_VALIDATIONS) {
-              /* eslint-disable no-console */
-              console.warn(
-                "Trying to get schemaValidation with feature flag turned off",
-              );
-              return emptyQualification;
-            }
-
-            if (!this.validations) {
-              return emptyQualification;
-            }
-
-            let status: "success" | "failure" = "success";
-            let failCounter = 0;
-            const output = [];
-            for (const [propId, validations] of Object.entries(
-              this.validations,
-            )) {
-              const prop = this.schema?.props[propId];
-              if (!prop) continue;
-
-              for (const [, validation] of validations) {
-                if (validation.status !== "Success") {
-                  status = "failure";
-                  failCounter++;
-                }
-                output.push({
-                  line: `${prop.name}: ${validation.message}`,
-                  stream: "stdout",
-                  level: "log",
-                });
-              }
-            }
-
-            return {
-              title: "Schema Validation",
-              output,
-              result: {
-                status,
-                sub_checks: [
-                  {
-                    status,
-                    description: `Component has ${failCounter} invalid value(s). Click "View Details" for more info.`,
-                  },
-                ],
-              },
-            };
           },
         },
         actions: {
