@@ -1,11 +1,9 @@
 use axum::response::IntoResponse;
 use axum::Json;
-use dal::secret::SecretView;
-use dal::StandardModel;
 use dal::{
-    key_pair::KeyPairPk, ChangeSet, EncryptedSecret, SecretAlgorithm, SecretVersion, Visibility,
-    WsEvent,
+    key_pair::KeyPairPk, EncryptedSecret, SecretAlgorithm, SecretVersion, Visibility, WsEvent,
 };
+use dal::{ChangeSet, SecretView};
 use serde::{Deserialize, Serialize};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -49,7 +47,7 @@ pub async fn create_secret(
     )
     .await?;
 
-    WsEvent::secret_created(&ctx, *secret.id())
+    WsEvent::secret_created(&ctx, secret.id())
         .await?
         .publish_on_commit(&ctx)
         .await?;

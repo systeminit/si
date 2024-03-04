@@ -192,13 +192,13 @@ impl Node {
         let total_start = std::time::Instant::now();
         let ctx_with_deleted = &ctx.clone_with_delete_visibility();
 
-        // Gather all nodes with at least one edge.
-        let mut edges = Edge::list_for_kind(ctx_with_deleted, EdgeKind::Configuration)
-            .await
-            .map_err(|e| NodeError::Edge(e.to_string()))?;
-        if shuffle_edges {
-            edges.shuffle(&mut thread_rng());
-        }
+        //         // Gather all nodes with at least one edge.
+        //         let mut edges = Edge::list_for_kind(ctx_with_deleted, EdgeKind::Configuration)
+        //             .await
+        //             .map_err(|e| NodeError::Edge(e.to_string()))?;
+        //         if shuffle_edges {
+        //             edges.shuffle(&mut thread_rng());
+        //         }
 
         // Populate the nodes map based on all configuration edges. The "key" is every node with at
         // least one edge. The "value" is a set of nodes that the "key" node depends on (i.e. the

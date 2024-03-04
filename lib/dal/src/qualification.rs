@@ -4,15 +4,18 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute::value::AttributeValueError;
 use crate::component::qualification::QualificationEntry;
-use crate::func::binding_return_value::FuncBindingReturnValueId;
+use crate::func::FuncError;
+use crate::prop::PropError;
+use crate::validation::resolver::{ValidationResolver, ValidationResolverError, ValidationStatus};
 use crate::{
-    func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
+    func::binding_return_value::FuncBindingReturnValueError,
     ws_event::{WsEvent, WsPayload},
-    ComponentError, ComponentId, DalContext, FuncId, Prop, StandardModel, StandardModelError,
-    ValidationResolver, ValidationResolverError, ValidationStatus, WsEventResult,
+    Component, ComponentError, ComponentId, DalContext, Prop, StandardModel, StandardModelError,
+    WsEventResult,
 };
-use crate::{standard_model, TransactionsError};
+use crate::{AttributeValue, AttributeValueId, Func};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct QualificationSummaryForComponent {
@@ -43,8 +46,6 @@ pub enum QualificationSummaryError {
     Pg(#[from] PgError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    Transaction(#[from] TransactionsError),
 }
 
 pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;
@@ -57,13 +58,47 @@ impl QualificationSummary {
         let mut components_failed = 0;
         let mut total = 0;
 
-        let qualification_summary_for_components: Vec<QualificationSummaryForComponent> =
-            standard_model::list(ctx, "summary_qualifications").await?;
-        for component_summary in qualification_summary_for_components.iter() {
-            components_succeeded += component_summary.succeeded;
-            components_warned += component_summary.warned;
-            components_failed += component_summary.failed;
-            total += 1;
+        let mut component_summaries = vec![];
+
+        for component in Component::list(ctx).await? {
+            let component_id = component.id();
+            let qualifications = Component::list_qualifications(ctx, component_id).await?;
+
+            let individual_total = qualifications.len() as i64;
+            let mut succeeded = 0;
+            let mut warned = 0;
+            let mut failed = 0;
+            for qualification in qualifications {
+                if let Some(result) = qualification.result {
+                    match result.status {
+                        QualificationSubCheckStatus::Success => succeeded += 1,
+                        QualificationSubCheckStatus::Warning => warned += 1,
+                        QualificationSubCheckStatus::Failure => failed += 1,
+                        QualificationSubCheckStatus::Unknown => {}
+                    }
+                }
+            }
+
+            let individual_summary = QualificationSummaryForComponent {
+                component_id,
+                component_name: component.name(ctx).await?,
+                total: individual_total,
+                succeeded,
+                warned,
+                failed,
+            };
+
+            // Update counters for all components.
+            if failed > 0 {
+                components_failed += 1;
+            } else if warned > 0 {
+                components_warned += 1;
+            } else {
+                components_succeeded += 1;
+            }
+            total += individual_total;
+
+            component_summaries.push(individual_summary);
         }
 
         Ok(QualificationSummary {
@@ -71,7 +106,7 @@ impl QualificationSummary {
             succeeded: components_succeeded,
             warned: components_warned,
             failed: components_failed,
-            components: qualification_summary_for_components,
+            components: component_summaries,
         })
     }
 }
@@ -79,10 +114,16 @@ impl QualificationSummary {
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum QualificationError {
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("function binding return value error: {0}")]
     FuncBindingReturnValueError(#[from] FuncBindingReturnValueError),
     #[error("no value returned in qualification function result")]
     NoValue,
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
@@ -134,27 +175,30 @@ impl Ord for QualificationView {
 impl QualificationView {
     pub async fn new(
         ctx: &DalContext,
-        qualification_name: &str,
-        qualification_entry: QualificationEntry,
-        attribute_prototype_func_id: FuncId,
-        func_binding_return_value_id: FuncBindingReturnValueId,
+        attribute_value_id: AttributeValueId,
     ) -> Result<Option<Self>, QualificationError> {
-        let func_binding_return_value =
-            FuncBindingReturnValue::get_by_id(ctx, &func_binding_return_value_id)
-                .await?
-                .ok_or(FuncBindingReturnValueError::NotFound(
-                    func_binding_return_value_id,
-                ))?;
+        let attribute_value = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
+        let qualification_name = match attribute_value.key(ctx).await? {
+            Some(key) => key,
+            None => return Ok(None),
+        };
 
-        // If the func binding return value on this does not match the prototype func, it means
-        // the qualification has not yet been run
-        if *func_binding_return_value.func_id() != attribute_prototype_func_id {
-            return Ok(None);
-        }
+        let func_execution = match attribute_value.func_execution(ctx).await? {
+            Some(func_execution) => func_execution,
+            None => return Ok(None),
+        };
 
-        let func_metadata = func_binding_return_value.func_metadata_view(ctx).await?;
+        let qualification_entry: QualificationEntry =
+            match attribute_value.materialized_view(ctx).await? {
+                Some(value) => serde_json::from_value(value)?,
+                None => return Ok(None),
+            };
 
-        let output_streams = func_binding_return_value.get_output_stream(ctx).await?;
+        let func = Func::get_by_id(ctx, *func_execution.func_id()).await?;
+
+        let func_metadata = func.metadata_view();
+
+        let output_streams = func_execution.into_output_stream();
         let output = match output_streams {
             Some(streams) => streams
                 .into_iter()
@@ -211,13 +255,12 @@ impl QualificationView {
                 status = QualificationSubCheckStatus::Failure;
                 fail_counter += 1;
 
-                if let Some(prop) = Prop::get_by_id(ctx, &resolver.prop_id()).await? {
-                    output.push(QualificationOutputStreamView {
-                        stream: "stdout".to_owned(),
-                        level: "log".to_owned(),
-                        line: format!("{}: {}", prop.name(), value.message),
-                    });
-                }
+                let prop = Prop::get_by_id(ctx, resolver.prop_id()).await?;
+                output.push(QualificationOutputStreamView {
+                    stream: "stdout".to_owned(),
+                    level: "log".to_owned(),
+                    line: format!("{}: {}", prop.name, value.message),
+                });
             }
         }
 

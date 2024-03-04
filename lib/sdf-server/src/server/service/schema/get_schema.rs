@@ -1,8 +1,8 @@
 use axum::{extract::Query, Json};
-use dal::{Schema, SchemaId, StandardModel, Visibility};
+use dal::{Schema, SchemaId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use super::{SchemaError, SchemaResult};
+use super::SchemaResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -22,9 +22,7 @@ pub async fn get_schema(
 ) -> SchemaResult<Json<GetSchemaResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let response = Schema::get_by_id(&ctx, &request.schema_id)
-        .await?
-        .ok_or(SchemaError::SchemaNotFound)?;
+    let response = Schema::get_by_id(&ctx, request.schema_id).await?;
 
     Ok(Json(response))
 }

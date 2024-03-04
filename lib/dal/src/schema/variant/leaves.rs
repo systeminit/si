@@ -4,16 +4,20 @@
 
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
+use telemetry::prelude::*;
 
-use crate::func::argument::{FuncArgumentId, FuncArgumentKind};
-use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
+use crate::attribute::prototype::argument::AttributePrototypeArgument;
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
 use crate::{
-    AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, AttributeValueError, ComponentId, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncError, FuncId, PropId, RootPropChild, SchemaVariant,
-    SchemaVariantId, StandardModel,
+    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncId, Prop, PropId, SchemaVariant, SchemaVariantId,
 };
 use si_pkg::{LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind};
+
+use crate::func::argument::{FuncArgumentId, FuncArgumentKind};
+use crate::schema::variant::root_prop::RootPropChild;
+
+use super::{SchemaVariantError, SchemaVariantResult};
 
 /// This enum provides options for creating leaves underneath compatible subtrees of "/root" within
 /// a [`SchemaVariant`](crate::SchemaVariant). Each compatible subtree starts with a
@@ -198,100 +202,77 @@ impl SchemaVariant {
         component_id: Option<ComponentId>,
         leaf_kind: LeafKind,
         inputs: Vec<LeafInput>,
-    ) -> SchemaVariantResult<(PropId, AttributePrototype)> {
-        if schema_variant_id.is_none() {
-            return Err(SchemaVariantError::InvalidSchemaVariant);
-        }
-
+    ) -> SchemaVariantResult<(PropId, AttributePrototypeId)> {
         // Ensure the func matches what we need.
-        let func = Func::get_by_id(ctx, &func_id)
-            .await?
-            .ok_or(FuncError::NotFound(func_id))?;
-        if func.backend_kind() != &FuncBackendKind::JsAttribute {
-            return Err(SchemaVariantError::LeafFunctionMustBeJsAttribute(
-                *func.id(),
-            ));
+        let func = Func::get_by_id(ctx, func_id).await?;
+        if func.backend_kind != FuncBackendKind::JsAttribute {
+            return Err(SchemaVariantError::LeafFunctionMustBeJsAttribute(func.id));
         }
-        if func.backend_response_type() != &leaf_kind.into() {
+        if func.backend_response_type != leaf_kind.into() {
             return Err(SchemaVariantError::LeafFunctionMismatch(
-                *func.backend_response_type(),
+                func_id,
+                func.backend_response_type,
                 leaf_kind,
             ));
         }
 
-        // We only need to finalize once since we are adding a leaf to a known descendant of the
-        // root prop.
-        let mut schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
-            .await?
-            .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
-        if !schema_variant.finalized_once() {
-            schema_variant.finalize(ctx, None).await?;
+        if component_id.is_some() {
+            unimplemented!("component context for leaves not yet implemented in graph version");
         }
 
-        // Assemble the values we need to insert an object into the map.
-        let item_prop =
+        let item_prop_id =
             SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
 
-        // NOTE(nick): we should consider getting the parent and the item at the same time.
-        let map_prop = item_prop
-            .parent_prop(ctx)
+        let map_prop_id = Prop::parent_prop_id_by_id(ctx, item_prop_id)
             .await?
-            .ok_or_else(|| SchemaVariantError::ParentPropNotFound(*item_prop.id()))?;
-        let map_attribute_read_context =
-            AttributeReadContext::default_with_prop_and_component_id(*map_prop.id(), component_id);
-        let map_attribute_value = AttributeValue::find_for_context(ctx, map_attribute_read_context)
-            .await?
-            .ok_or(AttributeValueError::NotFoundForReadContext(
-                map_attribute_read_context,
-            ))?;
-        let insert_attribute_context = AttributeContext::builder()
-            .set_prop_id(*item_prop.id())
-            .set_component_id(component_id.unwrap_or(ComponentId::NONE))
-            .to_context()?;
+            .ok_or_else(|| SchemaVariantError::LeafMapPropNotFound(item_prop_id))?;
 
-        // Insert an item into the map and setup its function. The new entry is named after the func
-        // name since func names must be unique for a given tenancy and visibility. If that changes,
-        // then this will break.
-        let inserted_attribute_value_id = AttributeValue::insert_for_context(
-            ctx,
-            insert_attribute_context,
-            *map_attribute_value.id(),
-            Some(serde_json::json![{}]),
-            Some(func.name().to_string()),
-        )
-        .await?;
-        let inserted_attribute_value = AttributeValue::get_by_id(ctx, &inserted_attribute_value_id)
-            .await?
-            .ok_or_else(|| {
-                AttributeValueError::NotFound(inserted_attribute_value_id, *ctx.visibility())
-            })?;
-        let mut inserted_attribute_prototype = inserted_attribute_value
-            .attribute_prototype(ctx)
-            .await?
-            .ok_or(AttributeValueError::MissingAttributePrototype)?;
-        inserted_attribute_prototype
-            .set_func_id(ctx, func_id)
-            .await?;
+        if let Some(prototype_id) =
+            AttributePrototype::find_for_prop(ctx, item_prop_id, &None).await?
+        {
+            info!("removing None proto");
+            AttributePrototype::remove(ctx, prototype_id).await?;
+        }
+
+        let key = Some(func.name.to_owned());
+        if let Some(prototype_id) =
+            AttributePrototype::find_for_prop(ctx, item_prop_id, &key).await?
+        {
+            info!("removing {:?} proto", &key);
+            AttributePrototype::remove(ctx, prototype_id).await?;
+        }
+
+        let attribute_prototype_id = AttributePrototype::new(ctx, func_id).await?.id();
+
+        {
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+            workspace_snapshot.add_edge(
+                item_prop_id,
+                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(key))?,
+                attribute_prototype_id,
+            )?;
+        }
 
         for input in inputs {
-            let input_internal_provider =
-                SchemaVariant::find_root_child_implicit_internal_provider(
-                    ctx,
-                    schema_variant_id,
-                    input.location.into(),
-                )
-                .await?;
-            AttributePrototypeArgument::new_for_intra_component(
+            let input_prop_id = SchemaVariant::find_root_child_prop_id(
                 ctx,
-                *inserted_attribute_prototype.id(),
-                input.func_argument_id,
-                *input_internal_provider.id(),
+                schema_variant_id,
+                input.location.into(),
             )
             .await?;
+
+            let apa = AttributePrototypeArgument::new(
+                ctx,
+                attribute_prototype_id,
+                input.func_argument_id,
+            )
+            .await?;
+
+            apa.set_value_from_prop_id(ctx, input_prop_id).await?;
         }
 
         // Return the prop id for the entire map so that its implicit internal provider can be
         // used for intelligence functions.
-        Ok((*map_prop.id(), inserted_attribute_prototype))
+        Ok((map_prop_id, attribute_prototype_id))
     }
 }

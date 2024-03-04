@@ -1,0 +1,30 @@
+[package]
+name = "rebaser-server"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+buck2-resources = { path = "../../lib/buck2-resources" }
+content-store = { path = "../../lib/content-store" }
+dal = { path = "../../lib/dal" }
+nats-subscriber = { path = "../../lib/nats-subscriber" }
+rebaser-core = { path = "../../lib/rebaser-core" }
+si-crypto = { path = "../../lib/si-crypto" }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-settings = { path = "../../lib/si-settings" }
+si-std = { path = "../../lib/si-std" }
+si-test-macros = { path = "../../lib/si-test-macros" }
+telemetry = { path = "../../lib/telemetry-rs" }
+veritech-client = { path = "../../lib/veritech-client" }
+
+derive_builder = { workspace = true }
+futures = { workspace = true }
+remain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+stream-cancel = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+ulid = { workspace = true }

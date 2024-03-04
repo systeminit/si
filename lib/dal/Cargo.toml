@@ -13,6 +13,7 @@ base64 = { workspace = true }
 blake3 = { workspace = true }
 chrono = { workspace = true }
 ciborium = { workspace = true }
+content-store = { path = "../../lib/content-store" }
 convert_case = { workspace = true }
 council-server = { path = "../../lib/council-server" }
 derive_more = { workspace = true }
@@ -21,6 +22,7 @@ dyn-clone = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
 iftree = { workspace = true }
+itertools = { workspace = true }
 jwt-simple = { workspace = true }
 lazy_static = { workspace = true }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
@@ -28,8 +30,10 @@ object-tree = { path = "../../lib/object-tree" }
 once_cell = { workspace = true }
 paste = { workspace = true }
 petgraph = { workspace = true }
+postcard = { version = "1.0.8", features = ["alloc"] }
 postgres-types = { workspace = true }
 rand = { workspace = true }
+rebaser-client = { path = "../../lib/rebaser-client" }
 refinery = { workspace = true }
 regex = { workspace = true }
 remain = { workspace = true }
@@ -37,6 +41,7 @@ serde = { workspace = true }
 serde-aux = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
+si-cbor = { path = "../../lib/si-cbor" }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
@@ -59,4 +64,6 @@ buck2-resources = { path = "../../lib/buck2-resources" }
 dal-test = { path = "../../lib/dal-test" }
 itertools = { workspace = true }
 pretty_assertions_sorted = { workspace = true }
+rebaser-core = { path = "../../lib/rebaser-core" }
+rebaser-server = { path = "../../lib/rebaser-server" }
 tempfile = { workspace = true }

@@ -3,85 +3,69 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_nats::NatsError;
-use si_data_pg::{PgError, PgPoolError};
+use si_data_pg::PgPoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-use crate::diagram::summary_diagram::SummaryDiagramError;
-use crate::property_editor::values_summary::PropertyEditorValuesSummaryError;
+use crate::prop::PropError;
+use crate::validation::resolver::ValidationResolverError;
 use crate::{
-    fix::FixError, func::binding_return_value::FuncBindingReturnValueError,
-    job::producer::BlockingJobError, job::producer::JobProducerError, status::StatusUpdaterError,
-    AccessBuilder, ActionPrototypeError, ActionPrototypeId, AttributeValueError, ComponentError,
-    ComponentId, DalContext, DalContextBuilder, FixBatchId, FixResolverError, PropError,
-    StandardModelError, TransactionsError, ValidationResolverError, Visibility, WsEventError,
+    attribute::value::AttributeValueError,
+    job::definition::dependent_values_update::DependentValueUpdateError,
+    job::producer::BlockingJobError, job::producer::JobProducerError, AccessBuilder,
+    ActionPrototypeId, DalContext, DalContextBuilder, StandardModelError, TransactionsError,
+    Visibility, WsEventError,
 };
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum JobConsumerError {
-    #[error("action named {0} not found for component {1}")]
-    ActionNotFound(String, ComponentId),
-    #[error(transparent)]
-    ActionPrototype(#[from] ActionPrototypeError),
+    // #[error("action named {0} not found for component {1}")]
+    // ActionNotFound(String, ComponentId),
     #[error("ActionProtoype {0} not found")]
     ActionPrototypeNotFound(ActionPrototypeId),
     #[error("arg {0:?} not found at index {1}")]
     ArgNotFound(JobInfo, usize),
-    #[error(transparent)]
+    #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("Error blocking on job: {0}")]
     BlockingJob(#[from] BlockingJobError),
-    #[error(transparent)]
-    Chrono(#[from] chrono::ParseError),
-    #[error(transparent)]
-    Component(#[from] ComponentError),
-    #[error("component {0} is destroyed")]
-    ComponentIsDestroyed(ComponentId),
-    #[error("component {0} not found")]
-    ComponentNotFound(ComponentId),
+    // #[error("component {0} is destroyed")]
+    // ComponentIsDestroyed(ComponentId),
+    // #[error("component {0} not found")]
+    // ComponentNotFound(ComponentId),
     #[error(transparent)]
     CouncilClient(#[from] council_server::client::ClientError),
     #[error("Protocol error with council: {0}")]
     CouncilProtocol(String),
-    #[error(transparent)]
-    Fix(#[from] FixError),
-    #[error(transparent)]
-    FixResolver(#[from] FixResolverError),
-    #[error(transparent)]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("dependent value update error: {0}")]
+    DependentValueUpdate(#[from] DependentValueUpdateError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
     #[error(transparent)]
     Io(#[from] ::std::io::Error),
     #[error(transparent)]
     JobProducer(#[from] JobProducerError),
-    #[error("missing fix execution batch for id: {0}")]
-    MissingFixBatch(FixBatchId),
+    // #[error("missing fix execution batch for id: {0}")]
+    // MissingFixBatch(FixBatchId),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error("nats is unavailable")]
     NatsUnavailable,
-    #[error("no schema found for component {0}")]
-    NoSchemaFound(ComponentId),
-    #[error("no schema variant found for component {0}")]
-    NoSchemaVariantFound(ComponentId),
-    #[error(transparent)]
-    PgError(#[from] PgError),
+    // #[error("no schema found for component {0}")]
+    // NoSchemaFound(ComponentId),
+    // #[error("no schema variant found for component {0}")]
+    // NoSchemaVariantFound(ComponentId),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
     #[error(transparent)]
     Prop(#[from] PropError),
-    #[error(transparent)]
-    PropertyEditorValuesSummary(#[from] PropertyEditorValuesSummaryError),
+    // #[error(transparent)]
+    // PropertyEditorValuesSummary(#[from] PropertyEditorValuesSummaryError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
-    #[error(transparent)]
-    StatusUpdaterError(#[from] StatusUpdaterError),
-    #[error(transparent)]
-    SummaryDiagram(#[from] SummaryDiagramError),
     #[error(transparent)]
     TokioTask(#[from] JoinError),
     #[error(transparent)]

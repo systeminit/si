@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -5,12 +6,9 @@ use strum::Display as StrumDisplay;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::actor_view::ActorView;
 use crate::{pk, DalContext, Timestamp, UserPk};
 use crate::{Tenancy, TransactionsError};
-
-pub use metadata::HistoryEventMetadata;
-
-mod metadata;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -21,6 +19,8 @@ pub enum HistoryEventError {
     Pg(#[from] PgError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModel(String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
 }
@@ -91,4 +91,33 @@ impl HistoryEvent {
         let object: HistoryEvent = serde_json::from_value(json)?;
         Ok(object)
     }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryEventMetadata {
+    pub(crate) actor: ActorView,
+    pub(crate) timestamp: DateTime<Utc>,
+}
+
+impl HistoryEventMetadata {
+    pub async fn from_history_actor_timestamp(
+        ctx: &DalContext,
+        value: HistoryActorTimestamp,
+    ) -> HistoryEventResult<Self> {
+        let actor = ActorView::from_history_actor(ctx, value.actor)
+            .await
+            .map_err(|e| HistoryEventError::StandardModel(e.to_string()))?;
+
+        Ok(Self {
+            actor,
+            timestamp: value.timestamp,
+        })
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HistoryActorTimestamp {
+    pub actor: HistoryActor,
+    pub timestamp: DateTime<Utc>,
 }

@@ -1,18 +1,9 @@
-use std::{
-    io,
-    net::SocketAddr,
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
-};
-
-use axum::{routing::IntoMakeService, Router};
+use axum::routing::IntoMakeService;
+use axum::Router;
+use dal::jwt_key::JwtConfig;
+use dal::ServicesContext;
 use dal::{
-    builtins,
-    jwt_key::JwtConfig,
-    pkg::{import_pkg_from_pkg, ImportOptions, PkgError},
-    tasks::{ResourceScheduler, StatusReceiver, StatusReceiverError},
-    BuiltinsError, DalContext, JwtPublicSigningKey, ServicesContext, Tenancy, TransactionsError,
+    builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
     Workspace, WorkspaceError,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
@@ -20,33 +11,35 @@ use module_index_client::{types::BuiltinsDetailsResponse, IndexClient, ModuleDet
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
 use si_crypto::{
-    CryptoConfig, CycloneKeyPairError, SymmetricCryptoError, SymmetricCryptoService,
-    SymmetricCryptoServiceConfig,
+    CryptoConfig, CycloneEncryptionKey, CycloneEncryptionKeyError, CycloneKeyPairError,
+    SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig,
 };
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
 use si_pkg::{SiPkg, SiPkgError};
 use si_posthog::{PosthogClient, PosthogConfig};
 use si_std::SensitiveString;
+use std::sync::Arc;
+use std::time::Duration;
+use std::{io, net::SocketAddr, path::Path, path::PathBuf};
 use telemetry::prelude::*;
 use telemetry_http::{HttpMakeSpan, HttpOnResponse};
 use thiserror::Error;
+use tokio::time::Instant;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     signal,
     sync::{broadcast, mpsc, oneshot},
     task::{JoinError, JoinSet},
-    time::{self, Instant},
+    time,
 };
 use tower_http::trace::TraceLayer;
 use ulid::Ulid;
-use veritech_client::{Client as VeritechClient, CycloneEncryptionKey, CycloneEncryptionKeyError};
+use veritech_client::Client as VeritechClient;
 
+use super::state::AppState;
+use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
 use crate::server::config::CycloneKeyPair;
-
-use super::{
-    routes, state::AppState, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError,
-};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -81,8 +74,6 @@ pub enum ServerError {
     Pg(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] Box<PgPoolError>),
-    #[error(transparent)]
-    Pkg(#[from] PkgError),
     #[error("failed to install package")]
     PkgInstall,
     #[error(transparent)]
@@ -91,8 +82,6 @@ pub enum ServerError {
     Signal(#[source] io::Error),
     #[error(transparent)]
     SiPkg(#[from] SiPkgError),
-    #[error(transparent)]
-    StatusReceiver(#[from] StatusReceiverError),
     #[error(transparent)]
     SymmetricCryptoService(#[from] SymmetricCryptoError),
     #[error("transactions error: {0}")]
@@ -278,23 +267,23 @@ impl Server<(), ()> {
         Ok(())
     }
 
-    /// Start the basic resource refresh scheduler
-    pub async fn start_resource_refresh_scheduler(
-        services_context: ServicesContext,
-        shutdown_broadcast_rx: broadcast::Receiver<()>,
-    ) {
-        ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
-    }
+    // /// Start the basic resource refresh scheduler
+    // pub async fn start_resource_refresh_scheduler(
+    //     services_context: ServicesContext,
+    //     shutdown_broadcast_rx: broadcast::Receiver<()>,
+    // ) {
+    //     ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
+    // }
 
-    pub async fn start_status_updater(
-        services_context: ServicesContext,
-        shutdown_broadcast_rx: broadcast::Receiver<()>,
-    ) -> Result<()> {
-        StatusReceiver::new(services_context)
-            .await?
-            .start(shutdown_broadcast_rx);
-        Ok(())
-    }
+    // pub async fn start_status_updater(
+    //     services_context: ServicesContext,
+    //     shutdown_broadcast_rx: broadcast::Receiver<()>,
+    // ) -> Result<()> {
+    //     StatusReceiver::new(services_context)
+    //         .await?
+    //         .start(shutdown_broadcast_rx);
+    //     Ok(())
+    // }
 
     #[instrument(name = "sdf.init.create_pg_pool", level = "info", skip_all)]
     pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
@@ -364,22 +353,21 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
     dal_context.set_no_dependent_values();
     let mut ctx = dal_context.build_default().await?;
 
-    let workspace = Workspace::builtin(&ctx).await?;
+    let workspace = Workspace::builtin(&mut ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
-    ctx.blocking_commit().await?;
+    ctx.update_to_head();
+    ctx.update_snapshot_to_visibility().await?;
 
     info!("migrating intrinsic functions");
     builtins::func::migrate_intrinsics(&ctx).await?;
-    info!("migrating builtin functions");
-    builtins::func::migrate(&ctx).await?;
+    // info!("migrating builtin functions");
+    // builtins::func::migrate(&ctx).await?;
 
     let module_index_url = services_context
         .module_index_url()
-        .as_ref()
         .ok_or(ServerError::ModuleIndexNotSet)?;
 
-    let module_index_client =
-        IndexClient::unauthenticated_client(module_index_url.clone().as_str().try_into()?);
+    let module_index_client = IndexClient::unauthenticated_client(module_index_url.try_into()?);
     let module_list = module_index_client.list_builtins().await?;
     let install_builtins = install_builtins(ctx, module_list, module_index_client);
     tokio::pin!(install_builtins);
@@ -408,7 +396,10 @@ async fn install_builtins(
 ) -> Result<()> {
     let dal = &ctx;
     let client = &module_index_client.clone();
-    let modules = module_list.modules;
+    let modules: Vec<ModuleDetailsResponse> = module_list.modules;
+    //        .into_iter()
+    //        .filter(|m| m.name == "si-docker-image-builtin")
+    //        .collect();
     let total = modules.len();
 
     let mut join_set = JoinSet::new();
@@ -428,10 +419,10 @@ async fn install_builtins(
         let (pkg_name, res) = res?;
         match res {
             Ok(pkg) => {
-                if let Err(err) = import_pkg_from_pkg(
+                if let Err(err) = dal::pkg::import_pkg_from_pkg(
                     &ctx,
                     &pkg,
-                    Some(ImportOptions {
+                    Some(dal::pkg::ImportOptions {
                         schemas: None,
                         skip_import_funcs: None,
                         no_record: false,
@@ -442,12 +433,10 @@ async fn install_builtins(
                 {
                     println!("Pkg {pkg_name} Install failed, {err}");
                 } else {
-                    ctx.commit().await?;
-
                     count += 1;
                     println!(
-                        "Pkg {pkg_name} Install finished successfully. {count} of {total} installed.",
-                    );
+                         "Pkg {pkg_name} Install finished successfully. {count} of {total} installed.",
+                     );
                 }
             }
             Err(err) => {
@@ -455,8 +444,10 @@ async fn install_builtins(
             }
         }
     }
-
     dal.commit().await?;
+
+    let mut ctx = ctx.clone();
+    ctx.update_snapshot_to_visibility().await?;
 
     Ok(())
 }

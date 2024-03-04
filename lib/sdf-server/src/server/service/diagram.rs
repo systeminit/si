@@ -3,49 +3,35 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::provider::external::ExternalProviderError as DalExternalProviderError;
-use dal::socket::{SocketError, SocketId};
-use dal::{
-    component::ComponentViewError, node::NodeId, schema::variant::SchemaVariantError, ActionError,
-    ActionPrototypeError, AttributeContextBuilderError, AttributeValueError, ChangeSetError,
-    ComponentError, ComponentType, DiagramError as DalDiagramError, EdgeError,
-    InternalProviderError, NodeError, NodeKind, NodeMenuError, SchemaError as DalSchemaError,
-    SchemaVariantId, StandardModelError, TransactionsError,
-};
-use dal::{AttributeReadContext, WsEventError};
-use std::num::ParseFloatError;
+use dal::component::ComponentError;
+use dal::node_menu::NodeMenuError;
+use dal::workspace_snapshot::WorkspaceSnapshotError;
+use dal::WsEventError;
+use dal::{ChangeSetError, SchemaVariantId, StandardModelError, TransactionsError};
 use thiserror::Error;
 
 use crate::server::state::AppState;
-use crate::service::schema::SchemaError;
 
-mod connect_component_to_frame;
+use self::get_node_add_menu::get_node_add_menu;
+
+mod connect_component_to_frame_new_engine;
+pub mod create_component;
 pub mod create_connection;
-pub mod create_node;
-pub mod delete_component;
-pub mod delete_connection;
-mod detach_component_from_frame;
 pub mod get_diagram;
 pub mod get_node_add_menu;
 pub mod list_schema_variants;
-pub mod paste_component;
-mod restore_component;
-pub mod restore_connection;
-pub mod set_node_position;
+pub mod set_component_position;
+
+// mod connect_component_to_frame;
+// pub mod delete_component;
+// pub mod delete_connection;
+// pub mod paste_component;
+// mod restore_component;
+// pub mod restore_connection;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum DiagramError {
-    #[error("action error: {0}")]
-    ActionError(#[from] ActionError),
-    #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
-    #[error("attribute context builder: {0}")]
-    AttributeContextBuilder(#[from] AttributeContextBuilderError),
-    #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
-    #[error("attribute value not found for context: {0:?}")]
-    AttributeValueNotFoundForContext(AttributeReadContext),
     #[error("changeset error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("change set not found")]
@@ -54,76 +40,52 @@ pub enum DiagramError {
     Component(#[from] ComponentError),
     #[error("component not found")]
     ComponentNotFound,
-    #[error("component view error: {0}")]
-    ComponentView(#[from] ComponentViewError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
-    #[error("dal schema error: {0}")]
-    DalSchema(#[from] DalSchemaError),
     #[error("dal diagram error: {0}")]
-    DiagramError(#[from] DalDiagramError),
-    #[error(transparent)]
-    Edge(#[from] EdgeError),
+    DalDiagram(#[from] dal::diagram::DiagramError),
+    #[error("dal frame error: {0}")]
+    DalFrame(#[from] dal::component::frame::FrameError),
+    #[error("dal schema error: {0}")]
+    DalSchema(#[from] dal::SchemaError),
+    #[error("dal schema variant error: {0}")]
+    DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
     #[error("edge not found")]
     EdgeNotFound,
-    #[error("external provider error: {0}")]
-    ExternalProvider(#[from] DalExternalProviderError),
-    #[error("external provider not found for socket id: {0}")]
-    ExternalProviderNotFoundForSocket(SocketId),
     #[error("frame internal provider not found for schema variant id: {0}")]
     FrameInternalProviderNotFoundForSchemaVariant(SchemaVariantId),
     #[error("frame socket not found for schema variant id: {0}")]
     FrameSocketNotFound(SchemaVariantId),
     #[error("invalid header name {0}")]
     Hyper(#[from] hyper::http::Error),
-    #[error(transparent)]
-    InternalProvider(#[from] InternalProviderError),
-    #[error("internal provider not found for socket id: {0}")]
-    InternalProviderNotFoundForSocket(SocketId),
-    #[error("invalid component type ({0:?}) for frame")]
-    InvalidComponentTypeForFrame(ComponentType),
-    #[error("invalid parent node kind {0:?}")]
-    InvalidParentNode(NodeKind),
     #[error("invalid request")]
     InvalidRequest,
     #[error("invalid system")]
     InvalidSystem,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
     #[error("node menu error: {0}")]
     NodeMenu(#[from] NodeMenuError),
-    #[error("node not found: {0}")]
-    NodeNotFound(NodeId),
     #[error("not authorized")]
     NotAuthorized,
-    #[error("parent node not found {0}")]
-    ParentNodeNotFound(NodeId),
-    #[error("parse int: {0}")]
-    ParseFloat(#[from] ParseFloatError),
     #[error("paste failed")]
     PasteError,
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
-    #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
     #[error("schema not found")]
     SchemaNotFound,
-    #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found")]
     SchemaVariantNotFound,
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
-    #[error("socket error: {0}")]
-    Socket(#[from] SocketError),
     #[error("socket not found")]
     SocketNotFound,
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    WorkspaceSnaphot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }
@@ -147,53 +109,45 @@ impl IntoResponse for DiagramError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/get_diagram", get(get_diagram::get_diagram))
+        // .route(
+        //     "/delete_connection",
+        //     post(delete_connection::delete_connection),
+        // )
+        // .route(
+        //     "/restore_connection",
+        //     post(restore_connection::restore_connection),
+        // )
+        // .route(
+        //     "/delete_component",
+        //     post(delete_component::delete_component),
+        // )
+        // .route(
+        //     "/delete_components",
+        //     post(delete_component::delete_components),
+        // )
+        // .route(
+        //     "/restore_component",
+        //     post(restore_component::restore_component),
+        // )
+        // .route(
+        //     "/restore_components",
+        //     post(restore_component::restore_components),
+        // )
         .route(
-            "/get_node_add_menu",
-            post(get_node_add_menu::get_node_add_menu),
+            "/connect_component_to_frame",
+            post(connect_component_to_frame_new_engine::connect_component_to_frame),
         )
-        .route("/create_node", post(create_node::create_node))
-        .route(
-            "/set_node_position",
-            post(set_node_position::set_node_position),
-        )
+        .route("/get_node_add_menu", post(get_node_add_menu))
         .route(
             "/create_connection",
             post(create_connection::create_connection),
         )
+        .route("/create_node", post(create_component::create_component))
         .route(
-            "/delete_connection",
-            post(delete_connection::delete_connection),
+            "/set_node_position",
+            post(set_component_position::set_component_position),
         )
-        .route(
-            "/restore_connection",
-            post(restore_connection::restore_connection),
-        )
-        .route(
-            "/delete_component",
-            post(delete_component::delete_component),
-        )
-        .route(
-            "/delete_components",
-            post(delete_component::delete_components),
-        )
-        .route(
-            "/detach_component",
-            post(detach_component_from_frame::detach_component_from_frame),
-        )
-        .route("/paste_components", post(paste_component::paste_components))
-        .route(
-            "/restore_component",
-            post(restore_component::restore_component),
-        )
-        .route(
-            "/restore_components",
-            post(restore_component::restore_components),
-        )
-        .route(
-            "/connect_component_to_frame",
-            post(connect_component_to_frame::connect_component_to_frame),
-        )
+        .route("/get_diagram", get(get_diagram::get_diagram))
         .route(
             "/list_schema_variants",
             get(list_schema_variants::list_schema_variants),

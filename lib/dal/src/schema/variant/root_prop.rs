@@ -2,14 +2,12 @@
 //! to the database.
 
 use strum::{AsRefStr, Display as EnumDisplay, EnumIter, EnumString};
-use telemetry::prelude::*;
 
+use crate::prop::{PropParent, PropPath};
 use crate::property_editor::schema::WidgetKind;
-use crate::{
-    schema::variant::{leaves::LeafKind, SchemaVariantResult},
-    DalContext, Func, Prop, PropId, PropKind, ReconciliationPrototype,
-    ReconciliationPrototypeContext, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
-};
+use crate::schema::variant::leaves::LeafKind;
+use crate::schema::variant::SchemaVariantResult;
+use crate::{DalContext, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId};
 
 pub mod component_type;
 
@@ -45,6 +43,10 @@ impl RootPropChild {
             Self::DeletedAt => "deleted_at",
             Self::Secrets => "secrets",
         }
+    }
+
+    pub fn prop_path(&self) -> PropPath {
+        PropPath::new(["root", self.as_str()])
     }
 }
 
@@ -103,63 +105,79 @@ pub struct RootProp {
     pub deleted_at_prop_id: PropId,
 }
 
-impl SchemaVariant {
+impl RootProp {
     /// Create and set a [`RootProp`] for the [`SchemaVariant`].
-    #[instrument(level = "debug", skip_all)]
-    pub async fn create_and_set_root_prop(
-        &mut self,
+    pub async fn new(
         ctx: &DalContext,
-        schema_id: SchemaId,
-    ) -> SchemaVariantResult<RootProp> {
-        let root_prop =
-            Prop::new_without_ui_optionals(ctx, "root", PropKind::Object, self.id, None).await?;
-        let root_prop_id = *root_prop.id();
-        self.set_root_prop_id(ctx, Some(root_prop_id)).await?;
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Self> {
+        let root_prop = Prop::new(
+            ctx,
+            "root",
+            PropKind::Object,
+            false,
+            None,
+            None,
+            PropParent::SchemaVariant(schema_variant_id),
+        )
+        .await?;
+        let root_prop_id = root_prop.id();
 
-        // FIXME(nick): we rely on ULID ordering for now, so the si prop tree creation has to come
-        // before the domain prop tree creation. Once index maps for objects are added, this
-        // can be moved back to its original location with the other prop tree creation methods.
-        let si_prop_id = Self::setup_si(ctx, root_prop_id, schema_id, self.id).await?;
+        // info!("setting up si, domain and secrets");
+        let si_prop_id = Self::setup_si(ctx, root_prop_id).await?;
 
         let domain_prop = Prop::new_without_ui_optionals(
             ctx,
             "domain",
             PropKind::Object,
-            self.id,
-            Some(root_prop_id),
+            PropParent::OrderedProp(root_prop_id),
         )
         .await?;
 
-        let secrets_prop_id = *Prop::new_without_ui_optionals(
+        let secrets_prop = Prop::new_without_ui_optionals(
             ctx,
             "secrets",
             PropKind::Object,
-            self.id,
-            Some(root_prop_id),
+            PropParent::OrderedProp(root_prop_id),
         )
-        .await?
-        .id();
+        .await?;
 
-        let resource_prop_id = Self::setup_resource(ctx, root_prop_id, self.id).await?;
-        let resource_value_prop_id = Self::setup_resource_value(ctx, root_prop_id, self).await?;
-        let code_prop_id = Self::setup_code(ctx, root_prop_id, self.id).await?;
-        let qualification_prop_id = Self::setup_qualification(ctx, root_prop_id, self.id).await?;
-        let deleted_at_prop_id = Self::setup_deleted_at(ctx, root_prop_id, self.id).await?;
+        // info!("setting up resource");
+        let resource_prop_id = Self::setup_resource(ctx, root_prop_id).await?;
+        // info!("setting up resource value");
+        let resource_value_prop_id = Self::setup_resource_value(ctx, root_prop_id).await?;
+        // info!("setting up code");
+        let code_prop_id = Self::setup_code(ctx, root_prop_id).await?;
+        // info!("setting up qualification");
+        let qualification_prop_id = Self::setup_qualification(ctx, root_prop_id).await?;
+
+        // info!("setting up deleted at");
+        let deleted_at_prop = Prop::new(
+            ctx,
+            "deleted_at",
+            PropKind::String,
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(root_prop_id),
+        )
+        .await?;
 
         // Now that the structure is set up, we can populate default
-        // AttributePrototypes & AttributeValues to be updated appropriately below.
-        SchemaVariant::create_default_prototypes_and_values(ctx, self.id).await?;
+        // AttributePrototypes to be updated appropriately below.
+        SchemaVariant::create_default_prototypes(ctx, schema_variant_id).await?;
+        //SchemaVariant::mark_props_as_able_to_be_used_as_prototype_args(ctx, schema_variant_id)?;
 
         Ok(RootProp {
             prop_id: root_prop_id,
             si_prop_id,
-            domain_prop_id: *domain_prop.id(),
+            domain_prop_id: domain_prop.id(),
             resource_value_prop_id,
             resource_prop_id,
-            secrets_prop_id,
+            secrets_prop_id: secrets_prop.id(),
             code_prop_id,
             qualification_prop_id,
-            deleted_at_prop_id,
+            deleted_at_prop_id: deleted_at_prop.id(),
         })
     }
 
@@ -167,54 +185,54 @@ impl SchemaVariant {
         ctx: &DalContext,
         leaf_kind: LeafKind,
         root_prop_id: PropId,
-        schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<(PropId, PropId)> {
         let (leaf_prop_name, leaf_item_prop_name) = leaf_kind.prop_names();
 
-        let mut leaf_prop = Prop::new_without_ui_optionals(
+        let leaf_prop = Prop::new(
             ctx,
             leaf_prop_name,
             PropKind::Map,
-            schema_variant_id,
-            Some(root_prop_id),
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(root_prop_id),
         )
         .await?;
-        leaf_prop.set_hidden(ctx, true).await?;
 
-        let mut leaf_item_prop = Prop::new_without_ui_optionals(
+        let leaf_item_prop = Prop::new(
             ctx,
             leaf_item_prop_name,
             PropKind::Object,
-            schema_variant_id,
-            Some(*leaf_prop.id()),
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(leaf_prop.id()),
         )
         .await?;
-        leaf_item_prop.set_hidden(ctx, true).await?;
 
-        Ok((*leaf_prop.id(), *leaf_item_prop.id()))
+        Ok((leaf_prop.id(), leaf_item_prop.id()))
     }
 
-    async fn setup_si(
-        ctx: &DalContext,
-        root_prop_id: PropId,
-        _schema_id: SchemaId,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<PropId> {
-        let si_prop = Prop::new_without_ui_optionals(
+    async fn setup_si(ctx: &DalContext, root_prop_id: PropId) -> SchemaVariantResult<PropId> {
+        let si_prop = Prop::new(
             ctx,
             "si",
             PropKind::Object,
-            schema_variant_id,
-            Some(root_prop_id),
+            false,
+            None,
+            None,
+            PropParent::OrderedProp(root_prop_id),
         )
         .await?;
-        let si_prop_id = *si_prop.id();
-        let _si_name_prop = Prop::new_without_ui_optionals(
+
+        let _si_name_prop = Prop::new(
             ctx,
             "name",
             PropKind::String,
-            schema_variant_id,
-            Some(si_prop_id),
+            false,
+            None,
+            None,
+            PropParent::OrderedProp(si_prop.id()),
         )
         .await?;
 
@@ -223,8 +241,7 @@ impl SchemaVariant {
             ctx,
             "protected",
             PropKind::Boolean,
-            schema_variant_id,
-            Some(si_prop_id),
+            PropParent::OrderedProp(si_prop.id()),
         )
         .await?;
 
@@ -235,8 +252,8 @@ impl SchemaVariant {
             ctx,
             "type",
             PropKind::String,
-            schema_variant_id,
-            Some(si_prop_id),
+            false,
+            None,
             Some((
                 WidgetKind::Select,
                 Some(serde_json::json!([
@@ -258,182 +275,156 @@ impl SchemaVariant {
                     },
                 ])),
             )),
-            None,
-            None,
+            PropParent::OrderedProp(si_prop.id()),
         )
         .await?;
 
         // Override the schema variant color for nodes on the diagram.
-        let mut color_prop = Prop::new_without_ui_optionals(
+        Prop::new(
             ctx,
             "color",
             PropKind::String,
-            schema_variant_id,
-            Some(si_prop_id),
+            false,
+            None,
+            Some((WidgetKind::Color, None)),
+            PropParent::OrderedProp(si_prop.id()),
         )
         .await?;
-        color_prop.set_widget_kind(ctx, WidgetKind::Color).await?;
 
-        Ok(si_prop_id)
+        Ok(si_prop.id())
+    }
+
+    async fn setup_resource(ctx: &DalContext, root_prop_id: PropId) -> SchemaVariantResult<PropId> {
+        // /root/resource
+        let resource_prop = Prop::new(
+            ctx,
+            "resource",
+            PropKind::Object,
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(root_prop_id),
+        )
+        .await?;
+
+        // /root/resource/status
+        let _resource_status_prop = Prop::new(
+            ctx,
+            "status",
+            PropKind::String,
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(resource_prop.id()),
+        )
+        .await?;
+
+        // /root/resource/message
+        let _resource_message_prop = Prop::new(
+            ctx,
+            "message",
+            PropKind::String,
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(resource_prop.id()),
+        )
+        .await?;
+
+        // /root/resource/logs
+        let resource_logs_prop = Prop::new(
+            ctx,
+            "logs",
+            PropKind::Array,
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(resource_prop.id()),
+        )
+        .await?;
+
+        // /root/resource/logs/log
+        let _resource_logs_log_prop = Prop::new(
+            ctx,
+            "log",
+            PropKind::String,
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(resource_logs_prop.id()),
+        )
+        .await?;
+
+        // /root/resource/payload
+        let _resource_payload_prop = Prop::new(
+            ctx,
+            "payload",
+            PropKind::String,
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(resource_prop.id()),
+        )
+        .await?;
+
+        // /root/resource/payload
+        let _resource_last_synced_prop = Prop::new(
+            ctx,
+            "resource_last_synced_prop",
+            PropKind::String,
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(resource_prop.id()),
+        )
+        .await?;
+
+        Ok(resource_prop.id())
     }
 
     async fn setup_resource_value(
         ctx: &DalContext,
         root_prop_id: PropId,
-        schema_variant: &mut SchemaVariant,
     ) -> SchemaVariantResult<PropId> {
-        let schema_variant_id = *schema_variant.id();
-        let mut resource_value_prop = Prop::new_without_ui_optionals(
+        let resource_value_prop = Prop::new(
             ctx,
             "resource_value",
             PropKind::Object,
-            schema_variant_id,
-            Some(root_prop_id),
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(root_prop_id),
         )
         .await?;
-        resource_value_prop.set_hidden(ctx, true).await?;
 
-        if let Some(reconciliation_func) =
-            Func::find_by_attr(ctx, "name", &"si:defaultReconciliation")
-                .await?
-                .pop()
-        {
-            ReconciliationPrototype::upsert(
-                ctx,
-                *reconciliation_func.id(),
-                "Reconciliation",
-                ReconciliationPrototypeContext::new(*schema_variant.id()),
-            )
-            .await?;
-        }
-
-        SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id()).await?;
-        SchemaVariant::create_implicit_internal_providers(ctx, *schema_variant.id()).await?;
-
-        Ok(*resource_value_prop.id())
+        Ok(resource_value_prop.id())
     }
 
-    async fn setup_resource(
-        ctx: &DalContext,
-        root_prop_id: PropId,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<PropId> {
-        let mut resource_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "resource",
-            PropKind::Object,
-            schema_variant_id,
-            Some(root_prop_id),
-        )
-        .await?;
-        resource_prop.set_hidden(ctx, true).await?;
-        let resource_prop_id = *resource_prop.id();
+    async fn setup_code(ctx: &DalContext, root_prop_id: PropId) -> SchemaVariantResult<PropId> {
+        let (code_map_prop_id, code_map_item_prop_id) =
+            Self::insert_leaf_props(ctx, LeafKind::CodeGeneration, root_prop_id).await?;
 
-        let mut resource_status_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "status",
-            PropKind::String,
-            schema_variant_id,
-            Some(resource_prop_id),
-        )
-        .await?;
-        resource_status_prop.set_hidden(ctx, true).await?;
-
-        let mut resource_message_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "message",
-            PropKind::String,
-            schema_variant_id,
-            Some(resource_prop_id),
-        )
-        .await?;
-        resource_message_prop.set_hidden(ctx, true).await?;
-
-        let mut resource_logs_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "logs",
-            PropKind::Array,
-            schema_variant_id,
-            Some(resource_prop_id),
-        )
-        .await?;
-        resource_logs_prop.set_hidden(ctx, true).await?;
-
-        let mut resource_logs_log_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "log",
-            PropKind::String,
-            schema_variant_id,
-            Some(*resource_logs_prop.id()),
-        )
-        .await?;
-        resource_logs_log_prop.set_hidden(ctx, true).await?;
-
-        let mut resource_payload_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "payload",
-            PropKind::String,
-            schema_variant_id,
-            Some(resource_prop_id),
-        )
-        .await?;
-        resource_payload_prop.set_hidden(ctx, true).await?;
-
-        let mut resource_last_synced_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "last_synced",
-            PropKind::String,
-            schema_variant_id,
-            Some(resource_prop_id),
-        )
-        .await?;
-        resource_last_synced_prop.set_hidden(ctx, true).await?;
-
-        Ok(resource_prop_id)
-    }
-
-    async fn setup_code(
-        ctx: &DalContext,
-        root_prop_id: PropId,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<PropId> {
-        let (code_map_prop_id, code_map_item_prop_id) = Self::insert_leaf_props(
-            ctx,
-            LeafKind::CodeGeneration,
-            root_prop_id,
-            schema_variant_id,
-        )
-        .await?;
-
-        let mut child_code_prop = Prop::new_without_ui_optionals(
+        let _child_code_prop = Prop::new(
             ctx,
             "code",
             PropKind::String,
-            schema_variant_id,
-            Some(code_map_item_prop_id),
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(code_map_item_prop_id),
         )
         .await?;
-        child_code_prop.set_hidden(ctx, true).await?;
 
-        let mut child_message_prop = Prop::new_without_ui_optionals(
-            ctx,
-            "message",
-            PropKind::String,
-            schema_variant_id,
-            Some(code_map_item_prop_id),
-        )
-        .await?;
-        child_message_prop.set_hidden(ctx, true).await?;
-
-        let mut child_format_prop = Prop::new_without_ui_optionals(
+        let _child_format_prop = Prop::new(
             ctx,
             "format",
             PropKind::String,
-            schema_variant_id,
-            Some(code_map_item_prop_id),
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(code_map_item_prop_id),
         )
         .await?;
-        child_format_prop.set_hidden(ctx, true).await?;
 
         Ok(code_map_prop_id)
     }
@@ -441,55 +432,32 @@ impl SchemaVariant {
     async fn setup_qualification(
         ctx: &DalContext,
         root_prop_id: PropId,
-        schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<PropId> {
-        let (qualification_map_prop_id, qualification_map_item_prop_id) = Self::insert_leaf_props(
-            ctx,
-            LeafKind::Qualification,
-            root_prop_id,
-            schema_variant_id,
-        )
-        .await?;
+        let (qualification_map_prop_id, qualification_map_item_prop_id) =
+            Self::insert_leaf_props(ctx, LeafKind::Qualification, root_prop_id).await?;
 
-        let mut child_qualified_prop = Prop::new_without_ui_optionals(
+        let _child_qualified_prop = Prop::new(
             ctx,
             "result",
             PropKind::String,
-            schema_variant_id,
-            Some(qualification_map_item_prop_id),
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(qualification_map_item_prop_id),
         )
         .await?;
-        child_qualified_prop.set_hidden(ctx, true).await?;
 
-        let mut child_message_prop = Prop::new_without_ui_optionals(
+        let _child_message_prop = Prop::new(
             ctx,
             "message",
             PropKind::String,
-            schema_variant_id,
-            Some(qualification_map_item_prop_id),
+            true,
+            None,
+            None,
+            PropParent::OrderedProp(qualification_map_item_prop_id),
         )
         .await?;
-        child_message_prop.set_hidden(ctx, true).await?;
 
         Ok(qualification_map_prop_id)
-    }
-
-    async fn setup_deleted_at(
-        ctx: &DalContext,
-        root_prop_id: PropId,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<PropId> {
-        // This is a new prop that we will use to determine if we want to run a delete workflow
-        let mut deleted_at = Prop::new_without_ui_optionals(
-            ctx,
-            "deleted_at",
-            PropKind::String,
-            schema_variant_id,
-            Some(root_prop_id),
-        )
-        .await?;
-        deleted_at.set_hidden(ctx, true).await?;
-
-        Ok(*deleted_at.id())
     }
 }

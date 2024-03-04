@@ -5,52 +5,58 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    change_status::ChangeStatusError, ActionError, ActionId, ChangeSetError as DalChangeSetError,
-    ComponentError as DalComponentError, FixError, StandardModelError, TransactionsError,
-    UserError, UserPk, WsEventError,
+    change_set_pointer::{ChangeSetPointerError, ChangeSetPointerId},
+    ChangeSetError as DalChangeSetError, StandardModelError, TransactionsError, UserError, UserPk,
+    WorkspaceError, WorkspacePk, WsEventError,
 };
 use module_index_client::IndexClientError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{server::state::AppState, service::pkg::PkgError};
+use crate::server::state::AppState;
 
-pub mod abandon_change_set;
-mod abandon_vote;
-pub mod add_action;
+// pub mod abandon_change_set;
+// mod abandon_vote;
+// pub mod add_action;
 pub mod apply_change_set;
-mod begin_abandon_approval_process;
-mod begin_approval_process;
+// mod begin_abandon_approval_process;
+// mod begin_approval_process;
 pub mod create_change_set;
-pub mod get_change_set;
-pub mod get_stats;
+// pub mod get_change_set;
+// pub mod get_stats;
 pub mod list_open_change_sets;
-pub mod list_queued_actions;
-mod merge_vote;
-pub mod remove_action;
-pub mod update_selected_change_set;
+// pub mod list_queued_actions;
+// mod merge_vote;
+// pub mod remove_action;
+// pub mod update_selected_change_set;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetError {
-    #[error(transparent)]
-    Action(#[from] ActionError),
-    #[error("action {0} not found")]
-    ActionNotFound(ActionId),
+    // #[error(transparent)]
+    // Action(#[from] ActionError),
+    // #[error("action {0} not found")]
+    // ActionNotFound(ActionId),
     #[error(transparent)]
     ChangeSet(#[from] DalChangeSetError),
     #[error("change set not found")]
     ChangeSetNotFound,
-    #[error(transparent)]
-    ChangeStatusError(#[from] ChangeStatusError),
-    #[error(transparent)]
-    Component(#[from] DalComponentError),
+    #[error("change set error: {0}")]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
+    // #[error(transparent)]
+    // ChangeStatusError(#[from] ChangeStatusError),
+    // #[error(transparent)]
+    // Component(#[from] DalComponentError),
     #[error(transparent)]
     ContextError(#[from] TransactionsError),
-    #[error(transparent)]
-    DalPkg(#[from] dal::pkg::PkgError),
-    #[error(transparent)]
-    Fix(#[from] FixError),
+    #[error("could not find default change set: {0}")]
+    DefaultChangeSetNotFound(ChangeSetPointerId),
+    #[error("default change set {0} has no workspace snapshot pointer")]
+    DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetPointerId),
+    // #[error(transparent)]
+    // DalPkg(#[from] dal::pkg::PkgError),
+    // #[error(transparent)]
+    // Fix(#[from] FixError),
     #[error("invalid header name {0}")]
     Hyper(#[from] hyper::http::Error),
     #[error(transparent)]
@@ -61,16 +67,22 @@ pub enum ChangeSetError {
     InvalidUserSystemInit,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
+    #[error("no tenancy set in context")]
+    NoTenancySet,
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
-    #[error(transparent)]
-    PkgService(#[from] PkgError),
+    // #[error(transparent)]
+    // PkgService(#[from] PkgError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     UrlParse(#[from] url::ParseError),
     #[error(transparent)]
     User(#[from] UserError),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
+    #[error("workspace not found: {0}")]
+    WorkspaceNotFound(WorkspacePk),
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
 }
@@ -98,46 +110,46 @@ pub fn routes() -> Router<AppState> {
             "/list_open_change_sets",
             get(list_open_change_sets::list_open_change_sets),
         )
-        .route(
-            "/list_queued_actions",
-            get(list_queued_actions::list_queued_actions),
-        )
-        .route("/remove_action", post(remove_action::remove_action))
-        .route("/add_action", post(add_action::add_action))
+        // .route(
+        //     "/list_queued_actions",
+        //     get(list_queued_actions::list_queued_actions),
+        // )
+        // .route("/remove_action", post(remove_action::remove_action))
+        // .route("/add_action", post(add_action::add_action))
         .route(
             "/create_change_set",
             post(create_change_set::create_change_set),
         )
-        .route("/get_change_set", get(get_change_set::get_change_set))
-        .route("/get_stats", get(get_stats::get_stats))
+        // .route("/get_change_set", get(get_change_set::get_change_set))
+        // .route("/get_stats", get(get_stats::get_stats))
         .route(
             "/apply_change_set",
             post(apply_change_set::apply_change_set),
         )
-        .route(
-            "/abandon_change_set",
-            post(abandon_change_set::abandon_change_set),
-        )
-        .route(
-            "/update_selected_change_set",
-            post(update_selected_change_set::update_selected_change_set),
-        )
-        .route(
-            "/begin_approval_process",
-            post(begin_approval_process::begin_approval_process),
-        )
-        .route(
-            "/cancel_approval_process",
-            post(begin_approval_process::cancel_approval_process),
-        )
-        .route("/merge_vote", post(merge_vote::merge_vote))
-        .route(
-            "/begin_abandon_approval_process",
-            post(begin_abandon_approval_process::begin_abandon_approval_process),
-        )
-        .route(
-            "/cancel_abandon_approval_process",
-            post(begin_abandon_approval_process::cancel_abandon_approval_process),
-        )
-        .route("/abandon_vote", post(abandon_vote::abandon_vote))
+    // .route(
+    //     "/abandon_change_set",
+    //     post(abandon_change_set::abandon_change_set),
+    // )
+    // .route(
+    //     "/update_selected_change_set",
+    //     post(update_selected_change_set::update_selected_change_set),
+    // )
+    // .route(
+    //     "/begin_approval_process",
+    //     post(begin_approval_process::begin_approval_process),
+    // )
+    // .route(
+    //     "/cancel_approval_process",
+    //     post(begin_approval_process::cancel_approval_process),
+    // )
+    // .route("/merge_vote", post(merge_vote::merge_vote))
+    // .route(
+    //     "/begin_abandon_approval_process",
+    //     post(begin_abandon_approval_process::begin_abandon_approval_process),
+    // )
+    // .route(
+    //     "/cancel_abandon_approval_process",
+    //     post(begin_abandon_approval_process::cancel_abandon_approval_process),
+    // )
+    // .route("/abandon_vote", post(abandon_vote::abandon_vote))
 }

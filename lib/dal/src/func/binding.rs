@@ -7,8 +7,13 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_client::{BeforeFunction, OutputStream, ResolverFunctionComponent};
 
+use super::FuncError;
 use crate::func::execution::FuncExecutionPk;
-use crate::FuncError;
+use crate::{
+    func::backend::FuncBackendError, impl_standard_model, pk, standard_model,
+    standard_model_accessor, Func, FuncBackendKind, HistoryEventError, StandardModel,
+    StandardModelError, Timestamp, Visibility,
+};
 use crate::{
     func::backend::{
         array::FuncBackendArray,
@@ -26,11 +31,6 @@ use crate::{
         FuncBackend, FuncDispatch, FuncDispatchContext, InvalidResolverFunctionTypeError,
     },
     TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
-};
-use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    Func, FuncBackendError, FuncBackendKind, HistoryEventError, StandardModel, StandardModelError,
-    Timestamp, Visibility,
 };
 use crate::{DalContext, Tenancy};
 
@@ -94,9 +94,10 @@ pk!(FuncBindingId);
 pub struct FuncBinding {
     pk: FuncBindingPk,
     id: FuncBindingId,
+    func_id: FuncId,
     args: serde_json::Value,
     backend_kind: FuncBackendKind,
-    code_sha256: String,
+    code_blake3: String,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -122,28 +123,25 @@ impl FuncBinding {
         func_id: FuncId,
         backend_kind: FuncBackendKind,
     ) -> FuncBindingResult<Self> {
-        let func = Func::get_by_id(ctx, &func_id)
-            .await?
-            .ok_or(FuncBindingError::FuncNotFound(FuncBindingPk::NONE))?;
+        let func = Func::get_by_id(ctx, func_id).await?;
 
         let row = ctx
             .txns()
             .await?
             .pg()
             .query_one(
-                "SELECT object FROM func_binding_create_v1($1, $2, $3, $4, $5, $6)",
+                "SELECT object FROM func_binding_create_v2($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &args,
                     &func_id,
                     &backend_kind.as_ref(),
-                    &func.code_sha256(),
+                    &func.code_blake3,
                 ],
             )
             .await?;
         let object: FuncBinding = standard_model::finish_create_from_row(ctx, row).await?;
-        object.set_func(ctx, &func_id).await?;
         Ok(object)
     }
 
@@ -153,9 +151,7 @@ impl FuncBinding {
         value: Option<serde_json::Value>,
         func_id: FuncId,
     ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
-        let func = Func::get_by_id(ctx, &func_id)
-            .await?
-            .ok_or(FuncError::NotFound(func_id))?;
+        let func = Func::get_by_id(ctx, func_id).await?;
         let func_binding = Self::new(ctx, args, func_id, func.backend_kind).await?;
 
         let func_binding_return_value = FuncBindingReturnValue::new(
@@ -182,10 +178,8 @@ impl FuncBinding {
         func_id: FuncId,
         before: Vec<BeforeFunction>,
     ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
-        let func = Func::get_by_id(ctx, &func_id)
-            .await?
-            .ok_or(FuncError::NotFound(func_id))?;
-        let func_binding = Self::new(ctx, args, func_id, func.backend_kind).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
+        let func_binding = Self::new(ctx, args, func.id, func.backend_kind).await?;
 
         let func_binding_return_value: FuncBindingReturnValue =
             func_binding.execute(ctx, before).await?;
@@ -195,18 +189,8 @@ impl FuncBinding {
 
     standard_model_accessor!(args, PlainJson<JsonValue>, FuncBindingResult);
     standard_model_accessor!(backend_kind, Enum(FuncBackendKind), FuncBindingResult);
-    standard_model_accessor!(code_sha256, String, FuncBindingResult);
-    standard_model_belongs_to!(
-        lookup_fn: func,
-        set_fn: set_func,
-        unset_fn: unset_func,
-        table: "func_binding_belongs_to_func",
-        model_table: "funcs",
-        belongs_to_id: FuncId,
-        returns: Func,
-        result: FuncBindingResult,
-    );
-
+    standard_model_accessor!(code_blake3, String, FuncBindingResult);
+    standard_model_accessor!(func_id, Pk(FuncId), FuncBindingResult);
     // For a given [`FuncBinding`](Self), execute using veritech.
     async fn execute(
         &self,
@@ -252,7 +236,7 @@ impl FuncBinding {
                         },
                         parents: Vec::new(),
                     },
-                    response_type: (*func.backend_response_type()).try_into()?,
+                    response_type: func.backend_response_type.try_into()?,
                 };
                 FuncBackendJsAttribute::create_and_execute(
                     context,
@@ -323,7 +307,7 @@ impl FuncBinding {
             ctx,
             unprocessed_value,
             processed_value,
-            *func.id(),
+            func.id,
             self.id,
             execution.pk(),
         )
@@ -348,10 +332,8 @@ impl FuncBinding {
         FuncDispatchContext,
         mpsc::Receiver<OutputStream>,
     )> {
-        let func: Func = self
-            .func(ctx)
-            .await?
-            .ok_or(FuncBindingError::FuncNotFound(self.pk))?;
+        let func_id = self.func_id();
+        let func = Func::get_by_id(ctx, func_id).await?;
 
         let mut execution = FuncExecution::new(ctx, &func, self).await?;
 

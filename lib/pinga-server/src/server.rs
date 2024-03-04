@@ -3,14 +3,15 @@ use std::{io, sync::Arc};
 use dal::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobInfo},
-        definition::{FixesJob, RefreshJob},
+        definition::DependentValuesUpdate,
         producer::BlockingJobError,
     },
-    DalContext, DalContextBuilder, DependentValuesUpdate, InitializationError, JobFailure,
-    JobFailureError, JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
+    DalContext, DalContextBuilder, InitializationError, JobFailure, JobFailureError,
+    JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
 };
 use futures::{FutureExt, Stream, StreamExt};
 use nats_subscriber::{Request, SubscriberError};
+use rebaser_client::Config as RebaserClientConfig;
 use si_crypto::{
     CryptoConfig, SymmetricCryptoError, SymmetricCryptoService, SymmetricCryptoServiceConfig,
 };
@@ -106,10 +107,12 @@ impl Server {
         let encryption_key = Self::load_encryption_key(config.crypto().clone()).await?;
         let nats = Self::connect_to_nats(config.nats()).await?;
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
+        let content_store_pg_pool = Self::create_pg_pool(config.content_store_pg_pool()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
+        let rebaser_config = RebaserClientConfig::default();
 
         let services_context = ServicesContext::new(
             pg_pool,
@@ -120,6 +123,8 @@ impl Server {
             None,
             None,
             symmetric_crypto_service,
+            rebaser_config,
+            content_store_pg_pool,
         );
 
         Self::from_services(
@@ -459,18 +464,17 @@ async fn execute_job(mut ctx_builder: DalContextBuilder, job_info: JobInfo) -> R
         ctx_builder.set_blocking();
     }
 
-    let job =
-        match job_info.kind.as_str() {
-            stringify!(DependentValuesUpdate) => {
-                Box::new(DependentValuesUpdate::try_from(job_info.clone())?)
-                    as Box<dyn JobConsumer + Send + Sync>
-            }
-            stringify!(FixesJob) => Box::new(FixesJob::try_from(job_info.clone())?)
-                as Box<dyn JobConsumer + Send + Sync>,
-            stringify!(RefreshJob) => Box::new(RefreshJob::try_from(job_info.clone())?)
-                as Box<dyn JobConsumer + Send + Sync>,
-            kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),
-        };
+    let job = match job_info.kind.as_str() {
+        stringify!(DependentValuesUpdate) => {
+            Box::new(DependentValuesUpdate::try_from(job_info.clone())?)
+                as Box<dyn JobConsumer + Send + Sync>
+        }
+        //     stringify!(FixesJob) => Box::new(FixesJob::try_from(job_info.clone())?)
+        //         as Box<dyn JobConsumer + Send + Sync>,
+        //     stringify!(RefreshJob) => Box::new(RefreshJob::try_from(job_info.clone())?)
+        //         as Box<dyn JobConsumer + Send + Sync>,
+        kind => return Err(ServerError::UnknownJobKind(kind.to_owned())),
+    };
 
     info!("Processing job");
 
@@ -484,6 +488,7 @@ async fn execute_job(mut ctx_builder: DalContextBuilder, job_info: JobInfo) -> R
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn record_job_failure(
     ctx_builder: DalContextBuilder,
     job: Box<dyn JobConsumer + Send + Sync>,

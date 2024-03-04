@@ -1,8 +1,10 @@
-use super::{FuncError, FuncResult, FuncVariant};
-use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::{Func, FuncBackendKind, FuncId, StandardModel, Visibility};
+use dal::{Func, FuncBackendKind, FuncId, Visibility};
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
+
+use super::{FuncResult, FuncVariant};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,32 +35,43 @@ pub async fn list_funcs(
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListFuncsRequest>,
 ) -> FuncResult<Json<ListFuncsResponse>> {
+    let start = tokio::time::Instant::now();
+
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let try_func_views: Vec<Result<ListedFuncView, FuncError>> = Func::find_by_attr_in(
-        &ctx,
-        "backend_kind",
-        &[
-            &FuncBackendKind::JsAction.as_ref().to_string(),
-            &FuncBackendKind::JsAuthentication.as_ref().to_string(),
-            &FuncBackendKind::JsAttribute.as_ref().to_string(),
-            &FuncBackendKind::JsValidation.as_ref().to_string(),
-        ],
-    )
-    .await?
-    .iter()
-    .filter(|f| !f.hidden())
-    .map(|func| {
-        Ok(ListedFuncView {
-            id: func.id().to_owned(),
-            handler: func.handler().map(|handler| handler.to_owned()),
-            variant: func.try_into()?,
-            name: func.name().into(),
-            display_name: func.display_name().map(Into::into),
-            is_builtin: func.builtin(),
+    info!("after context build: {:?}", start.elapsed());
+
+    let funcs = Func::list(&ctx).await?;
+
+    info!("after content store fetch: {:?}", start.elapsed());
+
+    let customizable_backend_kinds = [
+        FuncBackendKind::JsAction,
+        FuncBackendKind::JsAttribute,
+        FuncBackendKind::JsValidation,
+        FuncBackendKind::JsAuthentication,
+    ];
+
+    let try_func_views: Vec<FuncResult<ListedFuncView>> = funcs
+        .iter()
+        .filter(|f| {
+            if f.hidden {
+                false
+            } else {
+                customizable_backend_kinds.contains(&f.backend_kind)
+            }
         })
-    })
-    .collect();
+        .map(|func| {
+            Ok(ListedFuncView {
+                id: func.id,
+                handler: func.handler.to_owned().map(|handler| handler.to_owned()),
+                variant: func.try_into()?,
+                name: func.name.to_owned(),
+                display_name: func.display_name.to_owned().map(Into::into),
+                is_builtin: func.builtin,
+            })
+        })
+        .collect();
 
     let mut funcs = vec![];
     for func_view in try_func_views {
@@ -67,6 +80,10 @@ pub async fn list_funcs(
             Err(err) => Err(err)?,
         }
     }
+
+    funcs.sort_by(|a, b| a.name.cmp(&b.name));
+
+    info!("after list funcs: {:?}", start.elapsed());
 
     Ok(Json(ListFuncsResponse { funcs }))
 }

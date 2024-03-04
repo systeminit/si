@@ -106,53 +106,6 @@ impl_standard_model! {
     history_event_message_name: "Summary Diagram Components"
 }
 
-impl SummaryDiagramComponent {
-    pub fn has_resource(&self) -> bool {
-        self.has_resource
-    }
-
-    pub async fn get_for_component_id(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> SummaryDiagramResult<Option<Self>> {
-        let maybe_row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_opt(
-                "SELECT DISTINCT ON (sdc.id)
-            row_to_json(sdc.*) AS object
-            FROM summary_diagram_components_v1($1, $2) AS sdc
-            WHERE component_id=$3 LIMIT 1",
-                &[ctx.tenancy(), ctx.visibility(), &component_id],
-            )
-            .await?;
-
-        Ok(standard_model::option_object_from_row(maybe_row)?)
-    }
-
-    standard_model_accessor!(sockets, Json<JsonValue>, SummaryDiagramResult);
-}
-
-pub async fn update_socket_summary(
-    ctx: &DalContext,
-    component: &Component,
-) -> SummaryDiagramResult<()> {
-    if let Some(mut summary_component) =
-        SummaryDiagramComponent::get_for_component_id(ctx, *component.id()).await?
-    {
-        if let Some(schema_variant) = component.schema_variant(ctx).await? {
-            let sockets = DiagramSocket::list(ctx, &schema_variant).await?;
-            summary_component
-                .set_sockets(ctx, serde_json::to_value(sockets)?)
-                .await?;
-        }
-    }
-
-    Ok(())
-}
-
-#[instrument(level = "info", skip_all)]
 pub async fn create_component_entry(
     ctx: &DalContext,
     component: &Component,
@@ -380,28 +333,6 @@ pub async fn component_list(
     Ok(objects)
 }
 
-pk!(SummaryDiagramEdgePk);
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all(serialize = "camelCase"))]
-pub struct SummaryDiagramEdge {
-    pk: SummaryDiagramEdgePk,
-    id: EdgeId,
-    #[serde(flatten)]
-    tenancy: Tenancy,
-    #[serde(flatten)]
-    timestamp: Timestamp,
-    #[serde(flatten)]
-    visibility: Visibility,
-    edge_id: EdgeId,
-    from_node_id: NodeId,
-    from_socket_id: SocketId,
-    to_node_id: NodeId,
-    to_socket_id: SocketId,
-    change_status: String,
-    created_info: serde_json::Value,
-    deleted_info: serde_json::Value,
-}
-
 impl_standard_model! {
     model: SummaryDiagramEdge,
     pk: SummaryDiagramEdgePk,
@@ -592,20 +523,6 @@ pub async fn edge_list(ctx: &DalContext) -> SummaryDiagramResult<Vec<SummaryDiag
         .await?;
     let objects: Vec<SummaryDiagramEdge> = objects_from_rows(rows)?;
     Ok(objects)
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-struct GridPoint {
-    pub x: isize,
-    pub y: isize,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-struct Size2D {
-    pub width: isize,
-    pub height: isize,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]

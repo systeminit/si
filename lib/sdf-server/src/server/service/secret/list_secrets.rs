@@ -5,7 +5,7 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 
 use dal::secret::{SecretDefinitionView, SecretView};
-use dal::{Secret, StandardModel, Visibility};
+use dal::{Secret, Visibility};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::secret::SecretError;
@@ -54,7 +54,7 @@ pub async fn list_secrets(
     for secret in Secret::list(&ctx).await? {
         hash_map
             .get_mut(secret.definition())
-            .ok_or(SecretError::SecretWithInvalidDefinition(*secret.id()))?
+            .ok_or(SecretError::SecretWithInvalidDefinition(secret.id()))?
             .secrets
             .push(SecretView::from_secret(&ctx, secret).await?);
     }

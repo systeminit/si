@@ -7,6 +7,7 @@ use std::{
 };
 
 use buck2_resources::Buck2Resources;
+use content_store::PgStoreTools;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
@@ -77,6 +78,9 @@ pub struct Config {
 
     #[builder(default = "JwtConfig::default()")]
     jwt_signing_public_key: JwtConfig,
+
+    #[builder(default = "PgStoreTools::default_pool_config()")]
+    content_store_pg_pool: PgPoolConfig,
 
     signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
@@ -150,6 +154,12 @@ impl Config {
     pub fn module_index_url(&self) -> &str {
         &self.module_index_url
     }
+
+    /// Gets a reference to the config's content store pg pool.
+    #[must_use]
+    pub fn content_store_pg_pool(&self) -> &PgPoolConfig {
+        &self.content_store_pg_pool
+    }
 }
 
 impl ConfigBuilder {
@@ -166,6 +176,8 @@ impl ConfigBuilder {
 pub struct ConfigFile {
     #[serde(default)]
     pub pg: PgPoolConfig,
+    #[serde(default = "PgStoreTools::default_pool_config")]
+    pub content_store_pg: PgPoolConfig,
     #[serde(default)]
     pub nats: NatsConfig,
     #[serde(default)]
@@ -190,6 +202,7 @@ impl Default for ConfigFile {
     fn default() -> Self {
         Self {
             pg: Default::default(),
+            content_store_pg: PgStoreTools::default_pool_config(),
             nats: Default::default(),
             migration_mode: Default::default(),
             jwt_signing_public_key: Default::default(),
@@ -215,6 +228,7 @@ impl TryFrom<ConfigFile> for Config {
 
         let mut config = Config::builder();
         config.pg_pool(value.pg);
+        config.content_store_pg_pool(value.content_store_pg);
         config.nats(value.nats);
         config.migration_mode(value.migration_mode);
         config.jwt_signing_public_key(value.jwt_signing_public_key);
@@ -348,7 +362,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
-    config.pg.certificate_path = Some(postgres_cert.try_into()?);
+    config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.content_store_pg.certificate_path = Some(postgres_cert.try_into()?);
     config.pkgs_path = pkgs_path;
 
     Ok(())
@@ -406,7 +421,8 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
-    config.pg.certificate_path = Some(postgres_cert.try_into()?);
+    config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.content_store_pg.certificate_path = Some(postgres_cert.try_into()?);
     config.pkgs_path = pkgs_path;
 
     Ok(())

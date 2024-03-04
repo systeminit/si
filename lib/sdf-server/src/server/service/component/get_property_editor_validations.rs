@@ -1,6 +1,7 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{ComponentId, PropId, StandardModel, ValidationOutput, ValidationResolver, Visibility};
+use dal::validation::resolver::{ValidationOutput, ValidationResolver};
+use dal::{ComponentId, PropId, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

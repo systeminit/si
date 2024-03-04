@@ -1,5 +1,6 @@
 use axum::{extract::Query, Json};
-use dal::{Diagram, Visibility};
+use dal::diagram::Diagram;
+use dal::Visibility;
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -20,8 +21,6 @@ pub async fn get_diagram(
     Query(request): Query<GetDiagramRequest>,
 ) -> DiagramResult<Json<GetDiagramResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
-
     let response = Diagram::assemble(&ctx).await?;
-
     Ok(Json(response))
 }

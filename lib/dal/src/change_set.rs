@@ -3,22 +3,23 @@ use postgres_types::ToSql;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgPoolError};
-use std::collections::HashMap;
 use strum::{Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 
+use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError};
 use crate::standard_model::{object_option_from_row_option, objects_from_rows};
 use crate::{
-    action::ActionBag, pk, Action, ActionError, ActionId, HistoryActor, HistoryEvent,
-    HistoryEventError, LabelListError, StandardModelError, Tenancy, Timestamp, TransactionsError,
-    User, UserError, UserPk, Visibility, WsEvent, WsEventError, WsPayload,
+    pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy,
+    Timestamp, TransactionsError, User, UserError, UserPk, Visibility, WsEvent, WsEventError,
+    WsPayload,
 };
-use crate::{ComponentError, DalContext, WsEventResult};
+use crate::{DalContext, WsEventResult};
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("queries/change_set/open_list.sql");
 const CHANGE_SET_GET_BY_PK: &str = include_str!("queries/change_set/get_by_pk.sql");
-const GET_ACTORS: &str = include_str!("queries/change_set/get_actors.sql");
+// const GET_ACTORS: &str = include_str!("queries/change_set/get_actors.sql");
 
 const BEGIN_MERGE_FLOW: &str = include_str!("queries/change_set/begin_merge_flow.sql");
 const CANCEL_MERGE_FLOW: &str = include_str!("queries/change_set/cancel_merge_flow.sql");
@@ -30,10 +31,8 @@ const CANCEL_ABANDON_FLOW: &str = include_str!("queries/change_set/cancel_abando
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
-    #[error(transparent)]
-    Action(#[from] ActionError),
-    #[error(transparent)]
-    Component(#[from] ComponentError),
+    #[error("change set pointer error: {0}")]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
     #[error("invalid user actor pk")]
@@ -293,43 +292,45 @@ impl ChangeSet {
         Ok(change_set)
     }
 
-    pub async fn actions(&self, ctx: &DalContext) -> ChangeSetResult<HashMap<ActionId, ActionBag>> {
-        let ctx =
-            ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
-        Ok(Action::order(&ctx).await?)
-    }
+    // pub async fn actions(&self, ctx: &DalContext) -> ChangeSetResult<HashMap<ActionId, ActionBag>> {
+    //     let ctx =
+    //         ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
+    //     Ok(Action::order(&ctx).await?)
+    // }
 
-    pub async fn actors(&self, ctx: &DalContext) -> ChangeSetResult<Vec<String>> {
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(GET_ACTORS, &[&ctx.tenancy().workspace_pk(), &self.pk])
-            .await?;
+    // pub async fn actors(&self, ctx: &DalContext) -> ChangeSetResult<Vec<String>> {
+    //     let rows = ctx
+    //         .txns()
+    //         .await?
+    //         .pg()
+    //         .query(GET_ACTORS, &[&ctx.tenancy().workspace_pk(), &self.pk])
+    //         .await?;
 
-        let mut result: Vec<String> = vec![];
-        for row in rows.into_iter() {
-            let email: String = row.try_get("email")?;
-            result.push(email);
-        }
+    //     let mut result: Vec<String> = vec![];
+    //     for row in rows.into_iter() {
+    //         let email: String = row.try_get("email")?;
+    //         result.push(email);
+    //     }
 
-        Ok(result)
-    }
+    //     Ok(result)
+    // }
 
     pub async fn force_new(ctx: &mut DalContext) -> ChangeSetResult<Option<ChangeSetPk>> {
         Ok(if ctx.visibility().is_head() {
-            let change_set = Self::new(ctx, Self::generate_name(), None).await?;
+            // TODO(nick): eventually unify this logic under one interface.
+            let change_set = ChangeSetPointer::fork_head(ctx, Self::generate_name()).await?;
+            ctx.update_visibility_v2(&change_set);
+            ctx.update_snapshot_to_visibility().await?;
 
-            let new_visibility = Visibility::new(change_set.pk, ctx.visibility().deleted_at);
+            // TODO(nick): replace this with the new change set stuff.
+            let fake_pk = ChangeSetPk::from(Ulid::from(change_set.id));
 
-            ctx.update_visibility(new_visibility);
-
-            WsEvent::change_set_created(ctx, change_set.pk)
+            WsEvent::change_set_created(ctx, fake_pk)
                 .await?
                 .publish_on_commit(ctx)
                 .await?;
 
-            Some(change_set.pk)
+            Some(fake_pk)
         } else {
             None
         })

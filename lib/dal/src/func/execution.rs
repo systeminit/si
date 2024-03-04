@@ -101,13 +101,13 @@ impl FuncExecution {
                 &[
                     ctx.tenancy(),
                     &FuncExecutionState::Start.to_string(),
-                    &func.id(),
+                    &func.id,
                     &func_binding.id(),
                     &func_binding.args(),
                     &func_binding.backend_kind().to_string(),
-                    &func.backend_response_type().to_string(),
-                    &func.handler(),
-                    &func.code_base64(),
+                    &func.backend_response_type.to_string(),
+                    &func.handler.as_deref(),
+                    &func.code_base64.as_deref(),
                 ],
             )
             .await?;

@@ -4,10 +4,13 @@ rust_library(
     name = "dal-test",
     deps = [
         "//lib/buck2-resources:buck2-resources",
+        "//lib/content-store:content-store",
         "//lib/council-server:council-server",
         "//lib/dal:dal",
         "//lib/module-index-client:module-index-client",
         "//lib/pinga-server:pinga-server",
+        "//lib/rebaser-client:rebaser-client",
+        "//lib/rebaser-server:rebaser-server",
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",

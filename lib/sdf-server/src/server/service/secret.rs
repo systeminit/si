@@ -1,12 +1,13 @@
+use axum::routing::{get, patch};
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, patch, post},
+    routing::post,
     Json, Router,
 };
 use dal::{
-    ChangeSetError, DiagramError, KeyPairError, SecretId, StandardModelError, TransactionsError,
-    UserError, WorkspacePk, WsEventError,
+    ChangeSetError, KeyPairError, SecretId, StandardModelError, TransactionsError, UserError,
+    WorkspacePk, WsEventError,
 };
 use thiserror::Error;
 
@@ -24,8 +25,8 @@ pub enum SecretError {
     ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     ContextTransactions(#[from] TransactionsError),
-    #[error(transparent)]
-    Diagram(#[from] DiagramError),
+    // #[error(transparent)]
+    // Diagram(#[from] DiagramError),
     #[error("Hyper error: {0}")]
     Hyper(#[from] hyper::http::Error),
     #[error(transparent)]
