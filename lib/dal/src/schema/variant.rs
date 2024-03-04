@@ -224,7 +224,7 @@ impl SchemaVariant {
                             prop_id,
                             EdgeWeightKindDiscriminants::Ordering,
                         )?
-                        .get(0)
+                        .first()
                     {
                         let ordering_node_weight = workspace_snapshot
                             .get_node_weight(*ordering_node_idx)?
@@ -580,7 +580,7 @@ impl SchemaVariant {
 
         match AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id)
             .await?
-            .get(0)
+            .first()
         {
             None => Ok(None),
             Some(apa_id) => {

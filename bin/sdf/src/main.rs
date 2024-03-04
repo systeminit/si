@@ -108,7 +108,7 @@ async fn async_main() -> Result<()> {
     let symmetric_crypto_service =
         Server::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
 
-    let pkgs_path: PathBuf = config.pkgs_path().try_into()?;
+    let pkgs_path: PathBuf = config.pkgs_path().into();
 
     let module_index_url = config.module_index_url().to_string();
 

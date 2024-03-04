@@ -8,6 +8,7 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 use crate::prop::PropError;
+use crate::validation::resolver::ValidationResolverError;
 use crate::{
     attribute::value::AttributeValueError,
     job::definition::dependent_values_update::DependentValueUpdateError,

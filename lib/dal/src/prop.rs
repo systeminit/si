@@ -375,7 +375,7 @@ impl Prop {
         let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         match workspace_snapshot
             .incoming_sources_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Use)?
-            .get(0)
+            .first()
         {
             Some(parent_node_idx) => Ok(
                 match workspace_snapshot.get_node_weight(*parent_node_idx)? {
@@ -411,8 +411,7 @@ impl Prop {
                 workspace_snapshot
                     .get_node_weight(edge_ref.target())
                     .ok()
-                    .map(|node_weight| node_weight.get_prop_node_weight().ok())
-                    .flatten()
+                    .and_then(|node_weight| node_weight.get_prop_node_weight().ok())
                     .map(|prop_node| prop_node.id().into())
             })
             .collect())
@@ -754,7 +753,7 @@ impl Prop {
         let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         let prototype_node_index = *workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Prototype)?
-            .get(0)
+            .first()
             .ok_or(PropError::MissingPrototypeForProp(prop_id))?;
 
         Ok(workspace_snapshot
@@ -783,7 +782,7 @@ impl Prop {
         let intrinsic_id = Func::find_intrinsic(ctx, intrinsic).await?;
         let func_arg_id = *FuncArgument::list_ids_for_func(ctx, intrinsic_id)
             .await?
-            .get(0)
+            .first()
             .ok_or(FuncArgumentError::IntrinsicMissingFuncArgumentEdge(
                 intrinsic.name().into(),
                 intrinsic_id,

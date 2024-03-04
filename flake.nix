@@ -240,6 +240,8 @@
 
           pinga = binDerivation {pkgName = "pinga";};
 
+          rebaser = binDerivation {pkgName = "rebaser";};
+
           sdf = binDerivation {pkgName = "sdf";};
 
           si = binDerivation {pkgName = "si";};

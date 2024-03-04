@@ -289,7 +289,7 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
     assert_eq!(1, rigid_designator_values.len());
 
     let rigid_designator_value_id = rigid_designator_values
-        .get(0)
+        .first()
         .copied()
         .expect("get first value id");
 
@@ -320,7 +320,7 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
         Prop::attribute_values_for_prop_id(ctx, naming_and_necessity_prop_id)
             .await
             .expect("able to get values for naming_and_necessity")
-            .get(0)
+            .first()
             .copied()
             .expect("get first value id");
 
@@ -385,7 +385,7 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
     let root_value_id = Prop::attribute_values_for_prop_id(ctx, root_prop_id)
         .await
         .expect("get root prop value id")
-        .get(0)
+        .first()
         .copied()
         .expect("a value exists for the root prop");
 
@@ -475,7 +475,10 @@ async fn set_the_universe(ctx: &mut DalContext) {
 
     assert_eq!(1, universe_values.len());
 
-    let universe_value_id = universe_values.get(0).copied().expect("get first value id");
+    let universe_value_id = universe_values
+        .first()
+        .copied()
+        .expect("get first value id");
 
     assert_eq!(
         component.id(),

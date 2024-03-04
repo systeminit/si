@@ -216,7 +216,7 @@ impl AttributePrototypeArgument {
             return Err(AttributePrototypeArgumentError::InterComponentDestinationPrototypeHasTooManyFuncArgs(destination_attribute_prototype_id));
         }
 
-        let func_arg_id = func_arg_ids.get(0).ok_or(
+        let func_arg_id = func_arg_ids.first().ok_or(
             AttributePrototypeArgumentError::InterComponentDestinationPrototypeHasNoFuncArgs(
                 destination_attribute_prototype_id,
             ),
@@ -384,7 +384,7 @@ impl AttributePrototypeArgument {
         }
 
         let prototype_idx = prototype_idxs
-            .get(0)
+            .first()
             .copied()
             .expect("checked length above");
 

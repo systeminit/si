@@ -443,7 +443,7 @@ impl AttributeValue {
             ))?;
         }
 
-        if let Some(prop_target) = prop_targets.get(0).copied() {
+        if let Some(prop_target) = prop_targets.first().copied() {
             let prop_id = workspace_snapshot
                 .get_node_weight(prop_target)?
                 .get_prop_node_weight()?
@@ -465,7 +465,7 @@ impl AttributeValue {
         }
 
         let provider_target = provider_targets
-            .get(0)
+            .first()
             .ok_or(AttributeValueError::OrphanedAttributeValue(value_id))?;
 
         let provider_node_weight = workspace_snapshot.get_node_weight(*provider_target)?;
@@ -729,7 +729,7 @@ impl AttributeValue {
                 current_attribute_value_id,
                 EdgeWeightKindDiscriminants::Contain,
             )?
-            .get(0)
+            .first()
             .copied()
         {
             current_attribute_value_id = workspace_snapshot
@@ -745,7 +745,7 @@ impl AttributeValue {
                 current_attribute_value_id,
                 EdgeWeightKindDiscriminants::Root,
             )?
-            .get(0)
+            .first()
             .copied()
         {
             Some(component_target) => component_target,
@@ -754,7 +754,7 @@ impl AttributeValue {
                     current_attribute_value_id,
                     EdgeWeightKindDiscriminants::Socket,
                 )?
-                .get(0)
+                .first()
                 .copied()
                 .ok_or(AttributeValueError::OrphanedAttributeValue(
                     current_attribute_value_id,
@@ -782,7 +782,7 @@ impl AttributeValue {
                     parent_attribute_value_id,
                     EdgeWeightKindDiscriminants::Prop,
                 )?
-                .get(0)
+                .first()
                 .copied()
                 .ok_or(AttributeValueError::MissingPropEdge(
                     parent_attribute_value_id,
@@ -811,7 +811,7 @@ impl AttributeValue {
                 return Err(AttributeValueError::PropMoreThanOneChild(prop_id));
             }
             let element_prop_index = child_prop_indices
-                .get(0)
+                .first()
                 .ok_or(AttributeValueError::PropMissingElementProp(prop_id))?
                 .to_owned();
 
@@ -1312,7 +1312,7 @@ impl AttributeValue {
             }
 
             let element_prop_index = child_props
-                .get(0)
+                .first()
                 .ok_or(AttributeValueError::PropMissingElementProp(prop_id))?
                 .to_owned();
 
@@ -1368,7 +1368,7 @@ impl AttributeValue {
                     attribute_value_id,
                     EdgeWeightKindDiscriminants::Contain,
                 )?
-                .get(0)
+                .first()
                 .copied()
             {
                 Some(parent_idx) => {
@@ -1394,7 +1394,7 @@ impl AttributeValue {
                 attribute_value_id,
                 EdgeWeightKindDiscriminants::Prototype,
             )?
-            .get(0)
+            .first()
             .copied();
 
         Ok(match maybe_prototype_idx {
@@ -1472,11 +1472,10 @@ impl AttributeValue {
         Ok(workspace_snapshot
             .edges_directed(attribute_value_id, Incoming)?
             .find(|edge_ref| matches!(edge_ref.weight().kind(), EdgeWeightKind::Contain(Some(_))))
-            .map(|edge_ref| match edge_ref.weight().kind() {
+            .and_then(|edge_ref| match edge_ref.weight().kind() {
                 EdgeWeightKind::Contain(key) => key.to_owned(),
                 _ => None,
-            })
-            .flatten())
+            }))
     }
 
     /// Returns the most specific prototype id for this attribute value. If a component specific
@@ -1537,7 +1536,7 @@ impl AttributeValue {
             }
 
             let element_prop_index = child_props
-                .get(0)
+                .first()
                 .ok_or(AttributeValueError::PropMissingElementProp(prop_id))?
                 .to_owned();
 
@@ -1651,7 +1650,7 @@ impl AttributeValue {
             Some(value) => {
                 let func_arg_id = *FuncArgument::list_ids_for_func(ctx, func_id)
                     .await?
-                    .get(0)
+                    .first()
                     .ok_or(FuncArgumentError::IntrinsicMissingFuncArgumentEdge(
                         intrinsic_func.name().into(),
                         func_id,

@@ -283,6 +283,8 @@ impl WorkspaceSnapshotGraph {
         })
     }
 
+    // TODO(nick): fix this clippy error.
+    #[allow(clippy::type_complexity)]
     pub fn add_ordered_edge(
         &mut self,
         change_set: &ChangeSetPointer,
@@ -1631,7 +1633,7 @@ impl WorkspaceSnapshotGraph {
                 container_node_index,
             ));
         }
-        Ok(onto_ordering_node_indexes.get(0).copied())
+        Ok(onto_ordering_node_indexes.first().copied())
     }
 
     pub fn prop_node_index_for_node_index(
@@ -1643,7 +1645,7 @@ impl WorkspaceSnapshotGraph {
             error!("Too many prop nodes found for NodeIndex {:?}", node_index);
             return Err(WorkspaceSnapshotGraphError::TooManyPropForNode(node_index));
         }
-        Ok(prop_node_indexes.get(0).copied())
+        Ok(prop_node_indexes.first().copied())
     }
 
     pub(crate) fn remove_node(&mut self, node_index: NodeIndex) {

@@ -24,13 +24,13 @@ use crate::workspace_snapshot::WorkspaceSnapshotId;
 use crate::{
     change_set_pointer::{ChangeSetPointer, ChangeSetPointerId},
     job::{
-        definition::{FixesJob, RefreshJob},
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::{BlockingJobError, BlockingJobResult, JobProducer},
         queue::JobQueue,
     },
     workspace_snapshot::WorkspaceSnapshotError,
-    HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk, WorkspaceSnapshot,
+    AttributeValueId, ComponentId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
+    WorkspacePk, WorkspaceSnapshot,
 };
 use crate::{ChangeSetPk, Workspace};
 
@@ -674,15 +674,16 @@ impl DalContext {
         Ok(())
     }
 
-    pub async fn enqueue_fix(&self, job: Box<FixesJob>) -> Result<(), TransactionsError> {
-        self.txns().await?.job_queue.enqueue_job(job).await;
-        Ok(())
-    }
+    // pub async fn enqueue_fix(&self, job: Box<FixesJob>) -> Result<(), TransactionsError> {
+    //     self.txns().await?.job_queue.enqueue_job(job).await;
+    //     Ok(())
+    // }
+    //
 
-    pub async fn enqueue_refresh(&self, job: Box<RefreshJob>) -> Result<(), TransactionsError> {
-        self.txns().await?.job_queue.enqueue_job(job).await;
-        Ok(())
-    }
+    // pub async fn enqueue_refresh(&self, job: Box<RefreshJob>) -> Result<(), TransactionsError> {
+    //     self.txns().await?.job_queue.enqueue_job(job).await;
+    //     Ok(())
+    // }
 
     pub async fn enqueue_dependent_values_update(
         &self,
@@ -1111,6 +1112,9 @@ pub struct Transactions {
     rebaser_config: RebaserClientConfig,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     job_queue: JobQueue,
+    #[allow(clippy::type_complexity)]
+    dependencies_update_component:
+        Arc<Mutex<HashMap<(Tenancy, ChangeSetPk), HashSet<ComponentId>>>>,
 }
 
 #[derive(Clone, Debug)]

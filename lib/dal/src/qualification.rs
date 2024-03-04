@@ -7,10 +7,13 @@ use thiserror::Error;
 use crate::attribute::value::AttributeValueError;
 use crate::component::qualification::QualificationEntry;
 use crate::func::FuncError;
+use crate::prop::PropError;
+use crate::validation::resolver::{ValidationResolver, ValidationResolverError, ValidationStatus};
 use crate::{
     func::binding_return_value::FuncBindingReturnValueError,
     ws_event::{WsEvent, WsPayload},
-    Component, ComponentError, ComponentId, DalContext, StandardModelError, WsEventResult,
+    Component, ComponentError, ComponentId, DalContext, Prop, StandardModel, StandardModelError,
+    WsEventResult,
 };
 use crate::{AttributeValue, AttributeValueId, Func};
 
@@ -119,6 +122,8 @@ pub enum QualificationError {
     FuncBindingReturnValueError(#[from] FuncBindingReturnValueError),
     #[error("no value returned in qualification function result")]
     NoValue,
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
@@ -250,13 +255,12 @@ impl QualificationView {
                 status = QualificationSubCheckStatus::Failure;
                 fail_counter += 1;
 
-                if let Some(prop) = Prop::get_by_id(ctx, &resolver.prop_id()).await? {
-                    output.push(QualificationOutputStreamView {
-                        stream: "stdout".to_owned(),
-                        level: "log".to_owned(),
-                        line: format!("{}: {}", prop.name(), value.message),
-                    });
-                }
+                let prop = Prop::get_by_id(ctx, resolver.prop_id()).await?;
+                output.push(QualificationOutputStreamView {
+                    stream: "stdout".to_owned(),
+                    level: "log".to_owned(),
+                    line: format!("{}: {}", prop.name, value.message),
+                });
             }
         }
 

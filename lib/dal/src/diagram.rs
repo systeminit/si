@@ -96,7 +96,7 @@ pub type DiagramResult<T> = Result<T, DiagramError>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-struct GridPoint {
+pub struct GridPoint {
     pub x: isize,
     pub y: isize,
 }
@@ -176,7 +176,7 @@ pub struct DiagramSocket {
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
-enum DiagramSocketDirection {
+pub enum DiagramSocketDirection {
     Bidirectional,
     Input,
     Output,
@@ -198,7 +198,7 @@ enum DiagramSocketDirection {
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
-enum DiagramSocketNodeSide {
+pub enum DiagramSocketNodeSide {
     Left,
     Right,
 }
