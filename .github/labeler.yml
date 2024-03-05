@@ -74,6 +74,15 @@ A-si-discord-bot:
 A-si:
   - bin/si/**/*
   - lib/si-cli/**/*
+A-rebaser:
+  - bin/rebaser/**/*
+  - lib/rebaser-server/**/*
+  - lib/rebaser-core/**/*
+  - lib/rebaser-client/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
 
 #
 # System Initiative libs (i.e. crates/packages/libraries)
