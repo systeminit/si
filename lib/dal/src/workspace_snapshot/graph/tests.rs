@@ -3165,8 +3165,8 @@ mod test {
             destination_node_index_for_ordinal_edge,
         ) = maybe_ordinal_edge_information.expect("ordinal edge information not found");
         let ordinal_edge_weight = initial_graph
-            .graph
-            .edge_weight(ordinal_edge_index)
+            .get_edge_weight_opt(ordinal_edge_index)
+            .expect("should not error when getting edge")
             .expect("could not get edge weight for index")
             .to_owned();
         let source_node_id_for_ordinal_edge = initial_graph
@@ -3469,8 +3469,8 @@ mod test {
             destination_node_index_for_ordinal_edge,
         ) = maybe_ordinal_edge_information.expect("ordinal edge information not found");
         let ordinal_edge_weight = initial_graph
-            .graph
-            .edge_weight(ordinal_edge_index)
+            .get_edge_weight_opt(ordinal_edge_index)
+            .expect("should not error when getting edge")
             .expect("could not get edge weight for index")
             .to_owned();
         let source_node_id_for_ordinal_edge = initial_graph
@@ -3782,8 +3782,8 @@ mod test {
             destination_node_index_for_ordinal_edge,
         ) = maybe_ordinal_edge_information.expect("ordinal edge information not found");
         let ordinal_edge_weight = initial_graph
-            .graph
-            .edge_weight(ordinal_edge_index)
+            .get_edge_weight_opt(ordinal_edge_index)
+            .expect("should not error when getting edge")
             .expect("could not get edge weight for index")
             .to_owned();
         let source_node_id_for_ordinal_edge = initial_graph
