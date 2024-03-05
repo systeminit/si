@@ -674,6 +674,13 @@ export const useFuncStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [
           {
+            eventType: "ChangeSetWritten",
+            callback: () => {
+              this.FETCH_FUNC_LIST();
+            },
+          },
+          // TODO(victor) we don't need the changesetpk checks below, since nats filters messages already
+          {
             eventType: "FuncCreated",
             callback: (data) => {
               if (data.changeSetPk !== selectedChangeSetId) return;

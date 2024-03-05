@@ -12,7 +12,9 @@ use ulid::{Generator, Ulid};
 use crate::context::RebaseRequest;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
-use crate::{pk, ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspacePk};
+use crate::{
+    pk, ChangeSetPk, ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspacePk,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -90,6 +92,10 @@ impl TryFrom<PgRow> for ChangeSetPointer {
 }
 
 impl ChangeSetPointer {
+    pub fn changeset_pk(&self) -> ChangeSetPk {
+        ChangeSetPk::from(Ulid::from(self.id))
+    }
+
     pub fn new_local() -> ChangeSetPointerResult<Self> {
         let mut generator = Generator::new();
         let id = generator.generate()?;

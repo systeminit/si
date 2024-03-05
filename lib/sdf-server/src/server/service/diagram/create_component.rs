@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use dal::component::frame::Frame;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
-use dal::{generate_name, Component, ComponentId, SchemaId, SchemaVariant, Visibility, WsEvent};
+use dal::{generate_name, ChangeSet, Component, ComponentId, SchemaId, SchemaVariant, Visibility};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::service::diagram::DiagramResult;
@@ -35,24 +35,10 @@ pub async fn create_component(
     OriginalUri(_original_uri): OriginalUri,
     Json(request): Json<CreateComponentRequest>,
 ) -> DiagramResult<impl IntoResponse> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     // TODO(nick): restore this with new engine semantics.
-    // let mut force_changeset_pk = None;
-    // if ctx.visibility().is_head() {
-    //     let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
-    //
-    //     let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
-    //
-    //     ctx.update_visibility(new_visibility);
-    //
-    //     force_changeset_pk = Some(change_set.pk);
-    //
-    //     WsEvent::change_set_created(&ctx, change_set.pk)
-    //         .await?
-    //         .publish_on_commit(&ctx)
-    //         .await?;
-    // };
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     let name = generate_name();
 
@@ -175,10 +161,11 @@ pub async fn create_component(
     //     );
     // }
 
-    WsEvent::component_created(&ctx, component.id())
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
+    // Does not work for now since commit does not wait for the rebaser
+    // WsEvent::component_created(&ctx, component.id())
+    //     .await?
+    //     .publish_on_commit(&ctx)
+    //     .await?;
 
     // TODO(nick): restore posthog tracking.
     // track(
@@ -198,10 +185,9 @@ pub async fn create_component(
     ctx.commit().await?;
 
     let mut response = axum::response::Response::builder();
-    // TODO(nick): restore change set creation when on head.
-    // if let Some(force_changeset_pk) = force_changeset_pk {
-    //     response = response.header("force_changeset_pk", force_changeset_pk.to_string());
-    // }
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
     response = response.header("content-type", "application/json");
     Ok(
         response.body(serde_json::to_string(&CreateComponentResponse {

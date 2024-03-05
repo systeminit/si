@@ -178,8 +178,14 @@ export const useRealtimeStore = defineStore("realtime", () => {
     eventData: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     eventMetadata: RealtimeEventMetadata,
   ) {
-    // Set the "VITE_LOG_WS" environment variable to true if you want to see logs for received WsEvents.
-    if (import.meta.env.VITE_LOG_WS) {
+    // Set the "VITE_LOG_WS" environment variable to true if you want to see logs for received WsEvents (excluding cursor events).
+    // Set the "VITE_LOG_WS_CURSOR" environment variable to true if you want to see logs for received cursor WsEvents.
+    if (
+      (import.meta.env.VITE_LOG_WS &&
+        !["Cursor", "Online"].includes(eventKind)) ||
+      (import.meta.env.VITE_LOG_WS_CURSOR && eventKind === "Cursor") ||
+      (import.meta.env.VITE_LOG_WS_ONLINE && eventKind === "Online")
+    ) {
       /* eslint-disable-next-line no-console */
       console.log("WS message", eventKind, eventData);
     }

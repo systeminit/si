@@ -1,6 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::Json;
 use dal::change_set_pointer::ChangeSetPointer;
+use dal::WsEvent;
 use serde::{Deserialize, Serialize};
 
 use super::ChangeSetResult;
@@ -41,6 +42,11 @@ pub async fn create_change_set(
                     "change_set_name": change_set_name,
         }),
     );
+
+    WsEvent::change_set_created(&ctx, change_set_pointer.changeset_pk())
+        .await?
+        .publish_on_commit(&ctx)
+        .await?;
 
     ctx.commit_no_rebase().await?;
 
