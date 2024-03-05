@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use dal::component::frame::Frame;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
-use dal::{
-    generate_name, ChangeSet, Component, ComponentId, SchemaId, SchemaVariant, Visibility, WsEvent,
-};
+use dal::{generate_name, ChangeSet, Component, ComponentId, SchemaId, SchemaVariant, Visibility};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::service::diagram::DiagramResult;
