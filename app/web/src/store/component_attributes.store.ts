@@ -379,14 +379,21 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           const realtimeStore = useRealtimeStore();
           realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
             {
-              eventType: "ComponentUpdated",
-              debounce: true,
-              callback: (updated) => {
-                if (updated.changeSetPk !== changeSetId) return;
-                if (updated.componentId !== this.selectedComponentId) return;
+              eventType: "ChangeSetWritten",
+              callback: () => {
                 this.reloadPropertyEditorData();
               },
             },
+            // This is nor working right now, since even if the changeset event comes through, it does not wait for the rebaser
+            // {
+            //   eventType: "ComponentUpdated",
+            //   debounce: true,
+            //   callback: (updated) => {
+            //     if (updated.changeSetPk !== changeSetId) return;
+            //     if (updated.componentId !== this.selectedComponentId) return;
+            //     this.reloadPropertyEditorData();
+            //   },
+            // },
           ]);
 
           return () => {

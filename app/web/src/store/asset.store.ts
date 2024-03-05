@@ -431,6 +431,12 @@ export const useAssetStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
+            eventType: "ChangeSetWritten",
+            callback: () => {
+              this.LOAD_ASSET_LIST();
+            },
+          },
+          {
             eventType: "SchemaVariantDefinitionCreated",
             callback: (data) => {
               if (data.changeSetPk !== changeSetId) return;
@@ -457,6 +463,7 @@ export const useAssetStore = () => {
               this.LOAD_ASSET_LIST();
             },
           },
+          // For the async api endpoints
           {
             eventType: "AsyncError",
             callback: ({ id, error }) => {
