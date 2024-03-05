@@ -2122,6 +2122,9 @@ async fn create_socket(
 ) -> PkgResult<(Option<InputSocket>, Option<OutputSocket>)> {
     let identity_func_id = get_identity_func(ctx).await?;
 
+    // Connection annotations are stored as a serialized json array of strings
+    let connection_annotations: Vec<String> = serde_json::from_str(data.connection_annotations())?;
+
     let (ip, ep) = match data.kind() {
         SocketSpecKind::Input => {
             let ip = InputSocket::new(
@@ -2131,6 +2134,7 @@ async fn create_socket(
                 identity_func_id,
                 data.arity().into(),
                 SocketKind::Standard,
+                connection_annotations,
             )
             .await?;
 
@@ -2145,6 +2149,7 @@ async fn create_socket(
                 identity_func_id,
                 data.arity().into(),
                 SocketKind::Standard,
+                connection_annotations,
             )
             .await?;
 
