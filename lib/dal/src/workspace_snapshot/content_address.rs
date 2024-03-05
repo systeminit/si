@@ -13,11 +13,11 @@ pub enum ContentAddress {
     ActionPrototype(ContentHash),
     AttributePrototype(ContentHash),
     Component(ContentHash),
-    ExternalProvider(ContentHash),
     Func(ContentHash),
     FuncArg(ContentHash),
-    InternalProvider(ContentHash),
+    InputSocket(ContentHash),
     JsonValue(ContentHash),
+    OutputSocket(ContentHash),
     Prop(ContentHash),
     Root,
     Schema(ContentHash),
@@ -34,10 +34,10 @@ impl ContentAddress {
             ContentAddress::ActionPrototype(id)
             | ContentAddress::AttributePrototype(id)
             | ContentAddress::Component(id)
-            | ContentAddress::ExternalProvider(id)
+            | ContentAddress::OutputSocket(id)
             | ContentAddress::FuncArg(id)
             | ContentAddress::Func(id)
-            | ContentAddress::InternalProvider(id)
+            | ContentAddress::InputSocket(id)
             | ContentAddress::JsonValue(id)
             | ContentAddress::Prop(id)
             | ContentAddress::Schema(id)

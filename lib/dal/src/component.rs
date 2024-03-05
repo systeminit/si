@@ -22,11 +22,11 @@ use crate::change_set_pointer::ChangeSetPointerError;
 use crate::history_event::HistoryEventMetadata;
 use crate::job::definition::DependentValuesUpdate;
 use crate::prop::{PropError, PropPath};
-use crate::provider::external::ExternalProviderError;
-use crate::provider::internal::InternalProviderError;
 use crate::qualification::QualificationError;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::SchemaVariantError;
+use crate::socket::input::InputSocketError;
+use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -36,10 +36,10 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributeValue, AttributeValueId, ChangeSetPk, DalContext, ExternalProvider,
-    ExternalProviderId, InternalProvider, InternalProviderId, Prop, PropId, PropKind,
-    SchemaVariant, SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent,
-    WsEventError, WsEventResult, WsPayload,
+    pk, AttributeValue, AttributeValueId, ChangeSetPk, DalContext, InputSocket, InputSocketId,
+    OutputSocket, OutputSocketId, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId,
+    StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult,
+    WsPayload,
 };
 
 pub mod resource;
@@ -74,20 +74,14 @@ pub enum ComponentError {
     ComponentMissingNameValue(ComponentId),
     #[error("component {0} has no attribute value for the root/si/type prop")]
     ComponentMissingTypeValue(ComponentId),
-    #[error(
-        "connection destination component {0} has no attribute value for internal provider {1}"
-    )]
-    DestinationComponentMissingAttributeValueForInternalProvider(ComponentId, InternalProviderId),
+    #[error("connection destination component {0} has no attribute value for input socket {1}")]
+    DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
-    #[error("external provider error: {0}")]
-    ExternalProvider(#[from] ExternalProviderError),
-    #[error("external provider {0} has more than one attribute value")]
-    ExternalProviderTooManyAttributeValues(ExternalProviderId),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
-    #[error("internal provider {0} has more than one attribute value")]
-    InternalProviderTooManyAttributeValues(InternalProviderId),
+    #[error("input socket error: {0}")]
+    InputSocket(#[from] InputSocketError),
+    #[error("input socket {0} has more than one attribute value")]
+    InputSocketTooManyAttributeValues(InputSocketId),
     #[error("component {0} missing attribute value for qualifications")]
     MissingQualificationsValue(ComponentId),
     #[error("found multiple parents for component: {0}")]
@@ -98,6 +92,10 @@ pub enum ComponentError {
     NodeWeight(#[from] NodeWeightError),
     #[error("object prop {0} has no ordering node")]
     ObjectPropHasNoOrderingNode(PropId),
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
+    #[error("output socket {0} has more than one attribute value")]
+    OutputSocketTooManyAttributeValues(OutputSocketId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("found prop id ({0}) that is not a prop")]
@@ -161,9 +159,9 @@ impl Default for ComponentKind {
 pub struct IncomingConnection {
     pub attribute_prototype_argument_id: AttributePrototypeArgumentId,
     pub to_component_id: ComponentId,
-    pub to_internal_provider_id: InternalProviderId,
+    pub to_input_socket_id: InputSocketId,
     pub from_component_id: ComponentId,
-    pub from_external_provider_id: ExternalProviderId,
+    pub from_output_socket_id: OutputSocketId,
     pub created_info: HistoryEventMetadata,
     pub deleted_info: Option<HistoryEventMetadata>,
 }
@@ -326,20 +324,20 @@ impl Component {
 
         let mut attribute_values = vec![];
 
-        // Create attribute values for all providers corresponding to input and output sockets.
-        for internal_provider_id in
-            InternalProvider::list_ids_for_schema_variant(ctx, schema_variant_id).await?
+        // Create attribute values for all socket corresponding to input and output sockets.
+        for input_socket_id in
+            InputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?
         {
             let attribute_value =
-                AttributeValue::new(ctx, internal_provider_id, Some(id.into()), None, None).await?;
+                AttributeValue::new(ctx, input_socket_id, Some(id.into()), None, None).await?;
 
             attribute_values.push(attribute_value.id());
         }
-        for external_provider_id in
-            ExternalProvider::list_ids_for_schema_variant(ctx, schema_variant_id).await?
+        for output_socket_id in
+            OutputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?
         {
             let attribute_value =
-                AttributeValue::new(ctx, external_provider_id, Some(id.into()), None, None).await?;
+                AttributeValue::new(ctx, output_socket_id, Some(id.into()), None, None).await?;
 
             attribute_values.push(attribute_value.id());
         }
@@ -437,9 +435,7 @@ impl Component {
         ctx: &DalContext,
     ) -> ComponentResult<Vec<IncomingConnection>> {
         let mut incoming_edges = vec![];
-        for (to_internal_provider_id, to_value_id) in
-            self.internal_provider_attribute_values(ctx).await?
-        {
+        for (to_input_socket_id, to_value_id) in self.input_socket_attribute_values(ctx).await? {
             let prototype_id = AttributeValue::prototype_id(ctx, to_value_id).await?;
             for apa_id in
                 AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?
@@ -460,15 +456,15 @@ impl Component {
                     ..
                 }) = apa.targets()
                 {
-                    if let Some(ValueSource::ExternalProvider(from_external_provider_id)) =
+                    if let Some(ValueSource::OutputSocket(from_output_socket_id)) =
                         apa.value_source(ctx).await?
                     {
                         incoming_edges.push(IncomingConnection {
                             attribute_prototype_argument_id: apa_id,
                             to_component_id: self.id(),
                             from_component_id: source_component_id,
-                            to_internal_provider_id,
-                            from_external_provider_id,
+                            to_input_socket_id,
+                            from_output_socket_id,
                             created_info,
                             deleted_info: None,
                         });
@@ -749,27 +745,27 @@ impl Component {
             .ok_or(ComponentError::RootAttributeValueNotFound(component_id))
     }
 
-    pub async fn external_provider_attribute_values_for_component_id(
+    pub async fn output_socket_attribute_values_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<HashMap<ExternalProviderId, AttributeValueId>> {
+    ) -> ComponentResult<HashMap<OutputSocketId, AttributeValueId>> {
         let mut result = HashMap::new();
 
-        let socket_values = Self::values_for_all_providers(ctx, component_id).await?;
+        let socket_values = Self::values_for_all_sockets(ctx, component_id).await?;
 
         for socket_value_id in socket_values {
-            if let Some(external_provider_id) = AttributeValue::is_for(ctx, socket_value_id)
+            if let Some(output_socket_id) = AttributeValue::is_for(ctx, socket_value_id)
                 .await?
-                .external_provider_id()
+                .output_socket_id()
             {
-                match result.entry(external_provider_id) {
+                match result.entry(output_socket_id) {
                     hash_map::Entry::Vacant(entry) => {
                         entry.insert(socket_value_id);
                     }
                     hash_map::Entry::Occupied(_) => {
-                        return Err(ComponentError::ExternalProviderTooManyAttributeValues(
-                            external_provider_id,
-                        ))
+                        return Err(ComponentError::OutputSocketTooManyAttributeValues(
+                            output_socket_id,
+                        ));
                     }
                 }
             }
@@ -778,11 +774,11 @@ impl Component {
         Ok(result)
     }
 
-    pub async fn external_provider_attribute_values(
+    pub async fn output_socket_attribute_values(
         &self,
         ctx: &DalContext,
-    ) -> ComponentResult<HashMap<ExternalProviderId, AttributeValueId>> {
-        Self::external_provider_attribute_values_for_component_id(ctx, self.id()).await
+    ) -> ComponentResult<HashMap<OutputSocketId, AttributeValueId>> {
+        Self::output_socket_attribute_values_for_component_id(ctx, self.id()).await
     }
 
     pub async fn attribute_values_for_prop(
@@ -807,7 +803,7 @@ impl Component {
         Ok(result)
     }
 
-    async fn values_for_all_providers(
+    async fn values_for_all_sockets(
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<Vec<AttributeValueId>> {
@@ -816,7 +812,7 @@ impl Component {
 
         for socket_target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
             component_id,
-            EdgeWeightKindDiscriminants::Socket,
+            EdgeWeightKindDiscriminants::SocketValue,
         )? {
             socket_values.push(
                 workspace_snapshot
@@ -830,27 +826,27 @@ impl Component {
         Ok(socket_values)
     }
 
-    pub async fn internal_provider_attribute_values_for_component_id(
+    pub async fn input_socket_attribute_values_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<HashMap<InternalProviderId, AttributeValueId>> {
+    ) -> ComponentResult<HashMap<InputSocketId, AttributeValueId>> {
         let mut result = HashMap::new();
 
-        let socket_values = Self::values_for_all_providers(ctx, component_id).await?;
+        let socket_values = Self::values_for_all_sockets(ctx, component_id).await?;
 
         for socket_value_id in socket_values {
-            if let Some(internal_provider_id) = AttributeValue::is_for(ctx, socket_value_id)
+            if let Some(input_socket_id) = AttributeValue::is_for(ctx, socket_value_id)
                 .await?
-                .internal_provider_id()
+                .input_socket_id()
             {
-                match result.entry(internal_provider_id) {
+                match result.entry(input_socket_id) {
                     hash_map::Entry::Vacant(entry) => {
                         entry.insert(socket_value_id);
                     }
                     hash_map::Entry::Occupied(_) => {
-                        return Err(ComponentError::InternalProviderTooManyAttributeValues(
-                            internal_provider_id,
-                        ))
+                        return Err(ComponentError::InputSocketTooManyAttributeValues(
+                            input_socket_id,
+                        ));
                     }
                 }
             }
@@ -859,26 +855,23 @@ impl Component {
         Ok(result)
     }
 
-    pub async fn internal_provider_attribute_values(
+    pub async fn input_socket_attribute_values(
         &self,
         ctx: &DalContext,
-    ) -> ComponentResult<HashMap<InternalProviderId, AttributeValueId>> {
-        Self::internal_provider_attribute_values_for_component_id(ctx, self.id()).await
+    ) -> ComponentResult<HashMap<InputSocketId, AttributeValueId>> {
+        Self::input_socket_attribute_values_for_component_id(ctx, self.id()).await
     }
 
     async fn connect_inner(
         ctx: &DalContext,
         source_component_id: ComponentId,
-        source_external_provider_id: ExternalProviderId,
+        source_output_socket_it: OutputSocketId,
         destination_component_id: ComponentId,
-        destination_explicit_internal_provider_id: InternalProviderId,
+        destination_input_socket_id: InputSocketId,
     ) -> ComponentResult<(AttributeValueId, AttributePrototypeArgumentId)> {
         let destination_attribute_value_ids =
-            InternalProvider::attribute_values_for_internal_provider_id(
-                ctx,
-                destination_explicit_internal_provider_id,
-            )
-            .await?;
+            InputSocket::attribute_values_for_input_socket_id(ctx, destination_input_socket_id)
+                .await?;
 
         // filter the value ids by destination_component_id
         let mut destination_attribute_value_id: Option<AttributeValueId> = None;
@@ -891,9 +884,9 @@ impl Component {
         }
 
         let destination_attribute_value_id = destination_attribute_value_id.ok_or(
-            ComponentError::DestinationComponentMissingAttributeValueForInternalProvider(
+            ComponentError::DestinationComponentMissingAttributeValueForInputSocket(
                 destination_component_id,
-                destination_explicit_internal_provider_id,
+                destination_input_socket_id,
             ),
         )?;
 
@@ -903,7 +896,7 @@ impl Component {
         let attribute_prototype_argument = AttributePrototypeArgument::new_inter_component(
             ctx,
             source_component_id,
-            source_external_provider_id,
+            source_output_socket_it,
             destination_component_id,
             destination_prototype_id,
         )
@@ -920,17 +913,17 @@ impl Component {
     pub async fn connect(
         ctx: &DalContext,
         source_component_id: ComponentId,
-        source_external_provider_id: ExternalProviderId,
+        source_output_socket_id: OutputSocketId,
         destination_component_id: ComponentId,
-        destination_explicit_internal_provider_id: InternalProviderId,
+        destination_input_socket_id: InputSocketId,
     ) -> ComponentResult<AttributePrototypeArgumentId> {
         let (destination_attribute_value_id, attribute_prototype_argument_id) =
             Self::connect_inner(
                 ctx,
                 source_component_id,
-                source_external_provider_id,
+                source_output_socket_id,
                 destination_component_id,
-                destination_explicit_internal_provider_id,
+                destination_input_socket_id,
             )
             .await?;
 
@@ -959,40 +952,37 @@ impl Component {
         let destination_schema_variant_id =
             Component::schema_variant_id(ctx, destination_component_id).await?;
 
-        let source_external_providers =
-            ExternalProvider::list(ctx, source_schema_variant_id).await?;
-        let destination_internal_providers =
-            InternalProvider::list(ctx, destination_schema_variant_id).await?;
+        let source_output_sockets = OutputSocket::list(ctx, source_schema_variant_id).await?;
+        let destination_input_sockets =
+            InputSocket::list(ctx, destination_schema_variant_id).await?;
 
         // TODO(nick): use annotations instead of names. Also make this less bad.
-        let mut external_providers_by_annotation: HashMap<String, ExternalProviderId> =
-            HashMap::new();
-        for source_external_provider in source_external_providers {
-            external_providers_by_annotation.insert(
-                source_external_provider.name().to_string(),
-                source_external_provider.id(),
+        let mut output_sockets_by_annotation: HashMap<String, OutputSocketId> = HashMap::new();
+        for source_output_socket in source_output_sockets {
+            output_sockets_by_annotation.insert(
+                source_output_socket.name().to_string(),
+                source_output_socket.id(),
             );
         }
 
-        let mut internal_providers_by_annotation: HashMap<String, InternalProviderId> =
-            HashMap::new();
-        for destination_internal_provider in destination_internal_providers {
-            internal_providers_by_annotation.insert(
-                destination_internal_provider.name().to_string(),
-                destination_internal_provider.id(),
+        let mut input_sockets_by_annotation: HashMap<String, InputSocketId> = HashMap::new();
+        for destination_input_socket in destination_input_sockets {
+            input_sockets_by_annotation.insert(
+                destination_input_socket.name().to_string(),
+                destination_input_socket.id(),
             );
         }
 
         // NOTE(nick): using the maps reliant on the name, connect all sockets we can.
         let mut to_enqueue = Vec::new();
-        for (key, external_provider_id) in external_providers_by_annotation {
-            if let Some(internal_provider_id) = internal_providers_by_annotation.get(&key) {
+        for (key, output_socket_id) in output_sockets_by_annotation {
+            if let Some(input_socket_id) = input_sockets_by_annotation.get(&key) {
                 let (attribute_value_id, _) = Self::connect_inner(
                     ctx,
                     source_component_id,
-                    external_provider_id,
+                    output_socket_id,
                     destination_component_id,
-                    *internal_provider_id,
+                    *input_socket_id,
                 )
                 .await?;
                 to_enqueue.push(attribute_value_id);

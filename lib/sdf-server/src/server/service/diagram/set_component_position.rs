@@ -39,11 +39,7 @@ pub async fn set_component_position(
 
     let (width, height) = {
         let (_, explicit_internal_providers) =
-            SchemaVariant::list_external_providers_and_explicit_internal_providers(
-                &ctx,
-                schema_variant_id,
-            )
-            .await?;
+            SchemaVariant::list_all_sockets(&ctx, schema_variant_id).await?;
 
         let mut size = (None, None);
 

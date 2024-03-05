@@ -54,8 +54,6 @@ pub enum PropError {
     MapOrArrayMissingElementProp(PropId),
     #[error("missing prototype for prop {0}")]
     MissingPrototypeForProp(PropId),
-    #[error("missing provider for prop {0}")]
-    MissingProviderForProp(PropId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("prop {0} is orphaned")]

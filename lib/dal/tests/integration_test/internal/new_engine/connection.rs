@@ -1,7 +1,6 @@
 use dal::diagram::Diagram;
 use dal::{
-    AttributeValue, Component, DalContext, ExternalProvider, InternalProvider, Schema,
-    SchemaVariant,
+    AttributeValue, Component, DalContext, InputSocket, OutputSocket, Schema, SchemaVariant,
 };
 use dal_test::test;
 
@@ -35,15 +34,14 @@ async fn connect_components(ctx: &mut DalContext) {
     let butane_schema_variant_id = butane_schema_variant.id();
 
     // Find the providers we want to use.
-    let docker_image_external_providers =
-        ExternalProvider::list(ctx, docker_image_schema_variant_id)
-            .await
-            .expect("could not list external providers");
+    let docker_image_external_providers = OutputSocket::list(ctx, docker_image_schema_variant_id)
+        .await
+        .expect("could not list external providers");
     let external_provider = docker_image_external_providers
         .iter()
         .find(|e| e.name() == "Container Image")
         .expect("could not find external provider");
-    let butane_explicit_internal_providers = InternalProvider::list(ctx, butane_schema_variant_id)
+    let butane_explicit_internal_providers = InputSocket::list(ctx, butane_schema_variant_id)
         .await
         .expect("could not list explicit internal providers");
     let explicit_internal_provider = butane_explicit_internal_providers

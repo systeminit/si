@@ -1,7 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::attribute::prototype::argument::AttributePrototypeArgumentId;
-use dal::{Component, ComponentId, ExternalProviderId, InternalProviderId, User, Visibility};
+use dal::{Component, ComponentId, InputSocketId, OutputSocketId, User, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -11,9 +11,9 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 #[serde(rename_all = "camelCase")]
 pub struct CreateConnectionRequest {
     pub from_node_id: ComponentId,
-    pub from_socket_id: ExternalProviderId,
+    pub from_socket_id: OutputSocketId,
     pub to_node_id: ComponentId,
-    pub to_socket_id: InternalProviderId,
+    pub to_socket_id: InputSocketId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

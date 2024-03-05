@@ -2,12 +2,12 @@ use thiserror::Error;
 
 use crate::{
     prop::PropError,
-    provider::{
-        external::ExternalProviderError,
-        internal::{InternalProviderError, InternalProviderId},
+    socket::{
+        input::{InputSocketError, InputSocketId},
+        output::OutputSocketError,
     },
-    AttributeValue, AttributeValueId, ComponentId, DalContext, ExternalProvider,
-    ExternalProviderId, InternalProvider, Prop, PropId,
+    AttributeValue, AttributeValueId, ComponentId, DalContext, InputSocket, OutputSocket,
+    OutputSocketId, Prop, PropId,
 };
 
 use super::static_value::StaticArgumentValueId;
@@ -17,10 +17,10 @@ use super::static_value::StaticArgumentValueId;
 pub enum ValueSourceError {
     #[error("attribute value error: {0}")]
     AttributeValue(String),
-    #[error("external provider error: {0}")]
-    ExternalProvider(#[from] ExternalProviderError),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
+    #[error("input socket error: {0}")]
+    InputSocket(#[from] InputSocketError),
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("static argument value sources have no attribute values")]
@@ -32,8 +32,8 @@ pub type ValueSourceResult<T> = Result<T, ValueSourceError>;
 #[remain::sorted]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ValueSource {
-    ExternalProvider(ExternalProviderId),
-    InternalProvider(InternalProviderId),
+    InputSocket(InputSocketId),
+    OutputSocket(OutputSocketId),
     Prop(PropId),
     StaticArgumentValue(StaticArgumentValueId),
 }
@@ -45,14 +45,14 @@ impl ValueSource {
     ) -> ValueSourceResult<Vec<AttributeValueId>> {
         Ok(match self {
             Self::Prop(prop_id) => Prop::attribute_values_for_prop_id(ctx, *prop_id).await?,
-            Self::ExternalProvider(ep_id) => {
-                ExternalProvider::attribute_values_for_external_provider_id(ctx, *ep_id).await?
+            Self::OutputSocket(ep_id) => {
+                OutputSocket::attribute_values_for_output_socket_id(ctx, *ep_id).await?
             }
-            Self::InternalProvider(ip_id) => {
-                InternalProvider::attribute_values_for_internal_provider_id(ctx, *ip_id).await?
+            Self::InputSocket(ip_id) => {
+                InputSocket::attribute_values_for_input_socket_id(ctx, *ip_id).await?
             }
             Self::StaticArgumentValue(_) => {
-                return Err(ValueSourceError::StaticArgumentValueSourcesNoValues)
+                return Err(ValueSourceError::StaticArgumentValueSourcesNoValues);
             }
         })
     }

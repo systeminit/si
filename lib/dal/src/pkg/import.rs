@@ -13,7 +13,7 @@ use crate::attribute::prototype::argument::{
 };
 use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
 use crate::prop::PropParent;
-use crate::{func::intrinsics::IntrinsicFunc, ComponentKind, ProviderKind};
+use crate::{func::intrinsics::IntrinsicFunc, ComponentKind, SocketKind};
 use crate::{
     func::{self, argument::FuncArgument},
     installed_pkg::{
@@ -22,8 +22,8 @@ use crate::{
     },
     prop::PropPath,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    ActionPrototype, ChangeSetPk, DalContext, ExternalProvider, ExternalProviderId, Func, FuncId,
-    InternalProvider, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    ActionPrototype, ChangeSetPk, DalContext, Func, FuncId, InputSocket, OutputSocket,
+    OutputSocketId, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariant, SchemaVariantId,
     StandardModel,
 };
 use crate::{AttributePrototype, AttributePrototypeId};
@@ -42,7 +42,7 @@ pub(crate) enum Thing {
     FuncArgument(FuncArgument),
     Schema(Schema),
     SchemaVariant(SchemaVariant),
-    Socket(Box<(Option<InternalProvider>, Option<ExternalProvider>)>),
+    Socket(Box<(Option<InputSocket>, Option<OutputSocket>)>),
 }
 
 pub type ThingMap = super::ChangeSetThingMap<String, Thing>;
@@ -2119,32 +2119,32 @@ async fn create_socket(
     ctx: &DalContext,
     data: &SiPkgSocketData,
     schema_variant_id: SchemaVariantId,
-) -> PkgResult<(Option<InternalProvider>, Option<ExternalProvider>)> {
+) -> PkgResult<(Option<InputSocket>, Option<OutputSocket>)> {
     let identity_func_id = get_identity_func(ctx).await?;
 
     let (ip, ep) = match data.kind() {
         SocketSpecKind::Input => {
-            let ip = InternalProvider::new_explicit(
+            let ip = InputSocket::new(
                 ctx,
                 schema_variant_id,
                 data.name(),
                 identity_func_id,
                 data.arity().into(),
-                ProviderKind::Standard,
+                SocketKind::Standard,
             )
             .await?;
 
             (Some(ip), None)
         }
         SocketSpecKind::Output => {
-            let ep = ExternalProvider::new(
+            let ep = OutputSocket::new(
                 ctx,
                 schema_variant_id,
                 data.name(),
                 None,
                 identity_func_id,
                 data.arity().into(),
-                ProviderKind::Standard,
+                SocketKind::Standard,
             )
             .await?;
 
@@ -2527,7 +2527,7 @@ async fn import_schema_variant(
             let (variant, created) = match existing_schema_variant {
                 Some(installed_sv_record) => {
                     match installed_sv_record.as_installed_schema_variant()? {
-                        InstalledPkgAssetTyped::SchemaVariant { id, .. } => (SchemaVariant::get_by_id(ctx, id) .await?, false),
+                        InstalledPkgAssetTyped::SchemaVariant { id, .. } => (SchemaVariant::get_by_id(ctx, id).await?, false),
                         _ => unreachable!(
                             "the as_installed_schema_variant method ensures we cannot hit this branch"
                         ),
@@ -2942,7 +2942,7 @@ async fn import_attr_func_for_output_socket(
     ctx: &DalContext,
     change_set_pk: Option<ChangeSetPk>,
     schema_variant_id: SchemaVariantId,
-    external_provider_id: ExternalProviderId,
+    output_socket_id: OutputSocketId,
     func_unique_id: &str,
     inputs: Vec<SiPkgAttrFuncInputView>,
     thing_map: &mut ThingMap,
@@ -2952,7 +2952,7 @@ async fn import_attr_func_for_output_socket(
             import_attr_func(
                 ctx,
                 change_set_pk,
-                AttrFuncContext::ExternalProvider(external_provider_id),
+                AttrFuncContext::OutputSocket(output_socket_id),
                 None,
                 schema_variant_id,
                 func.id,
@@ -3011,12 +3011,10 @@ async fn get_prototype_for_context(
                     .await?
                     .ok_or(PkgError::PropMissingPrototype(prop_id))?
             }
-            AttrFuncContext::ExternalProvider(external_provider_id) => {
-                AttributePrototype::find_for_external_provider(ctx, external_provider_id)
+            AttrFuncContext::OutputSocket(output_socket_id) => {
+                AttributePrototype::find_for_output_socket(ctx, output_socket_id)
                     .await?
-                    .ok_or(PkgError::ExternalProviderMissingPrototype(
-                        external_provider_id,
-                    ))?
+                    .ok_or(PkgError::OutputSocketMissingPrototype(output_socket_id))?
             }
         })
     }
@@ -3051,22 +3049,19 @@ async fn create_attr_proto_arg(
             apa_id
         }
         SiPkgAttrFuncInputView::InputSocket { socket_name, .. } => {
-            let explicit_ip =
-                InternalProvider::find_explicit_with_name(ctx, socket_name, schema_variant_id)
-                    .await?
-                    .ok_or(PkgError::MissingInternalProviderForSocketName(
-                        socket_name.to_owned(),
-                    ))?;
+            let input_socket = InputSocket::find_with_name(ctx, socket_name, schema_variant_id)
+                .await?
+                .ok_or(PkgError::MissingInputSocketName(socket_name.to_owned()))?;
             let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id).await?;
             let apa_id = apa.id();
 
-            apa.set_value_from_internal_provider_id(ctx, explicit_ip.id())
+            apa.set_value_from_input_socket_id(ctx, input_socket.id())
                 .await?;
             apa_id
         }
         _ => {
             // xxx: make this an error
-            panic!("unsupported taking external provider as input for prop");
+            panic!("unsupported taking output socket as input for prop");
         }
     })
 }
@@ -3130,7 +3125,7 @@ async fn create_attr_proto_arg(
 #[derive(Debug, Clone)]
 pub enum AttrFuncContext {
     Prop(PropId),
-    ExternalProvider(ExternalProviderId),
+    OutputSocket(OutputSocketId),
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -57,7 +57,7 @@ use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::job::definition::DependentValuesUpdate;
 use crate::prop::PropError;
-use crate::provider::internal::InternalProviderError;
+use crate::socket::input::InputSocketError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -67,8 +67,8 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
-    pk, AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProviderId,
-    Func, FuncId, InternalProviderId, Prop, PropId, PropKind, TransactionsError,
+    pk, AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncId,
+    InputSocketId, OutputSocketId, Prop, PropId, PropKind, TransactionsError,
 };
 
 use super::prototype::argument::static_value::StaticArgumentValue;
@@ -91,12 +91,6 @@ pub enum AttributeValueError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    #[error("attribute prototype argument {0} has a value source internal provider {1} but no value for that internal provider found in component {2}")]
-    AttributePrototypeArgumentInternalProviderMissingValueInSourceComponent(
-        AttributePrototypeArgumentId,
-        InternalProviderId,
-        ComponentId,
-    ),
     #[error("attribute prototype argument {0} has a value source {1:?} but no value for that prop found in component {2}")]
     AttributePrototypeArgumentMissingValueInSourceComponent(
         AttributePrototypeArgumentId,
@@ -109,20 +103,16 @@ pub enum AttributeValueError {
     AttributeValueMissingPrototype(AttributeValueId),
     #[error("attribute value {0} has more than one edge to a prop")]
     AttributeValueMultiplePropEdges(AttributeValueId),
-    #[error("attribute value {0} has more than one provider edge")]
-    AttributeValueMultipleProviderEdges(AttributeValueId),
     #[error("before func error: {0}")]
     BeforeFunc(String),
     #[error("Cannot create nested values for {0} since it is not the value for a prop")]
     CannotCreateNestedValuesForNonPropValues(AttributeValueId),
-    #[error("Cannot create attribute value for provider without component id")]
-    CannotCreateProviderValueWithoutComponentId,
     #[error("Cannot create attribute value for root prop without component id")]
     CannotCreateRootPropValueWithoutComponentId,
-    #[error(
-        "cannot explicitly set the value of {0} because it is for an internal or external provider"
-    )]
-    CannotExplicitlySetProviderValues(AttributeValueId),
+    #[error("Cannot create attribute value for socket without component id")]
+    CannotCreateSocketValueWithoutComponentId,
+    #[error("cannot explicitly set the value of {0} because it is for an input or output socket")]
+    CannotExplicitlySetSocketValues(AttributeValueId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
@@ -143,10 +133,10 @@ pub enum AttributeValueError {
     FuncBinding(#[from] FuncBindingError),
     #[error("func execution error: {0}")]
     FuncExecution(#[from] FuncExecutionError),
+    #[error("input socket error: {0}")]
+    InputSocket(#[from] InputSocketError),
     #[error("cannot insert for prop kind: {0}")]
     InsertionForInvalidPropKind(PropKind),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
     #[error("attribute value {0} missing prop edge when one was expected")]
     MissingPropEdge(AttributeValueId),
     #[error("missing prototype for attribute value {0}")]
@@ -157,9 +147,9 @@ pub enum AttributeValueError {
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight mismatch, expected {0:?} to be {1:?}")]
     NodeWeightMismatch(NodeIndex, NodeWeightDiscriminants),
-    #[error("attribute value not found for component ({0}) and explicit internal provider ({1})")]
-    NotFoundForComponentAndExplicitInternalProvider(ComponentId, InternalProviderId),
-    #[error("attribute value {0} has no outgoing edge to a prop or provider")]
+    #[error("attribute value not found for component ({0}) and input socket ({1})")]
+    NotFoundForComponentAndInputSocket(ComponentId, InputSocketId),
+    #[error("attribute value {0} has no outgoing edge to a prop or socket")]
     OrphanedAttributeValue(AttributeValueId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
@@ -205,13 +195,13 @@ pub struct AttributeValue {
     func_execution_pk: Option<FuncExecutionPk>,
 }
 
-/// What "thing" on the schema variant, (either a prop, internal provider, or external provider),
+/// What "thing" on the schema variant, (either a prop, input socket, or output socket),
 /// is a particular value the value of/for?
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub enum ValueIsFor {
     Prop(PropId),
-    ExternalProvider(ExternalProviderId),
-    InternalProvider(InternalProviderId),
+    InputSocket(InputSocketId),
+    OutputSocket(OutputSocketId),
 }
 
 impl ValueIsFor {
@@ -222,16 +212,16 @@ impl ValueIsFor {
         }
     }
 
-    pub fn external_provider_id(&self) -> Option<ExternalProviderId> {
+    pub fn output_socket_id(&self) -> Option<OutputSocketId> {
         match self {
-            ValueIsFor::ExternalProvider(ep_id) => Some(*ep_id),
+            ValueIsFor::OutputSocket(id) => Some(*id),
             _ => None,
         }
     }
 
-    pub fn internal_provider_id(&self) -> Option<InternalProviderId> {
+    pub fn input_socket_id(&self) -> Option<InputSocketId> {
         match self {
-            ValueIsFor::InternalProvider(ip_id) => Some(*ip_id),
+            ValueIsFor::InputSocket(id) => Some(*id),
             _ => None,
         }
     }
@@ -240,8 +230,8 @@ impl ValueIsFor {
 impl From<ValueIsFor> for Ulid {
     fn from(value: ValueIsFor) -> Self {
         match value {
-            ValueIsFor::ExternalProvider(ep_id) => ep_id.into(),
-            ValueIsFor::InternalProvider(ip_id) => ip_id.into(),
+            ValueIsFor::OutputSocket(output_socket_id) => output_socket_id.into(),
+            ValueIsFor::InputSocket(input_socket_id) => input_socket_id.into(),
             ValueIsFor::Prop(prop_id) => prop_id.into(),
         }
     }
@@ -253,22 +243,22 @@ impl From<PropId> for ValueIsFor {
     }
 }
 
-impl From<ExternalProviderId> for ValueIsFor {
-    fn from(value: ExternalProviderId) -> Self {
-        Self::ExternalProvider(value)
+impl From<OutputSocketId> for ValueIsFor {
+    fn from(value: OutputSocketId) -> Self {
+        Self::OutputSocket(value)
     }
 }
 
-impl From<InternalProviderId> for ValueIsFor {
-    fn from(value: InternalProviderId) -> Self {
-        Self::InternalProvider(value)
+impl From<InputSocketId> for ValueIsFor {
+    fn from(value: InputSocketId) -> Self {
+        Self::InputSocket(value)
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct PrototypeExecutionResult {
-    value: Option<serde_json::Value>,
-    unprocessed_value: Option<serde_json::Value>,
+    value: Option<Value>,
+    unprocessed_value: Option<Value>,
     func_execution_pk: FuncExecutionPk,
 }
 
@@ -353,28 +343,28 @@ impl AttributeValue {
                     }
                 }
             }
-            is_for_provider => {
-                // Attach value to component via Socket edge and to Provider
-                let provider_id: Ulid = is_for_provider
-                    .external_provider_id()
+            is_for_socket => {
+                // Attach value to component via SocketValue edge and to Socket
+                let socket_id: Ulid = is_for_socket
+                    .output_socket_id()
                     .map(Into::into)
-                    .or_else(|| is_for_provider.internal_provider_id().map(Into::into))
+                    .or_else(|| is_for_socket.input_socket_id().map(Into::into))
                     .ok_or(AttributeValueError::UnexpectedGraphLayout(
-                        "we expected a ValueIsFor for a provider type here but did not get one",
+                        "we expected a ValueIsFor for a socket type here but did not get one",
                     ))?;
 
                 let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
                 workspace_snapshot.add_edge(
                     component_id
-                        .ok_or(AttributeValueError::CannotCreateProviderValueWithoutComponentId)?,
-                    EdgeWeight::new(change_set, EdgeWeightKind::Socket)?,
+                        .ok_or(AttributeValueError::CannotCreateSocketValueWithoutComponentId)?,
+                    EdgeWeight::new(change_set, EdgeWeightKind::SocketValue)?,
                     id,
                 )?;
 
                 workspace_snapshot.add_edge(
                     id,
-                    EdgeWeight::new(change_set, EdgeWeightKind::Provider)?,
-                    provider_id,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Socket)?,
+                    socket_id,
                 )?;
             }
         }
@@ -385,7 +375,7 @@ impl AttributeValue {
     async fn update_inner(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-        value: Option<serde_json::Value>,
+        value: Option<Value>,
         spawn_dependent_values_update: bool,
     ) -> AttributeValueResult<()> {
         Self::vivify_value_and_parent_values(ctx, attribute_value_id).await?;
@@ -407,7 +397,7 @@ impl AttributeValue {
     pub async fn update(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-        value: Option<serde_json::Value>,
+        value: Option<Value>,
     ) -> AttributeValueResult<()> {
         Self::update_inner(ctx, attribute_value_id, value, true).await
     }
@@ -421,7 +411,7 @@ impl AttributeValue {
     pub async fn update_no_dependent_values(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-        value: Option<serde_json::Value>,
+        value: Option<Value>,
     ) -> AttributeValueResult<()> {
         Self::update_inner(ctx, attribute_value_id, value, false).await
     }
@@ -451,41 +441,39 @@ impl AttributeValue {
             return Ok(ValueIsFor::Prop(prop_id.into()));
         }
 
-        let provider_targets = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            value_id,
-            EdgeWeightKindDiscriminants::Provider,
-        )?;
+        let socket_targets = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(value_id, EdgeWeightKindDiscriminants::Socket)?;
 
-        if provider_targets.len() > 1 {
+        if socket_targets.len() > 1 {
             return Err(WorkspaceSnapshotError::UnexpectedNumberOfIncomingEdges(
-                EdgeWeightKindDiscriminants::Provider,
+                EdgeWeightKindDiscriminants::Socket,
                 NodeWeightDiscriminants::Content,
                 value_id.into(),
             ))?;
         }
 
-        let provider_target = provider_targets
+        let socket_target = socket_targets
             .first()
             .ok_or(AttributeValueError::OrphanedAttributeValue(value_id))?;
 
-        let provider_node_weight = workspace_snapshot.get_node_weight(*provider_target)?;
+        let socket_node_weight = workspace_snapshot.get_node_weight(*socket_target)?;
 
-        if let Some(internal_provider) = provider_node_weight
-            .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::InternalProvider)
+        if let Some(input_socket) = socket_node_weight
+            .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::InputSocket)
         {
-            return Ok(ValueIsFor::InternalProvider(internal_provider.id().into()));
+            return Ok(ValueIsFor::InputSocket(input_socket.id().into()));
         }
 
-        if let Some(external_provider) = provider_node_weight
-            .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::ExternalProvider)
+        if let Some(output_socket) = socket_node_weight
+            .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::OutputSocket)
         {
-            return Ok(ValueIsFor::ExternalProvider(external_provider.id().into()));
+            return Ok(ValueIsFor::OutputSocket(output_socket.id().into()));
         }
 
         Err(WorkspaceSnapshotError::UnexpectedEdgeTarget(
-            provider_node_weight.id(),
+            socket_node_weight.id(),
             value_id.into(),
-            EdgeWeightKindDiscriminants::Provider,
+            EdgeWeightKindDiscriminants::Socket,
         )
         .into())
     }
@@ -556,7 +544,7 @@ impl AttributeValue {
                                     attribute_value
                                         .materialized_view(ctx)
                                         .await?
-                                        .unwrap_or(serde_json::Value::Null),
+                                        .unwrap_or(Value::Null),
                                 );
                             }
 
@@ -571,7 +559,7 @@ impl AttributeValue {
             }
         }
 
-        let prepared_func_binding_args = if let ValueIsFor::InternalProvider(_) = &value_is_for {
+        let prepared_func_binding_args = if let ValueIsFor::InputSocket(_) = &value_is_for {
             // If our destination is an internal provider, we awlays want to provide an array of
             // the values so functions don't have to distinguish between a single value that is an
             // array, or an array of values (for example if an input socket has multiple
@@ -752,7 +740,7 @@ impl AttributeValue {
             None => workspace_snapshot
                 .incoming_sources_for_edge_weight_kind(
                     current_attribute_value_id,
-                    EdgeWeightKindDiscriminants::Socket,
+                    EdgeWeightKindDiscriminants::SocketValue,
                 )?
                 .first()
                 .copied()
@@ -1117,7 +1105,7 @@ impl AttributeValue {
                                     object_view.insert(child_prop_name, view);
                                 }
                             } else {
-                                return Err(AttributeValueError::UnexpectedGraphLayout("a child attribute value of an object has no outgoing Prop edge but has an outgoing Provider edge"));
+                                return Err(AttributeValueError::UnexpectedGraphLayout("a child attribute value of an object has no outgoing Prop edge but has an outgoing Socket edge"));
                             }
                         }
 
@@ -1186,9 +1174,7 @@ impl AttributeValue {
                     _ => Ok(av.value(ctx).await?),
                 }
             }
-            ValueIsFor::ExternalProvider(_) | ValueIsFor::InternalProvider(_) => {
-                Ok(av.value(ctx).await?)
-            }
+            ValueIsFor::OutputSocket(_) | ValueIsFor::InputSocket(_) => Ok(av.value(ctx).await?),
         }
     }
 
@@ -1322,7 +1308,7 @@ impl AttributeValue {
                     return Err(AttributeValueError::NodeWeightMismatch(
                         element_prop_index,
                         NodeWeightDiscriminants::Prop,
-                    ))
+                    ));
                 }
             }
         };
@@ -1546,7 +1532,7 @@ impl AttributeValue {
                     return Err(AttributeValueError::NodeWeightMismatch(
                         element_prop_index,
                         NodeWeightDiscriminants::Prop,
-                    ))
+                    ));
                 }
             }
         };
@@ -1604,15 +1590,15 @@ impl AttributeValue {
     async fn set_value(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-        value: Option<serde_json::Value>,
+        value: Option<Value>,
     ) -> AttributeValueResult<()> {
         let prop_id = match AttributeValue::is_for(ctx, attribute_value_id).await? {
             ValueIsFor::Prop(prop_id) => prop_id,
             _ => {
-                // Attribute values for internal and external providers should only be set by
+                // Attribute values for input and output sockets should only be set by
                 // functions (usually identity) since they get their values from inter-component
                 // connections
-                return Err(AttributeValueError::CannotExplicitlySetProviderValues(
+                return Err(AttributeValueError::CannotExplicitlySetSocketValues(
                     attribute_value_id,
                 ));
             }

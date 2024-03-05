@@ -55,7 +55,7 @@ impl DependentValueGraph {
                 .into();
 
             // Gather the Attribute Prototype Arguments that take the thing the
-            // current value is for (prop, or provider/socket) as an input
+            // current value is for (prop, or socket) as an input
             let relevant_apas = {
                 let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
@@ -141,8 +141,8 @@ impl DependentValueGraph {
                         .expect("able to get prop path")
                         .with_replaced_sep("/"),
                 ),
-                ValueIsFor::ExternalProvider(_) => "output socket".into(),
-                ValueIsFor::InternalProvider(_) => "input socket".into(),
+                ValueIsFor::OutputSocket(_) => "output socket".into(),
+                ValueIsFor::InputSocket(_) => "input socket".into(),
             };
             is_for_map.insert(*attribute_value_id, is_for);
         }

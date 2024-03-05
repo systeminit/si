@@ -12,10 +12,10 @@ use crate::{
     func::{argument::FuncArgumentError, FuncError},
     installed_pkg::InstalledPkgError,
     prop::PropError,
-    provider::external::ExternalProviderError,
-    provider::internal::InternalProviderError,
+    socket::input::InputSocketError,
+    socket::output::OutputSocketError,
     workspace_snapshot::WorkspaceSnapshotError,
-    ChangeSetPk, ExternalProviderId, FuncBackendKind, FuncBackendResponseType, SchemaError,
+    ChangeSetPk, FuncBackendKind, FuncBackendResponseType, OutputSocketId, SchemaError,
     SchemaVariantId,
 };
 use crate::{FuncId, PropId, PropKind};
@@ -41,18 +41,6 @@ pub enum PkgError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attrbute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    // #[error("Missing ExternalProvider {1} for AttributePrototypeArgument {1}")]
-    // AttributePrototypeArgumentMissingExternalProvider(
-    //     AttributePrototypeArgumentId,
-    //     ExternalProviderId,
-    // ),
-    // #[error("AttributePrototypeArgument {0} missing FuncArgument {1}")]
-    // AttributePrototypeArgumentMissingFuncArgument(AttributePrototypeArgumentId, FuncArgumentId),
-    // #[error("Missing InternalProvider {1} for AttributePrototypeArgument {1}")]
-    // AttributePrototypeArgumentMissingInternalProvider(
-    //     AttributePrototypeArgumentId,
-    //     InternalProviderId,
-    // ),
     // #[error(transparent)]
     // AttributeValue(#[from] AttributeValueError),
     // #[error("parent prop could not be found with path: {0}")]
@@ -75,14 +63,6 @@ pub enum PkgError {
     // Edge(#[from] EdgeError),
     // #[error("edge refers to component not in export: {0}")]
     // EdgeRefersToMissingComponent(ComponentId),
-    // #[error("Cannot find Socket for explicit InternalProvider {0}")]
-    // ExplicitInternalProviderMissingSocket(InternalProviderId),
-    #[error(transparent)]
-    ExternalProvider(#[from] ExternalProviderError),
-    #[error("external provider {0} missing attribute prototype")]
-    ExternalProviderMissingPrototype(ExternalProviderId),
-    // #[error("Cannot find Socket for ExternalProvider {0}")]
-    // ExternalProviderMissingSocket(ExternalProviderId),
     #[error(transparent)]
     Func(#[from] FuncError),
     #[error(transparent)]
@@ -99,22 +79,16 @@ pub enum PkgError {
     // FuncExecution(#[from] crate::func::execution::FuncExecutionError),
     // #[error("Installed func id {0} does not exist")]
     // InstalledFuncMissing(FuncId),
+    #[error("input socket error: {0}")]
+    InputSocket(#[from] InputSocketError),
     #[error(transparent)]
     InstalledPkg(#[from] InstalledPkgError),
     // #[error("Installed schema variant definition {0} does not exist")]
     // InstalledSchemaVariantDefinitionMissing(SchemaVariantDefinitionId),
     // #[error("Installed schema variant {0} does not exist")]
     // InstalledSchemaVariantMissing(SchemaVariantId),
-    #[error(transparent)]
-    InternalProvider(#[from] InternalProviderError),
-    #[error("InternalProvider not found for prop {0}")]
-    InternalProviderNotFoundForProp(PropId),
     // #[error("Leaf Function {0} has invalid argument {1}")]
     // InvalidLeafArgument(FuncId, String),
-    // #[error("Missing AttributePrototype {0} for explicit InternalProvider {1}")]
-    // MissingAttributePrototypeForInputSocket(AttributePrototypeId, InternalProviderId),
-    // #[error("Missing AttributePrototype {0} for ExternalProvider {1}")]
-    // MissingAttributePrototypeForOutputSocket(AttributePrototypeId, ExternalProviderId),
     // #[error("Missing Func {1} for AttributePrototype {0}")]
     // MissingAttributePrototypeFunc(AttributePrototypeId, FuncId),
     // #[error("Missing value for context {0:?}")]
@@ -131,10 +105,8 @@ pub enum PkgError {
     // MissingFuncArgumentById(FuncArgumentId),
     #[error("Package asked for a function with the unique id {0} but none could be found")]
     MissingFuncUniqueId(String),
-    #[error("Cannot find InternalProvider for Prop {0} ({1})")]
-    MissingInternalProviderForProp(PropId, String),
-    #[error("Cannot find InternalProvider for Socket named {0}")]
-    MissingInternalProviderForSocketName(String),
+    #[error("Cannot find InputSocket for name: {0}")]
+    MissingInputSocketName(String),
     // #[error("Intrinsic function {0} not found")]
     // MissingIntrinsicFunc(String),
     // #[error("Intrinsic function (0) argument {1} not found")]
@@ -151,6 +123,10 @@ pub enum PkgError {
     // MissingSocketName(String, SocketEdgeKind),
     #[error("Unique id missing for node in workspace backup: {0}")]
     MissingUniqueIdForNode(String),
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
+    #[error("output socket {0} missing attribute prototype")]
+    OutputSocketMissingPrototype(OutputSocketId),
     #[error("Package with that hash already installed: {0}")]
     PackageAlreadyInstalled(String),
     #[error(transparent)]

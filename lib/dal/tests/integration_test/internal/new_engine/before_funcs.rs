@@ -1,7 +1,7 @@
 use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::{
-    AttributeValue, Component, DalContext, EncryptedSecret, ExternalProvider, Prop, Schema,
+    AttributeValue, Component, DalContext, EncryptedSecret, OutputSocket, Prop, Schema,
     SchemaVariant,
 };
 use dal_test::test_harness::encrypt_message;
@@ -42,7 +42,7 @@ async fn secret_definition_works_with_dummy_qualification(
     let secret_definition_name = "fake";
 
     // Cache the output socket that will contain the secret id.
-    let output_socket = ExternalProvider::find_with_name(
+    let output_socket = OutputSocket::find_with_name(
         ctx,
         secret_definition_name,
         secret_definition_schema_variant_id,
@@ -116,7 +116,7 @@ async fn secret_definition_works_with_dummy_qualification(
 
         // Check that the output socket value looks correct.
         let mut output_socket_attribute_value_ids =
-            ExternalProvider::attribute_values_for_external_provider_id(ctx, output_socket.id())
+            OutputSocket::attribute_values_for_output_socket_id(ctx, output_socket.id())
                 .await
                 .expect("could not perform attribute values for external provider id");
         let output_socket_attribute_value_id = output_socket_attribute_value_ids
@@ -199,7 +199,7 @@ async fn secret_definition_works_with_dummy_qualification(
 
         // Check that the output socket value looks correct.
         let mut output_socket_attribute_value_ids =
-            ExternalProvider::attribute_values_for_external_provider_id(ctx, output_socket.id())
+            OutputSocket::attribute_values_for_output_socket_id(ctx, output_socket.id())
                 .await
                 .expect("could not perform attribute values for external provider id");
         let output_socket_attribute_value_id = output_socket_attribute_value_ids

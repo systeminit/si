@@ -1,7 +1,0 @@
-SELECT row_to_json(sockets.*) AS object
-FROM sockets_v1($1, $2) as sockets
-         JOIN socket_many_to_many_schema_variants_v1($1, $2) as socket_to_schema_variant
-              ON sockets.id = socket_to_schema_variant.left_object_id
-         JOIN component_belongs_to_schema_variant_v1($1, $2) as component_belongs_to_schema_variant
-              ON component_belongs_to_schema_variant.belongs_to_id = socket_to_schema_variant.right_object_id
-                  AND component_belongs_to_schema_variant.object_id = $3;
