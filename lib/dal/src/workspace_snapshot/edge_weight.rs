@@ -42,7 +42,7 @@ pub enum EdgeWeightKind {
     Ordinal,
     /// Used to link an attribute value to the prop that it is for.
     Prop,
-    /// An edge from a [`provider`](crate::provider) to an
+    /// An edge from a [`socket`](crate::socket) to an
     /// [`AttributePrototype`](crate::AttributePrototype). The optional [`String`] is used for
     /// maps, arrays and relevant container types to indicate which element the prototype is for.
     Prototype(Option<String>),
@@ -53,17 +53,17 @@ pub enum EdgeWeightKind {
     /// [`AttributePrototypeArgument`][crate::AttributePrototypeArgument] to the
     /// source for the value for this argument
     PrototypeArgumentValue,
-    /// Used when the target/destination of an edge is an [`InternalProvider`], or an
-    /// [`ExternalProvider`].
-    Provider,
     Proxy,
     /// Indicates the "root" [`AttributeValue`](crate::AttributeValue) for a [`Component`](crate::Component).
     ///
     /// TODO(nick): in the future, this should be used for the "root" [`Prop`](crate::Prop) for a
     /// [`SchemaVariant`](crate::SchemaVariant) as well.
     Root,
-    /// Edge from component to input or output Socket's attribute value
+    /// Used when the target/destination of an edge is an [`InputSocket`](crate::InputSocket), or an
+    /// [`OutputSocket`](crate::OutputSocket).
     Socket,
+    /// Edge from component to input or output Socket's attribute value
+    SocketValue,
     /// Workspaces "use" functions, modules, schemas. Schemas "use" schema variants.
     /// Schema variants "use" props. Props "use" functions, and other props. Modules
     /// "use" functions, schemas, and eventually(?) components.

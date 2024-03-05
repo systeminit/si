@@ -27,7 +27,7 @@ pub fn insert_speed_1_mb_object(c: &mut Criterion) {
         .expect("cannot make tokio runtime");
     let mut objects: Vec<Vec<u8>> = Vec::with_capacity(ASCII_LOWER.len());
     for letter in ASCII_LOWER.iter() {
-        let object = vec![*letter;ONE_MB];
+        let object = vec![*letter; ONE_MB];
         objects.push(object);
     }
 
@@ -48,7 +48,7 @@ pub fn hot_read_1_mb_object(c: &mut Criterion) {
     let rt = runtime::Builder::new_multi_thread()
         .build()
         .expect("cannot make tokio runtime");
-    let object = vec![b'a';ONE_MB];
+    let object = vec![b'a'; ONE_MB];
     let _r = rt.block_on(layer_cache.insert(&CacheType::Object, b"a", object));
 
     c.bench_function("Hot Cache speed get one 1mb object", |b| {
@@ -69,7 +69,7 @@ pub fn hot_disk_cold_memory_read_1_mb_object(c: &mut Criterion) {
         .build()
         .expect("cannot make tokio runtime");
     let letter = b'a';
-    let object = vec![letter;ONE_MB];
+    let object = vec![letter; ONE_MB];
     let _r = rt.block_on(layer_cache.insert(&CacheType::Object, b"a", object));
     let key = [letter];
 

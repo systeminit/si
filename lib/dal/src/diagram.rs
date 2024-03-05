@@ -13,14 +13,13 @@ use crate::attribute::value::AttributeValueError;
 use crate::change_status::ChangeStatus;
 use crate::component::ComponentError;
 use crate::history_event::HistoryEventMetadata;
-use crate::provider::external::ExternalProviderError;
-use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
+use crate::socket::input::InputSocketError;
+use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    AttributePrototypeId, Component, ComponentId, DalContext, ExternalProviderId,
-    HistoryEventError, InternalProviderId, ProviderArity, SchemaId, SchemaVariant, SchemaVariantId,
-    StandardModelError,
+    AttributePrototypeId, Component, ComponentId, DalContext, HistoryEventError, InputSocketId,
+    OutputSocketId, SchemaId, SchemaVariant, SchemaVariantId, SocketArity, StandardModelError,
 };
 
 //pub(crate) mod summary_diagram;
@@ -33,8 +32,6 @@ use crate::{
 pub enum DiagramError {
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    #[error("attribute prototype argument targets not found for attribute prototype argument ({0}) found via external provider: {1}")]
-    AttributePrototypeArgumentTargetsNotFound(AttributePrototypeArgumentId, ExternalProviderId),
     #[error("attribute prototype not found")]
     AttributePrototypeNotFound,
     #[error("attribute value error: {0}")]
@@ -51,18 +48,18 @@ pub enum DiagramError {
     DeletionTimeStamp,
     #[error("destination attribute prototype not found for inter component attribute prototype argument: {0}")]
     DestinationAttributePrototypeNotFound(AttributePrototypeArgumentId),
-    #[error("destination explicit internal provider not found for attribute prototype ({0}) and inter component attribute prototype argument ({1})")]
-    DestinationExplicitInternalProviderNotFound(AttributePrototypeId, AttributePrototypeArgumentId),
+    #[error("destination input socket not found for attribute prototype ({0}) and inter component attribute prototype argument ({1})")]
+    DestinationInputSocketNotFound(AttributePrototypeId, AttributePrototypeArgumentId),
     #[error("edge not found")]
     EdgeNotFound,
-    #[error("external provider error: {0}")]
-    ExternalProvider(#[from] ExternalProviderError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
+    #[error("input socket error: {0}")]
+    InputSocket(#[from] InputSocketError),
     #[error("node not found")]
     NodeNotFound,
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
     #[error(transparent)]
     ParseFloat(#[from] ParseFloatError),
     #[error(transparent)]
@@ -140,9 +137,9 @@ pub struct SummaryDiagramEdge {
     pub id: EdgeId,
     pub edge_id: EdgeId,
     pub from_node_id: NodeId,
-    pub from_socket_id: ExternalProviderId,
+    pub from_socket_id: OutputSocketId,
     pub to_node_id: NodeId,
-    pub to_socket_id: InternalProviderId,
+    pub to_socket_id: InputSocketId,
     pub change_status: String,
     pub created_info: serde_json::Value,
     pub deleted_info: serde_json::Value,
@@ -202,6 +199,7 @@ pub enum DiagramSocketNodeSide {
     Left,
     Right,
 }
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Diagram {
@@ -225,9 +223,9 @@ impl Diagram {
                     id: incoming_connection.attribute_prototype_argument_id,
                     edge_id: incoming_connection.attribute_prototype_argument_id,
                     from_node_id: incoming_connection.from_component_id,
-                    from_socket_id: incoming_connection.from_external_provider_id,
+                    from_socket_id: incoming_connection.from_output_socket_id,
                     to_node_id: incoming_connection.to_component_id,
-                    to_socket_id: incoming_connection.to_internal_provider_id,
+                    to_socket_id: incoming_connection.to_input_socket_id,
                     change_status: ChangeStatus::Added.to_string(),
                     created_info: serde_json::to_value(incoming_connection.created_info)?,
                     deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
@@ -238,39 +236,35 @@ impl Diagram {
 
             let sockets = match diagram_sockets.entry(schema_variant.id()) {
                 hash_map::Entry::Vacant(entry) => {
-                    let (external_providers, internal_providers) =
-                        SchemaVariant::list_external_providers_and_explicit_internal_providers(
-                            ctx,
-                            schema_variant.id(),
-                        )
-                        .await?;
+                    let (output_sockets, input_sockets) =
+                        SchemaVariant::list_all_sockets(ctx, schema_variant.id()).await?;
 
                     let mut sockets = vec![];
 
-                    for ip in internal_providers {
+                    for input_socket in input_sockets {
                         sockets.push(DiagramSocket {
-                            id: ip.id().to_string(),
-                            label: ip.name().to_string(),
-                            connection_annotations: vec![ip.name().to_string()],
+                            id: input_socket.id().to_string(),
+                            label: input_socket.name().to_string(),
+                            connection_annotations: vec![input_socket.name().to_string()],
                             direction: DiagramSocketDirection::Input,
-                            max_connections: match ip.arity() {
-                                ProviderArity::Many => None,
-                                ProviderArity::One => Some(1),
+                            max_connections: match input_socket.arity() {
+                                SocketArity::Many => None,
+                                SocketArity::One => Some(1),
                             },
                             is_required: Some(false),
                             node_side: DiagramSocketNodeSide::Left,
                         });
                     }
 
-                    for ep in external_providers {
+                    for output_socket in output_sockets {
                         sockets.push(DiagramSocket {
-                            id: ep.id().to_string(),
-                            label: ep.name().to_string(),
-                            connection_annotations: vec![ep.name().to_string()],
+                            id: output_socket.id().to_string(),
+                            label: output_socket.name().to_string(),
+                            connection_annotations: vec![output_socket.name().to_string()],
                             direction: DiagramSocketDirection::Output,
-                            max_connections: match ep.arity() {
-                                ProviderArity::Many => None,
-                                ProviderArity::One => Some(1),
+                            max_connections: match output_socket.arity() {
+                                SocketArity::Many => None,
+                                SocketArity::One => Some(1),
                             },
                             is_required: Some(false),
                             node_side: DiagramSocketNodeSide::Right,

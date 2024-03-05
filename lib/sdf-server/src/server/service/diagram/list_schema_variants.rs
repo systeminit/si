@@ -1,7 +1,6 @@
 use axum::extract::{Json, Query};
 use dal::{
-    ExternalProviderId, InternalProviderId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
-    Visibility,
+    InputSocketId, OutputSocketId, Schema, SchemaId, SchemaVariant, SchemaVariantId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -18,14 +17,14 @@ pub struct ListSchemaVariantsRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputSocketView {
-    id: ExternalProviderId,
+    id: OutputSocketId,
     name: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InputSocketView {
-    id: InternalProviderId,
+    id: InputSocketId,
     name: String,
 }
 
@@ -42,6 +41,7 @@ pub struct SchemaVariantView {
     input_sockets: Vec<InputSocketView>,
     output_sockets: Vec<OutputSocketView>,
 }
+
 pub type ListSchemaVariantsResponse = Vec<SchemaVariantView>;
 
 pub async fn list_schema_variants(
@@ -69,11 +69,7 @@ pub async fn list_schema_variants(
             let mut output_sockets = Vec::new();
 
             let (external_providers, explicit_internal_providers) =
-                SchemaVariant::list_external_providers_and_explicit_internal_providers(
-                    &ctx,
-                    schema_variant.id(),
-                )
-                .await?;
+                SchemaVariant::list_all_sockets(&ctx, schema_variant.id()).await?;
 
             for explicit_internal_provider in explicit_internal_providers {
                 input_sockets.push(InputSocketView {

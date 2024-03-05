@@ -38,7 +38,7 @@ pub enum ComponentMigrateError {
     Diagram(#[from] DiagramError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
-    #[error("internal provider error: {0}")]
+    #[error("input socket error: {0}")]
     InternalProvider(#[from] InternalProviderError),
     #[error("property editor value summary error: {0}")]
     PropertyEditorValuesSummary(#[from] PropertyEditorValuesSummaryError),
@@ -101,7 +101,7 @@ pub async fn migrate_component_to_schema_variant(
             Some(json_for_new_sv),
             None,
         )
-        .await?;
+            .await?;
 
         restore_prototypes_and_implicit_values(ctx, component_id).await?;
     }
@@ -120,7 +120,7 @@ pub async fn migrate_component_to_schema_variant(
         new_component.resource(ctx).await?.payload.is_some(),
         None,
     )
-    .await?;
+        .await?;
 
     // Restore edges if matching sockets exist in the migrated component This
     // should probably use the connection annotation for matching, instead of
@@ -155,7 +155,7 @@ pub async fn migrate_component_to_schema_variant(
                 head_socket_id,
                 *edge.kind(),
             )
-            .await?;
+                .await?;
         }
     }
 
@@ -183,9 +183,9 @@ pub async fn restore_prototypes_and_implicit_values(
             variant_context,
             &value.attribute_value.key,
         )
-        .await?
-        .into_iter()
-        .next()
+            .await?
+            .into_iter()
+            .next()
         {
             if value
                 .attribute_value
@@ -196,12 +196,12 @@ pub async fn restore_prototypes_and_implicit_values(
                     ctx,
                     &value.attribute_value.context.internal_provider_id(),
                 )
-                .await?
-                .ok_or_else(|| {
-                    AttributeValueError::InternalProviderNotFound(
-                        value.attribute_value.context.internal_provider_id(),
-                    )
-                })?;
+                    .await?
+                    .ok_or_else(|| {
+                        AttributeValueError::InternalProviderNotFound(
+                            value.attribute_value.context.internal_provider_id(),
+                        )
+                    })?;
                 if internal_provider.is_internal_consumer() {
                     // Prototypes for implicit internal providers are set by implicit emit,
                     // but they also don't matter since we don't exec their functions

@@ -12,10 +12,8 @@ use si_pkg::{SiPkgError, SpecError};
 use crate::func::FuncError;
 use crate::installed_pkg::InstalledPkgError;
 use crate::pkg::PkgError;
-// use crate::schema::variant::definition::SchemaVariantDefinitionError;
 use crate::{
-    AttributeValueId, DalContext, ExternalProviderId, InternalProviderId, PropId, SchemaVariantId,
-    StandardModelError, TransactionsError,
+    AttributeValueId, DalContext, PropId, SchemaVariantId, StandardModelError, TransactionsError,
 };
 
 // Private builtins modules.
@@ -39,10 +37,6 @@ pub enum BuiltinsError {
     AttributeValueNotFound(AttributeValueId),
     #[error("builtin {0} missing func argument {1}")]
     BuiltinMissingFuncArgument(String, String),
-    #[error("explicit internal provider not found by name: {0}")]
-    ExplicitInternalProviderNotFound(String),
-    #[error("external provider not found by name: {0}")]
-    ExternalProviderNotFound(String),
     #[error("Filesystem IO error: {0}")]
     FilesystemIO(#[from] std::io::Error),
     #[error(transparent)]
@@ -53,16 +47,10 @@ pub enum BuiltinsError {
     FuncMetadata(String),
     #[error("func not found in migration cache {0}")]
     FuncNotFoundInMigrationCache(&'static str),
-    #[error("implicit internal provider not found for prop: {0}")]
-    ImplicitInternalProviderNotFoundForProp(PropId),
     #[error(transparent)]
     InstalledPkg(#[from] InstalledPkgError),
     #[error("missing attribute prototype for attribute value")]
     MissingAttributePrototypeForAttributeValue,
-    #[error("missing attribute prototype for explicit internal provider: {0}")]
-    MissingAttributePrototypeForExplicitInternalProvider(InternalProviderId),
-    #[error("missing attribute prototype for external provider: {0}")]
-    MissingAttributePrototypeForExternalProvider(ExternalProviderId),
     #[error("no packages path configured")]
     MissingPkgsPath,
     #[error(transparent)]

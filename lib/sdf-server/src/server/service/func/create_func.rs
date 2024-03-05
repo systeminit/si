@@ -3,8 +3,8 @@ use axum::{response::IntoResponse, Json};
 use base64::engine::general_purpose;
 use base64::Engine;
 use dal::{
-    generate_name, ActionKind, ChangeSet, DalContext, ExternalProviderId, Func,
-    FuncBackendResponseType, FuncId, PropId, SchemaVariant, SchemaVariantId, Visibility,
+    generate_name, ActionKind, ChangeSet, DalContext, Func, FuncBackendResponseType, FuncId,
+    OutputSocketId, PropId, SchemaVariant, SchemaVariantId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +19,7 @@ use crate::service::func::FuncError;
 pub enum AttributeOutputLocation {
     #[serde(rename_all = "camelCase")]
     OutputSocket {
-        external_provider_id: ExternalProviderId,
+        external_provider_id: OutputSocketId,
     },
     #[serde(rename_all = "camelCase")]
     Prop { prop_id: PropId },

@@ -20,9 +20,9 @@ use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
 use crate::prop::{PropError, PropPath};
-use crate::provider::external::{ExternalProviderContent, ExternalProviderError};
-use crate::provider::internal::{InternalProviderContent, InternalProviderError};
 use crate::schema::variant::root_prop::RootProp;
+use crate::socket::input::{InputSocketContent, InputSocketError};
+use crate::socket::output::{OutputSocketContent, OutputSocketError};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -34,11 +34,11 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, ExternalProvider,
-    ExternalProviderId, Func, FuncId, InternalProvider, Prop, PropId, PropKind, Schema,
-    SchemaError, SchemaId, Timestamp, TransactionsError,
+    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncId, InputSocket,
+    OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, Timestamp,
+    TransactionsError,
 };
-use crate::{FuncBackendResponseType, InternalProviderId};
+use crate::{FuncBackendResponseType, InputSocketId};
 
 use self::root_prop::RootPropChild;
 
@@ -65,14 +65,12 @@ pub enum SchemaVariantError {
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
-    #[error("external provider error: {0}")]
-    ExternalProvider(#[from] ExternalProviderError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
+    #[error("input socket error: {0}")]
+    InputSocket(#[from] InputSocketError),
     #[error("Func {0} of response type {1} cannot set leaf {2:?}")]
     LeafFunctionMismatch(FuncId, FuncBackendResponseType, LeafKind),
     #[error("func {0} not a JsAttribute func, required for leaf functions")]
@@ -81,6 +79,8 @@ pub enum SchemaVariantError {
     LeafMapPropNotFound(PropId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("found prop id {0} that is not a prop")]
@@ -547,14 +547,6 @@ impl SchemaVariant {
 
     /// This _idempotent_ function "finalizes" a [`SchemaVariant`].
     ///
-    /// Once a [`SchemaVariant`] has had all of its [`Props`](crate::Prop) created, there are a few
-    /// things that need to happen before it is usable:
-    ///
-    /// * Create the default [`AttributePrototypes`](crate::AttributePrototype)
-    /// * Create the _internally consuming_ [`InternalProviders`](crate::InternalProvider)
-    ///   corresponding to every [`Prop`](crate::Prop) in the [`SchemaVariant`] that is not a
-    ///   descendant of an Array or a Map.
-    ///
     /// This method **MUST** be called once all the [`Props`](Prop) have been created for the
     /// [`SchemaVariant`]. It can be called multiple times while [`Props`](Prop) are being created,
     /// but it must be called once after all [`Props`](Prop) have been created.
@@ -774,38 +766,33 @@ impl SchemaVariant {
         )
     }
 
-    pub async fn list_external_providers_and_explicit_internal_providers(
+    pub async fn list_all_sockets(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<(Vec<ExternalProvider>, Vec<InternalProvider>)> {
+    ) -> SchemaVariantResult<(Vec<OutputSocket>, Vec<InputSocket>)> {
         let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
-        // Look for all external and explicit internal providers that the schema variant uses.
-        let maybe_provider_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+        // Look for all output and input sockets that the schema variant uses.
+        let maybe_socket_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
             schema_variant_id,
-            EdgeWeightKindDiscriminants::Provider,
+            EdgeWeightKindDiscriminants::Socket,
         )?;
 
-        // Collect the external and the explicit internal providers separately.
-        let mut external_provider_hashes: Vec<(ExternalProviderId, ContentHash)> = Vec::new();
-        let mut explicit_internal_provider_hashes: Vec<(InternalProviderId, ContentHash)> =
-            Vec::new();
+        // Collect the output and the input sockets separately.
+        let mut output_socket_hashes: Vec<(OutputSocketId, ContentHash)> = Vec::new();
+        let mut input_socket_hashes: Vec<(InputSocketId, ContentHash)> = Vec::new();
 
-        for maybe_provider_index in maybe_provider_indices {
-            let node_weight = workspace_snapshot.get_node_weight(maybe_provider_index)?;
+        for maybe_socket_node_index in maybe_socket_indices {
+            let node_weight = workspace_snapshot.get_node_weight(maybe_socket_node_index)?;
             if let NodeWeight::Content(content_node_weight) = node_weight {
                 match content_node_weight.content_address() {
-                    ContentAddress::ExternalProvider(external_provider_content_hash) => {
-                        external_provider_hashes.push((
-                            content_node_weight.id().into(),
-                            external_provider_content_hash,
-                        ));
+                    ContentAddress::OutputSocket(output_socket_content_hash) => {
+                        output_socket_hashes
+                            .push((content_node_weight.id().into(), output_socket_content_hash));
                     }
-                    ContentAddress::InternalProvider(internal_provider_content_hash) => {
-                        explicit_internal_provider_hashes.push((
-                            content_node_weight.id().into(),
-                            internal_provider_content_hash,
-                        ));
+                    ContentAddress::InputSocket(input_socket_content_hash) => {
+                        input_socket_hashes
+                            .push((content_node_weight.id().into(), input_socket_content_hash));
                     }
                     _ => {}
                 }
@@ -813,66 +800,56 @@ impl SchemaVariant {
         }
 
         // Grab all the contents in bulk from the content store.
-        let external_provider_hashes_only: Vec<ContentHash> =
-            external_provider_hashes.iter().map(|(_, h)| *h).collect();
-        let external_provider_content_map: HashMap<ContentHash, ExternalProviderContent> = ctx
+        let output_socket_hashes_only: Vec<ContentHash> =
+            output_socket_hashes.iter().map(|(_, h)| *h).collect();
+        let output_socket_content_map: HashMap<ContentHash, OutputSocketContent> = ctx
             .content_store()
             .lock()
             .await
-            .get_bulk(external_provider_hashes_only.as_slice())
+            .get_bulk(output_socket_hashes_only.as_slice())
             .await?;
-        let explicit_internal_provider_hashes_only: Vec<ContentHash> =
-            explicit_internal_provider_hashes
-                .iter()
-                .map(|(_, h)| *h)
-                .collect();
-        let internal_provider_content_map: HashMap<ContentHash, InternalProviderContent> = ctx
+        let input_socket_hashes_only: Vec<ContentHash> =
+            input_socket_hashes.iter().map(|(_, h)| *h).collect();
+        let input_socket_content_map: HashMap<ContentHash, InputSocketContent> = ctx
             .content_store()
             .lock()
             .await
-            .get_bulk(explicit_internal_provider_hashes_only.as_slice())
+            .get_bulk(input_socket_hashes_only.as_slice())
             .await?;
 
-        // Assemble all external providers.
-        let mut external_providers = Vec::with_capacity(external_provider_hashes.len());
-        for (external_provider_id, external_provider_hash) in external_provider_hashes {
-            let external_provider_content = external_provider_content_map
-                .get(&external_provider_hash)
-                .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
-                    external_provider_id.into(),
-                ))?;
+        // Assemble all output sockets.
+        let mut output_sockets = Vec::with_capacity(output_socket_hashes.len());
+        for (output_socket_id, output_socket_hash) in output_socket_hashes {
+            let output_socket_content = output_socket_content_map.get(&output_socket_hash).ok_or(
+                WorkspaceSnapshotError::MissingContentFromStore(output_socket_id.into()),
+            )?;
 
             // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-            let ExternalProviderContent::V1(external_provider_content_inner) =
-                external_provider_content;
+            let OutputSocketContent::V1(output_socket_content_inner) = output_socket_content;
 
-            external_providers.push(ExternalProvider::assemble(
-                external_provider_id,
-                external_provider_content_inner.to_owned(),
+            output_sockets.push(OutputSocket::assemble(
+                output_socket_id,
+                output_socket_content_inner.to_owned(),
             ));
         }
 
-        // Assemble all explicit internal providers.
-        let mut explicit_internal_providers =
-            Vec::with_capacity(explicit_internal_provider_hashes.len());
-        for (internal_provider_id, internal_provider_hash) in explicit_internal_provider_hashes {
-            let internal_provider_content = internal_provider_content_map
-                .get(&internal_provider_hash)
-                .ok_or(WorkspaceSnapshotError::MissingContentFromStore(
-                    internal_provider_id.into(),
-                ))?;
+        // Assemble all input sockets.
+        let mut input_sockets = Vec::with_capacity(input_socket_hashes.len());
+        for (input_socket_id, input_socket_hash) in input_socket_hashes {
+            let input_socket_content = input_socket_content_map.get(&input_socket_hash).ok_or(
+                WorkspaceSnapshotError::MissingContentFromStore(input_socket_id.into()),
+            )?;
 
             // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-            let InternalProviderContent::V1(internal_provider_content_inner) =
-                internal_provider_content;
+            let InputSocketContent::V1(input_socket_content_inner) = input_socket_content;
 
-            explicit_internal_providers.push(InternalProvider::assemble(
-                internal_provider_id,
-                internal_provider_content_inner.to_owned(),
+            input_sockets.push(InputSocket::assemble(
+                input_socket_id,
+                input_socket_content_inner.to_owned(),
             ));
         }
 
-        Ok((external_providers, explicit_internal_providers))
+        Ok((output_sockets, input_sockets))
     }
 
     pub async fn schema(

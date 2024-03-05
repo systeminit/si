@@ -1,7 +1,6 @@
 use si_layer_cache::memory_cache::MemoryCache;
 use si_layer_cache::CacheType;
 
-
 #[test]
 fn new() {
     let _memory_cache = MemoryCache::new();

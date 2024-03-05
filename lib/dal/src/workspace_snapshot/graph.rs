@@ -926,10 +926,10 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKindDiscriminants::Prototype => "green",
                     EdgeWeightKindDiscriminants::PrototypeArgument => "green",
                     EdgeWeightKindDiscriminants::PrototypeArgumentValue => "green",
-                    EdgeWeightKindDiscriminants::Provider => "red",
+                    EdgeWeightKindDiscriminants::Socket => "red",
+                    EdgeWeightKindDiscriminants::SocketValue => "purple",
                     EdgeWeightKindDiscriminants::Proxy => "gray",
                     EdgeWeightKindDiscriminants::Root => "black",
-                    EdgeWeightKindDiscriminants::Socket => "purple",
                     EdgeWeightKindDiscriminants::Use => "black",
                 };
 
@@ -954,10 +954,10 @@ impl WorkspaceSnapshotGraph {
                             ContentAddressDiscriminants::ActionPrototype => "green",
                             ContentAddressDiscriminants::AttributePrototype => "green",
                             ContentAddressDiscriminants::Component => "black",
-                            ContentAddressDiscriminants::ExternalProvider => "red",
+                            ContentAddressDiscriminants::OutputSocket => "red",
                             ContentAddressDiscriminants::Func => "black",
                             ContentAddressDiscriminants::FuncArg => "black",
-                            ContentAddressDiscriminants::InternalProvider => "red",
+                            ContentAddressDiscriminants::InputSocket => "red",
                             ContentAddressDiscriminants::JsonValue => "fuchsia",
                             ContentAddressDiscriminants::Prop => "orange",
                             ContentAddressDiscriminants::Root => "black",
@@ -1947,14 +1947,14 @@ impl WorkspaceSnapshotGraph {
                     | EdgeWeightKind::FrameContains
                     | EdgeWeightKind::PrototypeArgument
                     | EdgeWeightKind::PrototypeArgumentValue
-                    | EdgeWeightKind::Provider
+                    | EdgeWeightKind::Socket
                     | EdgeWeightKind::Ordering
                     | EdgeWeightKind::Ordinal
                     | EdgeWeightKind::Prop
                     | EdgeWeightKind::Prototype(None)
                     | EdgeWeightKind::Proxy
                     | EdgeWeightKind::Root
-                    | EdgeWeightKind::Socket
+                    | EdgeWeightKind::SocketValue
                     | EdgeWeightKind::Use => {}
                 }
             }

@@ -87,11 +87,7 @@ pub enum WsPayload {
 pub enum StatusValueKind {
     Attribute(PropId),
     CodeGen,
-    // TODO(nick): sockets are no more, so replace this with the provider id.
-    // InputSocket(SocketId),
     Internal,
-    // TODO(nick): sockets are no more, so replace this with the provider id.
-    // OutputSocket(SocketId),
     Qualification,
 }
 

@@ -1,6 +1,5 @@
 use dal::{
-    DalContext, ExternalProviderId, InternalProviderId, Schema, SchemaId, SchemaVariant,
-    SchemaVariantId,
+    DalContext, InputSocketId, OutputSocketId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
 };
 use dal_test::test;
 
@@ -26,12 +25,9 @@ async fn list_schema_variant_views(ctx: &DalContext) {
             let mut output_sockets = Vec::new();
 
             let (external_providers, explicit_internal_providers) =
-                SchemaVariant::list_external_providers_and_explicit_internal_providers(
-                    ctx,
-                    schema_variant.id(),
-                )
-                .await
-                .expect("could not list external providers and explicit internal providers");
+                SchemaVariant::list_all_sockets(ctx, schema_variant.id())
+                    .await
+                    .expect("could not list external providers and explicit internal providers");
 
             for explicit_internal_provider in explicit_internal_providers {
                 input_sockets.push(InputSocketView {
@@ -73,14 +69,14 @@ async fn list_schema_variant_views(ctx: &DalContext) {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct OutputSocketView {
-    id: ExternalProviderId,
+    id: OutputSocketId,
     name: String,
 }
 
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct InputSocketView {
-    id: InternalProviderId,
+    id: InputSocketId,
     name: String,
 }
 

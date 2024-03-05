@@ -1,8 +1,7 @@
 use dal::component::frame::{Frame, FrameError};
 use dal::diagram::{Diagram, DiagramResult, EdgeId, SummaryDiagramComponent, SummaryDiagramEdge};
 use dal::{
-    AttributeValue, Component, DalContext, ExternalProvider, InternalProvider, Schema,
-    SchemaVariant,
+    AttributeValue, Component, DalContext, InputSocket, OutputSocket, Schema, SchemaVariant,
 };
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
@@ -460,13 +459,13 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
     // within the first region frame.
     let image_id_socket_name = "Image ID";
     let image_id_ami_external_provider_id =
-        ExternalProvider::find_with_name(ctx, image_id_socket_name, ami_schema_variant_id)
+        OutputSocket::find_with_name(ctx, image_id_socket_name, ami_schema_variant_id)
             .await
             .expect("could not perform find by name")
             .expect("no external provider found")
             .id();
     let image_id_ec2_instance_internal_provider_id =
-        InternalProvider::find_explicit_with_name(ctx, image_id_socket_name, ec2_schema_variant_id)
+        InputSocket::find_with_name(ctx, image_id_socket_name, ec2_schema_variant_id)
             .await
             .expect("could not perform find by name")
             .expect("no internal provider found")
@@ -699,13 +698,13 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
     // second region frame and the "Region" socket of the third ami.
     let region_socket_name = "Region";
     let region_region_external_provider_id =
-        ExternalProvider::find_with_name(ctx, region_socket_name, region_schema_variant_id)
+        OutputSocket::find_with_name(ctx, region_socket_name, region_schema_variant_id)
             .await
             .expect("could not perform find by name")
             .expect("no external provider found")
             .id();
     let region_ami_internal_provider_id =
-        InternalProvider::find_explicit_with_name(ctx, region_socket_name, ami_schema_variant_id)
+        InputSocket::find_with_name(ctx, region_socket_name, ami_schema_variant_id)
             .await
             .expect("could not perform find by name")
             .expect("no internal provider found")
