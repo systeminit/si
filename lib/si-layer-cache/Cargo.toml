@@ -1,0 +1,22 @@
+[package]
+name = "si-layer-cache"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.64"
+publish = false
+
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+moka = { workspace = true }
+sled = { workspace = true }
+lazy_static = { workspace = true }
+
+[dev_dependencies]
+tokio = { workspace = true }
+tempfile = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "insert_speed"
+harness = false

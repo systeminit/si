@@ -44,6 +44,7 @@ comfy-table = { version = "7.0.1", features = [
 config = { version = "0.13.4", default-features = false, features = ["toml"] }
 console = "0.15.7"
 convert_case = "0.6.0"
+criterion = { version = "0.3", features = [ "async_tokio" ] }
 crossbeam-channel = "0.5.8"
 deadpool = { version = "0.10.0", features = ["rt_tokio_1"] }
 deadpool-postgres = "0.12.1"
@@ -77,6 +78,7 @@ jwt-simple = { version = "0.12.6", default-features = false, features = [
     "pure-rust",
 ] }
 lazy_static = "1.4.0"
+moka = { version = "0.12.5", features = [ "future" ] }
 names = { version = "0.14.0", default-features = false }
 nix = { version = "0.27.1", features = ["process", "signal"] }
 nkeys = "0.4.0"
@@ -108,6 +110,7 @@ reqwest = { version = "0.11.17", default-features = false, features = [
     "multipart",
 ] }
 ring = "=0.17.5" # Upgrading this is possible, but a pain, so we don't want to pick up every new minor version (see: https://github.com/facebook/buck2/commit/91af40b66960d003067c3d241595fb53d1e636c8)
+sled = "0.34.7"
 rustls = { version = "0.22.2" }
 rustls-pemfile = { version = "2.0.0" }
 rust-s3 = { version = "0.34.0-rc4", default-features = false, features = [
