@@ -21,9 +21,3 @@ rust_binary(
     srcs = glob(["src/**/*.rs", "src/version.txt"]),
 )
 
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "si",
-    build_dep = "//bin/si:si",
-)
-
