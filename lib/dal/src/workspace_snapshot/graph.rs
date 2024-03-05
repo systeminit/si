@@ -228,10 +228,7 @@ impl WorkspaceSnapshotGraph {
         // same source node.
         for edgeref in self.graph.edges_directed(source_index, Outgoing) {
             let maybe_category_node_index = edgeref.target();
-            let maybe_category_node_weight = self
-                .graph
-                .node_weight(maybe_category_node_index)
-                .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
+            let maybe_category_node_weight = self.get_node_weight(maybe_category_node_index)?;
 
             if let NodeWeight::Category(category_node_weight) = maybe_category_node_weight {
                 if category_node_weight.kind() == kind {
@@ -267,19 +264,23 @@ impl WorkspaceSnapshotGraph {
 
     pub fn nodes(&self) -> impl Iterator<Item = (&NodeWeight, NodeIndex)> {
         self.graph.node_indices().filter_map(|node_idx| {
-            self.graph
-                .node_weight(node_idx)
+            self.get_node_weight_opt(node_idx)
+                .ok()
+                .flatten()
                 .map(|weight| (weight, node_idx))
         })
     }
 
     pub fn edges(&self) -> impl Iterator<Item = (&EdgeWeight, NodeIndex, NodeIndex)> {
         self.graph.edge_indices().filter_map(|edge_idx| {
-            self.graph.edge_weight(edge_idx).and_then(|weight| {
-                self.graph
-                    .edge_endpoints(edge_idx)
-                    .map(|(source, target)| (weight, source, target))
-            })
+            self.get_edge_weight_opt(edge_idx)
+                .ok()
+                .flatten()
+                .and_then(|weight| {
+                    self.graph
+                        .edge_endpoints(edge_idx)
+                        .map(|(source, target)| (weight, source, target))
+                })
         })
     }
 
@@ -314,10 +315,8 @@ impl WorkspaceSnapshotGraph {
             let container_ordering_node_index =
                 self.get_latest_node_idx(container_ordering_node_index)?;
 
-            if let NodeWeight::Ordering(previous_container_ordering_node_weight) = self
-                .graph
-                .node_weight(container_ordering_node_index)
-                .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
+            if let NodeWeight::Ordering(previous_container_ordering_node_weight) =
+                self.get_node_weight(container_ordering_node_index)?
             {
                 let element_id = self
                     .node_index_to_id(to_node_index)
@@ -1365,8 +1364,7 @@ impl WorkspaceSnapshotGraph {
 
         for only_to_rebase_edge_info in only_to_rebase_edges.values() {
             let to_rebase_edge_weight = self
-                .graph
-                .edge_weight(only_to_rebase_edge_info.edge_index)
+                .get_edge_weight_opt(only_to_rebase_edge_info.edge_index)?
                 .ok_or(WorkspaceSnapshotGraphError::EdgeWeightNotFound)?;
             let to_rebase_item_weight =
                 self.get_node_weight(only_to_rebase_edge_info.target_node_index)?;
@@ -1405,8 +1403,7 @@ impl WorkspaceSnapshotGraph {
         // - Items unique to `onto`:
         for only_onto_edge_info in only_onto_edges.values() {
             let onto_edge_weight = onto
-                .graph
-                .edge_weight(only_onto_edge_info.edge_index)
+                .get_edge_weight_opt(only_onto_edge_info.edge_index)?
                 .ok_or(WorkspaceSnapshotGraphError::EdgeWeightNotFound)?;
             let onto_item_weight = onto.get_node_weight(only_onto_edge_info.target_node_index)?;
 
@@ -1475,12 +1472,18 @@ impl WorkspaceSnapshotGraph {
             .map(|node_weight| node_weight.id())
     }
 
+    pub fn get_node_weight_opt(
+        &self,
+        node_index: NodeIndex,
+    ) -> WorkspaceSnapshotGraphResult<Option<&NodeWeight>> {
+        Ok(self.graph.node_weight(node_index))
+    }
+
     pub fn get_node_weight(
         &self,
         node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<&NodeWeight> {
-        self.graph
-            .node_weight(node_index)
+        self.get_node_weight_opt(node_index)?
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
     }
 
@@ -1491,6 +1494,13 @@ impl WorkspaceSnapshotGraph {
         self.graph
             .node_weight_mut(node_index)
             .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)
+    }
+
+    pub fn get_edge_weight_opt(
+        &self,
+        edge_index: EdgeIndex,
+    ) -> WorkspaceSnapshotGraphResult<Option<&EdgeWeight>> {
+        Ok(self.graph.edge_weight(edge_index))
     }
 
     fn has_path_to_root(&self, node: NodeIndex) -> bool {
@@ -1607,13 +1617,12 @@ impl WorkspaceSnapshotGraph {
         container_node_index: NodeIndex,
     ) -> WorkspaceSnapshotGraphResult<Option<OrderingNodeWeight>> {
         Ok(
-            if let Some(NodeWeight::Ordering(ordering_node)) = self
-                .ordering_node_index_for_container(container_node_index)?
-                .and_then(|node_index| self.graph.node_weight(node_index))
-            {
-                Some(ordering_node.clone())
-            } else {
-                None
+            match self.ordering_node_index_for_container(container_node_index)? {
+                Some(ordering_node_idx) => match self.get_node_weight_opt(ordering_node_idx)? {
+                    Some(node_weight) => Some(node_weight.get_ordering_node_weight()?.clone()),
+                    None => None,
+                },
+                None => None,
             },
         )
     }
@@ -1680,10 +1689,8 @@ impl WorkspaceSnapshotGraph {
                 .node_index_to_id(target_node_index)
                 .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?;
 
-            if let NodeWeight::Ordering(previous_container_ordering_node_weight) = self
-                .graph
-                .node_weight(previous_container_ordering_node_index)
-                .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
+            if let NodeWeight::Ordering(previous_container_ordering_node_weight) =
+                self.get_node_weight(previous_container_ordering_node_index)?
             {
                 let mut new_container_ordering_node_weight =
                     previous_container_ordering_node_weight.clone();
@@ -1908,9 +1915,7 @@ impl WorkspaceSnapshotGraph {
 
         for neighbor_node in ordered_neighbors {
             hasher.update(
-                self.graph
-                    .node_weight(neighbor_node)
-                    .ok_or(WorkspaceSnapshotGraphError::NodeWeightNotFound)?
+                self.get_node_weight(neighbor_node)?
                     .merkle_tree_hash()
                     .to_string()
                     .as_bytes(),
