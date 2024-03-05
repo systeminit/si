@@ -2,7 +2,7 @@
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
 use serde::{Deserialize, Serialize};
-use std::collections::{hash_map, HashMap, VecDeque};
+use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::hash::Hash;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
@@ -36,10 +36,10 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    pk, AttributeValue, AttributeValueId, ChangeSetPk, DalContext, InputSocket, InputSocketId,
-    OutputSocket, OutputSocketId, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId,
-    StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult,
-    WsPayload,
+    func::backend::js_action::ActionRunResult, pk, AttributeValue, AttributeValueId, ChangeSetPk,
+    DalContext, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind,
+    SchemaVariant, SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent,
+    WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod resource;
@@ -72,6 +72,8 @@ pub enum ComponentError {
     ComponentMissingColorValue(ComponentId),
     #[error("component {0} has no attribute value for the root/si/name prop")]
     ComponentMissingNameValue(ComponentId),
+    #[error("component {0} has no attribute value for the root/resource prop")]
+    ComponentMissingResourceValue(ComponentId),
     #[error("component {0} has no attribute value for the root/si/type prop")]
     ComponentMissingTypeValue(ComponentId),
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
@@ -90,6 +92,8 @@ pub enum ComponentError {
     MultipleRootAttributeValuesFound(AttributeValueId, AttributeValueId, ComponentId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
+    #[error("component not found: {0}")]
+    NotFound(ComponentId),
     #[error("object prop {0} has no ordering node")]
     ObjectPropHasNoOrderingNode(PropId),
     #[error("output socket error: {0}")]
@@ -195,6 +199,10 @@ impl Component {
 
     pub fn id(&self) -> ComponentId {
         self.id
+    }
+
+    pub fn needs_destroy(&self) -> bool {
+        self.needs_destroy
     }
 
     pub fn x(&self) -> &str {
@@ -636,6 +644,67 @@ impl Component {
         Ok(())
     }
 
+    pub async fn set_needs_destroy(
+        &mut self,
+        ctx: &DalContext,
+        needs_destroy: bool,
+    ) -> ComponentResult<Self> {
+        let before = ComponentContentV1::from(self.clone());
+        self.needs_destroy = needs_destroy;
+        let updated = ComponentContentV1::from(self.clone());
+
+        if updated != before {
+            let hash = ctx
+                .content_store()
+                .lock()
+                .await
+                .add(&ComponentContent::V1(updated.clone()))?;
+
+            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+            workspace_snapshot.update_content(ctx.change_set_pointer()?, self.id.into(), hash)?;
+        }
+
+        Ok(Self::assemble(self.id, updated))
+    }
+
+    pub fn is_destroyed(&self) -> bool {
+        // TODO: implement deletion/delete
+        false
+    }
+
+    pub async fn set_resource(
+        &self,
+        ctx: &DalContext,
+        resource: ActionRunResult,
+    ) -> ComponentResult<()> {
+        let av_for_resource = self
+            .attribute_values_for_prop(ctx, &["root", "resource"])
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(ComponentError::ComponentMissingResourceValue(self.id()))?;
+
+        AttributeValue::update(ctx, av_for_resource, Some(serde_json::to_value(resource)?)).await?;
+
+        Ok(())
+    }
+
+    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<ActionRunResult> {
+        let value_id = self
+            .attribute_values_for_prop(ctx, &["root", "resource"])
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(ComponentError::ComponentMissingResourceValue(self.id()))?;
+
+        let av = AttributeValue::get_by_id(ctx, value_id).await?;
+
+        Ok(match av.materialized_view(ctx).await? {
+            Some(serde_value) => serde_json::from_value(serde_value)?,
+            None => ActionRunResult::default(),
+        })
+    }
+
     pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
         let name_value_id = self
             .attribute_values_for_prop(ctx, &["root", "si", "name"])
@@ -977,6 +1046,31 @@ impl Component {
         .await?;
 
         Ok(())
+    }
+
+    // Returns map of node id -> parent node ids
+    pub async fn build_graph(
+        ctx: &DalContext,
+    ) -> ComponentResult<HashMap<ComponentId, HashSet<ComponentId>>> {
+        let total_start = std::time::Instant::now();
+
+        let components = Self::list(ctx).await?;
+
+        let mut components_map: HashMap<ComponentId, HashSet<ComponentId>> = HashMap::new();
+
+        for component in components {
+            components_map.insert(component.id, HashSet::new());
+
+            for incomming_connection in component.incoming_connections(ctx).await? {
+                components_map
+                    .entry(component.id)
+                    .or_default()
+                    .insert(incomming_connection.to_component_id);
+            }
+        }
+
+        debug!("build graph took {:?}", total_start.elapsed());
+        Ok(components_map)
     }
 }
 

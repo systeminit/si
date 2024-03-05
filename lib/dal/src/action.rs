@@ -1,3 +1,4 @@
+use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -5,44 +6,60 @@ use thiserror::Error;
 use si_data_pg::PgError;
 use telemetry::prelude::*;
 
-use crate::{
-    diagram::summary_diagram::{SummaryDiagramComponent, SummaryDiagramError},
-    impl_standard_model, pk, standard_model, standard_model_accessor_ro, ActionKind,
-    ActionPrototype, ActionPrototypeError, ActionPrototypeId, ChangeSetPk, Component,
-    ComponentError, ComponentId, DalContext, HistoryActor, HistoryEventError, Node, NodeError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, Visibility,
-    WsEvent, WsEventError, WsEventResult, WsPayload,
-};
+pub mod batch;
+// pub mod resolver;
+pub mod prototype;
+pub mod runner;
 
-const FIND_FOR_CHANGE_SET: &str = include_str!("./queries/action/find_for_change_set.sql");
+use crate::change_set_pointer::ChangeSetPointerError;
+use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
+use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
+use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::{
+    action::prototype::ActionPrototypeContent, component::ComponentContent, pk, ActionBatchError,
+    ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, ChangeSetPk, Component,
+    ComponentError, ComponentId, DalContext, HistoryActor, HistoryEventError, Timestamp,
+    TransactionsError, UserPk, WsEvent, WsEventError, WsEventResult, WsPayload,
+};
+use strum::EnumDiscriminants;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ActionError {
+    #[error("action error: {0}")]
+    ActionBatch(#[from] ActionBatchError),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error(transparent)]
+    ChangeSetPointer(#[from] ChangeSetPointerError),
+    #[error(transparent)]
     Component(#[from] ComponentError),
-    #[error("component not found: {0}")]
-    ComponentNotFound(ComponentId),
+    #[error("component not found for: {0}")]
+    ComponentNotFoundFor(ActionId),
+    #[error("edge weight error: {0}")]
+    EdgeWeight(#[from] EdgeWeightError),
     #[error("history event: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("in head")]
     InHead,
-    #[error(transparent)]
-    Node(#[from] NodeError),
+    #[error("node weight error: {0}")]
+    NodeWeight(#[from] NodeWeightError),
     #[error("action not found: {0}")]
     NotFound(ActionId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("action prototype not found: {0}")]
-    PrototypeNotFound(ActionPrototypeId),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
-    #[error("summary diagram error: {0}")]
-    SummaryDiagram(#[from] SummaryDiagramError),
+    #[error("action prototype not found for: {0}")]
+    PrototypeNotFoundFor(ActionId),
+    #[error("store error: {0}")]
+    Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("could not acquire lock: {0}")]
+    TryLock(#[from] tokio::sync::TryLockError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
 }
@@ -54,152 +71,249 @@ pk!(ActionId);
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct ActionBag {
+    pub component_id: ComponentId,
     pub action: Action,
     pub kind: ActionKind,
     pub parents: Vec<ActionId>,
 }
 
+#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+pub enum ActionContent {
+    V1(ActionContentV1),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct ActionContentV1 {
+    creation_user_pk: Option<UserPk>,
+    timestamp: Timestamp,
+}
+
 // An Action joins an `ActionPrototype` to a `ComponentId` in a `ChangeSetPk`
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Action {
-    pk: ActionPk,
-    id: ActionId,
-    action_prototype_id: ActionPrototypeId,
-    // Change set is a field so head doesn't get cluttered with actions to it and the original
-    // change set pk is lost on apply
-    change_set_pk: ChangeSetPk,
-    component_id: ComponentId,
-    creation_user_id: Option<UserPk>,
-    #[serde(flatten)]
-    tenancy: Tenancy,
+    pub id: ActionId,
+    pub creation_user_pk: Option<UserPk>,
     #[serde(flatten)]
     timestamp: Timestamp,
-    #[serde(flatten)]
-    visibility: Visibility,
-}
-
-impl_standard_model! {
-    model: Action,
-    pk: ActionPk,
-    id: ActionId,
-    table_name: "actions",
-    history_event_label_base: "action",
-    history_event_message_name: "Action Prototype"
 }
 
 impl Action {
-    #[allow(clippy::too_many_arguments)]
-    pub async fn new(
+    pub fn assemble(id: ActionId, content: ActionContentV1) -> Self {
+        Self {
+            id,
+            creation_user_pk: content.creation_user_pk,
+            timestamp: content.timestamp,
+        }
+    }
+
+    pub async fn upsert(
         ctx: &DalContext,
         prototype_id: ActionPrototypeId,
         component_id: ComponentId,
     ) -> ActionResult<Self> {
-        if ctx.visibility().change_set_pk.is_none() {
-            return Err(ActionError::InHead);
+        for action in Self::for_component(ctx, component_id).await? {
+            if action.prototype(ctx).await?.id == prototype_id {
+                return Ok(action);
+            }
         }
+
+        let timestamp = Timestamp::now();
 
         let actor_user_pk = match ctx.history_actor() {
             HistoryActor::User(user_pk) => Some(*user_pk),
             _ => None,
         };
 
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_one(
-                "SELECT object FROM action_create_v1($1, $2, $3, $4, $5)",
-                &[
-                    ctx.tenancy(),
-                    ctx.visibility(),
-                    &prototype_id,
-                    &component_id,
-                    &actor_user_pk,
-                ],
-            )
-            .await?;
-        let object: Action = standard_model::finish_create_from_row(ctx, row).await?;
+        let content = ActionContentV1 {
+            timestamp,
+            creation_user_pk: actor_user_pk,
+        };
 
-        WsEvent::action_added(ctx, component_id, *object.id())
+        let hash = ctx
+            .content_store()
+            .lock()
+            .await
+            .add(&ActionContent::V1(content.clone()))?;
+
+        let change_set = ctx.change_set_pointer()?;
+        let id = change_set.generate_ulid()?;
+        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Action(hash))?;
+        let action_prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
+
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+
+        workspace_snapshot.add_node(node_weight.to_owned())?;
+
+        workspace_snapshot.add_edge(
+            id,
+            EdgeWeight::new(
+                change_set,
+                EdgeWeightKind::ActionPrototype(action_prototype.kind),
+            )?,
+            prototype_id,
+        )?;
+        workspace_snapshot.add_edge(
+            component_id,
+            EdgeWeight::new(change_set, EdgeWeightKind::Action)?,
+            id,
+        )?;
+
+        let content_node_weight =
+            node_weight.get_content_node_weight_of_kind(ContentAddressDiscriminants::Action)?;
+
+        WsEvent::action_added(ctx, component_id, id.into())
             .await?
             .publish_on_commit(ctx)
             .await?;
 
-        Ok(object)
+        Ok(Action::assemble(content_node_weight.id().into(), content))
     }
 
-    pub async fn find_for_change_set(ctx: &DalContext) -> ActionResult<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .await?
-            .pg()
-            .query(
-                FIND_FOR_CHANGE_SET,
-                &[
-                    ctx.tenancy(),
-                    ctx.visibility(),
-                    &ctx.visibility().change_set_pk,
-                ],
-            )
-            .await?;
-
-        Ok(standard_model::objects_from_rows(rows)?)
+    pub async fn delete(self, ctx: &DalContext) -> ActionResult<()> {
+        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        let change_set = ctx.change_set_pointer()?;
+        workspace_snapshot.remove_node_by_id(change_set, self.id)?;
+        Ok(())
     }
 
-    pub async fn prototype(&self, ctx: &DalContext) -> ActionResult<ActionPrototype> {
-        ActionPrototype::get_by_id(ctx, self.action_prototype_id())
+    pub async fn get_by_id(ctx: &DalContext, id: ActionId) -> ActionResult<Self> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let ulid: ulid::Ulid = id.into();
+        let node_index = workspace_snapshot.get_node_index_by_id(ulid)?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let hash = node_weight.content_hash();
+
+        let content: ActionContent = ctx
+            .content_store()
+            .lock()
+            .await
+            .get(&hash)
             .await?
-            .ok_or(ActionError::PrototypeNotFound(*self.action_prototype_id()))
+            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let ActionContent::V1(inner) = content;
+
+        Ok(Self::assemble(id, inner))
     }
 
     pub async fn component(&self, ctx: &DalContext) -> ActionResult<Component> {
-        Component::get_by_id(ctx, self.component_id())
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+        let node = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Action)?
+            .pop()
+            .ok_or(ActionError::ComponentNotFoundFor(self.id))?;
+        let node_weight = workspace_snapshot.get_node_weight(node)?;
+        let content_hash = node_weight.content_hash();
+
+        let content = ctx
+            .content_store()
+            .try_lock()?
+            .get(&content_hash)
             .await?
-            .ok_or(ActionError::ComponentNotFound(*self.component_id()))
+            .ok_or(ActionError::ComponentNotFoundFor(self.id))?;
+
+        let ComponentContent::V1(inner) = content;
+
+        let component = Component::assemble(node_weight.id().into(), inner);
+        Ok(component)
     }
 
-    pub async fn order(ctx: &DalContext) -> ActionResult<HashMap<ActionId, ActionBag>> {
-        let actions_by_id: HashMap<ActionId, Action> = Self::find_for_change_set(ctx)
-            .await?
-            .into_iter()
-            .map(|a| (*a.id(), a))
-            .collect();
+    pub async fn prototype(&self, ctx: &DalContext) -> ActionResult<ActionPrototype> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
 
-        let mut actions_by_component: HashMap<ComponentId, Vec<Action>> = HashMap::new();
-        for action in actions_by_id.values() {
-            actions_by_component
-                .entry(*action.component_id())
-                .or_default()
-                .push(action.clone());
+        let node = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                self.id,
+                EdgeWeightKindDiscriminants::ActionPrototype,
+            )?
+            .pop()
+            .ok_or(ActionError::PrototypeNotFoundFor(self.id))?;
+        let node_weight = workspace_snapshot.get_node_weight(node)?;
+        let content_hash = node_weight.content_hash();
+
+        let content = ctx
+            .content_store()
+            .try_lock()?
+            .get(&content_hash)
+            .await?
+            .ok_or(ActionError::PrototypeNotFoundFor(self.id))?;
+
+        let ActionPrototypeContent::V1(inner) = content;
+
+        let prototype = ActionPrototype::assemble(node_weight.id().into(), inner);
+        Ok(prototype)
+    }
+
+    pub async fn for_component(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ActionResult<Vec<Self>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+        let nodes = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            component_id,
+            EdgeWeightKindDiscriminants::Action,
+        )?;
+        let mut node_weights = Vec::with_capacity(nodes.len());
+        let mut content_hashes = Vec::with_capacity(nodes.len());
+        for node in nodes {
+            let weight = workspace_snapshot.get_node_weight(node)?;
+            content_hashes.push(weight.content_hash());
+            node_weights.push(weight);
         }
 
-        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
+        let content_map: HashMap<ContentHash, ActionContent> = ctx
+            .content_store()
+            .try_lock()?
+            .get_bulk(content_hashes.as_slice())
+            .await?;
 
-        let nodes_graph = Node::build_graph(ctx, false).await?;
-        let mut actions_graph: HashMap<ActionId, (ActionKind, Vec<ActionId>)> = HashMap::new();
+        let mut actions = Vec::with_capacity(node_weights.len());
+        for node_weight in node_weights {
+            match content_map.get(&node_weight.content_hash()) {
+                Some(content) => {
+                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+                    let ActionContent::V1(inner) = content;
 
-        for (node_id, parent_ids) in nodes_graph {
-            let node = Node::get_by_id(ctx_with_deleted, &node_id)
-                .await?
-                .ok_or(NodeError::NotFound(node_id))?;
-            let component = node
-                .component(ctx_with_deleted)
-                .await?
-                .ok_or(NodeError::ComponentIsNone)?;
+                    actions.push(Self::assemble(node_weight.id().into(), inner.clone()));
+                }
+                None => Err(WorkspaceSnapshotError::MissingContentFromStore(
+                    node_weight.id(),
+                ))?,
+            }
+        }
+        Ok(actions)
+    }
+
+    pub async fn build_graph(ctx: &DalContext) -> ActionResult<HashMap<ActionId, ActionBag>> {
+        let mut actions_by_id: HashMap<ActionId, (Action, ComponentId)> = HashMap::new();
+        let mut actions_by_component: HashMap<ComponentId, Vec<Action>> = HashMap::new();
+        let graph = Component::build_graph(ctx).await?;
+        let mut actions_graph: HashMap<ActionId, (ComponentId, ActionKind, Vec<ActionId>)> =
+            HashMap::new();
+
+        for (id, parent_ids) in graph {
+            let component = Component::get_by_id(ctx, id).await?;
 
             if component.is_destroyed() {
                 continue;
             }
 
-            let actions = actions_by_component
-                .get(component.id())
-                .cloned()
-                .unwrap_or_default();
+            let actions = Self::for_component(ctx, id).await?;
+            actions_by_component
+                .entry(id)
+                .or_default()
+                .extend(actions.clone());
+
             let mut actions_by_kind: HashMap<ActionKind, Vec<Action>> = HashMap::new();
             for action in actions {
+                actions_by_id.insert(action.id, (action.clone(), component.id()));
+
                 let prototype = action.prototype(ctx).await?;
                 actions_by_kind
-                    .entry(*prototype.kind())
+                    .entry(prototype.kind)
                     .or_default()
                     .push(action);
             }
@@ -210,15 +324,9 @@ impl Action {
                     .cloned()
                     .into_iter()
                     .flatten()
-                    .map(|a| *a.id())
+                    .map(|a| a.id)
             };
-            let has_resource = if let Some(summary) =
-                SummaryDiagramComponent::get_for_component_id(ctx, *component.id()).await?
-            {
-                summary.has_resource()
-            } else {
-                component.resource(ctx).await?.payload.is_some()
-            };
+            let has_resource = component.resource(ctx).await?.payload.is_some();
 
             // Figure out internal dependencies for actions of this component
             //
@@ -229,8 +337,8 @@ impl Action {
             for (kind, actions) in &actions_by_kind {
                 for action in actions {
                     actions_graph
-                        .entry(*action.id())
-                        .or_insert_with(|| (*kind, Vec::new()));
+                        .entry(action.id)
+                        .or_insert_with(|| (component.id(), *kind, Vec::new()));
 
                     // Action kind order is Initial Deletion -> Creation -> Others -> Final Deletion
                     // Initial deletions happen if there is a resource and a create action, so it deletes before creating
@@ -239,9 +347,9 @@ impl Action {
                             if has_resource {
                                 let ids = action_ids_by_kind(ActionKind::Delete);
                                 actions_graph
-                                    .entry(*action.id())
-                                    .or_insert_with(|| (*kind, Vec::new()))
-                                    .1
+                                    .entry(action.id)
+                                    .or_insert_with(|| (component.id(), *kind, Vec::new()))
+                                    .2
                                     .extend(ids);
                             }
                         }
@@ -254,11 +362,11 @@ impl Action {
                                     .iter()
                                     .filter(|(k, _)| **k != ActionKind::Delete)
                                     .flat_map(|(_, a)| a)
-                                    .map(|a| *a.id());
+                                    .map(|a| a.id);
                                 actions_graph
-                                    .entry(*action.id())
-                                    .or_insert_with(|| (*kind, Vec::new()))
-                                    .1
+                                    .entry(action.id)
+                                    .or_insert_with(|| (component.id(), *kind, Vec::new()))
+                                    .2
                                     .extend(ids);
                             }
                         }
@@ -267,62 +375,58 @@ impl Action {
                             if has_resource && action_ids_by_kind(ActionKind::Create).count() > 0 {
                                 let ids = action_ids_by_kind(ActionKind::Delete);
                                 actions_graph
-                                    .entry(*action.id())
-                                    .or_insert_with(|| (*kind, Vec::new()))
-                                    .1
+                                    .entry(action.id)
+                                    .or_insert_with(|| (component.id(), *kind, Vec::new()))
+                                    .2
                                     .extend(ids);
                             }
 
                             let ids = action_ids_by_kind(ActionKind::Create);
                             actions_graph
-                                .entry(*action.id())
-                                .or_insert_with(|| (*kind, Vec::new()))
-                                .1
+                                .entry(action.id)
+                                .or_insert_with(|| (component.id(), *kind, Vec::new()))
+                                .2
                                 .extend(ids);
                         }
                     }
                 }
             }
 
-            for parent_node_id in parent_ids {
-                let parent_node = Node::get_by_id(ctx_with_deleted, &parent_node_id)
-                    .await?
-                    .ok_or(NodeError::NotFound(parent_node_id))?;
-                let parent_component = parent_node
-                    .component(ctx_with_deleted)
-                    .await?
-                    .ok_or(NodeError::ComponentIsNone)?;
+            for parent_id in parent_ids {
+                let parent_component = Component::get_by_id(ctx, parent_id).await?;
 
                 if parent_component.is_destroyed() {
                     continue;
                 }
 
                 let parent_actions = actions_by_component
-                    .get(parent_component.id())
+                    .get(&parent_component.id())
                     .cloned()
                     .unwrap_or_default();
                 for (kind, actions) in &actions_by_kind {
                     for action in actions {
                         actions_graph
-                            .entry(*action.id())
-                            .or_insert_with(|| (*kind, Vec::new()))
-                            .1
-                            .extend(parent_actions.iter().map(|a| *a.id()));
+                            .entry(action.id)
+                            .or_insert_with(|| (component.id(), *kind, Vec::new()))
+                            .2
+                            .extend(parent_actions.iter().map(|a| a.id));
                     }
                 }
             }
         }
 
         let mut actions_bag_graph: HashMap<ActionId, ActionBag> = HashMap::new();
-        for (id, (kind, parents)) in actions_graph {
+        for (id, (component_id, kind, parents)) in actions_graph {
             actions_bag_graph.insert(
                 id,
                 ActionBag {
+                    component_id,
                     kind,
                     action: actions_by_id
                         .get(&id)
                         .ok_or(ActionError::NotFound(id))?
-                        .clone(),
+                        .clone()
+                        .0,
                     parents,
                 },
             );
@@ -334,12 +438,12 @@ impl Action {
         for bag in actions_bag_graph.values() {
             if bag.kind == ActionKind::Delete {
                 for parent_id in &bag.parents {
-                    if let Some(parent) = actions_by_id.get(parent_id) {
-                        if parent.component_id != bag.action.component_id {
+                    if let Some((_parent, component_id)) = actions_by_id.get(parent_id) {
+                        if *component_id != bag.component_id {
                             reversed_parents
                                 .entry(*parent_id)
                                 .or_default()
-                                .push(*bag.action.id());
+                                .push(bag.action.id);
                         }
                     }
                 }
@@ -353,7 +457,7 @@ impl Action {
 
             bag.parents.extend(
                 reversed_parents
-                    .get(bag.action.id())
+                    .get(&bag.action.id)
                     .cloned()
                     .unwrap_or_default(),
             );
@@ -361,11 +465,6 @@ impl Action {
 
         Ok(actions_bag_graph)
     }
-
-    standard_model_accessor_ro!(action_prototype_id, ActionPrototypeId);
-    standard_model_accessor_ro!(change_set_pk, ChangeSetPk);
-    standard_model_accessor_ro!(component_id, ComponentId);
-    standard_model_accessor_ro!(creation_user_id, Option<UserPk>);
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]

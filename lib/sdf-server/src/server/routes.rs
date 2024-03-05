@@ -23,6 +23,7 @@ pub fn routes(state: AppState) -> Router {
             "/api/",
             Router::new().route("/", get(system_status_route).layer(CorsLayer::permissive())),
         )
+        .nest("/api/action", crate::server::service::action::routes())
         .nest(
             "/api/change_set",
             crate::server::service::change_set::routes(),

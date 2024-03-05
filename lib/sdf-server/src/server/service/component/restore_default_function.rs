@@ -44,7 +44,7 @@ pub async fn restore_default_function(
         let component = Component::get_by_id(&ctx, &attribute_value.context.component_id())
             .await?
             .ok_or_else(|| {
-                ComponentError::ComponentNotFound(attribute_value.context.component_id())
+                ComponentError::NotFound(attribute_value.context.component_id())
             })?;
 
         let component_schema = component

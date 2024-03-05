@@ -1,14 +1,53 @@
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
+import { trackEvent } from "@/utils/tracking";
+import { Resource } from "@/api/sdf/dal/resource";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 import { ComponentId } from "./components.store";
-import { ActionKind, useFixesStore } from "./fixes.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
-export type ActionStatus = "failure" | "success";
+export type ActionStatus =
+  | "success"
+  | "failure"
+  | "running"
+  | "error"
+  | "unstarted";
+
+export enum ActionKind {
+  Create = "create",
+  Delete = "delete",
+  Other = "other",
+  Refresh = "refresh",
+}
+
+export type ActionRunnerId = string;
+export type ActionRunner = {
+  id: ActionRunnerId;
+  status: ActionStatus;
+  actionKind: string;
+  schemaName: string;
+  componentName: string;
+  componentId: ComponentId;
+  resource?: Resource | null;
+  startedAt?: string;
+  finishedAt?: string;
+  displayName?: string;
+};
+
+// TODO(nick): use real user data and real timestamps. This is dependent on the backend.
+export type ActionBatchId = string;
+export type ActionBatch = {
+  id: ActionBatchId;
+  status?: ActionStatus;
+  author: string;
+  actors?: string[];
+  actions: ActionRunner[];
+  startedAt: string | null;
+  finishedAt: string | null;
+};
 
 export type ActionPrototypeId = string;
 export type ActionInstanceId = string;
@@ -60,8 +99,37 @@ export const useActionsStore = () => {
         state: () => ({
           rawActionsByComponentId: {} as Record<ComponentId, ActionPrototype[]>,
           rawProposedActionsById: {} as Record<ActionId, ProposedAction>,
+          actionBatches: [] as Array<ActionBatch>,
+          runningActionBatch: undefined as ActionBatchId | undefined,
+          populatingActionRunners: false,
         }),
         getters: {
+          actionsAreInProgress: (state) => !!state.runningActionBatch,
+          allFinishedActionBatches(): ActionBatch[] {
+            return this.actionBatches.filter(
+              (f) => f.status !== "running" && f.status !== "unstarted",
+            );
+          },
+          actionsOnBatch() {
+            return (actionBatchId: ActionBatchId) => {
+              for (const batch of this.actionBatches) {
+                if (batch.id === actionBatchId) {
+                  return batch.actions;
+                }
+              }
+              return [];
+            };
+          },
+          completedActionsOnRunningBatch(): ActionRunner[] {
+            return _.filter(
+              this.actionsOnRunningBatch,
+              (runner) => !["running", "unstarted"].includes(runner.status),
+            );
+          },
+          actionsOnRunningBatch(): ActionRunner[] {
+            if (!this.runningActionBatch) return [];
+            return this.actionsOnBatch(this.runningActionBatch);
+          },
           rawProposedActions: (state) => _.values(state.rawProposedActionsById),
           proposedActions(): ProposedAction[] {
             // TODO: this code was altering the actual store data, so we had to add a cloneDeep
@@ -124,10 +192,9 @@ export const useActionsStore = () => {
           },
 
           actionHistoryByComponentId() {
-            const fixesStore = useFixesStore();
-            const allHistory = _.flatMap(
-              fixesStore.fixBatches,
-              (batch) => batch.fixes,
+            const allHistory: ActionRunner[] = _.flatMap(
+              this.actionBatches,
+              (batch) => batch.actions,
             );
             return _.groupBy(allHistory, (entry) => entry.componentId);
           },
@@ -187,9 +254,31 @@ export const useActionsStore = () => {
               },
             });
           },
+          async LOAD_ACTION_BATCHES() {
+            const head = changeSetsStore.allChangeSets.find(
+              (cs) => cs.baseChangeSetId === nilId(),
+            );
+            if (!head) throw new Error("no head");
+            return new ApiRequest<Array<ActionBatch>>({
+              url: "/action/history",
+              params: {
+                visibility_change_set_pk: head.id,
+              },
+              onSuccess: (response) => {
+                this.actionBatches = response;
+                this.runningActionBatch = response.find(
+                  (batch) =>
+                    !["success", "failure", "error"].includes(
+                      batch.status ?? "",
+                    ),
+                )?.id;
+              },
+            });
+          },
         },
         onActivated() {
           if (!changeSetId) return;
+          this.LOAD_ACTION_BATCHES();
           this.FETCH_QUEUED_ACTIONS();
 
           const realtimeStore = useRealtimeStore();
@@ -197,6 +286,19 @@ export const useActionsStore = () => {
             this.$id,
             `workspace/${workspaceId}/${changeSetId}`,
             [
+              {
+                eventType: "ChangeSetWritten",
+                callback: () => {
+                  this.FETCH_QUEUED_ACTIONS();
+                  this.LOAD_ACTION_BATCHES();
+                },
+              },
+              {
+                eventType: "ChangeSetApplied",
+                callback: (_update) => {
+                  this.LOAD_ACTION_BATCHES();
+                },
+              },
               {
                 eventType: "ActionAdded",
                 callback: () => {
@@ -207,6 +309,31 @@ export const useActionsStore = () => {
                 eventType: "ActionRemoved",
                 callback: () => {
                   this.FETCH_QUEUED_ACTIONS();
+                },
+              },
+              {
+                eventType: "ActionRunnerReturn",
+                callback: (update) => {
+                  trackEvent("action_runner_return", {
+                    action_runner: update.action,
+                    action_status: update.status,
+                    action_runner_id: update.id,
+                    action_batch_id: update.batchId,
+                  });
+
+                  this.LOAD_ACTION_BATCHES();
+                },
+              },
+              {
+                eventType: "ActionBatchReturn",
+                callback: (update) => {
+                  this.runningActionBatch = undefined;
+                  trackEvent("action_batch_return", {
+                    batch_status: update.status,
+                    batch_id: update.id,
+                  });
+
+                  this.LOAD_ACTION_BATCHES();
                 },
               },
             ],

@@ -1,7 +1,7 @@
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
 use dal::{
-    action_prototype::ActionPrototypeContextField, Action, ActionKind, ActionPrototype,
+    Action, ActionKind, ActionPrototype,
     ActionPrototypeContext, ChangeSet, Component, ComponentId, DalContext, StandardModel,
     Visibility, WsEvent,
 };
@@ -59,7 +59,7 @@ async fn delete_single_component(
         )
         .await?
         {
-            let action = Action::new(ctx, *prototype.id(), *comp.id()).await?;
+            let action = Action::upsert(ctx, *prototype.id(), *comp.id()).await?;
             let prototype = action.prototype(ctx).await?;
 
             track(

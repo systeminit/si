@@ -353,6 +353,32 @@ impl DalContext {
         Ok(())
     }
 
+    pub async fn update_snapshot_to_visibility_no_editing_change_set(
+        &mut self,
+    ) -> Result<(), TransactionsError> {
+        let change_set_id = match self.change_set_id() {
+            ChangeSetPointerId::NONE => self.get_workspace_default_change_set_id().await?,
+            other => other,
+        };
+
+        let change_set_pointer = ChangeSetPointer::find(self, change_set_id)
+            .await
+            .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
+            .ok_or(TransactionsError::ChangeSetPointerNotFound(
+                self.change_set_id(),
+            ))?;
+
+        let workspace_snapshot =
+            WorkspaceSnapshot::find_for_change_set(self, change_set_pointer.id)
+                .await
+                .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?;
+
+        self.change_set_pointer = Some(change_set_pointer);
+        self.set_workspace_snapshot(workspace_snapshot);
+
+        Ok(())
+    }
+
     pub async fn write_snapshot(&self) -> Result<Option<WorkspaceSnapshotId>, TransactionsError> {
         if let Some(snapshot) = &self.workspace_snapshot {
             let vector_clock_id = self.change_set_pointer()?.vector_clock_id();
@@ -578,11 +604,29 @@ impl DalContext {
     }
 
     /// Updates this context with a new [`Visibility`], specific to the new engine.
-    pub fn update_visibility_v2(&mut self, change_set_v2: &ChangeSetPointer) {
+    pub async fn update_visibility_v2(
+        &mut self,
+        change_set_v2: &ChangeSetPointer,
+    ) -> Result<(), TransactionsError> {
         self.update_visibility(Visibility::new(
             ChangeSetPk::from(Ulid::from(change_set_v2.id)),
             None,
         ));
+        self.update_snapshot_to_visibility().await?;
+        Ok(())
+    }
+
+    pub async fn update_visibility_v2_no_editing_change_set(
+        &mut self,
+        change_set_v2: &ChangeSetPointer,
+    ) -> Result<(), TransactionsError> {
+        self.update_visibility(Visibility::new(
+            ChangeSetPk::from(Ulid::from(change_set_v2.id)),
+            None,
+        ));
+        self.update_snapshot_to_visibility_no_editing_change_set()
+            .await?;
+        Ok(())
     }
 
     /// Runs a block of code with "deleted" [`Visibility`] DalContext using the same transactions
@@ -634,6 +678,23 @@ impl DalContext {
             self.visibility().change_set_pk,
             true,
         ))
+    }
+
+    pub async fn parent_is_head(&self) -> bool {
+        if let Some(workspace_pk) = self.tenancy.workspace_pk() {
+            let workspace = Workspace::get_by_pk(self, &workspace_pk)
+                .await
+                .unwrap()
+                .unwrap();
+            workspace.default_change_set_id()
+                == self
+                    .change_set_pointer()
+                    .unwrap()
+                    .base_change_set_id
+                    .unwrap()
+        } else {
+            false
+        }
     }
 
     /// Updates this context with a new [`Tenancy`]

@@ -12,14 +12,14 @@ import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 import plur from "plur";
 import { useComponentsStore } from "@/store/components.store";
-import { useFixesStore } from "@/store/fixes.store";
+import { useActionsStore } from "@/store/actions.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const componentsStore = useComponentsStore();
-const fixesStore = useFixesStore();
+const actionsStore = useActionsStore();
 const featureFlagsStore = useFeatureFlagsStore();
 
 const {
@@ -57,7 +57,8 @@ function typeDisplayName(action = "delete") {
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
   const disabled =
-    fixesStore.fixesAreInProgress && featureFlagsStore.DONT_BLOCK_ON_ACTIONS;
+    actionsStore.actionsAreInProgress &&
+    featureFlagsStore.DONT_BLOCK_ON_ACTIONS;
   if (selectedEdgeId.value) {
     // single selected edge
     if (selectedEdge.value?.changeStatus === "deleted") {

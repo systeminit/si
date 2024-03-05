@@ -385,8 +385,9 @@ impl FuncArgument {
 
     pub async fn remove(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<()> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        let change_set = ctx.change_set_pointer()?;
 
-        workspace_snapshot.remove_node_by_id(id)?;
+        workspace_snapshot.remove_node_by_id(change_set, id)?;
 
         Ok(())
     }

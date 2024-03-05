@@ -1,6 +1,6 @@
 use axum::Router;
 use dal::{
-    qualification::QualificationSubCheckStatus, ActionKind, Component, FixCompletionStatus, Func,
+    qualification::QualificationSubCheckStatus, ActionKind, Component, ActionCompletionStatus, Func,
     StandardModel,
 };
 use dal_test::{sdf_test, AuthToken, DalContextHead};
@@ -643,7 +643,7 @@ async fn model_and_fix_flow_whiskers(
     let mut fix_batch_history_views = harness.list_fixes(ctx.visibility()).await;
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert_eq!(
-        Some(FixCompletionStatus::Success), // expected
+        Some(ActionCompletionStatus::Success), // expected
         fix_batch_history_view.status
     );
 
@@ -799,7 +799,7 @@ async fn model_and_fix_flow_whiskers(
 
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert_eq!(
-        Some(FixCompletionStatus::Success), // expected
+        Some(ActionCompletionStatus::Success), // expected
         fix_batch_history_view.status
     );
 

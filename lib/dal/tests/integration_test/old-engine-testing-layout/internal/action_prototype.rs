@@ -1,7 +1,6 @@
 use pretty_assertions_sorted::assert_eq;
 
-use dal::action_prototype::ActionKind;
-use dal::{ActionPrototype, ActionPrototypeContext, DalContext, FuncId};
+use dal::{ActionPrototype, ActionPrototypeContext, DalContext, FuncId, ActionKind};
 use dal_test::test;
 
 #[test]

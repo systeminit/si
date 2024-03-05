@@ -1,5 +1,5 @@
 use axum::Router;
-use dal::FixCompletionStatus;
+use dal::ActionCompletionStatus;
 use dal_test::{sdf_test, AuthToken, DalContextHead};
 use pretty_assertions_sorted::assert_eq;
 
@@ -11,7 +11,7 @@ use crate::service_tests::scenario::ScenarioHarness;
 /// ```
 #[sdf_test]
 #[ignore]
-async fn fix_flow_deletion(
+async fn action_flow_deletion(
     DalContextHead(mut ctx): DalContextHead,
     app: Router,
     AuthToken(auth_token): AuthToken,
@@ -105,7 +105,7 @@ async fn fix_flow_deletion(
     let create_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert!(fix_batch_history_views.is_empty());
     assert_eq!(
-        FixCompletionStatus::Success,                 // expected
+        ActionCompletionStatus::Success,                 // expected
         create_view.status.expect("no status found")  // actual
     );
 
@@ -218,7 +218,7 @@ async fn fix_flow_deletion(
         .expect("found empty batch history views");
 
     assert_eq!(
-        FixCompletionStatus::Success,                  // expected
+        ActionCompletionStatus::Success,                  // expected
         destroy_view.status.expect("no status found")  // actual
     );
 

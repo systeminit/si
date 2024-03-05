@@ -53,7 +53,7 @@ import { ActionAssociations, FuncAssociations } from "@/store/func/types";
 import SiCheckBox from "@/components/SiCheckBox.vue";
 import { toOptionValues } from "@/components/FuncEditor/utils";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { ActionKind } from "@/store/fixes.store";
+import { ActionKind } from "@/store/actions.store";
 import RunOnSelector from "./RunOnSelector.vue";
 
 const funcStore = useFuncStore();

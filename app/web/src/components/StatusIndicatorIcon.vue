@@ -21,7 +21,7 @@ const CONFIG = {
     running: { iconName: "loader", tone: "action" },
     notexists: { iconName: "empty", tone: "empty" },
   },
-  fix: {
+  "action-runner": {
     success: { iconName: "check2", tone: "success" },
     error: { iconName: "alert-triangle", tone: "destructive" },
     failure: { iconName: "alert-triangle", tone: "destructive" },

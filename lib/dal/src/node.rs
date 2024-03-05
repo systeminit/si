@@ -184,50 +184,6 @@ impl Node {
         Ok(node_ids)
     }
 
-    // Returns map of node id -> parent node ids
-    pub async fn build_graph(
-        ctx: &DalContext,
-        shuffle_edges: bool,
-    ) -> NodeResult<HashMap<NodeId, HashSet<NodeId>>> {
-        let total_start = std::time::Instant::now();
-        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
-
-        //         // Gather all nodes with at least one edge.
-        //         let mut edges = Edge::list_for_kind(ctx_with_deleted, EdgeKind::Configuration)
-        //             .await
-        //             .map_err(|e| NodeError::Edge(e.to_string()))?;
-        //         if shuffle_edges {
-        //             edges.shuffle(&mut thread_rng());
-        //         }
-
-        // Populate the nodes map based on all configuration edges. The "key" is every node with at
-        // least one edge. The "value" is a set of nodes that the "key" node depends on (i.e. the
-        // set of nodes are sources/tails in edges and the "key" node is the destination/head in
-        // in edges).
-        let mut nodes: HashMap<NodeId, HashSet<NodeId>> = HashMap::new();
-        for edge in edges {
-            nodes
-                .entry(edge.head_node_id())
-                .or_default()
-                .insert(edge.tail_node_id());
-        }
-
-        // Add all floating nodes (those without edges).
-        for potential_floating_node in
-            Self::list_for_kind(ctx_with_deleted, NodeKind::Configuration).await?
-        {
-            if nodes.get(&potential_floating_node).is_none() {
-                nodes.insert(potential_floating_node, HashSet::new());
-            }
-        }
-
-        debug!(
-            "listing topologically sorted configuration nodes with stable ordering took {:?}",
-            total_start.elapsed()
-        );
-        Ok(nodes)
-    }
-
     /// List all [`Nodes`](Self) of kind [`configuration`](NodeKind::Configuration) in
     /// [`topological`](https://en.wikipedia.org/wiki/Topological_sorting) order. The order will
     /// be also be stable.

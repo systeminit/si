@@ -1,5 +1,5 @@
 <template>
-  <div v-if="fixBatches.length === 0" class="flex flex-col items-center">
+  <div v-if="actionBatches.length === 0" class="flex flex-col items-center">
     <div class="w-52">
       <EmptyStateIcon name="actions" />
     </div>
@@ -18,9 +18,9 @@
     </template> -->
 
     <ApplyHistoryItem
-      v-for="(fixBatch, index) in fixBatches"
+      v-for="(actionBatch, index) in actionBatches"
       :key="index"
-      :fixBatch="fixBatch"
+      :actionBatch="actionBatch"
       :collapse="index !== 0"
     />
   </ScrollArea>
@@ -31,11 +31,13 @@ import * as _ from "lodash-es";
 import { computed } from "vue";
 import { ScrollArea } from "@si/vue-lib/design-system";
 // import SiSearch from "@/components/SiSearch.vue";
-import { useFixesStore } from "@/store/fixes.store";
+import { useActionsStore } from "@/store/actions.store";
 import ApplyHistoryItem from "@/components/ApplyHistoryItem.vue";
 import EmptyStateIcon from "./EmptyStateIcon.vue";
 
-const fixesStore = useFixesStore();
+const actionsStore = useActionsStore();
 
-const fixBatches = computed(() => _.reverse([...fixesStore.fixBatches]));
+const actionBatches = computed(() =>
+  _.reverse([...actionsStore.actionBatches]),
+);
 </script>

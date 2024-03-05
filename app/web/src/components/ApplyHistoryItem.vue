@@ -1,6 +1,6 @@
 <template>
   <TreeNode
-    v-if="fixBatch"
+    v-if="actionBatch"
     :defaultOpen="!props.collapse"
     enableGroupToggle
     labelClasses="border-b border-neutral-200 dark:border-neutral-600"
@@ -8,7 +8,7 @@
     indentationSize="none"
   >
     <template #primaryIcon>
-      <StatusIndicatorIcon type="fix" :status="fixBatch.status" />
+      <StatusIndicatorIcon type="action-runner" :status="actionBatch.status" />
     </template>
     <template #label>
       <div class="flex flex-col">
@@ -16,24 +16,26 @@
           <div class="font-bold flex flex-row items-center">
             <div
               v-if="
-                fixBatch.status === 'success' &&
-                fixBatch.fixes.filter((f) => f.status === 'success').length ===
-                  fixBatch.fixes.length
+                actionBatch.status === 'success' &&
+                actionBatch.actions.filter((f) => f.status === 'success')
+                  .length === actionBatch.actions.length
               "
               class="text-lg whitespace-nowrap"
             >
               All actions applied
             </div>
             <div v-else>
-              {{ fixBatch.fixes.filter((f) => f.status === "success").length }}
-              of {{ fixBatch.fixes.length }} action{{
-                fixBatch.fixes.length > 1 ? "s" : ""
+              {{
+                actionBatch.actions.filter((f) => f.status === "success").length
+              }}
+              of {{ actionBatch.actions.length }} action{{
+                actionBatch.actions.length > 1 ? "s" : ""
               }}
               applied
             </div>
           </div>
           <span
-            v-if="fixBatch.startedAt"
+            v-if="actionBatch.startedAt"
             :class="
               clsx(
                 'text-xs italic',
@@ -47,14 +49,14 @@
               size="normal"
               relative
               showTimeIfToday
-              :date="new Date(fixBatch.startedAt)"
+              :date="new Date(actionBatch.startedAt)"
             />
           </span>
         </div>
 
         <div class="whitespace-nowrap">
           <span class="font-bold">By: </span>
-          <span class="italic">{{ fixBatch.author }}</span>
+          <span class="italic">{{ actionBatch.author }}</span>
           <template v-if="hasCollaborators">
             and
             <span
@@ -70,11 +72,11 @@
       </div>
     </template>
     <template #default>
-      <FixCard
-        v-for="(fix, fix_index) of fixBatch.fixes"
-        :key="fix_index"
-        :fix="fix"
-        :hideTopBorder="fix_index === 0"
+      <ActionRunnerCard
+        v-for="(action, action_index) of actionBatch.actions"
+        :key="action_index"
+        :runner="action"
+        :hideTopBorder="action_index === 0"
       />
     </template>
   </TreeNode>
@@ -90,26 +92,26 @@ import {
   TreeNode,
 } from "@si/vue-lib/design-system";
 import { computed } from "vue";
-import { FixBatch } from "@/store/fixes.store";
+import { ActionBatch } from "@/store/actions.store";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
-import FixCard from "./FixCard.vue";
+import ActionRunnerCard from "./ActionRunnerCard.vue";
 
 const props = defineProps<{
-  fixBatch: FixBatch;
+  actionBatch: ActionBatch;
   collapse: boolean;
 }>();
 
 const timestampTooltip = computed(() => {
-  if (!props.fixBatch.startedAt) return {};
+  if (!props.actionBatch.startedAt) return {};
 
-  const startedStr = dateString(props.fixBatch.startedAt, "long");
+  const startedStr = dateString(props.actionBatch.startedAt, "long");
   const tooltip = {
     content: `<div class="pb-xs"><span class='font-bold'>Started At:</span> ${startedStr}</div>`,
     theme: "html",
   };
 
-  if (props.fixBatch.finishedAt) {
-    const finishedStr = dateString(props.fixBatch.finishedAt, "long");
+  if (props.actionBatch.finishedAt) {
+    const finishedStr = dateString(props.actionBatch.finishedAt, "long");
     tooltip.content += `<div><span class='font-bold'>Finished At:</span> ${finishedStr}</div>`;
   }
 
@@ -117,9 +119,9 @@ const timestampTooltip = computed(() => {
 });
 
 const hasCollaborators = computed(
-  () => props.fixBatch.actors && props.fixBatch.actors.length > 0,
+  () => props.actionBatch.actors && props.actionBatch.actors.length > 0,
 );
-const collaborators = computed(() => props.fixBatch.actors || []);
+const collaborators = computed(() => props.actionBatch.actors || []);
 const collaboratorsTooltip = computed(() => {
   const tooltip = { content: "", theme: "html" };
 

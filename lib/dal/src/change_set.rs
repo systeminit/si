@@ -11,9 +11,9 @@ use ulid::Ulid;
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError};
 use crate::standard_model::{object_option_from_row_option, objects_from_rows};
 use crate::{
-    pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy,
-    Timestamp, TransactionsError, User, UserError, UserPk, Visibility, WsEvent, WsEventError,
-    WsPayload,
+    change_set_pointer::ChangeSetPointerId, pk, ActionError, HistoryActor, HistoryEvent,
+    HistoryEventError, LabelListError, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    User, UserError, UserPk, Visibility, WsEvent, WsEventError, WsPayload,
 };
 use crate::{DalContext, WsEventResult};
 
@@ -31,6 +31,8 @@ const CANCEL_ABANDON_FLOW: &str = include_str!("queries/change_set/cancel_abando
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
+    #[error("action error: {0}")]
+    Action(#[from] ActionError),
     #[error("change set pointer error: {0}")]
     ChangeSetPointer(#[from] ChangeSetPointerError),
     #[error(transparent)]
@@ -74,6 +76,17 @@ pub enum ChangeSetStatus {
 }
 
 pk!(ChangeSetPk);
+
+impl From<ChangeSetPointerId> for ChangeSetPk {
+    fn from(pointer: ChangeSetPointerId) -> Self {
+        Self::from(Ulid::from(pointer))
+    }
+}
+impl From<ChangeSetPk> for ChangeSetPointerId {
+    fn from(pointer: ChangeSetPk) -> Self {
+        Self::from(Ulid::from(pointer))
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct ChangeSet {
@@ -292,12 +305,6 @@ impl ChangeSet {
         Ok(change_set)
     }
 
-    // pub async fn actions(&self, ctx: &DalContext) -> ChangeSetResult<HashMap<ActionId, ActionBag>> {
-    //     let ctx =
-    //         ctx.clone_with_new_visibility(Visibility::new(self.pk, ctx.visibility().deleted_at));
-    //     Ok(Action::order(&ctx).await?)
-    // }
-
     // pub async fn actors(&self, ctx: &DalContext) -> ChangeSetResult<Vec<String>> {
     //     let rows = ctx
     //         .txns()
@@ -319,8 +326,7 @@ impl ChangeSet {
         Ok(if ctx.visibility().is_head() {
             // TODO(nick): eventually unify this logic under one interface.
             let change_set = ChangeSetPointer::fork_head(ctx, Self::generate_name()).await?;
-            ctx.update_visibility_v2(&change_set);
-            ctx.update_snapshot_to_visibility().await?;
+            ctx.update_visibility_v2(&change_set).await?;
 
             // TODO(nick): replace this with the new change set stuff.
             let fake_pk = ChangeSetPk::from(Ulid::from(change_set.id));

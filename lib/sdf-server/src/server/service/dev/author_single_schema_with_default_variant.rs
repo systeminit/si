@@ -1,9 +1,9 @@
 use axum::Json;
-use dal::action_prototype::ActionKind;
 use dal::component::ComponentKind;
 
 use dal::Visibility;
 use dal::{
+    ActionKind,
     ActionPrototype, ActionPrototypeContext, DalContext, ExternalProvider, Func, FuncBackendKind,
     FuncBackendResponseType, FuncBinding, InternalProvider, Schema, SchemaId, SchemaVariant,
     SchemaVariantId, SocketArity, StandardModel,

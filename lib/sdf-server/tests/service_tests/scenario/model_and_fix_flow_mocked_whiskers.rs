@@ -1,7 +1,7 @@
 use axum::Router;
 use dal::{
     qualification::QualificationSubCheckStatus, ActionKind, Component, ExternalProvider,
-    FixCompletionStatus, Func, Schema, SchemaVariant, SocketArity, StandardModel,
+    ActionCompletionStatus, Func, Schema, SchemaVariant, SocketArity, StandardModel,
 };
 use dal_test::{connection_annotation_string, sdf_test, AuthToken, DalContextHead};
 use pretty_assertions_sorted::assert_eq;
@@ -1014,7 +1014,7 @@ async fn model_and_fix_flow_mocked_whiskers(
     let mut fix_batch_history_views = dbg!(harness.list_fixes(ctx.visibility()).await);
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert_eq!(
-        Some(FixCompletionStatus::Success), // expected
+        Some(ActionCompletionStatus::Success), // expected
         fix_batch_history_view.status
     );
 
@@ -1178,7 +1178,7 @@ async fn model_and_fix_flow_mocked_whiskers(
 
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert_eq!(
-        Some(FixCompletionStatus::Success), // expected
+        Some(ActionCompletionStatus::Success), // expected
         fix_batch_history_view.status
     );
 

@@ -10,7 +10,7 @@
             </div>
           </template>
           <Icon
-            v-if="fetchComponentsReq.isPending || fixesAreRunning"
+            v-if="fetchComponentsReq.isPending || actionsAreRunning"
             name="loader"
             size="md"
           />
@@ -120,7 +120,7 @@ import { useQualificationsStore } from "@/store/qualifications.store";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue";
 import EmptyStateIcon from "../EmptyStateIcon.vue";
 
-defineProps<{ fixesAreRunning: boolean }>();
+defineProps<{ actionsAreRunning: boolean }>();
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 const outlineRef = ref<HTMLElement>();

@@ -20,6 +20,7 @@ export interface ChangeSet {
   appliedAt?: IsoDateString;
   mergeRequestedAt?: IsoDateString;
   mergeRequestedByUserId?: UserId;
+  baseChangeSetId: ChangeSetId;
   abandonRequestedAt?: IsoDateString;
   abandonRequestedByUserId?: UserId;
 }

@@ -1,4 +1,4 @@
-use std::{env, sync::Arc};
+use std::env;
 
 use futures::TryStreamExt;
 use si_data_nats::{async_nats::jetstream, HeaderMap, NatsClient, NatsConfig};

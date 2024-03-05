@@ -41,7 +41,7 @@
             </div>
           </div>
           <div class="pr-sm">
-            <FixDetails
+            <ActionRunnerDetails
               v-if="
                 selectedComponentResource.logs &&
                 selectedComponentResource.logs.length > 0
@@ -73,7 +73,7 @@ import { ErrorMessage, Timestamp } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeViewer from "./CodeViewer.vue";
-import FixDetails from "./FixDetails.vue";
+import ActionRunnerDetails from "./ActionRunnerDetails.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 import EmptyStateIcon from "./EmptyStateIcon.vue";
 

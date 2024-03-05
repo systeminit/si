@@ -1,7 +1,7 @@
 use axum::Router;
 use pretty_assertions_sorted::assert_eq;
 
-use dal::FixCompletionStatus;
+use dal::ActionCompletionStatus;
 use dal_test::{sdf_test, AuthToken, DalContextHead};
 
 use crate::service_tests::scenario::ScenarioHarness;
@@ -134,7 +134,7 @@ async fn model_and_fix_flow_aws_key_pair(
     let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
     assert!(fix_batch_history_views.is_empty());
     assert_eq!(
-        Some(FixCompletionStatus::Success), // expected
+        Some(ActionCompletionStatus::Success), // expected
         fix_batch_history_view.status
     );
 }

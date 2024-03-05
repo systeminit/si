@@ -22,10 +22,11 @@ pub type EdgeWeightResult<T> = Result<T, EdgeWeightError>;
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
 #[strum_discriminants(derive(Serialize, Deserialize))]
 pub enum EdgeWeightKind {
+    Action,
     /// A function used by a [`SchemaVariant`] to perform an action that affects its resource
     ActionPrototype(ActionKind),
     /// A function defined for a secret defining [`SchemaVariant`] to be executed before funcs on
-    /// components that have a secret of that kind  
+    /// components that have a secret of that kind
     AuthenticationPrototype,
     /// An [`AttributeValue`] "contained" by another [`AttributeValue`], such as an entry in an
     /// array/map, or a field of an object. The optional [`String`] represents the key of the entry

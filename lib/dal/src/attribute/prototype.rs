@@ -350,8 +350,9 @@ impl AttributePrototype {
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<()> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        let change_set = ctx.change_set_pointer()?;
 
-        workspace_snapshot.remove_node_by_id(prototype_id)?;
+        workspace_snapshot.remove_node_by_id(change_set, prototype_id)?;
 
         Ok(())
     }
