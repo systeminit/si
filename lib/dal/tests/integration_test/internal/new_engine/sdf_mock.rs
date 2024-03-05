@@ -21,27 +21,10 @@ async fn list_schema_variant_views(ctx: &DalContext) {
                 continue;
             }
 
-            let mut input_sockets = Vec::new();
-            let mut output_sockets = Vec::new();
-
-            let (external_providers, explicit_internal_providers) =
+            let (output_sockets, input_sockets) =
                 SchemaVariant::list_all_sockets(ctx, schema_variant.id())
                     .await
-                    .expect("could not list external providers and explicit internal providers");
-
-            for explicit_internal_provider in explicit_internal_providers {
-                input_sockets.push(InputSocketView {
-                    id: explicit_internal_provider.id(),
-                    name: explicit_internal_provider.name().to_owned(),
-                })
-            }
-
-            for external_provider in external_providers {
-                output_sockets.push(OutputSocketView {
-                    id: external_provider.id(),
-                    name: external_provider.name().to_owned(),
-                })
-            }
+                    .expect("could not list all sockets");
 
             schema_variant_views.push(SchemaVariantView {
                 id: schema_variant.id(),
@@ -57,8 +40,20 @@ async fn list_schema_variant_views(ctx: &DalContext) {
                     .expect("could not get color")
                     .unwrap_or("#0F0F0F".into()),
                 category: schema_variant.category().to_owned(),
-                input_sockets,
-                output_sockets,
+                input_sockets: input_sockets
+                    .iter()
+                    .map(|s| InputSocketView {
+                        id: s.id(),
+                        name: s.name().to_owned(),
+                    })
+                    .collect(),
+                output_sockets: output_sockets
+                    .iter()
+                    .map(|s| OutputSocketView {
+                        id: s.id(),
+                        name: s.name().to_owned(),
+                    })
+                    .collect(),
             });
         }
     }

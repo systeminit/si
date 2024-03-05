@@ -1,8 +1,11 @@
+use dal::func::intrinsics::IntrinsicFunc;
+use dal::schema::variant::root_prop::RootProp;
 use dal::{
     func::{binding::FuncBinding, FuncId},
     key_pair::KeyPairPk,
-    ChangeSet, ChangeSetPk, DalContext, EncryptedSecret, FuncBackendKind, KeyPair, Secret, User,
-    UserPk, Visibility,
+    ChangeSet, ChangeSetPk, Component, ComponentKind, DalContext, EncryptedSecret, Func,
+    FuncBackendKind, InputSocket, KeyPair, OutputSocket, Schema, SchemaId, SchemaVariant,
+    SchemaVariantId, Secret, SocketArity, SocketKind, User, UserPk, Visibility,
 };
 use names::{Generator, Name};
 
@@ -52,54 +55,55 @@ pub async fn create_user(ctx: &DalContext) -> User {
     .expect("cannot create user")
 }
 
-// pub async fn create_schema(ctx: &DalContext) -> Schema {
-//     let name = generate_fake_name();
-//     Schema::new(ctx, &name, &ComponentKind::Standard)
-//         .await
-//         .expect("cannot create schema")
-// }
+pub async fn create_schema(ctx: &DalContext) -> Schema {
+    let name = generate_fake_name();
+    Schema::new(ctx, &name, ComponentKind::Standard)
+        .await
+        .expect("cannot create schema")
+}
 
-// pub async fn create_schema_variant(ctx: &DalContext, schema_id: SchemaId) -> schema::SchemaVariant {
-//     create_schema_variant_with_root(ctx, schema_id).await.0
-// }
+pub async fn create_schema_variant(ctx: &DalContext, schema_id: SchemaId) -> SchemaVariant {
+    create_schema_variant_with_root(ctx, schema_id).await.0
+}
 
-// pub async fn create_schema_variant_with_root(
-//     ctx: &DalContext,
-//     schema_id: SchemaId,
-// ) -> (schema::SchemaVariant, schema::RootProp) {
-//     let name = generate_fake_name();
-//     let (variant, root) = schema::SchemaVariant::new(ctx, schema_id, name)
-//         .await
-//         .expect("cannot create schema variant");
-//
-//     let _input_socket = Socket::new(
-//         ctx,
-//         "input",
-//         connection_annotation_string!("input"),
-//         SocketKind::Standalone,
-//         &SocketEdgeKind::ConfigurationInput,
-//         &SocketArity::Many,
-//         &DiagramKind::Configuration,
-//         Some(*variant.id()),
-//     )
-//     .await
-//     .expect("Unable to create socket");
-//
-//     let _output_socket = Socket::new(
-//         ctx,
-//         "output",
-//         connection_annotation_string!("output"),
-//         SocketKind::Standalone,
-//         &SocketEdgeKind::ConfigurationOutput,
-//         &SocketArity::Many,
-//         &DiagramKind::Configuration,
-//         Some(*variant.id()),
-//     )
-//     .await
-//     .expect("Unable to create socket");
-//
-//     (variant, root)
-// }
+pub async fn create_schema_variant_with_root(
+    ctx: &DalContext,
+    schema_id: SchemaId,
+) -> (SchemaVariant, RootProp) {
+    let name = generate_fake_name();
+    let (variant, root) = SchemaVariant::new(ctx, schema_id, &name, &name)
+        .await
+        .expect("cannot create schema variant");
+
+    let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity)
+        .await
+        .expect("could not find identity func");
+
+    InputSocket::new(
+        ctx,
+        variant.id(),
+        "input",
+        identity_func_id,
+        SocketArity::Many,
+        SocketKind::Standard,
+    )
+    .await
+    .expect("unable to create socket");
+
+    OutputSocket::new(
+        ctx,
+        variant.id(),
+        "input",
+        None,
+        identity_func_id,
+        SocketArity::Many,
+        SocketKind::Standard,
+    )
+    .await
+    .expect("unable to create socket");
+
+    (variant, root)
+}
 
 // pub async fn create_prop_without_ui_optionals(
 //     ctx: &DalContext,
@@ -127,16 +131,15 @@ pub async fn create_user(ctx: &DalContext) -> User {
 //     component
 // }
 
-// pub async fn create_component_for_schema_variant(
-//     ctx: &DalContext,
-//     schema_variant_id: &SchemaVariantId,
-// ) -> Component {
-//     let name = generate_fake_name();
-//     let (component, _) = Component::new(ctx, &name, *schema_variant_id)
-//         .await
-//         .expect("cannot create component");
-//     component
-// }
+pub async fn create_component_for_schema_variant(
+    ctx: &DalContext,
+    schema_variant_id: SchemaVariantId,
+) -> Component {
+    let name = generate_fake_name();
+    Component::new(ctx, &name, schema_variant_id, None)
+        .await
+        .expect("cannot create component")
+}
 
 // pub async fn create_component_for_schema(ctx: &DalContext, schema_id: &SchemaId) -> Component {
 //     let name = generate_fake_name();

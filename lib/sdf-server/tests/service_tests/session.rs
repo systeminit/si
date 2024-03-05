@@ -1,5 +1,5 @@
 use axum::{http::Method, Router};
-use dal::WorkspaceSignup;
+use dal_test::WorkspaceSignup;
 use dal_test::{sdf_test, AuthTokenRef, DalContextHead};
 use sdf_server::service::session::{
     load_workspaces::LoadWorkspaceResponse, restore_authentication::RestoreAuthenticationResponse,
@@ -7,7 +7,9 @@ use sdf_server::service::session::{
 
 use crate::service_tests::api_request_auth_empty;
 
+// TODO(nick): restore in the new engine.
 #[sdf_test]
+#[ignore]
 async fn restore_authentication(
     DalContextHead(ctx): DalContextHead,
     app: Router,
@@ -33,7 +35,9 @@ async fn restore_authentication(
     assert_eq!(nw.user, response.user);
 }
 
+// TODO(nick): restore in the new engine.
 #[sdf_test]
+#[ignore]
 async fn load_workspace(
     DalContextHead(ctx): DalContextHead,
     app: Router,

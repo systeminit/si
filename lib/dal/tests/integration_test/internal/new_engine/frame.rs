@@ -458,24 +458,24 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
     // Scenario 8: draw an edge between the first ami and the first ec2 using the "Image ID" sockets. Both should exist
     // within the first region frame.
     let image_id_socket_name = "Image ID";
-    let image_id_ami_external_provider_id =
+    let image_id_ami_output_socket_id =
         OutputSocket::find_with_name(ctx, image_id_socket_name, ami_schema_variant_id)
             .await
-            .expect("could not perform find by name")
-            .expect("no external provider found")
+            .expect("could not perform output socket find by name")
+            .expect("no output socket found")
             .id();
-    let image_id_ec2_instance_internal_provider_id =
+    let image_id_ec2_instance_input_socket_id =
         InputSocket::find_with_name(ctx, image_id_socket_name, ec2_schema_variant_id)
             .await
-            .expect("could not perform find by name")
-            .expect("no internal provider found")
+            .expect("could not perform input socket find by name")
+            .expect("no input socket found")
             .id();
     let image_id_ami_to_ec2_instance_attribute_prototype_argument_id = Component::connect(
         ctx,
         first_ami_component.id(),
-        image_id_ami_external_provider_id,
+        image_id_ami_output_socket_id,
         first_ec2_instance_component.id(),
-        image_id_ec2_instance_internal_provider_id,
+        image_id_ec2_instance_input_socket_id,
     )
     .await
     .expect("could not perform connection");
@@ -566,7 +566,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             image_id_ami_to_ec2_instance_edge_assembled.from_node_id  // actual
         );
         assert_eq!(
-            image_id_ami_external_provider_id, // expected
+            image_id_ami_output_socket_id,                              // expected
             image_id_ami_to_ec2_instance_edge_assembled.from_socket_id  // actual
         );
         assert_eq!(
@@ -574,7 +574,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             image_id_ami_to_ec2_instance_edge_assembled.to_node_id  // actual
         );
         assert_eq!(
-            image_id_ec2_instance_internal_provider_id, // expected
+            image_id_ec2_instance_input_socket_id, // expected
             image_id_ami_to_ec2_instance_edge_assembled.to_socket_id  // actual
         );
     }
@@ -681,7 +681,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             image_id_ami_to_ec2_instance_edge_assembled.from_node_id  // actual
         );
         assert_eq!(
-            image_id_ami_external_provider_id, // expected
+            image_id_ami_output_socket_id,                              // expected
             image_id_ami_to_ec2_instance_edge_assembled.from_socket_id  // actual
         );
         assert_eq!(
@@ -689,7 +689,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             image_id_ami_to_ec2_instance_edge_assembled.to_node_id  // actual
         );
         assert_eq!(
-            image_id_ec2_instance_internal_provider_id, // expected
+            image_id_ec2_instance_input_socket_id, // expected
             image_id_ami_to_ec2_instance_edge_assembled.to_socket_id  // actual
         );
     }
@@ -697,24 +697,24 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
     // Scenario 10: draw an edge (do not drag the component or place it onto a frame) between the "Region" socket of the
     // second region frame and the "Region" socket of the third ami.
     let region_socket_name = "Region";
-    let region_region_external_provider_id =
+    let region_region_output_socket_id =
         OutputSocket::find_with_name(ctx, region_socket_name, region_schema_variant_id)
             .await
-            .expect("could not perform find by name")
-            .expect("no external provider found")
+            .expect("could not perform output socket find by name")
+            .expect("no output socket found")
             .id();
-    let region_ami_internal_provider_id =
+    let region_ami_input_socket_id =
         InputSocket::find_with_name(ctx, region_socket_name, ami_schema_variant_id)
             .await
-            .expect("could not perform find by name")
-            .expect("no internal provider found")
+            .expect("could not perform input socket find by name")
+            .expect("no input socket found")
             .id();
     let region_region_to_ami_attribute_prototype_argument_id = Component::connect(
         ctx,
         second_region_frame.id(),
-        region_region_external_provider_id,
+        region_region_output_socket_id,
         third_ami_component.id(),
-        region_ami_internal_provider_id,
+        region_ami_input_socket_id,
     )
     .await
     .expect("could not perform connection");
@@ -814,7 +814,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             image_id_ami_to_ec2_instance_edge_assembled.from_node_id  // actual
         );
         assert_eq!(
-            image_id_ami_external_provider_id, // expected
+            image_id_ami_output_socket_id,                              // expected
             image_id_ami_to_ec2_instance_edge_assembled.from_socket_id  // actual
         );
         assert_eq!(
@@ -822,7 +822,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             image_id_ami_to_ec2_instance_edge_assembled.to_node_id  // actual
         );
         assert_eq!(
-            image_id_ec2_instance_internal_provider_id, // expected
+            image_id_ec2_instance_input_socket_id, // expected
             image_id_ami_to_ec2_instance_edge_assembled.to_socket_id  // actual
         );
 
@@ -835,7 +835,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             region_region_to_ami_edge_assembled.from_node_id  // actual
         );
         assert_eq!(
-            region_region_external_provider_id,                 // expected
+            region_region_output_socket_id,                     // expected
             region_region_to_ami_edge_assembled.from_socket_id  // actual
         );
         assert_eq!(
@@ -843,7 +843,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             region_region_to_ami_edge_assembled.to_node_id  // actual
         );
         assert_eq!(
-            region_ami_internal_provider_id,                  // expected
+            region_ami_input_socket_id,                       // expected
             region_region_to_ami_edge_assembled.to_socket_id  // actual
         );
     }

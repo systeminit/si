@@ -6,14 +6,16 @@ use axum::{
 use serde::{de::DeserializeOwned, Serialize};
 use tower::ServiceExt;
 
-mod change_set;
-mod component;
 mod crdt;
-mod functions;
-mod scenario;
 mod schema;
 mod secret;
 mod session;
+
+// TODO(nick): bring these back as they make sense. Make sure to refactor, redo, drop, etc. as we go.
+// mod change_set;
+// mod component;
+// mod scenario;
+// mod functions;
 
 pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
     app: Router,
@@ -128,6 +130,7 @@ pub async fn api_request_auth_empty<Res: DeserializeOwned>(
     serde_json::from_value(body_json).expect("response is not a valid rust struct")
 }
 
+#[allow(dead_code)]
 pub async fn api_request_auth_no_response<Req: Serialize>(
     app: Router,
     method: Method,

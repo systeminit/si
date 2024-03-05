@@ -107,10 +107,6 @@ impl AttributePrototype {
         self.id
     }
 
-    // NOTE(nick): all incoming edges to an attribute prototype must come from one of two places:
-    //   - an attribute value whose lineage comes from a component
-    //   - a prop or provider whose lineage comes from a schema variant
-    // Outgoing edges from an attribute prototype are used for intra and inter component relationships.
     pub async fn new(ctx: &DalContext, func_id: FuncId) -> AttributePrototypeResult<Self> {
         let timestamp = Timestamp::now();
 
@@ -260,7 +256,7 @@ impl AttributePrototype {
         }
 
         // Remaining edges
-        // prototype <-- Prototype -- (Prop | Provider) <-- Prop|Provider -- Attribute Values
+        // prototype <-- Prototype -- (Prop | Socket) <-- Prop|Socket -- Attribute Values
         // (multiple avs possible)
 
         let mut attribute_value_ids = vec![];
@@ -301,8 +297,6 @@ impl AttributePrototype {
             for attribute_value_target in workspace_snapshot
                 .incoming_sources_for_edge_weight_kind(target_id, edge_weight_discrim)?
             {
-                // There are also provider edges from the schema variant to the provider.
-                // These should be different edge kinds, I think
                 if let NodeWeight::AttributeValue(av_node_weight) =
                     workspace_snapshot.get_node_weight(attribute_value_target)?
                 {

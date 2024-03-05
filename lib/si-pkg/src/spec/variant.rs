@@ -234,7 +234,7 @@ impl SchemaVariantSpec {
     /// equivalent prop in other. If an equivalent prop in other is found, the
     /// attribute functions for that prop are copied over to self. Then, all
     /// other functions are copied over, if they have matching props (or
-    /// providers) in self.
+    /// sockets) in self.
     pub fn merge_prototypes_from(&self, other_spec: &Self) -> (Self, Vec<MergeSkip>) {
         let mut schema_variant_builder = SchemaVariantSpec::builder();
         schema_variant_builder.name(&self.name);

@@ -271,8 +271,6 @@ impl SchemaVariant {
             apa.set_value_from_prop_id(ctx, input_prop_id).await?;
         }
 
-        // Return the prop id for the entire map so that its implicit internal provider can be
-        // used for intelligence functions.
         Ok((map_prop_id, attribute_prototype_id))
     }
 }

@@ -1,7 +1,7 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::attribute::prototype::argument::AttributePrototypeArgumentId;
-use dal::{Component, ComponentId, InputSocketId, OutputSocketId, User, Visibility};
+use dal::{ChangeSet, Component, ComponentId, InputSocketId, OutputSocketId, User, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -33,24 +33,9 @@ pub async fn create_connection(
     OriginalUri(_original_uri): OriginalUri,
     Json(request): Json<CreateConnectionRequest>,
 ) -> DiagramResult<impl IntoResponse> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    // TODO(nick): restore this with the new engine.
-    // let mut force_changeset_pk = None;
-    // if ctx.visibility().is_head() {
-    //     let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
-    //
-    //     let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
-    //
-    //     ctx.update_visibility(new_visibility);
-    //
-    //     force_changeset_pk = Some(change_set.pk);
-    //
-    //     WsEvent::change_set_created(&ctx, change_set.pk)
-    //         .await?
-    //         .publish_on_commit(&ctx)
-    //         .await?;
-    // };
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     let attribute_prototype_argument_id = Component::connect(
         &ctx,
@@ -61,34 +46,7 @@ pub async fn create_connection(
     )
     .await?;
 
-    // TODO(nick): restore dependent values update.
-    // let to_attribute_value_context = AttributeReadContext {
-    //     internal_provider_id: Some(*to_socket_internal_provider.id()),
-    //     component_id: Some(*to_component.id()),
-    //     ..Default::default()
-    // };
-    // let mut to_attribute_value = AttributeValue::find_for_context(&ctx, to_attribute_value_context)
-    //     .await?
-    //     .ok_or(DiagramError::AttributeValueNotFoundForContext(
-    //         to_attribute_value_context,
-    //     ))?;
-    //
-    // to_attribute_value
-    //     .update_from_prototype_function(&ctx)
-    //     .await?;
-    //
-    // ctx.enqueue_job(DependentValuesUpdate::new(
-    //     ctx.access_builder(),
-    //     *ctx.visibility(),
-    //     vec![*to_attribute_value.id()],
-    // ))
-    // .await?;
-    //
-    // WsEvent::change_set_written(&ctx)
-    //     .await?
-    //     .publish_on_commit(&ctx)
-    //     .await?;
-    //
+    // TODO(nick): restore posthog, but with new, relevant fields.
     // track(
     //     &posthog_client,
     //     &ctx,
@@ -108,11 +66,10 @@ pub async fn create_connection(
 
     ctx.commit().await?;
 
-    let response = axum::response::Response::builder();
-    // TODO(nick): restore this with the new engine.
-    // if let Some(force_changeset_pk) = force_changeset_pk {
-    //     response = response.header("force_changeset_pk", force_changeset_pk.to_string());
-    // }
+    let mut response = axum::response::Response::builder();
+    if let Some(force_changeset_pk) = force_changeset_pk {
+        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
+    }
     Ok(response
         .header("content-type", "application/json")
         .body(serde_json::to_string(&CreateConnectionResponse {

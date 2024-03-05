@@ -118,7 +118,7 @@ async fn secret_definition_works_with_dummy_qualification(
         let mut output_socket_attribute_value_ids =
             OutputSocket::attribute_values_for_output_socket_id(ctx, output_socket.id())
                 .await
-                .expect("could not perform attribute values for external provider id");
+                .expect("could not perform attribute values for output socket id");
         let output_socket_attribute_value_id = output_socket_attribute_value_ids
             .pop()
             .expect("no output attribute value found");
@@ -201,7 +201,7 @@ async fn secret_definition_works_with_dummy_qualification(
         let mut output_socket_attribute_value_ids =
             OutputSocket::attribute_values_for_output_socket_id(ctx, output_socket.id())
                 .await
-                .expect("could not perform attribute values for external provider id");
+                .expect("could not perform attribute values for output socket id");
         let output_socket_attribute_value_id = output_socket_attribute_value_ids
             .pop()
             .expect("no output attribute value found");

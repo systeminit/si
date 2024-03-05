@@ -51,12 +51,8 @@ pub enum FuncError {
     //     AttributePrototypeMissing,
     //     #[error("attribute prototype {0} is missing argument {1}")]
     //     AttributePrototypeMissingArgument(AttributePrototypeId, AttributePrototypeArgumentId),
-    //     #[error("attribute prototype argument {0} is internal provider id")]
-    //     AttributePrototypeMissingInternalProviderId(AttributePrototypeArgumentId),
     //     #[error("attribute prototype {0} is missing its prop {1}")]
     //     AttributePrototypeMissingProp(AttributePrototypeId, PropId),
-    //     #[error("attribute prototype {0} has no PropId or ExternalProviderId")]
-    //     AttributePrototypeMissingPropIdOrExternalProviderId(AttributePrototypeId),
     //     #[error("attribute prototype {0} schema is missing")]
     //     AttributePrototypeMissingSchema(AttributePrototypeId),
     //     #[error("attribute prototype {0} schema_variant is missing")]
@@ -77,8 +73,6 @@ pub enum FuncError {
     ContextTransaction(#[from] TransactionsError),
     //     #[error("editing reconciliation functions is not implemented")]
     //     EditingReconciliationFuncsNotImplemented,
-    //     #[error(transparent)]
-    //     ExternalProvider(#[from] ExternalProviderError),
     #[error(transparent)]
     Func(#[from] dal::func::FuncError),
     //     #[error("func argument not found")]
@@ -122,8 +116,6 @@ pub enum FuncError {
     //     FuncOptionsAndVariantMismatch,
     #[error("Hyper error: {0}")]
     Hyper(#[from] hyper::http::Error),
-    //     #[error("internal provider error: {0}")]
-    //     InternalProvider(#[from] InternalProviderError),
     //     #[error("failed to join async task; bug!")]
     //     Join(#[from] JoinError),
     //     #[error("Missing required options for creating a function")]
@@ -240,41 +232,9 @@ impl TryFrom<&Func> for FuncVariant {
     }
 }
 
-// #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct AttributePrototypeArgumentView {
-//     func_argument_id: FuncArgumentId,
-//     func_argument_name: Option<String>,
-//     id: Option<AttributePrototypeArgumentId>,
-//     internal_provider_id: Option<InternalProviderId>,
-// }
-//
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AttributePrototypeView {}
-//     id: AttributePrototypeId,
-//     component_id: Option<ComponentId>,
-//     prop_id: Option<PropId>,
-//     external_provider_id: Option<ExternalProviderId>,
-//     prototype_arguments: Vec<AttributePrototypeArgumentView>,
-// }
-
-// impl AttributePrototypeView {
-//     pub fn to_attribute_context(&self) -> FuncResult<AttributeContext> {
-//         let mut builder = AttributeContextBuilder::new();
-//         if let Some(component_id) = self.component_id {
-//             builder.set_component_id(component_id);
-//         }
-//         if let Some(prop_id) = self.prop_id {
-//             builder.set_prop_id(prop_id);
-//         }
-//         if let Some(external_provider_id) = self.external_provider_id {
-//             builder.set_external_provider_id(external_provider_id);
-//         }
-
-//         Ok(builder.to_context()?)
-//     }
-// }
 
 // #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 // #[serde(rename_all = "camelCase")]
@@ -343,58 +303,6 @@ pub struct FuncArgumentView {
 //     let head_func = Func::get_by_id(&ctx, func.id()).await?;
 
 //     Ok(head_func.is_some() && is_in_change_set)
-// }
-
-// async fn prototype_view_for_attribute_prototype(
-//     ctx: &DalContext,
-//     func_id: FuncId,
-//     proto: &AttributePrototype,
-// ) -> FuncResult<AttributePrototypeView> {
-//     let prop_id = if proto.context.prop_id().is_some() {
-//         Some(proto.context.prop_id())
-//     } else {
-//         None
-//     };
-
-//     let external_provider_id = if proto.context.external_provider_id().is_some() {
-//         Some(proto.context.external_provider_id())
-//     } else {
-//         None
-//     };
-
-//     if prop_id.is_none() && external_provider_id.is_none() {
-//         return Err(FuncError::AttributePrototypeMissingPropIdOrExternalProviderId(*proto.id()));
-//     }
-
-//     let component_id = if proto.context.component_id().is_some() {
-//         Some(proto.context.component_id())
-//     } else {
-//         None
-//     };
-
-//     let prototype_arguments =
-//         FuncArgument::list_for_func_with_prototype_arguments(ctx, func_id, *proto.id())
-//             .await?
-//             .iter()
-//             .map(
-//                 |(func_arg, maybe_proto_arg)| AttributePrototypeArgumentView {
-//                     func_argument_id: *func_arg.id(),
-//                     func_argument_name: Some(func_arg.name().to_owned()),
-//                     id: maybe_proto_arg.as_ref().map(|proto_arg| *proto_arg.id()),
-//                     internal_provider_id: maybe_proto_arg
-//                         .as_ref()
-//                         .map(|proto_arg| proto_arg.internal_provider_id()),
-//                 },
-//             )
-//             .collect();
-
-//     Ok(AttributePrototypeView {
-//         id: *proto.id(),
-//         prop_id,
-//         component_id,
-//         external_provider_id,
-//         prototype_arguments,
-//     })
 // }
 
 // async fn action_prototypes_into_schema_variants_and_components(
@@ -602,334 +510,6 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
     })
 }
 
-// pub fn compile_return_types(ty: FuncBackendResponseType, kind: FuncBackendKind) -> &'static str {
-//     if matches!(kind, FuncBackendKind::JsAttribute)
-//         && !matches!(
-//             ty,
-//             FuncBackendResponseType::CodeGeneration | FuncBackendResponseType::Qualification
-//         )
-//     {
-//         return ""; // attribute functions have their output compiled dynamically
-//     }
-
-//     match ty {
-//         FuncBackendResponseType::Boolean => "type Output = boolean | null;",
-//         FuncBackendResponseType::String => "type Output = string | null;",
-//         FuncBackendResponseType::Integer => "type Output = number | null;",
-//         FuncBackendResponseType::Qualification => {
-//             "type Output {
-//    result: 'success' | 'warning' | 'failure';
-//    message?: string | null;
-//  }"
-//         }
-//         FuncBackendResponseType::CodeGeneration => {
-//             "type Output {
-//    format: string;
-//    code: string;
-//  }"
-//         }
-//         FuncBackendResponseType::Validation => {
-//             "type Output {
-//    valid: boolean;
-//    message: string;
-//  }"
-//         }
-//         FuncBackendResponseType::Reconciliation => {
-//             "type Output {
-//    updates: { [key: string]: unknown };
-//    actions: string[];
-//    message: string | null;
-//  }"
-//         }
-//         FuncBackendResponseType::Action => {
-//             "type Output {
-//      status: 'ok' | 'warning' | 'error';
-//      payload?: { [key: string]: unknown } | null;
-//      message?: string | null;
-//  }"
-//         }
-//         FuncBackendResponseType::Json => "type Output = any;",
-//         // Note: there is no ts function returning those
-//         FuncBackendResponseType::Identity => "interface Output extends Input {}",
-//         FuncBackendResponseType::Array => "type Output = any[];",
-//         FuncBackendResponseType::Map => "type Output = Record<string, any>;",
-//         FuncBackendResponseType::Object => "type Output = any;",
-//         FuncBackendResponseType::Unset => "type Output = undefined | null;",
-//         FuncBackendResponseType::Void => "type Output = void;",
-//         FuncBackendResponseType::SchemaVariantDefinition => concat!(
-//             include_str!("./ts_types/asset_builder.d.ts"),
-//             "\n",
-//             "type Output = any;"
-//         ),
-//     }
-// }
-
-// pub fn compile_return_types_2(ty: FuncBackendResponseType, kind: FuncBackendKind) -> &'static str {
-//     if matches!(kind, FuncBackendKind::JsAttribute)
-//         && !matches!(
-//             ty,
-//             FuncBackendResponseType::CodeGeneration | FuncBackendResponseType::Qualification
-//         )
-//     {
-//         return ""; // attribute functions have their output compiled dynamically
-//     }
-
-//     match ty {
-//         FuncBackendResponseType::Boolean => "type Output = boolean | null;",
-//         FuncBackendResponseType::String => "type Output = string | null;",
-//         FuncBackendResponseType::Integer => "type Output = number | null;",
-//         FuncBackendResponseType::Qualification => {
-//             "type Output {
-//    result: 'success' | 'warning' | 'failure';
-//    message?: string | null;
-//  }"
-//         }
-//         FuncBackendResponseType::CodeGeneration => {
-//             "type Output {
-//    format: string;
-//    code: string;
-//  }"
-//         }
-//         FuncBackendResponseType::Validation => {
-//             "type Output {
-//    valid: boolean;
-//    message: string;
-//  }"
-//         }
-//         FuncBackendResponseType::Reconciliation => {
-//             "type Output {
-//    updates: { [key: string]: unknown };
-//    actions: string[];
-//    message: string | null;
-//  }"
-//         }
-//         FuncBackendResponseType::Action => {
-//             "type Output {
-//      status: 'ok' | 'warning' | 'error';
-//      payload?: { [key: string]: unknown } | null;
-//      message?: string | null;
-//  }"
-//         }
-//         FuncBackendResponseType::Json => "type Output = any;",
-//         // Note: there is no ts function returning those
-//         FuncBackendResponseType::Identity => "interface Output extends Input {}",
-//         FuncBackendResponseType::Array => "type Output = any[];",
-//         FuncBackendResponseType::Map => "type Output = Record<string, any>;",
-//         FuncBackendResponseType::Object => "type Output = any;",
-//         FuncBackendResponseType::Unset => "type Output = undefined | null;",
-//         FuncBackendResponseType::Void => "type Output = void;",
-//         FuncBackendResponseType::SchemaVariantDefinition => concat!(
-//             include_str!("./ts_types/asset_types_with_secrets.d.ts"),
-//             "\n",
-//             "type Output = any;"
-//         ),
-//     }
-// }
-
-// async fn compile_validation_types(
-//     ctx: &DalContext,
-//     prototypes: &[ValidationPrototype],
-// ) -> FuncResult<String> {
-//     let mut input_fields = Vec::new();
-//     for prototype in prototypes {
-//         let prop = Prop::get_by_id(ctx, &prototype.context().prop_id())
-//             .await?
-//             .ok_or(PropError::NotFound(
-//                 prototype.context().prop_id(),
-//                 *ctx.visibility(),
-//             ))?;
-//         let ts_type = prop.ts_type(ctx).await?;
-//         input_fields.push(ts_type);
-//     }
-//     if input_fields.is_empty() {
-//         Ok("type Input = never;".to_owned())
-//     } else {
-//         let variants = input_fields.join(" | ");
-//         let types = format!("type Input = {variants};");
-//         Ok(types)
-//     }
-// }
-
-// async fn get_per_variant_types_for_prop_path(
-//     ctx: &DalContext,
-//     variant_ids: &[SchemaVariantId],
-//     path: &[&str],
-// ) -> FuncResult<String> {
-//     let mut per_variant_types = vec![];
-
-//     for variant_id in variant_ids {
-//         let prop = SchemaVariant::find_prop_in_tree(ctx, *variant_id, path).await?;
-//         let ts_type = prop.ts_type(ctx).await?;
-
-//         if !per_variant_types.contains(&ts_type) {
-//             per_variant_types.push(ts_type);
-//         }
-//     }
-
-//     Ok(per_variant_types.join(" | "))
-// }
-
-// async fn compile_leaf_function_input_types(
-//     ctx: &DalContext,
-//     schema_variant_ids: &[SchemaVariantId],
-//     inputs: &[LeafInputLocation],
-// ) -> FuncResult<String> {
-//     let mut ts_type = "type Input = {\n".to_string();
-
-//     for input_location in inputs {
-//         let input_property = format!(
-//             "{}?: {} | null;\n",
-//             input_location.arg_name(),
-//             get_per_variant_types_for_prop_path(
-//                 ctx,
-//                 schema_variant_ids,
-//                 &input_location.prop_path(),
-//             )
-//             .await?
-//         );
-//         ts_type.push_str(&input_property);
-//     }
-//     ts_type.push_str("};");
-
-//     Ok(ts_type)
-// }
-
-// async fn compile_attribute_function_types(
-//     ctx: &DalContext,
-//     prototype_views: &[AttributePrototypeView],
-// ) -> FuncResult<String> {
-//     let mut input_ts_types = "type Input = {\n".to_string();
-
-//     let mut output_ts_types = vec![];
-//     let mut argument_types = HashMap::new();
-//     for prototype_view in prototype_views {
-//         for arg in &prototype_view.prototype_arguments {
-//             if let Some(ip_id) = arg.internal_provider_id {
-//                 let ip = InternalProvider::get_by_id(ctx, &ip_id)
-//                     .await?
-//                     .ok_or(InternalProviderError::NotFound(ip_id))?;
-
-//                 let ts_type = if ip.prop_id().is_none() {
-//                     "object".to_string()
-//                 } else {
-//                     Prop::get_by_id(ctx, ip.prop_id())
-//                         .await?
-//                         .ok_or(PropError::NotFound(
-//                             *ip.prop_id(),
-//                             ctx.visibility().to_owned(),
-//                         ))?
-//                         .ts_type(ctx)
-//                         .await?
-//                 };
-
-//                 if !argument_types.contains_key(&arg.func_argument_name) {
-//                     argument_types.insert(arg.func_argument_name.clone(), vec![ts_type]);
-//                 } else if let Some(ts_types_for_arg) =
-//                     argument_types.get_mut(&arg.func_argument_name)
-//                 {
-//                     if !ts_types_for_arg.contains(&ts_type) {
-//                         ts_types_for_arg.push(ts_type)
-//                     }
-//                 }
-//             }
-
-//             let output_type = if let Some(output_prop_id) = prototype_view.prop_id {
-//                 Prop::get_by_id(ctx, &output_prop_id)
-//                     .await?
-//                     .ok_or(PropError::NotFound(
-//                         output_prop_id,
-//                         ctx.visibility().to_owned(),
-//                     ))?
-//                     .ts_type(ctx)
-//                     .await?
-//             } else {
-//                 "any".to_string()
-//             };
-
-//             if !output_ts_types.contains(&output_type) {
-//                 output_ts_types.push(output_type);
-//             }
-//         }
-//     }
-//     for (arg_name, ts_types) in argument_types.iter() {
-//         input_ts_types.push_str(
-//             format!(
-//                 "{}?: {} | null;\n",
-//                 arg_name.as_ref().unwrap_or(&"".to_string()).to_owned(),
-//                 ts_types.join(" | ")
-//             )
-//             .as_str(),
-//         );
-//     }
-//     input_ts_types.push_str("};");
-
-//     let output_ts = format!("type Output = {};", output_ts_types.join(" | "));
-
-//     Ok(format!("{}\n{}", input_ts_types, output_ts))
-// }
-
-// // Note: ComponentKind::Credential is unused and the implementation is broken, so let's ignore it for now
-// async fn compile_action_types(
-//     ctx: &DalContext,
-//     variant_ids: &[SchemaVariantId],
-// ) -> FuncResult<String> {
-//     let mut ts_types = vec![];
-//     for variant_id in variant_ids {
-//         let prop = SchemaVariant::find_prop_in_tree(ctx, *variant_id, &["root"]).await?;
-//         ts_types.push(prop.ts_type(ctx).await?);
-//     }
-
-//     Ok(format!(
-//         "type Input {{
-//      kind: 'standard';
-//      properties: {};
-//  }}",
-//         ts_types.join(" | "),
-//     ))
-// }
-
-// // TODO: stop duplicating definition
-// // TODO: use execa types instead of any
-// // TODO: add os, fs and path types (possibly fetch but I think it comes with DOM)
-// fn langjs_types() -> &'static str {
-//     "declare namespace YAML {
-//     function stringify(obj: unknown): string;
-// }
-//
-//     declare namespace zlib {
-//         function gzip(inputstr: string, callback: any);
-//     }
-//     declare namespace requestStorage {
-//         function getEnv(key: string): string;
-//         function getItem(key: string): any;
-//         function getEnvKeys(): string[];
-//         function getKeys(): string[];
-//     }
-//
-//     declare namespace siExec {
-//
-//     interface WatchArgs {
-//         cmd: string,
-//         args?: readonly string[],
-//         execaOptions?: Options<string>,
-//         retryMs?: number,
-//         maxRetryCount?: number,
-//         callback: (child: execa.ExecaReturnValue<string>) => Promise<boolean>,
-//     }
-//
-//     interface WatchResult {
-//         result: SiExecResult,
-//         failed?: 'deadlineExceeded' | 'commandFailed',
-//     }
-//
-//     type SiExecResult = ExecaReturnValue<string>;
-//
-//     async function waitUntilEnd(execaFile: string, execaArgs?: string[], execaOptions?: any): Promise<any>;
-//     async function watch(options: WatchArgs, deadlineCount?: number): Promise<WatchResult>;
-// }"
-// }
-//
-//
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/list_funcs", get(list_funcs::list_funcs))

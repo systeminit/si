@@ -5,6 +5,7 @@ use axum::Json;
 use axum::Router;
 use dal::component::ComponentError;
 use dal::node_menu::NodeMenuError;
+use dal::socket::input::InputSocketError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::WsEventError;
 use dal::{ChangeSetError, SchemaVariantId, StandardModelError, TransactionsError};
@@ -52,12 +53,12 @@ pub enum DiagramError {
     DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
     #[error("edge not found")]
     EdgeNotFound,
-    #[error("frame internal provider not found for schema variant id: {0}")]
-    FrameInternalProviderNotFoundForSchemaVariant(SchemaVariantId),
     #[error("frame socket not found for schema variant id: {0}")]
     FrameSocketNotFound(SchemaVariantId),
     #[error("invalid header name {0}")]
     Hyper(#[from] hyper::http::Error),
+    #[error("input socket error: {0}")]
+    InputSocket(#[from] InputSocketError),
     #[error("invalid request")]
     InvalidRequest,
     #[error("invalid system")]
