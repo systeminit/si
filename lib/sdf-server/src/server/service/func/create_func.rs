@@ -18,9 +18,7 @@ use crate::service::func::FuncError;
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum AttributeOutputLocation {
     #[serde(rename_all = "camelCase")]
-    OutputSocket {
-        external_provider_id: OutputSocketId,
-    },
+    OutputSocket { output_socket_id: OutputSocketId },
     #[serde(rename_all = "camelCase")]
     Prop { prop_id: PropId },
 }

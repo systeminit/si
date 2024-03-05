@@ -4,15 +4,14 @@ pub mod component;
 pub mod diagram;
 pub mod func;
 pub mod graphviz;
+pub mod qualification;
 pub mod schema;
+pub mod secret;
 pub mod session;
 pub mod ws;
 
 // pub mod fix;
 // pub mod pkg;
-// pub mod provider;
-pub mod qualification;
-pub mod secret;
 // pub mod status;
 // pub mod variant_definition;
 

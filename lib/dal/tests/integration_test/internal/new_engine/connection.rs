@@ -33,21 +33,17 @@ async fn connect_components(ctx: &mut DalContext) {
         .expect("schema variants are empty");
     let butane_schema_variant_id = butane_schema_variant.id();
 
-    // Find the providers we want to use.
-    let docker_image_external_providers = OutputSocket::list(ctx, docker_image_schema_variant_id)
-        .await
-        .expect("could not list external providers");
-    let external_provider = docker_image_external_providers
-        .iter()
-        .find(|e| e.name() == "Container Image")
-        .expect("could not find external provider");
-    let butane_explicit_internal_providers = InputSocket::list(ctx, butane_schema_variant_id)
-        .await
-        .expect("could not list explicit internal providers");
-    let explicit_internal_provider = butane_explicit_internal_providers
-        .iter()
-        .find(|e| e.name() == "Container Image")
-        .expect("could not find explicit internal provider");
+    // Find the sockets we want to use.
+    let output_socket =
+        OutputSocket::find_with_name(ctx, "Container Image", docker_image_schema_variant_id)
+            .await
+            .expect("could not perform find output socket")
+            .expect("output socket not found");
+    let input_socket =
+        InputSocket::find_with_name(ctx, "Container Image", butane_schema_variant_id)
+            .await
+            .expect("could not perform find input socket")
+            .expect("input socket not found");
 
     // Create a component for both the source and the destination
     let oysters_component = Component::new(
@@ -101,9 +97,9 @@ async fn connect_components(ctx: &mut DalContext) {
     let _inter_component_attribute_prototype_argument_id = Component::connect(
         ctx,
         oysters_component.id(),
-        external_provider.id(),
+        output_socket.id(),
         royel_component.id(),
-        explicit_internal_provider.id(),
+        input_socket.id(),
     )
     .await
     .expect("could not connect components");
@@ -118,9 +114,9 @@ async fn connect_components(ctx: &mut DalContext) {
     let _inter_component_attribute_prototype_argument_id = Component::connect(
         ctx,
         lunch_component.id(),
-        external_provider.id(),
+        output_socket.id(),
         royel_component.id(),
-        explicit_internal_provider.id(),
+        input_socket.id(),
     )
     .await
     .expect("could not connect components");

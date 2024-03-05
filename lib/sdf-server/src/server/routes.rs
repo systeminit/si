@@ -44,7 +44,6 @@ pub fn routes(state: AppState) -> Router {
         .nest("/api/ws", crate::server::service::ws::routes())
         // .nest("/api/fix", crate::server::service::fix::routes())
         // .nest("/api/pkg", crate::server::service::pkg::routes())
-        // .nest("/api/provider", crate::server::service::provider::routes())
         // .nest("/api/status", crate::server::service::status::routes())
         // .nest(
         //     "/api/variant_def",

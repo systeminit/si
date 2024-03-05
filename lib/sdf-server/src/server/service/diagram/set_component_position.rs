@@ -1,5 +1,5 @@
 use axum::Json;
-use dal::{Component, ComponentId, SchemaVariant, Visibility};
+use dal::{Component, ComponentId, InputSocket, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -38,17 +38,16 @@ pub async fn set_component_position(
     let schema_variant_id = Component::schema_variant_id(&ctx, request.node_id).await?;
 
     let (width, height) = {
-        let (_, explicit_internal_providers) =
-            SchemaVariant::list_all_sockets(&ctx, schema_variant_id).await?;
+        let input_sockets = InputSocket::list(&ctx, schema_variant_id).await?;
 
         let mut size = (None, None);
 
-        for explicit_internal_provider in explicit_internal_providers {
+        for input_socket in input_sockets {
             // NOTE(nick): the comment below may be out of date, depending on how we handle frames with the new engine.
 
             // If component is a frame, we set the size as either the one from the request or the previous one
             // If we don't do it like this upsert_by_node_id will delete the size on None instead of keeping it as is
-            if explicit_internal_provider.name() == "Frame" {
+            if input_socket.name() == "Frame" {
                 size = (
                     request
                         .width

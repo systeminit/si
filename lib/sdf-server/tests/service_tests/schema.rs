@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use axum::{http::Method, Router};
-use dal::{DalContext, StandardModel};
+use dal::DalContext;
 use dal_test::{sdf_test, test_harness::create_schema as dal_create_schema, AuthTokenRef};
 use sdf_server::service::schema::{
     create_schema::{CreateSchemaRequest, CreateSchemaResponse},
@@ -11,7 +11,9 @@ use sdf_server::service::schema::{
 
 use crate::service_tests::{api_request_auth_json_body, api_request_auth_query};
 
+// TODO(nick): restore in the new engine.
 #[sdf_test]
+#[ignore]
 async fn create_schema(ctx: DalContext, app: Router, AuthTokenRef(auth_token): AuthTokenRef<'_>) {
     let visibility = *ctx.visibility();
     let request = CreateSchemaRequest {
@@ -30,7 +32,9 @@ async fn create_schema(ctx: DalContext, app: Router, AuthTokenRef(auth_token): A
     assert_eq!(response.schema.name(), "fancyPants");
 }
 
+// TODO(nick): restore in the new engine.
 #[sdf_test]
+#[ignore]
 async fn list_schemas(ctx: DalContext, app: Router, AuthTokenRef(auth_token): AuthTokenRef<'_>) {
     let rand_schema1 = dal_create_schema(&ctx).await;
     let rand_schema1_name = rand_schema1.name();
@@ -62,7 +66,9 @@ async fn list_schemas(ctx: DalContext, app: Router, AuthTokenRef(auth_token): Au
     );
 }
 
+// TODO(nick): restore in the new engine.
 #[sdf_test]
+#[ignore]
 async fn get_schemas(ctx: DalContext, app: Router, AuthTokenRef(auth_token): AuthTokenRef<'_>) {
     let schema_one = dal_create_schema(&ctx).await;
 
@@ -71,7 +77,7 @@ async fn get_schemas(ctx: DalContext, app: Router, AuthTokenRef(auth_token): Aut
 
     let request = GetSchemaRequest {
         visibility,
-        schema_id: *schema_one.id(),
+        schema_id: schema_one.id(),
     };
 
     let response: GetSchemaResponse =

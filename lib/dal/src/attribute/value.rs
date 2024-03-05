@@ -560,7 +560,7 @@ impl AttributeValue {
         }
 
         let prepared_func_binding_args = if let ValueIsFor::InputSocket(_) = &value_is_for {
-            // If our destination is an internal provider, we awlays want to provide an array of
+            // If our destination is an input socket, we always want to provide an array of
             // the values so functions don't have to distinguish between a single value that is an
             // array, or an array of values (for example if an input socket has multiple
             // connections)
@@ -1366,7 +1366,7 @@ impl AttributeValue {
     }
 
     // AttributePrototypes for a value can be defined at the schema level, where
-    // they are connected by a prototype edge from the prop or provider that the
+    // they are connected by a prototype edge from the prop or socket that the
     // AttributeValue is for. But they can also be defined at the component
     // level, via prototype edge outgoing from the AttributeValue to the
     // prototype. This fetches the component level prototype id, if it exists.

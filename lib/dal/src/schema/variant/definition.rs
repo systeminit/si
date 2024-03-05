@@ -657,7 +657,6 @@ pub struct PropDefinition {
 // }
 
 /// The definition for a [`Socket`](crate::Socket) in a [`SchemaVariant`](crate::SchemaVariant).
-/// A corresponding [`provider`](crate::socket) will be created as well.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SocketDefinition {

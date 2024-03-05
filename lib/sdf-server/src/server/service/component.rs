@@ -69,8 +69,6 @@ pub enum ComponentError {
     // DalSchema(#[from] DalSchemaError),
     // #[error("diagram error: {0}")]
     // Diagram(#[from] DiagramError),
-    // #[error("external provider error: {0}")]
-    // ExternalProvider(#[from] ExternalProviderError),
     // #[error("func error: {0}")]
     // Func(#[from] FuncError),
     // #[error("func binding error: {0}")]
@@ -79,8 +77,6 @@ pub enum ComponentError {
     Http(#[from] axum::http::Error),
     // #[error("identity func not found")]
     // IdentityFuncNotFound,
-    // #[error("internal provider error: {0}")]
-    // InternalProvider(#[from] InternalProviderError),
     // #[error("invalid request")]
     // InvalidRequest,
     #[error("invalid visibility")]

@@ -19,7 +19,7 @@ async fn get_components_metadata(
 ) {
     let visibility = Visibility::new_head(false);
     let schema = create_schema(&ctx).await;
-    let mut schema_variant = create_schema_variant(&ctx, *schema.id()).await;
+    let mut schema_variant = create_schema_variant(&ctx, schema.id()).await;
     schema_variant
         .finalize(&ctx, None)
         .await

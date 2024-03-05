@@ -1,7 +1,5 @@
-//! This module contains the "attribute" domain concept, which involves
-//! [`AttributeValue`](crate::AttributeValue), [`AttributePrototype`](crate::AttributePrototype),
-//! [`AttributeContext`](crate::AttributeContext) and more.
+//! This module contains the "attribute" domain concept, which primarily involves
+//! [`AttributeValue`](crate::AttributeValue) and [`AttributePrototype`](crate::AttributePrototype).
 
-pub mod context;
 pub mod prototype;
 pub mod value;
