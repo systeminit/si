@@ -64,6 +64,7 @@ pub struct InputSocket {
     kind: SocketKind,
     required: bool,
     ui_hidden: bool,
+    connection_annotations: Vec<String>,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -84,6 +85,7 @@ pub struct InputSocketContentV1 {
     pub kind: SocketKind,
     pub required: bool,
     pub ui_hidden: bool,
+    pub connection_annotations: Vec<String>,
 }
 
 impl InputSocket {
@@ -105,6 +107,7 @@ impl InputSocket {
             kind: inner.kind,
             required: inner.required,
             ui_hidden: inner.ui_hidden,
+            connection_annotations: inner.connection_annotations,
         }
     }
 
@@ -126,6 +129,10 @@ impl InputSocket {
 
     pub fn required(&self) -> bool {
         self.required
+    }
+
+    pub fn connection_annotations(&self) -> Vec<String> {
+        self.connection_annotations.clone()
     }
 
     async fn get_from_node_weight(
@@ -194,6 +201,7 @@ impl InputSocket {
         Ok(None)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -201,7 +209,7 @@ impl InputSocket {
         func_id: FuncId,
         arity: SocketArity,
         kind: SocketKind,
-        // todo: connection_annotation
+        connection_annotations: Vec<String>,
     ) -> InputSocketResult<Self> {
         info!("creating input socket");
         let name = name.into();
@@ -214,6 +222,7 @@ impl InputSocket {
             kind,
             required: false,
             ui_hidden: false,
+            connection_annotations,
         };
         let hash = ctx
             .content_store()

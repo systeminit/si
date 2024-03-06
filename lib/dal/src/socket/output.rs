@@ -61,6 +61,7 @@ pub struct OutputSocket {
     kind: SocketKind,
     required: bool,
     ui_hidden: bool,
+    connection_annotations: Vec<String>,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -79,6 +80,7 @@ pub struct OutputSocketContentV1 {
     pub kind: SocketKind,
     pub required: bool,
     pub ui_hidden: bool,
+    pub connection_annotations: Vec<String>,
 }
 
 impl OutputSocket {
@@ -92,6 +94,7 @@ impl OutputSocket {
             kind: inner.kind,
             ui_hidden: inner.ui_hidden,
             required: inner.required,
+            connection_annotations: inner.connection_annotations,
         }
     }
 
@@ -115,6 +118,11 @@ impl OutputSocket {
         self.required
     }
 
+    pub fn connection_annotations(&self) -> Vec<String> {
+        self.connection_annotations.clone()
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
@@ -123,7 +131,7 @@ impl OutputSocket {
         func_id: FuncId,
         arity: SocketArity,
         kind: SocketKind,
-        // todo: connection_annotation
+        connection_annotations: Vec<String>,
     ) -> OutputSocketResult<Self> {
         let name = name.into();
         let content = OutputSocketContentV1 {
@@ -134,6 +142,7 @@ impl OutputSocket {
             kind,
             required: false,
             ui_hidden: false,
+            connection_annotations,
         };
         let hash = ctx
             .content_store()

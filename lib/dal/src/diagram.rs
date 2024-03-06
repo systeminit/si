@@ -241,13 +241,13 @@ impl Diagram {
 
                     let mut sockets = vec![];
 
-                    for input_socket in input_sockets {
+                    for socket in input_sockets {
                         sockets.push(DiagramSocket {
-                            id: input_socket.id().to_string(),
-                            label: input_socket.name().to_string(),
-                            connection_annotations: vec![input_socket.name().to_string()],
+                            id: socket.id().to_string(),
+                            label: socket.name().to_string(),
+                            connection_annotations: socket.connection_annotations(),
                             direction: DiagramSocketDirection::Input,
-                            max_connections: match input_socket.arity() {
+                            max_connections: match socket.arity() {
                                 SocketArity::Many => None,
                                 SocketArity::One => Some(1),
                             },
@@ -256,13 +256,13 @@ impl Diagram {
                         });
                     }
 
-                    for output_socket in output_sockets {
+                    for socket in output_sockets {
                         sockets.push(DiagramSocket {
-                            id: output_socket.id().to_string(),
-                            label: output_socket.name().to_string(),
-                            connection_annotations: vec![output_socket.name().to_string()],
+                            id: socket.id().to_string(),
+                            label: socket.name().to_string(),
+                            connection_annotations: socket.connection_annotations(),
                             direction: DiagramSocketDirection::Output,
-                            max_connections: match output_socket.arity() {
+                            max_connections: match socket.arity() {
                                 SocketArity::Many => None,
                                 SocketArity::One => Some(1),
                             },

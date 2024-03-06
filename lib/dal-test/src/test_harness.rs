@@ -86,6 +86,7 @@ pub async fn create_schema_variant_with_root(
         identity_func_id,
         SocketArity::Many,
         SocketKind::Standard,
+        vec!["input".to_string()],
     )
     .await
     .expect("unable to create socket");
@@ -93,11 +94,12 @@ pub async fn create_schema_variant_with_root(
     OutputSocket::new(
         ctx,
         variant.id(),
-        "input",
+        "output",
         None,
         identity_func_id,
         SocketArity::Many,
         SocketKind::Standard,
+        vec!["output".to_string()],
     )
     .await
     .expect("unable to create socket");
