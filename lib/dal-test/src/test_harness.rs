@@ -133,6 +133,26 @@ pub async fn create_schema_variant_with_root(
 //     component
 // }
 
+pub async fn create_component_for_schema_name(
+    ctx: &DalContext,
+    schema_variant_name: impl AsRef<str>,
+    name: impl AsRef<str>,
+) -> Component {
+    let schema = Schema::find_by_name(ctx, schema_variant_name)
+        .await
+        .expect("could not find schema")
+        .expect("schema not found");
+    let schema_variant = SchemaVariant::list_for_schema(ctx, schema.id())
+        .await
+        .expect("failed listing schema variants")
+        .pop()
+        .expect("no schema variant found");
+
+    Component::new(ctx, name.as_ref().to_string(), schema_variant.id(), None)
+        .await
+        .expect("could not create component")
+}
+
 pub async fn create_component_for_schema_variant(
     ctx: &DalContext,
     schema_variant_id: SchemaVariantId,

@@ -726,7 +726,7 @@ impl Component {
 
         let value = serde_json::to_value(new_type)?;
 
-        AttributeValue::update(&ctx, type_value_id, Some(value)).await?;
+        AttributeValue::update(ctx, type_value_id, Some(value)).await?;
 
         Ok(())
     }
