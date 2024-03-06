@@ -3,4 +3,24 @@
 // mod external;
 /// Contains tests that test SI directly and use test-exclusive builtins. All tests in this module
 /// should (eventually) pass with `SI_TEST_BUILTIN_SCHEMAS=test`.
-mod internal;
+// mod action_prototype;
+// mod attribute;
+// mod change_set;
+// mod component;
+// mod diagram;
+// mod edge;
+// mod func;
+// mod func_execution;
+// mod graph;
+// mod history_event;
+// mod key_pair;
+mod before_funcs;
+mod builtins;
+mod component;
+mod connection;
+mod frame;
+mod prop;
+mod property_editor;
+mod rebaser;
+mod sdf_mock;
+mod secret;
