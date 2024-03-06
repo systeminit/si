@@ -26,109 +26,133 @@
 
 pub mod disk_cache;
 pub mod error;
-pub mod memory_cache;
 
-use std::fmt;
-use std::path::Path;
+use moka::future::Cache;
+use serde::{de::DeserializeOwned, Serialize};
+use std::hash::Hash;
 
-use memory_cache::{CacheKey, CacheValueRaw};
+use disk_cache::DiskCache;
+use error::LayerCacheResult;
 
-use crate::disk_cache::DiskCache;
-use crate::error::LayerCacheResult;
-use crate::memory_cache::{CacheKeyRef, CacheValue, MemoryCache};
-
-#[derive(Eq, PartialEq, PartialOrd, Ord, Hash, Debug)]
-pub enum CacheType {
-    Object = 1,
-    Graph,
+pub struct LayerCache<K, V>
+where
+    K: AsRef<[u8]> + Copy,
+    V: Serialize + DeserializeOwned + Clone,
+{
+    pub memory_cache: Box<dyn MemoryCacher<Key = K, Value = V>>,
+    pub disk_cache: DiskCache<K>,
 }
 
-impl fmt::Display for CacheType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            CacheType::Object => write!(f, "object"),
-            CacheType::Graph => write!(f, "graph"),
-        }
-    }
-}
-
-pub struct LayerCache {
-    pub memory_cache: MemoryCache,
-    pub disk_cache: DiskCache,
-}
-
-impl LayerCache {
-    pub fn new(path: impl AsRef<Path>) -> LayerCacheResult<LayerCache> {
-        let memory_cache = MemoryCache::new();
-        let disk_cache = DiskCache::new(path)?;
+impl<K, V> LayerCache<K, V>
+where
+    K: AsRef<[u8]> + Copy,
+    V: Serialize + DeserializeOwned + Clone,
+{
+    pub fn new(
+        db: sled::Db,
+        name: &str,
+        memory_cache: Box<dyn MemoryCacher<Key = K, Value = V>>,
+    ) -> LayerCacheResult<Self> {
+        let disk_cache = DiskCache::new(db, name.as_bytes())?;
         Ok(LayerCache {
             memory_cache,
             disk_cache,
         })
     }
 
-    #[inline]
-    pub async fn get(
-        &self,
-        cache_type: &CacheType,
-        key: impl AsRef<CacheKeyRef>,
-    ) -> LayerCacheResult<Option<CacheValue>> {
-        let key = key.as_ref();
-        let memory_value = self.memory_cache.get(cache_type, key).await;
-        if memory_value.is_some() {
-            Ok(memory_value)
-        } else {
-            let maybe_value = self.disk_cache.get(cache_type, key)?;
-            match maybe_value {
+    pub async fn get(&self, key: &K) -> LayerCacheResult<Option<V>> {
+        Ok(match self.memory_cache.get_value(key).await {
+            Some(memory_value) => Some(memory_value),
+            None => match self.disk_cache.get(key)? {
                 Some(value) => {
-                    let d: Vec<u8> = value.as_ref().into();
+                    let deserialized: V = postcard::from_bytes(&value)?;
+
                     self.memory_cache
-                        .insert(cache_type, Vec::from(key), d)
+                        .insert_value(*key, deserialized.clone())
                         .await;
-                    Ok(self.memory_cache.get(cache_type, key).await)
+                    Some(deserialized)
                 }
-                None => Ok(None),
-            }
-        }
+                None => None,
+            },
+        })
     }
 
-    #[inline]
-    pub async fn insert(
-        &self,
-        cache_type: &CacheType,
-        key: impl Into<CacheKey>,
-        value: impl Into<CacheValueRaw>,
-    ) -> LayerCacheResult<()> {
-        let key = key.into();
-        let in_memory = self.memory_cache.contains_key(cache_type, &key);
-        let on_disk = self.disk_cache.contains_key(cache_type, &key)?;
+    pub fn memory_cache(&self) -> &dyn MemoryCacher<Key = K, Value = V> {
+        self.memory_cache.as_ref()
+    }
+
+    pub fn disk_cache(&self) -> &DiskCache<K> {
+        &self.disk_cache
+    }
+
+    pub async fn remove_from_memory(&self, key: K) {
+        self.memory_cache.remove_value(&key).await;
+    }
+
+    pub async fn insert(&self, key: K, value: V) -> LayerCacheResult<()> {
+        let in_memory = self.memory_cache.has_key(&key);
+        let on_disk = self.disk_cache.contains_key(&key)?;
 
         match (in_memory, on_disk) {
-            // In memory and on disk
-            (true, true) => Ok(()),
+            // In memory and on disk, do nothing
+            (true, true) => (),
             // Neither on memory or on disk
             (false, false) => {
-                let value = value.into();
-                self.memory_cache
-                    .insert(cache_type, key.clone(), value.clone())
-                    .await;
-                self.disk_cache.insert(cache_type, key, value)?;
-                Ok(())
+                self.memory_cache.insert_value(key, value.clone()).await;
+                let serialized = postcard::to_stdvec(&value)?;
+                self.disk_cache.insert(key, &serialized)?;
             }
-            // Not in memory, but on disk - we can write, becasue objects are immutable
+            // Not in memory, but on disk - we can write, because objects are immutable
             (false, true) => {
-                let value = value.into();
-                self.memory_cache
-                    .insert(cache_type, key.clone(), value)
-                    .await;
-                Ok(())
+                self.memory_cache.insert_value(key, value).await;
             }
             // In memory, but not on disk
             (true, false) => {
-                let value = value.into();
-                self.disk_cache.insert(cache_type, key, value)?;
-                Ok(())
+                let serialized = postcard::to_stdvec(&value)?;
+                self.disk_cache.insert(key, &serialized)?;
             }
         }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+pub trait MemoryCacher {
+    type Key;
+    type Value;
+
+    async fn get_value(&self, key: &Self::Key) -> Option<Self::Value>;
+
+    async fn insert_value(&self, key: Self::Key, value: Self::Value);
+
+    async fn remove_value(&self, key: &Self::Key);
+
+    fn has_key(&self, key: &Self::Key) -> bool;
+}
+
+#[async_trait::async_trait]
+impl<K, V> MemoryCacher for Cache<K, V>
+where
+    K: Hash + Eq + Send + Sync + 'static,
+    V: Send + Sync + Clone + 'static,
+{
+    type Key = K;
+    type Value = V;
+
+    async fn get_value(&self, key: &Self::Key) -> Option<Self::Value> {
+        self.get(key).await
+    }
+
+    async fn insert_value(&self, key: Self::Key, value: Self::Value) {
+        self.insert(key, value).await;
+    }
+
+    async fn remove_value(&self, key: &Self::Key) {
+        self.remove(key).await;
+    }
+
+    fn has_key(&self, key: &Self::Key) -> bool {
+        self.contains_key(key)
     }
 }
