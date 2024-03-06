@@ -122,6 +122,7 @@ impl OutputSocket {
         self.connection_annotations.clone()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
