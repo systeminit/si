@@ -1,3 +1,5 @@
+use deadpool_cyclone::CycloneClient;
+use deadpool_cyclone::PoolNoodle;
 use std::{
     env, io,
     path::Path,
@@ -11,7 +13,7 @@ use deadpool_cyclone::{
         cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
         Instance,
     },
-    CycloneClient, FunctionResult, Manager, Pool, ProgressMessage, ResolverFunctionRequest,
+    FunctionResult, ProgressMessage, ResolverFunctionRequest,
 };
 use futures::{stream, StreamExt, TryStreamExt};
 use tokio::signal;
@@ -35,9 +37,8 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     };
 
     let spec = spec()?;
-    let manager = Manager::new(spec);
-    let pool = Pool::builder(manager).max_size(64).build()?;
-
+    let mut pool: PoolNoodle<LocalUdsInstance, _> = PoolNoodle::new(10, spec.clone());
+    pool.start();
     let ctrl_c = signal::ctrl_c();
     tokio::pin!(ctrl_c);
 
@@ -72,9 +73,6 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
         }
     }
 
-    info!("closing the pool");
-    pool.close();
-
     info!(
         "program complete; executions={}",
         count.load(Ordering::Relaxed)
@@ -83,14 +81,15 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
 }
 
 async fn execute(
-    pool: &Pool<LocalUdsInstanceSpec>,
+    pool: &PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
     request: &ResolverFunctionRequest,
 ) -> Result<(), Box<(dyn std::error::Error + 'static)>> {
+    let mut pool = pool.clone();
     // Generate a random execution_id
     let mut request = (*request).clone();
     request.execution_id = Uuid::new_v4().to_string();
 
-    info!(status = ?pool.status(), "Getting an instance from the pool");
+    info!(status = ?pool.stats().await, "Getting an instance from the pool");
     let mut instance = pool.get().await?;
     info!("Checking if instance is healthy");
 

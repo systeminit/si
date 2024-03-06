@@ -1,3 +1,5 @@
+use deadpool_cyclone::CycloneClient;
+use deadpool_cyclone::PoolNoodle;
 use std::{
     env,
     path::Path,
@@ -6,12 +8,9 @@ use std::{
 };
 
 use buck2_resources::Buck2Resources;
-use deadpool_cyclone::{
-    instance::{
-        cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
-        Instance,
-    },
-    CycloneClient, Manager, Pool,
+use deadpool_cyclone::instance::{
+    cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
+    Instance,
 };
 use futures::{stream, StreamExt, TryStreamExt};
 use tokio::signal;
@@ -34,15 +33,15 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     };
 
     let spec = spec()?;
-    let manager = Manager::new(spec);
-    let pool = Pool::builder(manager).max_size(64).build()?;
+    let mut pool: PoolNoodle<LocalUdsInstance, _> = PoolNoodle::new(10, spec.clone());
+    pool.start();
 
     let ctrl_c = signal::ctrl_c();
     tokio::pin!(ctrl_c);
 
     let pings = AtomicU64::new(0);
 
-    let concurrent_pings = stream::repeat_with(|| ping(&pool))
+    let concurrent_pings = stream::repeat_with(|| ping(pool.clone()))
         .map(Ok)
         .try_for_each_concurrent(concurrency, |ping| async {
             let result = ping.await;
@@ -66,15 +65,12 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
         }
     }
 
-    info!("closing the pool");
-    pool.close();
-
     info!("program complete; pings={}", pings.load(Ordering::Relaxed));
     Ok(())
 }
 
 async fn ping(
-    pool: &Pool<LocalUdsInstanceSpec>,
+    mut pool: PoolNoodle<LocalUdsInstance, LocalUdsInstanceSpec>,
 ) -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     info!("Getting an instance from the pool");
     let mut instance = pool.get().await?;

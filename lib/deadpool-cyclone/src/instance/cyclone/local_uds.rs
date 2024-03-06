@@ -1,13 +1,12 @@
 use std::os::unix::fs::PermissionsExt;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use tracing::debug;
 
 use ::std::path::Path;
 use rand::distributions::Alphanumeric;
 use rand::thread_rng;
 use rand::Rng;
 use std::{io, path::PathBuf, result, time::Duration};
-use tokio::time::Instant;
 
 use bollard::container::{
     Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions,
@@ -41,7 +40,6 @@ use tokio::{
 use tracing::{trace, warn};
 
 use crate::instance::{Instance, Spec, SpecBuilder};
-use crate::PoolNoodle;
 
 /// Error type for [`LocalUdsInstance`].
 #[remain::sorted]
@@ -331,16 +329,12 @@ pub struct LocalUdsInstanceSpec {
     action: bool,
 
     /// Size of the pool to configure for the spec.
-    #[builder(setter(into), default = "500")]
-    pool_size: u16,
+    #[builder(setter(into), default = "10")]
+    pub pool_size: u16,
 
     /// Sets the timeout for connecting to firecracker
     #[builder(setter(into), default = "10")]
     connect_timeout: u64,
-
-    /// pool noodle
-    #[builder(default)]
-    pool_noodle: PoolNoodle,
 }
 
 #[async_trait]
@@ -356,9 +350,9 @@ impl Spec for LocalUdsInstanceSpec {
         }
     }
 
-    async fn spawn(&self) -> result::Result<Self::Instance, Self::Error> {
+    async fn spawn(&self, id: u32) -> result::Result<Self::Instance, Self::Error> {
         let (temp_path, socket) = temp_path_and_socket_from(&self.socket_strategy)?;
-        let mut runtime = runtime_instance_from_spec(self, &socket).await?;
+        let mut runtime = runtime_instance_from_spec(self, &socket, id).await?;
 
         runtime.spawn().await?;
         //TODO(scott): Firecracker requires the client to add a special connection detail. We
@@ -373,30 +367,15 @@ impl Spec for LocalUdsInstanceSpec {
             firecracker_connect,
             ..Default::default()
         };
-        trace!(
-            "cyclone-execution: client creation {:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time has gone backwards")
-        );
         let mut client = Client::uds(runtime.socket(), Arc::new(config))?;
-        trace!(
-            "cyclone-execution: client created {:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time has gone backwards")
-        );
 
         // Establish the client watch session. As the process may be booting, we will retry for a
         // period before giving up and assuming that the server instance has failed.
         let watch = {
             let mut retries = 30;
             loop {
-                trace!("cyclone-execution: calling client.watch()");
-
                 match client.watch().await {
                     Ok(watch) => {
-                        trace!("cyclone-execution: client watch session established");
                         break watch;
                     }
                     Err(err) => err,
@@ -408,20 +387,8 @@ impl Spec for LocalUdsInstanceSpec {
                 time::sleep(Duration::from_millis(64)).await;
             }
         };
-        trace!(
-            "cyclone-execution: watch established {:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time has gone backwards")
-        );
 
         let mut watch_progress = watch.start().await?;
-        trace!(
-            "cyclone-execution: watch started {:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time has gone backwards")
-        );
 
         // Establish that we have received our first watch ping, which should happen immediately
         // after establishing a watch session
@@ -429,22 +396,10 @@ impl Spec for LocalUdsInstanceSpec {
             .next()
             .await
             .ok_or(Self::Error::WatchClosed)??;
-        trace!(
-            "cyclone-execution: watch first-ping {:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time has gone backwards")
-        );
 
         let (watch_shutdown_tx, watch_shutdown_rx) = oneshot::channel();
         // Spawn a task to keep the watch session open until we shut it down
         tokio::spawn(watch_task(watch_progress, watch_shutdown_rx));
-        trace!(
-            "cyclone-execution: watch spawned {:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time has gone backwards")
-        );
 
         Ok(Self::Instance {
             _temp_path: temp_path,
@@ -635,40 +590,16 @@ impl LocalInstanceRuntime for LocalProcessRuntime {
     }
 
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-        trace!(
-            "cyclone-execution: spawn start {:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time has gone backwards")
-        );
         self.child = Some(
             self.cmd
                 .spawn()
                 .map_err(LocalUdsInstanceError::ChildSpawn)?,
         );
-        trace!(
-            "cyclone-execution: spawn finished {:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time has gone backwards")
-        );
         Ok(())
     }
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-        trace!(
-            "cyclone-execution: terminate start {:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time has gone backwards")
-        );
         match self.child.as_mut() {
             Some(c) => {
-                trace!(
-                    "cyclone-execution: terminate finished {:?}",
-                    SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("time has gone backwards")
-                );
                 process::child_shutdown(c, Some(process::Signal::SIGTERM), None).await?;
                 Ok(())
             }
@@ -808,55 +739,43 @@ impl LocalInstanceRuntime for LocalDockerRuntime {
 struct LocalFirecrackerRuntime {
     cmd: Command,
     child: Option<Child>,
-    pool_noodle: PoolNoodle,
     vm_id: u32,
     socket: PathBuf,
 }
 
 impl LocalFirecrackerRuntime {
-    async fn build(spec: LocalUdsInstanceSpec) -> Result<Box<dyn LocalInstanceRuntime>> {
-        let vm_id = spec
-            .pool_noodle
-            .0
-            .lock()
+    async fn build(_spec: LocalUdsInstanceSpec, id: u32) -> Result<Box<dyn LocalInstanceRuntime>> {
+        let command = String::from("/firecracker-data/prepare_jailer.sh");
+        let _output = Command::new("sudo")
+            .arg(command)
+            .arg(id.to_string())
+            .output()
             .await
-            .get_ready_jail()
-            .await
-            .expect(
-            "Function execution is impossible as the execution pool is starved and not recovering.",
-        );
-
-        let _start_time = spec
-            .pool_noodle
-            .0
-            .lock()
-            .await
-            .set_as_active(vm_id, Instant::now())
-            .await;
+            .map_err(|e| LocalUdsInstanceError::FirecrackerSetupRun(e.to_string()))
+            .expect("Failed to run prepare");
 
         let mut cmd = Command::new("/usr/bin/jailer");
         cmd.arg("--cgroup-version")
             .arg("2")
             .arg("--id")
-            .arg(vm_id.to_string())
+            .arg(id.to_string())
             .arg("--exec-file")
             .arg("/usr/bin/firecracker")
             .arg("--uid")
-            .arg(format!("30{}", vm_id))
+            .arg(format!("30{}", id))
             .arg("--gid")
             .arg("10000")
             .arg("--netns")
-            .arg(format!("/var/run/netns/jailer-{}", vm_id))
+            .arg(format!("/var/run/netns/jailer-{}", id))
             .arg("--")
             .arg("--config-file")
             .arg("./firecracker.conf");
 
-        let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", vm_id));
+        let sock = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", id));
         Ok(Box::new(LocalFirecrackerRuntime {
             cmd,
             child: None,
-            pool_noodle: spec.pool_noodle,
-            vm_id,
+            vm_id: id,
             socket: sock,
         }))
     }
@@ -872,58 +791,30 @@ impl LocalInstanceRuntime for LocalFirecrackerRuntime {
     }
 
     async fn spawn(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-        trace!(
-            "cyclone-execution: spawn start {:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time has gone backwards")
-        );
         self.child = Some(
             self.cmd
                 .spawn()
                 .map_err(LocalUdsInstanceError::ChildSpawn)?,
         );
-        trace!(
-            "cyclone-execution: spawn finished {:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time has gone backwards")
-        );
         Ok(())
     }
 
     async fn terminate(&mut self) -> result::Result<(), LocalUdsInstanceError> {
-        trace!(
-            "cyclone-execution: terminate start {:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("time has gone backwards")
-        );
-        match self.child.as_mut() {
-            Some(c) => {
-                self.pool_noodle
-                    .0
-                    .lock()
-                    .await
-                    .set_as_to_be_cleaned(self.vm_id)
-                    .await;
-                process::child_shutdown(c, Some(process::Signal::SIGTERM), None).await?;
-                trace!(
-                    "cyclone-execution: terminate finished {:?}",
-                    SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("time has gone backwards")
-                );
-                Ok(())
-            }
-            None => Ok(()),
-        }
+        let command = String::from("/firecracker-data/stop.sh");
+        let _output = Command::new("sudo")
+            .arg(command)
+            .arg(self.id().to_string())
+            .output()
+            .await
+            .map_err(LocalUdsInstanceError::ChildSpawn)?;
+        Ok(())
     }
 }
 
 async fn runtime_instance_from_spec(
     spec: &LocalUdsInstanceSpec,
     socket: &PathBuf,
+    id: u32,
 ) -> Result<Box<dyn LocalInstanceRuntime>> {
     match spec.runtime_strategy {
         LocalUdsRuntimeStrategy::LocalProcess => {
@@ -933,7 +824,7 @@ async fn runtime_instance_from_spec(
             LocalDockerRuntime::build(socket, spec.clone()).await
         }
         LocalUdsRuntimeStrategy::LocalFirecracker => {
-            LocalFirecrackerRuntime::build(spec.clone()).await
+            LocalFirecrackerRuntime::build(spec.clone(), id).await
         }
     }
 }
@@ -973,7 +864,6 @@ async fn setup_firecracker(spec: &LocalUdsInstanceSpec) -> Result<()> {
         ));
     }
 
-    spec.pool_noodle.start();
     Ok(())
 }
 
@@ -1003,9 +893,9 @@ async fn watch_task<Strm>(
                     // An error occurred on the stream. We are going to treat this as catastrophic
                     // and end the watch.
                     Some(Err(err)) => {
-                        warn!(error = ?err, "error on watch stream");
+                        debug!(error = ?err, "error on watch stream");
                         if let Err(err) = watch_progress.stop().await {
-                            warn!(error = ?err, "failed to cleanly close the watch session");
+                            debug!(error = ?err, "failed to cleanly close the watch session");
                         }
                         break
                     }

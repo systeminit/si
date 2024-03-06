@@ -436,7 +436,6 @@ where
             let mut retries = 30;
             let mut single_byte = vec![0u8; 1];
 
-            trace!("cyclone-execution: connecting to Firecracker");
             stream.write_all(connect_cmd.as_bytes()).await?;
 
             loop {
@@ -456,7 +455,6 @@ where
                     }
                     Err(_) => {
                         // We timed out, let's get a new stream and try again.
-                        trace!("cyclone-execution: connect timeout, retrying");
                         retries -= 1;
                         stream.shutdown().await?;
                         stream = self

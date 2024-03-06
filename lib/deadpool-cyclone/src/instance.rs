@@ -79,7 +79,7 @@ pub trait Spec {
     /// # });
     /// # Ok::<(), SpawnError>(())
     /// ```
-    async fn spawn(&self) -> result::Result<Self::Instance, Self::Error>;
+    async fn spawn(&self, id: u32) -> result::Result<Self::Instance, Self::Error>;
 }
 
 /// A type which implements the [Builder pattern] and builds a [`Spec`].

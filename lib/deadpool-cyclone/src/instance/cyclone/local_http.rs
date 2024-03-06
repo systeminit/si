@@ -25,7 +25,7 @@ use tokio::{
     net::{TcpListener, TcpStream},
     process::{Child, Command},
     sync::oneshot,
-    time,
+    time::{self},
 };
 use tracing::{debug, trace, warn};
 
@@ -97,6 +97,7 @@ impl Instance for LocalHttpInstance {
 
         Ok(())
     }
+
     fn id(&self) -> u32 {
         0
     }
@@ -299,7 +300,7 @@ impl Spec for LocalHttpInstanceSpec {
     async fn setup(&mut self) -> result::Result<(), Self::Error> {
         Ok(())
     }
-    async fn spawn(&self) -> result::Result<Self::Instance, Self::Error> {
+    async fn spawn(&self, _id: u32) -> result::Result<Self::Instance, Self::Error> {
         let socket_addr = socket_addr_from(&self.socket_strategy).await?;
         let mut cmd = self.build_command(&socket_addr);
 
