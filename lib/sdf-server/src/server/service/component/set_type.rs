@@ -1,13 +1,10 @@
-use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 
-use dal::{ChangeSet, Component, ComponentId, ComponentType, StandardModel, Visibility, WsEvent};
+use dal::{ChangeSet, Component, ComponentId, ComponentType, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
-use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
-use crate::server::tracking::track;
-use crate::service::component::ComponentError;
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -21,36 +18,13 @@ pub struct SetTypeRequest {
 pub async fn set_type(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(posthog_client): PosthogClient,
-    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<SetTypeRequest>,
 ) -> ComponentResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut force_changeset_pk = None;
-    if ctx.visibility().is_head() {
-        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
-        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
-
-        ctx.update_visibility(new_visibility);
-
-        force_changeset_pk = Some(change_set.pk);
-
-        WsEvent::change_set_created(&ctx, change_set.pk)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
-    };
-
-    let component = Component::get_by_id(&ctx, &request.component_id)
-        .await?
-        .ok_or(ComponentError::ComponentNotFound(request.component_id))?;
-
-    let component_schema = component
-        .schema(&ctx)
-        .await?
-        .ok_or(ComponentError::SchemaNotFound)?;
+    let component = Component::get_by_id(&ctx, request.component_id).await?;
 
     // If no type was found, default to a standard "component".
     let component_type: ComponentType = match request.value {
@@ -59,17 +33,23 @@ pub async fn set_type(
     };
     component.set_type(&ctx, component_type).await?;
 
-    track(
-        &posthog_client,
-        &ctx,
-        &original_uri,
-        "set_component_type",
-        serde_json::json!({
-                    "component_id": component.id(),
-                    "component_schema_name": component_schema.name(),
-                    "new_component_type": component_type,
-        }),
-    );
+    // TODO(Wendy) - uncomment this when we restore posthog tracking
+    // TODO(Wendy) - replace this old component_schema code
+    // let component_schema = component
+    //     .schema(&ctx)
+    //     .await?
+    //     .ok_or(ComponentError::SchemaNotFound)?;
+    // track(
+    //     &posthog_client,
+    //     &ctx,
+    //     &original_uri,
+    //     "set_component_type",
+    //     serde_json::json!({
+    //                 "component_id": component.id(),
+    //                 "component_schema_name": component_schema.name(),
+    //                 "new_component_type": component_type,
+    //     }),
+    // );
 
     ctx.commit().await?;
 

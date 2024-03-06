@@ -32,7 +32,7 @@ pub mod list_qualifications;
 // pub mod list_resources;
 // pub mod refresh;
 // pub mod resource_domain_diff;
-// pub mod set_type;
+pub mod set_type;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -170,11 +170,11 @@ pub fn routes() -> Router<AppState> {
             "/insert_property_editor_value",
             post(insert_property_editor_value::insert_property_editor_value),
         )
-    // .route(
-    //     "/delete_property_editor_value",
-    //     post(delete_property_editor_value::delete_property_editor_value),
-    // )
-    // .route("/set_type", post(set_type::set_type))
+        // .route(
+        //     "/delete_property_editor_value",
+        //     post(delete_property_editor_value::delete_property_editor_value),
+        // )
+        .route("/set_type", post(set_type::set_type))
     // .route("/refresh", post(refresh::refresh))
     // .route("/resource_domain_diff", get(resource_domain_diff::get_diff))
     // .route(
