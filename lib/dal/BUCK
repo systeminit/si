@@ -106,6 +106,8 @@ rust_test(
     ]),
     env = {
         "CARGO_PKG_NAME": "integration",
+        "RUSTC_BOOTSTRAP": "1",
+        "CI": "buildkite",
     },
     resources = {
         "cyclone": "//bin/cyclone:cyclone",

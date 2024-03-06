@@ -1,12 +1,10 @@
-use std::rc::Rc;
-
-use proc_macro2::{Ident, Span, TokenStream, TokenTree};
-use quote::quote;
-use syn::{punctuated::Punctuated, token::Comma, Expr, ItemFn, ReturnType};
-
 use crate::{
     Args, LOG_ENV_VAR, RT_DEFAULT_THREAD_STACK_SIZE, RT_DEFAULT_WORKER_THREADS, SPAN_EVENTS_ENV_VAR,
 };
+use proc_macro2::{Ident, Span, TokenStream, TokenTree};
+use quote::quote;
+use std::rc::Rc;
+use syn::{punctuated::Punctuated, token::Comma, Expr, ItemFn, ReturnType};
 
 pub(crate) trait FnSetup {
     fn into_parts(self) -> (TokenStream, Punctuated<Expr, Comma>);
@@ -16,7 +14,6 @@ pub(crate) fn expand_test(item: ItemFn, _args: Args, fn_setup: impl FnSetup) -> 
     if item.sig.asyncness.is_none() {
         panic!("test function must be async--blocking tests not supported");
     }
-
     let attrs = &item.attrs;
     let body = &item.block;
     let test_name = &item.sig.ident;
@@ -47,7 +44,12 @@ pub(crate) fn expand_test(item: ItemFn, _args: Args, fn_setup: impl FnSetup) -> 
         #(#attrs)*
         fn #test_name() -> ::dal_test::Result<()> {
             use ::dal_test::WrapErr;
+            use ::std::io::Write;
+            use ::dal_test::telemetry::tracing;
 
+            // Could add a custom `name` attribute here to send through the test name
+            // SI_TEST_LOG=test_integration::integration_test::rebaser=info,off SI_TEST_LOG_SPAN_EVENTS=new,close buck2 run lib/dal:test-integration -- integration_test::rebaser --nocapture
+            #[tracing::instrument(level = "info", name="example-test-name", skip_all)]
             async fn test_fn(#params) #output #body
 
             #[inline]
@@ -61,7 +63,7 @@ pub(crate) fn expand_test(item: ItemFn, _args: Args, fn_setup: impl FnSetup) -> 
                 #color_eyre_init
                 #tracing_init
             });
-
+            let start = ::std::time::Instant::now();
             let thread_builder = ::std::thread::Builder::new().stack_size(#thread_stack_size);
             let thread_join_handle = thread_builder.spawn(|| {
                 #[allow(clippy::expect_used)]
@@ -75,7 +77,13 @@ pub(crate) fn expand_test(item: ItemFn, _args: Args, fn_setup: impl FnSetup) -> 
                 }
             };
             let _ = test_result?;
-
+            let dur = ::std::time::Instant::now();
+            let secs = dur.duration_since(start).as_secs();
+            write!(
+                        ::std::io::stderr(),
+                        " (took {} seconds) ",
+                        secs
+                    )?;
             Ok(())
         }
     }
@@ -130,54 +138,8 @@ pub(crate) fn expand_color_eyre_init() -> TokenStream {
 fn expand_tracing_init() -> TokenStream {
     let span_events_env_var = SPAN_EVENTS_ENV_VAR;
     let log_env_var = LOG_ENV_VAR;
-
     quote! {
-        let event_filter = {
-            use ::dal_test::tracing_subscriber::fmt::format::FmtSpan;
-
-            // Used exclusively in tests & prefixed with `SI_TEST_`
-            #[allow(clippy::disallowed_methods)]
-            match ::std::env::var(#span_events_env_var) {
-                Ok(value) => {
-                    value
-                        .to_ascii_lowercase()
-                        .split(",")
-                        .map(|filter| match filter.trim() {
-                            "new" => FmtSpan::NEW,
-                            "enter" => FmtSpan::ENTER,
-                            "exit" => FmtSpan::EXIT,
-                            "close" => FmtSpan::CLOSE,
-                            "active" => FmtSpan::ACTIVE,
-                            "full" => FmtSpan::FULL,
-                            _ => panic!(
-                                "{}: {} must contain filters separated by `,`.\n\t\
-                                For example: `active` or `new,close`\n\t
-                                Got: {}",
-                                concat!(env!("CARGO_PKG_NAME"), "::dal_test"),
-                                #span_events_env_var,
-                                value,
-                            ),
-                        })
-                        .fold(FmtSpan::NONE, |acc, filter| filter | acc)
-                },
-                Err(::std::env::VarError::NotUnicode(_)) => {
-                    panic!(
-                        "{}: {} must contain a valid UTF-8 string",
-                        concat!(env!("CARGO_PKG_NAME"), "::dal_test"),
-                        #span_events_env_var,
-                    )
-                }
-                Err(::std::env::VarError::NotPresent) => FmtSpan::NONE,
-            }
-        };
-
-        let subscriber = ::dal_test::tracing_subscriber::FmtSubscriber::builder()
-            .with_env_filter(::dal_test::tracing_subscriber::EnvFilter::from_env(#log_env_var))
-            .with_span_events(event_filter)
-            .with_test_writer()
-            .pretty()
-            .finish();
-        let _ = ::dal_test::telemetry::tracing::subscriber::set_global_default(subscriber);
+        ::dal_test::helpers::tracing_init(#span_events_env_var, #log_env_var);
     }
 }
 
