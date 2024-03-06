@@ -716,6 +716,21 @@ impl Component {
         Ok(serde_json::from_value(type_value)?)
     }
 
+    pub async fn set_type(&self, ctx: &DalContext, new_type: ComponentType) -> ComponentResult<()> {
+        let type_value_id = self
+            .attribute_values_for_prop(ctx, &["root", "si", "type"])
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(ComponentError::ComponentMissingTypeValue(self.id()))?;
+
+        let value = serde_json::to_value(new_type)?;
+
+        AttributeValue::update(ctx, type_value_id, Some(value)).await?;
+
+        Ok(())
+    }
+
     pub async fn root_attribute_value_id(
         ctx: &DalContext,
         component_id: ComponentId,

@@ -1,9 +1,7 @@
 use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
-use dal::{
-    AttributeValue, Component, DalContext, EncryptedSecret, OutputSocket, Prop, Schema,
-    SchemaVariant,
-};
+use dal::{AttributeValue, Component, DalContext, EncryptedSecret, OutputSocket, Prop};
+use dal_test::test_harness::create_component_for_schema_name;
 use dal_test::test_harness::encrypt_message;
 use dal_test::{test, WorkspaceSignup};
 
@@ -16,26 +14,14 @@ async fn secret_definition_works_with_dummy_qualification(
     ctx: &mut DalContext,
     nw: &WorkspaceSignup,
 ) {
-    let secret_definition_schema = Schema::find_by_name(ctx, "bethesda-secret")
-        .await
-        .expect("could not find schema")
-        .expect("schema not found");
-    let secret_definition_schema_variant =
-        SchemaVariant::list_for_schema(ctx, secret_definition_schema.id())
-            .await
-            .expect("failed listing schema variants")
-            .pop()
-            .expect("no schema variant found");
-    let secret_definition_schema_variant_id = secret_definition_schema_variant.id();
+    let secret_definition_component =
+        create_component_for_schema_name(ctx, "bethesda-secret", "secret-definition").await;
 
-    let secret_definition_component = Component::new(
-        ctx,
-        "secret-definition",
-        secret_definition_schema_variant_id,
-        None,
-    )
-    .await
-    .expect("could not create component");
+    let secret_definition_schema_variant_id =
+        Component::schema_variant_id(ctx, secret_definition_component.id())
+            .await
+            .expect("could not get schema variant id for component");
+
     let secret_definition_component_id = secret_definition_component.id();
 
     // This is the name of the secret definition from the "BethesdaSecret" test exclusive schema.

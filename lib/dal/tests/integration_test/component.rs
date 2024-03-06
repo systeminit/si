@@ -3,48 +3,31 @@ use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::diagram::Diagram;
 use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
-use dal::{AttributeValue, AttributeValueId};
+use dal::{AttributeValue, AttributeValueId, ComponentType};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::test;
+use dal_test::test_harness::create_component_for_schema_name;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn update_and_insert_and_update(ctx: &mut DalContext) {
-    let docker_image = Schema::list(ctx)
+    let component = create_component_for_schema_name(ctx, "Docker Image", "a tulip in a cup").await;
+    let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
-        .expect("list schemas")
-        .iter()
-        .find(|schema| schema.name() == "Docker Image")
-        .expect("docker image does not exist")
-        .to_owned();
-
-    let variant = SchemaVariant::list_for_schema(ctx, docker_image.id())
-        .await
-        .expect("get schema variants")
-        .pop()
-        .expect("get default variant");
-
-    let name = "a tulip in a cup";
-
-    let component = Component::new(ctx, name, variant.id(), None)
-        .await
-        .expect("able to create component");
+        .expect("find variant id for component");
 
     let property_values = PropertyEditorValues::assemble(ctx, component.id())
         .await
         .expect("able to list prop values");
 
-    let image_prop_id = Prop::find_prop_id_by_path(
-        ctx,
-        variant.id(),
-        &PropPath::new(["root", "domain", "image"]),
-    )
-    .await
-    .expect("able to find image prop");
+    let image_prop_id =
+        Prop::find_prop_id_by_path(ctx, variant_id, &PropPath::new(["root", "domain", "image"]))
+            .await
+            .expect("able to find image prop");
 
     let exposed_ports_prop_id = Prop::find_prop_id_by_path(
         ctx,
-        variant.id(),
+        variant_id,
         &PropPath::new(["root", "domain", "ExposedPorts"]),
     )
     .await
@@ -52,7 +35,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) {
 
     let exposed_ports_elem_prop_id = Prop::find_prop_id_by_path(
         ctx,
-        variant.id(),
+        variant_id,
         &PropPath::new(["root", "domain", "ExposedPorts", "ExposedPort"]),
     )
     .await
@@ -238,25 +221,11 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
 
 #[test]
 async fn through_the_wormholes(ctx: &mut DalContext) {
-    let starfield_schema = Schema::list(ctx)
-        .await
-        .expect("list schemas")
-        .iter()
-        .find(|schema| schema.name() == "starfield")
-        .expect("starfield does not exist")
-        .to_owned();
-
-    let variant = SchemaVariant::list_for_schema(ctx, starfield_schema.id())
-        .await
-        .expect("get schema variants")
-        .pop()
-        .expect("get default variant");
-
     let name = "across the universe";
-
-    let component = Component::new(ctx, name, variant.id(), None)
+    let component = create_component_for_schema_name(ctx, "starfield", name).await;
+    let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
-        .expect("able to create component");
+        .expect("find variant id for component");
 
     ctx.blocking_commit()
         .await
@@ -268,7 +237,7 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
 
     let rigid_designator_prop_id = Prop::find_prop_id_by_path(
         ctx,
-        variant.id(),
+        variant_id,
         &PropPath::new([
             "root",
             "domain",
@@ -302,7 +271,7 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
 
     let naming_and_necessity_prop_id = Prop::find_prop_id_by_path(
         ctx,
-        variant.id(),
+        variant_id,
         &PropPath::new([
             "root",
             "domain",
@@ -378,7 +347,7 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
     // phosphorus if it receives hesperus)
     assert_eq!("phosphorus", naming_and_necessity_view);
 
-    let root_prop_id = Prop::find_prop_id_by_path(ctx, variant.id(), &PropPath::new(["root"]))
+    let root_prop_id = Prop::find_prop_id_by_path(ctx, variant_id, &PropPath::new(["root"]))
         .await
         .expect("able to find root prop");
 
@@ -433,25 +402,10 @@ async fn through_the_wormholes(ctx: &mut DalContext) {
 }
 #[test]
 async fn set_the_universe(ctx: &mut DalContext) {
-    let starfield_schema = Schema::list(ctx)
+    let component = create_component_for_schema_name(ctx, "starfield", "across the universe").await;
+    let variant_id = Component::schema_variant_id(ctx, component.id())
         .await
-        .expect("list schemas")
-        .iter()
-        .find(|schema| schema.name() == "starfield")
-        .expect("starfield does not exist")
-        .to_owned();
-
-    let variant = SchemaVariant::list_for_schema(ctx, starfield_schema.id())
-        .await
-        .expect("get schema variants")
-        .pop()
-        .expect("get default variant");
-
-    let name = "across the universe";
-
-    let component = Component::new(ctx, name, variant.id(), None)
-        .await
-        .expect("able to create component");
+        .expect("find variant id for component");
 
     ctx.blocking_commit()
         .await
@@ -463,7 +417,7 @@ async fn set_the_universe(ctx: &mut DalContext) {
 
     let universe_prop_id = Prop::find_prop_id_by_path(
         ctx,
-        variant.id(),
+        variant_id,
         &PropPath::new(["root", "domain", "universe"]),
     )
     .await
@@ -524,4 +478,24 @@ async fn set_the_universe(ctx: &mut DalContext) {
         .expect("has a view");
 
     assert_eq!(universe_json, materialized_view);
+}
+
+#[test]
+async fn set_type(ctx: &mut DalContext) {
+    let component = create_component_for_schema_name(ctx, "starfield", "black star").await;
+
+    assert_eq!(
+        component.get_type(ctx).await.expect("could not get type"),
+        ComponentType::Component
+    );
+
+    component
+        .set_type(ctx, ComponentType::ConfigurationFrameUp)
+        .await
+        .expect("could not set type");
+
+    assert_eq!(
+        component.get_type(ctx).await.expect("could not get type"),
+        ComponentType::ConfigurationFrameUp
+    );
 }
