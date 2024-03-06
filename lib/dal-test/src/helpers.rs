@@ -8,7 +8,10 @@ use names::{Generator, Name};
 use crate::jwt_private_signing_key;
 use crate::signup::WorkspaceSignup;
 
-// pub mod component_bag;
+use crate::tracing::subscriber;
+use crate::tracing_subscriber::fmt;
+use crate::tracing_subscriber::EnvFilter;
+use crate::tracing_subscriber::Registry;
 
 pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
@@ -44,6 +47,82 @@ pub async fn workspace_signup(ctx: &DalContext) -> Result<(WorkspaceSignup, Stri
     })
     .await;
     Ok((nw, auth_token))
+}
+
+pub fn tracing_init(span_events_env_var: &'static str, log_env_var: &'static str) {
+    use std::thread;
+
+    thread::spawn(move || {
+        let tokio = ::tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("Failed building the Runtime for Tracing for Testing");
+
+        tokio.block_on(async move {
+            tracing_init_inner(span_events_env_var, log_env_var);
+            tokio::time::sleep(std::time::Duration::from_secs(10000000)).await
+        });
+    });
+}
+
+fn tracing_init_inner(span_events_env_var: &str, log_env_var: &str) {
+    use opentelemetry_sdk::runtime;
+    use tracing_subscriber::layer::SubscriberExt;
+
+    let event_filter = {
+        use fmt::format::FmtSpan;
+
+        // Used exclusively in tests & prefixed with `SI_TEST_`
+        #[allow(clippy::disallowed_methods)]
+        match ::std::env::var(span_events_env_var) {
+            Ok(value) => value
+                .to_ascii_lowercase()
+                .split(',')
+                .map(|filter| match filter.trim() {
+                    "new" => FmtSpan::NEW,
+                    "enter" => FmtSpan::ENTER,
+                    "exit" => FmtSpan::EXIT,
+                    "close" => FmtSpan::CLOSE,
+                    "active" => FmtSpan::ACTIVE,
+                    "full" => FmtSpan::FULL,
+                    _ => panic!(
+                        "{} must contain filters separated by `,`.\n\t\
+                            For example: `active` or `new,close`\n\t
+                            Got: {}",
+                        span_events_env_var, value,
+                    ),
+                })
+                .fold(FmtSpan::NONE, |acc, filter| filter | acc),
+            Err(::std::env::VarError::NotUnicode(_)) => {
+                panic!("{} must contain a valid UTF-8 string", span_events_env_var,)
+            }
+            Err(::std::env::VarError::NotPresent) => FmtSpan::NONE,
+        }
+    };
+
+    let env_filter = EnvFilter::from_env(log_env_var);
+    let format_layer = fmt::layer()
+        .with_thread_ids(true)
+        .with_span_events(event_filter)
+        .with_test_writer()
+        .pretty();
+
+    let otel_tracer = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(opentelemetry_otlp::new_exporter().tonic())
+        .install_batch(runtime::Tokio)
+        .expect("Creating otel_tracer failed");
+
+    let otel_layer = tracing_opentelemetry::layer().with_tracer(otel_tracer);
+
+    let registry = Registry::default();
+
+    let registry = registry
+        .with(env_filter)
+        .with(format_layer)
+        .with(otel_layer);
+
+    subscriber::set_global_default(registry).expect("failed to register global default");
 }
 
 // pub async fn create_user(ctx: &DalContext) -> User {
