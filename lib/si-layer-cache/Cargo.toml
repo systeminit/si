@@ -11,6 +11,8 @@ thiserror = { workspace = true }
 moka = { workspace = true }
 sled = { workspace = true }
 lazy_static = { workspace = true }
+postcard = { workspace = true }
+async-trait = { workspace = true }
 
 [dev_dependencies]
 tokio = { workspace = true }

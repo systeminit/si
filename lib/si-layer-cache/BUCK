@@ -3,9 +3,11 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "si-layer-cache",
     deps = [
+        "//third-party/rust:async-trait",
         "//third-party/rust:serde",
         "//third-party/rust:thiserror",
         "//third-party/rust:moka",
+        "//third-party/rust:postcard",
         "//third-party/rust:sled",
         "//third-party/rust:lazy_static",
     ],

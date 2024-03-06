@@ -1,5 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use si_layer_cache::{CacheType, LayerCache};
+use moka::future::Cache;
+use si_layer_cache::LayerCache;
 
 use tokio::runtime;
 
@@ -10,12 +11,20 @@ const ASCII_LOWER: [u8; 26] = [
 
 const ONE_MB: usize = 1_000_000;
 
+type BenchmarkCache = Cache<[u8; 1], Vec<u8>>;
+
 pub async fn fresh_cache_count(objects: &[Vec<u8>], count: usize) {
-    let tempdir = tempfile::TempDir::new_in("/home/adam/benches").expect("cannotc reate tempdir");
-    let layer_cache = LayerCache::new(tempdir).expect("cannot create layer cache");
+    let tempdir = tempfile::tempdir().expect("cannot create tempdir");
+
+    let db = sled::open(&tempdir).expect("unable to create sled database");
+
+    let cache: BenchmarkCache = Cache::new(10_000);
+
+    let layer_cache: LayerCache<[u8; 1], Vec<u8>> =
+        LayerCache::new(db, "temp", Box::new(cache)).expect("cannot create layer cache");
     for i in 0..count {
         layer_cache
-            .insert(&CacheType::Object, [ASCII_LOWER[i]], objects[i].clone())
+            .insert([ASCII_LOWER[i]], objects[i].clone())
             .await
             .expect("cannot insert into cache");
     }
@@ -43,39 +52,64 @@ pub fn insert_speed_1_mb_object(c: &mut Criterion) {
 }
 
 pub fn hot_read_1_mb_object(c: &mut Criterion) {
-    let layer_cache = LayerCache::new("/home/adam/benches/.hot_read_1_mb_object")
-        .expect("cannot create layer cache");
-    let rt = runtime::Builder::new_multi_thread()
-        .build()
-        .expect("cannot make tokio runtime");
-    let object = vec![b'a'; ONE_MB];
-    let _r = rt.block_on(layer_cache.insert(&CacheType::Object, b"a", object));
+    let target_dir = tempfile::tempdir().expect("cannot create temp dir");
+    let target_path = target_dir
+        .path()
+        .as_os_str()
+        .to_os_string()
+        .into_string()
+        .expect("get string of temp dir");
+    let path = format!("{target_path}/.hot_read_1_mb_object");
 
-    c.bench_function("Hot Cache speed get one 1mb object", |b| {
-        b.to_async(&rt)
-            .iter(|| layer_cache.get(&CacheType::Object, [b'a']))
-    });
-}
+    let db = sled::open(path).expect("unable to create sled database");
+    let cache: BenchmarkCache = Cache::new(10_000);
 
-pub async fn do_cold_memory_hot_disk(key: &[u8], layer_cache: &LayerCache) {
-    let _r = layer_cache.get(&CacheType::Object, key).await;
-    layer_cache.memory_cache.object_cache.remove(key).await;
-}
+    let layer_cache: LayerCache<[u8; 1], Vec<u8>> =
+        LayerCache::new(db, "hot_read_1_mb", Box::new(cache)).expect("cannot create layer cache");
 
-pub fn hot_disk_cold_memory_read_1_mb_object(c: &mut Criterion) {
-    let layer_cache = LayerCache::new("/home/adam/benches/.disk_cache_no_memory_1_mb_object")
-        .expect("cannot create layer cache");
     let rt = runtime::Builder::new_multi_thread()
         .build()
         .expect("cannot make tokio runtime");
     let letter = b'a';
     let object = vec![letter; ONE_MB];
-    let _r = rt.block_on(layer_cache.insert(&CacheType::Object, b"a", object));
+    let _r = rt.block_on(layer_cache.insert([letter], object));
+
+    c.bench_function("Hot Cache speed get one 1mb object", |b| {
+        b.to_async(&rt).iter(|| layer_cache.get(&[b'a']))
+    });
+}
+
+pub async fn do_cold_memory_hot_disk(key: [u8; 1], layer_cache: &LayerCache<[u8; 1], Vec<u8>>) {
+    let _r = layer_cache.get(&key).await;
+    layer_cache.remove_from_memory(key).await;
+}
+
+pub fn hot_disk_cold_memory_read_1_mb_object(c: &mut Criterion) {
+    let target_dir = tempfile::tempdir().expect("cannot create temp dir");
+    let target_path = target_dir
+        .path()
+        .as_os_str()
+        .to_os_string()
+        .into_string()
+        .expect("get string of temp dir");
+    let path = format!("{target_path}/.disk_cache_no_memory_1_mb_object");
+
+    let db = sled::open(path).expect("unable to create sled database");
+    let cache: BenchmarkCache = Cache::new(10_000);
+
+    let layer_cache =
+        LayerCache::new(db, "foo", Box::new(cache)).expect("cannot create layer cache");
+    let rt = runtime::Builder::new_multi_thread()
+        .build()
+        .expect("cannot make tokio runtime");
+    let letter = b'a';
+    let object = vec![letter; ONE_MB];
+    let _r = rt.block_on(layer_cache.insert([letter], object));
     let key = [letter];
 
     c.bench_function("Hot Disk cold Memory cache speed get one 1mb object", |b| {
         b.to_async(&rt)
-            .iter(|| do_cold_memory_hot_disk(black_box(&key), black_box(&layer_cache)))
+            .iter(|| do_cold_memory_hot_disk(black_box(key), black_box(&layer_cache)))
     });
 }
 
