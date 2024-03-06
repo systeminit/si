@@ -1,7 +1,17 @@
 [build]
-rustflags = [ "--cfg", "tokio_unstable"]
+rustflags = [
+    "--cfg", "tokio_unstable",
+]
 
 [target.x86_64-unknown-linux-gnu]
 rustflags = [
+    # The Tokio unstable flags need to be duplicated in this target-specific
+    # section.
+    #
+    # > There are four mutually exclusive sources of extra flags. They are
+    # > checked in order, with the first one being used
+
+    # See: https://doc.rust-lang.org/cargo/reference/config.html#buildrustflags
+    "--cfg", "tokio_unstable",
     "-C", "link-arg=-fuse-ld=lld",
 ]
