@@ -142,22 +142,6 @@ There are two primary options to do so:
 2. Otherwise, you can execute `nix develop` to enter the environment, `nix develop --command <command>` to
    execute a command, or use the environment in whatever way your prefer.
 
-## Troubleshooting Potential Service Conflicts
-
-SI uses external services in conjunction with its native components.
-These external services are deployed via [`docker compose`](https://docs.docker.com/compose/) and are configured to stick to their default settings as
-closely as possible, including port settings.
-Thus, it is worth checking if you are running these services to avoid conflicts when running SI.
-Potentially conflicting services include, but are not limited to, the following:
-
-* PostgreSQL DB
-* OpenTelemetry
-* NATS
-* Watchtower
-
-In the case of a port conflict, a good strategy is to temporarily disable the host service until SI is no longer being
-run.
-
 ## How Will I Know That Each Component Is Ready?
 
 For backend services like `veritech` and `sdf`, there will usually be an `INFO`-level log indicating that the
