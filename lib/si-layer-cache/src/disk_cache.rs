@@ -1,65 +1,41 @@
-use std::path::Path;
+use sled::Db;
+use std::marker::PhantomData;
 
-use sled::{self, IVec};
-
-use crate::{error::LayerCacheResult, CacheType};
+use crate::error::LayerCacheResult;
 
 #[derive(Debug)]
-pub struct DiskCache {
-    pub db: sled::Db,
-    pub object_tree: sled::Tree,
-    pub graph_tree: sled::Tree,
+pub struct DiskCache<K>
+where
+    K: AsRef<[u8]>,
+{
+    tree: sled::Tree,
+    // We have to make it appear that we hold on to a K when we don't actually
+    // do so. This allows us to use static dispatch, etc.
+    _phantom_of_the_opera: PhantomData<K>,
 }
 
-impl DiskCache {
-    pub fn new(path: impl AsRef<Path>) -> LayerCacheResult<DiskCache> {
-        let db = sled::open(path)?;
-        let object_tree = db.open_tree([CacheType::Object as u8])?;
-        let graph_tree = db.open_tree([CacheType::Graph as u8])?;
-        Ok(DiskCache {
-            db,
-            object_tree,
-            graph_tree,
+impl<K> DiskCache<K>
+where
+    K: AsRef<[u8]> + Copy,
+{
+    pub fn new(sled_db: Db, tree_name: impl AsRef<[u8]>) -> LayerCacheResult<Self> {
+        let tree = sled_db.open_tree(tree_name.as_ref())?;
+        Ok(Self {
+            tree,
+            _phantom_of_the_opera: PhantomData,
         })
     }
 
-    fn get_tree(&self, cache_type: &CacheType) -> &sled::Tree {
-        match cache_type {
-            CacheType::Graph => &self.graph_tree,
-            CacheType::Object => &self.object_tree,
-        }
+    pub fn get(&self, key: &K) -> LayerCacheResult<Option<Vec<u8>>> {
+        Ok(self.tree.get(*key)?.map(|bytes| bytes.to_vec()))
     }
 
-    pub fn get(
-        &self,
-        cache_type: &CacheType,
-        key: impl AsRef<[u8]>,
-    ) -> LayerCacheResult<Option<IVec>> {
-        let tree = self.get_tree(cache_type);
-        let result = tree.get(key)?;
-        Ok(result)
+    pub fn contains_key(&self, key: &K) -> LayerCacheResult<bool> {
+        Ok(self.tree.contains_key(*key)?)
     }
 
-    pub fn contains_key(
-        &self,
-        cache_type: &CacheType,
-        key: impl AsRef<[u8]>,
-    ) -> LayerCacheResult<bool> {
-        let tree = self.get_tree(cache_type);
-        let key = key.as_ref();
-        let result = tree.contains_key(key)?;
-        Ok(result)
-    }
-
-    pub fn insert(
-        &self,
-        cache_type: &CacheType,
-        key: impl AsRef<[u8]>,
-        value: impl Into<Vec<u8>>,
-    ) -> LayerCacheResult<()> {
-        let tree = self.get_tree(cache_type);
-        let key = key.as_ref();
-        let _result = tree.insert(key, value.into())?;
+    pub fn insert(&self, key: K, value: &[u8]) -> LayerCacheResult<()> {
+        self.tree.insert(key.as_ref(), value)?;
         Ok(())
     }
 }
