@@ -29,6 +29,13 @@ async fn async_main() -> Result<()> {
 
     let (mut telemetry, telemetry_shutdown) = {
         let config = TelemetryConfig::builder()
+            .force_color(args.force_color.then_some(true))
+            .no_color(args.no_color.then_some(true))
+            .console_log_format(
+                args.log_json
+                    .then_some(ConsoleLogFormat::Json)
+                    .unwrap_or_default(),
+            )
             .service_name("rebaser")
             .service_namespace("si")
             .log_env_var_prefix("SI")
@@ -47,6 +54,8 @@ async fn async_main() -> Result<()> {
     debug!(arguments =?args, "parsed cli arguments");
 
     let config = Config::try_from(args)?;
+
+    task_tracker.close();
 
     Server::from_config(config).await?.run().await?;
 

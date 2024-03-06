@@ -17,6 +17,41 @@ pub(crate) struct Args {
     #[arg(short = 'v', long = "verbose", action = ArgAction::Count)]
     pub(crate) verbose: u8,
 
+    /// Disables ANSI coloring in log output, even if standard output refers to a terminal/TTY.
+    ///
+    /// For more details, visit: <http://no-color.org/>.
+    #[arg(
+        long = "no-color",
+        default_value = "false",
+        env = "SI_NO_COLOR",
+        hide_env_values = true,
+        conflicts_with = "force_color"
+    )]
+    pub(crate) no_color: bool,
+
+    /// Forces ANSI coloring, even if standard output refers to a terminal/TTY.
+    ///
+    /// For more details, visit: <http://no-color.org/>.
+    #[arg(
+        long = "force-color",
+        default_value = "false",
+        env = "SI_FORCE_COLOR",
+        hide_env_values = true,
+        conflicts_with = "no_color"
+    )]
+    pub(crate) force_color: bool,
+
+    /// Prints telemetry logging as JSON lines.
+    ///
+    /// For more details, visit: <https://jsonlines.org/>.
+    #[arg(
+        long = "log-json",
+        default_value = "false",
+        env = "SI_LOG_JSON",
+        hide_env_values = true
+    )]
+    pub(crate) log_json: bool,
+
     /// PostgreSQL connection pool dbname [example: myapp]
     #[arg(long)]
     pub(crate) pg_dbname: Option<String>,
