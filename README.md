@@ -152,7 +152,7 @@ For more information on how to use and develop the System Initiative software, t
 To start, we recommend reading the [Open Source](#open-source) and [Contributing](#contributing) sources below.
 They provide information on licensing, contributor rights, and more.
 
-Afterwards, navigate to the [contributing guide](CONTRIBUTING.md) to get started.
+After that, navigate to the [contributing guide](CONTRIBUTING.md) to get started.
 
 ## Open Source
 
