@@ -15,6 +15,7 @@ rust_library(
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-std:si-std",
+        "//lib/si-pkg:si-pkg",
         "//lib/si-test-macros:si-test-macros",
         "//lib/telemetry-rs:telemetry",
         "//lib/veritech-client:veritech-client",

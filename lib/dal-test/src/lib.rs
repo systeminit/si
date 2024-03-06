@@ -2,7 +2,6 @@
 
 use std::{
     borrow::Cow,
-    collections::HashSet,
     env,
     path::{Path, PathBuf},
     sync::{Arc, Once},
@@ -11,9 +10,8 @@ use std::{
 use buck2_resources::Buck2Resources;
 use content_store::PgStoreTools;
 use dal::{
-    builtins::SelectedTestBuiltinSchemas,
     job::processor::{JobQueueProcessor, NatsProcessor},
-    DalContext, JwtPublicSigningKey, ServicesContext,
+    DalContext, JwtPublicSigningKey, ModelResult, ServicesContext, Tenancy, Workspace,
 };
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
@@ -35,12 +33,14 @@ pub use color_eyre::{
     self,
     eyre::{eyre, Result, WrapErr},
 };
+use dal::builtins::{func, schema};
 pub use si_test_macros::{dal_test as test, sdf_test};
 pub use signup::WorkspaceSignup;
 pub use telemetry;
 pub use tracing_subscriber;
 
 pub mod helpers;
+mod schemas;
 mod signup;
 pub mod test_harness;
 
@@ -54,8 +54,12 @@ const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
 const ENV_VAR_CONTENT_STORE_PG_DBNAME: &str = "SI_TEST_CONTENT_STORE_PG_DBNAME";
 const ENV_VAR_PG_USER: &str = "SI_TEST_PG_USER";
 const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
-const ENV_VAR_BUILTIN_SCHEMAS: &str = "SI_TEST_BUILTIN_SCHEMAS";
 const ENV_VAR_KEEP_OLD_DBS: &str = "SI_TEST_KEEP_OLD_DBS";
+
+const SI_AWS_PKG: &str = "si-aws-2023-09-13.sipkg";
+const SI_AWS_EC2_PKG: &str = "si-aws-ec2-2023-09-26.sipkg";
+const SI_DOCKER_IMAGE_PKG: &str = "si-docker-image-2023-09-13.sipkg";
+const SI_COREOS_PKG: &str = "si-coreos-2023-09-13.sipkg";
 
 pub static COLOR_EYRE_INIT: Once = Once::new();
 
@@ -666,17 +670,15 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     // Check if the user would like to skip migrating schemas. This is helpful for boosting
     // performance when running integration tests that do not rely on builtin schemas.
-    let selected_test_builtin_schemas = determine_selected_test_builtin_schemas();
+    // let selected_test_builtin_schemas = determine_selected_test_builtin_schemas();
 
     info!("creating builtins");
-    // TODO: @stack72 - remove this code path and install these from the module-index??
-    dal::migrate_local_builtins(
+    migrate_local_builtins(
         services_ctx.pg_pool(),
         services_ctx.nats_conn(),
         services_ctx.job_processor(),
         services_ctx.veritech().clone(),
         &services_ctx.encryption_key(),
-        Some(selected_test_builtin_schemas),
         test_context
             .config
             .pkgs_path
@@ -712,42 +714,95 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     Ok(())
 }
 
-fn determine_selected_test_builtin_schemas() -> SelectedTestBuiltinSchemas {
-    #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test and
-    // all are prefixed with `SI_TEST_`
-    //
-    // TODO(fnichol): remove conditional schema execution
-    match env::var(ENV_VAR_BUILTIN_SCHEMAS) {
-        Ok(found_value) => {
-            let mut builtin_schemas = HashSet::new();
+#[allow(clippy::too_many_arguments)]
+#[instrument(level = "info", skip_all)]
+async fn migrate_local_builtins(
+    dal_pg: &PgPool,
+    nats: &NatsClient,
+    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    veritech: veritech_client::Client,
+    encryption_key: &CycloneEncryptionKey,
+    pkgs_path: PathBuf,
+    module_index_url: String,
+    symmetric_crypto_service: &SymmetricCryptoService,
+    rebaser_config: RebaserClientConfig,
+    content_store_pg_pool: &PgPool,
+) -> ModelResult<()> {
+    let services_context = ServicesContext::new(
+        dal_pg.clone(),
+        nats.clone(),
+        job_processor,
+        veritech,
+        Arc::new(*encryption_key),
+        Some(pkgs_path),
+        Some(module_index_url),
+        symmetric_crypto_service.clone(),
+        rebaser_config,
+        content_store_pg_pool.clone(),
+    );
+    let dal_context = services_context.into_builder(true);
+    let mut ctx = dal_context.build_default().await?;
 
-            // If the value does not contain a comma, we will have exactly once item to iterate
-            // over.
-            for builtin_schema in found_value.split(',') {
-                // Trim and ensure the string is lowercase.
-                let cleaned = builtin_schema.trim().to_lowercase();
+    let workspace = Workspace::builtin(&mut ctx).await?;
+    ctx.update_tenancy(Tenancy::new(*workspace.pk()));
+    ctx.update_to_head();
+    ctx.update_snapshot_to_visibility().await?;
 
-                // If we receive any keywords indicating that we need to return early, let's do so.
-                if &cleaned == "none" || &cleaned == "false" {
-                    return SelectedTestBuiltinSchemas::None;
-                } else if &cleaned == "all" {
-                    return SelectedTestBuiltinSchemas::All;
-                } else if &cleaned == "test" || &cleaned == "true" {
-                    return SelectedTestBuiltinSchemas::Test;
-                }
+    info!("migrating intrinsic functions");
+    func::migrate_intrinsics(&ctx).await?;
 
-                // If we do not find any keywords, we assume that the user provided the name for a
-                // builtin schema.
-                builtin_schemas.insert(cleaned);
-            }
-            SelectedTestBuiltinSchemas::Some(builtin_schemas)
-        }
-        Err(_) => {
-            // If the variable is unset, then we migrate everything. This is the default behavior.
-            SelectedTestBuiltinSchemas::Test
-        }
-    }
+    // FIXME(nick): restore builtin migration functionality for all variants.
+    info!("migrate minimal number of schemas for testing the new engine");
+
+    schema::migrate_pkg(&ctx, SI_DOCKER_IMAGE_PKG, None).await?;
+    schema::migrate_pkg(&ctx, SI_COREOS_PKG, None).await?;
+    schema::migrate_pkg(&ctx, SI_AWS_EC2_PKG, None).await?;
+    schema::migrate_pkg(&ctx, SI_AWS_PKG, None).await?;
+    schemas::migrate_test_exclusive_schema_starfield(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_fallout(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_bethesda_secret(&ctx).await?;
+
+    ctx.blocking_commit().await?;
+
+    Ok(())
 }
+
+// fn determine_selected_test_builtin_schemas() -> SelectedTestBuiltinSchemas {
+//     #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test and
+//     // all are prefixed with `SI_TEST_`
+//     //
+//     // TODO(fnichol): remove conditional schema execution
+//     match env::var(ENV_VAR_BUILTIN_SCHEMAS) {
+//         Ok(found_value) => {
+//             let mut builtin_schemas = HashSet::new();
+//
+//             // If the value does not contain a comma, we will have exactly once item to iterate
+//             // over.
+//             for builtin_schema in found_value.split(',') {
+//                 // Trim and ensure the string is lowercase.
+//                 let cleaned = builtin_schema.trim().to_lowercase();
+//
+//                 // If we receive any keywords indicating that we need to return early, let's do so.
+//                 if &cleaned == "none" || &cleaned == "false" {
+//                     return SelectedTestBuiltinSchemas::None;
+//                 } else if &cleaned == "all" {
+//                     return SelectedTestBuiltinSchemas::All;
+//                 } else if &cleaned == "test" || &cleaned == "true" {
+//                     return SelectedTestBuiltinSchemas::Test;
+//                 }
+//
+//                 // If we do not find any keywords, we assume that the user provided the name for a
+//                 // builtin schema.
+//                 builtin_schemas.insert(cleaned);
+//             }
+//             SelectedTestBuiltinSchemas::Some(builtin_schemas)
+//         }
+//         Err(_) => {
+//             // If the variable is unset, then we migrate everything. This is the default behavior.
+//             SelectedTestBuiltinSchemas::Test
+//         }
+//     }
+// }
 
 async fn drop_old_test_databases(pg_pool: &PgPool) -> Result<()> {
     let name_prefix = format!("{}_%", pg_pool.db_name());

@@ -1,15 +1,14 @@
+use dal::func::argument::FuncArgumentKind;
+use dal::func::intrinsics::IntrinsicFunc;
+use dal::pkg::import_pkg_from_pkg;
+use dal::{pkg, prop::PropPath, ActionKind};
+use dal::{BuiltinsResult, DalContext, PropKind};
+use si_pkg::SchemaSpecData;
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
-    FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PropSpec, SchemaSpec,
+    FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, SchemaSpec,
     SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
 };
-use si_pkg::{FuncSpecData, SchemaSpecData};
-
-use crate::func::argument::FuncArgumentKind;
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::pkg::import_pkg_from_pkg;
-use crate::{prop::PropPath, ActionKind, PropKind};
-use crate::{BuiltinsResult, DalContext};
 
 pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut fallout_builder = PkgSpec::builder();
@@ -199,7 +198,7 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
     import_pkg_from_pkg(
         ctx,
         &fallout_pkg,
-        Some(crate::pkg::ImportOptions {
+        Some(pkg::ImportOptions {
             schemas: Some(vec!["fallout".into()]),
             ..Default::default()
         }),

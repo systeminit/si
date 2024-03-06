@@ -18,6 +18,7 @@ si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-std = { path = "../../lib/si-std" }
+si-pkg = { path = "../../lib/si-pkg" }
 si-test-macros = { path = "../../lib/si-test-macros" }
 telemetry = { path = "../../lib/telemetry-rs" }
 veritech-client = { path = "../../lib/veritech-client" }

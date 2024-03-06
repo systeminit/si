@@ -1,23 +1,16 @@
 //! The Data Access Layer (DAL) for System Initiative.
 
-use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Duration;
 
 use rand::Rng;
-use rebaser_client::Config as RebaserClientConfig;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
-use si_crypto::SymmetricCryptoService;
-use si_data_nats::{NatsClient, NatsError};
+use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgPool, PgPoolError};
 use strum::{Display, EnumString, EnumVariantNames};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time;
 use tokio::time::Instant;
-use veritech_client::CycloneEncryptionKey;
-
-use crate::builtins::SelectedTestBuiltinSchemas;
 
 //pub mod action;
 pub mod action_prototype;
@@ -206,48 +199,6 @@ pub async fn migrate_all_with_progress(services_context: &ServicesContext) -> Mo
 pub async fn migrate(pg: &PgPool, content_store_pg_pool: &PgPool) -> ModelResult<()> {
     content_store::PgStore::migrate(content_store_pg_pool).await?;
     pg.migrate(embedded::migrations::runner()).await?;
-    Ok(())
-}
-
-#[allow(clippy::too_many_arguments)]
-#[instrument(level = "info", skip_all)]
-pub async fn migrate_local_builtins(
-    dal_pg: &PgPool,
-    nats: &NatsClient,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    veritech: veritech_client::Client,
-    encryption_key: &CycloneEncryptionKey,
-    selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
-    pkgs_path: PathBuf,
-    module_index_url: String,
-    symmetric_crypto_service: &SymmetricCryptoService,
-    rebaser_config: RebaserClientConfig,
-    content_store_pg_pool: &PgPool,
-) -> ModelResult<()> {
-    let services_context = ServicesContext::new(
-        dal_pg.clone(),
-        nats.clone(),
-        job_processor,
-        veritech,
-        Arc::new(*encryption_key),
-        Some(pkgs_path),
-        Some(module_index_url),
-        symmetric_crypto_service.clone(),
-        rebaser_config,
-        content_store_pg_pool.clone(),
-    );
-    let dal_context = services_context.into_builder(true);
-    let mut ctx = dal_context.build_default().await?;
-
-    let workspace = Workspace::builtin(&mut ctx).await?;
-    ctx.update_tenancy(Tenancy::new(*workspace.pk()));
-    ctx.update_to_head();
-    ctx.update_snapshot_to_visibility().await?;
-
-    builtins::migrate_local(&ctx, selected_test_builtin_schemas).await?;
-
-    ctx.blocking_commit().await?;
-
     Ok(())
 }
 
