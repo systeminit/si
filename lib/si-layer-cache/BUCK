@@ -3,11 +3,13 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "si-layer-cache",
     deps = [
-        "//third-party/rust:serde",
-        "//third-party/rust:thiserror",
-        "//third-party/rust:moka",
-        "//third-party/rust:sled",
+        "//third-party/rust:async-trait",
         "//third-party/rust:lazy_static",
+        "//third-party/rust:moka",
+        "//third-party/rust:postcard",
+        "//third-party/rust:serde",
+        "//third-party/rust:sled",
+        "//third-party/rust:thiserror",
     ],
     srcs = glob([
         "src/**/*.rs",
@@ -18,9 +20,12 @@ rust_test(
     name = "test-integration",
     deps = [
         ":si-layer-cache",
-        "//third-party/rust:tokio",
-        "//third-party/rust:tempfile",
         "//third-party/rust:criterion",
+        "//third-party/rust:moka",
+        "//third-party/rust:postcard",
+        "//third-party/rust:sled",
+        "//third-party/rust:tempfile",
+        "//third-party/rust:tokio",
     ],
     srcs = glob([
         "tests/**/*.rs",

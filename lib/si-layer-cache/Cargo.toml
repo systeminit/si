@@ -11,11 +11,16 @@ thiserror = { workspace = true }
 moka = { workspace = true }
 sled = { workspace = true }
 lazy_static = { workspace = true }
+postcard = { workspace = true }
+async-trait = { workspace = true }
 
 [dev_dependencies]
-tokio = { workspace = true }
-tempfile = { workspace = true }
 criterion = { workspace = true }
+moka = { workspace = true }
+postcard = { workspace = true }
+sled = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true }
 
 [[bench]]
 name = "insert_speed"
