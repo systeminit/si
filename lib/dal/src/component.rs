@@ -915,7 +915,6 @@ impl Component {
         Ok(attribute_prototype_argument_id)
     }
 
-    // NOTE(nick): this is probably algorithmically bad and we probably need to make it less bad.
     /// Find all matching sockets for a given source [`Component`] and a given destination [`Component`].
     ///
     /// This is useful when [`attaching`](frame::Frame::attach_child_to_parent) a child [`Component`] to a parent
@@ -930,37 +929,37 @@ impl Component {
         let destination_schema_variant_id =
             Component::schema_variant_id(ctx, destination_component_id).await?;
 
-        let source_output_sockets = OutputSocket::list(ctx, source_schema_variant_id).await?;
-        let destination_input_sockets =
-            InputSocket::list(ctx, destination_schema_variant_id).await?;
+        let source_sockets = OutputSocket::list(ctx, source_schema_variant_id).await?;
+        let destination_sockets = InputSocket::list(ctx, destination_schema_variant_id).await?;
 
-        // TODO(nick): use annotations instead of names. Also make this less bad.
-        let mut output_sockets_by_annotation: HashMap<String, OutputSocketId> = HashMap::new();
-        for source_output_socket in source_output_sockets {
-            output_sockets_by_annotation.insert(
-                source_output_socket.name().to_string(),
-                source_output_socket.id(),
-            );
-        }
+        // Loop through output sockets
+        // for each, loop through unused input sockets
+        // If there is on, connect and mark as used
 
-        let mut input_sockets_by_annotation: HashMap<String, InputSocketId> = HashMap::new();
-        for destination_input_socket in destination_input_sockets {
-            input_sockets_by_annotation.insert(
-                destination_input_socket.name().to_string(),
-                destination_input_socket.id(),
-            );
-        }
-
-        // NOTE(nick): using the maps reliant on the name, connect all sockets we can.
         let mut to_enqueue = Vec::new();
-        for (key, output_socket_id) in output_sockets_by_annotation {
-            if let Some(input_socket_id) = input_sockets_by_annotation.get(&key) {
+
+        for src_sock in source_sockets {
+            let mut maybe_dest_id = None;
+            for dest_candidate in &destination_sockets {
+                // TODO Use connection annotations
+                if src_sock.name() == dest_candidate.name() {
+                    // if more than one valid destination is found, skip the socket.
+                    if maybe_dest_id.is_some() {
+                        maybe_dest_id = None;
+                        break;
+                    }
+
+                    maybe_dest_id = Some(dest_candidate.id())
+                }
+            }
+
+            if let Some(destination_socket_id) = maybe_dest_id {
                 let (attribute_value_id, _) = Self::connect_inner(
                     ctx,
                     source_component_id,
-                    output_socket_id,
+                    src_sock.id(),
                     destination_component_id,
-                    *input_socket_id,
+                    destination_socket_id,
                 )
                 .await?;
                 to_enqueue.push(attribute_value_id);

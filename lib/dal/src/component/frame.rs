@@ -56,6 +56,9 @@ impl Frame {
 
         Component::connect_all(ctx, source_id, destination_id).await?;
 
+        // TODO deal with deeply nested frames (connect to all ancestor valid sockets too)
+        // TODO deal with connecting frames to frames (go through children and connect to ancestors)
+
         Ok(())
     }
 
