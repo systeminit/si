@@ -12,23 +12,11 @@ use si_pkg::{SiPkgError, SpecError};
 use crate::func::FuncError;
 use crate::installed_pkg::InstalledPkgError;
 use crate::pkg::PkgError;
-use crate::{
-    AttributeValueId, DalContext, PropId, SchemaVariantId, StandardModelError, TransactionsError,
-};
+use crate::{AttributeValueId, PropId, SchemaVariantId, StandardModelError, TransactionsError};
 
 // Private builtins modules.
 pub mod func;
 pub mod schema;
-
-pub const SI_AWS_PKG: &str = "si-aws-2023-09-13.sipkg";
-pub const SI_AWS_EC2_PKG: &str = "si-aws-ec2-2023-09-26.sipkg";
-pub const SI_DOCKER_IMAGE_PKG: &str = "si-docker-image-2023-09-13.sipkg";
-pub const SI_COREOS_PKG: &str = "si-coreos-2023-09-13.sipkg";
-pub const SI_GENERIC_FRAME_PKG: &str = "si-generic-frame-2023-09-13.sipkg";
-pub const SI_AWS_IAM_PKG: &str = "si-aws-iam-2023-09-13.sipkg";
-pub const SI_AWS_ECS_PKG: &str = "si-aws-ecs-2023-09-21.sipkg";
-pub const SI_AWS_CLOUDWATCH_PKG: &str = "si-aws-cloudwatch-2023-09-26.sipkg";
-pub const SI_AWS_LB_TARGET_GROUP_PKG: &str = "si-aws-lb-target-group-2023-12-05.sipkg";
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -91,40 +79,4 @@ pub enum SelectedTestBuiltinSchemas {
     Some(HashSet<String>),
     /// Migrate _only_ test-exclusive [`Schemas`](crate::Schema).
     Test,
-}
-
-/// Migrate all local "builtins" in a definitive order.
-pub async fn migrate_local(
-    ctx: &DalContext,
-    _selected_test_builtin_schemas: Option<SelectedTestBuiltinSchemas>,
-) -> BuiltinsResult<()> {
-    info!("migrating intrinsic functions");
-    func::migrate_intrinsics(ctx).await?;
-    info!("intrinsics migrated");
-    // info!("migrating builtin functions");
-    // func::migrate(ctx).await?;
-
-    // FIXME(nick): restore builtin migration functionality for all variants.
-    info!("migrate minimal number of schemas for testing the new engine");
-
-    schema::migrate_pkg(ctx, SI_DOCKER_IMAGE_PKG, None).await?;
-    schema::migrate_pkg(ctx, SI_COREOS_PKG, None).await?;
-    schema::migrate_pkg(ctx, SI_AWS_EC2_PKG, None).await?;
-    schema::migrate_pkg(ctx, SI_AWS_PKG, None).await?;
-    schema::migrate_test_exclusive_schema_starfield(ctx).await?;
-    schema::migrate_test_exclusive_schema_fallout(ctx).await?;
-    schema::migrate_test_exclusive_schema_bethesda_secret(ctx).await?;
-
-    // match selected_test_builtin_schemas {
-    //     Some(found_selected_test_builtin_schemas) => {
-    //         schema::migrate_local_only_test_schemas(ctx, found_selected_test_builtin_schemas)
-    //            .await?;
-    //     }
-    //     None => {
-    //         schema::migrate_local_all_schemas(ctx).await?;
-    //     }
-    // }
-
-    // info!("completed migrating functions, workflows and schemas");
-    Ok(())
 }

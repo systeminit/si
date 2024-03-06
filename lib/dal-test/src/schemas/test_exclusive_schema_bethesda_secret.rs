@@ -1,16 +1,18 @@
+use dal::func::argument::FuncArgumentKind;
+use dal::func::intrinsics::IntrinsicFunc;
+use dal::pkg::import_pkg_from_pkg;
+use dal::schema::variant::leaves::LeafKind;
+use dal::{pkg, prop::PropPath};
+use dal::{BuiltinsResult, DalContext};
 use si_pkg::{
-    AttrFuncInputSpec, AttrFuncInputSpecKind, AuthenticationFuncSpec, FuncArgumentSpec, FuncSpec,
-    FuncSpecBackendKind, FuncSpecBackendResponseType, LeafFunctionSpec, LeafInputLocation,
-    LeafKind, PkgSpec, PropSpec, PropSpecKind, PropSpecWidgetKind, SchemaSpec, SchemaVariantSpec,
-    SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecArity, SocketSpecData, SocketSpecKind,
+    AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind,
+    FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, SchemaSpec, SchemaVariantSpec,
+    SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
 };
-use si_pkg::{FuncSpecData, SchemaSpecData};
-
-use crate::func::argument::FuncArgumentKind;
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::pkg::import_pkg_from_pkg;
-use crate::prop::PropPath;
-use crate::{BuiltinsResult, DalContext};
+use si_pkg::{
+    AuthenticationFuncSpec, LeafFunctionSpec, LeafInputLocation, PropSpecKind, PropSpecWidgetKind,
+    SchemaSpecData, SocketSpecArity,
+};
 
 pub async fn migrate_test_exclusive_schema_bethesda_secret(ctx: &DalContext) -> BuiltinsResult<()> {
     let name = "bethesda-secret";
@@ -118,7 +120,7 @@ pub async fn migrate_test_exclusive_schema_bethesda_secret(ctx: &DalContext) -> 
     import_pkg_from_pkg(
         ctx,
         &pkg,
-        Some(crate::pkg::ImportOptions {
+        Some(pkg::ImportOptions {
             schemas: Some(vec![name.into()]),
             ..Default::default()
         }),

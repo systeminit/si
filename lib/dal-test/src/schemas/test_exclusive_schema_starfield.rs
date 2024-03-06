@@ -1,15 +1,14 @@
+use dal::func::argument::FuncArgumentKind;
+use dal::func::intrinsics::IntrinsicFunc;
+use dal::pkg::import_pkg_from_pkg;
+use dal::{pkg, prop::PropPath, ActionKind};
+use dal::{BuiltinsResult, DalContext, PropKind};
 use si_pkg::SchemaSpecData;
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
     FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, SchemaSpec,
     SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
 };
-
-use crate::func::argument::FuncArgumentKind;
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::pkg::import_pkg_from_pkg;
-use crate::{prop::PropPath, ActionKind};
-use crate::{BuiltinsResult, DalContext, PropKind};
 
 pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut starfield_builder = PkgSpec::builder();
@@ -63,7 +62,7 @@ pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> Builti
         .build()?;
 
     let fallout_entries_to_galaxies_transform_code =
-            "async function falloutEntriesToGalaxies(input: Input): Promise<Output> {
+        "async function falloutEntriesToGalaxies(input: Input): Promise<Output> {
           let galaxies = [];
           let entries = input.entries;
 
@@ -412,7 +411,7 @@ pub async fn migrate_test_exclusive_schema_starfield(ctx: &DalContext) -> Builti
     import_pkg_from_pkg(
         ctx,
         &starfield_pkg,
-        Some(crate::pkg::ImportOptions {
+        Some(pkg::ImportOptions {
             schemas: Some(vec!["starfield".into()]),
             ..Default::default()
         }),
