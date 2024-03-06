@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::{JoinError, JoinSet};
+use ulid::Ulid;
 
 //use crate::tasks::StatusReceiverClient;
 //use crate::tasks::StatusReceiverRequest;
@@ -143,16 +144,19 @@ impl DependentValuesUpdate {
                 let attribute_value_id = attribute_value_id.to_owned(); // release our borrow
 
                 if !seen_ids.contains(&attribute_value_id) {
-                    let join_handle = update_join_set.spawn(
-                        values_from_prototype_function_execution(ctx.clone(), attribute_value_id),
-                    );
-                    task_id_to_av_id.insert(join_handle.id(), attribute_value_id);
+                    let id = Ulid::new();
+                    update_join_set.spawn(values_from_prototype_function_execution(
+                        id,
+                        ctx.clone(),
+                        attribute_value_id,
+                    ));
+                    task_id_to_av_id.insert(id, attribute_value_id);
                     seen_ids.insert(attribute_value_id);
                 }
             }
 
             // Wait for a task to finish
-            if let Some(join_result) = update_join_set.join_next_with_id().await {
+            if let Some(join_result) = update_join_set.join_next().await {
                 let (task_id, execution_result) = join_result?;
                 if let Some(finished_value_id) = task_id_to_av_id.remove(&task_id) {
                     match execution_result {
@@ -209,10 +213,15 @@ impl DependentValuesUpdate {
     )
 )]
 async fn values_from_prototype_function_execution(
+    task_id: Ulid,
     ctx: DalContext,
     attribute_value_id: AttributeValueId,
-) -> DependentValueUpdateResult<PrototypeExecutionResult> {
-    Ok(AttributeValue::execute_prototype_function(&ctx, attribute_value_id).await?)
+) -> (Ulid, DependentValueUpdateResult<PrototypeExecutionResult>) {
+    let result = AttributeValue::execute_prototype_function(&ctx, attribute_value_id)
+        .await
+        .map_err(Into::into);
+
+    (task_id, result)
 }
 
 impl TryFrom<JobInfo> for DependentValuesUpdate {
