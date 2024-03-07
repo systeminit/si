@@ -46,14 +46,10 @@ async fn connect_components(ctx: &mut DalContext) {
             .expect("input socket not found");
 
     // Create a component for both the source and the destination
-    let oysters_component = Component::new(
-        ctx,
-        "oysters in my pocket",
-        docker_image_schema_variant_id,
-        None,
-    )
-    .await
-    .expect("could not create component");
+    let oysters_component =
+        Component::new(ctx, "oysters in my pocket", docker_image_schema_variant_id)
+            .await
+            .expect("could not create component");
 
     ctx.blocking_commit()
         .await
@@ -64,14 +60,10 @@ async fn connect_components(ctx: &mut DalContext) {
         .expect("update_snapshot_to_visibility");
 
     // Create a second component for a second source
-    let lunch_component = Component::new(
-        ctx,
-        "were saving for lunch",
-        docker_image_schema_variant_id,
-        None,
-    )
-    .await
-    .expect("could not create component");
+    let lunch_component =
+        Component::new(ctx, "were saving for lunch", docker_image_schema_variant_id)
+            .await
+            .expect("could not create component");
 
     ctx.blocking_commit()
         .await
@@ -81,7 +73,7 @@ async fn connect_components(ctx: &mut DalContext) {
         .await
         .expect("update_snapshot_to_visibility");
 
-    let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id, None)
+    let royel_component = Component::new(ctx, "royel otis", butane_schema_variant_id)
         .await
         .expect("could not create component");
 

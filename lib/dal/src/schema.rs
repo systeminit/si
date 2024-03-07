@@ -13,12 +13,10 @@ use crate::workspace_snapshot::edge_weight::{
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, ComponentKind, DalContext, Timestamp, TransactionsError};
+use crate::{pk, DalContext, Timestamp, TransactionsError};
 
-pub use ui_menu::SchemaUiMenu;
 pub use variant::{SchemaVariant, SchemaVariantId};
 
-pub mod ui_menu;
 pub mod variant;
 
 pub const SCHEMA_VERSION: SchemaContentDiscriminants = SchemaContentDiscriminants::V1;
@@ -55,7 +53,6 @@ pub struct Schema {
     pub ui_hidden: bool,
     // NOTE(nick): maybe we should have a special edge for this instead or remove it altogether.
     default_schema_variant_id: Option<SchemaVariantId>,
-    component_kind: ComponentKind,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -70,7 +67,6 @@ pub struct SchemaContentV1 {
     pub ui_hidden: bool,
     // NOTE(nick): maybe we should have a special edge for this instead or remove it altogether.
     pub default_schema_variant_id: Option<SchemaVariantId>,
-    pub component_kind: ComponentKind,
 }
 
 impl From<Schema> for SchemaContentV1 {
@@ -80,7 +76,6 @@ impl From<Schema> for SchemaContentV1 {
             name: value.name,
             ui_hidden: value.ui_hidden,
             default_schema_variant_id: value.default_schema_variant_id,
-            component_kind: value.component_kind,
         }
     }
 }
@@ -93,7 +88,6 @@ impl Schema {
             name: inner.name,
             ui_hidden: inner.ui_hidden,
             default_schema_variant_id: inner.default_schema_variant_id,
-            component_kind: inner.component_kind,
         }
     }
 
@@ -105,17 +99,12 @@ impl Schema {
         &self.name
     }
 
-    pub async fn new(
-        ctx: &DalContext,
-        name: impl Into<String>,
-        component_kind: ComponentKind,
-    ) -> SchemaResult<Self> {
+    pub async fn new(ctx: &DalContext, name: impl Into<String>) -> SchemaResult<Self> {
         let content = SchemaContentV1 {
             timestamp: Timestamp::now(),
             name: name.into(),
             ui_hidden: false,
             default_schema_variant_id: None,
-            component_kind,
         };
 
         let hash = ctx

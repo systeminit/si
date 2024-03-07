@@ -1,5 +1,4 @@
 use axum::Json;
-use dal::ComponentKind;
 use dal::{Schema, Visibility};
 use serde::{Deserialize, Serialize};
 
@@ -28,7 +27,7 @@ pub async fn create_schema(
 ) -> SchemaResult<Json<CreateSchemaResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let schema = Schema::new(&ctx, &request.name, ComponentKind::Standard).await?;
+    let schema = Schema::new(&ctx, &request.name).await?;
     let response = CreateSchemaResponse { schema };
 
     ctx.commit().await?;

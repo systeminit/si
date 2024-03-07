@@ -49,7 +49,7 @@ pub async fn create_component(
         .next()
         .ok_or(DiagramError::SchemaVariantNotFound)?;
 
-    let component = Component::new(&ctx, &name, variant.id(), None).await?;
+    let component = Component::new(&ctx, &name, variant.id()).await?;
 
     // TODO(nick): restore the action prototype usage here.
     // for prototype in ActionPrototype::find_for_context_and_kind(

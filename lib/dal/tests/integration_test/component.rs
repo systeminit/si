@@ -180,7 +180,7 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
 
     // Create a component and set geometry.
     let name = "fsu not top four";
-    let component = Component::new(ctx, name, schema_variant_id, None)
+    let component = Component::new(ctx, name, schema_variant_id)
         .await
         .expect("could not create component");
     let component = component

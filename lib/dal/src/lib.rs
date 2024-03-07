@@ -79,7 +79,6 @@ pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus};
 pub use component::Component;
 pub use component::ComponentError;
 pub use component::ComponentId;
-pub use component::ComponentKind;
 pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
     Transactions, TransactionsError,
