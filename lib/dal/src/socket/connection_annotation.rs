@@ -1,11 +1,25 @@
 use regex::Regex;
+use serde::{Deserialize, Serialize, Serializer};
+use std::fmt;
+use std::fmt::{Display, Formatter};
+use thiserror::Error;
 
-struct ConnectionAnnotation {
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum ConnectionAnnotationError {
+    #[error("badly formed connection annotation: {0}")]
+    BadFormat(String),
+    #[error("regex error: {0}")]
+    Regex(#[from] regex::Error),
+}
+
+#[derive(Clone, Eq, Debug, PartialEq, Deserialize, Serialize)]
+pub struct ConnectionAnnotation {
     tokens: Vec<String>,
 }
 
 impl TryFrom<String> for ConnectionAnnotation {
-    type Error = ();
+    type Error = ConnectionAnnotationError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         // A connection annotation is composed by a series of pairs, with the following recursive
@@ -17,10 +31,15 @@ impl TryFrom<String> for ConnectionAnnotation {
 
         let mut this_value = value;
         loop {
-            // TODO Remove unwraps
-            let re = Regex::new(r"^(?<token>[\w ]+)(?:<(?<tail>.+)>)?$").unwrap();
-            let captures = re.captures(&this_value).unwrap();
-            let token = captures.name("token").unwrap().as_str();
+            let re = Regex::new(r"^(?<token>[\w ]+)(?:<(?<tail>.+)>)?$")?;
+
+            let captures = re
+                .captures(&this_value)
+                .ok_or(Self::Error::BadFormat(this_value.clone()))?;
+            let token = captures
+                .name("token")
+                .ok_or(Self::Error::BadFormat(this_value.clone()))?
+                .as_str();
             tokens.push(token.to_string());
 
             let maybe_tail = captures.name("tail");
@@ -33,14 +52,35 @@ impl TryFrom<String> for ConnectionAnnotation {
 
         Ok(ConnectionAnnotation { tokens })
     }
+}
 
-    // TODO Connection annotation fits another connection annotation
+impl ConnectionAnnotation {
+    pub fn target_fits_reference(target_ca: Self, reference_ca: Self) -> bool {
+        let annotation_src = target_ca.tokens;
+        let annotation_dest = reference_ca.tokens;
+
+        annotation_src.len() >= annotation_dest.len()
+            && annotation_src.as_slice()[annotation_src.len() - annotation_dest.len()..].to_vec()
+                == annotation_dest
+    }
+}
+
+impl Display for ConnectionAnnotation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.tokens.len() < 1 {
+            return Err(fmt::Error);
+        }
+        let mut out = self.tokens[0].clone();
+        for token in self.tokens.iter().rev().skip(1) {
+            out = format!("{}<{}>", token, out);
+        }
+
+        f.serialize_str(out.as_str())
+    }
 }
 
 #[test]
 fn deserialize_connection_annotation() {
-    println!("hello");
-
     let cases = vec![
         ("arn", vec!["arn"]),
         ("arn<string>", vec!["arn", "string"]),

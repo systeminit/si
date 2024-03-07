@@ -25,6 +25,7 @@ use crate::prop::{PropError, PropPath};
 use crate::qualification::QualificationError;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::SchemaVariantError;
+use crate::socket::connection_annotation::ConnectionAnnotation;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
@@ -932,24 +933,26 @@ impl Component {
         let source_sockets = OutputSocket::list(ctx, source_schema_variant_id).await?;
         let destination_sockets = InputSocket::list(ctx, destination_schema_variant_id).await?;
 
-        // Loop through output sockets
-        // for each, loop through unused input sockets
-        // If there is on, connect and mark as used
-
         let mut to_enqueue = Vec::new();
 
         for src_sock in source_sockets {
             let mut maybe_dest_id = None;
             for dest_candidate in &destination_sockets {
-                // TODO Use connection annotations
-                if src_sock.name() == dest_candidate.name() {
-                    // if more than one valid destination is found, skip the socket.
-                    if maybe_dest_id.is_some() {
-                        maybe_dest_id = None;
-                        break;
-                    }
+                let src_annotations = src_sock.connection_annotations();
+                let dest_annotations = dest_candidate.connection_annotations();
 
-                    maybe_dest_id = Some(dest_candidate.id())
+                for annotation_src in src_annotations {
+                    for annotation_dest in &dest_annotations {
+                        if false {
+                            // if more than one valid destination is found, skip the socket.
+                            if maybe_dest_id.is_some() {
+                                maybe_dest_id = None;
+                                break;
+                            }
+
+                            maybe_dest_id = Some(dest_candidate.id())
+                        }
+                    }
                 }
             }
 
