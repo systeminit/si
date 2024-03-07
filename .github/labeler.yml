@@ -147,6 +147,12 @@ A-si-data-pg:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
+A-si-layer-cache:
+  - lib/si-layer-cache/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
 A-si-pkg:
   - lib/si-pkg/**/*
   - .cargo/**/*
