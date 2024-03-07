@@ -22,5 +22,5 @@ mod frame;
 mod prop;
 mod property_editor;
 mod rebaser;
-mod sdf_mock;
+mod schema_variant_views;
 mod secret;
