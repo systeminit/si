@@ -40,6 +40,7 @@ members = [
     "lib/si-crypto",
     "lib/si-data-nats",
     "lib/si-data-pg",
+    "lib/si-events-rs",
     "lib/si-hash",
     "lib/si-layer-cache",
     "lib/si-pkg",

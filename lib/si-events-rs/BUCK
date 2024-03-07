@@ -1,0 +1,18 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+alias(
+    name = "si-events-rs",
+    actual = ":si-events",
+)
+
+rust_library(
+    name = "si-events",
+    deps = [
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:ulid",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)
