@@ -26,14 +26,17 @@
 
 pub mod disk_cache;
 pub mod error;
+pub mod pg;
 
 use moka::future::Cache;
 use serde::{de::DeserializeOwned, Serialize};
+use si_data_pg::PgPool;
 use std::{hash::Hash, sync::Arc};
 use tokio::{sync::Mutex, task::JoinSet};
 
 use disk_cache::DiskCache;
 use error::LayerCacheResult;
+use pg::PgLayer;
 
 #[derive(Clone)]
 pub struct LayerCache<K, V>
@@ -43,6 +46,7 @@ where
 {
     memory_cache: Arc<Box<dyn MemoryCacher<Key = K, Value = V>>>,
     disk_cache: Arc<DiskCache<K>>,
+    pg: PgLayer<K>,
     join_set: Arc<Mutex<JoinSet<()>>>,
 }
 
@@ -51,16 +55,22 @@ where
     K: AsRef<[u8]> + Copy + Send + Sync + 'static,
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub fn new(
-        db: sled::Db,
+    pub async fn new(
         name: &str,
         memory_cache: Box<dyn MemoryCacher<Key = K, Value = V>>,
+        fast_disk: sled::Db,
+        pg_pool: PgPool,
     ) -> LayerCacheResult<Self> {
-        let disk_cache = Arc::new(DiskCache::new(db, name.as_bytes())?);
+        let disk_cache = Arc::new(DiskCache::new(fast_disk, name.as_bytes())?);
+
+        let pg = PgLayer::new(pg_pool);
+        pg.migrate().await?;
+
         Ok(LayerCache {
             memory_cache: Arc::new(memory_cache),
             disk_cache,
             join_set: Arc::new(Mutex::new(JoinSet::new())),
+            pg,
         })
     }
 
@@ -76,7 +86,23 @@ where
                         .await;
                     Some(deserialized)
                 }
-                None => None,
+                None => match self.pg.get(key).await? {
+                    Some(value) => {
+                        let deserialized: V = postcard::from_bytes(&value)?;
+                        self.memory_cache
+                            .insert_value(*key, deserialized.clone())
+                            .await;
+
+                        let self_clone = self.clone();
+                        let key_clone = *key;
+                        tokio::task::spawn(async move {
+                            let _ = self_clone.disk_cache.insert(key_clone, &value);
+                        });
+
+                        Some(deserialized)
+                    }
+                    None => None,
+                },
             },
         })
     }
@@ -112,28 +138,37 @@ where
             (false, false) => {
                 self.memory_cache.insert_value(key, value.clone()).await;
                 let self_clone = self.clone();
+                let value = value.clone();
                 self.join_set.lock().await.spawn(async move {
                     // TODO: we are ignoring write failures to disk, but we
                     // should probably do something about them?
-                    if let Some(serialized) = postcard::to_stdvec(&value).ok() {
+                    if let Ok(serialized) = postcard::to_stdvec(&value) {
                         let _ = self_clone.disk_cache.insert(key, &serialized);
                     }
                 });
             }
             // Not in memory, but on disk - we can write, because objects are immutable
             (false, true) => {
-                self.memory_cache.insert_value(key, value).await;
+                self.memory_cache.insert_value(key, value.clone()).await;
             }
             // In memory, but not on disk
             (true, false) => {
                 let self_clone = self.clone();
+                let value = value.clone();
                 self.join_set.lock().await.spawn(async move {
-                    if let Some(serialized) = postcard::to_stdvec(&value).ok() {
+                    if let Ok(serialized) = postcard::to_stdvec(&value) {
                         let _ = self_clone.disk_cache.insert(key, &serialized);
                     }
                 });
             }
         }
+
+        let self_clone = self.clone();
+        self.join_set.lock().await.spawn(async move {
+            if let Ok(serialized) = postcard::to_stdvec(&value) {
+                let _ = self_clone.pg.insert(key, &serialized).await;
+            }
+        });
 
         Ok(())
     }

@@ -5548,11 +5548,14 @@ name = "si-layer-cache"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "buck2-resources",
  "criterion",
  "lazy_static",
  "moka",
  "postcard",
+ "refinery",
  "serde",
+ "si-data-pg",
  "sled",
  "tempfile",
  "thiserror",

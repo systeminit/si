@@ -1,23 +1,81 @@
+use buck2_resources::Buck2Resources;
 use moka::future::Cache;
+use si_data_pg::{PgPool, PgPoolConfig};
 use si_layer_cache::LayerCache;
+use std::env;
+use std::path::Path;
 use tokio::task::JoinSet;
 
 mod disk_cache;
 
-fn make_layer_cache() -> LayerCache<&'static str, String> {
+async fn setup_pg_db(db_name: &str) -> PgPool {
+    let si_pg_pool = PgPoolConfig {
+        application_name: "si-layer-cache-db-tests".into(),
+        certificate_path: Some(
+            detect_and_configure_development()
+                .try_into()
+                .expect("should get a certifcate cache"),
+        ),
+        ..Default::default()
+    };
+
+    let test_pg_pool_config = PgPoolConfig {
+        dbname: db_name.into(),
+        application_name: "si-layer-cache-db-tests".into(),
+        certificate_path: Some(
+            detect_and_configure_development()
+                .try_into()
+                .expect("should get a certifcate cache"),
+        ),
+        ..Default::default()
+    };
+
+    let si_pg_pool = PgPool::new(&si_pg_pool)
+        .await
+        .expect("cannot create pg pool for tests");
+
+    let db_drop_query = format!("DROP DATABASE IF EXISTS {}", test_pg_pool_config.dbname);
+
+    let db_create_query = format!(
+        "CREATE DATABASE {} OWNER {}",
+        test_pg_pool_config.dbname, test_pg_pool_config.user
+    );
+
+    let client = si_pg_pool
+        .get()
+        .await
+        .expect("unable to get pg_pool client");
+
+    client
+        .execute(&db_drop_query, &[])
+        .await
+        .expect("able to drop database for tests");
+
+    client
+        .execute(&db_create_query, &[])
+        .await
+        .expect("able to create database for tests");
+
+    PgPool::new(&test_pg_pool_config)
+        .await
+        .expect("cannot create pg pool for tests")
+}
+
+async fn make_layer_cache(db_name: &str) -> LayerCache<&'static str, String> {
     let tempdir = tempfile::tempdir().expect("cannot create tempdir");
     let db = sled::open(tempdir).expect("unable to open sled database");
     let cache: Cache<&'static str, String> = Cache::new(10_000);
 
-    let layer_cache =
-        LayerCache::new(db, "test1", Box::new(cache)).expect("cannot create layer cache");
+    
 
-    layer_cache
+    LayerCache::new("test1", Box::new(cache), db, setup_pg_db(db_name).await)
+        .await
+        .expect("cannot create layer cache")
 }
 
 #[tokio::test]
 async fn empty_insert_and_get() {
-    let layer_cache = make_layer_cache();
+    let layer_cache = make_layer_cache("empty_insert_and_get").await;
 
     layer_cache
         .insert("skid row", "slave to the grind".into())
@@ -58,7 +116,7 @@ async fn empty_insert_and_get() {
 
 #[tokio::test]
 async fn not_in_memory_but_on_disk_insert() {
-    let layer_cache = make_layer_cache();
+    let layer_cache = make_layer_cache("not_in_memory_but_on_disk_insert").await;
 
     let skid_row = "skid row";
 
@@ -85,7 +143,7 @@ async fn not_in_memory_but_on_disk_insert() {
 
 #[tokio::test]
 async fn in_memory_but_not_on_disk_insert() {
-    let layer_cache = make_layer_cache();
+    let layer_cache = make_layer_cache("in_memory_but_not_on_disk_insert").await;
 
     let skid_row = "skid row";
 
@@ -117,7 +175,7 @@ async fn in_memory_but_not_on_disk_insert() {
 
 #[tokio::test]
 async fn get_inserts_to_memory() {
-    let layer_cache = make_layer_cache();
+    let layer_cache = make_layer_cache("get_inserts_to_memory").await;
 
     let skid_row = "skid row";
 
@@ -149,13 +207,20 @@ async fn multiple_mokas_single_sled() {
 
     let even_tree_name = "even_numbers";
     let odd_tree_name = "odd_numbers";
+    let pg_pool = setup_pg_db("multiple_mokas_single_sled").await;
 
-    let layer_cache_even: LayerCache<[u8; 8], String> =
-        LayerCache::new(db.clone(), even_tree_name, Box::new(cache_even))
-            .expect("cannot create layer cache");
+    let layer_cache_even: LayerCache<[u8; 8], String> = LayerCache::new(
+        even_tree_name,
+        Box::new(cache_even),
+        db.clone(),
+        pg_pool.clone(),
+    )
+    .await
+    .expect("cannot create layer cache");
 
     let cache_odd: Cache<[u8; 8], String> = Cache::new(count);
-    let layer_cache_odd = LayerCache::new(db.clone(), odd_tree_name, Box::new(cache_odd))
+    let layer_cache_odd = LayerCache::new(odd_tree_name, Box::new(cache_odd), db.clone(), pg_pool)
+        .await
         .expect("cannot create layer cache");
 
     let tree_names: Vec<String> = db
@@ -220,14 +285,12 @@ async fn multiple_mokas_single_sled() {
         let even_tree_value: Option<String> = even_tree
             .get(key)
             .expect("able to get even value")
-            .map(|value| postcard::from_bytes(value.as_ref()).ok())
-            .flatten();
+            .and_then(|value| postcard::from_bytes(value.as_ref()).ok());
 
         let odd_tree_value: Option<String> = odd_tree
             .get(key)
             .expect("able to get odd key value")
-            .map(|value| postcard::from_bytes(value.as_ref()).ok())
-            .flatten();
+            .and_then(|value| postcard::from_bytes(value.as_ref()).ok());
 
         if i % 2 == 0 {
             assert_eq!(Some(value), even_tree_value);
@@ -237,4 +300,34 @@ async fn multiple_mokas_single_sled() {
             assert_eq!(None, even_tree_value);
         }
     }
+}
+
+/// This function is used to determine the development environment and update the [`ConfigFile`]
+/// accordingly.
+#[allow(clippy::disallowed_methods)]
+pub fn detect_and_configure_development() -> String {
+    if env::var("BUCK_RUN_BUILD_ID").is_ok() || env::var("BUCK_BUILD_ID").is_ok() {
+        buck2_development()
+    } else if let Ok(dir) = env::var("CARGO_MANIFEST_DIR") {
+        cargo_development(dir)
+    } else {
+        "".to_string()
+    }
+}
+
+fn buck2_development() -> String {
+    let resources = Buck2Resources::read().expect("should be able to read buck2 resources");
+
+    resources
+        .get_ends_with("dev.postgres.root.crt")
+        .expect("should be able to get cert")
+        .to_string_lossy()
+        .to_string()
+}
+
+fn cargo_development(dir: String) -> String {
+    Path::new(&dir)
+        .join("../../config/keys/dev.postgres.root.crt")
+        .to_string_lossy()
+        .to_string()
 }
