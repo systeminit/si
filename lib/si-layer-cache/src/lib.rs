@@ -118,7 +118,7 @@ where
 }
 
 #[async_trait::async_trait]
-pub trait MemoryCacher {
+pub trait MemoryCacher: Send + Sync {
     type Key;
     type Value;
 
