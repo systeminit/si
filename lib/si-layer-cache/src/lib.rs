@@ -29,34 +29,38 @@ pub mod error;
 
 use moka::future::Cache;
 use serde::{de::DeserializeOwned, Serialize};
-use std::hash::Hash;
+use std::{hash::Hash, sync::Arc};
+use tokio::{sync::Mutex, task::JoinSet};
 
 use disk_cache::DiskCache;
 use error::LayerCacheResult;
 
+#[derive(Clone)]
 pub struct LayerCache<K, V>
 where
-    K: AsRef<[u8]> + Copy,
-    V: Serialize + DeserializeOwned + Clone,
+    K: AsRef<[u8]> + Copy + Send + Sync + 'static,
+    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub memory_cache: Box<dyn MemoryCacher<Key = K, Value = V>>,
-    pub disk_cache: DiskCache<K>,
+    memory_cache: Arc<Box<dyn MemoryCacher<Key = K, Value = V>>>,
+    disk_cache: Arc<DiskCache<K>>,
+    join_set: Arc<Mutex<JoinSet<()>>>,
 }
 
 impl<K, V> LayerCache<K, V>
 where
-    K: AsRef<[u8]> + Copy,
-    V: Serialize + DeserializeOwned + Clone,
+    K: AsRef<[u8]> + Copy + Send + Sync + 'static,
+    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     pub fn new(
         db: sled::Db,
         name: &str,
         memory_cache: Box<dyn MemoryCacher<Key = K, Value = V>>,
     ) -> LayerCacheResult<Self> {
-        let disk_cache = DiskCache::new(db, name.as_bytes())?;
+        let disk_cache = Arc::new(DiskCache::new(db, name.as_bytes())?);
         Ok(LayerCache {
-            memory_cache,
+            memory_cache: Arc::new(memory_cache),
             disk_cache,
+            join_set: Arc::new(Mutex::new(JoinSet::new())),
         })
     }
 
@@ -77,16 +81,24 @@ where
         })
     }
 
-    pub fn memory_cache(&self) -> &dyn MemoryCacher<Key = K, Value = V> {
-        self.memory_cache.as_ref()
+    pub fn memory_cache(&self) -> Arc<Box<dyn MemoryCacher<Key = K, Value = V>>> {
+        self.memory_cache.clone()
     }
 
-    pub fn disk_cache(&self) -> &DiskCache<K> {
-        &self.disk_cache
+    pub fn disk_cache(&self) -> Arc<DiskCache<K>> {
+        self.disk_cache.clone()
     }
 
     pub async fn remove_from_memory(&self, key: K) {
         self.memory_cache.remove_value(&key).await;
+    }
+
+    /// The disk and database writers will spawn a thread to perform the write,
+    /// and that thread must be joined on if all the writes are to succeed (the
+    /// caller may terminate before the write threads). This method will block
+    /// until all writes have succeeded.
+    pub async fn join_all_write_tasks(&self) {
+        while let Some(_) = self.join_set.lock().await.join_next().await {}
     }
 
     pub async fn insert(&self, key: K, value: V) -> LayerCacheResult<()> {
@@ -99,8 +111,14 @@ where
             // Neither on memory or on disk
             (false, false) => {
                 self.memory_cache.insert_value(key, value.clone()).await;
-                let serialized = postcard::to_stdvec(&value)?;
-                self.disk_cache.insert(key, &serialized)?;
+                let self_clone = self.clone();
+                self.join_set.lock().await.spawn(async move {
+                    // TODO: we are ignoring write failures to disk, but we
+                    // should probably do something about them?
+                    if let Some(serialized) = postcard::to_stdvec(&value).ok() {
+                        let _ = self_clone.disk_cache.insert(key, &serialized);
+                    }
+                });
             }
             // Not in memory, but on disk - we can write, because objects are immutable
             (false, true) => {
@@ -108,8 +126,12 @@ where
             }
             // In memory, but not on disk
             (true, false) => {
-                let serialized = postcard::to_stdvec(&value)?;
-                self.disk_cache.insert(key, &serialized)?;
+                let self_clone = self.clone();
+                self.join_set.lock().await.spawn(async move {
+                    if let Some(serialized) = postcard::to_stdvec(&value).ok() {
+                        let _ = self_clone.disk_cache.insert(key, &serialized);
+                    }
+                });
             }
         }
 

@@ -27,6 +27,7 @@ pub async fn fresh_cache_count(objects: &[Vec<u8>], count: usize) {
             .insert([ASCII_LOWER[i]], objects[i].clone())
             .await
             .expect("cannot insert into cache");
+        layer_cache.join_all_write_tasks().await;
     }
 }
 

@@ -9,7 +9,7 @@ fn make_layer_cache() -> LayerCache<&'static str, String> {
     let db = sled::open(tempdir).expect("unable to open sled database");
     let cache: Cache<&'static str, String> = Cache::new(10_000);
 
-    let layer_cache: LayerCache<&'static str, String> =
+    let layer_cache =
         LayerCache::new(db, "test1", Box::new(cache)).expect("cannot create layer cache");
 
     layer_cache
@@ -23,6 +23,7 @@ async fn empty_insert_and_get() {
         .insert("skid row", "slave to the grind".into())
         .await
         .expect("cannot insert into layer cache");
+    layer_cache.join_all_write_tasks().await;
 
     let skid_row = "skid row";
 
@@ -36,7 +37,7 @@ async fn empty_insert_and_get() {
 
     // Confirm the insert went into the disk cache
     let disk_result = layer_cache
-        .disk_cache
+        .disk_cache()
         .get(&skid_row)
         .expect("error looking for value in disk cache")
         .expect("cannot find value in disk cache");
@@ -63,9 +64,10 @@ async fn not_in_memory_but_on_disk_insert() {
 
     // Insert the object directly to disk cache
     layer_cache
-        .disk_cache
+        .disk_cache()
         .insert("skid row", "slave to the grind".as_bytes())
         .expect("failed to insert to disk cache");
+    layer_cache.join_all_write_tasks().await;
 
     // There should not be anything for the key in memory cache
     assert!(!layer_cache.memory_cache().has_key(&skid_row));
@@ -75,9 +77,10 @@ async fn not_in_memory_but_on_disk_insert() {
         .insert("skid row", "slave to the grind".into())
         .await
         .expect("cannot insert into the cache");
+    layer_cache.join_all_write_tasks().await;
 
     // There should be an entry in memory now
-    assert!(layer_cache.memory_cache.has_key(&skid_row));
+    assert!(layer_cache.memory_cache().has_key(&skid_row));
 }
 
 #[tokio::test]
@@ -88,13 +91,13 @@ async fn in_memory_but_not_on_disk_insert() {
 
     // Insert the object directly to memory cache
     layer_cache
-        .memory_cache
+        .memory_cache()
         .insert_value("skid row", "slave to the grind".into())
         .await;
 
     // There should not be anything for the key in disk cache
     assert!(!layer_cache
-        .disk_cache
+        .disk_cache()
         .contains_key(&skid_row)
         .expect("cannot check if key exists in disk cache"));
 
@@ -103,10 +106,11 @@ async fn in_memory_but_not_on_disk_insert() {
         .insert("skid row", "slave to the grind".into())
         .await
         .expect("cannot insert into the cache");
+    layer_cache.join_all_write_tasks().await;
 
     // There should be an entry in disk now
     assert!(layer_cache
-        .disk_cache
+        .disk_cache()
         .contains_key(&skid_row)
         .expect("cannot read from disk cache"));
 }
@@ -120,10 +124,12 @@ async fn get_inserts_to_memory() {
     let postcard_serialized = postcard::to_stdvec("slave to the grind").expect("should serialize");
 
     layer_cache
-        .disk_cache
+        .disk_cache()
         .insert("skid row", &postcard_serialized)
         .expect("failed to insert to disk cache");
-    assert!(!layer_cache.memory_cache.has_key(&skid_row));
+    layer_cache.join_all_write_tasks().await;
+
+    assert!(!layer_cache.memory_cache().has_key(&skid_row));
 
     layer_cache
         .get(&skid_row)
@@ -131,7 +137,7 @@ async fn get_inserts_to_memory() {
         .expect("error getting object from cache")
         .expect("object not in cachche");
 
-    assert!(layer_cache.memory_cache.has_key(&skid_row));
+    assert!(layer_cache.memory_cache().has_key(&skid_row));
 }
 
 #[tokio::test]
@@ -144,8 +150,9 @@ async fn multiple_mokas_single_sled() {
     let even_tree_name = "even_numbers";
     let odd_tree_name = "odd_numbers";
 
-    let layer_cache_even = LayerCache::new(db.clone(), even_tree_name, Box::new(cache_even))
-        .expect("cannot create layer cache");
+    let layer_cache_even: LayerCache<[u8; 8], String> =
+        LayerCache::new(db.clone(), even_tree_name, Box::new(cache_even))
+            .expect("cannot create layer cache");
 
     let cache_odd: Cache<[u8; 8], String> = Cache::new(count);
     let layer_cache_odd = LayerCache::new(db.clone(), odd_tree_name, Box::new(cache_odd))
@@ -171,11 +178,12 @@ async fn multiple_mokas_single_sled() {
 
     let mut task_set = JoinSet::new();
 
+    let layer_cache_even_clone = layer_cache_even.clone();
     task_set.spawn(async move {
         for i in 0..(count * 2) {
             if i % 2 == 0 {
                 let (key, value) = make_u64_kv(i);
-                layer_cache_even
+                layer_cache_even_clone
                     .insert(key, value)
                     .await
                     .expect("unable to insert");
@@ -183,11 +191,12 @@ async fn multiple_mokas_single_sled() {
         }
     });
 
+    let layer_cache_odd_clone = layer_cache_odd.clone();
     task_set.spawn(async move {
         for i in 0..(count * 2) {
             if i % 2 != 0 {
                 let (key, value) = make_u64_kv(i);
-                layer_cache_odd
+                layer_cache_odd_clone
                     .insert(key, value)
                     .await
                     .expect("unable to insert");
@@ -196,6 +205,8 @@ async fn multiple_mokas_single_sled() {
     });
 
     while let Some(_) = task_set.join_next().await {}
+    layer_cache_even.join_all_write_tasks().await;
+    layer_cache_odd.join_all_write_tasks().await;
 
     let even_tree = db
         .open_tree(even_tree_name.as_bytes())

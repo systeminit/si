@@ -6,13 +6,14 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
-serde = { workspace = true }
-thiserror = { workspace = true }
-moka = { workspace = true }
-sled = { workspace = true }
-lazy_static = { workspace = true }
-postcard = { workspace = true }
 async-trait = { workspace = true }
+lazy_static = { workspace = true }
+moka = { workspace = true }
+postcard = { workspace = true }
+serde = { workspace = true }
+sled = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 
 [dev_dependencies]
 criterion = { workspace = true }
