@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, HashMap, VecDeque};
 use std::hash::Hash;
-use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
+use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
@@ -128,33 +128,6 @@ pub type ComponentResult<T> = Result<T, ComponentError>;
 
 pk!(ComponentId);
 
-#[remain::sorted]
-#[derive(
-    AsRefStr,
-    Clone,
-    Copy,
-    Debug,
-    Deserialize,
-    Display,
-    EnumIter,
-    EnumString,
-    Eq,
-    PartialEq,
-    Serialize,
-)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum ComponentKind {
-    Credential,
-    Standard,
-}
-
-impl Default for ComponentKind {
-    fn default() -> Self {
-        Self::Standard
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct IncomingConnection {
     pub attribute_prototype_argument_id: AttributePrototypeArgumentId,
@@ -172,7 +145,6 @@ pub struct Component {
     id: ComponentId,
     #[serde(flatten)]
     timestamp: Timestamp,
-    kind: ComponentKind,
     needs_destroy: bool,
     x: String,
     y: String,
@@ -188,7 +160,6 @@ pub enum ComponentContent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ComponentContentV1 {
     pub timestamp: Timestamp,
-    pub kind: ComponentKind,
     pub needs_destroy: bool,
     pub x: String,
     pub y: String,
@@ -200,7 +171,6 @@ impl From<Component> for ComponentContentV1 {
     fn from(value: Component) -> Self {
         Self {
             timestamp: value.timestamp,
-            kind: value.kind,
             needs_destroy: value.needs_destroy,
             x: value.x,
             y: value.y,
@@ -215,7 +185,6 @@ impl Component {
         Self {
             id,
             timestamp: inner.timestamp,
-            kind: inner.kind,
             needs_destroy: inner.needs_destroy,
             x: inner.x,
             y: inner.y,
@@ -273,16 +242,10 @@ impl Component {
         ctx: &DalContext,
         name: impl Into<String>,
         schema_variant_id: SchemaVariantId,
-        component_kind: Option<ComponentKind>,
     ) -> ComponentResult<Self> {
         let name: String = name.into();
-        let kind = match component_kind {
-            Some(provided_kind) => provided_kind,
-            None => ComponentKind::Standard,
-        };
 
         let content = ComponentContentV1 {
-            kind,
             timestamp: Timestamp::now(),
             needs_destroy: false,
             x: DEFAULT_COMPONENT_X_POSITION.to_string(),

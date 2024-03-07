@@ -13,7 +13,7 @@ use crate::attribute::prototype::argument::{
 };
 use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
 use crate::prop::PropParent;
-use crate::{func::intrinsics::IntrinsicFunc, ComponentKind, SocketKind};
+use crate::{func::intrinsics::IntrinsicFunc, SocketKind};
 use crate::{
     func::{self, argument::FuncArgument},
     installed_pkg::{
@@ -1732,7 +1732,7 @@ async fn import_func_arguments(
 }
 
 async fn create_schema(ctx: &DalContext, schema_spec_data: &SiPkgSchemaData) -> PkgResult<Schema> {
-    let schema = Schema::new(ctx, schema_spec_data.name(), ComponentKind::Standard)
+    let schema = Schema::new(ctx, schema_spec_data.name())
         .await?
         .modify(ctx, |schema| {
             schema.ui_hidden = schema_spec_data.ui_hidden();

@@ -3,9 +3,9 @@ use dal::schema::variant::root_prop::RootProp;
 use dal::{
     func::{binding::FuncBinding, FuncId},
     key_pair::KeyPairPk,
-    ChangeSet, ChangeSetPk, Component, ComponentKind, DalContext, EncryptedSecret, Func,
-    FuncBackendKind, InputSocket, KeyPair, OutputSocket, Schema, SchemaId, SchemaVariant,
-    SchemaVariantId, Secret, SocketArity, SocketKind, User, UserPk, Visibility,
+    ChangeSet, ChangeSetPk, Component, DalContext, EncryptedSecret, Func, FuncBackendKind,
+    InputSocket, KeyPair, OutputSocket, Schema, SchemaId, SchemaVariant, SchemaVariantId, Secret,
+    SocketArity, SocketKind, User, UserPk, Visibility,
 };
 use names::{Generator, Name};
 
@@ -57,9 +57,7 @@ pub async fn create_user(ctx: &DalContext) -> User {
 
 pub async fn create_schema(ctx: &DalContext) -> Schema {
     let name = generate_fake_name();
-    Schema::new(ctx, &name, ComponentKind::Standard)
-        .await
-        .expect("cannot create schema")
+    Schema::new(ctx, &name).await.expect("cannot create schema")
 }
 
 pub async fn create_schema_variant(ctx: &DalContext, schema_id: SchemaId) -> SchemaVariant {
@@ -148,7 +146,7 @@ pub async fn create_component_for_schema_name(
         .pop()
         .expect("no schema variant found");
 
-    Component::new(ctx, name.as_ref().to_string(), schema_variant.id(), None)
+    Component::new(ctx, name.as_ref().to_string(), schema_variant.id())
         .await
         .expect("could not create component")
 }
@@ -158,7 +156,7 @@ pub async fn create_component_for_schema_variant(
     schema_variant_id: SchemaVariantId,
 ) -> Component {
     let name = generate_fake_name();
-    Component::new(ctx, &name, schema_variant_id, None)
+    Component::new(ctx, &name, schema_variant_id)
         .await
         .expect("cannot create component")
 }

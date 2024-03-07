@@ -27,10 +27,10 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
         .expect("could not list schema variants")
         .pop()
         .expect("no schema variants found");
-    let starfield_component = Component::new(ctx, "parent", starfield_schema_variant.id(), None)
+    let starfield_component = Component::new(ctx, "parent", starfield_schema_variant.id())
         .await
         .expect("could not create component");
-    let fallout_component = Component::new(ctx, "child", fallout_schema_variant.id(), None)
+    let fallout_component = Component::new(ctx, "child", fallout_schema_variant.id())
         .await
         .expect("could not create component");
 
@@ -131,14 +131,10 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
 
     // Scenario 1: create an Swifty frame.
     let new_era_taylor_swift_name = "new age taylor swift";
-    let new_era_taylor_swift = Component::new(
-        ctx,
-        new_era_taylor_swift_name,
-        swifty_schema_variant_id,
-        None,
-    )
-    .await
-    .expect("could not create component");
+    let new_era_taylor_swift =
+        Component::new(ctx, new_era_taylor_swift_name, swifty_schema_variant_id)
+            .await
+            .expect("could not create component");
 
     // Validate Scenario 1
     {
@@ -165,14 +161,10 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
 
     // Scenario 2: create a kelce component and attach to swifty frame
     let travis_kelce_component_name = "travis kelce";
-    let travis_kelce_component = Component::new(
-        ctx,
-        travis_kelce_component_name,
-        fallout_schema_variant_id,
-        None,
-    )
-    .await
-    .expect("could not create component");
+    let travis_kelce_component =
+        Component::new(ctx, travis_kelce_component_name, fallout_schema_variant_id)
+            .await
+            .expect("could not create component");
     Frame::attach_child_to_parent(ctx, new_era_taylor_swift.id(), travis_kelce_component.id())
         .await
         .expect("could not attach child to parent");
@@ -220,14 +212,10 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
 
     // Scenario 3: add a different era swifty frame on its own.
     let country_era_taylor_swift_name = "country taylor swift";
-    let country_era_taylor_swift = Component::new(
-        ctx,
-        country_era_taylor_swift_name,
-        swifty_schema_variant_id,
-        None,
-    )
-    .await
-    .expect("could not create component");
+    let country_era_taylor_swift =
+        Component::new(ctx, country_era_taylor_swift_name, swifty_schema_variant_id)
+            .await
+            .expect("could not create component");
 
     // Validate Scenario 3
     {
@@ -282,7 +270,7 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
     // Scenarios 4 and 5: create a mama kelce component, but place it outside of both frames. Then, drag it onto the second swifty
     // frame.
     let mama_kelce_name = "mama kelce";
-    let mama_kelce = Component::new(ctx, mama_kelce_name, fallout_schema_variant_id, None)
+    let mama_kelce = Component::new(ctx, mama_kelce_name, fallout_schema_variant_id)
         .await
         .expect("could not create component");
     Frame::attach_child_to_parent(ctx, country_era_taylor_swift.id(), mama_kelce.id())

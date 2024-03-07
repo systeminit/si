@@ -13,8 +13,8 @@ use thiserror::Error;
 use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::DEFAULT_SCHEMA_VARIANT_COLOR;
+use crate::SocketArity;
 use crate::{pk, PropKind};
-use crate::{ComponentKind, SocketArity};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -276,8 +276,6 @@ pub struct SchemaVariantDefinitionMetadataJson {
     pub category: String,
     /// The color for the component on the component diagram as a hex string
     pub color: String,
-    #[serde(alias = "component_kind")]
-    pub component_kind: ComponentKind,
     #[serde(alias = "component_type")]
     pub component_type: ComponentType,
     pub link: Option<String>,
@@ -509,7 +507,6 @@ impl SchemaVariantDefinitionJson {
                 .color
                 .to_owned()
                 .unwrap_or(DEFAULT_SCHEMA_VARIANT_COLOR.into()),
-            component_kind: ComponentKind::Standard,
             component_type: variant_spec_data.component_type.into(),
             link: variant_spec_data.link.as_ref().map(|l| l.to_string()),
             description: None, // XXX - does this exist?

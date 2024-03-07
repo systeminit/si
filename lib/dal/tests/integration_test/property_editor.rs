@@ -19,7 +19,7 @@ async fn assemble(ctx: &DalContext) {
 
     // Create a component and set geometry.
     let name = "steam deck";
-    let component = Component::new(ctx, name, schema_variant_id, None)
+    let component = Component::new(ctx, name, schema_variant_id)
         .await
         .expect("could not create component");
 
