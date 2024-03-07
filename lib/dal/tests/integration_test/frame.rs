@@ -1,8 +1,6 @@
 use dal::component::frame::{Frame, FrameError};
 use dal::diagram::{Diagram, DiagramResult, EdgeId, SummaryDiagramComponent, SummaryDiagramEdge};
-use dal::{
-    AttributeValue, Component, DalContext, InputSocket, OutputSocket, Schema, SchemaVariant,
-};
+use dal::{AttributeValue, Component, DalContext, Schema, SchemaVariant};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use std::collections::HashMap;
@@ -108,45 +106,39 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
 
 #[test]
 async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContext) {
-    let region_schema = Schema::find_by_name(ctx, "Region")
+    let swifty_schema = Schema::find_by_name(ctx, "swifty")
         .await
         .expect("could not perform find by name")
         .expect("schema not found by name");
-    let ec2_schema = Schema::find_by_name(ctx, "EC2 Instance")
-        .await
-        .expect("could not perform find by name")
-        .expect("schema not found by name");
-    let ami_schema = Schema::find_by_name(ctx, "AMI")
+    let fallout_schema = Schema::find_by_name(ctx, "fallout")
         .await
         .expect("could not perform find by name")
         .expect("schema not found by name");
 
     // Collect schema variants.
-    let region_schema_variant_id = SchemaVariant::list_for_schema(ctx, region_schema.id())
+    let swifty_schema_variant_id = SchemaVariant::list_for_schema(ctx, swifty_schema.id())
         .await
         .expect("could not list schema variants")
         .pop()
         .expect("no schema variants found")
         .id();
-    let ec2_schema_variant_id = SchemaVariant::list_for_schema(ctx, ec2_schema.id())
-        .await
-        .expect("could not list schema variants")
-        .pop()
-        .expect("no schema variants found")
-        .id();
-    let ami_schema_variant_id = SchemaVariant::list_for_schema(ctx, ami_schema.id())
+    let fallout_schema_variant_id = SchemaVariant::list_for_schema(ctx, fallout_schema.id())
         .await
         .expect("could not list schema variants")
         .pop()
         .expect("no schema variants found")
         .id();
 
-    // Scenario 1: create an AWS region frame.
-    let first_region_frame_name = "first region frame";
-    let first_region_frame =
-        Component::new(ctx, first_region_frame_name, region_schema_variant_id, None)
-            .await
-            .expect("could not create component");
+    // Scenario 1: create an Swifty frame.
+    let new_era_taylor_swift_name = "new age taylor swift";
+    let new_era_taylor_swift = Component::new(
+        ctx,
+        new_era_taylor_swift_name,
+        swifty_schema_variant_id,
+        None,
+    )
+    .await
+    .expect("could not create component");
 
     // Validate Scenario 1
     {
@@ -159,25 +151,29 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
         );
         assert!(diagram.edges.is_empty());
 
-        let first_region_frame_assembled = diagram
+        let new_era_taylor_swift_assembled = diagram
             .components
-            .get(first_region_frame_name)
+            .get(new_era_taylor_swift_name)
             .expect("could not get component by name");
 
         assert_eq!(
-            first_region_frame.id(),                   // expected
-            first_region_frame_assembled.component_id  // actual
+            new_era_taylor_swift.id(),                   // expected
+            new_era_taylor_swift_assembled.component_id  // actual
         );
-        assert!(first_region_frame_assembled.parent_node_id.is_none());
+        assert!(new_era_taylor_swift_assembled.parent_node_id.is_none());
     }
 
-    // Scenario 2: create an AMI and attach to region frame
-    let first_ami_component_name = "first ami component";
-    let first_ami_component =
-        Component::new(ctx, first_ami_component_name, ami_schema_variant_id, None)
-            .await
-            .expect("could not create component");
-    Frame::attach_child_to_parent(ctx, first_region_frame.id(), first_ami_component.id())
+    // Scenario 2: create a kelce component and attach to swifty frame
+    let travis_kelce_component_name = "travis kelce";
+    let travis_kelce_component = Component::new(
+        ctx,
+        travis_kelce_component_name,
+        fallout_schema_variant_id,
+        None,
+    )
+    .await
+    .expect("could not create component");
+    Frame::attach_child_to_parent(ctx, new_era_taylor_swift.id(), travis_kelce_component.id())
         .await
         .expect("could not attach child to parent");
 
@@ -195,39 +191,39 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             diagram.edges.len()  // actual
         );
 
-        let first_region_frame_assembled = diagram
+        let new_era_taylor_swift_assembled = diagram
             .components
-            .get(first_region_frame_name)
+            .get(new_era_taylor_swift_name)
             .expect("could not get component by name");
-        let first_ami_component_assembled = diagram
+        let travis_kelce_assembled = diagram
             .components
-            .get(first_ami_component_name)
+            .get(travis_kelce_component_name)
             .expect("could not get component by name");
 
         assert_eq!(
-            first_region_frame.id(),                   // expected
-            first_region_frame_assembled.component_id  // actual
+            new_era_taylor_swift.id(),                   // expected
+            new_era_taylor_swift_assembled.component_id  // actual
         );
         assert_eq!(
-            first_ami_component.id(),                   // expected
-            first_ami_component_assembled.component_id  // actual
+            travis_kelce_component.id(),         // expected
+            travis_kelce_assembled.component_id  // actual
         );
 
-        assert!(first_region_frame_assembled.parent_node_id.is_none());
+        assert!(new_era_taylor_swift_assembled.parent_node_id.is_none());
         assert_eq!(
-            first_region_frame.id(), // expected
-            first_ami_component_assembled
+            new_era_taylor_swift.id(), // expected
+            travis_kelce_assembled
                 .parent_node_id
                 .expect("no parent node id")  // actual
         );
     }
 
-    // Scenario 3: add another aws region frame on its own.
-    let second_region_frame_name = "second region frame";
-    let second_region_frame = Component::new(
+    // Scenario 3: add a different era swifty frame on its own.
+    let country_era_taylor_swift_name = "country taylor swift";
+    let country_era_taylor_swift = Component::new(
         ctx,
-        second_region_frame_name,
-        region_schema_variant_id,
+        country_era_taylor_swift_name,
+        swifty_schema_variant_id,
         None,
     )
     .await
@@ -247,50 +243,49 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             diagram.edges.len()  // actual
         );
 
-        let first_region_frame_assembled = diagram
+        let new_era_taylor_swift_assembled = diagram
             .components
-            .get(first_region_frame_name)
+            .get(new_era_taylor_swift_name)
             .expect("could not get component by name");
-        let first_ami_component_assembled = diagram
+        let travis_kelce_assembled = diagram
             .components
-            .get(first_ami_component_name)
+            .get(travis_kelce_component_name)
             .expect("could not get component by name");
-        let second_region_frame_assembled = diagram
+        let country_era_taylor_swift_assembled = diagram
             .components
-            .get(second_region_frame_name)
+            .get(country_era_taylor_swift_name)
             .expect("could not get component by name");
 
         assert_eq!(
-            first_region_frame.id(),                   // expected
-            first_region_frame_assembled.component_id  // actual
+            new_era_taylor_swift.id(),                   // expected
+            new_era_taylor_swift_assembled.component_id  // actual
         );
         assert_eq!(
-            first_ami_component.id(),                   // expected
-            first_ami_component_assembled.component_id  // actual
+            travis_kelce_component.id(),         // expected
+            travis_kelce_assembled.component_id  // actual
         );
         assert_eq!(
-            second_region_frame.id(),                   // expected
-            second_region_frame_assembled.component_id  // actual
+            country_era_taylor_swift.id(),                   // expected
+            country_era_taylor_swift_assembled.component_id  // actual
         );
 
-        assert!(first_region_frame_assembled.parent_node_id.is_none());
-        assert!(second_region_frame_assembled.parent_node_id.is_none());
+        assert!(new_era_taylor_swift_assembled.parent_node_id.is_none());
+        assert!(country_era_taylor_swift_assembled.parent_node_id.is_none());
         assert_eq!(
-            first_region_frame.id(), // expected
-            first_ami_component_assembled
+            new_era_taylor_swift.id(), // expected
+            travis_kelce_assembled
                 .parent_node_id
                 .expect("no parent node id")  // actual
         );
     }
 
-    // Scenarios 4 and 5: create another ami, but place it outside of both frames. Then, drag it onto the second region
-    // frame. Since we are working with dal integration tests and not sdf routes, we combine these two scenarios.
-    let second_ami_component_name = "second ami component";
-    let second_ami_component =
-        Component::new(ctx, second_ami_component_name, ami_schema_variant_id, None)
-            .await
-            .expect("could not create component");
-    Frame::attach_child_to_parent(ctx, second_region_frame.id(), second_ami_component.id())
+    // Scenarios 4 and 5: create a mama kelce component, but place it outside of both frames. Then, drag it onto the second swifty
+    // frame.
+    let mama_kelce_name = "mama kelce";
+    let mama_kelce = Component::new(ctx, mama_kelce_name, fallout_schema_variant_id, None)
+        .await
+        .expect("could not create component");
+    Frame::attach_child_to_parent(ctx, country_era_taylor_swift.id(), mama_kelce.id())
         .await
         .expect("could not attach child to parent");
 
@@ -308,543 +303,130 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             diagram.edges.len()  // actual
         );
 
-        let first_region_frame_assembled = diagram
+        let new_era_taylor_swift_assembled = diagram
             .components
-            .get(first_region_frame_name)
+            .get(new_era_taylor_swift_name)
             .expect("could not get component by name");
-        let first_ami_component_assembled = diagram
+        let travis_kelce_assembled = diagram
             .components
-            .get(first_ami_component_name)
+            .get(travis_kelce_component_name)
             .expect("could not get component by name");
-        let second_region_frame_assembled = diagram
+        let country_era_taylor_swift_assembled = diagram
             .components
-            .get(second_region_frame_name)
+            .get(country_era_taylor_swift_name)
             .expect("could not get component by name");
-        let second_ami_component_assembled = diagram
+        let mama_kelce_assembled = diagram
             .components
-            .get(second_ami_component_name)
+            .get(mama_kelce_name)
             .expect("could not get component by name");
 
         assert_eq!(
-            first_region_frame.id(),                   // expected
-            first_region_frame_assembled.component_id  // actual
+            new_era_taylor_swift.id(),                   // expected
+            new_era_taylor_swift_assembled.component_id  // actual
         );
         assert_eq!(
-            first_ami_component.id(),                   // expected
-            first_ami_component_assembled.component_id  // actual
+            travis_kelce_component.id(),         // expected
+            travis_kelce_assembled.component_id  // actual
         );
         assert_eq!(
-            second_region_frame.id(),                   // expected
-            second_region_frame_assembled.component_id  // actual
+            country_era_taylor_swift.id(),                   // expected
+            country_era_taylor_swift_assembled.component_id  // actual
         );
         assert_eq!(
-            second_ami_component.id(),                   // expected
-            second_ami_component_assembled.component_id  // actual
+            mama_kelce.id(),                   // expected
+            mama_kelce_assembled.component_id  // actual
         );
 
-        assert!(first_region_frame_assembled.parent_node_id.is_none());
-        assert!(second_region_frame_assembled.parent_node_id.is_none());
+        assert!(new_era_taylor_swift_assembled.parent_node_id.is_none());
+        assert!(country_era_taylor_swift_assembled.parent_node_id.is_none());
         assert_eq!(
-            first_region_frame.id(), // expected
-            first_ami_component_assembled
+            new_era_taylor_swift.id(), // expected
+            travis_kelce_assembled
                 .parent_node_id
                 .expect("no parent node id")  // actual
         );
         assert_eq!(
-            second_region_frame.id(), // expected
-            second_ami_component_assembled
+            country_era_taylor_swift.id(), // expected
+            mama_kelce_assembled
                 .parent_node_id
                 .expect("no parent node id")  // actual
         );
     }
 
-    // Scenarios 6 and 7: create an ec2 instance, but place it outside of both frames. Then, drag it onto the first
-    // region frame. Since we are working with dal integration tests and not sdf routes, we combine these two scenarios.
-    let first_ec2_instance_component_name = "first ec2 instance component";
-    let first_ec2_instance_component = Component::new(
-        ctx,
-        first_ec2_instance_component_name,
-        ec2_schema_variant_id,
-        None,
-    )
-    .await
-    .expect("could not create component");
+    // // Scenarios 6: Country Era taylor Swift within New Era Taylor Swift.
     Frame::attach_child_to_parent(
         ctx,
-        first_region_frame.id(),
-        first_ec2_instance_component.id(),
+        new_era_taylor_swift.id(),
+        country_era_taylor_swift.id(),
     )
     .await
     .expect("could not attach child to parent");
 
-    // Validate Scenarios 6 and 7
     {
         let diagram = DiagramByKey::assemble(ctx)
             .await
             .expect("could not assemble diagram");
         assert_eq!(
-            5,                        // expected
+            4,                        // expected
             diagram.components.len()  // actual
         );
         assert_eq!(
-            3,                   // expected
+            2,                   // expected
             diagram.edges.len()  // actual
         );
 
-        let first_region_frame_assembled = diagram
+        let new_era_taylor_swift_assembled = diagram
             .components
-            .get(first_region_frame_name)
+            .get(new_era_taylor_swift_name)
             .expect("could not get component by name");
-        let first_ami_component_assembled = diagram
+        let travis_kelce_assembled = diagram
             .components
-            .get(first_ami_component_name)
+            .get(travis_kelce_component_name)
             .expect("could not get component by name");
-        let second_region_frame_assembled = diagram
+        let country_era_taylor_swift_assembled = diagram
             .components
-            .get(second_region_frame_name)
+            .get(country_era_taylor_swift_name)
             .expect("could not get component by name");
-        let second_ami_component_assembled = diagram
+        let mama_kelce_assembled = diagram
             .components
-            .get(second_ami_component_name)
-            .expect("could not get component by name");
-        let first_ec2_instance_component_assembled = diagram
-            .components
-            .get(first_ec2_instance_component_name)
+            .get(mama_kelce_name)
             .expect("could not get component by name");
 
         assert_eq!(
-            first_region_frame.id(),                   // expected
-            first_region_frame_assembled.component_id  // actual
+            new_era_taylor_swift.id(),                   // expected
+            new_era_taylor_swift_assembled.component_id  // actual
         );
         assert_eq!(
-            first_ami_component.id(),                   // expected
-            first_ami_component_assembled.component_id  // actual
+            travis_kelce_component.id(),         // expected
+            travis_kelce_assembled.component_id  // actual
         );
         assert_eq!(
-            second_region_frame.id(),                   // expected
-            second_region_frame_assembled.component_id  // actual
+            country_era_taylor_swift.id(),                   // expected
+            country_era_taylor_swift_assembled.component_id  // actual
         );
         assert_eq!(
-            second_ami_component.id(),                   // expected
-            second_ami_component_assembled.component_id  // actual
-        );
-        assert_eq!(
-            first_ec2_instance_component.id(),                   // expected
-            first_ec2_instance_component_assembled.component_id  // actual
+            mama_kelce.id(),                   // expected
+            mama_kelce_assembled.component_id  // actual
         );
 
-        assert!(first_region_frame_assembled.parent_node_id.is_none());
-        assert!(second_region_frame_assembled.parent_node_id.is_none());
+        assert!(new_era_taylor_swift_assembled.parent_node_id.is_none());
         assert_eq!(
-            first_region_frame.id(), // expected
-            first_ami_component_assembled
+            new_era_taylor_swift.id(),
+            country_era_taylor_swift_assembled
+                .parent_node_id
+                .expect("no parent node id")
+        );
+        assert_eq!(
+            new_era_taylor_swift.id(), // expected
+            travis_kelce_assembled
                 .parent_node_id
                 .expect("no parent node id")  // actual
         );
         assert_eq!(
-            second_region_frame.id(), // expected
-            second_ami_component_assembled
+            country_era_taylor_swift.id(), // expected
+            mama_kelce_assembled
                 .parent_node_id
                 .expect("no parent node id")  // actual
-        );
-        assert_eq!(
-            first_region_frame.id(), // expected
-            first_ec2_instance_component_assembled
-                .parent_node_id
-                .expect("no parent node id")  // actual
-        );
-    }
-
-    // Scenario 8: draw an edge between the first ami and the first ec2 using the "Image ID" sockets. Both should exist
-    // within the first region frame.
-    let image_id_socket_name = "Image ID";
-    let image_id_ami_output_socket_id =
-        OutputSocket::find_with_name(ctx, image_id_socket_name, ami_schema_variant_id)
-            .await
-            .expect("could not perform output socket find by name")
-            .expect("no output socket found")
-            .id();
-    let image_id_ec2_instance_input_socket_id =
-        InputSocket::find_with_name(ctx, image_id_socket_name, ec2_schema_variant_id)
-            .await
-            .expect("could not perform input socket find by name")
-            .expect("no input socket found")
-            .id();
-    let image_id_ami_to_ec2_instance_attribute_prototype_argument_id = Component::connect(
-        ctx,
-        first_ami_component.id(),
-        image_id_ami_output_socket_id,
-        first_ec2_instance_component.id(),
-        image_id_ec2_instance_input_socket_id,
-    )
-    .await
-    .expect("could not perform connection");
-
-    // Validate Scenario 8
-    {
-        let diagram = DiagramByKey::assemble(ctx)
-            .await
-            .expect("could not assemble diagram");
-        assert_eq!(
-            5,                        // expected
-            diagram.components.len()  // actual
-        );
-        assert_eq!(
-            4,                   // expected
-            diagram.edges.len()  // actual
-        );
-
-        let first_region_frame_assembled = diagram
-            .components
-            .get(first_region_frame_name)
-            .expect("could not get component by name");
-        let first_ami_component_assembled = diagram
-            .components
-            .get(first_ami_component_name)
-            .expect("could not get component by name");
-        let second_region_frame_assembled = diagram
-            .components
-            .get(second_region_frame_name)
-            .expect("could not get component by name");
-        let second_ami_component_assembled = diagram
-            .components
-            .get(second_ami_component_name)
-            .expect("could not get component by name");
-        let first_ec2_instance_component_assembled = diagram
-            .components
-            .get(first_ec2_instance_component_name)
-            .expect("could not get component by name");
-
-        assert_eq!(
-            first_region_frame.id(),                   // expected
-            first_region_frame_assembled.component_id  // actual
-        );
-        assert_eq!(
-            first_ami_component.id(),                   // expected
-            first_ami_component_assembled.component_id  // actual
-        );
-        assert_eq!(
-            second_region_frame.id(),                   // expected
-            second_region_frame_assembled.component_id  // actual
-        );
-        assert_eq!(
-            second_ami_component.id(),                   // expected
-            second_ami_component_assembled.component_id  // actual
-        );
-        assert_eq!(
-            first_ec2_instance_component.id(),                   // expected
-            first_ec2_instance_component_assembled.component_id  // actual
-        );
-
-        assert!(first_region_frame_assembled.parent_node_id.is_none());
-        assert!(second_region_frame_assembled.parent_node_id.is_none());
-        assert_eq!(
-            first_region_frame.id(), // expected
-            first_ami_component_assembled
-                .parent_node_id
-                .expect("no parent node id")  // actual
-        );
-        assert_eq!(
-            second_region_frame.id(), // expected
-            second_ami_component_assembled
-                .parent_node_id
-                .expect("no parent node id")  // actual
-        );
-        assert_eq!(
-            first_region_frame.id(), // expected
-            first_ec2_instance_component_assembled
-                .parent_node_id
-                .expect("no parent node id")  // actual
-        );
-
-        let image_id_ami_to_ec2_instance_edge_assembled = diagram
-            .edges
-            .get(&image_id_ami_to_ec2_instance_attribute_prototype_argument_id)
-            .expect("could not get edge by id");
-        assert_eq!(
-            first_ami_component.id(),                                 // expected
-            image_id_ami_to_ec2_instance_edge_assembled.from_node_id  // actual
-        );
-        assert_eq!(
-            image_id_ami_output_socket_id,                              // expected
-            image_id_ami_to_ec2_instance_edge_assembled.from_socket_id  // actual
-        );
-        assert_eq!(
-            first_ec2_instance_component.id(),                      // expected
-            image_id_ami_to_ec2_instance_edge_assembled.to_node_id  // actual
-        );
-        assert_eq!(
-            image_id_ec2_instance_input_socket_id, // expected
-            image_id_ami_to_ec2_instance_edge_assembled.to_socket_id  // actual
-        );
-    }
-
-    // Scenario 9: create a third AMI outside of both frames.
-    let third_ami_component_name = "third ami component";
-    let third_ami_component =
-        Component::new(ctx, third_ami_component_name, ami_schema_variant_id, None)
-            .await
-            .expect("could not create component");
-
-    // Validate Scenario 9
-    {
-        let diagram = DiagramByKey::assemble(ctx)
-            .await
-            .expect("could not assemble diagram");
-        assert_eq!(
-            6,                        // expected
-            diagram.components.len()  // actual
-        );
-        assert_eq!(
-            4,                   // expected
-            diagram.edges.len()  // actual
-        );
-
-        let first_region_frame_assembled = diagram
-            .components
-            .get(first_region_frame_name)
-            .expect("could not get component by name");
-        let first_ami_component_assembled = diagram
-            .components
-            .get(first_ami_component_name)
-            .expect("could not get component by name");
-        let second_region_frame_assembled = diagram
-            .components
-            .get(second_region_frame_name)
-            .expect("could not get component by name");
-        let second_ami_component_assembled = diagram
-            .components
-            .get(second_ami_component_name)
-            .expect("could not get component by name");
-        let first_ec2_instance_component_assembled = diagram
-            .components
-            .get(first_ec2_instance_component_name)
-            .expect("could not get component by name");
-        let third_ami_component_assembled = diagram
-            .components
-            .get(third_ami_component_name)
-            .expect("could not get component by name");
-
-        assert_eq!(
-            first_region_frame.id(),                   // expected
-            first_region_frame_assembled.component_id  // actual
-        );
-        assert_eq!(
-            first_ami_component.id(),                   // expected
-            first_ami_component_assembled.component_id  // actual
-        );
-        assert_eq!(
-            second_region_frame.id(),                   // expected
-            second_region_frame_assembled.component_id  // actual
-        );
-        assert_eq!(
-            second_ami_component.id(),                   // expected
-            second_ami_component_assembled.component_id  // actual
-        );
-        assert_eq!(
-            first_ec2_instance_component.id(),                   // expected
-            first_ec2_instance_component_assembled.component_id  // actual
-        );
-        assert_eq!(
-            third_ami_component.id(),                   // expected
-            third_ami_component_assembled.component_id  // actual
-        );
-
-        assert!(first_region_frame_assembled.parent_node_id.is_none());
-        assert!(second_region_frame_assembled.parent_node_id.is_none());
-        assert!(third_ami_component_assembled.parent_node_id.is_none());
-        assert_eq!(
-            first_region_frame.id(), // expected
-            first_ami_component_assembled
-                .parent_node_id
-                .expect("no parent node id")  // actual
-        );
-        assert_eq!(
-            second_region_frame.id(), // expected
-            second_ami_component_assembled
-                .parent_node_id
-                .expect("no parent node id")  // actual
-        );
-        assert_eq!(
-            first_region_frame.id(), // expected
-            first_ec2_instance_component_assembled
-                .parent_node_id
-                .expect("no parent node id")  // actual
-        );
-
-        let image_id_ami_to_ec2_instance_edge_assembled = diagram
-            .edges
-            .get(&image_id_ami_to_ec2_instance_attribute_prototype_argument_id)
-            .expect("could not get edge by id");
-        assert_eq!(
-            first_ami_component.id(),                                 // expected
-            image_id_ami_to_ec2_instance_edge_assembled.from_node_id  // actual
-        );
-        assert_eq!(
-            image_id_ami_output_socket_id,                              // expected
-            image_id_ami_to_ec2_instance_edge_assembled.from_socket_id  // actual
-        );
-        assert_eq!(
-            first_ec2_instance_component.id(),                      // expected
-            image_id_ami_to_ec2_instance_edge_assembled.to_node_id  // actual
-        );
-        assert_eq!(
-            image_id_ec2_instance_input_socket_id, // expected
-            image_id_ami_to_ec2_instance_edge_assembled.to_socket_id  // actual
-        );
-    }
-
-    // Scenario 10: draw an edge (do not drag the component or place it onto a frame) between the "Region" socket of the
-    // second region frame and the "Region" socket of the third ami.
-    let region_socket_name = "Region";
-    let region_region_output_socket_id =
-        OutputSocket::find_with_name(ctx, region_socket_name, region_schema_variant_id)
-            .await
-            .expect("could not perform output socket find by name")
-            .expect("no output socket found")
-            .id();
-    let region_ami_input_socket_id =
-        InputSocket::find_with_name(ctx, region_socket_name, ami_schema_variant_id)
-            .await
-            .expect("could not perform input socket find by name")
-            .expect("no input socket found")
-            .id();
-    let region_region_to_ami_attribute_prototype_argument_id = Component::connect(
-        ctx,
-        second_region_frame.id(),
-        region_region_output_socket_id,
-        third_ami_component.id(),
-        region_ami_input_socket_id,
-    )
-    .await
-    .expect("could not perform connection");
-
-    // Validate Scenario 10
-    {
-        let diagram = DiagramByKey::assemble(ctx)
-            .await
-            .expect("could not assemble diagram");
-        assert_eq!(
-            6,                        // expected
-            diagram.components.len()  // actual
-        );
-        assert_eq!(
-            5,                   // expected
-            diagram.edges.len()  // actual
-        );
-
-        let first_region_frame_assembled = diagram
-            .components
-            .get(first_region_frame_name)
-            .expect("could not get component by name");
-        let first_ami_component_assembled = diagram
-            .components
-            .get(first_ami_component_name)
-            .expect("could not get component by name");
-        let second_region_frame_assembled = diagram
-            .components
-            .get(second_region_frame_name)
-            .expect("could not get component by name");
-        let second_ami_component_assembled = diagram
-            .components
-            .get(second_ami_component_name)
-            .expect("could not get component by name");
-        let first_ec2_instance_component_assembled = diagram
-            .components
-            .get(first_ec2_instance_component_name)
-            .expect("could not get component by name");
-        let third_ami_component_assembled = diagram
-            .components
-            .get(third_ami_component_name)
-            .expect("could not get component by name");
-
-        assert_eq!(
-            first_region_frame.id(),                   // expected
-            first_region_frame_assembled.component_id  // actual
-        );
-        assert_eq!(
-            first_ami_component.id(),                   // expected
-            first_ami_component_assembled.component_id  // actual
-        );
-        assert_eq!(
-            second_region_frame.id(),                   // expected
-            second_region_frame_assembled.component_id  // actual
-        );
-        assert_eq!(
-            second_ami_component.id(),                   // expected
-            second_ami_component_assembled.component_id  // actual
-        );
-        assert_eq!(
-            first_ec2_instance_component.id(),                   // expected
-            first_ec2_instance_component_assembled.component_id  // actual
-        );
-        assert_eq!(
-            third_ami_component.id(),                   // expected
-            third_ami_component_assembled.component_id  // actual
-        );
-
-        assert!(first_region_frame_assembled.parent_node_id.is_none());
-        assert!(second_region_frame_assembled.parent_node_id.is_none());
-        assert!(third_ami_component_assembled.parent_node_id.is_none());
-        assert_eq!(
-            first_region_frame.id(), // expected
-            first_ami_component_assembled
-                .parent_node_id
-                .expect("no parent node id")  // actual
-        );
-        assert_eq!(
-            second_region_frame.id(), // expected
-            second_ami_component_assembled
-                .parent_node_id
-                .expect("no parent node id")  // actual
-        );
-        assert_eq!(
-            first_region_frame.id(), // expected
-            first_ec2_instance_component_assembled
-                .parent_node_id
-                .expect("no parent node id")  // actual
-        );
-
-        let image_id_ami_to_ec2_instance_edge_assembled = diagram
-            .edges
-            .get(&image_id_ami_to_ec2_instance_attribute_prototype_argument_id)
-            .expect("could not get edge by id");
-        assert_eq!(
-            first_ami_component.id(),                                 // expected
-            image_id_ami_to_ec2_instance_edge_assembled.from_node_id  // actual
-        );
-        assert_eq!(
-            image_id_ami_output_socket_id,                              // expected
-            image_id_ami_to_ec2_instance_edge_assembled.from_socket_id  // actual
-        );
-        assert_eq!(
-            first_ec2_instance_component.id(),                      // expected
-            image_id_ami_to_ec2_instance_edge_assembled.to_node_id  // actual
-        );
-        assert_eq!(
-            image_id_ec2_instance_input_socket_id, // expected
-            image_id_ami_to_ec2_instance_edge_assembled.to_socket_id  // actual
-        );
-
-        let region_region_to_ami_edge_assembled = diagram
-            .edges
-            .get(&region_region_to_ami_attribute_prototype_argument_id)
-            .expect("could not get edge by id");
-        assert_eq!(
-            second_region_frame.id(),                         // expected
-            region_region_to_ami_edge_assembled.from_node_id  // actual
-        );
-        assert_eq!(
-            region_region_output_socket_id,                     // expected
-            region_region_to_ami_edge_assembled.from_socket_id  // actual
-        );
-        assert_eq!(
-            third_ami_component.id(),                       // expected
-            region_region_to_ami_edge_assembled.to_node_id  // actual
-        );
-        assert_eq!(
-            region_ami_input_socket_id,                       // expected
-            region_region_to_ami_edge_assembled.to_socket_id  // actual
         );
     }
 }

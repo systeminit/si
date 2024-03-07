@@ -55,8 +55,6 @@ const ENV_VAR_CONTENT_STORE_PG_DBNAME: &str = "SI_TEST_CONTENT_STORE_PG_DBNAME";
 const ENV_VAR_PG_USER: &str = "SI_TEST_PG_USER";
 const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
 const ENV_VAR_KEEP_OLD_DBS: &str = "SI_TEST_KEEP_OLD_DBS";
-
-const SI_AWS_PKG: &str = "si-aws-2023-09-13.sipkg";
 const SI_AWS_EC2_PKG: &str = "si-aws-ec2-2023-09-26.sipkg";
 const SI_DOCKER_IMAGE_PKG: &str = "si-docker-image-2023-09-13.sipkg";
 const SI_COREOS_PKG: &str = "si-coreos-2023-09-13.sipkg";
@@ -757,10 +755,10 @@ async fn migrate_local_builtins(
     schema::migrate_pkg(&ctx, SI_DOCKER_IMAGE_PKG, None).await?;
     schema::migrate_pkg(&ctx, SI_COREOS_PKG, None).await?;
     schema::migrate_pkg(&ctx, SI_AWS_EC2_PKG, None).await?;
-    schema::migrate_pkg(&ctx, SI_AWS_PKG, None).await?;
     schemas::migrate_test_exclusive_schema_starfield(&ctx).await?;
     schemas::migrate_test_exclusive_schema_fallout(&ctx).await?;
     schemas::migrate_test_exclusive_schema_bethesda_secret(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_swifty(&ctx).await?;
 
     ctx.blocking_commit().await?;
 
