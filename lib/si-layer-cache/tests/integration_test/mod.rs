@@ -5,7 +5,9 @@ use std::env;
 use std::path::Path;
 use tokio::task::JoinSet;
 
+mod chunking_nats;
 mod disk_cache;
+
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
 

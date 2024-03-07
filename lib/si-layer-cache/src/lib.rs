@@ -24,6 +24,7 @@
 //!
 //! The postgres bits remain unimplemented! :)
 
+pub mod chunking_nats;
 pub mod disk_cache;
 pub mod error;
 pub mod memory_cache;
