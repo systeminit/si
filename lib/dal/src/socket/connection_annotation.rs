@@ -55,12 +55,12 @@ impl TryFrom<String> for ConnectionAnnotation {
 }
 
 impl ConnectionAnnotation {
-    pub fn target_fits_reference(target_ca: Self, reference_ca: Self) -> bool {
-        let annotation_src = target_ca.tokens;
-        let annotation_dest = reference_ca.tokens;
+    pub fn target_fits_reference(target_ca: &Self, reference_ca: &Self) -> bool {
+        let annotation_src = &target_ca.tokens;
+        let annotation_dest = &reference_ca.tokens;
 
         annotation_src.len() >= annotation_dest.len()
-            && annotation_src.as_slice()[annotation_src.len() - annotation_dest.len()..].to_vec()
+            && &(annotation_src.as_slice()[annotation_src.len() - annotation_dest.len()..].to_vec())
                 == annotation_dest
     }
 }

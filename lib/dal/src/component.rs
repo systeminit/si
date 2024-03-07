@@ -848,6 +848,11 @@ impl Component {
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
     ) -> ComponentResult<(AttributeValueId, AttributePrototypeArgumentId)> {
+        // println!(
+        //     "Connect inner from component\n{}\nto component\n{}",
+        //     source_component_id, destination_component_id
+        // );
+
         let destination_attribute_value_ids =
             InputSocket::attribute_values_for_input_socket_id(ctx, destination_input_socket_id)
                 .await?;
@@ -937,20 +942,34 @@ impl Component {
 
         for src_sock in source_sockets {
             let mut maybe_dest_id = None;
-            for dest_candidate in &destination_sockets {
+            'sockets_loop: for dest_candidate in &destination_sockets {
                 let src_annotations = src_sock.connection_annotations();
                 let dest_annotations = dest_candidate.connection_annotations();
 
-                for annotation_src in src_annotations {
+                // println!(
+                //     "Does '{}' connect with '{}'?",
+                //     src_sock.name(),
+                //     dest_candidate.name()
+                // );
+
+                'annotations_loop: for annotation_src in &src_annotations {
                     for annotation_dest in &dest_annotations {
-                        if false {
-                            // if more than one valid destination is found, skip the socket.
-                            if maybe_dest_id.is_some() {
+                        if ConnectionAnnotation::target_fits_reference(
+                            annotation_src,
+                            annotation_dest,
+                        ) {
+                            // If more than one valid destination is found, skip the socket.
+                            if maybe_dest_id.is_some() && maybe_dest_id != Some(dest_candidate.id())
+                            {
                                 maybe_dest_id = None;
-                                break;
+                                break 'sockets_loop;
                             }
 
-                            maybe_dest_id = Some(dest_candidate.id())
+                            // Otherwise, this is a socket we wanna connect to!
+                            maybe_dest_id = Some(dest_candidate.id());
+                            // dbg!(&maybe_dest_id);
+                            // println!("YES!");
+                            break 'annotations_loop;
                         }
                     }
                 }
