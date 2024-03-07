@@ -4,7 +4,6 @@ use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::component::ComponentError;
-use dal::node_menu::NodeMenuError;
 use dal::socket::input::InputSocketError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::WsEventError;
@@ -16,14 +15,11 @@ use thiserror::Error;
 
 use crate::server::state::AppState;
 
-use self::get_node_add_menu::get_node_add_menu;
-
 mod connect_component_to_frame;
 pub mod create_component;
 pub mod create_connection;
 pub mod get_diagram;
-pub mod get_node_add_menu;
-pub mod list_schema_variants;
+pub mod list_schemas;
 pub mod set_component_position;
 
 // mod connect_component_to_frame;
@@ -54,10 +50,10 @@ pub enum DiagramError {
     DalDiagram(#[from] dal::diagram::DiagramError),
     #[error("dal frame error: {0}")]
     DalFrame(#[from] dal::component::frame::FrameError),
-    #[error("dal schema error: {0}")]
-    DalSchema(#[from] dal::SchemaError),
     #[error("dal schema variant error: {0}")]
     DalSchemaVariant(#[from] dal::schema::variant::SchemaVariantError),
+    #[error("dal schema view error: {0}")]
+    DalSchemaView(#[from] dal::schema::view::SchemaViewError),
     #[error("edge not found")]
     EdgeNotFound,
     #[error("frame socket not found for schema variant id: {0}")]
@@ -72,8 +68,6 @@ pub enum DiagramError {
     InvalidSystem,
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
-    #[error("node menu error: {0}")]
-    NodeMenu(#[from] NodeMenuError),
     #[error("not authorized")]
     NotAuthorized,
     #[error("paste failed")]
@@ -84,8 +78,6 @@ pub enum DiagramError {
     PgPool(#[from] si_data_pg::PgPoolError),
     #[error("schema not found")]
     SchemaNotFound,
-    #[error("schema variant not found")]
-    SchemaVariantNotFound,
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("socket not found")]
@@ -145,7 +137,6 @@ pub fn routes() -> Router<AppState> {
             "/connect_component_to_frame",
             post(connect_component_to_frame::connect_component_to_frame),
         )
-        .route("/get_node_add_menu", post(get_node_add_menu))
         .route(
             "/create_connection",
             post(create_connection::create_connection),
@@ -159,8 +150,5 @@ pub fn routes() -> Router<AppState> {
             post(set_component_position::set_component_position),
         )
         .route("/get_diagram", get(get_diagram::get_diagram))
-        .route(
-            "/list_schema_variants",
-            get(list_schema_variants::list_schema_variants),
-        )
+        .route("/list_schemas", get(list_schemas::list_schemas))
 }

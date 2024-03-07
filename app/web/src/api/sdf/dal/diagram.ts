@@ -32,11 +32,19 @@ export interface DiagramSchemaVariant {
   id: string;
   name: string;
   builtin: boolean;
-  schemaName: string;
-  schemaId: string;
+
   color: string;
+  category: string;
   inputSockets: DiagramInputSocket[];
   outputSockets: DiagramOutputSocket[];
+}
+
+export interface DiagramSchema {
+  id: string;
+  name: string;
+  builtin: boolean;
+
+  variants: DiagramSchemaVariant[];
 }
 
 export interface DiagramNodeKindComponent {
@@ -70,5 +78,3 @@ export interface DiagramNode {
   positions: DiagramNodePosition[];
 }
 export type DiagramNodes = Array<DiagramNode>;
-
-export type DiagramSchemaVariants = Array<DiagramSchemaVariant>;

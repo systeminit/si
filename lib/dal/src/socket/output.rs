@@ -140,6 +140,7 @@ impl OutputSocket {
         connection_annotations: Option<Vec<ConnectionAnnotation>>,
     ) -> OutputSocketResult<Self> {
         let name = name.into();
+        debug!(%schema_variant_id, %name, "creating output socket");
 
         let connection_annotations = if let Some(ca) = connection_annotations {
             ca

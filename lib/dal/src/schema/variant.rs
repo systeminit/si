@@ -46,7 +46,6 @@ use self::root_prop::RootPropChild;
 pub mod definition;
 pub mod leaves;
 pub mod root_prop;
-pub mod view;
 
 // FIXME(nick,theo): colors should be required for all schema variants.
 // There should be no default in the backend as there should always be a color.
@@ -161,8 +160,9 @@ impl SchemaVariant {
         name: impl Into<String>,
         category: impl Into<String>,
     ) -> SchemaVariantResult<(Self, RootProp)> {
-        info!("creating schema variant and root prop tree");
+        debug!(%schema_id, "creating schema variant and root prop tree");
         let workspace_snapshot = ctx.workspace_snapshot()?;
+
         let content = SchemaVariantContentV1 {
             timestamp: Timestamp::now(),
             name: name.into(),
@@ -439,8 +439,9 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
-        info!("creating default prototypes");
+        debug!(%schema_variant_id, "creating default prototypes");
         let workspace_snapshot = ctx.workspace_snapshot()?;
+
         let change_set = ctx.change_set_pointer()?;
         let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
         let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;

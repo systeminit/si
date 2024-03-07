@@ -1,6 +1,6 @@
 <template>
   <div class="inset-0 absolute">
-    <template v-if="schemasReqStatus.isPending || addMenuReqStatus.isPending">
+    <template v-if="schemasReqStatus.isPending">
       <div class="w-full p-lg flex flex-col gap-2 items-center">
         <Icon name="loader" size="2xl" />
         <h2>Loading Asset Palette...</h2>
@@ -37,7 +37,7 @@
         </template>
 
         <TreeNode
-          v-for="(category, categoryIndex) in filteredComponents"
+          v-for="(category, categoryIndex) in filteredCategoriesAndSchemas"
           :key="categoryIndex"
           :label="category.displayName"
           :icon="getAssetIcon(category.displayName)"
@@ -80,7 +80,7 @@
           >
             <template #label>
               <div class="text-sm">
-                {{ schema.displayName }}
+                {{ schema.name }}
               </div>
               <!-- <div
                 class="italic text-xs text-neutral-500 dark:text-neutral-400"
@@ -120,9 +120,9 @@ import clsx from "clsx";
 import { windowListenerManager } from "@si/vue-lib";
 import {
   useComponentsStore,
-  MenuSchema,
-  NodeAddMenu,
   getAssetIcon,
+  Categories,
+  DiagramSchemaWithDisplayMetadata,
 } from "@/store/components.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
@@ -131,15 +131,9 @@ import SiSearch from "@/components/SiSearch.vue";
 defineProps<{ actionsAreRunning: boolean }>();
 
 const componentsStore = useComponentsStore();
-// NOTE - component store is automatically fetching things we need when it is used
-// otherwise we could trigger calls here
 
-// TODO - probably should not need 2 requests here. currently we only use schema variants for the colors...
 const schemasReqStatus = componentsStore.getRequestStatus(
   "FETCH_AVAILABLE_SCHEMAS",
-);
-const addMenuReqStatus = componentsStore.getRequestStatus(
-  "FETCH_NODE_ADD_MENU",
 );
 
 const collapsibleRefs = ref<InstanceType<typeof Collapsible>[]>([]);
@@ -156,41 +150,41 @@ function onSearchUpdated(newFilterString: string) {
     c.toggleIsOpen(true);
   });
 }
-const addMenuData = computed(() => componentsStore.nodeAddMenu);
+const categories = computed(() => componentsStore.categories);
 
-const filteredComponents = computed(() => {
-  if (!filterModeActive.value) return addMenuData.value;
+const filteredCategoriesAndSchemas = computed(() => {
+  if (!filterModeActive.value) return categories.value;
 
-  const filteredCategories = [] as NodeAddMenu;
-  _.each(addMenuData.value, (c) => {
+  const inProgress = [] as Categories;
+  _.each(categories.value, (c) => {
     // if the string matches the group, add the whole thing
     if (c.displayName.toLowerCase().includes(filterStringCleaned.value)) {
-      filteredCategories.push(c);
+      inProgress.push(c);
       return;
     }
 
     // otherwise, filter out the individual assets that don't match
     const matchingSchemas = _.filter(c.schemas, (s) => {
-      const categoryAndSchemaName = `${c.displayName} ${s.displayName}`;
+      const categoryAndSchemaName = `${c.displayName} ${s.name}`;
       return categoryAndSchemaName
         .toLowerCase()
         .includes(filterStringCleaned.value);
     });
 
     if (matchingSchemas.length > 0) {
-      filteredCategories.push({
+      inProgress.push({
         displayName: c.displayName,
         schemas: matchingSchemas,
       });
     }
   });
-  return filteredCategories;
+  return inProgress;
 });
 
 const assetCount = computed(() => {
   let count = 0;
 
-  filteredComponents.value.forEach((category) => {
+  filteredCategoriesAndSchemas.value.forEach((category) => {
     count += category.schemas.length;
   });
 
@@ -198,12 +192,12 @@ const assetCount = computed(() => {
 });
 
 const schemasById = computed(() => {
-  return addMenuData.value.reduce((p, c) => {
+  return categories.value.reduce((p, c) => {
     c.schemas.forEach((schema) => {
       p[schema.id] = schema;
     });
     return p;
-  }, {} as Record<string, MenuSchema>);
+  }, {} as Record<string, DiagramSchemaWithDisplayMetadata>);
 });
 const selectedSchema = computed(() => {
   if (componentsStore.selectedInsertSchemaId)
