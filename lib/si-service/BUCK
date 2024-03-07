@@ -1,0 +1,14 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-service",
+    deps = [
+        "//lib/telemetry-application-rs:telemetry-application",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:color-eyre",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)

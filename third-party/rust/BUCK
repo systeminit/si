@@ -5556,6 +5556,27 @@ cargo.rust_library(
 )
 
 http_archive(
+    name = "hdrhistogram-7.5.4.crate",
+    sha256 = "765c9198f173dd59ce26ff9f95ef0aafd0a0fe01fb9d72841bc5066a4c06511d",
+    strip_prefix = "hdrhistogram-7.5.4",
+    urls = ["https://crates.io/api/v1/crates/hdrhistogram/7.5.4/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "hdrhistogram-7.5.4",
+    srcs = [":hdrhistogram-7.5.4.crate"],
+    crate = "hdrhistogram",
+    crate_root = "hdrhistogram-7.5.4.crate/src/lib.rs",
+    edition = "2018",
+    visibility = [],
+    deps = [
+        ":byteorder-1.5.0",
+        ":num-traits-0.2.18",
+    ],
+)
+
+http_archive(
     name = "heapless-0.7.17.crate",
     sha256 = "cdc6457c0eb62c71aac4bc17216026d8410337c4126773b9c5daba343f17964f",
     strip_prefix = "heapless-0.7.17",
@@ -15822,18 +15843,27 @@ cargo.rust_library(
         "buffer",
         "default",
         "discover",
+        "filter",
+        "full",
         "futures-core",
         "futures-util",
+        "hdrhistogram",
+        "hedge",
         "indexmap",
         "limit",
         "load",
+        "load-shed",
         "log",
         "make",
         "pin-project",
         "pin-project-lite",
         "rand",
         "ready-cache",
+        "reconnect",
+        "retry",
         "slab",
+        "spawn-ready",
+        "steer",
         "timeout",
         "tokio",
         "tokio-util",
@@ -15844,6 +15874,7 @@ cargo.rust_library(
     deps = [
         ":futures-core-0.3.30",
         ":futures-util-0.3.30",
+        ":hdrhistogram-7.5.4",
         ":indexmap-1.9.3",
         ":pin-project-1.1.5",
         ":pin-project-lite-0.2.13",

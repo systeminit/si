@@ -1,0 +1,17 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "naxum",
+    deps = [
+        "//third-party/rust:async-nats",
+        "//third-party/rust:async-trait",
+        "//third-party/rust:bytes",
+        "//third-party/rust:futures",
+        "//third-party/rust:pin-project-lite",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
+        "//third-party/rust:tower",
+        "//third-party/rust:tracing",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)

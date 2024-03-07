@@ -11,9 +11,11 @@
 use std::{
     borrow::Cow,
     env,
+    future::{Future, IntoFuture},
     io::{self, IsTerminal},
     ops::Deref,
-    thread,
+    pin::Pin,
+    result, thread,
     time::{Duration, Instant},
 };
 
@@ -78,7 +80,7 @@ pub enum Error {
     Update(#[from] reload::Error),
 }
 
-type Result<T> = std::result::Result<T, Error>;
+type Result<T> = result::Result<T, Error>;
 
 #[derive(Clone, Builder, Debug, Default)]
 pub struct TelemetryConfig {
@@ -162,7 +164,7 @@ impl TelemetryConfigBuilder {
 
     fn default_log_env_var_prefix(
         &self,
-    ) -> std::result::Result<Option<String>, TelemetryConfigBuilderError> {
+    ) -> result::Result<Option<String>, TelemetryConfigBuilderError> {
         match &self.service_namespace {
             Some(service_namespace) => Ok(Some(service_namespace.to_uppercase())),
             None => Err(TelemetryConfigBuilderError::ValidationError(
@@ -171,9 +173,7 @@ impl TelemetryConfigBuilder {
         }
     }
 
-    fn default_log_env_var(
-        &self,
-    ) -> std::result::Result<Option<String>, TelemetryConfigBuilderError> {
+    fn default_log_env_var(&self) -> result::Result<Option<String>, TelemetryConfigBuilderError> {
         match (&self.log_env_var_prefix, &self.service_name) {
             (Some(Some(prefix)), Some(service_name)) => Ok(Some(format!(
                 "{}_{}_LOG",
@@ -191,7 +191,7 @@ impl TelemetryConfigBuilder {
 
     fn default_log_span_events_env_var(
         &self,
-    ) -> std::result::Result<Option<String>, TelemetryConfigBuilderError> {
+    ) -> result::Result<Option<String>, TelemetryConfigBuilderError> {
         match (&self.log_env_var_prefix, &self.service_name) {
             (Some(Some(prefix)), Some(service_name)) => Ok(Some(format!(
                 "{}_{}_LOG_SPAN_EVENTS",
@@ -387,7 +387,7 @@ fn tracing_subscriber(
     Ok((registry, handles))
 }
 
-fn otel_tracer(config: &TelemetryConfig) -> std::result::Result<Tracer, TraceError> {
+fn otel_tracer(config: &TelemetryConfig) -> result::Result<Tracer, TraceError> {
     opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(opentelemetry_otlp::new_exporter().tonic())
@@ -478,12 +478,23 @@ pub struct TelemetryShutdownGuard {
 }
 
 impl TelemetryShutdownGuard {
-    pub async fn wait(self) -> std::result::Result<(), telemetry::ClientError> {
+    pub async fn wait(self) -> result::Result<(), telemetry::ClientError> {
         let token = CancellationToken::new();
         self.update_telemetry_tx
             .send(TelemetryCommand::Shutdown(token.clone()))?;
         token.cancelled().await;
         Ok(())
+    }
+}
+
+impl IntoFuture for TelemetryShutdownGuard {
+    type Output = result::Result<(), telemetry::ClientError>;
+
+    type IntoFuture =
+        Pin<Box<dyn Future<Output = result::Result<(), telemetry::ClientError>> + Send>>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        Box::pin(IntoFuture::into_future(self.wait()))
     }
 }
 

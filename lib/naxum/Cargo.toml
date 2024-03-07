@@ -1,0 +1,21 @@
+[package]
+name = "naxum"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70.0"
+authors = ["Fletcher Nichol <fnichol@nichol.ca>"]
+publish = false
+
+[dependencies]
+async-nats = { workspace = true }
+async-trait = { workspace = true }
+bytes = { workspace = true }
+futures = { workspace = true } # NOTE: if extracted this can be `futures-util`
+pin-project-lite = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+tower = { workspace = true }
+tracing = { workspace = true } # NOTE: left with vanilla tracing for potential future extraction
+
+[dev-dependencies]
+tracing-subscriber = { workspace = true }
