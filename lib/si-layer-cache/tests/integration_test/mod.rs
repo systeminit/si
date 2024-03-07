@@ -1,5 +1,6 @@
 use moka::future::Cache;
 use si_layer_cache::LayerCache;
+use tokio::task::JoinSet;
 
 mod disk_cache;
 
@@ -131,4 +132,98 @@ async fn get_inserts_to_memory() {
         .expect("object not in cachche");
 
     assert!(layer_cache.memory_cache.has_key(&skid_row));
+}
+
+#[tokio::test]
+async fn multiple_mokas_single_sled() {
+    let count = 10_000;
+    let tempdir = tempfile::tempdir().expect("cannot create tempdir");
+    let db = sled::open(tempdir).expect("unable to open sled database");
+    let cache_even: Cache<[u8; 8], String> = Cache::new(count);
+
+    let even_tree_name = "even_numbers";
+    let odd_tree_name = "odd_numbers";
+
+    let layer_cache_even = LayerCache::new(db.clone(), even_tree_name, Box::new(cache_even))
+        .expect("cannot create layer cache");
+
+    let cache_odd: Cache<[u8; 8], String> = Cache::new(count);
+    let layer_cache_odd = LayerCache::new(db.clone(), odd_tree_name, Box::new(cache_odd))
+        .expect("cannot create layer cache");
+
+    let tree_names: Vec<String> = db
+        .tree_names()
+        .into_iter()
+        .filter_map(|name| {
+            std::str::from_utf8(name.as_ref())
+                .ok()
+                .map(ToOwned::to_owned)
+        })
+        .collect();
+
+    // Confirm that the original database, after the clones, has the trees
+    assert!(tree_names.contains(&even_tree_name.to_string()));
+    assert!(tree_names.contains(&odd_tree_name.to_string()));
+
+    fn make_u64_kv(integer: u64) -> ([u8; 8], String) {
+        (integer.to_le_bytes(), integer.to_string())
+    }
+
+    let mut task_set = JoinSet::new();
+
+    task_set.spawn(async move {
+        for i in 0..(count * 2) {
+            if i % 2 == 0 {
+                let (key, value) = make_u64_kv(i);
+                layer_cache_even
+                    .insert(key, value)
+                    .await
+                    .expect("unable to insert");
+            }
+        }
+    });
+
+    task_set.spawn(async move {
+        for i in 0..(count * 2) {
+            if i % 2 != 0 {
+                let (key, value) = make_u64_kv(i);
+                layer_cache_odd
+                    .insert(key, value)
+                    .await
+                    .expect("unable to insert");
+            }
+        }
+    });
+
+    while let Some(_) = task_set.join_next().await {}
+
+    let even_tree = db
+        .open_tree(even_tree_name.as_bytes())
+        .expect("unable to open even tree");
+    let odd_tree = db
+        .open_tree(odd_tree_name.as_bytes())
+        .expect("unable to open odd tree");
+
+    for i in 0..(count * 2) {
+        let (key, value) = make_u64_kv(i);
+        let even_tree_value: Option<String> = even_tree
+            .get(key)
+            .expect("able to get even value")
+            .map(|value| postcard::from_bytes(value.as_ref()).ok())
+            .flatten();
+
+        let odd_tree_value: Option<String> = odd_tree
+            .get(key)
+            .expect("able to get odd key value")
+            .map(|value| postcard::from_bytes(value.as_ref()).ok())
+            .flatten();
+
+        if i % 2 == 0 {
+            assert_eq!(Some(value), even_tree_value);
+            assert_eq!(None, odd_tree_value);
+        } else {
+            assert_eq!(Some(value), odd_tree_value);
+            assert_eq!(None, even_tree_value);
+        }
+    }
 }
