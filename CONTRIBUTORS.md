@@ -30,3 +30,4 @@ We contributors to System Initiative:
 * Sakshi Umredkar (@saakshii12)
 * Justin Carter (@bodymindarts)
 * Ryan Benasutti (@Octogonapus)
+* John Obelenus (@jobelenus)
