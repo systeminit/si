@@ -47,6 +47,7 @@ use self::root_prop::RootPropChild;
 pub mod definition;
 pub mod leaves;
 pub mod root_prop;
+pub mod view;
 
 // FIXME(nick,theo): colors should be required for all schema variants.
 // There should be no default in the backend as there should always be a color.
