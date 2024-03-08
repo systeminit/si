@@ -15,7 +15,7 @@
           :tooltip="userTooltips[index]"
           :user="user"
           class="absolute translate-x-[-50%]"
-          :hasHoverState="featureFlagsStore.NAVIGATE_FROM_COLLABORATOR_LINK"
+          hasHoverState
           forceDark
           @click="goToUserChangeSet(user)"
         />
@@ -85,9 +85,7 @@
             v-for="(user, index) in filteredUsers"
             :key="index"
             :user="user"
-            :iconHasHoverState="
-              featureFlagsStore.NAVIGATE_FROM_COLLABORATOR_LINK
-            "
+            iconHasHoverState
             @iconClicked="goToUserChangeSet(user)"
           />
         </div>
@@ -276,8 +274,7 @@ const filteredUsers = computed(() => {
 function goToUserChangeSet(user: UserInfo) {
   if (
     !user ||
-    !user.changeset ||
-    !featureFlagsStore.NAVIGATE_FROM_COLLABORATOR_LINK
+    !user.changeset
   )
     return;
 
