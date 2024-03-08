@@ -35,13 +35,18 @@ rust_test(
     name = "test-integration",
     deps = [
         "//lib/buck2-resources:buck2-resources",
+        "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
+        "//third-party/rust:blake3",
+        "//third-party/rust:bytes",
         "//third-party/rust:criterion",
+        "//third-party/rust:futures",
         "//third-party/rust:moka",
         "//third-party/rust:postcard",
         "//third-party/rust:sled",
         "//third-party/rust:tempfile",
         "//third-party/rust:tokio",
+        "//third-party/rust:ulid",
         ":si-layer-cache",
     ],
     srcs = glob([
