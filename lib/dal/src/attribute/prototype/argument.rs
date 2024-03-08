@@ -463,6 +463,37 @@ impl AttributePrototypeArgument {
         Ok(apas)
     }
 
+    pub async fn list_ids_for_prototype_and_destination(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+        destination_id: ComponentId,
+    ) -> AttributePrototypeArgumentResult<Vec<AttributePrototypeArgumentId>> {
+        let mut apas = vec![];
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+        let apa_node_idxs = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
+            prototype_id,
+            EdgeWeightKindDiscriminants::PrototypeArgument,
+        )?;
+
+        for idx in apa_node_idxs {
+            let node_weight = workspace_snapshot.get_node_weight(idx)?;
+            if let NodeWeight::AttributePrototypeArgument(apa_weight) = node_weight {
+                if let Some(ArgumentTargets {
+                    destination_component_id,
+                    ..
+                }) = apa_weight.targets()
+                {
+                    if destination_component_id == destination_id {
+                        apas.push(node_weight.id().into())
+                    }
+                }
+            }
+        }
+
+        Ok(apas)
+    }
+
     pub async fn remove(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,

@@ -399,10 +399,15 @@ impl Component {
         ctx: &DalContext,
     ) -> ComponentResult<Vec<IncomingConnection>> {
         let mut incoming_edges = vec![];
+
         for (to_input_socket_id, to_value_id) in self.input_socket_attribute_values(ctx).await? {
             let prototype_id = AttributeValue::prototype_id(ctx, to_value_id).await?;
-            for apa_id in
-                AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?
+            for apa_id in AttributePrototypeArgument::list_ids_for_prototype_and_destination(
+                ctx,
+                prototype_id,
+                self.id,
+            )
+            .await?
             {
                 let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
 
@@ -417,7 +422,7 @@ impl Component {
 
                 if let Some(ArgumentTargets {
                     source_component_id,
-                    ..
+                    destination_component_id,
                 }) = apa.targets()
                 {
                     if let Some(ValueSource::OutputSocket(from_output_socket_id)) =
@@ -425,7 +430,7 @@ impl Component {
                     {
                         incoming_edges.push(IncomingConnection {
                             attribute_prototype_argument_id: apa_id,
-                            to_component_id: self.id(),
+                            to_component_id: destination_component_id,
                             from_component_id: source_component_id,
                             to_input_socket_id,
                             from_output_socket_id,
@@ -848,11 +853,6 @@ impl Component {
         destination_component_id: ComponentId,
         destination_input_socket_id: InputSocketId,
     ) -> ComponentResult<(AttributeValueId, AttributePrototypeArgumentId)> {
-        // println!(
-        //     "Connect inner from component\n{}\nto component\n{}",
-        //     source_component_id, destination_component_id
-        // );
-
         let destination_attribute_value_ids =
             InputSocket::attribute_values_for_input_socket_id(ctx, destination_input_socket_id)
                 .await?;
@@ -945,13 +945,6 @@ impl Component {
             'sockets_loop: for dest_candidate in &destination_sockets {
                 let src_annotations = src_sock.connection_annotations();
                 let dest_annotations = dest_candidate.connection_annotations();
-
-                // println!(
-                //     "Does '{}' connect with '{}'?",
-                //     src_sock.name(),
-                //     dest_candidate.name()
-                // );
-
                 'annotations_loop: for annotation_src in &src_annotations {
                     for annotation_dest in &dest_annotations {
                         if ConnectionAnnotation::target_fits_reference(
