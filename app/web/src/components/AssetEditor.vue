@@ -67,10 +67,7 @@ const selectedAsset = computed(() =>
 );
 
 const isReadOnly = computed(() => {
-  if (featureFlagStore.MULTI_VARIANT_EDITING) {
-    return false;
-  }
-  return !!selectedAsset.value?.hasComponents;
+  return false;
 });
 
 const editingAsset = ref<string>(selectedAsset.value?.code ?? "");

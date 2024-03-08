@@ -248,11 +248,7 @@ const updateAsset = async () => {
 };
 
 const disabled = computed(() => {
-  if (featureFlagStore.MULTI_VARIANT_EDITING) {
-    return false;
-  }
-
-  return !!(editingAsset.value?.hasComponents ?? false);
+  return false;
 });
 
 const disabledWarning = computed(() => {

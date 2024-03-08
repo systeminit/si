@@ -9,8 +9,6 @@ const FLAG_MAPPING = {
   DONT_BLOCK_ON_ACTIONS: "dont_block_on_actions",
   INVITE_USER: "invite_user",
   MODULES_TAB: "modules_tab",
-  MULTI_VARIANT_EDITING: "multiVariantEditing",
-  WORKSPACE_BACKUPS: "workspaceBackups",
   INDICATORS_MANUAL_FUNCTION_SOCKET: "indicators_manual_function_socket",
 };
 
@@ -36,8 +34,6 @@ export function useFeatureFlagsStore() {
           });
         });
         // You can override feature flags while working on a feature by setting them to true here
-
-        // this.MULTI_VARIANT_EDITING = true;
 
         // Make sure to remove the override before committing your code!
       },

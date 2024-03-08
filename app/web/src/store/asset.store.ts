@@ -94,12 +94,10 @@ export interface VariantDef extends ListedVariantDef {
 
 export type Asset = VariantDef;
 export type AssetListEntry = ListedVariantDef;
-export type AssetSaveRequest = Visibility & {
-  multiVariantEditingFlag: boolean;
-} & Omit<Asset, "createdAt" | "updatedAt" | "variantExists" | "hasComponents">;
+export type AssetSaveRequest = Visibility & Omit<Asset, "createdAt" | "updatedAt" | "variantExists" | "hasComponents">;
 export type AssetCreateRequest = Omit<
   AssetSaveRequest,
-  "id" | "definition" | "variantExists" | "multiVariantEditingFlag"
+  "id" | "definition" | "variantExists"
 >;
 export type AssetCloneRequest = Visibility & { id: AssetId };
 
@@ -348,7 +346,6 @@ export const useAssetStore = () => {
               };
             },
             params: {
-              multiVariantEditingFlag: featureFlagsStore.MULTI_VARIANT_EDITING,
               ...visibility,
               ..._.omit(asset, [
                 "schemaVariantId",
@@ -411,7 +408,6 @@ export const useAssetStore = () => {
             url: "/variant_def/exec_variant_def",
             keyRequestStatusBy: assetId,
             params: {
-              multiVariantEditingFlag: featureFlagsStore.MULTI_VARIANT_EDITING,
               ...visibility,
               ..._.omit(asset, [
                 "schemaVariantId",
