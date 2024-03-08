@@ -76,14 +76,12 @@ const rightClickMenuItems = computed(() => {
       });
     }
   } else if (selectedComponentId.value && selectedComponent.value) {
-    if (featureFlagsStore.COPY_PASTE) {
-      items.push({
-        label: `Copy`,
-        icon: "clipboard-copy",
-        onSelect: triggerCopySelection,
-        disabled,
-      });
-    }
+    items.push({
+      label: `Copy`,
+      icon: "clipboard-copy",
+      onSelect: triggerCopySelection,
+      disabled,
+    });
 
     // single selected component
     if (selectedComponent.value.changeStatus === "deleted") {
@@ -106,14 +104,12 @@ const rightClickMenuItems = computed(() => {
       });
     }
   } else if (selectedComponentIds.value.length) {
-    if (featureFlagsStore.COPY_PASTE) {
-      items.push({
-        label: `Copy ${selectedComponentIds.value.length} Components`,
-        icon: "clipboard-copy",
-        onSelect: triggerCopySelection,
-        disabled,
-      });
-    }
+    items.push({
+      label: `Copy ${selectedComponentIds.value.length} Components`,
+      icon: "clipboard-copy",
+      onSelect: triggerCopySelection,
+      disabled,
+    });
 
     // Multiple selected components
     if (deletableSelectedComponents.value.length > 0) {

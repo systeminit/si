@@ -52,7 +52,6 @@ import {
 } from "@si/vue-lib/design-system";
 import { useAssetStore, assetDisplayName } from "@/store/asset.store";
 import SiChip from "@/components/SiChip.vue";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import CodeEditor from "./CodeEditor.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
 
@@ -60,17 +59,13 @@ const props = defineProps<{
   assetId?: string;
 }>();
 
-const featureFlagStore = useFeatureFlagsStore();
 const assetStore = useAssetStore();
 const selectedAsset = computed(() =>
   props.assetId ? assetStore.assetsById[props.assetId] : undefined,
 );
 
 const isReadOnly = computed(() => {
-  if (featureFlagStore.MULTI_VARIANT_EDITING) {
-    return false;
-  }
-  return !!selectedAsset.value?.hasComponents;
+  return false;
 });
 
 const editingAsset = ref<string>(selectedAsset.value?.code ?? "");

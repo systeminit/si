@@ -19,7 +19,6 @@ pub struct SaveVariantDefRequest {
     pub code: String,
     pub description: Option<String>,
     pub component_type: ComponentType,
-    pub multi_variant_editing_flag: bool,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

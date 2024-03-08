@@ -1,11 +1,7 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
   <component
-    :is="
-      featureFlagsStore.RESIZABLE_PANEL_UPGRADE
-        ? ResizablePanel
-        : ResizablePanelOld
-    "
+    :is="ResizablePanel"
     ref="leftResizablePanelRef"
     rememberSizeKey="func-picker"
     side="left"
@@ -27,11 +23,7 @@
     </div>
   </div>
   <component
-    :is="
-      featureFlagsStore.RESIZABLE_PANEL_UPGRADE
-        ? ResizablePanel
-        : ResizablePanelOld
-    "
+    :is="ResizablePanel"
     ref="rightResizablePanelRef"
     rememberSizeKey="func-details"
     side="right"
@@ -51,25 +43,22 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { ResizablePanel, ResizablePanelOld } from "@si/vue-lib/design-system";
+import { ResizablePanel } from "@si/vue-lib/design-system";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import FuncListPanel from "@/components/FuncEditor/FuncListPanel.vue";
 import FuncEditorTabs from "@/components/FuncEditor/FuncEditorTabs.vue";
 import FuncDetails from "@/components/FuncEditor/FuncDetails.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import CustomizeTabs from "../CustomizeTabs.vue";
 
 const funcStore = useFuncStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const leftResizablePanelRef = ref();
 const rightResizablePanelRef = ref();
 
 const onKeyDown = async (e: KeyboardEvent) => {
   if (
-    featureFlagsStore.RESIZABLE_PANEL_UPGRADE &&
     e.altKey &&
     e.shiftKey &&
     leftResizablePanelRef.value &&
