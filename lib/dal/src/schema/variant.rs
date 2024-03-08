@@ -34,9 +34,9 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     pk,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncId, InputSocket,
-    OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, Timestamp,
-    TransactionsError,
+    AttributePrototype, AttributePrototypeId, ComponentId, ComponentType, DalContext, Func, FuncId,
+    InputSocket, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError,
+    SchemaId, Timestamp, TransactionsError,
 };
 use crate::{FuncBackendResponseType, InputSocketId};
 
@@ -64,6 +64,8 @@ pub enum SchemaVariantError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
+    #[error("default schema variant not found for schema: {0}")]
+    DefaultSchemaVariantNotFound(SchemaId),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
@@ -299,6 +301,36 @@ impl SchemaVariant {
         }
 
         Ok(schema_variant_ids)
+    }
+
+    pub async fn get_default_for_schema(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+    ) -> SchemaVariantResult<Self> {
+        // The first pass here is that we will just return the first schema variant found for a schema
+        // We will need to add a default edge at some point in the future - that means when we import
+        // a schema variant (if it doesn't already exist) then it gets an edge for default
+        // If we are creating a new version of a schema variant then we will be able to mark it as default
+        let node_weight = {
+            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+            let parent_index = workspace_snapshot.get_node_index_by_id(schema_id)?;
+
+            let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind_by_index(
+                parent_index,
+                EdgeWeightKindDiscriminants::Use,
+            )?;
+
+            let node_index = node_indices
+                .first()
+                .ok_or(SchemaVariantError::DefaultSchemaVariantNotFound(schema_id))?;
+
+            workspace_snapshot
+                .get_node_weight(*node_index)?
+                .get_content_node_weight_of_kind(ContentAddressDiscriminants::SchemaVariant)?
+        };
+
+        Self::get_by_id(ctx, node_weight.id().into()).await
     }
 
     pub async fn list_for_schema(
@@ -628,6 +660,37 @@ impl SchemaVariant {
         Prop::set_default_value(ctx, type_prop_id, component_type.as_ref()).await?;
 
         Ok(())
+    }
+
+    /// Configures the "default" value for the
+    /// [`AttributePrototypeArgument`](crate::attribute::prototype::argument::AttributePrototypeArgument)
+    /// for the /root/si/type [`Prop`](crate::Prop). If a prototype already
+    /// exists pointing to a function other than
+    /// [`IntrinsicFunc::SetString`](`crate::func::intrinsics::IntrinsicFunc::SetString`)
+    /// we will remove that edge and replace it with one pointing to
+    /// `SetString`.
+    pub async fn get_type(&self, ctx: &DalContext) -> SchemaVariantResult<Option<ComponentType>> {
+        let type_prop_id =
+            Prop::find_prop_id_by_path(ctx, self.id, &PropPath::new(["root", "si", "type"]))
+                .await?;
+
+        let prototype_id = Prop::prototype_id(ctx, type_prop_id).await?;
+
+        match AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id)
+            .await?
+            .first()
+        {
+            None => Ok(None),
+            Some(apa_id) => {
+                match AttributePrototypeArgument::static_value_by_id(ctx, *apa_id).await? {
+                    Some(static_value) => {
+                        let comp_type: ComponentType = serde_json::from_value(static_value.value)?;
+                        Ok(Some(comp_type))
+                    }
+                    None => Ok(None),
+                }
+            }
+        }
     }
 
     /// This method finds a [`leaf`](crate::schema::variant::leaves)'s entry
