@@ -1,5 +1,4 @@
 use buck2_resources::Buck2Resources;
-use moka::future::Cache;
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_layer_cache::LayerCache;
 use std::env;
@@ -64,9 +63,8 @@ async fn setup_pg_db(db_name: &str) -> PgPool {
 async fn make_layer_cache(db_name: &str) -> LayerCache<&'static str, String> {
     let tempdir = tempfile::tempdir().expect("cannot create tempdir");
     let db = sled::open(tempdir).expect("unable to open sled database");
-    let cache: Cache<&'static str, String> = Cache::new(10_000);
 
-    LayerCache::new("test1", Box::new(cache), db, setup_pg_db(db_name).await)
+    LayerCache::new("test1", db, setup_pg_db(db_name).await)
         .await
         .expect("cannot create layer cache")
 }
@@ -86,7 +84,7 @@ async fn empty_insert_and_get() {
     // Confirm the insert went into the memory cache
     let memory_result = layer_cache
         .memory_cache()
-        .get_value(&skid_row)
+        .get(&skid_row)
         .await
         .expect("cannot find value in memory cache");
     assert_eq!("slave to the grind", &memory_result[..]);
@@ -126,7 +124,7 @@ async fn not_in_memory_but_on_disk_insert() {
     layer_cache.join_all_write_tasks().await;
 
     // There should not be anything for the key in memory cache
-    assert!(!layer_cache.memory_cache().has_key(&skid_row));
+    assert!(!layer_cache.memory_cache().contains(&skid_row));
 
     // Insert through the layer cache
     layer_cache
@@ -136,7 +134,7 @@ async fn not_in_memory_but_on_disk_insert() {
     layer_cache.join_all_write_tasks().await;
 
     // There should be an entry in memory now
-    assert!(layer_cache.memory_cache().has_key(&skid_row));
+    assert!(layer_cache.memory_cache().contains(&skid_row));
 }
 
 #[tokio::test]
@@ -148,7 +146,7 @@ async fn in_memory_but_not_on_disk_insert() {
     // Insert the object directly to memory cache
     layer_cache
         .memory_cache()
-        .insert_value("skid row", "slave to the grind".into())
+        .insert("skid row", "slave to the grind".into())
         .await;
 
     // There should not be anything for the key in disk cache
@@ -185,7 +183,7 @@ async fn get_inserts_to_memory() {
         .expect("failed to insert to disk cache");
     layer_cache.join_all_write_tasks().await;
 
-    assert!(!layer_cache.memory_cache().has_key(&skid_row));
+    assert!(!layer_cache.memory_cache().contains(&skid_row));
 
     layer_cache
         .get(&skid_row)
@@ -193,7 +191,7 @@ async fn get_inserts_to_memory() {
         .expect("error getting object from cache")
         .expect("object not in cachche");
 
-    assert!(layer_cache.memory_cache().has_key(&skid_row));
+    assert!(layer_cache.memory_cache().contains(&skid_row));
 }
 
 #[tokio::test]
@@ -201,23 +199,17 @@ async fn multiple_mokas_single_sled() {
     let count = 10_000;
     let tempdir = tempfile::tempdir().expect("cannot create tempdir");
     let db = sled::open(tempdir).expect("unable to open sled database");
-    let cache_even: Cache<[u8; 8], String> = Cache::new(count);
 
     let even_tree_name = "even_numbers";
     let odd_tree_name = "odd_numbers";
     let pg_pool = setup_pg_db("multiple_mokas_single_sled").await;
 
-    let layer_cache_even: LayerCache<[u8; 8], String> = LayerCache::new(
-        even_tree_name,
-        Box::new(cache_even),
-        db.clone(),
-        pg_pool.clone(),
-    )
-    .await
-    .expect("cannot create layer cache");
+    let layer_cache_even: LayerCache<[u8; 8], String> =
+        LayerCache::new(even_tree_name, db.clone(), pg_pool.clone())
+            .await
+            .expect("cannot create layer cache");
 
-    let cache_odd: Cache<[u8; 8], String> = Cache::new(count);
-    let layer_cache_odd = LayerCache::new(odd_tree_name, Box::new(cache_odd), db.clone(), pg_pool)
+    let layer_cache_odd = LayerCache::new(odd_tree_name, db.clone(), pg_pool)
         .await
         .expect("cannot create layer cache");
 
