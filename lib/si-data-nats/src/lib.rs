@@ -27,7 +27,7 @@ pub mod service;
 
 pub use async_nats::{
     self, connection::State, header, header::HeaderMap, rustls, status, subject, Auth, AuthError,
-    HeaderName, HeaderValue, ServerAddr, ServerInfo, Subject,
+    Error as InnerError, HeaderName, HeaderValue, ServerAddr, ServerInfo, Subject,
 };
 pub use connect_options::ConnectOptions;
 pub use message::{InnerMessage, Message};

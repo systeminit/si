@@ -7,15 +7,21 @@ publish = false
 
 [dependencies]
 async-trait = { workspace = true }
+blake3 = { workspace = true }
+bytes = { workspace = true }
+futures = { workspace = true }
 lazy_static = { workspace = true }
 moka = { workspace = true }
 postcard = { workspace = true }
 refinery = { workspace = true }
+remain = { workspace = true }
 serde = { workspace = true }
+si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 sled = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+ulid = { workspace = true }
 
 [dev_dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
