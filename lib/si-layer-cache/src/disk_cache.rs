@@ -3,10 +3,10 @@ use std::marker::PhantomData;
 
 use crate::error::LayerCacheResult;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DiskCache<K>
 where
-    K: AsRef<[u8]>,
+    K: AsRef<[u8]> + Copy + Send + Sync,
 {
     tree: sled::Tree,
     // We have to make it appear that we hold on to a K when we don't actually
@@ -16,7 +16,7 @@ where
 
 impl<K> DiskCache<K>
 where
-    K: AsRef<[u8]> + Copy,
+    K: AsRef<[u8]> + Copy + Send + Sync,
 {
     pub fn new(sled_db: Db, tree_name: impl AsRef<[u8]>) -> LayerCacheResult<Self> {
         let tree = sled_db.open_tree(tree_name.as_ref())?;

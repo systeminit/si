@@ -6,22 +6,22 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
-serde = { workspace = true }
-thiserror = { workspace = true }
-moka = { workspace = true }
-sled = { workspace = true }
-lazy_static = { workspace = true }
-postcard = { workspace = true }
 async-trait = { workspace = true }
+lazy_static = { workspace = true }
+moka = { workspace = true }
+postcard = { workspace = true }
+refinery = { workspace = true }
+serde = { workspace = true }
+si-data-pg = { path = "../../lib/si-data-pg" }
+sled = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 
 [dev_dependencies]
+buck2-resources = { path = "../../lib/buck2-resources" }
 criterion = { workspace = true }
 moka = { workspace = true }
 postcard = { workspace = true }
 sled = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true }
-
-[[bench]]
-name = "insert_speed"
-harness = false
