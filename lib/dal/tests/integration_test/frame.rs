@@ -178,9 +178,6 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
             2,                        // expected
             diagram.components.len()  // actual
         );
-        for (name, SummaryDiagramComponent { sockets, .. }) in &diagram.components {
-            println!("{name}, {}", sockets)
-        }
         assert_eq!(
             1,                   // expected
             diagram.edges.len()  // actual

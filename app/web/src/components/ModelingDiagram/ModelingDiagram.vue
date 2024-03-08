@@ -208,10 +208,7 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
 import { LoadingMessage, getToneColorHex } from "@si/vue-lib/design-system";
-import {
-  connectionAnnotationFitsReference,
-  parseConnectionAnnotation,
-} from "@si/ts-lib/src/connection-annotations";
+import { connectionAnnotationFitsReference } from "@si/ts-lib/src/connection-annotations";
 import { windowListenerManager } from "@si/vue-lib";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
