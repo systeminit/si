@@ -25,7 +25,3 @@ postcard = { workspace = true }
 sled = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true }
-
-[[bench]]
-name = "insert_speed"
-harness = false

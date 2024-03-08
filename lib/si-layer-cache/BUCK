@@ -16,6 +16,7 @@ rust_library(
     ],
     srcs = glob([
         "src/**/*.rs",
+        "src/migrations/*.sql",
     ]),
     env = {
         "CARGO_MANIFEST_DIR": ".",
@@ -27,6 +28,7 @@ rust_test(
     deps = [
         ":si-layer-cache",
         "//lib/buck2-resources:buck2-resources",
+        "//lib/si-data-pg:si-data-pg",
         "//third-party/rust:criterion",
         "//third-party/rust:moka",
         "//third-party/rust:postcard",
@@ -36,7 +38,11 @@ rust_test(
     ],
     srcs = glob([
         "tests/**/*.rs",
+        "src/migrations/*.sql",
     ]),
+    resources = {
+        "dev.postgres.root.crt": "//config/keys:dev.postgres.root.crt",
+    },
     crate_root = "tests/integration.rs",
     env = {
         "CARGO_PKG_NAME": "integration",
