@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use si_crypto::{CryptoConfig, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
-use si_std::CanonicalFileError;
+use si_layer_cache::error::LayerCacheError;
+use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -25,6 +26,8 @@ pub enum ConfigError {
     CanonicalFile(#[from] CanonicalFileError),
     #[error("error configuring for development")]
     Development(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
+    #[error(transparent)]
+    LayerCache(#[from] LayerCacheError),
     #[error(transparent)]
     Settings(#[from] si_settings::SettingsError),
 }
@@ -59,6 +62,11 @@ pub struct Config {
 
     #[builder(default = "PgStoreTools::default_pool_config()")]
     content_store_pg_pool: PgPoolConfig,
+
+    #[builder(default = "si_layer_cache::default_pg_pool_config()")]
+    layer_cache_pg_pool: PgPoolConfig,
+
+    layer_cache_sled_path: CanonicalFile,
 }
 
 impl StandardConfig for Config {
@@ -108,6 +116,16 @@ impl Config {
     pub fn content_store_pg_pool(&self) -> &PgPoolConfig {
         &self.content_store_pg_pool
     }
+
+    #[must_use]
+    pub fn layer_cache_pg_pool(&self) -> &PgPoolConfig {
+        &self.layer_cache_pg_pool
+    }
+
+    #[must_use]
+    pub fn layer_cache_sled_path(&self) -> &Path {
+        self.layer_cache_sled_path.as_path()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -116,6 +134,8 @@ pub struct ConfigFile {
     pg: PgPoolConfig,
     #[serde(default = "PgStoreTools::default_pool_config")]
     content_store_pg: PgPoolConfig,
+    #[serde(default = "si_layer_cache::default_pg_pool_config")]
+    layer_cache_pg_pool: PgPoolConfig,
     #[serde(default)]
     nats: NatsConfig,
     #[serde(default)]
@@ -133,6 +153,7 @@ impl Default for ConfigFile {
         Self {
             pg: Default::default(),
             content_store_pg: PgStoreTools::default_pool_config(),
+            layer_cache_pg_pool: si_layer_cache::default_pg_pool_config(),
             nats: Default::default(),
             concurrency_limit: default_concurrency_limit(),
             crypto: Default::default(),
@@ -155,11 +176,13 @@ impl TryFrom<ConfigFile> for Config {
         let mut config = Config::builder();
         config.pg_pool(value.pg);
         config.content_store_pg_pool(value.content_store_pg);
+        config.layer_cache_pg_pool(value.layer_cache_pg_pool);
         config.nats(value.nats);
         config.crypto(value.crypto);
         config.concurrency(value.concurrency_limit);
         config.instance_id(value.instance_id);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
+        config.layer_cache_sled_path = Some(si_layer_cache::default_sled_path()?);
         config.build().map_err(Into::into)
     }
 }
@@ -224,7 +247,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_key.clone().try_into()?);
-    config.content_store_pg.certificate_path = Some(postgres_key.try_into()?);
+    config.content_store_pg.certificate_path = Some(postgres_key.clone().try_into()?);
+    config.layer_cache_pg_pool.certificate_path = Some(postgres_key.try_into()?);
 
     Ok(())
 }
@@ -257,7 +281,8 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_key.clone().try_into()?);
-    config.content_store_pg.certificate_path = Some(postgres_key.try_into()?);
+    config.content_store_pg.certificate_path = Some(postgres_key.clone().try_into()?);
+    config.layer_cache_pg_pool.certificate_path = Some(postgres_key.try_into()?);
 
     Ok(())
 }

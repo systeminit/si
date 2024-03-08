@@ -13,6 +13,7 @@ rebaser-core = { path = "../../lib/rebaser-core" }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-test-macros = { path = "../../lib/si-test-macros" }

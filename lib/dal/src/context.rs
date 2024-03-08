@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
+use si_layer_cache::LayerCacheDependencies;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::RwLock;
@@ -60,6 +61,8 @@ pub struct ServicesContext {
     rebaser_config: RebaserClientConfig,
     /// Content store
     content_store_pg_pool: PgPool,
+    /// Dependencies for the layer cache (sled and postgres)
+    layer_cache_dependencies: LayerCacheDependencies,
 }
 
 impl ServicesContext {
@@ -76,6 +79,7 @@ impl ServicesContext {
         symmetric_crypto_service: SymmetricCryptoService,
         rebaser_config: RebaserClientConfig,
         content_store_pg_pool: PgPool,
+        layer_cache_dependencies: LayerCacheDependencies,
     ) -> Self {
         Self {
             pg_pool,
@@ -88,6 +92,7 @@ impl ServicesContext {
             symmetric_crypto_service,
             rebaser_config,
             content_store_pg_pool,
+            layer_cache_dependencies,
         }
     }
 
@@ -142,6 +147,10 @@ impl ServicesContext {
     /// Gets a reference to the content store pg pool
     pub fn content_store_pg_pool(&self) -> &PgPool {
         &self.content_store_pg_pool
+    }
+
+    pub fn layer_cache_dependencies(&self) -> &LayerCacheDependencies {
+        &self.layer_cache_dependencies
     }
 
     /// Builds and returns a new [`content_store::PgStore`]

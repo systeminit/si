@@ -2,6 +2,7 @@ pub use config::{
     detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile,
     IncomingStream, StandardConfig, StandardConfigFile,
 };
+pub use config::{make_layer_cache_dependencies, LayerCacheDependencies};
 pub use dal::{JobQueueProcessor, MigrationMode, NatsProcessor, ServicesContext};
 pub use nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT;
 pub use nats_multiplexer::WS_MULTIPLEXER_SUBJECT;

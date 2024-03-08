@@ -276,7 +276,11 @@ pub(crate) trait FnSetupExpander {
 
         let var = Ident::new("test_context", Span::call_site());
         self.code_extend(quote! {
-            let test_context = ::dal_test::TestContext::global(crate::TEST_PG_DBNAME, crate::TEST_CONTENT_STORE_PG_DBNAME).await?;
+            let test_context = ::dal_test::TestContext::global(
+                crate::TEST_PG_DBNAME,
+                crate::TEST_CONTENT_STORE_PG_DBNAME,
+                crate::SI_TEST_LAYER_CACHE_PG_DBNAME
+            ).await?;
         });
         self.set_test_context(Some(Rc::new(var)));
 

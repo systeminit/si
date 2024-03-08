@@ -1,7 +1,12 @@
+use si_std::CanonicalFile;
 use sled::Db;
 use std::marker::PhantomData;
 
 use crate::error::LayerCacheResult;
+
+pub fn default_sled_path() -> LayerCacheResult<CanonicalFile> {
+    Ok(tempfile::tempdir()?.into_path().try_into()?)
+}
 
 #[derive(Clone, Debug)]
 pub struct DiskCache<K>
