@@ -189,6 +189,10 @@ where
         self.disk_cache.clone()
     }
 
+    pub fn pg(&self) -> PgLayer<K> {
+        self.pg.clone()
+    }
+
     pub async fn remove_from_memory(&self, key: K) {
         self.memory_cache.remove(&key).await;
     }

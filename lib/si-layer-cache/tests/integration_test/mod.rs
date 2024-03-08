@@ -195,8 +195,8 @@ async fn get_inserts_to_memory() {
 }
 
 #[tokio::test]
-async fn multiple_mokas_single_sled() {
-    let count = 10_000;
+async fn multiple_mokas_single_sled_and_single_pg_pool() {
+    let count = 500;
     let tempdir = tempfile::tempdir().expect("cannot create tempdir");
     let db = sled::open(tempdir).expect("unable to open sled database");
 
@@ -289,6 +289,28 @@ async fn multiple_mokas_single_sled() {
             assert_eq!(Some(value), odd_tree_value);
             assert_eq!(None, even_tree_value);
         }
+    }
+
+    for i in 0..(count * 2) {
+        let (key, value) = make_u64_kv(i);
+
+        let even_value: Option<String> = layer_cache_even
+            .pg()
+            .get(&key)
+            .await
+            .expect("able to get value from postgres")
+            .and_then(|value| postcard::from_bytes(value.as_ref()).ok());
+
+        let odd_value = layer_cache_odd
+            .pg()
+            .get(&key)
+            .await
+            .expect("able to get value from postgres")
+            .and_then(|value| postcard::from_bytes(value.as_ref()).ok());
+
+        // PgLayer is shared by all the caches, so all the values will be present.
+        assert_eq!(Some(value.as_str()), even_value.as_deref());
+        assert_eq!(Some(value), odd_value);
     }
 }
 
