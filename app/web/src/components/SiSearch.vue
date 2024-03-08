@@ -1,9 +1,6 @@
 <template>
   <!-- NEW SEARCH BAR WITH FILTERS -->
-  <div
-    v-if="featureFlagsStore.SEARCH_FILTERS"
-    class="dark:border-neutral-600 border-b py-2xs"
-  >
+  <div class="dark:border-neutral-600 border-b py-2xs">
     <div class="flex nowrap gap-xs px-xs justify-between">
       <label
         class="relative text-neutral-400 focus-within:text-neutral-600 block flex-grow"

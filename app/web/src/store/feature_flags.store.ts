@@ -14,7 +14,6 @@ const FLAG_MAPPING = {
   RESIZABLE_PANEL_UPGRADE: "resizable-panel-upgrade",
   SECRETS: "secrets",
   WORKSPACE_BACKUPS: "workspaceBackups",
-  SEARCH_FILTERS: "search-filters",
   INDICATORS_MANUAL_FUNCTION_SOCKET: "indicators_manual_function_socket",
 };
 
