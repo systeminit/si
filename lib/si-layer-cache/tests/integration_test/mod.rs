@@ -6,19 +6,31 @@ use std::path::Path;
 use tokio::task::JoinSet;
 
 mod disk_cache;
+const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
+const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
 
+#[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test
 async fn setup_pg_db(db_name: &str) -> PgPool {
-    let si_pg_pool = PgPoolConfig {
+    let mut si_pg_pool = PgPoolConfig {
         application_name: "si-layer-cache-db-tests".into(),
         certificate_path: Some(
             detect_and_configure_development()
                 .try_into()
                 .expect("should get a certifcate cache"),
         ),
+        dbname: "si_test".to_string(),
+        user: "si_test".to_string(),
         ..Default::default()
     };
 
-    let test_pg_pool_config = PgPoolConfig {
+    if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
+        si_pg_pool.hostname = value;
+    }
+    if let Ok(value) = env::var(ENV_VAR_PG_PORT) {
+        si_pg_pool.port = value.parse().expect("port should parse");
+    }
+
+    let mut test_pg_pool_config = PgPoolConfig {
         dbname: db_name.into(),
         application_name: "si-layer-cache-db-tests".into(),
         certificate_path: Some(
@@ -26,8 +38,16 @@ async fn setup_pg_db(db_name: &str) -> PgPool {
                 .try_into()
                 .expect("should get a certifcate cache"),
         ),
+        user: "si_test".to_string(),
         ..Default::default()
     };
+
+    if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
+        test_pg_pool_config.hostname = value;
+    }
+    if let Ok(value) = env::var(ENV_VAR_PG_PORT) {
+        test_pg_pool_config.port = value.parse().expect("port should parse");
+    }
 
     let si_pg_pool = PgPool::new(&si_pg_pool)
         .await
