@@ -17,6 +17,9 @@ rust_library(
     srcs = glob([
         "src/**/*.rs",
     ]),
+    env = {
+        "CARGO_MANIFEST_DIR": ".",
+    },
 )
 
 rust_test(
