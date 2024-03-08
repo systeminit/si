@@ -12,7 +12,6 @@ const FLAG_MAPPING = {
   MODULES_TAB: "modules_tab",
   MULTI_VARIANT_EDITING: "multiVariantEditing",
   RESIZABLE_PANEL_UPGRADE: "resizable-panel-upgrade",
-  SECRETS: "secrets",
   WORKSPACE_BACKUPS: "workspaceBackups",
   INDICATORS_MANUAL_FUNCTION_SOCKET: "indicators_manual_function_socket",
 };
