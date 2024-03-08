@@ -66,8 +66,6 @@ async fn make_layer_cache(db_name: &str) -> LayerCache<&'static str, String> {
     let db = sled::open(tempdir).expect("unable to open sled database");
     let cache: Cache<&'static str, String> = Cache::new(10_000);
 
-    
-
     LayerCache::new("test1", Box::new(cache), db, setup_pg_db(db_name).await)
         .await
         .expect("cannot create layer cache")
@@ -269,7 +267,7 @@ async fn multiple_mokas_single_sled() {
         }
     });
 
-    while let Some(_) = task_set.join_next().await {}
+    while (task_set.join_next().await).is_some() {}
     layer_cache_even.join_all_write_tasks().await;
     layer_cache_odd.join_all_write_tasks().await;
 

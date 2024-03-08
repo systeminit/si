@@ -31,8 +31,15 @@ pub mod pg;
 use moka::future::Cache;
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_pg::PgPool;
-use std::{hash::Hash, sync::Arc};
-use tokio::{sync::Mutex, task::JoinSet};
+use std::{
+    hash::Hash,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
+use tokio::task::JoinHandle;
 
 use disk_cache::DiskCache;
 use error::LayerCacheResult;
@@ -47,7 +54,7 @@ where
     memory_cache: Arc<Box<dyn MemoryCacher<Key = K, Value = V>>>,
     disk_cache: Arc<DiskCache<K>>,
     pg: PgLayer<K>,
-    join_set: Arc<Mutex<JoinSet<()>>>,
+    active_disk_writes: Arc<AtomicU64>,
 }
 
 impl<K, V> LayerCache<K, V>
@@ -69,9 +76,88 @@ where
         Ok(LayerCache {
             memory_cache: Arc::new(memory_cache),
             disk_cache,
-            join_set: Arc::new(Mutex::new(JoinSet::new())),
             pg,
+            active_disk_writes: Arc::new(AtomicU64::new(0)),
         })
+    }
+
+    async fn inc_writes(&self) {
+        let mut current = self.active_disk_writes.load(Ordering::Relaxed);
+        loop {
+            // Panic if we have u64::MAX concurrent writes
+            assert!(current < u64::MAX, "write counter overflow in LayerCache");
+            match self.active_disk_writes.compare_exchange_weak(
+                current,
+                current + 1,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => break,
+                Err(raced_value) => current = raced_value,
+            }
+            tokio::task::yield_now().await;
+        }
+    }
+
+    async fn dec_writes(&self) {
+        let mut current = self.active_disk_writes.load(Ordering::Relaxed);
+        loop {
+            if current == 0 {
+                break;
+            }
+            match self.active_disk_writes.compare_exchange_weak(
+                current,
+                current - 1,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => break,
+                Err(raced_value) => current = raced_value,
+            }
+            tokio::task::yield_now().await;
+        }
+    }
+
+    async fn spawn_disk_cache_write(&self, key: K, value: V) {
+        self.inc_writes().await;
+        let self_clone = self.clone();
+        let write_handle = tokio::task::spawn(async move {
+            if let Ok(serialized) = postcard::to_stdvec(&value) {
+                let _ = self_clone.disk_cache.insert(key, &serialized);
+            }
+        });
+
+        self.handle_write_finish(write_handle).await;
+    }
+
+    async fn spawn_disk_cache_write_vec(&self, key: K, value: Vec<u8>) {
+        self.inc_writes().await;
+        let self_clone = self.clone();
+        let write_handle = tokio::task::spawn(async move {
+            let _ = self_clone.disk_cache.insert(key, &value);
+        });
+
+        self.handle_write_finish(write_handle).await;
+    }
+
+    async fn spawn_pg_write(&self, key: K, value: V) {
+        self.inc_writes().await;
+        let self_clone = self.clone();
+        let write_handle = tokio::task::spawn(async move {
+            if let Ok(serialized) = postcard::to_stdvec(&value) {
+                let _ = self_clone.pg.insert(key, &serialized).await;
+            }
+        });
+
+        self.handle_write_finish(write_handle).await;
+    }
+
+    async fn handle_write_finish(&self, join_handle: JoinHandle<()>) {
+        let self_clone = self.clone();
+        tokio::task::spawn(async move {
+            let _ = join_handle.await;
+            self_clone.dec_writes().await;
+        });
     }
 
     pub async fn get(&self, key: &K) -> LayerCacheResult<Option<V>> {
@@ -89,15 +175,11 @@ where
                 None => match self.pg.get(key).await? {
                     Some(value) => {
                         let deserialized: V = postcard::from_bytes(&value)?;
+
                         self.memory_cache
                             .insert_value(*key, deserialized.clone())
                             .await;
-
-                        let self_clone = self.clone();
-                        let key_clone = *key;
-                        tokio::task::spawn(async move {
-                            let _ = self_clone.disk_cache.insert(key_clone, &value);
-                        });
+                        self.spawn_disk_cache_write_vec(*key, value).await;
 
                         Some(deserialized)
                     }
@@ -124,7 +206,9 @@ where
     /// caller may terminate before the write threads). This method will block
     /// until all writes have succeeded.
     pub async fn join_all_write_tasks(&self) {
-        while let Some(_) = self.join_set.lock().await.join_next().await {}
+        while self.active_disk_writes.load(Ordering::Relaxed) > 0 {
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
     }
 
     pub async fn insert(&self, key: K, value: V) -> LayerCacheResult<()> {
@@ -137,15 +221,7 @@ where
             // Neither on memory or on disk
             (false, false) => {
                 self.memory_cache.insert_value(key, value.clone()).await;
-                let self_clone = self.clone();
-                let value = value.clone();
-                self.join_set.lock().await.spawn(async move {
-                    // TODO: we are ignoring write failures to disk, but we
-                    // should probably do something about them?
-                    if let Ok(serialized) = postcard::to_stdvec(&value) {
-                        let _ = self_clone.disk_cache.insert(key, &serialized);
-                    }
-                });
+                self.spawn_disk_cache_write(key, value.clone()).await;
             }
             // Not in memory, but on disk - we can write, because objects are immutable
             (false, true) => {
@@ -153,22 +229,11 @@ where
             }
             // In memory, but not on disk
             (true, false) => {
-                let self_clone = self.clone();
-                let value = value.clone();
-                self.join_set.lock().await.spawn(async move {
-                    if let Ok(serialized) = postcard::to_stdvec(&value) {
-                        let _ = self_clone.disk_cache.insert(key, &serialized);
-                    }
-                });
+                self.spawn_disk_cache_write(key, value.clone()).await;
             }
         }
 
-        let self_clone = self.clone();
-        self.join_set.lock().await.spawn(async move {
-            if let Ok(serialized) = postcard::to_stdvec(&value) {
-                let _ = self_clone.pg.insert(key, &serialized).await;
-            }
-        });
+        self.spawn_pg_write(key, value).await;
 
         Ok(())
     }
