@@ -12,9 +12,9 @@ use thiserror::Error;
 
 use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::root_prop::component_type::ComponentType;
-use crate::schema::variant::DEFAULT_SCHEMA_VARIANT_COLOR;
-use crate::SocketArity;
-use crate::{pk, PropKind};
+use crate::schema::variant::{SchemaVariantError, DEFAULT_SCHEMA_VARIANT_COLOR};
+use crate::{pk, PropKind, SchemaError, SchemaVariant, TransactionsError};
+use crate::{DalContext, Schema, SchemaVariantId, SocketArity, Timestamp};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -41,16 +41,18 @@ pub enum SchemaVariantDefinitionError {
     //     Pg(#[from] PgError),
     //     #[error("pkg error: {0}")]
     //     Pkg(#[from] Box<PkgError>),
-    //     #[error(transparent)]
-    //     SchemaVariant(#[from] Box<SchemaVariantError>),
+    #[error(transparent)]
+    Schema(#[from] SchemaError),
+    #[error(transparent)]
+    SchemaVariant(#[from] SchemaVariantError),
     //     #[error("error serializing/deserializing json: {0}")]
     //     SerdeJson(#[from] serde_json::Error),
     //     #[error("spec error: {0}")]
     //     Spec(#[from] SpecError),
     //     #[error("standard model error: {0}")]
     //     StandardModelError(#[from] StandardModelError),
-    //     #[error("transactions error: {0}")]
-    //     Transactions(#[from] TransactionsError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
     //     #[error("url parse error: {0}")]
     //     Url(#[from] ParseError),
 }
@@ -762,3 +764,54 @@ pub struct SiPropValueFrom {
 //         }
 //     }
 // }
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantDefinitionView {
+    id: SchemaVariantId,
+    name: String,
+    schema_variant_id: SchemaVariantId,
+    category: String,
+    #[serde(alias = "menu_name")]
+    menu_name: Option<String>,
+    color: String,
+    component_type: ComponentType,
+    link: Option<String>,
+    description: Option<String>,
+    #[serde(flatten)]
+    timestamp: Timestamp,
+}
+
+impl SchemaVariantDefinitionView {
+    pub async fn list(ctx: &DalContext) -> SchemaVariantDefinitionResult<Vec<Self>> {
+        let mut views = Vec::new();
+
+        let schemas = Schema::list(ctx).await?;
+        for schema in schemas {
+            let default_schema_variant =
+                SchemaVariant::get_default_for_schema(ctx, schema.id()).await?;
+            views.push(SchemaVariantDefinitionView {
+                id: default_schema_variant.id,
+                name: schema.name.to_owned(),
+                schema_variant_id: default_schema_variant.id.to_owned(),
+                category: default_schema_variant.category.to_owned(),
+                color: default_schema_variant
+                    .get_color(ctx)
+                    .await?
+                    .unwrap_or("#0F0F0F".into()),
+                timestamp: default_schema_variant.timestamp.to_owned(),
+                component_type: default_schema_variant
+                    .get_type(ctx)
+                    .await?
+                    .unwrap_or(ComponentType::Component),
+                link: default_schema_variant.link.to_owned(),
+                // TODO: Schema Variants need a description
+                description: None,
+                // TODO: What is the difference between a category and a menu name?
+                menu_name: None,
+            })
+        }
+
+        Ok(views)
+    }
+}

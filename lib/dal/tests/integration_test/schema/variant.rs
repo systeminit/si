@@ -1,3 +1,5 @@
+mod view;
+
 use dal::schema::variant::root_prop::RootPropChild;
 use dal::{
     schema::{variant::leaves::LeafKind, SchemaVariant},
