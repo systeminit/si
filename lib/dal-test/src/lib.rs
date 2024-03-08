@@ -22,6 +22,7 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
+use si_layer_cache::LayerCacheDependencies;
 use si_std::ResultExt;
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
@@ -52,6 +53,7 @@ const ENV_VAR_MODULE_INDEX_URL: &str = "SI_TEST_MODULE_INDEX_URL";
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
 const ENV_VAR_CONTENT_STORE_PG_DBNAME: &str = "SI_TEST_CONTENT_STORE_PG_DBNAME";
+const ENV_VAR_LAYER_CACHE_PG_DBNAME: &str = "SI_TEST_LAYER_CACHE_PG_DBNAME";
 const ENV_VAR_PG_USER: &str = "SI_TEST_PG_USER";
 const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
 const ENV_VAR_KEEP_OLD_DBS: &str = "SI_TEST_KEEP_OLD_DBS";
@@ -112,6 +114,8 @@ pub struct Config {
     rebaser_config: RebaserClientConfig,
     #[builder(default = "PgStoreTools::default_pool_config()")]
     content_store_pg_pool: PgPoolConfig,
+    #[builder(default = "si_layer_cache::default_pg_pool_config()")]
+    layer_cache_pg_pool: PgPoolConfig,
 }
 
 impl Config {
@@ -120,6 +124,7 @@ impl Config {
     fn create_default(
         pg_dbname: &'static str,
         content_store_pg_dbname: &'static str,
+        layer_cache_pg_dbname: &'static str,
     ) -> Result<Self> {
         let mut config = {
             let mut builder = ConfigBuilder::default();
@@ -155,6 +160,20 @@ impl Config {
             .parse()?;
         config.content_store_pg_pool.pool_max_size *= 32;
         config.content_store_pg_pool.certificate_path =
+            Some(config.postgres_key_path.clone().try_into()?);
+
+        if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
+            config.layer_cache_pg_pool.hostname = value;
+        }
+        config.layer_cache_pg_pool.dbname = env::var(ENV_VAR_LAYER_CACHE_PG_DBNAME)
+            .unwrap_or_else(|_| layer_cache_pg_dbname.to_string());
+        config.layer_cache_pg_pool.user =
+            env::var(ENV_VAR_PG_USER).unwrap_or_else(|_| DEFAULT_TEST_PG_USER.to_string());
+        config.layer_cache_pg_pool.port = env::var(ENV_VAR_PG_PORT)
+            .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
+            .parse()?;
+        config.layer_cache_pg_pool.pool_max_size *= 32;
+        config.layer_cache_pg_pool.certificate_path =
             Some(config.postgres_key_path.clone().try_into()?);
 
         if let Ok(value) = env::var(ENV_VAR_MODULE_INDEX_URL) {
@@ -217,7 +236,8 @@ pub struct TestContext {
     /// The pg_pool used by the content-addressable [`store`](content_store::Store) used by the
     /// "dal".
     content_store_pg_pool: PgPool,
-
+    /// The pg_pool and sled database used by the layer-cache's key-value store
+    layer_cache_dependencies: LayerCacheDependencies,
     /// The configuration for the rebaser client used in tests
     rebaser_config: RebaserClientConfig,
 }
@@ -233,15 +253,20 @@ impl TestContext {
     pub async fn global(
         pg_dbname: &'static str,
         content_store_pg_dbname: &'static str,
+        layer_cache_pg_dbname: &'static str,
     ) -> Result<Self> {
         let mut mutex_guard = TEST_CONTEXT_BUILDER.lock().await;
 
         match &*mutex_guard {
             ContextBuilderState::Uninitialized => {
-                let config = Config::create_default(pg_dbname, content_store_pg_dbname)
-                    .si_inspect_err(|err| {
-                        *mutex_guard = ContextBuilderState::errored(err.to_string())
-                    })?;
+                let config = Config::create_default(
+                    pg_dbname,
+                    content_store_pg_dbname,
+                    layer_cache_pg_dbname,
+                )
+                .si_inspect_err(|err| {
+                    *mutex_guard = ContextBuilderState::errored(err.to_string())
+                })?;
                 let test_context_builder = TestContextBuilder::create(config)
                     .await
                     .si_inspect_err(|err| {
@@ -300,6 +325,7 @@ impl TestContext {
             self.symmetric_crypto_service.clone(),
             self.rebaser_config.clone(),
             self.content_store_pg_pool.clone(),
+            self.layer_cache_dependencies.clone(),
         )
     }
 
@@ -346,8 +372,10 @@ impl TestContextBuilder {
         let content_store_pool = PgPool::new(&self.config.content_store_pg_pool)
             .await
             .wrap_err("failed to create global setup content store PgPool")?;
+        let layer_cache_pg_pool = PgPool::new(&self.config.layer_cache_pg_pool).await?;
 
-        self.build_inner(pg_pool, content_store_pool).await
+        self.build_inner(pg_pool, content_store_pool, layer_cache_pg_pool)
+            .await
     }
 
     /// Builds and returns a new [`TestContext`] with its own connection pooling for each test.
@@ -359,13 +387,19 @@ impl TestContextBuilder {
             .create_test_specific_db_with_pg_pool(&self.config.content_store_pg_pool)
             .await?;
 
-        self.build_inner(pg_pool, content_store_pg_pool).await
+        let layer_cache_pg_pool = self
+            .create_test_specific_db_with_pg_pool(&self.config.layer_cache_pg_pool)
+            .await?;
+
+        self.build_inner(pg_pool, content_store_pg_pool, layer_cache_pg_pool)
+            .await
     }
 
     async fn build_inner(
         &self,
         pg_pool: PgPool,
         content_store_pg_pool: PgPool,
+        layer_cache_pg_pool: PgPool,
     ) -> Result<TestContext> {
         let universal_prefix = random_identifier_string();
 
@@ -389,6 +423,8 @@ impl TestContextBuilder {
         let mut rebaser_config = RebaserClientConfig::default();
         rebaser_config.set_subject_prefix(universal_prefix);
 
+        let sled = sled::open(si_layer_cache::default_sled_path()?.as_path())?;
+
         Ok(TestContext {
             config,
             pg_pool,
@@ -398,6 +434,10 @@ impl TestContextBuilder {
             symmetric_crypto_service,
             rebaser_config,
             content_store_pg_pool,
+            layer_cache_dependencies: LayerCacheDependencies {
+                sled,
+                pg_pool: layer_cache_pg_pool,
+            },
         })
     }
 
@@ -547,6 +587,7 @@ pub fn rebaser_server(services_context: &ServicesContext) -> Result<rebaser_serv
         services_context.symmetric_crypto_service().clone(),
         services_context.rebaser_config().clone(),
         services_context.content_store_pg_pool().clone(),
+        services_context.layer_cache_dependencies().clone(),
     )
     .wrap_err("failed to create Rebaser server")?;
 
@@ -633,6 +674,14 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .await
         .wrap_err("failed to connect to content store database, is it running and available?")?;
 
+    info!("testing global layer cache database connection");
+    services_ctx
+        .layer_cache_dependencies()
+        .pg_pool
+        .test_connection()
+        .await
+        .wrap_err("failed to connect to content store database, is it running and available?")?;
+
     #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test and
     // all are prefixed with `SI_TEST_`
     if !env::var(ENV_VAR_KEEP_OLD_DBS).is_ok_and(|v| !v.is_empty()) {
@@ -657,6 +706,13 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     services_ctx
         .content_store_pg_pool()
+        .drop_and_create_public_schema()
+        .await
+        .wrap_err("failed to drop and create content store database")?;
+
+    services_ctx
+        .layer_cache_dependencies()
+        .pg_pool
         .drop_and_create_public_schema()
         .await
         .wrap_err("failed to drop and create content store database")?;
@@ -686,6 +742,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         services_ctx.symmetric_crypto_service(),
         services_ctx.rebaser_config().clone(),
         services_ctx.content_store_pg_pool(),
+        services_ctx.layer_cache_dependencies(),
     )
     .await
     .wrap_err("failed to run builtin migrations")?;
@@ -725,6 +782,7 @@ async fn migrate_local_builtins(
     symmetric_crypto_service: &SymmetricCryptoService,
     rebaser_config: RebaserClientConfig,
     content_store_pg_pool: &PgPool,
+    layer_cache_dependencies: &LayerCacheDependencies,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         dal_pg.clone(),
@@ -737,6 +795,7 @@ async fn migrate_local_builtins(
         symmetric_crypto_service.clone(),
         rebaser_config,
         content_store_pg_pool.clone(),
+        layer_cache_dependencies.clone(),
     );
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;

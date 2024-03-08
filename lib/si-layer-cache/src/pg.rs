@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use si_data_pg::PgPool;
+use si_data_pg::{PgPool, PgPoolConfig};
 
 use crate::error::LayerCacheResult;
 
@@ -12,6 +12,14 @@ mod embedded {
 
 pub const DBNAME: &str = "si_key_value_pairs";
 pub const APPLICATION_NAME: &str = "si-key-value-pairs";
+
+pub fn default_pg_pool_config() -> PgPoolConfig {
+    PgPoolConfig {
+        dbname: DBNAME.into(),
+        application_name: APPLICATION_NAME.into(),
+        ..Default::default()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct PgLayer<K>

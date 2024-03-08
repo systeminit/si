@@ -4,6 +4,8 @@ use si_crypto::SymmetricCryptoServiceConfig;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
+use si_layer_cache::error::LayerCacheError;
+use si_layer_cache::{make_layer_cache_dependencies, LayerCacheDependencies};
 use std::{io, path::Path, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -32,6 +34,8 @@ pub enum ServerError {
     CycloneEncryptionKey(#[from] CycloneEncryptionKeyError),
     #[error(transparent)]
     Initialization(#[from] InitializationError),
+    #[error("layer cache error: {0}")]
+    LayerCache(#[from] LayerCacheError),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error(transparent)]
@@ -72,6 +76,8 @@ pub struct Server {
     messaging_config: RebaserMessagingConfig,
     /// The pg pool for the content store
     content_store_pg_pool: PgPool,
+    /// The dependencies for the layer cache
+    layer_cache_dependencies: si_layer_cache::LayerCacheDependencies,
 }
 
 impl Server {
@@ -90,6 +96,11 @@ impl Server {
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let messaging_config = config.messaging_config();
+        let layer_cache_dependencies = make_layer_cache_dependencies(
+            config.layer_cache_sled_path(),
+            config.layer_cache_pg_pool(),
+        )
+        .await?;
 
         Self::from_services(
             encryption_key,
@@ -100,6 +111,7 @@ impl Server {
             symmetric_crypto_service,
             messaging_config.to_owned(),
             content_store_pg_pool,
+            layer_cache_dependencies,
         )
     }
 
@@ -115,6 +127,7 @@ impl Server {
         symmetric_crypto_service: SymmetricCryptoService,
         messaging_config: RebaserMessagingConfig,
         content_store_pg_pool: PgPool,
+        layer_cache_dependencies: LayerCacheDependencies,
     ) -> ServerResult<Self> {
         // An mpsc channel which can be used to externally shut down the server.
         let (external_shutdown_tx, external_shutdown_rx) = mpsc::channel(4);
@@ -140,6 +153,7 @@ impl Server {
             graceful_shutdown_rx,
             messaging_config,
             content_store_pg_pool,
+            layer_cache_dependencies,
         })
     }
 
@@ -156,6 +170,7 @@ impl Server {
             self.shutdown_watch_rx,
             self.messaging_config,
             self.content_store_pg_pool,
+            self.layer_cache_dependencies,
         )
         .await?;
 
