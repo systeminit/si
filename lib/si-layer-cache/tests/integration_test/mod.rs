@@ -5,64 +5,68 @@ use std::env;
 use std::path::Path;
 use tokio::task::JoinSet;
 
+use crate::TEST_PG_DBNAME;
+
 mod chunking_nats;
 mod disk_cache;
 
+const DEFAULT_TEST_PG_USER: &str = "si_test";
+const DEFAULT_TEST_PG_PORT_STR: &str = "6432";
+
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
+const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
+const ENV_VAR_PG_USER: &str = "SI_TEST_PG_USER";
 const ENV_VAR_PG_PORT: &str = "SI_TEST_PG_PORT";
 
 #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test
-async fn setup_pg_db(db_name: &str) -> PgPool {
-    let mut si_pg_pool = PgPoolConfig {
-        application_name: "si-layer-cache-db-tests".into(),
-        certificate_path: Some(
-            detect_and_configure_development()
-                .try_into()
-                .expect("should get a certifcate cache"),
-        ),
-        dbname: "si_test".to_string(),
-        user: "si_test".to_string(),
-        ..Default::default()
+async fn setup_pg_db(test_specific_db_name: &str) -> PgPool {
+    // PG pool config to setup tests
+    let setup_pg_pool_config = {
+        let mut pg = PgPoolConfig {
+            application_name: "si-layer-cache-db-tests".into(),
+            certificate_path: Some(
+                detect_and_configure_development()
+                    .try_into()
+                    .expect("should get a certifcate cache"),
+            ),
+            ..Default::default()
+        };
+        if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
+            pg.hostname = value;
+        }
+        pg.dbname = env::var(ENV_VAR_PG_DBNAME).unwrap_or_else(|_| TEST_PG_DBNAME.to_string());
+        pg.user = env::var(ENV_VAR_PG_USER).unwrap_or_else(|_| DEFAULT_TEST_PG_USER.to_string());
+        pg.port = env::var(ENV_VAR_PG_PORT)
+            .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
+            .parse()
+            .expect("port should parse as an integer");
+        pg
     };
 
-    if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
-        si_pg_pool.hostname = value;
-    }
-    if let Ok(value) = env::var(ENV_VAR_PG_PORT) {
-        si_pg_pool.port = value.parse().expect("port should parse");
-    }
-
-    let mut test_pg_pool_config = PgPoolConfig {
-        dbname: db_name.into(),
-        application_name: "si-layer-cache-db-tests".into(),
-        certificate_path: Some(
-            detect_and_configure_development()
-                .try_into()
-                .expect("should get a certifcate cache"),
-        ),
-        user: "si_test".to_string(),
-        ..Default::default()
-    };
-
-    if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {
-        test_pg_pool_config.hostname = value;
-    }
-    if let Ok(value) = env::var(ENV_VAR_PG_PORT) {
-        test_pg_pool_config.port = value.parse().expect("port should parse");
-    }
-
-    let si_pg_pool = PgPool::new(&si_pg_pool)
+    // Create the setup PG pool
+    let setup_pg_pool = PgPool::new(&setup_pg_pool_config)
         .await
         .expect("cannot create pg pool for tests");
 
-    let db_drop_query = format!("DROP DATABASE IF EXISTS {}", test_pg_pool_config.dbname);
+    // A test-specific PG pool config which is virtually identical to the setup pool (aside from the
+    // test-specific DB name)
+    let test_specific_pg_pool_config = {
+        let mut pg = setup_pg_pool_config.clone();
+        pg.dbname = test_specific_db_name.into();
+        pg
+    };
+
+    let db_drop_query = format!(
+        "DROP DATABASE IF EXISTS {}",
+        test_specific_pg_pool_config.dbname
+    );
 
     let db_create_query = format!(
         "CREATE DATABASE {} OWNER {}",
-        test_pg_pool_config.dbname, test_pg_pool_config.user
+        test_specific_pg_pool_config.dbname, test_specific_pg_pool_config.user
     );
 
-    let client = si_pg_pool
+    let client = setup_pg_pool
         .get()
         .await
         .expect("unable to get pg_pool client");
@@ -77,7 +81,8 @@ async fn setup_pg_db(db_name: &str) -> PgPool {
         .await
         .expect("able to create database for tests");
 
-    PgPool::new(&test_pg_pool_config)
+    // Build and return the test-specific PG pool
+    PgPool::new(&test_specific_pg_pool_config)
         .await
         .expect("cannot create pg pool for tests")
 }
