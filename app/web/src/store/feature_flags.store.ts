@@ -16,7 +16,6 @@ const FLAG_MAPPING = {
   WORKSPACE_BACKUPS: "workspaceBackups",
   SEARCH_FILTERS: "search-filters",
   INDICATORS_MANUAL_FUNCTION_SOCKET: "indicators_manual_function_socket",
-  STATUSBAR_RESOURCE_COUNT: "statusbar_resource_count",
   NAVIGATE_FROM_COLLABORATOR_LINK: "navigate_from_collaborator_link",
 };
 

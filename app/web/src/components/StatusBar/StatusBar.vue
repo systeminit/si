@@ -15,7 +15,7 @@
     </div>
     <div
       v-if="
-        changeSetStore.headSelected && featureFlagStore.STATUSBAR_RESOURCE_COUNT
+        changeSetStore.headSelected
       "
       class="border-i border-shade-100"
     >
