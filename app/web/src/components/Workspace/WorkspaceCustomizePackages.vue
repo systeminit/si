@@ -1,11 +1,7 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
   <component
-    :is="
-      featureFlagsStore.RESIZABLE_PANEL_UPGRADE
-        ? ResizablePanel
-        : ResizablePanelOld
-    "
+    :is="ResizablePanel"
     ref="leftResizablePanelRef"
     rememberSizeKey="func-picker"
     side="left"
@@ -27,11 +23,7 @@
     </div>
   </div>
   <component
-    :is="
-      featureFlagsStore.RESIZABLE_PANEL_UPGRADE
-        ? ResizablePanel
-        : ResizablePanelOld
-    "
+    :is="ResizablePanel"
     ref="rightResizablePanelRef"
     rememberSizeKey="func-details"
     side="right"
@@ -63,7 +55,6 @@ const rightResizablePanelRef = ref();
 
 const onKeyDown = async (e: KeyboardEvent) => {
   if (
-    featureFlagsStore.RESIZABLE_PANEL_UPGRADE &&
     e.altKey &&
     e.shiftKey &&
     leftResizablePanelRef.value &&

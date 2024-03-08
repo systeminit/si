@@ -2,11 +2,7 @@
 <template>
   <!-- left panel - outline + asset palette -->
   <component
-    :is="
-      featureFlagsStore.RESIZABLE_PANEL_UPGRADE
-        ? ResizablePanel
-        : ResizablePanelOld
-    "
+    :is="ResizablePanel"
     ref="leftResizablePanelRef"
     rememberSizeKey="changeset-and-asset"
     side="left"
@@ -52,11 +48,7 @@
 
   <!-- Right panel (selection details) -->
   <component
-    :is="
-      featureFlagsStore.RESIZABLE_PANEL_UPGRADE
-        ? ResizablePanel
-        : ResizablePanelOld
-    "
+    :is="ResizablePanel"
     ref="rightResizablePanelRef"
     rememberSizeKey="details-panel"
     side="right"
@@ -124,7 +116,6 @@ const rightResizablePanelRef = ref();
 
 const onKeyDown = async (e: KeyboardEvent) => {
   if (
-    featureFlagsStore.RESIZABLE_PANEL_UPGRADE &&
     e.altKey &&
     e.shiftKey &&
     leftResizablePanelRef.value &&
