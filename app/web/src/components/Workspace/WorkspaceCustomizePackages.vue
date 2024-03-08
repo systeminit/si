@@ -37,16 +37,14 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { ResizablePanel, ResizablePanelOld } from "@si/vue-lib/design-system";
+import { ResizablePanel } from "@si/vue-lib/design-system";
 import ModuleListPanel from "@/components/modules/ModuleListPanel.vue";
 import ModuleDisplay from "@/components/modules/ModuleDisplay.vue";
 import ModuleDetailsPanel from "@/components/modules/ModuleDetailsPanel.vue";
 import { useModuleStore } from "@/store/module.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import CustomizeTabs from "../CustomizeTabs.vue";
 
-const featureFlagsStore = useFeatureFlagsStore();
 const moduleStore = useModuleStore();
 const moduleSlug = computed(() => moduleStore.urlSelectedModuleSlug);
 

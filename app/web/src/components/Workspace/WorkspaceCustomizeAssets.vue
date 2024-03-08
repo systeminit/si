@@ -75,11 +75,10 @@
 
 <script lang="ts" setup>
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { ResizablePanel, ResizablePanelOld } from "@si/vue-lib/design-system";
+import { ResizablePanel } from "@si/vue-lib/design-system";
 import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import AssetListPanel from "../AssetListPanel.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
 import AssetEditorTabs from "../AssetEditorTabs.vue";
@@ -88,7 +87,6 @@ import AssetFuncListPanel from "../AssetFuncListPanel.vue";
 import FuncDetails from "../FuncEditor/FuncDetails.vue";
 
 const funcStore = useFuncStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const assetStore = useAssetStore();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 

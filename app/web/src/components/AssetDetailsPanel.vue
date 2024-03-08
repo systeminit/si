@@ -182,7 +182,6 @@ import { FuncVariant } from "@/api/sdf/dal/func";
 import { useAssetStore } from "@/store/asset.store";
 import { FuncId } from "@/store/func/funcs.store";
 import { ComponentType } from "@/components/ModelingDiagram/diagram_types";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import ColorPicker from "./ColorPicker.vue";
 import AssetFuncAttachModal from "./AssetFuncAttachModal.vue";
 
@@ -196,8 +195,6 @@ const loadAssetReqStatus = assetStore.getRequestStatus(
   props.assetId,
 );
 const executeAssetModalRef = ref();
-
-const featureFlagStore = useFeatureFlagsStore();
 
 const openAttachModal = (warning: {
   variant?: FuncVariant;

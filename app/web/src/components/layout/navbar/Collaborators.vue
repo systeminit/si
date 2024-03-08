@@ -103,13 +103,11 @@ import Popover from "@/components/Popover.vue";
 import SiSearch from "@/components/SiSearch.vue";
 import { usePresenceStore } from "@/store/presence.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import UserIcon from "./UserIcon.vue";
 import UserCard from "./UserCard.vue";
 
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const router = useRouter();
 const route = useRoute();
 
@@ -272,11 +270,7 @@ const filteredUsers = computed(() => {
 });
 
 function goToUserChangeSet(user: UserInfo) {
-  if (
-    !user ||
-    !user.changeset
-  )
-    return;
+  if (!user || !user.changeset) return;
 
   router.push({
     name: "change-set-home",
