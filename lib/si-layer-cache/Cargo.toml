@@ -18,7 +18,9 @@ remain = { workspace = true }
 serde = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
+si-std = { path = "../../lib/si-std" }
 sled = { workspace = true }
+tempfile = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 ulid = { workspace = true }

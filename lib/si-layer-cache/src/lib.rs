@@ -31,9 +31,10 @@ pub mod memory_cache;
 pub mod pg;
 
 use serde::{de::DeserializeOwned, Serialize};
-use si_data_pg::PgPool;
+use si_data_pg::{PgPool, PgPoolConfig};
 use std::{
     hash::Hash,
+    path::Path,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
@@ -42,10 +43,12 @@ use std::{
 };
 use tokio::task::JoinHandle;
 
+pub use disk_cache::default_sled_path;
 use disk_cache::DiskCache;
 use error::LayerCacheResult;
 use memory_cache::MemoryCache;
 use pg::PgLayer;
+pub use pg::{default_pg_pool_config, APPLICATION_NAME, DBNAME};
 
 #[derive(Clone)]
 pub struct LayerCache<K, V>
@@ -234,4 +237,20 @@ where
 
         Ok(())
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct LayerCacheDependencies {
+    pub sled: sled::Db,
+    pub pg_pool: PgPool,
+}
+
+pub async fn make_layer_cache_dependencies<P: AsRef<Path>>(
+    sled_path: P,
+    pg_pool_config: &PgPoolConfig,
+) -> LayerCacheResult<LayerCacheDependencies> {
+    Ok(LayerCacheDependencies {
+        sled: sled::open(sled_path)?,
+        pg_pool: PgPool::new(pg_pool_config).await?,
+    })
 }

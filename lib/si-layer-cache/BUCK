@@ -5,6 +5,7 @@ rust_library(
     deps = [
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
+        "//lib/si-std:si-std",
         "//third-party/rust:async-trait",
         "//third-party/rust:blake3",
         "//third-party/rust:bytes",
@@ -16,6 +17,7 @@ rust_library(
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:sled",
+        "//third-party/rust:tempfile",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
         "//third-party/rust:ulid",
