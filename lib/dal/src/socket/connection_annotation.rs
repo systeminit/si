@@ -66,11 +66,8 @@ impl ConnectionAnnotation {
 }
 
 impl Display for ConnectionAnnotation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if self.tokens.len() < 1 {
-            return Err(fmt::Error);
-        }
-        let mut out = self.tokens[0].clone();
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut out = self.tokens.last().ok_or(fmt::Error)?.clone();
         for token in self.tokens.iter().rev().skip(1) {
             out = format!("{}<{}>", token, out);
         }
@@ -84,12 +81,51 @@ fn deserialize_connection_annotation() {
     let cases = vec![
         ("arn", vec!["arn"]),
         ("arn<string>", vec!["arn", "string"]),
-        ("userArn<arn<string>>", vec!["userArn", "arn", "string"]),
+        ("user_arn<arn<string>>", vec!["user_arn", "arn", "string"]),
     ];
 
     for (raw, tokens) in cases {
         let ca =
             ConnectionAnnotation::try_from(raw.to_string()).expect("parse connection annotation");
         assert_eq!(ca.tokens, tokens)
+    }
+}
+
+#[test]
+fn serialize_connection_annotation() {
+    let cases = vec![
+        (vec!["arn"], "arn"),
+        (vec!["arn", "string"], "arn<string>"),
+        (vec!["user_arn", "arn", "string"], "user_arn<arn<string>>"),
+    ];
+
+    for (tokens, raw) in cases {
+        let ca = ConnectionAnnotation {
+            tokens: tokens.iter().map(ToString::to_string).collect(),
+        };
+        assert_eq!(ca.to_string(), raw)
+    }
+}
+
+#[test]
+fn connection_annotation_fits() {
+    let cases_and_results = vec![
+        ("arn", "arn", true),
+        ("arn<string>", "arn<string>", true),
+        ("user_arn<arn<string>>", "user_arn<arn<string>>", true),
+        ("arn<string>", "string", true),
+        ("string", "arn<string>", false),
+    ];
+
+    for (raw_target, raw_reference, result) in cases_and_results {
+        let target = ConnectionAnnotation::try_from(raw_target.to_string())
+            .expect("parse object annotation");
+        let reference = ConnectionAnnotation::try_from(raw_reference.to_string())
+            .expect("parse slot annotation");
+
+        assert_eq!(
+            ConnectionAnnotation::target_fits_reference(&target, &reference),
+            result
+        )
     }
 }

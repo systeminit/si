@@ -25,7 +25,6 @@ use crate::prop::{PropError, PropPath};
 use crate::qualification::QualificationError;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::SchemaVariantError;
-use crate::socket::connection_annotation::ConnectionAnnotation;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
@@ -581,6 +580,7 @@ impl Component {
             schema_variant_id.ok_or(ComponentError::SchemaVariantNotFound(component_id))?;
         Ok(schema_variant_id)
     }
+
     pub async fn get_by_id(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<Self> {
         let (_, content) = Self::get_content_with_hash(ctx, component_id).await?;
         Ok(Self::assemble(component_id, content))
@@ -942,29 +942,16 @@ impl Component {
 
         for src_sock in source_sockets {
             let mut maybe_dest_id = None;
-            'sockets_loop: for dest_candidate in &destination_sockets {
-                let src_annotations = src_sock.connection_annotations();
-                let dest_annotations = dest_candidate.connection_annotations();
-                'annotations_loop: for annotation_src in &src_annotations {
-                    for annotation_dest in &dest_annotations {
-                        if ConnectionAnnotation::target_fits_reference(
-                            annotation_src,
-                            annotation_dest,
-                        ) {
-                            // If more than one valid destination is found, skip the socket.
-                            if maybe_dest_id.is_some() && maybe_dest_id != Some(dest_candidate.id())
-                            {
-                                maybe_dest_id = None;
-                                break 'sockets_loop;
-                            }
-
-                            // Otherwise, this is a socket we wanna connect to!
-                            maybe_dest_id = Some(dest_candidate.id());
-                            // dbg!(&maybe_dest_id);
-                            // println!("YES!");
-                            break 'annotations_loop;
-                        }
+            for dest_candidate in &destination_sockets {
+                if src_sock.fits_input(dest_candidate) {
+                    // If more than one valid destination is found, skip the socket.
+                    if maybe_dest_id.is_some() && maybe_dest_id != Some(dest_candidate.id()) {
+                        maybe_dest_id = None;
+                        break;
                     }
+
+                    // Otherwise, this is a socket we wanna connect to!
+                    maybe_dest_id = Some(dest_candidate.id());
                 }
             }
 

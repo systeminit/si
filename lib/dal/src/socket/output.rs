@@ -14,7 +14,9 @@ use crate::workspace_snapshot::edge_weight::{
 };
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, AttributePrototype, DalContext, FuncId, Timestamp, TransactionsError};
+use crate::{
+    pk, AttributePrototype, DalContext, FuncId, InputSocket, Timestamp, TransactionsError,
+};
 use crate::{AttributeValueId, SchemaVariantId};
 
 use super::connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError};
@@ -312,5 +314,19 @@ impl OutputSocket {
             }
         }
         Ok(maybe_output_socket)
+    }
+
+    pub fn fits_input(&self, input: &InputSocket) -> bool {
+        let out_annotations = self.connection_annotations();
+        let in_annotations = input.connection_annotations();
+        for annotation_src in &out_annotations {
+            for annotation_dest in &in_annotations {
+                if ConnectionAnnotation::target_fits_reference(annotation_src, annotation_dest) {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 }

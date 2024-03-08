@@ -3,6 +3,7 @@ use dal::{
     AttributeValue, Component, DalContext, InputSocket, OutputSocket, Schema, SchemaVariant,
 };
 use dal_test::test;
+use dal_test::test_harness::create_component_for_schema_name;
 
 #[test]
 async fn connect_components(ctx: &mut DalContext) {
@@ -153,4 +154,66 @@ async fn connect_components(ctx: &mut DalContext) {
         .await
         .expect("could not assemble the diagram");
     assert_eq!(2, diagram.edges.len());
+}
+
+#[test]
+async fn connect_to_one_destination_with_multiple_candidates_of_same_schema_variant_on_diagram(
+    ctx: &mut DalContext,
+) {
+    let source = create_component_for_schema_name(ctx, "fallout", "source").await;
+    let source_sv_id = Component::schema_variant_id(ctx, source.id())
+        .await
+        .expect("find variant id for component");
+
+    let destination = create_component_for_schema_name(ctx, "starfield", "destination").await;
+    let destination_sv_id = Component::schema_variant_id(ctx, destination.id())
+        .await
+        .expect("find variant id for component");
+    create_component_for_schema_name(ctx, "starfield", "not destination").await;
+
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after butane component creation");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    let output_socket = OutputSocket::find_with_name(ctx, "bethesda", source_sv_id)
+        .await
+        .expect("could not perform find output socket")
+        .expect("output socket not found");
+
+    let input_socket = InputSocket::find_with_name(ctx, "bethesda", destination_sv_id)
+        .await
+        .expect("could not perform find input socket")
+        .expect("input socket not found");
+
+    Component::connect(
+        ctx,
+        source.id(),
+        output_socket.id(),
+        destination.id(),
+        input_socket.id(),
+    )
+    .await
+    .expect("could not connect components");
+
+    ctx.blocking_commit()
+        .await
+        .expect("blocking commit after butane component creation");
+
+    ctx.update_snapshot_to_visibility()
+        .await
+        .expect("update_snapshot_to_visibility");
+
+    let diagram = Diagram::assemble(ctx)
+        .await
+        .expect("could not assemble the diagram");
+
+    assert_eq!(diagram.components.len(), 3);
+    assert_eq!(diagram.edges.len(), 1);
+    let edge = &diagram.edges[0];
+    assert_eq!(edge.from_node_id, source.id());
+    assert_eq!(edge.to_node_id, destination.id());
 }
