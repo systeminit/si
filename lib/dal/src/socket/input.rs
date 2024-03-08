@@ -20,6 +20,8 @@ use crate::{
     SchemaVariantId, Timestamp, TransactionsError,
 };
 
+use super::connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError};
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum InputSocketError {
@@ -27,6 +29,8 @@ pub enum InputSocketError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
+    #[error(transparent)]
+    ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("func error: {0}")]
@@ -64,7 +68,7 @@ pub struct InputSocket {
     kind: SocketKind,
     required: bool,
     ui_hidden: bool,
-    connection_annotations: Vec<String>,
+    connection_annotations: Vec<ConnectionAnnotation>,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -85,7 +89,7 @@ pub struct InputSocketContentV1 {
     pub kind: SocketKind,
     pub required: bool,
     pub ui_hidden: bool,
-    pub connection_annotations: Vec<String>,
+    pub connection_annotations: Vec<ConnectionAnnotation>,
 }
 
 impl InputSocket {
@@ -131,7 +135,7 @@ impl InputSocket {
         self.required
     }
 
-    pub fn connection_annotations(&self) -> Vec<String> {
+    pub fn connection_annotations(&self) -> Vec<ConnectionAnnotation> {
         self.connection_annotations.clone()
     }
 
@@ -209,10 +213,17 @@ impl InputSocket {
         func_id: FuncId,
         arity: SocketArity,
         kind: SocketKind,
-        connection_annotations: Vec<String>,
+        connection_annotations: Option<Vec<ConnectionAnnotation>>,
     ) -> InputSocketResult<Self> {
         info!("creating input socket");
         let name = name.into();
+
+        let connection_annotations = if let Some(ca) = connection_annotations {
+            ca
+        } else {
+            vec![ConnectionAnnotation::try_from(name.clone())?]
+        };
+
         let content = InputSocketContentV1 {
             timestamp: Timestamp::now(),
             name: name.clone(),

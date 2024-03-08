@@ -15,7 +15,7 @@ use crate::server::state::AppState;
 
 use self::get_node_add_menu::get_node_add_menu;
 
-mod connect_component_to_frame_new_engine;
+mod connect_component_to_frame;
 pub mod create_component;
 pub mod create_connection;
 pub mod get_diagram;
@@ -136,7 +136,7 @@ pub fn routes() -> Router<AppState> {
         // )
         .route(
             "/connect_component_to_frame",
-            post(connect_component_to_frame_new_engine::connect_component_to_frame),
+            post(connect_component_to_frame::connect_component_to_frame),
         )
         .route("/get_node_add_menu", post(get_node_add_menu))
         .route(

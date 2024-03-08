@@ -4,8 +4,8 @@ overflow hidden */
 <template>
   <div
     ref="containerRef"
-    class="absolute inset-0 overflow-hidden"
     :style="{ cursor }"
+    class="absolute inset-0 overflow-hidden"
   >
     <div
       v-if="fetchDiagramReqStatus.isFirstLoad"
@@ -44,22 +44,22 @@ overflow hidden */
       @click.right="onRightClick"
     >
       <DiagramGridBackground
-        :gridMinX="gridMinX"
         :gridMaxX="gridMaxX"
-        :gridMinY="gridMinY"
         :gridMaxY="gridMaxY"
+        :gridMinX="gridMinX"
+        :gridMinY="gridMinY"
         :zoomLevel="zoomLevel"
       />
       <v-layer>
         <DiagramGroup
           v-for="group in groups"
           :key="group.uniqueKey"
-          :group="group"
-          :tempPosition="movedElementPositions[group.uniqueKey]"
-          :tempSize="resizedElementSizes[group.uniqueKey]"
           :connectedEdges="connectedEdgesByElementKey[group.uniqueKey]"
+          :group="group"
           :isHovered="elementIsHovered(group)"
           :isSelected="elementIsSelected(group)"
+          :tempPosition="movedElementPositions[group.uniqueKey]"
+          :tempSize="resizedElementSizes[group.uniqueKey]"
           @resize="onNodeLayoutOrLocationChange(group)"
         />
         <template v-if="edgeDisplayMode === 'EDGES_UNDER'">
@@ -68,19 +68,19 @@ overflow hidden */
             :key="edge.uniqueKey"
             :edge="edge"
             :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
-            :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
             :isHovered="elementIsHovered(edge)"
             :isSelected="elementIsSelected(edge)"
+            :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
           />
         </template>
         <DiagramNode
           v-for="node in nodes"
           :key="node.uniqueKey"
-          :node="node"
-          :tempPosition="movedElementPositions[node.uniqueKey]"
           :connectedEdges="connectedEdgesByElementKey[node.uniqueKey]"
           :isHovered="elementIsHovered(node)"
           :isSelected="elementIsSelected(node)"
+          :node="node"
+          :tempPosition="movedElementPositions[node.uniqueKey]"
           @resize="onNodeLayoutOrLocationChange(node)"
         />
         <DiagramCursor
@@ -94,9 +94,9 @@ overflow hidden */
             :key="edge.uniqueKey"
             :edge="edge"
             :fromPoint="getSocketLocationInfo(edge.fromSocketKey)?.center"
-            :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
             :isHovered="elementIsHovered(edge)"
             :isSelected="elementIsSelected(edge)"
+            :toPoint="getSocketLocationInfo(edge.toSocketKey)?.center"
           />
         </template>
         <DiagramGroupOverlay
@@ -128,11 +128,11 @@ overflow hidden */
           }"
           />
           <DiagramIcon
-            icon="loader"
             :color="getToneColorHex('info')"
             :size="60"
             :x="pendingInsert.position!.x"
             :y="pendingInsert.position!.y"
+            icon="loader"
           />
         </template>
 
@@ -208,10 +208,7 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
 import { LoadingMessage, getToneColorHex } from "@si/vue-lib/design-system";
-import {
-  connectionAnnotationFitsReference,
-  parseConnectionAnnotation,
-} from "@si/ts-lib/src/connection-annotations";
+import { connectionAnnotationFitsReference } from "@si/ts-lib/src/connection-annotations";
 import { windowListenerManager } from "@si/vue-lib";
 import { useCustomFontsLoaded } from "@/utils/useFontLoaded";
 import DiagramGroup from "@/components/ModelingDiagram/DiagramGroup.vue";
@@ -2043,10 +2040,7 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
     // check socket connection annotations compatibility
     for (const outputCA of outputCAs) {
       for (const inputCA of inputCAs) {
-        const output = parseConnectionAnnotation(outputCA);
-        const input = parseConnectionAnnotation(inputCA);
-
-        if (connectionAnnotationFitsReference(output, input)) {
+        if (connectionAnnotationFitsReference(outputCA, inputCA)) {
           return true;
         }
       }

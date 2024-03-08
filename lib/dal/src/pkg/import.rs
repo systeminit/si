@@ -13,6 +13,7 @@ use crate::attribute::prototype::argument::{
 };
 use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
 use crate::prop::PropParent;
+use crate::socket::connection_annotation::ConnectionAnnotation;
 use crate::{func::intrinsics::IntrinsicFunc, SocketKind};
 use crate::{
     func::{self, argument::FuncArgument},
@@ -2123,7 +2124,17 @@ async fn create_socket(
     let identity_func_id = get_identity_func(ctx).await?;
 
     // Connection annotations are stored as a serialized json array of strings
-    let connection_annotations: Vec<String> = serde_json::from_str(data.connection_annotations())?;
+    let connection_annotations = {
+        let mut stash = vec![];
+
+        let raw_cas = serde_json::from_str::<Vec<String>>(data.connection_annotations())?;
+
+        for raw_ca in raw_cas {
+            stash.push(ConnectionAnnotation::try_from(raw_ca)?)
+        }
+
+        stash
+    };
 
     let (ip, ep) = match data.kind() {
         SocketSpecKind::Input => {
@@ -2134,7 +2145,7 @@ async fn create_socket(
                 identity_func_id,
                 data.arity().into(),
                 SocketKind::Standard,
-                connection_annotations,
+                Some(connection_annotations),
             )
             .await?;
 
@@ -2149,7 +2160,7 @@ async fn create_socket(
                 identity_func_id,
                 data.arity().into(),
                 SocketKind::Standard,
-                connection_annotations,
+                Some(connection_annotations),
             )
             .await?;
 

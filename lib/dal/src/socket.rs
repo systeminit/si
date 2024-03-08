@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use si_pkg::SocketSpecArity;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
+pub mod connection_annotation;
 pub mod input;
 pub mod output;
 

@@ -398,10 +398,15 @@ impl Component {
         ctx: &DalContext,
     ) -> ComponentResult<Vec<IncomingConnection>> {
         let mut incoming_edges = vec![];
+
         for (to_input_socket_id, to_value_id) in self.input_socket_attribute_values(ctx).await? {
             let prototype_id = AttributeValue::prototype_id(ctx, to_value_id).await?;
-            for apa_id in
-                AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?
+            for apa_id in AttributePrototypeArgument::list_ids_for_prototype_and_destination(
+                ctx,
+                prototype_id,
+                self.id,
+            )
+            .await?
             {
                 let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
 
@@ -416,7 +421,7 @@ impl Component {
 
                 if let Some(ArgumentTargets {
                     source_component_id,
-                    ..
+                    destination_component_id,
                 }) = apa.targets()
                 {
                     if let Some(ValueSource::OutputSocket(from_output_socket_id)) =
@@ -424,7 +429,7 @@ impl Component {
                     {
                         incoming_edges.push(IncomingConnection {
                             attribute_prototype_argument_id: apa_id,
-                            to_component_id: self.id(),
+                            to_component_id: destination_component_id,
                             from_component_id: source_component_id,
                             to_input_socket_id,
                             from_output_socket_id,
@@ -575,6 +580,7 @@ impl Component {
             schema_variant_id.ok_or(ComponentError::SchemaVariantNotFound(component_id))?;
         Ok(schema_variant_id)
     }
+
     pub async fn get_by_id(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<Self> {
         let (_, content) = Self::get_content_with_hash(ctx, component_id).await?;
         Ok(Self::assemble(component_id, content))
@@ -915,7 +921,6 @@ impl Component {
         Ok(attribute_prototype_argument_id)
     }
 
-    // NOTE(nick): this is probably algorithmically bad and we probably need to make it less bad.
     /// Find all matching sockets for a given source [`Component`] and a given destination [`Component`].
     ///
     /// This is useful when [`attaching`](frame::Frame::attach_child_to_parent) a child [`Component`] to a parent
@@ -930,37 +935,33 @@ impl Component {
         let destination_schema_variant_id =
             Component::schema_variant_id(ctx, destination_component_id).await?;
 
-        let source_output_sockets = OutputSocket::list(ctx, source_schema_variant_id).await?;
-        let destination_input_sockets =
-            InputSocket::list(ctx, destination_schema_variant_id).await?;
+        let source_sockets = OutputSocket::list(ctx, source_schema_variant_id).await?;
+        let destination_sockets = InputSocket::list(ctx, destination_schema_variant_id).await?;
 
-        // TODO(nick): use annotations instead of names. Also make this less bad.
-        let mut output_sockets_by_annotation: HashMap<String, OutputSocketId> = HashMap::new();
-        for source_output_socket in source_output_sockets {
-            output_sockets_by_annotation.insert(
-                source_output_socket.name().to_string(),
-                source_output_socket.id(),
-            );
-        }
-
-        let mut input_sockets_by_annotation: HashMap<String, InputSocketId> = HashMap::new();
-        for destination_input_socket in destination_input_sockets {
-            input_sockets_by_annotation.insert(
-                destination_input_socket.name().to_string(),
-                destination_input_socket.id(),
-            );
-        }
-
-        // NOTE(nick): using the maps reliant on the name, connect all sockets we can.
         let mut to_enqueue = Vec::new();
-        for (key, output_socket_id) in output_sockets_by_annotation {
-            if let Some(input_socket_id) = input_sockets_by_annotation.get(&key) {
+
+        for src_sock in source_sockets {
+            let mut maybe_dest_id = None;
+            for dest_candidate in &destination_sockets {
+                if src_sock.fits_input(dest_candidate) {
+                    // If more than one valid destination is found, skip the socket.
+                    if maybe_dest_id.is_some() && maybe_dest_id != Some(dest_candidate.id()) {
+                        maybe_dest_id = None;
+                        break;
+                    }
+
+                    // Otherwise, this is a socket we wanna connect to!
+                    maybe_dest_id = Some(dest_candidate.id());
+                }
+            }
+
+            if let Some(destination_socket_id) = maybe_dest_id {
                 let (attribute_value_id, _) = Self::connect_inner(
                     ctx,
                     source_component_id,
-                    output_socket_id,
+                    src_sock.id(),
                     destination_component_id,
-                    *input_socket_id,
+                    destination_socket_id,
                 )
                 .await?;
                 to_enqueue.push(attribute_value_id);

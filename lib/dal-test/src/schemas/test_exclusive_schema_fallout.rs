@@ -162,7 +162,9 @@ pub async fn migrate_test_exclusive_schema_fallout(ctx: &DalContext) -> Builtins
                         .data(
                             SocketSpecData::builder()
                                 .name("fallout")
-                                .connection_annotations(serde_json::to_string(&vec!["bethesda"])?)
+                                .connection_annotations(serde_json::to_string(&vec![
+                                    "fallout", "bethesda",
+                                ])?)
                                 .kind(SocketSpecKind::Output)
                                 .func_unique_id(&identity_func_spec.unique_id)
                                 .build()?,

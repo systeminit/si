@@ -14,6 +14,7 @@ use crate::change_status::ChangeStatus;
 use crate::component::ComponentError;
 use crate::history_event::HistoryEventMetadata;
 use crate::schema::variant::SchemaVariantError;
+use crate::socket::connection_annotation::ConnectionAnnotation;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
@@ -150,7 +151,7 @@ pub struct SummaryDiagramEdge {
 pub struct DiagramSocket {
     pub id: String,
     pub label: String,
-    pub connection_annotations: Vec<String>,
+    pub connection_annotations: Vec<ConnectionAnnotation>,
     pub direction: DiagramSocketDirection,
     pub max_connections: Option<usize>,
     pub is_required: Option<bool>,

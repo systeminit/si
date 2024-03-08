@@ -1,4 +1,5 @@
 import { IconNames, Tones } from "@si/vue-lib/design-system";
+import { ConnectionAnnotation } from "@si/ts-lib";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 
@@ -35,12 +36,12 @@ export class DiagramNodeData extends DiagramElementData {
       def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
   }
 
-  static generateUniqueKey(id: string | number) {
-    return `n-${id}`;
-  }
-
   get uniqueKey() {
     return DiagramNodeData.generateUniqueKey(this.def.id);
+  }
+
+  static generateUniqueKey(id: string | number) {
+    return `n-${id}`;
   }
 }
 
@@ -53,12 +54,12 @@ export class DiagramGroupData extends DiagramElementData {
       def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
   }
 
-  static generateUniqueKey(id: string | number) {
-    return `g-${id}`;
-  }
-
   get uniqueKey() {
     return DiagramGroupData.generateUniqueKey(this.def.id);
+  }
+
+  static generateUniqueKey(id: string | number) {
+    return `g-${id}`;
   }
 }
 
@@ -70,26 +71,22 @@ export class DiagramSocketData extends DiagramElementData {
     super();
   }
 
-  // socket ids are only assumed to be unique within their parent
-  static generateUniqueKey(parentKey: string, id: string | number) {
-    return `${parentKey}--s-${id}`;
-  }
-
   get uniqueKey() {
     return DiagramSocketData.generateUniqueKey(
       this.parent.uniqueKey,
       this.def.id,
     );
   }
+
+  // socket ids are only assumed to be unique within their parent
+  static generateUniqueKey(parentKey: string, id: string | number) {
+    return `${parentKey}--s-${id}`;
+  }
 }
 
 export class DiagramEdgeData extends DiagramElementData {
   constructor(readonly def: DiagramEdgeDef) {
     super();
-  }
-
-  static generateUniqueKey(id: string | number) {
-    return `e-${id}`;
   }
 
   get uniqueKey() {
@@ -139,6 +136,10 @@ export class DiagramEdgeData extends DiagramElementData {
       DiagramNodeData.generateUniqueKey(this.def.toNodeId),
       this.def.toSocketId,
     );
+  }
+
+  static generateUniqueKey(id: string | number) {
+    return `e-${id}`;
   }
 }
 
@@ -217,7 +218,7 @@ export type DiagramSocketDef = {
   /** label displayed with the socket */
   label: string;
   /** socket can only connect with sockets with compatible annotations */
-  connectionAnnotations: string[];
+  connectionAnnotations: ConnectionAnnotation[];
   /** direction of data flow from this socket */
   direction: "input" | "output" | "bidirectional";
   /** arity / max number of connections - null = no limit (most will likely be either 1 or null) */

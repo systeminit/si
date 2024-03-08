@@ -14,8 +14,12 @@ use crate::workspace_snapshot::edge_weight::{
 };
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{pk, AttributePrototype, DalContext, FuncId, Timestamp, TransactionsError};
+use crate::{
+    pk, AttributePrototype, DalContext, FuncId, InputSocket, Timestamp, TransactionsError,
+};
 use crate::{AttributeValueId, SchemaVariantId};
+
+use super::connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -24,6 +28,8 @@ pub enum OutputSocketError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
+    #[error(transparent)]
+    ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error(
@@ -61,7 +67,7 @@ pub struct OutputSocket {
     kind: SocketKind,
     required: bool,
     ui_hidden: bool,
-    connection_annotations: Vec<String>,
+    connection_annotations: Vec<ConnectionAnnotation>,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -80,7 +86,7 @@ pub struct OutputSocketContentV1 {
     pub kind: SocketKind,
     pub required: bool,
     pub ui_hidden: bool,
-    pub connection_annotations: Vec<String>,
+    pub connection_annotations: Vec<ConnectionAnnotation>,
 }
 
 impl OutputSocket {
@@ -118,7 +124,7 @@ impl OutputSocket {
         self.required
     }
 
-    pub fn connection_annotations(&self) -> Vec<String> {
+    pub fn connection_annotations(&self) -> Vec<ConnectionAnnotation> {
         self.connection_annotations.clone()
     }
 
@@ -131,9 +137,16 @@ impl OutputSocket {
         func_id: FuncId,
         arity: SocketArity,
         kind: SocketKind,
-        connection_annotations: Vec<String>,
+        connection_annotations: Option<Vec<ConnectionAnnotation>>,
     ) -> OutputSocketResult<Self> {
         let name = name.into();
+
+        let connection_annotations = if let Some(ca) = connection_annotations {
+            ca
+        } else {
+            vec![ConnectionAnnotation::try_from(name.clone())?]
+        };
+
         let content = OutputSocketContentV1 {
             timestamp: Timestamp::now(),
             name: name.clone(),
@@ -301,5 +314,19 @@ impl OutputSocket {
             }
         }
         Ok(maybe_output_socket)
+    }
+
+    pub fn fits_input(&self, input: &InputSocket) -> bool {
+        let out_annotations = self.connection_annotations();
+        let in_annotations = input.connection_annotations();
+        for annotation_src in &out_annotations {
+            for annotation_dest in &in_annotations {
+                if ConnectionAnnotation::target_fits_reference(annotation_src, annotation_dest) {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 }

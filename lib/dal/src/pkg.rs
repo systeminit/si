@@ -20,6 +20,7 @@ use crate::{
 };
 use crate::{FuncId, PropId, PropKind};
 
+use crate::socket::connection_annotation::ConnectionAnnotationError;
 pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
 
 mod import;
@@ -57,6 +58,8 @@ pub enum PkgError {
     // ChangeSetNotFound(ChangeSetPk),
     #[error(transparent)]
     ChangeSetPointer(#[from] ChangeSetPointerError),
+    #[error(transparent)]
+    ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("expected data on an SiPkg node, but none found: {0}")]
     DataNotFound(String),
     // #[error(transparent)]
