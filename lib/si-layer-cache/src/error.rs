@@ -2,15 +2,20 @@ use std::error;
 
 use si_data_nats::async_nats::jetstream;
 use si_data_pg::{PgError, PgPoolError};
+use si_std::CanonicalFileError;
 use thiserror::Error;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum LayerCacheError {
+    #[error("canonical file error: {0}")]
+    CanonicalFile(#[from] CanonicalFileError),
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
     #[error("missing internal buffer entry when expected; this is an internal bug")]
     MissingInternalBuffer,
     #[error("error parsing nats message header: {0}")]
-    NatsHeaderParse(#[source] Box<dyn error::Error + 'static>),
+    NatsHeaderParse(#[source] Box<dyn error::Error + Send + Sync + 'static>),
     #[error("malformed/missing nats headers")]
     NatsMalformedHeaders,
     #[error("nats message missing size header")]
@@ -32,7 +37,7 @@ pub enum LayerCacheError {
 impl LayerCacheError {
     pub fn nats_header_parse<E>(err: E) -> Self
     where
-        E: error::Error + 'static,
+        E: error::Error + Send + Sync + 'static,
     {
         Self::NatsHeaderParse(Box::new(err))
     }

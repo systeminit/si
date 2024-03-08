@@ -17,6 +17,7 @@ rebaser-server = { path = "../../lib/rebaser-server" }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-std = { path = "../../lib/si-std" }
 si-pkg = { path = "../../lib/si-pkg" }
 si-test-macros = { path = "../../lib/si-test-macros" }
@@ -32,6 +33,7 @@ names = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sled = { workspace = true }
 sodiumoxide = { workspace = true }
 tempfile = { workspace = true }
 thiserror = { workspace = true }

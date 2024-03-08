@@ -51,6 +51,7 @@ pub(crate) async fn setup_and_run_core_loop(
     shutdown_watch_rx: watch::Receiver<()>,
     messaging_config: RebaserMessagingConfig,
     content_store_pg_pool: PgPool,
+    layer_cache_dependencies: si_layer_cache::LayerCacheDependencies,
 ) -> CoreLoopSetupResult<()> {
     let services_context = ServicesContext::new(
         pg_pool,
@@ -63,6 +64,7 @@ pub(crate) async fn setup_and_run_core_loop(
         symmetric_crypto_service,
         messaging_config.clone(),
         content_store_pg_pool,
+        layer_cache_dependencies,
     );
 
     // Setup the subjects.

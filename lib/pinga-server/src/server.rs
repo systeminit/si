@@ -17,6 +17,7 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
+use si_layer_cache::error::LayerCacheError;
 use stream_cancel::StreamExt as StreamCancelStreamExt;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -44,6 +45,8 @@ pub enum ServerError {
     JobConsumer(#[from] JobConsumerError),
     #[error(transparent)]
     JobFailure(#[from] Box<JobFailureError>),
+    #[error("layer cache error: {0}")]
+    LayerCache(#[from] LayerCacheError),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error(transparent)]
@@ -114,6 +117,12 @@ impl Server {
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let rebaser_config = RebaserClientConfig::default();
 
+        let layer_cache_dependencies = si_layer_cache::make_layer_cache_dependencies(
+            config.layer_cache_sled_path(),
+            config.layer_cache_pg_pool(),
+        )
+        .await?;
+
         let services_context = ServicesContext::new(
             pg_pool,
             nats.clone(),
@@ -125,6 +134,7 @@ impl Server {
             symmetric_crypto_service,
             rebaser_config,
             content_store_pg_pool,
+            layer_cache_dependencies,
         );
 
         Self::from_services(

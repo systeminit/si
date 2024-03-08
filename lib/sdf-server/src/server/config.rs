@@ -1,5 +1,6 @@
 use dal::jwt_key::JwtConfig;
 use si_crypto::CryptoConfig;
+use si_layer_cache::error::LayerCacheError;
 use std::{
     env,
     net::{SocketAddr, ToSocketAddrs},
@@ -13,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
+pub use si_layer_cache::{make_layer_cache_dependencies, LayerCacheDependencies};
 use si_posthog::PosthogConfig;
 use si_std::{CanonicalFile, CanonicalFileError, SensitiveString};
 use telemetry::prelude::*;
@@ -34,6 +36,8 @@ pub enum ConfigError {
     CanonicalFile(#[from] CanonicalFileError),
     #[error("error configuring for development")]
     Development(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
+    #[error(transparent)]
+    LayerCache(#[from] LayerCacheError),
     #[error("no socket addrs where resolved")]
     NoSocketAddrResolved,
     #[error(transparent)]
@@ -81,6 +85,11 @@ pub struct Config {
 
     #[builder(default = "PgStoreTools::default_pool_config()")]
     content_store_pg_pool: PgPoolConfig,
+
+    #[builder(default = "si_layer_cache::default_pg_pool_config()")]
+    layer_cache_pg_pool: PgPoolConfig,
+
+    layer_cache_sled_path: CanonicalFile,
 
     signup_secret: SensitiveString,
     pkgs_path: CanonicalFile,
@@ -160,6 +169,16 @@ impl Config {
     pub fn content_store_pg_pool(&self) -> &PgPoolConfig {
         &self.content_store_pg_pool
     }
+
+    #[must_use]
+    pub fn layer_cache_pg_pool(&self) -> &PgPoolConfig {
+        &self.layer_cache_pg_pool
+    }
+
+    #[must_use]
+    pub fn layer_cache_sled_path(&self) -> &Path {
+        self.layer_cache_sled_path.as_path()
+    }
 }
 
 impl ConfigBuilder {
@@ -178,6 +197,8 @@ pub struct ConfigFile {
     pub pg: PgPoolConfig,
     #[serde(default = "PgStoreTools::default_pool_config")]
     pub content_store_pg: PgPoolConfig,
+    #[serde(default = "si_layer_cache::default_pg_pool_config")]
+    layer_cache_pg_pool: PgPoolConfig,
     #[serde(default)]
     pub nats: NatsConfig,
     #[serde(default)]
@@ -203,6 +224,7 @@ impl Default for ConfigFile {
         Self {
             pg: Default::default(),
             content_store_pg: PgStoreTools::default_pool_config(),
+            layer_cache_pg_pool: si_layer_cache::default_pg_pool_config(),
             nats: Default::default(),
             migration_mode: Default::default(),
             jwt_signing_public_key: Default::default(),
@@ -229,6 +251,7 @@ impl TryFrom<ConfigFile> for Config {
         let mut config = Config::builder();
         config.pg_pool(value.pg);
         config.content_store_pg_pool(value.content_store_pg);
+        config.layer_cache_pg_pool(value.layer_cache_pg_pool);
         config.nats(value.nats);
         config.migration_mode(value.migration_mode);
         config.jwt_signing_public_key(value.jwt_signing_public_key);
@@ -238,6 +261,7 @@ impl TryFrom<ConfigFile> for Config {
         config.posthog(value.posthog);
         config.module_index_url(value.module_index_url);
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
+        config.layer_cache_sled_path = Some(si_layer_cache::default_sled_path()?);
         config.build().map_err(Into::into)
     }
 }
@@ -363,7 +387,8 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.content_store_pg.certificate_path = Some(postgres_cert.try_into()?);
+    config.content_store_pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.layer_cache_pg_pool.certificate_path = Some(postgres_cert.try_into()?);
     config.pkgs_path = pkgs_path;
 
     Ok(())
@@ -422,7 +447,8 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.content_store_pg.certificate_path = Some(postgres_cert.try_into()?);
+    config.content_store_pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.layer_cache_pg_pool.certificate_path = Some(postgres_cert.try_into()?);
     config.pkgs_path = pkgs_path;
 
     Ok(())

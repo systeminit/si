@@ -15,6 +15,7 @@ nats-subscriber = { path = "../../lib/nats-subscriber" }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-pkg = { path = "../../lib/si-pkg" }
 si-posthog = { path = "../../lib/si-posthog-rs" }
 si-settings = { path = "../../lib/si-settings" }
