@@ -98,60 +98,78 @@ async fn model_and_fix_flow_whiskers(
     ctx.commit().await.expect("unable to commit");
 
     // Create all AWS components.
-    let region = harness.create_node(ctx.visibility(), "Region", None).await;
+    let region = harness
+        .create_component(ctx.visibility(), "Region", None)
+        .await;
     let ami = harness
-        .create_node(ctx.visibility(), "AMI", Some(region.node_id))
+        .create_component(ctx.visibility(), "AMI", Some(region.component_id))
         .await;
     let key_pair = harness
-        .create_node(ctx.visibility(), "Key Pair", Some(region.node_id))
+        .create_component(ctx.visibility(), "Key Pair", Some(region.component_id))
         .await;
     let ec2 = harness
-        .create_node(ctx.visibility(), "EC2 Instance", Some(region.node_id))
+        .create_component(ctx.visibility(), "EC2 Instance", Some(region.component_id))
         .await;
     let security_group = harness
-        .create_node(ctx.visibility(), "Security Group", Some(region.node_id))
+        .create_component(
+            ctx.visibility(),
+            "Security Group",
+            Some(region.component_id),
+        )
         .await;
     let ingress = harness
-        .create_node(ctx.visibility(), "Ingress", Some(region.node_id))
+        .create_component(ctx.visibility(), "Ingress", Some(region.component_id))
         .await;
 
     // Create all other components.
     let docker = harness
-        .create_node(ctx.visibility(), "Docker Image", None)
+        .create_component(ctx.visibility(), "Docker Image", None)
         .await;
-    let butane = harness.create_node(ctx.visibility(), "Butane", None).await;
+    let butane = harness
+        .create_component(ctx.visibility(), "Butane", None)
+        .await;
 
     // Connect Docker and Butane to the relevant AWS components.
     harness
-        .create_connection(&ctx, docker.node_id, butane.node_id, "Container Image")
-        .await;
-    harness
-        .create_connection(&ctx, docker.node_id, ingress.node_id, "Exposed Ports")
-        .await;
-    harness
-        .create_connection(&ctx, butane.node_id, ec2.node_id, "User Data")
-        .await;
-
-    // Connect AMI, Key Pair and Security Group to the relevant AWS components.
-    harness
-        .create_connection(&ctx, ami.node_id, ec2.node_id, "Image ID")
-        .await;
-    harness
-        .create_connection(&ctx, key_pair.node_id, ec2.node_id, "Key Name")
+        .create_connection(
+            &ctx,
+            docker.component_id,
+            butane.component_id,
+            "Container Image",
+        )
         .await;
     harness
         .create_connection(
             &ctx,
-            security_group.node_id,
-            ingress.node_id,
+            docker.component_id,
+            ingress.component_id,
+            "Exposed Ports",
+        )
+        .await;
+    harness
+        .create_connection(&ctx, butane.component_id, ec2.component_id, "User Data")
+        .await;
+
+    // Connect AMI, Key Pair and Security Group to the relevant AWS components.
+    harness
+        .create_connection(&ctx, ami.component_id, ec2.component_id, "Image ID")
+        .await;
+    harness
+        .create_connection(&ctx, key_pair.component_id, ec2.component_id, "Key Name")
+        .await;
+    harness
+        .create_connection(
+            &ctx,
+            security_group.component_id,
+            ingress.component_id,
             "Security Group ID",
         )
         .await;
     harness
         .create_connection(
             &ctx,
-            security_group.node_id,
-            ec2.node_id,
+            security_group.component_id,
+            ec2.component_id,
             "Security Group ID",
         )
         .await;

@@ -214,6 +214,6 @@ async fn connect_to_one_destination_with_multiple_candidates_of_same_schema_vari
     assert_eq!(diagram.components.len(), 3);
     assert_eq!(diagram.edges.len(), 1);
     let edge = &diagram.edges[0];
-    assert_eq!(edge.from_node_id, source.id());
-    assert_eq!(edge.to_node_id, destination.id());
+    assert_eq!(edge.from_component_id, source.id());
+    assert_eq!(edge.to_component_id, destination.id());
 }

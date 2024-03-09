@@ -10,7 +10,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 pub struct SetComponentPositionRequest {
     #[serde(flatten)]
     pub visibility: Visibility,
-    pub node_id: ComponentId,
+    pub component_id: ComponentId,
     pub x: String,
     pub y: String,
     pub width: Option<String>,
@@ -34,8 +34,8 @@ pub async fn set_component_position(
     // TODO(nick): I think the above visibility style is wrong for the new engine and we want what's below.
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let component = Component::get_by_id(&ctx, request.node_id).await?;
-    let schema_variant_id = Component::schema_variant_id(&ctx, request.node_id).await?;
+    let component = Component::get_by_id(&ctx, request.component_id).await?;
+    let schema_variant_id = Component::schema_variant_id(&ctx, request.component_id).await?;
 
     let (width, height) = {
         let input_sockets = InputSocket::list(&ctx, schema_variant_id).await?;

@@ -4,9 +4,8 @@ use chrono::Utc;
 use dal::edge::EdgeKind;
 use dal::{
     action_prototype::ActionPrototypeContextField, func::backend::js_action::ActionRunResult,
-    Action, ActionKind, ActionPrototype, ActionPrototypeContext, ChangeSet, Component,
-    ComponentError, ComponentId, Connection, DalContext, DalContextBuilder, Edge, Node, NodeId,
-    StandardModel, Visibility, WsEvent,
+    Action, ActionKind, ActionPrototype, ActionPrototypeContext, ChangeSet, Component, ComponentId,
+    Connection, DalContext, DalContextBuilder, Edge, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -31,34 +30,29 @@ async fn paste_single_component(
     offset_y: f64,
     original_uri: &Uri,
     PosthogClient(posthog_client): &PosthogClient,
-) -> DiagramResult<(Component, Node)> {
+) -> DiagramResult<Component> {
     let ctx = ctx_builder.build(request_ctx.build(visibility)).await?;
 
     let original_comp = Component::get_by_id(&ctx, &component_id)
         .await?
         .ok_or(DiagramError::ComponentNotFound)?;
-    let original_node = original_comp
-        .node(&ctx)
-        .await?
-        .pop()
-        .ok_or(ComponentError::NodeNotFoundForComponent(component_id))?;
 
     let schema_variant = original_comp
         .schema_variant(&ctx)
         .await?
         .ok_or(DiagramError::SchemaNotFound)?;
 
-    let (pasted_comp, mut pasted_node) =
+    let mut pasted_comp =
         Component::new(&ctx, original_comp.name(&ctx).await?, *schema_variant.id()).await?;
-    let x: f64 = original_node.x().parse()?;
-    let y: f64 = original_node.y().parse()?;
-    pasted_node
+    let x: f64 = original_comp.x().parse()?;
+    let y: f64 = original_comp.y().parse()?;
+    pasted_comp
         .set_geometry(
             &ctx,
             (x + offset_x).to_string(),
             (y + offset_y).to_string(),
-            original_node.width(),
-            original_node.height(),
+            original_comp.width(),
+            original_comp.height(),
         )
         .await?;
     ctx.commit().await?;
@@ -140,7 +134,7 @@ async fn paste_single_component(
 
     ctx.commit().await?;
 
-    Ok((pasted_comp, pasted_node))
+    Ok(pasted_comp)
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -149,7 +143,7 @@ pub struct PasteComponentsRequest {
     pub component_ids: Vec<ComponentId>,
     pub offset_x: f64,
     pub offset_y: f64,
-    pub new_parent_node_id: Option<NodeId>,
+    pub new_parent_component_id: Option<ComponentId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -227,7 +221,7 @@ async fn paste_components_inner(
         let (original_uri, posthog_client) =
             (original_uri.clone(), PosthogClient(posthog_client.clone()));
         tasks.spawn(async move {
-            let (pasted_comp, pasted_node) = paste_single_component(
+            let pasted_comp = paste_single_component(
                 ctx_builder,
                 request_ctx,
                 visibility,
@@ -239,14 +233,14 @@ async fn paste_components_inner(
             )
             .await?;
 
-            Ok::<_, DiagramError>((component_id, pasted_comp, pasted_node))
+            Ok::<_, DiagramError>((component_id, pasted_comp))
         });
     }
 
     while let Some(result) = tasks.join_next().await {
         match result {
-            Ok(Ok((component_id, pasted_comp, pasted_node))) => {
-                pasted_components_by_original.insert(component_id, (pasted_comp, pasted_node));
+            Ok(Ok((component_id, pasted_comp))) => {
+                pasted_components_by_original.insert(component_id, pasted_comp);
             }
             Ok(Err(err)) => return Err(err)?,
             // Task panicked, let's propagate it
@@ -266,11 +260,12 @@ async fn paste_components_inner(
     }
 
     for component_id in &request.component_ids {
-        let pasted_node = if let Some((_, node)) = pasted_components_by_original.get(component_id) {
-            node
-        } else {
-            return Err(DiagramError::PasteError);
-        };
+        let pasted_component =
+            if let Some(component) = pasted_components_by_original.get(component_id) {
+                component
+            } else {
+                return Err(DiagramError::PasteError);
+            };
 
         let edges = Edge::list_for_component(ctx, *component_id)
             .await?
@@ -280,7 +275,7 @@ async fn paste_components_inner(
 
         // Copy edges if peer is on set
         for edge in edges {
-            if let (Some((_, tail_node)), Some((_, head_node))) = (
+            if let (Some(tail_component), Some(head_component)) = (
                 pasted_components_by_original.get(&edge.tail_component_id()),
                 pasted_components_by_original.get(&edge.head_component_id()),
             ) {
@@ -290,9 +285,9 @@ async fn paste_components_inner(
 
                 Connection::new(
                     ctx,
-                    *tail_node.id(),
+                    *tail_component.id(),
                     edge.tail_socket_id(),
-                    *head_node.id(),
+                    *head_component.id(),
                     edge.head_socket_id(),
                     *edge.kind(),
                 )
@@ -300,12 +295,12 @@ async fn paste_components_inner(
             }
         }
 
-        if let Some(parent_node_id) = request.new_parent_node_id {
+        if let Some(parent_id) = request.new_parent_component_id {
             if !has_parent {
                 connect_component_sockets_to_frame(
                     ctx,
-                    parent_node_id,
-                    *pasted_node.id(),
+                    parent_id,
+                    *pasted_component.id(),
                     original_uri,
                     &posthog_client,
                 )

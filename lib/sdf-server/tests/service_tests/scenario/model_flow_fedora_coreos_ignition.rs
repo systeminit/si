@@ -37,21 +37,30 @@ async fn model_flow_fedora_coreos_ignition(
     harness.create_change_set_and_update_ctx(&mut ctx, "").await;
 
     // Create all components.
-    let region = harness.create_node(ctx.visibility(), "Region", None).await;
+    let region = harness
+        .create_component(ctx.visibility(), "Region", None)
+        .await;
     let ec2 = harness
-        .create_node(ctx.visibility(), "EC2 Instance", Some(region.node_id))
+        .create_component(ctx.visibility(), "EC2 Instance", Some(region.component_id))
         .await;
     let docker = harness
-        .create_node(ctx.visibility(), "Docker Image", None)
+        .create_component(ctx.visibility(), "Docker Image", None)
         .await;
-    let butane = harness.create_node(ctx.visibility(), "Butane", None).await;
+    let butane = harness
+        .create_component(ctx.visibility(), "Butane", None)
+        .await;
 
     // Make all connections.
     harness
-        .create_connection(&ctx, docker.node_id, butane.node_id, "Container Image")
+        .create_connection(
+            &ctx,
+            docker.component_id,
+            butane.component_id,
+            "Container Image",
+        )
         .await;
     harness
-        .create_connection(&ctx, butane.node_id, ec2.node_id, "User Data")
+        .create_connection(&ctx, butane.component_id, ec2.component_id, "User Data")
         .await;
 
     // Update all components, as needed.

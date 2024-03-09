@@ -91,7 +91,7 @@ async fn authoring_flow_asset(
     harness.add_schemas(&ctx, &[schema_name]).await;
 
     let my_asset = harness
-        .create_node(ctx.visibility(), schema_name, None)
+        .create_component(ctx.visibility(), schema_name, None)
         .await;
 
     // Update the name of the asset

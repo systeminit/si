@@ -58,7 +58,7 @@
           size="md"
           icon="trash-restore"
           :label="`Restore ${
-            selectedComponent.nodeType === ComponentType.Component
+            selectedComponent.componentType === ComponentType.Component
               ? 'Component'
               : 'Frame'
           }`"

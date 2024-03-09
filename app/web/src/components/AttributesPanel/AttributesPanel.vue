@@ -26,7 +26,7 @@
         @keyup.enter="updateSiProp('name')"
       />
       <div class="attributes-panel__type-dropdown">
-        <select v-model="siValues.type" @change="updateNodeType()">
+        <select v-model="siValues.type" @change="updateComponentType()">
           <option value="component">Component</option>
           <option value="configurationFrameUp">Configuration Frame (Up)</option>
           <option value="configurationFrameDown">
@@ -146,7 +146,8 @@ const siProps = computed(() => attributesStore.siTreeByPropName);
 const siValuesFromStore = computed(() => ({
   name: (siProps.value?.name?.value?.value as string) || component.displayName,
   color: (siProps.value?.color?.value?.value as string) || component.color,
-  type: (siProps.value?.type?.value?.value as string) || component?.nodeType,
+  type:
+    (siProps.value?.type?.value?.value as string) || component?.componentType,
 }));
 const siValues = reactive(_.cloneDeep(siValuesFromStore.value));
 
@@ -183,7 +184,7 @@ function updateSiProp(key: keyof typeof siValues) {
 
 // color picker
 const colorPickerMountRef = ref<HTMLElement>();
-function updateNodeType() {
+function updateComponentType() {
   attributesStore.SET_COMPONENT_TYPE({
     componentId: component.id,
     value: siValues.type,
