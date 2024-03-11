@@ -119,7 +119,7 @@ import {
 import { useRouter } from "vue-router";
 import clsx from "clsx";
 import * as _ from "lodash-es";
-import { ActionKind } from "@/store/fixes.store";
+import { ActionKind } from "@/store/actions.store";
 import SiCheckBox from "@/components/SiCheckBox.vue";
 import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";

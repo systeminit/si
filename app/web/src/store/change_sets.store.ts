@@ -93,17 +93,7 @@ export function useChangeSetsStore() {
                 ...rawChangeSet,
                 id: rawChangeSet.pk,
               }));
-              // add our "head" changeset...
-              // should simplify logic elsewhere to not treat head as special
-              this.changeSetsById = {
-                [HEAD_ID]: {
-                  id: HEAD_ID,
-                  pk: HEAD_ID,
-                  name: "head",
-                  status: ChangeSetStatus.Open,
-                },
-                ..._.keyBy(changeSets, "id"),
-              };
+              this.changeSetsById = _.keyBy(changeSets, "id");
             },
           });
         },
@@ -138,7 +128,7 @@ export function useChangeSetsStore() {
             method: "post",
             url: "change_set/apply_change_set",
             params: {
-              changeSetPk: this.selectedChangeSet.pk,
+              visibility_change_set_pk: this.selectedChangeSet.pk,
             },
             onSuccess: (response) => {
               this.changeSetsById[response.changeSet.pk] = response.changeSet;

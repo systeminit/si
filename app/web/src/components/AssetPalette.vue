@@ -63,17 +63,19 @@
             :classes="
               clsx(
                 'dark:text-white text-black dark:bg-neutral-800 py-[1px]',
-                fixesAreRunning
+                actionsAreRunning
                   ? 'hover:cursor-progress'
                   : 'hover:dark:outline-action-300 hover:outline-action-500 hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
-                !fixesAreRunning &&
+                !actionsAreRunning &&
                   componentsStore.selectedInsertSchemaId === schema.id
                   ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300 py-0'
                   : 'dark:hover:text-action-300 hover:text-action-500',
               )
             "
             :isSelected="componentsStore.selectedInsertSchemaId === schema.id"
-            @mousedown.left.stop="onSelect(schema.id, fixesAreRunning, $event)"
+            @mousedown.left.stop="
+              onSelect(schema.id, actionsAreRunning, $event)
+            "
             @click.right.prevent
           >
             <template #label>
@@ -126,7 +128,7 @@ import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import SiSearch from "@/components/SiSearch.vue";
 
-defineProps<{ fixesAreRunning: boolean }>();
+defineProps<{ actionsAreRunning: boolean }>();
 
 const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used
@@ -219,9 +221,9 @@ const updateMouseNode = (e: MouseEvent) => {
   }
 };
 
-function onSelect(schemaId: string, fixesAreRunning: boolean, e: MouseEvent) {
-  if (fixesAreRunning) {
-    // Prevent selection while fixes are running
+function onSelect(schemaId: string, actionsAreRunning: boolean, e: MouseEvent) {
+  if (actionsAreRunning) {
+    // Prevent selection while actions are running
     return;
   }
 

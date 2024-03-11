@@ -3,7 +3,6 @@ use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecE
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::action_prototype::ActionPrototypeError;
 use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::schema::variant::SchemaVariantError;
@@ -15,8 +14,8 @@ use crate::{
     socket::input::InputSocketError,
     socket::output::OutputSocketError,
     workspace_snapshot::WorkspaceSnapshotError,
-    ChangeSetPk, FuncBackendKind, FuncBackendResponseType, OutputSocketId, SchemaError,
-    SchemaVariantId,
+    ActionPrototypeError, ChangeSetPk, FuncBackendKind, FuncBackendResponseType, OutputSocketId,
+    SchemaError, SchemaVariantId,
 };
 use crate::{FuncId, PropId, PropKind};
 

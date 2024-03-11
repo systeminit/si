@@ -1,8 +1,7 @@
 use super::ChangeSetResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use crate::server::service::change_set::ChangeSetError;
 use axum::Json;
-use dal::{Action, ActionId, StandardModel, Visibility, WsEvent};
+use dal::{Action, ActionId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -20,12 +19,13 @@ pub async fn remove_action(
 ) -> ChangeSetResult<Json<()>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut action = Action::get_by_id(&ctx, &request.id)
-        .await?
-        .ok_or(ChangeSetError::ActionNotFound(request.id))?;
-    action.delete_by_id(&ctx).await?;
+    let action = Action::get_by_id(&ctx, request.id).await?;
+    let id = action.id;
+    let component_id = action.component(&ctx).await?.id();
 
-    WsEvent::action_removed(&ctx, *action.component_id(), *action.id())
+    action.delete(&ctx).await?;
+
+    WsEvent::action_removed(&ctx, component_id, id)
         .await?
         .publish_on_commit(&ctx)
         .await?;

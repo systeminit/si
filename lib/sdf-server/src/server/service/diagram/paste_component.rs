@@ -4,8 +4,9 @@ use chrono::Utc;
 use dal::edge::EdgeKind;
 use dal::{
     action_prototype::ActionPrototypeContextField, func::backend::js_action::ActionRunResult,
-    Action, ActionKind, ActionPrototype, ActionPrototypeContext, ChangeSet, Component, ComponentId,
-    Connection, DalContext, DalContextBuilder, Edge, StandardModel, Visibility, WsEvent,
+    Action, ActionKind, ActionPrototype, ActionPrototypeContext, ChangeSet, Component,
+    ComponentError, ComponentId, Connection, DalContext, DalContextBuilder, Edge, Node, NodeId,
+    StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -93,7 +94,7 @@ async fn paste_single_component(
     )
     .await?
     {
-        let action = Action::new(&ctx, *prototype.id(), *pasted_comp.id()).await?;
+        let action = Action::upsert(&ctx, *prototype.id(), *pasted_comp.id()).await?;
         let prototype = action.prototype(&ctx).await?;
 
         track(

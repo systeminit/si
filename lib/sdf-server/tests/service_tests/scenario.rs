@@ -56,7 +56,7 @@ use sdf_server::service::{
         create_connection::{CreateConnectionRequest, CreateConnectionResponse},
         create_node::{CreateNodeRequest, CreateNodeResponse},
     },
-    fix::list::{BatchHistoryView, ListFixesRequest, ListFixesResponse},
+    action::history::{BatchHistoryView, ListActionHistoryRequest, ListActionHistoryResponse},
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;

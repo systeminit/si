@@ -4,9 +4,13 @@ use serde::{Deserialize, Serialize};
 
 use dal::component::frame::Frame;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
-use dal::{generate_name, ChangeSet, Component, ComponentId, SchemaId, SchemaVariant, Visibility};
+use dal::{
+    generate_name, Action, ActionKind, ActionPrototype, ChangeSet, Component, ComponentId,
+    SchemaId, SchemaVariant, Visibility,
+};
 
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
+use crate::server::tracking::track;
 use crate::service::diagram::DiagramResult;
 
 use super::DiagramError;
@@ -31,8 +35,8 @@ pub struct CreateComponentResponse {
 pub async fn create_component(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(_posthog_client): PosthogClient,
-    OriginalUri(_original_uri): OriginalUri,
+    PosthogClient(posthog_client): PosthogClient,
+    OriginalUri(original_uri): OriginalUri,
     Json(request): Json<CreateComponentRequest>,
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
@@ -51,35 +55,27 @@ pub async fn create_component(
 
     let component = Component::new(&ctx, &name, variant.id()).await?;
 
-    // TODO(nick): restore the action prototype usage here.
-    // for prototype in ActionPrototype::find_for_context_and_kind(
-    //     &ctx,
-    //     ActionKind::Create,
-    //     ActionPrototypeContext::new_for_context_field(ActionPrototypeContextField::SchemaVariant(
-    //         *schema_variant_id,
-    //     )),
-    // )
-    // .await?
-    // {
-    //     let action = Action::new(&ctx, *prototype.id(), *component.id()).await?;
-    //     let prototype = action.prototype(&ctx).await?;
-    //     let component = action.component(&ctx).await?;
-    //
-    //     track(
-    //         &posthog_client,
-    //         &ctx,
-    //         &original_uri,
-    //         "create_action",
-    //         serde_json::json!({
-    //             "how": "/diagram/create_component",
-    //             "prototype_id": prototype.id(),
-    //             "prototype_kind": prototype.kind(),
-    //             "component_id": component.id(),
-    //             "component_name": component.name(&ctx).await?,
-    //             "change_set_pk": ctx.visibility().change_set_pk,
-    //         }),
-    //     );
-    // }
+    for prototype in ActionPrototype::for_variant(&ctx, variant.id()).await? {
+        if prototype.kind != ActionKind::Create {
+            continue;
+        }
+
+        let _action = Action::upsert(&ctx, prototype.id, component.id()).await?;
+        track(
+            &posthog_client,
+            &ctx,
+            &original_uri,
+            "create_action",
+            serde_json::json!({
+                "how": "/diagram/create_component",
+                "prototype_id": prototype.id,
+                "prototype_kind": prototype.kind,
+                "component_id": component.id(),
+                "component_name": component.name(&ctx).await?,
+                "change_set_pk": ctx.visibility().change_set_pk,
+            }),
+        );
+    }
 
     let component = component
         .set_geometry(

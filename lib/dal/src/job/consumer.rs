@@ -47,7 +47,7 @@ pub enum JobConsumerError {
     #[error(transparent)]
     JobProducer(#[from] JobProducerError),
     // #[error("missing fix execution batch for id: {0}")]
-    // MissingFixBatch(FixBatchId),
+    // MissingActionBatch(ActionBatchId),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error("nats is unavailable")]

@@ -12,8 +12,7 @@ use thiserror::Error;
 use tokio::time;
 use tokio::time::Instant;
 
-//pub mod action;
-pub mod action_prototype;
+pub mod action;
 pub mod actor_view;
 pub mod attribute;
 pub mod authentication_prototype;
@@ -56,7 +55,6 @@ pub mod ws_event;
 
 //pub mod code_view;
 // pub mod edge;
-// pub mod fix;
 // pub mod index_map;
 pub mod node_menu;
 // pub mod prop_tree;
@@ -68,7 +66,12 @@ pub mod secret;
 // pub mod status;
 //pub mod tasks;
 
-pub use action_prototype::{ActionKind, ActionPrototype, ActionPrototypeId};
+pub use action::batch::{ActionBatch, ActionBatchError, ActionBatchId};
+pub use action::prototype::{
+    ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, ActionPrototypeView,
+};
+pub use action::runner::{ActionCompletionStatus, ActionRunner, ActionRunnerError, ActionRunnerId};
+pub use action::{Action, ActionError, ActionId};
 pub use actor_view::ActorView;
 pub use attribute::{
     prototype::{AttributePrototype, AttributePrototypeId},
@@ -85,7 +88,7 @@ pub use context::{
 };
 pub use func::{
     backend::{FuncBackendKind, FuncBackendResponseType},
-    Func, FuncId,
+    Func, FuncError, FuncId,
 };
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use job::processor::{JobQueueProcessor, NatsProcessor};
@@ -95,7 +98,9 @@ pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
 pub use prop::{Prop, PropId, PropKind};
 pub use schema::variant::root_prop::component_type::ComponentType;
-pub use schema::{Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId};
+pub use schema::{
+    variant::SchemaVariantError, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId,
+};
 pub use secret::Secret;
 pub use secret::SecretError;
 pub use secret::SecretId;

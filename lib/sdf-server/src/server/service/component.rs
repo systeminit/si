@@ -8,8 +8,8 @@ use dal::attribute::value::AttributeValueError;
 use dal::component::ComponentId;
 use dal::property_editor::PropertyEditorError;
 use dal::validation::resolver::ValidationResolverError;
+use dal::{ActionPrototypeError, ComponentError as DalComponentError, StandardModelError};
 use dal::{ChangeSetError, TransactionsError};
-use dal::{ComponentError as DalComponentError, StandardModelError};
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -28,6 +28,7 @@ pub mod update_property_editor_value;
 // pub mod get_resource;
 pub mod insert_property_editor_value;
 // pub mod json;
+pub mod get_actions;
 pub mod list_qualifications;
 // pub mod list_resources;
 // pub mod refresh;
@@ -37,6 +38,8 @@ pub mod set_type;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ComponentError {
+    #[error("action prototype: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     // #[error("attribute context builder error: {0}")]
     // AttributeContextBuilder(#[from] AttributeContextBuilderError),
     // #[error("attribute prototype error: {0}")]
@@ -59,8 +62,6 @@ pub enum ComponentError {
     // ComponentDebugView(#[from] ComponentDebugViewError),
     // #[error("component name not found")]
     // ComponentNameNotFound,
-    #[error("component not found for id: {0}")]
-    ComponentNotFound(ComponentId),
     // #[error("component view error: {0}")]
     // ComponentView(#[from] ComponentViewError),
     #[error("dal component error: {0}")]
@@ -87,6 +88,8 @@ pub enum ComponentError {
     // Nats(#[from] si_data_nats::NatsError),
     // #[error("node error: {0}")]
     // Node(#[from] NodeError),
+    #[error("component not found for id: {0}")]
+    NotFound(ComponentId),
     // #[error(transparent)]
     // Pg(#[from] si_data_pg::PgError),
     // #[error(transparent)]
@@ -103,8 +106,8 @@ pub enum ComponentError {
     // Schema(#[from] SchemaError),
     #[error("schema not found")]
     SchemaNotFound,
-    // #[error("schema variant not found")]
-    // SchemaVariantNotFound,
+    #[error("schema variant not found")]
+    SchemaVariantNotFound,
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
@@ -139,6 +142,7 @@ impl IntoResponse for ComponentError {
 
 pub fn routes() -> Router<AppState> {
     Router::new()
+        .route("/get_actions", get(get_actions::get_actions))
         .route(
             "/get_property_editor_schema",
             get(get_property_editor_schema::get_property_editor_schema),

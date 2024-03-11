@@ -10,8 +10,15 @@ use crate::qualification::QualificationCheckPayload;
 use crate::secret::{SecretCreatedPayload, SecretUpdatedPayload};
 use crate::user::OnlinePayload;
 use crate::{
-    func::binding::LogLinePayload, pkg::ModuleImportedPayload, user::CursorPayload, ChangeSetPk,
-    DalContext, PropId, StandardModelError, TransactionsError, WorkspacePk,
+    action::prototype::ResourceRefreshedPayload,
+    action::{
+        batch::ActionBatchReturn, runner::ActionRunnerReturn, ActionAddedPayload,
+        ActionRemovedPayload,
+    },
+    func::binding::LogLinePayload,
+    pkg::ModuleImportedPayload,
+    user::CursorPayload,
+    ChangeSetPk, DalContext, PropId, StandardModelError, TransactionsError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -40,8 +47,10 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 #[serde(tag = "kind", content = "data")]
 #[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
-    //    ActionAdded(ActionAddedPayload),
-    //    ActionRemoved(ActionRemovedPayload),
+    ActionAdded(ActionAddedPayload),
+    ActionBatchReturn(ActionBatchReturn),
+    ActionRemoved(ActionRemovedPayload),
+    ActionRunnerReturn(ActionRunnerReturn),
     AsyncError(ErrorPayload),
     AsyncFinish(FinishPayload),
     ChangeSetAbandoned(ChangeSetActorPayload),
@@ -60,13 +69,11 @@ pub enum WsPayload {
     ComponentCreated(ComponentCreatedPayload),
     ComponentUpdated(ComponentUpdatedPayload),
     Cursor(CursorPayload),
-    // FixBatchReturn(FixBatchReturn),
-    // FixReturn(FixReturn),
     // ImportWorkspaceVote(ImportWorkspaceVotePayload),
     LogLine(LogLinePayload),
     ModuleImported(ModuleImportedPayload),
     Online(OnlinePayload),
-    // ResourceRefreshed(ResourceRefreshedPayload),
+    ResourceRefreshed(ResourceRefreshedPayload),
     // SchemaCreated(SchemaPk),
     // SchemaVariantDefinitionCloned(SchemaVariantDefinitionClonedPayload),
     // SchemaVariantDefinitionCreated(SchemaVariantDefinitionCreatedPayload),

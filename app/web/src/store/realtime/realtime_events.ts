@@ -7,7 +7,7 @@ import { ChangeSetId } from "@/store/change_sets.store";
 import { DetachedAttributePrototype } from "@/store/asset.store";
 import { ComponentId } from "../components.store";
 import { WorkspacePk } from "../workspaces.store";
-import { FixStatus } from "../fixes.store";
+import { ActionId, ActionStatus } from "../actions.store";
 import {
   AttributeValueId,
   AttributeValueKind,
@@ -16,7 +16,6 @@ import {
 } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";
-import { ActionId } from "../actions.store";
 import { SecretId } from "../secrets.store";
 
 export type WebsocketRequest = CursorRequest | OnlineRequest;
@@ -138,17 +137,17 @@ export type WsEventPayloadMap = {
   //   runnerState: WorkflowRunnerState;
   // };
 
-  FixReturn: {
+  ActionRunnerReturn: {
     id: string;
     batchId: string;
     attributeValueId: string;
     action: string;
     output: string[];
-    status: FixStatus;
+    status: ActionStatus;
   };
-  FixBatchReturn: {
+  ActionBatchReturn: {
     id: string;
-    status: FixStatus;
+    status: ActionStatus;
   };
   ComponentCreated: {
     success: boolean;

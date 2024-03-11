@@ -6,8 +6,9 @@ use axum::{
 };
 use dal::{
     change_set_pointer::{ChangeSetPointerError, ChangeSetPointerId},
-    ChangeSetError as DalChangeSetError, StandardModelError, TransactionsError, UserError, UserPk,
-    WorkspaceError, WorkspacePk, WsEventError,
+    ActionBatchError, ActionError, ActionPrototypeError, ActionRunnerError,
+    ChangeSetError as DalChangeSetError, ComponentError, FuncError, StandardModelError,
+    TransactionsError, UserError, UserPk, WorkspaceError, WorkspacePk, WsEventError,
 };
 use module_index_client::IndexClientError;
 use telemetry::prelude::*;
@@ -17,7 +18,7 @@ use crate::server::state::AppState;
 
 // pub mod abandon_change_set;
 // mod abandon_vote;
-// pub mod add_action;
+pub mod add_action;
 pub mod apply_change_set;
 // mod begin_abandon_approval_process;
 // mod begin_approval_process;
@@ -25,16 +26,22 @@ pub mod create_change_set;
 // pub mod get_change_set;
 // pub mod get_stats;
 pub mod list_open_change_sets;
-// pub mod list_queued_actions;
+pub mod list_queued_actions;
 // mod merge_vote;
-// pub mod remove_action;
+pub mod remove_action;
 // pub mod update_selected_change_set;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetError {
-    // #[error(transparent)]
-    // Action(#[from] ActionError),
+    #[error(transparent)]
+    Action(#[from] ActionError),
+    #[error(transparent)]
+    ActionBatch(#[from] ActionBatchError),
+    #[error(transparent)]
+    ActionPrototype(#[from] ActionPrototypeError),
+    #[error(transparent)]
+    ActionRunner(#[from] ActionRunnerError),
     // #[error("action {0} not found")]
     // ActionNotFound(ActionId),
     #[error(transparent)]
@@ -43,6 +50,8 @@ pub enum ChangeSetError {
     ChangeSetNotFound,
     #[error("change set error: {0}")]
     ChangeSetPointer(#[from] ChangeSetPointerError),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     // #[error(transparent)]
     // ChangeStatusError(#[from] ChangeStatusError),
     // #[error(transparent)]
@@ -53,6 +62,8 @@ pub enum ChangeSetError {
     DefaultChangeSetNotFound(ChangeSetPointerId),
     #[error("default change set {0} has no workspace snapshot pointer")]
     DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetPointerId),
+    #[error(transparent)]
+    Func(#[from] FuncError),
     // #[error(transparent)]
     // DalPkg(#[from] dal::pkg::PkgError),
     // #[error(transparent)]
@@ -110,12 +121,12 @@ pub fn routes() -> Router<AppState> {
             "/list_open_change_sets",
             get(list_open_change_sets::list_open_change_sets),
         )
-        // .route(
-        //     "/list_queued_actions",
-        //     get(list_queued_actions::list_queued_actions),
-        // )
-        // .route("/remove_action", post(remove_action::remove_action))
-        // .route("/add_action", post(add_action::add_action))
+        .route(
+            "/list_queued_actions",
+            get(list_queued_actions::list_queued_actions),
+        )
+        .route("/remove_action", post(remove_action::remove_action))
+        .route("/add_action", post(add_action::add_action))
         .route(
             "/create_change_set",
             post(create_change_set::create_change_set),

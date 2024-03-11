@@ -6,16 +6,16 @@
   >
     <template #label>
       <div class="flex flex-row items-center text-sm overflow-hidden w-full">
-        <StatusIndicatorIcon type="fix" :status="fix.status" />
+        <StatusIndicatorIcon type="runner" :status="runner.status" />
         <div class="flex flex-col pl-xs flex-shrink overflow-hidden flex-grow">
-          <div>{{ `${fix.displayName}` }}</div>
+          <div>{{ `${runner.displayName}` }}</div>
           <div
             ref="componentNameRef"
             v-tooltip="componentNameTooltip"
             :class="
               clsx(
                 'truncate cursor-pointer',
-                componentsStore.componentsById[fix.componentId]
+                componentsStore.componentsById[runner.componentId]
                   ? 'dark:text-action-300 text-action-500 hover:underline font-bold'
                   : 'text-neutral-500 dark:text-neutral-400 line-through',
                 isHover && 'underline',
@@ -25,32 +25,32 @@
             @mouseenter="onHoverStart"
             @mouseleave="onHoverEnd"
           >
-            {{ `${fix.componentName}` }}
+            {{ `${runner.componentName}` }}
           </div>
         </div>
       </div>
     </template>
     <template #icons>
       <div
-        v-if="fix.resource"
+        v-if="runner.resource"
         class="dark:text-action-300 text-action-500 flex-none cursor-pointer flex flex-row gap-xs"
       >
-        <FixDetails
-          v-if="fix.resource.logs"
-          :health="fix.resource.status"
+        <ActionRunnerDetails
+          v-if="runner.resource.logs"
+          :health="runner.resource.status"
           :message="
             [
-              `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
-              fix.resource.message ??
-                (fix.resource.status === 'ok'
+              `${formatTitle(runner.actionKind)} ${runner.schemaName}`,
+              runner.resource.message ??
+                (runner.resource.status === 'ok'
                   ? 'Completed successfully'
                   : 'Error'),
             ].filter((f) => f.length > 0)
           "
-          :details="fix.resource.logs"
+          :details="runner.resource.logs"
         />
         <IconButton
-          v-if="fix.resource?.data"
+          v-if="runner.resource?.data"
           tooltip="show code"
           rotate="down"
           icon="code-pop"
@@ -63,26 +63,26 @@
     </template>
     <template #staticContent>
       <div
-        v-if="codeViewerShowing && fix.resource?.data"
+        v-if="codeViewerShowing && runner.resource?.data"
         class="relative w-full"
       >
         <CodeViewer
-          :code="JSON.stringify(fix.resource.data, null, 2)"
+          :code="JSON.stringify(runner.resource.data, null, 2)"
           class="dark:text-neutral-50 text-neutral-900"
         >
           <template #title>
             <div class="font-bold">
-              {{ fix.resource.message ?? "Resource Code" }}
-              <FixDetails
-                v-if="fix.resource.logs && fix.resource.logs.length > 0"
-                :health="fix.resource.status"
+              {{ runner.resource.message ?? "Resource Code" }}
+              <ActionRunnerDetails
+                v-if="runner.resource.logs && runner.resource.logs.length > 0"
+                :health="runner.resource.status"
                 :message="
                   [
-                    `${formatTitle(fix.actionKind)} ${fix.schemaName}`,
-                    fix.resource.message ?? '',
+                    `${formatTitle(runner.actionKind)} ${runner.schemaName}`,
+                    runner.resource.message ?? '',
                   ].filter((f) => f.length > 0)
                 "
-                :details="fix.resource.logs"
+                :details="runner.resource.logs"
               />
             </div>
           </template>
@@ -97,12 +97,12 @@ import * as _ from "lodash-es";
 import clsx from "clsx";
 import { PropType, computed, ref } from "vue";
 import { TreeNode, useTheme } from "@si/vue-lib/design-system";
-import { Fix } from "@/store/fixes.store";
+import { ActionRunner } from "@/store/actions.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeViewer from "./CodeViewer.vue";
 import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
-import FixDetails from "./FixDetails.vue";
+import ActionRunnerDetails from "./ActionRunnerDetails.vue";
 import IconButton from "./IconButton.vue";
 
 const changeSetsStore = useChangeSetsStore();
@@ -111,7 +111,7 @@ const componentsStore = useComponentsStore();
 const { theme } = useTheme();
 
 const props = defineProps({
-  fix: { type: Object as PropType<Fix>, required: true },
+  runner: { type: Object as PropType<ActionRunner>, required: true },
   hideTopBorder: { type: Boolean },
 });
 
@@ -125,7 +125,7 @@ const formatTitle = (title: string) => {
 const componentNameRef = ref();
 const componentNameTooltip = computed(() => {
   if (componentNameRef.value) {
-    if (!componentsStore.componentsById[props.fix.componentId]) {
+    if (!componentsStore.componentsById[props.runner.componentId]) {
       return {
         content: `Component "${
           componentNameRef.value.textContent
@@ -147,10 +147,10 @@ const componentNameTooltip = computed(() => {
 });
 
 function onClick() {
-  if (componentsStore.componentsById[props.fix.componentId]) {
-    componentsStore.setSelectedComponentId(props.fix.componentId);
+  if (componentsStore.componentsById[props.runner.componentId]) {
+    componentsStore.setSelectedComponentId(props.runner.componentId);
     componentsStore.eventBus.emit("panToComponent", {
-      componentId: props.fix.componentId,
+      componentId: props.runner.componentId,
       center: true,
     });
     onHoverEnd();
@@ -158,17 +158,17 @@ function onClick() {
 }
 
 const isHover = computed(
-  () => componentsStore.hoveredComponentId === props.fix.componentId,
+  () => componentsStore.hoveredComponentId === props.runner.componentId,
 );
 
 function onHoverStart() {
-  if (componentsStore.componentsById[props.fix.componentId]) {
-    componentsStore.setHoveredComponentId(props.fix.componentId);
+  if (componentsStore.componentsById[props.runner.componentId]) {
+    componentsStore.setHoveredComponentId(props.runner.componentId);
   }
 }
 
 function onHoverEnd() {
-  if (componentsStore.componentsById[props.fix.componentId]) {
+  if (componentsStore.componentsById[props.runner.componentId]) {
     componentsStore.setHoveredComponentId(null);
   }
 }

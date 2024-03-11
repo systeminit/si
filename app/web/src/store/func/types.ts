@@ -1,6 +1,6 @@
 import { PropKind } from "@/api/sdf/dal/prop";
 import { FuncArgument } from "@/api/sdf/dal/func";
-import { ActionKind } from "@/store/fixes.store";
+import { ActionKind } from "@/store/actions.store";
 
 export interface ActionAssociations {
   type: "action";

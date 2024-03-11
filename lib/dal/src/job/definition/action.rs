@@ -7,7 +7,7 @@ use telemetry::prelude::*;
 use veritech_client::ResourceStatus;
 
 use crate::{
-    fix::FixError,
+    fix::ActionRunnerError,
     func::backend::js_action::ActionRunResult,
     job::{
         consumer::{
@@ -16,29 +16,29 @@ use crate::{
         producer::{JobProducer, JobProducerResult},
     },
     AccessBuilder, ActionKind, ActionPrototype, ActionPrototypeId, Component, ComponentId,
-    DalContext, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, StandardModel,
+    DalContext, ActionRunner, ActionBatch, ActionBatchId, ActionCompletionStatus, ActionRunnerId, ActionResolver, StandardModel,
     Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FixItem {
-    pub id: FixId,
+pub struct ActionRunnerItem {
+    pub id: ActionRunnerId,
     pub action_prototype_id: ActionPrototypeId,
     pub component_id: ComponentId,
-    pub parents: Vec<FixId>,
+    pub parents: Vec<ActionRunnerId>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct FixesJobArgs {
-    fixes: HashMap<FixId, FixItem>,
-    batch_id: FixBatchId,
+struct ActionsJobArgs {
+    actions: HashMap<ActionRunnerId, ActionRunnerItem>,
+    batch_id: ActionBatchId,
     started: bool,
 }
 
-impl From<FixesJob> for FixesJobArgs {
-    fn from(value: FixesJob) -> Self {
+impl From<ActionsJob> for actionsJobArgs {
+    fn from(value: ActionsJob) -> Self {
         Self {
-            fixes: value.fixes,
+            actions: value.actions,
             batch_id: value.batch_id,
             started: value.started,
         }
@@ -46,35 +46,35 @@ impl From<FixesJob> for FixesJobArgs {
 }
 
 #[derive(Clone, Debug, Serialize)]
-pub struct FixesJob {
-    fixes: HashMap<FixId, FixItem>,
+pub struct ActionsJob {
+    actions: HashMap<ActionRunnerId, ActionRunnerItem>,
     started: bool,
-    batch_id: FixBatchId,
+    batch_id: ActionBatchId,
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
 }
 
-impl FixesJob {
+impl ActionsJob {
     pub fn new(
         ctx: &DalContext,
-        fixes: HashMap<FixId, FixItem>,
-        batch_id: FixBatchId,
+        actions: HashMap<ActionRunnerId, ActionRunnerItem>,
+        batch_id: ActionBatchId,
     ) -> Box<Self> {
-        Self::new_raw(ctx, fixes, batch_id, false)
+        Self::new_raw(ctx, actions, batch_id, false)
     }
 
     fn new_raw(
         ctx: &DalContext,
-        fixes: HashMap<FixId, FixItem>,
-        batch_id: FixBatchId,
+        actions: HashMap<ActionRunnerId, ActionRunnerItem>,
+        batch_id: ActionBatchId,
         started: bool,
     ) -> Box<Self> {
         let access_builder = AccessBuilder::from(ctx.clone());
         let visibility = *ctx.visibility();
 
         Box::new(Self {
-            fixes,
+            actions,
             started,
             batch_id,
             access_builder,
@@ -84,15 +84,15 @@ impl FixesJob {
     }
 }
 
-impl JobProducer for FixesJob {
+impl JobProducer for ActionsJob {
     fn arg(&self) -> JobProducerResult<serde_json::Value> {
-        Ok(serde_json::to_value(FixesJobArgs::from(self.clone()))?)
+        Ok(serde_json::to_value(ActionsJobArgs::from(self.clone()))?)
     }
 }
 
-impl JobConsumerMetadata for FixesJob {
+impl JobConsumerMetadata for ActionsJob {
     fn type_name(&self) -> String {
-        "FixesJob".to_string()
+        "ActionsJob".to_string()
     }
 
     fn access_builder(&self) -> AccessBuilder {
@@ -105,29 +105,29 @@ impl JobConsumerMetadata for FixesJob {
 }
 
 #[async_trait]
-impl JobConsumer for FixesJob {
+impl JobConsumer for ActionsJob {
     #[instrument(
-        name = "fixes_job.run",
+        name = "actions_job.run",
         skip_all,
         level = "info",
         fields(
             batch_id=?self.batch_id,
-            fixes=?self.fixes,
+            actions=?self.actions,
             job=?self.job,
         )
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<()> {
-        let mut fixes = self.fixes.clone();
+        let mut actions = self.actions.clone();
 
         // Mark the batch as started if it has not been yet.
         if !self.started {
-            let mut batch = FixBatch::get_by_id(ctx, &self.batch_id)
+            let mut batch = ActionBatch::get_by_id(ctx, &self.batch_id)
                 .await?
-                .ok_or(JobConsumerError::MissingFixBatch(self.batch_id))?;
+                .ok_or(JobConsumerError::MissingActionBatch(self.batch_id))?;
             batch.stamp_started(ctx).await?;
         }
 
-        if fixes.is_empty() {
+        if actions.is_empty() {
             return finish_batch(ctx, self.batch_id).await;
         }
 
@@ -139,31 +139,31 @@ impl JobConsumer for FixesJob {
             total_fix_batch_loops += 1;
 
             let mut fix_items = Vec::new();
-            for item in fixes.values() {
+            for item in actions.values() {
                 if item.parents.is_empty() {
                     fix_items.push(item.clone());
                 }
             }
-            let should_blocking_commit = fixes.len() != fix_items.len();
+            let should_blocking_commit = actions.len() != fix_items.len();
 
             debug!(
-                ?fixes,
+                ?actions,
                 ?total_fix_batch_loops,
-                "Scheduled fixes for this loop"
+                "Scheduled actions for this loop"
             );
 
             if total_fix_batch_loops >= total_fix_limit {
                 error!(
-                    "Fix batch exceeded total fix limit loops ({total_fix_limit})! {:?}",
+                    "ActionRunner batch exceeded total fix limit loops ({total_fix_limit})! {:?}",
                     self
                 );
                 for fix in fix_items.iter() {
                     process_failed_fix(
                         ctx,
-                        &mut fixes,
+                        &mut actions,
                         self.batch_id,
                         fix.id,
-                        "Failed this action - too many fixes in the batch! We tried, honest."
+                        "Failed this action - too many actions in the batch! We tried, honest."
                             .to_string(),
                         Vec::new(),
                     )
@@ -203,13 +203,13 @@ impl JobConsumer for FixesJob {
                     Ok(job_consumer_result) => match job_consumer_result {
                         Ok((fix, logs)) => {
                             debug!(?fix, ?logs, "fix job completed");
-                            let completion_status: FixCompletionStatus =
+                            let completion_status: ActionCompletionStatus =
                                 *fix.completion_status()
-                                    .ok_or(FixError::EmptyCompletionStatus)?;
-                            if !matches!(completion_status, FixCompletionStatus::Success) {
+                                    .ok_or(ActionRunnerError::EmptyCompletionStatus)?;
+                            if !matches!(completion_status, ActionCompletionStatus::Success) {
                                 process_failed_fix(
                                     ctx,
-                                    &mut fixes,
+                                    &mut actions,
                                     self.batch_id,
                                     id,
                                     fix.completion_message()
@@ -225,9 +225,9 @@ impl JobConsumer for FixesJob {
                                 continue;
                             }
 
-                            fixes.remove(&id);
+                            actions.remove(&id);
 
-                            for fix in fixes.values_mut() {
+                            for fix in actions.values_mut() {
                                 fix.parents.retain(|parent_id| *parent_id != id);
                             }
                         }
@@ -235,7 +235,7 @@ impl JobConsumer for FixesJob {
                             error!("Unable to finish fix {id}: {err}");
                             process_failed_fix(
                                 ctx,
-                                &mut fixes,
+                                &mut actions,
                                 self.batch_id,
                                 id,
                                 format!("Action failed: {err}"),
@@ -248,7 +248,7 @@ impl JobConsumer for FixesJob {
                         error!(?err, "Failed a fix due to an error");
                         process_failed_fix(
                             ctx,
-                            &mut fixes,
+                            &mut actions,
                             self.batch_id,
                             id,
                             format!("Action failed: {err}"),
@@ -262,7 +262,7 @@ impl JobConsumer for FixesJob {
                             }
                             Err(err) => {
                                 if err.is_cancelled() {
-                                    warn!("Fix Task {id} was cancelled: {err}");
+                                    warn!("ActionRunner Task {id} was cancelled: {err}");
                                 } else {
                                     error!("Unknown failure in fix task {id}: {err}");
                                 }
@@ -274,7 +274,7 @@ impl JobConsumer for FixesJob {
 
             ctx.commit().await?;
 
-            if fixes.is_empty() {
+            if actions.is_empty() {
                 finish_batch(ctx, self.batch_id).await?;
                 break;
             }
@@ -286,14 +286,14 @@ impl JobConsumer for FixesJob {
     }
 }
 
-impl TryFrom<JobInfo> for FixesJob {
+impl TryFrom<JobInfo> for ActionsJob {
     type Error = JobConsumerError;
 
     fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
-        let args = FixesJobArgs::deserialize(&job.arg)?;
+        let args = ActionsJobArgs::deserialize(&job.arg)?;
 
         Ok(Self {
-            fixes: args.fixes,
+            actions: args.actions,
             batch_id: args.batch_id,
             started: args.started,
             access_builder: job.access_builder,
@@ -303,11 +303,11 @@ impl TryFrom<JobInfo> for FixesJob {
     }
 }
 
-async fn finish_batch(ctx: &DalContext, id: FixBatchId) -> JobConsumerResult<()> {
+async fn finish_batch(ctx: &DalContext, id: ActionBatchId) -> JobConsumerResult<()> {
     // Mark the batch as completed.
-    let mut batch = FixBatch::get_by_id(ctx, &id)
+    let mut batch = ActionBatch::get_by_id(ctx, &id)
         .await?
-        .ok_or(JobConsumerError::MissingFixBatch(id))?;
+        .ok_or(JobConsumerError::MissingActionBatch(id))?;
     let batch_completion_status = batch.stamp_finished(ctx).await?;
     WsEvent::fix_batch_return(ctx, *batch.id(), batch_completion_status)
         .await?
@@ -317,7 +317,7 @@ async fn finish_batch(ctx: &DalContext, id: FixBatchId) -> JobConsumerResult<()>
 }
 
 #[instrument(
-    name = "fixes_job.fix_task",
+    name = "actions_job.action_task",
     parent = &parent_span,
     skip_all,
     level = "info",
@@ -326,13 +326,13 @@ async fn finish_batch(ctx: &DalContext, id: FixBatchId) -> JobConsumerResult<()>
         ?fix_item,
     )
 )]
-async fn fix_task(
+async fn action_task(
     ctx: DalContext,
-    batch_id: FixBatchId,
-    fix_item: FixItem,
+    batch_id: ActionBatchId,
+    fix_item: ActionRunnerItem,
     parent_span: Span,
     should_blocking_commit: bool,
-) -> JobConsumerResult<(Fix, Vec<String>)> {
+) -> JobConsumerResult<(ActionRunner, Vec<String>)> {
     let deleted_ctx = &ctx.clone_with_delete_visibility();
     // Get the workflow for the action we need to run.
     let component = Component::get_by_id(deleted_ctx, &fix_item.component_id)
@@ -347,21 +347,23 @@ async fn fix_task(
         .ok_or_else(|| JobConsumerError::ActionPrototypeNotFound(fix_item.action_prototype_id))?;
 
     // Run the fix (via the action prototype).
-    let mut fix = Fix::get_by_id(&ctx, &fix_item.id)
+    let mut fix = ActionRunner::get_by_id(&ctx, &fix_item.id)
         .await?
-        .ok_or(FixError::MissingFix(fix_item.id))?;
+        .ok_or(ActionRunnerError::MissingActionRunner(fix_item.id))?;
     let resource = fix.run(&ctx, &action).await?;
-    let completion_status: FixCompletionStatus = *fix
+    let completion_status: ActionCompletionStatus = *fix
         .completion_status()
-        .ok_or(FixError::EmptyCompletionStatus)?;
+        .ok_or(ActionRunnerError::EmptyCompletionStatus)?;
 
-    FixResolver::upsert(
+    /*
+    ActionResolver::new(
         &ctx,
         *action.id(),
-        Some(matches!(completion_status, FixCompletionStatus::Success)),
+        Some(matches!(completion_status, ActionCompletionStatus::Success)),
         *fix.id(),
     )
     .await?;
+    */
 
     let logs: Vec<_> = match resource {
         Some(r) => r
@@ -386,7 +388,7 @@ async fn fix_task(
     .await?;
 
     // Commit progress so far, and wait for dependent values propagation so we can run
-    // consecutive fixes that depend on the /root/resource from the previous fix.
+    // consecutive actions that depend on the /root/resource from the previous fix.
     // `blocking_commit()` will wait for any jobs that have ben created through
     // `enqueue_job(...)` to finish before moving on.
     if should_blocking_commit {
@@ -398,7 +400,7 @@ async fn fix_task(
         ctx.commit().await?;
     }
 
-    if matches!(completion_status, FixCompletionStatus::Success) {
+    if matches!(completion_status, ActionCompletionStatus::Success) {
         if let Err(err) = component.act(&ctx, ActionKind::Refresh).await {
             error!("Unable to refresh component: {err}");
         }
@@ -410,39 +412,39 @@ async fn fix_task(
     Ok((fix, logs))
 }
 
-#[instrument(name = "fixes_job.process_failed_fix", skip_all, level = "info")]
+#[instrument(name = "actions_job.process_failed_fix", skip_all, level = "info")]
 async fn process_failed_fix(
     ctx: &DalContext,
-    fixes: &mut HashMap<FixId, FixItem>,
-    batch_id: FixBatchId,
-    failed_fix_id: FixId,
+    actions: &mut HashMap<ActionRunnerId, ActionRunnerItem>,
+    batch_id: ActionBatchId,
+    failed_fix_id: ActionRunnerId,
     error_message: String,
     logs: Vec<String>,
 ) {
     if let Err(e) =
-        process_failed_fix_inner(ctx, fixes, batch_id, failed_fix_id, error_message, logs).await
+        process_failed_fix_inner(ctx, actions, batch_id, failed_fix_id, error_message, logs).await
     {
         error!("{e}");
     }
 }
 
-#[instrument(name = "fixes_job.process_failed_fix_inner", skip_all, level = "info")]
+#[instrument(name = "actions_job.process_failed_fix_inner", skip_all, level = "info")]
 async fn process_failed_fix_inner(
     ctx: &DalContext,
-    fixes: &mut HashMap<FixId, FixItem>,
-    batch_id: FixBatchId,
-    failed_fix_id: FixId,
+    actions: &mut HashMap<ActionRunnerId, ActionRunnerItem>,
+    batch_id: ActionBatchId,
+    failed_fix_id: ActionRunnerId,
     error_message: String,
     logs: Vec<String>,
 ) -> JobConsumerResult<()> {
-    let mut failed_fixes = VecDeque::new();
-    failed_fixes.push_back((failed_fix_id, error_message, logs));
+    let mut failed_actions = VecDeque::new();
+    failed_actions.push_back((failed_fix_id, error_message, logs));
 
-    while let Some((id, err, logs)) = failed_fixes.pop_front() {
+    while let Some((id, err, logs)) = failed_actions.pop_front() {
         info!(%id, "processing failed action/fix");
-        fixes.remove(&id);
+        actions.remove(&id);
 
-        if let Some(mut fix) = Fix::get_by_id(ctx, &id).await? {
+        if let Some(mut fix) = ActionRunner::get_by_id(ctx, &id).await? {
             // If this was a delete, we need to un-delete ourselves.
             if matches!(fix.action_kind(), ActionKind::Delete) {
                 Component::restore_and_propagate(ctx, *fix.component_id()).await?;
@@ -463,7 +465,7 @@ async fn process_failed_fix_inner(
 
                 fix.stamp_finished(
                     ctx,
-                    FixCompletionStatus::Error,
+                    ActionCompletionStatus::Error,
                     Some(err.clone()),
                     Some(resource),
                 )
@@ -476,14 +478,14 @@ async fn process_failed_fix_inner(
                     JobConsumerError::ActionPrototypeNotFound(*fix.action_prototype_id())
                 })?;
 
-            FixResolver::upsert(ctx, *action.id(), Some(false), *fix.id()).await?;
+            // ActionResolver::upsert(ctx, *action.id(), Some(false), *fix.id()).await?;
 
             WsEvent::fix_return(
                 ctx,
                 *fix.id(),
                 batch_id,
                 *action.kind(),
-                FixCompletionStatus::Error,
+                ActionCompletionStatus::Error,
                 logs,
             )
             .await?
@@ -493,10 +495,10 @@ async fn process_failed_fix_inner(
             warn!(%id, "fix not found by id");
         }
 
-        for fix in fixes.values() {
+        for fix in actions.values() {
             if fix.parents.contains(&id) {
                 info!(%id, "pushing back action/fix that depends on another action/fix");
-                failed_fixes.push_back((
+                failed_actions.push_back((
                     fix.id,
                     format!("Action depends on another action that failed: {err}"),
                     Vec::new(),

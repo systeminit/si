@@ -916,6 +916,7 @@ impl WorkspaceSnapshotGraph {
             &|_, edgeref| {
                 let discrim: EdgeWeightKindDiscriminants = edgeref.weight().kind().into();
                 let color = match discrim {
+                    EdgeWeightKindDiscriminants::Action => "black",
                     EdgeWeightKindDiscriminants::ActionPrototype => "black",
                     EdgeWeightKindDiscriminants::AuthenticationPrototype => "black",
                     EdgeWeightKindDiscriminants::Contain => "blue",
@@ -951,6 +952,9 @@ impl WorkspaceSnapshotGraph {
                     NodeWeight::Content(weight) => {
                         let discrim = ContentAddressDiscriminants::from(weight.content_address());
                         let color = match discrim {
+                            ContentAddressDiscriminants::Action => "green",
+                            ContentAddressDiscriminants::ActionBatch => "green",
+                            ContentAddressDiscriminants::ActionRunner => "green",
                             ContentAddressDiscriminants::ActionPrototype => "green",
                             ContentAddressDiscriminants::AttributePrototype => "green",
                             ContentAddressDiscriminants::Component => "black",
@@ -986,6 +990,9 @@ impl WorkspaceSnapshotGraph {
                     {
                         CategoryNodeKind::Component => {
                             ("Components (Category)".to_string(), "black")
+                        }
+                        CategoryNodeKind::ActionBatch => {
+                            ("Action Batches (Category)".to_string(), "black")
                         }
                         CategoryNodeKind::Func => ("Funcs (Category)".to_string(), "black"),
                         CategoryNodeKind::Schema => ("Schemas (Category)".to_string(), "black"),
@@ -1349,8 +1356,8 @@ impl WorkspaceSnapshotGraph {
             unique_edges
         };
 
-        debug!("only to rebase edges: {:?}", &only_to_rebase_edges);
-        debug!("only onto edges: {:?}", &only_onto_edges);
+        info!("only to rebase edges: {:?}", &only_to_rebase_edges);
+        info!("only onto edges: {:?}", &only_onto_edges);
 
         let root_seen_as_of_onto = self
             .get_node_weight(self.root_index)?
@@ -1943,6 +1950,7 @@ impl WorkspaceSnapshotGraph {
                     // Nothing to do, as these EdgeWeightKind do not encode extra information
                     // in the edge itself.
                     EdgeWeightKind::AuthenticationPrototype
+                    | EdgeWeightKind::Action
                     | EdgeWeightKind::Contain(None)
                     | EdgeWeightKind::FrameContains
                     | EdgeWeightKind::PrototypeArgument

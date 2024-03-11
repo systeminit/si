@@ -80,10 +80,9 @@ pub async fn create_change_set_and_update_ctx(
         )
         .await
         .expect("could not update pointer");
-    ctx.update_visibility_v2(&change_set);
-    ctx.update_snapshot_to_visibility()
+    ctx.update_visibility_v2(&change_set)
         .await
-        .expect("could not update snapshot to visibility");
+        .expect("could not update visibility and snapshot");
 }
 
 // /// Get the "si:identity" [`Func`] and execute (if necessary).

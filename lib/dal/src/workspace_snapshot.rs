@@ -154,10 +154,17 @@ impl WorkspaceSnapshot {
         let component_node_index =
             graph.add_category_node(change_set, CategoryNodeKind::Component)?;
         let func_node_index = graph.add_category_node(change_set, CategoryNodeKind::Func)?;
+        let action_batch_node_index =
+            graph.add_category_node(change_set, CategoryNodeKind::ActionBatch)?;
         let schema_node_index = graph.add_category_node(change_set, CategoryNodeKind::Schema)?;
         let secret_node_index = graph.add_category_node(change_set, CategoryNodeKind::Secret)?;
 
         // Connect them to root.
+        graph.add_edge(
+            graph.root(),
+            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+            action_batch_node_index,
+        )?;
         graph.add_edge(
             graph.root(),
             EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
@@ -420,7 +427,6 @@ impl WorkspaceSnapshot {
         Self::try_from(row)
     }
 
-    #[instrument(skip_all)]
     pub async fn find_for_change_set(
         ctx: &DalContext,
         change_set_pointer_id: ChangeSetPointerId,
@@ -471,6 +477,25 @@ impl WorkspaceSnapshot {
         direction: Direction,
     ) -> WorkspaceSnapshotResult<Edges<'_, EdgeWeight, Directed, u32>> {
         Ok(self.working_copy.edges_directed(node_index, direction))
+    }
+
+    pub fn remove_all_edges(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<()> {
+        let id = id.into();
+        let mut edges = Vec::new();
+        for edge in self.edges_directed(id, Direction::Incoming)? {
+            edges.push((edge.source(), edge.target(), edge.weight().kind().clone()));
+        }
+        for edge in self.edges_directed(id, Direction::Outgoing)? {
+            edges.push((edge.source(), edge.target(), edge.weight().kind().clone()));
+        }
+        for (source, target, kind) in edges {
+            self.remove_edge(change_set, source, target, kind.into())?;
+        }
+        Ok(())
     }
 
     pub fn incoming_sources_for_edge_weight_kind(
@@ -578,9 +603,14 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
-    pub fn remove_node_by_id(&mut self, id: impl Into<Ulid>) -> WorkspaceSnapshotResult<()> {
+    pub fn remove_node_by_id(
+        &mut self,
+        change_set: &ChangeSetPointer,
+        id: impl Into<Ulid>,
+    ) -> WorkspaceSnapshotResult<()> {
         let id: Ulid = id.into();
         let node_idx = self.get_node_index_by_id(id)?;
+        self.remove_all_edges(change_set, id)?;
         self.working_copy.remove_node(node_idx);
         self.working_copy.remove_node_id(id);
 

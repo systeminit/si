@@ -60,8 +60,8 @@
           <span class="text-xl">No actions history</span>
         </div>
         <ul v-else class="flex flex-col">
-          <li v-for="(fixBatch, index) in filteredBatches" :key="index">
-            <ApplyHistoryItem :fixBatch="fixBatch" :collapse="false" />
+          <li v-for="(actionBatch, index) in filteredBatches" :key="index">
+            <ApplyHistoryItem :actionBatch="actionBatch" :collapse="false" />
           </li>
         </ul>
       </TabGroupItem>
@@ -82,8 +82,6 @@ import {
 
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 
-import { useFixesStore } from "@/store/fixes.store";
-
 import ApplyHistoryItem from "@/components/ApplyHistoryItem.vue";
 import { useActionsStore } from "@/store/actions.store";
 import EmptyStateIcon from "@/components/EmptyStateIcon.vue";
@@ -94,20 +92,23 @@ const props = defineProps({
   componentId: { type: String as PropType<ComponentId>, required: true },
 });
 
-const fixesStore = useFixesStore();
 const actionsStore = useActionsStore();
 const componentsStore = useComponentsStore();
 const changeSetsStore = useChangeSetsStore();
 
-const fixBatches = computed(() => _.reverse([...fixesStore.fixBatches]));
+const actionBatches = computed(() =>
+  _.reverse([...actionsStore.actionBatches]),
+);
 
 const filteredBatches = computed(() =>
-  fixBatches.value
+  actionBatches.value
     .map((batch) => ({
       ...batch,
-      fixes: batch.fixes.filter((fix) => fix.componentId === props.componentId),
+      actions: batch.actions.filter(
+        (action) => action.componentId === props.componentId,
+      ),
     }))
-    .filter((batch) => batch.fixes.length),
+    .filter((batch) => batch.actions.length),
 );
 
 const tabsRef = ref<InstanceType<typeof TabGroup>>();

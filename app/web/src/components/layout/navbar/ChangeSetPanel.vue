@@ -29,7 +29,7 @@
         icon="git-branch-plus"
         size="sm"
         :disabled="
-          fixesStore.fixesAreInProgress &&
+          actionsStore.actionsAreInProgress &&
           featureFlagStore.DONT_BLOCK_ON_ACTIONS
         "
         @click="openCreateModal"
@@ -44,7 +44,7 @@
         icon="trash"
         size="sm"
         :disabled="
-          (fixesStore.fixesAreInProgress &&
+          (actionsStore.actionsAreInProgress &&
             featureFlagStore.DONT_BLOCK_ON_ACTIONS) ||
           !selectedChangeSetName ||
           changeSetsStore.headSelected
@@ -331,7 +331,7 @@ import {
 import { storeToRefs } from "pinia";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useFixesStore } from "@/store/fixes.store";
+import { useActionsStore } from "@/store/actions.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { usePresenceStore } from "@/store/presence.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
@@ -353,7 +353,7 @@ const authStore = useAuthStore();
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
 const featureFlagStore = useFeatureFlagsStore();
-const fixesStore = useFixesStore();
+const actionsStore = useActionsStore();
 const openChangeSets = computed(() => changeSetsStore.openChangeSets);
 const selectedChangeSetId = computed(() => changeSetsStore.selectedChangeSetId);
 const selectedChangeSetName = computed(

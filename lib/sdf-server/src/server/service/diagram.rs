@@ -8,7 +8,10 @@ use dal::node_menu::NodeMenuError;
 use dal::socket::input::InputSocketError;
 use dal::workspace_snapshot::WorkspaceSnapshotError;
 use dal::WsEventError;
-use dal::{ChangeSetError, SchemaVariantId, StandardModelError, TransactionsError};
+use dal::{
+    ActionError, ActionPrototypeError, ChangeSetError, SchemaVariantId, StandardModelError,
+    TransactionsError,
+};
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -33,6 +36,10 @@ pub mod set_component_position;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum DiagramError {
+    #[error("action: {0}")]
+    Action(#[from] ActionError),
+    #[error("action: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("changeset error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("change set not found")]

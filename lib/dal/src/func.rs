@@ -352,28 +352,9 @@ impl Func {
     }
 
     pub async fn remove(ctx: &DalContext, id: FuncId) -> FuncResult<()> {
-        // to remove a func we must remove all incoming edges to it. It will then be
-        // garbage collected out of the graph
-
         let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-
-        let arg_node_idx = workspace_snapshot.get_node_index_by_id(id)?;
-
-        let users = workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKind::Use.into())?;
-
         let change_set = ctx.change_set_pointer()?;
-        for user in users {
-            workspace_snapshot.remove_edge(
-                change_set,
-                user,
-                arg_node_idx,
-                EdgeWeightKind::Use.into(),
-            )?;
-        }
-
-        // Removes the actual node from the graph
-        workspace_snapshot.remove_node_by_id(id)?;
+        workspace_snapshot.remove_node_by_id(change_set, id)?;
 
         Ok(())
     }

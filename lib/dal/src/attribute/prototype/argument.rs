@@ -499,8 +499,8 @@ impl AttributePrototypeArgument {
         apa_id: AttributePrototypeArgumentId,
     ) -> AttributePrototypeArgumentResult<()> {
         let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-
-        workspace_snapshot.remove_node_by_id(apa_id)?;
+        let change_set = ctx.change_set_pointer()?;
+        workspace_snapshot.remove_node_by_id(change_set, apa_id)?;
 
         Ok(())
     }

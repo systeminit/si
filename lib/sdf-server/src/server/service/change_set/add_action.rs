@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::{Json, OriginalUri};
 use axum::response::IntoResponse;
-use dal::{Action, ActionPrototypeId, ChangeSet, ComponentId, StandardModel, Visibility, WsEvent};
+use dal::{Action, ActionPrototypeId, ChangeSet, ComponentId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -24,23 +24,9 @@ pub async fn add_action(
 ) -> ChangeSetResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let mut force_changeset_pk = None;
-    if ctx.visibility().is_head() {
-        let change_set = ChangeSet::new(&ctx, ChangeSet::generate_name(), None).await?;
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
-        let new_visibility = Visibility::new(change_set.pk, request.visibility.deleted_at);
-
-        ctx.update_visibility(new_visibility);
-
-        force_changeset_pk = Some(change_set.pk);
-
-        WsEvent::change_set_created(&ctx, change_set.pk)
-            .await?
-            .publish_on_commit(&ctx)
-            .await?;
-    };
-
-    let action = Action::new(&ctx, request.prototype_id, request.component_id).await?;
+    let action = Action::upsert(&ctx, request.prototype_id, request.component_id).await?;
     let prototype = action.prototype(&ctx).await?;
     let component = action.component(&ctx).await?;
 
@@ -51,15 +37,15 @@ pub async fn add_action(
         "create_action",
         serde_json::json!({
             "how": "/change_set/add_action",
-            "prototype_id": prototype.id(),
-            "prototype_kind": prototype.kind(),
+            "prototype_id": prototype.id,
+            "prototype_kind": prototype.kind,
             "component_name": component.name(&ctx).await?,
             "component_id": component.id(),
             "change_set_pk": ctx.visibility().change_set_pk,
         }),
     );
 
-    WsEvent::action_added(&ctx, *component.id(), *action.id())
+    WsEvent::action_added(&ctx, component.id(), action.id)
         .await?
         .publish_on_commit(&ctx)
         .await?;

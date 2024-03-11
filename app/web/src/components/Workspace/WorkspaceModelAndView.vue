@@ -11,14 +11,14 @@
     <template #subpanel1>
       <ComponentOutline
         class=""
-        :fixesAreRunning="fixesAreRunning"
+        :actionsAreRunning="actionsAreRunning"
         @right-click-item="onOutlineRightClick"
       />
     </template>
     <template #subpanel2>
       <AssetPalette
         class="border-t dark:border-neutral-600"
-        :fixesAreRunning="fixesAreRunning"
+        :actionsAreRunning="actionsAreRunning"
       />
     </template>
   </component>
@@ -39,7 +39,7 @@
     >
       <ReadOnlyBanner show-refresh-all-button />
     </div-->
-    <FixProgressOverlay />
+    <ActionProgressOverlay />
     <ModelingDiagram
       ref="diagramRef"
       @right-click-element="onRightClickElement"
@@ -81,10 +81,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { ResizablePanel } from "@si/vue-lib/design-system";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import { useComponentsStore, FullComponent } from "@/store/components.store";
-import { useFixesStore } from "@/store/fixes.store";
+import { useActionsStore } from "@/store/actions.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import FixProgressOverlay from "@/components/FixProgressOverlay.vue";
 import { usePresenceStore } from "@/store/presence.store";
+import ActionProgressOverlay from "@/components/ActionProgressOverlay.vue";
 import { useSecretsStore } from "@/store/secrets.store";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
@@ -99,13 +99,13 @@ import RestoreSelectionModal from "../ModelingView/RestoreSelectionModal.vue";
 
 const changeSetStore = useChangeSetsStore();
 const componentsStore = useComponentsStore();
-const fixesStore = useFixesStore();
+const actionsStore = useActionsStore();
 const presenceStore = usePresenceStore();
 const _secretsStore = useSecretsStore(); // adding this so we fetch once
 
-const fixesAreRunning = computed(
+const actionsAreRunning = computed(
   () =>
-    fixesStore.fixesAreInProgress ||
+    actionsStore.actionsAreInProgress ||
     changeSetStore.getRequestStatus("APPLY_CHANGE_SET").value.isPending,
 );
 

@@ -6,30 +6,31 @@ use axum::{
 };
 use thiserror::Error;
 
-use dal::fix::FixError as DalFixError;
 use dal::schema::SchemaError as DalSchemaError;
 use dal::{
-    ComponentError, ComponentId, FixResolverError, FuncBindingReturnValueError, StandardModelError,
-    TransactionsError, UserError, UserPk,
+    func::binding_return_value::FuncBindingReturnValueError, ActionBatchError, ActionRunnerError,
+    ComponentError, ComponentId, StandardModelError, TransactionsError, UserError, UserPk,
 };
 
 use crate::server::state::AppState;
 
-pub mod list;
+pub mod history;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
-pub enum FixError {
+pub enum ActionError {
+    #[error(transparent)]
+    ActionBatch(#[from] ActionBatchError),
+    #[error(transparent)]
+    ActionRunner(#[from] ActionRunnerError),
     #[error(transparent)]
     Component(#[from] ComponentError),
     #[error("component {0} not found")]
     ComponentNotFound(ComponentId),
-    #[error(transparent)]
-    DalFix(#[from] DalFixError),
+    // #[error(transparent)]
+    // DalFix(#[from] DalFixError),
     #[error(transparent)]
     DalSchema(#[from] DalSchemaError),
-    #[error(transparent)]
-    FixResolver(#[from] FixResolverError),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("invalid user {0}")]
@@ -48,9 +49,9 @@ pub enum FixError {
     User(#[from] UserError),
 }
 
-pub type FixResult<T> = std::result::Result<T, FixError>;
+pub type ActionResult<T> = std::result::Result<T, ActionError>;
 
-impl IntoResponse for FixError {
+impl IntoResponse for ActionError {
     fn into_response(self) -> Response {
         let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
 
@@ -63,5 +64,5 @@ impl IntoResponse for FixError {
 }
 
 pub fn routes() -> Router<AppState> {
-    Router::new().route("/list", get(list::list))
+    Router::new().route("/history", get(history::history))
 }

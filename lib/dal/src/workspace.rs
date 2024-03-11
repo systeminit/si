@@ -207,8 +207,7 @@ impl Workspace {
 
         // TODO(nick,zack,jacob): convert visibility (or get rid of it?) to use our the new change set id.
         // should set_change_set_pointer and set_workspace_snapshot happen in update_visibility?
-        ctx.update_visibility_v2(&change_set);
-        ctx.update_snapshot_to_visibility().await?;
+        ctx.update_visibility_v2(&change_set).await?;
 
         let _history_event = HistoryEvent::new(
             ctx,

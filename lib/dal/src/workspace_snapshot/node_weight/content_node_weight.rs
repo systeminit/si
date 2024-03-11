@@ -120,6 +120,9 @@ impl ContentNodeWeight {
 
     pub fn new_content_hash(&mut self, content_hash: ContentHash) -> NodeWeightResult<()> {
         let new_address = match &self.content_address {
+            ContentAddress::Action(_) => ContentAddress::Action(content_hash),
+            ContentAddress::ActionBatch(_) => ContentAddress::ActionBatch(content_hash),
+            ContentAddress::ActionRunner(_) => ContentAddress::ActionRunner(content_hash),
             ContentAddress::ActionPrototype(_) => ContentAddress::ActionPrototype(content_hash),
             ContentAddress::AttributePrototype(_) => {
                 ContentAddress::AttributePrototype(content_hash)
