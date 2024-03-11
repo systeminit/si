@@ -159,6 +159,8 @@ pub enum AttributeValueError {
     PropMoreThanOneChild(PropId),
     #[error("prop not found for attribute value: {0}")]
     PropNotFound(AttributeValueId),
+    #[error("trying to delete av that's not related to child of map or array: {0}")]
+    RemovingWhenNotChildOrMapOrArray(AttributeValueId),
     #[error("serde_json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("store error: {0}")]
@@ -1943,5 +1945,38 @@ impl AttributeValue {
             Some(pk) => Some(FuncExecution::get_by_pk(ctx, &pk).await?),
             None => None,
         })
+    }
+
+    pub async fn remove_by_id(ctx: &DalContext, id: AttributeValueId) -> AttributeValueResult<()> {
+        let parent_av_id =
+            if let Some(parent_av_id) = AttributeValue::parent_attribute_value_id(ctx, id).await? {
+                let prop_id = AttributeValue::prop(ctx, parent_av_id).await?;
+
+                let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
+
+                if !vec![PropKind::Map, PropKind::Array].contains(&parent_prop.kind) {
+                    return Err(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id));
+                }
+
+                parent_av_id
+            } else {
+                return Err(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id));
+            };
+
+        let av = Self::get_by_id(ctx, id).await?;
+
+        ctx.workspace_snapshot()?
+            .write()
+            .await
+            .remove_node_by_id(ctx.change_set_pointer()?, av.id)?;
+
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            vec![parent_av_id],
+        ))
+        .await?;
+
+        Ok(())
     }
 }
