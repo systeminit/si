@@ -1,14 +1,16 @@
 use crate::schemas::schema_helpers::{
-    build_action_func, build_asset_func, build_resource_payload_to_value_func, create_identity_func,
+    build_action_func, build_asset_func, build_codegen_func, build_resource_payload_to_value_func,
+    create_identity_func,
 };
 use dal::pkg::import_pkg_from_pkg;
 use dal::{pkg, prop::PropPath, ActionKind, ComponentType};
 use dal::{BuiltinsResult, DalContext, PropKind};
-use si_pkg::SchemaSpecData;
 use si_pkg::{
-    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, PkgSpec, PropSpec, SchemaSpec,
-    SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
+    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, LeafInputLocation, LeafKind, PkgSpec,
+    PropSpec, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec,
+    SocketSpecData, SocketSpecKind,
 };
+use si_pkg::{LeafFunctionSpec, SchemaSpecData};
 
 pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut swifty_builder = PkgSpec::builder();
@@ -42,6 +44,16 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
 
     // Author Resource Payload Func
     let resource_payload_to_value_func = build_resource_payload_to_value_func().await?;
+
+    // Build CodeGen Func
+    let codegen_fn_name = "test:generateCode";
+    let codegen_func_code = "async function main(input: Input): Promise < Output > {
+                return {
+                    format: \"json\",
+                    code: JSON.stringify(input.domain || {}, null, 2),
+                };
+            }";
+    let code_gen_func = build_codegen_func(codegen_func_code, codegen_fn_name).await?;
 
     let swifty_schema = SchemaSpec::builder()
         .name("swifty")
@@ -104,6 +116,13 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
                         .func_unique_id(&refresh_action_func.unique_id)
                         .build()?,
                 )
+                .leaf_function(
+                    LeafFunctionSpec::builder()
+                        .func_unique_id(codegen_fn_name)
+                        .leaf_kind(LeafKind::CodeGeneration)
+                        .inputs(vec![LeafInputLocation::Domain])
+                        .build()?,
+                )
                 .build()?,
         )
         .build()?;
@@ -114,6 +133,7 @@ pub async fn migrate_test_exclusive_schema_swifty(ctx: &DalContext) -> BuiltinsR
         .func(create_action_func)
         .func(swifty_authoring_schema_func)
         .func(resource_payload_to_value_func)
+        .func(code_gen_func)
         .schema(swifty_schema)
         .build()?;
 

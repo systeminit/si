@@ -53,7 +53,7 @@ pub mod ws_event;
 // pub mod node;
 // pub mod socket;
 
-//pub mod code_view;
+pub mod code_view;
 // pub mod edge;
 // pub mod index_map;
 pub mod node_menu;
