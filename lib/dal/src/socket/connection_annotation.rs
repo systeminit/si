@@ -59,9 +59,22 @@ impl ConnectionAnnotation {
         let annotation_src = &target_ca.tokens;
         let annotation_dest = &reference_ca.tokens;
 
-        annotation_src.len() >= annotation_dest.len()
-            && &(annotation_src.as_slice()[annotation_src.len() - annotation_dest.len()..].to_vec())
-                == annotation_dest
+        if annotation_dest.len() > annotation_src.len() {
+            return false;
+        }
+
+        let annotation_dest_last_index = annotation_dest.len() - 1;
+        let annotation_src_last_index = annotation_src.len() - 1;
+
+        for i in 0..annotation_dest.len() {
+            if annotation_dest[annotation_dest_last_index - i].to_lowercase()
+                != annotation_src[annotation_src_last_index - i].to_lowercase()
+            {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
@@ -115,6 +128,7 @@ fn connection_annotation_fits() {
         ("user_arn<arn<string>>", "user_arn<arn<string>>", true),
         ("arn<string>", "string", true),
         ("string", "arn<string>", false),
+        ("User Data", "user data", true), // fix edge connections being different cases
     ];
 
     for (raw_target, raw_reference, result) in cases_and_results {

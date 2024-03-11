@@ -30,7 +30,9 @@ export function connectionAnnotationFitsReference(
   { tokens: referenceCa }: ConnectionAnnotation,
 ) {
   // a fitting target annotation is either the same as the reference one or a supertype thereof
+  const lowerTargetCa = _.map(targetCa, (a) => a.toLowerCase());
+  const lowerReferenceCa = _.map(referenceCa, (a) => a.toLowerCase());
 
-  return targetCa.length >= referenceCa.length
-    && _.isEqual(targetCa.slice(-referenceCa.length), referenceCa);
+  return lowerTargetCa.length >= lowerReferenceCa.length
+    && _.isEqual(lowerTargetCa.slice(-lowerReferenceCa.length), lowerReferenceCa);
 }
