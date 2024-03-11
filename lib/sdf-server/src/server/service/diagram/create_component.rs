@@ -48,25 +48,24 @@ pub async fn create_component(
     let component = Component::new(&ctx, &name, variant.id()).await?;
 
     for prototype in ActionPrototype::for_variant(&ctx, variant.id()).await? {
-        if prototype.kind != ActionKind::Create {
-            continue;
+        if prototype.kind == ActionKind::Create {
+            let _action = Action::upsert(&ctx, prototype.id, component.id()).await?;
+            track(
+                &posthog_client,
+                &ctx,
+                &original_uri,
+                "create_action",
+                serde_json::json!({
+                    "how": "/diagram/create_component",
+                    "prototype_id": prototype.id,
+                    "prototype_kind": prototype.kind,
+                    "component_id": component.id(),
+                    "component_name": component.name(&ctx).await?,
+                    "change_set_pk": ctx.visibility().change_set_pk,
+                }),
+            );
+            break;
         }
-
-        let _action = Action::upsert(&ctx, prototype.id, component.id()).await?;
-        track(
-            &posthog_client,
-            &ctx,
-            &original_uri,
-            "create_action",
-            serde_json::json!({
-                "how": "/diagram/create_component",
-                "prototype_id": prototype.id,
-                "prototype_kind": prototype.kind,
-                "component_id": component.id(),
-                "component_name": component.name(&ctx).await?,
-                "change_set_pk": ctx.visibility().change_set_pk,
-            }),
-        );
     }
 
     let component = component

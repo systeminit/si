@@ -37,7 +37,5 @@ import EmptyStateIcon from "./EmptyStateIcon.vue";
 
 const actionsStore = useActionsStore();
 
-const actionBatches = computed(() =>
-  _.reverse([...actionsStore.actionBatches]),
-);
+const actionBatches = computed(() => actionsStore.actionBatches);
 </script>

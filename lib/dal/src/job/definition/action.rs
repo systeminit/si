@@ -7,7 +7,7 @@ use telemetry::prelude::*;
 use veritech_client::ResourceStatus;
 
 use crate::{
-    fix::ActionRunnerError,
+    action::runner::ActionRunnerError,
     func::backend::js_action::ActionRunResult,
     job::{
         consumer::{
@@ -15,8 +15,8 @@ use crate::{
         },
         producer::{JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionKind, ActionPrototype, ActionPrototypeId, Component, ComponentId,
-    DalContext, ActionRunner, ActionBatch, ActionBatchId, ActionCompletionStatus, ActionRunnerId, ActionResolver, StandardModel,
+    AccessBuilder, ActionBatch, ActionBatchId, ActionCompletionStatus, ActionKind, ActionPrototype,
+    ActionPrototypeId, ActionRunner, ActionRunnerId, Component, ComponentId, DalContext,
     Visibility, WsEvent,
 };
 
@@ -35,7 +35,7 @@ struct ActionsJobArgs {
     started: bool,
 }
 
-impl From<ActionsJob> for actionsJobArgs {
+impl From<ActionsJob> for ActionsJobArgs {
     fn from(value: ActionsJob) -> Self {
         Self {
             actions: value.actions,
@@ -121,9 +121,7 @@ impl JobConsumer for ActionsJob {
 
         // Mark the batch as started if it has not been yet.
         if !self.started {
-            let mut batch = ActionBatch::get_by_id(ctx, &self.batch_id)
-                .await?
-                .ok_or(JobConsumerError::MissingActionBatch(self.batch_id))?;
+            let mut batch = ActionBatch::get_by_id(ctx, self.batch_id).await?;
             batch.stamp_started(ctx).await?;
         }
 
@@ -132,37 +130,37 @@ impl JobConsumer for ActionsJob {
         }
 
         // Please, let this maybe go away. If you do more than 1000 in a single apply, that's bad.
-        let total_fix_limit = 100;
-        let mut total_fix_batch_loops = 0;
+        let total_action_limit = 100;
+        let mut total_action_batch_loops = 0;
 
         loop {
-            total_fix_batch_loops += 1;
+            total_action_batch_loops += 1;
 
-            let mut fix_items = Vec::new();
+            let mut action_items = Vec::new();
             for item in actions.values() {
                 if item.parents.is_empty() {
-                    fix_items.push(item.clone());
+                    action_items.push(item.clone());
                 }
             }
-            let should_blocking_commit = actions.len() != fix_items.len();
+            let should_blocking_commit = actions.len() != action_items.len();
 
             debug!(
                 ?actions,
-                ?total_fix_batch_loops,
+                ?total_action_batch_loops,
                 "Scheduled actions for this loop"
             );
 
-            if total_fix_batch_loops >= total_fix_limit {
+            if total_action_batch_loops >= total_action_limit {
                 error!(
-                    "ActionRunner batch exceeded total fix limit loops ({total_fix_limit})! {:?}",
+                    "ActionRunner batch exceeded total action limit loops ({total_action_limit})! {:?}",
                     self
                 );
-                for fix in fix_items.iter() {
-                    process_failed_fix(
+                for action in action_items.iter() {
+                    process_failed_action(
                         ctx,
                         &mut actions,
                         self.batch_id,
-                        fix.id,
+                        action.id,
                         "Failed this action - too many actions in the batch! We tried, honest."
                             .to_string(),
                         Vec::new(),
@@ -178,18 +176,19 @@ impl JobConsumer for ActionsJob {
             // So we don't keep an open transaction while the tasks run, each task has its own transaction
             // Block just in case
             ctx.blocking_commit().await?;
+            ctx.update_snapshot_to_visibility().await?;
 
-            for fix_item in fix_items {
+            for action_item in action_items {
                 let task_ctx = ctx
                     .to_builder()
                     .build(self.access_builder().build(self.visibility()))
                     .await?;
                 handles.push(async move {
-                    let id = fix_item.id;
-                    let res = tokio::task::spawn(fix_task(
+                    let id = action_item.id;
+                    let res = tokio::task::spawn(action_task(
                         task_ctx,
                         self.batch_id,
-                        fix_item,
+                        action_item,
                         Span::current(),
                         should_blocking_commit,
                     ))
@@ -201,18 +200,19 @@ impl JobConsumer for ActionsJob {
             while let Some((id, future_result)) = handles.next().await {
                 match future_result {
                     Ok(job_consumer_result) => match job_consumer_result {
-                        Ok((fix, logs)) => {
-                            debug!(?fix, ?logs, "fix job completed");
-                            let completion_status: ActionCompletionStatus =
-                                *fix.completion_status()
-                                    .ok_or(ActionRunnerError::EmptyCompletionStatus)?;
+                        Ok((action, logs)) => {
+                            debug!(?action, ?logs, "action job completed");
+                            let completion_status: ActionCompletionStatus = action
+                                .completion_status
+                                .ok_or(ActionRunnerError::EmptyCompletionStatus)?;
                             if !matches!(completion_status, ActionCompletionStatus::Success) {
-                                process_failed_fix(
+                                process_failed_action(
                                     ctx,
                                     &mut actions,
                                     self.batch_id,
                                     id,
-                                    fix.completion_message()
+                                    action.completion_message
+                                        .as_ref()
                                         .map(ToOwned::to_owned)
                                         .unwrap_or_else(|| {
                                             format!(
@@ -227,13 +227,13 @@ impl JobConsumer for ActionsJob {
 
                             actions.remove(&id);
 
-                            for fix in actions.values_mut() {
-                                fix.parents.retain(|parent_id| *parent_id != id);
+                            for action in actions.values_mut() {
+                                action.parents.retain(|parent_id| *parent_id != id);
                             }
                         }
                         Err(err) => {
-                            error!("Unable to finish fix {id}: {err}");
-                            process_failed_fix(
+                            error!("Unable to finish action {id}: {err}");
+                            process_failed_action(
                                 ctx,
                                 &mut actions,
                                 self.batch_id,
@@ -245,8 +245,8 @@ impl JobConsumer for ActionsJob {
                         }
                     },
                     Err(err) => {
-                        error!(?err, "Failed a fix due to an error");
-                        process_failed_fix(
+                        error!(?err, "Failed a action due to an error");
+                        process_failed_action(
                             ctx,
                             &mut actions,
                             self.batch_id,
@@ -264,7 +264,7 @@ impl JobConsumer for ActionsJob {
                                 if err.is_cancelled() {
                                     warn!("ActionRunner Task {id} was cancelled: {err}");
                                 } else {
-                                    error!("Unknown failure in fix task {id}: {err}");
+                                    error!("Unknown failure in action task {id}: {err}");
                                 }
                             }
                         }
@@ -273,6 +273,7 @@ impl JobConsumer for ActionsJob {
             }
 
             ctx.commit().await?;
+            ctx.update_snapshot_to_visibility().await?;
 
             if actions.is_empty() {
                 finish_batch(ctx, self.batch_id).await?;
@@ -281,6 +282,7 @@ impl JobConsumer for ActionsJob {
         }
 
         ctx.commit().await?;
+        ctx.update_snapshot_to_visibility().await?;
 
         Ok(())
     }
@@ -303,16 +305,16 @@ impl TryFrom<JobInfo> for ActionsJob {
     }
 }
 
-async fn finish_batch(ctx: &DalContext, id: ActionBatchId) -> JobConsumerResult<()> {
+async fn finish_batch(ctx: &mut DalContext, id: ActionBatchId) -> JobConsumerResult<()> {
     // Mark the batch as completed.
-    let mut batch = ActionBatch::get_by_id(ctx, &id)
-        .await?
-        .ok_or(JobConsumerError::MissingActionBatch(id))?;
+    let mut batch = ActionBatch::get_by_id(ctx, id).await?;
     let batch_completion_status = batch.stamp_finished(ctx).await?;
-    WsEvent::fix_batch_return(ctx, *batch.id(), batch_completion_status)
+    WsEvent::action_batch_return(ctx, batch.id, batch_completion_status)
         .await?
         .publish_on_commit(ctx)
         .await?;
+    ctx.commit().await?;
+    ctx.update_snapshot_to_visibility().await?;
     Ok(())
 }
 
@@ -323,47 +325,28 @@ async fn finish_batch(ctx: &DalContext, id: ActionBatchId) -> JobConsumerResult<
     level = "info",
     fields(
         ?batch_id,
-        ?fix_item,
+        ?action_item,
     )
 )]
 async fn action_task(
-    ctx: DalContext,
+    mut ctx: DalContext,
     batch_id: ActionBatchId,
-    fix_item: ActionRunnerItem,
+    action_item: ActionRunnerItem,
     parent_span: Span,
     should_blocking_commit: bool,
 ) -> JobConsumerResult<(ActionRunner, Vec<String>)> {
-    let deleted_ctx = &ctx.clone_with_delete_visibility();
     // Get the workflow for the action we need to run.
-    let component = Component::get_by_id(deleted_ctx, &fix_item.component_id)
-        .await?
-        .ok_or(JobConsumerError::ComponentNotFound(fix_item.component_id))?;
+    let component = Component::get_by_id(&ctx, action_item.component_id).await?;
     if component.is_destroyed() {
-        return Err(JobConsumerError::ComponentIsDestroyed(*component.id()));
+        return Err(JobConsumerError::ComponentIsDestroyed(component.id()));
     }
 
-    let action = ActionPrototype::get_by_id(&ctx, &fix_item.action_prototype_id)
-        .await?
-        .ok_or_else(|| JobConsumerError::ActionPrototypeNotFound(fix_item.action_prototype_id))?;
-
-    // Run the fix (via the action prototype).
-    let mut fix = ActionRunner::get_by_id(&ctx, &fix_item.id)
-        .await?
-        .ok_or(ActionRunnerError::MissingActionRunner(fix_item.id))?;
-    let resource = fix.run(&ctx, &action).await?;
-    let completion_status: ActionCompletionStatus = *fix
-        .completion_status()
+    // Run the action (via the action prototype).
+    let mut action = ActionRunner::get_by_id(&ctx, action_item.id).await?;
+    let resource = action.run(&ctx).await?;
+    let completion_status: ActionCompletionStatus = action
+        .completion_status
         .ok_or(ActionRunnerError::EmptyCompletionStatus)?;
-
-    /*
-    ActionResolver::new(
-        &ctx,
-        *action.id(),
-        Some(matches!(completion_status, ActionCompletionStatus::Success)),
-        *fix.id(),
-    )
-    .await?;
-    */
 
     let logs: Vec<_> = match resource {
         Some(r) => r
@@ -375,11 +358,11 @@ async fn action_task(
         None => vec![],
     };
 
-    WsEvent::fix_return(
+    WsEvent::action_return(
         &ctx,
-        *fix.id(),
+        action.id,
         batch_id,
-        *action.kind(),
+        action.action_kind,
         completion_status,
         logs.clone(),
     )
@@ -388,16 +371,18 @@ async fn action_task(
     .await?;
 
     // Commit progress so far, and wait for dependent values propagation so we can run
-    // consecutive actions that depend on the /root/resource from the previous fix.
+    // consecutive actions that depend on the /root/resource from the previous action.
     // `blocking_commit()` will wait for any jobs that have ben created through
     // `enqueue_job(...)` to finish before moving on.
     if should_blocking_commit {
         ctx.blocking_commit().await?;
+        ctx.update_snapshot_to_visibility().await?;
     } else {
         if ctx.blocking() {
-            info!("Blocked on commit that should not block of fix definition");
+            warn!("Blocked on commit that should not block of action definition");
         }
         ctx.commit().await?;
+        ctx.update_snapshot_to_visibility().await?;
     }
 
     if matches!(completion_status, ActionCompletionStatus::Success) {
@@ -409,105 +394,108 @@ async fn action_task(
         }
     }
 
-    Ok((fix, logs))
+    Ok((action, logs))
 }
 
-#[instrument(name = "actions_job.process_failed_fix", skip_all, level = "info")]
-async fn process_failed_fix(
+#[instrument(name = "actions_job.process_failed_action", skip_all, level = "info")]
+async fn process_failed_action(
     ctx: &DalContext,
     actions: &mut HashMap<ActionRunnerId, ActionRunnerItem>,
     batch_id: ActionBatchId,
-    failed_fix_id: ActionRunnerId,
+    failed_action_id: ActionRunnerId,
     error_message: String,
     logs: Vec<String>,
 ) {
-    if let Err(e) =
-        process_failed_fix_inner(ctx, actions, batch_id, failed_fix_id, error_message, logs).await
+    if let Err(e) = process_failed_action_inner(
+        ctx,
+        actions,
+        batch_id,
+        failed_action_id,
+        error_message,
+        logs,
+    )
+    .await
     {
         error!("{e}");
     }
 }
 
-#[instrument(name = "actions_job.process_failed_fix_inner", skip_all, level = "info")]
-async fn process_failed_fix_inner(
+#[instrument(
+    name = "actions_job.process_failed_action_inner",
+    skip_all,
+    level = "info"
+)]
+async fn process_failed_action_inner(
     ctx: &DalContext,
     actions: &mut HashMap<ActionRunnerId, ActionRunnerItem>,
     batch_id: ActionBatchId,
-    failed_fix_id: ActionRunnerId,
+    failed_action_id: ActionRunnerId,
     error_message: String,
     logs: Vec<String>,
 ) -> JobConsumerResult<()> {
     let mut failed_actions = VecDeque::new();
-    failed_actions.push_back((failed_fix_id, error_message, logs));
+    failed_actions.push_back((failed_action_id, error_message, logs));
 
     while let Some((id, err, logs)) = failed_actions.pop_front() {
-        info!(%id, "processing failed action/fix");
+        info!(%id, "processing failed action");
         actions.remove(&id);
 
-        if let Some(mut fix) = ActionRunner::get_by_id(ctx, &id).await? {
-            // If this was a delete, we need to un-delete ourselves.
-            if matches!(fix.action_kind(), ActionKind::Delete) {
-                Component::restore_and_propagate(ctx, *fix.component_id()).await?;
-            }
+        let mut action = ActionRunner::get_by_id(ctx, id).await?;
+        // If this was a delete, we need to un-delete ourselves.
+        if matches!(action.action_kind, ActionKind::Delete) {
+            // Component::restore_and_propagate(ctx, action.component_id).await?;
+        }
 
-            if fix.started_at().is_none() {
-                fix.stamp_started(ctx).await?;
-            }
+        if action.started_at.is_none() {
+            action.stamp_started(ctx).await?;
+        }
 
-            if fix.finished_at().is_none() {
-                let resource = ActionRunResult {
-                    status: Some(ResourceStatus::Error),
-                    payload: fix.resource().cloned(),
-                    message: Some(err.clone()),
-                    logs: logs.clone(),
-                    last_synced: None,
-                };
+        if action.finished_at.is_none() {
+            let resource = ActionRunResult {
+                status: Some(ResourceStatus::Error),
+                payload: action.resource.clone().and_then(|r| r.payload),
+                message: Some(err.clone()),
+                logs: logs.clone(),
+                last_synced: None,
+            };
 
-                fix.stamp_finished(
+            action
+                .stamp_finished(
                     ctx,
                     ActionCompletionStatus::Error,
                     Some(err.clone()),
                     Some(resource),
                 )
                 .await?;
-            }
-
-            let action = ActionPrototype::get_by_id(ctx, fix.action_prototype_id())
-                .await?
-                .ok_or_else(|| {
-                    JobConsumerError::ActionPrototypeNotFound(*fix.action_prototype_id())
-                })?;
-
-            // ActionResolver::upsert(ctx, *action.id(), Some(false), *fix.id()).await?;
-
-            WsEvent::fix_return(
-                ctx,
-                *fix.id(),
-                batch_id,
-                *action.kind(),
-                ActionCompletionStatus::Error,
-                logs,
-            )
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
-        } else {
-            warn!(%id, "fix not found by id");
         }
 
-        for fix in actions.values() {
-            if fix.parents.contains(&id) {
-                info!(%id, "pushing back action/fix that depends on another action/fix");
+        let prototype = ActionPrototype::get_by_id(ctx, action.action_prototype_id).await?;
+
+        WsEvent::action_return(
+            ctx,
+            action.id,
+            batch_id,
+            prototype.kind,
+            ActionCompletionStatus::Error,
+            logs,
+        )
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
+
+        for action in actions.values() {
+            if action.parents.contains(&id) {
+                info!(%id, "pushing back action that depends on another action");
                 failed_actions.push_back((
-                    fix.id,
+                    action.id,
                     format!("Action depends on another action that failed: {err}"),
                     Vec::new(),
                 ));
             }
         }
-
-        ctx.commit().await?;
     }
+
+    ctx.commit().await?;
 
     Ok(())
 }

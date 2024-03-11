@@ -55,7 +55,6 @@ use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
-use crate::job::definition::DependentValuesUpdate;
 use crate::prop::PropError;
 use crate::socket::input::InputSocketError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
@@ -394,12 +393,8 @@ impl AttributeValue {
         Self::populate_nested_values(ctx, attribute_value_id, value).await?;
 
         if spawn_dependent_values_update {
-            ctx.enqueue_job(DependentValuesUpdate::new(
-                ctx.access_builder(),
-                *ctx.visibility(),
-                vec![attribute_value_id],
-            ))
-            .await?;
+            ctx.enqueue_dependent_values_update(vec![attribute_value_id])
+                .await?;
         }
 
         Ok(())
@@ -2034,12 +2029,8 @@ impl AttributeValue {
             .remove_node_by_id(ctx.change_set_pointer()?, av.id)
             .await?;
 
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            vec![parent_av_id],
-        ))
-        .await?;
+        ctx.enqueue_dependent_values_update(vec![parent_av_id])
+            .await?;
 
         Ok(())
     }

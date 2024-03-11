@@ -6,8 +6,10 @@ use axum::extract::OriginalUri;
 use axum::Json;
 use dal::change_set_pointer::ChangeSetPointer;
 use dal::{
-    action::ActionBag, Action, ActionBatch, ActionError, ActionId, ActionPrototypeId, ActionRunner,
-    ActionRunnerId, Component, ComponentId, HistoryActor, User, Visibility,
+    action::ActionBag,
+    job::definition::{ActionRunnerItem, ActionsJob},
+    Action, ActionBatch, ActionError, ActionId, ActionRunner, ActionRunnerId, Component,
+    HistoryActor, User, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -23,14 +25,6 @@ pub struct ApplyChangeSetRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ApplyChangeSetResponse {
     pub change_set: ChangeSetPointer,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ActionRunnerItem {
-    pub id: ActionRunnerId,
-    pub action_prototype_id: ActionPrototypeId,
-    pub component_id: ComponentId,
-    pub parents: Vec<ActionRunnerId>,
 }
 
 pub async fn apply_change_set(
@@ -61,6 +55,7 @@ pub async fn apply_change_set(
     ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(&change_set)
         .await?;
     change_set.apply_to_base_change_set(&ctx).await?;
+    ctx.blocking_commit().await?;
 
     track(
         &posthog_client,
@@ -72,19 +67,17 @@ pub async fn apply_change_set(
         }),
     );
 
-    let base_change_set_id = change_set
-        .base_change_set_id
-        .ok_or(ChangeSetError::BaseChangeSetNotFound(change_set.id))?;
-    let head = ChangeSetPointer::find(&ctx, base_change_set_id)
-        .await?
-        .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(&head)
-        .await?;
-    ctx.update_visibility_and_snapshot_to_visibility(head.id)
-        .await?;
-
     // If head and there are actions to apply
     if applying_to_head && !actions.is_empty() {
+        let base_change_set_id = change_set
+            .base_change_set_id
+            .ok_or(ChangeSetError::BaseChangeSetNotFound(change_set.id))?;
+        let head = ChangeSetPointer::find(&ctx, base_change_set_id)
+            .await?
+            .ok_or(ChangeSetError::ChangeSetNotFound)?;
+        ctx.update_visibility_and_snapshot_to_visibility(head.id)
+            .await?;
+
         let user = match ctx.history_actor() {
             HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk)
                 .await?
@@ -155,9 +148,8 @@ pub async fn apply_change_set(
             }),
         );
 
-        // TODO: uncomment this
-        // ctx.enqueue_job(ActionJob::new(&ctx, runners, batch.id))
-        //     .await?;
+        ctx.enqueue_actions(ActionsJob::new(&ctx, runners, batch.id))
+            .await?;
 
         ctx.commit().await?;
     }

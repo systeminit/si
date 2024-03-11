@@ -7,7 +7,6 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 
 pub mod batch;
-// pub mod resolver;
 pub mod prototype;
 pub mod runner;
 
@@ -294,6 +293,8 @@ impl Action {
         let mut actions_graph: HashMap<ActionId, (ComponentId, ActionKind, Vec<ActionId>)> =
             HashMap::new();
 
+        let mut parents_graph = Vec::new();
+
         for (id, parent_ids) in graph {
             let component = Component::get_by_id(ctx, id).await?;
 
@@ -391,7 +392,11 @@ impl Action {
                     }
                 }
             }
+            parents_graph.push((id, parent_ids, actions_by_kind));
+        }
 
+        for (id, parent_ids, actions_by_kind) in parents_graph {
+            let component = Component::get_by_id(ctx, id).await?;
             for parent_id in parent_ids {
                 let parent_component = Component::get_by_id(ctx, parent_id).await?;
 

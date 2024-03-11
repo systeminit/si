@@ -20,7 +20,6 @@ use crate::attribute::value::{AttributeValueError, DependentValueGraph};
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::code_view::CodeViewError;
 use crate::history_event::HistoryEventMetadata;
-use crate::job::definition::DependentValuesUpdate;
 use crate::layer_db_types::{ComponentContent, ComponentContentV1};
 use crate::prop::{PropError, PropPath};
 use crate::qualification::QualificationError;
@@ -37,10 +36,11 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    func::backend::js_action::ActionRunResult, pk, AttributeValue, AttributeValueId, ChangeSetPk,
-    DalContext, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind,
-    SchemaVariant, SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent,
-    WsEventError, WsEventResult, WsPayload,
+    func::backend::js_action::ActionRunResult, pk, ActionKind, ActionPrototype,
+    ActionPrototypeError, AttributeValue, AttributeValueId, ChangeSetPk, DalContext, InputSocket,
+    InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, SchemaVariant,
+    SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError,
+    WsEventResult, WsPayload,
 };
 
 pub mod resource;
@@ -64,6 +64,8 @@ pub const DEFAULT_COMPONENT_HEIGHT: &str = "500";
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ComponentError {
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
@@ -382,12 +384,7 @@ impl Component {
             // Run these concurrently in a join set? They will serialize on the lock...
             AttributeValue::update_from_prototype_function(ctx, *leaf_value_id).await?;
         }
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            leaf_value_ids,
-        ))
-        .await?;
+        ctx.enqueue_dependent_values_update(leaf_value_ids).await?;
 
         Ok(component)
     }
@@ -669,6 +666,21 @@ impl Component {
         }
 
         Ok(Self::assemble(self.id, updated))
+    }
+
+    pub async fn act(&self, ctx: &DalContext, action: ActionKind) -> ComponentResult<()> {
+        let schema_variant = self.schema_variant(ctx).await?;
+
+        let action = ActionPrototype::for_variant(ctx, schema_variant.id())
+            .await
+            .map_err(Box::new)?
+            .into_iter()
+            .find(|p| p.kind == action);
+        if let Some(action) = action {
+            action.run(ctx, self.id()).await.map_err(Box::new)?;
+        }
+
+        Ok(())
     }
 
     pub fn is_destroyed(&self) -> bool {
@@ -988,12 +1000,8 @@ impl Component {
             )
             .await?;
 
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            vec![destination_attribute_value_id],
-        ))
-        .await?;
+        ctx.enqueue_dependent_values_update(vec![destination_attribute_value_id])
+            .await?;
 
         Ok(attribute_prototype_argument_id)
     }
@@ -1046,12 +1054,7 @@ impl Component {
         }
 
         // Enqueue all the values from each connection.
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx.access_builder(),
-            *ctx.visibility(),
-            to_enqueue,
-        ))
-        .await?;
+        ctx.enqueue_dependent_values_update(to_enqueue).await?;
 
         Ok(())
     }

@@ -4,14 +4,11 @@ use si_events::{CasValue, ContentHash};
 use strum::EnumDiscriminants;
 
 use crate::{
-    func::{argument::FuncArgumentKind, backend::js_action::ActionRunResult},
-    key_pair::KeyPairPk,
-    prop::WidgetOptions,
-    property_editor::schema::WidgetKind,
-    secret::SecretPk,
-    socket::connection_annotation::ConnectionAnnotation,
-    ActionCompletionStatus, ActionKind, ActionPrototypeId, ComponentId, FuncBackendResponseType,
-    FuncId, PropId, PropKind, SocketArity, SocketKind, Timestamp, UserPk,
+    func::argument::FuncArgumentKind, key_pair::KeyPairPk, prop::WidgetOptions,
+    property_editor::schema::WidgetKind, secret::SecretPk,
+    socket::connection_annotation::ConnectionAnnotation, ActionCompletionStatus, ActionKind,
+    ActionPrototypeId, ComponentId, FuncBackendResponseType, FuncId, PropId, PropKind, SocketArity,
+    SocketKind, Timestamp, UserPk,
 };
 
 /// This type gathers up all the kinds of things we will store in the
@@ -152,7 +149,7 @@ pub struct ActionRunnerContentV1 {
     pub func_name: String,
     pub action_prototype_id: ActionPrototypeId,
     pub action_kind: ActionKind,
-    pub resource: Option<ActionRunResult>,
+    pub resource: Option<String>,
 
     pub started_at: Option<DateTime<Utc>>,
     pub finished_at: Option<DateTime<Utc>>,
