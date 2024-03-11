@@ -203,10 +203,8 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
 
         assert!(new_era_taylor_swift_assembled.parent_id.is_none());
         assert_eq!(
-            new_era_taylor_swift.id(), // expected
-            travis_kelce_assembled
-                .parent_id
-                .expect("no parent node id")  // actual
+            new_era_taylor_swift.id(),                                    // expected
+            travis_kelce_assembled.parent_id.expect("no parent node id")  // actual
         );
     }
 
@@ -260,10 +258,8 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
         assert!(new_era_taylor_swift_assembled.parent_id.is_none());
         assert!(country_era_taylor_swift_assembled.parent_id.is_none());
         assert_eq!(
-            new_era_taylor_swift.id(), // expected
-            travis_kelce_assembled
-                .parent_id
-                .expect("no parent node id")  // actual
+            new_era_taylor_swift.id(),                                    // expected
+            travis_kelce_assembled.parent_id.expect("no parent node id")  // actual
         );
     }
 
@@ -328,16 +324,12 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
         assert!(new_era_taylor_swift_assembled.parent_id.is_none());
         assert!(country_era_taylor_swift_assembled.parent_id.is_none());
         assert_eq!(
-            new_era_taylor_swift.id(), // expected
-            travis_kelce_assembled
-                .parent_id
-                .expect("no parent node id")  // actual
+            new_era_taylor_swift.id(),                                    // expected
+            travis_kelce_assembled.parent_id.expect("no parent node id")  // actual
         );
         assert_eq!(
-            country_era_taylor_swift.id(), // expected
-            mama_kelce_assembled
-                .parent_id
-                .expect("no parent node id")  // actual
+            country_era_taylor_swift.id(),                              // expected
+            mama_kelce_assembled.parent_id.expect("no parent node id")  // actual
         );
     }
 
@@ -405,16 +397,12 @@ async fn multiple_frames_with_complex_connections_no_nesting(ctx: &mut DalContex
                 .expect("no parent node id")
         );
         assert_eq!(
-            new_era_taylor_swift.id(), // expected
-            travis_kelce_assembled
-                .parent_id
-                .expect("no parent node id")  // actual
+            new_era_taylor_swift.id(),                                    // expected
+            travis_kelce_assembled.parent_id.expect("no parent node id")  // actual
         );
         assert_eq!(
-            country_era_taylor_swift.id(), // expected
-            mama_kelce_assembled
-                .parent_id
-                .expect("no parent node id")  // actual
+            country_era_taylor_swift.id(),                              // expected
+            mama_kelce_assembled.parent_id.expect("no parent node id")  // actual
         );
     }
 }

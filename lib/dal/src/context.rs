@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
-use si_layer_cache::LayerCacheDependencies;
+use si_layer_cache::layer_cache::LayerCacheDependencies;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::RwLock;

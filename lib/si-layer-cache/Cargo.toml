@@ -9,6 +9,7 @@ publish = false
 async-trait = { workspace = true }
 blake3 = { workspace = true }
 bytes = { workspace = true }
+chrono = { workspace = true }
 futures = { workspace = true }
 lazy_static = { workspace = true }
 moka = { workspace = true }
@@ -19,6 +20,7 @@ serde = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-std = { path = "../../lib/si-std" }
+si-events = { path = "../../lib/si-events-rs" }
 sled = { workspace = true }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
@@ -33,3 +35,4 @@ postcard = { workspace = true }
 sled = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true }
+serde_json = { workspace = true }

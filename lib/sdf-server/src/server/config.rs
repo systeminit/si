@@ -1,6 +1,6 @@
 use dal::jwt_key::JwtConfig;
 use si_crypto::CryptoConfig;
-use si_layer_cache::error::LayerCacheError;
+use si_layer_cache::error::LayerDbError;
 use std::{
     env,
     net::{SocketAddr, ToSocketAddrs},
@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
-pub use si_layer_cache::{make_layer_cache_dependencies, LayerCacheDependencies};
+pub use si_layer_cache::layer_cache::{make_layer_cache_dependencies, LayerCacheDependencies};
 use si_posthog::PosthogConfig;
 use si_std::{CanonicalFile, CanonicalFileError, SensitiveString};
 use telemetry::prelude::*;
@@ -37,7 +37,7 @@ pub enum ConfigError {
     #[error("error configuring for development")]
     Development(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
     #[error(transparent)]
-    LayerCache(#[from] LayerCacheError),
+    LayerCache(#[from] LayerDbError),
     #[error("no socket addrs where resolved")]
     NoSocketAddrResolved,
     #[error(transparent)]

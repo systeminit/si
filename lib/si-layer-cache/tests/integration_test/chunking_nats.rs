@@ -1,14 +1,14 @@
-use std::{env, sync::Arc};
+use std::env;
 
 use futures::TryStreamExt;
 use si_data_nats::{async_nats::jetstream, HeaderMap, NatsClient, NatsConfig};
 use si_layer_cache::chunking_nats::ChunkingNats;
 use ulid::Ulid;
 
-const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
+use crate::integration_test::ENV_VAR_NATS_URL;
 
 #[tokio::test]
-async fn poop() {
+async fn chunky_nats() {
     let prefix = Ulid::new().to_string();
 
     let mut nats_config = NatsConfig {
