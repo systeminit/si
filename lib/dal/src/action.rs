@@ -200,7 +200,10 @@ impl Action {
             .await?
             .pop()
             .ok_or(ActionError::ComponentNotFoundFor(self.id))?;
-        let node_weight = workspace_snapshot.get_node_weight(node).await?;
+        let node_weight = workspace_snapshot
+            .get_node_weight(node)
+            .await?
+            .get_component_node_weight()?;
         let content_hash = node_weight.content_hash();
 
         let content = ctx
@@ -212,7 +215,7 @@ impl Action {
 
         let ComponentContent::V1(inner) = content;
 
-        let component = Component::assemble(node_weight.id().into(), inner);
+        let component = Component::assemble(&node_weight, inner);
         Ok(component)
     }
 
@@ -298,9 +301,13 @@ impl Action {
         for (id, parent_ids) in graph {
             let component = Component::get_by_id(ctx, id).await?;
 
-            if component.is_destroyed() {
-                continue;
-            }
+            // XXX: `is_destroyed` in the old engine should be "doesn't exist in the graph anymore"
+            // in the current/new engine, but we should double check that's what this was expecting
+            // to guard against.
+            //
+            // if component.is_destroyed() {
+            //     continue;
+            // }
 
             let actions = Self::for_component(ctx, id).await?;
             actions_by_component
@@ -400,9 +407,13 @@ impl Action {
             for parent_id in parent_ids {
                 let parent_component = Component::get_by_id(ctx, parent_id).await?;
 
-                if parent_component.is_destroyed() {
-                    continue;
-                }
+                // XXX: `is_destroyed` in the old engine should be "doesn't exist in the graph anymore"
+                // in the current/new engine, but we should double check that's what this was expecting
+                // to guard against.
+                //
+                // if parent_component.is_destroyed() {
+                //     continue;
+                // }
 
                 let parent_actions = actions_by_component
                     .get(&parent_component.id())

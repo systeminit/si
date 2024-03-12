@@ -24,8 +24,8 @@ use crate::{
     layer_db_types::{ActionRunnerContent, ActionRunnerContentV1},
     pk, ActionId, ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, Component,
     ComponentError, ComponentId, DalContext, Func, FuncError, HistoryEventError, SchemaError,
-    SchemaVariant, SchemaVariantError, Timestamp, TransactionsError, WsEvent, WsEventError,
-    WsEventResult, WsPayload,
+    SchemaVariantError, Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult,
+    WsPayload,
 };
 use veritech_client::ResourceStatus;
 
@@ -206,10 +206,7 @@ impl ActionRunner {
             .display_name
             .clone()
             .unwrap_or_else(|| func.name.clone());
-        let schema_name = SchemaVariant::schema(ctx, component.schema_variant(ctx).await?.id())
-            .await?
-            .name()
-            .to_owned();
+        let schema_name = component.schema(ctx).await?.name().to_owned();
 
         let content = ActionRunnerContentV1 {
             component_id,

@@ -23,7 +23,7 @@ pub mod list_schemas;
 pub mod set_component_position;
 
 // mod connect_component_to_frame;
-// pub mod delete_component;
+pub mod delete_component;
 // pub mod delete_connection;
 // pub mod paste_component;
 // mod restore_component;
@@ -117,14 +117,10 @@ pub fn routes() -> Router<AppState> {
         //     "/restore_connection",
         //     post(restore_connection::restore_connection),
         // )
-        // .route(
-        //     "/delete_component",
-        //     post(delete_component::delete_component),
-        // )
-        // .route(
-        //     "/delete_components",
-        //     post(delete_component::delete_components),
-        // )
+        .route(
+            "/delete_components",
+            post(delete_component::delete_components),
+        )
         // .route(
         //     "/restore_component",
         //     post(restore_component::restore_component),

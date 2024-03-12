@@ -207,7 +207,8 @@ async fn create_and_determine_lineage(ctx: &DalContext) {
     );
 
     // Determine the schema from the schema variant. Ensure it is the same as before.
-    let post_creation_schema = SchemaVariant::schema(ctx, post_creation_schema_variant.id())
+    let post_creation_schema = post_creation_schema_variant
+        .schema(ctx)
         .await
         .expect("could not get schema for schema variant");
     assert_eq!(

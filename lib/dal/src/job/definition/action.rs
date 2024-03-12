@@ -337,9 +337,6 @@ async fn action_task(
 ) -> JobConsumerResult<(ActionRunner, Vec<String>)> {
     // Get the workflow for the action we need to run.
     let component = Component::get_by_id(&ctx, action_item.component_id).await?;
-    if component.is_destroyed() {
-        return Err(JobConsumerError::ComponentIsDestroyed(component.id()));
-    }
 
     // Run the action (via the action prototype).
     let mut action = ActionRunner::get_by_id(&ctx, action_item.id).await?;

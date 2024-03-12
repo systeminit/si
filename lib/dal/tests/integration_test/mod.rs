@@ -4,6 +4,7 @@ mod builtins;
 mod change_set;
 mod component;
 mod connection;
+mod dependent_values_update;
 mod frame;
 mod prop;
 mod property_editor;

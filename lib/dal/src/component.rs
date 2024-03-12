@@ -27,18 +27,18 @@ use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
+use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     func::backend::js_action::ActionRunResult, pk, ActionKind, ActionPrototype,
     ActionPrototypeError, AttributeValue, AttributeValueId, ChangeSetPk, DalContext, InputSocket,
-    InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, SchemaVariant,
+    InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
     SchemaVariantId, StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError,
     WsEventResult, WsPayload,
 };
@@ -157,7 +157,7 @@ pub struct Component {
     id: ComponentId,
     #[serde(flatten)]
     timestamp: Timestamp,
-    needs_destroy: bool,
+    to_delete: bool,
     x: String,
     y: String,
     width: Option<String>,
@@ -168,7 +168,6 @@ impl From<Component> for ComponentContentV1 {
     fn from(value: Component) -> Self {
         Self {
             timestamp: value.timestamp,
-            needs_destroy: value.needs_destroy,
             x: value.x,
             y: value.y,
             width: value.width,
@@ -178,24 +177,20 @@ impl From<Component> for ComponentContentV1 {
 }
 
 impl Component {
-    pub fn assemble(id: ComponentId, inner: ComponentContentV1) -> Self {
+    pub fn assemble(node_weight: &ComponentNodeWeight, content: ComponentContentV1) -> Self {
         Self {
-            id,
-            timestamp: inner.timestamp,
-            needs_destroy: inner.needs_destroy,
-            x: inner.x,
-            y: inner.y,
-            width: inner.width,
-            height: inner.height,
+            id: node_weight.id().into(),
+            timestamp: content.timestamp,
+            to_delete: node_weight.to_delete(),
+            x: content.x,
+            y: content.y,
+            width: content.width,
+            height: content.height,
         }
     }
 
     pub fn id(&self) -> ComponentId {
         self.id
-    }
-
-    pub fn needs_destroy(&self) -> bool {
-        self.needs_destroy
     }
 
     pub fn x(&self) -> &str {
@@ -216,6 +211,10 @@ impl Component {
 
     pub fn timestamp(&self) -> &Timestamp {
         &self.timestamp
+    }
+
+    pub fn to_delete(&self) -> bool {
+        self.to_delete
     }
 
     pub async fn materialized_view(
@@ -248,7 +247,6 @@ impl Component {
 
         let content = ComponentContentV1 {
             timestamp: Timestamp::now(),
-            needs_destroy: false,
             x: DEFAULT_COMPONENT_X_POSITION.to_string(),
             y: DEFAULT_COMPONENT_Y_POSITION.to_string(),
             width: None,
@@ -262,7 +260,7 @@ impl Component {
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
-        let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Component(hash))?;
+        let node_weight = NodeWeight::new_component(change_set, id, hash)?;
 
         // Attach component to category and add use edge to schema variant
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -374,7 +372,8 @@ impl Component {
             }
         }
 
-        let component = Self::assemble(id.into(), content);
+        let (node_weight, content) = Self::get_node_weight_and_content(ctx, id.into()).await?;
+        let component = Self::assemble(&node_weight, content);
 
         component.set_name(ctx, &name).await?;
 
@@ -467,28 +466,34 @@ impl Component {
         Ok(maybe_parent)
     }
 
-    async fn get_content_with_hash(
+    async fn get_node_weight_and_content(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<(ContentHash, ComponentContentV1)> {
+    ) -> ComponentResult<(ComponentNodeWeight, ComponentContentV1)> {
+        let (component_node_weight, hash) =
+            Self::get_node_weight_and_content_hash(ctx, component_id).await?;
+
+        let content: ComponentContent = ctx.content_store().lock().await.get(&hash).await?.ok_or(
+            WorkspaceSnapshotError::MissingContentFromStore(component_id.into()),
+        )?;
+
+        let ComponentContent::V1(inner) = content;
+
+        Ok((component_node_weight, inner))
+    }
+
+    async fn get_node_weight_and_content_hash(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<(ComponentNodeWeight, ContentHash)> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let id: Ulid = component_id.into();
         let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
         let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+
         let hash = node_weight.content_hash();
-
-        let content: ComponentContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
-            .await?
-            .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
-
-        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-        let ComponentContent::V1(inner) = content;
-
-        Ok((hash, inner))
+        let component_node_weight = node_weight.get_component_node_weight()?;
+        Ok((component_node_weight, hash))
     }
 
     pub async fn list(ctx: &DalContext) -> ComponentResult<Vec<Self>> {
@@ -512,7 +517,7 @@ impl Component {
             let node_weight = workspace_snapshot
                 .get_node_weight(index)
                 .await?
-                .get_content_node_weight_of_kind(ContentAddressDiscriminants::Component)?;
+                .get_component_node_weight()?;
             hashes.push(node_weight.content_hash());
             node_weights.push(node_weight);
         }
@@ -530,7 +535,7 @@ impl Component {
                     // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
                     let ComponentContent::V1(inner) = content;
 
-                    components.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
+                    components.push(Self::assemble(&node_weight, inner.to_owned()));
                 }
                 None => Err(WorkspaceSnapshotError::MissingContentFromStore(
                     node_weight.id(),
@@ -539,6 +544,19 @@ impl Component {
         }
 
         Ok(components)
+    }
+
+    pub async fn schema_for_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<Schema> {
+        let schema_variant = Self::schema_variant_for_component_id(ctx, component_id).await?;
+
+        Ok(schema_variant.schema(ctx).await?)
+    }
+
+    pub async fn schema(&self, ctx: &DalContext) -> ComponentResult<Schema> {
+        Self::schema_for_component_id(ctx, self.id).await
     }
 
     pub async fn schema_variant_for_component_id(
@@ -589,8 +607,8 @@ impl Component {
     }
 
     pub async fn get_by_id(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<Self> {
-        let (_, content) = Self::get_content_with_hash(ctx, component_id).await?;
-        Ok(Self::assemble(component_id, content))
+        let (node_weight, content) = Self::get_node_weight_and_content(ctx, component_id).await?;
+        Ok(Self::assemble(&node_weight, content))
     }
 
     pub async fn set_geometry(
@@ -616,14 +634,15 @@ impl Component {
                 .content_store()
                 .lock()
                 .await
-                .add(&ComponentContent::V1(updated.clone()))?;
+                .add(&ComponentContent::V1(updated))?;
 
             ctx.workspace_snapshot()?
                 .update_content(ctx.change_set_pointer()?, id.into(), hash)
                 .await?;
         }
+        let (node_weight, content) = Self::get_node_weight_and_content(ctx, id).await?;
 
-        Ok(Self::assemble(id, updated))
+        Ok(Self::assemble(&node_weight, content))
     }
 
     async fn set_name(&self, ctx: &DalContext, name: &str) -> ComponentResult<()> {
@@ -644,30 +663,6 @@ impl Component {
         Ok(())
     }
 
-    pub async fn set_needs_destroy(
-        &mut self,
-        ctx: &DalContext,
-        needs_destroy: bool,
-    ) -> ComponentResult<Self> {
-        let before = ComponentContentV1::from(self.clone());
-        self.needs_destroy = needs_destroy;
-        let updated = ComponentContentV1::from(self.clone());
-
-        if updated != before {
-            let hash = ctx
-                .content_store()
-                .lock()
-                .await
-                .add(&ComponentContent::V1(updated.clone()))?;
-
-            ctx.workspace_snapshot()?
-                .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
-                .await?;
-        }
-
-        Ok(Self::assemble(self.id, updated))
-    }
-
     pub async fn act(&self, ctx: &DalContext, action: ActionKind) -> ComponentResult<()> {
         let schema_variant = self.schema_variant(ctx).await?;
 
@@ -681,11 +676,6 @@ impl Component {
         }
 
         Ok(())
-    }
-
-    pub fn is_destroyed(&self) -> bool {
-        // TODO: implement deletion/delete
-        false
     }
 
     pub async fn set_resource(
@@ -1082,6 +1072,70 @@ impl Component {
 
         debug!("build graph took {:?}", total_start.elapsed());
         Ok(components_map)
+    }
+
+    async fn modify<L>(self, ctx: &DalContext, lambda: L) -> ComponentResult<Self>
+    where
+        L: FnOnce(&mut Self) -> ComponentResult<()>,
+    {
+        let mut component = self;
+
+        let before = ComponentContentV1::from(component.clone());
+        lambda(&mut component)?;
+
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let component_idx = workspace_snapshot
+            .get_node_index_by_id(component.id())
+            .await?;
+        let component_node_weight = workspace_snapshot
+            .get_node_weight(component_idx)
+            .await?
+            .get_component_node_weight()?;
+
+        // The `to_delete` lives on the node itself, not in the content, so we need to be a little
+        // more manual when updating that field.
+        if component.to_delete != component_node_weight.to_delete() {
+            let mut new_component_node_weight = component_node_weight
+                .new_with_incremented_vector_clock(ctx.change_set_pointer()?)?;
+            new_component_node_weight.set_to_delete(component.to_delete);
+            workspace_snapshot
+                .add_node(NodeWeight::Component(new_component_node_weight))
+                .await?;
+            workspace_snapshot.replace_references(component_idx).await?;
+        }
+
+        let updated = ComponentContentV1::from(component.clone());
+        if updated != before {
+            let hash = ctx
+                .content_store()
+                .lock()
+                .await
+                .add(&ComponentContent::V1(updated.clone()))?;
+            workspace_snapshot
+                .update_content(ctx.change_set_pointer()?, component.id.into(), hash)
+                .await?;
+        }
+
+        Ok(Component::assemble(&component_node_weight, updated))
+    }
+
+    pub async fn delete(self, ctx: &DalContext) -> ComponentResult<Self> {
+        self.modify(ctx, |component| {
+            component.to_delete = true;
+            Ok(())
+        })
+        .await
+
+        // TODO: Trigger DependentValuesUpdate for all Components that get data from this
+        // Component.
+    }
+
+    pub async fn set_to_delete(self, ctx: &DalContext, to_delete: bool) -> ComponentResult<Self> {
+        self.modify(ctx, |component| {
+            component.to_delete = to_delete;
+            Ok(())
+        })
+        .await
     }
 }
 

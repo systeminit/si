@@ -128,6 +128,7 @@ pub struct SummaryDiagramComponent {
     pub created_info: serde_json::Value,
     pub updated_info: serde_json::Value,
     pub deleted_info: serde_json::Value,
+    pub to_delete: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -142,6 +143,7 @@ pub struct SummaryDiagramEdge {
     pub change_status: String,
     pub created_info: serde_json::Value,
     pub deleted_info: serde_json::Value,
+    pub to_delete: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -218,6 +220,8 @@ impl Diagram {
         let mut component_views = Vec::with_capacity(components.len());
         for component in &components {
             for incoming_connection in component.incoming_connections(ctx).await? {
+                let from_component =
+                    Component::get_by_id(ctx, incoming_connection.from_component_id).await?;
                 diagram_edges.push(SummaryDiagramEdge {
                     id: incoming_connection.attribute_prototype_argument_id,
                     edge_id: incoming_connection.attribute_prototype_argument_id,
@@ -228,6 +232,7 @@ impl Diagram {
                     change_status: ChangeStatus::Added.to_string(),
                     created_info: serde_json::to_value(incoming_connection.created_info)?,
                     deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
+                    to_delete: from_component.to_delete() || component.to_delete(),
                 });
             }
 
@@ -279,7 +284,8 @@ impl Diagram {
                 hash_map::Entry::Occupied(entry) => entry.get().to_owned(),
             };
 
-            let schema = SchemaVariant::schema(ctx, schema_variant.id()).await?;
+            let schema =
+                SchemaVariant::schema_for_schema_variant_id(ctx, schema_variant.id()).await?;
 
             let position = GridPoint {
                 x: component.x().parse::<f64>()?.round() as isize,
@@ -334,6 +340,7 @@ impl Diagram {
                 updated_info,
                 created_info,
                 deleted_info: serde_json::Value::Null,
+                to_delete: component.to_delete(),
             };
 
             component_views.push(component_view);

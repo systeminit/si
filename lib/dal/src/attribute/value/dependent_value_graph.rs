@@ -9,10 +9,10 @@ use crate::{
         value::ValueIsFor,
     },
     workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
-    DalContext, Prop,
+    Component, DalContext, Prop,
 };
 
-use super::{AttributeValue, AttributeValueId, AttributeValueResult};
+use super::{AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult};
 
 #[derive(Debug, Clone)]
 pub struct DependentValueGraph {
@@ -78,7 +78,28 @@ impl DependentValueGraph {
                         None => relevant_apas.push(apa),
                         Some(targets) => {
                             if targets.source_component_id == current_component_id {
-                                relevant_apas.push(apa)
+                                let source_component =
+                                    Component::get_by_id(ctx, targets.source_component_id)
+                                        .await
+                                        .map_err(|e| {
+                                            AttributeValueError::Component(e.to_string())
+                                        })?;
+                                let destination_component =
+                                    Component::get_by_id(ctx, targets.destination_component_id)
+                                        .await
+                                        .map_err(|e| {
+                                            AttributeValueError::Component(e.to_string())
+                                        })?;
+
+                                // Both "deleted" and not deleted Components can feed data into
+                                // "deleted" Components. **ONLY** not deleted Components can feed
+                                // data into not deleted Components.
+                                if destination_component.to_delete()
+                                    || (!destination_component.to_delete()
+                                        && !source_component.to_delete())
+                                {
+                                    relevant_apas.push(apa)
+                                }
                             }
                         }
                     }
