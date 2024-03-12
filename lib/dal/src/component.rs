@@ -1088,7 +1088,7 @@ impl Component {
                 components_map
                     .entry(component.id)
                     .or_default()
-                    .insert(incomming_connection.to_component_id);
+                    .insert(incomming_connection.from_component_id);
             }
         }
 
