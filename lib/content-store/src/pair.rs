@@ -5,7 +5,7 @@ use std::str::FromStr;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::hash::{ContentHash, ContentHashParseError};
+use crate::{ContentHash, ContentHashParseError};
 
 #[remain::sorted]
 #[derive(Error, Debug)]
