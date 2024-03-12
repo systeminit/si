@@ -8,8 +8,13 @@ alias(
 rust_library(
     name = "si-events",
     deps = [
+        "//third-party/rust:blake3",
+        "//third-party/rust:bytes",
+        "//third-party/rust:postgres-types",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:thiserror",
         "//third-party/rust:ulid",
     ],
     srcs = glob([

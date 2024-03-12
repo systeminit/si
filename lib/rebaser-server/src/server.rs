@@ -4,8 +4,8 @@ use si_crypto::SymmetricCryptoServiceConfig;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
-use si_layer_cache::error::LayerCacheError;
-use si_layer_cache::{make_layer_cache_dependencies, LayerCacheDependencies};
+use si_layer_cache::error::LayerDbError;
+use si_layer_cache::layer_cache::{make_layer_cache_dependencies, LayerCacheDependencies};
 use std::{io, path::Path, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -35,7 +35,7 @@ pub enum ServerError {
     #[error(transparent)]
     Initialization(#[from] InitializationError),
     #[error("layer cache error: {0}")]
-    LayerCache(#[from] LayerCacheError),
+    LayerCache(#[from] LayerDbError),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error(transparent)]
@@ -77,7 +77,7 @@ pub struct Server {
     /// The pg pool for the content store
     content_store_pg_pool: PgPool,
     /// The dependencies for the layer cache
-    layer_cache_dependencies: si_layer_cache::LayerCacheDependencies,
+    layer_cache_dependencies: si_layer_cache::layer_cache::LayerCacheDependencies,
 }
 
 impl Server {

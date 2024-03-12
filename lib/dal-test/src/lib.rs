@@ -22,7 +22,7 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
-use si_layer_cache::LayerCacheDependencies;
+use si_layer_cache::layer_cache::LayerCacheDependencies;
 use si_std::ResultExt;
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};

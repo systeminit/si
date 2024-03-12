@@ -6,6 +6,11 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+bytes = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 ulid = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+postgres-types = { workspace = true }
+blake3 = { workspace = true }

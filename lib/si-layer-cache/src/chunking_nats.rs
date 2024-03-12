@@ -21,7 +21,7 @@ use si_data_nats::{
 };
 use ulid::Ulid;
 
-use crate::error::{LayerCacheError, LayerCacheResult};
+use crate::error::{LayerDbError, LayerDbResult};
 
 const DEFAULT_CHUNK_SIZE: usize = 128 * 1024;
 
@@ -61,7 +61,7 @@ impl ChunkingNats {
         subject: impl ToSubject,
         mut headers: HeaderMap,
         payload: Bytes,
-    ) -> LayerCacheResult<()> {
+    ) -> LayerDbResult<()> {
         let subject = subject.to_subject();
 
         let event_id = Ulid::new();
@@ -109,7 +109,7 @@ impl ChunkedMessagesStream {
     fn process_single_message(
         &mut self,
         msg: jetstream::Message,
-    ) -> Option<Poll<Option<Result<Message, LayerCacheError>>>> {
+    ) -> Option<Poll<Option<Result<Message, LayerDbError>>>> {
         let context = msg.context.clone();
         let (message, acker) = msg.split();
 
@@ -153,7 +153,7 @@ impl ChunkedMessagesStream {
                                 let size: usize = {
                                     let size_value = match headers
                                         .get(HEADER_SIZE)
-                                        .ok_or(LayerCacheError::NatsMissingSizeHeader)
+                                        .ok_or(LayerDbError::NatsMissingSizeHeader)
                                     {
                                         Ok(val) => val,
                                         Err(err) => {
@@ -162,7 +162,7 @@ impl ChunkedMessagesStream {
                                     };
 
                                     match str::parse(size_value.as_str())
-                                        .map_err(LayerCacheError::nats_header_parse)
+                                        .map_err(LayerDbError::nats_header_parse)
                                     {
                                         Ok(val) => val,
                                         Err(err) => {
@@ -187,7 +187,7 @@ impl ChunkedMessagesStream {
                                 let entry = match self
                                     .buffers
                                     .remove(event_id.as_str())
-                                    .ok_or(LayerCacheError::MissingInternalBuffer)
+                                    .ok_or(LayerDbError::MissingInternalBuffer)
                                 {
                                     Ok(buf) => buf,
                                     Err(err) => {
@@ -231,9 +231,7 @@ impl ChunkedMessagesStream {
                     // In these other cases, we have incomplete headers and this message is
                     // considered malformed
                     (Some(_), None, None) | (Some(_), None, Some(_)) | (Some(_), Some(_), None) => {
-                        Some(Poll::Ready(Some(Err(
-                            LayerCacheError::NatsMalformedHeaders,
-                        ))))
+                        Some(Poll::Ready(Some(Err(LayerDbError::NatsMalformedHeaders))))
                     }
                 }
             }
@@ -247,7 +245,7 @@ impl ChunkedMessagesStream {
 }
 
 impl Stream for ChunkedMessagesStream {
-    type Item = Result<Message, LayerCacheError>;
+    type Item = Result<Message, LayerDbError>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         loop {

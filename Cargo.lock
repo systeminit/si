@@ -5574,8 +5574,13 @@ dependencies = [
 name = "si-events"
 version = "0.1.0"
 dependencies = [
+ "blake3",
+ "bytes 1.5.0",
+ "postgres-types",
  "remain",
  "serde",
+ "serde_json",
+ "thiserror",
  "ulid",
 ]
 
@@ -5596,6 +5601,7 @@ dependencies = [
  "blake3",
  "buck2-resources",
  "bytes 1.5.0",
+ "chrono",
  "criterion",
  "futures",
  "lazy_static",
@@ -5604,8 +5610,10 @@ dependencies = [
  "refinery",
  "remain",
  "serde",
+ "serde_json",
  "si-data-nats",
  "si-data-pg",
+ "si-events",
  "si-std",
  "sled",
  "tempfile",

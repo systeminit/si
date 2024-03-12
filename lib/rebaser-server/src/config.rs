@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
-use si_layer_cache::error::LayerCacheError;
+use si_layer_cache::error::LayerDbError;
 use si_std::{CanonicalFile, CanonicalFileError};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -27,7 +27,7 @@ pub enum ConfigError {
     #[error("error configuring for development")]
     Development(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
     #[error(transparent)]
-    LayerCache(#[from] LayerCacheError),
+    LayerCache(#[from] LayerDbError),
     #[error(transparent)]
     Settings(#[from] si_settings::SettingsError),
 }
