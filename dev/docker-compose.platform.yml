@@ -36,6 +36,7 @@ services:
       - "nats-server.conf"
     ports:
       - "4222:4222"
+      - "8222:8222"
 
   jaeger:
     image: systeminit/jaeger:stable

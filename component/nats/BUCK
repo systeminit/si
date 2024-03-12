@@ -14,6 +14,8 @@ docker_image(
     run_docker_args = [
         "--publish",
         "4222:4222",
+        "--publish",
+        "8222:8222",
     ],
     run_container_args = [
         "--config",
