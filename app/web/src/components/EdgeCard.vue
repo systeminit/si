@@ -30,14 +30,14 @@ const fromComponent = computed(() =>
     ? componentsStore.componentsById[edge.value.fromComponentId]
     : undefined,
 );
-const fromSchema = computed(() =>
+const fromSchemaVariant = computed(() =>
   fromComponent.value?.schemaVariantId
     ? componentsStore.schemaVariantsById[fromComponent.value.schemaVariantId]
     : undefined,
 );
 const fromSocket = computed(() =>
   _.find(
-    fromSchema.value?.outputSockets ?? [],
+    fromSchemaVariant.value?.outputSockets ?? [],
     (s) => s.id === edge.value?.fromSocketId,
   ),
 );

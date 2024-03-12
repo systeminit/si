@@ -18,6 +18,7 @@ use crate::{pk, DalContext, Timestamp, TransactionsError};
 pub use variant::{SchemaVariant, SchemaVariantId};
 
 pub mod variant;
+pub mod view;
 
 pub const SCHEMA_VERSION: SchemaContentDiscriminants = SchemaContentDiscriminants::V1;
 
@@ -51,8 +52,6 @@ pub struct Schema {
     timestamp: Timestamp,
     pub name: String,
     pub ui_hidden: bool,
-    // NOTE(nick): maybe we should have a special edge for this instead or remove it altogether.
-    default_schema_variant_id: Option<SchemaVariantId>,
 }
 
 #[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
@@ -65,8 +64,6 @@ pub struct SchemaContentV1 {
     pub timestamp: Timestamp,
     pub name: String,
     pub ui_hidden: bool,
-    // NOTE(nick): maybe we should have a special edge for this instead or remove it altogether.
-    pub default_schema_variant_id: Option<SchemaVariantId>,
 }
 
 impl From<Schema> for SchemaContentV1 {
@@ -75,7 +72,6 @@ impl From<Schema> for SchemaContentV1 {
             timestamp: value.timestamp,
             name: value.name,
             ui_hidden: value.ui_hidden,
-            default_schema_variant_id: value.default_schema_variant_id,
         }
     }
 }
@@ -87,7 +83,6 @@ impl Schema {
             timestamp: inner.timestamp,
             name: inner.name,
             ui_hidden: inner.ui_hidden,
-            default_schema_variant_id: inner.default_schema_variant_id,
         }
     }
 
@@ -104,7 +99,6 @@ impl Schema {
             timestamp: Timestamp::now(),
             name: name.into(),
             ui_hidden: false,
-            default_schema_variant_id: None,
         };
 
         let hash = ctx

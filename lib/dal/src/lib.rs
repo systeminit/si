@@ -56,7 +56,6 @@ pub mod ws_event;
 //pub mod code_view;
 // pub mod edge;
 // pub mod index_map;
-pub mod node_menu;
 // pub mod prop_tree;
 // pub mod prototype_context;
 // pub mod prototype_list_for_func;

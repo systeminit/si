@@ -16,11 +16,10 @@ import {
   GridPoint,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
-import { MenuItem } from "@/api/sdf/dal/menu";
 import {
   DiagramNode,
+  DiagramSchema,
   DiagramSchemaVariant,
-  DiagramSchemaVariants,
 } from "@/api/sdf/dal/diagram";
 import { ChangeStatus, ComponentStats } from "@/api/sdf/dal/change_set";
 import { ComponentDiff } from "@/api/sdf/dal/component";
@@ -43,7 +42,6 @@ export type ComponentNodeId = string;
 export type EdgeId = string;
 export type SocketId = string;
 type SchemaId = string;
-type SchemaVariantId = string;
 
 type RawComponent = {
   changeStatus: ChangeStatus;
@@ -106,16 +104,19 @@ export type ComponentTreeNode = {
   statusIcons?: StatusIconsSet;
 } & FullComponent;
 
-export type MenuSchema = {
-  id: SchemaId;
-  displayName: string;
-  color: string;
-  category: string;
-};
+export interface DiagramSchemaVariantWithDisplayMetadata
+  extends DiagramSchemaVariant {
+  schemaName: string;
+}
 
-export type NodeAddMenu = {
+export interface DiagramSchemaWithDisplayMetadata extends DiagramSchema {
+  category: string;
+  color: string;
+}
+
+export type Categories = {
   displayName: string;
-  schemas: MenuSchema[];
+  schemas: DiagramSchemaWithDisplayMetadata[];
 }[];
 
 const qualificationStatusToIconMap: Record<
@@ -254,12 +255,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           pendingInsertedComponents: {} as Record<string, PendingComponent>,
 
           edgesById: {} as Record<EdgeId, Edge>,
-          schemaVariantsById: {} as Record<
-            SchemaVariantId,
-            DiagramSchemaVariant
-          >,
-          rawNodeAddMenu: [] as MenuItem[],
-
+          schemasById: {} as Record<SchemaId, DiagramSchema>,
           copyingFrom: null as { x: number; y: number } | null,
           selectedComponentIds: [] as ComponentId[],
           selectedEdgeId: null as EdgeId | null,
@@ -498,37 +494,70 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          schemaVariants: (state) => _.values(state.schemaVariantsById),
+          schemas: (state) => _.values(state.schemasById),
 
-          nodeAddMenu(): NodeAddMenu {
-            return _.compact(
-              _.map(this.rawNodeAddMenu, (category) => {
-                // all root level items are categories for now... will probably rework this endpoint anyway
-                if (category.kind !== "category") return null;
-                return {
-                  displayName: category.name,
-                  // TODO: add color + logo on categories?
-                  schemas: _.compact(
-                    _.map(category.items, (item) => {
-                      // ignoring "link" items - don't think these are relevant at the moment
-                      if (item.kind !== "item") return;
+          schemaVariants(): DiagramSchemaVariantWithDisplayMetadata[] {
+            // NOTE(nick): there is likely a prettier way to do this using lodash. Sorry Wendy and John <3.
+            const schemaVariants = [];
+            for (const schema of this.schemas) {
+              for (const variant of schema.variants) {
+                schemaVariants.push({
+                  id: variant.id,
+                  name: variant.name,
+                  builtin: variant.builtin,
 
-                      // TODO: return hex code from backend...
-                      const schemaVariant = Object.values(
-                        this.schemaVariantsById,
-                      ).find((v) => v.schemaId === item.schema_id);
-                      return {
-                        displayName: item.name,
-                        id: item.schema_id,
-                        // links: item.links, // not sure this is needed?
-                        color: schemaVariant?.color ?? "#777",
-                        category: category.name,
-                      };
-                    }),
-                  ),
-                };
-              }),
+                  color: variant.color,
+                  category: variant.category,
+                  inputSockets: variant.inputSockets,
+                  outputSockets: variant.outputSockets,
+
+                  schemaName: schema.name,
+                });
+              }
+            }
+            return schemaVariants;
+          },
+
+          schemaVariantsById(): Record<
+            string,
+            DiagramSchemaVariantWithDisplayMetadata
+          > {
+            return _.keyBy(this.schemaVariants, "id");
+          },
+
+          schemasWithAtLeastOneVariant(): DiagramSchemaWithDisplayMetadata[] {
+            // NOTE(nick): there is likely a prettier way to do this using lodash. Sorry Wendy and John <3.
+            const schemasWithAtLeastOneVariant = [];
+            for (const schema of this.schemas) {
+              if (schema.variants[0]) {
+                schemasWithAtLeastOneVariant.push({
+                  id: schema.id,
+                  name: schema.name,
+                  builtin: schema.builtin,
+                  variants: schema.variants,
+                  category: schema.variants[0].category,
+                  color: schema.variants[0].color,
+                });
+              }
+            }
+            return schemasWithAtLeastOneVariant;
+          },
+
+          schemasByCategory(): Record<
+            string,
+            DiagramSchemaWithDisplayMetadata[]
+          > {
+            return _.groupBy(
+              this.schemasWithAtLeastOneVariant,
+              (s) => s.category,
             );
+          },
+
+          categories(): Categories {
+            return _.map(this.schemasByCategory, (schemas, category) => ({
+              displayName: category,
+              schemas,
+            }));
           },
 
           changeStatsSummary(): Record<ChangeStatus | "total", number> {
@@ -654,30 +683,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
           },
 
-          // used when adding new nodes
           async FETCH_AVAILABLE_SCHEMAS() {
-            return new ApiRequest<DiagramSchemaVariants>({
-              // TODO: probably switch to something like GET `/workspaces/:id/schemas`?
-              url: "diagram/list_schema_variants",
+            return new ApiRequest<Array<DiagramSchema>>({
+              url: "diagram/list_schemas",
               params: {
                 ...visibilityParams,
               },
               onSuccess: (response) => {
-                this.schemaVariantsById = _.keyBy(response, "id");
-              },
-            });
-          },
-
-          async FETCH_NODE_ADD_MENU() {
-            return new ApiRequest<MenuItem[]>({
-              method: "post",
-              // TODO: probably combine into single call with FETCH_AVAILABLE_SCHEMAS
-              url: "diagram/get_node_add_menu",
-              params: {
-                ...visibilityParams,
-              },
-              onSuccess: (response) => {
-                this.rawNodeAddMenu = response;
+                this.schemasById = _.keyBy(response, "id");
               },
             });
           },
@@ -1351,7 +1364,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // trigger initial load
           this.FETCH_DIAGRAM_DATA();
           this.FETCH_AVAILABLE_SCHEMAS();
-          this.FETCH_NODE_ADD_MENU();
 
           // TODO: prob want to take loading state into consideration as this will set it before its loaded
           const stopWatchingUrl = watch(

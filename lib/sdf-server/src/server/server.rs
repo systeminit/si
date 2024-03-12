@@ -419,6 +419,7 @@ async fn install_builtins(
         let (pkg_name, res) = res?;
         match res {
             Ok(pkg) => {
+                let instant = Instant::now();
                 if let Err(err) = dal::pkg::import_pkg_from_pkg(
                     &ctx,
                     &pkg,
@@ -434,8 +435,9 @@ async fn install_builtins(
                     println!("Pkg {pkg_name} Install failed, {err}");
                 } else {
                     count += 1;
+                    let elapsed = instant.elapsed().as_secs_f32();
                     println!(
-                         "Pkg {pkg_name} Install finished successfully. {count} of {total} installed.",
+                         "Pkg {pkg_name} Install finished successfully. {count} of {total} installed. (took {elapsed:.2} seconds)",
                      );
                 }
             }

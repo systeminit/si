@@ -13,8 +13,6 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use crate::service::diagram::DiagramResult;
 
-use super::DiagramError;
-
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateComponentRequest {
@@ -41,17 +39,11 @@ pub async fn create_component(
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    // TODO(nick): restore this with new engine semantics.
     let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     let name = generate_name();
 
-    // TODO: restore the notion of a "default" schema variant
-    let variant = SchemaVariant::list_for_schema(&ctx, request.schema_id)
-        .await?
-        .into_iter()
-        .next()
-        .ok_or(DiagramError::SchemaVariantNotFound)?;
+    let variant = SchemaVariant::get_default_for_schema(&ctx, request.schema_id).await?;
 
     let component = Component::new(&ctx, &name, variant.id()).await?;
 

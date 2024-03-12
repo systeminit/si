@@ -230,7 +230,7 @@ impl SchemaVariant {
         if let Some(prototype_id) =
             AttributePrototype::find_for_prop(ctx, item_prop_id, &None).await?
         {
-            info!("removing None proto");
+            debug!(%prototype_id, %item_prop_id, "removing None proto");
             AttributePrototype::remove(ctx, prototype_id).await?;
         }
 
@@ -238,7 +238,7 @@ impl SchemaVariant {
         if let Some(prototype_id) =
             AttributePrototype::find_for_prop(ctx, item_prop_id, &key).await?
         {
-            info!("removing {:?} proto", &key);
+            debug!(%prototype_id, %item_prop_id, "removing {:?} proto", &key);
             AttributePrototype::remove(ctx, prototype_id).await?;
         }
 

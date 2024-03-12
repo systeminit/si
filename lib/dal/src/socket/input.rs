@@ -221,8 +221,8 @@ impl InputSocket {
         kind: SocketKind,
         connection_annotations: Option<Vec<ConnectionAnnotation>>,
     ) -> InputSocketResult<Self> {
-        info!("creating input socket");
         let name = name.into();
+        debug!(%schema_variant_id, %name, "creating input socket");
 
         let connection_annotations = if let Some(ca) = connection_annotations {
             ca
