@@ -231,12 +231,12 @@ pub struct PropertyEditorValue {
     pub prop_id: PropertyEditorPropId,
     pub key: Option<String>,
     pub value: Value,
-    pub is_from_external_source: bool,
-    pub can_be_set_by_socket: bool,
-    pub is_controlled_by_intrinsic_func: bool,
-    pub controlling_func_id: FuncId,
-    pub controlling_attribute_value_id: AttributeValueId,
-    pub overridden: bool,
+    pub is_from_external_source: bool, // true if this prop has a value provided by a socket
+    pub can_be_set_by_socket: bool, // true if this prop value is currently driven by a socket, even if the socket isn't in use
+    pub is_controlled_by_intrinsic_func: bool, // props driven by instrinsic funcs are set manually by the user
+    pub controlling_func_id: FuncId,           // id of the func which controls this prop value
+    pub controlling_attribute_value_id: AttributeValueId, // id of the ancestor that controls this prop value
+    pub overridden: bool, // true if this prop has a different controlling func id than the default for this asset
 }
 
 impl PropertyEditorValue {
