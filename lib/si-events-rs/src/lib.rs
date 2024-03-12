@@ -1,6 +1,6 @@
 mod actor;
 mod cas;
-mod content_hash;
+pub mod content_hash;
 mod tenancy;
 mod web_event;
 

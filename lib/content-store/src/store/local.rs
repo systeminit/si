@@ -1,5 +1,5 @@
-use crate::hash::ContentHash;
 use crate::store::{Store, StoreResult};
+use crate::ContentHash;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
