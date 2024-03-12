@@ -120,7 +120,9 @@ const { theme } = useTheme();
 const diagramContext = useDiagramContext();
 const { drawEdgeState } = diagramContext;
 
-const isDeleted = computed(() => props.edge.def.changeStatus === "deleted");
+const isDeleted = computed(
+  () => props.edge.def.changeStatus === "deleted" || props.edge.def.toDelete,
+);
 const isAdded = computed(() => props.edge.def.changeStatus === "added");
 
 const willDeleteIfPendingEdgeCreated = computed(() => {

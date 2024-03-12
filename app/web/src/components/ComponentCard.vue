@@ -5,7 +5,7 @@
       clsx(
         'p-xs border-l-4 border relative',
         titleCard ? 'mb-xs' : 'rounded-md',
-        component.changeStatus === 'deleted' && 'opacity-70',
+        component.toDelete && 'opacity-70',
       )
     "
     :style="{
