@@ -1947,21 +1947,54 @@ impl AttributeValue {
         })
     }
 
+    pub async fn get_parent_av_id_for_ordered_child(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<Option<AttributeValueId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+
+        let ordering_node_id = match workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Ordinal)?
+            .first()
+            .copied()
+        {
+            Some(ordering_idx) => workspace_snapshot.get_node_weight(ordering_idx)?.id(),
+            None => return Ok(None),
+        };
+
+        let parent_av_id = if let Some(parent_av_idx) = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                ordering_node_id,
+                EdgeWeightKindDiscriminants::Ordering,
+            )?
+            .first()
+            .copied()
+        {
+            let parent_av_id: AttributeValueId = workspace_snapshot
+                .get_node_weight(parent_av_idx)?
+                .id()
+                .into();
+
+            let prop_id = AttributeValue::prop(ctx, parent_av_id).await?;
+
+            let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
+
+            if !vec![PropKind::Map, PropKind::Array].contains(&parent_prop.kind) {
+                return Ok(None);
+            }
+
+            parent_av_id
+        } else {
+            return Ok(None);
+        };
+
+        Ok(Some(parent_av_id))
+    }
+
     pub async fn remove_by_id(ctx: &DalContext, id: AttributeValueId) -> AttributeValueResult<()> {
-        let parent_av_id =
-            if let Some(parent_av_id) = AttributeValue::parent_attribute_value_id(ctx, id).await? {
-                let prop_id = AttributeValue::prop(ctx, parent_av_id).await?;
-
-                let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
-
-                if !vec![PropKind::Map, PropKind::Array].contains(&parent_prop.kind) {
-                    return Err(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id));
-                }
-
-                parent_av_id
-            } else {
-                return Err(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id));
-            };
+        let parent_av_id = Self::get_parent_av_id_for_ordered_child(ctx, id)
+            .await?
+            .ok_or(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id))?;
 
         let av = Self::get_by_id(ctx, id).await?;
 
