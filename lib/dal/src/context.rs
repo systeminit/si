@@ -12,7 +12,6 @@ use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult,
 use si_layer_cache::LayerCacheDependencies;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::RwLock;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
 use tokio::time::Instant;
 use ulid::Ulid;
@@ -295,7 +294,7 @@ pub struct DalContext {
     /// [`PgStore`](content_store::PgStore).
     content_store: Arc<Mutex<PgStore>>,
     /// The workspace snapshot for this context
-    workspace_snapshot: Option<Arc<RwLock<WorkspaceSnapshot>>>,
+    workspace_snapshot: Option<Arc<WorkspaceSnapshot>>,
     /// The change set pointer for this context
     change_set_pointer: Option<ChangeSetPointer>,
 }
@@ -383,14 +382,9 @@ impl DalContext {
         if let Some(snapshot) = &self.workspace_snapshot {
             let vector_clock_id = self.change_set_pointer()?.vector_clock_id();
 
-            Ok(Some(
-                snapshot
-                    .write()
-                    .await
-                    .write(self, vector_clock_id)
-                    .await
-                    .map_err(|err| TransactionsError::WorkspaceSnapshot(err.to_string()))?,
-            ))
+            Ok(Some(snapshot.write(self, vector_clock_id).await.map_err(
+                |err| TransactionsError::WorkspaceSnapshot(err.to_string()),
+            )?))
         } else {
             Ok(None)
         }
@@ -515,15 +509,13 @@ impl DalContext {
     }
 
     pub fn set_workspace_snapshot(&mut self, workspace_snapshot: WorkspaceSnapshot) {
-        self.workspace_snapshot = Some(Arc::new(RwLock::new(workspace_snapshot)));
+        self.workspace_snapshot = Some(Arc::new(workspace_snapshot));
     }
 
     /// Fetch the workspace snapshot for the current visibility
-    pub fn workspace_snapshot(
-        &self,
-    ) -> Result<&Arc<RwLock<WorkspaceSnapshot>>, WorkspaceSnapshotError> {
+    pub fn workspace_snapshot(&self) -> Result<Arc<WorkspaceSnapshot>, WorkspaceSnapshotError> {
         match &self.workspace_snapshot {
-            Some(workspace_snapshot) => Ok(workspace_snapshot),
+            Some(workspace_snapshot) => Ok(workspace_snapshot.clone()),
             None => Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched),
         }
     }

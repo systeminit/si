@@ -248,14 +248,16 @@ impl ActionRunner {
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::ActionRunner(hash))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        workspace_snapshot.add_node(node_weight.to_owned())?;
-        workspace_snapshot.add_edge(
-            action_batch_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            id,
-        )?;
+        workspace_snapshot.add_node(node_weight.to_owned()).await?;
+        workspace_snapshot
+            .add_edge(
+                action_batch_id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                id,
+            )
+            .await?;
 
         Ok(ActionRunner::assemble(id.into(), content))
     }
@@ -351,8 +353,9 @@ impl ActionRunner {
             .await
             .add(&ActionRunnerContent::V1(content.clone()))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.update_content(ctx.change_set_pointer()?, self.id.into(), hash)?;
+        ctx.workspace_snapshot()?
+            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .await?;
         Ok(())
     }
 
@@ -370,8 +373,9 @@ impl ActionRunner {
             .await
             .add(&ActionRunnerContent::V1(content.clone()))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.update_content(ctx.change_set_pointer()?, self.id.into(), hash)?;
+        ctx.workspace_snapshot()?
+            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .await?;
         Ok(())
     }
 
@@ -389,8 +393,9 @@ impl ActionRunner {
             .await
             .add(&ActionRunnerContent::V1(content.clone()))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.update_content(ctx.change_set_pointer()?, self.id.into(), hash)?;
+        ctx.workspace_snapshot()?
+            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .await?;
         Ok(())
     }
 
@@ -404,8 +409,9 @@ impl ActionRunner {
             .await
             .add(&ActionRunnerContent::V1(content.clone()))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.update_content(ctx.change_set_pointer()?, self.id.into(), hash)?;
+        ctx.workspace_snapshot()?
+            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .await?;
         Ok(())
     }
 
@@ -419,8 +425,9 @@ impl ActionRunner {
             .await
             .add(&ActionRunnerContent::V1(content.clone()))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.update_content(ctx.change_set_pointer()?, self.id.into(), hash)?;
+        ctx.workspace_snapshot()?
+            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .await?;
         Ok(())
     }
 
@@ -467,14 +474,15 @@ impl ActionRunner {
         ctx: &DalContext,
         batch_id: ActionBatchId,
     ) -> ActionRunnerResult<Vec<Self>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let nodes = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(batch_id, EdgeWeightKindDiscriminants::Use)?;
+            .outgoing_targets_for_edge_weight_kind(batch_id, EdgeWeightKindDiscriminants::Use)
+            .await?;
         let mut node_weights = Vec::with_capacity(nodes.len());
         let mut content_hashes = Vec::with_capacity(nodes.len());
         for node in nodes {
-            let weight = workspace_snapshot.get_node_weight(node)?;
+            let weight = workspace_snapshot.get_node_weight(node).await?;
             content_hashes.push(weight.content_hash());
             node_weights.push(weight);
         }

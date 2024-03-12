@@ -117,25 +117,28 @@ impl Schema {
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Schema(hash))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.add_node(node_weight)?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        workspace_snapshot.add_node(node_weight).await?;
 
-        let schema_category_index_id =
-            workspace_snapshot.get_category_node(None, CategoryNodeKind::Schema)?;
-        workspace_snapshot.add_edge(
-            schema_category_index_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            id,
-        )?;
+        let schema_category_index_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::Schema)
+            .await?;
+        workspace_snapshot
+            .add_edge(
+                schema_category_index_id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                id,
+            )
+            .await?;
 
         Ok(Self::assemble(id.into(), content))
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: SchemaId) -> SchemaResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
         let content: SchemaContent = ctx
@@ -169,30 +172,35 @@ impl Schema {
                 .await
                 .add(&SchemaContent::V1(updated.clone()))?;
 
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            workspace_snapshot.update_content(ctx.change_set_pointer()?, schema.id.into(), hash)?;
+            ctx.workspace_snapshot()?
+                .update_content(ctx.change_set_pointer()?, schema.id.into(), hash)
+                .await?;
         }
 
         Ok(schema)
     }
 
     pub async fn list(ctx: &DalContext) -> SchemaResult<Vec<Self>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut schemas = vec![];
-        let schema_category_index_id =
-            workspace_snapshot.get_category_node(None, CategoryNodeKind::Schema)?;
+        let schema_category_index_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::Schema)
+            .await?;
 
-        let schema_node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            schema_category_index_id,
-            EdgeWeightKindDiscriminants::Use,
-        )?;
+        let schema_node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_category_index_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
 
         let mut schema_node_weights = vec![];
         let mut schema_content_hashes = vec![];
         for index in schema_node_indices {
             let node_weight = workspace_snapshot
-                .get_node_weight(index)?
+                .get_node_weight(index)
+                .await?
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::Schema)?;
             schema_content_hashes.push(node_weight.content_hash());
             schema_node_weights.push(node_weight);
@@ -224,18 +232,21 @@ impl Schema {
 
     /// Lists all [`Schemas`](Schema) by ID in the workspace.
     pub async fn list_ids(ctx: &DalContext) -> SchemaResult<Vec<SchemaId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let schema_category_index_id =
-            workspace_snapshot.get_category_node(None, CategoryNodeKind::Schema)?;
-        let schema_node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            schema_category_index_id,
-            EdgeWeightKindDiscriminants::Use,
-        )?;
+        let schema_category_index_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::Schema)
+            .await?;
+        let schema_node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_category_index_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
 
         let mut schema_ids = Vec::new();
         for index in schema_node_indices {
-            let raw_id = workspace_snapshot.get_node_weight(index)?.id();
+            let raw_id = workspace_snapshot.get_node_weight(index).await?.id();
             schema_ids.push(raw_id.into());
         }
 
@@ -247,22 +258,25 @@ impl Schema {
         ctx: &DalContext,
         name: impl AsRef<str>,
     ) -> SchemaResult<Option<Self>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let schema_node_indices = {
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-            let schema_category_index_id =
-                workspace_snapshot.get_category_node(None, CategoryNodeKind::Schema)?;
-            workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-                schema_category_index_id,
-                EdgeWeightKindDiscriminants::Use,
-            )?
+            let schema_category_index_id = workspace_snapshot
+                .get_category_node(None, CategoryNodeKind::Schema)
+                .await?;
+            workspace_snapshot
+                .outgoing_targets_for_edge_weight_kind(
+                    schema_category_index_id,
+                    EdgeWeightKindDiscriminants::Use,
+                )
+                .await?
         };
 
         // NOTE(nick): this algorithm could be better.
         for schema_node_index in schema_node_indices {
             let schema_node_weight = {
-                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
                 workspace_snapshot
-                    .get_node_weight(schema_node_index)?
+                    .get_node_weight(schema_node_index)
+                    .await?
                     .get_content_node_weight_of_kind(ContentAddressDiscriminants::Schema)?
             };
             let schema = Self::get_by_id(ctx, schema_node_weight.id().into()).await?;

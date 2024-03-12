@@ -94,10 +94,10 @@ pub struct InputSocketContentV1 {
 
 impl InputSocket {
     pub async fn get_by_id(ctx: &DalContext, id: InputSocketId) -> InputSocketResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        let node_weight = workspace_snapshot.get_node_weight_by_id(id)?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let node_weight = workspace_snapshot.get_node_weight_by_id(id).await?;
 
-        Self::get_from_node_weight(ctx, node_weight).await
+        Self::get_from_node_weight(ctx, &node_weight).await
     }
 
     pub fn assemble(id: InputSocketId, inner: InputSocketContentV1) -> Self {
@@ -163,15 +163,16 @@ impl InputSocket {
         attribute_prototype_id: AttributePrototypeId,
         key: &Option<String>,
     ) -> InputSocketResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.add_edge(
-            input_socket_id,
-            EdgeWeight::new(
-                ctx.change_set_pointer()?,
-                EdgeWeightKind::Prototype(key.to_owned()),
-            )?,
-            attribute_prototype_id,
-        )?;
+        ctx.workspace_snapshot()?
+            .add_edge(
+                input_socket_id,
+                EdgeWeight::new(
+                    ctx.change_set_pointer()?,
+                    EdgeWeightKind::Prototype(key.to_owned()),
+                )?,
+                attribute_prototype_id,
+            )
+            .await?;
 
         Ok(())
     }
@@ -183,18 +184,23 @@ impl InputSocket {
     ) -> InputSocketResult<Option<Self>> {
         let name = name.as_ref();
 
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        for socket_node_index in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            schema_variant_id,
-            EdgeWeightKindDiscriminants::Socket,
-        )? {
-            let node_weight = workspace_snapshot.get_node_weight(socket_node_index)?;
-            if let NodeWeight::Content(content_inner) = node_weight {
+        for socket_node_index in workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?
+        {
+            let node_weight = workspace_snapshot
+                .get_node_weight(socket_node_index)
+                .await?;
+            if let NodeWeight::Content(content_inner) = &node_weight {
                 if ContentAddressDiscriminants::InputSocket
                     == content_inner.content_address().into()
                 {
-                    let input_socket = Self::get_from_node_weight(ctx, node_weight).await?;
+                    let input_socket = Self::get_from_node_weight(ctx, &node_weight).await?;
                     if input_socket.name() == name {
                         return Ok(Some(input_socket));
                     }
@@ -244,27 +250,28 @@ impl InputSocket {
         let id = change_set.generate_ulid()?;
 
         {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+            let workspace_snapshot = ctx.workspace_snapshot()?;
             let node_weight =
                 NodeWeight::new_content(change_set, id, ContentAddress::InputSocket(hash))?;
-            let _node_index = workspace_snapshot.add_node(node_weight)?;
-            workspace_snapshot.add_edge(
-                schema_variant_id,
-                EdgeWeight::new(change_set, EdgeWeightKind::Socket)?,
-                id,
-            )?;
+            workspace_snapshot.add_node(node_weight).await?;
+            workspace_snapshot
+                .add_edge(
+                    schema_variant_id,
+                    EdgeWeight::new(change_set, EdgeWeightKind::Socket)?,
+                    id,
+                )
+                .await?;
         }
 
         let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
 
-        {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            workspace_snapshot.add_edge(
+        ctx.workspace_snapshot()?
+            .add_edge(
                 id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Prototype(None))?,
                 attribute_prototype.id(),
-            )?;
-        }
+            )
+            .await?;
 
         Ok(Self::assemble(id.into(), content))
     }
@@ -273,16 +280,18 @@ impl InputSocket {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> InputSocketResult<Vec<InputSocketId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            schema_variant_id,
-            EdgeWeightKindDiscriminants::Socket,
-        )?;
+        let node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?;
 
         let mut result = vec![];
         for node_index in node_indices {
-            let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+            let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
             if node_weight
                 .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::InputSocket)
                 .is_some()
@@ -298,17 +307,19 @@ impl InputSocket {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> InputSocketResult<Vec<Self>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            schema_variant_id,
-            EdgeWeightKindDiscriminants::Socket,
-        )?;
+        let node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?;
 
         let mut content_hashes = Vec::new();
         let mut node_weights = Vec::new();
         for node_index in node_indices {
-            let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+            let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
             if let Some(content_node_weight) = node_weight
                 .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::InputSocket)
             {
@@ -347,14 +358,17 @@ impl InputSocket {
     ) -> InputSocketResult<Vec<AttributeValueId>> {
         let mut result = vec![];
 
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        let av_sources = workspace_snapshot.incoming_sources_for_edge_weight_kind(
-            input_socket_id,
-            EdgeWeightKindDiscriminants::Socket,
-        )?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let av_sources = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                input_socket_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?;
+
         for av_source_idx in av_sources {
             if let NodeWeight::AttributeValue(av_node_weight) =
-                workspace_snapshot.get_node_weight(av_source_idx)?
+                workspace_snapshot.get_node_weight(av_source_idx).await?
             {
                 result.push(av_node_weight.id().into());
             }

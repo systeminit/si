@@ -2,7 +2,6 @@
 //! [`Component`](crate::Component).
 
 use content_store::{ContentHash, Store};
-use petgraph::prelude::EdgeRef;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -163,6 +162,7 @@ impl SchemaVariant {
         category: impl Into<String>,
     ) -> SchemaVariantResult<(Self, RootProp)> {
         info!("creating schema variant and root prop tree");
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let content = SchemaVariantContentV1 {
             timestamp: Timestamp::now(),
             name: name.into(),
@@ -179,19 +179,18 @@ impl SchemaVariant {
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
-        {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            let node_weight =
-                NodeWeight::new_content(change_set, id, ContentAddress::SchemaVariant(hash))?;
-            let _node_index = workspace_snapshot.add_node(node_weight)?;
+        let node_weight =
+            NodeWeight::new_content(change_set, id, ContentAddress::SchemaVariant(hash))?;
+        workspace_snapshot.add_node(node_weight).await?;
 
-            // Schema --Use--> SchemaVariant (this)
-            workspace_snapshot.add_edge(
+        // Schema --Use--> SchemaVariant (this)
+        workspace_snapshot
+            .add_edge(
                 schema_id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                 id,
-            )?;
-        }
+            )
+            .await?;
 
         let schema_variant_id: SchemaVariantId = id.into();
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;
@@ -206,10 +205,10 @@ impl SchemaVariant {
 
         let root_prop_id = Self::get_root_prop_id(ctx, self.id()).await?;
         let mut work_queue = VecDeque::from([(root_prop_id, None::<PropPath>)]);
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         while let Some((prop_id, maybe_parent_path)) = work_queue.pop_front() {
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-            let node_weight = workspace_snapshot.get_node_weight_by_id(prop_id)?;
+            let node_weight = workspace_snapshot.get_node_weight_by_id(prop_id).await?;
 
             match node_weight {
                 NodeWeight::Prop(prop_inner) => {
@@ -226,11 +225,13 @@ impl SchemaVariant {
                         .outgoing_targets_for_edge_weight_kind(
                             prop_id,
                             EdgeWeightKindDiscriminants::Ordering,
-                        )?
+                        )
+                        .await?
                         .first()
                     {
                         let ordering_node_weight = workspace_snapshot
-                            .get_node_weight(*ordering_node_idx)?
+                            .get_node_weight(*ordering_node_idx)
+                            .await?
                             .get_ordering_node_weight()?;
 
                         for &id in ordering_node_weight.order() {
@@ -246,10 +247,10 @@ impl SchemaVariant {
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: SchemaVariantId) -> SchemaVariantResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
         let content: SchemaVariantContent = ctx
@@ -283,18 +284,16 @@ impl SchemaVariant {
 
         let mut schema_variant_ids = Vec::new();
 
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         for schema_id in schema_ids {
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-
             let schema_variant_node_indices = workspace_snapshot
-                .outgoing_targets_for_edge_weight_kind(
-                    schema_id,
-                    EdgeWeightKindDiscriminants::Use,
-                )?;
+                .outgoing_targets_for_edge_weight_kind(schema_id, EdgeWeightKindDiscriminants::Use)
+                .await?;
 
             for schema_variant_node_index in schema_variant_node_indices {
                 let raw_id = workspace_snapshot
-                    .get_node_weight(schema_variant_node_index)?
+                    .get_node_weight(schema_variant_node_index)
+                    .await?
                     .id();
                 schema_variant_ids.push(raw_id.into());
             }
@@ -312,21 +311,24 @@ impl SchemaVariant {
         // a schema variant (if it doesn't already exist) then it gets an edge for default
         // If we are creating a new version of a schema variant then we will be able to mark it as default
         let node_weight = {
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+            let workspace_snapshot = ctx.workspace_snapshot()?;
 
-            let parent_index = workspace_snapshot.get_node_index_by_id(schema_id)?;
+            let parent_index = workspace_snapshot.get_node_index_by_id(schema_id).await?;
 
-            let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind_by_index(
-                parent_index,
-                EdgeWeightKindDiscriminants::Use,
-            )?;
+            let node_indices = workspace_snapshot
+                .outgoing_targets_for_edge_weight_kind_by_index(
+                    parent_index,
+                    EdgeWeightKindDiscriminants::Use,
+                )
+                .await?;
 
             let node_index = node_indices
                 .first()
                 .ok_or(SchemaVariantError::DefaultSchemaVariantNotFound(schema_id))?;
 
             workspace_snapshot
-                .get_node_weight(*node_index)?
+                .get_node_weight(*node_index)
+                .await?
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::SchemaVariant)?
         };
 
@@ -337,21 +339,24 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaVariantResult<Vec<Self>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut schema_variants = vec![];
-        let parent_index = workspace_snapshot.get_node_index_by_id(schema_id)?;
+        let parent_index = workspace_snapshot.get_node_index_by_id(schema_id).await?;
 
-        let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind_by_index(
-            parent_index,
-            EdgeWeightKindDiscriminants::Use,
-        )?;
+        let node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind_by_index(
+                parent_index,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
 
         let mut node_weights = vec![];
         let mut content_hashes = vec![];
         for index in node_indices {
             let node_weight = workspace_snapshot
-                .get_node_weight(index)?
+                .get_node_weight(index)
+                .await?
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::SchemaVariant)?;
             content_hashes.push(node_weight.content_hash());
             node_weights.push(node_weight);
@@ -409,14 +414,16 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<PropNodeWeight> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let edge_targets: Vec<NodeIndex> = workspace_snapshot
-            .edges_directed(schema_variant_id, Direction::Outgoing)?
-            .map(|edge_ref| edge_ref.target())
+            .edges_directed(schema_variant_id, Direction::Outgoing)
+            .await?
+            .into_iter()
+            .map(|(_, _, target_idx)| target_idx)
             .collect();
 
         for index in edge_targets {
-            let node_weight = workspace_snapshot.get_node_weight(index)?;
+            let node_weight = workspace_snapshot.get_node_weight(index).await?;
             // TODO(nick): ensure that only one prop can be under a schema variant.
             if let NodeWeight::Prop(inner_weight) = node_weight {
                 if inner_weight.name() == "root" {
@@ -433,6 +440,7 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
         info!("creating default prototypes");
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let change_set = ctx.change_set_pointer()?;
         let func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
         let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
@@ -442,13 +450,14 @@ impl SchemaVariant {
             // See an attribute prototype exists.
             let mut found_attribute_prototype_id: Option<AttributePrototypeId> = None;
             {
-                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-                let targets = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-                    prop.id(),
-                    EdgeWeightKindDiscriminants::Prototype,
-                )?;
+                let targets = workspace_snapshot
+                    .outgoing_targets_for_edge_weight_kind(
+                        prop.id(),
+                        EdgeWeightKindDiscriminants::Prototype,
+                    )
+                    .await?;
                 for target in targets {
-                    let node_weight = workspace_snapshot.get_node_weight(target)?;
+                    let node_weight = workspace_snapshot.get_node_weight(target).await?;
                     if let Some(ContentAddressDiscriminants::AttributePrototype) =
                         node_weight.content_address_discriminants()
                     {
@@ -464,22 +473,21 @@ impl SchemaVariant {
                 let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
 
                 // New edge Prop --Prototype--> AttributePrototype.
-                let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-                workspace_snapshot.add_edge(
-                    prop.id(),
-                    EdgeWeight::new(change_set, EdgeWeightKind::Prototype(None))?,
-                    attribute_prototype.id(),
-                )?;
+                workspace_snapshot
+                    .add_edge(
+                        prop.id(),
+                        EdgeWeight::new(change_set, EdgeWeightKind::Prototype(None))?,
+                        attribute_prototype.id(),
+                    )
+                    .await?;
             }
 
             // Push all children onto the work queue.
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-            let targets = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-                prop.id(),
-                EdgeWeightKindDiscriminants::Use,
-            )?;
+            let targets = workspace_snapshot
+                .outgoing_targets_for_edge_weight_kind(prop.id(), EdgeWeightKindDiscriminants::Use)
+                .await?;
             for target in targets {
-                let node_weight = workspace_snapshot.get_node_weight(target)?;
+                let node_weight = workspace_snapshot.get_node_weight(target).await?;
                 if let NodeWeight::Prop(child_prop) = node_weight {
                     work_queue.push_back(child_prop.to_owned())
                 }
@@ -493,27 +501,33 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let root_prop_node_weight = Self::get_root_prop_node_weight(ctx, schema_variant_id).await?;
-        let root_prop_idx = {
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-            workspace_snapshot.get_node_index_by_id(root_prop_node_weight.id())?
-        };
+        let root_prop_idx = workspace_snapshot
+            .get_node_index_by_id(root_prop_node_weight.id())
+            .await?;
 
         let mut work_queue = VecDeque::new();
         work_queue.push_back(root_prop_idx);
 
         while let Some(prop_idx) = work_queue.pop_front() {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            workspace_snapshot.mark_prop_as_able_to_be_used_as_prototype_arg(prop_idx)?;
+            workspace_snapshot
+                .mark_prop_as_able_to_be_used_as_prototype_arg(prop_idx)
+                .await?;
 
-            let node_weight = workspace_snapshot.get_node_weight(prop_idx)?.to_owned();
+            let node_weight = workspace_snapshot
+                .get_node_weight(prop_idx)
+                .await?
+                .to_owned();
             if let NodeWeight::Prop(prop) = node_weight {
                 // Only descend if we are an object.
                 if prop.kind() == PropKind::Object {
-                    let targets = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-                        prop.id(),
-                        EdgeWeightKindDiscriminants::Use,
-                    )?;
+                    let targets = workspace_snapshot
+                        .outgoing_targets_for_edge_weight_kind(
+                            prop.id(),
+                            EdgeWeightKindDiscriminants::Use,
+                        )
+                        .await?;
                     work_queue.extend(targets);
                 }
             }
@@ -527,12 +541,14 @@ impl SchemaVariant {
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.add_edge(
-            schema_variant_id,
-            EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Use)?,
-            func_id,
-        )?;
+        ctx.workspace_snapshot()?
+            .add_edge(
+                schema_variant_id,
+                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Use)?,
+                func_id,
+            )
+            .await?;
+
         Ok(())
     }
 
@@ -541,15 +557,16 @@ impl SchemaVariant {
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.add_edge(
-            schema_variant_id,
-            EdgeWeight::new(
-                ctx.change_set_pointer()?,
-                EdgeWeightKind::AuthenticationPrototype,
-            )?,
-            func_id,
-        )?;
+        ctx.workspace_snapshot()?
+            .add_edge(
+                schema_variant_id,
+                EdgeWeight::new(
+                    ctx.change_set_pointer()?,
+                    EdgeWeightKind::AuthenticationPrototype,
+                )?,
+                func_id,
+            )
+            .await?;
         Ok(())
     }
 
@@ -558,10 +575,10 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<(ContentHash, SchemaVariantContentV1)> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let id: Ulid = schema_variant_id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
         let content: SchemaVariantContent = ctx
@@ -834,20 +851,24 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<(Vec<OutputSocket>, Vec<InputSocket>)> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         // Look for all output and input sockets that the schema variant uses.
-        let maybe_socket_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            schema_variant_id,
-            EdgeWeightKindDiscriminants::Socket,
-        )?;
+        let maybe_socket_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?;
 
         // Collect the output and the input sockets separately.
         let mut output_socket_hashes: Vec<(OutputSocketId, ContentHash)> = Vec::new();
         let mut input_socket_hashes: Vec<(InputSocketId, ContentHash)> = Vec::new();
 
         for maybe_socket_node_index in maybe_socket_indices {
-            let node_weight = workspace_snapshot.get_node_weight(maybe_socket_node_index)?;
+            let node_weight = workspace_snapshot
+                .get_node_weight(maybe_socket_node_index)
+                .await?;
             if let NodeWeight::Content(content_node_weight) = node_weight {
                 match content_node_weight.content_address() {
                     ContentAddress::OutputSocket(output_socket_content_hash) => {
@@ -921,15 +942,19 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Schema> {
         let schema_id = {
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-            let maybe_schema_indices = workspace_snapshot.incoming_sources_for_edge_weight_kind(
-                schema_variant_id,
-                EdgeWeightKindDiscriminants::Use,
-            )?;
+            let workspace_snapshot = ctx.workspace_snapshot()?;
+            let maybe_schema_indices = workspace_snapshot
+                .incoming_sources_for_edge_weight_kind(
+                    schema_variant_id,
+                    EdgeWeightKindDiscriminants::Use,
+                )
+                .await?;
 
             let mut schema_id: Option<SchemaId> = None;
             for index in maybe_schema_indices {
-                if let NodeWeight::Content(content) = workspace_snapshot.get_node_weight(index)? {
+                if let NodeWeight::Content(content) =
+                    workspace_snapshot.get_node_weight(index).await?
+                {
                     let content_hash_discriminants: ContentAddressDiscriminants =
                         content.content_address().into();
                     if let ContentAddressDiscriminants::Schema = content_hash_discriminants {
@@ -954,15 +979,24 @@ impl SchemaVariant {
         ctx: &DalContext,
         variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Vec<FuncId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut auth_funcs = vec![];
 
-        for node_id in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            variant_id,
-            EdgeWeightKindDiscriminants::AuthenticationPrototype,
-        )? {
-            auth_funcs.push(workspace_snapshot.get_node_weight(node_id)?.id().into())
+        for node_id in workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                variant_id,
+                EdgeWeightKindDiscriminants::AuthenticationPrototype,
+            )
+            .await?
+        {
+            auth_funcs.push(
+                workspace_snapshot
+                    .get_node_weight(node_id)
+                    .await?
+                    .id()
+                    .into(),
+            )
         }
 
         Ok(auth_funcs)

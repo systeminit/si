@@ -48,14 +48,14 @@ pub(crate) async fn perform_rebase(
         RebaseError::MissingWorkspaceSnapshotForChangeSet(to_rebase_change_set.id),
     )?;
     info!("before snapshot fetch and parse: {:?}", start.elapsed());
-    let mut to_rebase_workspace_snapshot =
+    let to_rebase_workspace_snapshot =
         WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_id).await?;
-    let mut onto_workspace_snapshot: WorkspaceSnapshot =
+    let onto_workspace_snapshot: WorkspaceSnapshot =
         WorkspaceSnapshot::find(ctx, message.onto_workspace_snapshot_id.into()).await?;
     info!(
         "to_rebase_id: {}, onto_id: {}",
         to_rebase_workspace_snapshot_id,
-        onto_workspace_snapshot.id()
+        onto_workspace_snapshot.id().await
     );
     info!("after snapshot fetch and parse: {:?}", start.elapsed());
 
@@ -64,7 +64,7 @@ pub(crate) async fn perform_rebase(
     let (conflicts, updates) = to_rebase_workspace_snapshot
         .detect_conflicts_and_updates(
             to_rebase_change_set.vector_clock_id(),
-            &mut onto_workspace_snapshot,
+            &onto_workspace_snapshot,
             onto_vector_clock_id,
         )
         .await?;
@@ -79,11 +79,13 @@ pub(crate) async fn perform_rebase(
     // Otherwise, we can perform updates and assemble a "success" reply message.
     let message: ReplyRebaseMessage = if conflicts.is_empty() {
         // TODO(nick): store the offset with the change set.
-        to_rebase_workspace_snapshot.perform_updates(
-            &to_rebase_change_set,
-            &mut onto_workspace_snapshot,
-            updates.as_slice(),
-        )?;
+        to_rebase_workspace_snapshot
+            .perform_updates(
+                &to_rebase_change_set,
+                &onto_workspace_snapshot,
+                updates.as_slice(),
+            )
+            .await?;
         info!("updates complete: {:?}", start.elapsed());
 
         if !updates.is_empty() {
@@ -94,7 +96,7 @@ pub(crate) async fn perform_rebase(
                 .await?;
             info!("snapshot written: {:?}", start.elapsed());
             to_rebase_change_set
-                .update_pointer(ctx, to_rebase_workspace_snapshot.id())
+                .update_pointer(ctx, to_rebase_workspace_snapshot.id().await)
                 .await?;
             info!("pointer updated: {:?}", start.elapsed());
         }

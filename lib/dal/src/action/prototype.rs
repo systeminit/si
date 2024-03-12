@@ -194,19 +194,23 @@ impl ActionPrototype {
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::ActionPrototype(hash))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        workspace_snapshot.add_node(node_weight.to_owned())?;
-        workspace_snapshot.add_edge(
-            schema_variant_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::ActionPrototype(kind))?,
-            id,
-        )?;
-        workspace_snapshot.add_edge(
-            id,
-            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            func_id,
-        )?;
+        workspace_snapshot.add_node(node_weight.to_owned()).await?;
+        workspace_snapshot
+            .add_edge(
+                schema_variant_id,
+                EdgeWeight::new(change_set, EdgeWeightKind::ActionPrototype(kind))?,
+                id,
+            )
+            .await?;
+        workspace_snapshot
+            .add_edge(
+                id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                func_id,
+            )
+            .await?;
 
         Ok(ActionPrototype::assemble(id.into(), content))
     }
@@ -215,16 +219,18 @@ impl ActionPrototype {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> ActionPrototypeResult<Vec<Self>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let nodes = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            schema_variant_id,
-            EdgeWeightKindDiscriminants::ActionPrototype,
-        )?;
+        let nodes = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::ActionPrototype,
+            )
+            .await?;
         let mut node_weights = Vec::with_capacity(nodes.len());
         let mut content_hashes = Vec::with_capacity(nodes.len());
         for node in nodes {
-            let weight = workspace_snapshot.get_node_weight(node)?;
+            let weight = workspace_snapshot.get_node_weight(node).await?;
             content_hashes.push(weight.content_hash());
             node_weights.push(weight);
         }
@@ -253,10 +259,10 @@ impl ActionPrototype {
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: ActionPrototypeId) -> ActionPrototypeResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let ulid: ulid::Ulid = id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(ulid)?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
         let content: ActionPrototypeContent = ctx
@@ -274,13 +280,15 @@ impl ActionPrototype {
     }
 
     pub async fn func_id(&self, ctx: &DalContext) -> ActionPrototypeResult<FuncId> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         for node_index in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)?
+            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)
+            .await?
         {
-            let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+            let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+            let id = node_weight.id();
             if NodeWeightDiscriminants::Func == node_weight.into() {
-                return Ok(node_weight.id().into());
+                return Ok(id.into());
             }
         }
 

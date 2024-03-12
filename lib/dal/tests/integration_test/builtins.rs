@@ -1,7 +1,6 @@
 use dal::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use dal::{func::intrinsics::IntrinsicFunc, DalContext, Func, Schema, SchemaVariant};
 use dal_test::test;
-use petgraph::prelude::*;
 use strum::IntoEnumIterator;
 
 #[test]
@@ -24,25 +23,28 @@ async fn docker_image_has_one_qualfiication_map_prop(ctx: &DalContext) {
         .await
         .expect("get root prop for variant");
 
-    let workspace_snapshot = ctx.workspace_snapshot().expect("get snap").read().await;
+    let workspace_snapshot = ctx.workspace_snapshot().expect("get snap");
 
     let child_prop_targets = workspace_snapshot
         .outgoing_targets_for_edge_weight_kind(root_prop_id, EdgeWeightKindDiscriminants::Use)
+        .await
         .expect("get all child prop targets of root");
 
-    let qualification_props: Vec<&NodeIndex> = child_prop_targets
-        .iter()
-        .filter(|&child_prop_target| {
-            let node_weight = workspace_snapshot
-                .get_node_weight(*child_prop_target)
-                .expect("get node weight")
-                .get_prop_node_weight()
-                .expect("should be prop")
-                .to_owned();
+    let mut qualification_props = vec![];
 
-            node_weight.name() == "qualification"
-        })
-        .collect();
+    for node_index in child_prop_targets {
+        let node_weight = workspace_snapshot
+            .get_node_weight(node_index)
+            .await
+            .expect("get node weight")
+            .get_prop_node_weight()
+            .expect("should be prop")
+            .to_owned();
+
+        if node_weight.name() == "qualification" {
+            qualification_props.push(node_index)
+        }
+    }
 
     assert_eq!(1, qualification_props.len());
 }

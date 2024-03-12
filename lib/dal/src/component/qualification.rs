@@ -39,12 +39,13 @@ impl Component {
             .copied()
             .ok_or(ComponentError::MissingQualificationsValue(component_id))?;
 
-        let qualification_attribute_value_ids = {
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-            match workspace_snapshot.ordered_children_for_node(qualification_map_value_id)? {
-                Some(value_ids) => value_ids,
-                None => return Ok(vec![]), // should probably be an error
-            }
+        let qualification_attribute_value_ids = match ctx
+            .workspace_snapshot()?
+            .ordered_children_for_node(qualification_map_value_id)
+            .await?
+        {
+            Some(value_ids) => value_ids,
+            None => return Ok(vec![]), // should probably be an error
         };
 
         for qualification_attribute_value_id in qualification_attribute_value_ids {

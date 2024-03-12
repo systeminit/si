@@ -57,18 +57,20 @@ impl DependentValueGraph {
             // Gather the Attribute Prototype Arguments that take the thing the
             // current value is for (prop, or socket) as an input
             let relevant_apas = {
-                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+                let workspace_snapshot = ctx.workspace_snapshot()?;
 
                 let attribute_prototype_argument_idxs = workspace_snapshot
                     .incoming_sources_for_edge_weight_kind(
                         data_source_id,
                         EdgeWeightKindDiscriminants::PrototypeArgumentValue,
-                    )?;
+                    )
+                    .await?;
 
                 let mut relevant_apas = vec![];
                 for apa_idx in attribute_prototype_argument_idxs {
                     let apa = workspace_snapshot
-                        .get_node_weight(apa_idx)?
+                        .get_node_weight(apa_idx)
+                        .await?
                         .get_attribute_prototype_argument_node_weight()?;
 
                     match apa.targets() {

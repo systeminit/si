@@ -36,20 +36,22 @@ impl PropertyEditorSchema {
         let root_property_editor_prop_id = root_property_editor_prop.id;
         props.insert(root_property_editor_prop_id, root_property_editor_prop);
 
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut work_queue = VecDeque::from([(root_prop_id, root_property_editor_prop_id)]);
         while let Some((prop_id, property_editor_prop_id)) = work_queue.pop_front() {
             // Collect all child props.
             let mut cache = Vec::new();
             {
-                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
                 for child_prop_node_index in workspace_snapshot
                     .outgoing_targets_for_edge_weight_kind(
                         prop_id,
                         EdgeWeightKindDiscriminants::Use,
-                    )?
+                    )
+                    .await?
                 {
-                    if let NodeWeight::Prop(child_prop_weight) =
-                        workspace_snapshot.get_node_weight(child_prop_node_index)?
+                    if let NodeWeight::Prop(child_prop_weight) = workspace_snapshot
+                        .get_node_weight(child_prop_node_index)
+                        .await?
                     {
                         let child_prop_id: PropId = child_prop_weight.id().into();
 

@@ -140,23 +140,27 @@ impl Action {
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Action(hash))?;
         let action_prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        workspace_snapshot.add_node(node_weight.to_owned())?;
+        workspace_snapshot.add_node(node_weight.to_owned()).await?;
 
-        workspace_snapshot.add_edge(
-            id,
-            EdgeWeight::new(
-                change_set,
-                EdgeWeightKind::ActionPrototype(action_prototype.kind),
-            )?,
-            prototype_id,
-        )?;
-        workspace_snapshot.add_edge(
-            component_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::Action)?,
-            id,
-        )?;
+        workspace_snapshot
+            .add_edge(
+                id,
+                EdgeWeight::new(
+                    change_set,
+                    EdgeWeightKind::ActionPrototype(action_prototype.kind),
+                )?,
+                prototype_id,
+            )
+            .await?;
+        workspace_snapshot
+            .add_edge(
+                component_id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Action)?,
+                id,
+            )
+            .await?;
 
         let content_node_weight =
             node_weight.get_content_node_weight_of_kind(ContentAddressDiscriminants::Action)?;
@@ -170,17 +174,19 @@ impl Action {
     }
 
     pub async fn delete(self, ctx: &DalContext) -> ActionResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let change_set = ctx.change_set_pointer()?;
-        workspace_snapshot.remove_node_by_id(change_set, self.id)?;
+        workspace_snapshot
+            .remove_node_by_id(change_set, self.id)
+            .await?;
         Ok(())
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: ActionId) -> ActionResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let ulid: ulid::Ulid = id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(ulid)?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
         let content: ActionContent = ctx
@@ -198,13 +204,14 @@ impl Action {
     }
 
     pub async fn component(&self, ctx: &DalContext) -> ActionResult<Component> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let node = workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Action)?
+            .incoming_sources_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Action)
+            .await?
             .pop()
             .ok_or(ActionError::ComponentNotFoundFor(self.id))?;
-        let node_weight = workspace_snapshot.get_node_weight(node)?;
+        let node_weight = workspace_snapshot.get_node_weight(node).await?;
         let content_hash = node_weight.content_hash();
 
         let content = ctx
@@ -221,16 +228,17 @@ impl Action {
     }
 
     pub async fn prototype(&self, ctx: &DalContext) -> ActionResult<ActionPrototype> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let node = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
                 self.id,
                 EdgeWeightKindDiscriminants::ActionPrototype,
-            )?
+            )
+            .await?
             .pop()
             .ok_or(ActionError::PrototypeNotFoundFor(self.id))?;
-        let node_weight = workspace_snapshot.get_node_weight(node)?;
+        let node_weight = workspace_snapshot.get_node_weight(node).await?;
         let content_hash = node_weight.content_hash();
 
         let content = ctx
@@ -250,16 +258,18 @@ impl Action {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ActionResult<Vec<Self>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let nodes = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            component_id,
-            EdgeWeightKindDiscriminants::Action,
-        )?;
+        let nodes = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                component_id,
+                EdgeWeightKindDiscriminants::Action,
+            )
+            .await?;
         let mut node_weights = Vec::with_capacity(nodes.len());
         let mut content_hashes = Vec::with_capacity(nodes.len());
         for node in nodes {
-            let weight = workspace_snapshot.get_node_weight(node)?;
+            let weight = workspace_snapshot.get_node_weight(node).await?;
             content_hashes.push(weight.content_hash());
             node_weights.push(weight);
         }

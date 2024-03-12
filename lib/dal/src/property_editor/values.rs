@@ -1,7 +1,7 @@
 //! This module contains the ability to construct values reflecting the latest state of a
 //! [`Component`](crate::Component)'s properties.
 
-use petgraph::prelude::{EdgeRef, NodeIndex};
+use petgraph::prelude::NodeIndex;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -59,20 +59,21 @@ impl PropertyEditorValues {
             },
         );
 
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut work_queue =
             VecDeque::from([(root_attribute_value_id, root_property_editor_value_id)]);
         while let Some((attribute_value_id, property_editor_value_id)) = work_queue.pop_front() {
             // Collect all child attribute values.
             let mut cache: Vec<(AttributeValueId, Option<String>)> = Vec::new();
             {
-                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-
                 let child_attribute_values_with_keys: Vec<(NodeIndex, Option<String>)> =
                     workspace_snapshot
-                        .edges_directed(attribute_value_id, Direction::Outgoing)?
-                        .filter_map(|edge_ref| {
-                            if let EdgeWeightKind::Contain(key) = edge_ref.weight().kind() {
-                                Some((edge_ref.target(), key.to_owned()))
+                        .edges_directed(attribute_value_id, Direction::Outgoing)
+                        .await?
+                        .into_iter()
+                        .filter_map(|(edge_weight, _, target_idx)| {
+                            if let EdgeWeightKind::Contain(key) = edge_weight.kind() {
+                                Some((target_idx, key.to_owned()))
                             } else {
                                 None
                             }
@@ -81,8 +82,9 @@ impl PropertyEditorValues {
 
                 // NOTE(nick): this entire function is likely wasteful. Zack and Jacob, have mercy on me.
                 for (child_attribute_value_node_index, key) in child_attribute_values_with_keys {
-                    let child_attribute_value_node_weight =
-                        workspace_snapshot.get_node_weight(child_attribute_value_node_index)?;
+                    let child_attribute_value_node_weight = workspace_snapshot
+                        .get_node_weight(child_attribute_value_node_index)
+                        .await?;
                     let content =
                         child_attribute_value_node_weight.get_attribute_value_node_weight()?;
                     cache.push((content.id().into(), key));

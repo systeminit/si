@@ -67,14 +67,15 @@ impl Frame {
         parent_id: ComponentId,
         child_id: ComponentId,
     ) -> FrameResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
         let change_set = ctx.change_set_pointer()?;
 
-        workspace_snapshot.add_edge(
-            parent_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::FrameContains)?,
-            child_id,
-        )?;
+        ctx.workspace_snapshot()?
+            .add_edge(
+                parent_id,
+                EdgeWeight::new(change_set, EdgeWeightKind::FrameContains)?,
+                child_id,
+            )
+            .await?;
 
         Ok(())
     }

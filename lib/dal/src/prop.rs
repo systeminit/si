@@ -370,13 +370,14 @@ impl Prop {
         ctx: &DalContext,
         prop_id: PropId,
     ) -> PropResult<Option<PropId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         match workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Use)?
+            .incoming_sources_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Use)
+            .await?
             .first()
         {
             Some(parent_node_idx) => Ok(
-                match workspace_snapshot.get_node_weight(*parent_node_idx)? {
+                match workspace_snapshot.get_node_weight(*parent_node_idx).await? {
                     NodeWeight::Prop(prop_inner) => Some(prop_inner.id().into()),
                     NodeWeight::Content(content_inner) => {
                         let content_addr_discrim: ContentAddressDiscriminants =
@@ -397,22 +398,25 @@ impl Prop {
         ctx: &DalContext,
         prop_id: PropId,
     ) -> PropResult<Vec<PropId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        Ok(workspace_snapshot
+        let mut result = vec![];
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        for (_, _, target_idx) in workspace_snapshot
             .edges_directed_for_edge_weight_kind(
                 prop_id,
                 Outgoing,
                 EdgeWeightKindDiscriminants::Use,
-            )?
-            .iter()
-            .filter_map(|edge_ref| {
-                workspace_snapshot
-                    .get_node_weight(edge_ref.target())
-                    .ok()
-                    .and_then(|node_weight| node_weight.get_prop_node_weight().ok())
-                    .map(|prop_node| prop_node.id().into())
-            })
-            .collect())
+            )
+            .await?
+        {
+            let prop_node = workspace_snapshot
+                .get_node_weight(target_idx)
+                .await?
+                .get_prop_node_weight()?;
+
+            result.push(prop_node.id().into());
+        }
+
+        Ok(result)
     }
 
     /// Finds and expects a single child [`Prop`]. If zero or more than one [`Prop`] is found, an error is returned.
@@ -444,9 +448,8 @@ impl Prop {
     pub async fn path_by_id(ctx: &DalContext, prop_id: PropId) -> PropResult<PropPath> {
         let name = ctx
             .workspace_snapshot()?
-            .read()
-            .await
-            .get_node_weight_by_id(prop_id)?
+            .get_node_weight_by_id(prop_id)
+            .await?
             .get_prop_node_weight()?
             .name()
             .to_owned();
@@ -456,10 +459,12 @@ impl Prop {
 
         while let Some(prop_id) = work_queue.pop_front() {
             if let Some(prop_id) = Prop::parent_prop_id_by_id(ctx, prop_id).await? {
-                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-                let node_idx = workspace_snapshot.get_node_index_by_id(prop_id)?;
+                let workspace_snapshot = ctx.workspace_snapshot()?;
+                let node_idx = workspace_snapshot.get_node_index_by_id(prop_id).await?;
 
-                if let NodeWeight::Prop(inner) = workspace_snapshot.get_node_weight(node_idx)? {
+                if let NodeWeight::Prop(inner) =
+                    workspace_snapshot.get_node_weight(node_idx).await?
+                {
                     parts.push_front(inner.name().to_owned());
                     work_queue.push_back(inner.id().into());
                 }
@@ -478,17 +483,20 @@ impl Prop {
         prop_id: PropId,
     ) -> PropResult<Vec<AttributeValueId>> {
         let mut result = vec![];
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let av_sources = workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Prop)?;
+            .incoming_sources_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Prop)
+            .await?;
 
         for av_source_idx in av_sources {
             let av_id: AttributeValueId = workspace_snapshot
-                .get_node_weight(av_source_idx)?
+                .get_node_weight(av_source_idx)
+                .await?
                 .get_attribute_value_node_weight()?
                 .id()
                 .into();
+
             result.push(av_id)
         }
 
@@ -553,35 +561,43 @@ impl Prop {
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        let _node_index = if ordered {
-            workspace_snapshot.add_ordered_node(change_set, node_weight)?
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        if ordered {
+            workspace_snapshot
+                .add_ordered_node(change_set, node_weight)
+                .await?;
         } else {
-            workspace_snapshot.add_node(node_weight)?
-        };
+            workspace_snapshot.add_node(node_weight).await?;
+        }
 
         match prop_parent {
             PropParent::OrderedProp(ordered_prop_id) => {
-                workspace_snapshot.add_ordered_edge(
-                    change_set,
-                    ordered_prop_id,
-                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-                    id,
-                )?;
+                workspace_snapshot
+                    .add_ordered_edge(
+                        change_set,
+                        ordered_prop_id,
+                        EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                        id,
+                    )
+                    .await?;
             }
             PropParent::Prop(prop_id) => {
-                workspace_snapshot.add_edge(
-                    prop_id,
-                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-                    id,
-                )?;
+                workspace_snapshot
+                    .add_edge(
+                        prop_id,
+                        EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                        id,
+                    )
+                    .await?;
             }
             PropParent::SchemaVariant(schema_variant_id) => {
-                workspace_snapshot.add_edge(
-                    schema_variant_id,
-                    EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-                    id,
-                )?;
+                workspace_snapshot
+                    .add_edge(
+                        schema_variant_id,
+                        EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                        id,
+                    )
+                    .await?;
             }
         };
 
@@ -589,10 +605,10 @@ impl Prop {
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: PropId) -> PropResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let ulid: ulid::Ulid = id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(ulid)?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
         let content: PropContent = ctx
@@ -614,12 +630,14 @@ impl Prop {
             return Err(PropError::ElementPropNotOnKind(self.id, self.kind));
         }
 
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         for maybe_elem_node_idx in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)?
+            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Use)
+            .await?
         {
-            if let NodeWeight::Prop(prop_inner) =
-                workspace_snapshot.get_node_weight(maybe_elem_node_idx)?
+            if let NodeWeight::Prop(prop_inner) = workspace_snapshot
+                .get_node_weight(maybe_elem_node_idx)
+                .await?
             {
                 return Ok(prop_inner.id().into());
             }
@@ -633,14 +651,17 @@ impl Prop {
         node_index: NodeIndex,
         child_name: impl AsRef<str>,
     ) -> PropResult<NodeIndex> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        for prop_node_index in workspace_snapshot.outgoing_targets_for_edge_weight_kind_by_index(
-            node_index,
-            EdgeWeightKindDiscriminants::Use,
-        )? {
+        for prop_node_index in workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind_by_index(
+                node_index,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?
+        {
             if let NodeWeight::Prop(prop_inner) =
-                workspace_snapshot.get_node_weight(prop_node_index)?
+                workspace_snapshot.get_node_weight(prop_node_index).await?
             {
                 if prop_inner.name() == child_name.as_ref() {
                     return Ok(prop_node_index);
@@ -673,11 +694,11 @@ impl Prop {
         schema_variant_id: SchemaVariantId,
         path: &PropPath,
     ) -> PropResult<PropId> {
-        let schema_variant_node_index = {
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-            workspace_snapshot.get_node_index_by_id(schema_variant_id)?
-        };
+        let schema_variant_node_index = workspace_snapshot
+            .get_node_index_by_id(schema_variant_id)
+            .await?;
 
         let path_parts = path.as_parts();
 
@@ -687,9 +708,9 @@ impl Prop {
                 Self::find_child_prop_index_by_name(ctx, current_node_index, part).await?;
         }
 
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         Ok(workspace_snapshot
-            .get_node_weight(current_node_index)?
+            .get_node_weight(current_node_index)
+            .await?
             .id()
             .into())
     }
@@ -708,12 +729,13 @@ impl Prop {
         prop_id: PropId,
         attribute_prototype_id: AttributePrototypeId,
     ) -> PropResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.add_edge(
-            prop_id,
-            EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(None))?,
-            attribute_prototype_id,
-        )?;
+        ctx.workspace_snapshot()?
+            .add_edge(
+                prop_id,
+                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(None))?,
+                attribute_prototype_id,
+            )
+            .await?;
 
         Ok(())
     }
@@ -722,40 +744,42 @@ impl Prop {
         ctx: &DalContext,
         prop_id: PropId,
     ) -> PropResult<Vec<(Option<String>, AttributePrototypeId)>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        Ok(workspace_snapshot
+        let mut result = vec![];
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        for (edge_weight, _, target_idx) in workspace_snapshot
             .edges_directed_for_edge_weight_kind(
                 prop_id,
                 Outgoing,
                 EdgeWeightKindDiscriminants::Prototype,
-            )?
-            .iter()
-            .filter_map(|edge_ref| {
-                match (
-                    edge_ref.weight().kind(),
-                    workspace_snapshot.get_node_weight(edge_ref.target()).ok(),
-                ) {
-                    (EdgeWeightKind::Prototype(key), Some(node_weight)) => {
-                        Some((key.to_owned(), node_weight.id().into()))
-                    }
-                    _ => None,
-                }
-            })
-            .collect())
+            )
+            .await?
+        {
+            if let (EdgeWeightKind::Prototype(key), Some(node_weight)) = (
+                edge_weight.kind(),
+                workspace_snapshot.get_node_weight(target_idx).await.ok(),
+            ) {
+                result.push((key.to_owned(), node_weight.id().into()))
+            }
+        }
+
+        Ok(result)
     }
 
     pub async fn prototype_id(
         ctx: &DalContext,
         prop_id: PropId,
     ) -> PropResult<AttributePrototypeId> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let prototype_node_index = *workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Prototype)?
+            .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Prototype)
+            .await?
             .first()
             .ok_or(PropError::MissingPrototypeForProp(prop_id))?;
 
         Ok(workspace_snapshot
-            .get_node_weight(prototype_node_index)?
+            .get_node_weight(prototype_node_index)
+            .await?
             .id()
             .into())
     }
@@ -800,10 +824,10 @@ impl Prop {
         ctx: &DalContext,
         prop_id: PropId,
     ) -> PropResult<(ContentHash, PropContentV1)> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let id: Ulid = prop_id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
         let content: PropContent = ctx
@@ -837,8 +861,9 @@ impl Prop {
                 .await
                 .add(&PropContent::V1(updated.clone()))?;
 
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            workspace_snapshot.update_content(ctx.change_set_pointer()?, prop.id.into(), hash)?;
+            ctx.workspace_snapshot()?
+                .update_content(ctx.change_set_pointer()?, prop.id.into(), hash)
+                .await?;
         }
         Ok(prop)
     }

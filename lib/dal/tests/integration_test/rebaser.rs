@@ -233,13 +233,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let snapshot_id_before_deletion = {
-        ctx.workspace_snapshot()
-            .expect("get snap")
-            .read()
-            .await
-            .id()
-    };
+    let snapshot_id_before_deletion = ctx.workspace_snapshot().expect("get snap").id().await;
 
     Func::get_by_id(ctx, func.id)
         .await
@@ -258,13 +252,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
         .await
         .expect("unable to update snapshot to visiblity");
 
-    let snapshot_id_after_deletion = {
-        ctx.workspace_snapshot()
-            .expect("get snap")
-            .read()
-            .await
-            .id()
-    };
+    let snapshot_id_after_deletion = ctx.workspace_snapshot().expect("get snap").id().await;
 
     // A sanity check
     assert_ne!(snapshot_id_before_deletion, snapshot_id_after_deletion);

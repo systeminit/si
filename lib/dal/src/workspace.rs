@@ -96,7 +96,7 @@ impl Workspace {
         let mut change_set = ChangeSetPointer::new_head(ctx).await?;
         let workspace_snapshot = WorkspaceSnapshot::initial(ctx, &change_set).await?;
         change_set
-            .update_pointer(ctx, workspace_snapshot.id())
+            .update_pointer(ctx, workspace_snapshot.id().await)
             .await?;
         let change_set_id = change_set.id;
 
@@ -183,7 +183,7 @@ impl Workspace {
         let workspace_snapshot =
             WorkspaceSnapshot::find_for_change_set(ctx, builtin.default_change_set_id).await?;
         change_set
-            .update_pointer(ctx, workspace_snapshot.id())
+            .update_pointer(ctx, workspace_snapshot.id().await)
             .await?;
         let change_set_id = change_set.id;
 
