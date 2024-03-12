@@ -3,7 +3,8 @@ import * as _ from "lodash-es";
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
 import { ComponentId, SocketId, useComponentsStore } from "./components.store";

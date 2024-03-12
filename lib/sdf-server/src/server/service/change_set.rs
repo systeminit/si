@@ -44,6 +44,8 @@ pub enum ChangeSetError {
     ActionRunner(#[from] ActionRunnerError),
     // #[error("action {0} not found")]
     // ActionNotFound(ActionId),
+    #[error("base change set not found for change set: {0}")]
+    BaseChangeSetNotFound(ChangeSetPointerId),
     #[error(transparent)]
     ChangeSet(#[from] DalChangeSetError),
     #[error("change set not found")]

@@ -262,7 +262,8 @@ export const useAssetStore = () => {
         async CREATE_ASSET(asset: Asset) {
           if (changeSetsStore.creatingChangeSet)
             throw new Error("race, wait until the change set is created");
-          if (changeSetId === nilId()) changeSetsStore.creatingChangeSet = true;
+          if (changeSetId === changeSetsStore.headChangeSetId)
+            changeSetsStore.creatingChangeSet = true;
           return new ApiRequest<
             { id: AssetId; success: boolean },
             AssetCreateRequest

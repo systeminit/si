@@ -13,8 +13,10 @@ use crate::context::RebaseRequest;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
 use crate::{
-    pk, ChangeSetPk, ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspacePk,
+    id, ChangeSetPk, ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspacePk,
 };
+
+pub mod view;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -43,6 +45,8 @@ pub enum ChangeSetPointerError {
     SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("found an unexpected number of open change sets matching default change set (should be one, found {0:?})")]
+    UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetPointerId>),
     #[error("workspace error: {0}")]
     Workspace(String),
     #[error("workspace not found: {0}")]
@@ -51,12 +55,11 @@ pub enum ChangeSetPointerError {
 
 pub type ChangeSetPointerResult<T> = Result<T, ChangeSetPointerError>;
 
-pk!(ChangeSetPointerId);
+id!(ChangeSetPointerId);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ChangeSetPointer {
     pub id: ChangeSetPointerId,
-    pub pk: ChangeSetPointerId,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 
@@ -78,7 +81,6 @@ impl TryFrom<PgRow> for ChangeSetPointer {
         let status = ChangeSetStatus::try_from(status_string.as_str())?;
         Ok(Self {
             id: value.try_get("id")?,
-            pk: value.try_get("id")?,
             created_at: value.try_get("created_at")?,
             updated_at: value.try_get("updated_at")?,
             name: value.try_get("name")?,
@@ -102,7 +104,6 @@ impl ChangeSetPointer {
 
         Ok(Self {
             id: id.into(),
-            pk: id.into(),
             created_at: Utc::now(),
             updated_at: Utc::now(),
             generator: Arc::new(Mutex::new(generator)),
@@ -122,26 +123,6 @@ impl ChangeSetPointer {
         new_local.name = self.name.to_owned();
         new_local.status = self.status.to_owned();
         Ok(new_local)
-    }
-
-    pub async fn new_with_id(
-        ctx: &DalContext,
-        name: impl AsRef<str>,
-        id: ChangeSetPointerId,
-        base_change_set_id: Option<ChangeSetPointerId>,
-    ) -> ChangeSetPointerResult<Self> {
-        let workspace_id = ctx.tenancy().workspace_pk();
-        let name = name.as_ref();
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_one(
-                "INSERT INTO change_set_pointers (id, name, base_change_set_id, status, workspace_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-                &[&id, &name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id],
-            )
-            .await?;
-        Self::try_from(row)
     }
 
     pub async fn new(
@@ -199,12 +180,6 @@ impl ChangeSetPointer {
             .await?;
 
         Ok(change_set_pointer)
-    }
-
-    pub async fn new_head(ctx: &DalContext) -> ChangeSetPointerResult<Self> {
-        let name = "HEAD";
-
-        Self::new_with_id(ctx, name, ChangeSetPointerId::NONE, None).await
     }
 
     /// Create a [`VectorClockId`] from the [`ChangeSetPointer`].
@@ -320,7 +295,10 @@ impl ChangeSetPointer {
         Ok(result)
     }
 
-    pub async fn apply_to_base_change_set(&self, ctx: &DalContext) -> ChangeSetPointerResult<()> {
+    pub async fn apply_to_base_change_set(
+        &mut self,
+        ctx: &DalContext,
+    ) -> ChangeSetPointerResult<()> {
         let to_rebase_change_set_id = self
             .base_change_set_id
             .ok_or(ChangeSetPointerError::NoBaseChangeSet(self.id))?;
@@ -333,6 +311,8 @@ impl ChangeSetPointer {
             to_rebase_change_set_id,
         };
         ctx.do_rebase_request(rebase_request).await?;
+
+        self.update_status(ctx, ChangeSetStatus::Applied).await?;
 
         Ok(())
     }

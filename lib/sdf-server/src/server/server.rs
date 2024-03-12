@@ -3,8 +3,8 @@ use axum::Router;
 use dal::jwt_key::JwtConfig;
 use dal::ServicesContext;
 use dal::{
-    builtins, BuiltinsError, DalContext, JwtPublicSigningKey, Tenancy, TransactionsError,
-    Workspace, WorkspaceError,
+    builtins, BuiltinsError, DalContext, JwtPublicSigningKey, TransactionsError, Workspace,
+    WorkspaceError,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use module_index_client::{types::BuiltinsDetailsResponse, IndexClient, ModuleDetailsResponse};
@@ -353,10 +353,7 @@ pub async fn migrate_builtins_from_module_index(services_context: &ServicesConte
     dal_context.set_no_dependent_values();
     let mut ctx = dal_context.build_default().await?;
 
-    let workspace = Workspace::builtin(&mut ctx).await?;
-    ctx.update_tenancy(Tenancy::new(*workspace.pk()));
-    ctx.update_to_head();
-    ctx.update_snapshot_to_visibility().await?;
+    Workspace::setup_builtin(&mut ctx).await?;
 
     info!("migrating intrinsic functions");
     builtins::func::migrate_intrinsics(&ctx).await?;
@@ -437,8 +434,8 @@ async fn install_builtins(
                     count += 1;
                     let elapsed = instant.elapsed().as_secs_f32();
                     println!(
-                         "Pkg {pkg_name} Install finished successfully. {count} of {total} installed. (took {elapsed:.2} seconds)",
-                     );
+                        "Pkg {pkg_name} Install finished successfully. {count} of {total} installed. (took {elapsed:.2} seconds)",
+                    );
                 }
             }
             Err(err) => {

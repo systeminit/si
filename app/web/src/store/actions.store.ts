@@ -4,7 +4,6 @@ import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { trackEvent } from "@/utils/tracking";
 import { Resource } from "@/api/sdf/dal/resource";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 import { ComponentId } from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
@@ -204,7 +203,8 @@ export const useActionsStore = () => {
         },
         actions: {
           async FETCH_QUEUED_ACTIONS() {
-            if (changeSetId === nilId()) return ApiRequest.noop;
+            if (changeSetId === changeSetsStore.headChangeSetId)
+              return ApiRequest.noop;
             return new ApiRequest<{
               actions: Record<ActionId, ProposedAction>;
             }>({
@@ -258,15 +258,8 @@ export const useActionsStore = () => {
             });
           },
           async LOAD_ACTION_BATCHES() {
-            const head = changeSetsStore.allChangeSets.find(
-              (cs) => cs.baseChangeSetId === nilId(),
-            );
-            if (!head) throw new Error("no head");
             return new ApiRequest<Array<ActionBatch>>({
               url: "/action/history",
-              params: {
-                visibility_change_set_pk: head.id,
-              },
               onSuccess: (response) => {
                 this.actionBatches = response;
                 this.runningActionBatch = response.find(

@@ -329,7 +329,6 @@ import {
   Inline,
 } from "@si/vue-lib/design-system";
 import { storeToRefs } from "pinia";
-import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useActionsStore } from "@/store/actions.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
@@ -417,7 +416,7 @@ function onSelectChangeSet(newVal: string) {
   }
 
   if (newVal && route.name) {
-    if (newVal === nilId()) newVal = "head";
+    if (newVal === changeSetsStore.headChangeSetId) newVal = "head";
 
     // keep everything in the current route except the change set id
     // note - we use push here, so there is a new browser history entry
@@ -442,7 +441,7 @@ async function onCreateChangeSet() {
 
   if (createReq.result.success) {
     // reusing above to navigate to new change set... will probably clean this all up later
-    onSelectChangeSet(createReq.result.data.changeSet.pk);
+    onSelectChangeSet(createReq.result.data.changeSet.id);
     createModalRef.value?.close();
   }
 }

@@ -11,7 +11,7 @@ use buck2_resources::Buck2Resources;
 use content_store::PgStoreTools;
 use dal::{
     job::processor::{JobQueueProcessor, NatsProcessor},
-    DalContext, JwtPublicSigningKey, ModelResult, ServicesContext, Tenancy, Workspace,
+    DalContext, JwtPublicSigningKey, ModelResult, ServicesContext, Workspace,
 };
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
@@ -798,10 +798,7 @@ async fn migrate_local_builtins(
     let dal_context = services_context.into_builder(true);
     let mut ctx = dal_context.build_default().await?;
 
-    let workspace = Workspace::builtin(&mut ctx).await?;
-    ctx.update_tenancy(Tenancy::new(*workspace.pk()));
-    ctx.update_to_head();
-    ctx.update_snapshot_to_visibility().await?;
+    Workspace::setup_builtin(&mut ctx).await?;
 
     info!("migrating intrinsic functions");
     func::migrate_intrinsics(&ctx).await?;

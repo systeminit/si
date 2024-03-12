@@ -17,11 +17,16 @@ const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql"
 const WORKSPACE_FIND_BY_NAME: &str = include_str!("queries/workspace/find_by_name.sql");
 const WORKSPACE_LIST_FOR_USER: &str = include_str!("queries/workspace/list_for_user.sql");
 
+const DEFAULT_BUILTIN_WORKSPACE_NAME: &str = "builtin";
+const DEFAULT_CHANGE_SET_NAME: &str = "HEAD";
+
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceError {
-    #[error("change set pointer error: {0}")]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetPointerError),
+    #[error("change set not found by id: {0}")]
+    ChangeSetNotFound(ChangeSetPointerId),
     #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
     #[error(transparent)]
@@ -84,16 +89,23 @@ impl Workspace {
 
     /// Find or create the builtin [`Workspace`].
     #[instrument(skip_all)]
-    pub async fn builtin(ctx: &mut DalContext) -> WorkspaceResult<Self> {
-        // Check if the builtin already exists.
+    pub async fn setup_builtin(ctx: &mut DalContext) -> WorkspaceResult<()> {
+        // Check if the builtin already exists. If so, update our tenancy and visibility using it.
         if let Some(found_builtin) = Self::find_builtin(ctx).await? {
-            return Ok(found_builtin);
+            ctx.update_tenancy(Tenancy::new(*found_builtin.pk()));
+            let change_set = ChangeSetPointer::find(ctx, found_builtin.default_change_set_id)
+                .await?
+                .ok_or(WorkspaceError::ChangeSetNotFound(
+                    found_builtin.default_change_set_id,
+                ))?;
+            ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
+                .await?;
+            return Ok(());
         }
 
         // If not, create the builtin workspace with a corresponding base change set and initial
         // workspace snapshot.
-        let name = "builtin";
-        let mut change_set = ChangeSetPointer::new_head(ctx).await?;
+        let mut change_set = ChangeSetPointer::new(ctx, DEFAULT_CHANGE_SET_NAME, None).await?;
         let workspace_snapshot = WorkspaceSnapshot::initial(ctx, &change_set).await?;
         change_set
             .update_pointer(ctx, workspace_snapshot.id().await)
@@ -108,15 +120,21 @@ impl Workspace {
             .pg()
             .query_one(
                 "INSERT INTO workspaces (pk, name, default_change_set_id) VALUES ($1, $2, $3) RETURNING *",
-                &[&head_pk, &name, &change_set_id],
+                &[&head_pk, &DEFAULT_BUILTIN_WORKSPACE_NAME, &change_set_id],
             )
             .await?;
 
         let workspace = Self::try_from(row)?;
+        let workspace_pk = *workspace.pk();
 
-        change_set.update_workspace_id(ctx, *workspace.pk()).await?;
+        change_set.update_workspace_id(ctx, workspace_pk).await?;
 
-        Ok(workspace)
+        // Update our tenancy and visibility once it has been created.
+        ctx.update_tenancy(Tenancy::new(workspace_pk));
+        ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
+            .await?;
+
+        Ok(())
     }
 
     /// This private method attempts to find the builtin [`Workspace`].
@@ -207,7 +225,8 @@ impl Workspace {
 
         // TODO(nick,zack,jacob): convert visibility (or get rid of it?) to use our the new change set id.
         // should set_change_set_pointer and set_workspace_snapshot happen in update_visibility?
-        ctx.update_visibility_v2(&change_set).await?;
+        ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
+            .await?;
 
         let _history_event = HistoryEvent::new(
             ctx,

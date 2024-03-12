@@ -313,28 +313,16 @@ impl DalContext {
     pub async fn get_workspace_default_change_set_id(
         &self,
     ) -> Result<ChangeSetPointerId, TransactionsError> {
-        let workspace = Workspace::get_by_pk(
-            self,
-            &self.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE),
-        )
-        .await
-        // use a proper error
-        .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?;
-
-        let cs_id = workspace
-            .map(|workspace| workspace.default_change_set_id())
-            .unwrap_or(ChangeSetPointerId::NONE);
-
-        Ok(cs_id)
+        let workspace_pk = self.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE);
+        let workspace = Workspace::get_by_pk(self, &workspace_pk)
+            .await
+            .map_err(|err| TransactionsError::Workspace(err.to_string()))?
+            .ok_or(TransactionsError::WorkspaceNotFound(workspace_pk))?;
+        Ok(workspace.default_change_set_id())
     }
 
     pub async fn update_snapshot_to_visibility(&mut self) -> Result<(), TransactionsError> {
-        let change_set_id = match self.change_set_id() {
-            ChangeSetPointerId::NONE => self.get_workspace_default_change_set_id().await?,
-            other => other,
-        };
-
-        let change_set_pointer = ChangeSetPointer::find(self, change_set_id)
+        let change_set_pointer = ChangeSetPointer::find(self, self.change_set_id())
             .await
             .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
             .ok_or(TransactionsError::ChangeSetPointerNotFound(
@@ -355,12 +343,7 @@ impl DalContext {
     pub async fn update_snapshot_to_visibility_no_editing_change_set(
         &mut self,
     ) -> Result<(), TransactionsError> {
-        let change_set_id = match self.change_set_id() {
-            ChangeSetPointerId::NONE => self.get_workspace_default_change_set_id().await?,
-            other => other,
-        };
-
-        let change_set_pointer = ChangeSetPointer::find(self, change_set_id)
+        let change_set_pointer = ChangeSetPointer::find(self, self.change_set_id())
             .await
             .map_err(|err| TransactionsError::ChangeSet(err.to_string()))?
             .ok_or(TransactionsError::ChangeSetPointerNotFound(
@@ -589,34 +572,34 @@ impl DalContext {
         Fut: Future<Output = R>,
     {
         let mut ctx = self.clone();
-        ctx.update_visibility(visibility);
+        ctx.update_visibility_deprecated(visibility);
 
         fun(ctx).await
     }
 
     /// Updates this context with a new [`Visibility`].
-    pub fn update_visibility(&mut self, visibility: Visibility) {
+    pub fn update_visibility_deprecated(&mut self, visibility: Visibility) {
         self.visibility = visibility;
     }
 
     /// Updates this context with a new [`Visibility`], specific to the new engine.
-    pub async fn update_visibility_v2(
+    pub async fn update_visibility_and_snapshot_to_visibility(
         &mut self,
-        change_set_v2: &ChangeSetPointer,
+        change_set_id: ChangeSetPointerId,
     ) -> Result<(), TransactionsError> {
-        self.update_visibility(Visibility::new(
-            ChangeSetPk::from(Ulid::from(change_set_v2.id)),
+        self.update_visibility_deprecated(Visibility::new(
+            ChangeSetPk::from(Ulid::from(change_set_id)),
             None,
         ));
         self.update_snapshot_to_visibility().await?;
         Ok(())
     }
 
-    pub async fn update_visibility_v2_no_editing_change_set(
+    pub async fn update_visibility_and_snapshot_to_visibility_no_editing_change_set(
         &mut self,
         change_set_v2: &ChangeSetPointer,
     ) -> Result<(), TransactionsError> {
-        self.update_visibility(Visibility::new(
+        self.update_visibility_deprecated(Visibility::new(
             ChangeSetPk::from(Ulid::from(change_set_v2.id)),
             None,
         ));
@@ -640,7 +623,7 @@ impl DalContext {
 
     /// Mutates [`self`](DalContext) with a "deleted" [`Visibility`].
     pub fn update_with_deleted_visibility(&mut self) {
-        self.update_visibility(Visibility::new_change_set(
+        self.update_visibility_deprecated(Visibility::new_change_set(
             self.visibility().change_set_pk,
             true,
         ));
@@ -648,7 +631,7 @@ impl DalContext {
 
     /// Mutates [`self`](DalContext) with a "non-deleted" [`Visibility`].
     pub fn update_without_deleted_visibility(&mut self) {
-        self.update_visibility(Visibility::new_change_set(
+        self.update_visibility_deprecated(Visibility::new_change_set(
             self.visibility().change_set_pk,
             false,
         ));
@@ -664,7 +647,7 @@ impl DalContext {
     /// Clones a new context from this one with a new [`Visibility`].
     pub fn clone_with_new_visibility(&self, visibility: Visibility) -> Self {
         let mut new = self.clone();
-        new.update_visibility(visibility);
+        new.update_visibility_deprecated(visibility);
         new
     }
 
@@ -1004,7 +987,7 @@ impl DalContextBuilder {
         let conns = self.services_context.connections().await?;
         let content_store = self.services_context.content_store().await?;
 
-        Ok(DalContext {
+        let mut ctx = DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
             conns_state: Arc::new(Mutex::new(ConnectionState::new_from_conns(conns))),
@@ -1015,7 +998,17 @@ impl DalContextBuilder {
             content_store: Arc::new(Mutex::new(content_store)),
             workspace_snapshot: None,
             change_set_pointer: None,
-        })
+        };
+
+        // TODO(nick): there's a chicken and egg problem here. We want a dal context to get the
+        // workspace's default change set id, but we are going to use a dummy visibility to do so.
+        // We should probably just use the pg connection directly or derive the default change set
+        // id thorugh other means.
+        let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+        ctx.update_visibility_and_snapshot_to_visibility(default_change_set_id)
+            .await?;
+
+        Ok(ctx)
     }
 
     /// Constructs and returns a new [`DalContext`] using a [`RequestContext`].
@@ -1108,6 +1101,10 @@ pub enum TransactionsError {
     TxnRollback,
     #[error("cannot start transactions without connections; state={0}")]
     TxnStart(&'static str),
+    #[error("workspace error: {0}")]
+    Workspace(String),
+    #[error("workspace not found by pk: {0}")]
+    WorkspaceNotFound(WorkspacePk),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(String),
 }
