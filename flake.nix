@@ -324,6 +324,8 @@
               buildkite-test-collector-rust
               docker-compose
               jq
+              nats-top
+              natscli
               # pgcli
               reindeer
               shellcheck
