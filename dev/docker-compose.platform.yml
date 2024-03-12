@@ -34,7 +34,6 @@ services:
     command:
       - "--config"
       - "nats-server.conf"
-      - "-DVV"
     ports:
       - "4222:4222"
 
