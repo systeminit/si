@@ -22,7 +22,6 @@
 //! * On a miss, the data is read from Postgres, inserted into sled, inserted into moka, and
 //! returned to the user
 //!
-//! The postgres bits remain unimplemented! :)
 
 pub mod chunking_nats;
 pub mod db;

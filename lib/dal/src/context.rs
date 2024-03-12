@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
-use si_layer_cache::layer_cache::LayerCacheDependencies;
+use si_layer_cache::db::LayerDb;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
@@ -60,8 +60,8 @@ pub struct ServicesContext {
     rebaser_config: RebaserClientConfig,
     /// Content store
     content_store_pg_pool: PgPool,
-    /// Dependencies for the layer cache (sled and postgres)
-    layer_cache_dependencies: LayerCacheDependencies,
+    /// The layer db (moka-rs, sled and postgres)
+    layer_db: LayerDb,
 }
 
 impl ServicesContext {
@@ -78,7 +78,7 @@ impl ServicesContext {
         symmetric_crypto_service: SymmetricCryptoService,
         rebaser_config: RebaserClientConfig,
         content_store_pg_pool: PgPool,
-        layer_cache_dependencies: LayerCacheDependencies,
+        layer_db: LayerDb,
     ) -> Self {
         Self {
             pg_pool,
@@ -91,7 +91,7 @@ impl ServicesContext {
             symmetric_crypto_service,
             rebaser_config,
             content_store_pg_pool,
-            layer_cache_dependencies,
+            layer_db,
         }
     }
 
@@ -148,8 +148,8 @@ impl ServicesContext {
         &self.content_store_pg_pool
     }
 
-    pub fn layer_cache_dependencies(&self) -> &LayerCacheDependencies {
-        &self.layer_cache_dependencies
+    pub fn layer_db(&self) -> &LayerDb {
+        &self.layer_db
     }
 
     /// Builds and returns a new [`content_store::PgStore`]
@@ -486,6 +486,10 @@ impl DalContext {
             Some(csp_ref) => Ok(csp_ref),
             None => Err(TransactionsError::ChangeSetPointerNotSet),
         }
+    }
+
+    pub fn layer_db(&self) -> LayerDb {
+        self.services_context().layer_db().clone()
     }
 
     /// Fetch the change set pointer for the current change set visibility

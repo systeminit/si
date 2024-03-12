@@ -13,6 +13,7 @@ use self::cas::CasDb;
 
 pub mod cas;
 
+#[derive(Debug, Clone)]
 pub struct LayerDb {
     cas: CasDb,
     sled: sled::Db,

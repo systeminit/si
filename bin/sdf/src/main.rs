@@ -4,9 +4,7 @@ use std::path::PathBuf;
 
 use color_eyre::Result;
 use nats_multiplexer::Multiplexer;
-use sdf_server::server::{
-    make_layer_cache_dependencies, CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT,
-};
+use sdf_server::server::{LayerDb, PgPool, CRDT_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT};
 use sdf_server::{
     Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
     ServicesContext,
@@ -123,9 +121,12 @@ async fn async_main() -> Result<()> {
     let (crdt_multiplexer, crdt_multiplexer_client) =
         Multiplexer::new(&nats_conn, CRDT_MULTIPLEXER_SUBJECT).await?;
 
-    let layer_cache_dependencies =
-        make_layer_cache_dependencies(config.layer_cache_sled_path(), config.layer_cache_pg_pool())
-            .await?;
+    let layer_db = LayerDb::new(
+        config.layer_cache_sled_path(),
+        PgPool::new(config.layer_cache_pg_pool()).await?,
+        nats_conn.clone(),
+    )
+    .await?;
 
     let services_context = ServicesContext::new(
         pg_pool,
@@ -138,7 +139,7 @@ async fn async_main() -> Result<()> {
         symmetric_crypto_service,
         rebaser_config,
         content_store_pg_pool,
-        layer_cache_dependencies,
+        layer_db,
     );
 
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {

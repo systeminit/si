@@ -14,7 +14,6 @@ use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
-pub use si_layer_cache::layer_cache::{make_layer_cache_dependencies, LayerCacheDependencies};
 use si_posthog::PosthogConfig;
 use si_std::{CanonicalFile, CanonicalFileError, SensitiveString};
 use telemetry::prelude::*;

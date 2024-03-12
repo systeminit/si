@@ -12,6 +12,7 @@ use crate::{
 pub const DBNAME: &str = "cas";
 pub const PARTITION_KEY: &str = "cas";
 
+#[derive(Debug, Clone)]
 pub struct CasDb {
     pub cache: LayerCache<CasPk, Arc<CasValue>>,
     persister_client: PersisterClient,
