@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::routing::{get, post};
+use axum::routing::get;
 use axum::Json;
 use axum::Router;
 use dal::{SchemaError as DalSchemaError, StandardModelError, TransactionsError, WsEventError};
@@ -8,8 +8,6 @@ use thiserror::Error;
 
 use crate::server::state::AppState;
 
-pub mod create_schema;
-pub mod get_schema;
 pub mod list_schemas;
 
 #[remain::sorted]
@@ -49,8 +47,5 @@ impl IntoResponse for SchemaError {
 }
 
 pub fn routes() -> Router<AppState> {
-    Router::new()
-        .route("/create_schema", post(create_schema::create_schema))
-        .route("/list_schemas", get(list_schemas::list_schemas))
-        .route("/get_schema", get(get_schema::get_schema))
+    Router::new().route("/list_schemas", get(list_schemas::list_schemas))
 }
