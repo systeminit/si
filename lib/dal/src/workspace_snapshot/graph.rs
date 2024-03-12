@@ -939,6 +939,7 @@ impl WorkspaceSnapshotGraph {
                     EdgeWeightKindDiscriminants::Proxy => "gray",
                     EdgeWeightKindDiscriminants::Root => "black",
                     EdgeWeightKindDiscriminants::Use => "black",
+                    EdgeWeightKindDiscriminants::Default => "brown",
                 };
 
                 match edgeref.weight().kind() {
@@ -1036,7 +1037,7 @@ impl WorkspaceSnapshotGraph {
                 )
             },
         );
-        let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), suffix);
+        let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), suffix)
 
         let home_str = std::env::var("HOME").unwrap();
         let home = std::path::Path::new(&home_str);
@@ -1984,6 +1985,7 @@ impl WorkspaceSnapshotGraph {
                     | EdgeWeightKind::Proxy
                     | EdgeWeightKind::Root
                     | EdgeWeightKind::SocketValue
+                    | EdgeWeightKind::Default
                     | EdgeWeightKind::Use => {}
                 }
             }

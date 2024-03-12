@@ -31,6 +31,8 @@ pub enum EdgeWeightKind {
     /// array/map, or a field of an object. The optional [`String`] represents the key of the entry
     /// in a map.
     Contain(Option<String>),
+    /// Used to denote when something is a default. For example a default schema variant for a schema
+    Default,
     /// Used to indicate parentage within frames. It does not dictate data flow. That is provided via
     /// [`ComponentType`](crate::ComponentType).
     ///

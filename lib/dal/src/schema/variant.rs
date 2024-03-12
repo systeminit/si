@@ -270,7 +270,7 @@ impl SchemaVariant {
         )
     }
 
-    /// Lists all [`SchemaVariants`](SchemaVariant) by ID in the workspace.
+    /// Lists all default [`SchemaVariants`](SchemaVariant) by ID in the workspace.
     pub async fn list_ids(ctx: &DalContext) -> SchemaVariantResult<Vec<SchemaVariantId>> {
         let schema_ids = Schema::list_ids(ctx).await?;
 
@@ -279,7 +279,10 @@ impl SchemaVariant {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         for schema_id in schema_ids {
             let schema_variant_node_indices = workspace_snapshot
-                .outgoing_targets_for_edge_weight_kind(schema_id, EdgeWeightKindDiscriminants::Use)
+                .outgoing_targets_for_edge_weight_kind(
+                    schema_id,
+                    EdgeWeightKindDiscriminants::Default,
+                )
                 .await?;
 
             for schema_variant_node_index in schema_variant_node_indices {
@@ -298,33 +301,13 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_id: SchemaId,
     ) -> SchemaVariantResult<Self> {
-        // The first pass here is that we will just return the first schema variant found for a schema
-        // We will need to add a default edge at some point in the future - that means when we import
-        // a schema variant (if it doesn't already exist) then it gets an edge for default
-        // If we are creating a new version of a schema variant then we will be able to mark it as default
-        let node_weight = {
-            let workspace_snapshot = ctx.workspace_snapshot()?;
+        let schema = Schema::get_by_id(ctx, schema_id).await?;
+        let default_schema_variant_id = schema
+            .get_default_schema_variant(ctx)
+            .await?
+            .ok_or(SchemaVariantError::DefaultSchemaVariantNotFound(schema_id))?;
 
-            let parent_index = workspace_snapshot.get_node_index_by_id(schema_id).await?;
-
-            let node_indices = workspace_snapshot
-                .outgoing_targets_for_edge_weight_kind_by_index(
-                    parent_index,
-                    EdgeWeightKindDiscriminants::Use,
-                )
-                .await?;
-
-            let node_index = node_indices
-                .first()
-                .ok_or(SchemaVariantError::DefaultSchemaVariantNotFound(schema_id))?;
-
-            workspace_snapshot
-                .get_node_weight(*node_index)
-                .await?
-                .get_content_node_weight_of_kind(ContentAddressDiscriminants::SchemaVariant)?
-        };
-
-        Self::get_by_id(ctx, node_weight.id().into()).await
+        Self::get_by_id(ctx, default_schema_variant_id).await
     }
 
     pub async fn list_for_schema(
@@ -373,6 +356,10 @@ impl SchemaVariant {
                 ))?,
             }
         }
+
+        // Now add the default schema variant to the list as this is a different edge kind
+        let default_schema_variant = Self::get_default_for_schema(ctx, schema_id).await?;
+        schema_variants.push(default_schema_variant);
 
         Ok(schema_variants)
     }
@@ -937,12 +924,19 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<Schema> {
         let schema_id = {
             let workspace_snapshot = ctx.workspace_snapshot()?;
-            let maybe_schema_indices = workspace_snapshot
+            let mut maybe_schema_indices = workspace_snapshot
+                .incoming_sources_for_edge_weight_kind(
+                    schema_variant_id,
+                    EdgeWeightKindDiscriminants::Default,
+                )
+                .await?;
+            let maybe_no_default_schema_indicies = workspace_snapshot
                 .incoming_sources_for_edge_weight_kind(
                     schema_variant_id,
                     EdgeWeightKindDiscriminants::Use,
                 )
                 .await?;
+            maybe_schema_indices.extend(maybe_no_default_schema_indicies);
 
             let mut schema_id: Option<SchemaId> = None;
             for index in maybe_schema_indices {
