@@ -60,6 +60,33 @@ pub(crate) async fn build_action_func(
     Ok(func)
 }
 
+pub(crate) async fn build_codegen_func(
+    code: &str,
+    fn_name: &str,
+) -> Result<FuncSpec, BuiltinsError> {
+    let func = FuncSpec::builder()
+        .name(fn_name)
+        .unique_id(fn_name)
+        .argument(
+            FuncArgumentSpec::builder()
+                .name("domain")
+                .kind(FuncArgumentKind::Object)
+                .build()?,
+        )
+        .data(
+            FuncSpecData::builder()
+                .name(fn_name)
+                .code_plaintext(code)
+                .handler("main")
+                .backend_kind(FuncSpecBackendKind::JsAttribute)
+                .response_type(FuncSpecBackendResponseType::CodeGeneration)
+                .build()?,
+        )
+        .build()?;
+
+    Ok(func)
+}
+
 pub(crate) async fn build_asset_func(fn_name: &str) -> Result<FuncSpec, BuiltinsError> {
     let scaffold_func = "function main() {\
                 return new AssetBuilder().build();

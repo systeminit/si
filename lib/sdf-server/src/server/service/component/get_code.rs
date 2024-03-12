@@ -1,5 +1,6 @@
 use axum::{extract::Query, Json};
-use dal::{CodeView, Component, ComponentId, Visibility};
+use dal::code_view::CodeView;
+use dal::{Component, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;

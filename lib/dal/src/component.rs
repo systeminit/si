@@ -19,6 +19,7 @@ use crate::attribute::prototype::argument::{
 };
 use crate::attribute::value::{AttributeValueError, DependentValueGraph};
 use crate::change_set_pointer::ChangeSetPointerError;
+use crate::code_view::CodeViewError;
 use crate::history_event::HistoryEventMetadata;
 use crate::job::definition::DependentValuesUpdate;
 use crate::prop::{PropError, PropPath};
@@ -46,6 +47,7 @@ pub mod resource;
 
 // pub mod code;
 // pub mod diff;
+mod code;
 pub mod frame;
 pub mod qualification;
 // pub mod status;
@@ -68,6 +70,8 @@ pub enum ComponentError {
     AttributeValue(#[from] AttributeValueError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
+    #[error("code view error: {0}")]
+    CodeView(#[from] CodeViewError),
     #[error("component {0} has no attribute value for the root/si/color prop")]
     ComponentMissingColorValue(ComponentId),
     #[error("component {0} has no attribute value for the root/si/name prop")]
@@ -84,6 +88,8 @@ pub enum ComponentError {
     InputSocket(#[from] InputSocketError),
     #[error("input socket {0} has more than one attribute value")]
     InputSocketTooManyAttributeValues(InputSocketId),
+    #[error("component {0} missing attribute value for code")]
+    MissingCodeValue(ComponentId),
     #[error("component {0} missing attribute value for qualifications")]
     MissingQualificationsValue(ComponentId),
     #[error("found multiple parents for component: {0}")]
