@@ -26,7 +26,8 @@ const getColor = (nodeKind: string, contentKind: string | null) => {
     Root: "#F0F",
     ActionPrototype: "#FFA",
     AttributePrototype: "#00F",
-    InternalProvider: "#07A",
+    InputSocket: "#07A",
+    OutputSocket: "#07A",
     Schema: "#0F0",
     FuncArg: "#777",
   };
