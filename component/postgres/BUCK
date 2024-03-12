@@ -30,7 +30,7 @@ docker_image(
         "--env",
         "POSTGRES_DB=si",
         "--env",
-        "POSTGRES_MULTIPLE_DBS=si_content_store,si_auth,si_test,si_test_content_store,si_test_dal,si_test_sdf_server",
+        "POSTGRES_MULTIPLE_DBS=si_content_store,si_auth,si_layer_db,si_test,si_test_content_store,si_test_dal,si_test_sdf_server",
         "--publish",
         "5432:5432",
     ],
