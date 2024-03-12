@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use si_events::{Actor, Tenancy, WebEvent};
+use strum::AsRefStr;
 use ulid::Ulid;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -51,7 +52,9 @@ impl std::str::FromStr for LayeredEventId {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(AsRefStr, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum LayeredEventKind {
     CasInsertion,
     Raw,
@@ -60,7 +63,7 @@ pub enum LayeredEventKind {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LayeredEventPayload {
     pub db_name: Arc<String>,
-    pub key: Arc<Vec<u8>>,
+    pub key: Arc<str>,
     pub sort_key: Arc<String>,
     pub value: Arc<Vec<u8>>,
 }
@@ -68,7 +71,7 @@ pub struct LayeredEventPayload {
 impl LayeredEventPayload {
     pub fn new(
         db_name: Arc<String>,
-        key: Arc<Vec<u8>>,
+        key: Arc<str>,
         value: Arc<Vec<u8>>,
         sort_key: Arc<String>,
     ) -> LayeredEventPayload {
@@ -95,7 +98,7 @@ impl LayeredEvent {
     pub fn new(
         event_kind: LayeredEventKind,
         db_name: Arc<String>,
-        key: Arc<Vec<u8>>,
+        key: Arc<str>,
         value: Arc<Vec<u8>>,
         sort_key: Arc<String>,
         web_events: Option<Vec<WebEvent>>,

@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::sync::Arc;
 
 use si_data_pg::{PgPool, PgPoolConfig};
 
@@ -22,23 +22,16 @@ pub fn default_pg_pool_config() -> PgPoolConfig {
 }
 
 #[derive(Clone, Debug)]
-pub struct PgLayer<K>
-where
-    K: AsRef<[u8]> + Copy + Send + Sync,
-{
+pub struct PgLayer {
     pool: Arc<PgPool>,
     pub table_name: String,
     get_value_query: String,
     insert_value_query: String,
     contains_key_query: String,
     search_query: String,
-    _phantom_k: PhantomData<K>,
 }
 
-impl<K> PgLayer<K>
-where
-    K: AsRef<[u8]> + Copy + Send + Sync,
-{
+impl PgLayer {
     pub fn new(pg_pool: PgPool, table_name: impl Into<String>) -> Self {
         let table_name = table_name.into();
         Self {
@@ -48,7 +41,6 @@ where
             contains_key_query: format!("SELECT key FROM {table_name} WHERE key = $1 LIMIT 1"),
             search_query: format!("SELECT value FROM {table_name} WHERE sort_key LIKE $1"),
             table_name,
-            _phantom_k: PhantomData,
         }
     }
 
@@ -57,11 +49,10 @@ where
         Ok(())
     }
 
-    pub async fn get(&self, key: &K) -> LayerDbResult<Option<Vec<u8>>> {
+    pub async fn get(&self, key: &str) -> LayerDbResult<Option<Vec<u8>>> {
+        let key: String = key.into();
         let client = self.pool.get().await?;
-        let maybe_row = client
-            .query_opt(&self.get_value_query, &[&key.as_ref()])
-            .await?;
+        let maybe_row = client.query_opt(&self.get_value_query, &[&key]).await?;
 
         match maybe_row {
             Some(row) => Ok(Some(row.get("value"))),
@@ -79,26 +70,21 @@ where
 
     pub async fn insert(
         &self,
-        key: K,
+        key: &str,
         sort_key: impl AsRef<str>,
         value: &[u8],
     ) -> LayerDbResult<()> {
         let client = self.pool.get().await?;
         let sort_key = sort_key.as_ref();
         client
-            .query(
-                &self.insert_value_query,
-                &[&key.as_ref(), &sort_key, &value],
-            )
+            .query(&self.insert_value_query, &[&key, &sort_key, &value])
             .await?;
         Ok(())
     }
 
-    pub async fn contains_key(&self, key: &K) -> LayerDbResult<bool> {
+    pub async fn contains_key(&self, key: &str) -> LayerDbResult<bool> {
         let client = self.pool.get().await?;
-        let maybe_row = client
-            .query_opt(&self.contains_key_query, &[&key.as_ref()])
-            .await?;
+        let maybe_row = client.query_opt(&self.contains_key_query, &[&key]).await?;
 
         Ok(maybe_row.is_some())
     }

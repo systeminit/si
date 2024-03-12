@@ -1,20 +1,18 @@
-use std::hash::Hash;
+use std::sync::Arc;
 
 use moka::future::Cache;
 use serde::{de::DeserializeOwned, Serialize};
 
 #[derive(Clone, Debug)]
-pub struct MemoryCache<K, V>
+pub struct MemoryCache<V>
 where
-    K: Hash + Eq + Send + Sync + AsRef<[u8]> + Copy + 'static,
     V: Serialize + DeserializeOwned + Clone + Send + Sync + Clone + 'static,
 {
-    cache: Cache<K, V>,
+    cache: Cache<Arc<str>, V>,
 }
 
-impl<K, V> Default for MemoryCache<K, V>
+impl<V> Default for MemoryCache<V>
 where
-    K: Hash + Eq + Send + Sync + AsRef<[u8]> + Copy + 'static,
     V: Serialize + DeserializeOwned + Clone + Send + Sync + Clone + 'static,
 {
     fn default() -> Self {
@@ -22,9 +20,8 @@ where
     }
 }
 
-impl<K, V> MemoryCache<K, V>
+impl<V> MemoryCache<V>
 where
-    K: Hash + Eq + Send + Sync + AsRef<[u8]> + Copy + 'static,
     V: Serialize + DeserializeOwned + Clone + Send + Sync + Clone + 'static,
 {
     pub fn new() -> Self {
@@ -33,19 +30,19 @@ where
         }
     }
 
-    pub async fn get(&self, key: &K) -> Option<V> {
+    pub async fn get(&self, key: &str) -> Option<V> {
         self.cache.get(key).await
     }
 
-    pub async fn insert(&self, key: K, value: V) {
+    pub async fn insert(&self, key: Arc<str>, value: V) {
         self.cache.insert(key, value).await;
     }
 
-    pub async fn remove(&self, key: &K) {
+    pub async fn remove(&self, key: &str) {
         self.cache.remove(key).await;
     }
 
-    pub fn contains(&self, key: &K) -> bool {
+    pub fn contains(&self, key: &str) -> bool {
         self.cache.contains_key(key)
     }
 }

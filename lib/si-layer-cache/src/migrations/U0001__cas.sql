@@ -1,6 +1,6 @@
 CREATE TABLE cas
 (
-    key               bytea                     NOT NULL PRIMARY KEY,
+    key               text                      NOT NULL PRIMARY KEY,
     sort_key          text                      NOT NULL,
     created_at        timestamp with time zone  NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     value             bytea                     NOT NULL,

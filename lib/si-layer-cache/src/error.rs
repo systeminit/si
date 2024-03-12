@@ -2,6 +2,7 @@ use std::error;
 
 use si_data_nats::async_nats::jetstream;
 use si_data_pg::{PgError, PgPoolError};
+use si_events::content_hash::ContentHashParseError;
 use si_std::CanonicalFileError;
 use thiserror::Error;
 
@@ -10,14 +11,26 @@ use crate::persister::{PersistMessage, PersisterTaskError};
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum LayerDbError {
+    #[error("cache update message with bad headers: {0}")]
+    CacheUpdateBadHeaders(String),
+    #[error("cache update message had no headers")]
+    CacheUpdateNoHeaders,
     #[error("canonical file error: {0}")]
     CanonicalFile(#[from] CanonicalFileError),
+    #[error("failed to parse content hash from str: {0}")]
+    HashParse(#[from] ContentHashParseError),
+    #[error("invalid cache name: {0}")]
+    InvalidCacheName(String),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("join error: {0}")]
     JoinError(#[from] tokio::task::JoinError),
     #[error("missing internal buffer entry when expected; this is an internal bug")]
     MissingInternalBuffer,
+    #[error("stream consumer error: {0}")]
+    NatsConsumer(#[from] jetstream::stream::ConsumerError),
+    #[error("error while fetching or creating a nats jetsream: {0}")]
+    NatsCreateStream(#[from] jetstream::context::CreateStreamError),
     #[error("error parsing nats message header: {0}")]
     NatsHeaderParse(#[source] Box<dyn error::Error + Send + Sync + 'static>),
     #[error("malformed/missing nats headers")]
@@ -28,6 +41,8 @@ pub enum LayerDbError {
     NatsPublish(#[from] jetstream::context::PublishError),
     #[error("error pull message from stream: {0}")]
     NatsPullMessages(#[from] jetstream::consumer::pull::MessagesError),
+    #[error("consumer stream error: {0}")]
+    NatsStream(#[from] jetstream::consumer::StreamError),
     #[error("persister task write failed: {0:?}")]
     PersisterTaskFailed(PersisterTaskError),
     #[error("persister write error: {0}")]

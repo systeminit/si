@@ -48,7 +48,7 @@ async fn chunky_nats() {
         .await
         .expect("failed to create consumer");
 
-    let chunking_nats = ChunkingNats::new(context.clone());
+    let chunking_nats = ChunkingNats::new(Some(prefix.clone()), context.clone());
 
     let mut messages = ChunkingNats::chunking_messages(
         consumer

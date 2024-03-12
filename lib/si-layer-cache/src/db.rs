@@ -1,7 +1,9 @@
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
-use std::path::Path;
+use std::{path::Path, sync::Arc};
+use telemetry::tracing::{info, warn};
+use ulid::Ulid;
 
 use crate::{
     error::LayerDbResult,
@@ -9,9 +11,11 @@ use crate::{
     persister::{PersisterClient, PersisterServer},
 };
 use tokio::sync::mpsc;
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
-use self::cas::CasDb;
+use self::cas::{CasDb, CACHE_NAME};
 
+mod cache_updates;
 pub mod cas;
 
 #[derive(Debug, Clone)]
@@ -24,6 +28,9 @@ where
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
+    instance_id: Ulid,
+    tracker: TaskTracker,
+    cancellation_token: CancellationToken,
 }
 
 impl<CasValue> LayerDb<CasValue>
@@ -35,25 +42,50 @@ where
         pg_pool: PgPool,
         nats_client: NatsClient,
     ) -> LayerDbResult<Self> {
+        let instance_id = Ulid::new();
+
+        let tracker = TaskTracker::new();
+        let cancellation_token = CancellationToken::new();
+
         let disk_path = disk_path.as_ref();
         let sled = sled::open(disk_path)?;
 
         let (tx, rx) = mpsc::unbounded_channel();
         let persister_client = PersisterClient::new(tx);
-        let persister_server_sled = sled.clone();
-        let persister_server_pg_pool = pg_pool.clone();
-        let persister_server_nats_client = nats_client.clone();
-        tokio::spawn(async move {
-            PersisterServer::start(
-                rx,
-                persister_server_sled,
-                persister_server_pg_pool,
-                persister_server_nats_client,
-            )
-            .await
+
+        let persister =
+            PersisterServer::create(rx, sled.clone(), pg_pool.clone(), &nats_client, instance_id)
+                .await?;
+        let persister_cancel = cancellation_token.clone();
+        tracker.spawn(async move {
+            tokio::select! {
+                () = persister.run() => {
+                    warn!("Persister exited without being signalled");
+                },
+                () = persister_cancel.cancelled() => {
+                    info!("Persister exiting after being cancelled");
+                }
+            }
         });
 
-        let cas_cache = LayerCache::new("cas", sled.clone(), pg_pool.clone()).await?;
+        let cas_cache: LayerCache<Arc<CasValue>> =
+            LayerCache::new(CACHE_NAME, sled.clone(), pg_pool.clone()).await?;
+
+        let mut cache_updates =
+            cache_updates::CacheUpdates::create(instance_id, &nats_client, cas_cache.clone())
+                .await?;
+        let cache_update_cancel = cancellation_token.clone();
+        tracker.spawn(async move {
+            tokio::select! {
+                () = cache_updates.run() => {
+                    warn!("Cache updates exited without being signalled");
+                },
+                () = cache_update_cancel.cancelled() => {
+                    info!("Cache updates exiting after being cancelled");
+                }
+            }
+        });
+
         let cas = CasDb::new(cas_cache, persister_client.clone());
 
         Ok(LayerDb {
@@ -62,7 +94,16 @@ where
             pg_pool,
             persister_client,
             nats_client,
+            instance_id,
+            tracker,
+            cancellation_token,
         })
+    }
+
+    pub async fn shutdown(&self) {
+        self.tracker.close();
+        self.cancellation_token.cancel();
+        self.tracker.wait().await;
     }
 
     pub fn sled(&self) -> &sled::Db {
@@ -83,5 +124,9 @@ where
 
     pub fn cas(&self) -> &CasDb<CasValue> {
         &self.cas
+    }
+
+    pub fn instance_id(&self) -> Ulid {
+        self.instance_id
     }
 }
