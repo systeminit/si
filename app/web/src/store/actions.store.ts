@@ -136,7 +136,10 @@ export const useActionsStore = () => {
             // probably want to clean up and avoid the while loop if possible too
             const graph = _.cloneDeep(this.rawProposedActionsById);
             const actions = [];
+            let count = 0;
             while (_.keys(graph).length) {
+              if (count++ > 1000)
+                throw new Error("infinite loop when flattening actions");
               const removeIds = [];
 
               const sortedEntries = _.entries(graph);
