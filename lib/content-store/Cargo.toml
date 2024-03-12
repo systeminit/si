@@ -7,6 +7,7 @@ publish = false
 [dependencies]
 si-cbor = { path = "../../lib/si-cbor" }
 si-data-pg = { path = "../../lib/si-data-pg" }
+si-events = { path = "../../lib/si-events-rs" } 
 telemetry = { path = "../../lib/telemetry-rs" }
 
 async-trait = { workspace = true }

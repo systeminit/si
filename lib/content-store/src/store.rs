@@ -4,8 +4,8 @@ use si_data_pg::{PgError, PgPoolError};
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::hash::ContentHash;
 use crate::pair::ContentPairError;
+use crate::ContentHash;
 
 pub(crate) mod local;
 pub(crate) mod pg;

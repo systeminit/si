@@ -22,12 +22,11 @@
     clippy::missing_panics_doc
 )]
 
-mod hash;
 mod pair;
 mod store;
 mod value;
 
-pub use hash::ContentHash;
+pub use si_events::{content_hash::ContentHashParseError, ContentHash};
 pub use store::local::LocalStore;
 pub use store::pg::tools::PgStoreTools;
 pub use store::pg::PgStore;

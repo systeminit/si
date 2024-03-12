@@ -3,9 +3,9 @@ use serde::Serialize;
 use si_data_pg::PgPool;
 use std::collections::HashMap;
 
-use crate::hash::ContentHash;
 use crate::pair::ContentPair;
 use crate::store::{Store, StoreResult};
+use crate::ContentHash;
 use crate::PgStoreTools;
 
 pub(crate) mod tools;
