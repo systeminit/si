@@ -5,7 +5,7 @@ use si_crypto::{SymmetricCryptoError, SymmetricCryptoService};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use si_layer_cache::error::LayerDbError;
-use si_layer_cache::layer_cache::{make_layer_cache_dependencies, LayerCacheDependencies};
+use si_layer_cache::LayerDb;
 use std::{io, path::Path, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -76,8 +76,8 @@ pub struct Server {
     messaging_config: RebaserMessagingConfig,
     /// The pg pool for the content store
     content_store_pg_pool: PgPool,
-    /// The dependencies for the layer cache
-    layer_cache_dependencies: si_layer_cache::layer_cache::LayerCacheDependencies,
+    /// The layer db
+    layer_db: LayerDb,
 }
 
 impl Server {
@@ -96,9 +96,11 @@ impl Server {
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let messaging_config = config.messaging_config();
-        let layer_cache_dependencies = make_layer_cache_dependencies(
+
+        let layer_db = LayerDb::new(
             config.layer_cache_sled_path(),
-            config.layer_cache_pg_pool(),
+            PgPool::new(config.layer_cache_pg_pool()).await?,
+            nats.clone(),
         )
         .await?;
 
@@ -111,7 +113,7 @@ impl Server {
             symmetric_crypto_service,
             messaging_config.to_owned(),
             content_store_pg_pool,
-            layer_cache_dependencies,
+            layer_db,
         )
     }
 
@@ -127,7 +129,7 @@ impl Server {
         symmetric_crypto_service: SymmetricCryptoService,
         messaging_config: RebaserMessagingConfig,
         content_store_pg_pool: PgPool,
-        layer_cache_dependencies: LayerCacheDependencies,
+        layer_db: LayerDb,
     ) -> ServerResult<Self> {
         // An mpsc channel which can be used to externally shut down the server.
         let (external_shutdown_tx, external_shutdown_rx) = mpsc::channel(4);
@@ -153,7 +155,7 @@ impl Server {
             graceful_shutdown_rx,
             messaging_config,
             content_store_pg_pool,
-            layer_cache_dependencies,
+            layer_db,
         })
     }
 
@@ -170,7 +172,7 @@ impl Server {
             self.shutdown_watch_rx,
             self.messaging_config,
             self.content_store_pg_pool,
-            self.layer_cache_dependencies,
+            self.layer_db,
         )
         .await?;
 

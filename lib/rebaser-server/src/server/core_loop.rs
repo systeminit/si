@@ -12,6 +12,7 @@ use si_data_nats::jetstream::{AckKind, JetstreamError, Stream, REPLY_SUBJECT_HEA
 use si_data_nats::subject::ToSubject;
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
+use si_layer_cache::LayerDb;
 use std::sync::Arc;
 use std::time::Instant;
 use stream_cancel::StreamExt as CancelStreamExt;
@@ -51,7 +52,7 @@ pub(crate) async fn setup_and_run_core_loop(
     shutdown_watch_rx: watch::Receiver<()>,
     messaging_config: RebaserMessagingConfig,
     content_store_pg_pool: PgPool,
-    layer_cache_dependencies: si_layer_cache::layer_cache::LayerCacheDependencies,
+    layer_db: LayerDb,
 ) -> CoreLoopSetupResult<()> {
     let services_context = ServicesContext::new(
         pg_pool,
@@ -64,7 +65,7 @@ pub(crate) async fn setup_and_run_core_loop(
         symmetric_crypto_service,
         messaging_config.clone(),
         content_store_pg_pool,
-        layer_cache_dependencies,
+        layer_db,
     );
 
     // Setup the subjects.

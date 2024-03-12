@@ -2,12 +2,13 @@ pub use config::{
     detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile,
     IncomingStream, StandardConfig, StandardConfigFile,
 };
-pub use config::{make_layer_cache_dependencies, LayerCacheDependencies};
 pub use dal::{JobQueueProcessor, MigrationMode, NatsProcessor, ServicesContext};
 pub use nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT;
 pub use nats_multiplexer::WS_MULTIPLEXER_SUBJECT;
 pub use routes::{routes, AppError};
 pub use server::{build_service, build_service_for_tests, Server};
+pub use si_data_pg::PgPool;
+pub use si_layer_cache::LayerDb;
 pub use uds::{UdsIncomingStream, UdsIncomingStreamError};
 
 mod config;

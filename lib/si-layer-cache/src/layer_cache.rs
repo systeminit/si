@@ -7,7 +7,7 @@ use crate::error::LayerDbResult;
 use crate::memory_cache::MemoryCache;
 use crate::pg::PgLayer;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct LayerCache<K, V>
 where
     K: AsRef<[u8]> + Eq + Hash + Copy + Send + Sync + 'static,

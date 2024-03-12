@@ -17,7 +17,7 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
-use si_layer_cache::error::LayerDbError;
+use si_layer_cache::{error::LayerDbError, LayerDb};
 use stream_cancel::StreamExt as StreamCancelStreamExt;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -117,9 +117,10 @@ impl Server {
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let rebaser_config = RebaserClientConfig::default();
 
-        let layer_cache_dependencies = si_layer_cache::layer_cache::make_layer_cache_dependencies(
+        let layer_db = LayerDb::new(
             config.layer_cache_sled_path(),
-            config.layer_cache_pg_pool(),
+            PgPool::new(config.layer_cache_pg_pool()).await?,
+            nats.clone(),
         )
         .await?;
 
@@ -134,7 +135,7 @@ impl Server {
             symmetric_crypto_service,
             rebaser_config,
             content_store_pg_pool,
-            layer_cache_dependencies,
+            layer_db,
         );
 
         Self::from_services(
