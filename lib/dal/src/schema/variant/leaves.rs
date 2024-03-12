@@ -244,14 +244,13 @@ impl SchemaVariant {
 
         let attribute_prototype_id = AttributePrototype::new(ctx, func_id).await?.id();
 
-        {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            workspace_snapshot.add_edge(
+        ctx.workspace_snapshot()?
+            .add_edge(
                 item_prop_id,
                 EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(key))?,
                 attribute_prototype_id,
-            )?;
-        }
+            )
+            .await?;
 
         for input in inputs {
             let input_prop_id = SchemaVariant::find_root_child_prop_id(

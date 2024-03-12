@@ -202,16 +202,19 @@ impl Func {
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_func(change_set, id, name.into(), backend_kind, hash)?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        let _node_index = workspace_snapshot.add_node(node_weight.clone())?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        workspace_snapshot.add_node(node_weight.clone()).await?;
 
-        let func_category_id =
-            workspace_snapshot.get_category_node(None, CategoryNodeKind::Func)?;
-        workspace_snapshot.add_edge(
-            func_category_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            id,
-        )?;
+        let func_category_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::Func)
+            .await?;
+        workspace_snapshot
+            .add_edge(
+                func_category_id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                id,
+            )
+            .await?;
 
         let func_node_weight = node_weight.get_func_node_weight()?;
 
@@ -239,16 +242,19 @@ impl Func {
         ctx: &DalContext,
         name: impl AsRef<str>,
     ) -> FuncResult<Option<FuncId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        let func_category_id =
-            workspace_snapshot.get_category_node(None, CategoryNodeKind::Func)?;
-        let func_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            func_category_id,
-            EdgeWeightKindDiscriminants::Use,
-        )?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let func_category_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::Func)
+            .await?;
+        let func_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                func_category_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
         let name = name.as_ref();
         for func_index in func_indices {
-            let node_weight = workspace_snapshot.get_node_weight(func_index)?;
+            let node_weight = workspace_snapshot.get_node_weight(func_index).await?;
             if let NodeWeight::Func(inner_weight) = node_weight {
                 if inner_weight.name() == name {
                     return Ok(Some(inner_weight.id().into()));
@@ -296,10 +302,10 @@ impl Func {
         ctx: &DalContext,
         func_id: FuncId,
     ) -> FuncResult<(FuncNodeWeight, ContentHash)> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let id: Ulid = func_id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
 
         let hash = node_weight.content_hash();
         let func_node_weight = node_weight.get_func_node_weight()?;
@@ -317,7 +323,7 @@ impl Func {
 
         let (mut node_weight, _) = Func::get_node_weight_and_content_hash(ctx, func.id).await?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         // If both either the name or backend_kind have changed, *and* parts of the FuncContent
         // have changed, this ends up updating the node for the function twice. This could be
@@ -325,17 +331,21 @@ impl Func {
         if func.name.as_str() != node_weight.name()
             || func.backend_kind != node_weight.backend_kind()
         {
-            let original_node_index = workspace_snapshot.get_node_index_by_id(func.id)?;
+            let original_node_index = workspace_snapshot.get_node_index_by_id(func.id).await?;
 
             node_weight
                 .set_name(func.name.as_str())
                 .set_backend_kind(func.backend_kind);
 
-            workspace_snapshot.add_node(NodeWeight::Func(
-                node_weight.new_with_incremented_vector_clock(ctx.change_set_pointer()?)?,
-            ))?;
+            workspace_snapshot
+                .add_node(NodeWeight::Func(
+                    node_weight.new_with_incremented_vector_clock(ctx.change_set_pointer()?)?,
+                ))
+                .await?;
 
-            workspace_snapshot.replace_references(original_node_index)?;
+            workspace_snapshot
+                .replace_references(original_node_index)
+                .await?;
         }
         let updated = FuncContentV1::from(func.clone());
 
@@ -345,16 +355,35 @@ impl Func {
                 .lock()
                 .await
                 .add(&FuncContent::V1(updated.clone()))?;
-            workspace_snapshot.update_content(ctx.change_set_pointer()?, func.id.into(), hash)?;
+            workspace_snapshot
+                .update_content(ctx.change_set_pointer()?, func.id.into(), hash)
+                .await?;
         }
 
         Ok(Func::assemble(&node_weight, &updated))
     }
 
     pub async fn remove(ctx: &DalContext, id: FuncId) -> FuncResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        // to remove a func we must remove all incoming edges to it. It will then be
+        // garbage collected out of the graph
+
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let arg_node_idx = workspace_snapshot.get_node_index_by_id(id).await?;
+
+        let users = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKind::Use.into())
+            .await?;
+
         let change_set = ctx.change_set_pointer()?;
-        workspace_snapshot.remove_node_by_id(change_set, id)?;
+        for user in users {
+            workspace_snapshot
+                .remove_edge(change_set, user, arg_node_idx, EdgeWeightKind::Use.into())
+                .await?;
+        }
+
+        // Removes the actual node from the graph
+        workspace_snapshot.remove_node_by_id(change_set, id).await?;
 
         Ok(())
     }
@@ -367,22 +396,26 @@ impl Func {
     }
 
     pub async fn list(ctx: &DalContext) -> FuncResult<Vec<Self>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut funcs = vec![];
-        let func_category_id =
-            workspace_snapshot.get_category_node(None, CategoryNodeKind::Func)?;
+        let func_category_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::Func)
+            .await?;
 
-        let func_node_indexes = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            func_category_id,
-            EdgeWeightKindDiscriminants::Use,
-        )?;
+        let func_node_indexes = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                func_category_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
 
         let mut func_node_weights = vec![];
         let mut func_content_hash = vec![];
         for index in func_node_indexes {
             let node_weight = workspace_snapshot
-                .get_node_weight(index)?
+                .get_node_weight(index)
+                .await?
                 .get_func_node_weight()?;
             func_content_hash.push(node_weight.content_hash());
             func_node_weights.push(node_weight);
@@ -416,15 +449,24 @@ impl Func {
         ctx: &DalContext,
         func_id: FuncId,
     ) -> SchemaVariantResult<Vec<SchemaVariantId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut schema_variant_ids = vec![];
 
-        for node_id in workspace_snapshot.incoming_sources_for_edge_weight_kind(
-            func_id,
-            EdgeWeightKindDiscriminants::AuthenticationPrototype,
-        )? {
-            schema_variant_ids.push(workspace_snapshot.get_node_weight(node_id)?.id().into())
+        for node_id in workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                func_id,
+                EdgeWeightKindDiscriminants::AuthenticationPrototype,
+            )
+            .await?
+        {
+            schema_variant_ids.push(
+                workspace_snapshot
+                    .get_node_weight(node_id)
+                    .await?
+                    .id()
+                    .into(),
+            )
         }
 
         Ok(schema_variant_ids)

@@ -272,26 +272,29 @@ impl Component {
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Component(hash))?;
 
         // Attach component to category and add use edge to schema variant
-        {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            workspace_snapshot.add_node(node_weight)?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        workspace_snapshot.add_node(node_weight).await?;
 
-            // Root --> Component Category --> Component (this)
-            let component_category_id =
-                workspace_snapshot.get_category_node(None, CategoryNodeKind::Component)?;
-            workspace_snapshot.add_edge(
+        // Root --> Component Category --> Component (this)
+        let component_category_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::Component)
+            .await?;
+        workspace_snapshot
+            .add_edge(
                 component_category_id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                 id,
-            )?;
+            )
+            .await?;
 
-            // Component (this) --> Schema Variant
-            workspace_snapshot.add_edge(
+        // Component (this) --> Schema Variant
+        workspace_snapshot
+            .add_edge(
                 id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                 schema_variant_id,
-            )?;
-        }
+            )
+            .await?;
 
         let mut attribute_values = vec![];
 
@@ -325,14 +328,11 @@ impl Component {
 
             // Ensure that we are processing a prop before creating attribute values. Cache the
             // prop kind for later.
-            let prop_kind = {
-                let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-
-                workspace_snapshot
-                    .get_node_weight_by_id(prop_id)?
-                    .get_prop_node_weight()?
-                    .kind()
-            };
+            let prop_kind = workspace_snapshot
+                .get_node_weight_by_id(prop_id)
+                .await?
+                .get_prop_node_weight()?
+                .kind();
 
             // Create an attribute value for the prop.
             let attribute_value = AttributeValue::new(
@@ -349,9 +349,9 @@ impl Component {
             if should_descend {
                 match prop_kind {
                     PropKind::Object => {
-                        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
                         let ordering_node_weight = workspace_snapshot
-                            .ordering_node_for_container(prop_id)?
+                            .ordering_node_for_container(prop_id)
+                            .await?
                             .ok_or(ComponentError::ObjectPropHasNoOrderingNode(prop_id))?;
 
                         for &child_prop_id in ordering_node_weight.order() {
@@ -453,17 +453,25 @@ impl Component {
     }
 
     pub async fn parent(&self, ctx: &DalContext) -> ComponentResult<Option<ComponentId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        let mut raw_sources = workspace_snapshot.incoming_sources_for_edge_weight_kind(
-            self.id,
-            EdgeWeightKindDiscriminants::FrameContains,
-        )?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let mut raw_sources = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                self.id,
+                EdgeWeightKindDiscriminants::FrameContains,
+            )
+            .await?;
 
         let maybe_parent = if let Some(raw_parent) = raw_sources.pop() {
             if !raw_sources.is_empty() {
                 return Err(ComponentError::MultipleParentsForComponent(self.id));
             }
-            Some(workspace_snapshot.get_node_weight(raw_parent)?.id().into())
+            Some(
+                workspace_snapshot
+                    .get_node_weight(raw_parent)
+                    .await?
+                    .id()
+                    .into(),
+            )
         } else {
             None
         };
@@ -475,10 +483,10 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<(ContentHash, ComponentContentV1)> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let id: Ulid = component_id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
         let content: ComponentContent = ctx
@@ -496,22 +504,26 @@ impl Component {
     }
 
     pub async fn list(ctx: &DalContext) -> ComponentResult<Vec<Self>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut components = vec![];
-        let component_category_node_id =
-            workspace_snapshot.get_category_node(None, CategoryNodeKind::Component)?;
+        let component_category_node_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::Component)
+            .await?;
 
-        let component_node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            component_category_node_id,
-            EdgeWeightKindDiscriminants::Use,
-        )?;
+        let component_node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                component_category_node_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
 
         let mut node_weights = vec![];
         let mut hashes = vec![];
         for index in component_node_indices {
             let node_weight = workspace_snapshot
-                .get_node_weight(index)?
+                .get_node_weight(index)
+                .await?
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::Component)?;
             hashes.push(node_weight.content_hash());
             node_weights.push(node_weight);
@@ -557,18 +569,17 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<SchemaVariantId> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let maybe_schema_variant_indices = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                component_id,
-                EdgeWeightKindDiscriminants::Use,
-            )?;
+            .outgoing_targets_for_edge_weight_kind(component_id, EdgeWeightKindDiscriminants::Use)
+            .await?;
 
         let mut schema_variant_id: Option<SchemaVariantId> = None;
         for maybe_schema_variant_index in maybe_schema_variant_indices {
-            if let NodeWeight::Content(content) =
-                workspace_snapshot.get_node_weight(maybe_schema_variant_index)?
+            if let NodeWeight::Content(content) = workspace_snapshot
+                .get_node_weight(maybe_schema_variant_index)
+                .await?
             {
                 let content_hash_discriminants: ContentAddressDiscriminants =
                     content.content_address().into();
@@ -619,8 +630,9 @@ impl Component {
                 .await
                 .add(&ComponentContent::V1(updated.clone()))?;
 
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            workspace_snapshot.update_content(ctx.change_set_pointer()?, id.into(), hash)?;
+            ctx.workspace_snapshot()?
+                .update_content(ctx.change_set_pointer()?, id.into(), hash)
+                .await?;
         }
 
         Ok(Self::assemble(id, updated))
@@ -660,8 +672,9 @@ impl Component {
                 .await
                 .add(&ComponentContent::V1(updated.clone()))?;
 
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            workspace_snapshot.update_content(ctx.change_set_pointer()?, self.id.into(), hash)?;
+            ctx.workspace_snapshot()?
+                .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+                .await?;
         }
 
         Ok(Self::assemble(self.id, updated))
@@ -773,14 +786,14 @@ impl Component {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<AttributeValueId> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut maybe_root_attribute_value_id = None;
-        for target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            component_id,
-            EdgeWeightKindDiscriminants::Root,
-        )? {
-            let target_node_weight = workspace_snapshot.get_node_weight(target)?;
+        for target in workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(component_id, EdgeWeightKindDiscriminants::Root)
+            .await?
+        {
+            let target_node_weight = workspace_snapshot.get_node_weight(target).await?;
             if let NodeWeight::AttributeValue(_) = target_node_weight {
                 maybe_root_attribute_value_id = match maybe_root_attribute_value_id {
                     Some(already_found_root_attribute_value_id) => {
@@ -861,15 +874,19 @@ impl Component {
         component_id: ComponentId,
     ) -> ComponentResult<Vec<AttributeValueId>> {
         let mut socket_values: Vec<AttributeValueId> = vec![];
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        for socket_target in workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            component_id,
-            EdgeWeightKindDiscriminants::SocketValue,
-        )? {
+        for socket_target in workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                component_id,
+                EdgeWeightKindDiscriminants::SocketValue,
+            )
+            .await?
+        {
             socket_values.push(
                 workspace_snapshot
-                    .get_node_weight(socket_target)?
+                    .get_node_weight(socket_target)
+                    .await?
                     .get_attribute_value_node_weight()?
                     .id()
                     .into(),

@@ -165,39 +165,46 @@ impl ActionBatch {
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::ActionBatch(hash))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        workspace_snapshot.add_node(node_weight.to_owned())?;
+        workspace_snapshot.add_node(node_weight.to_owned()).await?;
 
         // Root --> ActionBatch Category --> Component (this)
-        let category_id =
-            workspace_snapshot.get_category_node(None, CategoryNodeKind::ActionBatch)?;
-        workspace_snapshot.add_edge(
-            category_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            id,
-        )?;
+        let category_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::ActionBatch)
+            .await?;
+        workspace_snapshot
+            .add_edge(
+                category_id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                id,
+            )
+            .await?;
 
         Ok(Self::assemble(id.into(), content))
     }
 
     pub async fn list(ctx: &DalContext) -> ActionBatchResult<Vec<Self>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut action_batchs = vec![];
-        let action_batch_category_node_id =
-            workspace_snapshot.get_category_node(None, CategoryNodeKind::ActionBatch)?;
+        let action_batch_category_node_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::ActionBatch)
+            .await?;
 
-        let action_batch_node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            action_batch_category_node_id,
-            EdgeWeightKindDiscriminants::Use,
-        )?;
+        let action_batch_node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                action_batch_category_node_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
 
         let mut node_weights = vec![];
         let mut hashes = vec![];
         for index in action_batch_node_indices {
             let node_weight = workspace_snapshot
-                .get_node_weight(index)?
+                .get_node_weight(index)
+                .await?
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::ActionBatch)?;
             hashes.push(node_weight.content_hash());
             node_weights.push(node_weight);
@@ -245,8 +252,9 @@ impl ActionBatch {
             .await
             .add(&ActionBatchContent::V1(content.clone()))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.update_content(ctx.change_set_pointer()?, self.id.into(), hash)?;
+        ctx.workspace_snapshot()?
+            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .await?;
         Ok(())
     }
 
@@ -260,8 +268,9 @@ impl ActionBatch {
             .await
             .add(&ActionBatchContent::V1(content.clone()))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.update_content(ctx.change_set_pointer()?, self.id.into(), hash)?;
+        ctx.workspace_snapshot()?
+            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .await?;
         Ok(())
     }
 
@@ -275,8 +284,9 @@ impl ActionBatch {
             .await
             .add(&ActionBatchContent::V1(content.clone()))?;
 
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        workspace_snapshot.update_content(ctx.change_set_pointer()?, self.id.into(), hash)?;
+        ctx.workspace_snapshot()?
+            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .await?;
         Ok(())
     }
 

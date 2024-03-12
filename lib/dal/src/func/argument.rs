@@ -193,16 +193,16 @@ impl FuncArgument {
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_func_argument(change_set, id, name.into(), hash)?;
 
-        {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-            workspace_snapshot.add_node(node_weight.clone())?;
-            workspace_snapshot.add_edge(
+        workspace_snapshot.add_node(node_weight.clone()).await?;
+        workspace_snapshot
+            .add_edge(
                 func_id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                 id,
-            )?;
-        }
+            )
+            .await?;
 
         let func_argument_node_weight = node_weight.get_func_argument_node_weight()?;
 
@@ -210,10 +210,10 @@ impl FuncArgument {
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let id: ulid::Ulid = id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(id)?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
         let content: FuncArgumentContent = ctx
@@ -238,18 +238,19 @@ impl FuncArgument {
     ) -> FuncArgumentResult<Vec<FuncArgumentId>> {
         let mut func_args = vec![];
 
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id)?;
+        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id).await?;
 
         let func_arg_node_idxs = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind_by_index(
                 func_node_idx,
                 EdgeWeightKindDiscriminants::Use,
-            )?;
+            )
+            .await?;
 
         for idx in func_arg_node_idxs {
-            let node_weight = workspace_snapshot.get_node_weight(idx)?;
+            let node_weight = workspace_snapshot.get_node_weight(idx).await?;
             func_args.push(node_weight.id().into())
         }
 
@@ -260,22 +261,24 @@ impl FuncArgument {
     pub async fn list_for_func(ctx: &DalContext, func_id: FuncId) -> FuncArgumentResult<Vec<Self>> {
         let mut func_args = vec![];
 
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id)?;
+        let func_node_idx = workspace_snapshot.get_node_index_by_id(func_id).await?;
 
         let func_arg_node_idxs = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind_by_index(
                 func_node_idx,
                 EdgeWeightKindDiscriminants::Use,
-            )?;
+            )
+            .await?;
 
         let mut arg_node_weights = vec![];
         let mut arg_content_hashes = vec![];
 
         for idx in func_arg_node_idxs {
             let node_weight = workspace_snapshot
-                .get_node_weight(idx)?
+                .get_node_weight(idx)
+                .await?
                 .get_func_argument_node_weight()?;
 
             arg_content_hashes.push(node_weight.content_hash());
@@ -330,12 +333,15 @@ impl FuncArgument {
         let ulid: Ulid = id.into();
 
         let (arg_node_idx, arg_nw) = {
-            let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+            let workspace_snapshot = ctx.workspace_snapshot()?;
 
-            let arg_node_idx = workspace_snapshot.get_node_index_by_id(ulid)?;
+            let arg_node_idx = workspace_snapshot.get_node_index_by_id(ulid).await?;
             (
                 arg_node_idx,
-                workspace_snapshot.get_node_weight(arg_node_idx)?.to_owned(),
+                workspace_snapshot
+                    .get_node_weight(arg_node_idx)
+                    .await?
+                    .to_owned(),
             )
         };
 
@@ -356,15 +362,17 @@ impl FuncArgument {
 
         lambda(&mut func_arg)?;
 
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
         if func_arg_node_weight.name() != func_arg.name.as_str() {
             let mut new_func_arg = func_arg_node_weight
                 .new_with_incremented_vector_clock(ctx.change_set_pointer()?)?;
             new_func_arg.set_name(&func_arg.name);
 
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-
-            workspace_snapshot.add_node(NodeWeight::FuncArgument(new_func_arg.clone()))?;
-            workspace_snapshot.replace_references(arg_node_idx)?;
+            workspace_snapshot
+                .add_node(NodeWeight::FuncArgument(new_func_arg.clone()))
+                .await?;
+            workspace_snapshot.replace_references(arg_node_idx).await?;
             func_arg_node_weight = new_func_arg;
         }
 
@@ -376,18 +384,20 @@ impl FuncArgument {
                 .await
                 .add(&FuncArgumentContent::V1(updated.clone()))?;
 
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            workspace_snapshot.update_content(ctx.change_set_pointer()?, ulid, hash)?;
+            workspace_snapshot
+                .update_content(ctx.change_set_pointer()?, ulid, hash)
+                .await?;
         }
 
         Ok(FuncArgument::assemble(&func_arg_node_weight, &updated))
     }
 
     pub async fn remove(ctx: &DalContext, id: FuncArgumentId) -> FuncArgumentResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
         let change_set = ctx.change_set_pointer()?;
 
-        workspace_snapshot.remove_node_by_id(change_set, id)?;
+        ctx.workspace_snapshot()?
+            .remove_node_by_id(change_set, id)
+            .await?;
 
         Ok(())
     }

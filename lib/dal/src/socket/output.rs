@@ -167,26 +167,26 @@ impl OutputSocket {
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::OutputSocket(hash))?;
-        {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            let _node_index = workspace_snapshot.add_node(node_weight)?;
-            workspace_snapshot.add_edge(
+
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        workspace_snapshot.add_node(node_weight).await?;
+        workspace_snapshot
+            .add_edge(
                 schema_variant_id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Socket)?,
                 id,
-            )?;
-        }
+            )
+            .await?;
 
         let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
 
-        {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            workspace_snapshot.add_edge(
+        workspace_snapshot
+            .add_edge(
                 id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Prototype(None))?,
                 attribute_prototype.id(),
-            )?;
-        }
+            )
+            .await?;
 
         Ok(Self::assemble(id.into(), content))
     }
@@ -197,14 +197,16 @@ impl OutputSocket {
     ) -> OutputSocketResult<Vec<AttributeValueId>> {
         let mut result = vec![];
 
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        let av_sources = workspace_snapshot.incoming_sources_for_edge_weight_kind(
-            output_socket_id,
-            EdgeWeightKindDiscriminants::Socket,
-        )?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let av_sources = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                output_socket_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?;
         for av_source_idx in av_sources {
             if let NodeWeight::AttributeValue(av_node_weight) =
-                workspace_snapshot.get_node_weight(av_source_idx)?
+                workspace_snapshot.get_node_weight(av_source_idx).await?
             {
                 result.push(av_node_weight.id().into());
             }
@@ -217,16 +219,18 @@ impl OutputSocket {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> OutputSocketResult<Vec<OutputSocketId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            schema_variant_id,
-            EdgeWeightKindDiscriminants::Socket,
-        )?;
+        let node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?;
 
         let mut result = vec![];
         for node_index in node_indices {
-            let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+            let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
             if node_weight
                 .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::OutputSocket)
                 .is_some()
@@ -242,17 +246,19 @@ impl OutputSocket {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> OutputSocketResult<Vec<Self>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            schema_variant_id,
-            EdgeWeightKindDiscriminants::Socket,
-        )?;
+        let node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                schema_variant_id,
+                EdgeWeightKindDiscriminants::Socket,
+            )
+            .await?;
 
         let mut content_hashes = Vec::new();
         let mut node_weights = Vec::new();
         for node_index in node_indices {
-            let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+            let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
             if let Some(content_node_weight) = node_weight
                 .get_option_content_node_weight_of_kind(ContentAddressDiscriminants::OutputSocket)
             {

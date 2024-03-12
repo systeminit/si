@@ -1,6 +1,6 @@
 use chrono::Utc;
 use content_store::{ContentHash, Store, StoreError};
-use petgraph::stable_graph::{EdgeReference, Edges};
+use petgraph::stable_graph::Edges;
 use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -255,10 +255,20 @@ impl WorkspaceSnapshotGraph {
         node_index: NodeIndex,
         direction: Direction,
         edge_kind: EdgeWeightKindDiscriminants,
-    ) -> Vec<EdgeReference<'_, EdgeWeight>> {
+    ) -> Vec<(EdgeWeight, NodeIndex, NodeIndex)> {
         self.graph
             .edges_directed(node_index, direction)
-            .filter(|edge_ref| edge_kind == edge_ref.weight().kind().into())
+            .filter_map(|edge_ref| {
+                if edge_kind == edge_ref.weight().kind().into() {
+                    Some((
+                        edge_ref.weight().to_owned(),
+                        edge_ref.source(),
+                        edge_ref.target(),
+                    ))
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 

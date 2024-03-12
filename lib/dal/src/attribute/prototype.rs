@@ -10,7 +10,6 @@
 //!     for.
 
 use content_store::{ContentHash, Store};
-use petgraph::prelude::EdgeRef;
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use strum::EnumDiscriminants;
@@ -121,14 +120,16 @@ impl AttributePrototype {
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::AttributePrototype(hash))?;
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-        let _node_index = workspace_snapshot.add_node(node_weight)?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let _node_index = workspace_snapshot.add_node(node_weight).await?;
 
-        workspace_snapshot.add_edge(
-            id,
-            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            func_id,
-        )?;
+        workspace_snapshot
+            .add_edge(
+                id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                func_id,
+            )
+            .await?;
 
         Ok(AttributePrototype::assemble(
             AttributePrototypeId::from(id),
@@ -140,13 +141,15 @@ impl AttributePrototype {
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<FuncId> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         for node_index in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(prototype_id, EdgeWeightKindDiscriminants::Use)?
+            .outgoing_targets_for_edge_weight_kind(prototype_id, EdgeWeightKindDiscriminants::Use)
+            .await?
         {
-            let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+            let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+            let node_weight_id = node_weight.id();
             if NodeWeightDiscriminants::Func == node_weight.into() {
-                return Ok(node_weight.id().into());
+                return Ok(node_weight_id.into());
             }
         }
 
@@ -158,20 +161,22 @@ impl AttributePrototype {
         prop_id: PropId,
         key: &Option<String>,
     ) -> AttributePrototypeResult<Option<AttributePrototypeId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         if let Some(prototype_idx) = workspace_snapshot
-            .edges_directed(prop_id, Direction::Outgoing)?
-            .find(|edge_ref| {
-                if let EdgeWeightKind::Prototype(maybe_key) = edge_ref.weight().kind() {
+            .edges_directed(prop_id, Direction::Outgoing)
+            .await?
+            .iter()
+            .find(|(edge_weight, _, _)| {
+                if let EdgeWeightKind::Prototype(maybe_key) = edge_weight.kind() {
                     maybe_key == key
                 } else {
                     false
                 }
             })
-            .map(|edge_ref| edge_ref.target())
+            .map(|(_, _, target_idx)| target_idx)
         {
-            let node_weight = workspace_snapshot.get_node_weight(prototype_idx)?;
+            let node_weight = workspace_snapshot.get_node_weight(*prototype_idx).await?;
 
             if matches!(
                 node_weight.content_address_discriminants(),
@@ -188,16 +193,18 @@ impl AttributePrototype {
         ctx: &DalContext,
         output_socket_id: OutputSocketId,
     ) -> AttributePrototypeResult<Option<AttributePrototypeId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         if let Some(prototype_idx) = workspace_snapshot
-            .edges_directed(output_socket_id, Direction::Outgoing)?
-            .find(|edge_ref| {
-                EdgeWeightKindDiscriminants::Prototype == edge_ref.weight().kind().into()
+            .edges_directed(output_socket_id, Direction::Outgoing)
+            .await?
+            .iter()
+            .find(|(edge_weight, _, _)| {
+                EdgeWeightKindDiscriminants::Prototype == edge_weight.kind().into()
             })
-            .map(|edge_ref| edge_ref.target())
+            .map(|(_, _, target_idx)| target_idx)
         {
-            let node_weight = workspace_snapshot.get_node_weight(prototype_idx)?;
+            let node_weight = workspace_snapshot.get_node_weight(*prototype_idx).await?;
 
             if matches!(
                 node_weight.content_address_discriminants(),
@@ -215,32 +222,39 @@ impl AttributePrototype {
         attribute_prototype_id: AttributePrototypeId,
         func_id: FuncId,
     ) -> AttributePrototypeResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let attribute_prototype_idx =
-            workspace_snapshot.get_node_index_by_id(attribute_prototype_id)?;
+        let attribute_prototype_idx = workspace_snapshot
+            .get_node_index_by_id(attribute_prototype_id)
+            .await?;
 
         let current_func_node_idx = workspace_snapshot
-            .edges_directed(attribute_prototype_id, Direction::Outgoing)?
-            .find(|edge_ref| edge_ref.weight().kind() == &EdgeWeightKind::Use)
-            .map(|edge_ref| edge_ref.target())
+            .edges_directed(attribute_prototype_id, Direction::Outgoing)
+            .await?
+            .iter()
+            .find(|(edge_weight, _, _)| edge_weight.kind() == &EdgeWeightKind::Use)
+            .map(|(_, _, target_idx)| *target_idx)
             .ok_or(AttributePrototypeError::MissingFunction(
                 attribute_prototype_id,
             ))?;
 
         let change_set = ctx.change_set_pointer()?;
-        workspace_snapshot.remove_edge(
-            change_set,
-            attribute_prototype_idx,
-            current_func_node_idx,
-            EdgeWeightKindDiscriminants::Use,
-        )?;
+        workspace_snapshot
+            .remove_edge(
+                change_set,
+                attribute_prototype_idx,
+                current_func_node_idx,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
 
-        workspace_snapshot.add_edge(
-            attribute_prototype_id,
-            EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
-            func_id,
-        )?;
+        workspace_snapshot
+            .add_edge(
+                attribute_prototype_id,
+                EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
+                func_id,
+            )
+            .await?;
 
         Ok(())
     }
@@ -261,44 +275,51 @@ impl AttributePrototype {
 
         let mut attribute_value_ids = vec![];
 
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        for prototype_edge_source in workspace_snapshot.incoming_sources_for_edge_weight_kind(
-            attribute_prototype_id,
-            EdgeWeightKindDiscriminants::Prototype,
-        )? {
-            let (target_id, edge_weight_discrim) =
-                match workspace_snapshot.get_node_weight(prototype_edge_source)? {
-                    NodeWeight::Prop(prop_inner) => {
-                        (prop_inner.id(), EdgeWeightKindDiscriminants::Prop)
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        for prototype_edge_source in workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                attribute_prototype_id,
+                EdgeWeightKindDiscriminants::Prototype,
+            )
+            .await?
+        {
+            let (target_id, edge_weight_discrim) = match workspace_snapshot
+                .get_node_weight(prototype_edge_source)
+                .await?
+            {
+                NodeWeight::Prop(prop_inner) => {
+                    (prop_inner.id(), EdgeWeightKindDiscriminants::Prop)
+                }
+                NodeWeight::Content(content_inner) => match content_inner.content_address() {
+                    ContentAddress::OutputSocket(_) | ContentAddress::InputSocket(_) => {
+                        (content_inner.id(), EdgeWeightKindDiscriminants::Socket)
                     }
-                    NodeWeight::Content(content_inner) => match content_inner.content_address() {
-                        ContentAddress::OutputSocket(_) | ContentAddress::InputSocket(_) => {
-                            (content_inner.id(), EdgeWeightKindDiscriminants::Socket)
-                        }
-                        _ => {
-                            return Err(WorkspaceSnapshotError::UnexpectedEdgeSource(
-                                content_inner.id(),
-                                attribute_prototype_id.into(),
-                                EdgeWeightKindDiscriminants::Prototype,
-                            )
-                            .into());
-                        }
-                    },
-                    other => {
+                    _ => {
                         return Err(WorkspaceSnapshotError::UnexpectedEdgeSource(
-                            other.id(),
+                            content_inner.id(),
                             attribute_prototype_id.into(),
                             EdgeWeightKindDiscriminants::Prototype,
                         )
                         .into());
                     }
-                };
+                },
+                other => {
+                    return Err(WorkspaceSnapshotError::UnexpectedEdgeSource(
+                        other.id(),
+                        attribute_prototype_id.into(),
+                        EdgeWeightKindDiscriminants::Prototype,
+                    )
+                    .into());
+                }
+            };
 
             for attribute_value_target in workspace_snapshot
-                .incoming_sources_for_edge_weight_kind(target_id, edge_weight_discrim)?
+                .incoming_sources_for_edge_weight_kind(target_id, edge_weight_discrim)
+                .await?
             {
-                if let NodeWeight::AttributeValue(av_node_weight) =
-                    workspace_snapshot.get_node_weight(attribute_value_target)?
+                if let NodeWeight::AttributeValue(av_node_weight) = workspace_snapshot
+                    .get_node_weight(attribute_value_target)
+                    .await?
                 {
                     attribute_value_ids.push(av_node_weight.id().into())
                 }
@@ -315,12 +336,14 @@ impl AttributePrototype {
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<Option<AttributeValueId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let maybe_value_idxs = workspace_snapshot.incoming_sources_for_edge_weight_kind(
-            attribute_prototype_id,
-            EdgeWeightKindDiscriminants::Prototype,
-        )?;
+        let maybe_value_idxs = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                attribute_prototype_id,
+                EdgeWeightKindDiscriminants::Prototype,
+            )
+            .await?;
 
         if maybe_value_idxs.len() > 1 {
             return Err(WorkspaceSnapshotError::UnexpectedNumberOfIncomingEdges(
@@ -334,7 +357,7 @@ impl AttributePrototype {
         Ok(match maybe_value_idxs.first().copied() {
             Some(value_idx) => {
                 if let NodeWeight::AttributeValue(av_node_weight) =
-                    workspace_snapshot.get_node_weight(value_idx)?
+                    workspace_snapshot.get_node_weight(value_idx).await?
                 {
                     Some(av_node_weight.id().into())
                 } else {
@@ -349,10 +372,11 @@ impl AttributePrototype {
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<()> {
-        let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
         let change_set = ctx.change_set_pointer()?;
 
-        workspace_snapshot.remove_node_by_id(change_set, prototype_id)?;
+        ctx.workspace_snapshot()?
+            .remove_node_by_id(change_set, prototype_id)
+            .await?;
 
         Ok(())
     }

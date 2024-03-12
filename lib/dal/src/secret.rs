@@ -176,20 +176,22 @@ impl Secret {
         let change_set = ctx.change_set_pointer()?;
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Secret(hash))?;
 
-        // Attach secret to the category.
-        {
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            workspace_snapshot.add_node(node_weight)?;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
-            // Root --> Secret Category --> Secret (this)
-            let secret_category_id =
-                workspace_snapshot.get_category_node(None, CategoryNodeKind::Secret)?;
-            workspace_snapshot.add_edge(
+        // Attach secret to the category.
+        workspace_snapshot.add_node(node_weight).await?;
+
+        // Root --> Secret Category --> Secret (this)
+        let secret_category_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::Secret)
+            .await?;
+        workspace_snapshot
+            .add_edge(
                 secret_category_id,
                 EdgeWeight::new(change_set, EdgeWeightKind::Use)?,
                 id,
-            )?;
-        }
+            )
+            .await?;
 
         let secret = Self::assemble(id.into(), content);
 
@@ -217,10 +219,10 @@ impl Secret {
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: SecretId) -> SecretResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
         let ulid: Ulid = id.into();
-        let node_index = workspace_snapshot.get_node_index_by_id(ulid)?;
-        let node_weight = workspace_snapshot.get_node_weight(node_index)?;
+        let node_index = workspace_snapshot.get_node_index_by_id(ulid).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
         let hash = node_weight.content_hash();
 
         let content: SecretContent = ctx
@@ -238,22 +240,26 @@ impl Secret {
     }
 
     pub async fn list(ctx: &DalContext) -> SecretResult<Vec<Self>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let mut secrets = vec![];
-        let secret_category_node_id =
-            workspace_snapshot.get_category_node(None, CategoryNodeKind::Secret)?;
+        let secret_category_node_id = workspace_snapshot
+            .get_category_node(None, CategoryNodeKind::Secret)
+            .await?;
 
-        let secret_node_indices = workspace_snapshot.outgoing_targets_for_edge_weight_kind(
-            secret_category_node_id,
-            EdgeWeightKindDiscriminants::Use,
-        )?;
+        let secret_node_indices = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(
+                secret_category_node_id,
+                EdgeWeightKindDiscriminants::Use,
+            )
+            .await?;
 
         let mut node_weights = vec![];
         let mut hashes = vec![];
         for index in secret_node_indices {
             let node_weight = workspace_snapshot
-                .get_node_weight(index)?
+                .get_node_weight(index)
+                .await?
                 .get_content_node_weight_of_kind(ContentAddressDiscriminants::Secret)?;
             hashes.push(node_weight.content_hash());
             node_weights.push(node_weight);
@@ -306,8 +312,9 @@ impl Secret {
                 .await
                 .add(&SecretContent::V1(after.clone()))?;
 
-            let mut workspace_snapshot = ctx.workspace_snapshot()?.write().await;
-            workspace_snapshot.update_content(ctx.change_set_pointer()?, raw_id, hash)?;
+            ctx.workspace_snapshot()?
+                .update_content(ctx.change_set_pointer()?, raw_id, hash)
+                .await?;
         }
 
         Ok(())

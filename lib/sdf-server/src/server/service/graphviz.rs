@@ -92,11 +92,13 @@ pub async fn schema_variant(
     let mut root_node_id: Option<Ulid> = None;
 
     let sv = SchemaVariant::get_by_id(&ctx, request.schema_variant_id).await?;
+    let workspace_snapshot = ctx.workspace_snapshot()?;
 
     let sv_node = {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        let node_idx = workspace_snapshot.get_node_index_by_id(request.schema_variant_id)?;
-        let sv_node_weight = workspace_snapshot.get_node_weight(node_idx)?;
+        let node_idx = workspace_snapshot
+            .get_node_index_by_id(request.schema_variant_id)
+            .await?;
+        let sv_node_weight = workspace_snapshot.get_node_weight(node_idx).await?;
 
         added_nodes.insert(sv_node_weight.id());
         GraphVizNode {
@@ -112,8 +114,7 @@ pub async fn schema_variant(
     // descend
     let mut work_queue: VecDeque<Ulid> = VecDeque::from([request.schema_variant_id.into()]);
     while let Some(id) = work_queue.pop_front() {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        for target in workspace_snapshot.all_outgoing_targets(id)? {
+        for target in workspace_snapshot.all_outgoing_targets(id).await? {
             work_queue.push_back(target.id());
             if !added_edges.contains(&(id, target.id())) {
                 added_edges.insert((id, target.id()));
@@ -147,8 +148,7 @@ pub async fn schema_variant(
     // ascend
     let mut work_queue: VecDeque<Ulid> = VecDeque::from([request.schema_variant_id.into()]);
     while let Some(id) = work_queue.pop_front() {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
-        let sources = workspace_snapshot.all_incoming_sources(id)?;
+        let sources = workspace_snapshot.all_incoming_sources(id).await?;
         if sources.is_empty() {
             root_node_id = Some(id);
             continue;
@@ -185,12 +185,13 @@ pub async fn schema_variant(
 
     // connect func_nodes to root
     for func_id in func_nodes {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
         for user_node_idx in workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)?
+            .incoming_sources_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)
+            .await?
         {
             let user_node = workspace_snapshot
-                .get_node_weight(user_node_idx)?
+                .get_node_weight(user_node_idx)
+                .await?
                 .to_owned();
 
             if let NodeWeight::Category(cat_inner) = &user_node {
@@ -211,11 +212,16 @@ pub async fn schema_variant(
                         name,
                     })
                 }
-                for cat_user_node_idx in workspace_snapshot.incoming_sources_for_edge_weight_kind(
-                    user_node.id(),
-                    EdgeWeightKindDiscriminants::Use,
-                )? {
-                    let node_weight = workspace_snapshot.get_node_weight(cat_user_node_idx)?;
+                for cat_user_node_idx in workspace_snapshot
+                    .incoming_sources_for_edge_weight_kind(
+                        user_node.id(),
+                        EdgeWeightKindDiscriminants::Use,
+                    )
+                    .await?
+                {
+                    let node_weight = workspace_snapshot
+                        .get_node_weight(cat_user_node_idx)
+                        .await?;
                     match node_weight
                         .get_content_node_weight_of_kind(ContentAddressDiscriminants::Root)
                     {
@@ -251,17 +257,19 @@ pub async fn nodes_edges(
 ) -> GraphVizResult<Json<GraphVizResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+    let workspace_snapshot = ctx.workspace_snapshot()?;
 
     let mut node_idx_to_id = HashMap::new();
 
-    let root_node_idx = workspace_snapshot.root()?;
+    let root_node_idx = workspace_snapshot.root().await?;
 
     let nodes = workspace_snapshot
-        .nodes()?
+        .nodes()
+        .await?
+        .into_iter()
         .map(|(weight, idx)| {
             node_idx_to_id.insert(idx, weight.id());
-            let name = match weight {
+            let name = match &weight {
                 NodeWeight::Category(inner) => Some(inner.kind().to_string()),
                 NodeWeight::Func(inner) => Some(inner.name().to_owned()),
                 NodeWeight::Prop(inner) => Some(inner.name().to_owned()),
@@ -277,7 +285,9 @@ pub async fn nodes_edges(
         .collect();
 
     let edges = workspace_snapshot
-        .edges()?
+        .edges()
+        .await?
+        .into_iter()
         .filter_map(
             |(_, from, to)| match (node_idx_to_id.get(&from), node_idx_to_id.get(&to)) {
                 (None, _) | (_, None) => None,
