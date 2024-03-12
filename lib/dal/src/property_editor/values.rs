@@ -6,11 +6,13 @@ use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
+use ulid::Ulid;
 
 use crate::property_editor::PropertyEditorResult;
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
-use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
+use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 
+use crate::workspace_snapshot::node_weight::{NodeWeight, OrderingNodeWeight};
 use crate::{
     AttributeValue, AttributeValueId, Component, ComponentId, DalContext, FuncId, Prop, PropId,
 };
@@ -66,28 +68,68 @@ impl PropertyEditorValues {
             // Collect all child attribute values.
             let mut cache: Vec<(AttributeValueId, Option<String>)> = Vec::new();
             {
-                let child_attribute_values_with_keys: Vec<(NodeIndex, Option<String>)> =
-                    workspace_snapshot
-                        .edges_directed(attribute_value_id, Direction::Outgoing)
-                        .await?
-                        .into_iter()
-                        .filter_map(|(edge_weight, _, target_idx)| {
-                            if let EdgeWeightKind::Contain(key) = edge_weight.kind() {
-                                Some((target_idx, key.to_owned()))
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
+                let mut child_attribute_values_with_keys_by_id: HashMap<
+                    Ulid,
+                    (NodeIndex, Option<String>),
+                > = HashMap::new();
 
-                // NOTE(nick): this entire function is likely wasteful. Zack and Jacob, have mercy on me.
-                for (child_attribute_value_node_index, key) in child_attribute_values_with_keys {
-                    let child_attribute_value_node_weight = workspace_snapshot
-                        .get_node_weight(child_attribute_value_node_index)
-                        .await?;
-                    let content =
-                        child_attribute_value_node_weight.get_attribute_value_node_weight()?;
-                    cache.push((content.id().into(), key));
+                for (edge_weight, _, target_idx) in workspace_snapshot
+                    .edges_directed(attribute_value_id, Direction::Outgoing)
+                    .await?
+                {
+                    if let EdgeWeightKind::Contain(key) = edge_weight.kind() {
+                        let child_id = workspace_snapshot.get_node_weight(target_idx).await?.id();
+
+                        child_attribute_values_with_keys_by_id
+                            .insert(child_id, (target_idx, key.to_owned()));
+                    }
+                }
+
+                let maybe_ordering = if let Some(ordering) = workspace_snapshot
+                    .outgoing_targets_for_edge_weight_kind(
+                        attribute_value_id,
+                        EdgeWeightKindDiscriminants::Ordering,
+                    )
+                    .await?
+                    .pop()
+                {
+                    let node_weight = workspace_snapshot.get_node_weight(ordering).await?;
+                    match node_weight {
+                        NodeWeight::Ordering(ordering_weight) => {
+                            Some(ordering_weight.order().clone())
+                        }
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
+
+                // Ideally every attribute value with children is connected via an ordering node
+                // We don't error out on ordering not existing here because we don't have that
+                // guarantee. If that becomes a certainty we should fail on maybe_ordering==None.
+                if let Some(ordering) = maybe_ordering {
+                    for ulid in ordering {
+                        let (child_attribute_value_node_index, key) =
+                            &child_attribute_values_with_keys_by_id[&ulid];
+                        let child_attribute_value_node_weight = workspace_snapshot
+                            .get_node_weight(*child_attribute_value_node_index)
+                            .await?;
+                        let content =
+                            child_attribute_value_node_weight.get_attribute_value_node_weight()?;
+                        cache.push((content.id().into(), key.clone()));
+                    }
+                } else {
+                    // NOTE(nick): this entire function is likely wasteful. Zack and Jacob, have mercy on me.
+                    for (child_attribute_value_node_index, key) in
+                        child_attribute_values_with_keys_by_id.values()
+                    {
+                        let child_attribute_value_node_weight = workspace_snapshot
+                            .get_node_weight(*child_attribute_value_node_index)
+                            .await?;
+                        let content =
+                            child_attribute_value_node_weight.get_attribute_value_node_weight()?;
+                        cache.push((content.id().into(), key.clone()));
+                    }
                 }
             }
 

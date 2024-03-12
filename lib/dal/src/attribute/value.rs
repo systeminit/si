@@ -1951,14 +1951,15 @@ impl AttributeValue {
         ctx: &DalContext,
         id: AttributeValueId,
     ) -> AttributeValueResult<Option<AttributeValueId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?.read().await;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
 
         let ordering_node_id = match workspace_snapshot
-            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Ordinal)?
+            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Ordinal)
+            .await?
             .first()
             .copied()
         {
-            Some(ordering_idx) => workspace_snapshot.get_node_weight(ordering_idx)?.id(),
+            Some(ordering_idx) => workspace_snapshot.get_node_weight(ordering_idx).await?.id(),
             None => return Ok(None),
         };
 
@@ -1966,12 +1967,14 @@ impl AttributeValue {
             .incoming_sources_for_edge_weight_kind(
                 ordering_node_id,
                 EdgeWeightKindDiscriminants::Ordering,
-            )?
+            )
+            .await?
             .first()
             .copied()
         {
             let parent_av_id: AttributeValueId = workspace_snapshot
-                .get_node_weight(parent_av_idx)?
+                .get_node_weight(parent_av_idx)
+                .await?
                 .id()
                 .into();
 
@@ -1999,9 +2002,8 @@ impl AttributeValue {
         let av = Self::get_by_id(ctx, id).await?;
 
         ctx.workspace_snapshot()?
-            .write()
-            .await
-            .remove_node_by_id(ctx.change_set_pointer()?, av.id)?;
+            .remove_node_by_id(ctx.change_set_pointer()?, av.id)
+            .await?;
 
         ctx.enqueue_job(DependentValuesUpdate::new(
             ctx.access_builder(),
