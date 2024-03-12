@@ -321,6 +321,7 @@
           packages =
             [
               alejandra
+              buildkite-test-collector-rust
               docker-compose
               jq
               # pgcli
