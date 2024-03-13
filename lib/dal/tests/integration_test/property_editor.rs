@@ -57,25 +57,25 @@ async fn array_map_manipulation(ctx: &DalContext) {
         .expect("there should only be one value id");
 
     // Add items to array prop
-    AttributeValue::insert(&ctx, parrot_names_value_id, Some("tabitha".into()), None)
+    AttributeValue::insert(ctx, parrot_names_value_id, Some("tabitha".into()), None)
         .await
         .expect("one item in array");
-    AttributeValue::insert(&ctx, parrot_names_value_id, Some("samantha".into()), None)
+    AttributeValue::insert(ctx, parrot_names_value_id, Some("samantha".into()), None)
         .await
         .expect("two items in array");
-    AttributeValue::insert(&ctx, parrot_names_value_id, Some("jessica".into()), None)
+    AttributeValue::insert(ctx, parrot_names_value_id, Some("jessica".into()), None)
         .await
         .expect("three items in array");
-    AttributeValue::insert(&ctx, parrot_names_value_id, Some("amanda".into()), None)
+    AttributeValue::insert(ctx, parrot_names_value_id, Some("amanda".into()), None)
         .await
         .expect("four items in array");
-    AttributeValue::insert(&ctx, parrot_names_value_id, Some("dr wiggles".into()), None)
+    AttributeValue::insert(ctx, parrot_names_value_id, Some("dr wiggles".into()), None)
         .await
         .expect("five items in array");
 
     // Add items to map prop
     AttributeValue::insert(
-        &ctx,
+        ctx,
         treasure_map_value_id,
         Some("cheese".into()),
         Some("ohio".to_string()),
@@ -83,7 +83,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     .await
     .expect("one item in map");
     AttributeValue::insert(
-        &ctx,
+        ctx,
         treasure_map_value_id,
         Some("coxinha".into()),
         Some("rio".to_string()),
@@ -91,7 +91,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     .await
     .expect("two items in map");
     AttributeValue::insert(
-        &ctx,
+        ctx,
         treasure_map_value_id,
         Some("pizza".into()),
         Some("nyc".to_string()),
@@ -99,7 +99,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     .await
     .expect("three items in map");
     AttributeValue::insert(
-        &ctx,
+        ctx,
         treasure_map_value_id,
         Some("sushi".into()),
         Some("tokyo".to_string()),
@@ -107,7 +107,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     .await
     .expect("four items in map");
     AttributeValue::insert(
-        &ctx,
+        ctx,
         treasure_map_value_id,
         Some("baby back ribs".into()),
         Some("jupiter".to_string()),

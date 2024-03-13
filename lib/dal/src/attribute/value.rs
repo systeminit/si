@@ -1984,7 +1984,7 @@ impl AttributeValue {
 
             let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
 
-            if !vec![PropKind::Map, PropKind::Array].contains(&parent_prop.kind) {
+            if ![PropKind::Map, PropKind::Array].contains(&parent_prop.kind) {
                 return Ok(None);
             }
 

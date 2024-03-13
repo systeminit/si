@@ -6,13 +6,11 @@ use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
-use ulid::Ulid;
 
 use crate::property_editor::PropertyEditorResult;
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
+use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 
-use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
     AttributeValue, AttributeValueId, Component, ComponentId, DalContext, FuncId, Prop, PropId,
 };
@@ -68,7 +66,7 @@ impl PropertyEditorValues {
             let mut cache: Vec<(AttributeValueId, Option<String>)> = Vec::new();
             {
                 let mut child_attribute_values_with_keys_by_id: HashMap<
-                    Ulid,
+                    AttributeValueId,
                     (NodeIndex, Option<String>),
                 > = HashMap::new();
 
@@ -77,43 +75,33 @@ impl PropertyEditorValues {
                     .await?
                 {
                     if let EdgeWeightKind::Contain(key) = edge_weight.kind() {
-                        let child_id = workspace_snapshot.get_node_weight(target_idx).await?.id();
+                        let child_id = workspace_snapshot
+                            .get_node_weight(target_idx)
+                            .await?
+                            .id()
+                            .into();
 
                         child_attribute_values_with_keys_by_id
                             .insert(child_id, (target_idx, key.to_owned()));
                     }
                 }
 
-                let maybe_ordering = if let Some(ordering) = workspace_snapshot
-                    .outgoing_targets_for_edge_weight_kind(
-                        attribute_value_id,
-                        EdgeWeightKindDiscriminants::Ordering,
-                    )
-                    .await?
-                    .pop()
-                {
-                    let node_weight = workspace_snapshot.get_node_weight(ordering).await?;
-                    match node_weight {
-                        NodeWeight::Ordering(ordering_weight) => {
-                            Some(ordering_weight.order().clone())
-                        }
-                        _ => None,
-                    }
-                } else {
-                    None
-                };
+                let maybe_ordering =
+                    AttributeValue::get_child_av_ids_for_ordered_parent(ctx, attribute_value_id)
+                        .await
+                        .ok();
 
                 // Ideally every attribute value with children is connected via an ordering node
                 // We don't error out on ordering not existing here because we don't have that
                 // guarantee. If that becomes a certainty we should fail on maybe_ordering==None.
-                for ulid in maybe_ordering.unwrap_or_else(|| {
+                for av_id in maybe_ordering.unwrap_or_else(|| {
                     child_attribute_values_with_keys_by_id
                         .keys()
                         .cloned()
                         .collect()
                 }) {
                     let (child_attribute_value_node_index, key) =
-                        &child_attribute_values_with_keys_by_id[&ulid];
+                        &child_attribute_values_with_keys_by_id[&av_id];
                     let child_attribute_value_node_weight = workspace_snapshot
                         .get_node_weight(*child_attribute_value_node_index)
                         .await?;
