@@ -107,29 +107,20 @@ impl PropertyEditorValues {
                 // Ideally every attribute value with children is connected via an ordering node
                 // We don't error out on ordering not existing here because we don't have that
                 // guarantee. If that becomes a certainty we should fail on maybe_ordering==None.
-                if let Some(ordering) = maybe_ordering {
-                    for ulid in ordering {
-                        let (child_attribute_value_node_index, key) =
-                            &child_attribute_values_with_keys_by_id[&ulid];
-                        let child_attribute_value_node_weight = workspace_snapshot
-                            .get_node_weight(*child_attribute_value_node_index)
-                            .await?;
-                        let content =
-                            child_attribute_value_node_weight.get_attribute_value_node_weight()?;
-                        cache.push((content.id().into(), key.clone()));
-                    }
-                } else {
-                    // NOTE(nick): this entire function is likely wasteful. Zack and Jacob, have mercy on me.
-                    for (child_attribute_value_node_index, key) in
-                        child_attribute_values_with_keys_by_id.values()
-                    {
-                        let child_attribute_value_node_weight = workspace_snapshot
-                            .get_node_weight(*child_attribute_value_node_index)
-                            .await?;
-                        let content =
-                            child_attribute_value_node_weight.get_attribute_value_node_weight()?;
-                        cache.push((content.id().into(), key.clone()));
-                    }
+                for ulid in maybe_ordering.unwrap_or_else(|| {
+                    child_attribute_values_with_keys_by_id
+                        .keys()
+                        .cloned()
+                        .collect()
+                }) {
+                    let (child_attribute_value_node_index, key) =
+                        &child_attribute_values_with_keys_by_id[&ulid];
+                    let child_attribute_value_node_weight = workspace_snapshot
+                        .get_node_weight(*child_attribute_value_node_index)
+                        .await?;
+                    let content =
+                        child_attribute_value_node_weight.get_attribute_value_node_weight()?;
+                    cache.push((content.id().into(), key.clone()));
                 }
             }
 
