@@ -23,13 +23,10 @@ pub mod apply_change_set;
 // mod begin_abandon_approval_process;
 // mod begin_approval_process;
 pub mod create_change_set;
-// pub mod get_change_set;
-// pub mod get_stats;
 pub mod list_open_change_sets;
 pub mod list_queued_actions;
 // mod merge_vote;
 pub mod remove_action;
-// pub mod update_selected_change_set;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -131,8 +128,6 @@ pub fn routes() -> Router<AppState> {
             "/create_change_set",
             post(create_change_set::create_change_set),
         )
-        // .route("/get_change_set", get(get_change_set::get_change_set))
-        // .route("/get_stats", get(get_stats::get_stats))
         .route(
             "/apply_change_set",
             post(apply_change_set::apply_change_set),
@@ -140,10 +135,6 @@ pub fn routes() -> Router<AppState> {
     // .route(
     //     "/abandon_change_set",
     //     post(abandon_change_set::abandon_change_set),
-    // )
-    // .route(
-    //     "/update_selected_change_set",
-    //     post(update_selected_change_set::update_selected_change_set),
     // )
     // .route(
     //     "/begin_approval_process",

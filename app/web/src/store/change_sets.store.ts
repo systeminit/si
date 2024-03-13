@@ -202,10 +202,6 @@ export function useChangeSetsStore() {
         },
         // TODO: async CANCEL_CHANGE_SET() {},
 
-        // other related endpoints, not necessarily needed at the moment, but available
-        // - change_set/get_change_set
-        // - change_set/update_selected_change_set (was just fetching the change set info)
-
         getAutoSelectedChangeSetId() {
           const lastChangeSetId = sessionStorage.getItem(
             `SI:LAST_CHANGE_SET/${workspacePk}`,
