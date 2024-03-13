@@ -147,6 +147,8 @@ pub enum AttributeValueError {
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight mismatch, expected {0:?} to be {1:?}")]
     NodeWeightMismatch(NodeIndex, NodeWeightDiscriminants),
+    #[error("attribute value does not have ordering node as expected: {0}")]
+    NoOrderingNodeForAttributeValue(AttributeValueId),
     #[error("attribute value not found for component ({0}) and input socket ({1})")]
     NotFoundForComponentAndInputSocket(ComponentId, InputSocketId),
     #[error("attribute value {0} has no outgoing edge to a prop or socket")]
@@ -159,6 +161,8 @@ pub enum AttributeValueError {
     PropMoreThanOneChild(PropId),
     #[error("prop not found for attribute value: {0}")]
     PropNotFound(AttributeValueId),
+    #[error("trying to delete av that's not related to child of map or array: {0}")]
+    RemovingWhenNotChildOrMapOrArray(AttributeValueId),
     #[error("serde_json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("store error: {0}")]
@@ -1940,5 +1944,103 @@ impl AttributeValue {
             Some(pk) => Some(FuncExecution::get_by_pk(ctx, &pk).await?),
             None => None,
         })
+    }
+
+    pub async fn get_parent_av_id_for_ordered_child(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<Option<AttributeValueId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let ordering_node_id = match workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Ordinal)
+            .await?
+            .first()
+            .copied()
+        {
+            Some(ordering_idx) => workspace_snapshot.get_node_weight(ordering_idx).await?.id(),
+            None => return Ok(None),
+        };
+
+        let parent_av_id = if let Some(parent_av_idx) = workspace_snapshot
+            .incoming_sources_for_edge_weight_kind(
+                ordering_node_id,
+                EdgeWeightKindDiscriminants::Ordering,
+            )
+            .await?
+            .first()
+            .copied()
+        {
+            let parent_av_id: AttributeValueId = workspace_snapshot
+                .get_node_weight(parent_av_idx)
+                .await?
+                .id()
+                .into();
+
+            let prop_id = AttributeValue::prop(ctx, parent_av_id).await?;
+
+            let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
+
+            if ![PropKind::Map, PropKind::Array].contains(&parent_prop.kind) {
+                return Ok(None);
+            }
+
+            parent_av_id
+        } else {
+            return Ok(None);
+        };
+
+        Ok(Some(parent_av_id))
+    }
+
+    pub async fn get_child_av_ids_for_ordered_parent(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<Vec<AttributeValueId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        if let Some(ordering) = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Ordering)
+            .await?
+            .pop()
+        {
+            let node_weight = workspace_snapshot.get_node_weight(ordering).await?;
+            if let NodeWeight::Ordering(ordering_weight) = node_weight {
+                Ok(ordering_weight
+                    .order()
+                    .clone()
+                    .into_iter()
+                    .map(|ulid| ulid.into())
+                    .collect())
+            } else {
+                Err(AttributeValueError::NodeWeightMismatch(
+                    ordering,
+                    NodeWeightDiscriminants::Ordering,
+                ))
+            }
+        } else {
+            Err(AttributeValueError::NoOrderingNodeForAttributeValue(id))
+        }
+    }
+
+    pub async fn remove_by_id(ctx: &DalContext, id: AttributeValueId) -> AttributeValueResult<()> {
+        let parent_av_id = Self::get_parent_av_id_for_ordered_child(ctx, id)
+            .await?
+            .ok_or(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id))?;
+
+        let av = Self::get_by_id(ctx, id).await?;
+
+        ctx.workspace_snapshot()?
+            .remove_node_by_id(ctx.change_set_pointer()?, av.id)
+            .await?;
+
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx.access_builder(),
+            *ctx.visibility(),
+            vec![parent_av_id],
+        ))
+        .await?;
+
+        Ok(())
     }
 }

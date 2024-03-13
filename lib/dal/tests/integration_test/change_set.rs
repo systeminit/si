@@ -1,6 +1,6 @@
 use dal::change_set_pointer::view::OpenChangeSetsView;
 use dal::change_set_pointer::ChangeSetPointer;
-use dal::DalContext;
+use dal::{ChangeSetStatus, DalContext};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use std::collections::HashSet;
@@ -117,4 +117,51 @@ async fn open_change_sets(ctx: &mut DalContext) {
         HashSet::from([current_change_set_id_again, head_change_set_id_again]), // expected
         change_set_ids_again,                                                   // actual
     );
+}
+
+#[test]
+async fn abandon_change_set(ctx: &mut DalContext) {
+    let change_set_name = "for abandonment".to_string();
+    let mut abandonment_change_set = ChangeSetPointer::fork_head(ctx, change_set_name.clone())
+        .await
+        .expect("could not create new change set");
+    ctx.update_visibility_and_snapshot_to_visibility(abandonment_change_set.id)
+        .await
+        .expect("could not update visibility");
+    ctx.commit_no_rebase()
+        .await
+        .expect("could not perform commit");
+
+    // List open changesets.
+    let view = OpenChangeSetsView::assemble(ctx)
+        .await
+        .expect("could not assemble view");
+
+    // Check that the expected number of change sets exist....
+    assert_eq!(
+        3,                      // expected
+        view.change_sets.len()  // actual
+    );
+
+    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(&abandonment_change_set)
+        .await
+        .expect("could not update visibility");
+    abandonment_change_set
+        .update_status(ctx, ChangeSetStatus::Abandoned)
+        .await
+        .expect("Unable to abandon changeset");
+
+    // relist the open changesets.
+    let view = OpenChangeSetsView::assemble(ctx)
+        .await
+        .expect("could not assemble view");
+
+    // Check that we no longer have the abandoned changeset
+    assert_eq!(
+        2,                      // expected
+        view.change_sets.len()  // actual
+    );
+
+    let change_set_names = Vec::from_iter(view.change_sets.iter().map(|c| c.name.clone()));
+    assert!(!change_set_names.contains(&change_set_name))
 }

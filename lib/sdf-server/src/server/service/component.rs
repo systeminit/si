@@ -20,7 +20,8 @@ pub mod get_property_editor_values;
 pub mod update_property_editor_value;
 
 // pub mod debug;
-// pub mod delete_property_editor_value;
+pub mod delete_property_editor_value;
+// pub mod get_components_metadata;
 // pub mod get_diff;
 // pub mod get_resource;
 pub mod insert_property_editor_value;
@@ -168,10 +169,10 @@ pub fn routes() -> Router<AppState> {
             "/insert_property_editor_value",
             post(insert_property_editor_value::insert_property_editor_value),
         )
-        // .route(
-        //     "/delete_property_editor_value",
-        //     post(delete_property_editor_value::delete_property_editor_value),
-        // )
+        .route(
+            "/delete_property_editor_value",
+            post(delete_property_editor_value::delete_property_editor_value),
+        )
         .route("/set_type", post(set_type::set_type))
     // .route("/refresh", post(refresh::refresh))
     // .route("/resource_domain_diff", get(resource_domain_diff::get_diff))

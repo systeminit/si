@@ -49,7 +49,6 @@ impl PropertyEditorValues {
                     .value(ctx)
                     .await?
                     .unwrap_or(Value::Null),
-                // TODO(nick): restore all these fields below.
                 is_from_external_source: false,
                 can_be_set_by_socket: false,
                 is_controlled_by_intrinsic_func: true,
@@ -66,28 +65,49 @@ impl PropertyEditorValues {
             // Collect all child attribute values.
             let mut cache: Vec<(AttributeValueId, Option<String>)> = Vec::new();
             {
-                let child_attribute_values_with_keys: Vec<(NodeIndex, Option<String>)> =
-                    workspace_snapshot
-                        .edges_directed(attribute_value_id, Direction::Outgoing)
-                        .await?
-                        .into_iter()
-                        .filter_map(|(edge_weight, _, target_idx)| {
-                            if let EdgeWeightKind::Contain(key) = edge_weight.kind() {
-                                Some((target_idx, key.to_owned()))
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
+                let mut child_attribute_values_with_keys_by_id: HashMap<
+                    AttributeValueId,
+                    (NodeIndex, Option<String>),
+                > = HashMap::new();
 
-                // NOTE(nick): this entire function is likely wasteful. Zack and Jacob, have mercy on me.
-                for (child_attribute_value_node_index, key) in child_attribute_values_with_keys {
+                for (edge_weight, _, target_idx) in workspace_snapshot
+                    .edges_directed(attribute_value_id, Direction::Outgoing)
+                    .await?
+                {
+                    if let EdgeWeightKind::Contain(key) = edge_weight.kind() {
+                        let child_id = workspace_snapshot
+                            .get_node_weight(target_idx)
+                            .await?
+                            .id()
+                            .into();
+
+                        child_attribute_values_with_keys_by_id
+                            .insert(child_id, (target_idx, key.to_owned()));
+                    }
+                }
+
+                let maybe_ordering =
+                    AttributeValue::get_child_av_ids_for_ordered_parent(ctx, attribute_value_id)
+                        .await
+                        .ok();
+
+                // Ideally every attribute value with children is connected via an ordering node
+                // We don't error out on ordering not existing here because we don't have that
+                // guarantee. If that becomes a certainty we should fail on maybe_ordering==None.
+                for av_id in maybe_ordering.unwrap_or_else(|| {
+                    child_attribute_values_with_keys_by_id
+                        .keys()
+                        .cloned()
+                        .collect()
+                }) {
+                    let (child_attribute_value_node_index, key) =
+                        &child_attribute_values_with_keys_by_id[&av_id];
                     let child_attribute_value_node_weight = workspace_snapshot
-                        .get_node_weight(child_attribute_value_node_index)
+                        .get_node_weight(*child_attribute_value_node_index)
                         .await?;
                     let content =
                         child_attribute_value_node_weight.get_attribute_value_node_weight()?;
-                    cache.push((content.id().into(), key));
+                    cache.push((content.id().into(), key.clone()));
                 }
             }
 

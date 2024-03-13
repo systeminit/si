@@ -16,7 +16,7 @@ use thiserror::Error;
 
 use crate::server::state::AppState;
 
-// pub mod abandon_change_set;
+pub mod abandon_change_set;
 // mod abandon_vote;
 pub mod add_action;
 pub mod apply_change_set;
@@ -134,10 +134,10 @@ pub fn routes() -> Router<AppState> {
             "/apply_change_set",
             post(apply_change_set::apply_change_set),
         )
-    // .route(
-    //     "/abandon_change_set",
-    //     post(abandon_change_set::abandon_change_set),
-    // )
+        .route(
+            "/abandon_change_set",
+            post(abandon_change_set::abandon_change_set),
+        )
     // .route(
     //     "/begin_approval_process",
     //     post(begin_approval_process::begin_approval_process),
