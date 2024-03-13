@@ -45,8 +45,12 @@ export const useVizStore = () => {
   const selectedChangeSetId = changeSetStore.selectedChangeSetId;
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
+
+  // TODO(nick): we need to allow for empty visibility here. Temporarily send down "nil" to mean that we want the
+  // query to find the default change set.
   const visibility: Visibility = {
-    visibility_change_set_pk: selectedChangeSetId ?? nilId(),
+    visibility_change_set_pk:
+      selectedChangeSetId ?? changeSetStore.headChangeSetId ?? nilId(),
   };
 
   return addStoreHooks(

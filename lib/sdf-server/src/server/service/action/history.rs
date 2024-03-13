@@ -1,18 +1,10 @@
-use axum::{extract::Query, Json};
+use axum::Json;
 use dal::action::runner::ActionHistoryView;
-use dal::Visibility;
 use dal::{ActionBatch, ActionBatchId, ActionCompletionStatus};
 use serde::{Deserialize, Serialize};
 
 use super::ActionResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ListActionHistoryRequest {
-    #[serde(flatten)]
-    pub visibility: Visibility,
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -31,9 +23,8 @@ pub type ListActionHistoryResponse = Vec<BatchHistoryView>;
 pub async fn history(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Query(request): Query<ListActionHistoryRequest>,
 ) -> ActionResult<Json<ListActionHistoryResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let ctx = builder.build_head(request_ctx).await?;
 
     let mut batch_views = Vec::new();
     for batch in ActionBatch::list(&ctx).await? {

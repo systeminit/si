@@ -9,7 +9,6 @@ import {
   PropertyEditorValue,
   PropertyEditorValues,
 } from "@/api/sdf/dal/property_editor";
-import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ComponentId, useComponentsStore } from "./components.store";
@@ -275,7 +274,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             return new ApiRequest<{ success: true }>({
@@ -296,7 +295,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             const isInsert = "insert" in updatePayload;
@@ -336,7 +335,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           async SET_COMPONENT_TYPE(payload: SetTypeArgs) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             const statusStore = useStatusStore();
@@ -361,7 +360,7 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
             return new ApiRequest<{ success: true }>({
               method: "post",

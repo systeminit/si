@@ -39,6 +39,8 @@ export type WorkspaceImportSummary = {
 const LOCAL_STORAGE_LAST_WORKSPACE_PK = "si-last-workspace-pk";
 
 export const useWorkspacesStore = () => {
+  // TODO(nick): this is fine for now since workspaces are handled outside of the snapshots, but we will need to change
+  // this once the old change set concept is gone.
   const visibility: Visibility = {
     visibility_change_set_pk: nilId(),
   };

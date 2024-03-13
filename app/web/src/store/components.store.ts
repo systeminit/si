@@ -21,14 +21,17 @@ import {
   DiagramSchema,
   DiagramSchemaVariant,
 } from "@/api/sdf/dal/diagram";
-import { ChangeStatus, ComponentStats } from "@/api/sdf/dal/change_set";
+import {
+  ChangeStatus,
+  ComponentStats,
+  ChangeSetId,
+} from "@/api/sdf/dal/change_set";
+import router from "@/router";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { ActorView } from "@/api/sdf/dal/history_actor";
-import { nilId } from "@/utils/nilId";
-import router from "@/router";
-import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
+import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
   QualificationStatus,
@@ -737,7 +740,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             const tempInsertId = _.uniqueId("temp-insert-component");
@@ -788,7 +791,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             const tempId = `temp-edge-${+new Date()}`;
@@ -844,7 +847,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             return new ApiRequest<{ node: DiagramNode }>({
@@ -869,7 +872,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async DETACH_COMPONENT(componentId: ComponentId) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             return new ApiRequest<{ node: DiagramNode }>({
@@ -959,7 +962,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async DELETE_EDGE(edgeId: EdgeId) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             return new ApiRequest({
@@ -1011,7 +1014,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async RESTORE_EDGE(edgeId: EdgeId) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             return new ApiRequest({
@@ -1048,7 +1051,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async DELETE_COMPONENT(componentId: ComponentId) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             return new ApiRequest({
@@ -1093,7 +1096,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async RESTORE_COMPONENT(componentId: ComponentId) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             return new ApiRequest({
@@ -1118,7 +1121,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           ) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             this.pastingId = null;
@@ -1155,7 +1158,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async DELETE_COMPONENTS(componentIds: ComponentId[]) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             return new ApiRequest({
@@ -1203,7 +1206,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           async RESTORE_COMPONENTS(componentIds: ComponentId[]) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             return new ApiRequest({
@@ -1329,7 +1332,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               params: {
                 componentId,
                 workspaceId: visibilityParams.workspaceId,
-                visibility_change_set_pk: nilId(),
+                visibility_change_set_pk: changeSetsStore.headChangeSetId,
               },
               onSuccess: (response) => {
                 // do nothing
@@ -1343,7 +1346,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               url: "component/refresh",
               params: {
                 workspaceId: visibilityParams.workspaceId,
-                visibility_change_set_pk: nilId(),
+                visibility_change_set_pk: changeSetsStore.headChangeSetId,
               },
               onSuccess: (response) => {
                 // do nothing

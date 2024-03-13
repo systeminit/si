@@ -314,7 +314,7 @@ export const useModuleStore = () => {
           async INSTALL_REMOTE_MODULE(moduleId: ModuleId) {
             if (changeSetsStore.creatingChangeSet)
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === nilId())
+            if (changeSetId === changeSetsStore.headChangeSetId)
               changeSetsStore.creatingChangeSet = true;
 
             this.installingModuleId = null;

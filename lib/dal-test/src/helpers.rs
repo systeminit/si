@@ -159,7 +159,7 @@ pub async fn create_change_set_and_update_ctx(
         )
         .await
         .expect("could not update pointer");
-    ctx.update_visibility_v2(&change_set)
+    ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
         .await
         .expect("could not update visibility and snapshot");
 }

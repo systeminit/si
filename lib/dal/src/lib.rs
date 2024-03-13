@@ -20,6 +20,7 @@ pub mod builtins;
 pub mod change_set;
 pub mod change_set_pointer;
 pub mod change_status;
+pub mod code_view;
 pub mod component;
 pub mod context;
 pub mod diagram;
@@ -34,10 +35,13 @@ pub mod label_list;
 pub mod pkg;
 pub mod prop;
 pub mod property_editor;
+pub mod qualification;
 pub mod schema;
+pub mod secret;
 pub mod serde_impls;
 pub mod socket;
 pub mod standard_accessors;
+pub mod standard_id;
 pub mod standard_model;
 pub mod standard_pk;
 pub mod tenancy;
@@ -52,16 +56,12 @@ pub mod ws_event;
 // TODO(nick,jacob): this should self-destruct once the new engine is in place.
 // pub mod node;
 // pub mod socket;
-
-pub mod code_view;
 // pub mod edge;
 // pub mod index_map;
 // pub mod prop_tree;
 // pub mod prototype_context;
 // pub mod prototype_list_for_func;
-pub mod qualification;
 // pub mod reconciliation_prototype;
-pub mod secret;
 // pub mod status;
 //pub mod tasks;
 

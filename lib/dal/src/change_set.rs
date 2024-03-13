@@ -260,7 +260,7 @@ impl ChangeSet {
             .await?;
 
         // Update the visibility.
-        ctx.update_visibility(Visibility::new_head(false));
+        ctx.update_visibility_deprecated(Visibility::new_head(false));
 
         Ok(())
     }
@@ -323,23 +323,24 @@ impl ChangeSet {
     // }
 
     pub async fn force_new(ctx: &mut DalContext) -> ChangeSetResult<Option<ChangeSetPk>> {
-        Ok(if ctx.visibility().is_head() {
-            // TODO(nick): eventually unify this logic under one interface.
-            let change_set = ChangeSetPointer::fork_head(ctx, Self::generate_name()).await?;
-            ctx.update_visibility_v2(&change_set).await?;
+        let maybe_fake_pk =
+            if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
+                let change_set = ChangeSetPointer::fork_head(ctx, Self::generate_name()).await?;
+                ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
+                    .await?;
 
-            // TODO(nick): replace this with the new change set stuff.
-            let fake_pk = ChangeSetPk::from(Ulid::from(change_set.id));
+                let fake_pk = ChangeSetPk::from(Ulid::from(change_set.id));
 
-            WsEvent::change_set_created(ctx, fake_pk)
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
+                WsEvent::change_set_created(ctx, fake_pk)
+                    .await?
+                    .publish_on_commit(ctx)
+                    .await?;
 
-            Some(fake_pk)
-        } else {
-            None
-        })
+                Some(fake_pk)
+            } else {
+                None
+            };
+        Ok(maybe_fake_pk)
     }
 }
 

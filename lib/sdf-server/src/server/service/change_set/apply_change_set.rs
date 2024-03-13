@@ -7,11 +7,10 @@ use axum::Json;
 use dal::change_set_pointer::ChangeSetPointer;
 use dal::{
     action::ActionBag, Action, ActionBatch, ActionError, ActionId, ActionPrototypeId, ActionRunner,
-    ActionRunnerId, ChangeSetStatus, Component, ComponentId, HistoryActor, User, Visibility,
+    ActionRunnerId, Component, ComponentId, HistoryActor, User, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
-//use telemetry::tracing::{info_span, Instrument, log::warn};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -59,12 +58,9 @@ pub async fn apply_change_set(
     let mut change_set = ChangeSetPointer::find(&ctx, request.visibility.change_set_pk.into())
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    ctx.update_visibility_v2_no_editing_change_set(&change_set)
+    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(&change_set)
         .await?;
     change_set.apply_to_base_change_set(&ctx).await?;
-    change_set
-        .update_status(&ctx, ChangeSetStatus::Applied)
-        .await?;
 
     track(
         &posthog_client,
@@ -76,12 +72,16 @@ pub async fn apply_change_set(
         }),
     );
 
-    let head = ChangeSetPointer::find(&ctx, change_set.base_change_set_id.unwrap_or_default())
+    let base_change_set_id = change_set
+        .base_change_set_id
+        .ok_or(ChangeSetError::BaseChangeSetNotFound(change_set.id))?;
+    let head = ChangeSetPointer::find(&ctx, base_change_set_id)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    ctx.update_visibility_v2_no_editing_change_set(&head)
+    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(&head)
         .await?;
-    ctx.update_visibility_v2(&head).await?;
+    ctx.update_visibility_and_snapshot_to_visibility(head.id)
+        .await?;
 
     // If head and there are actions to apply
     if applying_to_head && !actions.is_empty() {
