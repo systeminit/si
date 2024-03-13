@@ -14,6 +14,6 @@ pub mod ws;
 // pub mod status;
 pub mod variant_definition;
 
-// /// A module containing dev routes for local development only.
-// #[cfg(debug_assertions)]
-// pub mod dev;
+/// A module containing dev routes for local development only.
+#[cfg(debug_assertions)]
+pub mod dev;

@@ -1,20 +1,20 @@
-mod author_single_schema_with_default_variant;
+// mod author_single_schema_with_default_variant;
 mod get_current_git_sha;
 
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::routing::{get, post};
+use axum::routing::get;
 use axum::Json;
 use axum::Router;
 use dal::{StandardModelError, TransactionsError, UserError, WsEventError};
 use thiserror::Error;
 
-pub use author_single_schema_with_default_variant::{
-    AuthorSingleSchemaRequest, AuthorSingleSchemaResponse,
-};
+// pub use author_single_schema_with_default_variant::{
+//     AuthorSingleSchemaRequest, AuthorSingleSchemaResponse,
+// };
 
 use crate::server::state::AppState;
-use crate::service::dev::author_single_schema_with_default_variant::author_single_schema_with_default_variant;
+// use crate::service::dev::author_single_schema_with_default_variant::author_single_schema_with_default_variant;
 use crate::service::func;
 
 #[remain::sorted]
@@ -62,13 +62,12 @@ impl IntoResponse for DevError {
 }
 
 pub fn routes() -> Router<AppState> {
-    Router::new()
-        .route(
-            "/get_current_git_sha",
-            get(get_current_git_sha::get_current_git_sha),
-        )
-        .route(
-            "/author_single_schema_with_default_variant",
-            post(author_single_schema_with_default_variant),
-        )
+    Router::new().route(
+        "/get_current_git_sha",
+        get(get_current_git_sha::get_current_git_sha),
+    )
+    // .route(
+    //     "/author_single_schema_with_default_variant",
+    //     post(author_single_schema_with_default_variant),
+    // )
 }

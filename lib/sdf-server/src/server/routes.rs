@@ -52,7 +52,7 @@ pub fn routes(state: AppState) -> Router {
         .layer(CompressionLayer::new());
 
     // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).
-    // router = dev_routes(router);
+    router = dev_routes(router);
 
     router.with_state(state)
 }
@@ -61,11 +61,11 @@ async fn system_status_route() -> Json<Value> {
     Json(json!({ "ok": true }))
 }
 
-// #[cfg(debug_assertions)]
-// pub fn dev_routes(mut router: Router<AppState>) -> Router<AppState> {
-//     router = router.nest("/api/dev", crate::server::service::dev::routes());
-//     router
-// }
+#[cfg(debug_assertions)]
+pub fn dev_routes(mut router: Router<AppState>) -> Router<AppState> {
+    router = router.nest("/api/dev", crate::server::service::dev::routes());
+    router
+}
 
 #[cfg(not(debug_assertions))]
 pub fn dev_routes(router: Router<AppState>) -> Router<AppState> {
