@@ -27,5 +27,9 @@ rust_test(
         "//third-party/rust:tokio",
         ":si-posthog",
     ],
+    env = {
+        "RUSTC_BOOTSTRAP": "1",
+        "CI": "buildkite",
+    },
     visibility = ["PUBLIC"],
 )
