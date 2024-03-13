@@ -797,13 +797,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const tempId = `temp-edge-${+new Date()}`;
 
             return new ApiRequest<{
-              connection: {
-                id: string;
-                classification: "configuration";
-                destination: { nodeId: string; socketId: string };
-                source: { nodeId: string; socketId: string };
-              };
-              forceChangesetPk?: string;
+              id: string;
+              creatd_by: string | null;
+              deleted_by: string | null;
             }>({
               method: "post",
               url: "diagram/create_connection",
@@ -819,7 +815,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 if (this.edgesById[tempId]) {
                   const edge = this.edgesById[tempId];
                   if (edge) {
-                    this.edgesById[response.connection.id] = edge;
+                    this.edgesById[response.id] = edge;
                     delete this.edgesById[tempId];
                   }
                 }
