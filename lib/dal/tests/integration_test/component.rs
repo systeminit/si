@@ -1,14 +1,15 @@
 use dal::attribute::value::DependentValueGraph;
-use dal::code_view::CodeLanguage;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::diagram::Diagram;
 use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
-use dal::{AttributeValue, AttributeValueId, ComponentType};
+use dal::{AttributeValue, AttributeValueId};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::test;
 use dal_test::test_harness::create_component_for_schema_name;
-use pretty_assertions_sorted::assert_eq;
+
+mod get_code;
+mod set_type;
 
 #[test]
 async fn update_and_insert_and_update(ctx: &mut DalContext) {
@@ -480,70 +481,4 @@ async fn set_the_universe(ctx: &mut DalContext) {
         .expect("has a view");
 
     assert_eq!(universe_json, materialized_view);
-}
-
-#[test]
-async fn set_type(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "starfield", "black star").await;
-
-    assert_eq!(
-        component.get_type(ctx).await.expect("could not get type"),
-        ComponentType::Component
-    );
-
-    component
-        .set_type(ctx, ComponentType::ConfigurationFrameUp)
-        .await
-        .expect("could not set type");
-
-    assert_eq!(
-        component.get_type(ctx).await.expect("could not get type"),
-        ComponentType::ConfigurationFrameUp
-    );
-}
-
-#[test]
-async fn get_code(ctx: &mut DalContext) {
-    let component = create_component_for_schema_name(ctx, "swifty", "shake it off").await;
-
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("unable to update snapshot to visiblity");
-
-    let (codegen_view, has_code) = Component::list_code_generated(ctx, component.id())
-        .await
-        .expect("unable to get codegen views");
-
-    assert_eq!(codegen_view.len(), 1);
-    assert!(has_code, "true");
-
-    // This is safe as we would have failed the above test otherwise
-    let codegen = codegen_view.clone().pop().unwrap();
-
-    assert_eq!(codegen.language, CodeLanguage::Json,);
-    assert_eq!(codegen.func, Some("test:generateCode".to_string()));
-    assert_eq!(codegen.message, None);
-    assert_eq!(
-        codegen.code,
-        Some("{\n  \"name\": \"shake it off\"\n}".to_string())
-    );
-
-    let starfield_component =
-        create_component_for_schema_name(ctx, "starfield", "no codegen funcs here").await;
-    let conflicts = ctx.blocking_commit().await.expect("unable to commit");
-    assert!(conflicts.is_none());
-
-    ctx.update_snapshot_to_visibility()
-        .await
-        .expect("unable to update snapshot to visiblity");
-
-    let (codegen_view, has_code) = Component::list_code_generated(ctx, starfield_component.id())
-        .await
-        .expect("unable to get codegen views");
-
-    assert!(codegen_view.is_empty());
-    assert_eq!(has_code, false);
 }
