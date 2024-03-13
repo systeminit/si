@@ -36,6 +36,11 @@ create_db() {
 	EOF
 }
 
+# This adds a "ready-file" so that the postgres container only reports ready
+# after all the databases have been created. This prevents SDF or any other
+# consuming service starting before postgres is ready
+echo "ready" >/tmp/ready
+
 die() {
   printf -- "\nxxx %s\n\n" "$1" >&2
   exit 1

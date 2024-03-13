@@ -12,6 +12,11 @@ services:
       - "POSTGRES_MULTIPLE_DBS=si_content_store,si_layer_db,si_auth,si_module_index,si_key_value_pairs"
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /tmp/ready ]"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
 
   postgres-test:
     image: systeminit/postgres:stable
@@ -28,6 +33,11 @@ services:
       - "full_page_writes=off"
     ports:
       - "6432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /tmp/ready ]"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
 
   nats:
     image: systeminit/nats:stable
@@ -37,6 +47,11 @@ services:
     ports:
       - "4222:4222"
       - "8222:8222"
+    # We can't have the docker-compose finish before postgres is ready, this is 
+    # a workaround to allow the rest of the tilt file continue to create sdf etc
+    # so that the start doesn't fail as the databases don't exist
+    depends_on:
+      - postgres
 
   jaeger:
     image: systeminit/jaeger:stable
