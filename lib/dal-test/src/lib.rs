@@ -814,6 +814,7 @@ async fn migrate_local_builtins(
     schemas::migrate_test_exclusive_schema_bethesda_secret(&ctx).await?;
     schemas::migrate_test_exclusive_schema_swifty(&ctx).await?;
     schemas::migrate_test_exclusive_schema_katy_perry(&ctx).await?;
+    schemas::migrate_test_exclusive_schema_pirate(&ctx).await?;
 
     ctx.blocking_commit().await?;
 

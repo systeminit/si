@@ -12,7 +12,7 @@ use crate::property_editor::PropertyEditorResult;
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 
-use crate::workspace_snapshot::node_weight::{NodeWeight, OrderingNodeWeight};
+use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
     AttributeValue, AttributeValueId, Component, ComponentId, DalContext, FuncId, Prop, PropId,
 };
@@ -51,7 +51,6 @@ impl PropertyEditorValues {
                     .value(ctx)
                     .await?
                     .unwrap_or(Value::Null),
-                // TODO(nick): restore all these fields below.
                 is_from_external_source: false,
                 can_be_set_by_socket: false,
                 is_controlled_by_intrinsic_func: true,

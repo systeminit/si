@@ -147,6 +147,8 @@ pub enum AttributeValueError {
     NodeWeight(#[from] NodeWeightError),
     #[error("node weight mismatch, expected {0:?} to be {1:?}")]
     NodeWeightMismatch(NodeIndex, NodeWeightDiscriminants),
+    #[error("attribute value does not have ordering node as expected: {0}")]
+    NoOrderingNodeForAttributeValue(AttributeValueId),
     #[error("attribute value not found for component ({0}) and input socket ({1})")]
     NotFoundForComponentAndInputSocket(ComponentId, InputSocketId),
     #[error("attribute value {0} has no outgoing edge to a prop or socket")]
@@ -1992,6 +1994,36 @@ impl AttributeValue {
         };
 
         Ok(Some(parent_av_id))
+    }
+
+    pub async fn get_child_av_ids_for_ordered_parent(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<Vec<AttributeValueId>> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        if let Some(ordering) = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Ordering)
+            .await?
+            .pop()
+        {
+            let node_weight = workspace_snapshot.get_node_weight(ordering).await?;
+            if let NodeWeight::Ordering(ordering_weight) = node_weight {
+                Ok(ordering_weight
+                    .order()
+                    .clone()
+                    .into_iter()
+                    .map(|ulid| ulid.into())
+                    .collect())
+            } else {
+                Err(AttributeValueError::NodeWeightMismatch(
+                    ordering,
+                    NodeWeightDiscriminants::Ordering,
+                ))
+            }
+        } else {
+            Err(AttributeValueError::NoOrderingNodeForAttributeValue(id))
+        }
     }
 
     pub async fn remove_by_id(ctx: &DalContext, id: AttributeValueId) -> AttributeValueResult<()> {
