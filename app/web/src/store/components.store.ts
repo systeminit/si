@@ -619,9 +619,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
         },
         actions: {
-          // TODO: change these endpoints to return a more complete picture of component data in one call
-          // see also component/get_components_metadata endpoint which was not used anymore but has some more data we may want to include
-
           // actually fetches diagram-style data, but we have a computed getter to turn back into more generic component data above
           async FETCH_DIAGRAM_DATA() {
             return new ApiRequest<{
