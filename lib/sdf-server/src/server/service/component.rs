@@ -19,10 +19,8 @@ pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
 pub mod update_property_editor_value;
 
-// pub mod alter_simulation;
 // pub mod debug;
 // pub mod delete_property_editor_value;
-// pub mod get_components_metadata;
 // pub mod get_diff;
 // pub mod get_resource;
 pub mod insert_property_editor_value;
@@ -155,10 +153,6 @@ pub fn routes() -> Router<AppState> {
         //            "/get_property_editor_validations",
         //            get(get_property_editor_validations::get_property_editor_validations),
         //        )
-        // .route(
-        //     "/get_components_metadata",
-        //     get(get_components_metadata::get_components_metadata),
-        // )
         .route(
             "/list_qualifications",
             get(list_qualifications::list_qualifications),
@@ -181,10 +175,6 @@ pub fn routes() -> Router<AppState> {
         .route("/set_type", post(set_type::set_type))
     // .route("/refresh", post(refresh::refresh))
     // .route("/resource_domain_diff", get(resource_domain_diff::get_diff))
-    // .route(
-    //     "/alter_simulation",
-    //     post(alter_simulation::alter_simulation),
-    // )
     // .route("/debug", get(debug::debug_component))
     // .route("/json", get(json::json))
 }
