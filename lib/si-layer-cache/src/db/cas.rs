@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use si_events::{Actor, CasPk, CasValue, Tenancy, WebEvent};
+use si_events::{Actor, CasPk, CasValue, ContentHash, Tenancy, WebEvent};
 
 use crate::{
     error::LayerDbResult,
@@ -28,15 +28,15 @@ impl CasDb {
 
     pub async fn write(
         &self,
-        key: CasPk,
         value: Arc<CasValue>,
         web_events: Option<Vec<WebEvent>>,
         tenancy: Tenancy,
         actor: Actor,
-    ) -> LayerDbResult<PersisterStatusReader> {
-        self.cache.insert(key, value.clone()).await;
-
+    ) -> LayerDbResult<(CasPk, PersisterStatusReader)> {
         let postcard_value = postcard::to_stdvec(&value)?;
+        let key = CasPk::new(ContentHash::new(&postcard_value));
+        self.cache.insert(key, value).await;
+
         let event = LayeredEvent::new(
             LayeredEventKind::CasInsertion,
             Arc::new(DBNAME.to_string()),
@@ -48,7 +48,8 @@ impl CasDb {
             actor,
         );
         let reader = self.persister_client.write_event(event)?;
-        Ok(reader)
+
+        Ok((key, reader))
     }
 
     pub async fn read(&self, key: &CasPk) -> LayerDbResult<Option<Arc<CasValue>>> {

@@ -35,3 +35,9 @@ impl FromStr for UserPk {
         Ok(Self(Ulid::from_str(s)?))
     }
 }
+
+impl From<ulid::Ulid> for UserPk {
+    fn from(value: ulid::Ulid) -> Self {
+        Self(value)
+    }
+}
