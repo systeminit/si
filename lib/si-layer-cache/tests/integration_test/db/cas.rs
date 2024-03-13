@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use si_events::{Actor, CasPk, CasValue, ChangeSetPk, ContentHash, Tenancy, UserPk, WorkspacePk};
+use si_events::{Actor, CasValue, ChangeSetPk, Tenancy, UserPk, WorkspacePk};
 use si_layer_cache::{persister::PersistStatus, LayerDb};
 
 use crate::integration_test::{setup_nats_client, setup_pg_db};
@@ -16,12 +16,10 @@ async fn write_to_db() {
     .await
     .expect("cannot create layerdb");
 
-    let cas_pk = CasPk::new(ContentHash::new(b"corey taylor"));
     let cas_value: Arc<CasValue> = Arc::new(serde_json::json!("stone sour").into());
-    let status = ldb
+    let (cas_pk, status) = ldb
         .cas()
         .write(
-            cas_pk,
             cas_value.clone(),
             None,
             Tenancy::new(WorkspacePk::new(), ChangeSetPk::new()),
@@ -29,6 +27,7 @@ async fn write_to_db() {
         )
         .await
         .expect("failed to write to layerdb");
+
     match status.get_status().await.expect("failed to get status") {
         PersistStatus::Finished => {}
         PersistStatus::Error(e) => panic!("Write failed; {e}"),
@@ -75,12 +74,10 @@ async fn cold_read_from_db() {
     .await
     .expect("cannot create layerdb");
 
-    let cas_pk = CasPk::new(ContentHash::new(b"corey taylor"));
     let cas_value: Arc<CasValue> = Arc::new(serde_json::json!("stone sour").into());
-    let status = ldb
+    let (cas_pk, status) = ldb
         .cas()
         .write(
-            cas_pk,
             cas_value.clone(),
             None,
             Tenancy::new(WorkspacePk::new(), ChangeSetPk::new()),

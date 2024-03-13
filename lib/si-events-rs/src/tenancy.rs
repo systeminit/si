@@ -30,6 +30,12 @@ impl FromStr for WorkspacePk {
     }
 }
 
+impl From<ulid::Ulid> for WorkspacePk {
+    fn from(value: ulid::Ulid) -> Self {
+        Self(value)
+    }
+}
+
 #[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ChangeSetPk(Ulid);
 
@@ -49,6 +55,12 @@ impl Default for ChangeSetPk {
     }
 }
 
+impl From<ulid::Ulid> for ChangeSetPk {
+    fn from(value: ulid::Ulid) -> Self {
+        Self(value)
+    }
+}
+
 impl FromStr for ChangeSetPk {
     type Err = ulid::DecodeError;
 
@@ -57,7 +69,7 @@ impl FromStr for ChangeSetPk {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Tenancy {
     pub change_set_pk: ChangeSetPk,
     pub workspace_pk: WorkspacePk,
