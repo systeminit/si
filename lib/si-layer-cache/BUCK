@@ -64,5 +64,7 @@ rust_test(
     crate_root = "tests/integration.rs",
     env = {
         "CARGO_PKG_NAME": "integration",
+        "RUSTC_BOOTSTRAP": "1",
+        "CI": "buildkite",
     },
 )
