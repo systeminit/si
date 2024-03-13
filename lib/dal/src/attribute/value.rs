@@ -568,33 +568,30 @@ impl AttributeValue {
             }
         }
 
-        let prepared_func_binding_args = if let ValueIsFor::InputSocket(_) = &value_is_for {
-            // If our destination is an input socket, we always want to provide an array of
-            // the values so functions don't have to distinguish between a single value that is an
-            // array, or an array of values (for example if an input socket has multiple
-            // connections)
-            serde_json::to_value(func_binding_args)?
-        } else {
-            // The value map above could possibly have multiple values per func argument name if
-            // there are We need to transform these vecs to a serde_json array before sending them
-            // to the function executor. We also want to send a single value if there is only a
-            // single input, since that is the typical case and what is expected by most attribute
-            // functions.
-            let mut prepared_func_binding_args = HashMap::new();
-            for (arg_name, values) in func_binding_args {
-                if values.is_empty() {
+        // The value map above could possibly have multiple values per func
+        // argument name if there are multiple inputs (for example, more than
+        // one connection to an input socket). We need to transform these vecs
+        // to a serde_json array before sending them to the function executor.
+        // We also want to send a single value if there is only a single input,
+        // since that is the typical case and what is expected by most attribute
+        // functions.
+        let mut args_map = HashMap::new();
+        for (arg_name, values) in func_binding_args {
+            match values.len() {
+                1 => {
+                    args_map.insert(arg_name, values[0].to_owned());
+                }
+                2.. => {
+                    args_map.insert(arg_name, serde_json::to_value(values)?);
+                }
+                _ => {
                     return Err(
                         AttributeValueError::EmptyAttributePrototypeArgumentsForGroup(arg_name),
-                    );
-                } else if values.len() == 1 {
-                    prepared_func_binding_args.insert(arg_name, values[0].to_owned());
-                } else {
-                    let vec_value = serde_json::to_value(values)?;
-                    prepared_func_binding_args.insert(arg_name, vec_value);
+                    )
                 }
             }
-            serde_json::to_value(prepared_func_binding_args)?
-        };
+        }
+        let prepared_func_binding_args = serde_json::to_value(args_map)?;
 
         // We need the associated [`ComponentId`] for this function--this is how we resolve and
         // prepare before functions
