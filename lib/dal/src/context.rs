@@ -17,6 +17,7 @@ use tokio::time::Instant;
 use ulid::Ulid;
 use veritech_client::{Client as VeritechClient, CycloneEncryptionKey};
 
+use crate::layer_db_types::ContentTypes;
 use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::update::Update;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
@@ -33,6 +34,8 @@ use crate::{
     WorkspacePk, WorkspaceSnapshot,
 };
 use crate::{ChangeSetPk, Workspace};
+
+pub type DalLayerDb = LayerDb<ContentTypes>;
 
 /// A context type which contains handles to common core service dependencies.
 ///
@@ -61,7 +64,7 @@ pub struct ServicesContext {
     /// Content store
     content_store_pg_pool: PgPool,
     /// The layer db (moka-rs, sled and postgres)
-    layer_db: LayerDb,
+    layer_db: DalLayerDb,
 }
 
 impl ServicesContext {
@@ -78,7 +81,7 @@ impl ServicesContext {
         symmetric_crypto_service: SymmetricCryptoService,
         rebaser_config: RebaserClientConfig,
         content_store_pg_pool: PgPool,
-        layer_db: LayerDb,
+        layer_db: DalLayerDb,
     ) -> Self {
         Self {
             pg_pool,
@@ -148,7 +151,7 @@ impl ServicesContext {
         &self.content_store_pg_pool
     }
 
-    pub fn layer_db(&self) -> &LayerDb {
+    pub fn layer_db(&self) -> &DalLayerDb {
         &self.layer_db
     }
 
@@ -471,7 +474,7 @@ impl DalContext {
         }
     }
 
-    pub fn layer_db(&self) -> LayerDb {
+    pub fn layer_db(&self) -> DalLayerDb {
         self.services_context().layer_db().clone()
     }
 

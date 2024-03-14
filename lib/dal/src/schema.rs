@@ -1,11 +1,11 @@
 use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use strum::EnumDiscriminants;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
 use crate::change_set_pointer::ChangeSetPointerError;
+use crate::layer_db_types::{SchemaContent, SchemaContentDiscriminants, SchemaContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -50,18 +50,6 @@ pub struct Schema {
     id: SchemaId,
     #[serde(flatten)]
     timestamp: Timestamp,
-    pub name: String,
-    pub ui_hidden: bool,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum SchemaContent {
-    V1(SchemaContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct SchemaContentV1 {
-    pub timestamp: Timestamp,
     pub name: String,
     pub ui_hidden: bool,
 }

@@ -1,13 +1,13 @@
 use content_store::{ContentHash, Store};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::FuncError;
+use crate::layer_db_types::{InputSocketContent, InputSocketContentV1};
 use crate::socket::{SocketArity, SocketKind};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
@@ -69,27 +69,6 @@ pub struct InputSocket {
     required: bool,
     ui_hidden: bool,
     connection_annotations: Vec<ConnectionAnnotation>,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum InputSocketContent {
-    V1(InputSocketContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct InputSocketContentV1 {
-    pub timestamp: Timestamp,
-    /// Name for [`Self`] that can be used for identification.
-    pub name: String,
-    /// Definition of the inbound type (e.g. "JSONSchema" or "Number").
-    pub inbound_type_definition: Option<String>,
-    /// Definition of the outbound type (e.g. "JSONSchema" or "Number").
-    pub outbound_type_definition: Option<String>,
-    pub arity: SocketArity,
-    pub kind: SocketKind,
-    pub required: bool,
-    pub ui_hidden: bool,
-    pub connection_annotations: Vec<ConnectionAnnotation>,
 }
 
 impl InputSocket {

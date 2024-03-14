@@ -32,6 +32,7 @@ pub mod job_failure;
 pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
+pub mod layer_db_types;
 pub mod pkg;
 pub mod prop;
 pub mod property_editor;
@@ -60,7 +61,6 @@ pub mod ws_event;
 // pub mod index_map;
 // pub mod prop_tree;
 // pub mod prototype_context;
-// pub mod prototype_list_for_func;
 // pub mod reconciliation_prototype;
 // pub mod status;
 //pub mod tasks;
@@ -82,8 +82,8 @@ pub use component::Component;
 pub use component::ComponentError;
 pub use component::ComponentId;
 pub use context::{
-    AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
-    Transactions, TransactionsError,
+    AccessBuilder, Connections, DalContext, DalContextBuilder, DalLayerDb, RequestContext,
+    ServicesContext, Transactions, TransactionsError,
 };
 pub use func::{
     backend::{FuncBackendKind, FuncBackendResponseType},

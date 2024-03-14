@@ -1,11 +1,10 @@
-use dal::{InitializationError, JobQueueProcessor, NatsProcessor};
+use dal::{DalLayerDb, InitializationError, JobQueueProcessor, NatsProcessor};
 use rebaser_core::RebaserMessagingConfig;
 use si_crypto::SymmetricCryptoServiceConfig;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use si_layer_cache::error::LayerDbError;
-use si_layer_cache::LayerDb;
 use std::{io, path::Path, sync::Arc};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -77,7 +76,7 @@ pub struct Server {
     /// The pg pool for the content store
     content_store_pg_pool: PgPool,
     /// The layer db
-    layer_db: LayerDb,
+    layer_db: DalLayerDb,
 }
 
 impl Server {
@@ -97,7 +96,7 @@ impl Server {
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let messaging_config = config.messaging_config();
 
-        let layer_db = LayerDb::new(
+        let layer_db = DalLayerDb::new(
             config.layer_cache_sled_path(),
             PgPool::new(config.layer_cache_pg_pool()).await?,
             nats.clone(),
@@ -129,7 +128,7 @@ impl Server {
         symmetric_crypto_service: SymmetricCryptoService,
         messaging_config: RebaserMessagingConfig,
         content_store_pg_pool: PgPool,
-        layer_db: LayerDb,
+        layer_db: DalLayerDb,
     ) -> ServerResult<Self> {
         // An mpsc channel which can be used to externally shut down the server.
         let (external_shutdown_tx, external_shutdown_rx) = mpsc::channel(4);

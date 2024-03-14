@@ -3,13 +3,13 @@ use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
 use std::collections::HashMap;
-use strum::EnumDiscriminants;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
 use crate::change_set_pointer::ChangeSetPointerError;
+use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
@@ -130,18 +130,6 @@ pub struct FuncArgument {
     pub kind: FuncArgumentKind,
     pub element_kind: Option<FuncArgumentKind>,
     #[serde(flatten)]
-    pub timestamp: Timestamp,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum FuncArgumentContent {
-    V1(FuncArgumentContentV1),
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct FuncArgumentContentV1 {
-    pub kind: FuncArgumentKind,
-    pub element_kind: Option<FuncArgumentKind>,
     pub timestamp: Timestamp,
 }
 
@@ -401,70 +389,4 @@ impl FuncArgument {
 
         Ok(())
     }
-
-    //     /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId) along with the
-    //     /// [`AttributePrototypeArgument`](crate::AttributePrototypeArgument) that corresponds to it
-    //     /// *if* one exists.
-    //     pub async fn list_for_func_with_prototype_arguments(
-    //         ctx: &DalContext,
-    //         func_id: FuncId,
-    //         attribute_prototype_id: AttributePrototypeId,
-    //     ) -> FuncArgumentResult<Vec<(Self, Option<AttributePrototypeArgument>)>> {
-    //         let rows = ctx
-    //             .txns()
-    //             .await?
-    //             .pg()
-    //             .query(
-    //         Ok(
-    //             match ctx
-    //                 .txns()
-    //                 .await?
-    //                 .pg()
-    //                 .query_opt(
-    //                     FIND_BY_NAME_FOR_FUNC,
-    //                     &[ctx.tenancy(), ctx.visibility(), &name, &func_id],
-    //                 )
-    //                 .await?
-    //             {
-    //                 Some(row) => standard_model::object_from_row(row)?,
-    //                 None => None,
-    //             },
-    //         )
-    //                 LIST_FOR_FUNC_WITH_PROTOTYPE_ARGUMENTS,
-    //                 &[
-    //                     ctx.tenancy(),
-    //                     ctx.visibility(),
-    //                     &func_id,
-    //                     &attribute_prototype_id,
-    //                 ],
-    //             )
-    //             .await?;
-    //
-    //         let mut result = vec![];
-    //
-    //         for row in rows.into_iter() {
-    //             let func_argument_json: serde_json::Value = row.try_get("func_argument_object")?;
-    //             let prototype_argument_json: Option<serde_json::Value> =
-    //                 row.try_get("prototype_argument_object")?;
-    //
-    //             result.push((
-    //                 serde_json::from_value(func_argument_json)?,
-    //                 match prototype_argument_json {
-    //                     Some(prototype_argument_json) => {
-    //                         Some(serde_json::from_value(prototype_argument_json)?)
-    //                     }
-    //                     None => None,
-    //                 },
-    //             ));
-    //         }
-    //
-    //         Ok(result)
-    //     }
-
-    //     pub async fn find_by_name_for_func(
-    //         ctx: &DalContext,
-    //         name: &str,
-    //         func_id: FuncId,
-    //     ) -> FuncArgumentResult<Option<Self>> {
-    //     }
 }
