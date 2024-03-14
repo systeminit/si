@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use si_events::{Actor, CasValue, ChangeSetPk, Tenancy, UserPk, WorkspacePk};
+use si_events::{Actor, CasPk, CasValue, ChangeSetPk, Tenancy, UserPk, WorkspacePk};
 use si_layer_cache::{persister::PersistStatus, LayerDb};
 
 use crate::integration_test::{setup_nats_client, setup_pg_db};
@@ -63,6 +63,53 @@ async fn write_to_db() {
     assert_eq!(cas_value.as_ref(), &in_pg);
 }
 
+#[tokio::test]
+async fn write_and_read_many() {
+    let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
+    let ldb = LayerDb::new(
+        tempdir,
+        setup_pg_db("cas_write_and_read_many").await,
+        setup_nats_client(Some("cas_write_and_read_many".to_string())).await,
+    )
+    .await
+    .expect("cannot create layerdb");
+
+    let cas_values: Vec<Arc<CasValue>> = vec![
+        Arc::new(serde_json::json!("stone sour").into()),
+        Arc::new(serde_json::json!("tone flour").into()),
+        Arc::new(serde_json::json!("bologna chowder").into()),
+        Arc::new(serde_json::json!("waaagh").into()),
+    ];
+    let mut keys: Vec<CasPk> = vec![];
+
+    for cas_value in &cas_values {
+        let (cas_pk, status) = ldb
+            .cas()
+            .write(
+                cas_value.clone(),
+                None,
+                Tenancy::new(WorkspacePk::new(), ChangeSetPk::new()),
+                Actor::User(UserPk::new()),
+            )
+            .await
+            .expect("failed to write to layerdb");
+        keys.push(cas_pk);
+        match status.get_status().await.expect("failed to get status") {
+            PersistStatus::Finished => {}
+            PersistStatus::Error(e) => panic!("Write failed; {e}"),
+        }
+    }
+
+    let read_values = ldb
+        .cas()
+        .read_many(&keys)
+        .await
+        .expect("should be able to read");
+
+    for value in read_values.values().collect::<Vec<_>>() {
+        assert!(cas_values.contains(value));
+    }
+}
 #[tokio::test]
 async fn cold_read_from_db() {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");

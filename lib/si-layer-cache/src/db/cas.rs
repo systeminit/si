@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{de::DeserializeOwned, Serialize};
@@ -61,5 +62,9 @@ where
 
     pub async fn read(&self, key: &CasPk) -> LayerDbResult<Option<Arc<V>>> {
         self.cache.get(key).await
+    }
+
+    pub async fn read_many(&self, keys: &[CasPk]) -> LayerDbResult<HashMap<CasPk, Arc<V>>> {
+        self.cache.get_bulk(keys).await
     }
 }

@@ -84,3 +84,51 @@ async fn get_inserts_to_memory() {
 
     assert!(layer_cache.memory_cache().contains(&skid_row));
 }
+
+#[tokio::test]
+async fn get_bulk_inserts_to_memory() {
+    let layer_cache = make_layer_cache("get_bulk_inserts_to_memory").await;
+
+    let values = ["skid row", "kid scrow", "march for macragge"];
+
+    for value in &values {
+        layer_cache.insert(value, value.to_string()).await
+    }
+
+    let get_values = layer_cache
+        .get_bulk(&values)
+        .await
+        .expect("should get bulk");
+
+    for value in values {
+        assert_eq!(value, get_values[value]);
+    }
+}
+
+#[tokio::test]
+async fn get_bulk_from_db() {
+    let layer_cache = make_layer_cache("get_bulk").await;
+
+    let values = [
+        "skid row",
+        "kid scrow",
+        "march for macragge",
+        "magnus did nothing wrong",
+        "steppa pig",
+    ];
+
+    for value in values {
+        let _ = layer_cache.pg().insert(value, "cas", value.as_ref()).await;
+    }
+
+    let get_values = layer_cache
+        .pg()
+        .get_many(values.as_ref())
+        .await
+        .expect("should get bulk")
+        .expect("should have results");
+
+    for value in values {
+        assert_eq!(value.as_bytes(), get_values[value]);
+    }
+}

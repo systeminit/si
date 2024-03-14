@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::{marker::PhantomData, sync::Arc};
 
 use si_data_pg::{PgPool, PgPoolConfig};
@@ -29,6 +30,7 @@ where
     pool: Arc<PgPool>,
     pub table_name: String,
     get_value_query: String,
+    get_value_many_query: String,
     insert_value_query: String,
     contains_key_query: String,
     search_query: String,
@@ -37,13 +39,14 @@ where
 
 impl<K> PgLayer<K>
 where
-    K: AsRef<[u8]> + Copy + Send + Sync,
+    K: AsRef<[u8]> + Copy + Send + Sync + std::hash::Hash + std::cmp::Eq,
 {
     pub fn new(pg_pool: PgPool, table_name: impl Into<String>) -> Self {
         let table_name = table_name.into();
         Self {
             pool: Arc::new(pg_pool),
             get_value_query: format!("SELECT value FROM {table_name} WHERE key = $1 LIMIT 1"),
+            get_value_many_query: format!("SELECT value FROM {table_name} WHERE key = any($1)"),
             insert_value_query: format!("INSERT INTO {table_name} (key, sort_key, value) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING"),
             contains_key_query: format!("SELECT key FROM {table_name} WHERE key = $1 LIMIT 1"),
             search_query: format!("SELECT value FROM {table_name} WHERE sort_key LIKE $1"),
@@ -67,6 +70,27 @@ where
             Some(row) => Ok(Some(row.get("value"))),
             None => Ok(None),
         }
+    }
+
+    pub async fn get_many(&self, keys: &[K]) -> LayerDbResult<Option<HashMap<K, Vec<u8>>>> {
+        let mut result = HashMap::new();
+        let client = self.pool.get().await?;
+
+        let key_refs: Vec<_> = keys.iter().map(|k| k.as_ref()).collect();
+
+        let maybe_rows = client
+            .query(&self.get_value_many_query, &[&key_refs])
+            .await?;
+
+        if maybe_rows.is_empty() {
+            return Ok(None);
+        }
+
+        for (key, row) in keys.iter().zip(maybe_rows.into_iter()) {
+            result.insert(*key, row.get("value"));
+        }
+
+        Ok(Some(result))
     }
 
     pub async fn search(&self, sort_key_like: impl AsRef<str>) -> LayerDbResult<Vec<Vec<u8>>> {
