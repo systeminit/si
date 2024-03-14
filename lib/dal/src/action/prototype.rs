@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use si_pkg::ActionFuncSpecKind;
 use std::collections::HashMap;
-use strum::{AsRefStr, Display, EnumDiscriminants};
+use strum::{AsRefStr, Display};
 use thiserror::Error;
 
 use crate::change_set_pointer::ChangeSetPointerError;
@@ -19,6 +19,7 @@ use crate::{
     func::before::{before_funcs_for_component, BeforeFuncError},
     func::binding::{FuncBinding, FuncBindingError},
     func::binding_return_value::FuncBindingReturnValueError,
+    layer_db_types::{ActionPrototypeContent, ActionPrototypeContentV1},
     pk, Component, ComponentError, ComponentId, DalContext, Func, FuncError, FuncId,
     SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError, WsEvent, WsEventError,
     WsEventResult, WsPayload,
@@ -143,18 +144,6 @@ pub struct ActionPrototype {
     pub kind: ActionKind,
     name: Option<String>,
     #[serde(flatten)]
-    timestamp: Timestamp,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ActionPrototypeContent {
-    V1(ActionPrototypeContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ActionPrototypeContentV1 {
-    kind: ActionKind,
-    name: Option<String>,
     timestamp: Timestamp,
 }
 

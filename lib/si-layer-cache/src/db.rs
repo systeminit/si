@@ -1,3 +1,4 @@
+use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::NatsClient;
 use si_data_pg::PgPool;
 use std::path::Path;
@@ -14,15 +15,21 @@ use self::cas::CasDb;
 pub mod cas;
 
 #[derive(Debug, Clone)]
-pub struct LayerDb {
-    cas: CasDb,
+pub struct LayerDb<CasValue>
+where
+    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+{
+    cas: CasDb<CasValue>,
     sled: sled::Db,
     pg_pool: PgPool,
     nats_client: NatsClient,
     persister_client: PersisterClient,
 }
 
-impl LayerDb {
+impl<CasValue> LayerDb<CasValue>
+where
+    CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+{
     pub async fn new(
         disk_path: impl AsRef<Path>,
         pg_pool: PgPool,
@@ -74,7 +81,7 @@ impl LayerDb {
         &self.persister_client
     }
 
-    pub fn cas(&self) -> &CasDb {
+    pub fn cas(&self) -> &CasDb<CasValue> {
         &self.cas
     }
 }

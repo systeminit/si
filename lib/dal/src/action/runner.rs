@@ -6,7 +6,7 @@ use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use std::collections::HashMap;
-use strum::{AsRefStr, Display, EnumDiscriminants, EnumIter, EnumString};
+use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -19,8 +19,10 @@ use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWe
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    component::resource::ResourceView, func::backend::js_action::ActionRunResult, pk, ActionId,
-    ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, Component,
+    component::resource::ResourceView,
+    func::backend::js_action::ActionRunResult,
+    layer_db_types::{ActionRunnerContent, ActionRunnerContentV1},
+    pk, ActionId, ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, Component,
     ComponentError, ComponentId, DalContext, Func, FuncError, HistoryEventError, SchemaError,
     SchemaVariant, SchemaVariantError, Timestamp, TransactionsError, WsEvent, WsEventError,
     WsEventResult, WsPayload,
@@ -122,29 +124,6 @@ pk!(ActionRunnerId);
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ActionRunner {
     pub id: ActionRunnerId,
-    pub timestamp: Timestamp,
-
-    pub component_id: ComponentId,
-    pub component_name: String,
-    pub schema_name: String,
-    pub func_name: String,
-    pub action_prototype_id: ActionPrototypeId,
-    pub action_kind: ActionKind,
-    pub resource: Option<ActionRunResult>,
-
-    pub started_at: Option<DateTime<Utc>>,
-    pub finished_at: Option<DateTime<Utc>>,
-    pub completion_status: Option<ActionCompletionStatus>,
-    pub completion_message: Option<String>,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ActionRunnerContent {
-    V1(ActionRunnerContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ActionRunnerContentV1 {
     pub timestamp: Timestamp,
 
     pub component_id: ComponentId,

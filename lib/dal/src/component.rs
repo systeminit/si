@@ -4,7 +4,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::hash::Hash;
-use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
@@ -22,6 +21,7 @@ use crate::change_set_pointer::ChangeSetPointerError;
 use crate::code_view::CodeViewError;
 use crate::history_event::HistoryEventMetadata;
 use crate::job::definition::DependentValuesUpdate;
+use crate::layer_db_types::{ComponentContent, ComponentContentV1};
 use crate::prop::{PropError, PropPath};
 use crate::qualification::QualificationError;
 use crate::schema::variant::root_prop::component_type::ComponentType;
@@ -160,21 +160,6 @@ pub struct Component {
     y: String,
     width: Option<String>,
     height: Option<String>,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ComponentContent {
-    V1(ComponentContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ComponentContentV1 {
-    pub timestamp: Timestamp,
-    pub needs_destroy: bool,
-    pub x: String,
-    pub y: String,
-    pub width: Option<String>,
-    pub height: Option<String>,
 }
 
 impl From<Component> for ComponentContentV1 {

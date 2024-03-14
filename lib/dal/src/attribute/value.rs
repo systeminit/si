@@ -1774,7 +1774,7 @@ impl AttributeValue {
             )
         };
 
-        let content_view: Option<content_store::Value> = view.clone().map(Into::into);
+        let content_view: Option<si_events::CasValue> = view.clone().map(Into::into);
 
         let view_address = match content_view {
             Some(view) => Some(ctx.content_store().lock().await.add(&view)?),

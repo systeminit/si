@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use si_events::{Actor, CasPk, CasValue, ContentHash, Tenancy, WebEvent};
+use serde::{de::DeserializeOwned, Serialize};
+use si_events::{Actor, CasPk, ContentHash, Tenancy, WebEvent};
 
 use crate::{
     error::LayerDbResult,
@@ -13,13 +14,19 @@ pub const DBNAME: &str = "cas";
 pub const PARTITION_KEY: &str = "cas";
 
 #[derive(Debug, Clone)]
-pub struct CasDb {
-    pub cache: LayerCache<CasPk, Arc<CasValue>>,
+pub struct CasDb<V>
+where
+    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+{
+    pub cache: LayerCache<CasPk, Arc<V>>,
     persister_client: PersisterClient,
 }
 
-impl CasDb {
-    pub fn new(cache: LayerCache<CasPk, Arc<CasValue>>, persister_client: PersisterClient) -> Self {
+impl<V> CasDb<V>
+where
+    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+{
+    pub fn new(cache: LayerCache<CasPk, Arc<V>>, persister_client: PersisterClient) -> Self {
         CasDb {
             cache,
             persister_client,
@@ -28,7 +35,7 @@ impl CasDb {
 
     pub async fn write(
         &self,
-        value: Arc<CasValue>,
+        value: Arc<V>,
         web_events: Option<Vec<WebEvent>>,
         tenancy: Tenancy,
         actor: Actor,
@@ -52,7 +59,7 @@ impl CasDb {
         Ok((key, reader))
     }
 
-    pub async fn read(&self, key: &CasPk) -> LayerDbResult<Option<Arc<CasValue>>> {
+    pub async fn read(&self, key: &CasPk) -> LayerDbResult<Option<Arc<V>>> {
         self.cache.get(key).await
     }
 }

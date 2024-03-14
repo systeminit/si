@@ -5,7 +5,6 @@ use content_store::{ContentHash, Store};
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
-use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -18,10 +17,14 @@ use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
+use crate::layer_db_types::{
+    InputSocketContent, OutputSocketContent, SchemaVariantContent,
+    SchemaVariantContentDiscriminants, SchemaVariantContentV1,
+};
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootProp;
-use crate::socket::input::{InputSocketContent, InputSocketError};
-use crate::socket::output::{OutputSocketContent, OutputSocketError};
+use crate::socket::input::InputSocketError;
+use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -121,24 +124,6 @@ pub struct SchemaVariant {
     link: Option<String>,
     finalized_once: bool,
     category: String,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum SchemaVariantContent {
-    V1(SchemaVariantContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct SchemaVariantContentV1 {
-    pub timestamp: Timestamp,
-    pub ui_hidden: bool,
-    pub name: String,
-    // The [`RootProp`](crate::RootProp) for [`self`](Self).
-    // pub root_prop_id: Option<PropId>,
-    // pub schema_variant_definition_id: Option<SchemaVariantDefinitionId>,
-    pub link: Option<String>,
-    pub finalized_once: bool,
-    pub category: String,
 }
 
 impl SchemaVariant {

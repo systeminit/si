@@ -1,8 +1,8 @@
 use content_store::Store;
 use serde::{Deserialize, Serialize};
-use strum::EnumDiscriminants;
 
 use crate::{
+    layer_db_types::{StaticArgumentValueContent, StaticArgumentValueContentV1},
     pk,
     workspace_snapshot::{
         content_address::ContentAddress, node_weight::NodeWeight, WorkspaceSnapshotError,
@@ -19,17 +19,6 @@ pub struct StaticArgumentValue {
     pub id: StaticArgumentValueId,
     pub timestamp: Timestamp,
     pub value: serde_json::Value,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq, Debug)]
-pub enum StaticArgumentValueContent {
-    V1(StaticArgumentValueContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct StaticArgumentValueContentV1 {
-    pub timestamp: Timestamp,
-    pub value: content_store::Value,
 }
 
 impl StaticArgumentValue {

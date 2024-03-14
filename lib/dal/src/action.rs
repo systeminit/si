@@ -12,18 +12,19 @@ pub mod prototype;
 pub mod runner;
 
 use crate::change_set_pointer::ChangeSetPointerError;
+use crate::layer_db_types::ComponentContent;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightError, EdgeWeightKind};
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    action::prototype::ActionPrototypeContent, component::ComponentContent, pk, ActionBatchError,
-    ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId, ChangeSetPk, Component,
-    ComponentError, ComponentId, DalContext, HistoryActor, HistoryEventError, Timestamp,
-    TransactionsError, UserPk, WsEvent, WsEventError, WsEventResult, WsPayload,
+    layer_db_types::{ActionContent, ActionContentV1, ActionPrototypeContent},
+    pk, ActionBatchError, ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId,
+    ChangeSetPk, Component, ComponentError, ComponentId, DalContext, HistoryActor,
+    HistoryEventError, Timestamp, TransactionsError, UserPk, WsEvent, WsEventError, WsEventResult,
+    WsPayload,
 };
-use strum::EnumDiscriminants;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -75,17 +76,6 @@ pub struct ActionBag {
     pub action: Action,
     pub kind: ActionKind,
     pub parents: Vec<ActionId>,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ActionContent {
-    V1(ActionContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ActionContentV1 {
-    creation_user_pk: Option<UserPk>,
-    timestamp: Timestamp,
 }
 
 // An Action joins an `ActionPrototype` to a `ComponentId` in a `ChangeSetPk`

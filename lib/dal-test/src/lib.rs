@@ -11,7 +11,7 @@ use buck2_resources::Buck2Resources;
 use content_store::PgStoreTools;
 use dal::{
     job::processor::{JobQueueProcessor, NatsProcessor},
-    DalContext, JwtPublicSigningKey, ModelResult, ServicesContext, Workspace,
+    DalContext, DalLayerDb, JwtPublicSigningKey, ModelResult, ServicesContext, Workspace,
 };
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
@@ -22,7 +22,6 @@ use si_crypto::{
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
-use si_layer_cache::LayerDb;
 use si_std::ResultExt;
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
@@ -316,7 +315,7 @@ impl TestContext {
     pub async fn create_services_context(&self) -> ServicesContext {
         let veritech = veritech_client::Client::new(self.nats_conn.clone());
 
-        let layer_db = LayerDb::new(
+        let layer_db = DalLayerDb::new(
             self.layer_db_sled_path.clone(),
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
@@ -780,7 +779,7 @@ async fn migrate_local_builtins(
     symmetric_crypto_service: &SymmetricCryptoService,
     rebaser_config: RebaserClientConfig,
     content_store_pg_pool: &PgPool,
-    layer_db: LayerDb,
+    layer_db: DalLayerDb,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         dal_pg.clone(),

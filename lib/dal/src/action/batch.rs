@@ -6,7 +6,6 @@ use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use std::collections::HashMap;
-use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -19,10 +18,11 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    func::binding_return_value::FuncBindingReturnValueError, pk, ActionCompletionStatus,
-    ActionPrototypeError, ActionRunner, ActionRunnerError, ComponentError, DalContext, FuncError,
-    HistoryEventError, SchemaError, Timestamp, TransactionsError, WsEvent, WsEventError,
-    WsEventResult, WsPayload,
+    func::binding_return_value::FuncBindingReturnValueError,
+    layer_db_types::{ActionBatchContent, ActionBatchContentV1},
+    pk, ActionCompletionStatus, ActionPrototypeError, ActionRunner, ActionRunnerError,
+    ComponentError, DalContext, FuncError, HistoryEventError, SchemaError, Timestamp,
+    TransactionsError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 #[remain::sorted]
@@ -95,21 +95,6 @@ pub struct ActionBatch {
     pub finished_at: Option<DateTime<Utc>>,
     /// Indicates the state of the [`ActionBatch`] when finished.
     pub completion_status: Option<ActionCompletionStatus>,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum ActionBatchContent {
-    V1(ActionBatchContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct ActionBatchContentV1 {
-    author: String,
-    actors: String,
-    started_at: Option<DateTime<Utc>>,
-    finished_at: Option<DateTime<Utc>>,
-    completion_status: Option<ActionCompletionStatus>,
-    timestamp: Timestamp,
 }
 
 impl From<ActionBatch> for ActionBatchContentV1 {

@@ -3,13 +3,14 @@ use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
-use strum::{EnumDiscriminants, IntoEnumIterator};
+use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::intrinsics::IntrinsicFunc;
+use crate::layer_db_types::{FuncContent, FuncContentV1};
 use crate::schema::variant::SchemaVariantResult;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -77,28 +78,6 @@ impl From<Func> for FuncContentV1 {
             code_blake3: value.code_blake3,
         }
     }
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-// TODO(nick,jacob,zack): decide if this will work with postcard.
-// #[serde(tag = "version")]
-pub enum FuncContent {
-    V1(FuncContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct FuncContentV1 {
-    pub timestamp: Timestamp,
-    pub display_name: Option<String>,
-    pub description: Option<String>,
-    pub link: Option<String>,
-    pub hidden: bool,
-    pub builtin: bool,
-    pub backend_response_type: FuncBackendResponseType,
-    pub handler: Option<String>,
-    pub code_base64: Option<String>,
-    /// A hash of the code above
-    pub code_blake3: ContentHash,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
