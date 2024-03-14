@@ -1,19 +1,19 @@
 //! This module contains the ability to construct values reflecting the latest state of a
 //! [`Component`](crate::Component)'s properties.
 
-use petgraph::prelude::NodeIndex;
-use petgraph::Direction;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 
-use crate::property_editor::PropertyEditorResult;
-use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
-use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
+use petgraph::Direction;
+use petgraph::prelude::NodeIndex;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::{
     AttributeValue, AttributeValueId, Component, ComponentId, DalContext, FuncId, Prop, PropId,
 };
+use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
+use crate::property_editor::PropertyEditorResult;
+use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,6 +61,7 @@ impl PropertyEditorValues {
         let workspace_snapshot = ctx.workspace_snapshot()?;
         let mut work_queue =
             VecDeque::from([(root_attribute_value_id, root_property_editor_value_id)]);
+
         while let Some((attribute_value_id, property_editor_value_id)) = work_queue.pop_front() {
             // Collect all child attribute values.
             let mut cache: Vec<(AttributeValueId, Option<String>)> = Vec::new();
@@ -123,6 +124,12 @@ impl PropertyEditorValues {
                 let child_property_editor_value_id =
                     PropertyEditorValueId::from(child_attribute_value_id);
 
+                let sockets = AttributeValue::list_input_sockets_sources_for_id(
+                    ctx,
+                    child_attribute_value_id,
+                )
+                .await?;
+
                 let child_property_editor_value = PropertyEditorValue {
                     id: child_property_editor_value_id,
                     prop_id: prop_id_for_child_attribute_value.into(),
@@ -133,7 +140,7 @@ impl PropertyEditorValues {
                         .unwrap_or(Value::Null),
                     // TODO(nick): restore all the fields below.
                     is_from_external_source: false,
-                    can_be_set_by_socket: false,
+                    can_be_set_by_socket: !sockets.is_empty(),
                     is_controlled_by_intrinsic_func: true,
                     controlling_func_id,
                     controlling_attribute_value_id: child_property_editor_value_id.into(),

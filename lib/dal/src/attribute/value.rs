@@ -38,19 +38,25 @@
 // to find the [`AttributeValue`] whose [`context`](crate::AttributeContext) corresponds to a
 // direct child [`Prop`](crate::Prop) of the [`RootProp`](crate::RootProp).
 
+use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
+
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 use ulid::Ulid;
 
+use content_store::{Store, StoreError};
+pub use dependent_value_graph::DependentValueGraph;
+use telemetry::prelude::*;
+
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
+use crate::func::before::before_funcs_for_component;
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk};
 use crate::func::intrinsics::IntrinsicFunc;
@@ -79,9 +85,6 @@ use super::prototype::argument::{
 
 pub mod dependent_value_graph;
 pub mod view;
-
-use crate::func::before::before_funcs_for_component;
-pub use dependent_value_graph::DependentValueGraph;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -2080,5 +2083,46 @@ impl AttributeValue {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn list_input_sockets_sources_for_id(
+        ctx: &DalContext,
+        av_id: AttributeValueId,
+    ) -> AttributeValueResult<Vec<InputSocketId>> {
+        let prop_id = Self::prop(ctx, av_id).await?;
+        let prop_name = Prop::get_by_id(ctx, prop_id).await?.name;
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+
+        let prototype_id = if let Some(prototype_idx) = workspace_snapshot
+            .outgoing_targets_for_edge_weight_kind(av_id, EdgeWeightKindDiscriminants::Prototype)
+            .await?
+            .pop()
+        {
+            let node_weight = workspace_snapshot.get_node_weight(prototype_idx).await?;
+            let ulid = node_weight.id();
+            let prototype_id = ulid.into();
+            prototype_id
+        } else {
+            // If we don't find a Prototype link to the av, go through the Prop to get to the prototype_idx
+            let prototype_id = Prop::prototype_id(ctx, prop_id).await?;
+            prototype_id
+        };
+
+        let component_id = AttributeValue::component_id(ctx, av_id).await?;
+
+        let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
+
+        let mut input_socket_ids = Vec::<InputSocketId>::new();
+        for apa_id in apa_ids {
+            let maybe_value_source =
+                AttributePrototypeArgument::value_source_by_id(ctx, apa_id).await?;
+            if let Some(value_source) = maybe_value_source {
+                if let ValueSource::InputSocket(socket_id) = value_source {
+                    input_socket_ids.push(socket_id);
+                }
+            }
+        }
+
+        Ok(input_socket_ids)
     }
 }

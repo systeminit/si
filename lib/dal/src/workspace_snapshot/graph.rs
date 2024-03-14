@@ -1,18 +1,22 @@
-use chrono::Utc;
-use petgraph::stable_graph::Edges;
-use petgraph::{algo, prelude::*, visit::DfsEvent};
-use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::Write;
 
-use telemetry::prelude::*;
+use chrono::Utc;
+use si_events::ContentHash;
+use petgraph::{algo, prelude::*, visit::DfsEvent};
+pub use petgraph::Direction;
+/// Ensure [`NodeIndex`] is usable by external crates.
+pub use petgraph::graph::NodeIndex;
+use petgraph::stable_graph::Edges;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
 
+use content_store::{ContentHash, Store, StoreError};
+use telemetry::prelude::*;
+
 use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError};
-use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::{
     conflict::Conflict,
     content_address::ContentAddress,
@@ -20,14 +24,10 @@ use crate::workspace_snapshot::{
     node_weight::{NodeWeight, NodeWeightError, OrderingNodeWeight},
     update::Update,
 };
-
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{CategoryNodeWeight, NodeWeightDiscriminants};
-
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-/// Ensure [`NodeIndex`] is usable by external crates.
-pub use petgraph::graph::NodeIndex;
-pub use petgraph::Direction;
+use crate::workspace_snapshot::node_weight::{CategoryNodeWeight, NodeWeightDiscriminants};
+use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
+use crate::workspace_snapshot::vector_clock::VectorClockId;
 
 mod tests;
 
@@ -1038,7 +1038,11 @@ impl WorkspaceSnapshotGraph {
             },
         );
         let filename_no_extension = format!("{}-{}", Ulid::new().to_string(), suffix);
-        let mut file = File::create(format!("/home/zacharyhamm/{filename_no_extension}.txt"))
+
+        let home_str = std::env::var("HOME").unwrap();
+        let home = std::path::Path::new(&home_str);
+
+        let mut file = File::create(home.join(format!("{filename_no_extension}.txt")))
             .expect("could not create file");
         file.write_all(format!("{dot:?}").as_bytes())
             .expect("could not write file");
