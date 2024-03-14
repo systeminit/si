@@ -73,35 +73,10 @@ where
 
     pub async fn get_bulk(&self, keys: &[K]) -> LayerDbResult<HashMap<K, V>> {
         let mut found_keys = HashMap::new();
-        let mut not_found: Vec<K> = vec![];
 
         for key in keys {
-            if let Some(found) = match self.memory_cache.get(key).await {
-                Some(memory_value) => Some(memory_value),
-                None => match self.disk_cache.get(key)? {
-                    Some(value) => {
-                        let deserialized: V = postcard::from_bytes(&value)?;
-
-                        self.memory_cache.insert(*key, deserialized.clone()).await;
-                        Some(deserialized)
-                    }
-                    None => {
-                        not_found.push(*key);
-                        None
-                    }
-                },
-            } {
-                found_keys.insert(*key, found);
-            }
-        }
-
-        if !not_found.is_empty() {
-            if let Some(pg_found) = self.pg.get_many(&not_found).await? {
-                for (k, v) in pg_found {
-                    let deserialized: V = postcard::from_bytes(&v)?;
-                    self.memory_cache.insert(k, deserialized.clone()).await;
-                    found_keys.insert(k, deserialized);
-                }
+            if let Some(v) = self.get(key).await? {
+                found_keys.insert(*key, v);
             }
         }
 

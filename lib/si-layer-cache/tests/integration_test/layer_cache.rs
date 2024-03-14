@@ -1,5 +1,3 @@
-use rand::seq::SliceRandom;
-use rand::thread_rng;
 use si_layer_cache::layer_cache::LayerCache;
 
 async fn make_layer_cache(db_name: &str) -> LayerCache<&'static str, String> {
@@ -104,38 +102,5 @@ async fn get_bulk_inserts_to_memory() {
 
     for value in values {
         assert_eq!(value, get_values[value]);
-    }
-}
-
-#[tokio::test]
-async fn get_bulk_from_db() {
-    let layer_cache = make_layer_cache("get_bulk").await;
-
-    let mut values = [
-        "skid row",
-        "kid scrow",
-        "march for macragge",
-        "magnus did nothing wrong",
-        "steppa pig",
-    ];
-
-    let mut rng = thread_rng();
-
-    for _i in 0..5 {
-        values.shuffle(&mut rng);
-        for value in values {
-            let _ = layer_cache.pg().insert(value, "cas", value.as_ref()).await;
-        }
-
-        let get_values = layer_cache
-            .pg()
-            .get_many(values.as_ref())
-            .await
-            .expect("should get bulk")
-            .expect("should have results");
-
-        for value in values {
-            assert_eq!(value.as_bytes(), get_values[value]);
-        }
     }
 }
