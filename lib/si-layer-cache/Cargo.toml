@@ -32,6 +32,7 @@ buck2-resources = { path = "../../lib/buck2-resources" }
 criterion = { workspace = true }
 moka = { workspace = true }
 postcard = { workspace = true }
+rand = { workspace = true }
 sled = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true }

@@ -47,6 +47,7 @@ rust_test(
         "//third-party/rust:futures",
         "//third-party/rust:moka",
         "//third-party/rust:postcard",
+        "//third-party/rust:rand",
         "//third-party/rust:serde_json",
         "//third-party/rust:sled",
         "//third-party/rust:tempfile",
