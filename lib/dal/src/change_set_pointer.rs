@@ -13,7 +13,8 @@ use crate::context::RebaseRequest;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::WorkspaceSnapshotId;
 use crate::{
-    id, ChangeSetPk, ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspacePk,
+    id, ChangeSetPk, ChangeSetStatus, DalContext, HistoryEvent, HistoryEventError,
+    TransactionsError, Workspace, WorkspacePk, WsEvent, WsEventError,
 };
 
 pub mod view;
@@ -29,6 +30,8 @@ pub enum ChangeSetPointerError {
     DefaultChangeSetNoWorkspaceSnapshotPointer(ChangeSetPointerId),
     #[error("enum parse error: {0}")]
     EnumParse(#[from] strum::ParseError),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
     #[error("ulid monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("mutex error: {0}")]
@@ -51,6 +54,8 @@ pub enum ChangeSetPointerError {
     Workspace(String),
     #[error("workspace not found: {0}")]
     WorkspaceNotFound(WorkspacePk),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ChangeSetPointerResult<T> = Result<T, ChangeSetPointerError>;
@@ -141,7 +146,15 @@ impl ChangeSetPointer {
                 &[&name, &base_change_set_id, &ChangeSetStatus::Open.to_string(), &workspace_id],
             )
             .await?;
-        Self::try_from(row)
+        let change_set = Self::try_from(row)?;
+        let _history_event = HistoryEvent::new(
+            ctx,
+            "change_set.create",
+            "Change Set created",
+            &serde_json::to_value(&change_set)?,
+        )
+        .await?;
+        Ok(change_set)
     }
 
     pub async fn fork_head(
@@ -315,6 +328,31 @@ impl ChangeSetPointer {
         self.update_status(ctx, ChangeSetStatus::Applied).await?;
 
         Ok(())
+    }
+
+    pub async fn force_new(ctx: &mut DalContext) -> ChangeSetPointerResult<Option<ChangeSetPk>> {
+        let maybe_fake_pk =
+            if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
+                let change_set = Self::fork_head(ctx, Self::generate_name()).await?;
+                ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
+                    .await?;
+
+                let fake_pk = ChangeSetPk::from(Ulid::from(change_set.id));
+
+                WsEvent::change_set_created(ctx, fake_pk)
+                    .await?
+                    .publish_on_commit(ctx)
+                    .await?;
+
+                Some(fake_pk)
+            } else {
+                None
+            };
+        Ok(maybe_fake_pk)
+    }
+
+    fn generate_name() -> String {
+        Utc::now().format("%Y-%m-%d-%H:%M").to_string()
     }
 }
 

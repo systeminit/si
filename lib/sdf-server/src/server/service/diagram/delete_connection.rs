@@ -28,7 +28,7 @@ pub async fn delete_connection(
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
     let edge = Edge::get_by_id(&ctx, &request.edge_id)
         .await?
         .ok_or(DiagramError::EdgeNotFound)?;

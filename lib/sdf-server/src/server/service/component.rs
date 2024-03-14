@@ -9,7 +9,7 @@ use dal::component::ComponentId;
 use dal::property_editor::PropertyEditorError;
 use dal::validation::resolver::ValidationResolverError;
 use dal::{ActionPrototypeError, ComponentError as DalComponentError, StandardModelError};
-use dal::{ChangeSetError, TransactionsError};
+use dal::{ChangeSetPointerError, TransactionsError};
 use thiserror::Error;
 
 use crate::server::state::AppState;
@@ -52,7 +52,7 @@ pub enum ComponentError {
     // #[error("attribute value not found")]
     // AttributeValueNotFound,
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    ChangeSet(#[from] ChangeSetPointerError),
     // #[error("change status error: {0}")]
     // ChangeStatus(#[from] ChangeStatusError),
     // #[error("component debug view error: {0}")]

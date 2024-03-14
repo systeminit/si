@@ -38,7 +38,7 @@ pub async fn save_variant_def(
 ) -> SchemaVariantDefinitionResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
 
     super::save_variant_def(&ctx, &request, None).await?;
 

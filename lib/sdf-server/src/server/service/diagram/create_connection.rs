@@ -1,7 +1,9 @@
 use axum::extract::OriginalUri;
 use axum::{response::IntoResponse, Json};
 use dal::attribute::prototype::argument::AttributePrototypeArgumentId;
-use dal::{ChangeSet, Component, ComponentId, InputSocketId, OutputSocketId, User, Visibility};
+use dal::{
+    ChangeSetPointer, Component, ComponentId, InputSocketId, OutputSocketId, User, Visibility,
+};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -35,7 +37,7 @@ pub async fn create_connection(
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
 
     let attribute_prototype_argument_id = Component::connect(
         &ctx,

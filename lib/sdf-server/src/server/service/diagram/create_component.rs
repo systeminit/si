@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use dal::component::frame::Frame;
 use dal::component::{DEFAULT_COMPONENT_HEIGHT, DEFAULT_COMPONENT_WIDTH};
 use dal::{
-    generate_name, Action, ActionKind, ActionPrototype, ChangeSet, Component, ComponentId,
+    generate_name, Action, ActionKind, ActionPrototype, ChangeSetPointer, Component, ComponentId,
     SchemaId, SchemaVariant, Visibility,
 };
 
@@ -39,7 +39,7 @@ pub async fn create_component(
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
 
     let name = generate_name();
 
