@@ -30,7 +30,7 @@ pub async fn restore_default_function(
 ) -> ComponentResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
 
     AttributeValue::use_default_prototype(&ctx, request.attribute_value_id).await?;
 
@@ -43,9 +43,7 @@ pub async fn restore_default_function(
             })?;
         let component = Component::get_by_id(&ctx, &attribute_value.context.component_id())
             .await?
-            .ok_or_else(|| {
-                ComponentError::NotFound(attribute_value.context.component_id())
-            })?;
+            .ok_or_else(|| ComponentError::NotFound(attribute_value.context.component_id()))?;
 
         let component_schema = component
             .schema(&ctx)

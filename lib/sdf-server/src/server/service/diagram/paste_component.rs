@@ -165,7 +165,7 @@ pub async fn paste_components(
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let maybe_force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
+    let maybe_force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
     ctx.commit().await?;
 
     let id = Ulid::new();

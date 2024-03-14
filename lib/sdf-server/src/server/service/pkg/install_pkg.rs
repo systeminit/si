@@ -42,7 +42,7 @@ pub async fn install_pkg(
 ) -> PkgResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
 
     let id = Ulid::new();
     tokio::task::spawn(async move {

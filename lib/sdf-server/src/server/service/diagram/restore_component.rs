@@ -63,7 +63,7 @@ pub async fn restore_component(
 ) -> DiagramResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
 
     restore_single_component(&ctx, request.component_id, &original_uri, &posthog_client).await?;
 

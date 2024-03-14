@@ -31,8 +31,6 @@ pub enum SchemaVariantDefinitionError {
     //     #[error(transparent)]
     //     AuthenticationPrototype(#[from] AuthenticationPrototypeError),
     //     #[error(transparent)]
-    //     ChangeSet(#[from] ChangeSetError),
-    //     #[error(transparent)]
     //     ContextTransaction(#[from] TransactionsError),
     //     #[error("error creating schema variant from definition: {0}")]
     //     CouldNotCreateSchemaVariantFromDefinition(String),

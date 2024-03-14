@@ -3,7 +3,7 @@ use axum::Json;
 use dal::{
     key_pair::KeyPairPk, EncryptedSecret, SecretAlgorithm, SecretVersion, Visibility, WsEvent,
 };
-use dal::{ChangeSet, SecretView};
+use dal::{ChangeSetPointer, SecretView};
 use serde::{Deserialize, Serialize};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -33,7 +33,7 @@ pub async fn create_secret(
 ) -> SecretResult<impl IntoResponse> {
     let mut ctx = builder.build(request_tx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
 
     let secret = EncryptedSecret::new(
         &ctx,

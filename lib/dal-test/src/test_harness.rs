@@ -3,9 +3,9 @@ use dal::schema::variant::root_prop::RootProp;
 use dal::{
     func::{binding::FuncBinding, FuncId},
     key_pair::KeyPairPk,
-    ChangeSet, ChangeSetPk, Component, DalContext, EncryptedSecret, Func, FuncBackendKind,
-    InputSocket, KeyPair, OutputSocket, Schema, SchemaId, SchemaVariant, SchemaVariantId, Secret,
-    SocketArity, SocketKind, User, UserPk, Visibility,
+    Component, DalContext, EncryptedSecret, Func, FuncBackendKind, InputSocket, KeyPair,
+    OutputSocket, Schema, SchemaId, SchemaVariant, SchemaVariantId, Secret, SocketArity,
+    SocketKind, User, UserPk,
 };
 use names::{Generator, Name};
 
@@ -18,21 +18,6 @@ macro_rules! connection_annotation_string {
     ($str:expr) => {
         serde_json::to_string(&vec![$str]).expect("Unable to parse annotation string")
     };
-}
-
-pub async fn create_change_set(ctx: &DalContext) -> ChangeSet {
-    let name = generate_fake_name();
-    ChangeSet::new(ctx, &name, None)
-        .await
-        .expect("cannot create change_set")
-}
-
-pub fn create_visibility_change_set(change_set: &ChangeSet) -> Visibility {
-    Visibility::new(change_set.pk, None)
-}
-
-pub fn create_visibility_head() -> Visibility {
-    Visibility::new(ChangeSetPk::NONE, None)
 }
 
 pub async fn create_key_pair(ctx: &DalContext) -> KeyPair {
