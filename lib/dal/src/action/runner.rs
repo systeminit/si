@@ -84,6 +84,8 @@ pub enum ActionRunnerError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("action run status cannot be converted to action completion status")]
     IncompatibleActionRunStatus,
+    #[error("missing action runner: {0}")]
+    MissingActionRunner(ActionRunnerId),
     #[error("missing finished timestamp for action runner: {0}")]
     MissingFinishedTimestampForActionRunner(ActionRunnerId),
     #[error("missing started timestamp for action runner: {0}")]
@@ -149,7 +151,11 @@ impl From<ActionRunner> for ActionRunnerContentV1 {
             func_name: content.func_name,
             action_prototype_id: content.action_prototype_id,
             action_kind: content.action_kind,
-            resource: content.resource,
+            resource: content
+                .resource
+                .map(|r| serde_json::to_string(&r))
+                .transpose()
+                .expect("unable to serialize resource"),
             started_at: content.started_at,
             finished_at: content.finished_at,
             completion_status: content.completion_status,
@@ -169,7 +175,11 @@ impl ActionRunner {
             func_name: content.func_name,
             action_prototype_id: content.action_prototype_id,
             action_kind: content.action_kind,
-            resource: content.resource,
+            resource: content
+                .resource
+                .map(|r| serde_json::from_str(&r))
+                .transpose()
+                .expect("unable to deserialize resource"),
             started_at: content.started_at,
             finished_at: content.finished_at,
             completion_status: content.completion_status,
@@ -239,6 +249,26 @@ impl ActionRunner {
             .await?;
 
         Ok(ActionRunner::assemble(id.into(), content))
+    }
+
+    pub async fn get_by_id(ctx: &DalContext, id: ActionRunnerId) -> ActionRunnerResult<Self> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        let hash = node_weight.content_hash();
+
+        let content: ActionRunnerContent = ctx
+            .content_store()
+            .lock()
+            .await
+            .get(&hash)
+            .await?
+            .ok_or_else(|| WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let ActionRunnerContent::V1(inner) = content;
+
+        Ok(Self::assemble(id, inner))
     }
 
     /// Executes the [`action runner`](Self). Returns true if some resource got updated, false if not
@@ -423,30 +453,35 @@ impl ActionRunner {
     }
 
     /// Generates a [`ActionHistoryView`] based on [`self`](ActionRunner).
-    pub async fn history_view(&self) -> ActionRunnerResult<Option<ActionHistoryView>> {
-        Ok(Some(ActionHistoryView {
+    pub async fn history_view(&self) -> ActionRunnerResult<ActionHistoryView> {
+        Ok(ActionHistoryView {
             id: self.id,
-            status: if self.resource.is_none() {
-                ActionCompletionStatus::Unstarted
-            } else {
-                self.completion_status
-                    .unwrap_or(ActionCompletionStatus::Failure)
-            },
+            status: self
+                .completion_status
+                .unwrap_or(ActionCompletionStatus::Unstarted),
             action_kind: self.action_kind,
             display_name: self.func_name.clone(),
             schema_name: self.schema_name.clone(),
             component_name: self.component_name.clone(),
             component_id: self.component_id,
-            resource: self.resource.clone().map(|r| ResourceView {
-                status: r.status,
-                message: r.message,
-                data: r.payload,
-                logs: r.logs,
-                last_synced: r.last_synced,
-            }),
+            resource: if let Some(resource) = self.resource.clone() {
+                Some(ResourceView {
+                    status: resource.status,
+                    message: resource.message,
+                    data: resource
+                        .payload
+                        .as_deref()
+                        .map(serde_json::from_str)
+                        .transpose()?,
+                    logs: resource.logs,
+                    last_synced: resource.last_synced,
+                })
+            } else {
+                None
+            },
             started_at: self.started_at.as_ref().map(|s| s.to_string()),
             finished_at: self.finished_at.as_ref().map(|s| s.to_string()),
-        }))
+        })
     }
 
     pub async fn for_batch(

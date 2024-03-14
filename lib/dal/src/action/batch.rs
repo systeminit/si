@@ -169,10 +169,30 @@ impl ActionBatch {
         Ok(Self::assemble(id.into(), content))
     }
 
+    pub async fn get_by_id(ctx: &DalContext, id: ActionBatchId) -> ActionBatchResult<Self> {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let node_index = workspace_snapshot.get_node_index_by_id(id).await?;
+        let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
+        let hash = node_weight.content_hash();
+
+        let content: ActionBatchContent = ctx
+            .content_store()
+            .lock()
+            .await
+            .get(&hash)
+            .await?
+            .ok_or_else(|| WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
+
+        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
+        let ActionBatchContent::V1(inner) = content;
+
+        Ok(Self::assemble(id, inner))
+    }
+
     pub async fn list(ctx: &DalContext) -> ActionBatchResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let mut action_batchs = vec![];
+        let mut action_batches = vec![];
         let action_batch_category_node_id = workspace_snapshot
             .get_category_node(None, CategoryNodeKind::ActionBatch)
             .await?;
@@ -208,15 +228,16 @@ impl ActionBatch {
                     // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
                     let ActionBatchContent::V1(inner) = content;
 
-                    action_batchs.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
+                    action_batches.push(Self::assemble(node_weight.id().into(), inner.to_owned()));
                 }
                 None => Err(WorkspaceSnapshotError::MissingContentFromStore(
                     node_weight.id(),
                 ))?,
             }
         }
+        action_batches.sort_by(|a, b| b.id.cmp(&a.id));
 
-        Ok(action_batchs)
+        Ok(action_batches)
     }
 
     pub async fn runners(&self, ctx: &DalContext) -> ActionBatchResult<Vec<ActionRunner>> {

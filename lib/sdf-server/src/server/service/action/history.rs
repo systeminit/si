@@ -39,9 +39,8 @@ pub async fn history(
         runners.sort_by_key(|f| f.id);
 
         for runner in runners {
-            if let Some(history_view) = runner.history_view().await? {
-                action_views.push(history_view)
-            }
+            let history_view = runner.history_view().await?;
+            action_views.push(history_view)
         }
 
         let author = batch.author();

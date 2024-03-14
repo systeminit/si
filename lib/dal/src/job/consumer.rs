@@ -13,27 +13,32 @@ use crate::{
     attribute::value::AttributeValueError,
     job::definition::dependent_values_update::DependentValueUpdateError,
     job::producer::BlockingJobError, job::producer::JobProducerError, AccessBuilder,
-    ActionPrototypeId, DalContext, DalContextBuilder, StandardModelError, TransactionsError,
-    Visibility, WsEventError,
+    ActionBatchError, ActionBatchId, ActionPrototypeError, ActionPrototypeId, ActionRunnerError,
+    ComponentError, ComponentId, DalContext, DalContextBuilder, StandardModelError,
+    TransactionsError, Visibility, WsEventError,
 };
 
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum JobConsumerError {
-    // #[error("action named {0} not found for component {1}")]
-    // ActionNotFound(String, ComponentId),
+    #[error("action batch error: {0}")]
+    ActionBatch(#[from] ActionBatchError),
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("ActionProtoype {0} not found")]
     ActionPrototypeNotFound(ActionPrototypeId),
+    #[error("action runner error: {0}")]
+    ActionRunner(#[from] ActionRunnerError),
     #[error("arg {0:?} not found at index {1}")]
     ArgNotFound(JobInfo, usize),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("Error blocking on job: {0}")]
     BlockingJob(#[from] BlockingJobError),
-    // #[error("component {0} is destroyed")]
-    // ComponentIsDestroyed(ComponentId),
-    // #[error("component {0} not found")]
-    // ComponentNotFound(ComponentId),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
+    #[error("component {0} is destroyed")]
+    ComponentIsDestroyed(ComponentId),
     #[error(transparent)]
     CouncilClient(#[from] council_server::client::ClientError),
     #[error("Protocol error with council: {0}")]
@@ -46,8 +51,8 @@ pub enum JobConsumerError {
     Io(#[from] ::std::io::Error),
     #[error(transparent)]
     JobProducer(#[from] JobProducerError),
-    // #[error("missing fix execution batch for id: {0}")]
-    // MissingActionBatch(ActionBatchId),
+    #[error("missing fix execution batch for id: {0}")]
+    MissingActionBatch(ActionBatchId),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error("nats is unavailable")]

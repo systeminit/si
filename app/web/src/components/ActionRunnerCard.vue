@@ -6,7 +6,7 @@
   >
     <template #label>
       <div class="flex flex-row items-center text-sm overflow-hidden w-full">
-        <StatusIndicatorIcon type="runner" :status="runner.status" />
+        <StatusIndicatorIcon type="action-runner" :status="runner.status" />
         <div class="flex flex-col pl-xs flex-shrink overflow-hidden flex-grow">
           <div>{{ `${runner.displayName}` }}</div>
           <div

@@ -104,14 +104,17 @@ const props = defineProps<{
 const timestampTooltip = computed(() => {
   if (!props.actionBatch.startedAt) return {};
 
-  const startedStr = dateString(props.actionBatch.startedAt, "long");
+  const startedStr = dateString(new Date(props.actionBatch.startedAt), "long");
   const tooltip = {
     content: `<div class="pb-xs"><span class='font-bold'>Started At:</span> ${startedStr}</div>`,
     theme: "html",
   };
 
   if (props.actionBatch.finishedAt) {
-    const finishedStr = dateString(props.actionBatch.finishedAt, "long");
+    const finishedStr = dateString(
+      new Date(props.actionBatch.finishedAt),
+      "long",
+    );
     tooltip.content += `<div><span class='font-bold'>Finished At:</span> ${finishedStr}</div>`;
   }
 

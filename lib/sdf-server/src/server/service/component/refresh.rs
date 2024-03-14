@@ -88,7 +88,7 @@ pub async fn refresh(
         }),
     );
 
-    ctx.enqueue_job(RefreshJob::new(
+    ctx.enqueue_refresh(RefreshJob::new(
         ctx.access_builder(),
         *ctx.visibility(),
         component_ids,
