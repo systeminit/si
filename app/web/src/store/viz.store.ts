@@ -24,10 +24,30 @@ export type ContentKind =
   | "StaticArgumentValue"
   | "ValidationPrototype";
 
+export type EdgeWeightKind =
+  | "Use"
+  | "Action"
+  | "ActionPrototype"
+  | "AuthenticationPrototype"
+  | "Contain"
+  | "FrameContains"
+  | "Ordering"
+  | "Ordinal"
+  | "Prop"
+  | "Prototype"
+  | "PrototypeArgument"
+  | "PrototypeArgumentValue"
+  | "Proxy"
+  | "Root"
+  | "Socket"
+  | "SocketValue"
+  | "Use";
+
 export interface VizResponse {
   edges: {
     from: string;
     to: string;
+    edgeWeightKind: EdgeWeightKind | null;
   }[];
 
   nodes: {

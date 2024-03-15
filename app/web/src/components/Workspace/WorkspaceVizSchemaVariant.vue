@@ -65,6 +65,7 @@ onMounted(async () => {
   const nodes = nodesAndEdges.result.data.nodes;
   const edges = nodesAndEdges.result.data.edges;
 
+
   for (const node of nodes) {
     graph.addNode(node.id, {
       color: getColor(node.nodeKind, node.contentKind),
@@ -90,6 +91,8 @@ onMounted(async () => {
 
   const container = document.getElementById("vizDiv") as HTMLElement;
   // tslint:disable-next-line
-  const _sigma = new Sigma(graph, container);
+  const _sigma = new Sigma(graph, container, {
+    allowInvalidContainer: true,
+  });
 });
 </script>

@@ -61,12 +61,20 @@ pub struct GraphVizNode {
     node_kind: NodeWeightDiscriminants,
     name: Option<String>,
 }
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "kind")]
+pub enum Direction {
+    Outgoing,
+    Incoming,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GraphVizEdge {
     from: Ulid,
     to: Ulid,
+    edge_weight_kind: EdgeWeightKindDiscriminants,
+    direction: Direction,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -118,9 +126,17 @@ pub async fn schema_variant(
             work_queue.push_back(target.id());
             if !added_edges.contains(&(id, target.id())) {
                 added_edges.insert((id, target.id()));
-                edges.push(GraphVizEdge {
-                    from: id,
-                    to: target.id(),
+
+                let rel_edges = workspace_snapshot
+                    .get_edges_between_nodes(id, target.id())
+                    .await?;
+                rel_edges.iter().enumerate().for_each(|(_, edge)| {
+                    edges.push(GraphVizEdge {
+                        from: id,
+                        to: target.id(),
+                        edge_weight_kind: edge.kind().into(),
+                        direction: Direction::Outgoing,
+                    });
                 });
             }
             let name = match &target {
@@ -158,9 +174,16 @@ pub async fn schema_variant(
             work_queue.push_back(source.id());
             if !added_edges.contains(&(source.id(), id)) {
                 added_edges.insert((source.id(), id));
-                edges.push(GraphVizEdge {
-                    from: source.id(),
-                    to: id,
+                let rel_edges = workspace_snapshot
+                    .get_edges_between_nodes(source.id(), id)
+                    .await?;
+                rel_edges.iter().enumerate().for_each(|(_, edge)| {
+                    edges.push(GraphVizEdge {
+                        from: source.id(),
+                        to: id,
+                        edge_weight_kind: edge.kind().into(),
+                        direction: Direction::Outgoing,
+                    });
                 });
             }
 
@@ -198,9 +221,16 @@ pub async fn schema_variant(
                 let name = Some(cat_inner.kind().to_string());
                 if !added_edges.contains(&(func_id, cat_inner.id())) {
                     added_edges.insert((func_id, cat_inner.id()));
-                    edges.push(GraphVizEdge {
-                        from: cat_inner.id(),
-                        to: func_id,
+                    let rel_edges = workspace_snapshot
+                        .get_edges_between_nodes(cat_inner.id(), func_id)
+                        .await?;
+                    rel_edges.iter().enumerate().for_each(|(_, edge)| {
+                        edges.push(GraphVizEdge {
+                            from: cat_inner.id(),
+                            to: func_id,
+                            edge_weight_kind: edge.kind().into(),
+                            direction: Direction::Outgoing,
+                        });
                     });
                 }
                 if !added_nodes.contains(&cat_inner.id()) {
@@ -228,9 +258,16 @@ pub async fn schema_variant(
                         Ok(root_content) => {
                             if !added_edges.contains(&(cat_inner.id(), root_content.id())) {
                                 added_edges.insert((cat_inner.id(), root_content.id()));
-                                edges.push(GraphVizEdge {
-                                    from: root_content.id(),
-                                    to: cat_inner.id(),
+                                let rel_edges = workspace_snapshot
+                                    .get_edges_between_nodes(root_content.id(), cat_inner.id())
+                                    .await?;
+                                rel_edges.iter().enumerate().for_each(|(_, edge)| {
+                                    edges.push(GraphVizEdge {
+                                        from: root_content.id(),
+                                        to: cat_inner.id(),
+                                        edge_weight_kind: edge.kind().into(),
+                                        direction: Direction::Outgoing,
+                                    });
                                 });
                             }
                         }
@@ -273,6 +310,17 @@ pub async fn nodes_edges(
                 NodeWeight::Category(inner) => Some(inner.kind().to_string()),
                 NodeWeight::Func(inner) => Some(inner.name().to_owned()),
                 NodeWeight::Prop(inner) => Some(inner.name().to_owned()),
+                NodeWeight::AttributePrototypeArgument(inner) => Some(format!(
+                    "APA Targets: {}",
+                    inner
+                        .targets()
+                        .map(|targets| format!(
+                            "\nsource: {}\nto: {}",
+                            targets.source_component_id, targets.destination_component_id
+                        ))
+                        .unwrap_or("".to_string())
+                )),
+                NodeWeight::FuncArgument(inner) => Some(inner.name().to_owned()),
                 _ => None,
             };
             GraphVizNode {
@@ -288,12 +336,17 @@ pub async fn nodes_edges(
         .edges()
         .await?
         .into_iter()
-        .filter_map(
-            |(_, from, to)| match (node_idx_to_id.get(&from), node_idx_to_id.get(&to)) {
+        .filter_map(|(edge_weight, from, to)| {
+            match (node_idx_to_id.get(&from), node_idx_to_id.get(&to)) {
                 (None, _) | (_, None) => None,
-                (Some(&from), Some(&to)) => Some(GraphVizEdge { from, to }),
-            },
-        )
+                (Some(&from), Some(&to)) => Some(GraphVizEdge {
+                    from,
+                    to,
+                    edge_weight_kind: edge_weight.kind().into(),
+                    direction: Direction::Outgoing,
+                }),
+            }
+        })
         .collect();
 
     let response = GraphVizResponse {
