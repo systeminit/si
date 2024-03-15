@@ -112,7 +112,7 @@ export interface PropertyEditorValue {
   value: unknown;
   isFromExternalSource: boolean;
   canBeSetBySocket: boolean;
-  isControlledByIntrinsicFunc: boolean;
+  isControlledByDynamicFunc: boolean;
   overridden: boolean;
   controllingFuncId: string;
   controllingAttributeValueId: string;

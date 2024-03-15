@@ -17,6 +17,7 @@ use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::{AttributeValueError, DependentValueGraph};
 use crate::change_set_pointer::ChangeSetPointerError;
 use crate::code_view::CodeViewError;
@@ -37,6 +38,11 @@ use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKi
 use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
+    func::backend::js_action::ActionRunResult, pk, AttributePrototype, AttributeValue,
+    AttributeValueId, ChangeSetPk, DalContext, Func, FuncError, FuncId, InputSocket, InputSocketId,
+    OutputSocket, OutputSocketId, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId,
+    StandardModelError, Timestamp, TransactionsError, WsEvent, WsEventError, WsEventResult,
+    WsPayload,
     func::backend::js_action::ActionRunResult, pk, ActionKind, ActionPrototype,
     ActionPrototypeError, AttributeValue, AttributeValueId, ChangeSetId, DalContext, InputSocket,
     InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant,
@@ -67,6 +73,8 @@ pub const DEFAULT_COMPONENT_HEIGHT: &str = "500";
 pub enum ComponentError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] Box<ActionPrototypeError>),
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
@@ -87,6 +95,8 @@ pub enum ComponentError {
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("input socket {0} has more than one attribute value")]
@@ -1073,16 +1083,97 @@ impl Component {
         for component in components {
             components_map.insert(component.id, HashSet::new());
 
-            for incomming_connection in component.incoming_connections(ctx).await? {
+            for incoming_connection in component.incoming_connections(ctx).await? {
                 components_map
                     .entry(component.id)
                     .or_default()
-                    .insert(incomming_connection.from_component_id);
+                    .insert(incoming_connection.from_component_id);
             }
         }
 
         debug!("build graph took {:?}", total_start.elapsed());
         Ok(components_map)
+    }
+
+    pub async fn list_av_controlling_func_ids_for_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<HashMap<AttributeValueId, (FuncId, AttributeValueId, bool)>> {
+        let root_av_id: AttributeValueId =
+            Component::root_attribute_value_id(ctx, component_id).await?;
+
+        let mut av_queue = VecDeque::from([(root_av_id, None)]);
+        let mut result: HashMap<AttributeValueId, (FuncId, AttributeValueId, bool)> =
+            HashMap::new();
+
+        while let Some((av_id, maybe_parent_av_id)) = av_queue.pop_front() {
+            let prototype_id = AttributeValue::prototype_id(ctx, av_id).await?;
+            let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+            let func = Func::get_by_id(ctx, func_id).await?;
+
+            let this_tuple = (func_id, av_id, func.is_dynamic());
+
+            // if av has a parent and parent is controlled by dynamic func (tuple.2), that's the controller
+            // else av controls itself
+            let controlling_tuple = if let Some(parent_av_id) = maybe_parent_av_id {
+                // We can unwrap because if we're on the child, we've added the parent to result
+                let parent_tuple = result.get(&parent_av_id).unwrap().clone();
+
+                if parent_tuple.2 {
+                    parent_tuple
+                } else {
+                    this_tuple
+                }
+            } else {
+                this_tuple
+            };
+
+            // {
+            //     let prop_id = AttributeValue::prop_id_for_id(ctx, av_id).await?;
+            //     let this_prop = Prop::get_by_id(ctx, prop_id).await?;
+            //
+            //     let controlling_prop = {
+            //         let prop_id = AttributeValue::prop_id_for_id(ctx, controlling_tuple.1).await?;
+            //         Prop::get_by_id(ctx, prop_id).await?
+            //     };
+            //     let controlling_func = { Func::get_by_id(ctx, controlling_tuple.0).await? };
+            //
+            //     let overridden = controlling_tuple.1 != this_tuple.1;
+            //
+            //     println!(
+            //         "Prop {} is controlled by {}, through func {}({}dynamic){}",
+            //         this_prop.name,
+            //         if overridden {
+            //             controlling_prop.name
+            //         } else {
+            //             "itself".to_string()
+            //         },
+            //         controlling_func.name,
+            //         if controlling_tuple.2 { "" } else { "non-" },
+            //         if overridden {
+            //             format!(
+            //                 " - overrides func {}({}dynamic)",
+            //                 func.name,
+            //                 if this_tuple.2 { "" } else { "non-" }
+            //             )
+            //         } else {
+            //             "".to_string()
+            //         }
+            //     );
+            // }
+
+            result.insert(av_id, controlling_tuple.clone());
+
+            av_queue.extend(
+                AttributeValue::get_child_av_ids_for_ordered_parent(ctx, av_id)
+                    .await?
+                    .into_iter()
+                    .map(|child_av_id| (child_av_id, Some(av_id)))
+                    .collect::<VecDeque<_>>(),
+            );
+        }
+
+        Ok(result)
     }
 
     async fn modify<L>(self, ctx: &DalContext, lambda: L) -> ComponentResult<Self>

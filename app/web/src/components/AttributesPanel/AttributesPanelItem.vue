@@ -753,7 +753,7 @@ const propHasSocket = computed(
 );
 const propSetByFunc = computed(
   () =>
-    !props.attributeDef.value?.isControlledByIntrinsicFunc &&
+    props.attributeDef.value?.isControlledByDynamicFunc &&
     !propHasSocket.value &&
     !propPopulatedBySocket.value,
 );

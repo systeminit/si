@@ -141,6 +141,8 @@ pub enum AttributeValueError {
     InputSocket(#[from] InputSocketError),
     #[error("cannot insert for prop kind: {0}")]
     InsertionForInvalidPropKind(PropKind),
+    #[error("missing attribute value with id: {0}")]
+    MissingForId(AttributeValueId),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("attribute value {0} missing prop edge when one was expected")]
@@ -1444,6 +1446,13 @@ impl AttributeValue {
         })
     }
 
+    pub async fn is_overridden_for_id(
+        ctx: &DalContext,
+        av_id: AttributeValueId,
+    ) -> AttributeValueResult<bool> {
+        Ok(Self::component_prototype_id(ctx, av_id).await?.is_some())
+    }
+
     /// The id of the prototype that controls this attribute value at the level of the schema
     /// variant
     pub async fn schema_variant_prototype_id(
@@ -1916,7 +1925,7 @@ impl AttributeValue {
         Ok(node_weight.into())
     }
 
-    pub async fn prop(
+    pub async fn prop_id_for_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<PropId> {
@@ -2022,7 +2031,7 @@ impl AttributeValue {
                 .id()
                 .into();
 
-            let prop_id = AttributeValue::prop(ctx, parent_av_id).await?;
+            let prop_id = AttributeValue::prop_id_for_id(ctx, parent_av_id).await?;
 
             let parent_prop = Prop::get_by_id(ctx, prop_id).await?;
 
@@ -2064,7 +2073,8 @@ impl AttributeValue {
                 ))
             }
         } else {
-            Err(AttributeValueError::NoOrderingNodeForAttributeValue(id))
+            // Leaves don't have ordering nodes
+            Ok(vec![])
         }
     }
 
@@ -2089,26 +2099,7 @@ impl AttributeValue {
         ctx: &DalContext,
         av_id: AttributeValueId,
     ) -> AttributeValueResult<Vec<InputSocketId>> {
-        let prop_id = Self::prop(ctx, av_id).await?;
-        let prop_name = Prop::get_by_id(ctx, prop_id).await?.name;
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let prototype_id = if let Some(prototype_idx) = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(av_id, EdgeWeightKindDiscriminants::Prototype)
-            .await?
-            .pop()
-        {
-            let node_weight = workspace_snapshot.get_node_weight(prototype_idx).await?;
-            let ulid = node_weight.id();
-            let prototype_id = ulid.into();
-            prototype_id
-        } else {
-            // If we don't find a Prototype link to the av, go through the Prop to get to the prototype_idx
-            let prototype_id = Prop::prototype_id(ctx, prop_id).await?;
-            prototype_id
-        };
-
-        let component_id = AttributeValue::component_id(ctx, av_id).await?;
+        let prototype_id = Self::prototype_id(ctx, av_id).await?;
 
         let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
 
