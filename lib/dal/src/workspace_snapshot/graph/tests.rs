@@ -2,11 +2,11 @@ mod rebase;
 
 #[cfg(test)]
 mod test {
-    use content_store::ContentHash;
     use petgraph::graph::NodeIndex;
     use petgraph::visit::EdgeRef;
     use petgraph::Outgoing;
     use pretty_assertions_sorted::assert_eq;
+    use si_events::ContentHash;
     use std::collections::HashMap;
     use std::collections::HashSet;
 

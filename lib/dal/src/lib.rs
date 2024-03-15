@@ -149,8 +149,6 @@ pub enum ModelError {
     #[error("builtins error: {0}")]
     Builtins(#[from] BuiltinsError),
     #[error(transparent)]
-    ContentStorePg(#[from] content_store::StoreError),
-    #[error(transparent)]
     Migration(#[from] PgPoolError),
     #[error(transparent)]
     Nats(#[from] NatsError),
@@ -166,11 +164,7 @@ pub type ModelResult<T> = Result<T, ModelError>;
 
 #[instrument(level = "info", skip_all)]
 pub async fn migrate_all(services_context: &ServicesContext) -> ModelResult<()> {
-    migrate(
-        services_context.pg_pool(),
-        services_context.content_store_pg_pool(),
-    )
-    .await?;
+    migrate(services_context.pg_pool()).await?;
     Ok(())
 }
 
@@ -200,8 +194,7 @@ pub async fn migrate_all_with_progress(services_context: &ServicesContext) -> Mo
 }
 
 #[instrument(level = "info", skip_all)]
-pub async fn migrate(pg: &PgPool, content_store_pg_pool: &PgPool) -> ModelResult<()> {
-    content_store::PgStore::migrate(content_store_pg_pool).await?;
+pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
     pg.migrate(embedded::migrations::runner()).await?;
     Ok(())
 }

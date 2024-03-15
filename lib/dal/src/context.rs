@@ -1,6 +1,5 @@
 use std::{collections::HashMap, collections::HashSet, mem, path::PathBuf, sync::Arc};
 
-use content_store::{PgStore, StoreError};
 use futures::Future;
 use rebaser_client::ClientError as RebaserClientError;
 use rebaser_client::Config as RebaserClientConfig;
@@ -61,8 +60,6 @@ pub struct ServicesContext {
     symmetric_crypto_service: SymmetricCryptoService,
     /// Config for the the rebaser service
     rebaser_config: RebaserClientConfig,
-    /// Content store
-    content_store_pg_pool: PgPool,
     /// The layer db (moka-rs, sled and postgres)
     layer_db: DalLayerDb,
 }
@@ -80,7 +77,6 @@ impl ServicesContext {
         module_index_url: Option<String>,
         symmetric_crypto_service: SymmetricCryptoService,
         rebaser_config: RebaserClientConfig,
-        content_store_pg_pool: PgPool,
         layer_db: DalLayerDb,
     ) -> Self {
         Self {
@@ -93,7 +89,6 @@ impl ServicesContext {
             module_index_url,
             symmetric_crypto_service,
             rebaser_config,
-            content_store_pg_pool,
             layer_db,
         }
     }
@@ -146,18 +141,9 @@ impl ServicesContext {
         &self.rebaser_config
     }
 
-    /// Gets a reference to the content store pg pool
-    pub fn content_store_pg_pool(&self) -> &PgPool {
-        &self.content_store_pg_pool
-    }
-
+    /// Gets a reference to the Layer Db
     pub fn layer_db(&self) -> &DalLayerDb {
         &self.layer_db
-    }
-
-    /// Builds and returns a new [`content_store::PgStore`]
-    pub async fn content_store(&self) -> content_store::StoreResult<PgStore> {
-        PgStore::new(self.content_store_pg_pool().clone()).await
     }
 
     /// Builds and returns a new [`Connections`].
@@ -291,11 +277,6 @@ pub struct DalContext {
     /// Determines if we should not enqueue dependent value update jobs for attribute updates in
     /// this context. Useful for builtin migrations, since we don't care about attribute values propagation then.
     no_dependent_values: bool,
-    /// The content-addressable [`store`](content_store::Store) used by the "dal".
-    ///
-    /// This should be configurable in the future, but for now, the only kind of store used is the
-    /// [`PgStore`](content_store::PgStore).
-    content_store: Arc<Mutex<PgStore>>,
     /// The workspace snapshot for this context
     workspace_snapshot: Option<Arc<WorkspaceSnapshot>>,
     /// The change set pointer for this context
@@ -789,11 +770,6 @@ impl DalContext {
         self.services_context.module_index_url.as_deref()
     }
 
-    /// Gets a reference to the content store.
-    pub fn content_store(&self) -> &Arc<Mutex<PgStore>> {
-        &self.content_store
-    }
-
     /// Determines if a standard model object matches the tenancy of the current context and
     /// is in the same visibility.
     pub async fn check_tenancy<T: StandardModel>(
@@ -909,8 +885,6 @@ impl DalContextBuilder {
     /// Constructs and returns a new [`DalContext`] using a default [`RequestContext`].
     pub async fn build_default(&self) -> Result<DalContext, TransactionsError> {
         let conns = self.services_context.connections().await?;
-        // should we move this into Connections?
-        let content_store = self.services_context.content_store().await?;
 
         Ok(DalContext {
             services_context: self.services_context.clone(),
@@ -919,7 +893,6 @@ impl DalContextBuilder {
             tenancy: Tenancy::new_empty(),
             visibility: Visibility::new_head(),
             history_actor: HistoryActor::SystemInit,
-            content_store: Arc::new(Mutex::new(content_store)),
             no_dependent_values: self.no_dependent_values,
             workspace_snapshot: None,
             change_set_pointer: None,
@@ -932,7 +905,6 @@ impl DalContextBuilder {
         access_builder: AccessBuilder,
     ) -> Result<DalContext, TransactionsError> {
         let conns = self.services_context.connections().await?;
-        let content_store = self.services_context.content_store().await?;
 
         let mut ctx = DalContext {
             services_context: self.services_context.clone(),
@@ -942,7 +914,6 @@ impl DalContextBuilder {
             history_actor: access_builder.history_actor,
             visibility: Visibility::new_head(),
             no_dependent_values: self.no_dependent_values,
-            content_store: Arc::new(Mutex::new(content_store)),
             workspace_snapshot: None,
             change_set_pointer: None,
         };
@@ -964,7 +935,7 @@ impl DalContextBuilder {
         request_context: RequestContext,
     ) -> Result<DalContext, TransactionsError> {
         let conns = self.services_context.connections().await?;
-        let content_store = self.services_context.content_store().await?;
+
         let mut ctx = DalContext {
             services_context: self.services_context.clone(),
             blocking: self.blocking,
@@ -973,7 +944,6 @@ impl DalContextBuilder {
             visibility: request_context.visibility,
             history_actor: request_context.history_actor,
             no_dependent_values: self.no_dependent_values,
-            content_store: Arc::new(Mutex::new(content_store)),
             workspace_snapshot: None,
             change_set_pointer: None,
         };
@@ -1036,8 +1006,6 @@ pub enum TransactionsError {
     RebaserClient(#[from] RebaserClientError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
-    #[error("store error: {0}")]
-    Store(#[from] StoreError),
     #[error(transparent)]
     Tenancy(#[from] TenancyError),
     #[error("Unable to acquire lock: {0}")]

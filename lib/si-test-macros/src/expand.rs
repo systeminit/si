@@ -240,7 +240,6 @@ pub(crate) trait FnSetupExpander {
         self.code_extend(quote! {
             let test_context = ::dal_test::TestContext::global(
                 crate::TEST_PG_DBNAME,
-                crate::TEST_CONTENT_STORE_PG_DBNAME,
                 crate::SI_TEST_LAYER_CACHE_PG_DBNAME
             ).await?;
         });

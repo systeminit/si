@@ -1,7 +1,6 @@
 use std::{env, path::Path};
 
 use buck2_resources::Buck2Resources;
-use content_store::PgStoreTools;
 use derive_builder::Builder;
 use rebaser_core::RebaserMessagingConfig;
 use serde::{Deserialize, Serialize};
@@ -56,9 +55,6 @@ pub struct Config {
     #[builder(default)]
     messaging_config: RebaserMessagingConfig,
 
-    #[builder(default = "PgStoreTools::default_pool_config()")]
-    content_store_pg_pool: PgPoolConfig,
-
     #[builder(default = "si_layer_cache::default_pg_pool_config()")]
     layer_cache_pg_pool: PgPoolConfig,
 
@@ -103,12 +99,6 @@ impl Config {
         &self.messaging_config
     }
 
-    /// Gets a reference to the config's content store pg pool.
-    #[must_use]
-    pub fn content_store_pg_pool(&self) -> &PgPoolConfig {
-        &self.content_store_pg_pool
-    }
-
     /// Gets a reference to the layer cache's pg pool config.
     #[must_use]
     pub fn layer_cache_pg_pool(&self) -> &PgPoolConfig {
@@ -127,8 +117,6 @@ impl Config {
 pub struct ConfigFile {
     #[serde(default)]
     pg: PgPoolConfig,
-    #[serde(default = "PgStoreTools::default_pool_config")]
-    content_store_pg: PgPoolConfig,
     #[serde(default = "si_layer_cache::default_pg_pool_config")]
     layer_cache_pg_pool: PgPoolConfig,
     #[serde(default)]
@@ -145,7 +133,6 @@ impl Default for ConfigFile {
     fn default() -> Self {
         Self {
             pg: Default::default(),
-            content_store_pg: PgStoreTools::default_pool_config(),
             layer_cache_pg_pool: si_layer_cache::default_pg_pool_config(),
             nats: Default::default(),
             cyclone_encryption_key_path: default_cyclone_encryption_key_path(),
@@ -167,7 +154,6 @@ impl TryFrom<ConfigFile> for Config {
 
         let mut config = Config::builder();
         config.pg_pool(value.pg);
-        config.content_store_pg_pool(value.content_store_pg);
         config.layer_cache_pg_pool(value.layer_cache_pg_pool);
         config.nats(value.nats);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
@@ -235,7 +221,6 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.content_store_pg.certificate_path = Some(postgres_cert.clone().try_into()?);
     config.layer_cache_pg_pool.certificate_path = Some(postgres_cert.try_into()?);
 
     Ok(())
@@ -269,7 +254,6 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         extra_keys: vec![],
     };
     config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.content_store_pg.certificate_path = Some(postgres_cert.clone().try_into()?);
     config.layer_cache_pg_pool.certificate_path = Some(postgres_cert.try_into()?);
 
     Ok(())

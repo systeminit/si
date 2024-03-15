@@ -34,9 +34,9 @@ use std::sync::Arc;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use chrono::{DateTime, Utc};
-use content_store::{ContentHash, Store, StoreError};
 use petgraph::prelude::*;
 use si_data_pg::{PgError, PgRow};
+use si_events::ContentHash;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time::Instant;
@@ -81,8 +81,6 @@ pub enum WorkspaceSnapshotError {
     Postcard(#[from] postcard::Error),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("store error: {0}")]
-    Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -214,9 +212,6 @@ impl WorkspaceSnapshot {
             // Mark everything left as seen.
             working_copy.mark_graph_seen(vector_clock_id)?;
         }
-
-        // Write out to the content store.
-        ctx.content_store().lock().await.write().await?;
 
         // Stamp the new workspace snapshot.
         let serialized_snapshot = postcard::to_stdvec(&*self.working_copy().await)?;
