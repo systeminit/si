@@ -110,7 +110,6 @@ impl Server {
         let encryption_key = Self::load_encryption_key(config.crypto().clone()).await?;
         let nats = Self::connect_to_nats(config.nats()).await?;
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
-        let content_store_pg_pool = Self::create_pg_pool(config.content_store_pg_pool()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
@@ -134,7 +133,6 @@ impl Server {
             None,
             symmetric_crypto_service,
             rebaser_config,
-            content_store_pg_pool,
             layer_db,
         );
 

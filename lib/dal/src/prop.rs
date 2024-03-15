@@ -72,8 +72,6 @@ pub enum PropError {
     SingleChildPropHasUnexpectedSiblings(PropId, PropId, Vec<PropId>),
     #[error("no single child prop found for parent: {0}")]
     SingleChildPropNotFound(PropId),
-    #[error("store error: {0}")]
-    Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]

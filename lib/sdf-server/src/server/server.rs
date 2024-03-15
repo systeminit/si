@@ -62,6 +62,8 @@ pub enum ServerError {
     Join(#[from] JoinError),
     #[error("jwt secret key error")]
     JwtSecretKey(#[from] dal::jwt_key::JwtKeyError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error(transparent)]
     Model(#[from] dal::ModelError),
     #[error("Module index: {0}")]
@@ -262,6 +264,7 @@ impl Server<(), ()> {
 
     #[instrument(name = "sdf.init.migrate_database", level = "info", skip_all)]
     pub async fn migrate_database(services_context: &ServicesContext) -> Result<()> {
+        services_context.layer_db().pg_migrate().await?;
         dal::migrate_all_with_progress(services_context).await?;
         migrate_builtins_from_module_index(services_context).await?;
         Ok(())

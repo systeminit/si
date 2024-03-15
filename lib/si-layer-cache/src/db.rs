@@ -129,4 +129,13 @@ where
     pub fn instance_id(&self) -> Ulid {
         self.instance_id
     }
+
+    /// Run all migrations
+    pub async fn pg_migrate(&self) -> LayerDbResult<()> {
+        // This will do all migrations, not just "cas" migrations. We might want
+        // to think about restructuring this
+        self.cas.cache.pg().migrate().await?;
+
+        Ok(())
+    }
 }

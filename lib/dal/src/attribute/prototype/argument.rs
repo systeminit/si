@@ -63,8 +63,6 @@ pub enum AttributePrototypeArgumentError {
     NodeWeight(#[from] NodeWeightError),
     #[error("serde json error: {0}")]
     Serde(#[from] serde_json::Error),
-    #[error("store error: {0}")]
-    Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]

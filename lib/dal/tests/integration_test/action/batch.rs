@@ -150,23 +150,29 @@ async fn set_started_at(ctx: &mut DalContext) {
 
 #[test]
 async fn set_finished_at(ctx: &mut DalContext) {
+    dbg!("yo");
     let mut batch = ActionBatch::new(ctx, "batch", "paulo was here")
         .await
         .expect("unable to create action batch");
+
+    dbg!("made batch");
     assert_eq!(batch.finished_at, None);
 
     let conflicts = ctx.blocking_commit().await.expect("unable to commit");
+    dbg!("blocking commit");
     assert!(conflicts.is_none());
 
     ctx.update_snapshot_to_visibility()
         .await
         .expect("unable to update snapshot to visiblity");
+    dbg!("update snap");
 
     batch
         .set_finished_at(ctx)
         .await
         .expect("unable to set completion status");
     assert!(batch.finished_at.is_some());
+    dbg!("set finished at");
 
     let conflicts = ctx.blocking_commit().await.expect("unable to commit");
     assert!(conflicts.is_none());
