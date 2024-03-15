@@ -52,6 +52,17 @@ macro_rules! impl_into_content_types {
                 }
             }
 
+            impl TryFrom<ContentTypes> for [<$name Content>] {
+                type Error = &'static str;
+
+                fn try_from(value: ContentTypes) -> Result<Self, Self::Error> {
+                    match value {
+                        ContentTypes::$name(inner) => Ok(inner),
+                        _ => Err(std::concat!("Could not convert ContentType to ", stringify!($name)))
+                    }
+                }
+            }
+
             impl From<ContentTypes> for Option<[<$name Content>]> {
                 fn from(value: ContentTypes) -> Self {
                     match value {

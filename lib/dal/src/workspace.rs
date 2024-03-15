@@ -54,6 +54,13 @@ pub type WorkspaceResult<T> = Result<T, WorkspaceError>;
 pk!(WorkspacePk);
 pk!(WorkspaceId);
 
+impl From<WorkspacePk> for si_events::WorkspacePk {
+    fn from(value: WorkspacePk) -> Self {
+        let id: ulid::Ulid = value.into();
+        id.into()
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Workspace {
     pk: WorkspacePk,

@@ -1,33 +1,4 @@
-use std::{collections::BTreeMap, fmt, str::FromStr};
-
-use crate::{content_hash::ContentHashParseError, ContentHash};
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct CasPk(ContentHash);
-
-impl CasPk {
-    pub fn new(hash: ContentHash) -> Self {
-        CasPk(hash)
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-}
-
-impl fmt::Display for CasPk {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl FromStr for CasPk {
-    type Err = ContentHashParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(ContentHash::from_str(s)?))
-    }
-}
+use std::collections::BTreeMap;
 
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize, Clone)]
 pub enum CasValueNumber {

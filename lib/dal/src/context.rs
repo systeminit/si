@@ -749,6 +749,26 @@ impl DalContext {
         &self.tenancy
     }
 
+    /// Gets the version of tenancy used by the layerdb/si-events crate
+    pub fn events_tenancy(&self) -> si_events::Tenancy {
+        si_events::Tenancy {
+            change_set_id: self.change_set_id().into(),
+            workspace_pk: self
+                .tenancy()
+                .workspace_pk()
+                .unwrap_or(WorkspacePk::NONE)
+                .into(),
+        }
+    }
+
+    /// Gets the version of the "actor" (UserPk) used by the layerdb/si-events-crate
+    pub fn events_actor(&self) -> si_events::Actor {
+        match self.history_actor() {
+            HistoryActor::User(user_pk) => si_events::Actor::User((*user_pk).into()),
+            HistoryActor::SystemInit => si_events::Actor::System,
+        }
+    }
+
     /// Gets the dal context's visibility.
     pub fn visibility(&self) -> &Visibility {
         &self.visibility

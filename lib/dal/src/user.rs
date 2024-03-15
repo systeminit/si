@@ -42,6 +42,13 @@ pub type UserResult<T> = Result<T, UserError>;
 
 pk!(UserPk);
 
+impl From<UserPk> for si_events::UserPk {
+    fn from(value: UserPk) -> Self {
+        let id: ulid::Ulid = value.into();
+        id.into()
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct User {
     pk: UserPk,
