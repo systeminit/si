@@ -38,6 +38,7 @@ pub enum ContentTypes {
     SchemaVariant(SchemaVariantContent),
     Secret(SecretContent),
     StaticArgumentValue(StaticArgumentValueContent),
+    OutputSocket(OutputSocketContent),
 }
 
 macro_rules! impl_into_content_types {
@@ -84,6 +85,7 @@ impl_into_content_types!(Component);
 impl_into_content_types!(Func);
 impl_into_content_types!(FuncArgument);
 impl_into_content_types!(InputSocket);
+impl_into_content_types!(OutputSocket);
 impl_into_content_types!(Prop);
 impl_into_content_types!(Schema);
 impl_into_content_types!(SchemaVariant);
@@ -341,15 +343,15 @@ pub enum SecretContent {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct SecretContentV1 {
-    timestamp: Timestamp,
-    created_by: Option<UserPk>,
-    updated_by: Option<UserPk>,
+    pub timestamp: Timestamp,
+    pub created_by: Option<UserPk>,
+    pub updated_by: Option<UserPk>,
 
-    pk: SecretPk,
-    key_pair_pk: KeyPairPk,
-    name: String,
-    definition: String,
-    description: Option<String>,
+    pub pk: SecretPk,
+    pub key_pair_pk: KeyPairPk,
+    pub name: String,
+    pub definition: String,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

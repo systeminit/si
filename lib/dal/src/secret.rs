@@ -1,23 +1,26 @@
 use base64::{engine::general_purpose, Engine};
-use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
 use si_data_pg::PgError;
+use si_events::ContentHash;
 use si_hash::Hash;
+use si_layer_cache::LayerDbError;
 use sodiumoxide::crypto::{
     box_::{PublicKey, SecretKey},
     sealedbox,
 };
 use std::collections::HashMap;
 use std::fmt;
-use strum::{AsRefStr, Display, EnumDiscriminants, EnumString};
+use std::sync::Arc;
+use strum::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 use veritech_client::SensitiveContainer;
 
 use crate::change_set_pointer::ChangeSetPointerError;
+use crate::layer_db_types::{SecretContent, SecretContentV1};
 use crate::prop::{PropError, PropPath};
 use crate::schema::variant::root_prop::RootPropChild;
 use crate::schema::variant::SchemaVariantError;
@@ -60,6 +63,8 @@ pub enum SecretError {
     KeyPair(#[from] KeyPairError),
     #[error("key pair not found for secret")]
     KeyPairNotFound,
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("pg error: {0}")]
@@ -72,8 +77,6 @@ pub enum SecretError {
     SecretNotFound(SecretId),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
-    #[error("content store error: {0}")]
-    Store(#[from] StoreError),
     #[error("symmetric crypto error: {0}")]
     SymmetricCrypto(#[from] SymmetricCryptoError),
     #[error("transactions error: {0}")]
@@ -98,24 +101,6 @@ pub struct Secret {
 
     // TODO(nick): evaluate how these three fields will work with the new engine.
     #[serde(flatten)]
-    timestamp: Timestamp,
-    created_by: Option<UserPk>,
-    updated_by: Option<UserPk>,
-
-    pk: SecretPk,
-    key_pair_pk: KeyPairPk,
-    name: String,
-    definition: String,
-    description: Option<String>,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum SecretContent {
-    V1(SecretContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct SecretContentV1 {
     timestamp: Timestamp,
     created_by: Option<UserPk>,
     updated_by: Option<UserPk>,
@@ -166,11 +151,16 @@ impl Secret {
         secret_id: SecretId,
         content: SecretContentV1,
     ) -> SecretResult<Self> {
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&SecretContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(SecretContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let id = Ulid::from(secret_id);
         let change_set = ctx.change_set_pointer()?;
@@ -226,10 +216,9 @@ impl Secret {
         let hash = node_weight.content_hash();
 
         let content: SecretContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
 
@@ -266,10 +255,9 @@ impl Secret {
         }
 
         let contents: HashMap<ContentHash, SecretContent> = ctx
-            .content_store()
-            .lock()
-            .await
-            .get_bulk(hashes.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(hashes.as_slice())
             .await?;
 
         for node_weight in node_weights {
@@ -306,11 +294,16 @@ impl Secret {
         let after = SecretContentV1::from(referential_secret);
 
         if before != after {
-            let hash = ctx
-                .content_store()
-                .lock()
-                .await
-                .add(&SecretContent::V1(after.clone()))?;
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(SecretContent::V1(after.clone()).into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
 
             ctx.workspace_snapshot()?
                 .update_content(ctx.change_set_pointer()?, raw_id, hash)
