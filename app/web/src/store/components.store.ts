@@ -65,6 +65,7 @@ type RawComponent = {
   schemaVariantName: string;
   sockets: DiagramSocketDef[];
   updatedInfo: ActorAndTimestamp;
+  toDelete: boolean;
 };
 
 export type FullComponent = RawComponent & {
@@ -88,6 +89,7 @@ type Edge = {
   createdInfo: ActorAndTimestamp;
   // updatedInfo?: ActorAndTimestamp; // currently we dont ever update an edge...
   deletedInfo?: ActorAndTimestamp;
+  toDelete: boolean;
 };
 
 export interface ActorAndTimestamp {
@@ -830,6 +832,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   toComponentId: to.componentId,
                   toSocketId: to.socketId,
                   changeStatus: "added",
+                  toDelete: false,
                   createdInfo: {
                     timestamp: nowTs,
                     actor: { kind: "user", label: "You" },
@@ -1072,6 +1075,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   this.rawComponentsById[componentId] = {
                     ...component,
                     changeStatus: "deleted",
+                    toDelete: true,
                     deletedInfo: {
                       timestamp: new Date().toISOString(),
                       actor: { kind: "user", label: "You" },
@@ -1079,12 +1083,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   };
                 }
 
-                // TODO: optimistically delete connected edges?
-                // not super important...
                 return () => {
                   if (component && originalStatus) {
                     this.rawComponentsById[componentId] = {
                       ...component,
+                      toDelete: true,
                       changeStatus: originalStatus,
                       deletedInfo: undefined,
                     };

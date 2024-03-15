@@ -962,6 +962,8 @@ impl WorkspaceSnapshotGraph {
                     NodeWeight::Content(weight) => {
                         let discrim = ContentAddressDiscriminants::from(weight.content_address());
                         let color = match discrim {
+                            // Some of these should never happen as they have their own top-level
+                            // NodeWeight variant.
                             ContentAddressDiscriminants::Action => "green",
                             ContentAddressDiscriminants::ActionBatch => "green",
                             ContentAddressDiscriminants::ActionRunner => "green",
@@ -1008,6 +1010,14 @@ impl WorkspaceSnapshotGraph {
                         CategoryNodeKind::Schema => ("Schemas (Category)".to_string(), "black"),
                         CategoryNodeKind::Secret => ("Secrets (Category)".to_string(), "black"),
                     },
+                    NodeWeight::Component(component) => (
+                        "Component".to_string(),
+                        if component.to_delete() {
+                            "gray"
+                        } else {
+                            "black"
+                        },
+                    ),
                     NodeWeight::Func(func_node_weight) => {
                         (format!("Func\n{}", func_node_weight.name()), "black")
                     }

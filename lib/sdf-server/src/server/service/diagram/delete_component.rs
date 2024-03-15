@@ -1,22 +1,11 @@
 use axum::{extract::OriginalUri, http::uri::Uri};
 use axum::{response::IntoResponse, Json};
-use dal::{
-    Action, ActionKind, ActionPrototype, ActionPrototypeContext, ChangeSet, Component, ComponentId,
-    DalContext, StandardModel, Visibility, WsEvent,
-};
+use dal::{ChangeSetPointer, Component, ComponentId, DalContext, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
-use super::{DiagramError, DiagramResult};
+use super::DiagramResult;
 use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct DeleteComponentRequest {
-    pub component_id: ComponentId,
-    #[serde(flatten)]
-    pub visibility: Visibility,
-}
 
 async fn delete_single_component(
     ctx: &DalContext,
@@ -24,61 +13,56 @@ async fn delete_single_component(
     original_uri: &Uri,
     PosthogClient(posthog_client): &PosthogClient,
 ) -> DiagramResult<()> {
-    let mut comp = Component::get_by_id(ctx, &component_id)
-        .await?
-        .ok_or(DiagramError::ComponentNotFound)?;
+    let comp = Component::get_by_id(ctx, component_id).await?;
 
-    let comp_schema = comp
-        .schema(ctx)
-        .await?
-        .ok_or(DiagramError::SchemaNotFound)?;
-    let comp_schema_variant = comp
-        .schema_variant(ctx)
-        .await?
-        .ok_or(DiagramError::SchemaNotFound)?;
+    let comp_schema = comp.schema(ctx).await?;
 
-    let resource = comp.resource(ctx).await?;
+    // XXX: Most of this should probably go away by being moved into Component::delete
+    //
+    // let comp_schema_variant = comp.schema_variant(ctx).await?;
+    //
+    // let resource = comp.resource(ctx).await?;
+    //
+    // // TODO: this is tricky, we don't want to delete all actions, but we don't need to be perfect
+    // // right now, let's see how the usage plays with users
+    // let actions = Action::find_for_change_set(ctx).await?;
+    // for mut action in actions {
+    //     if action.component_id() == comp.id() {
+    //         action.delete_by_id(ctx).await?;
+    //     }
+    // }
+    //
+    // if resource.payload.is_some() {
+    //     for prototype in ActionPrototype::find_for_context_and_kind(
+    //         ctx,
+    //         ActionKind::Delete,
+    //         ActionPrototypeContext::new_for_context_field(
+    //             ActionPrototypeContextField::SchemaVariant(*comp_schema_variant.id()),
+    //         ),
+    //     )
+    //     .await?
+    //     {
+    //         let action = Action::upsert(ctx, *prototype.id(), *comp.id()).await?;
+    //         let prototype = action.prototype(ctx).await?;
+    //
+    //         track(
+    //             posthog_client,
+    //             ctx,
+    //             original_uri,
+    //             "create_action",
+    //             serde_json::json!({
+    //                 "how": "/diagram/delete_component",
+    //                 "prototype_id": prototype.id(),
+    //                 "prototype_kind": prototype.kind(),
+    //                 "component_id": comp.id(),
+    //                 "component_name": comp.name(ctx).await?,
+    //                 "change_set_pk": ctx.visibility().change_set_pk,
+    //             }),
+    //         );
+    //     }
+    // }
 
-    // TODO: this is tricky, we don't want to delete all actions, but we don't need to be perfect
-    // right now, let's see how the usage plays with users
-    let actions = Action::find_for_change_set(ctx).await?;
-    for mut action in actions {
-        if action.component_id() == comp.id() {
-            action.delete_by_id(ctx).await?;
-        }
-    }
-
-    if resource.payload.is_some() {
-        for prototype in ActionPrototype::find_for_context_and_kind(
-            ctx,
-            ActionKind::Delete,
-            ActionPrototypeContext::new_for_context_field(
-                ActionPrototypeContextField::SchemaVariant(*comp_schema_variant.id()),
-            ),
-        )
-        .await?
-        {
-            let action = Action::upsert(ctx, *prototype.id(), *comp.id()).await?;
-            let prototype = action.prototype(ctx).await?;
-
-            track(
-                posthog_client,
-                ctx,
-                original_uri,
-                "create_action",
-                serde_json::json!({
-                    "how": "/diagram/delete_component",
-                    "prototype_id": prototype.id(),
-                    "prototype_kind": prototype.kind(),
-                    "component_id": comp.id(),
-                    "component_name": comp.name(ctx).await?,
-                    "change_set_pk": ctx.visibility().change_set_pk,
-                }),
-            );
-        }
-    }
-
-    comp.delete_and_propagate(ctx).await?;
+    let comp = comp.delete(ctx).await?;
 
     track(
         posthog_client,
@@ -91,30 +75,9 @@ async fn delete_single_component(
         }),
     );
 
-    Ok(())
-}
-
-/// Delete a [`Component`](dal::Component) via its componentId. Creates change-set if on head
-pub async fn delete_component(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
-    posthog_client: PosthogClient,
-    OriginalUri(original_uri): OriginalUri,
-    Json(request): Json<DeleteComponentRequest>,
-) -> DiagramResult<impl IntoResponse> {
-    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
-
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
-
-    delete_single_component(&ctx, request.component_id, &original_uri, &posthog_client).await?;
-
     ctx.commit().await?;
 
-    let mut response = axum::response::Response::builder();
-    if let Some(force_changeset_pk) = force_changeset_pk {
-        response = response.header("force_changeset_pk", force_changeset_pk.to_string());
-    }
-    Ok(response.body(axum::body::Empty::new())?)
+    Ok(())
 }
 
 #[derive(Deserialize, Serialize, Debug)]

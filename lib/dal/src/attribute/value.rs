@@ -66,7 +66,7 @@ use crate::workspace_snapshot::node_weight::{
 };
 use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
 use crate::{
-    pk, AttributePrototype, AttributePrototypeId, ComponentId, DalContext, Func, FuncId,
+    pk, AttributePrototype, AttributePrototypeId, Component, ComponentId, DalContext, Func, FuncId,
     InputSocketId, OutputSocketId, Prop, PropId, PropKind, TransactionsError,
 };
 
@@ -114,6 +114,8 @@ pub enum AttributeValueError {
     CannotExplicitlySetSocketValues(AttributeValueId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetPointerError),
+    #[error("component error: {0}")]
+    Component(String),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("empty attribute prototype arguments for group name: {0}")]
@@ -509,6 +511,19 @@ impl AttributeValue {
             if apa.targets().map_or(true, |targets| {
                 targets.destination_component_id == destination_component_id
             }) {
+                // If the "source" Component is marked for deletion, and we (the destination) are
+                // *NOT*, then we should ignore the argument as data should not flow from things
+                // that are marked for deletion to ones that are not.
+                let destination_component = Component::get_by_id(ctx, destination_component_id)
+                    .await
+                    .map_err(|e| AttributeValueError::Component(e.to_string()))?;
+                let source_component = Component::get_by_id(ctx, expected_source_component_id)
+                    .await
+                    .map_err(|e| AttributeValueError::Component(e.to_string()))?;
+                if source_component.to_delete() && !destination_component.to_delete() {
+                    continue;
+                }
+
                 let func_arg_id =
                     AttributePrototypeArgument::func_argument_id_by_id(ctx, apa_id).await?;
                 let func_arg_name = ctx

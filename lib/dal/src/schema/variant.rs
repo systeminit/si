@@ -923,7 +923,11 @@ impl SchemaVariant {
         Ok((output_sockets, input_sockets))
     }
 
-    pub async fn schema(
+    pub async fn schema(&self, ctx: &DalContext) -> SchemaVariantResult<Schema> {
+        Self::schema_for_schema_variant_id(ctx, self.id).await
+    }
+
+    pub async fn schema_for_schema_variant_id(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Schema> {

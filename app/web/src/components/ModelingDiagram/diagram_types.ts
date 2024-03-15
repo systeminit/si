@@ -206,6 +206,8 @@ export type DiagramNodeDef = {
   childIds?: DiagramElementId[];
   /** change status of component in relation to head */
   changeStatus?: ChangeStatus;
+  /** component will be deleted after next action run */
+  toDelete: boolean;
 };
 
 export type DiagramSocketDef = {
@@ -242,6 +244,7 @@ export type DiagramEdgeDef = {
   changeStatus?: ChangeStatus;
   createdAt?: Date;
   deletedAt?: Date;
+  toDelete: boolean;
 };
 
 export type DiagramDrawEdgeState = {

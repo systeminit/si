@@ -289,7 +289,7 @@ impl ActionPrototype {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ActionPrototypeResult<Option<ActionRunResult>> {
-        let mut component = Component::get_by_id(ctx, component_id).await?;
+        let component = Component::get_by_id(ctx, component_id).await?;
         let component_view = component.materialized_view(ctx).await?;
         let before = before_funcs_for_component(ctx, &component_id).await?;
 
@@ -317,9 +317,11 @@ impl ActionPrototype {
                 let mut run_result: ActionRunResult = serde_json::from_value(value.clone())?;
                 run_result.logs = logs.iter().map(|l| l.message.clone()).collect();
 
-                if component.needs_destroy() && run_result.payload.is_none() {
-                    component.set_needs_destroy(ctx, false).await?;
-                }
+                let component = if component.to_delete() && run_result.payload.is_none() {
+                    component.set_to_delete(ctx, false).await?
+                } else {
+                    component
+                };
 
                 if component.resource(ctx).await? != run_result {
                     component.set_resource(ctx, run_result.clone()).await?;

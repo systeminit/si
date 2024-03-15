@@ -175,7 +175,6 @@ pub enum ComponentContent {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ComponentContentV1 {
     pub timestamp: Timestamp,
-    pub needs_destroy: bool,
     pub x: String,
     pub y: String,
     pub width: Option<String>,

@@ -448,7 +448,9 @@ const size = computed(
   () => props.tempSize || props.group.def.size || { width: 500, height: 500 },
 );
 
-const isDeleted = computed(() => props.group.def.changeStatus === "deleted");
+const isDeleted = computed(
+  () => props.group.def.changeStatus === "deleted" || props.group.def.toDelete,
+);
 const isModified = computed(() => props.group.def.changeStatus === "modified");
 const isAdded = computed(() => props.group.def.changeStatus === "added");
 
