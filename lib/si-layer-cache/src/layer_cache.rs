@@ -74,10 +74,40 @@ where
 
     pub async fn get_bulk(&self, keys: &[Arc<str>]) -> LayerDbResult<HashMap<String, V>> {
         let mut found_keys = HashMap::new();
+        let mut not_found: Vec<&str> = vec![];
 
         for key in keys {
-            if let Some(v) = self.get(key.clone()).await? {
-                found_keys.insert(key.to_string(), v);
+            if let Some(found) = match self.memory_cache.get(key).await {
+                Some(memory_value) => Some(memory_value),
+                None => match self.disk_cache.get(key)? {
+                    Some(value) => {
+                        let deserialized: V = postcard::from_bytes(&value)?;
+
+                        self.memory_cache
+                            .insert(key.clone(), deserialized.clone())
+                            .await;
+                        Some(deserialized)
+                    }
+                    None => {
+                        not_found.push(key);
+                        None
+                    }
+                },
+            } {
+                found_keys.insert((*key).to_string(), found);
+            }
+        }
+
+        if !not_found.is_empty() {
+            if let Some(pg_found) = self.pg.get_many(&not_found).await? {
+                for (k, v) in pg_found {
+                    let deserialized: V = postcard::from_bytes(&v)?;
+                    self.memory_cache
+                        .insert(k.clone().into(), deserialized.clone())
+                        .await;
+                    self.spawn_disk_cache_write_vec(k.clone().into(), v).await?;
+                    found_keys.insert(k, deserialized);
+                }
             }
         }
 
