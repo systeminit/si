@@ -1,10 +1,12 @@
 //! This module contains [`SchemaVariant`](crate::SchemaVariant), which is t/he "class" of a
 //! [`Component`](crate::Component).
 
-use content_store::{ContentHash, Store};
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
+use si_events::ContentHash;
+use si_layer_cache::LayerDbError;
 use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -75,6 +77,8 @@ pub enum SchemaVariantError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("Func {0} of response type {1} cannot set leaf {2:?}")]
     LeafFunctionMismatch(FuncId, FuncBackendResponseType, LeafKind),
     #[error("func {0} not a JsAttribute func, required for leaf functions")]
@@ -97,8 +101,6 @@ pub enum SchemaVariantError {
     SchemaNotFound(SchemaVariantId),
     #[error("serde json error: {0}")]
     Serde(#[from] serde_json::Error),
-    #[error("store error: {0}")]
-    Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -156,11 +158,17 @@ impl SchemaVariant {
             finalized_once: false,
             category: category.into(),
         };
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&SchemaVariantContent::V1(content.clone()))?;
+
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(SchemaVariantContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -239,10 +247,9 @@ impl SchemaVariant {
         let hash = node_weight.content_hash();
 
         let content: SchemaVariantContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
@@ -348,10 +355,9 @@ impl SchemaVariant {
         }
 
         let content_map: HashMap<ContentHash, SchemaVariantContent> = ctx
-            .content_store()
-            .lock()
-            .await
-            .get_bulk(content_hashes.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(content_hashes.as_slice())
             .await?;
 
         for node_weight in node_weights {
@@ -568,10 +574,9 @@ impl SchemaVariant {
         let hash = node_weight.content_hash();
 
         let content: SchemaVariantContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
 
@@ -874,18 +879,17 @@ impl SchemaVariant {
         let output_socket_hashes_only: Vec<ContentHash> =
             output_socket_hashes.iter().map(|(_, h)| *h).collect();
         let output_socket_content_map: HashMap<ContentHash, OutputSocketContent> = ctx
-            .content_store()
-            .lock()
-            .await
-            .get_bulk(output_socket_hashes_only.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(&output_socket_hashes_only)
             .await?;
+
         let input_socket_hashes_only: Vec<ContentHash> =
             input_socket_hashes.iter().map(|(_, h)| *h).collect();
         let input_socket_content_map: HashMap<ContentHash, InputSocketContent> = ctx
-            .content_store()
-            .lock()
-            .await
-            .get_bulk(input_socket_hashes_only.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(&input_socket_hashes_only)
             .await?;
 
         // Assemble all output sockets.

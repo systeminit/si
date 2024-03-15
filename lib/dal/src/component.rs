@@ -4,12 +4,13 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::hash::Hash;
+use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 use ulid::Ulid;
 
-use content_store::{ContentHash, Store, StoreError};
+use si_events::ContentHash;
 
 use crate::actor_view::ActorView;
 use crate::attribute::prototype::argument::value_source::ValueSource;
@@ -90,6 +91,8 @@ pub enum ComponentError {
     InputSocket(#[from] InputSocketError),
     #[error("input socket {0} has more than one attribute value")]
     InputSocketTooManyAttributeValues(InputSocketId),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("component {0} missing attribute value for code")]
     MissingCodeValue(ComponentId),
     #[error("component {0} missing attribute value for qualifications")]
@@ -124,8 +127,6 @@ pub enum ComponentError {
     Serde(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error("store error: {0}")]
-    Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
@@ -252,11 +253,17 @@ impl Component {
             width: None,
             height: None,
         };
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ComponentContent::V1(content.clone()))?;
+
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(ComponentContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -473,7 +480,7 @@ impl Component {
         let (component_node_weight, hash) =
             Self::get_node_weight_and_content_hash(ctx, component_id).await?;
 
-        let content: ComponentContent = ctx.content_store().lock().await.get(&hash).await?.ok_or(
+        let content: ComponentContent = ctx.layer_db().cas().try_read_as(&hash).await?.ok_or(
             WorkspaceSnapshotError::MissingContentFromStore(component_id.into()),
         )?;
 
@@ -523,10 +530,9 @@ impl Component {
         }
 
         let contents: HashMap<ContentHash, ComponentContent> = ctx
-            .content_store()
-            .lock()
-            .await
-            .get_bulk(hashes.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(hashes.as_slice())
             .await?;
 
         for node_weight in node_weights {
@@ -630,11 +636,16 @@ impl Component {
         let updated = ComponentContentV1::from(component);
 
         if updated != before {
-            let hash = ctx
-                .content_store()
-                .lock()
-                .await
-                .add(&ComponentContent::V1(updated))?;
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(ComponentContent::V1(updated).into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
 
             ctx.workspace_snapshot()?
                 .update_content(ctx.change_set_pointer()?, id.into(), hash)
@@ -1106,11 +1117,16 @@ impl Component {
 
         let updated = ComponentContentV1::from(component.clone());
         if updated != before {
-            let hash = ctx
-                .content_store()
-                .lock()
-                .await
-                .add(&ComponentContent::V1(updated.clone()))?;
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(ComponentContent::V1(updated.clone()).into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
             workspace_snapshot
                 .update_content(ctx.change_set_pointer()?, component.id.into(), hash)
                 .await?;

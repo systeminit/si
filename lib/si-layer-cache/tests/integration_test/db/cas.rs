@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use si_events::{Actor, CasPk, CasValue, ChangeSetId, Tenancy, UserPk, WorkspacePk};
+use si_events::{Actor, CasValue, ChangeSetId, ContentHash, Tenancy, UserPk, WorkspacePk};
 use si_layer_cache::{persister::PersistStatus, LayerDb};
 use tokio::time::Instant;
 
@@ -16,6 +16,7 @@ async fn write_to_db() {
     )
     .await
     .expect("cannot create layerdb");
+    ldb.pg_migrate().await.expect("migrate layer db");
 
     let cas_value: Arc<CasValue> = Arc::new(serde_json::json!("stone sour").into());
     let (cas_pk, status) = ldb
@@ -76,6 +77,7 @@ async fn write_and_read_many() {
     )
     .await
     .expect("cannot create layerdb");
+    ldb.pg_migrate().await.expect("migrate ldb");
 
     let cas_values: Vec<Arc<CasValue>> = vec![
         Arc::new(serde_json::json!("stone sour").into()),
@@ -83,7 +85,7 @@ async fn write_and_read_many() {
         Arc::new(serde_json::json!("bologna chowder").into()),
         Arc::new(serde_json::json!("waaagh").into()),
     ];
-    let mut keys: Vec<CasPk> = vec![];
+    let mut keys: Vec<ContentHash> = vec![];
 
     for cas_value in &cas_values {
         let (cas_pk, status) = ldb
@@ -124,6 +126,7 @@ async fn cold_read_from_db() {
     )
     .await
     .expect("cannot create layerdb");
+    ldb.pg_migrate().await.expect("migrate layerdb");
 
     let cas_value: Arc<CasValue> = Arc::new(serde_json::json!("stone sour").into());
     let (cas_pk, status) = ldb
@@ -215,6 +218,7 @@ async fn writes_are_gossiped() {
     )
     .await
     .expect("cannot create layerdb");
+    ldb_slash.pg_migrate().await.expect("migrate layerdb");
 
     // Then, we need a layerdb for axl
     let ldb_axl = LayerDb::new(
@@ -224,6 +228,7 @@ async fn writes_are_gossiped() {
     )
     .await
     .expect("cannot create layerdb");
+    ldb_axl.pg_migrate().await.expect("migrate layerdb");
 
     let cas_value: Arc<CasValue> = Arc::new(serde_json::json!("stone sour").into());
     let (cas_pk, status) = ldb_slash

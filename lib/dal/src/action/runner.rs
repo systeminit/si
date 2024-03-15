@@ -1,11 +1,13 @@
 //! This module contains the concept of "actions".
 
 use chrono::{DateTime, Utc};
-use content_store::{ContentHash, Store, StoreError};
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
+use si_events::ContentHash;
+use si_layer_cache::LayerDbError;
 use std::collections::HashMap;
+use std::sync::Arc;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -84,6 +86,8 @@ pub enum ActionRunnerError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("action run status cannot be converted to action completion status")]
     IncompatibleActionRunStatus,
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("missing action runner: {0}")]
     MissingActionRunner(ActionRunnerId),
     #[error("missing finished timestamp for action runner: {0}")]
@@ -106,8 +110,6 @@ pub enum ActionRunnerError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    Store(#[from] StoreError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -223,11 +225,16 @@ impl ActionRunner {
             timestamp,
         };
 
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ActionRunnerContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(ActionRunnerContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -255,10 +262,9 @@ impl ActionRunner {
         let hash = node_weight.content_hash();
 
         let content: ActionRunnerContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or_else(|| WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
@@ -345,24 +351,34 @@ impl ActionRunner {
         }
     }
 
+    async fn update_content(&self, ctx: &DalContext) -> ActionRunnerResult<()> {
+        let content = ActionRunnerContentV1::from(self.clone());
+
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(ActionRunnerContent::V1(content).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
+
+        ctx.workspace_snapshot()?
+            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn set_resource(
         &mut self,
         ctx: &DalContext,
         resource: Option<ActionRunResult>,
     ) -> ActionRunnerResult<()> {
         self.resource = resource;
-        let content = ActionRunnerContentV1::from(self.clone());
-
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ActionRunnerContent::V1(content.clone()))?;
-
-        ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
-            .await?;
-        Ok(())
+        self.update_content(ctx).await
     }
 
     pub async fn set_completion_message(
@@ -371,18 +387,7 @@ impl ActionRunner {
         message: Option<String>,
     ) -> ActionRunnerResult<()> {
         self.completion_message = message;
-        let content = ActionRunnerContentV1::from(self.clone());
-
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ActionRunnerContent::V1(content.clone()))?;
-
-        ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
-            .await?;
-        Ok(())
+        self.update_content(ctx).await
     }
 
     pub async fn set_completion_status(
@@ -391,50 +396,17 @@ impl ActionRunner {
         status: Option<ActionCompletionStatus>,
     ) -> ActionRunnerResult<()> {
         self.completion_status = status;
-        let content = ActionRunnerContentV1::from(self.clone());
-
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ActionRunnerContent::V1(content.clone()))?;
-
-        ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
-            .await?;
-        Ok(())
+        self.update_content(ctx).await
     }
 
     pub async fn set_started_at(&mut self, ctx: &DalContext) -> ActionRunnerResult<()> {
         self.started_at = Some(Utc::now());
-        let content = ActionRunnerContentV1::from(self.clone());
-
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ActionRunnerContent::V1(content.clone()))?;
-
-        ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
-            .await?;
-        Ok(())
+        self.update_content(ctx).await
     }
 
     pub async fn set_finished_at(&mut self, ctx: &DalContext) -> ActionRunnerResult<()> {
         self.finished_at = Some(Utc::now());
-        let content = ActionRunnerContentV1::from(self.clone());
-
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ActionRunnerContent::V1(content.clone()))?;
-
-        ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
-            .await?;
-        Ok(())
+        self.update_content(ctx).await
     }
 
     /// A safe wrapper around setting the started column.
@@ -499,9 +471,9 @@ impl ActionRunner {
         }
 
         let content_map: HashMap<ContentHash, ActionRunnerContent> = ctx
-            .content_store()
-            .try_lock()?
-            .get_bulk(content_hashes.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(&content_hashes)
             .await?;
 
         let mut actions = Vec::with_capacity(node_weights.len());

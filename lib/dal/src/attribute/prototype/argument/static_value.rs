@@ -1,4 +1,5 @@
-use content_store::Store;
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -44,11 +45,16 @@ impl StaticArgumentValue {
             value: value.into(),
         };
 
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&StaticArgumentValueContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(StaticArgumentValueContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -72,10 +78,9 @@ impl StaticArgumentValue {
         let hash = node_weight.content_hash();
 
         let content: StaticArgumentValueContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
 

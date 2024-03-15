@@ -73,8 +73,6 @@ pub struct Server {
     graceful_shutdown_rx: oneshot::Receiver<()>,
     /// The messaging configuration
     messaging_config: RebaserMessagingConfig,
-    /// The pg pool for the content store
-    content_store_pg_pool: PgPool,
     /// The layer db
     layer_db: DalLayerDb,
 }
@@ -89,7 +87,6 @@ impl Server {
             Self::load_encryption_key(config.cyclone_encryption_key_path()).await?;
         let nats = Self::connect_to_nats(config.nats()).await?;
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
-        let content_store_pg_pool = Self::create_pg_pool(config.content_store_pg_pool()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
         let job_processor = Self::create_job_processor(nats.clone());
         let symmetric_crypto_service =
@@ -111,7 +108,6 @@ impl Server {
             job_processor,
             symmetric_crypto_service,
             messaging_config.to_owned(),
-            content_store_pg_pool,
             layer_db,
         )
     }
@@ -127,7 +123,6 @@ impl Server {
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         symmetric_crypto_service: SymmetricCryptoService,
         messaging_config: RebaserMessagingConfig,
-        content_store_pg_pool: PgPool,
         layer_db: DalLayerDb,
     ) -> ServerResult<Self> {
         // An mpsc channel which can be used to externally shut down the server.
@@ -153,7 +148,6 @@ impl Server {
             external_shutdown_tx,
             graceful_shutdown_rx,
             messaging_config,
-            content_store_pg_pool,
             layer_db,
         })
     }
@@ -170,7 +164,6 @@ impl Server {
             self.encryption_key,
             self.shutdown_watch_rx,
             self.messaging_config,
-            self.content_store_pg_pool,
             self.layer_db,
         )
         .await?;

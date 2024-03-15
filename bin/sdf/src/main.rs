@@ -101,8 +101,6 @@ async fn async_main() -> Result<()> {
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
-    let content_store_pg_pool = Server::create_pg_pool(config.content_store_pg_pool()).await?;
-
     let veritech = Server::create_veritech_client(nats_conn.clone());
 
     let symmetric_crypto_service =
@@ -138,7 +136,6 @@ async fn async_main() -> Result<()> {
         Some(module_index_url),
         symmetric_crypto_service,
         rebaser_config,
-        content_store_pg_pool,
         layer_db,
     );
 

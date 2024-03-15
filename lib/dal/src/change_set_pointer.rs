@@ -62,6 +62,13 @@ pub type ChangeSetPointerResult<T> = Result<T, ChangeSetPointerError>;
 
 id!(ChangeSetId);
 
+impl From<ChangeSetId> for si_events::ChangeSetId {
+    fn from(value: ChangeSetId) -> Self {
+        let id: ulid::Ulid = value.into();
+        id.into()
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ChangeSetPointer {
     pub id: ChangeSetId,

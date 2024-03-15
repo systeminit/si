@@ -1,8 +1,8 @@
 use chrono::Utc;
-use content_store::{ContentHash, Store, StoreError};
 use petgraph::stable_graph::Edges;
 use petgraph::{algo, prelude::*, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
+use si_events::ContentHash;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::Write;
@@ -45,8 +45,6 @@ pub enum WorkspaceSnapshotGraphError {
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("Unable to retrieve content for ContentHash")]
     ContentMissingForContentHash,
-    #[error("Content store error: {0}")]
-    ContentStore(#[from] StoreError),
     #[error("Action would create a graph cycle")]
     CreateGraphCycle,
     #[error("could not find the newly imported subgraph when performing updates")]
@@ -368,166 +366,166 @@ impl WorkspaceSnapshotGraph {
         Ok(source)
     }
 
-    pub async fn attribute_value_view(
-        &self,
-        content_store: &mut impl Store,
-        root_index: NodeIndex,
-    ) -> WorkspaceSnapshotGraphResult<serde_json::Value> {
-        let mut view = serde_json::json![{}];
-        let mut nodes_to_add = VecDeque::from([(root_index, "".to_string())]);
+    // pub async fn attribute_value_view(
+    //     &self,
+    //     content_store: &mut impl Store,
+    //     root_index: NodeIndex,
+    // ) -> WorkspaceSnapshotGraphResult<serde_json::Value> {
+    //     let mut view = serde_json::json![{}];
+    //     let mut nodes_to_add = VecDeque::from([(root_index, "".to_string())]);
 
-        while let Some((current_node_index, write_location)) = nodes_to_add.pop_front() {
-            let current_node_weight = self.get_node_weight(current_node_index)?;
-            let current_node_content: serde_json::Value = content_store
-                .get(&current_node_weight.content_hash())
-                .await?
-                .ok_or(WorkspaceSnapshotGraphError::ContentMissingForContentHash)?;
-            // We don't need to care what kind the prop is, since assigning a value via
-            // `pointer_mut` completely overwrites the existing value, regardless of any
-            // pre-existing data types.
-            let view_pointer = match view.pointer_mut(&write_location) {
-                Some(pointer) => {
-                    *pointer = current_node_content.clone();
-                    pointer
-                }
-                None => {
-                    // This is an error, and really shouldn't ever happen.
-                    dbg!(view, write_location, current_node_content);
-                    todo!();
-                }
-            };
+    //     while let Some((current_node_index, write_location)) = nodes_to_add.pop_front() {
+    //         let current_node_weight = self.get_node_weight(current_node_index)?;
+    //         let current_node_content: serde_json::Value = content_store
+    //             .get(&current_node_weight.content_hash())
+    //             .await?
+    //             .ok_or(WorkspaceSnapshotGraphError::ContentMissingForContentHash)?;
+    //         // We don't need to care what kind the prop is, since assigning a value via
+    //         // `pointer_mut` completely overwrites the existing value, regardless of any
+    //         // pre-existing data types.
+    //         let view_pointer = match view.pointer_mut(&write_location) {
+    //             Some(pointer) => {
+    //                 *pointer = current_node_content.clone();
+    //                 pointer
+    //             }
+    //             None => {
+    //                 // This is an error, and really shouldn't ever happen.
+    //                 dbg!(view, write_location, current_node_content);
+    //                 todo!();
+    //             }
+    //         };
 
-            if current_node_content.is_null() {
-                // If the value we just inserted is "null", then there shouldn't be any child
-                // values, so don't bother looking for them in the graph to be able to add
-                // them to the work queue.
-                continue;
-            }
+    //         if current_node_content.is_null() {
+    //             // If the value we just inserted is "null", then there shouldn't be any child
+    //             // values, so don't bother looking for them in the graph to be able to add
+    //             // them to the work queue.
+    //             continue;
+    //         }
 
-            // Find the ordering if there is one, so we can add the children in the proper order.
-            if let Some(child_ordering) = self.ordered_children_for_node(current_node_index)? {
-                for (child_position_index, &child_node_index) in child_ordering.iter().enumerate() {
-                    // `.enumerate()` gives us 1-indexed, but we need 0-indexed.
+    //         // Find the ordering if there is one, so we can add the children in the proper order.
+    //         if let Some(child_ordering) = self.ordered_children_for_node(current_node_index)? {
+    //             for (child_position_index, &child_node_index) in child_ordering.iter().enumerate() {
+    //                 // `.enumerate()` gives us 1-indexed, but we need 0-indexed.
 
-                    // We insert a JSON `Null` as a "place holder" for the write location. We need
-                    // it to exist to be able to get a `pointer_mut` to it on the next time around,
-                    // but we don't really care what it is, since we're going to completely
-                    // overwrite it anyway.
-                    for edge in self
-                        .graph
-                        .edges_connecting(current_node_index, child_node_index)
-                    {
-                        let child_position = match edge.weight().kind() {
-                            EdgeWeightKind::Contain(Some(key)) => {
-                                view_pointer
-                                    .as_object_mut()
-                                    .ok_or(WorkspaceSnapshotGraphError::InvalidValueGraph)?
-                                    .insert(key.clone(), serde_json::json![null]);
-                                key.clone()
-                            }
-                            EdgeWeightKind::Contain(None) => {
-                                if current_node_content.is_array() {
-                                    view_pointer
-                                        .as_array_mut()
-                                        .ok_or(WorkspaceSnapshotGraphError::InvalidValueGraph)?
-                                        .push(serde_json::json![null]);
-                                    child_position_index.to_string()
-                                } else {
-                                    // Get prop name
-                                    if let NodeWeight::Prop(prop_weight) = self.get_node_weight(
-                                        self.prop_node_index_for_node_index(child_node_index)?
-                                            .ok_or(WorkspaceSnapshotGraphError::NoPropFound(
-                                                child_node_index,
-                                            ))?,
-                                    )? {
-                                        view_pointer
-                                            .as_object_mut()
-                                            .ok_or(WorkspaceSnapshotGraphError::InvalidValueGraph)?
-                                            .insert(
-                                                prop_weight.name().to_string(),
-                                                serde_json::json![null],
-                                            );
-                                        prop_weight.name().to_string()
-                                    } else {
-                                        return Err(WorkspaceSnapshotGraphError::InvalidValueGraph);
-                                    }
-                                }
-                            }
-                            _ => continue,
-                        };
-                        let child_write_location = format!("{}/{}", write_location, child_position);
-                        nodes_to_add.push_back((child_node_index, child_write_location));
-                    }
-                }
-            } else {
-                // The child nodes aren't explicitly ordered, so we'll need to come up with one of
-                // our own. We'll sort the nodes by their `NodeIndex`, which means that when a
-                // write last happened to them (or anywhere further towards the leaves) will
-                // determine their sorting in oldest to most recent order.
-                let mut child_index_to_position = HashMap::new();
-                let mut child_indexes = Vec::new();
-                let outgoing_edges = self.graph.edges_directed(current_node_index, Outgoing);
-                for edge_ref in outgoing_edges {
-                    match edge_ref.weight().kind() {
-                        EdgeWeightKind::Contain(Some(key)) => {
-                            view_pointer
-                                .as_object_mut()
-                                .ok_or(WorkspaceSnapshotGraphError::InvalidValueGraph)?
-                                .insert(key.clone(), serde_json::json![null]);
-                            child_index_to_position.insert(edge_ref.target(), key.clone());
-                            child_indexes.push(edge_ref.target());
-                        }
-                        EdgeWeightKind::Contain(None) => {
-                            child_indexes.push(edge_ref.target());
-                            if current_node_content.is_array() {
-                                view_pointer
-                                    .as_array_mut()
-                                    .ok_or(WorkspaceSnapshotGraphError::InvalidValueGraph)?
-                                    .push(serde_json::json![null]);
-                            } else {
-                                // Get prop name
-                                if let NodeWeight::Prop(prop_weight) = self.get_node_weight(
-                                    self.prop_node_index_for_node_index(edge_ref.target())?
-                                        .ok_or(WorkspaceSnapshotGraphError::NoPropFound(
-                                            edge_ref.target(),
-                                        ))?,
-                                )? {
-                                    view_pointer
-                                        .as_object_mut()
-                                        .ok_or(WorkspaceSnapshotGraphError::InvalidValueGraph)?
-                                        .insert(
-                                            prop_weight.name().to_string(),
-                                            serde_json::json![null],
-                                        );
-                                    child_index_to_position
-                                        .insert(edge_ref.target(), prop_weight.name().to_string());
-                                    child_indexes.push(edge_ref.target());
-                                } else {
-                                    return Err(WorkspaceSnapshotGraphError::InvalidValueGraph);
-                                }
-                            }
-                        }
-                        _ => continue,
-                    }
-                }
-                child_indexes.sort();
+    //                 // We insert a JSON `Null` as a "place holder" for the write location. We need
+    //                 // it to exist to be able to get a `pointer_mut` to it on the next time around,
+    //                 // but we don't really care what it is, since we're going to completely
+    //                 // overwrite it anyway.
+    //                 for edge in self
+    //                     .graph
+    //                     .edges_connecting(current_node_index, child_node_index)
+    //                 {
+    //                     let child_position = match edge.weight().kind() {
+    //                         EdgeWeightKind::Contain(Some(key)) => {
+    //                             view_pointer
+    //                                 .as_object_mut()
+    //                                 .ok_or(WorkspaceSnapshotGraphError::InvalidValueGraph)?
+    //                                 .insert(key.clone(), serde_json::json![null]);
+    //                             key.clone()
+    //                         }
+    //                         EdgeWeightKind::Contain(None) => {
+    //                             if current_node_content.is_array() {
+    //                                 view_pointer
+    //                                     .as_array_mut()
+    //                                     .ok_or(WorkspaceSnapshotGraphError::InvalidValueGraph)?
+    //                                     .push(serde_json::json![null]);
+    //                                 child_position_index.to_string()
+    //                             } else {
+    //                                 // Get prop name
+    //                                 if let NodeWeight::Prop(prop_weight) = self.get_node_weight(
+    //                                     self.prop_node_index_for_node_index(child_node_index)?
+    //                                         .ok_or(WorkspaceSnapshotGraphError::NoPropFound(
+    //                                             child_node_index,
+    //                                         ))?,
+    //                                 )? {
+    //                                     view_pointer
+    //                                         .as_object_mut()
+    //                                         .ok_or(WorkspaceSnapshotGraphError::InvalidValueGraph)?
+    //                                         .insert(
+    //                                             prop_weight.name().to_string(),
+    //                                             serde_json::json![null],
+    //                                         );
+    //                                     prop_weight.name().to_string()
+    //                                 } else {
+    //                                     return Err(WorkspaceSnapshotGraphError::InvalidValueGraph);
+    //                                 }
+    //                             }
+    //                         }
+    //                         _ => continue,
+    //                     };
+    //                     let child_write_location = format!("{}/{}", write_location, child_position);
+    //                     nodes_to_add.push_back((child_node_index, child_write_location));
+    //                 }
+    //             }
+    //         } else {
+    //             // The child nodes aren't explicitly ordered, so we'll need to come up with one of
+    //             // our own. We'll sort the nodes by their `NodeIndex`, which means that when a
+    //             // write last happened to them (or anywhere further towards the leaves) will
+    //             // determine their sorting in oldest to most recent order.
+    //             let mut child_index_to_position = HashMap::new();
+    //             let mut child_indexes = Vec::new();
+    //             let outgoing_edges = self.graph.edges_directed(current_node_index, Outgoing);
+    //             for edge_ref in outgoing_edges {
+    //                 match edge_ref.weight().kind() {
+    //                     EdgeWeightKind::Contain(Some(key)) => {
+    //                         view_pointer
+    //                             .as_object_mut()
+    //                             .ok_or(WorkspaceSnapshotGraphError::InvalidValueGraph)?
+    //                             .insert(key.clone(), serde_json::json![null]);
+    //                         child_index_to_position.insert(edge_ref.target(), key.clone());
+    //                         child_indexes.push(edge_ref.target());
+    //                     }
+    //                     EdgeWeightKind::Contain(None) => {
+    //                         child_indexes.push(edge_ref.target());
+    //                         if current_node_content.is_array() {
+    //                             view_pointer
+    //                                 .as_array_mut()
+    //                                 .ok_or(WorkspaceSnapshotGraphError::InvalidValueGraph)?
+    //                                 .push(serde_json::json![null]);
+    //                         } else {
+    //                             // Get prop name
+    //                             if let NodeWeight::Prop(prop_weight) = self.get_node_weight(
+    //                                 self.prop_node_index_for_node_index(edge_ref.target())?
+    //                                     .ok_or(WorkspaceSnapshotGraphError::NoPropFound(
+    //                                         edge_ref.target(),
+    //                                     ))?,
+    //                             )? {
+    //                                 view_pointer
+    //                                     .as_object_mut()
+    //                                     .ok_or(WorkspaceSnapshotGraphError::InvalidValueGraph)?
+    //                                     .insert(
+    //                                         prop_weight.name().to_string(),
+    //                                         serde_json::json![null],
+    //                                     );
+    //                                 child_index_to_position
+    //                                     .insert(edge_ref.target(), prop_weight.name().to_string());
+    //                                 child_indexes.push(edge_ref.target());
+    //                             } else {
+    //                                 return Err(WorkspaceSnapshotGraphError::InvalidValueGraph);
+    //                             }
+    //                         }
+    //                     }
+    //                     _ => continue,
+    //                 }
+    //             }
+    //             child_indexes.sort();
 
-                for (child_position_index, child_node_index) in child_indexes.iter().enumerate() {
-                    if let Some(key) = child_index_to_position.get(child_node_index) {
-                        nodes_to_add
-                            .push_back((*child_node_index, format!("{}/{}", write_location, key)));
-                    } else {
-                        nodes_to_add.push_back((
-                            *child_node_index,
-                            format!("{}/{}", write_location, child_position_index),
-                        ));
-                    }
-                }
-            }
-        }
+    //             for (child_position_index, child_node_index) in child_indexes.iter().enumerate() {
+    //                 if let Some(key) = child_index_to_position.get(child_node_index) {
+    //                     nodes_to_add
+    //                         .push_back((*child_node_index, format!("{}/{}", write_location, key)));
+    //                 } else {
+    //                     nodes_to_add.push_back((
+    //                         *child_node_index,
+    //                         format!("{}/{}", write_location, child_position_index),
+    //                     ));
+    //                 }
+    //             }
+    //         }
+    //     }
 
-        Ok(view)
-    }
+    //     Ok(view)
+    // }
 
     pub fn cleanup(&mut self) {
         let start = tokio::time::Instant::now();

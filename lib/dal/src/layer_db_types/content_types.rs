@@ -38,6 +38,7 @@ pub enum ContentTypes {
     SchemaVariant(SchemaVariantContent),
     Secret(SecretContent),
     StaticArgumentValue(StaticArgumentValueContent),
+    OutputSocket(OutputSocketContent),
 }
 
 macro_rules! impl_into_content_types {
@@ -49,6 +50,17 @@ macro_rules! impl_into_content_types {
             impl From<[<$name Content>]> for ContentTypes {
                 fn from(value: [<$name Content>]) -> Self {
                     ContentTypes::$name(value)
+                }
+            }
+
+            impl TryFrom<ContentTypes> for [<$name Content>] {
+                type Error = &'static str;
+
+                fn try_from(value: ContentTypes) -> Result<Self, Self::Error> {
+                    match value {
+                        ContentTypes::$name(inner) => Ok(inner),
+                        _ => Err(std::concat!("Could not convert ContentType to ", stringify!($name)))
+                    }
                 }
             }
 
@@ -73,6 +85,7 @@ impl_into_content_types!(Component);
 impl_into_content_types!(Func);
 impl_into_content_types!(FuncArgument);
 impl_into_content_types!(InputSocket);
+impl_into_content_types!(OutputSocket);
 impl_into_content_types!(Prop);
 impl_into_content_types!(Schema);
 impl_into_content_types!(SchemaVariant);
@@ -84,6 +97,17 @@ impl_into_content_types!(StaticArgumentValue);
 impl From<CasValue> for ContentTypes {
     fn from(value: CasValue) -> Self {
         ContentTypes::Any(value)
+    }
+}
+
+impl TryFrom<ContentTypes> for CasValue {
+    type Error = &'static str;
+
+    fn try_from(value: ContentTypes) -> Result<Self, Self::Error> {
+        match value {
+            ContentTypes::Any(inner) => Ok(inner),
+            _ => Err("Could not convert ContentType to CasValue"),
+        }
     }
 }
 
@@ -319,15 +343,15 @@ pub enum SecretContent {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct SecretContentV1 {
-    timestamp: Timestamp,
-    created_by: Option<UserPk>,
-    updated_by: Option<UserPk>,
+    pub timestamp: Timestamp,
+    pub created_by: Option<UserPk>,
+    pub updated_by: Option<UserPk>,
 
-    pk: SecretPk,
-    key_pair_pk: KeyPairPk,
-    name: String,
-    definition: String,
-    description: Option<String>,
+    pub pk: SecretPk,
+    pub key_pair_pk: KeyPairPk,
+    pub name: String,
+    pub definition: String,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

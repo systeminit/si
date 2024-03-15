@@ -8,9 +8,12 @@ async fn make_layer_cache(db_name: &str) -> LayerCache<String> {
     let tempdir = tempfile::TempDir::new_in("/tmp").expect("cannot create tempdir");
     let db = sled::open(tempdir).expect("unable to open sled database");
 
-    LayerCache::new("test1", db, super::setup_pg_db(db_name).await)
+    let layer_cache = LayerCache::new("test1", db, super::setup_pg_db(db_name).await)
         .await
-        .expect("cannot create layer cache")
+        .expect("cannot create layer cache");
+    layer_cache.pg().migrate().await.expect("migrate");
+
+    layer_cache
 }
 
 #[tokio::test]
@@ -93,14 +96,16 @@ async fn get_inserts_to_memory() {
 async fn get_bulk_inserts_to_memory() {
     let layer_cache = make_layer_cache("get_bulk_inserts_to_memory").await;
 
-    let values: Vec<Arc<str>> = vec![
+    let values: Vec<String> = vec![
         "skid row".into(),
         "kid scrow".into(),
         "march for macragge".into(),
     ];
 
     for value in &values {
-        layer_cache.insert(value.clone(), value.to_string()).await
+        layer_cache
+            .insert(value.clone().into(), value.to_string())
+            .await
     }
 
     let get_values = layer_cache
@@ -120,31 +125,34 @@ async fn get_bulk_inserts_to_memory() {
 async fn get_bulk_from_db() {
     let layer_cache = make_layer_cache("get_bulk").await;
 
-    let mut values = [
-        "skid row",
-        "kid scrow",
-        "march for macragge",
-        "magnus did nothing wrong",
-        "steppa pig",
+    let mut values: [Arc<str>; 5] = [
+        "skid row".into(),
+        "kid scrow".into(),
+        "march for macragge".into(),
+        "magnus did nothing wrong".into(),
+        "steppa pig".into(),
     ];
 
     let mut rng = thread_rng();
 
     for _i in 0..5 {
         values.shuffle(&mut rng);
-        for value in values {
-            let _ = layer_cache.pg().insert(value, "cas", value.as_ref()).await;
+        for value in &values {
+            let _ = layer_cache
+                .pg()
+                .insert(value, "cas", value.as_ref().as_bytes())
+                .await;
         }
 
         let get_values = layer_cache
             .pg()
-            .get_many(values.as_ref())
+            .get_many(&values)
             .await
             .expect("should get bulk")
             .expect("should have results");
 
-        for value in values {
-            assert_eq!(value.as_bytes(), get_values[value]);
+        for value in &values {
+            assert_eq!(value.as_bytes(), get_values[&value.as_ref().to_string()]);
         }
     }
 }

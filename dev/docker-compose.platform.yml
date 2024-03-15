@@ -9,7 +9,7 @@ services:
       - "PGPASSWORD=bugbear"
       - "POSTGRES_USER=si"
       - "POSTGRES_DB=si"
-      - "POSTGRES_MULTIPLE_DBS=si_content_store,si_layer_db,si_auth,si_module_index,si_key_value_pairs"
+      - "POSTGRES_MULTIPLE_DBS=si_layer_db,si_auth,si_module_index"
     ports:
       - "5432:5432"
     healthcheck:
@@ -25,7 +25,7 @@ services:
       - "PGPASSWORD=bugbear"
       - "POSTGRES_USER=si_test"
       - "POSTGRES_DB=si_test"
-      - "POSTGRES_MULTIPLE_DBS=si_test_content_store,si_test_dal,si_test_sdf_server,si_test_key_value_pairs"
+      - "POSTGRES_MULTIPLE_DBS=si_test_dal,si_test_sdf_server,si_test_layer_db"
     command:
       - "-c"
       - "fsync=off"

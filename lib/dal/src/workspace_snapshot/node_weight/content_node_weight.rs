@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
-use content_store::ContentHash;
 use serde::{Deserialize, Serialize};
+use si_events::ContentHash;
 use ulid::Ulid;
 
 use crate::workspace_snapshot::vector_clock::VectorClockId;

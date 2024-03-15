@@ -38,11 +38,11 @@
 // to find the [`AttributeValue`] whose [`context`](crate::AttributeContext) corresponds to a
 // direct child [`Prop`](crate::Prop) of the [`RootProp`](crate::RootProp).
 
-use content_store::{Store, StoreError};
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
@@ -138,6 +138,8 @@ pub enum AttributeValueError {
     InputSocket(#[from] InputSocketError),
     #[error("cannot insert for prop kind: {0}")]
     InsertionForInvalidPropKind(PropKind),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("attribute value {0} missing prop edge when one was expected")]
     MissingPropEdge(AttributeValueId),
     #[error("missing prototype for attribute value {0}")]
@@ -166,8 +168,6 @@ pub enum AttributeValueError {
     RemovingWhenNotChildOrMapOrArray(AttributeValueId),
     #[error("serde_json: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("store error: {0}")]
-    Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
@@ -1763,7 +1763,7 @@ impl AttributeValue {
         Ok(())
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     async fn set_materialized_view(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -1787,11 +1787,22 @@ impl AttributeValue {
         let content_view: Option<si_events::CasValue> = view.clone().map(Into::into);
 
         let view_address = match content_view {
-            Some(view) => Some(ctx.content_store().lock().await.add(&view)?),
+            Some(view) => Some(
+                ctx.layer_db()
+                    .cas()
+                    .write(
+                        Arc::new(view.into()),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?
+                    .0,
+            ),
             None => None,
         };
 
-        info!(
+        debug!(
             "set_materialized_view: {:?}, {:?}, {}",
             &view, &view_address, attribute_value_id
         );
@@ -1833,17 +1844,39 @@ impl AttributeValue {
             )
         };
 
-        let content_value: Option<content_store::Value> = value.map(Into::into);
-        let content_unprocessed_value: Option<content_store::Value> =
+        let content_value: Option<si_events::CasValue> = value.map(Into::into);
+        let content_unprocessed_value: Option<si_events::CasValue> =
             unprocessed_value.map(Into::into);
 
         let value_address = match content_value {
-            Some(value) => Some(ctx.content_store().lock().await.add(&value)?),
+            Some(value) => Some(
+                ctx.layer_db()
+                    .cas()
+                    .write(
+                        Arc::new(value.into()),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?
+                    .0,
+            ),
             None => None,
         };
 
         let unprocessed_value_address = match content_unprocessed_value {
-            Some(value) => Some(ctx.content_store().lock().await.add(&value)?),
+            Some(value) => Some(
+                ctx.layer_db()
+                    .cas()
+                    .write(
+                        Arc::new(value.into()),
+                        None,
+                        ctx.events_tenancy(),
+                        ctx.events_actor(),
+                    )
+                    .await?
+                    .0,
+            ),
             None => None,
         };
 
@@ -1918,10 +1951,9 @@ impl AttributeValue {
     ) -> AttributeValueResult<Option<serde_json::Value>> {
         Ok(match maybe_content_address {
             Some(value_address) => ctx
-                .content_store()
-                .lock()
-                .await
-                .get::<content_store::Value>(&value_address.content_hash())
+                .layer_db()
+                .cas()
+                .try_read_as::<si_events::CasValue>(&value_address.content_hash())
                 .await?
                 .map(Into::into),
             None => None,

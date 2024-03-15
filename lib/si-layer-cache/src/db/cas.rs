@@ -1,14 +1,15 @@
-use std::collections::HashMap;
 use std::sync::Arc;
+use std::{collections::HashMap, fmt::Display};
 
 use serde::{de::DeserializeOwned, Serialize};
-use si_events::{Actor, CasPk, ContentHash, Tenancy, WebEvent};
+use si_events::{Actor, ContentHash, Tenancy, WebEvent};
 
 use crate::{
     error::LayerDbResult,
     event::{LayeredEvent, LayeredEventKind},
     layer_cache::LayerCache,
     persister::{PersisterClient, PersisterStatusReader},
+    LayerDbError,
 };
 
 pub const DBNAME: &str = "cas";
@@ -41,9 +42,9 @@ where
         web_events: Option<Vec<WebEvent>>,
         tenancy: Tenancy,
         actor: Actor,
-    ) -> LayerDbResult<(CasPk, PersisterStatusReader)> {
+    ) -> LayerDbResult<(ContentHash, PersisterStatusReader)> {
         let postcard_value = postcard::to_stdvec(&value)?;
-        let key = CasPk::new(ContentHash::new(&postcard_value));
+        let key = ContentHash::new(&postcard_value);
         let cache_key: Arc<str> = key.to_string().into();
 
         self.cache.insert(cache_key.clone(), value.clone()).await;
@@ -63,12 +64,57 @@ where
         Ok((key, reader))
     }
 
-    pub async fn read(&self, key: &CasPk) -> LayerDbResult<Option<Arc<V>>> {
+    pub async fn read(&self, key: &ContentHash) -> LayerDbResult<Option<Arc<V>>> {
         self.cache.get(key.to_string().into()).await
     }
 
-    pub async fn read_many(&self, keys: &[CasPk]) -> LayerDbResult<HashMap<String, Arc<V>>> {
-        let keys: Vec<Arc<str>> = keys.iter().map(|k| k.to_string().into()).collect();
-        self.cache.get_bulk(&keys).await
+    /// We often need to extract the value from the arc by cloning it (although
+    /// this should be avoided for large values). This will do that, and also
+    /// helpfully convert the value to the type we want to deal with
+    pub async fn try_read_as<T>(&self, key: &ContentHash) -> LayerDbResult<Option<T>>
+    where
+        V: TryInto<T>,
+        <V as TryInto<T>>::Error: Display,
+    {
+        Ok(match self.read(key).await? {
+            None => None,
+            Some(arc_v) => Some(
+                arc_v
+                    .as_ref()
+                    .clone()
+                    .try_into()
+                    .map_err(|err| LayerDbError::ContentConversion(err.to_string()))?,
+            ),
+        })
+    }
+
+    pub async fn read_many(
+        &self,
+        keys: &[ContentHash],
+    ) -> LayerDbResult<HashMap<ContentHash, Arc<V>>> {
+        self.cache.get_bulk(keys).await
+    }
+
+    pub async fn try_read_many_as<T>(
+        &self,
+        keys: &[ContentHash],
+    ) -> LayerDbResult<HashMap<ContentHash, T>>
+    where
+        V: TryInto<T>,
+        <V as TryInto<T>>::Error: Display,
+    {
+        let mut result = HashMap::new();
+        for (key, arc_v) in self.cache.get_bulk(keys).await? {
+            result.insert(
+                key,
+                arc_v
+                    .as_ref()
+                    .clone()
+                    .try_into()
+                    .map_err(|err| LayerDbError::ContentConversion(err.to_string()))?,
+            );
+        }
+
+        Ok(result)
     }
 }

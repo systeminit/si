@@ -1,6 +1,8 @@
-use content_store::{ContentHash, Store};
 use serde::{Deserialize, Serialize};
+use si_events::ContentHash;
+use si_layer_cache::LayerDbError;
 use std::collections::HashMap;
+use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -32,14 +34,14 @@ pub enum OutputSocketError {
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error(
         "found two output sockets ({0} and {1}) of the same name for the same schema variant: {2}"
     )]
     NameCollision(OutputSocketId, OutputSocketId, SchemaVariantId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
-    #[error("store error: {0}")]
-    Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -139,11 +141,16 @@ impl OutputSocket {
             ui_hidden: false,
             connection_annotations,
         };
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&OutputSocketContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(OutputSocketContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -250,10 +257,9 @@ impl OutputSocket {
         }
 
         let content_map: HashMap<ContentHash, OutputSocketContent> = ctx
-            .content_store()
-            .lock()
-            .await
-            .get_bulk(content_hashes.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(content_hashes.as_slice())
             .await?;
 
         let mut output_sockets = Vec::new();
