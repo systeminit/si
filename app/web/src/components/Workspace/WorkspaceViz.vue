@@ -1,5 +1,5 @@
 <template>
-  <Stack class="h-full w-full">
+  <Stack class="h-full w-full my-4 mx-4">
     <VormInput
       v-model="selectedSchemaVariant"
       label="Schema Variants"
