@@ -47,11 +47,11 @@ impl fmt::Display for WorkspacePk {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct ChangeSetPk(Ulid);
+pub struct ChangeSetId(Ulid);
 
-impl ChangeSetPk {
-    pub fn new() -> ChangeSetPk {
-        ChangeSetPk(Ulid::new())
+impl ChangeSetId {
+    pub fn new() -> ChangeSetId {
+        ChangeSetId(Ulid::new())
     }
 
     pub fn array_to_str<'buf>(&self, buf: &'buf mut [u8; ULID_LEN]) -> &'buf mut str {
@@ -63,19 +63,19 @@ impl ChangeSetPk {
     }
 }
 
-impl Default for ChangeSetPk {
+impl Default for ChangeSetId {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl From<ulid::Ulid> for ChangeSetPk {
+impl From<ulid::Ulid> for ChangeSetId {
     fn from(value: ulid::Ulid) -> Self {
         Self(value)
     }
 }
 
-impl FromStr for ChangeSetPk {
+impl FromStr for ChangeSetId {
     type Err = ulid::DecodeError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -85,14 +85,14 @@ impl FromStr for ChangeSetPk {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Tenancy {
-    pub change_set_pk: ChangeSetPk,
+    pub change_set_id: ChangeSetId,
     pub workspace_pk: WorkspacePk,
 }
 
 impl Tenancy {
-    pub fn new(workspace_pk: WorkspacePk, change_set_pk: ChangeSetPk) -> Self {
+    pub fn new(workspace_pk: WorkspacePk, change_set_id: ChangeSetId) -> Self {
         Tenancy {
-            change_set_pk,
+            change_set_id,
             workspace_pk,
         }
     }

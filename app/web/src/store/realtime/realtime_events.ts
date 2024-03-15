@@ -25,7 +25,7 @@ export interface CursorRequest {
   data: {
     userName: string;
     userPk: UserId;
-    changeSetPk: string | null;
+    changeSetId: string | null;
     container: CursorContainerKind;
     containerKey: string | null;
     x: string | null;
@@ -40,7 +40,7 @@ export interface OnlineRequest {
     name: string;
     pictureUrl: string | null;
     idle: boolean;
-    changeSetPk: string | null;
+    changeSetId: string | null;
   };
 }
 
@@ -63,34 +63,34 @@ export type WsEventPayloadMap = {
   ChangeSetCancelled: string;
 
   ChangeSetBeginApprovalProcess: {
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
     userPk: UserId;
   };
   ChangeSetCancelApprovalProcess: {
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
     userPk: UserId;
   };
   ChangeSetMergeVote: {
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
     userPk: UserId;
     vote: string;
   };
 
   ChangeSetBeginAbandonProcess: {
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
     userPk: UserId;
   };
   ChangeSetCancelAbandonProcess: {
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
     userPk: UserId;
   };
   ChangeSetAbandonVote: {
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
     userPk: UserId;
     vote: string;
   };
   ChangeSetAbandoned: {
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
     userPk: UserId;
   };
   CheckedQualifications: {
@@ -117,7 +117,7 @@ export type WsEventPayloadMap = {
     userPk: string;
     name: string;
     pictureUrl: string | null;
-    changeSetPk: string | null;
+    changeSetId: string | null;
     idle: boolean;
   };
 
@@ -152,11 +152,11 @@ export type WsEventPayloadMap = {
   ComponentCreated: {
     success: boolean;
     componentId: string;
-    changeSetPk: string;
+    changeSetId: string;
   };
   ComponentUpdated: {
     componentId: string;
-    changeSetPk: string;
+    changeSetId: string;
   };
   ModuleImported: {
     schemaVariantIds: string[];
@@ -205,28 +205,28 @@ export type WsEventPayloadMap = {
   ActionAdded: {
     componentId: ComponentId;
     actionId: ActionId;
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
   };
   ActionRemoved: {
     componentId: ComponentId;
     actionId: ActionId;
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
   };
   SecretUpdated: {
     secretId: SecretId;
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
   };
   SecretCreated: {
     secretId: SecretId;
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
   };
   SchemaVariantDefinitionCreated: {
     schemaVariantDefinitionId: string;
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
   };
   SchemaVariantDefinitionCloned: {
     schemaVariantDefinitionId: string;
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
   };
   SchemaVariantDefinitionFinished: {
     taskId: string;
@@ -235,22 +235,22 @@ export type WsEventPayloadMap = {
   };
   SchemaVariantDefinitionSaved: {
     schemaVariantDefinitionId: string;
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
   };
   FuncCreated: {
     funcId: FuncId;
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
   };
   FuncDeleted: {
     funcId: FuncId;
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
   };
   FuncReverted: {
     funcId: FuncId;
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
   };
   FuncSaved: {
     funcId: FuncId;
-    changeSetPk: ChangeSetId;
+    changeSetId: ChangeSetId;
   };
 };

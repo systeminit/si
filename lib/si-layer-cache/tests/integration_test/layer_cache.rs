@@ -1,5 +1,5 @@
-use rand::thread_rng;
 use rand::seq::SliceRandom;
+use rand::thread_rng;
 use std::sync::Arc;
 
 use si_layer_cache::layer_cache::LayerCache;

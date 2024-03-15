@@ -2,25 +2,25 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::change_set_pointer::{
-    ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId, ChangeSetPointerResult,
+    ChangeSetId, ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerResult,
 };
 use crate::{ChangeSetStatus, DalContext, UserPk};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenChangeSetsView {
-    pub head_change_set_id: ChangeSetPointerId,
+    pub head_change_set_id: ChangeSetId,
     pub change_sets: Vec<ChangeSetView>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSetView {
-    pub id: ChangeSetPointerId,
+    pub id: ChangeSetId,
     pub name: String,
     pub status: ChangeSetStatus,
     pub merge_requested_at: Option<DateTime<Utc>>,
-    pub base_change_set_id: Option<ChangeSetPointerId>,
+    pub base_change_set_id: Option<ChangeSetId>,
     pub merge_requested_by_user_id: Option<UserPk>,
     pub abandon_requested_at: Option<DateTime<Utc>>,
     pub abandon_requested_by_user_id: Option<UserPk>,
@@ -46,7 +46,7 @@ impl OpenChangeSetsView {
 
         // Ensure that we find exactly one change set view that matches the open change sets found.
         let head_change_set_id = ctx.get_workspace_default_change_set_id().await?;
-        let maybe_head_change_set_id: Vec<ChangeSetPointerId> = views
+        let maybe_head_change_set_id: Vec<ChangeSetId> = views
             .iter()
             .filter_map(|v| {
                 if v.id == head_change_set_id {

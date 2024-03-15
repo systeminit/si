@@ -174,7 +174,7 @@ async fn perform_rebase_and_reply_infallible(
             return;
         }
     };
-    ctx.update_visibility_deprecated(Visibility::new_head(false));
+    ctx.update_visibility_deprecated(Visibility::new_head());
     ctx.update_tenancy(Tenancy::new(WorkspacePk::NONE));
 
     let reply_subject = reply_subject.to_subject();

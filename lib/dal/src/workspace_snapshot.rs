@@ -42,7 +42,7 @@ use thiserror::Error;
 use tokio::time::Instant;
 use ulid::Ulid;
 
-use crate::change_set_pointer::{ChangeSetPointer, ChangeSetPointerError, ChangeSetPointerId};
+use crate::change_set_pointer::{ChangeSetId, ChangeSetPointer, ChangeSetPointerError};
 use crate::workspace_snapshot::conflict::Conflict;
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -498,7 +498,7 @@ impl WorkspaceSnapshot {
 
     pub async fn find_for_change_set(
         ctx: &DalContext,
-        change_set_pointer_id: ChangeSetPointerId,
+        change_set_pointer_id: ChangeSetId,
     ) -> WorkspaceSnapshotResult<Self> {
         let row = ctx
             .txns()

@@ -74,7 +74,7 @@ pub mod subject {
         suffix.push('.');
         suffix.push_str(event.metadata.tenancy.workspace_pk.array_to_str(&mut buf));
         suffix.push('.');
-        suffix.push_str(event.metadata.tenancy.change_set_pk.array_to_str(&mut buf));
+        suffix.push_str(event.metadata.tenancy.change_set_id.array_to_str(&mut buf));
         suffix.push('.');
         suffix.push_str(&event.payload.db_name);
         suffix.push('.');

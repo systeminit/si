@@ -1,117 +1,30 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_aux::field_attributes::deserialize_number_from_string;
-use si_data_pg::PgError;
-use telemetry::prelude::*;
-use thiserror::Error;
+use ulid::Ulid;
 
-use crate::{ChangeSetPk, DalContext, TransactionsError};
-
-#[remain::sorted]
-#[derive(Error, Debug)]
-pub enum VisibilityError {
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-}
-
-pub type VisibilityResult<T> = Result<T, VisibilityError>;
+use crate::ChangeSetId;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Visibility {
+    // FIXME(nick): if we change the serialization name, we will blow the fuck up. We need to change
+    // that.
     #[serde(
         rename = "visibility_change_set_pk",
         deserialize_with = "deserialize_number_from_string"
     )]
-    pub change_set_pk: ChangeSetPk,
-    #[serde(rename = "visibility_deleted_at")]
-    pub deleted_at: Option<DateTime<Utc>>,
+    pub change_set_id: ChangeSetId,
 }
 
 impl Visibility {
-    pub fn new(change_set_pk: ChangeSetPk, deleted_at: Option<DateTime<Utc>>) -> Self {
-        Visibility {
-            change_set_pk,
-            deleted_at,
+    pub fn new(change_set_id: ChangeSetId) -> Self {
+        Visibility { change_set_id }
+    }
+
+    // FIXME(nick): this is bullshit.
+    pub fn new_head() -> Self {
+        Self {
+            change_set_id: Ulid::new().into(),
         }
-    }
-
-    /// Constructs a new head [`Visibility`].
-    pub fn new_head(deleted: bool) -> Self {
-        let deleted_at = match deleted {
-            true => Some(Utc::now()),
-            false => None,
-        };
-        Visibility::new(ChangeSetPk::NONE, deleted_at)
-    }
-
-    pub fn to_deleted(&self) -> Self {
-        let mut other = *self;
-        other.deleted_at = Some(Utc::now());
-        other
-    }
-
-    pub fn to_non_deleted(&self) -> Self {
-        let mut other = *self;
-        other.deleted_at = None;
-        other
-    }
-
-    /// Converts this [`Visibility`] to a new head [`Visibility`].
-    pub fn to_head(&self) -> Self {
-        Self::new_head(self.deleted_at.is_some())
-    }
-
-    /// Determines if this [`Visibility`] is a head [`Visibility`].
-    pub fn is_head(&self) -> bool {
-        self.change_set_pk == ChangeSetPk::NONE
-    }
-
-    /// Constructs a new change set `Visibility`.
-    pub fn new_change_set(change_set_pk: ChangeSetPk, deleted: bool) -> Self {
-        let deleted_at = match deleted {
-            true => Some(Utc::now()),
-            false => None,
-        };
-        Visibility::new(change_set_pk, deleted_at)
-    }
-
-    /// Converts this `Visibility` to a new change set `Visibility`.
-    pub fn to_change_set(&self, change_set_pk: ChangeSetPk) -> Self {
-        Self::new_change_set(change_set_pk, self.deleted_at.is_some())
-    }
-
-    /// Converts this `Visibility` to a new change set `Visibility`.
-    pub fn to_change_set_deleted(&self, change_set_pk: ChangeSetPk) -> Self {
-        Self::new_change_set(change_set_pk, true)
-    }
-
-    /// Returns true if this [`Visibility`] is in a working changeset (and not in head)
-    pub fn in_change_set(&self) -> bool {
-        self.change_set_pk != ChangeSetPk::NONE
-    }
-
-    pub fn is_deleted(&self) -> bool {
-        self.deleted_at.is_some()
-    }
-
-    pub async fn is_visible_to(
-        &self,
-        ctx: &DalContext,
-        check_visibility: &Visibility,
-    ) -> VisibilityResult<bool> {
-        let row = ctx
-            .txns()
-            .await?
-            .pg()
-            .query_one(
-                "SELECT is_visible_v1($1, $2, $3) AS result",
-                &[&check_visibility, &self.change_set_pk, &self.deleted_at],
-            )
-            .await?;
-        let result = row.try_get("result")?;
-        Ok(result)
     }
 }
 

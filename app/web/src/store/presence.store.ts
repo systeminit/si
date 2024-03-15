@@ -116,7 +116,7 @@ export const usePresenceStore = () => {
               name: authStore.user.name,
               pictureUrl: authStore.user.picture_url ?? null,
               idle: this.isIdle,
-              changeSetPk: changeSetsStore.selectedChangeSetId ?? null,
+              changeSetId: changeSetsStore.selectedChangeSetId ?? null,
             },
           });
         },
@@ -128,7 +128,7 @@ export const usePresenceStore = () => {
               data: {
                 userName: authStore.user.name,
                 userPk: authStore.user.pk,
-                changeSetPk: changeSetsStore.selectedChangeSetId ?? null,
+                changeSetId: changeSetsStore.selectedChangeSetId ?? null,
                 container: null,
                 containerKey: null,
                 x: x !== null ? x.toString() : null,
@@ -216,7 +216,7 @@ export const usePresenceStore = () => {
                 _.assign(this.usersById[payload.userPk], {
                   pk: payload.userPk,
                   ..._.pick(payload, "name", "idle", "pictureUrl"),
-                  changeSetId: payload.changeSetPk,
+                  changeSetId: payload.changeSetId,
                   lastOnlineAt: new Date(),
                   ...(!payload.idle && { lastActiveAt: new Date() }),
                   ...(needsColor && {

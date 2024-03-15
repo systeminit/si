@@ -49,10 +49,10 @@ pub async fn apply_change_set(
 
     ctx.blocking_commit().await?;
 
-    let mut change_set = ChangeSetPointer::find(&ctx, request.visibility.change_set_pk.into())
+    let mut change_set = ChangeSetPointer::find(&ctx, request.visibility.change_set_id)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(&change_set)
+    ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(change_set.id)
         .await?;
     change_set.apply_to_base_change_set(&ctx).await?;
     ctx.blocking_commit().await?;
@@ -63,7 +63,7 @@ pub async fn apply_change_set(
         &original_uri,
         "apply_change_set",
         serde_json::json!({
-            "merged_change_set": request.visibility.change_set_pk,
+            "merged_change_set": request.visibility.change_set_id,
         }),
     );
 

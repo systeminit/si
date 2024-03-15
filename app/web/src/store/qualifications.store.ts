@@ -174,7 +174,7 @@ export const useQualificationsStore = () => {
             {
               eventType: "ComponentUpdated",
               callback: (data) => {
-                if (data.changeSetPk === changeSetId) {
+                if (data.changeSetId === changeSetId) {
                   this.FETCH_QUALIFICATIONS_SUMMARY();
                 }
               },

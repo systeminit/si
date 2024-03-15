@@ -20,7 +20,7 @@ use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     layer_db_types::{ActionContent, ActionContentV1, ActionPrototypeContent},
     pk, ActionBatchError, ActionKind, ActionPrototype, ActionPrototypeError, ActionPrototypeId,
-    ChangeSetPk, Component, ComponentError, ComponentId, DalContext, HistoryActor,
+    ChangeSetId, Component, ComponentError, ComponentId, DalContext, HistoryActor,
     HistoryEventError, Timestamp, TransactionsError, UserPk, WsEvent, WsEventError, WsEventResult,
     WsPayload,
 };
@@ -77,7 +77,7 @@ pub struct ActionBag {
     pub parents: Vec<ActionId>,
 }
 
-// An Action joins an `ActionPrototype` to a `ComponentId` in a `ChangeSetPk`
+// An Action joins an `ActionPrototype` to a `ComponentId` in a `ChangeSetId`
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Action {
     pub id: ActionId,
@@ -488,7 +488,7 @@ impl Action {
 pub struct ActionAddedPayload {
     component_id: ComponentId,
     action_id: ActionId,
-    change_set_pk: ChangeSetPk,
+    change_set_id: ChangeSetId,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -496,7 +496,7 @@ pub struct ActionAddedPayload {
 pub struct ActionRemovedPayload {
     component_id: ComponentId,
     action_id: ActionId,
-    change_set_pk: ChangeSetPk,
+    change_set_id: ChangeSetId,
 }
 
 impl WsEvent {
@@ -510,7 +510,7 @@ impl WsEvent {
             WsPayload::ActionAdded(ActionAddedPayload {
                 component_id,
                 action_id,
-                change_set_pk: ctx.visibility().change_set_pk,
+                change_set_id: ctx.change_set_id(),
             }),
         )
         .await
@@ -526,7 +526,7 @@ impl WsEvent {
             WsPayload::ActionRemoved(ActionRemovedPayload {
                 component_id,
                 action_id,
-                change_set_pk: ctx.visibility().change_set_pk,
+                change_set_id: ctx.change_set_id(),
             }),
         )
         .await

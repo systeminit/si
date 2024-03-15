@@ -24,7 +24,7 @@ pub fn track(
         .workspace_pk()
         .map(|workspace_pk| workspace_pk.to_string())
         .unwrap_or_else(|| "unknown".to_string());
-    let changeset_id = ctx.visibility().change_set_pk.to_string();
+    let changeset_id = ctx.change_set_id().to_string();
     let current_url = original_uri.to_string();
     if let Some(prop_map) = properties.as_object_mut() {
         prop_map.insert("workspace_id".to_string(), serde_json::json!(workspace_id));

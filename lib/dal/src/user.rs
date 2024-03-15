@@ -7,7 +7,7 @@ use tokio::task::JoinError;
 
 use crate::ws_event::{WsEvent, WsEventResult, WsPayload};
 use crate::{
-    jwt_key::JwtKeyError, pk, standard_model_accessor_ro, ChangeSetPk, DalContext, HistoryEvent,
+    jwt_key::JwtKeyError, pk, standard_model_accessor_ro, ChangeSetId, DalContext, HistoryEvent,
     HistoryEventError, JwtPublicSigningKey, Tenancy, Timestamp, TransactionsError, WorkspacePk,
 };
 
@@ -239,20 +239,20 @@ pub struct OnlinePayload {
     pub user_pk: UserPk,
     pub name: String,
     pub picture_url: Option<String>,
-    pub change_set_pk: Option<ChangeSetPk>,
+    pub change_set_id: Option<ChangeSetId>,
     pub idle: bool,
 }
 
 impl WsEvent {
     pub async fn cursor(
         workspace_pk: WorkspacePk,
-        change_set_pk: ChangeSetPk,
+        change_set_id: Option<ChangeSetId>,
         cursor: CursorPayload,
     ) -> WsEventResult<Self> {
-        WsEvent::new_raw(workspace_pk, change_set_pk, WsPayload::Cursor(cursor)).await
+        WsEvent::new_raw(workspace_pk, change_set_id, WsPayload::Cursor(cursor)).await
     }
 
     pub async fn online(workspace_pk: WorkspacePk, online: OnlinePayload) -> WsEventResult<Self> {
-        WsEvent::new_raw(workspace_pk, ChangeSetPk::NONE, WsPayload::Online(online)).await
+        WsEvent::new_raw(workspace_pk, None, WsPayload::Online(online)).await
     }
 }

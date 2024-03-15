@@ -683,32 +683,32 @@ export const useFuncStore = () => {
               this.FETCH_FUNC_LIST();
             },
           },
-          // TODO(victor) we don't need the changesetpk checks below, since nats filters messages already
+          // TODO(victor) we don't need the changeSetId checks below, since nats filters messages already
           {
             eventType: "FuncCreated",
             callback: (data) => {
-              if (data.changeSetPk !== selectedChangeSetId) return;
+              if (data.changeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
             },
           },
           {
             eventType: "FuncDeleted",
             callback: (data) => {
-              if (data.changeSetPk !== selectedChangeSetId) return;
+              if (data.changeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
             },
           },
           {
             eventType: "FuncReverted",
             callback: (data) => {
-              if (data.changeSetPk !== selectedChangeSetId) return;
+              if (data.changeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
             },
           },
           {
             eventType: "FuncSaved",
             callback: (data) => {
-              if (data.changeSetPk !== selectedChangeSetId) return;
+              if (data.changeSetId !== selectedChangeSetId) return;
               this.FETCH_FUNC_LIST();
             },
           },

@@ -18,7 +18,7 @@ use crate::{
     func::binding::LogLinePayload,
     pkg::ModuleImportedPayload,
     user::CursorPayload,
-    ChangeSetPk, DalContext, PropId, StandardModelError, TransactionsError, WorkspacePk,
+    ChangeSetId, DalContext, PropId, StandardModelError, TransactionsError, WorkspacePk,
 };
 
 #[remain::sorted]
@@ -60,10 +60,10 @@ pub enum WsPayload {
     ChangeSetBeginApprovalProcess(ChangeSetActorPayload),
     ChangeSetCancelAbandonProcess(ChangeSetActorPayload),
     ChangeSetCancelApprovalProcess(ChangeSetActorPayload),
-    ChangeSetCanceled(ChangeSetPk),
-    ChangeSetCreated(ChangeSetPk),
+    ChangeSetCanceled(ChangeSetId),
+    ChangeSetCreated(ChangeSetId),
     ChangeSetMergeVote(ChangeSetMergeVotePayload),
-    ChangeSetWritten(ChangeSetPk),
+    ChangeSetWritten(ChangeSetId),
     CheckedQualifications(QualificationCheckPayload),
     // CodeGenerated(CodeGeneratedPayload),
     ComponentCreated(ComponentCreatedPayload),
@@ -102,20 +102,20 @@ pub enum StatusValueKind {
 pub struct WsEvent {
     version: i64,
     workspace_pk: WorkspacePk,
-    change_set_pk: ChangeSetPk,
+    change_set_id: Option<ChangeSetId>,
     payload: WsPayload,
 }
 
 impl WsEvent {
     pub async fn new_raw(
         workspace_pk: WorkspacePk,
-        change_set_pk: ChangeSetPk,
+        change_set_id: Option<ChangeSetId>,
         payload: WsPayload,
     ) -> WsEventResult<Self> {
         Ok(WsEvent {
             version: 1,
             workspace_pk,
-            change_set_pk,
+            change_set_id,
             payload,
         })
     }
@@ -126,8 +126,8 @@ impl WsEvent {
                 return Err(WsEventError::NoWorkspaceInTenancy);
             }
         };
-        let change_set_pk = ctx.visibility().change_set_pk;
-        Self::new_raw(workspace_pk, change_set_pk, payload).await
+        let change_set_pk = ctx.change_set_id();
+        Self::new_raw(workspace_pk, Some(change_set_pk), payload).await
     }
 
     pub fn workspace_pk(&self) -> WorkspacePk {
