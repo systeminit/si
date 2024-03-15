@@ -1,5 +1,6 @@
 use serde::{de::DeserializeOwned, Serialize};
 use si_data_pg::{PgPool, PgPoolConfig};
+use std::collections::HashMap;
 use std::{hash::Hash, path::Path, sync::Arc};
 
 use crate::disk_cache::DiskCache;
@@ -68,6 +69,18 @@ where
                 },
             },
         })
+    }
+
+    pub async fn get_bulk(&self, keys: &[K]) -> LayerDbResult<HashMap<K, V>> {
+        let mut found_keys = HashMap::new();
+
+        for key in keys {
+            if let Some(v) = self.get(key).await? {
+                found_keys.insert(*key, v);
+            }
+        }
+
+        Ok(found_keys)
     }
 
     pub fn memory_cache(&self) -> MemoryCache<K, V> {
