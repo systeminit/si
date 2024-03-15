@@ -1,13 +1,28 @@
 <template>
-  <div id="vizDiv" class="h-full w-full m-0 p-0 overflow-hidden"></div>
+  <Stack class="h-full w-full">
+    <section>
+      <VormInput
+        v-model="search_query"
+        label="Find Node"
+        type="text"
+        class="flex-1"
+      />
+    </section>
+    <section
+      id="vizDiv"
+      class="h-full w-full m-0 p-0 overflow-hidden"
+    ></section>
+  </Stack>
 </template>
 
 <script lang="ts" setup>
-import { onMounted } from "vue";
+import { VormInput, Stack } from "@si/vue-lib/design-system";
 import { DirectedGraph } from "graphology";
 import Sigma from "sigma";
+import { NodeDisplayData, EdgeDisplayData, Coordinates } from "sigma/types";
 import FA2Layout from "graphology-layout-forceatlas2/worker";
 import forceAtlas2 from "graphology-layout-forceatlas2";
+import { onMounted, ref, watchPostEffect } from "vue";
 import { useVizStore } from "@/store/viz.store";
 
 const vizStore = useVizStore();
@@ -43,6 +58,20 @@ const getColor = (nodeKind: string, contentKind: string | null) => {
   }
 };
 
+const search_query = ref("");
+
+interface State {
+  hoveredNode?: string;
+
+  // State derived from query:
+  selectedNode?: string;
+  suggestions?: Set<string>;
+
+  // State derived from hovered node:
+  hoveredNeighbors?: Set<string>;
+}
+const state: State = {};
+
 onMounted(async () => {
   let nodesAndEdges;
   let size: number;
@@ -60,11 +89,10 @@ onMounted(async () => {
     return;
   }
 
-  const graph = new DirectedGraph();
-
   const nodes = nodesAndEdges.result.data.nodes;
   const edges = nodesAndEdges.result.data.edges;
 
+  const graph = new DirectedGraph();
 
   for (const node of nodes) {
     graph.addNode(node.id, {
@@ -83,16 +111,103 @@ onMounted(async () => {
   }
 
   const sensibleSettings = forceAtlas2.inferSettings(graph);
-  const fa2Layout = new FA2Layout(graph, {
-    settings: sensibleSettings,
-  });
+  const fa2Layout = new FA2Layout(graph, { settings: sensibleSettings });
 
   fa2Layout.start();
 
   const container = document.getElementById("vizDiv") as HTMLElement;
-  // tslint:disable-next-line
-  const _sigma = new Sigma(graph, container, {
-    allowInvalidContainer: true,
+  const renderer = new Sigma(graph, container, { allowInvalidContainer: true });
+
+  renderer.on("enterNode", ({ node }) => {
+    setHoveredNode(node);
+  });
+  renderer.on("leaveNode", () => {
+    setHoveredNode(undefined);
+  });
+
+  function setHoveredNode(node?: string) {
+    if (node) {
+      state.hoveredNode = node;
+      state.hoveredNeighbors = new Set(graph.neighbors(node));
+    } else {
+      state.hoveredNode = undefined;
+      state.hoveredNeighbors = undefined;
+    }
+
+    renderer.refresh();
+  }
+
+  renderer.setSetting("nodeReducer", (node, data) => {
+    const res: Partial<NodeDisplayData> = { ...data };
+
+    if (
+      state.hoveredNeighbors &&
+      !state.hoveredNeighbors.has(node) &&
+      state.hoveredNode !== node
+    ) {
+      res.label = "";
+      res.color = "#f6f6f6";
+    }
+
+    if (state.selectedNode === node) {
+      res.highlighted = true;
+    } else if (state.suggestions && !state.suggestions.has(node)) {
+      res.label = "";
+      res.color = "#f6f6f6";
+    }
+
+    return res;
+  });
+
+  renderer.setSetting("edgeReducer", (edge, data) => {
+    const res: Partial<EdgeDisplayData> = { ...data };
+
+    if (state.hoveredNode && !graph.hasExtremity(edge, state.hoveredNode)) {
+      res.hidden = true;
+    }
+
+    if (
+      state.suggestions &&
+      (!state.suggestions.has(graph.source(edge)) ||
+        !state.suggestions.has(graph.target(edge)))
+    ) {
+      res.hidden = true;
+    }
+
+    return res;
+  });
+
+  watchPostEffect((): void => {
+    if (!search_query.value) {
+      state.selectedNode = undefined;
+      state.suggestions = undefined;
+      return;
+    }
+
+    const q = search_query.value.toLowerCase();
+    const options = graph
+      .nodes()
+      .map((n) => ({
+        id: n,
+        label: graph.getNodeAttribute(n, "label") as string,
+      }))
+      .filter((data) => data.label.toLowerCase().includes(q));
+
+    if (options.length === 1 && options[0]?.label === search_query.value) {
+      state.selectedNode = options[0].id;
+      state.suggestions = undefined;
+
+      // Move the camera to center it on the selected node:
+      const nodePosition = renderer.getNodeDisplayData(
+        state.selectedNode,
+      ) as Coordinates;
+      renderer.getCamera().animate(nodePosition, {
+        duration: 500,
+      });
+    } else {
+      state.selectedNode = undefined;
+      state.suggestions = new Set(options.map(({ id }) => id));
+    }
   });
 });
 </script>
