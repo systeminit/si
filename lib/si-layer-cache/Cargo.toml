@@ -7,6 +7,7 @@ publish = false
 
 [dependencies]
 async-trait = { workspace = true }
+base64 = { workspace = true }
 blake3 = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
@@ -19,12 +20,15 @@ remain = { workspace = true }
 serde = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
-si-std = { path = "../../lib/si-std" }
 si-events = { path = "../../lib/si-events-rs" }
+si-std = { path = "../../lib/si-std" }
 sled = { workspace = true }
+strum = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tokio-util = { workspace = true }
 ulid = { workspace = true }
 
 [dev_dependencies]

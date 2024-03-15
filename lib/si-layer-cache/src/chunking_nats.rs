@@ -35,19 +35,26 @@ const HEADER_CUR_CHUNK: &str = "X-CUR-CHUNK";
 pub struct ChunkingNats {
     context: jetstream::context::Context,
     chunk_size: Option<usize>,
+    prefix: Option<Arc<str>>,
 }
 
 impl ChunkingNats {
     #[inline]
-    pub fn new(context: jetstream::context::Context) -> Self {
+    pub fn new(prefix: Option<String>, context: jetstream::context::Context) -> Self {
         Self {
+            prefix: prefix.map(|s| s.into()),
             context,
             chunk_size: None,
         }
     }
 
-    pub fn with_chunk_size(context: jetstream::context::Context, chunk_size: usize) -> Self {
+    pub fn with_chunk_size(
+        prefix: Option<String>,
+        context: jetstream::context::Context,
+        chunk_size: usize,
+    ) -> Self {
         Self {
+            prefix: prefix.map(|s| s.into()),
             context,
             chunk_size: Some(chunk_size),
         }
@@ -97,6 +104,10 @@ impl ChunkingNats {
             inner: messages,
             buffers: HashMap::new(),
         }
+    }
+
+    pub fn prefix(&self) -> Option<&str> {
+        self.prefix.as_deref()
     }
 }
 

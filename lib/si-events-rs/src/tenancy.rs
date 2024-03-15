@@ -1,7 +1,7 @@
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
 use serde::{Deserialize, Serialize};
-use ulid::Ulid;
+use ulid::{Ulid, ULID_LEN};
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct WorkspacePk(Ulid);
@@ -9,6 +9,10 @@ pub struct WorkspacePk(Ulid);
 impl WorkspacePk {
     pub fn new() -> WorkspacePk {
         WorkspacePk(Ulid::new())
+    }
+
+    pub fn array_to_str<'buf>(&self, buf: &'buf mut [u8; ULID_LEN]) -> &'buf mut str {
+        self.0.array_to_str(buf)
     }
 
     pub fn into_inner(self) -> Ulid {
@@ -36,12 +40,22 @@ impl From<ulid::Ulid> for WorkspacePk {
     }
 }
 
+impl fmt::Display for WorkspacePk {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 #[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ChangeSetPk(Ulid);
 
 impl ChangeSetPk {
     pub fn new() -> ChangeSetPk {
         ChangeSetPk(Ulid::new())
+    }
+
+    pub fn array_to_str<'buf>(&self, buf: &'buf mut [u8; ULID_LEN]) -> &'buf mut str {
+        self.0.array_to_str(buf)
     }
 
     pub fn into_inner(self) -> Ulid {

@@ -12,6 +12,7 @@ use crate::{
 };
 
 pub const DBNAME: &str = "cas";
+pub const CACHE_NAME: &str = "cas";
 pub const PARTITION_KEY: &str = "cas";
 
 #[derive(Debug, Clone)]
@@ -19,7 +20,7 @@ pub struct CasDb<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub cache: LayerCache<CasPk, Arc<V>>,
+    pub cache: LayerCache<Arc<V>>,
     persister_client: PersisterClient,
 }
 
@@ -27,7 +28,7 @@ impl<V> CasDb<V>
 where
     V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
-    pub fn new(cache: LayerCache<CasPk, Arc<V>>, persister_client: PersisterClient) -> Self {
+    pub fn new(cache: LayerCache<Arc<V>>, persister_client: PersisterClient) -> Self {
         CasDb {
             cache,
             persister_client,
@@ -43,12 +44,14 @@ where
     ) -> LayerDbResult<(CasPk, PersisterStatusReader)> {
         let postcard_value = postcard::to_stdvec(&value)?;
         let key = CasPk::new(ContentHash::new(&postcard_value));
-        self.cache.insert(key, value).await;
+        let cache_key: Arc<str> = key.to_string().into();
+
+        self.cache.insert(cache_key.clone(), value.clone()).await;
 
         let event = LayeredEvent::new(
             LayeredEventKind::CasInsertion,
             Arc::new(DBNAME.to_string()),
-            Arc::new(key.as_bytes().to_vec()),
+            cache_key,
             Arc::new(postcard_value),
             Arc::new("cas".to_string()),
             web_events,
@@ -61,10 +64,11 @@ where
     }
 
     pub async fn read(&self, key: &CasPk) -> LayerDbResult<Option<Arc<V>>> {
-        self.cache.get(key).await
+        self.cache.get(key.to_string().into()).await
     }
 
-    pub async fn read_many(&self, keys: &[CasPk]) -> LayerDbResult<HashMap<CasPk, Arc<V>>> {
-        self.cache.get_bulk(keys).await
+    pub async fn read_many(&self, keys: &[CasPk]) -> LayerDbResult<HashMap<String, Arc<V>>> {
+        let keys: Vec<Arc<str>> = keys.iter().map(|k| k.to_string().into()).collect();
+        self.cache.get_bulk(&keys).await
     }
 }

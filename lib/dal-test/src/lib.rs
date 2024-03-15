@@ -691,6 +691,10 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         drop_old_test_databases(services_ctx.content_store_pg_pool())
             .await
             .wrap_err("failed to drop old test-specific content store databases")?;
+        info!("dropping old test-specific layerdb databases");
+        drop_old_test_databases(services_ctx.layer_db().pg_pool())
+            .await
+            .wrap_err("failed to drop old test-specific content store databases")?;
     }
 
     // Ensure the database is totally clean, then run all migrations
@@ -761,6 +765,9 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     info!("shutting down initial migrations Council server");
     council_shutdown_request_tx.send(())?;
+
+    // Shutdown the layerdb
+    services_ctx.layer_db().shutdown().await;
 
     info!("global test setup complete");
     Ok(())

@@ -1,15 +1,22 @@
 use std::sync::Arc;
 
-use si_data_nats::NatsClient;
+use base64::{engine::general_purpose, Engine as _};
+use si_data_nats::{async_nats::jetstream, HeaderMap, NatsClient};
 use si_data_pg::PgPool;
 use tokio::{
     join,
     sync::{mpsc, oneshot},
 };
+use ulid::Ulid;
 
 use crate::{
+    chunking_nats::ChunkingNats,
     error::{LayerDbError, LayerDbResult},
     event::LayeredEvent,
+    nats::{
+        layerdb_events_stream, subject, NATS_HEADER_DB_NAME, NATS_HEADER_INSTANCE_ID,
+        NATS_HEADER_KEY,
+    },
     pg::PgLayer,
 };
 
@@ -81,35 +88,55 @@ impl PersisterClient {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct PersisterServer {
-    pub sled: sled::Db,
-    pub pg_pool: PgPool,
-    pub nats_client: NatsClient,
+    messages: mpsc::UnboundedReceiver<PersistMessage>,
+    sled: sled::Db,
+    pg_pool: PgPool,
+    nats: ChunkingNats,
+    instance_id: Ulid,
 }
 
 impl PersisterServer {
-    pub async fn start(
-        mut rx: mpsc::UnboundedReceiver<PersistMessage>,
+    pub async fn create(
+        messages: mpsc::UnboundedReceiver<PersistMessage>,
         sled: sled::Db,
         pg_pool: PgPool,
-        nats_client: NatsClient,
-    ) {
-        let server = PersisterServer {
+        nats_client: &NatsClient,
+        instance_id: Ulid,
+    ) -> LayerDbResult<Self> {
+        let context = jetstream::new(nats_client.as_inner().clone());
+        // Ensure the Jetstream is created
+        let _stream =
+            layerdb_events_stream(&context, nats_client.metadata().subject_prefix()).await?;
+        let nats = ChunkingNats::new(
+            nats_client
+                .metadata()
+                .subject_prefix()
+                .map(|s| s.to_owned()),
+            context,
+        );
+
+        Ok(Self {
+            messages,
             sled,
             pg_pool,
-            nats_client,
-        };
+            nats,
+            instance_id,
+        })
+    }
 
-        while let Some(msg) = rx.recv().await {
+    pub async fn run(mut self) {
+        while let Some(msg) = self.messages.recv().await {
             match msg {
                 PersistMessage::Write((event, status_tx)) => {
-                    let task = PersisterTask::new(
-                        server.sled.clone(),
-                        server.pg_pool.clone(),
-                        server.nats_client.clone(),
+                    let task = PersistEventTask::new(
+                        self.sled.clone(),
+                        self.pg_pool.clone(),
+                        self.nats.clone(),
+                        self.instance_id,
                     );
-                    tokio::spawn(async move { task.write_layers(event, status_tx).await });
+                    tokio::spawn(task.write_layers(event, status_tx));
                 }
                 PersistMessage::Shutdown => break,
             }
@@ -125,22 +152,24 @@ pub struct PersisterTaskError {
 }
 
 #[derive(Debug, Clone)]
-pub struct PersisterTask {
+pub struct PersistEventTask {
     sled: sled::Db,
     pg_pool: PgPool,
-    _nats_client: NatsClient,
+    nats: ChunkingNats,
+    instance_id: Ulid,
 }
 
-impl PersisterTask {
-    pub fn new(sled: sled::Db, pg_pool: PgPool, nats_client: NatsClient) -> Self {
-        PersisterTask {
+impl PersistEventTask {
+    pub fn new(sled: sled::Db, pg_pool: PgPool, nats: ChunkingNats, instance_id: Ulid) -> Self {
+        PersistEventTask {
             sled,
             pg_pool,
-            _nats_client: nats_client,
+            nats,
+            instance_id,
         }
     }
 
-    pub async fn write_layers(&self, event: LayeredEvent, status_tx: PersisterStatusWriter) {
+    pub async fn write_layers(self, event: LayeredEvent, status_tx: PersisterStatusWriter) {
         match self.try_write_layers(event).await {
             Ok(_) => status_tx.send(PersistStatus::Finished),
             Err(e) => status_tx.send(PersistStatus::Error(e)),
@@ -155,30 +184,66 @@ impl PersisterTask {
         let disk_event = event.clone();
         let disk_join = tokio::task::spawn_blocking(move || disk_self.write_to_disk(disk_event));
 
-        // Write to nats - TODO for adam and fletcher
+        // Write to nats
+        let nats_subject = subject::for_event(self.nats.prefix(), event.as_ref());
+        let nats = self.nats.clone();
+        let mut nats_headers = HeaderMap::new();
+        nats_headers.insert(NATS_HEADER_DB_NAME, event.payload.db_name.as_str());
+        nats_headers.insert(NATS_HEADER_KEY, base64_encode(&*event.payload.key).as_str());
+        nats_headers.insert(
+            NATS_HEADER_INSTANCE_ID,
+            self.instance_id.to_string().as_str(),
+        );
+        let nats_payload = postcard::to_stdvec(&event)?;
+        let nats_join = tokio::spawn(async move {
+            nats.publish_with_headers(nats_subject, nats_headers, nats_payload.into())
+                .await
+        });
 
         // Write to pg
         let pg_self = self.clone();
         let pg_event = event.clone();
         let pg_join = tokio::task::spawn(async move { pg_self.write_to_pg(pg_event).await });
 
-        match join![disk_join, pg_join] {
-            (Ok(_), Ok(_)) => Ok(()),
-            (Ok(_), Err(e)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                disk_error: None,
-                nats_error: None,
-                pg_error: Some(e.to_string()),
-            })),
-            (Err(e), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
+        match join![disk_join, pg_join, nats_join] {
+            (Ok(_), Ok(_), Ok(_)) => Ok(()),
+            (Err(e), Ok(_), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
                 disk_error: Some(e.to_string()),
-                nats_error: None,
                 pg_error: None,
-            })),
-            (Err(d), Err(p)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
-                disk_error: Some(d.to_string()),
                 nats_error: None,
-                pg_error: Some(p.to_string()),
             })),
+            (Ok(_), Err(e), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
+                disk_error: None,
+                pg_error: Some(e.to_string()),
+                nats_error: None,
+            })),
+            (Ok(_), Ok(_), Err(e)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
+                disk_error: None,
+                pg_error: None,
+                nats_error: Some(e.to_string()),
+            })),
+            (Err(d), Err(p), Ok(_)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
+                disk_error: Some(d.to_string()),
+                pg_error: Some(p.to_string()),
+                nats_error: None,
+            })),
+            (Ok(_), Err(p), Err(n)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
+                disk_error: None,
+                pg_error: Some(p.to_string()),
+                nats_error: Some(n.to_string()),
+            })),
+            (Err(d), Ok(_), Err(n)) => Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
+                disk_error: Some(d.to_string()),
+                pg_error: None,
+                nats_error: Some(n.to_string()),
+            })),
+            (Err(d), Err(p), Err(n)) => {
+                Err(LayerDbError::PersisterTaskFailed(PersisterTaskError {
+                    disk_error: Some(d.to_string()),
+                    pg_error: Some(p.to_string()),
+                    nats_error: Some(n.to_string()),
+                }))
+            }
         }
     }
 
@@ -193,11 +258,15 @@ impl PersisterTask {
         let pg_layer = PgLayer::new(self.pg_pool.clone(), event.payload.db_name.as_ref());
         pg_layer
             .insert(
-                &event.payload.key[..],
+                &event.payload.key,
                 event.payload.sort_key.as_ref(),
                 &event.payload.value[..],
             )
             .await?;
         Ok(())
     }
+}
+
+fn base64_encode(input: impl AsRef<[u8]>) -> String {
+    general_purpose::STANDARD_NO_PAD.encode(input)
 }
