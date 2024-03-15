@@ -67,7 +67,7 @@ impl Frame {
         parent_id: ComponentId,
         child_id: ComponentId,
     ) -> FrameResult<()> {
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
 
         ctx.workspace_snapshot()?
             .add_edge(

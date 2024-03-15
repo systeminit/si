@@ -13,7 +13,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncError;
@@ -40,7 +40,7 @@ pub enum PropError {
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("child prop of {0:?} not found by name: {1}")]
     ChildPropNotFoundByName(NodeIndex, String),
     #[error("edge weight error: {0}")]
@@ -530,7 +530,7 @@ impl Prop {
             .await
             .add(&PropContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_prop(change_set, id, kind, name, hash)?;
         let workspace_snapshot = ctx.workspace_snapshot()?;
@@ -704,7 +704,7 @@ impl Prop {
         ctx.workspace_snapshot()?
             .add_edge(
                 prop_id,
-                EdgeWeight::new(ctx.change_set_pointer()?, EdgeWeightKind::Prototype(None))?,
+                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::Prototype(None))?,
                 attribute_prototype_id,
             )
             .await?;
@@ -834,7 +834,7 @@ impl Prop {
                 .add(&PropContent::V1(updated.clone()))?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set_pointer()?, prop.id.into(), hash)
+                .update_content(ctx.change_set()?, prop.id.into(), hash)
                 .await?;
         }
         Ok(prop)

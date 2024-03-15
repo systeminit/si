@@ -6,8 +6,8 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    ChangeSetPointerError, KeyPairError, SecretId, StandardModelError, TransactionsError,
-    UserError, WorkspacePk, WsEventError,
+    ChangeSetError, KeyPairError, SecretId, StandardModelError, TransactionsError, UserError,
+    WorkspacePk, WsEventError,
 };
 use thiserror::Error;
 
@@ -22,7 +22,7 @@ pub mod update_secret;
 #[derive(Debug, Error)]
 pub enum SecretError {
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     ContextTransactions(#[from] TransactionsError),
     // #[error(transparent)]

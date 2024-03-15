@@ -7,7 +7,7 @@ use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::AttributePrototypeError;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
-    change_set_pointer::ChangeSetPointerError,
+    change_set::ChangeSetError,
     func::{argument::FuncArgumentError, FuncError},
     installed_pkg::InstalledPkgError,
     prop::PropError,
@@ -40,7 +40,7 @@ pub enum PkgError {
     #[error("attrbute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error(transparent)]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSetPointer(#[from] ChangeSetError),
     #[error(transparent)]
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("expected data on an SiPkg node, but none found: {0}")]

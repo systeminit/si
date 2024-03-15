@@ -4,7 +4,7 @@ use crate::server::service::change_set::ChangeSetError;
 use crate::server::tracking::track;
 use axum::extract::OriginalUri;
 use axum::Json;
-use dal::change_set_pointer::ChangeSetPointer;
+use dal::change_set::ChangeSet;
 use dal::{ChangeSetId, ChangeSetStatus};
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,7 @@ pub struct AbandonChangeSetRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AbandonChangeSetResponse {
-    pub change_set: ChangeSetPointer,
+    pub change_set: ChangeSet,
 }
 
 pub async fn abandon_change_set(
@@ -29,7 +29,7 @@ pub async fn abandon_change_set(
 ) -> ChangeSetResult<()> {
     let mut ctx = builder.build_head(access_builder).await?;
 
-    let mut change_set = ChangeSetPointer::find(&ctx, request.change_set_id)
+    let mut change_set = ChangeSet::find(&ctx, request.change_set_id)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
     ctx.update_visibility_and_snapshot_to_visibility_no_editing_change_set(change_set.id)

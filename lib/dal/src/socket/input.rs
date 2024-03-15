@@ -5,7 +5,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::prototype::AttributePrototypeError;
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::func::FuncError;
 use crate::layer_db_types::{InputSocketContent, InputSocketContentV1};
 use crate::socket::{SocketArity, SocketKind};
@@ -28,7 +28,7 @@ pub enum InputSocketError {
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error(transparent)]
     ConnectionAnnotation(#[from] ConnectionAnnotationError),
     #[error("edge weight error: {0}")]
@@ -145,10 +145,7 @@ impl InputSocket {
         ctx.workspace_snapshot()?
             .add_edge(
                 input_socket_id,
-                EdgeWeight::new(
-                    ctx.change_set_pointer()?,
-                    EdgeWeightKind::Prototype(key.to_owned()),
-                )?,
+                EdgeWeight::new(ctx.change_set()?, EdgeWeightKind::Prototype(key.to_owned()))?,
                 attribute_prototype_id,
             )
             .await?;
@@ -225,7 +222,7 @@ impl InputSocket {
             .try_lock()?
             .add(&InputSocketContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
 
         {

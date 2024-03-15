@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use strum::Display;
 use ulid::Ulid;
 
-use crate::change_set_pointer::ChangeSetPointer;
+use crate::change_set::ChangeSet;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::workspace_snapshot::{node_weight::NodeWeightResult, vector_clock::VectorClock};
 
@@ -42,20 +42,14 @@ impl CategoryNodeWeight {
         self.kind
     }
 
-    pub fn increment_seen_vector_clock(
-        &mut self,
-        change_set: &ChangeSetPointer,
-    ) -> NodeWeightResult<()> {
+    pub fn increment_seen_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
         self.vector_clock_first_seen
             .inc(change_set.vector_clock_id())?;
 
         Ok(())
     }
 
-    pub fn increment_vector_clock(
-        &mut self,
-        change_set: &ChangeSetPointer,
-    ) -> NodeWeightResult<()> {
+    pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
         self.vector_clock_write
             .inc(change_set.vector_clock_id())
             .map_err(Into::into)
@@ -80,7 +74,7 @@ impl CategoryNodeWeight {
 
     pub fn merge_clocks(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         other: &CategoryNodeWeight,
     ) -> NodeWeightResult<()> {
         self.vector_clock_write
@@ -97,7 +91,7 @@ impl CategoryNodeWeight {
         self.merkle_tree_hash
     }
 
-    pub fn new(change_set: &ChangeSetPointer, kind: CategoryNodeKind) -> NodeWeightResult<Self> {
+    pub fn new(change_set: &ChangeSet, kind: CategoryNodeKind) -> NodeWeightResult<Self> {
         Ok(Self {
             id: change_set.generate_ulid()?,
             lineage_id: change_set.generate_ulid()?,
@@ -112,7 +106,7 @@ impl CategoryNodeWeight {
 
     pub fn new_with_incremented_vector_clock(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
     ) -> NodeWeightResult<Self> {
         let mut new_ordering_weight = self.clone();
         new_ordering_weight.increment_vector_clock(change_set)?;
@@ -130,7 +124,7 @@ impl CategoryNodeWeight {
 
     pub fn set_vector_clock_recently_seen_to(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         new_val: DateTime<Utc>,
     ) {
         self.vector_clock_recently_seen

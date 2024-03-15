@@ -11,7 +11,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::action::batch::ActionBatchId;
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::workspace_snapshot::content_address::ContentAddress;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
@@ -69,7 +69,7 @@ pub enum ActionRunnerError {
     #[error("cannot set action runner for {0}: batch ({1}) already started")]
     BatchAlreadyStarted(ActionRunnerId, ActionBatchId),
     #[error(transparent)]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSetPointer(#[from] ChangeSetError),
     #[error(transparent)]
     Component(#[from] ComponentError),
     #[error(transparent)]
@@ -229,7 +229,7 @@ impl ActionRunner {
             .await
             .add(&ActionRunnerContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::ActionRunner(hash))?;
@@ -360,7 +360,7 @@ impl ActionRunner {
             .add(&ActionRunnerContent::V1(content.clone()))?;
 
         ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .update_content(ctx.change_set()?, self.id.into(), hash)
             .await?;
         Ok(())
     }
@@ -380,7 +380,7 @@ impl ActionRunner {
             .add(&ActionRunnerContent::V1(content.clone()))?;
 
         ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .update_content(ctx.change_set()?, self.id.into(), hash)
             .await?;
         Ok(())
     }
@@ -400,7 +400,7 @@ impl ActionRunner {
             .add(&ActionRunnerContent::V1(content.clone()))?;
 
         ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .update_content(ctx.change_set()?, self.id.into(), hash)
             .await?;
         Ok(())
     }
@@ -416,7 +416,7 @@ impl ActionRunner {
             .add(&ActionRunnerContent::V1(content.clone()))?;
 
         ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .update_content(ctx.change_set()?, self.id.into(), hash)
             .await?;
         Ok(())
     }
@@ -432,7 +432,7 @@ impl ActionRunner {
             .add(&ActionRunnerContent::V1(content.clone()))?;
 
         ctx.workspace_snapshot()?
-            .update_content(ctx.change_set_pointer()?, self.id.into(), hash)
+            .update_content(ctx.change_set()?, self.id.into(), hash)
             .await?;
         Ok(())
     }

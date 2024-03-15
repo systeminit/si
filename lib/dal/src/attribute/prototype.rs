@@ -16,7 +16,7 @@ use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -35,7 +35,7 @@ pub mod argument;
 #[derive(Error, Debug)]
 pub enum AttributePrototypeError {
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("attribute prototype {0} is missing a function edge")]
@@ -116,7 +116,7 @@ impl AttributePrototype {
             .await
             .add(&AttributePrototypeContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight =
             NodeWeight::new_content(change_set, id, ContentAddress::AttributePrototype(hash))?;
@@ -238,7 +238,7 @@ impl AttributePrototype {
                 attribute_prototype_id,
             ))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         workspace_snapshot
             .remove_edge(
                 change_set,
@@ -372,7 +372,7 @@ impl AttributePrototype {
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<()> {
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
 
         ctx.workspace_snapshot()?
             .remove_node_by_id(change_set, prototype_id)

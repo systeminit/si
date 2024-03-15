@@ -8,7 +8,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::layer_db_types::{FuncContent, FuncContentV1};
 use crate::schema::variant::SchemaVariantResult;
@@ -30,7 +30,7 @@ pub enum FuncError {
     #[error("base64 decode error: {0}")]
     Base64Decode(#[from] base64::DecodeError),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("cannot find intrinsic func {0}")]
@@ -177,7 +177,7 @@ impl Func {
             .await
             .add(&FuncContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_func(change_set, id, name.into(), backend_kind, hash)?;
 
@@ -318,7 +318,7 @@ impl Func {
 
             workspace_snapshot
                 .add_node(NodeWeight::Func(
-                    node_weight.new_with_incremented_vector_clock(ctx.change_set_pointer()?)?,
+                    node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?,
                 ))
                 .await?;
 
@@ -335,7 +335,7 @@ impl Func {
                 .await
                 .add(&FuncContent::V1(updated.clone()))?;
             workspace_snapshot
-                .update_content(ctx.change_set_pointer()?, func.id.into(), hash)
+                .update_content(ctx.change_set()?, func.id.into(), hash)
                 .await?;
         }
 
@@ -354,7 +354,7 @@ impl Func {
             .incoming_sources_for_edge_weight_kind(id, EdgeWeightKind::Use.into())
             .await?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         for user in users {
             workspace_snapshot
                 .remove_edge(change_set, user, arg_node_idx, EdgeWeightKind::Use.into())

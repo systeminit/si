@@ -10,7 +10,7 @@ pub mod batch;
 pub mod prototype;
 pub mod runner;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::layer_db_types::ComponentContent;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
@@ -33,7 +33,7 @@ pub enum ActionError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error(transparent)]
-    ChangeSetPointer(#[from] ChangeSetPointerError),
+    ChangeSetPointer(#[from] ChangeSetError),
     #[error(transparent)]
     Component(#[from] ComponentError),
     #[error("component not found for: {0}")]
@@ -124,7 +124,7 @@ impl Action {
             .await
             .add(&ActionContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Action(hash))?;
         let action_prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
@@ -164,7 +164,7 @@ impl Action {
 
     pub async fn delete(self, ctx: &DalContext) -> ActionResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         workspace_snapshot
             .remove_node_by_id(change_set, self.id)
             .await?;

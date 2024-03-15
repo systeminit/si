@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext, PosthogClient};
 use crate::server::tracking::track;
 use axum::extract::{Json, OriginalUri};
 use axum::response::IntoResponse;
-use dal::{Action, ActionPrototypeId, ChangeSetPointer, ComponentId, Visibility, WsEvent};
+use dal::{Action, ActionPrototypeId, ChangeSet, ComponentId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -24,7 +24,7 @@ pub async fn add_action(
 ) -> ChangeSetResult<impl IntoResponse> {
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let force_changeset_pk = ChangeSetPointer::force_new(&mut ctx).await?;
+    let force_changeset_pk = ChangeSet::force_new(&mut ctx).await?;
 
     let action = Action::upsert(&ctx, request.prototype_id, request.component_id).await?;
     let prototype = action.prototype(&ctx).await?;

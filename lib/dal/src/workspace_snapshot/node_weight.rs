@@ -9,7 +9,7 @@ use crate::func::execution::FuncExecutionPk;
 use crate::workspace_snapshot::vector_clock::VectorClockId;
 use crate::FuncBackendKind;
 use crate::{
-    change_set_pointer::{ChangeSetPointer, ChangeSetPointerError},
+    change_set::{ChangeSet, ChangeSetError},
     workspace_snapshot::{
         content_address::ContentAddress,
         vector_clock::{VectorClock, VectorClockError},
@@ -49,7 +49,7 @@ pub enum NodeWeightError {
     #[error("Cannot update root node's content hash")]
     CannotUpdateRootNodeContentHash,
     #[error("ChangeSet error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("Incompatible node weights")]
     IncompatibleNodeWeightVariants,
     #[error("Invalid ContentAddress variant ({0}) for NodeWeight variant ({1})")]
@@ -121,10 +121,7 @@ impl NodeWeight {
         }
     }
 
-    pub fn increment_vector_clock(
-        &mut self,
-        change_set: &ChangeSetPointer,
-    ) -> NodeWeightResult<()> {
+    pub fn increment_vector_clock(&mut self, change_set: &ChangeSet) -> NodeWeightResult<()> {
         match self {
             NodeWeight::AttributePrototypeArgument(weight) => {
                 weight.increment_vector_clock(change_set)
@@ -172,7 +169,7 @@ impl NodeWeight {
 
     pub fn merge_clocks(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         other: &NodeWeight,
     ) -> NodeWeightResult<()> {
         match (self, other) {
@@ -238,7 +235,7 @@ impl NodeWeight {
 
     pub fn new_with_incremented_vector_clock(
         &self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
     ) -> NodeWeightResult<Self> {
         let new_weight = match self {
             NodeWeight::AttributePrototypeArgument(weight) => {
@@ -306,11 +303,7 @@ impl NodeWeight {
         }
     }
 
-    pub fn set_order(
-        &mut self,
-        change_set: &ChangeSetPointer,
-        order: Vec<Ulid>,
-    ) -> NodeWeightResult<()> {
+    pub fn set_order(&mut self, change_set: &ChangeSet, order: Vec<Ulid>) -> NodeWeightResult<()> {
         match self {
             NodeWeight::Ordering(ordering_weight) => ordering_weight.set_order(change_set, order),
 
@@ -327,7 +320,7 @@ impl NodeWeight {
 
     pub fn set_vector_clock_recently_seen_to(
         &mut self,
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         new_val: DateTime<Utc>,
     ) {
         match self {
@@ -517,7 +510,7 @@ impl NodeWeight {
     }
 
     pub fn new_content(
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         content_id: Ulid,
         kind: ContentAddress,
     ) -> NodeWeightResult<Self> {
@@ -527,7 +520,7 @@ impl NodeWeight {
     }
 
     pub fn new_attribute_value(
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         attribute_value_id: Ulid,
         unprocessed_value: Option<ContentAddress>,
         value: Option<ContentAddress>,
@@ -545,7 +538,7 @@ impl NodeWeight {
     }
 
     pub fn new_component(
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         component_id: Ulid,
         content_hash: ContentHash,
     ) -> NodeWeightResult<Self> {
@@ -557,7 +550,7 @@ impl NodeWeight {
     }
 
     pub fn new_prop(
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         prop_id: Ulid,
         prop_kind: PropKind,
         name: impl AsRef<str>,
@@ -573,7 +566,7 @@ impl NodeWeight {
     }
 
     pub fn new_func(
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         func_id: Ulid,
         name: impl AsRef<str>,
         backend_kind: FuncBackendKind,
@@ -589,7 +582,7 @@ impl NodeWeight {
     }
 
     pub fn new_func_argument(
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         func_arg_id: Ulid,
         name: impl AsRef<str>,
         content_hash: ContentHash,
@@ -603,7 +596,7 @@ impl NodeWeight {
     }
 
     pub fn new_attribute_prototype_argument(
-        change_set: &ChangeSetPointer,
+        change_set: &ChangeSet,
         attribute_prototype_argument_id: Ulid,
         targets: Option<ArgumentTargets>,
     ) -> NodeWeightResult<Self> {

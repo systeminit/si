@@ -10,7 +10,7 @@ use dal::{
     workspace_snapshot::WorkspaceSnapshotError, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncId, SchemaVariantId, TransactionsError,
 };
-use dal::{ChangeSetPointerError, WsEventError};
+use dal::{ChangeSetError, WsEventError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -64,7 +64,7 @@ pub enum FuncError {
     //     #[error("attribute value missing")]
     //     AttributeValueMissing,
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     //     #[error("component error: {0}")]
     //     Component(#[from] ComponentError),
     //     #[error("component missing schema variant")]

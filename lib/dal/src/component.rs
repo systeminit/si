@@ -17,7 +17,7 @@ use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
 use crate::attribute::value::{AttributeValueError, DependentValueGraph};
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::code_view::CodeViewError;
 use crate::history_event::HistoryEventMetadata;
 use crate::layer_db_types::{ComponentContent, ComponentContentV1};
@@ -71,7 +71,7 @@ pub enum ComponentError {
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("code view error: {0}")]
     CodeView(#[from] CodeViewError),
     #[error("component {0} has no attribute value for the root/si/color prop")]
@@ -258,7 +258,7 @@ impl Component {
             .await
             .add(&ComponentContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_component(change_set, id, hash)?;
 
@@ -637,7 +637,7 @@ impl Component {
                 .add(&ComponentContent::V1(updated))?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set_pointer()?, id.into(), hash)
+                .update_content(ctx.change_set()?, id.into(), hash)
                 .await?;
         }
         let (node_weight, content) = Self::get_node_weight_and_content(ctx, id).await?;
@@ -1095,8 +1095,8 @@ impl Component {
         // The `to_delete` lives on the node itself, not in the content, so we need to be a little
         // more manual when updating that field.
         if component.to_delete != component_node_weight.to_delete() {
-            let mut new_component_node_weight = component_node_weight
-                .new_with_incremented_vector_clock(ctx.change_set_pointer()?)?;
+            let mut new_component_node_weight =
+                component_node_weight.new_with_incremented_vector_clock(ctx.change_set()?)?;
             new_component_node_weight.set_to_delete(component.to_delete);
             workspace_snapshot
                 .add_node(NodeWeight::Component(new_component_node_weight))
@@ -1112,7 +1112,7 @@ impl Component {
                 .await
                 .add(&ComponentContent::V1(updated.clone()))?;
             workspace_snapshot
-                .update_content(ctx.change_set_pointer()?, component.id.into(), hash)
+                .update_content(ctx.change_set()?, component.id.into(), hash)
                 .await?;
         }
 

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
-use crate::change_set_pointer::ChangeSetPointerError;
+use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{SchemaContent, SchemaContentDiscriminants, SchemaContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
@@ -26,7 +26,7 @@ pub const SCHEMA_VERSION: SchemaContentDiscriminants = SchemaContentDiscriminant
 #[derive(Error, Debug)]
 pub enum SchemaError {
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetPointerError),
+    ChangeSet(#[from] ChangeSetError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
     #[error("node weight error: {0}")]
@@ -95,7 +95,7 @@ impl Schema {
             .await
             .add(&SchemaContent::V1(content.clone()))?;
 
-        let change_set = ctx.change_set_pointer()?;
+        let change_set = ctx.change_set()?;
         let id = change_set.generate_ulid()?;
         let node_weight = NodeWeight::new_content(change_set, id, ContentAddress::Schema(hash))?;
 
@@ -155,7 +155,7 @@ impl Schema {
                 .add(&SchemaContent::V1(updated.clone()))?;
 
             ctx.workspace_snapshot()?
-                .update_content(ctx.change_set_pointer()?, schema.id.into(), hash)
+                .update_content(ctx.change_set()?, schema.id.into(), hash)
                 .await?;
         }
 
