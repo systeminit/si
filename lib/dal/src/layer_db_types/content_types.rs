@@ -98,6 +98,17 @@ impl From<CasValue> for ContentTypes {
     }
 }
 
+impl TryFrom<ContentTypes> for CasValue {
+    type Error = &'static str;
+
+    fn try_from(value: ContentTypes) -> Result<Self, Self::Error> {
+        match value {
+            ContentTypes::Any(inner) => Ok(inner),
+            _ => Err("Could not convert ContentType to CasValue"),
+        }
+    }
+}
+
 impl From<ContentTypes> for Option<CasValue> {
     fn from(value: ContentTypes) -> Self {
         match value {

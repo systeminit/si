@@ -1,8 +1,10 @@
-use content_store::{ContentHash, Store, StoreError};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
+use si_events::ContentHash;
+use si_layer_cache::LayerDbError;
 use si_pkg::ActionFuncSpecKind;
 use std::collections::HashMap;
+use std::sync::Arc;
 use strum::{AsRefStr, Display};
 use thiserror::Error;
 
@@ -73,6 +75,8 @@ pub enum ActionPrototypeError {
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("action prototype {0} is missing a function edge")]
     MissingFunction(ActionPrototypeId),
     #[error("node weight error: {0}")]
@@ -83,8 +87,6 @@ pub enum ActionPrototypeError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("store error: {0}")]
-    Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -172,11 +174,16 @@ impl ActionPrototype {
             name: name.map(Into::into),
         };
 
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&ActionPrototypeContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(ActionPrototypeContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -225,9 +232,9 @@ impl ActionPrototype {
         }
 
         let content_map: HashMap<ContentHash, ActionPrototypeContent> = ctx
-            .content_store()
-            .try_lock()?
-            .get_bulk(content_hashes.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(content_hashes.as_slice())
             .await?;
 
         let mut prototypes = Vec::with_capacity(node_weights.len());
@@ -255,10 +262,9 @@ impl ActionPrototype {
         let hash = node_weight.content_hash();
 
         let content: ActionPrototypeContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
 

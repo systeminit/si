@@ -55,6 +55,8 @@ pub enum AttributePrototypeArgumentError {
     InterComponentDestinationPrototypeHasNoFuncArgs(AttributePrototypeId),
     #[error("Destination prototype {0} has more than one function argument")]
     InterComponentDestinationPrototypeHasTooManyFuncArgs(AttributePrototypeId),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("attribute prototype argument {0} has no func argument")]
     MissingFuncArgument(AttributePrototypeArgumentId),
     #[error("node weight error: {0}")]

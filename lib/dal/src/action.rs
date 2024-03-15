@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use si_events::ContentHash;
-use si_layer_cache::LayerDbError;
 use std::collections::HashMap;
 use std::sync::Arc;
 use thiserror::Error;
@@ -47,7 +46,7 @@ pub enum ActionError {
     #[error("in head")]
     InHead,
     #[error("layer db error: {0}")]
-    LayerDb(#[from] LayerDbError),
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("action not found: {0}")]

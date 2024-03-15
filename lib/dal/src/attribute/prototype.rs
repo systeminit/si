@@ -9,14 +9,17 @@
 //!     [`Map`](crate::prop::PropKind::Map): Which key of the `Map` the value is
 //!     for.
 
-use content_store::{ContentHash, Store};
+use std::sync::Arc;
+
 use petgraph::Direction;
 use serde::{Deserialize, Serialize};
-use strum::EnumDiscriminants;
+use si_events::ContentHash;
+use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::change_set_pointer::ChangeSetPointerError;
+use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContentV1};
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightError, EdgeWeightKind, EdgeWeightKindDiscriminants,
@@ -38,12 +41,12 @@ pub enum AttributePrototypeError {
     ChangeSet(#[from] ChangeSetPointerError),
     #[error("edge weight error: {0}")]
     EdgeWeight(#[from] EdgeWeightError),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("attribute prototype {0} is missing a function edge")]
     MissingFunction(AttributePrototypeId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
-    #[error("store error: {0}")]
-    Store(#[from] content_store::StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -67,16 +70,6 @@ pub struct AttributePrototypeGraphNode {
     id: AttributePrototypeId,
     content_address: ContentAddress,
     content: AttributePrototypeContentV1,
-}
-
-#[derive(EnumDiscriminants, Serialize, Deserialize, PartialEq)]
-pub enum AttributePrototypeContent {
-    V1(AttributePrototypeContentV1),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct AttributePrototypeContentV1 {
-    pub timestamp: Timestamp,
 }
 
 impl AttributePrototypeGraphNode {
@@ -110,11 +103,16 @@ impl AttributePrototype {
         let timestamp = Timestamp::now();
 
         let content = AttributePrototypeContentV1 { timestamp };
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&AttributePrototypeContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(AttributePrototypeContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;

@@ -1,8 +1,9 @@
-use content_store::{ContentHash, Store, StoreError};
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
+use si_events::ContentHash;
 use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
 use std::collections::HashMap;
+use std::sync::Arc;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -31,6 +32,8 @@ pub enum FuncArgumentError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("intrinsic func {0} ({1}) missing func argument edge")]
     IntrinsicMissingFuncArgumentEdge(String, FuncId),
+    #[error("layer db error: {0}")]
+    LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("func argument not found with name {0} for Func {1}")]
@@ -41,8 +44,6 @@ pub enum FuncArgumentError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
-    #[error("store error: {0}")]
-    Store(#[from] StoreError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -171,11 +172,16 @@ impl FuncArgument {
             timestamp,
         };
 
-        let hash = ctx
-            .content_store()
-            .lock()
-            .await
-            .add(&FuncArgumentContent::V1(content.clone()))?;
+        let (hash, _) = ctx
+            .layer_db()
+            .cas()
+            .write(
+                Arc::new(FuncArgumentContent::V1(content.clone()).into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )
+            .await?;
 
         let change_set = ctx.change_set_pointer()?;
         let id = change_set.generate_ulid()?;
@@ -205,10 +211,9 @@ impl FuncArgument {
         let hash = node_weight.content_hash();
 
         let content: FuncArgumentContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id))?;
 
@@ -274,10 +279,9 @@ impl FuncArgument {
         }
 
         let arg_contents: HashMap<ContentHash, FuncArgumentContent> = ctx
-            .content_store()
-            .lock()
-            .await
-            .get_bulk(arg_content_hashes.as_slice())
+            .layer_db()
+            .cas()
+            .try_read_many_as(arg_content_hashes.as_slice())
             .await?;
 
         for weight in arg_node_weights {
@@ -336,10 +340,9 @@ impl FuncArgument {
         let hash = arg_nw.content_hash();
 
         let content: FuncArgumentContent = ctx
-            .content_store()
-            .lock()
-            .await
-            .get(&hash)
+            .layer_db()
+            .cas()
+            .try_read_as(&hash)
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(ulid))?;
 
@@ -366,11 +369,16 @@ impl FuncArgument {
 
         let updated = FuncArgumentContentV1::from(func_arg.clone());
         if updated != inner {
-            let hash = ctx
-                .content_store()
-                .lock()
-                .await
-                .add(&FuncArgumentContent::V1(updated.clone()))?;
+            let (hash, _) = ctx
+                .layer_db()
+                .cas()
+                .write(
+                    Arc::new(FuncArgumentContent::V1(updated.clone()).into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
 
             workspace_snapshot
                 .update_content(ctx.change_set_pointer()?, ulid, hash)
