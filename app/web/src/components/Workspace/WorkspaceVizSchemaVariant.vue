@@ -31,10 +31,12 @@ const props = defineProps<{ schemaVariantId?: string }>();
 
 const getColor = (nodeKind: string, contentKind: string | null) => {
   const kindMap: { [key: string]: string } = {
-    Category: "#2FA",
+    Category: "#c200ff",
     Func: "#F02",
     Ordering: "#ABC",
     Prop: "#0FF",
+    AttributePrototypeArgument: "#103016",
+    FuncArgument: "#40300c",
   };
 
   const contentKindMap: { [key: string]: string } = {
